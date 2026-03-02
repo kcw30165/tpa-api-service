@@ -15,6 +15,7 @@ import org.springframework.security.oauth2.client.OAuth2AuthorizedClientProvider
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.reactive.function.client.ServletOAuth2AuthorizedClientExchangeFilterFunction;
+import org.springframework.web.reactive.function.client.ClientRequest;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -50,8 +51,29 @@ public class WebClientConfig {
                 .baseUrl(apimProperties.getBaseUrl())
                 .defaultHeader("Accept", "application/json")
                 .apply(oauth2Filter.oauth2Configuration())
+                .filter(stripBearerPrefixInAuthorizationHeader())
                 .filter(logApimRequestHeaders())
                 .build();
+    }
+
+    private ExchangeFilterFunction stripBearerPrefixInAuthorizationHeader() {
+        return ExchangeFilterFunction.ofRequestProcessor(request -> {
+            List<String> authorizationHeaders = request.headers().getOrEmpty(HttpHeaders.AUTHORIZATION);
+            if (authorizationHeaders.isEmpty()) {
+                return Mono.just(request);
+            }
+
+            String authorizationValue = authorizationHeaders.get(0);
+            if (authorizationValue == null || !authorizationValue.startsWith("Bearer ")) {
+                return Mono.just(request);
+            }
+
+            String tokenOnly = authorizationValue.substring("Bearer ".length());
+            ClientRequest mutatedRequest = ClientRequest.from(request)
+                    .headers(headers -> headers.set(HttpHeaders.AUTHORIZATION, tokenOnly))
+                    .build();
+            return Mono.just(mutatedRequest);
+        });
     }
 
     private ExchangeFilterFunction logApimRequestHeaders() {
@@ -76,13 +98,15 @@ public class WebClientConfig {
         if (authorizationHeader == null || authorizationHeader.isBlank()) {
             return "MISSING";
         }
-        if (!authorizationHeader.startsWith("Bearer ")) {
+        if (authorizationHeader.startsWith("Basic ")) {
+            return "Basic ***";
+        }
+        String token = authorizationHeader.startsWith("Bearer ")
+                ? authorizationHeader.substring("Bearer ".length())
+                : authorizationHeader;
+        if (token.length() <= 10) {
             return "***";
         }
-        String token = authorizationHeader.substring("Bearer ".length());
-        if (token.length() <= 10) {
-            return "Bearer ***";
-        }
-        return "Bearer " + token.substring(0, 6) + "...";
+        return token.substring(0, 6) + "...";
     }
 }
