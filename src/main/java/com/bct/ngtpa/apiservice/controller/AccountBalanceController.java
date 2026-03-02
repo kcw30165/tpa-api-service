@@ -12,7 +12,7 @@ import reactor.core.publisher.Mono;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/api/v1/account-balances")
+@RequestMapping("/api/v1/account-balance")
 public class AccountBalanceController {
 
     private final ApimClientService apimClientService;
