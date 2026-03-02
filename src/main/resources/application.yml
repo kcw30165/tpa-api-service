@@ -1,13 +1,16 @@
 spring:
   application:
     name: ngtpa-api-server
+  cloud:
+    config:
+      enabled: ${SPRING_CLOUD_CONFIG_ENABLED:false}
   security:
     oauth2:
       client:
         registration:
           apim-client:
-            client-id: ${APIM_CLIENT_ID:}
-            client-secret: ${APIM_CLIENT_SECRET:}
+            client-id: ${APIM_CLIENT_ID:tpa-service-client-id}
+            client-secret: ${APIM_CLIENT_SECRET:your-secure-client-secret}
             authorization-grant-type: client_credentials
         provider:
           apim-client:
@@ -15,4 +18,4 @@ spring:
 
 apim:
   baseUrl: ${APIM_BASEURL:}
-  timeoutMilliseconds: ${APIM_TIMEOUTMILLISECONDS:}
+  timeoutMilliseconds: ${APIM_TIMEOUTMILLISECONDS:10000}
