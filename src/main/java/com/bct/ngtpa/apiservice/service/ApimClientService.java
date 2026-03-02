@@ -19,7 +19,7 @@ public class ApimClientService {
 
     public Mono<AccountBalanceResponse> getAccountBalance(AccountBalanceRequest accountBalanceRequest) {
         return apimWebClient.post()
-                .uri(uriBuilder -> uriBuilder.path("TRPGETEEBal").build())
+                .uri(uriBuilder -> uriBuilder.path("TRPGetEEBal").build())
                 .attributes(clientRegistrationId("apim-client"))
                 .bodyValue(accountBalanceRequest)
                 .retrieve()
