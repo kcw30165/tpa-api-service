@@ -40,7 +40,7 @@ public class WebClientConfig {
         return WebClient.builder()
                 .baseUrl(apimProperties.getBaseUrl())
                 .defaultHeader("Accept", "application/json")
-                .filter(oauth2Filter) // Intercepts requests to inject the token
+                .apply(oauth2Filter.oauth2Configuration())
                 .build();
     }
 }
