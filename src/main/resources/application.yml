@@ -12,6 +12,8 @@ spring:
             client-id: ${APIM_CLIENT_ID:tpa-service-client-id}
             client-secret: ${APIM_CLIENT_SECRET:your-secure-client-secret}
             authorization-grant-type: client_credentials
+            client-authentication-method: ${APIM_CLIENT_AUTH_METHOD:client_secret_basic}
+            scope: ${APIM_CLIENT_SCOPE:}
         provider:
           apim-client:
             token-uri: ${APIM_TOKEN_URI:}
