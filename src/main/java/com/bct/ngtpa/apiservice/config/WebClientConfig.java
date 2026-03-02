@@ -24,8 +24,7 @@ public class WebClientConfig {
     }
 
     @Bean
-    public WebClient apimWebClient(WebClient.Builder builder, 
-                                   ApimProperties apimProperties,
+    public WebClient apimWebClient(ApimProperties apimProperties,
                                    ReactiveOAuth2AuthorizedClientManager authorizedClientManager) {
 
         ServerOAuth2AuthorizedClientExchangeFilterFunction oauth2Filter =
