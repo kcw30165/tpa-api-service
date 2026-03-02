@@ -1,0 +1,15 @@
+services:
+  app:
+    container_name: ngtpa-api-server
+    build:
+      context: .
+      dockerfile: dockerfile
+    ports:
+      - "8888:8888"
+    environment:
+      SERVER_PORT: ${SERVER_PORT:-8888}
+      APIM_BASEURL: ${APIM_BASEURL:}
+      APIM_TIMEOUTMILLISECONDS: ${APIM_TIMEOUTMILLISECONDS:}
+      APIM_CLIENT_ID: ${APIM_CLIENT_ID:}
+      APIM_CLIENT_SECRET: ${APIM_CLIENT_SECRET:}
+      APIM_TOKEN_URI: ${APIM_TOKEN_URI:}

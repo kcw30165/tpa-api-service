@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: ngtpa-api-server
+  security:
+    oauth2:
+      client:
+        registration:
+          apim-client:
+            client-id: ${APIM_CLIENT_ID:}
+            client-secret: ${APIM_CLIENT_SECRET:}
+            authorization-grant-type: client_credentials
+        provider:
+          apim-client:
+            token-uri: ${APIM_TOKEN_URI:}
+
+apim:
+  baseUrl: ${APIM_BASEURL:}
+  timeoutMilliseconds: ${APIM_TIMEOUTMILLISECONDS:}
