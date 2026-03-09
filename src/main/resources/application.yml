@@ -1,3 +1,6 @@
+server:
+  port: ${SERVER_PORT:8888}
+
 spring:
   application:
     name: ngtpa-api-server
@@ -26,6 +29,7 @@ apim:
     testSessionId: ${APIM_TEST_SESSION_ID:}
   encryption:
     enabled: ${APIM_ENCRYPTION_ENABLED:true}
+    aesKey: ${APIM_AES_KEY:}
     publicKeyPem: ${APIM_PUBLIC_KEY_PEM:}
     privateKeyPem: ${APIM_PRIVATE_KEY_PEM:}
     apis:

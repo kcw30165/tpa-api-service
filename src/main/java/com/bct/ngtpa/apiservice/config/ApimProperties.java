@@ -31,6 +31,7 @@ public class ApimProperties {
     @Setter
     public static class Encryption {
         private boolean enabled;
+        private String aesKey;
         private String publicKeyPem;
         private String privateKeyPem;
         private final Map<String, ApiFieldEncryptionConfig> apis = new LinkedHashMap<>();
