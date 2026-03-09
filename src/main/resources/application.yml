@@ -26,7 +26,6 @@ apim:
   timeoutMilliseconds: ${APIM_TIMEOUTMILLISECONDS:10000}
   headers:
     certificate: ${APIM_CERTIFICATE:}
-    testSessionId: ${APIM_TEST_SESSION_ID:}
   encryption:
     enabled: ${APIM_ENCRYPTION_ENABLED:true}
     aesKey: ${APIM_AES_KEY:}

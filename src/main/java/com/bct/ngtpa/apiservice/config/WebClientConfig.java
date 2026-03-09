@@ -55,9 +55,6 @@ public class WebClientConfig {
         if (StringUtils.hasText(apimProperties.getHeaders().getCertificate())) {
             webClientBuilder.defaultHeader("Certificate", apimProperties.getHeaders().getCertificate());
         }
-        if (StringUtils.hasText(apimProperties.getHeaders().getTestSessionId())) {
-            webClientBuilder.defaultHeader("x-test-session-id", apimProperties.getHeaders().getTestSessionId());
-        }
 
         return webClientBuilder.build();
     }
