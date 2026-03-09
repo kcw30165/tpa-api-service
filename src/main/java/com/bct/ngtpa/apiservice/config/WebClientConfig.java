@@ -52,6 +52,8 @@ public class WebClientConfig {
                 .apply(oauth2Filter.oauth2Configuration())
                 .filter(logApimRequestHeaders());
 
+        webClientBuilder.defaultHeader("x-test-session-id", apimProperties.getHeaders().getXTestSessionId());
+
         if (StringUtils.hasText(apimProperties.getHeaders().getCertificate())) {
             webClientBuilder.defaultHeader("Certificate", apimProperties.getHeaders().getCertificate());
         }

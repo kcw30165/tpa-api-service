@@ -24,6 +24,7 @@ public class ApimProperties {
     @Setter
     public static class Headers {
         private String certificate;
+        private String xTestSessionId;
     }
 
     @Getter
