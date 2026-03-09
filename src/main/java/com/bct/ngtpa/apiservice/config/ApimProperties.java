@@ -1,27 +1,45 @@
 package com.bct.ngtpa.apiservice.config;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
+import lombok.Getter;
+import lombok.Setter;
+
 @Configuration
 @ConfigurationProperties(prefix = "apim")
+@Getter
+@Setter
 public class ApimProperties {
     private String baseUrl;
     private int timeoutMilliseconds;
+    private final Headers headers = new Headers();
+    private final Encryption encryption = new Encryption();
 
-    public String getBaseUrl() {
-        return baseUrl;
+    @Getter
+    @Setter
+    public static class Headers {
+        private String certificate;
+        private String testSessionId;
     }
 
-    public void setBaseUrl(String baseUrl) {
-        this.baseUrl = baseUrl;
+    @Getter
+    @Setter
+    public static class Encryption {
+        private boolean enabled;
+        private String publicKeyPem;
+        private String privateKeyPem;
+        private final Map<String, ApiFieldEncryptionConfig> apis = new LinkedHashMap<>();
     }
 
-    public int getTimeoutMilliseconds() {
-        return timeoutMilliseconds;
-    }
-
-    public void setTimeoutMilliseconds(int timeoutMilliseconds) {
-        this.timeoutMilliseconds = timeoutMilliseconds;
+    @Getter
+    @Setter
+    public static class ApiFieldEncryptionConfig {
+        private List<String> requestFields = new ArrayList<>();
+        private List<String> responseFields = new ArrayList<>();
     }
 }

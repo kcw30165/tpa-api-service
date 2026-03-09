@@ -21,3 +21,21 @@ spring:
 apim:
   baseUrl: ${APIM_BASEURL:}
   timeoutMilliseconds: ${APIM_TIMEOUTMILLISECONDS:10000}
+  headers:
+    certificate: ${APIM_CERTIFICATE:}
+    testSessionId: ${APIM_TEST_SESSION_ID:}
+  encryption:
+    enabled: ${APIM_ENCRYPTION_ENABLED:true}
+    publicKeyPem: ${APIM_PUBLIC_KEY_PEM:}
+    privateKeyPem: ${APIM_PRIVATE_KEY_PEM:}
+    apis:
+      account-balance:
+        requestFields:
+          - policy-no
+        responseFields:
+          - ECoName
+          - Idno
+          - EngName
+          - ChinName
+          - MPhone
+          - Email

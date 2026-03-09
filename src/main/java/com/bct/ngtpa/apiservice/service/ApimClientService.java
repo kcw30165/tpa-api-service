@@ -10,20 +10,32 @@ import reactor.core.publisher.Mono;
 
 @Service
 public class ApimClientService {
+    private static final String ACCOUNT_BALANCE_API_NAME = "account-balance";
 
     private final WebClient apimWebClient;
+    private final ApimPayloadCryptoService apimPayloadCryptoService;
 
-    public ApimClientService(WebClient apimWebClient) {
+    public ApimClientService(WebClient apimWebClient, ApimPayloadCryptoService apimPayloadCryptoService) {
         this.apimWebClient = apimWebClient;
+        this.apimPayloadCryptoService = apimPayloadCryptoService;
     }
 
     public Mono<AccountBalanceResponse> getAccountBalance(AccountBalanceRequest accountBalanceRequest) {
+        AccountBalanceRequest encryptedRequest = apimPayloadCryptoService.encryptRequest(
+                ACCOUNT_BALANCE_API_NAME,
+                accountBalanceRequest,
+                AccountBalanceRequest.class);
+
         return apimWebClient.post()
                 .uri(uriBuilder -> uriBuilder.path("TRPGetEEBal").build())
                 .attributes(clientRegistrationId("apim-client"))
-                .bodyValue(accountBalanceRequest)
+                .bodyValue(encryptedRequest)
                 .retrieve()
-                .bodyToMono(AccountBalanceResponse.class);
+                .bodyToMono(String.class)
+                .map(responseBody -> apimPayloadCryptoService.decryptResponse(
+                        ACCOUNT_BALANCE_API_NAME,
+                        responseBody,
+                        AccountBalanceResponse.class));
     }
 
 

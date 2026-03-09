@@ -16,6 +16,7 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import org.springframework.security.oauth2.client.web.reactive.function.client.ServletOAuth2AuthorizedClientExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 
 @Configuration
@@ -45,12 +46,20 @@ public class WebClientConfig {
 
         oauth2Filter.setDefaultClientRegistrationId("apim-client");
 
-        return WebClient.builder()
+        WebClient.Builder webClientBuilder = WebClient.builder()
                 .baseUrl(apimProperties.getBaseUrl())
                 .defaultHeader("Accept", "application/json")
                 .apply(oauth2Filter.oauth2Configuration())
-                .filter(logApimRequestHeaders())
-                .build();
+                .filter(logApimRequestHeaders());
+
+        if (StringUtils.hasText(apimProperties.getHeaders().getCertificate())) {
+            webClientBuilder.defaultHeader("Certificate", apimProperties.getHeaders().getCertificate());
+        }
+        if (StringUtils.hasText(apimProperties.getHeaders().getTestSessionId())) {
+            webClientBuilder.defaultHeader("x-test-session-id", apimProperties.getHeaders().getTestSessionId());
+        }
+
+        return webClientBuilder.build();
     }
     
 
