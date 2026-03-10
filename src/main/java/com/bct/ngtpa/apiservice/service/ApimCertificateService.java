@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.service;
 import com.bct.ngtpa.apiservice.config.ApimProperties;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
@@ -23,7 +24,11 @@ public class ApimCertificateService {
         }
 
         return apimWebClient.get()
-                .uri(uriBuilder -> uriBuilder.path(apimProperties.getEncryption().getCertificatePath()).build())
+                .uri(UriComponentsBuilder.fromUriString(apimProperties.getBaseUrl())
+                        .replacePath(apimProperties.getEncryption().getCertificatePath())
+                        .replaceQuery(null)
+                        .build(true)
+                        .toUri())
                 .header("KeyId", apiKey)
                 .retrieve()
                 .bodyToMono(String.class)
