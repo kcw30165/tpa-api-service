@@ -16,8 +16,8 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import org.springframework.security.oauth2.client.web.reactive.function.client.ServletOAuth2AuthorizedClientExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
+import com.bct.ngtpa.apiservice.service.ApimAppCertificateService;
 
 @Configuration
 public class WebClientConfig {
@@ -39,6 +39,7 @@ public class WebClientConfig {
 
     @Bean
     public WebClient apimWebClient(ApimProperties apimProperties,
+            ApimAppCertificateService apimAppCertificateService,
             OAuth2AuthorizedClientManager authorizedClientManager) {
 
         ServletOAuth2AuthorizedClientExchangeFilterFunction oauth2Filter = new ServletOAuth2AuthorizedClientExchangeFilterFunction(
@@ -49,12 +50,9 @@ public class WebClientConfig {
         WebClient.Builder webClientBuilder = WebClient.builder()
                 .baseUrl(apimProperties.getBaseUrl())
                 .defaultHeader("Accept", "application/json")
+                .defaultHeader("Certificate", apimAppCertificateService.getCertificateHeaderValue())
                 .apply(oauth2Filter.oauth2Configuration())
                 .filter(logApimRequestHeaders());
-
-        if (StringUtils.hasText(apimProperties.getHeaders().getCertificate())) {
-            webClientBuilder.defaultHeader("Certificate", apimProperties.getHeaders().getCertificate());
-        }
 
         return webClientBuilder.build();
     }

@@ -120,6 +120,10 @@ public class RsaFieldCryptoUtil {
         }
     }
 
+    public PrivateKey getConfiguredPrivateKey() throws Exception {
+        return getPrivateKey();
+    }
+
     private PrivateKey getPrivateKey() throws Exception {
         if (privateKey == null) {
             synchronized (this) {

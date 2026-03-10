@@ -17,14 +17,7 @@ import lombok.Setter;
 public class ApimProperties {
     private String baseUrl;
     private int timeoutMilliseconds;
-    private final Headers headers = new Headers();
     private final Encryption encryption = new Encryption();
-
-    @Getter
-    @Setter
-    public static class Headers {
-        private String certificate;
-    }
 
     @Getter
     @Setter
