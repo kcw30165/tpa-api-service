@@ -36,13 +36,17 @@ public class RsaFieldCryptoUtil {
     }
 
     public String encryptKey(byte[] plainBytes) {
+        return encryptKey(plainBytes, null);
+    }
+
+    public String encryptKey(byte[] plainBytes, String publicKeyMaterial) {
         if (plainBytes == null || plainBytes.length == 0) {
             throw new IllegalArgumentException("RSA plaintext bytes are required.");
         }
 
         try {
             Cipher cipher = Cipher.getInstance(RSA_TRANSFORMATION);
-            cipher.init(Cipher.ENCRYPT_MODE, getPublicKey());
+            cipher.init(Cipher.ENCRYPT_MODE, resolvePublicKey(publicKeyMaterial));
             byte[] encrypted = cipher.doFinal(plainBytes);
             return Base64.getEncoder().encodeToString(encrypted);
         } catch (Exception ex) {
@@ -85,6 +89,10 @@ public class RsaFieldCryptoUtil {
     }
 
     public String verifyAndExtractValue(String jwt) {
+        return verifyAndExtractValue(jwt, null);
+    }
+
+    public String verifyAndExtractValue(String jwt, String publicKeyMaterial) {
         if (!StringUtils.hasText(jwt)) {
             return jwt;
         }
@@ -97,7 +105,7 @@ public class RsaFieldCryptoUtil {
         try {
             String signingInput = jwtParts[0] + "." + jwtParts[1];
             Signature signature = Signature.getInstance(SIGNATURE_ALGORITHM);
-            signature.initVerify(getPublicKey());
+            signature.initVerify(resolvePublicKey(publicKeyMaterial));
             signature.update(signingInput.getBytes(StandardCharsets.UTF_8));
 
             if (!signature.verify(Base64.getUrlDecoder().decode(jwtParts[2]))) {
@@ -128,6 +136,13 @@ public class RsaFieldCryptoUtil {
             }
         }
         return publicKey;
+    }
+
+    private PublicKey resolvePublicKey(String publicKeyMaterial) throws Exception {
+        if (StringUtils.hasText(publicKeyMaterial)) {
+            return parsePublicKey(publicKeyMaterial);
+        }
+        return getPublicKey();
     }
 
     private PrivateKey getPrivateKey() throws Exception {

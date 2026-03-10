@@ -44,6 +44,10 @@ public class ApimPayloadCryptoService {
     }
 
     public <T> T encryptRequest(String apiName, T source, Class<T> targetType) {
+        return encryptRequest(apiName, source, targetType, null);
+    }
+
+    public <T> T encryptRequest(String apiName, T source, Class<T> targetType, String publicKeyMaterial) {
         if (!apimProperties.getEncryption().isEnabled()) {
             return source;
         }
@@ -51,10 +55,14 @@ public class ApimPayloadCryptoService {
         if (CollectionUtils.isEmpty(targetFields)) {
             return source;
         }
-        return transformObject(source, targetType, targetFields, this::encryptField);
+        return transformObject(source, targetType, targetFields, fieldValue -> encryptField(fieldValue, publicKeyMaterial));
     }
 
     public <T> T decryptResponse(String apiName, String responseJson, Class<T> targetType) {
+        return decryptResponse(apiName, responseJson, targetType, null);
+    }
+
+    public <T> T decryptResponse(String apiName, String responseJson, Class<T> targetType, String publicKeyMaterial) {
         if (!apimProperties.getEncryption().isEnabled()) {
             return parseJson(responseJson, targetType);
         }
@@ -65,7 +73,10 @@ public class ApimPayloadCryptoService {
 
         try {
             JsonNode sourceNode = objectMapper.readTree(responseJson);
-            JsonNode transformedNode = jsonFieldCryptoUtil.transformFields(sourceNode, targetFields, this::decryptField);
+            JsonNode transformedNode = jsonFieldCryptoUtil.transformFields(
+                    sourceNode,
+                    targetFields,
+                    fieldValue -> decryptField(fieldValue, publicKeyMaterial));
             return objectMapper.treeToValue(transformedNode, targetType);
         } catch (Exception ex) {
             throw new IllegalStateException("Failed to decrypt APIM response payload.", ex);
@@ -86,7 +97,7 @@ public class ApimPayloadCryptoService {
         }
     }
 
-    private String encryptField(String plainText) {
+    private String encryptField(String plainText, String publicKeyMaterial) {
         if (!StringUtils.hasText(plainText)) {
             return plainText;
         }
@@ -94,7 +105,7 @@ public class ApimPayloadCryptoService {
         try {
             byte[] aesKey = resolveRequestAesKey();
             String signedJwt = rsaFieldCryptoUtil.createSignedJwt(plainText);
-            String encryptedAesKey = rsaFieldCryptoUtil.encryptKey(aesKey);
+            String encryptedAesKey = rsaFieldCryptoUtil.encryptKey(aesKey, publicKeyMaterial);
             String encryptedPayload = encryptAes(signedJwt, aesKey);
             return encryptedAesKey + ":" + encryptedPayload;
         } catch (Exception ex) {
@@ -102,7 +113,7 @@ public class ApimPayloadCryptoService {
         }
     }
 
-    private String decryptField(String encryptedFieldValue) {
+    private String decryptField(String encryptedFieldValue, String publicKeyMaterial) {
         if (!StringUtils.hasText(encryptedFieldValue)) {
             return encryptedFieldValue;
         }
@@ -115,7 +126,7 @@ public class ApimPayloadCryptoService {
         try {
             byte[] aesKey = rsaFieldCryptoUtil.decryptKey(parts[0]);
             String signedJwt = decryptAes(parts[1], aesKey);
-            return rsaFieldCryptoUtil.verifyAndExtractValue(signedJwt);
+            return rsaFieldCryptoUtil.verifyAndExtractValue(signedJwt, publicKeyMaterial);
         } catch (Exception ex) {
             throw new IllegalStateException("Failed to decrypt APIM field payload.", ex);
         }

@@ -30,6 +30,8 @@ apim:
   encryption:
     enabled: ${APIM_ENCRYPTION_ENABLED:true}
     aesKey: ${APIM_AES_KEY:}
+    certificatePath: ${APIM_CERTIFICATE_PATH:/api/wssupport/v1/encryption/certificate}
+    apiKey: ${APIM_API_KEY:}
     publicKeyPem: ${APIM_PUBLIC_KEY_PEM:}
     privateKeyPem: ${APIM_PRIVATE_KEY_PEM:}
     apis:

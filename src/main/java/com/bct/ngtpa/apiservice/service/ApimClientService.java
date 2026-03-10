@@ -17,37 +17,50 @@ public class ApimClientService {
     private static final String ACCOUNT_BALANCE_API_NAME = "account-balance";
     private final ObjectMapper objectMapper;
     private final WebClient apimWebClient;
+    private final ApimCertificateService apimCertificateService;
     private final ApimPayloadCryptoService apimPayloadCryptoService;
 
-    public ApimClientService(WebClient apimWebClient, ApimPayloadCryptoService apimPayloadCryptoService, ObjectMapper objectMapper) {
+    public ApimClientService(
+            WebClient apimWebClient,
+            ApimCertificateService apimCertificateService,
+            ApimPayloadCryptoService apimPayloadCryptoService,
+            ObjectMapper objectMapper) {
         this.apimWebClient = apimWebClient;
+        this.apimCertificateService = apimCertificateService;
         this.apimPayloadCryptoService = apimPayloadCryptoService;
         this.objectMapper = objectMapper;
     }
 
     public Mono<AccountBalanceResponse> getAccountBalance(AccountBalanceRequest accountBalanceRequest) {
-        AccountBalanceRequest encryptedRequest = apimPayloadCryptoService.encryptRequest(
-                ACCOUNT_BALANCE_API_NAME,
-                accountBalanceRequest,
-                AccountBalanceRequest.class);
-                try {
-                    log.info("APIM request body={}", objectMapper.writeValueAsString(encryptedRequest));
-                } catch (Exception e) {
-                    log.error("Failed to convert request body to JSON", e);
-                }
+        return apimCertificateService.getBctPublicKeyMaterial()
+                .flatMap(publicKeyMaterial -> {
+                    AccountBalanceRequest encryptedRequest = apimPayloadCryptoService.encryptRequest(
+                            ACCOUNT_BALANCE_API_NAME,
+                            accountBalanceRequest,
+                            AccountBalanceRequest.class,
+                            publicKeyMaterial);
+                    logEncryptedRequest(encryptedRequest);
 
-
-        return apimWebClient.post()
-                .uri(uriBuilder -> uriBuilder.path("TRPGetEEBal").build())
-                .attributes(clientRegistrationId("apim-client"))
-                .bodyValue(encryptedRequest)
-                .retrieve()
-                .bodyToMono(String.class)
-                .map(responseBody -> apimPayloadCryptoService.decryptResponse(
-                        ACCOUNT_BALANCE_API_NAME,
-                        responseBody,
-                        AccountBalanceResponse.class));
+                    return apimWebClient.post()
+                            .uri(uriBuilder -> uriBuilder.path("TRPGetEEBal").build())
+                            .attributes(clientRegistrationId("apim-client"))
+                            .bodyValue(encryptedRequest)
+                            .retrieve()
+                            .bodyToMono(String.class)
+                            .map(responseBody -> apimPayloadCryptoService.decryptResponse(
+                                    ACCOUNT_BALANCE_API_NAME,
+                                    responseBody,
+                                    AccountBalanceResponse.class,
+                                    publicKeyMaterial));
+                });
     }
 
+    private void logEncryptedRequest(AccountBalanceRequest encryptedRequest) {
+        try {
+            log.info("APIM request body={}", objectMapper.writeValueAsString(encryptedRequest));
+        } catch (Exception ex) {
+            log.warn("Failed to convert request body to JSON for logging.", ex);
+        }
+    }
 
 }
