@@ -43,7 +43,7 @@ public class ApimClientService {
                     logEncryptedRequest(encryptedRequest);
 
                     return apimWebClient.post()
-                            .uri(uriBuilder -> uriBuilder.path("/ws/TPA/v1/TRPGetEEBal").build())
+                            .uri(uriBuilder -> uriBuilder.path("TRPGetEEBal").build())
                             .attributes(clientRegistrationId("apim-client"))
                             .bodyValue(encryptedRequest)
                             .exchangeToMono(this::extractResponseBody)
