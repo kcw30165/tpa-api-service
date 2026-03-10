@@ -24,17 +24,14 @@ public class ApimProperties {
     @Setter
     public static class Headers {
         private String certificate;
-        private String xTestSessionId;
     }
 
     @Getter
     @Setter
     public static class Encryption {
         private boolean enabled;
-        private String aesKey;
         private String certificatePath = "/api/wssupport/v1/encryption/certificate";
         private String apiKey;
-        private String publicKeyPem;
         private String privateKeyPem;
         private final Map<String, ApiFieldEncryptionConfig> apis = new LinkedHashMap<>();
     }

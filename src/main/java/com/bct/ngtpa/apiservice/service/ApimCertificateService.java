@@ -19,7 +19,7 @@ public class ApimCertificateService {
     public Mono<String> getBctPublicKeyMaterial() {
         String apiKey = apimProperties.getEncryption().getApiKey();
         if (!StringUtils.hasText(apiKey)) {
-            return fallbackPublicKeyMaterial();
+            return Mono.error(new IllegalStateException("apim.encryption.apiKey is required."));
         }
 
         return apimWebClient.get()
@@ -29,15 +29,6 @@ public class ApimCertificateService {
                 .bodyToMono(String.class)
                 .map(String::trim)
                 .filter(StringUtils::hasText)
-                .switchIfEmpty(fallbackPublicKeyMaterial());
-    }
-
-    private Mono<String> fallbackPublicKeyMaterial() {
-        String configuredPublicKey = apimProperties.getEncryption().getPublicKeyPem();
-        if (StringUtils.hasText(configuredPublicKey)) {
-            return Mono.just(configuredPublicKey);
-        }
-        return Mono.error(new IllegalStateException(
-                "Configure apim.encryption.apiKey for dynamic certificate lookup or apim.encryption.publicKeyPem as a fallback."));
+                .switchIfEmpty(Mono.error(new IllegalStateException("BCT certificate API returned an empty response.")));
     }
 }

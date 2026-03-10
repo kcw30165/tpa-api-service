@@ -103,7 +103,7 @@ public class ApimPayloadCryptoService {
         }
 
         try {
-            byte[] aesKey = resolveRequestAesKey();
+            byte[] aesKey = randomBytes(AES_KEY_LENGTH_BYTES);
             String signedJwt = rsaFieldCryptoUtil.createSignedJwt(plainText);
             String encryptedAesKey = rsaFieldCryptoUtil.encryptKey(aesKey, publicKeyMaterial);
             String encryptedPayload = encryptAes(signedJwt, aesKey);
@@ -164,20 +164,6 @@ public class ApimPayloadCryptoService {
                 new SecretKeySpec(aesKey, AES_ALGORITHM),
                 new IvParameterSpec(iv));
         return new String(cipher.doFinal(cipherText), StandardCharsets.UTF_8);
-    }
-
-    private byte[] resolveRequestAesKey() {
-        String configuredAesKey = apimProperties.getEncryption().getAesKey();
-        if (!StringUtils.hasText(configuredAesKey)) {
-            return randomBytes(AES_KEY_LENGTH_BYTES);
-        }
-
-        byte[] aesKey = configuredAesKey.getBytes(StandardCharsets.UTF_8);
-        if (aesKey.length != 16 && aesKey.length != 24 && aesKey.length != 32) {
-            throw new IllegalStateException(
-                    "apim.encryption.aesKey must be 16, 24, or 32 bytes when encoded as UTF-8.");
-        }
-        return aesKey;
     }
 
     private byte[] randomBytes(int length) {

@@ -27,7 +27,6 @@ public class RsaFieldCryptoUtil {
 
     private final ApimProperties apimProperties;
     private final ObjectMapper objectMapper;
-    private volatile PublicKey publicKey;
     private volatile PrivateKey privateKey;
 
     public RsaFieldCryptoUtil(ApimProperties apimProperties, ObjectMapper objectMapper) {
@@ -35,18 +34,17 @@ public class RsaFieldCryptoUtil {
         this.objectMapper = objectMapper;
     }
 
-    public String encryptKey(byte[] plainBytes) {
-        return encryptKey(plainBytes, null);
-    }
-
     public String encryptKey(byte[] plainBytes, String publicKeyMaterial) {
         if (plainBytes == null || plainBytes.length == 0) {
             throw new IllegalArgumentException("RSA plaintext bytes are required.");
         }
+        if (!StringUtils.hasText(publicKeyMaterial)) {
+            throw new IllegalArgumentException("BCT public key material is required.");
+        }
 
         try {
             Cipher cipher = Cipher.getInstance(RSA_TRANSFORMATION);
-            cipher.init(Cipher.ENCRYPT_MODE, resolvePublicKey(publicKeyMaterial));
+            cipher.init(Cipher.ENCRYPT_MODE, parsePublicKey(publicKeyMaterial));
             byte[] encrypted = cipher.doFinal(plainBytes);
             return Base64.getEncoder().encodeToString(encrypted);
         } catch (Exception ex) {
@@ -88,13 +86,12 @@ public class RsaFieldCryptoUtil {
         }
     }
 
-    public String verifyAndExtractValue(String jwt) {
-        return verifyAndExtractValue(jwt, null);
-    }
-
     public String verifyAndExtractValue(String jwt, String publicKeyMaterial) {
         if (!StringUtils.hasText(jwt)) {
             return jwt;
+        }
+        if (!StringUtils.hasText(publicKeyMaterial)) {
+            throw new IllegalArgumentException("BCT public key material is required.");
         }
 
         String[] jwtParts = jwt.split("\\.");
@@ -105,7 +102,7 @@ public class RsaFieldCryptoUtil {
         try {
             String signingInput = jwtParts[0] + "." + jwtParts[1];
             Signature signature = Signature.getInstance(SIGNATURE_ALGORITHM);
-            signature.initVerify(resolvePublicKey(publicKeyMaterial));
+            signature.initVerify(parsePublicKey(publicKeyMaterial));
             signature.update(signingInput.getBytes(StandardCharsets.UTF_8));
 
             if (!signature.verify(Base64.getUrlDecoder().decode(jwtParts[2]))) {
@@ -121,28 +118,6 @@ public class RsaFieldCryptoUtil {
         } catch (Exception ex) {
             throw new IllegalStateException("Unable to verify APIM field payload.", ex);
         }
-    }
-
-    private PublicKey getPublicKey() throws Exception {
-        if (publicKey == null) {
-            synchronized (this) {
-                if (publicKey == null) {
-                    String pem = apimProperties.getEncryption().getPublicKeyPem();
-                    if (!StringUtils.hasText(pem)) {
-                        throw new IllegalStateException("apim.encryption.publicKeyPem is required.");
-                    }
-                    publicKey = parsePublicKey(pem);
-                }
-            }
-        }
-        return publicKey;
-    }
-
-    private PublicKey resolvePublicKey(String publicKeyMaterial) throws Exception {
-        if (StringUtils.hasText(publicKeyMaterial)) {
-            return parsePublicKey(publicKeyMaterial);
-        }
-        return getPublicKey();
     }
 
     private PrivateKey getPrivateKey() throws Exception {
