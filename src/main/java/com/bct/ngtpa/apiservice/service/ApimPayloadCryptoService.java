@@ -3,16 +3,19 @@ package com.bct.ngtpa.apiservice.service;
 import com.bct.ngtpa.apiservice.config.ApimProperties;
 import com.bct.ngtpa.apiservice.config.ApimProperties.ApiFieldEncryptionConfig;
 import com.bct.ngtpa.apiservice.util.apim.JsonFieldCryptoUtil;
+import com.bct.ngtpa.apiservice.util.apim.ApimCertUtility;
 import com.bct.ngtpa.apiservice.util.apim.RsaFieldCryptoUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
-import java.security.SecureRandom;
+import java.security.PublicKey;
 import java.util.Collections;
+import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.function.UnaryOperator;
 import javax.crypto.Cipher;
+import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.stereotype.Service;
@@ -23,31 +26,32 @@ import org.springframework.util.StringUtils;
 public class ApimPayloadCryptoService {
     private static final String AES_TRANSFORMATION = "AES/CBC/PKCS5Padding";
     private static final String AES_ALGORITHM = "AES";
-    private static final int AES_KEY_LENGTH_BYTES = 32;
     private static final int AES_IV_LENGTH_BYTES = 16;
 
     private final ApimProperties apimProperties;
     private final ObjectMapper objectMapper;
     private final JsonFieldCryptoUtil jsonFieldCryptoUtil;
     private final RsaFieldCryptoUtil rsaFieldCryptoUtil;
-    private final SecureRandom secureRandom = new SecureRandom();
+    private final ApimAppCertificateService apimAppCertificateService;
 
     public ApimPayloadCryptoService(
             ApimProperties apimProperties,
             ObjectMapper objectMapper,
             JsonFieldCryptoUtil jsonFieldCryptoUtil,
-            RsaFieldCryptoUtil rsaFieldCryptoUtil) {
+            RsaFieldCryptoUtil rsaFieldCryptoUtil,
+            ApimAppCertificateService apimAppCertificateService) {
         this.apimProperties = apimProperties;
         this.objectMapper = objectMapper;
         this.jsonFieldCryptoUtil = jsonFieldCryptoUtil;
         this.rsaFieldCryptoUtil = rsaFieldCryptoUtil;
+        this.apimAppCertificateService = apimAppCertificateService;
     }
 
     public <T> T encryptRequest(String apiName, T source, Class<T> targetType) {
         return encryptRequest(apiName, source, targetType, null);
     }
 
-    public <T> T encryptRequest(String apiName, T source, Class<T> targetType, String publicKeyMaterial) {
+    public <T> T encryptRequest(String apiName, T source, Class<T> targetType, PublicKey publicKey) {
         if (!apimProperties.getEncryption().isEnabled()) {
             return source;
         }
@@ -55,14 +59,14 @@ public class ApimPayloadCryptoService {
         if (CollectionUtils.isEmpty(targetFields)) {
             return source;
         }
-        return transformObject(source, targetType, targetFields, fieldValue -> encryptField(fieldValue, publicKeyMaterial));
+        return transformObject(source, targetType, targetFields, fieldValue -> encryptField(fieldValue, publicKey));
     }
 
     public <T> T decryptResponse(String apiName, String responseJson, Class<T> targetType) {
         return decryptResponse(apiName, responseJson, targetType, null);
     }
 
-    public <T> T decryptResponse(String apiName, String responseJson, Class<T> targetType, String publicKeyMaterial) {
+    public <T> T decryptResponse(String apiName, String responseJson, Class<T> targetType, PublicKey publicKey) {
         if (!apimProperties.getEncryption().isEnabled()) {
             return parseJson(responseJson, targetType);
         }
@@ -76,7 +80,7 @@ public class ApimPayloadCryptoService {
             JsonNode transformedNode = jsonFieldCryptoUtil.transformFields(
                     sourceNode,
                     targetFields,
-                    fieldValue -> decryptField(fieldValue, publicKeyMaterial));
+                    fieldValue -> decryptField(fieldValue, publicKey));
             return objectMapper.treeToValue(transformedNode, targetType);
         } catch (Exception ex) {
             throw new IllegalStateException("Failed to decrypt APIM response payload.", ex);
@@ -97,23 +101,25 @@ public class ApimPayloadCryptoService {
         }
     }
 
-    private String encryptField(String plainText, String publicKeyMaterial) {
+    private String encryptField(String plainText, PublicKey publicKey) {
         if (!StringUtils.hasText(plainText)) {
             return plainText;
         }
 
         try {
-            byte[] aesKey = randomBytes(AES_KEY_LENGTH_BYTES);
-            String signedJwt = rsaFieldCryptoUtil.createSignedJwt(plainText);
-            String encryptedAesKey = rsaFieldCryptoUtil.encryptKey(aesKey, publicKeyMaterial);
+            SecretKey aesKey = ApimCertUtility.getAesKey();
+            String signedJwt = rsaFieldCryptoUtil.createSignedJwt(plainText, apimAppCertificateService.getAppPrivateKey());
             String encryptedPayload = encryptAes(signedJwt, aesKey);
+            String encryptedAesKey = rsaFieldCryptoUtil.publicKeyEncryptPlaintext(
+                    new String(aesKey.getEncoded(), StandardCharsets.UTF_8),
+                    publicKey);
             return encryptedAesKey + ":" + encryptedPayload;
         } catch (Exception ex) {
             throw new IllegalStateException("Failed to encrypt APIM field payload.", ex);
         }
     }
 
-    private String decryptField(String encryptedFieldValue, String publicKeyMaterial) {
+    private String decryptField(String encryptedFieldValue, PublicKey publicKey) {
         if (!StringUtils.hasText(encryptedFieldValue)) {
             return encryptedFieldValue;
         }
@@ -124,52 +130,35 @@ public class ApimPayloadCryptoService {
         }
 
         try {
-            byte[] aesKey = rsaFieldCryptoUtil.decryptKey(parts[0]);
-            String signedJwt = decryptAes(parts[1], aesKey);
-            return rsaFieldCryptoUtil.verifyAndExtractValue(signedJwt, publicKeyMaterial);
+            String aesKeyHex = rsaFieldCryptoUtil.decryptRsa(parts[0], apimAppCertificateService.getAppPrivateKey());
+            String signedJwt = decryptAes(parts[1], aesKeyHex);
+            return rsaFieldCryptoUtil.verifyAndExtractValue(signedJwt, publicKey);
         } catch (Exception ex) {
             throw new IllegalStateException("Failed to decrypt APIM field payload.", ex);
         }
     }
 
-    private String encryptAes(String plainText, byte[] aesKey) throws Exception {
-        byte[] iv = randomBytes(AES_IV_LENGTH_BYTES);
-        Cipher cipher = Cipher.getInstance(AES_TRANSFORMATION);
-        cipher.init(
-                Cipher.ENCRYPT_MODE,
-                new SecretKeySpec(aesKey, AES_ALGORITHM),
-                new IvParameterSpec(iv));
-
-        byte[] cipherText = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
-        byte[] ivAndCipherText = new byte[iv.length + cipherText.length];
-        System.arraycopy(iv, 0, ivAndCipherText, 0, iv.length);
-        System.arraycopy(cipherText, 0, ivAndCipherText, iv.length, cipherText.length);
-        return java.util.Base64.getEncoder().encodeToString(ivAndCipherText);
-    }
-
-    private String decryptAes(String encryptedValue, byte[] aesKey) throws Exception {
-        byte[] ivAndCipherText = java.util.Base64.getDecoder().decode(encryptedValue);
-        if (ivAndCipherText.length <= AES_IV_LENGTH_BYTES) {
-            throw new IllegalStateException("Invalid APIM AES payload.");
-        }
-
+    private String encryptAes(String plainText, SecretKey aesKey) throws Exception {
         byte[] iv = new byte[AES_IV_LENGTH_BYTES];
-        byte[] cipherText = new byte[ivAndCipherText.length - AES_IV_LENGTH_BYTES];
-        System.arraycopy(ivAndCipherText, 0, iv, 0, AES_IV_LENGTH_BYTES);
-        System.arraycopy(ivAndCipherText, AES_IV_LENGTH_BYTES, cipherText, 0, cipherText.length);
-
+        new java.security.SecureRandom().nextBytes(iv);
         Cipher cipher = Cipher.getInstance(AES_TRANSFORMATION);
-        cipher.init(
-                Cipher.DECRYPT_MODE,
-                new SecretKeySpec(aesKey, AES_ALGORITHM),
-                new IvParameterSpec(iv));
-        return new String(cipher.doFinal(cipherText), StandardCharsets.UTF_8);
+        cipher.init(Cipher.ENCRYPT_MODE, aesKey, new IvParameterSpec(iv));
+        byte[] encrypted = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
+        byte[] combined = new byte[iv.length + encrypted.length];
+        System.arraycopy(iv, 0, combined, 0, iv.length);
+        System.arraycopy(encrypted, 0, combined, iv.length, encrypted.length);
+        return java.util.Base64.getEncoder().encodeToString(combined);
     }
 
-    private byte[] randomBytes(int length) {
-        byte[] randomValue = new byte[length];
-        secureRandom.nextBytes(randomValue);
-        return randomValue;
+    private String decryptAes(String encryptedValue, String aesKeyHex) throws Exception {
+        byte[] aesKeyBytes = hexStringToByteArray(aesKeyHex);
+        SecretKeySpec keySpec = new SecretKeySpec(aesKeyBytes, AES_ALGORITHM);
+        byte[] combined = java.util.Base64.getDecoder().decode(encryptedValue);
+        byte[] iv = Arrays.copyOfRange(combined, 0, AES_IV_LENGTH_BYTES);
+        byte[] encrypted = Arrays.copyOfRange(combined, AES_IV_LENGTH_BYTES, combined.length);
+        Cipher cipher = Cipher.getInstance(AES_TRANSFORMATION);
+        cipher.init(Cipher.DECRYPT_MODE, keySpec, new IvParameterSpec(iv));
+        return new String(cipher.doFinal(encrypted), StandardCharsets.UTF_8);
     }
 
     private <T> T parseJson(String sourceJson, Class<T> targetType) {
@@ -194,5 +183,15 @@ public class ApimPayloadCryptoService {
             return Collections.emptySet();
         }
         return new LinkedHashSet<>(config.getResponseFields());
+    }
+
+    private byte[] hexStringToByteArray(String value) {
+        int length = value.length();
+        byte[] output = new byte[length / 2];
+        for (int index = 0; index < length; index += 2) {
+            output[index / 2] = (byte) ((Character.digit(value.charAt(index), 16) << 4)
+                    + Character.digit(value.charAt(index + 1), 16));
+        }
+        return output;
     }
 }

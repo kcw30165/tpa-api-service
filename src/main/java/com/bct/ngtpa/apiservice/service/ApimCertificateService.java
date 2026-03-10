@@ -1,6 +1,8 @@
 package com.bct.ngtpa.apiservice.service;
 
 import com.bct.ngtpa.apiservice.config.ApimProperties;
+import com.bct.ngtpa.apiservice.util.apim.ApimCertUtility;
+import java.security.PublicKey;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -17,7 +19,7 @@ public class ApimCertificateService {
         this.apimProperties = apimProperties;
     }
 
-    public Mono<String> getBctPublicKeyMaterial() {
+    public Mono<PublicKey> getBctPublicKey() {
         String apiKey = apimProperties.getEncryption().getApiKey();
         if (!StringUtils.hasText(apiKey)) {
             return Mono.error(new IllegalStateException("apim.encryption.apiKey is required."));
@@ -34,6 +36,13 @@ public class ApimCertificateService {
                 .bodyToMono(String.class)
                 .map(String::trim)
                 .filter(StringUtils::hasText)
-                .switchIfEmpty(Mono.error(new IllegalStateException("BCT certificate API returned an empty response.")));
+                .switchIfEmpty(Mono.error(new IllegalStateException("BCT certificate API returned an empty response.")))
+                .map(certificate -> {
+                    try {
+                        return ApimCertUtility.getPublicKeyFromCert(certificate);
+                    } catch (Exception ex) {
+                        throw new IllegalStateException("Failed to parse BCT public certificate.", ex);
+                    }
+                });
     }
 }

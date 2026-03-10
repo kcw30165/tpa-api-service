@@ -33,13 +33,13 @@ public class ApimClientService {
     }
 
     public Mono<AccountBalanceResponse> getAccountBalance(AccountBalanceRequest accountBalanceRequest) {
-        return apimCertificateService.getBctPublicKeyMaterial()
-                .flatMap(publicKeyMaterial -> {
+        return apimCertificateService.getBctPublicKey()
+                .flatMap(publicKey -> {
                     AccountBalanceRequest encryptedRequest = apimPayloadCryptoService.encryptRequest(
                             ACCOUNT_BALANCE_API_NAME,
                             accountBalanceRequest,
                             AccountBalanceRequest.class,
-                            publicKeyMaterial);
+                            publicKey);
                     logEncryptedRequest(encryptedRequest);
 
                     return apimWebClient.post()
@@ -51,7 +51,7 @@ public class ApimClientService {
                                     ACCOUNT_BALANCE_API_NAME,
                                     responseBody,
                                     AccountBalanceResponse.class,
-                                    publicKeyMaterial));
+                                    publicKey));
                 });
     }
 

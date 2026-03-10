@@ -26,6 +26,7 @@ public class ApimProperties {
         private String certificatePath = "/api/wssupport/v1/encryption/certificate";
         private String apiKey;
         private String privateKeyPem;
+        private String publicKeyPem;
         private final Map<String, ApiFieldEncryptionConfig> apis = new LinkedHashMap<>();
     }
 
