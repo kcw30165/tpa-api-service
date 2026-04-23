@@ -1,0 +1,38 @@
+server:
+  port: ${SERVER_PORT:8888}
+
+spring:
+  application:
+    name: ngtpa-api-server
+  cloud:
+    config:
+      enabled: ${SPRING_CLOUD_CONFIG_ENABLED:false}
+  security:
+    oauth2:
+      client:
+        registration:
+          apim-client:
+            client-id: ${APIM_CLIENT_ID:}
+            client-secret: ${APIM_CLIENT_SECRET:}
+            authorization-grant-type: client_credentials
+            client-authentication-method: ${APIM_CLIENT_AUTH_METHOD:client_secret_basic}
+            scope: ${APIM_CLIENT_SCOPE:}
+        provider:
+          apim-client:
+            token-uri: ${APIM_TOKEN_URI:}
+
+apim:
+  baseUrl: ${APIM_BASEURL:}
+  timeoutMilliseconds: ${APIM_TIMEOUTMILLISECONDS:10000}
+  encryption:
+    enabled: ${APIM_ENCRYPTION_ENABLED:true}
+    certificatePath: ${APIM_CERTIFICATE_PATH:/api/wssupport/v1/encryption/certificate}
+    apiKey: ${APIM_API_KEY:}
+    privateKeyPem: ${APIM_PRIVATE_KEY_PEM:}
+    publicKeyPem: ${APIM_PUBLIC_KEY_PEM:}
+    apis:
+      TRPGetMsgBoard:
+        requestFields:
+          - policy-no
+          - cert-no
+          - user-id
