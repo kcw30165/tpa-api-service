@@ -3,6 +3,8 @@
 Backend-for-Frontend (BFF) service for the **ORSO NGTPA** member portal.  
 Acts as the single gateway between the Angular frontend and the APIM layer (which fronts the Progress OpenEdge business logic). No local database — all state lives in Progress via APIM.
 
+The service runs as a reactive Spring Boot application and reads local development settings from the repository root `.env` file via Spring config import.
+
 ---
 
 ## Tech Stack
@@ -11,7 +13,7 @@ Acts as the single gateway between the Angular frontend and the APIM layer (whic
 |---|---|
 | Language | Java 21 |
 | Framework | Spring Boot 4.0.6 |
-| HTTP (inbound) | Spring MVC (`spring-boot-starter-webmvc`) |
+| HTTP (inbound) | Spring WebFlux |
 | HTTP (outbound) | Spring WebFlux `WebClient` |
 | Auth (outbound) | Spring Security OAuth2 Client Credentials |
 | Encryption | BouncyCastle 1.82 (RSA + AES/CBC) |
@@ -31,29 +33,30 @@ com.bct.ngtpa.apiservice
 │   └── exception/       # DomainException
 ├── application/         # Orchestration — @Service only
 │   ├── port/
-│   │   ├── in/          # GetMessageBoardUseCase
+│   │   ├── in/          # GetNotificationsUseCase
 │   │   └── out/         # ApimNoticeMessagePort
-│   ├── usecase/         # GetMessageBoardService
-│   └── dto/             # GetMessageBoardCommand, MessageBoardResult
+│   ├── usecase/         # GetNotificationsService
+│   └── dto/             # GetNotificationsCommand, NotificationListResult
 ├── adapter/
-│   ├── in/web/          # Spring MVC controllers, request/response records
-│   │   ├── MessageBoardController
+│   ├── in/web/          # Reactive controllers, request/response records
+│   │   ├── NotificationController
 │   │   ├── ApiExceptionHandler (@RestControllerAdvice)
-│   │   ├── request/     # GetMessageBoardWebRequest (record)
-│   │   └── response/    # MessageBoardWebResponse, MessageWebDto, ApiErrorResponse (records)
+│   │   └── response/    # NotificationListResponse, NotificationDto, ApiErrorResponse (records)
 │   └── out/apim/        # APIM integration
 │       ├── ApimWebClientFacade        # Pure HTTP transport (OAuth2 token attach)
 │       ├── ApimNoticeMessageAdapter   # Implements ApimNoticeMessagePort
 │       ├── ApimCertificateService     # Fetches BCT public key from APIM
 │       ├── ApimAppCertificateService  # Loads app RSA keys + X509 cert
 │       ├── ApimPayloadCryptoService   # AES/CBC + RSA field encryption/decryption
+│       ├── crypto/                    # APIM-specific crypto helpers and exceptions
 │       └── dto/                       # APIM request/response POJOs
 ├── config/              # Spring configuration beans (unchanged across layers)
 │   ├── ApimProperties
 │   ├── WebClientConfig
 │   ├── SecurityConfig
-├── exception/           # ApimException (shared)
-└── util/apim/           # ApimCertUtility, JsonFieldCryptoUtil, RsaFieldCryptoUtil
+│   ├── JacksonConfig
+│   └── ApimCryptoConfig
+└── exception/           # ApimException (shared)
 ```
 
 ### Dependency Rule
@@ -61,7 +64,7 @@ com.bct.ngtpa.apiservice
 ```
 adapter/in/web  →  application  →  domain
 adapter/out/apim →  application  →  domain
-config / util   →  (no inward dependency)
+config          →  framework composition only
 ```
 
 ---
@@ -96,11 +99,20 @@ Open **Run & Debug** → select **"Debug NgtpaApiServerApplication"** → press 
 
 All required environment variables are pre-configured in `.vscode/launch.json`.
 
-### Via Maven task
+### Via Maven task or shell
 
 ```bash
-# In .vscode/tasks.json — label: mvn-spring-boot-run
+export JAVA_HOME="C:/Java/OpenJDK/jdk-21"
 ./mvnw spring-boot:run
+```
+
+Spring Boot imports the repository root `.env` file automatically via `spring.config.import`, so local `APIM_*` variables do not need to be exported one by one.
+
+If you hit a stale class problem after refactors, run a clean rebuild first:
+
+```bash
+export JAVA_HOME="C:/Java/OpenJDK/jdk-21"
+./mvnw clean compile -DskipTests
 ```
 
 ---
@@ -110,55 +122,47 @@ All required environment variables are pre-configured in `.vscode/launch.json`.
 | Variable | Description | Default |
 |---|---|---|
 | `SERVER_PORT` | HTTP port | `8888` |
+| `SPRING_CLOUD_CONFIG_ENABLED` | Enable Spring Cloud Config | `false` |
 | `APIM_BASEURL` | APIM base URL | _(required)_ |
 | `APIM_TIMEOUTMILLISECONDS` | WebClient timeout | `10000` |
-| `APIM_ENCRYPTION_ENABLED` | Enable RSA/AES payload encryption | `false` |
+| `APIM_CLIENT_REGISTRATION_ID` | OAuth2 client registration id | `apim-client` |
+| `APIM_CLIENT_ID` | OAuth2 client ID | `local-dev` |
+| `APIM_CLIENT_SECRET` | OAuth2 client secret | `local-dev` |
+| `APIM_CLIENT_AUTH_METHOD` | OAuth2 auth method | `client_secret_basic` |
+| `APIM_CLIENT_SCOPE` | OAuth2 scope | _(empty)_ |
+| `APIM_TOKEN_URI` | OAuth2 token endpoint | `http://localhost/token` |
+| `APIM_ENCRYPTION_ENABLED` | Enable RSA/AES payload encryption | `true` |
 | `APIM_CERTIFICATE_PATH` | Path to BCT public cert endpoint | `/api/wssupport/v1/encryption/certificate` |
 | `APIM_API_KEY` | API key sent as `KeyId` header | _(required if encryption enabled)_ |
 | `APIM_PRIVATE_KEY_PEM` | App RSA private key (Base64 PEM) | _(required if encryption enabled)_ |
 | `APIM_PUBLIC_KEY_PEM` | App RSA public key (Base64 PEM) | _(required if encryption enabled)_ |
-| `APIM_CLIENT_ID` | OAuth2 client ID | _(required)_ |
-| `APIM_CLIENT_SECRET` | OAuth2 client secret | _(required)_ |
-| `APIM_CLIENT_AUTH_METHOD` | OAuth2 auth method | `client_secret_basic` |
-| `APIM_CLIENT_SCOPE` | OAuth2 scope | _(empty)_ |
-| `APIM_TOKEN_URI` | OAuth2 token endpoint | _(required)_ |
-| `SPRING_CLOUD_CONFIG_ENABLED` | Enable Spring Cloud Config | `false` |
 
 ---
 
 ## API Endpoints
 
-### `POST /api/messages`
+### `GET /api/v1/notifications`
 
-Retrieves the notice message board for a member.
+Retrieves the current notice list for a member context.
 
-**Request body:**
-```json
-{
-  "policy-no": "string",
-  "cert-no": "string",
-  "user-id": "string",
-  "ref-date": "dd/MM/yyyy",
-  "env": "string",
-  "mbr-type": "string"
-}
-```
+**Query parameters:**
+
+- `environment`
+- `memberType`
 
 **Response:**
 ```json
 {
-  "page": 1,
-  "size": 10,
-  "messages": [
+  "notifications": [
     {
       "msgCode": "string",
-      "msgCodeLong": "string",
-      "seq": 1,
-      "msgType": "MARKET_UPDATE",
+      "sequence": "1",
+      "category": "MARKET_UPDATE",
+      "msgTitle": "string",
       "msgContentChi": "string",
       "msgContentEng": "string",
-      "startDatetime": "28/04/2026 09:00",
-      "msgStatus": "UNREAD"
+      "isRead": false,
+      "startDateTime": "28/04/2026 09:00"
     }
   ]
 }
@@ -166,7 +170,11 @@ Retrieves the notice message board for a member.
 
 **Error response:**
 ```json
-{ "message": "APIM error description" }
+{
+  "errorCode": "500",
+  "message": "APIM error description",
+  "timestamp": "2026-04-28T11:42:40.643070200Z"
+}
 ```
 
 ---
