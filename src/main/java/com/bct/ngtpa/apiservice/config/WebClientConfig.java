@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -7,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.security.oauth2.client.AuthorizedClientServiceOAuth2AuthorizedClientManager;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientProvider;
@@ -17,11 +19,17 @@ import org.springframework.security.oauth2.client.web.reactive.function.client.S
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
-import com.bct.ngtpa.apiservice.service.ApimAppCertificateService;
+import com.bct.ngtpa.apiservice.adapter.out.apim.ApimAppCertificateService;
 
 @Configuration
 public class WebClientConfig {
     private static final Logger logger = LoggerFactory.getLogger(WebClientConfig.class);
+
+    @Primary
+    @Bean
+    public ObjectMapper objectMapper() {
+        return new ObjectMapper().findAndRegisterModules();
+    }
 
     @Bean
     public OAuth2AuthorizedClientManager authorizedClientManager(
