@@ -13,8 +13,10 @@ public record NoticeMessage(
         String msgCodeLong,
         Integer seq,
         MessageType msgType,
+        String msgTitle,
         String msgContentChi,
         String msgContentEng,
+        boolean isRead,
         LocalDateTime startDatetime,
         LocalDateTime endDatetime,      // TBC: not yet returned by APIM
         MessageStatus msgStatus,

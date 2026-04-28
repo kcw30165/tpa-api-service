@@ -24,12 +24,15 @@ public class ApimAppCertificateService {
 
     @PostConstruct
     void init() {
+        if (!apimProperties.getEncryption().isEnabled()) {
+            return;
+        }
+        String privateKeyPem = apimProperties.getEncryption().getPrivateKeyPem();
+        String publicKeyPem = apimProperties.getEncryption().getPublicKeyPem();
+        if (!StringUtils.hasText(privateKeyPem) || !StringUtils.hasText(publicKeyPem)) {
+            return;
+        }
         try {
-            String privateKeyPem = apimProperties.getEncryption().getPrivateKeyPem();
-            String publicKeyPem = apimProperties.getEncryption().getPublicKeyPem();
-            if (!StringUtils.hasText(privateKeyPem) || !StringUtils.hasText(publicKeyPem)) {
-                throw new IllegalStateException("apim.encryption.privateKeyPem and publicKeyPem are required.");
-            }
             this.appPublicKey = ApimCertUtility.getCustomerPublicKey(publicKeyPem, "RSA");
             this.appPrivateKey = ApimCertUtility.getCustomerPrivateKey(privateKeyPem);
             X509Certificate certificate = ApimCertUtility.generateCert(appPublicKey, appPrivateKey);

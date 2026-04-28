@@ -13,6 +13,6 @@ public class ApiExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleApimException(ApimException ex) {
         return ResponseEntity
                 .status(ex.getStatusCode())
-                .body(new ApiErrorResponse(ex.getMessage()));
+                .body(ApiErrorResponse.of(ex.getErrorCode(), ex.getMessage()));
     }
 }

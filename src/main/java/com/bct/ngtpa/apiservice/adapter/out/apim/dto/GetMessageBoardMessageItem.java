@@ -26,6 +26,9 @@ public class GetMessageBoardMessageItem {
     @JsonProperty("msg-cate")
     private String msgCate;
 
+    @JsonProperty("msg-title")
+    private String msgTitle;
+
     @JsonProperty("msg-content-chi")
     private String msgContentChi;
 
@@ -37,4 +40,7 @@ public class GetMessageBoardMessageItem {
 
     @JsonProperty("msg-status")
     private String msgStatus;
+
+    @JsonProperty("is-read")
+    private boolean isRead;
 }

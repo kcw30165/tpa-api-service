@@ -4,8 +4,8 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetMessageBoardApimRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetMessageBoardApimResponse;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetMessageBoardDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetMessageBoardMessageItem;
-import com.bct.ngtpa.apiservice.application.dto.GetMessageBoardCommand;
-import com.bct.ngtpa.apiservice.application.dto.MessageBoardResult;
+import com.bct.ngtpa.apiservice.application.dto.GetNotificationsCommand;
+import com.bct.ngtpa.apiservice.application.dto.NotificationListResult;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNoticeMessagePort;
 import com.bct.ngtpa.apiservice.domain.model.AudienceType;
 import com.bct.ngtpa.apiservice.domain.model.Hyperlink;
@@ -45,7 +45,7 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
     private final ApimPayloadCryptoService apimPayloadCryptoService;
 
     @Override
-    public Mono<MessageBoardResult> fetchMessages(GetMessageBoardCommand command) {
+    public Mono<NotificationListResult> fetchNotifications(GetNotificationsCommand command) {
         return apimCertificateService.getBctPublicKey()
                 .flatMap(publicKey -> {
                     var request = apimPayloadCryptoService.encryptRequest(
@@ -53,22 +53,22 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
                     return apimWebClientFacade.post(API_NAME, request)
                             .map(body -> apimPayloadCryptoService.decryptResponse(
                                     API_NAME, body, GetMessageBoardApimResponse.class, publicKey))
-                            .map(this::toMessageBoardResult);
+                            .map(this::toNotificationListResult);
                 });
     }
 
-    private GetMessageBoardApimRequest toApimRequest(GetMessageBoardCommand command) {
+    private GetMessageBoardApimRequest toApimRequest(GetNotificationsCommand command) {
         return GetMessageBoardApimRequest.builder()
                 .policyNo(command.policyNo())
                 .certNo(command.certNo())
                 .userId(command.userId())
                 .refDate(command.refDate())
-                .env(command.env())
-                .mbrType(command.mbrType())
+                .env(command.environment())
+                .mbrType(command.memberType())
                 .build();
     }
 
-    private MessageBoardResult toMessageBoardResult(GetMessageBoardApimResponse response) {
+    private NotificationListResult toNotificationListResult(GetMessageBoardApimResponse response) {
         var payload = response != null ? response.getResponse() : null;
         if (payload == null) {
             throw new ApimException(HttpStatus.BAD_GATEWAY, "APIM response payload is missing.");
@@ -79,20 +79,8 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
 
         var dataItems = payload.getData();
         if (CollectionUtils.isEmpty(dataItems)) {
-            return new MessageBoardResult(null, null, List.of());
+            return new NotificationListResult(List.of());
         }
-
-        Integer page = dataItems.stream()
-                .filter(Objects::nonNull)
-                .map(GetMessageBoardDataItem::getPage)
-                .filter(Objects::nonNull)
-                .findFirst().orElse(null);
-
-        Integer size = dataItems.stream()
-                .filter(Objects::nonNull)
-                .map(GetMessageBoardDataItem::getSize)
-                .filter(Objects::nonNull)
-                .findFirst().orElse(null);
 
         List<NoticeMessage> messages = dataItems.stream()
                 .filter(Objects::nonNull)
@@ -103,7 +91,7 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
                 .map(this::toNoticeMessage)
                 .toList();
 
-        return new MessageBoardResult(page, size, messages);
+        return new NotificationListResult(messages);
     }
 
     private NoticeMessage toNoticeMessage(GetMessageBoardMessageItem item) {
@@ -112,14 +100,16 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
                 item.getMsgCodeLong(),
                 item.getSeq(),
                 MessageType.fromCode(item.getMsgCate()),
+                item.getMsgTitle(),
                 item.getMsgContentChi(),
                 item.getMsgContentEng(),
+                item.isRead(),
                 parseDateTime(item.getStartDatetime()),
-                null,           // endDatetime: TBC — not yet returned by APIM
+                null,               // endDatetime: TBC — not yet returned by APIM
                 MessageStatus.fromCode(item.getMsgStatus()),
-                (AudienceType) null,  // targetAudience: TBC — not yet returned by APIM
-                null,           // triggerPoint:  TBC — not yet returned by APIM
-                List.of()       // hyperlinks:    TBC — not yet returned by APIM
+                (AudienceType) null, // targetAudience: TBC — not yet returned by APIM
+                null,               // triggerPoint:  TBC — not yet returned by APIM
+                List.of()           // hyperlinks:    TBC — not yet returned by APIM
         );
     }
 
@@ -135,3 +125,4 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
         }
     }
 }
+

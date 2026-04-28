@@ -58,9 +58,13 @@ public class WebClientConfig {
         WebClient.Builder webClientBuilder = WebClient.builder()
                 .baseUrl(apimProperties.getBaseUrl())
                 .defaultHeader("Accept", "application/json")
-                .defaultHeader("Certificate", apimAppCertificateService.getCertificateHeaderValue())
                 .apply(oauth2Filter.oauth2Configuration())
                 .filter(logApimRequestHeaders());
+
+        String certHeader = apimAppCertificateService.getCertificateHeaderValue();
+        if (certHeader != null) {
+            webClientBuilder.defaultHeader("Certificate", certHeader);
+        }
 
         return webClientBuilder.build();
     }

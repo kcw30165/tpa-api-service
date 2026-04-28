@@ -12,14 +12,14 @@ spring:
       client:
         registration:
           apim-client:
-            client-id: ${APIM_CLIENT_ID:}
-            client-secret: ${APIM_CLIENT_SECRET:}
+            client-id: ${APIM_CLIENT_ID:local-dev}
+            client-secret: ${APIM_CLIENT_SECRET:local-dev}
             authorization-grant-type: client_credentials
             client-authentication-method: ${APIM_CLIENT_AUTH_METHOD:client_secret_basic}
             # scope: ${APIM_CLIENT_SCOPE:}
         provider:
           apim-client:
-            token-uri: ${APIM_TOKEN_URI:}
+            token-uri: ${APIM_TOKEN_URI:http://localhost/token}
 
 apim:
   baseUrl: ${APIM_BASEURL:}
@@ -36,3 +36,8 @@ apim:
           - policy-no
           - cert-no
           - user-id
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    com.bct.ngtpa: DEBUG
