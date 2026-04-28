@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.util.apim;
+package com.bct.ngtpa.apiservice.adapter.out.apim.crypto;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -9,7 +9,7 @@ import java.util.function.UnaryOperator;
 import org.springframework.stereotype.Component;
 
 @Component
-public class JsonFieldCryptoUtil {
+public class ApimPayloadFieldTransformer {
     public JsonNode transformFields(
             JsonNode sourceNode,
             Set<String> targetFields,

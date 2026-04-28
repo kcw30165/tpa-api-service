@@ -1,10 +1,11 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim;
 
+import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimAesKeyFactory;
+import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
+import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimPayloadFieldTransformer;
+import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimRsaPayloadCrypto;
 import com.bct.ngtpa.apiservice.config.ApimProperties;
 import com.bct.ngtpa.apiservice.config.ApimProperties.ApiFieldEncryptionConfig;
-import com.bct.ngtpa.apiservice.util.apim.ApimCertUtility;
-import com.bct.ngtpa.apiservice.util.apim.JsonFieldCryptoUtil;
-import com.bct.ngtpa.apiservice.util.apim.RsaFieldCryptoUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -36,8 +37,9 @@ public class ApimPayloadCryptoService {
 
     private final ApimProperties apimProperties;
     private final ObjectMapper objectMapper;
-    private final JsonFieldCryptoUtil jsonFieldCryptoUtil;
-    private final RsaFieldCryptoUtil rsaFieldCryptoUtil;
+    private final ApimPayloadFieldTransformer apimPayloadFieldTransformer;
+    private final ApimRsaPayloadCrypto apimRsaPayloadCrypto;
+    private final ApimAesKeyFactory apimAesKeyFactory;
     private final ApimAppCertificateService apimAppCertificateService;
 
     public <T> T encryptRequest(String apiName, T source, Class<T> targetType) {
@@ -70,11 +72,11 @@ public class ApimPayloadCryptoService {
 
         try {
             JsonNode sourceNode = objectMapper.readTree(responseJson);
-            JsonNode transformedNode = jsonFieldCryptoUtil.transformFields(
+            JsonNode transformedNode = apimPayloadFieldTransformer.transformFields(
                     sourceNode, targetFields, fieldValue -> decryptField(fieldValue, publicKey));
             return objectMapper.treeToValue(transformedNode, targetType);
         } catch (Exception ex) {
-            throw new IllegalStateException("Failed to decrypt APIM response payload.", ex);
+            throw new ApimCryptoException("Failed to decrypt APIM response payload.", ex);
         }
     }
 
@@ -82,10 +84,10 @@ public class ApimPayloadCryptoService {
             UnaryOperator<String> transformFn) {
         try {
             JsonNode sourceNode = objectMapper.valueToTree(source);
-            JsonNode transformedNode = jsonFieldCryptoUtil.transformFields(sourceNode, targetFields, transformFn);
+            JsonNode transformedNode = apimPayloadFieldTransformer.transformFields(sourceNode, targetFields, transformFn);
             return objectMapper.treeToValue(transformedNode, targetType);
         } catch (Exception ex) {
-            throw new IllegalStateException("Failed to transform APIM payload.", ex);
+            throw new ApimCryptoException("Failed to transform APIM payload.", ex);
         }
     }
 
@@ -93,16 +95,13 @@ public class ApimPayloadCryptoService {
         if (!StringUtils.hasText(plainText)) {
             return plainText;
         }
-        try {
-            SecretKey aesKey = ApimCertUtility.getAesKey();
-            String signedJwt = rsaFieldCryptoUtil.createSignedJwt(plainText, apimAppCertificateService.getAppPrivateKey());
-            String encryptedPayload = encryptAes(signedJwt, aesKey);
-            String encryptedAesKey = rsaFieldCryptoUtil.publicKeyEncryptPlaintext(
-                    new String(aesKey.getEncoded(), StandardCharsets.UTF_8), publicKey);
-            return encryptedAesKey + ":" + encryptedPayload;
-        } catch (Exception ex) {
-            throw new IllegalStateException("Failed to encrypt APIM field payload.", ex);
-        }
+
+        SecretKey aesKey = apimAesKeyFactory.generateKey();
+        String signedJwt = apimRsaPayloadCrypto.createSignedJwt(plainText, apimAppCertificateService.getAppPrivateKey());
+        String encryptedPayload = encryptAes(signedJwt, aesKey);
+        String encryptedAesKey = apimRsaPayloadCrypto.encryptPlaintext(
+                new String(aesKey.getEncoded(), StandardCharsets.UTF_8), publicKey);
+        return encryptedAesKey + ":" + encryptedPayload;
     }
 
     private String decryptField(String encryptedFieldValue, PublicKey publicKey) {
@@ -111,45 +110,50 @@ public class ApimPayloadCryptoService {
         }
         String[] parts = encryptedFieldValue.split(":", 2);
         if (parts.length != 2) {
-            throw new IllegalStateException("Invalid APIM encrypted field format.");
+            throw new ApimCryptoException("Invalid APIM encrypted field format.");
         }
+
+        String aesKeyHex = apimRsaPayloadCrypto.decryptRsa(parts[0], apimAppCertificateService.getAppPrivateKey());
+        String signedJwt = decryptAes(parts[1], aesKeyHex);
+        return apimRsaPayloadCrypto.verifyAndExtractValue(signedJwt, publicKey);
+    }
+
+    private String encryptAes(String plainText, SecretKey aesKey) {
         try {
-            String aesKeyHex = rsaFieldCryptoUtil.decryptRsa(parts[0], apimAppCertificateService.getAppPrivateKey());
-            String signedJwt = decryptAes(parts[1], aesKeyHex);
-            return rsaFieldCryptoUtil.verifyAndExtractValue(signedJwt, publicKey);
+            byte[] iv = new byte[AES_IV_LENGTH_BYTES];
+            new SecureRandom().nextBytes(iv);
+            Cipher cipher = Cipher.getInstance(AES_TRANSFORMATION);
+            cipher.init(Cipher.ENCRYPT_MODE, aesKey, new IvParameterSpec(iv));
+            byte[] encrypted = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
+            byte[] combined = new byte[iv.length + encrypted.length];
+            System.arraycopy(iv, 0, combined, 0, iv.length);
+            System.arraycopy(encrypted, 0, combined, iv.length, encrypted.length);
+            return Base64.getEncoder().encodeToString(combined);
         } catch (Exception ex) {
-            throw new IllegalStateException("Failed to decrypt APIM field payload.", ex);
+            throw new ApimCryptoException("Failed to encrypt APIM field payload.", ex);
         }
     }
 
-    private String encryptAes(String plainText, SecretKey aesKey) throws Exception {
-        byte[] iv = new byte[AES_IV_LENGTH_BYTES];
-        new SecureRandom().nextBytes(iv);
-        Cipher cipher = Cipher.getInstance(AES_TRANSFORMATION);
-        cipher.init(Cipher.ENCRYPT_MODE, aesKey, new IvParameterSpec(iv));
-        byte[] encrypted = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
-        byte[] combined = new byte[iv.length + encrypted.length];
-        System.arraycopy(iv, 0, combined, 0, iv.length);
-        System.arraycopy(encrypted, 0, combined, iv.length, encrypted.length);
-        return Base64.getEncoder().encodeToString(combined);
-    }
-
-    private String decryptAes(String encryptedValue, String aesKeyHex) throws Exception {
-        byte[] aesKeyBytes = hexStringToByteArray(aesKeyHex);
-        SecretKeySpec keySpec = new SecretKeySpec(aesKeyBytes, AES_ALGORITHM);
-        byte[] combined = Base64.getDecoder().decode(encryptedValue);
-        byte[] iv = Arrays.copyOfRange(combined, 0, AES_IV_LENGTH_BYTES);
-        byte[] encrypted = Arrays.copyOfRange(combined, AES_IV_LENGTH_BYTES, combined.length);
-        Cipher cipher = Cipher.getInstance(AES_TRANSFORMATION);
-        cipher.init(Cipher.DECRYPT_MODE, keySpec, new IvParameterSpec(iv));
-        return new String(cipher.doFinal(encrypted), StandardCharsets.UTF_8);
+    private String decryptAes(String encryptedValue, String aesKeyHex) {
+        try {
+            byte[] aesKeyBytes = hexStringToByteArray(aesKeyHex);
+            SecretKeySpec keySpec = new SecretKeySpec(aesKeyBytes, AES_ALGORITHM);
+            byte[] combined = Base64.getDecoder().decode(encryptedValue);
+            byte[] iv = Arrays.copyOfRange(combined, 0, AES_IV_LENGTH_BYTES);
+            byte[] encrypted = Arrays.copyOfRange(combined, AES_IV_LENGTH_BYTES, combined.length);
+            Cipher cipher = Cipher.getInstance(AES_TRANSFORMATION);
+            cipher.init(Cipher.DECRYPT_MODE, keySpec, new IvParameterSpec(iv));
+            return new String(cipher.doFinal(encrypted), StandardCharsets.UTF_8);
+        } catch (Exception ex) {
+            throw new ApimCryptoException("Failed to decrypt APIM field payload.", ex);
+        }
     }
 
     private <T> T parseJson(String sourceJson, Class<T> targetType) {
         try {
             return objectMapper.readValue(sourceJson, targetType);
         } catch (Exception ex) {
-            throw new IllegalStateException("Failed to parse APIM response payload.", ex);
+            throw new ApimCryptoException("Failed to parse APIM response payload.", ex);
         }
     }
 

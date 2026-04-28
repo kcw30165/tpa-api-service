@@ -11,8 +11,6 @@ import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
-import static org.springframework.security.oauth2.client.web.reactive.function.client.ServletOAuth2AuthorizedClientExchangeFilterFunction.clientRegistrationId;
-
 /**
  * Pure HTTP transport layer for APIM calls.
  * Handles OAuth2 token attachment and error extraction only.
@@ -30,7 +28,6 @@ public class ApimWebClientFacade {
         logRequest(path, requestBody);
         return apimWebClient.post()
                 .uri(uriBuilder -> uriBuilder.path(path).build())
-                .attributes(clientRegistrationId("apim-client"))
                 .bodyValue(requestBody)
                 .exchangeToMono(this::extractResponseBody);
     }

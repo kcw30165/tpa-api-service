@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.util.apim;
+package com.bct.ngtpa.apiservice.adapter.out.apim.crypto;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,24 +12,25 @@ import java.util.Map;
 import javax.crypto.Cipher;
 import javax.crypto.spec.OAEPParameterSpec;
 import javax.crypto.spec.PSource;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 @Component
-public class RsaFieldCryptoUtil {
+@RequiredArgsConstructor
+public class ApimRsaPayloadCrypto {
     private static final String RSA_TRANSFORMATION = "RSA/ECB/OAEPWithSHA-256AndMGF1Padding";
     private static final String SIGNATURE_ALGORITHM = "SHA256withRSA";
     private static final String JWT_HEADER_JSON = "{\"alg\":\"RS256\",\"typ\":\"JWT\"}";
 
     private final ObjectMapper objectMapper;
 
-    public RsaFieldCryptoUtil(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
-    }
-
-    public String publicKeyEncryptPlaintext(String plainText, PublicKey publicKey) {
+    public String encryptPlaintext(String plainText, PublicKey publicKey) {
         if (!StringUtils.hasText(plainText)) {
             throw new IllegalArgumentException("RSA plaintext is required.");
+        }
+        if (publicKey == null) {
+            throw new ApimCryptoException("APIM RSA public key is required.");
         }
 
         try {
@@ -38,13 +39,16 @@ public class RsaFieldCryptoUtil {
             byte[] encrypted = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
             return Base64.getEncoder().encodeToString(encrypted);
         } catch (Exception ex) {
-            throw new IllegalStateException("Unable to encrypt APIM AES key.", ex);
+            throw new ApimCryptoException("Unable to encrypt APIM AES key.", ex);
         }
     }
 
     public String decryptRsa(String cipherTextBase64, PrivateKey privateKey) {
         if (!StringUtils.hasText(cipherTextBase64)) {
             throw new IllegalArgumentException("RSA ciphertext is required.");
+        }
+        if (privateKey == null) {
+            throw new ApimCryptoException("APIM RSA private key is required.");
         }
 
         try {
@@ -53,13 +57,16 @@ public class RsaFieldCryptoUtil {
             byte[] decrypted = cipher.doFinal(Base64.getDecoder().decode(cipherTextBase64));
             return bytesToHex(decrypted);
         } catch (Exception ex) {
-            throw new IllegalStateException("Unable to decrypt APIM AES key.", ex);
+            throw new ApimCryptoException("Unable to decrypt APIM AES key.", ex);
         }
     }
 
     public String createSignedJwt(String value, PrivateKey privateKey) {
         if (!StringUtils.hasText(value)) {
             return value;
+        }
+        if (privateKey == null) {
+            throw new ApimCryptoException("APIM signing private key is required.");
         }
 
         try {
@@ -72,7 +79,7 @@ public class RsaFieldCryptoUtil {
             signature.update(signingInput.getBytes(StandardCharsets.UTF_8));
             return signingInput + "." + base64UrlEncode(signature.sign());
         } catch (Exception ex) {
-            throw new IllegalStateException("Unable to sign APIM field payload.", ex);
+            throw new ApimCryptoException("Unable to sign APIM field payload.", ex);
         }
     }
 
@@ -80,10 +87,13 @@ public class RsaFieldCryptoUtil {
         if (!StringUtils.hasText(jwt)) {
             return jwt;
         }
+        if (publicKey == null) {
+            throw new ApimCryptoException("APIM verification public key is required.");
+        }
 
         String[] jwtParts = jwt.split("\\.");
         if (jwtParts.length != 3) {
-            throw new IllegalStateException("Invalid APIM JWT format.");
+            throw new ApimCryptoException("Invalid APIM JWT format.");
         }
 
         try {
@@ -92,17 +102,19 @@ public class RsaFieldCryptoUtil {
             signature.initVerify(publicKey);
             signature.update(signingInput.getBytes(StandardCharsets.UTF_8));
             if (!signature.verify(Base64.getUrlDecoder().decode(jwtParts[2]))) {
-                throw new IllegalStateException("APIM JWT signature verification failed.");
+                throw new ApimCryptoException("APIM JWT signature verification failed.");
             }
 
             JsonNode payloadNode = objectMapper.readTree(Base64.getUrlDecoder().decode(jwtParts[1]));
             JsonNode valueNode = payloadNode.get("value");
             if (valueNode == null || valueNode.isNull()) {
-                throw new IllegalStateException("APIM JWT payload does not contain value.");
+                throw new ApimCryptoException("APIM JWT payload does not contain value.");
             }
             return valueNode.asText();
+        } catch (ApimCryptoException ex) {
+            throw ex;
         } catch (Exception ex) {
-            throw new IllegalStateException("Unable to verify APIM field payload.", ex);
+            throw new ApimCryptoException("Unable to verify APIM field payload.", ex);
         }
     }
 

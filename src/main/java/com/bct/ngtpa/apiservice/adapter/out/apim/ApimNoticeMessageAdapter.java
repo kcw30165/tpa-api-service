@@ -7,6 +7,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetMessageBoardMessageItem;
 import com.bct.ngtpa.apiservice.application.dto.GetNotificationsCommand;
 import com.bct.ngtpa.apiservice.application.dto.NotificationListResult;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNoticeMessagePort;
+import com.bct.ngtpa.apiservice.config.ApimProperties;
 import com.bct.ngtpa.apiservice.domain.model.AudienceType;
 import com.bct.ngtpa.apiservice.domain.model.Hyperlink;
 import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
@@ -43,9 +44,19 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
     private final ApimWebClientFacade apimWebClientFacade;
     private final ApimCertificateService apimCertificateService;
     private final ApimPayloadCryptoService apimPayloadCryptoService;
+    private final ApimProperties apimProperties;
 
     @Override
     public Mono<NotificationListResult> fetchNotifications(GetNotificationsCommand command) {
+    if (!apimProperties.getEncryption().isEnabled()) {
+        var request = apimPayloadCryptoService.encryptRequest(
+            API_NAME, toApimRequest(command), GetMessageBoardApimRequest.class, null);
+        return apimWebClientFacade.post(API_NAME, request)
+            .map(body -> apimPayloadCryptoService.decryptResponse(
+                API_NAME, body, GetMessageBoardApimResponse.class, null))
+            .map(this::toNotificationListResult);
+    }
+
         return apimCertificateService.getBctPublicKey()
                 .flatMap(publicKey -> {
                     var request = apimPayloadCryptoService.encryptRequest(
