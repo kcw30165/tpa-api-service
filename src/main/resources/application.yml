@@ -10,6 +10,9 @@ spring:
     config:
       enabled: ${SPRING_CLOUD_CONFIG_ENABLED:false}
 
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:}
+
 apim:
   baseUrl: ${APIM_BASEURL:}
   timeoutMilliseconds: ${APIM_TIMEOUTMILLISECONDS:10000}
