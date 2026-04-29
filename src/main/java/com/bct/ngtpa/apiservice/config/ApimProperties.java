@@ -5,19 +5,29 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.context.annotation.Configuration;
 
 import lombok.Getter;
 import lombok.Setter;
 
-@Configuration
 @ConfigurationProperties(prefix = "apim")
 @Getter
 @Setter
 public class ApimProperties {
     private String baseUrl;
     private int timeoutMilliseconds;
+    private final Oauth oauth = new Oauth();
     private final Encryption encryption = new Encryption();
+
+    @Getter
+    @Setter
+    public static class Oauth {
+        private String registrationId = "apim-client";
+        private String clientId = "local-dev";
+        private String clientSecret = "local-dev";
+        private String clientAuthenticationMethod = "client_secret_basic";
+        private String tokenUri = "http://localhost/token";
+        private List<String> scope = new ArrayList<>();
+    }
 
     @Getter
     @Setter

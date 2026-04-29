@@ -33,3 +33,9 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### self tools ###
+set-java-home.sh
+.github/
+docs/
+fix-ssl-maven.bat

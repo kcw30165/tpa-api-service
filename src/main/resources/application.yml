@@ -2,28 +2,24 @@ server:
   port: ${SERVER_PORT:8888}
 
 spring:
+  config:
+    import: optional:file:./.env[.properties]
   application:
     name: ngtpa-api-server
   cloud:
     config:
       enabled: ${SPRING_CLOUD_CONFIG_ENABLED:false}
-  security:
-    oauth2:
-      client:
-        registration:
-          apim-client:
-            client-id: ${APIM_CLIENT_ID:}
-            client-secret: ${APIM_CLIENT_SECRET:}
-            authorization-grant-type: client_credentials
-            client-authentication-method: ${APIM_CLIENT_AUTH_METHOD:client_secret_basic}
-            scope: ${APIM_CLIENT_SCOPE:}
-        provider:
-          apim-client:
-            token-uri: ${APIM_TOKEN_URI:}
 
 apim:
   baseUrl: ${APIM_BASEURL:}
   timeoutMilliseconds: ${APIM_TIMEOUTMILLISECONDS:10000}
+  oauth:
+    registrationId: ${APIM_CLIENT_REGISTRATION_ID:apim-client}
+    clientId: ${APIM_CLIENT_ID:local-dev}
+    clientSecret: ${APIM_CLIENT_SECRET:local-dev}
+    clientAuthenticationMethod: ${APIM_CLIENT_AUTH_METHOD:client_secret_basic}
+    tokenUri: ${APIM_TOKEN_URI:http://localhost/token}
+    scope: ${APIM_CLIENT_SCOPE:}
   encryption:
     enabled: ${APIM_ENCRYPTION_ENABLED:true}
     certificatePath: ${APIM_CERTIFICATE_PATH:/api/wssupport/v1/encryption/certificate}
@@ -36,3 +32,8 @@ apim:
           - policy-no
           - cert-no
           - user-id
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    com.bct.ngtpa: DEBUG

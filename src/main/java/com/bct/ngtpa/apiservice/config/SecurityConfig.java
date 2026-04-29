@@ -1,24 +1,27 @@
 package com.bct.ngtpa.apiservice.config;
 
+import org.springframework.http.HttpMethod;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
-import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
+import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.web.server.SecurityWebFilterChain;
+
 
 @Configuration
+@EnableWebFluxSecurity
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
         http
-        .csrf(csrf -> csrf.ignoringRequestMatchers("/api/messages"))
-        .authorizeHttpRequests(auth -> auth
-            .requestMatchers(HttpMethod.POST, "/api/messages").permitAll()
-            .anyRequest().authenticated())
-        .httpBasic(Customizer.withDefaults());
+            .csrf(ServerHttpSecurity.CsrfSpec::disable)
+            .authorizeExchange(auth -> auth
+                .pathMatchers(HttpMethod.GET, "/api/v1/notifications").permitAll()
+                .anyExchange().authenticated());
+
 
         return http.build();
     }
 }
+
