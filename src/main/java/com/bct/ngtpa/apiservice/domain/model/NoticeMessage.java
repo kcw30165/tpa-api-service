@@ -12,13 +12,14 @@ public record NoticeMessage(
         String msgCode,
         String msgCodeLong,
         Integer seq,
+        String category,
         MessageType msgType,
         String msgTitle,
         String msgContentChi,
         String msgContentEng,
         boolean isRead,
-        LocalDateTime startDatetime,
-        LocalDateTime endDatetime,      // TBC: not yet returned by APIM
+        LocalDateTime startDatetime,    // Parsed from APIM start-datetime string in adapter/out/apim
+        LocalDateTime endDatetime,      // Parsed from APIM end-datetime string once APIM returns it
         MessageStatus msgStatus,
         AudienceType targetAudience,    // TBC: not yet returned by APIM
         String triggerPoint,            // TBC: not yet returned by APIM
@@ -29,17 +30,25 @@ public record NoticeMessage(
      * Messages with no end datetime never expire.
      */
     public boolean isExpired() {
-        return endDatetime != null && LocalDateTime.now().isAfter(endDatetime);
+        return isExpired(LocalDateTime.now());
+    }
+
+    public boolean isExpired(LocalDateTime now) {
+        return endDatetime != null && now != null && now.isAfter(endDatetime);
     }
 
     /**
      * A message is visible when it has started and has not yet expired.
-     * Messages with no start datetime are considered already started.
+     * Messages with no start datetime are considered invisible.
      */
     public boolean isVisible() {
-        if (isExpired()) {
+        return isVisible(LocalDateTime.now());
+    }
+
+    public boolean isVisible(LocalDateTime now) {
+        if (startDatetime == null || now == null || isExpired(now)) {
             return false;
         }
-        return startDatetime == null || !LocalDateTime.now().isBefore(startDatetime);
+        return !now.isBefore(startDatetime);
     }
 }

@@ -5,6 +5,10 @@ public enum MessageStatus {
     UNREAD,
     UNKNOWN;
 
+    public boolean isRead() {
+        return this == READ;
+    }
+
     public static MessageStatus fromCode(String code) {
         if (code == null || code.isBlank()) {
             return UNKNOWN;

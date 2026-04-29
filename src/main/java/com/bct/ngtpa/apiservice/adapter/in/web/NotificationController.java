@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.response.NotificationListResponse;
 import com.bct.ngtpa.apiservice.application.dto.GetNotificationsCommand;
+import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.application.port.in.GetNotificationsUseCase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -20,10 +21,24 @@ public class NotificationController {
 
     @GetMapping(value = "/notifications", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<NotificationListResponse> getNotifications(
-            @RequestParam("environment") String environment,
-            @RequestParam("memberType") String memberType) {
+            @RequestParam(value = "env", required = false) String env,
+            @RequestParam(value = "mbrType", required = false) String mbrType,
+            @RequestParam(value = "page", required = false) Integer page,
+            @RequestParam(value = "size", required = false) Integer size,
+            @RequestParam(value = "dateFormat", required = false) String dateFormat,
+            @RequestParam(value = "timezone", required = false) String timezone) {
         return getNotificationsUseCase
-                .execute(new GetNotificationsCommand(environment, memberType, null, null, null, null))
+                .execute(new GetNotificationsCommand(
+                        env,
+                        mbrType,
+                        page,
+                        size,
+                        dateFormat,
+                        timezone,
+                        null,
+                        null,
+                        null,
+                        null))
                 .map(NotificationListResponse::from);
     }
 }

@@ -38,8 +38,10 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
      * Assumed APIM datetime format based on BRD section 6.1 (dd/mm/yyyy hh:mm:ss).
      * To be confirmed with the APIM/Progress team.
      */
-    private static final DateTimeFormatter APIM_DT_FORMATTER =
-            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
+        private static final List<DateTimeFormatter> APIM_DT_FORMATTERS = List.of(
+            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"),
+            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+        );
 
     private final ApimWebClientFacade apimWebClientFacade;
     private final ApimCertificateService apimCertificateService;
@@ -48,14 +50,14 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
 
     @Override
     public Mono<NotificationListResult> fetchNotifications(GetNotificationsCommand command) {
-    if (!apimProperties.getEncryption().isEnabled()) {
-        var request = apimPayloadCryptoService.encryptRequest(
-            API_NAME, toApimRequest(command), GetMessageBoardApimRequest.class, null);
-        return apimWebClientFacade.post(API_NAME, request)
-            .map(body -> apimPayloadCryptoService.decryptResponse(
-                API_NAME, body, GetMessageBoardApimResponse.class, null))
-            .map(this::toNotificationListResult);
-    }
+        if (!apimProperties.getEncryption().isEnabled()) {
+            var request = apimPayloadCryptoService.encryptRequest(
+                    API_NAME, toApimRequest(command), GetMessageBoardApimRequest.class, null);
+            return apimWebClientFacade.post(API_NAME, request)
+                    .map(body -> apimPayloadCryptoService.decryptResponse(
+                            API_NAME, body, GetMessageBoardApimResponse.class, null))
+                    .map(this::toNotificationListResult);
+        }
 
         return apimCertificateService.getBctPublicKey()
                 .flatMap(publicKey -> {
@@ -74,8 +76,8 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
                 .certNo(command.certNo())
                 .userId(command.userId())
                 .refDate(command.refDate())
-                .env(command.environment())
-                .mbrType(command.memberType())
+                .env(command.env())
+                .mbrType(command.mbrType())
                 .build();
     }
 
@@ -106,18 +108,22 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
     }
 
     private NoticeMessage toNoticeMessage(GetMessageBoardMessageItem item) {
+        var status = MessageStatus.fromCode(item.getMsgStatus());
+        var category = item.getMsgCate();
+
         return new NoticeMessage(
                 item.getMsgCode(),
                 item.getMsgCodeLong(),
                 item.getSeq(),
-                MessageType.fromCode(item.getMsgCate()),
-                item.getMsgTitle(),
+                category,
+                MessageType.fromCode(category),
+                MessageType.titleFor(category),
                 item.getMsgContentChi(),
                 item.getMsgContentEng(),
-                item.isRead(),
+                status.isRead(),
                 parseDateTime(item.getStartDatetime()),
                 null,               // endDatetime: TBC — not yet returned by APIM
-                MessageStatus.fromCode(item.getMsgStatus()),
+                status,
                 (AudienceType) null, // targetAudience: TBC — not yet returned by APIM
                 null,               // triggerPoint:  TBC — not yet returned by APIM
                 List.of()           // hyperlinks:    TBC — not yet returned by APIM
@@ -128,12 +134,18 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
         if (!StringUtils.hasText(value)) {
             return null;
         }
-        try {
-            return LocalDateTime.parse(value.trim(), APIM_DT_FORMATTER);
-        } catch (Exception ex) {
-            log.warn("Unable to parse APIM datetime value='{}'; treating as null.", value);
-            return null;
+
+        var trimmedValue = value.trim();
+        for (DateTimeFormatter formatter : APIM_DT_FORMATTERS) {
+            try {
+                return LocalDateTime.parse(trimmedValue, formatter);
+            } catch (Exception ignored) {
+                // Try the next APIM format.
+            }
         }
+
+        log.warn("Unable to parse APIM datetime value='{}'; treating as null.", value);
+        return null;
     }
 }
 
