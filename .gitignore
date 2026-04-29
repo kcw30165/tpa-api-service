@@ -39,3 +39,5 @@ set-java-home.sh
 .github/
 docs/
 fix-ssl-maven.bat
+all.txt
+.mvn/wrapper/maven-wrapper.properties

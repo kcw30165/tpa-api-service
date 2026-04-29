@@ -36,7 +36,7 @@ com.bct.ngtpa.apiservice
 │   │   ├── in/          # GetNotificationsUseCase
 │   │   └── out/         # ApimNoticeMessagePort
 │   ├── usecase/         # GetNotificationsService
-│   └── dto/             # GetNotificationsCommand, NotificationListResult
+│   └── dto/             # GetNotificationsCommand, NotificationDateOptions, NotificationListResult
 ├── adapter/
 │   ├── in/web/          # Reactive controllers, request/response records
 │   │   ├── NotificationController
@@ -147,22 +147,41 @@ Retrieves the current notice list for a member context.
 
 **Query parameters:**
 
-- `environment`
-- `memberType`
+- `env` (required)
+- `mbrType` (required)
+- `page` (optional; accepted by the BFF but not forwarded to APIM)
+- `size` (optional; accepted by the BFF but not forwarded to APIM)
+- `dateFormat` (optional; default `dd/MM/yyyy HH:mm`)
+- `timezone` (optional; default `Asia/Hong_Kong`)
+
+**Example:**
+
+```http
+GET /api/v1/notifications?env=JP&mbrType=MBR&page=1&size=10&dateFormat=dd/MM/yyyy%20HH:mm&timezone=Asia/Hong_Kong
+```
+
+**Behavior:**
+
+- Only notifications with `startDateTime <= now` in the requested or default timezone are returned.
+- Notifications with missing or unparsable APIM start datetime values are treated as not visible.
+- `msgCode` uses APIM `msg-code-long` when present, otherwise falls back to `msg-code`.
+- `category` returns the raw APIM `msg-cate` code.
+- `msgTitle` is derived from `msg-cate`.
+- `isRead` is derived from APIM `msg-status`.
 
 **Response:**
 ```json
 {
   "notifications": [
     {
-      "msgCode": "string",
+      "msgCode": "LONG-001",
       "sequence": "1",
-      "category": "MARKET_UPDATE",
-      "msgTitle": "string",
-      "msgContentChi": "string",
-      "msgContentEng": "string",
+      "category": "ACT_REQ",
+      "msgTitle": "ACTION REQUIRED",
+      "msgContentChi": "中文內容",
+      "msgContentEng": "English content",
       "isRead": false,
-      "startDateTime": "28/04/2026 09:00"
+      "startDateTime": "29/04/2026 14:15"
     }
   ]
 }
@@ -171,11 +190,13 @@ Retrieves the current notice list for a member context.
 **Error response:**
 ```json
 {
-  "errorCode": "500",
-  "message": "APIM error description",
-  "timestamp": "2026-04-28T11:42:40.643070200Z"
+  "errorCode": "400",
+  "message": "Invalid timezone: Mars/Olympus",
+  "timestamp": "2026-04-29T07:42:40.643070200Z"
 }
 ```
+
+APIM or crypto failures still use the same error envelope with `5xx` status codes.
 
 ---
 
