@@ -108,6 +108,8 @@ export JAVA_HOME="C:/Java/OpenJDK/jdk-21"
 
 Spring Boot imports the repository root `.env` file automatically via `spring.config.import`, so local `APIM_*` variables do not need to be exported one by one.
 
+Browser access from a local frontend to a deployed API stays closed by default. To allow a local Angular app running at `http://localhost:4200` to call the dev deployment, set `CORS_ALLOWED_ORIGINS=http://localhost:4200` in the dev deployment configuration. Do not set this variable in environments that should remain closed to browser cross-origin calls.
+
 If you hit a stale class problem after refactors, run a clean rebuild first:
 
 ```bash
@@ -123,6 +125,7 @@ export JAVA_HOME="C:/Java/OpenJDK/jdk-21"
 |---|---|---|
 | `SERVER_PORT` | HTTP port | `8888` |
 | `SPRING_CLOUD_CONFIG_ENABLED` | Enable Spring Cloud Config | `false` |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated browser origins allowed for `/api/**` CORS responses | _(empty / closed)_ |
 | `APIM_BASEURL` | APIM base URL | _(required)_ |
 | `APIM_TIMEOUTMILLISECONDS` | WebClient timeout | `10000` |
 | `APIM_CLIENT_REGISTRATION_ID` | OAuth2 client registration id | `apim-client` |
@@ -136,6 +139,8 @@ export JAVA_HOME="C:/Java/OpenJDK/jdk-21"
 | `APIM_API_KEY` | API key sent as `KeyId` header | _(required if encryption enabled)_ |
 | `APIM_PRIVATE_KEY_PEM` | App RSA private key (Base64 PEM) | _(required if encryption enabled)_ |
 | `APIM_PUBLIC_KEY_PEM` | App RSA public key (Base64 PEM) | _(required if encryption enabled)_ |
+
+For the dev cluster, the Kubernetes deployment or external config repository must set `CORS_ALLOWED_ORIGINS=http://localhost:4200` before local frontend calls from that origin will succeed. Those deployment manifests are outside this repository.
 
 ---
 
