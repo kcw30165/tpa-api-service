@@ -17,7 +17,7 @@ import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 @EnableWebFluxSecurity
 public class SecurityConfig {
 
-    private static final List<String> ALLOWED_METHODS = List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS");
+    private static final List<String> ALLOWED_METHODS = List.of("GET", "POST", "PUT", "PATCH"); // , "DELETE", "OPTIONS"
     private static final List<String> ALLOWED_HEADERS = List.of("Authorization", "Content-Type", "Accept");
 
     @Bean
