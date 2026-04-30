@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim;
 
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetMessageBoardApimRequest;
-import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetMessageBoardApimResponse;
+import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetMessageBoardDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetMessageBoardMessageItem;
 import com.bct.ngtpa.apiservice.application.dto.GetNotificationsCommand;
@@ -54,9 +54,9 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
             var request = apimPayloadCryptoService.encryptRequest(
                     API_NAME, toApimRequest(command), GetMessageBoardApimRequest.class, null);
             return apimWebClientFacade.post(API_NAME, request)
-                    .map(body -> apimPayloadCryptoService.decryptResponse(
-                            API_NAME, body, GetMessageBoardApimResponse.class, null))
-                    .map(this::toNotificationListResult);
+                .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
+                    API_NAME, body, GetMessageBoardDataItem.class, null))
+                .map(this::toNotificationListResult);
         }
 
         return apimCertificateService.getBctPublicKey()
@@ -64,9 +64,9 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
                     var request = apimPayloadCryptoService.encryptRequest(
                             API_NAME, toApimRequest(command), GetMessageBoardApimRequest.class, publicKey);
                     return apimWebClientFacade.post(API_NAME, request)
-                            .map(body -> apimPayloadCryptoService.decryptResponse(
-                                    API_NAME, body, GetMessageBoardApimResponse.class, publicKey))
-                            .map(this::toNotificationListResult);
+                        .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
+                            API_NAME, body, GetMessageBoardDataItem.class, publicKey))
+                        .map(this::toNotificationListResult);
                 });
     }
 
@@ -81,7 +81,7 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
                 .build();
     }
 
-    private NotificationListResult toNotificationListResult(GetMessageBoardApimResponse response) {
+    private NotificationListResult toNotificationListResult(ApimResponseEnvelope<GetMessageBoardDataItem> response) {
         var payload = response != null ? response.getResponse() : null;
         if (payload == null) {
             throw new ApimException(HttpStatus.BAD_GATEWAY, "APIM response payload is missing.");

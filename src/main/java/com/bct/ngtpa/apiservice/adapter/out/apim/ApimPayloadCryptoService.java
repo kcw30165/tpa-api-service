@@ -7,6 +7,8 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimRsaPayloadCrypto;
 import com.bct.ngtpa.apiservice.config.ApimProperties;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JavaType;
+import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -77,6 +79,46 @@ public class ApimPayloadCryptoService {
         } catch (Exception ex) {
             throw new ApimCryptoException("Failed to decrypt APIM response payload.", ex);
         }
+    }
+
+    public <T> T decryptResponse(String apiName, String responseJson, JavaType targetType) {
+        return decryptResponse(apiName, responseJson, targetType, null);
+    }
+
+    public <T> T decryptResponse(String apiName, String responseJson, JavaType targetType, PublicKey publicKey) {
+        if (!apimProperties.getEncryption().isEnabled()) {
+            return parseJson(responseJson, targetType);
+        }
+        Set<String> targetFields = getResponseFields(apiName);
+        if (CollectionUtils.isEmpty(targetFields)) {
+            return parseJson(responseJson, targetType);
+        }
+
+        try {
+            JsonNode sourceNode = objectMapper.readTree(responseJson);
+            JsonNode transformedNode = apimPayloadFieldTransformer.transformFields(
+                    sourceNode, targetFields, fieldValue -> decryptField(fieldValue, publicKey));
+            return objectMapper.readValue(transformedNode.traverse(), targetType);
+        } catch (Exception ex) {
+            throw new ApimCryptoException("Failed to decrypt APIM response payload.", ex);
+        }
+    }
+
+    private <T> T parseJson(String sourceJson, JavaType targetType) {
+        try {
+            return objectMapper.readValue(sourceJson, targetType);
+        } catch (Exception ex) {
+            throw new ApimCryptoException("Failed to parse APIM response payload.", ex);
+        }
+    }
+
+    public <T> ApimResponseEnvelope<T> decryptResponseEnvelope(String apiName, String responseJson, Class<T> dataClass) {
+        return decryptResponseEnvelope(apiName, responseJson, dataClass, null);
+    }
+
+    public <T> ApimResponseEnvelope<T> decryptResponseEnvelope(String apiName, String responseJson, Class<T> dataClass, PublicKey publicKey) {
+        JavaType javaType = objectMapper.getTypeFactory().constructParametricType(ApimResponseEnvelope.class, dataClass);
+        return decryptResponse(apiName, responseJson, javaType, publicKey);
     }
 
     private <T> T transformObject(T source, Class<T> targetType, Set<String> targetFields,

@@ -61,6 +61,21 @@ com.bct.ngtpa.apiservice
 └── exception/           # ApimException (shared)
 ```
 
+### APIM Response Envelope
+
+All APIM endpoints share a single top-level envelope and are modeled once under `adapter/out/apim/dto`:
+
+```json
+{
+  "response": {
+    "err-message": "",
+    "data": []
+  }
+}
+```
+
+Use `ApimResponseEnvelope<T>` / `ApimResponseBody<T>` for outbound APIM parsing; do not create endpoint-specific wrapper DTOs for the shared envelope. The APIM adapter must unwrap `response.data`, check `response.err-message`, and map items into domain/application objects.
+
 ### Dependency Rule
 
 ```

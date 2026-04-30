@@ -7,16 +7,18 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class UpdateNotificationReadStatusApimEnvelope {
+public class ApimResponseBody<T> {
 
     @JsonProperty("err-message")
     private String errMessage;
 
     @JsonProperty("data")
-    private APIMResponsePayload<UpdateNotificationReadStatusApimDataItem> data;
+    private List<T> data;
 }

@@ -12,8 +12,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class UpdateNotificationReadStatusApimResponse {
+public class ApimResponseEnvelope<T> {
 
     @JsonProperty("response")
-    private APIMResponsePayload<UpdateNotificationReadStatusApimDataItem> response;
+    private ApimResponseBody<T> response;
 }
