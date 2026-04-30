@@ -26,6 +26,7 @@ public class GetNotificationsService implements GetNotificationsUseCase {
     private static final String HARDCODED_POLICY_NO = "00000000118";
     private static final String HARDCODED_CERT_NO   = "2";
     private static final String HARDCODED_USER_ID   = "C402400A";
+    private static final String HARDCODED_REF_DATE   = "01/10/2025";
 
     private final ApimNoticeMessagePort apimNoticeMessagePort;
 
@@ -34,7 +35,7 @@ public class GetNotificationsService implements GetNotificationsUseCase {
         var dateOptions = NotificationDateOptions.resolve(command.dateFormat(), command.timezone());
 
         // TODO: read refDate from config server; fall back to today
-        String refDate = LocalDate.now(dateOptions.zoneId()).format(REF_DATE_FORMATTER);
+        String refDate = HARDCODED_REF_DATE; //LocalDate.now(dateOptions.zoneId()).format(REF_DATE_FORMATTER);
 
         var enriched = new GetNotificationsCommand(
                 command.env(),
