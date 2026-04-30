@@ -71,27 +71,21 @@ public class ApimNotificationReadStatusAdapter implements ApimNotificationReadSt
     private UpdateNotificationsReadStatusResult toResult(
             UpdateNotificationReadStatusApimResponse response,
             MessageStatus targetStatus) {
-        var outerPayload = response != null ? response.getResponse() : null;
-        if (outerPayload == null) {
+        var payload = response != null ? response.getResponse() : null;
+        if (payload == null) {
             throw new ApimException(HttpStatus.BAD_GATEWAY, "APIM response payload is missing.");
         }
-        if (StringUtils.hasText(outerPayload.getErrMessage())) {
-            throw new ApimException(HttpStatus.BAD_GATEWAY, outerPayload.getErrMessage());
+        if (StringUtils.hasText(payload.getErrMessage())) {
+            throw new ApimException(HttpStatus.BAD_GATEWAY, payload.getErrMessage());
         }
 
-        APIMResponsePayload<UpdateNotificationReadStatusApimDataItem> innerPayload = outerPayload.getResponse();
-        if (innerPayload == null) {
-            throw new ApimException(HttpStatus.BAD_GATEWAY, "APIM response data payload is missing.");
-        }
-        if (StringUtils.hasText(innerPayload.getErrMessage())) {
-            throw new ApimException(HttpStatus.BAD_GATEWAY, innerPayload.getErrMessage());
-        }
-        if (CollectionUtils.isEmpty(innerPayload.getData())) {
+        var dataItems = payload.getData();
+        if (CollectionUtils.isEmpty(dataItems)) {
             return new UpdateNotificationsReadStatusResult(List.of());
         }
 
         var effectiveStatus = targetStatus == null ? MessageStatus.UNKNOWN : targetStatus;
-        List<NotificationReadStatus> notifications = innerPayload.getData().stream()
+        List<NotificationReadStatus> notifications = dataItems.stream()
                 .filter(Objects::nonNull)
                 .map(item -> new NotificationReadStatus(resolveMessageCode(item), effectiveStatus, item.isSuccess()))
                 .toList();

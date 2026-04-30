@@ -27,8 +27,6 @@ class ApimNotificationReadStatusAdapterTest {
     void postsToUpdateReadStatusEndpointAndMapsApimItems() {
         CapturingApimWebClientFacade facade = new CapturingApimWebClientFacade("""
                 {
-                  "response": {
-                    "err-message": "",
                     "response": {
                       "err-message": "",
                       "data": [
@@ -44,7 +42,6 @@ class ApimNotificationReadStatusAdapterTest {
                         }
                       ]
                     }
-                  }
                 }
                 """);
 
