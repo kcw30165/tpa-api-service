@@ -29,12 +29,10 @@ apim:
     apiKey: ${APIM_API_KEY:}
     privateKeyPem: ${APIM_PRIVATE_KEY_PEM:}
     publicKeyPem: ${APIM_PUBLIC_KEY_PEM:}
-    apis:
-      TRPGetMsgBoard:
-        requestFields:
-          - policy-no
-          - cert-no
-          - user-id
+    requestFields:
+      - policy-no
+      - cert-no
+      - user-id
 
 logging:
   level:

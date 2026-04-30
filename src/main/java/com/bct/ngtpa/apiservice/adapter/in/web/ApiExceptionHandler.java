@@ -6,8 +6,13 @@ import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequest
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ServerWebInputException;
+import org.springframework.web.bind.support.WebExchangeBindException;
+
+import java.util.Optional;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -33,4 +38,28 @@ public class ApiExceptionHandler {
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ApiErrorResponse.of(String.valueOf(HttpStatus.BAD_REQUEST.value()), ex.getMessage()));
     }
+
+        @ExceptionHandler(WebExchangeBindException.class)
+        public ResponseEntity<ApiErrorResponse> handleWebExchangeBindException(WebExchangeBindException ex) {
+        String message = ex.getFieldErrors().stream()
+            .map(FieldError::getDefaultMessage)
+            .filter(msg -> msg != null && !msg.isBlank())
+            .findFirst()
+            .orElse("Invalid request payload.");
+
+        return ResponseEntity
+            .status(HttpStatus.BAD_REQUEST)
+            .body(ApiErrorResponse.of(String.valueOf(HttpStatus.BAD_REQUEST.value()), message));
+        }
+
+        @ExceptionHandler(ServerWebInputException.class)
+        public ResponseEntity<ApiErrorResponse> handleServerWebInputException(ServerWebInputException ex) {
+        String message = Optional.ofNullable(ex.getReason())
+            .filter(reason -> !reason.isBlank())
+            .orElse("Invalid request payload.");
+
+        return ResponseEntity
+            .status(HttpStatus.BAD_REQUEST)
+            .body(ApiErrorResponse.of(String.valueOf(HttpStatus.BAD_REQUEST.value()), message));
+        }
 }

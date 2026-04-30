@@ -33,18 +33,20 @@ com.bct.ngtpa.apiservice
 │   └── exception/       # DomainException
 ├── application/         # Orchestration — @Service only
 │   ├── port/
-│   │   ├── in/          # GetNotificationsUseCase
-│   │   └── out/         # ApimNoticeMessagePort
-│   ├── usecase/         # GetNotificationsService
-│   └── dto/             # GetNotificationsCommand, NotificationDateOptions, NotificationListResult
+│   │   ├── in/          # GetNotificationsUseCase, UpdateNotificationsReadStatusUseCase
+│   │   └── out/         # ApimNoticeMessagePort, ApimNotificationReadStatusPort
+│   ├── usecase/         # GetNotificationsService, UpdateNotificationsReadStatusService
+│   └── dto/             # GetNotificationsCommand, UpdateNotificationsReadStatusCommand, NotificationDateOptions, NotificationListResult, UpdateNotificationsReadStatusResult
 ├── adapter/
 │   ├── in/web/          # Reactive controllers, request/response records
 │   │   ├── NotificationController
 │   │   ├── ApiExceptionHandler (@RestControllerAdvice)
-│   │   └── response/    # NotificationListResponse, NotificationDto, ApiErrorResponse (records)
+│   │   ├── request/     # UpdateNotificationsReadStatusRequest
+│   │   └── response/    # NotificationListResponse, NotificationDto, NotificationReadStatusDto, UpdateNotificationsReadStatusResponse, ApiErrorResponse (records)
 │   └── out/apim/        # APIM integration
 │       ├── ApimWebClientFacade        # Pure HTTP transport (OAuth2 token attach)
 │       ├── ApimNoticeMessageAdapter   # Implements ApimNoticeMessagePort
+│       ├── ApimNotificationReadStatusAdapter # Implements ApimNotificationReadStatusPort
 │       ├── ApimCertificateService     # Fetches BCT public key from APIM
 │       ├── ApimAppCertificateService  # Loads app RSA keys + X509 cert
 │       ├── ApimPayloadCryptoService   # AES/CBC + RSA field encryption/decryption
@@ -144,6 +146,36 @@ For the dev cluster, the Kubernetes deployment or external config repository mus
 
 ---
 
+## APIM encryption configuration
+
+APIM encryption is configured per APIM base URL (not per endpoint). The list `apim.encryption.requestFields` contains JSON field names that the APIM adapter will encrypt for every outbound request sent to the configured `apim.baseUrl`.
+
+Example configuration:
+
+```yaml
+apim:
+  baseUrl: ${APIM_BASEURL:}
+  encryption:
+    enabled: ${APIM_ENCRYPTION_ENABLED:true}
+    certificatePath: ${APIM_CERTIFICATE_PATH:/api/wssupport/v1/encryption/certificate}
+    apiKey: ${APIM_API_KEY:}
+    privateKeyPem: ${APIM_PRIVATE_KEY_PEM:}
+    publicKeyPem: ${APIM_PUBLIC_KEY_PEM:}
+    requestFields:
+      - policy-no
+      - cert-no
+      - user-id
+```
+
+Notes:
+
+- `requestFields` is global for the `apim.baseUrl` and applies to every outbound request handled by the APIM client.
+- It is not configured per APIM operation (for example `TRPGetMsgBoard`).
+- To add encryption for a new field, add it once under `apim.encryption.requestFields`.
+
+
+---
+
 ## API Endpoints
 
 ### `GET /api/v1/notifications`
@@ -202,6 +234,54 @@ GET /api/v1/notifications?env=JP&mbrType=MBR&page=1&size=10&dateFormat=dd/MM/yyy
 ```
 
 APIM or crypto failures still use the same error envelope with `5xx` status codes.
+
+### `PATCH /api/v1/notification`
+
+Updates the read status for one or more notifications.
+
+**Request body:**
+
+```json
+{
+  "env": "DEV",
+  "mbrType": "MBR",
+  "notificationId": ["msgCode1", "msgCode2"]
+}
+```
+
+**Behavior:**
+
+- `env` and `mbrType` must be non-blank.
+- `notificationId` must contain at least one non-blank value.
+- Duplicate notification IDs are preserved in request order and forwarded to APIM unchanged.
+- The BFF currently hardcodes `cert-no`, `policy-no`, `user-id`, and `ref-date` while auth/config integration is pending.
+
+**Response:**
+```json
+{
+  "notifications": [
+    {
+      "msgCode": "msgCode1",
+      "isRead": true
+    },
+    {
+      "msgCode": "msgCode2",
+      "isRead": false
+    }
+  ]
+}
+```
+
+**Error response:**
+```json
+{
+  "errorCode": "400",
+  "message": "notificationId must not be empty",
+  "timestamp": "2026-04-29T07:42:40.643070200Z"
+}
+```
+
+Top-level APIM failures are translated to the same standardized `5xx` error envelope.
 
 ---
 
