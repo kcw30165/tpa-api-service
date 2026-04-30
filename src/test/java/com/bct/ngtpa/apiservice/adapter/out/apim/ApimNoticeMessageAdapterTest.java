@@ -1,8 +1,8 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim;
 
-import com.bct.ngtpa.apiservice.adapter.out.apim.dto.APIMResponsePayload;
+import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody;
+import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetMessageBoardApimRequest;
-import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetMessageBoardApimResponse;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetMessageBoardDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetMessageBoardMessageItem;
 import com.bct.ngtpa.apiservice.application.dto.GetNotificationsCommand;
@@ -40,8 +40,8 @@ class ApimNoticeMessageAdapterTest {
                 .isRead(false)
                 .build();
 
-        GetMessageBoardApimResponse response = GetMessageBoardApimResponse.builder()
-                .response(APIMResponsePayload.<GetMessageBoardDataItem>builder()
+        ApimResponseEnvelope<GetMessageBoardDataItem> response = ApimResponseEnvelope.<GetMessageBoardDataItem>builder()
+                .response(ApimResponseBody.<GetMessageBoardDataItem>builder()
                         .data(List.of(GetMessageBoardDataItem.builder()
                                 .page(1)
                                 .size(20)

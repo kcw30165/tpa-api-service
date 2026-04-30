@@ -1,10 +1,8 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim;
 
-import com.bct.ngtpa.apiservice.adapter.out.apim.dto.APIMResponsePayload;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateNotificationReadStatusApimDataItem;
-import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateNotificationReadStatusApimEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateNotificationReadStatusApimRequest;
-import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateNotificationReadStatusApimResponse;
+import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusCommand;
 import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusResult;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNotificationReadStatusPort;
@@ -36,21 +34,21 @@ public class ApimNotificationReadStatusAdapter implements ApimNotificationReadSt
     @Override
     public Mono<UpdateNotificationsReadStatusResult> updateReadStatus(UpdateNotificationsReadStatusCommand command) {
         if (!apimProperties.getEncryption().isEnabled()) {
-            var request = apimPayloadCryptoService.encryptRequest(
+                var request = apimPayloadCryptoService.encryptRequest(
                     API_NAME, toApimRequest(command), UpdateNotificationReadStatusApimRequest.class, null);
-            return apimWebClientFacade.post(API_NAME, request)
-                    .map(body -> apimPayloadCryptoService.decryptResponse(
-                            API_NAME, body, UpdateNotificationReadStatusApimResponse.class, null))
+                return apimWebClientFacade.post(API_NAME, request)
+                    .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
+                        API_NAME, body, UpdateNotificationReadStatusApimDataItem.class, null))
                     .map(response -> toResult(response, command.targetStatus()));
         }
 
         return apimCertificateService.getBctPublicKey()
                 .flatMap(publicKey -> {
-                    var request = apimPayloadCryptoService.encryptRequest(
+                        var request = apimPayloadCryptoService.encryptRequest(
                             API_NAME, toApimRequest(command), UpdateNotificationReadStatusApimRequest.class, publicKey);
-                    return apimWebClientFacade.post(API_NAME, request)
-                            .map(body -> apimPayloadCryptoService.decryptResponse(
-                                    API_NAME, body, UpdateNotificationReadStatusApimResponse.class, publicKey))
+                        return apimWebClientFacade.post(API_NAME, request)
+                            .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
+                                API_NAME, body, UpdateNotificationReadStatusApimDataItem.class, publicKey))
                             .map(response -> toResult(response, command.targetStatus()));
                 });
     }
@@ -69,7 +67,7 @@ public class ApimNotificationReadStatusAdapter implements ApimNotificationReadSt
     }
 
     private UpdateNotificationsReadStatusResult toResult(
-            UpdateNotificationReadStatusApimResponse response,
+            ApimResponseEnvelope<UpdateNotificationReadStatusApimDataItem> response,
             MessageStatus targetStatus) {
         var payload = response != null ? response.getResponse() : null;
         if (payload == null) {
