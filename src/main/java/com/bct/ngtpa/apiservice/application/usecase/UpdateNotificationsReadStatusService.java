@@ -20,7 +20,7 @@ public class UpdateNotificationsReadStatusService implements UpdateNotifications
     // TODO: extract user-id from access token once auth server is implemented.
     private static final String HARDCODED_USER_ID = "C402400A";
     // TODO: read ref-date from config server once it is implemented.
-    private static final String HARDCODED_REF_DATE = "01/01/2024";
+    private static final String HARDCODED_REF_DATE = "01/10/2025";
 
     private final ApimNotificationReadStatusPort apimNotificationReadStatusPort;
 
