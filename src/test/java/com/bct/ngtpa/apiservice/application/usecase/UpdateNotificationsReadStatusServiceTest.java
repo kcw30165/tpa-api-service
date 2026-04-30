@@ -49,7 +49,7 @@ class UpdateNotificationsReadStatusServiceTest {
         assertEquals("00000000118", captured.get().policyNo());
         assertEquals("2", captured.get().certNo());
         assertEquals("C402400A", captured.get().userId());
-        assertEquals("01/01/2024", captured.get().refDate());
+        assertEquals("01/10/2025", captured.get().refDate());
         assertEquals(MessageStatus.READ, captured.get().targetStatus());
     }
 }

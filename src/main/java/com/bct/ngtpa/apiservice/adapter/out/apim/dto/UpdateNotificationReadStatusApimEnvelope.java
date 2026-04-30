@@ -17,6 +17,6 @@ public class UpdateNotificationReadStatusApimEnvelope {
     @JsonProperty("err-message")
     private String errMessage;
 
-    @JsonProperty("response")
-    private APIMResponsePayload<UpdateNotificationReadStatusApimDataItem> response;
+    @JsonProperty("data")
+    private APIMResponsePayload<UpdateNotificationReadStatusApimDataItem> data;
 }

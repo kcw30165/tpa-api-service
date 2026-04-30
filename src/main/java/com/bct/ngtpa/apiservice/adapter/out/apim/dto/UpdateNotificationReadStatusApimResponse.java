@@ -15,5 +15,5 @@ import lombok.NoArgsConstructor;
 public class UpdateNotificationReadStatusApimResponse {
 
     @JsonProperty("response")
-    private UpdateNotificationReadStatusApimEnvelope response;
+    private APIMResponsePayload<UpdateNotificationReadStatusApimDataItem> response;
 }
