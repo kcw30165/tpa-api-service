@@ -5,7 +5,6 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
 import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimPayloadFieldTransformer;
 import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimRsaPayloadCrypto;
 import com.bct.ngtpa.apiservice.config.ApimProperties;
-import com.bct.ngtpa.apiservice.config.ApimProperties.ApiFieldEncryptionConfig;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -158,19 +157,17 @@ public class ApimPayloadCryptoService {
     }
 
     private Set<String> getRequestFields(String apiName) {
-        ApiFieldEncryptionConfig config = apimProperties.getEncryption().getApis().get(normalizeApiKey(apiName));
-        if (config == null || CollectionUtils.isEmpty(config.getRequestFields())) {
+        if (CollectionUtils.isEmpty(apimProperties.getEncryption().getRequestFields())) {
             return Collections.emptySet();
         }
-        return new LinkedHashSet<>(config.getRequestFields());
+        return new LinkedHashSet<>(apimProperties.getEncryption().getRequestFields());
     }
 
     private Set<String> getResponseFields(String apiName) {
-        ApiFieldEncryptionConfig config = apimProperties.getEncryption().getApis().get(normalizeApiKey(apiName));
-        if (config == null || CollectionUtils.isEmpty(config.getResponseFields())) {
+        if (CollectionUtils.isEmpty(apimProperties.getEncryption().getResponseFields())) {
             return Collections.emptySet();
         }
-        return new LinkedHashSet<>(config.getResponseFields());
+        return new LinkedHashSet<>(apimProperties.getEncryption().getResponseFields());
     }
 
     /** Extracts the last path segment to use as the YAML map key (e.g. "/ws/NGTPA/v1/TRPGetMsgBoard" -> "TRPGetMsgBoard"). */

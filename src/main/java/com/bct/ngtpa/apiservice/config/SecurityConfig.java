@@ -28,6 +28,7 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource))
             .authorizeExchange(auth -> auth
                 .pathMatchers(HttpMethod.GET, "/api/v1/notifications").permitAll()
+                .pathMatchers(HttpMethod.PATCH, "/api/v1/notifications").permitAll()
                 .anyExchange().authenticated());
 
 

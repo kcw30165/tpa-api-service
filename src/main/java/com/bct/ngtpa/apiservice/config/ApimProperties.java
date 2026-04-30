@@ -1,9 +1,7 @@
 package com.bct.ngtpa.apiservice.config;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import lombok.Getter;
@@ -37,13 +35,8 @@ public class ApimProperties {
         private String apiKey;
         private String privateKeyPem;
         private String publicKeyPem;
-        private final Map<String, ApiFieldEncryptionConfig> apis = new LinkedHashMap<>();
-    }
-
-    @Getter
-    @Setter
-    public static class ApiFieldEncryptionConfig {
         private List<String> requestFields = new ArrayList<>();
         private List<String> responseFields = new ArrayList<>();
     }
+    
 }
