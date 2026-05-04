@@ -1,6 +1,9 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim;
 
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateNotificationReadStatusApimRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody;
+import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
+import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateNotificationReadStatusApimDataItem;
 import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusCommand;
 import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusResult;
 import com.bct.ngtpa.apiservice.config.ApimProperties;
@@ -8,14 +11,17 @@ import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.security.PublicKey;
+import java.util.ArrayList;
 import java.util.List;
 
 import reactor.core.publisher.Mono;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -91,6 +97,71 @@ class ApimNotificationReadStatusAdapterTest {
         assertEquals("502", ex.getErrorCode());
     }
 
+        @Test
+        void usesCertificateFlowWhenEncryptionEnabled() {
+        ApimProperties properties = new ApimProperties();
+        properties.getEncryption().setEnabled(true);
+        FixedEnvelopePayloadCryptoService payloadCryptoService = new FixedEnvelopePayloadCryptoService(responseEnvelope(List.of(
+            UpdateNotificationReadStatusApimDataItem.builder().msgCodeLong("msgCode1").success(true).build())));
+        FixedCertificateService certificateService = new FixedCertificateService(new TestPublicKey("bct-public"));
+        CapturingApimWebClientFacade facade = new CapturingApimWebClientFacade("ignored");
+        ApimNotificationReadStatusAdapter adapter = new ApimNotificationReadStatusAdapter(
+            facade,
+            certificateService,
+            payloadCryptoService,
+            properties);
+
+        UpdateNotificationsReadStatusResult result = adapter.updateReadStatus(command()).block();
+
+        assertEquals(1, certificateService.invocationCount);
+        assertSame(certificateService.publicKey, payloadCryptoService.lastPublicKey);
+        assertEquals(1, result.notifications().size());
+        assertTrue(result.notifications().getFirst().isRead());
+        }
+
+        @Test
+        void returnsEmptyResultsWhenDataIsMissing() {
+        UpdateNotificationsReadStatusResult result = (UpdateNotificationsReadStatusResult) ReflectionTestUtils.invokeMethod(
+            new ApimNotificationReadStatusAdapter(null, null, null, new ApimProperties()),
+            "toResult",
+            responseEnvelope(List.of()),
+            MessageStatus.READ);
+
+        assertTrue(result.notifications().isEmpty());
+        }
+
+        @Test
+        void fallsBackToMsgCodeAndUnknownStatusWhenNeeded() {
+        UpdateNotificationReadStatusApimDataItem item = UpdateNotificationReadStatusApimDataItem.builder()
+            .msgCode("fallback-code")
+            .msgCodeLong(" ")
+            .success(true)
+            .build();
+            ArrayList<UpdateNotificationReadStatusApimDataItem> items = new ArrayList<>(List.of(item));
+            items.addFirst(null);
+
+        UpdateNotificationsReadStatusResult result = (UpdateNotificationsReadStatusResult) ReflectionTestUtils.invokeMethod(
+            new ApimNotificationReadStatusAdapter(null, null, null, new ApimProperties()),
+            "toResult",
+                responseEnvelope(items),
+            null);
+
+        assertEquals(1, result.notifications().size());
+        assertEquals("fallback-code", result.notifications().getFirst().msgCode());
+        assertEquals(MessageStatus.UNKNOWN, result.notifications().getFirst().status());
+        assertFalse(result.notifications().getFirst().isRead());
+        }
+
+        @Test
+        void throwsWhenPayloadMissing() {
+        ApimNotificationReadStatusAdapter adapter = new ApimNotificationReadStatusAdapter(null, null, null, new ApimProperties());
+
+        ApimException ex = assertThrows(ApimException.class,
+            () -> ReflectionTestUtils.invokeMethod(adapter, "toResult", null, MessageStatus.READ));
+
+        assertEquals("APIM response payload is missing.", ex.getMessage());
+        }
+
     private static UpdateNotificationsReadStatusCommand command() {
         return new UpdateNotificationsReadStatusCommand(
                 "DEV",
@@ -107,6 +178,16 @@ class ApimNotificationReadStatusAdapterTest {
         ApimProperties properties = new ApimProperties();
         properties.getEncryption().setEnabled(false);
         return properties;
+    }
+
+    private static ApimResponseEnvelope<UpdateNotificationReadStatusApimDataItem> responseEnvelope(
+            List<UpdateNotificationReadStatusApimDataItem> items) {
+        return ApimResponseEnvelope.<UpdateNotificationReadStatusApimDataItem>builder()
+                .response(ApimResponseBody.<UpdateNotificationReadStatusApimDataItem>builder()
+                        .errMessage("")
+                        .data(items)
+                        .build())
+                .build();
     }
 
     private static final class CapturingApimWebClientFacade extends ApimWebClientFacade {
@@ -149,6 +230,46 @@ class ApimNotificationReadStatusAdapterTest {
         }
     }
 
+    private static final class FixedEnvelopePayloadCryptoService extends ApimPayloadCryptoService {
+        private final ApimResponseEnvelope<UpdateNotificationReadStatusApimDataItem> envelope;
+        private PublicKey lastPublicKey;
+
+        private FixedEnvelopePayloadCryptoService(ApimResponseEnvelope<UpdateNotificationReadStatusApimDataItem> envelope) {
+            super(new ApimProperties(), OBJECT_MAPPER, null, null, null, null);
+            this.envelope = envelope;
+        }
+
+        @Override
+        public <T> T encryptRequest(String apiName, T source, Class<T> targetType, PublicKey publicKey) {
+            this.lastPublicKey = publicKey;
+            return source;
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <T> ApimResponseEnvelope<T> decryptResponseEnvelope(String apiName, String responseJson, Class<T> dataClass,
+                PublicKey publicKey) {
+            this.lastPublicKey = publicKey;
+            return (ApimResponseEnvelope<T>) envelope;
+        }
+    }
+
+    private static final class FixedCertificateService extends ApimCertificateService {
+        private final PublicKey publicKey;
+        private int invocationCount;
+
+        private FixedCertificateService(PublicKey publicKey) {
+            super(null, new ApimProperties(), null);
+            this.publicKey = publicKey;
+        }
+
+        @Override
+        public Mono<PublicKey> getBctPublicKey() {
+            invocationCount++;
+            return Mono.just(publicKey);
+        }
+    }
+
     private static final class NoopApimCertificateService extends ApimCertificateService {
         private NoopApimCertificateService() {
             super(null, new ApimProperties(), null);
@@ -157,6 +278,23 @@ class ApimNotificationReadStatusAdapterTest {
         @Override
         public Mono<PublicKey> getBctPublicKey() {
             return Mono.error(new AssertionError("Certificate lookup should not be called when encryption is disabled."));
+        }
+    }
+
+    private record TestPublicKey(String value) implements PublicKey {
+        @Override
+        public String getAlgorithm() {
+            return "RSA";
+        }
+
+        @Override
+        public String getFormat() {
+            return "X.509";
+        }
+
+        @Override
+        public byte[] getEncoded() {
+            return value.getBytes();
         }
     }
 }

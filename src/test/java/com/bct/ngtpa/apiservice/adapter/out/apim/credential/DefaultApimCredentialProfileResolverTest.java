@@ -40,4 +40,42 @@ class DefaultApimCredentialProfileResolverTest {
         assertEquals("cid", profile.clientId());
         assertEquals("akey", profile.apiKey());
     }
+
+    @Test
+    void returnsLegacyDefaultWhenProfilesCollectionIsNull() {
+        ApimProperties props = new ApimProperties();
+        props.getCredentialProfiles().setProfiles(null);
+
+        DefaultApimCredentialProfileResolver resolver = new DefaultApimCredentialProfileResolver(props);
+
+        ApimCredentialProfile profile = resolver.resolve(new ApimCredentialResolutionContext(null, null, null, null, null, null, null, null, null)).block();
+
+        assertEquals(props.getCredentialProfiles().getDefaultProfileId(), profile.profileId());
+        assertEquals(props.getOauth().getClientId(), profile.clientId());
+    }
+
+    @Test
+    void fallsBackToFirstConfiguredProfileWhenDefaultIsMissing() {
+        ApimProperties props = new ApimProperties();
+        ApimProperties.CredentialProfiles.Profile first = new ApimProperties.CredentialProfiles.Profile();
+        first.setProfileId(null);
+        first.setClientId("cid-first");
+        first.setApiKey("akey-first");
+
+        ApimProperties.CredentialProfiles.Profile second = new ApimProperties.CredentialProfiles.Profile();
+        second.setProfileId("p2");
+        second.setClientId("cid-second");
+        second.setApiKey("akey-second");
+
+        props.getCredentialProfiles().setProfiles(List.of(first, second));
+        props.getCredentialProfiles().setDefaultProfileId("missing");
+
+        DefaultApimCredentialProfileResolver resolver = new DefaultApimCredentialProfileResolver(props);
+
+        ApimCredentialProfile profile = resolver.resolve(new ApimCredentialResolutionContext(null, null, null, null, null, null, null, null, null)).block();
+
+        assertEquals(null, profile.profileId());
+        assertEquals("cid-first", profile.clientId());
+        assertEquals("akey-first", profile.apiKey());
+    }
 }
