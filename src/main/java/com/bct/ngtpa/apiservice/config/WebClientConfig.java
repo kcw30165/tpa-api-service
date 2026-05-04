@@ -92,6 +92,11 @@ public class WebClientConfig {
         return webClientBuilder.build();
     }
 
+    @Bean
+    public WebClient.Builder webClientBuilder() {
+        return WebClient.builder();
+    }
+
 
     private ExchangeFilterFunction logApimRequestHeaders() {
         return ExchangeFilterFunction.ofRequestProcessor(request -> {

@@ -142,6 +142,20 @@ public class ApimCertificateHelper {
         }
     }
 
+    public X509Certificate getX509CertificateFromPem(String pemCert) {
+        try {
+            String cleanedCert = pemCert
+                    .replace("-----BEGIN CERTIFICATE-----", "")
+                    .replace("-----END CERTIFICATE-----", "")
+                    .replaceAll("\\s", "");
+            byte[] certBytes = Base64.getDecoder().decode(cleanedCert);
+            CertificateFactory factory = CertificateFactory.getInstance("X.509");
+            return (X509Certificate) factory.generateCertificate(new ByteArrayInputStream(certBytes));
+        } catch (Exception ex) {
+            throw new ApimCryptoException("Failed to parse BCT X509 certificate.", ex);
+        }
+    }
+
     private String normalizePemDocument(String pemInput) {
         String normalizedInput = pemInput
                 .trim()
