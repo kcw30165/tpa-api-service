@@ -38,3 +38,4 @@ logging:
   level:
     org.springframework.security: DEBUG
     com.bct.ngtpa: DEBUG
+

@@ -17,6 +17,7 @@ The service runs as a reactive Spring Boot application and reads local developme
 | HTTP (outbound) | Spring WebFlux `WebClient` |
 | Auth (outbound) | Spring Security OAuth2 Client Credentials |
 | Encryption | BouncyCastle 1.82 (RSA + AES/CBC) |
+| Spreadsheet export | Apache POI OOXML |
 | Build | Maven 3.9.x (wrapper — `./mvnw`) |
 | JDK | OpenJDK 21 (`C:\Java\OpenJDK\jdk-21`) |
 
@@ -33,20 +34,23 @@ com.bct.ngtpa.apiservice
 │   └── exception/       # DomainException
 ├── application/         # Orchestration — @Service only
 │   ├── port/
-│   │   ├── in/          # GetNotificationsUseCase, UpdateNotificationsReadStatusUseCase
-│   │   └── out/         # ApimNoticeMessagePort, ApimNotificationReadStatusPort
-│   ├── usecase/         # GetNotificationsService, UpdateNotificationsReadStatusService
-│   └── dto/             # GetNotificationsCommand, UpdateNotificationsReadStatusCommand, NotificationDateOptions, NotificationListResult, UpdateNotificationsReadStatusResult
+│   │   ├── in/          # GetNotificationsUseCase, UpdateNotificationsReadStatusUseCase, GetContributionSummaryUseCase, ExportContributionSummaryUseCase
+│   │   └── out/         # ApimNoticeMessagePort, ApimNotificationReadStatusPort, ApimContributionSummaryPort
+│   ├── usecase/         # GetNotificationsService, UpdateNotificationsReadStatusService, GetContributionSummaryService, ExportContributionSummaryService
+│   └── dto/             # Notification and contribution summary commands/results
 ├── adapter/
 │   ├── in/web/          # Reactive controllers, request/response records
 │   │   ├── NotificationController
+│   │   ├── ContributionController
+│   │   ├── ContributionSummaryWorkbookExporter
 │   │   ├── ApiExceptionHandler (@RestControllerAdvice)
 │   │   ├── request/     # UpdateNotificationsReadStatusRequest
-│   │   └── response/    # NotificationListResponse, NotificationDto, NotificationReadStatusDto, UpdateNotificationsReadStatusResponse, ApiErrorResponse (records)
+│   │   └── response/    # Notification and contribution summary response records
 │   └── out/apim/        # APIM integration
 │       ├── ApimWebClientFacade        # Pure HTTP transport (OAuth2 token attach)
 │       ├── ApimNoticeMessageAdapter   # Implements ApimNoticeMessagePort
 │       ├── ApimNotificationReadStatusAdapter # Implements ApimNotificationReadStatusPort
+│       ├── ApimContributionSummaryAdapter # Implements ApimContributionSummaryPort
 │       ├── ApimCertificateService     # Fetches BCT public key from APIM
 │       ├── ApimAppCertificateService  # Loads app RSA keys + X509 cert
 │       ├── ApimPayloadCryptoService   # AES/CBC + RSA field encryption/decryption
@@ -54,6 +58,7 @@ com.bct.ngtpa.apiservice
 │       └── dto/                       # APIM request/response POJOs
 ├── config/              # Spring configuration beans (unchanged across layers)
 │   ├── ApimProperties
+│   ├── ContributionSummaryProperties
 │   ├── WebClientConfig
 │   ├── SecurityConfig
 │   ├── JacksonConfig
@@ -188,6 +193,25 @@ Notes:
 - It is not configured per APIM operation (for example `TRPGetMsgBoard`).
 - To add encryption for a new field, add it once under `apim.encryption.requestFields`.
 
+## Contribution Summary Configuration
+
+Contribution summary labels and Excel headers are configured as regular Spring properties rather than environment variables.
+
+Current local defaults in `src/main/resources/application.yml`:
+
+```yaml
+contribution-summary:
+  total-label:
+    en: Total Contributions
+    zh: "供款總額"
+  headers:
+    dealing-date: Dealing date處理日期
+    contribution-period: Contribution Periods供款期
+    total-contribution: Total Contributions供款總額
+```
+
+These values drive the synthetic total detail row in the JSON response and the first three column headers in the XLSX export.
+
 
 ---
 
@@ -312,6 +336,113 @@ Updates the read status for one or more notifications.
 ```
 
 Top-level APIM failures are translated to the same standardized `5xx` error envelope.
+
+### `GET /api/v1/contributions`
+
+Retrieves grouped contribution summary rows for a member context as JSON.
+
+**Query parameters:**
+
+- `env` (required by frontend contract; currently forwarded only as application context)
+- `mbrType` (required by frontend contract; currently forwarded only as application context)
+- `fromDate` (required; `dd/MM/yyyy`)
+- `toDate` (required; `dd/MM/yyyy`)
+
+**Example:**
+
+```http
+GET /api/v1/contributions?env=JP&mbrType=MBR&fromDate=05/04/2026&toDate=05/05/2026
+```
+
+**Behavior:**
+
+- The BFF calls APIM `POST /ws/NGTPA/v1/TRPGetContSumy`.
+- `cover-from` is taken from `fromDate`; `cover-to` is taken from `toDate`.
+- Contribution rows are grouped by `deal-date + cover-from + cover-to`.
+- Dynamic detail items are joined from `contDtl[*].disp-src` to `dispSrc[*].disp-src` and sorted by `dispSrc.seq` ascending.
+- `totalContribution` is the sum of the grouped detail amounts using `BigDecimal`.
+- The first detail item is synthetic and uses the configured `contribution-summary.total-label.*` values.
+- Amount strings use the APIM currency prefix with insignificant trailing zeros stripped for JSON output.
+- The BFF currently hardcodes `policy-no`, `cert-no`, `user-id`, and the export reference date while auth/progress integrations are pending.
+
+**Response:**
+
+```json
+{
+  "contributions": [
+    {
+      "dealingDate": "01/03/2026",
+      "coveringPeriod": "01/03/2026 - 31/03/2026",
+      "totalContribution": "HKD24908.45",
+      "details": [
+        {
+          "labels": {
+            "en": "Total Contributions",
+            "zh": "供款總額"
+          },
+          "amount": "HKD24908.45"
+        },
+        {
+          "labels": {
+            "en": "Company",
+            "zh": ""
+          },
+          "amount": "HKD17791.75"
+        },
+        {
+          "labels": {
+            "en": "Member",
+            "zh": ""
+          },
+          "amount": "HKD7116.7"
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Error response:**
+
+```json
+{
+  "errorCode": "400",
+  "message": "fromDate must be provided in dd/MM/yyyy format",
+  "timestamp": "2026-05-06T11:33:53.000000000Z"
+}
+```
+
+### `GET /api/v1/contributions/export`
+
+Exports the contribution summary as an XLSX workbook.
+
+**Query parameters:**
+
+- `env` (required by frontend contract; currently forwarded only as application context)
+- `mbrType` (required by frontend contract; currently forwarded only as application context)
+
+**Example:**
+
+```http
+GET /api/v1/contributions/export?env=JP&mbrType=MBR
+Accept: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+```
+
+**Behavior:**
+
+- The BFF uses a deterministic temporary ref-date of `01/10/2025`.
+- `cover-from` is computed as ref-date minus 36 months; `cover-to` is the ref-date.
+- The first three headers come from `contribution-summary.headers.*`.
+- Dynamic source columns are sorted by `dispSrc.seq` ascending.
+- Amount cells are numeric, formatted as `0.00`, and rounded with `HALF_UP`.
+- Missing dynamic source amounts are written as blank cells.
+
+**Success headers:**
+
+- `Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+- `Content-Disposition: attachment; filename="Contribution_Summary.xlsx"`
+
+Failures use the same standardized JSON error envelope as the rest of the API.
 
 ---
 
