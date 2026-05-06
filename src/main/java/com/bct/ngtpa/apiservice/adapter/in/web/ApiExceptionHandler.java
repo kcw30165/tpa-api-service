@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiErrorResponse;
 import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
+import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import org.springframework.http.HttpStatus;
@@ -34,6 +35,14 @@ public class ApiExceptionHandler {
     @ExceptionHandler(InvalidNotificationRequestException.class)
     public ResponseEntity<ApiErrorResponse> handleInvalidNotificationRequestException(
             InvalidNotificationRequestException ex) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiErrorResponse.of(String.valueOf(HttpStatus.BAD_REQUEST.value()), ex.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidContributionRequestException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidContributionRequestException(
+            InvalidContributionRequestException ex) {
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(ApiErrorResponse.of(String.valueOf(HttpStatus.BAD_REQUEST.value()), ex.getMessage()));
