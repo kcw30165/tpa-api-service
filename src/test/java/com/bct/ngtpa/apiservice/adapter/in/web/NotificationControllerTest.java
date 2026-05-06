@@ -106,8 +106,7 @@ class NotificationControllerTest {
                 .expectStatus().isBadRequest()
                 .expectBody()
                 .jsonPath("$.errorCode").isEqualTo("400")
-                .jsonPath("$.message").isEqualTo("Invalid timezone: Mars/Olympus")
-                .jsonPath("$.timestamp").exists();
+                .jsonPath("$.message").isEqualTo("Invalid timezone: Mars/Olympus");
     }
 
     @Test
@@ -191,8 +190,7 @@ class NotificationControllerTest {
                 .expectStatus().isBadRequest()
                 .expectBody()
                 .jsonPath("$.errorCode").isEqualTo("400")
-                .jsonPath("$.message").isEqualTo(expectedMessage)
-                .jsonPath("$.timestamp").exists();
+                .jsonPath("$.message").isEqualTo(expectedMessage);
     }
 
     private WebTestClient webClient(

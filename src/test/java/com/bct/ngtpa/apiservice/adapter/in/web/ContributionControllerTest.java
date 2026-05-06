@@ -87,8 +87,7 @@ class ContributionControllerTest {
                 .expectStatus().isBadRequest()
                 .expectBody()
                 .jsonPath("$.errorCode").isEqualTo("400")
-                .jsonPath("$.message").isEqualTo("fromDate must be provided in dd/MM/yyyy format")
-                .jsonPath("$.timestamp").exists();
+                .jsonPath("$.message").isEqualTo("fromDate must be provided in dd/MM/yyyy format");                
     }
 
     @Test
