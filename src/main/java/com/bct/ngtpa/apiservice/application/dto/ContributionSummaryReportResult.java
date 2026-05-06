@@ -4,5 +4,5 @@ import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryReport;
 
 public record ContributionSummaryReportResult(
         ContributionSummaryReport report,
-        String currencyDisplay
+        CurrencyDisplay currencyDisplay
 ) {}

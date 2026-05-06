@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web;
 
+import com.bct.ngtpa.apiservice.application.dto.CurrencyDisplay;
 import com.bct.ngtpa.apiservice.application.dto.ContributionSummaryReportResult;
 import com.bct.ngtpa.apiservice.application.dto.ExportContributionSummaryCommand;
 import com.bct.ngtpa.apiservice.application.dto.GetContributionSummaryCommand;
@@ -47,10 +48,19 @@ class ContributionControllerTest {
                 .expectBody()
                 .jsonPath("$.contributions[0].dealingDate").isEqualTo("01/03/2026")
                 .jsonPath("$.contributions[0].coveringPeriod").isEqualTo("01/03/2026 - 31/03/2026")
-                .jsonPath("$.contributions[0].totalContribution").isEqualTo("HKD24908.45")
-                .jsonPath("$.contributions[0].details[0].labels.en").isEqualTo("Total")
+                .jsonPath("$.contributions[0].totalContribution").isEqualTo("HKD 24908.45")
+                .jsonPath("$.contributions[0].totalContributionZh").isEqualTo("港元 24908.45")
+                .jsonPath("$.contributions[0].details[0].labels.en").isEqualTo("Total Contributions")
+                .jsonPath("$.contributions[0].details[0].labels.zh").isEqualTo("供款總額")
+                .jsonPath("$.contributions[0].details[0].labels.currencyEn").isEqualTo("HKD")
+                .jsonPath("$.contributions[0].details[0].labels.currencyZh").isEqualTo("港元")
                 .jsonPath("$.contributions[0].details[1].labels.en").isEqualTo("Company")
-                .jsonPath("$.contributions[0].details[2].amount").isEqualTo("HKD7116.7");
+                .jsonPath("$.contributions[0].details[1].labels.currencyEn").isEqualTo("HKD")
+                .jsonPath("$.contributions[0].details[1].labels.currencyZh").isEqualTo("港元")
+                .jsonPath("$.contributions[0].details[2].labels.currencyEn").isEqualTo("HKD")
+                .jsonPath("$.contributions[0].details[2].labels.currencyZh").isEqualTo("港元")
+                .jsonPath("$.contributions[0].details[0].amount").isEqualTo(24908.45)
+                .jsonPath("$.contributions[0].details[2].amount").isEqualTo(7116.7);
 
         assertEquals("JP", captured.get().env());
         assertEquals("MBR", captured.get().mbrType());
@@ -140,6 +150,6 @@ class ContributionControllerTest {
                                 new LinkedHashMap<>(java.util.Map.of(
                                         "ER", new BigDecimal("17791.75"),
                                         "EE", new BigDecimal("7116.7")))))),
-                "HKD");
+                                new CurrencyDisplay("HKD", "港元"));
     }
 }

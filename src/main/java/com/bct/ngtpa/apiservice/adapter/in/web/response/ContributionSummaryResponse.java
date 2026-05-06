@@ -17,29 +17,36 @@ public record ContributionSummaryResponse(List<ContributionSummaryItemResponse> 
                 properties.getTotalLabel().getEn(),
                 properties.getTotalLabel().getZh());
         var currencyDisplay = result.currencyDisplay();
+        var currencyEn = currencyDisplay == null ? "" : currencyDisplay.en();
+        var currencyZh = currencyDisplay == null ? "" : currencyDisplay.zh();
 
         return new ContributionSummaryResponse(result.report().rows().stream()
                 .map(row -> {
                     List<ContributionSummaryDetailResponse> details = new ArrayList<>();
                     details.add(new ContributionSummaryDetailResponse(
-                            ContributionSummaryLabelsResponse.from(totalLabels),
-                            formatAmount(currencyDisplay, row.totalAmount())));
+                            ContributionSummaryLabelsResponse.from(totalLabels, currencyDisplay),
+                            amountValue(row.totalAmount())));
                     row.details(result.report().sources()).forEach(detail -> details.add(
                             new ContributionSummaryDetailResponse(
-                                    ContributionSummaryLabelsResponse.from(detail.source().labels()),
-                                    formatAmount(currencyDisplay, detail.amount()))));
+                                    ContributionSummaryLabelsResponse.from(detail.source().labels(), currencyDisplay),
+                                    amountValue(detail.amount()))));
 
                     return new ContributionSummaryItemResponse(
                             row.dealingDate(),
                             row.coveringPeriod(),
-                            formatAmount(currencyDisplay, row.totalAmount()),
+                            formatTotalContribution(currencyEn, row.totalAmount()),
+                            formatTotalContribution(currencyZh, row.totalAmount()),
                             List.copyOf(details));
                 })
                 .toList());
     }
 
-    private static String formatAmount(String currencyDisplay, BigDecimal amount) {
+    private static String formatTotalContribution(String currencyDisplay, BigDecimal amount) {
         var normalizedAmount = amount == null ? BigDecimal.ZERO : amount.stripTrailingZeros();
-        return (currencyDisplay == null ? "" : currencyDisplay) + normalizedAmount.toPlainString();
+        return (currencyDisplay == null ? "" : currencyDisplay + " ") + normalizedAmount.toPlainString();
+    }
+
+    private static BigDecimal amountValue(BigDecimal amount) {
+        return amount == null ? BigDecimal.ZERO : amount;
     }
 }

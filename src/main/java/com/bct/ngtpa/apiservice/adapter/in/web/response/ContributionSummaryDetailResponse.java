@@ -1,6 +1,8 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.response;
 
+import java.math.BigDecimal;
+
 public record ContributionSummaryDetailResponse(
         ContributionSummaryLabelsResponse labels,
-        String amount
+        BigDecimal amount
 ) {}

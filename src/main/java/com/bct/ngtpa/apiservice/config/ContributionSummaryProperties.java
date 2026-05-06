@@ -15,8 +15,8 @@ public class ContributionSummaryProperties {
     @Getter
     @Setter
     public static class Label {
-        private String en = "Total";
-        private String zh = "";
+        private String en = "Total Contributions";
+        private String zh = "供款總額";
     }
 
     @Getter

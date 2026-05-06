@@ -36,14 +36,6 @@ final class ContributionSummarySupport {
         return date.format(DATE_FORMATTER);
     }
 
-    static String resolveCurrencyDisplay(String currency, String trustCode, String schemeType) {
-        // TODO: apply trustCode + schemeType specific currency mapping once access-token claims are available.
-        if (currency == null || currency.isBlank()) {
-            return "";
-        }
-        return currency.trim();
-    }
-
     static FetchContributionSummaryCommand newFetchCommand(String env, String mbrType, String coverFrom, String coverTo) {
         return new FetchContributionSummaryCommand(
                 env,

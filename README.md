@@ -195,7 +195,7 @@ Notes:
 
 ## Contribution Summary Configuration
 
-Contribution summary labels and Excel headers are configured as regular Spring properties rather than environment variables.
+Contribution summary labels, currency display mappings, and Excel headers are configured as regular Spring properties rather than environment variables. For now the runtime source is `src/main/resources/application-local.yml` plus the Kubernetes ConfigMap `ngtpa-display-config`. Config Service remains future work.
 
 Current local defaults in `src/main/resources/application.yml`:
 
@@ -208,9 +208,17 @@ contribution-summary:
     dealing-date: Dealing date處理日期
     contribution-period: Contribution Periods供款期
     total-contribution: Total Contributions供款總額
+
+currencyMapping:
+  en:
+    HKD: HKD
+    HKD.JP: HKD
+  zh_HK:
+    HKD: 港元
+    HKD.JP: 港元
 ```
 
-These values drive the synthetic total detail row in the JSON response and the first three column headers in the XLSX export.
+These values drive the synthetic total detail row in the JSON response, the first three column headers in the XLSX export, and the locale-specific currency display returned in contribution summary JSON. `trustCode` and `schemeType` stay empty until access-token claim extraction is implemented, so currency lookup currently falls back from `${code}.${env}` to `${code}`.
 
 
 ---
@@ -362,8 +370,12 @@ GET /api/v1/contributions?env=JP&mbrType=MBR&fromDate=05/04/2026&toDate=05/05/20
 - Dynamic detail items are joined from `contDtl[*].disp-src` to `dispSrc[*].disp-src` and sorted by `dispSrc.seq` ascending.
 - `totalContribution` is the sum of the grouped detail amounts using `BigDecimal`.
 - The first detail item is synthetic and uses the configured `contribution-summary.total-label.*` values.
-- Amount strings use the APIM currency prefix with insignificant trailing zeros stripped for JSON output.
+- Each detail label includes `currencyEn` and `currencyZh`, resolved from `currencyMapping` using locale plus `code`, `env`, `trustCode`, and `schemeType` fallback.
+- Detail `amount` values are numeric JSON values with no currency prefix.
+- `totalContribution` remains a formatted string and uses `currencyDisplay.en` as the prefix with insignificant trailing zeros stripped.
+- `totalContributionZh` uses the same formatting logic as the detail labels and prefixes the total with `currencyDisplay.zh`.
 - The BFF currently hardcodes `policy-no`, `cert-no`, `user-id`, and the export reference date while auth/progress integrations are pending.
+- The BFF currently hardcodes empty `trustCode` and `schemeType` until access-token claim extraction is implemented.
 
 **Response:**
 
@@ -374,27 +386,34 @@ GET /api/v1/contributions?env=JP&mbrType=MBR&fromDate=05/04/2026&toDate=05/05/20
       "dealingDate": "01/03/2026",
       "coveringPeriod": "01/03/2026 - 31/03/2026",
       "totalContribution": "HKD24908.45",
+      "totalContributionZh": "港元 24908.45",
       "details": [
         {
           "labels": {
             "en": "Total Contributions",
-            "zh": "供款總額"
+            "zh": "供款總額",
+            "currencyEn": "HKD",
+            "currencyZh": "港元"
           },
-          "amount": "HKD24908.45"
+          "amount": 24908.45
         },
         {
           "labels": {
             "en": "Company",
-            "zh": ""
+            "zh": "",
+            "currencyEn": "HKD",
+            "currencyZh": "港元"
           },
-          "amount": "HKD17791.75"
+          "amount": 17791.75
         },
         {
           "labels": {
             "en": "Member",
-            "zh": ""
+            "zh": "",
+            "currencyEn": "HKD",
+            "currencyZh": "港元"
           },
-          "amount": "HKD7116.7"
+          "amount": 7116.7
         }
       ]
     }

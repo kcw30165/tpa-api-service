@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web;
 
+import com.bct.ngtpa.apiservice.application.dto.CurrencyDisplay;
 import com.bct.ngtpa.apiservice.application.dto.ContributionSummaryReportResult;
 import com.bct.ngtpa.apiservice.config.ContributionSummaryProperties;
 import com.bct.ngtpa.apiservice.domain.model.ContributionLabels;
@@ -45,7 +46,7 @@ class ContributionSummaryWorkbookExporterTest {
                                         new BigDecimal("400.00"),
                                         new LinkedHashMap<>(java.util.Map.of(
                                                 "EE", new BigDecimal("400.00")))))),
-                "HKD");
+                new CurrencyDisplay("HKD", "港元"));
 
         byte[] bytes = exporter.write(report);
 

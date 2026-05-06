@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.application.usecase;
 
+import com.bct.ngtpa.apiservice.application.dto.CurrencyDisplay;
 import com.bct.ngtpa.apiservice.application.dto.ContributionSummaryReportResult;
 import com.bct.ngtpa.apiservice.application.dto.GetContributionSummaryCommand;
 import com.bct.ngtpa.apiservice.application.port.in.GetContributionSummaryUseCase;
@@ -14,6 +15,7 @@ import reactor.core.publisher.Mono;
 public class GetContributionSummaryService implements GetContributionSummaryUseCase {
 
     private final ApimContributionSummaryPort apimContributionSummaryPort;
+        private final CurrencyMappingService currencyMappingService;
 
     @Override
     public Mono<ContributionSummaryReportResult> execute(GetContributionSummaryCommand command) {
@@ -29,9 +31,18 @@ public class GetContributionSummaryService implements GetContributionSummaryUseC
                 .map(ContributionSummaryReportBuilder::build)
                 .map(report -> new ContributionSummaryReportResult(
                         report,
-                        ContributionSummarySupport.resolveCurrencyDisplay(
-                                report.currency(),
-                                fetchCommand.trustCode(),
-                                fetchCommand.schemeType())));
+                        new CurrencyDisplay(
+                                currencyMappingService.resolve(
+                                        "en",
+                                        report.currency(),
+                                        fetchCommand.env(),
+                                        fetchCommand.trustCode(),
+                                        fetchCommand.schemeType()),
+                                currencyMappingService.resolve(
+                                        "zh_HK",
+                                        report.currency(),
+                                        fetchCommand.env(),
+                                        fetchCommand.trustCode(),
+                                        fetchCommand.schemeType()))));
     }
 }

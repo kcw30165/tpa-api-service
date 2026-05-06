@@ -6,5 +6,6 @@ public record ContributionSummaryItemResponse(
         String dealingDate,
         String coveringPeriod,
         String totalContribution,
+        String totalContributionZh,
         List<ContributionSummaryDetailResponse> details
 ) {}
