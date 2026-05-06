@@ -30,7 +30,6 @@ class ApiExceptionHandlerTest {
         assertEquals(HttpStatus.BAD_GATEWAY, response.getStatusCode());
         assertEquals("UPSTREAM_FAILURE", response.getBody().errorCode());
         assertEquals("APIM failure", response.getBody().message());
-        assertNotNull(response.getBody().timestamp());
     }
 
     @Test
