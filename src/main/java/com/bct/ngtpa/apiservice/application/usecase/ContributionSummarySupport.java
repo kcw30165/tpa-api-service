@@ -13,7 +13,6 @@ final class ContributionSummarySupport {
     static final String HARDCODED_POLICY_NO = "00000000217";
     static final String HARDCODED_CERT_NO = "95";
     static final String HARDCODED_USER_ID = "C402400A";
-    static final LocalDate HARDCODED_REF_DATE = LocalDate.parse("01/10/2025", DATE_FORMATTER);
     static final String EMPTY_TRUST_CODE = "";
     static final String EMPTY_SCHEME_TYPE = "";
 
@@ -34,6 +33,21 @@ final class ContributionSummarySupport {
 
     static String formatDate(LocalDate date) {
         return date.format(DATE_FORMATTER);
+    }
+
+    static void validateDateRangeWithinReferenceWindow(LocalDate fromDate, LocalDate toDate, LocalDate refDate) {
+        if (fromDate.isAfter(toDate)) {
+            throw new InvalidContributionRequestException("fromDate must not be after toDate");
+        }
+
+        var minimumDate = refDate.minusMonths(36);
+        if (fromDate.isBefore(minimumDate)
+                || fromDate.isAfter(refDate)
+                || toDate.isBefore(minimumDate)
+                || toDate.isAfter(refDate)) {
+            throw new InvalidContributionRequestException(
+                    "fromDate and toDate must be within the range from ref-date minus 36 months to ref-date");
+        }
     }
 
     static FetchContributionSummaryCommand newFetchCommand(String env, String mbrType, String coverFrom, String coverTo) {

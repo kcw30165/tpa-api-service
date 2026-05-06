@@ -13,6 +13,10 @@ spring:
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:}
 
+reference-date:
+  zone-id: ${REFERENCE_DATE_ZONE_ID:Asia/Hong_Kong}
+  non-prod-override: ${REFERENCE_DATE_NON_PROD_OVERRIDE:}
+
 apim:
   baseUrl: ${APIM_BASEURL:}
   timeoutMilliseconds: ${APIM_TIMEOUTMILLISECONDS:10000}

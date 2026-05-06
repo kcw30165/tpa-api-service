@@ -35,7 +35,7 @@ com.bct.ngtpa.apiservice
 ├── application/         # Orchestration — @Service only
 │   ├── port/
 │   │   ├── in/          # GetNotificationsUseCase, UpdateNotificationsReadStatusUseCase, GetContributionSummaryUseCase, ExportContributionSummaryUseCase
-│   │   └── out/         # ApimNoticeMessagePort, ApimNotificationReadStatusPort, ApimContributionSummaryPort
+│   │   └── out/         # ApimNoticeMessagePort, ApimNotificationReadStatusPort, ApimContributionSummaryPort, ReferenceDatePort
 │   ├── usecase/         # GetNotificationsService, UpdateNotificationsReadStatusService, GetContributionSummaryService, ExportContributionSummaryService
 │   └── dto/             # Notification and contribution summary commands/results
 ├── adapter/
@@ -51,6 +51,7 @@ com.bct.ngtpa.apiservice
 │       ├── ApimNoticeMessageAdapter   # Implements ApimNoticeMessagePort
 │       ├── ApimNotificationReadStatusAdapter # Implements ApimNotificationReadStatusPort
 │       ├── ApimContributionSummaryAdapter # Implements ApimContributionSummaryPort
+│       ├── configserver/ConfigBackedReferenceDateAdapter # Temporary non-prod reference-date resolver
 │       ├── ApimCertificateService     # Fetches BCT public key from APIM
 │       ├── ApimAppCertificateService  # Loads app RSA keys + X509 cert
 │       ├── ApimPayloadCryptoService   # AES/CBC + RSA field encryption/decryption
@@ -148,6 +149,8 @@ export JAVA_HOME="C:/Java/OpenJDK/jdk-21"
 | `SERVER_PORT` | HTTP port | `8888` |
 | `SPRING_CLOUD_CONFIG_ENABLED` | Enable Spring Cloud Config | `false` |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated browser origins allowed for `/api/**` CORS responses | _(empty / closed)_ |
+| `REFERENCE_DATE_ZONE_ID` | Server zone used to resolve contribution reference date | `Asia/Hong_Kong` |
+| `REFERENCE_DATE_NON_PROD_OVERRIDE` | Optional non-production override in `dd/MM/yyyy` | _(empty)_ |
 | `APIM_BASEURL` | APIM base URL | _(required)_ |
 | `APIM_TIMEOUTMILLISECONDS` | WebClient timeout | `10000` |
 | `APIM_CLIENT_REGISTRATION_ID` | OAuth2 client registration id | `apim-client` |
@@ -200,6 +203,10 @@ Contribution summary labels, currency display mappings, and Excel headers are co
 Current local defaults in `src/main/resources/application.yml`:
 
 ```yaml
+reference-date:
+  zone-id: ${REFERENCE_DATE_ZONE_ID:Asia/Hong_Kong}
+  non-prod-override: ${REFERENCE_DATE_NON_PROD_OVERRIDE:}
+
 contribution-summary:
   total-label:
     en: Total Contributions
@@ -209,7 +216,7 @@ contribution-summary:
     contribution-period: Contribution Periods供款期
     total-contribution: Total Contributions供款總額
 
-currencyMapping:
+currency-mapping:
   en:
     HKD: HKD
     HKD.JP: HKD
@@ -218,7 +225,9 @@ currencyMapping:
     HKD.JP: 港元
 ```
 
-These values drive the synthetic total detail row in the JSON response, the first three column headers in the XLSX export, and the locale-specific currency display returned in contribution summary JSON. `trustCode` and `schemeType` stay empty until access-token claim extraction is implemented, so currency lookup currently falls back from `${code}.${env}` to `${code}`.
+`reference-date.zone-id` controls the server date zone used by contribution summary validation and export. `reference-date.non-prod-override` is applied only when the request `env` is non-production; `PROD`, `PRD`, `PRODUCTION`, blank, and null all stay production-safe and always use the current server date.
+
+These values drive the synthetic total detail row in the JSON response, the first three column headers in the XLSX export, the locale-specific currency display returned in contribution summary JSON, and the effective contribution reference date. `trustCode` and `schemeType` stay empty until access-token claim extraction is implemented, so currency lookup currently falls back from `${code}.${env}` to `${code}`.
 
 
 ---
@@ -366,15 +375,16 @@ GET /api/v1/contributions?env=JP&mbrType=MBR&fromDate=05/04/2026&toDate=05/05/20
 
 - The BFF calls APIM `POST /ws/NGTPA/v1/TRPGetContSumy`.
 - `cover-from` is taken from `fromDate`; `cover-to` is taken from `toDate`.
+- `fromDate` and `toDate` must both be within `[ref-date - 36 months, ref-date]`, inclusive.
+- `ref-date` is the current server date in `reference-date.zone-id`, unless a non-production override is configured.
 - Contribution rows are grouped by `deal-date + cover-from + cover-to`.
 - Dynamic detail items are joined from `contDtl[*].disp-src` to `dispSrc[*].disp-src` and sorted by `dispSrc.seq` ascending.
-- `totalContribution` is the sum of the grouped detail amounts using `BigDecimal`.
+- `totalContributionEn` is the sum of the grouped detail amounts using `BigDecimal`.
 - The first detail item is synthetic and uses the configured `contribution-summary.total-label.*` values.
-- Each detail label includes `currencyEn` and `currencyZh`, resolved from `currencyMapping` using locale plus `code`, `env`, `trustCode`, and `schemeType` fallback.
-- Detail `amount` values are numeric JSON values with no currency prefix.
-- `totalContribution` remains a formatted string and uses `currencyDisplay.en` as the prefix with insignificant trailing zeros stripped.
-- `totalContributionZh` uses the same formatting logic as the detail labels and prefixes the total with `currencyDisplay.zh`.
-- The BFF currently hardcodes `policy-no`, `cert-no`, `user-id`, and the export reference date while auth/progress integrations are pending.
+- Each detail label exposes only `en` and `zh`.
+- Detail `amountEn` and `amountZh` are pre-formatted strings using the resolved currency display.
+- `totalContributionEn` and `totalContributionZh` use the same formatting logic with insignificant trailing zeros stripped.
+- The BFF currently hardcodes `policy-no`, `cert-no`, and `user-id` while auth/progress integrations are pending.
 - The BFF currently hardcodes empty `trustCode` and `schemeType` until access-token claim extraction is implemented.
 
 **Response:**
@@ -385,35 +395,32 @@ GET /api/v1/contributions?env=JP&mbrType=MBR&fromDate=05/04/2026&toDate=05/05/20
     {
       "dealingDate": "01/03/2026",
       "coveringPeriod": "01/03/2026 - 31/03/2026",
-      "totalContribution": "HKD24908.45",
+      "totalContributionEn": "HKD 24908.45",
       "totalContributionZh": "港元 24908.45",
       "details": [
         {
           "labels": {
             "en": "Total Contributions",
-            "zh": "供款總額",
-            "currencyEn": "HKD",
-            "currencyZh": "港元"
+            "zh": "供款總額"
           },
-          "amount": 24908.45
+          "amountEn": "HKD 24908.45",
+          "amountZh": "港元 24908.45"
         },
         {
           "labels": {
             "en": "Company",
-            "zh": "",
-            "currencyEn": "HKD",
-            "currencyZh": "港元"
+            "zh": ""
           },
-          "amount": 17791.75
+          "amountEn": "HKD 17791.75",
+          "amountZh": "港元 17791.75"
         },
         {
           "labels": {
             "en": "Member",
-            "zh": "",
-            "currencyEn": "HKD",
-            "currencyZh": "港元"
+            "zh": ""
           },
-          "amount": 7116.7
+          "amountEn": "HKD 7116.7",
+          "amountZh": "港元 7116.7"
         }
       ]
     }
@@ -430,6 +437,8 @@ GET /api/v1/contributions?env=JP&mbrType=MBR&fromDate=05/04/2026&toDate=05/05/20
   "timestamp": "2026-05-06T11:33:53.000000000Z"
 }
 ```
+
+Range validation failures also use the same envelope with messages such as `fromDate must not be after toDate` and `fromDate and toDate must be within the range from ref-date minus 36 months to ref-date`.
 
 ### `GET /api/v1/contributions/export`
 
@@ -449,8 +458,8 @@ Accept: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
 
 **Behavior:**
 
-- The BFF uses a deterministic temporary ref-date of `01/10/2025`.
-- `cover-from` is computed as ref-date minus 36 months; `cover-to` is the ref-date.
+- The BFF resolves `ref-date` through `ReferenceDatePort`.
+- `cover-from` is computed as `ref-date.minusMonths(36)`; `cover-to` is the resolved `ref-date`.
 - The first three headers come from `contribution-summary.headers.*`.
 - Dynamic source columns are sorted by `dispSrc.seq` ascending.
 - Amount cells are numeric, formatted as `0.00`, and rounded with `HALF_UP`.
