@@ -7,7 +7,7 @@ contribution-summary:
     contribution-period: Contribution Periods供款期
     total-contribution: Total Contributions供款總額
 
-currencyMapping:
+currency-mapping:
   zh_HK:
     AUD: 澳元
     EUR: 歐羅

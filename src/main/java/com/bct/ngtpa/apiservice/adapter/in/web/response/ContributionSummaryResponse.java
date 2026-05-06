@@ -24,29 +24,32 @@ public record ContributionSummaryResponse(List<ContributionSummaryItemResponse> 
                 .map(row -> {
                     List<ContributionSummaryDetailResponse> details = new ArrayList<>();
                     details.add(new ContributionSummaryDetailResponse(
-                            ContributionSummaryLabelsResponse.from(totalLabels, currencyDisplay),
-                            amountValue(row.totalAmount())));
+                            ContributionSummaryLabelsResponse.from(totalLabels),
+                            formatAmount(currencyEn, row.totalAmount()),
+                            formatAmount(currencyZh, row.totalAmount())));
                     row.details(result.report().sources()).forEach(detail -> details.add(
                             new ContributionSummaryDetailResponse(
-                                    ContributionSummaryLabelsResponse.from(detail.source().labels(), currencyDisplay),
-                                    amountValue(detail.amount()))));
+                                    ContributionSummaryLabelsResponse.from(detail.source().labels()),
+                                    formatAmount(currencyEn, detail.amount()),
+                                    formatAmount(currencyZh, detail.amount()))));
 
                     return new ContributionSummaryItemResponse(
                             row.dealingDate(),
                             row.coveringPeriod(),
-                            formatTotalContribution(currencyEn, row.totalAmount()),
-                            formatTotalContribution(currencyZh, row.totalAmount()),
+                            formatAmount(currencyEn, row.totalAmount()),
+                            formatAmount(currencyZh, row.totalAmount()),
                             List.copyOf(details));
                 })
                 .toList());
     }
 
-    private static String formatTotalContribution(String currencyDisplay, BigDecimal amount) {
+    private static String formatAmount(String currencyDisplay, BigDecimal amount) {
         var normalizedAmount = amount == null ? BigDecimal.ZERO : amount.stripTrailingZeros();
-        return (currencyDisplay == null ? "" : currencyDisplay + " ") + normalizedAmount.toPlainString();
-    }
+        var amountText = normalizedAmount.toPlainString();
+        if (currencyDisplay == null || currencyDisplay.isBlank()) {
+            return amountText;
+        }
 
-    private static BigDecimal amountValue(BigDecimal amount) {
-        return amount == null ? BigDecimal.ZERO : amount;
+        return currencyDisplay.trim() + " " + amountText;
     }
 }

@@ -48,19 +48,22 @@ class ContributionControllerTest {
                 .expectBody()
                 .jsonPath("$.contributions[0].dealingDate").isEqualTo("01/03/2026")
                 .jsonPath("$.contributions[0].coveringPeriod").isEqualTo("01/03/2026 - 31/03/2026")
-                .jsonPath("$.contributions[0].totalContribution").isEqualTo("HKD 24908.45")
+                .jsonPath("$.contributions[0].totalContribution").doesNotExist()
+                .jsonPath("$.contributions[0].totalContributionEn").isEqualTo("HKD 24908.45")
                 .jsonPath("$.contributions[0].totalContributionZh").isEqualTo("港元 24908.45")
                 .jsonPath("$.contributions[0].details[0].labels.en").isEqualTo("Total Contributions")
                 .jsonPath("$.contributions[0].details[0].labels.zh").isEqualTo("供款總額")
-                .jsonPath("$.contributions[0].details[0].labels.currencyEn").isEqualTo("HKD")
-                .jsonPath("$.contributions[0].details[0].labels.currencyZh").isEqualTo("港元")
+                .jsonPath("$.contributions[0].details[0].labels.currencyEn").doesNotExist()
+                .jsonPath("$.contributions[0].details[0].labels.currencyZh").doesNotExist()
+                .jsonPath("$.contributions[0].details[0].amount").doesNotExist()
+                .jsonPath("$.contributions[0].details[0].amountEn").isEqualTo("HKD 24908.45")
+                .jsonPath("$.contributions[0].details[0].amountZh").isEqualTo("港元 24908.45")
                 .jsonPath("$.contributions[0].details[1].labels.en").isEqualTo("Company")
-                .jsonPath("$.contributions[0].details[1].labels.currencyEn").isEqualTo("HKD")
-                .jsonPath("$.contributions[0].details[1].labels.currencyZh").isEqualTo("港元")
-                .jsonPath("$.contributions[0].details[2].labels.currencyEn").isEqualTo("HKD")
-                .jsonPath("$.contributions[0].details[2].labels.currencyZh").isEqualTo("港元")
-                .jsonPath("$.contributions[0].details[0].amount").isEqualTo(24908.45)
-                .jsonPath("$.contributions[0].details[2].amount").isEqualTo(7116.7);
+                .jsonPath("$.contributions[0].details[1].amountEn").isEqualTo("HKD 17791.75")
+                .jsonPath("$.contributions[0].details[1].amountZh").isEqualTo("港元 17791.75")
+                .jsonPath("$.contributions[0].details[2].labels.en").isEqualTo("Member")
+                .jsonPath("$.contributions[0].details[2].amountEn").isEqualTo("HKD 7116.7")
+                .jsonPath("$.contributions[0].details[2].amountZh").isEqualTo("港元 7116.7");
 
         assertEquals("JP", captured.get().env());
         assertEquals("MBR", captured.get().mbrType());
@@ -84,8 +87,7 @@ class ContributionControllerTest {
                 .expectStatus().isBadRequest()
                 .expectBody()
                 .jsonPath("$.errorCode").isEqualTo("400")
-                .jsonPath("$.message").isEqualTo("fromDate must be provided in dd/MM/yyyy format")
-                .jsonPath("$.timestamp").exists();
+                .jsonPath("$.message").isEqualTo("fromDate must be provided in dd/MM/yyyy format");                
     }
 
     @Test

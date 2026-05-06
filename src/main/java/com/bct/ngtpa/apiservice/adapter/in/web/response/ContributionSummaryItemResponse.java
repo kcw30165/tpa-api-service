@@ -5,7 +5,7 @@ import java.util.List;
 public record ContributionSummaryItemResponse(
         String dealingDate,
         String coveringPeriod,
-        String totalContribution,
+        String totalContributionEn,
         String totalContributionZh,
         List<ContributionSummaryDetailResponse> details
 ) {}

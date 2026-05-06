@@ -4,12 +4,14 @@ import com.bct.ngtpa.apiservice.application.dto.CurrencyDisplay;
 import com.bct.ngtpa.apiservice.application.dto.ExportContributionSummaryCommand;
 import com.bct.ngtpa.apiservice.application.dto.FetchContributionSummaryCommand;
 import com.bct.ngtpa.apiservice.application.port.out.ApimContributionSummaryPort;
+import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.config.CurrencyMappingProperties;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryDataset;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
+import java.time.LocalDate;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -17,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class ExportContributionSummaryServiceTest {
 
     @Test
-    void usesDeterministicRefDateMinusThirtySixMonthsAndResolvesCurrencies() {
+    void usesResolvedReferenceDateMinusThirtySixMonthsAndResolvesCurrencies() {
         AtomicReference<FetchContributionSummaryCommand> captured = new AtomicReference<>();
         ApimContributionSummaryPort port = command -> {
             captured.set(command);
@@ -25,15 +27,18 @@ class ExportContributionSummaryServiceTest {
         };
 
         var currencyMappingService = new RecordingCurrencyMappingService();
+        ReferenceDatePort referenceDatePort = env -> Mono.just(LocalDate.of(2026, 3, 31));
 
-        var service = new ExportContributionSummaryService(port, currencyMappingService);
+        var service = new ExportContributionSummaryService(port, currencyMappingService, referenceDatePort);
         var result = service.execute(new ExportContributionSummaryCommand("JP", "MBR")).block();
 
-        assertEquals("01/10/2022", captured.get().coverFrom());
-        assertEquals("01/10/2025", captured.get().coverTo());
+        assertEquals("31/03/2023", captured.get().coverFrom());
+        assertEquals("31/03/2026", captured.get().coverTo());
         assertEquals("00000000217", captured.get().policyNo());
         assertEquals("95", captured.get().certNo());
         assertEquals("C402400A", captured.get().userId());
+        assertEquals("", captured.get().trustCode());
+        assertEquals("", captured.get().schemeType());
         assertEquals(new CurrencyDisplay("HKD", "港元"), result.currencyDisplay());
         assertEquals("JP", currencyMappingService.envByLocale.get("en"));
         assertEquals("", currencyMappingService.trustCodeByLocale.get("en"));

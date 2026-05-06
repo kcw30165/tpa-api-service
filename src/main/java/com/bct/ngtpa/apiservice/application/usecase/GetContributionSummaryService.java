@@ -5,6 +5,7 @@ import com.bct.ngtpa.apiservice.application.dto.ContributionSummaryReportResult;
 import com.bct.ngtpa.apiservice.application.dto.GetContributionSummaryCommand;
 import com.bct.ngtpa.apiservice.application.port.in.GetContributionSummaryUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimContributionSummaryPort;
+import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryReportBuilder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,34 +16,39 @@ import reactor.core.publisher.Mono;
 public class GetContributionSummaryService implements GetContributionSummaryUseCase {
 
     private final ApimContributionSummaryPort apimContributionSummaryPort;
-        private final CurrencyMappingService currencyMappingService;
+    private final CurrencyMappingService currencyMappingService;
+    private final ReferenceDatePort referenceDatePort;
 
     @Override
     public Mono<ContributionSummaryReportResult> execute(GetContributionSummaryCommand command) {
         var fromDate = ContributionSummarySupport.parseRequiredDate(command.fromDate(), "fromDate");
         var toDate = ContributionSummarySupport.parseRequiredDate(command.toDate(), "toDate");
-        var fetchCommand = ContributionSummarySupport.newFetchCommand(
-                command.env(),
-                command.mbrType(),
-                ContributionSummarySupport.formatDate(fromDate),
-                ContributionSummarySupport.formatDate(toDate));
 
-        return apimContributionSummaryPort.fetchContributionSummary(fetchCommand)
-                .map(ContributionSummaryReportBuilder::build)
-                .map(report -> new ContributionSummaryReportResult(
-                        report,
-                        new CurrencyDisplay(
-                                currencyMappingService.resolve(
-                                        "en",
-                                        report.currency(),
-                                        fetchCommand.env(),
-                                        fetchCommand.trustCode(),
-                                        fetchCommand.schemeType()),
-                                currencyMappingService.resolve(
-                                        "zh_HK",
-                                        report.currency(),
-                                        fetchCommand.env(),
-                                        fetchCommand.trustCode(),
-                                        fetchCommand.schemeType()))));
+        return referenceDatePort.resolveReferenceDate(command.env())
+                .map(refDate -> {
+                    ContributionSummarySupport.validateDateRangeWithinReferenceWindow(fromDate, toDate, refDate);
+                    return ContributionSummarySupport.newFetchCommand(
+                            command.env(),
+                            command.mbrType(),
+                            ContributionSummarySupport.formatDate(fromDate),
+                            ContributionSummarySupport.formatDate(toDate));
+                })
+                .flatMap(fetchCommand -> apimContributionSummaryPort.fetchContributionSummary(fetchCommand)
+                        .map(ContributionSummaryReportBuilder::build)
+                        .map(report -> new ContributionSummaryReportResult(
+                                report,
+                                new CurrencyDisplay(
+                                        currencyMappingService.resolve(
+                                                "en",
+                                                report.currency(),
+                                                fetchCommand.env(),
+                                                fetchCommand.trustCode(),
+                                                fetchCommand.schemeType()),
+                                        currencyMappingService.resolve(
+                                                "zh_HK",
+                                                report.currency(),
+                                                fetchCommand.env(),
+                                                fetchCommand.trustCode(),
+                                                fetchCommand.schemeType())))));
     }
 }
