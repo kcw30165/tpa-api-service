@@ -161,7 +161,7 @@ class GetContributionSummaryServiceTest {
     }
 
     private static ReferenceDatePort referenceDatePort() {
-        return env -> Mono.just(REFERENCE_DATE);
+        return () -> Mono.just(REFERENCE_DATE);
     }
 
     private static ContributionSummaryDataset sampleDataset() {

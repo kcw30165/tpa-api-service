@@ -27,7 +27,7 @@ class ExportContributionSummaryServiceTest {
         };
 
         var currencyMappingService = new RecordingCurrencyMappingService();
-        ReferenceDatePort referenceDatePort = env -> Mono.just(LocalDate.of(2026, 3, 31));
+        ReferenceDatePort referenceDatePort = () -> Mono.just(LocalDate.of(2026, 3, 31));
 
         var service = new ExportContributionSummaryService(port, currencyMappingService, referenceDatePort);
         var result = service.execute(new ExportContributionSummaryCommand("JP", "MBR")).block();

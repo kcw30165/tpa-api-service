@@ -21,7 +21,7 @@ public class ExportContributionSummaryService implements ExportContributionSumma
 
     @Override
     public Mono<ContributionSummaryReportResult> execute(ExportContributionSummaryCommand command) {
-        return referenceDatePort.resolveReferenceDate(command.env())
+        return referenceDatePort.resolveReferenceDate()
                 .map(refDate -> ContributionSummarySupport.newFetchCommand(
                         command.env(),
                         command.mbrType(),
