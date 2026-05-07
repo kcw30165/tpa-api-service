@@ -51,7 +51,9 @@ com.bct.ngtpa.apiservice
 │       ├── ApimNoticeMessageAdapter   # Implements ApimNoticeMessagePort
 │       ├── ApimNotificationReadStatusAdapter # Implements ApimNotificationReadStatusPort
 │       ├── ApimContributionSummaryAdapter # Implements ApimContributionSummaryPort
-│       ├── configserver/ConfigBackedReferenceDateAdapter # Temporary non-prod reference-date resolver
+│       ├── configserver/ConfigBackedReferenceDateAdapter # Current ConfigMap-backed ReferenceDatePort implementation
+│       ├── configserver/ConfigServiceReferenceDateAdapter # Planned future API-backed ReferenceDatePort implementation
+│       ├── configserver/ReferenceDateResolver # Shared production-like / override resolution policy
 │       ├── ApimCertificateService     # Fetches BCT public key from APIM
 │       ├── ApimAppCertificateService  # Loads app RSA keys + X509 cert
 │       ├── ApimPayloadCryptoService   # AES/CBC + RSA field encryption/decryption
@@ -227,7 +229,7 @@ currency-mapping:
     HKD.JP: 港元
 ```
 
-`reference-date.deployment-env` is the runtime deployment environment, separate from the request query `env`. For production-like deployments (`PROD`, `PRD`, `PRODUCTION`, `DR`, blank, and null), contribution summary validation and export always use the app server timezone and current date. For non-production-like deployments, `reference-date.override-date` and `reference-date.override-zone-id` may be provided as a pair; when both are absent the app falls back to the server clock, and when only one is present startup-time validation is rejected when the resolver is used.
+`reference-date.deployment-env` is the runtime deployment environment, separate from the request query `env`. For production-like deployments (`PROD`, `PRD`, `PRODUCTION`, `DR`, blank, and null), contribution summary validation and export always use the app server timezone and current date. For non-production-like deployments, `reference-date.override-date` and `reference-date.override-zone-id` may be provided as a pair; when both are absent the app falls back to the server clock, and when only one is present startup-time validation is rejected when the resolver is used. Today these values come from Spring externalized configuration / ConfigMap through `ConfigBackedReferenceDateAdapter`; when the external Config Service API is available, `ConfigServiceReferenceDateAdapter` should become the alternative `ReferenceDatePort` implementation while reusing the same `ReferenceDateResolver` policy.
 
 These values drive the synthetic total detail row in the JSON response, the first three column headers in the XLSX export, the locale-specific currency display returned in contribution summary JSON, and the effective contribution reference date. `trustCode` and `schemeType` stay empty until access-token claim extraction is implemented, so currency lookup currently falls back from `${code}.${env}` to `${code}`.
 

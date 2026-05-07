@@ -10,13 +10,15 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class ConfigBackedReferenceDateAdapterTest {
 
+    private final ReferenceDateResolver referenceDateResolver = new ReferenceDateResolver();
+
     @Test
     void ignoresOverridePairForProductionLikeEnv() {
         var properties = new ReferenceDateProperties();
         properties.setDeploymentEnv("pRoD");
         properties.setOverrideDate("31/03/2026");
         properties.setOverrideZoneId("Asia/Tokyo");
-        var adapter = new ConfigBackedReferenceDateAdapter(properties);
+        var adapter = new ConfigBackedReferenceDateAdapter(properties, referenceDateResolver);
 
         var expected = LocalDate.now(java.time.ZoneId.systemDefault());
 
@@ -29,7 +31,7 @@ class ConfigBackedReferenceDateAdapterTest {
         properties.setDeploymentEnv("dr");
         properties.setOverrideDate("31/03/2026");
         properties.setOverrideZoneId("Asia/Tokyo");
-        var adapter = new ConfigBackedReferenceDateAdapter(properties);
+        var adapter = new ConfigBackedReferenceDateAdapter(properties, referenceDateResolver);
 
         var expected = LocalDate.now(java.time.ZoneId.systemDefault());
 
@@ -42,7 +44,7 @@ class ConfigBackedReferenceDateAdapterTest {
         properties.setDeploymentEnv("sit");
         properties.setOverrideDate("31/03/2026");
         properties.setOverrideZoneId("Asia/Hong_Kong");
-        var adapter = new ConfigBackedReferenceDateAdapter(properties);
+        var adapter = new ConfigBackedReferenceDateAdapter(properties, referenceDateResolver);
 
         assertEquals(LocalDate.of(2026, 3, 31), adapter.resolveReferenceDate().block());
     }
@@ -51,7 +53,7 @@ class ConfigBackedReferenceDateAdapterTest {
     void returnsServerDateWhenNonProductionOverridePairIsBlank() {
         var properties = new ReferenceDateProperties();
         properties.setDeploymentEnv("uat");
-        var adapter = new ConfigBackedReferenceDateAdapter(properties);
+        var adapter = new ConfigBackedReferenceDateAdapter(properties, referenceDateResolver);
 
         var expected = LocalDate.now(java.time.ZoneId.systemDefault());
 
@@ -63,7 +65,7 @@ class ConfigBackedReferenceDateAdapterTest {
         var properties = new ReferenceDateProperties();
         properties.setOverrideDate("31/03/2026");
         properties.setOverrideZoneId("Asia/Hong_Kong");
-        var adapter = new ConfigBackedReferenceDateAdapter(properties);
+        var adapter = new ConfigBackedReferenceDateAdapter(properties, referenceDateResolver);
 
         var expected = LocalDate.now(java.time.ZoneId.systemDefault());
 
@@ -76,7 +78,7 @@ class ConfigBackedReferenceDateAdapterTest {
         properties.setDeploymentEnv("dev");
         properties.setOverrideDate("2026-03-31");
         properties.setOverrideZoneId("Asia/Hong_Kong");
-        var adapter = new ConfigBackedReferenceDateAdapter(properties);
+        var adapter = new ConfigBackedReferenceDateAdapter(properties, referenceDateResolver);
 
         var ex = assertThrows(InvalidContributionRequestException.class,
             () -> adapter.resolveReferenceDate().block());
@@ -90,7 +92,7 @@ class ConfigBackedReferenceDateAdapterTest {
         properties.setDeploymentEnv("sit");
         properties.setOverrideDate("31/03/2026");
         properties.setOverrideZoneId("Mars/Olympus");
-        var adapter = new ConfigBackedReferenceDateAdapter(properties);
+        var adapter = new ConfigBackedReferenceDateAdapter(properties, referenceDateResolver);
 
         var ex = assertThrows(InvalidContributionRequestException.class,
             () -> adapter.resolveReferenceDate().block());
@@ -103,7 +105,7 @@ class ConfigBackedReferenceDateAdapterTest {
         var properties = new ReferenceDateProperties();
         properties.setDeploymentEnv("sit");
         properties.setOverrideDate("31/03/2026");
-        var adapter = new ConfigBackedReferenceDateAdapter(properties);
+        var adapter = new ConfigBackedReferenceDateAdapter(properties, referenceDateResolver);
 
         var ex = assertThrows(InvalidContributionRequestException.class,
             () -> adapter.resolveReferenceDate().block());
