@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.application.dto.GetContributionSummaryCommand;
 import com.bct.ngtpa.apiservice.application.port.in.GetContributionSummaryUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimContributionSummaryPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
+import com.bct.ngtpa.apiservice.config.logging.LogExecution;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryReportBuilder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ public class GetContributionSummaryService implements GetContributionSummaryUseC
     private final ReferenceDatePort referenceDatePort;
 
     @Override
+        @LogExecution(value = "usecase.getContributionSummary", logArgs = true)
     public Mono<ContributionSummaryReportResult> execute(GetContributionSummaryCommand command) {
         var fromDate = ContributionSummarySupport.parseRequiredDate(command.fromDate(), "fromDate");
         var toDate = ContributionSummarySupport.parseRequiredDate(command.toDate(), "toDate");

@@ -6,6 +6,9 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfil
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
 import com.bct.ngtpa.apiservice.adapter.out.apim.oauth.ApimTokenService;
 import com.bct.ngtpa.apiservice.config.ApimProperties;
+import com.bct.ngtpa.apiservice.config.logging.LogExecution;
+import com.bct.ngtpa.apiservice.config.logging.LoggingSanitizer;
+import com.bct.ngtpa.apiservice.config.logging.LoggingSanitizerProperties;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +41,7 @@ public class ApimWebClientFacade {
     private final ApimCertificateService apimCertificateService;
     private final ApimProperties apimProperties;
     private final ApimAppCertificateService apimAppCertificateService;
+    private final LoggingSanitizer loggingSanitizer;
 
     @Autowired
     public ApimWebClientFacade(
@@ -48,7 +52,8 @@ public class ApimWebClientFacade {
             ApimTokenService apimTokenService,
             ApimCertificateService apimCertificateService,
             ApimProperties apimProperties,
-            ApimAppCertificateService apimAppCertificateService) {
+            ApimAppCertificateService apimAppCertificateService,
+            LoggingSanitizer loggingSanitizer) {
         this.apimWebClient = apimWebClient;
         this.webClientBuilder = webClientBuilder;
         this.objectMapper = objectMapper;
@@ -57,6 +62,7 @@ public class ApimWebClientFacade {
         this.apimCertificateService = apimCertificateService;
         this.apimProperties = apimProperties;
         this.apimAppCertificateService = apimAppCertificateService;
+        this.loggingSanitizer = loggingSanitizer;
     }
 
     public ApimWebClientFacade(
@@ -68,7 +74,8 @@ public class ApimWebClientFacade {
             ApimCertificateService apimCertificateService,
             ApimProperties apimProperties) {
         this(apimWebClient, webClientBuilder, objectMapper, profileResolver, apimTokenService,
-                apimCertificateService, apimProperties, null);
+                apimCertificateService, apimProperties, null,
+                new LoggingSanitizer(objectMapper, new LoggingSanitizerProperties()));
     }
 
     public Mono<String> post(String path, Object requestBody) {
@@ -77,6 +84,7 @@ public class ApimWebClientFacade {
         return post(path, requestBody, ctx);
     }
 
+    @LogExecution(value = "apim.post", logArgs = true)
     public Mono<String> post(String path, Object requestBody, ApimCredentialResolutionContext resolutionContext) {
         return profileResolver.resolve(resolutionContext)
                 .flatMap(profile -> sendWithProfile(profile, path, requestBody, new RetryContext()));
@@ -160,8 +168,7 @@ public class ApimWebClientFacade {
 
     private void logRequest(String path, Object requestBody) {
         try {
-            // Avoid logging secrets
-            log.info("APIM outbound path={} body={}", path, objectMapper.writeValueAsString(requestBody));
+            log.info("APIM outbound path={} body={}", path, loggingSanitizer.toSafeString(requestBody));
         } catch (Exception ex) {
             log.warn("Failed to serialise APIM request body for logging.", ex);
         }
@@ -182,5 +189,6 @@ public class ApimWebClientFacade {
         this.apimCertificateService = new ApimCertificateService(WebClient.builder(), new ApimProperties(), null);
         this.apimProperties = new ApimProperties();
         this.apimAppCertificateService = null;
+        this.loggingSanitizer = new LoggingSanitizer(objectMapper, new LoggingSanitizerProperties());
     }
 }

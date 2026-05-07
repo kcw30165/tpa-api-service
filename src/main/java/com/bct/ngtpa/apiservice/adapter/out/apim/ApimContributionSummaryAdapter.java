@@ -7,6 +7,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetContributionSummaryDataI
 import com.bct.ngtpa.apiservice.application.dto.FetchContributionSummaryCommand;
 import com.bct.ngtpa.apiservice.application.port.out.ApimContributionSummaryPort;
 import com.bct.ngtpa.apiservice.config.ApimProperties;
+import com.bct.ngtpa.apiservice.config.logging.LogExecution;
 import com.bct.ngtpa.apiservice.domain.model.ContributionEntry;
 import com.bct.ngtpa.apiservice.domain.model.ContributionLabels;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSource;
@@ -36,6 +37,7 @@ public class ApimContributionSummaryAdapter implements ApimContributionSummaryPo
     private final ApimProperties apimProperties;
 
     @Override
+        @LogExecution(value = "apim.fetchContributionSummary", logArgs = true)
     public Mono<ContributionSummaryDataset> fetchContributionSummary(FetchContributionSummaryCommand command) {
         if (!apimProperties.getEncryption().isEnabled()) {
             var request = apimPayloadCryptoService.encryptRequest(

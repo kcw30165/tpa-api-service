@@ -4,6 +4,7 @@ import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusCom
 import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusResult;
 import com.bct.ngtpa.apiservice.application.port.in.UpdateNotificationsReadStatusUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNotificationReadStatusPort;
+import com.bct.ngtpa.apiservice.config.logging.LogExecution;
 import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class UpdateNotificationsReadStatusService implements UpdateNotifications
     private final ApimNotificationReadStatusPort apimNotificationReadStatusPort;
 
     @Override
+    @LogExecution(value = "usecase.updateNotificationsReadStatus", logArgs = true)
     public Mono<UpdateNotificationsReadStatusResult> execute(UpdateNotificationsReadStatusCommand command) {
         var enrichedCommand = new UpdateNotificationsReadStatusCommand(
                 command.env(),

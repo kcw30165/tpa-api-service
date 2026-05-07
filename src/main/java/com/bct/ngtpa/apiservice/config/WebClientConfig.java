@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.config;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import com.bct.ngtpa.apiservice.config.logging.LoggingSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
@@ -28,6 +29,12 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.ApimAppCertificateService;
 @Configuration
 public class WebClientConfig {
     private static final Logger logger = LoggerFactory.getLogger(WebClientConfig.class);
+
+    private final LoggingSanitizer loggingSanitizer;
+
+    public WebClientConfig(LoggingSanitizer loggingSanitizer) {
+        this.loggingSanitizer = loggingSanitizer;
+    }
 
     @Bean
     public ReactiveClientRegistrationRepository clientRegistrationRepository(ApimProperties apimProperties) {
@@ -106,7 +113,7 @@ public class WebClientConfig {
             });
 
             logger.info("APIM outbound request method={} url={} headers={}",
-                    request.method(), request.url(), headers);
+                    request.method(), request.url(), loggingSanitizer.sanitizeValue(headers));
             return Mono.just(request);
         });
     }

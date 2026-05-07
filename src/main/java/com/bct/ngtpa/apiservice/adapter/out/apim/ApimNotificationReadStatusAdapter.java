@@ -7,6 +7,7 @@ import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusCom
 import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusResult;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNotificationReadStatusPort;
 import com.bct.ngtpa.apiservice.config.ApimProperties;
+import com.bct.ngtpa.apiservice.config.logging.LogExecution;
 import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
 import com.bct.ngtpa.apiservice.domain.model.NotificationReadStatus;
 import com.bct.ngtpa.apiservice.exception.ApimException;
@@ -32,6 +33,7 @@ public class ApimNotificationReadStatusAdapter implements ApimNotificationReadSt
     private final ApimProperties apimProperties;
 
     @Override
+    @LogExecution(value = "apim.updateNotificationReadStatus", logArgs = true)
     public Mono<UpdateNotificationsReadStatusResult> updateReadStatus(UpdateNotificationsReadStatusCommand command) {
         if (!apimProperties.getEncryption().isEnabled()) {
                 var request = apimPayloadCryptoService.encryptRequest(

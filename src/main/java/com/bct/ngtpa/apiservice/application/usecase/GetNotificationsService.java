@@ -5,6 +5,7 @@ import com.bct.ngtpa.apiservice.application.dto.NotificationDateOptions;
 import com.bct.ngtpa.apiservice.application.dto.NotificationListResult;
 import com.bct.ngtpa.apiservice.application.port.in.GetNotificationsUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNoticeMessagePort;
+import com.bct.ngtpa.apiservice.config.logging.LogExecution;
 import com.bct.ngtpa.apiservice.domain.model.NoticeMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,7 @@ public class GetNotificationsService implements GetNotificationsUseCase {
     private final ApimNoticeMessagePort apimNoticeMessagePort;
 
     @Override
+        @LogExecution(value = "usecase.getNotifications", logArgs = true)
     public Mono<NotificationListResult> execute(GetNotificationsCommand command) {
         var dateOptions = NotificationDateOptions.resolve(command.dateFormat(), command.timezone());
 
