@@ -15,6 +15,7 @@ The service runs as a reactive Spring Boot application and reads local developme
 | Framework | Spring Boot 4.0.6 |
 | HTTP (inbound) | Spring WebFlux |
 | HTTP (outbound) | Spring WebFlux `WebClient` |
+| Cross-cutting logging | Spring AOP + custom `@LogExecution` |
 | Auth (outbound) | Spring Security OAuth2 Client Credentials |
 | Encryption | BouncyCastle 1.82 (RSA + AES/CBC) |
 | Spreadsheet export | Apache POI OOXML |
@@ -65,7 +66,8 @@ com.bct.ngtpa.apiservice
 │   ├── WebClientConfig
 │   ├── SecurityConfig
 │   ├── JacksonConfig
-│   └── ApimCryptoConfig
+│   ├── ApimCryptoConfig
+│   └── logging/        # `@LogExecution`, aspect, and log sanitization
 └── exception/           # ApimException (shared)
 ```
 
@@ -198,6 +200,17 @@ Notes:
 - `requestFields` is global for the `apim.baseUrl` and applies to every outbound request handled by the APIM client.
 - It is not configured per APIM operation (for example `TRPGetMsgBoard`).
 - To add encryption for a new field, add it once under `apim.encryption.requestFields`.
+
+## Execution Logging
+
+Global execution logging is implemented as a configuration-level cross-cutting concern under `config/logging`.
+
+- Use `@LogExecution` on controller, use-case, and outbound adapter/facade methods that represent entry or orchestration points.
+- Annotated synchronous methods log start, success, error, and elapsed time.
+- Annotated `Mono` and `Flux` methods stay lazy; the aspect logs on subscription and completion/error without calling `block()` or subscribing internally.
+- Logged arguments and results are opt-in through annotation attributes and are sanitized before serialization.
+- Sensitive header and payload fields such as `Authorization`, `Certificate`, API keys, tokens, secrets, policy numbers, certificate numbers, user IDs, and key material are masked in logs.
+- The sensitive key list is configured through `logging-sanitizer.sensitive-tokens`, using `src/main/resources/application-local.yml` for local development and the deployed `ngtpa-display-config` Spring YAML in Kubernetes.
 
 ## Contribution Summary Configuration
 

@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.application.dto.ExportContributionSummaryCommand
 import com.bct.ngtpa.apiservice.application.port.in.ExportContributionSummaryUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimContributionSummaryPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
+import com.bct.ngtpa.apiservice.config.logging.LogExecution;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryReportBuilder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ public class ExportContributionSummaryService implements ExportContributionSumma
     private final ReferenceDatePort referenceDatePort;
 
     @Override
+        @LogExecution(value = "usecase.exportContributionSummary", logArgs = true)
     public Mono<ContributionSummaryReportResult> execute(ExportContributionSummaryCommand command) {
         return referenceDatePort.resolveReferenceDate()
                 .map(refDate -> ContributionSummarySupport.newFetchCommand(

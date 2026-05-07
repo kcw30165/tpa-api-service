@@ -8,6 +8,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimAppCertificateService;
+import com.bct.ngtpa.apiservice.config.logging.LoggingSanitizer;
+import com.bct.ngtpa.apiservice.config.logging.LoggingSanitizerProperties;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.security.Security;
@@ -56,7 +59,7 @@ class ConfigurationBeansTest {
 
     @Test
     void createsClientRegistrationWithoutScopesWhenNoneConfigured() {
-        WebClientConfig config = new WebClientConfig();
+        WebClientConfig config = new WebClientConfig(loggingSanitizer());
         ApimProperties properties = apimProperties(List.of());
 
         ReactiveClientRegistrationRepository repository = config.clientRegistrationRepository(properties);
@@ -72,7 +75,7 @@ class ConfigurationBeansTest {
 
     @Test
     void createsClientRegistrationWithConfiguredScopes() {
-        WebClientConfig config = new WebClientConfig();
+        WebClientConfig config = new WebClientConfig(loggingSanitizer());
         ApimProperties properties = apimProperties(List.of("scope.read", "scope.write"));
 
         ReactiveClientRegistrationRepository repository = config.clientRegistrationRepository(properties);
@@ -84,7 +87,7 @@ class ConfigurationBeansTest {
 
     @Test
     void createsAuthorizedClientBeansAndWebClients() {
-        WebClientConfig config = new WebClientConfig();
+        WebClientConfig config = new WebClientConfig(loggingSanitizer());
         ApimProperties properties = apimProperties(List.of("scope.read"));
         ReactiveClientRegistrationRepository repository = config.clientRegistrationRepository(properties);
         ReactiveOAuth2AuthorizedClientService clientService = config.authorizedClientService(repository);
@@ -105,7 +108,7 @@ class ConfigurationBeansTest {
 
     @Test
     void requestLoggingFilterPassesRequestThrough() throws Exception {
-        WebClientConfig config = new WebClientConfig();
+        WebClientConfig config = new WebClientConfig(loggingSanitizer());
         ExchangeFilterFunction filter = logApimRequestHeaders(config);
         ClientRequest request = ClientRequest.create(HttpMethod.POST, URI.create("https://api.example.test/notifications"))
                 .header("Accept", "application/json")
@@ -140,5 +143,9 @@ class ConfigurationBeansTest {
         Method method = WebClientConfig.class.getDeclaredMethod("logApimRequestHeaders");
         method.setAccessible(true);
         return (ExchangeFilterFunction) method.invoke(config);
+    }
+
+    private static LoggingSanitizer loggingSanitizer() {
+        return new LoggingSanitizer(new ObjectMapper(), new LoggingSanitizerProperties());
     }
 }

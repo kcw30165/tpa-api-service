@@ -8,6 +8,7 @@ import com.bct.ngtpa.apiservice.application.dto.GetNotificationsCommand;
 import com.bct.ngtpa.apiservice.application.dto.NotificationListResult;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNoticeMessagePort;
 import com.bct.ngtpa.apiservice.config.ApimProperties;
+import com.bct.ngtpa.apiservice.config.logging.LogExecution;
 import com.bct.ngtpa.apiservice.domain.model.AudienceType;
 import com.bct.ngtpa.apiservice.domain.model.Hyperlink;
 import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
@@ -49,6 +50,7 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
     private final ApimProperties apimProperties;
 
     @Override
+    @LogExecution(value = "apim.fetchNotifications", logArgs = true)
     public Mono<NotificationListResult> fetchNotifications(GetNotificationsCommand command) {
         if (!apimProperties.getEncryption().isEnabled()) {
             var request = apimPayloadCryptoService.encryptRequest(

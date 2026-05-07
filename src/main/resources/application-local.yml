@@ -7,6 +7,24 @@ contribution-summary:
     contribution-period: Contribution Periods供款期
     total-contribution: Total Contributions供款總額
 
+logging-sanitizer:
+  sensitive-tokens:
+    - authorization
+    - token
+    - secret
+    - password
+    - apiKey
+    - Certificate
+    - clientSecret
+    - policyNo
+    - certNo
+    - userId
+    - privateKey
+    - publicKey
+    - policy-no
+    - cert-no
+    - user-id
+
 currency-mapping:
   zh_HK:
     AUD: 澳元
