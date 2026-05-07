@@ -70,3 +70,8 @@ currency-mapping:
     TWD.OG: TWD
     NZD.OG: NZD
     INR.OG: INR
+
+reference-date:
+  deployment-env: dev
+  override-date: 04/05/2023
+  override-zone-id: Asia/Hong_Kong

@@ -24,7 +24,7 @@ public class GetContributionSummaryService implements GetContributionSummaryUseC
         var fromDate = ContributionSummarySupport.parseRequiredDate(command.fromDate(), "fromDate");
         var toDate = ContributionSummarySupport.parseRequiredDate(command.toDate(), "toDate");
 
-        return referenceDatePort.resolveReferenceDate(command.env())
+        return referenceDatePort.resolveReferenceDate()
                 .map(refDate -> {
                     ContributionSummarySupport.validateDateRangeWithinReferenceWindow(fromDate, toDate, refDate);
                     return ContributionSummarySupport.newFetchCommand(

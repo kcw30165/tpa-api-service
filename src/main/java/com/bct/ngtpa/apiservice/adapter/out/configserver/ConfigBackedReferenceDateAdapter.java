@@ -21,46 +21,62 @@ public class ConfigBackedReferenceDateAdapter implements ReferenceDatePort {
     private final ReferenceDateProperties properties;
 
     @Override
-    public Mono<LocalDate> resolveReferenceDate(String env) {
-        return Mono.fromSupplier(() -> resolve(env));
+    public Mono<LocalDate> resolveReferenceDate() {
+        return Mono.fromSupplier(this::resolve);
     }
 
-    private LocalDate resolve(String env) {
-        var zoneId = resolveZoneId();
-        var today = LocalDate.now(zoneId);
-        if (isProduction(env)) {
-            return today;
+    private LocalDate resolve() {
+        if (isProductionLikeDeployment(properties.getDeploymentEnv())) {
+            return resolveServerDate();
         }
 
-        var override = properties.getNonProdOverride();
-        if (override == null || override.isBlank()) {
-            return today;
+        var overrideDate = properties.getOverrideDate();
+        var overrideZoneId = properties.getOverrideZoneId();
+        if (isBlank(overrideDate) && isBlank(overrideZoneId)) {
+            return resolveServerDate();
+        }
+        if (isBlank(overrideDate) || isBlank(overrideZoneId)) {
+            throw new InvalidContributionRequestException(
+                    "reference-date.override-date and reference-date.override-zone-id must be provided together");
         }
 
-        // TODO: Replace temporary config-backed non-prod override with Config Service API call once Config Service contract is available.
+        var zoneId = resolveOverrideZoneId(overrideZoneId);
+
+        // TODO: Replace temporary config-backed non-prod override pair with Config Service API call once Config Service contract is available.
         try {
-            return LocalDate.parse(override, DATE_FORMATTER);
+            return LocalDate.parse(overrideDate, DATE_FORMATTER)
+                    .atStartOfDay(zoneId)
+                    .toLocalDate();
         } catch (DateTimeParseException ex) {
             throw new InvalidContributionRequestException(
-                    "reference-date.non-prod-override must use dd/MM/yyyy format");
+                    "reference-date.override-date must use dd/MM/yyyy format");
         }
     }
 
-    private ZoneId resolveZoneId() {
+    private LocalDate resolveServerDate() {
+        return LocalDate.now(ZoneId.systemDefault());
+    }
+
+    private ZoneId resolveOverrideZoneId(String overrideZoneId) {
         try {
-            return ZoneId.of(properties.getZoneId());
+            return ZoneId.of(overrideZoneId);
         } catch (RuntimeException ex) {
-            throw new InvalidContributionRequestException("reference-date.zone-id is invalid");
+            throw new InvalidContributionRequestException("reference-date.override-zone-id is invalid");
         }
     }
 
-    private boolean isProduction(String env) {
-        if (env == null || env.isBlank()) {
+    private boolean isProductionLikeDeployment(String deploymentEnv) {
+        if (deploymentEnv == null || deploymentEnv.isBlank()) {
             return true;
         }
 
-        return "PROD".equalsIgnoreCase(env)
-                || "PRD".equalsIgnoreCase(env)
-                || "PRODUCTION".equalsIgnoreCase(env);
+        return "PROD".equalsIgnoreCase(deploymentEnv)
+                || "PRD".equalsIgnoreCase(deploymentEnv)
+                || "PRODUCTION".equalsIgnoreCase(deploymentEnv)
+                || "DR".equalsIgnoreCase(deploymentEnv);
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }

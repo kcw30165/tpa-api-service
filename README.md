@@ -149,8 +149,9 @@ export JAVA_HOME="C:/Java/OpenJDK/jdk-21"
 | `SERVER_PORT` | HTTP port | `8888` |
 | `SPRING_CLOUD_CONFIG_ENABLED` | Enable Spring Cloud Config | `false` |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated browser origins allowed for `/api/**` CORS responses | _(empty / closed)_ |
-| `REFERENCE_DATE_ZONE_ID` | Server zone used to resolve contribution reference date | `Asia/Hong_Kong` |
-| `REFERENCE_DATE_NON_PROD_OVERRIDE` | Optional non-production override in `dd/MM/yyyy` | _(empty)_ |
+| `DEPLOY_ENV` | Runtime deployment environment used for production-safe reference-date resolution | _(empty / production-safe)_ |
+| `REFERENCE_DATE_OVERRIDE_DATE` | Optional non-production override date in `dd/MM/yyyy` | _(empty)_ |
+| `REFERENCE_DATE_OVERRIDE_ZONE_ID` | Optional non-production override zone ID paired with `REFERENCE_DATE_OVERRIDE_DATE` | _(empty)_ |
 | `APIM_BASEURL` | APIM base URL | _(required)_ |
 | `APIM_TIMEOUTMILLISECONDS` | WebClient timeout | `10000` |
 | `APIM_CLIENT_REGISTRATION_ID` | OAuth2 client registration id | `apim-client` |
@@ -204,8 +205,9 @@ Current local defaults in `src/main/resources/application.yml`:
 
 ```yaml
 reference-date:
-  zone-id: ${REFERENCE_DATE_ZONE_ID:Asia/Hong_Kong}
-  non-prod-override: ${REFERENCE_DATE_NON_PROD_OVERRIDE:}
+  deployment-env: ${DEPLOY_ENV:}
+  override-date: ${REFERENCE_DATE_OVERRIDE_DATE:}
+  override-zone-id: ${REFERENCE_DATE_OVERRIDE_ZONE_ID:}
 
 contribution-summary:
   total-label:
@@ -225,7 +227,7 @@ currency-mapping:
     HKD.JP: 港元
 ```
 
-`reference-date.zone-id` controls the server date zone used by contribution summary validation and export. `reference-date.non-prod-override` is applied only when the request `env` is non-production; `PROD`, `PRD`, `PRODUCTION`, blank, and null all stay production-safe and always use the current server date.
+`reference-date.deployment-env` is the runtime deployment environment, separate from the request query `env`. For production-like deployments (`PROD`, `PRD`, `PRODUCTION`, `DR`, blank, and null), contribution summary validation and export always use the app server timezone and current date. For non-production-like deployments, `reference-date.override-date` and `reference-date.override-zone-id` may be provided as a pair; when both are absent the app falls back to the server clock, and when only one is present startup-time validation is rejected when the resolver is used.
 
 These values drive the synthetic total detail row in the JSON response, the first three column headers in the XLSX export, the locale-specific currency display returned in contribution summary JSON, and the effective contribution reference date. `trustCode` and `schemeType` stay empty until access-token claim extraction is implemented, so currency lookup currently falls back from `${code}.${env}` to `${code}`.
 
@@ -376,7 +378,8 @@ GET /api/v1/contributions?env=JP&mbrType=MBR&fromDate=05/04/2026&toDate=05/05/20
 - The BFF calls APIM `POST /ws/NGTPA/v1/TRPGetContSumy`.
 - `cover-from` is taken from `fromDate`; `cover-to` is taken from `toDate`.
 - `fromDate` and `toDate` must both be within `[ref-date - 36 months, ref-date]`, inclusive.
-- `ref-date` is the current server date in `reference-date.zone-id`, unless a non-production override is configured.
+- `ref-date` is resolved from deployment-scoped reference date config, not from the request query `env`.
+- `reference-date.deployment-env` controls whether the paired non-production override may be used.
 - Contribution rows are grouped by `deal-date + cover-from + cover-to`.
 - Dynamic detail items are joined from `contDtl[*].disp-src` to `dispSrc[*].disp-src` and sorted by `dispSrc.seq` ascending.
 - `totalContributionEn` is the sum of the grouped detail amounts using `BigDecimal`.
@@ -459,6 +462,7 @@ Accept: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
 **Behavior:**
 
 - The BFF resolves `ref-date` through `ReferenceDatePort`.
+- `ReferenceDatePort` uses deployment environment configuration, not the request query `env`, to decide whether non-production override rules apply.
 - `cover-from` is computed as `ref-date.minusMonths(36)`; `cover-to` is the resolved `ref-date`.
 - The first three headers come from `contribution-summary.headers.*`.
 - Dynamic source columns are sorted by `dispSrc.seq` ascending.

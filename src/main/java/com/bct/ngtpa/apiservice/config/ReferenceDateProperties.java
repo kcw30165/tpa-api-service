@@ -9,6 +9,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @Setter
 public class ReferenceDateProperties {
 
-    private String zoneId = "Asia/Hong_Kong";
-    private String nonProdOverride = "";
+    private String deploymentEnv = "";
+    private String overrideDate = "";
+    private String overrideZoneId = "";
 }

@@ -5,79 +5,110 @@ import com.bct.ngtpa.apiservice.config.ReferenceDateProperties;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
-import java.time.ZoneId;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class ConfigBackedReferenceDateAdapterTest {
 
     @Test
-    void ignoresOverrideForProductionEnv() {
+    void ignoresOverridePairForProductionLikeEnv() {
         var properties = new ReferenceDateProperties();
-        properties.setZoneId("Asia/Hong_Kong");
-        properties.setNonProdOverride("31/03/2026");
+        properties.setDeploymentEnv("pRoD");
+        properties.setOverrideDate("31/03/2026");
+        properties.setOverrideZoneId("Asia/Tokyo");
         var adapter = new ConfigBackedReferenceDateAdapter(properties);
 
-        var expected = LocalDate.now(ZoneId.of("Asia/Hong_Kong"));
+        var expected = LocalDate.now(java.time.ZoneId.systemDefault());
 
-        assertEquals(expected, adapter.resolveReferenceDate("pRoD").block());
+        assertEquals(expected, adapter.resolveReferenceDate().block());
     }
 
     @Test
-    void usesConfiguredOverrideForNonProductionEnv() {
+    void treatsDrAsProductionLikeEnv() {
         var properties = new ReferenceDateProperties();
-        properties.setNonProdOverride("31/03/2026");
+        properties.setDeploymentEnv("dr");
+        properties.setOverrideDate("31/03/2026");
+        properties.setOverrideZoneId("Asia/Tokyo");
         var adapter = new ConfigBackedReferenceDateAdapter(properties);
 
-        assertEquals(LocalDate.of(2026, 3, 31), adapter.resolveReferenceDate("JP").block());
+        var expected = LocalDate.now(java.time.ZoneId.systemDefault());
+
+        assertEquals(expected, adapter.resolveReferenceDate().block());
     }
 
     @Test
-    void returnsTodayWhenNonProductionOverrideIsBlank() {
+    void usesConfiguredOverridePairForNonProductionLikeEnv() {
         var properties = new ReferenceDateProperties();
-        properties.setZoneId("Asia/Hong_Kong");
-        properties.setNonProdOverride(" ");
+        properties.setDeploymentEnv("sit");
+        properties.setOverrideDate("31/03/2026");
+        properties.setOverrideZoneId("Asia/Hong_Kong");
         var adapter = new ConfigBackedReferenceDateAdapter(properties);
 
-        var expected = LocalDate.now(ZoneId.of("Asia/Hong_Kong"));
-
-        assertEquals(expected, adapter.resolveReferenceDate("JP").block());
+        assertEquals(LocalDate.of(2026, 3, 31), adapter.resolveReferenceDate().block());
     }
 
     @Test
-    void treatsBlankEnvAsProductionSafe() {
+    void returnsServerDateWhenNonProductionOverridePairIsBlank() {
         var properties = new ReferenceDateProperties();
-        properties.setZoneId("Asia/Hong_Kong");
-        properties.setNonProdOverride("31/03/2026");
+        properties.setDeploymentEnv("uat");
         var adapter = new ConfigBackedReferenceDateAdapter(properties);
 
-        var expected = LocalDate.now(ZoneId.of("Asia/Hong_Kong"));
+        var expected = LocalDate.now(java.time.ZoneId.systemDefault());
 
-        assertEquals(expected, adapter.resolveReferenceDate(" ").block());
+        assertEquals(expected, adapter.resolveReferenceDate().block());
     }
 
     @Test
-    void rejectsInvalidOverrideFormat() {
+    void treatsBlankDeploymentEnvAsProductionSafe() {
         var properties = new ReferenceDateProperties();
-        properties.setNonProdOverride("2026-03-31");
+        properties.setOverrideDate("31/03/2026");
+        properties.setOverrideZoneId("Asia/Hong_Kong");
+        var adapter = new ConfigBackedReferenceDateAdapter(properties);
+
+        var expected = LocalDate.now(java.time.ZoneId.systemDefault());
+
+        assertEquals(expected, adapter.resolveReferenceDate().block());
+    }
+
+    @Test
+    void rejectsInvalidOverrideDateFormat() {
+        var properties = new ReferenceDateProperties();
+        properties.setDeploymentEnv("dev");
+        properties.setOverrideDate("2026-03-31");
+        properties.setOverrideZoneId("Asia/Hong_Kong");
         var adapter = new ConfigBackedReferenceDateAdapter(properties);
 
         var ex = assertThrows(InvalidContributionRequestException.class,
-                () -> adapter.resolveReferenceDate("JP").block());
+            () -> adapter.resolveReferenceDate().block());
 
-        assertEquals("reference-date.non-prod-override must use dd/MM/yyyy format", ex.getMessage());
+        assertEquals("reference-date.override-date must use dd/MM/yyyy format", ex.getMessage());
     }
 
     @Test
-    void rejectsInvalidZoneId() {
+    void rejectsInvalidOverrideZoneId() {
         var properties = new ReferenceDateProperties();
-        properties.setZoneId("Mars/Olympus");
+        properties.setDeploymentEnv("sit");
+        properties.setOverrideDate("31/03/2026");
+        properties.setOverrideZoneId("Mars/Olympus");
         var adapter = new ConfigBackedReferenceDateAdapter(properties);
 
         var ex = assertThrows(InvalidContributionRequestException.class,
-                () -> adapter.resolveReferenceDate("JP").block());
+            () -> adapter.resolveReferenceDate().block());
 
-        assertEquals("reference-date.zone-id is invalid", ex.getMessage());
+        assertEquals("reference-date.override-zone-id is invalid", ex.getMessage());
+    }
+
+    @Test
+    void rejectsPartialOverridePair() {
+        var properties = new ReferenceDateProperties();
+        properties.setDeploymentEnv("sit");
+        properties.setOverrideDate("31/03/2026");
+        var adapter = new ConfigBackedReferenceDateAdapter(properties);
+
+        var ex = assertThrows(InvalidContributionRequestException.class,
+            () -> adapter.resolveReferenceDate().block());
+
+        assertEquals("reference-date.override-date and reference-date.override-zone-id must be provided together",
+                ex.getMessage());
     }
 }
