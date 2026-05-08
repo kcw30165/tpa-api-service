@@ -91,7 +91,7 @@ currency-mapping:
 
 reference-date:
   deployment-env: dev
-  override-date: 04/05/2023
+  override-date: 30/06/2026
   override-zone-id: Asia/Hong_Kong
 
 temporary-member-context:

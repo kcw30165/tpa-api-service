@@ -36,9 +36,10 @@ com.bct.ngtpa.apiservice
 ├── application/         # Orchestration — @Service only
 │   ├── port/
 │   │   ├── in/          # GetNotificationsUseCase, UpdateNotificationsReadStatusUseCase, GetContributionSummaryUseCase, ExportContributionSummaryUseCase
-│   │   └── out/         # ApimNoticeMessagePort, ApimNotificationReadStatusPort, ApimContributionSummaryPort, ReferenceDatePort
+│   │   └── out/         # ApimNoticeMessagePort, ApimNotificationReadStatusPort, ApimContributionSummaryPort, ReferenceDatePort, MemberContextPort
 │   ├── usecase/         # GetNotificationsService, UpdateNotificationsReadStatusService, GetContributionSummaryService, ExportContributionSummaryService
-│   └── dto/             # Notification and contribution summary commands/results
+│   ├── dto/             # Notification and contribution summary commands/results; MemberContext, MemberContextPurpose
+│   └── exception/       # InvalidContributionRequestException, InvalidNotificationRequestException, MemberContextResolutionException
 ├── adapter/
 │   ├── in/web/          # Reactive controllers, request/response records
 │   │   ├── NotificationController
@@ -47,22 +48,26 @@ com.bct.ngtpa.apiservice
 │   │   ├── ApiExceptionHandler (@RestControllerAdvice)
 │   │   ├── request/     # UpdateNotificationsReadStatusRequest
 │   │   └── response/    # Notification and contribution summary response records
-│   └── out/apim/        # APIM integration
-│       ├── ApimWebClientFacade        # Pure HTTP transport (OAuth2 token attach)
-│       ├── ApimNoticeMessageAdapter   # Implements ApimNoticeMessagePort
+│   └── out/
+│       ├── apim/            # APIM integration
+│       │   ├── ApimWebClientFacade        # Pure HTTP transport (OAuth2 token attach)
+│       │   ├── ApimNoticeMessageAdapter   # Implements ApimNoticeMessagePort
 │       ├── ApimNotificationReadStatusAdapter # Implements ApimNotificationReadStatusPort
 │       ├── ApimContributionSummaryAdapter # Implements ApimContributionSummaryPort
-│       ├── configserver/ConfigBackedReferenceDateAdapter # Current ConfigMap-backed ReferenceDatePort implementation
-│       ├── configserver/ConfigServiceReferenceDateAdapter # Planned future API-backed ReferenceDatePort implementation
-│       ├── configserver/ReferenceDateResolver # Shared production-like / override resolution policy
-│       ├── ApimCertificateService     # Fetches BCT public key from APIM
-│       ├── ApimAppCertificateService  # Loads app RSA keys + X509 cert
-│       ├── ApimPayloadCryptoService   # AES/CBC + RSA field encryption/decryption
-│       ├── crypto/                    # APIM-specific crypto helpers and exceptions
-│       └── dto/                       # APIM request/response POJOs
+│       │   ├── configserver/ConfigBackedReferenceDateAdapter # Current ConfigMap-backed ReferenceDatePort implementation
+│       │   ├── configserver/ConfigServiceReferenceDateAdapter # Planned future API-backed ReferenceDatePort implementation
+│       │   ├── configserver/ReferenceDateResolver # Shared production-like / override resolution policy
+│       │   ├── ApimCertificateService     # Fetches BCT public key from APIM
+│       │   ├── ApimAppCertificateService  # Loads app RSA keys + X509 cert
+│       │   ├── ApimPayloadCryptoService   # AES/CBC + RSA field encryption/decryption
+│       │   ├── crypto/                    # APIM-specific crypto helpers and exceptions
+│       │   └── dto/                       # APIM request/response POJOs
+│       └── security/        # Non-APIM security concerns
+│           └── TemporaryMemberContextAdapter  # Implements MemberContextPort; reads temporary-member-context profiles
 ├── config/              # Spring configuration beans (unchanged across layers)
 │   ├── ApimProperties
 │   ├── ContributionSummaryProperties
+│   ├── TemporaryMemberContextProperties  # Binds temporary-member-context.profiles.*
 │   ├── WebClientConfig
 │   ├── SecurityConfig
 │   ├── JacksonConfig
@@ -169,8 +174,49 @@ export JAVA_HOME="C:/Java/OpenJDK/jdk-21"
 | `APIM_API_KEY` | API key sent as `KeyId` header | _(required if encryption enabled)_ |
 | `APIM_PRIVATE_KEY_PEM` | App RSA private key (Base64 PEM) | _(required if encryption enabled)_ |
 | `APIM_PUBLIC_KEY_PEM` | App RSA public key (Base64 PEM) | _(required if encryption enabled)_ |
+| `TEMP_NOTIF_POLICY_NO` | Temporary notification policy number | `policyNo_for_notifications` |
+| `TEMP_NOTIF_CERT_NO` | Temporary notification certificate number | `certNo_for_notifications` |
+| `TEMP_NOTIF_USER_ID` | Temporary notification user ID | `userId_for_notifications` |
+| `TEMP_NOTIF_TRUST_CODE` | Temporary notification trust code | `trustCode_for_notifications` |
+| `TEMP_NOTIF_SCHEME_TYPE` | Temporary notification scheme type | `schemeType_for_notifications` |
+| `TEMP_CONT_POLICY_NO` | Temporary contribution policy number | `policyNo_for_contributions` |
+| `TEMP_CONT_CERT_NO` | Temporary contribution certificate number | `certNo_for_contributions` |
+| `TEMP_CONT_USER_ID` | Temporary contribution user ID | `userId_for_contributions` |
+| `TEMP_CONT_TRUST_CODE` | Temporary contribution trust code | `trustCode_for_contributions` |
+| `TEMP_CONT_SCHEME_TYPE` | Temporary contribution scheme type | `schemeType_for_contributions` |
 
 For the dev cluster, the Kubernetes deployment or external config repository must set `CORS_ALLOWED_ORIGINS=http://localhost:4200` before local frontend calls from that origin will succeed. Those deployment manifests are outside this repository.
+
+---
+
+## Temporary Member Context Configuration
+
+Until Auth Server integration is implemented, the `policy-no`, `cert-no`, `user-id`, `trustCode`, and `schemeType` values used in APIM calls are sourced from a temporary feature-specific profile configuration rather than hardcoded constants.
+
+The property class `TemporaryMemberContextProperties` binds `temporary-member-context.profiles.*`. The outbound adapter `TemporaryMemberContextAdapter` (under `adapter/out/security`) implements `MemberContextPort` and resolves the correct profile by feature purpose (`NOTIFICATIONS` or `CONTRIBUTIONS`).
+
+If a required profile is missing from configuration, the service fails fast with `MemberContextResolutionException`, which maps to HTTP **500** with the standard error body.
+
+Example YAML (already present in `application-local.yml`):
+
+```yaml
+temporary-member-context:
+  profiles:
+    notifications:
+      policy-no: ${TEMP_NOTIF_POLICY_NO:policyNo_for_notifications}
+      cert-no: ${TEMP_NOTIF_CERT_NO:certNo_for_notifications}
+      user-id: ${TEMP_NOTIF_USER_ID:userId_for_notifications}
+      trust-code: ${TEMP_NOTIF_TRUST_CODE:trustCode_for_notifications}
+      scheme-type: ${TEMP_NOTIF_SCHEME_TYPE:schemeType_for_notifications}
+    contributions:
+      policy-no: ${TEMP_CONT_POLICY_NO:policyNo_for_contributions}
+      cert-no: ${TEMP_CONT_CERT_NO:certNo_for_contributions}
+      user-id: ${TEMP_CONT_USER_ID:userId_for_contributions}
+      trust-code: ${TEMP_CONT_TRUST_CODE:trustCode_for_contributions}
+      scheme-type: ${TEMP_CONT_SCHEME_TYPE:schemeType_for_contributions}
+```
+
+This configuration is **temporary**. It will be replaced once the Auth Server is integrated and member context is extracted from the JWT access token claims.
 
 ---
 
@@ -421,7 +467,7 @@ Updates the read status for one or more notifications.
 - `env` and `mbrType` must be non-blank.
 - `notificationId` must contain at least one non-blank value.
 - Duplicate notification IDs are preserved in request order and forwarded to APIM unchanged.
-- The BFF currently hardcodes `cert-no`, `policy-no`, `user-id`, and `ref-date` while auth/config integration is pending.
+- `policy-no`, `cert-no`, and `user-id` are resolved from externalized `temporary-member-context.profiles.notifications.*` configuration (see **Temporary Member Context Configuration** below) until Auth Server integration is implemented. `ref-date` remains temporarily hardcoded.
 
 **Response:**
 ```json
@@ -481,8 +527,7 @@ GET /api/v1/contributions?env=JP&mbrType=MBR&fromDate=05/04/2026&toDate=05/05/20
 - Each detail label exposes only `en` and `zh`.
 - Detail `amountEn` and `amountZh` are pre-formatted strings using the resolved currency display.
 - `totalContributionEn` and `totalContributionZh` use the same formatting logic with insignificant trailing zeros stripped.
-- The BFF currently hardcodes `policy-no`, `cert-no`, and `user-id` while auth/progress integrations are pending.
-- The BFF currently hardcodes empty `trustCode` and `schemeType` until access-token claim extraction is implemented.
+- `policy-no`, `cert-no`, `user-id`, `trustCode`, and `schemeType` are resolved from externalized `temporary-member-context.profiles.contributions.*` configuration (see **Temporary Member Context Configuration** below) until Auth Server integration is implemented.
 
 **Response:**
 
@@ -558,6 +603,7 @@ Accept: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
 - The BFF resolves `ref-date` through `ReferenceDatePort`.
 - `ReferenceDatePort` uses deployment environment configuration, not the request query `env`, to decide whether non-production override rules apply.
 - `cover-from` is computed as `ref-date.minusMonths(36)`; `cover-to` is the resolved `ref-date`.
+- `policy-no`, `cert-no`, `user-id`, `trustCode`, and `schemeType` are resolved from externalized `temporary-member-context.profiles.contributions.*` configuration until Auth Server integration is implemented.
 - The first three headers come from `contribution-summary.headers.*`.
 - Dynamic source columns are sorted by `dispSrc.seq` ascending.
 - Amount cells are numeric, formatted as `0.00`, and rounded with `HALF_UP`.
