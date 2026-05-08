@@ -93,3 +93,17 @@ reference-date:
   deployment-env: dev
   override-date: 04/05/2023
   override-zone-id: Asia/Hong_Kong
+
+request-logging:
+  body-logging:
+    enabled: true
+    default-max-body-size-bytes: 4096
+    endpoints:
+      - method: PATCH
+        path-pattern: /api/v1/notifications
+        log-request-body: true
+        log-response-body: true
+      - method: GET
+        path-pattern: /api/v1/notifications
+        log-request-body: false
+        log-response-body: true  

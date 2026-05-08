@@ -48,11 +48,11 @@ class ExecutionLoggingAspectTest {
         assertEquals("ok", result);
         assertEquals(2, listAppender.list.size());
         assertEquals(Level.INFO, listAppender.list.get(0).getLevel());
-        assertTrue(listAppender.list.get(0).getFormattedMessage().contains("Execution start"));
-        assertTrue(listAppender.list.get(0).getFormattedMessage().contains("authorization=***"));
-        assertTrue(listAppender.list.get(1).getFormattedMessage().contains("Execution success"));
-        assertTrue(listAppender.list.get(1).getFormattedMessage().contains("result=ok"));
-        assertTrue(listAppender.list.get(1).getFormattedMessage().contains("elapsedMs="));
+        assertTrue(listAppender.list.get(0).getFormattedMessage().contains("\"event\":\"method.execution.start\""));
+        assertTrue(listAppender.list.get(0).getFormattedMessage().contains("\"authorization\":\"***\""));
+        assertTrue(listAppender.list.get(1).getFormattedMessage().contains("\"event\":\"method.execution.success\""));
+        assertTrue(listAppender.list.get(1).getFormattedMessage().contains("\"result\":\"ok\""));
+        assertTrue(listAppender.list.get(1).getFormattedMessage().contains("\"elapsedMs\":"));
     }
 
     @Test
@@ -65,8 +65,8 @@ class ExecutionLoggingAspectTest {
 
         assertEquals(2, listAppender.list.size());
         assertEquals(Level.ERROR, listAppender.list.get(1).getLevel());
-        assertTrue(listAppender.list.get(1).getFormattedMessage().contains("Execution error"));
-        assertTrue(listAppender.list.get(1).getFormattedMessage().contains("elapsedMs="));
+        assertTrue(listAppender.list.get(1).getFormattedMessage().contains("\"event\":\"method.execution.error\""));
+        assertTrue(listAppender.list.get(1).getFormattedMessage().contains("\"elapsedMs\":"));
     }
 
     @Test
@@ -83,8 +83,8 @@ class ExecutionLoggingAspectTest {
 
         assertEquals(1, proxied.target().monoSubscriptions.get());
         assertEquals(2, listAppender.list.size());
-        assertTrue(listAppender.list.get(0).getFormattedMessage().contains("userId=***"));
-        assertTrue(listAppender.list.get(1).getFormattedMessage().contains("result=mono-ok"));
+        assertTrue(listAppender.list.get(0).getFormattedMessage().contains("\"userId\":\"***\""));
+        assertTrue(listAppender.list.get(1).getFormattedMessage().contains("\"result\":\"mono-ok\""));
     }
 
     @Test
@@ -97,7 +97,7 @@ class ExecutionLoggingAspectTest {
 
         assertEquals(2, listAppender.list.size());
         assertEquals(Level.ERROR, listAppender.list.get(1).getLevel());
-        assertTrue(listAppender.list.get(1).getFormattedMessage().contains("Execution error"));
+        assertTrue(listAppender.list.get(1).getFormattedMessage().contains("\"event\":\"method.execution.error\""));
     }
 
     @Test
@@ -114,7 +114,7 @@ class ExecutionLoggingAspectTest {
 
         assertEquals(1, proxied.target().fluxSubscriptions.get());
         assertEquals(2, listAppender.list.size());
-        assertTrue(listAppender.list.get(1).getFormattedMessage().contains("emittedItems=2"));
+        assertTrue(listAppender.list.get(1).getFormattedMessage().contains("\"emittedItems\":2"));
     }
 
     @Test
@@ -127,13 +127,82 @@ class ExecutionLoggingAspectTest {
 
         assertEquals(2, listAppender.list.size());
         assertEquals(Level.ERROR, listAppender.list.get(1).getLevel());
-        assertTrue(listAppender.list.get(1).getFormattedMessage().contains("Execution error"));
+        assertTrue(listAppender.list.get(1).getFormattedMessage().contains("\"event\":\"method.execution.error\""));
+    }
+
+    @Test
+    void logsJsonStructuredStartEvent() {
+        ProxiedService proxied = proxiedService();
+
+        proxied.proxy().synchronousSuccess(Map.of("traceId", "t1"));
+
+        String startMsg = listAppender.list.get(0).getFormattedMessage();
+        assertTrue(startMsg.contains("\"event\":\"method.execution.start\""));
+        assertTrue(startMsg.contains("\"className\":\"TestService\""));
+        assertTrue(startMsg.contains("\"methodName\":\"synchronousSuccess\""));
+        assertTrue(startMsg.contains("\"label\":\"sync.success\""));
+    }
+
+    @Test
+    void logsJsonStructuredSuccessEvent() {
+        ProxiedService proxied = proxiedService();
+
+        proxied.proxy().synchronousSuccess(Map.of("traceId", "t1"));
+
+        String successMsg = listAppender.list.get(1).getFormattedMessage();
+        assertTrue(successMsg.contains("\"event\":\"method.execution.success\""));
+        assertTrue(successMsg.contains("\"elapsedMs\":"));
+    }
+
+    @Test
+    void includesRequestIdFromContextInMonoLog() {
+        ProxiedService proxied = proxiedService();
+
+        StepVerifier.create(
+                        proxied.proxy().monoSuccess(Map.of("traceId", "t1"))
+                                .contextWrite(ctx ->
+                                        ctx.put(RequestLoggingWebFilter.REQUEST_ID_CONTEXT_KEY, "request-id-from-ctx")))
+                .expectNext("mono-ok")
+                .verifyComplete();
+
+        String startMsg = listAppender.list.get(0).getFormattedMessage();
+        assertTrue(startMsg.contains("\"requestId\":\"request-id-from-ctx\""),
+                "requestId from Reactor Context should appear in Mono log");
+    }
+
+    @Test
+    void includesRequestIdFromContextInFluxLog() {
+        ProxiedService proxied = proxiedService();
+
+        StepVerifier.create(
+                        proxied.proxy().fluxSuccess()
+                                .contextWrite(ctx ->
+                                        ctx.put(RequestLoggingWebFilter.REQUEST_ID_CONTEXT_KEY, "flux-request-id")))
+                .expectNext("a", "b")
+                .verifyComplete();
+
+        String startMsg = listAppender.list.get(0).getFormattedMessage();
+        assertTrue(startMsg.contains("\"requestId\":\"flux-request-id\""),
+                "requestId from Reactor Context should appear in Flux log");
+    }
+
+    @Test
+    void omitsRequestIdWhenNotInContext() {
+        ProxiedService proxied = proxiedService();
+
+        StepVerifier.create(proxied.proxy().monoSuccess(Map.of("traceId", "t1")))
+                .expectNext("mono-ok")
+                .verifyComplete();
+
+        String startMsg = listAppender.list.get(0).getFormattedMessage();
+        assertTrue(!startMsg.contains("\"requestId\""), "requestId should be absent when not in context");
     }
 
     private ProxiedService proxiedService() {
         TestService target = new TestService();
         AspectJProxyFactory proxyFactory = new AspectJProxyFactory(target);
-        proxyFactory.addAspect(new ExecutionLoggingAspect(new LoggingSanitizer(new ObjectMapper(), properties())));
+        proxyFactory.addAspect(new ExecutionLoggingAspect(
+                new LoggingSanitizer(new ObjectMapper(), properties()), new ObjectMapper()));
         return new ProxiedService(target, proxyFactory.getProxy());
     }
 

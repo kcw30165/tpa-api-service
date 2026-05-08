@@ -32,7 +32,6 @@ public class ContributionController {
         private final ContributionSummaryProperties contributionSummaryProperties;
 
         @GetMapping(value = "/contributions", produces = MediaType.APPLICATION_JSON_VALUE)
-        @LogExecution(value = "contributions.get", logArgs = true)
         public Mono<ContributionSummaryResponse> getContributionSummary(
                         @RequestParam(value = "env", required = false) String env,
                         @RequestParam(value = "mbrType", required = false) String mbrType,
@@ -44,7 +43,6 @@ public class ContributionController {
         }
 
         @GetMapping(value = "/contributions/export", produces = EXCEL_MEDIA_TYPE)
-        @LogExecution(value = "contributions.export", logArgs = true)
         public Mono<ResponseEntity<byte[]>> exportContributionSummary(
                         @RequestParam(value = "env", required = false) String env,
                         @RequestParam(value = "mbrType", required = false) String mbrType) {

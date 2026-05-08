@@ -59,7 +59,7 @@ class ConfigurationBeansTest {
 
     @Test
     void createsClientRegistrationWithoutScopesWhenNoneConfigured() {
-        WebClientConfig config = new WebClientConfig(loggingSanitizer());
+        WebClientConfig config = new WebClientConfig(loggingSanitizer(), new ObjectMapper());
         ApimProperties properties = apimProperties(List.of());
 
         ReactiveClientRegistrationRepository repository = config.clientRegistrationRepository(properties);
@@ -75,7 +75,7 @@ class ConfigurationBeansTest {
 
     @Test
     void createsClientRegistrationWithConfiguredScopes() {
-        WebClientConfig config = new WebClientConfig(loggingSanitizer());
+        WebClientConfig config = new WebClientConfig(loggingSanitizer(), new ObjectMapper());
         ApimProperties properties = apimProperties(List.of("scope.read", "scope.write"));
 
         ReactiveClientRegistrationRepository repository = config.clientRegistrationRepository(properties);
@@ -87,7 +87,7 @@ class ConfigurationBeansTest {
 
     @Test
     void createsAuthorizedClientBeansAndWebClients() {
-        WebClientConfig config = new WebClientConfig(loggingSanitizer());
+        WebClientConfig config = new WebClientConfig(loggingSanitizer(), new ObjectMapper());
         ApimProperties properties = apimProperties(List.of("scope.read"));
         ReactiveClientRegistrationRepository repository = config.clientRegistrationRepository(properties);
         ReactiveOAuth2AuthorizedClientService clientService = config.authorizedClientService(repository);
@@ -108,8 +108,8 @@ class ConfigurationBeansTest {
 
     @Test
     void requestLoggingFilterPassesRequestThrough() throws Exception {
-        WebClientConfig config = new WebClientConfig(loggingSanitizer());
-        ExchangeFilterFunction filter = logApimRequestHeaders(config);
+        WebClientConfig config = new WebClientConfig(loggingSanitizer(), new ObjectMapper());
+        ExchangeFilterFunction filter = logAndPropagateRequestId(config);
         ClientRequest request = ClientRequest.create(HttpMethod.POST, URI.create("https://api.example.test/notifications"))
                 .header("Accept", "application/json")
                 .header("Certificate", "encoded-certificate")
@@ -139,8 +139,8 @@ class ConfigurationBeansTest {
         return properties;
     }
 
-    private static ExchangeFilterFunction logApimRequestHeaders(WebClientConfig config) throws Exception {
-        Method method = WebClientConfig.class.getDeclaredMethod("logApimRequestHeaders");
+    private static ExchangeFilterFunction logAndPropagateRequestId(WebClientConfig config) throws Exception {
+        Method method = WebClientConfig.class.getDeclaredMethod("logAndPropagateRequestId");
         method.setAccessible(true);
         return (ExchangeFilterFunction) method.invoke(config);
     }

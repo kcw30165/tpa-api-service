@@ -211,6 +211,85 @@ Global execution logging is implemented as a configuration-level cross-cutting c
 - Logged arguments and results are opt-in through annotation attributes and are sanitized before serialization.
 - Sensitive header and payload fields such as `Authorization`, `Certificate`, API keys, tokens, secrets, policy numbers, certificate numbers, user IDs, and key material are masked in logs.
 - The sensitive key list is configured through `logging-sanitizer.sensitive-tokens`, using `src/main/resources/application-local.yml` for local development and the deployed `ngtpa-display-config` Spring YAML in Kubernetes.
+- All log events are emitted as JSON-structured strings (using `ObjectMapper`) suitable for ingestion by Elasticsearch/Logstash.
+
+Log event names: `method.execution.start`, `method.execution.success`, `method.execution.error`. When a `requestId` is available in Reactor Context (set by `RequestLoggingWebFilter`), it is included in every event.
+
+---
+
+## Request Correlation and Structured Logging
+
+### X-Request-Id Header
+
+Every inbound HTTP request is assigned a correlation identifier managed by `RequestLoggingWebFilter`:
+
+| Scenario | Behavior |
+|---|---|
+| `X-Request-Id` header present and non-blank | Reuse the inbound value |
+| `X-Request-Id` header missing or blank | Generate a new UUID |
+| All responses | `X-Request-Id` header is always returned in the response |
+| Error responses | `X-Request-Id` is in the response **header only** — never in the response body |
+
+Error response body remains:
+```json
+{
+  "errorCode": "...",
+  "message": "..."
+}
+```
+
+### Outbound APIM Propagation
+
+`WebClientConfig` propagates the resolved `X-Request-Id` to every outbound APIM call as an HTTP header. This allows APIM-side log correlation with BFF-side logs.
+
+### JSON Structured Log Events
+
+All global and method-level log events are serialized as JSON strings. Key event types:
+
+| Event | Source | Key Fields |
+|---|---|---|
+| `http.request.start` | `RequestLoggingWebFilter` | `requestId`, `method`, `path`, `query`, `headers` |
+| `http.request.end` | `RequestLoggingWebFilter` | `requestId`, `method`, `path`, `status`, `elapsedMs` |
+| `http.request.error` | `RequestLoggingWebFilter` | `requestId`, `method`, `path`, `elapsedMs`, `exceptionType`, `errorMessage` |
+| `apim.request` | `WebClientConfig` | `requestId`, `method`, `url`, `headers` |
+| `method.execution.start` | `ExecutionLoggingAspect` | `requestId`*, `className`, `methodName`, `label`, `args` |
+| `method.execution.success` | `ExecutionLoggingAspect` | `requestId`*, `className`, `methodName`, `elapsedMs`, `result` |
+| `method.execution.error` | `ExecutionLoggingAspect` | `requestId`*, `className`, `methodName`, `elapsedMs`, `exceptionType`, `errorMessage` |
+
+\* `requestId` is included when available from Reactor Context (Mono/Flux methods) or MDC (synchronous methods).
+
+### Body Logging Configuration
+
+Request/response body logging is **disabled by default** and must be explicitly enabled:
+
+```yaml
+request-logging:
+  enabled: true          # enables lifecycle logging (start/end/error); default: true
+  log-headers: false     # includes allowlisted headers in start log; default: false
+  header-allowlist:
+    - User-Agent
+    - Accept
+    - Content-Type
+  body-logging:
+    enabled: false                      # global body logging gate; default: false
+    default-max-body-size-bytes: 4096   # max logged body bytes
+    endpoints:
+      - method: POST
+        path-pattern: /api/v1/some-endpoint
+        log-request-body: true
+        log-response-body: false
+        max-body-size-bytes: 4096       # overrides default for this endpoint
+```
+
+Effective rules:
+- `shouldLogRequestBody = request-logging.body-logging.enabled AND endpoint.log-request-body`
+- `shouldLogResponseBody = request-logging.body-logging.enabled AND endpoint.log-response-body`
+- No endpoint match → no body logging.
+- Binary response bodies (Excel, PDF, octet-stream) are never logged regardless of configuration.
+
+> **Security warning:** Body logging may expose PII or sensitive business data. Keep `body-logging.enabled=false` in all production and production-like environments. Only enable on specific endpoints in lower non-production environments for debugging.
+
+
 
 ## Contribution Summary Configuration
 

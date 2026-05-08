@@ -39,6 +39,18 @@ apim:
       - cert-no
       - user-id
 
+request-logging:
+  enabled: true
+  log-headers: false
+  header-allowlist:
+    - User-Agent
+    - Accept
+    - Content-Type
+  body-logging:
+    enabled: true
+    default-max-body-size-bytes: 4096
+    endpoints: []
+
 logging:
   level:
     org.springframework.security: DEBUG

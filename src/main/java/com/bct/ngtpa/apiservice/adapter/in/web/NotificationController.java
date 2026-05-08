@@ -29,7 +29,6 @@ public class NotificationController {
         private final UpdateNotificationsReadStatusUseCase updateNotificationsReadStatusUseCase;
 
     @GetMapping(value = "/notifications", produces = MediaType.APPLICATION_JSON_VALUE)
-        @LogExecution(value = "notifications.get", logArgs = true)
     public Mono<NotificationListResponse> getNotifications(
             @RequestParam(value = "env", required = false) String env,
             @RequestParam(value = "mbrType", required = false) String mbrType,
@@ -56,7 +55,6 @@ public class NotificationController {
             value = "/notifications",
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
-    @LogExecution(value = "notifications.updateReadStatus", logArgs = true)
     public Mono<UpdateNotificationsReadStatusResponse> updateNotificationsReadStatus(
             @Valid @RequestBody UpdateNotificationsReadStatusRequest request) {
         return updateNotificationsReadStatusUseCase
