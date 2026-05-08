@@ -7,7 +7,7 @@ import com.bct.ngtpa.apiservice.application.port.in.UpdateNotificationsReadStatu
 import com.bct.ngtpa.apiservice.application.port.out.ApimNotificationReadStatusPort;
 import com.bct.ngtpa.apiservice.application.port.out.MemberContextPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
-import com.bct.ngtpa.apiservice.config.logging.LogExecution;
+import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
 import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

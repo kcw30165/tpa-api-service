@@ -6,7 +6,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfil
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
 import com.bct.ngtpa.apiservice.adapter.out.apim.oauth.ApimTokenService;
 import com.bct.ngtpa.apiservice.config.ApimProperties;
-import com.bct.ngtpa.apiservice.config.logging.LogExecution;
+import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
 import com.bct.ngtpa.apiservice.config.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.config.logging.LoggingSanitizerProperties;
 import com.bct.ngtpa.apiservice.exception.ApimException;

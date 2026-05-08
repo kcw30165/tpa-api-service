@@ -1,7 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiErrorResponse;
-import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.application.exception.MemberContextResolutionException;
@@ -29,18 +28,6 @@ public class ApiExceptionHandler {
             builder.header(RequestLoggingWebFilter.REQUEST_ID_HEADER, requestId);
         }
         return builder.body(ApiErrorResponse.of(ex.getErrorCode(), ex.getMessage()));
-    }
-
-    @ExceptionHandler(ApimCryptoException.class)
-    public ResponseEntity<ApiErrorResponse> handleApimCryptoException(ApimCryptoException ex,
-            ServerWebExchange exchange) {
-        String requestId = getRequestId(exchange);
-        ResponseEntity.BodyBuilder builder = ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR);
-        if (requestId != null) {
-            builder.header(RequestLoggingWebFilter.REQUEST_ID_HEADER, requestId);
-        }
-        return builder
-                .body(ApiErrorResponse.of(String.valueOf(HttpStatus.INTERNAL_SERVER_ERROR.value()), ex.getMessage()));
     }
 
     @ExceptionHandler(InvalidNotificationRequestException.class)

@@ -87,7 +87,8 @@ com.bct.ngtpa.apiservice
 │   ├── SecurityConfig
 │   ├── JacksonConfig
 │   ├── ApimCryptoConfig
-│   └── logging/        # `@LogExecution`, aspect, and log sanitization
+│   └── logging/        # AOP aspect, log sanitization, and request logging
+│                        # Note: `@LogExecution` annotation is in `shared/logging/`
 └── exception/           # ApimException (shared)
 ```
 
@@ -277,7 +278,7 @@ Notes:
 
 Global execution logging is implemented as a configuration-level cross-cutting concern under `config/logging`.
 
-- Use `@LogExecution` on controller, use-case, and outbound adapter/facade methods that represent entry or orchestration points.
+- Use `@LogExecution` (from `com.bct.ngtpa.apiservice.shared.logging`) on controller, use-case, and outbound adapter/facade methods that represent entry or orchestration points.
 - Annotated synchronous methods log start, success, error, and elapsed time.
 - Annotated `Mono` and `Flux` methods stay lazy; the aspect logs on subscription and completion/error without calling `block()` or subscribing internally.
 - Logged arguments and results are opt-in through annotation attributes and are sanitized before serialization.

@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim;
 
+import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetMessageBoardApimRequest;
@@ -269,6 +270,17 @@ class ApimNoticeMessageAdapterTest {
                 @Override
                 public Mono<PublicKey> getBctPublicKey() {
                         return Mono.error(new AssertionError("Certificate lookup should not run when encryption is disabled."));
+                }
+        }
+
+        private static final class FailingCertificateService extends ApimCertificateService {
+                private FailingCertificateService() {
+                        super(null, new ApimProperties(), null);
+                }
+
+                @Override
+                public Mono<PublicKey> getBctPublicKey() {
+                        return Mono.error(new ApimCryptoException("Certificate crypto error"));
                 }
         }
 

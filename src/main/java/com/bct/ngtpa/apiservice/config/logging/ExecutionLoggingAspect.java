@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.config.logging;
 
+import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.LinkedHashMap;

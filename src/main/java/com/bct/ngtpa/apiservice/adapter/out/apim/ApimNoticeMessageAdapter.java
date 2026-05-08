@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim;
 
+import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetMessageBoardApimRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetMessageBoardDataItem;
@@ -8,7 +9,7 @@ import com.bct.ngtpa.apiservice.application.dto.GetNotificationsCommand;
 import com.bct.ngtpa.apiservice.application.dto.NotificationListResult;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNoticeMessagePort;
 import com.bct.ngtpa.apiservice.config.ApimProperties;
-import com.bct.ngtpa.apiservice.config.logging.LogExecution;
+import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
 import com.bct.ngtpa.apiservice.domain.model.AudienceType;
 import com.bct.ngtpa.apiservice.domain.model.Hyperlink;
 import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
@@ -58,7 +59,9 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
             return apimWebClientFacade.post(API_NAME, request)
                 .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
                     API_NAME, body, GetMessageBoardDataItem.class, null))
-                .map(this::toNotificationListResult);
+                .map(this::toNotificationListResult)
+                .onErrorMap(ApimCryptoException.class, ex ->
+                    new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, "500", ex.getMessage()));
         }
 
         return apimCertificateService.getBctPublicKey()
@@ -69,7 +72,9 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
                         .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
                             API_NAME, body, GetMessageBoardDataItem.class, publicKey))
                         .map(this::toNotificationListResult);
-                });
+                })
+                .onErrorMap(ApimCryptoException.class, ex ->
+                    new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, "500", ex.getMessage()));
     }
 
     private GetMessageBoardApimRequest toApimRequest(GetNotificationsCommand command) {

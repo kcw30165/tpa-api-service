@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim;
 
+import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateNotificationReadStatusApimRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
@@ -118,6 +119,22 @@ class ApimNotificationReadStatusAdapterTest {
         assertEquals(1, result.notifications().size());
         assertTrue(result.notifications().getFirst().isRead());
         }
+
+	@Test
+	void cryptoFailureIsMappedToApimException() {
+		ApimProperties properties = new ApimProperties();
+		properties.getEncryption().setEnabled(true);
+		ApimNotificationReadStatusAdapter adapter = new ApimNotificationReadStatusAdapter(
+				new CapturingApimWebClientFacade("ignored"),
+				new FailingCertificateService(),
+				new FixedEnvelopePayloadCryptoService(responseEnvelope(List.of())),
+				properties);
+
+		ApimException ex = assertThrows(ApimException.class, () -> adapter.updateReadStatus(command()).block());
+
+		assertEquals("500", ex.getErrorCode());
+		assertEquals("Certificate crypto error", ex.getMessage());
+	}
 
         @Test
         void returnsEmptyResultsWhenDataIsMissing() {
@@ -278,6 +295,17 @@ class ApimNotificationReadStatusAdapterTest {
         @Override
         public Mono<PublicKey> getBctPublicKey() {
             return Mono.error(new AssertionError("Certificate lookup should not be called when encryption is disabled."));
+        }
+    }
+
+    private static final class FailingCertificateService extends ApimCertificateService {
+        private FailingCertificateService() {
+            super(null, new ApimProperties(), null);
+        }
+
+        @Override
+        public Mono<PublicKey> getBctPublicKey() {
+            return Mono.error(new ApimCryptoException("Certificate crypto error"));
         }
     }
 

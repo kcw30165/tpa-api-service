@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiErrorResponse;
-import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.application.exception.MemberContextResolutionException;
 import com.bct.ngtpa.apiservice.config.logging.RequestLoggingWebFilter;
@@ -42,13 +41,14 @@ class ApiExceptionHandlerTest {
     }
 
     @Test
-    void mapsApimCryptoExceptionToInternalServerError() {
-        ResponseEntity<ApiErrorResponse> response = handler.handleApimCryptoException(
-                new ApimCryptoException("Crypto failed"), emptyExchange());
+    void mapsApimInternalServerErrorToItsStatusAndErrorCode() {
+        ResponseEntity<ApiErrorResponse> response = handler.handleApimException(
+                new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, "500", "Crypto failure"),
+                emptyExchange());
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
         assertEquals("500", response.getBody().errorCode());
-        assertEquals("Crypto failed", response.getBody().message());
+        assertEquals("Crypto failure", response.getBody().message());
     }
 
     @Test
@@ -135,11 +135,11 @@ class ApiExceptionHandlerTest {
     }
 
     @Test
-    void cryptoExceptionResponseIncludesRequestIdHeader() {
+    void cryptoExceptionMappedAsApimExceptionPreservesRequestIdHeader() {
         MockServerWebExchange exchange = exchangeWithRequestId("crypto-req-id");
 
-        ResponseEntity<ApiErrorResponse> response = handler.handleApimCryptoException(
-                new ApimCryptoException("fail"), exchange);
+        ResponseEntity<ApiErrorResponse> response = handler.handleApimException(
+                new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, "500", "fail"), exchange);
 
         assertEquals("crypto-req-id", response.getHeaders().getFirst(RequestLoggingWebFilter.REQUEST_ID_HEADER));
     }
