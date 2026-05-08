@@ -6,11 +6,13 @@ import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusCom
 import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusResult;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNotificationReadStatusPort;
 import com.bct.ngtpa.apiservice.application.port.out.MemberContextPort;
+import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
 import com.bct.ngtpa.apiservice.domain.model.NotificationReadStatus;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -25,6 +27,9 @@ class UpdateNotificationsReadStatusServiceTest {
             "userId_for_notifications",
             "trustCode_for_notifications",
             "schemeType_for_notifications");
+
+    private static final ReferenceDatePort REFERENCE_DATE_PORT =
+            () -> Mono.just(LocalDate.of(2025, 10, 1));
 
     @Test
     void enrichesCommandFromMemberContextPortAndReturnsPortResult() {
@@ -45,7 +50,7 @@ class UpdateNotificationsReadStatusServiceTest {
             return Mono.just(NOTIFICATIONS_CONTEXT);
         };
 
-        UpdateNotificationsReadStatusService service = new UpdateNotificationsReadStatusService(port, memberContextPort);
+        UpdateNotificationsReadStatusService service = new UpdateNotificationsReadStatusService(port, memberContextPort, REFERENCE_DATE_PORT);
 
         UpdateNotificationsReadStatusResult result = service.execute(new UpdateNotificationsReadStatusCommand(
                 "DEV",

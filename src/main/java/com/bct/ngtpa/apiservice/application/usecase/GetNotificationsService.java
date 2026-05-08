@@ -7,6 +7,7 @@ import com.bct.ngtpa.apiservice.application.dto.NotificationListResult;
 import com.bct.ngtpa.apiservice.application.port.in.GetNotificationsUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNoticeMessagePort;
 import com.bct.ngtpa.apiservice.application.port.out.MemberContextPort;
+import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.config.logging.LogExecution;
 import com.bct.ngtpa.apiservice.domain.model.NoticeMessage;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.Optional;
 
@@ -21,20 +23,24 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class GetNotificationsService implements GetNotificationsUseCase {
 
-    // TODO: read refDate from config server once ReferenceDatePort is wired for notifications (Stage 1.2)
-    private static final String HARDCODED_REF_DATE = "01/10/2025";
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final ApimNoticeMessagePort apimNoticeMessagePort;
     private final MemberContextPort memberContextPort;
+    private final ReferenceDatePort referenceDatePort;
 
     @Override
-        @LogExecution(value = "usecase.getNotifications", logArgs = true)
+    @LogExecution(value = "usecase.getNotifications", logArgs = true)
     public Mono<NotificationListResult> execute(GetNotificationsCommand command) {
         var dateOptions = NotificationDateOptions.resolve(command.dateFormat(), command.timezone());
         LocalDateTime now = dateOptions.now();
 
         return memberContextPort.resolveMemberContext(MemberContextPurpose.NOTIFICATIONS)
-                .flatMap(memberContext -> {
+                .zipWith(referenceDatePort.resolveReferenceDate())
+                .flatMap(tuple -> {
+                    var memberContext = tuple.getT1();
+                    var referenceDate = tuple.getT2();
+
                     var enriched = new GetNotificationsCommand(
                             command.env(),
                             command.mbrType(),
@@ -45,7 +51,7 @@ public class GetNotificationsService implements GetNotificationsUseCase {
                             memberContext.policyNo(),
                             memberContext.certNo(),
                             memberContext.userId(),
-                            HARDCODED_REF_DATE);
+                            referenceDate.format(DATE_FORMATTER));
 
                     return apimNoticeMessagePort.fetchNotifications(enriched)
                             .map(result -> {
