@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.application.usecase;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionWebDisplayConfig;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.ContributionSummaryResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.mapper.ContributionSummaryWebMapper;
 import com.bct.ngtpa.apiservice.application.dto.CurrencyDisplay;
 import com.bct.ngtpa.apiservice.application.dto.FetchContributionSummaryCommand;
 import com.bct.ngtpa.apiservice.application.dto.GetContributionSummaryCommand;
@@ -75,8 +75,8 @@ class GetContributionSummaryServiceTest {
         assertEquals("JP", recordingPort.capturedEnv);
         assertEquals("trustCode_for_contributions", recordingPort.capturedTrustCode);
         assertEquals("schemeType_for_contributions", recordingPort.capturedSchemeType);
-        assertEquals("HKD 24908.45", ContributionSummaryResponse
-                .from(result, new ContributionWebDisplayConfig(
+        assertEquals("HKD 24908.45", new ContributionSummaryWebMapper()
+                .toResponse(result, new ContributionWebDisplayConfig(
                     "Total Contributions",
                     "供款總額",
                     "Dealing date處理日期",
@@ -84,8 +84,8 @@ class GetContributionSummaryServiceTest {
                     "Total Contributions供款總額"
                 ))
                 .contributions().getFirst().totalContributionEn());
-        assertEquals("港元 24908.45", ContributionSummaryResponse
-                .from(result, new ContributionWebDisplayConfig(
+        assertEquals("港元 24908.45", new ContributionSummaryWebMapper()
+                .toResponse(result, new ContributionWebDisplayConfig(
                     "Total Contributions",
                     "供款總額",
                     "Dealing date處理日期",

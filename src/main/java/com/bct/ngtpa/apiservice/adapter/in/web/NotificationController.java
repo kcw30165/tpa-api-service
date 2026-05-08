@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.mapper.NotificationReadStatusWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.mapper.NotificationWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdateNotificationsReadStatusRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.NotificationListResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.UpdateNotificationsReadStatusResponse;
@@ -24,7 +26,9 @@ import reactor.core.publisher.Mono;
 public class NotificationController {
 
     private final GetNotificationsUseCase getNotificationsUseCase;
-        private final UpdateNotificationsReadStatusUseCase updateNotificationsReadStatusUseCase;
+    private final UpdateNotificationsReadStatusUseCase updateNotificationsReadStatusUseCase;
+    private final NotificationWebMapper notificationWebMapper;
+    private final NotificationReadStatusWebMapper notificationReadStatusWebMapper;
 
     @GetMapping(value = "/notifications", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<NotificationListResponse> getNotifications(
@@ -46,7 +50,7 @@ public class NotificationController {
                         null,
                         null,
                         null))
-                .map(NotificationListResponse::from);
+                .map(notificationWebMapper::toResponse);
     }
 
     @PatchMapping(
@@ -65,6 +69,6 @@ public class NotificationController {
                         null,
                         null,
                         null))
-                .map(UpdateNotificationsReadStatusResponse::from);
+                .map(notificationReadStatusWebMapper::toResponse);
     }
 }
