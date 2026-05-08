@@ -47,7 +47,7 @@ request-logging:
     - Accept
     - Content-Type
   body-logging:
-    enabled: true
+    enabled: false
     default-max-body-size-bytes: 4096
     endpoints: []
 
