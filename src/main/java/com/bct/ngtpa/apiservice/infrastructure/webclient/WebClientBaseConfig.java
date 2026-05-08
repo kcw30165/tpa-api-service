@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.config;
+package com.bct.ngtpa.apiservice.infrastructure.webclient;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

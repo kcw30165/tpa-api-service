@@ -1,5 +1,6 @@
-package com.bct.ngtpa.apiservice.config;
+package com.bct.ngtpa.apiservice.adapter.out.config;
 
+import com.bct.ngtpa.apiservice.adapter.out.config.CurrencyMappingProperties;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.env.YamlPropertySourceLoader;

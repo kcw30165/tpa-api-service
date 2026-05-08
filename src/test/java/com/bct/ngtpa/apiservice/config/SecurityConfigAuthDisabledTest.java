@@ -1,5 +1,8 @@
 package com.bct.ngtpa.apiservice.config;
 
+import com.bct.ngtpa.apiservice.infrastructure.security.CorsProperties;
+import com.bct.ngtpa.apiservice.infrastructure.security.SecurityConfig;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;

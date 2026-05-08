@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.out.config;
 
 import com.bct.ngtpa.apiservice.application.dto.CurrencyDisplay;
-import com.bct.ngtpa.apiservice.config.CurrencyMappingProperties;
+import com.bct.ngtpa.apiservice.adapter.out.config.CurrencyMappingProperties;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;

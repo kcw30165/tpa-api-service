@@ -1,5 +1,7 @@
-package com.bct.ngtpa.apiservice.config.logging;
+package com.bct.ngtpa.apiservice.adapter.in.web.filter;
 
+import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
+import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
@@ -48,15 +50,6 @@ import reactor.core.publisher.Mono;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class RequestLoggingWebFilter implements WebFilter {
 
-    /** Standard correlation header name. */
-    public static final String REQUEST_ID_HEADER = "X-Request-Id";
-
-    /** Reactor Context key for the resolved request ID. */
-    public static final String REQUEST_ID_CONTEXT_KEY = "requestId";
-
-    /** Exchange attribute key for the resolved request ID (used by exception handlers). */
-    public static final String REQUEST_ID_ATTRIBUTE_KEY = "requestId";
-
     private static final Logger log = LoggerFactory.getLogger(RequestLoggingWebFilter.class);
 
     private final RequestLoggingProperties properties;
@@ -75,12 +68,12 @@ public class RequestLoggingWebFilter implements WebFilter {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         String requestId = resolveRequestId(exchange.getRequest());
-        exchange.getResponse().getHeaders().set(REQUEST_ID_HEADER, requestId);
-        exchange.getAttributes().put(REQUEST_ID_ATTRIBUTE_KEY, requestId);
+        exchange.getResponse().getHeaders().set(RequestCorrelation.REQUEST_ID_HEADER, requestId);
+        exchange.getAttributes().put(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY, requestId);
 
         if (!properties.isEnabled()) {
             return chain.filter(exchange)
-                    .contextWrite(ctx -> ctx.put(REQUEST_ID_CONTEXT_KEY, requestId));
+                    .contextWrite(ctx -> ctx.put(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, requestId));
         }
 
         long startNanos = System.nanoTime();
@@ -101,13 +94,13 @@ public class RequestLoggingWebFilter implements WebFilter {
         return chain.filter(processExchange)
                 .doOnSuccess(v -> logRequestEnd(processExchange, requestId, startNanos))
                 .doOnError(t -> logRequestError(processExchange, requestId, startNanos, t))
-                .contextWrite(ctx -> ctx.put(REQUEST_ID_CONTEXT_KEY, requestId));
+                .contextWrite(ctx -> ctx.put(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, requestId));
     }
 
     // ── Request ID resolution ─────────────────────────────────────────────────
 
     private String resolveRequestId(ServerHttpRequest request) {
-        String inbound = request.getHeaders().getFirst(REQUEST_ID_HEADER);
+        String inbound = request.getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER);
         if (inbound != null && !inbound.isBlank()) {
             return inbound;
         }
@@ -149,7 +142,7 @@ public class RequestLoggingWebFilter implements WebFilter {
                             .doOnSuccess(v -> logRequestEnd(processExchange, requestId, startNanos))
                             .doOnError(t -> logRequestError(processExchange, requestId, startNanos, t));
                 })
-                .contextWrite(ctx -> ctx.put(REQUEST_ID_CONTEXT_KEY, requestId));
+                .contextWrite(ctx -> ctx.put(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, requestId));
     }
 
     private ServerWebExchange wrapWithResponseDecorator(ServerWebExchange exchange, String requestId, int maxBodyBytes) {

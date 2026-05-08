@@ -3,7 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web;
 import com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionWebDisplayConfigProvider;
 import com.bct.ngtpa.apiservice.application.dto.CurrencyDisplay;
 import com.bct.ngtpa.apiservice.application.dto.ContributionSummaryReportResult;
-import com.bct.ngtpa.apiservice.config.ContributionSummaryProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionSummaryProperties;
 import com.bct.ngtpa.apiservice.domain.model.ContributionLabels;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSource;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryReport;

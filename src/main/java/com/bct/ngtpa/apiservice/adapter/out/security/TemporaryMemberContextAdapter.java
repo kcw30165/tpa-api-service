@@ -4,7 +4,7 @@ import com.bct.ngtpa.apiservice.application.dto.MemberContext;
 import com.bct.ngtpa.apiservice.application.dto.MemberContextPurpose;
 import com.bct.ngtpa.apiservice.application.exception.MemberContextResolutionException;
 import com.bct.ngtpa.apiservice.application.port.out.MemberContextPort;
-import com.bct.ngtpa.apiservice.config.TemporaryMemberContextProperties;
+import com.bct.ngtpa.apiservice.adapter.out.security.TemporaryMemberContextProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;

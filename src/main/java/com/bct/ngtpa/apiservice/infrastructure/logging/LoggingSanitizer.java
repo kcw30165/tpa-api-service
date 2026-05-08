@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.config.logging;
+package com.bct.ngtpa.apiservice.infrastructure.logging;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

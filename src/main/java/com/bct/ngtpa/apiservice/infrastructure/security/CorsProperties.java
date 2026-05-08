@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.config;
+package com.bct.ngtpa.apiservice.infrastructure.security;
 
 import java.util.ArrayList;
 import java.util.List;

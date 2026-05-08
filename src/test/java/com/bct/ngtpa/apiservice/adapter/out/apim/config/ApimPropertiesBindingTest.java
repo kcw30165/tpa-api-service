@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.config;
+package com.bct.ngtpa.apiservice.adapter.out.apim.config;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.bind.Bindable;
@@ -17,9 +17,9 @@ class ApimPropertiesBindingTest {
     void bindsEncryptionRequestFields() {
         Map<String, String> props = Map.of(
                 "apim.encryption.enabled", "true",
-                "apim.encryption.requestFields[0]", "policy-no",
-                "apim.encryption.requestFields[1]", "cert-no",
-                "apim.encryption.requestFields[2]", "user-id"
+                "apim.encryption.request-fields[0]", "policy-no",
+                "apim.encryption.request-fields[1]", "cert-no",
+                "apim.encryption.request-fields[2]", "user-id"
         );
 
         Binder binder = new Binder(new MapConfigurationPropertySource(props));

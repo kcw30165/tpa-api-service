@@ -7,9 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import com.bct.ngtpa.apiservice.config.logging.LoggingSanitizer;
-import com.bct.ngtpa.apiservice.config.logging.LoggingSanitizerProperties;
-import com.bct.ngtpa.apiservice.config.logging.RequestLoggingWebFilter;
+import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
+import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
+import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.util.concurrent.atomic.AtomicReference;
@@ -143,7 +143,7 @@ class ApimRequestLoggingExchangeFilterTest {
 
     private void invokeFilter(ExchangeFilterFunction exchangeFilter, ClientRequest request, String requestId) {
         exchangeFilter.filter(request, req -> Mono.just(ClientResponse.create(HttpStatus.OK).build()))
-                .contextWrite(ctx -> ctx.put(RequestLoggingWebFilter.REQUEST_ID_CONTEXT_KEY, requestId))
+                .contextWrite(ctx -> ctx.put(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, requestId))
                 .block();
     }
 }

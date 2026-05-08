@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.config.logging;
+package com.bct.ngtpa.apiservice.infrastructure.logging;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;

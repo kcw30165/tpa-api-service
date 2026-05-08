@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.config;
+package com.bct.ngtpa.apiservice.adapter.in.web.config;
 
 import lombok.Getter;
 import lombok.Setter;

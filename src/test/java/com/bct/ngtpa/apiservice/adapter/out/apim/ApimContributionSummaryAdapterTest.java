@@ -8,7 +8,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetContributionSummaryContD
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetContributionSummaryDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetContributionSummaryDispSrcItem;
 import com.bct.ngtpa.apiservice.application.dto.FetchContributionSummaryCommand;
-import com.bct.ngtpa.apiservice.config.ApimProperties;
+import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;

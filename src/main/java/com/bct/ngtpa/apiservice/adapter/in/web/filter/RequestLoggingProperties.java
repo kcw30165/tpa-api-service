@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.config.logging;
+package com.bct.ngtpa.apiservice.adapter.in.web.filter;
 
 import java.util.ArrayList;
 import java.util.List;

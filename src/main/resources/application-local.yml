@@ -29,6 +29,11 @@ logging-sanitizer:
     - cert-no
     - user-id
 
+logging:
+  level:
+    org.springframework.security: DEBUG
+    com.bct.ngtpa: DEBUG
+    
 currency-mapping:
   zh_HK:
     AUD: 澳元

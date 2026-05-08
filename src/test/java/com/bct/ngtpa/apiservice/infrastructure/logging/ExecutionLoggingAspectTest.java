@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.config.logging;
+package com.bct.ngtpa.apiservice.infrastructure.logging;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -8,6 +8,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
+import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
@@ -162,7 +163,7 @@ class ExecutionLoggingAspectTest {
         StepVerifier.create(
                         proxied.proxy().monoSuccess(Map.of("traceId", "t1"))
                                 .contextWrite(ctx ->
-                                        ctx.put(RequestLoggingWebFilter.REQUEST_ID_CONTEXT_KEY, "request-id-from-ctx")))
+                                        ctx.put(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, "request-id-from-ctx")))
                 .expectNext("mono-ok")
                 .verifyComplete();
 
@@ -178,7 +179,7 @@ class ExecutionLoggingAspectTest {
         StepVerifier.create(
                         proxied.proxy().fluxSuccess()
                                 .contextWrite(ctx ->
-                                        ctx.put(RequestLoggingWebFilter.REQUEST_ID_CONTEXT_KEY, "flux-request-id")))
+                                        ctx.put(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, "flux-request-id")))
                 .expectNext("a", "b")
                 .verifyComplete();
 

@@ -3,7 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.out.security;
 import com.bct.ngtpa.apiservice.application.dto.MemberContext;
 import com.bct.ngtpa.apiservice.application.dto.MemberContextPurpose;
 import com.bct.ngtpa.apiservice.application.exception.MemberContextResolutionException;
-import com.bct.ngtpa.apiservice.config.TemporaryMemberContextProperties;
+import com.bct.ngtpa.apiservice.adapter.out.security.TemporaryMemberContextProperties;
 import org.junit.jupiter.api.Test;
 import reactor.test.StepVerifier;
 

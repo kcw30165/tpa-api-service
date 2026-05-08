@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.config.logging;
+package com.bct.ngtpa.apiservice.infrastructure.logging;
 
 import java.util.ArrayList;
 import java.util.List;

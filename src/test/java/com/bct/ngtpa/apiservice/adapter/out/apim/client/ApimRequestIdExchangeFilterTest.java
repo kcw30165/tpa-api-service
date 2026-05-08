@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-import com.bct.ngtpa.apiservice.config.logging.RequestLoggingWebFilter;
+import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import java.net.URI;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -32,11 +32,11 @@ class ApimRequestIdExchangeFilterTest {
             captured.set(req);
             return Mono.just(ClientResponse.create(HttpStatus.OK).build());
         })
-        .contextWrite(ctx -> ctx.put(RequestLoggingWebFilter.REQUEST_ID_CONTEXT_KEY, "test-request-id-123"))
+        .contextWrite(ctx -> ctx.put(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, "test-request-id-123"))
         .block();
 
         assertNotNull(captured.get());
-        List<String> requestIdHeader = captured.get().headers().get(RequestLoggingWebFilter.REQUEST_ID_HEADER);
+        List<String> requestIdHeader = captured.get().headers().get(RequestCorrelation.REQUEST_ID_HEADER);
         assertNotNull(requestIdHeader);
         assertEquals(List.of("test-request-id-123"), requestIdHeader);
     }
@@ -55,7 +55,7 @@ class ApimRequestIdExchangeFilterTest {
         }).block();
 
         assertNotNull(captured.get());
-        assertNull(captured.get().headers().get(RequestLoggingWebFilter.REQUEST_ID_HEADER));
+        assertNull(captured.get().headers().get(RequestCorrelation.REQUEST_ID_HEADER));
     }
 
     @Test
@@ -70,10 +70,10 @@ class ApimRequestIdExchangeFilterTest {
             captured.set(req);
             return Mono.just(ClientResponse.create(HttpStatus.OK).build());
         })
-        .contextWrite(ctx -> ctx.put(RequestLoggingWebFilter.REQUEST_ID_CONTEXT_KEY, "   "))
+        .contextWrite(ctx -> ctx.put(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, "   "))
         .block();
 
         assertNotNull(captured.get());
-        assertNull(captured.get().headers().get(RequestLoggingWebFilter.REQUEST_ID_HEADER));
+        assertNull(captured.get().headers().get(RequestCorrelation.REQUEST_ID_HEADER));
     }
 }

@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.config;
+package com.bct.ngtpa.apiservice.adapter.out.security;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.bind.Bindable;

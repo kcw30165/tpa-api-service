@@ -7,7 +7,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetContributionSummaryContD
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetContributionSummaryDataItem;
 import com.bct.ngtpa.apiservice.application.dto.FetchContributionSummaryCommand;
 import com.bct.ngtpa.apiservice.application.port.out.ApimContributionSummaryPort;
-import com.bct.ngtpa.apiservice.config.ApimProperties;
+import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
 import com.bct.ngtpa.apiservice.domain.model.ContributionEntry;
 import com.bct.ngtpa.apiservice.domain.model.ContributionLabels;
@@ -38,7 +38,7 @@ public class ApimContributionSummaryAdapter implements ApimContributionSummaryPo
     private final ApimProperties apimProperties;
 
     @Override
-        @LogExecution(value = "apim.fetchContributionSummary", logArgs = true)
+    @LogExecution(value = "apim.fetchContributionSummary", logArgs = true)
     public Mono<ContributionSummaryDataset> fetchContributionSummary(FetchContributionSummaryCommand command) {
         if (!apimProperties.getEncryption().isEnabled()) {
             var request = apimPayloadCryptoService.encryptRequest(
@@ -47,8 +47,8 @@ public class ApimContributionSummaryAdapter implements ApimContributionSummaryPo
                     .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
                             API_NAME, body, GetContributionSummaryDataItem.class, null))
                     .map(this::toContributionSummaryDataset)
-                    .onErrorMap(ApimCryptoException.class, ex ->
-                        new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, "500", ex.getMessage()));
+                    .onErrorMap(ApimCryptoException.class,
+                            ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, "500", ex.getMessage()));
         }
 
         return apimCertificateService.getBctPublicKey()
@@ -60,8 +60,8 @@ public class ApimContributionSummaryAdapter implements ApimContributionSummaryPo
                                     API_NAME, body, GetContributionSummaryDataItem.class, publicKey))
                             .map(this::toContributionSummaryDataset);
                 })
-                .onErrorMap(ApimCryptoException.class, ex ->
-                    new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, "500", ex.getMessage()));
+                .onErrorMap(ApimCryptoException.class,
+                        ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, "500", ex.getMessage()));
     }
 
     private GetContributionSummaryApimRequest toApimRequest(FetchContributionSummaryCommand command) {
@@ -74,7 +74,8 @@ public class ApimContributionSummaryAdapter implements ApimContributionSummaryPo
                 .build();
     }
 
-    private ContributionSummaryDataset toContributionSummaryDataset(ApimResponseEnvelope<GetContributionSummaryDataItem> response) {
+    private ContributionSummaryDataset toContributionSummaryDataset(
+            ApimResponseEnvelope<GetContributionSummaryDataItem> response) {
         var payload = response != null ? response.getResponse() : null;
         if (payload == null) {
             throw new ApimException(HttpStatus.BAD_GATEWAY, "APIM response payload is missing.");
@@ -96,16 +97,20 @@ public class ApimContributionSummaryAdapter implements ApimContributionSummaryPo
         List<ContributionEntry> entries = payload.getData().stream()
                 .filter(Objects::nonNull)
                 .flatMap(item -> {
-                    var dispSources = item.getDispSrc() == null ? List.<com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetContributionSummaryDispSrcItem>of() : item.getDispSrc();
+                    var dispSources = item.getDispSrc() == null
+                            ? List.<com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetContributionSummaryDispSrcItem>of()
+                            : item.getDispSrc();
                     dispSources.stream()
                             .filter(Objects::nonNull)
                             .forEach(sourceItem -> sources.putIfAbsent(
                                     sourceItem.getDispSrc(),
                                     new ContributionSource(
                                             sourceItem.getDispSrc(),
-                                            new ContributionLabels(sourceItem.getSrcDesc(), sourceItem.getSrcChinDesc()),
+                                            new ContributionLabels(sourceItem.getSrcDesc(),
+                                                    sourceItem.getSrcChinDesc()),
                                             sourceItem.getSeq())));
-                    var details = item.getContDtl() == null ? List.<GetContributionSummaryContDtlItem>of() : item.getContDtl();
+                    var details = item.getContDtl() == null ? List.<GetContributionSummaryContDtlItem>of()
+                            : item.getContDtl();
                     return details.stream();
                 })
                 .filter(Objects::nonNull)

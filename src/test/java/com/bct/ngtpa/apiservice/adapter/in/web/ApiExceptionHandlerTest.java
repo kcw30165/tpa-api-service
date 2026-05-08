@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiErrorResponse;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.application.exception.MemberContextResolutionException;
-import com.bct.ngtpa.apiservice.config.logging.RequestLoggingWebFilter;
+import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import java.lang.reflect.Method;
 import org.junit.jupiter.api.Test;
@@ -131,7 +131,7 @@ class ApiExceptionHandlerTest {
         ResponseEntity<ApiErrorResponse> response = handler.handleApimException(
                 new ApimException(HttpStatus.BAD_GATEWAY, "ERR", "msg"), exchange);
 
-        assertEquals("apim-req-id", response.getHeaders().getFirst(RequestLoggingWebFilter.REQUEST_ID_HEADER));
+        assertEquals("apim-req-id", response.getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
     }
 
     @Test
@@ -141,7 +141,7 @@ class ApiExceptionHandlerTest {
         ResponseEntity<ApiErrorResponse> response = handler.handleApimException(
                 new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, "500", "fail"), exchange);
 
-        assertEquals("crypto-req-id", response.getHeaders().getFirst(RequestLoggingWebFilter.REQUEST_ID_HEADER));
+        assertEquals("crypto-req-id", response.getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
     }
 
     @Test
@@ -151,7 +151,7 @@ class ApiExceptionHandlerTest {
         ResponseEntity<ApiErrorResponse> response = handler.handleInvalidNotificationRequestException(
                 new InvalidNotificationRequestException("bad"), exchange);
 
-        assertEquals("notif-req-id", response.getHeaders().getFirst(RequestLoggingWebFilter.REQUEST_ID_HEADER));
+        assertEquals("notif-req-id", response.getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
     }
 
     @Test
@@ -163,7 +163,7 @@ class ApiExceptionHandlerTest {
         ResponseEntity<ApiErrorResponse> response = handler.handleWebExchangeBindException(
                 new WebExchangeBindException(methodParameter(), bindingResult), exchange);
 
-        assertEquals("bind-req-id", response.getHeaders().getFirst(RequestLoggingWebFilter.REQUEST_ID_HEADER));
+        assertEquals("bind-req-id", response.getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
     }
 
     @Test
@@ -173,7 +173,7 @@ class ApiExceptionHandlerTest {
         ResponseEntity<ApiErrorResponse> response = handler.handleServerWebInputException(
                 new ServerWebInputException("bad input"), exchange);
 
-        assertEquals("input-req-id", response.getHeaders().getFirst(RequestLoggingWebFilter.REQUEST_ID_HEADER));
+        assertEquals("input-req-id", response.getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
     }
 
     @Test
@@ -181,7 +181,7 @@ class ApiExceptionHandlerTest {
         ResponseEntity<ApiErrorResponse> response = handler.handleApimException(
                 new ApimException(HttpStatus.BAD_GATEWAY, "ERR", "msg"), emptyExchange());
 
-        assertNull(response.getHeaders().getFirst(RequestLoggingWebFilter.REQUEST_ID_HEADER));
+        assertNull(response.getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
     }
 
     @Test
@@ -201,7 +201,7 @@ class ApiExceptionHandlerTest {
         ResponseEntity<ApiErrorResponse> response = handler.handleMemberContextResolutionException(
                 new MemberContextResolutionException("No profile"), exchange);
 
-        assertEquals("member-ctx-req-id", response.getHeaders().getFirst(RequestLoggingWebFilter.REQUEST_ID_HEADER));
+        assertEquals("member-ctx-req-id", response.getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -213,7 +213,7 @@ class ApiExceptionHandlerTest {
     private static MockServerWebExchange exchangeWithRequestId(String requestId) {
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/test").build());
-        exchange.getAttributes().put(RequestLoggingWebFilter.REQUEST_ID_ATTRIBUTE_KEY, requestId);
+        exchange.getAttributes().put(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY, requestId);
         return exchange;
     }
 

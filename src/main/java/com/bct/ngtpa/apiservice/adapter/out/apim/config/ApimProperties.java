@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.config;
+package com.bct.ngtpa.apiservice.adapter.out.apim.config;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -64,5 +64,4 @@ public class ApimProperties {
             private String certificatePath = "/api/wssupport/v1/encryption/certificate";
         }
     }
-    
 }

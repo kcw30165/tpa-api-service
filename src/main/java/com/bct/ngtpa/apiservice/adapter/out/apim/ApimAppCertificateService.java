@@ -2,7 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.out.apim;
 
 import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCertificateHelper;
 import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
-import com.bct.ngtpa.apiservice.config.ApimProperties;
+import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

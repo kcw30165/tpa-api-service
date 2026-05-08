@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.config;
+package com.bct.ngtpa.apiservice.adapter.out.apim.config;
 
 import java.security.Security;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;

@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.config.logging;
+package com.bct.ngtpa.apiservice.adapter.in.web.filter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -9,6 +9,9 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
+import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
+import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
@@ -55,7 +58,7 @@ class RequestLoggingWebFilterTest {
 
         run(filter, exchange);
 
-        String requestId = exchange.getResponse().getHeaders().getFirst(RequestLoggingWebFilter.REQUEST_ID_HEADER);
+        String requestId = exchange.getResponse().getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER);
         assertNotNull(requestId);
         assertTrue(requestId.matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"));
     }
@@ -64,25 +67,25 @@ class RequestLoggingWebFilterTest {
     void reusesInboundRequestId() {
         MockServerWebExchange exchange = exchange(
                 MockServerHttpRequest.get("/api/test")
-                        .header(RequestLoggingWebFilter.REQUEST_ID_HEADER, "existing-id-123")
+                        .header(RequestCorrelation.REQUEST_ID_HEADER, "existing-id-123")
                         .build());
 
         run(filter, exchange);
 
         assertEquals("existing-id-123",
-                exchange.getResponse().getHeaders().getFirst(RequestLoggingWebFilter.REQUEST_ID_HEADER));
+                exchange.getResponse().getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
     }
 
     @Test
     void generatesNewUuidForBlankInboundRequestId() {
         MockServerWebExchange exchange = exchange(
                 MockServerHttpRequest.get("/api/test")
-                        .header(RequestLoggingWebFilter.REQUEST_ID_HEADER, "   ")
+                        .header(RequestCorrelation.REQUEST_ID_HEADER, "   ")
                         .build());
 
         run(filter, exchange);
 
-        String requestId = exchange.getResponse().getHeaders().getFirst(RequestLoggingWebFilter.REQUEST_ID_HEADER);
+        String requestId = exchange.getResponse().getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER);
         assertNotNull(requestId);
         assertTrue(requestId.matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"));
     }
@@ -93,19 +96,19 @@ class RequestLoggingWebFilterTest {
 
         run(filter, exchange);
 
-        assertNotNull(exchange.getAttributes().get(RequestLoggingWebFilter.REQUEST_ID_ATTRIBUTE_KEY));
+        assertNotNull(exchange.getAttributes().get(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY));
     }
 
     @Test
     void putsRequestIdInReactorContext() {
         MockServerWebExchange exchange = exchange(
                 MockServerHttpRequest.get("/api/test")
-                        .header(RequestLoggingWebFilter.REQUEST_ID_HEADER, "ctx-id-123")
+                        .header(RequestCorrelation.REQUEST_ID_HEADER, "ctx-id-123")
                         .build());
 
         List<String> capturedIds = new ArrayList<>();
         WebFilterChain chain = ex -> Mono.deferContextual(ctx -> {
-            capturedIds.add(ctx.getOrDefault(RequestLoggingWebFilter.REQUEST_ID_CONTEXT_KEY, "MISSING"));
+            capturedIds.add(ctx.getOrDefault(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, "MISSING"));
             return Mono.empty();
         });
 
@@ -122,7 +125,7 @@ class RequestLoggingWebFilterTest {
 
         run(filter, exchange);
 
-        assertNotNull(exchange.getResponse().getHeaders().getFirst(RequestLoggingWebFilter.REQUEST_ID_HEADER));
+        assertNotNull(exchange.getResponse().getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
     }
 
     @Test
@@ -134,7 +137,7 @@ class RequestLoggingWebFilterTest {
                 .expectError(RuntimeException.class)
                 .verify();
 
-        assertNotNull(exchange.getResponse().getHeaders().getFirst(RequestLoggingWebFilter.REQUEST_ID_HEADER));
+        assertNotNull(exchange.getResponse().getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
     }
 
     // ── Logging disabled ──────────────────────────────────────────────────────
@@ -149,7 +152,7 @@ class RequestLoggingWebFilterTest {
         run(disabledFilter, exchange);
 
         // Still sets the header
-        assertNotNull(exchange.getResponse().getHeaders().getFirst(RequestLoggingWebFilter.REQUEST_ID_HEADER));
+        assertNotNull(exchange.getResponse().getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
         // But does not log
         assertEquals(0, listAppender.list.size());
     }
@@ -160,7 +163,7 @@ class RequestLoggingWebFilterTest {
     void requestStartLogIsValidJsonWithRequiredFields() {
         MockServerWebExchange exchange = exchange(
                 MockServerHttpRequest.get("/api/v1/notifications?env=DEV")
-                        .header(RequestLoggingWebFilter.REQUEST_ID_HEADER, "req-123")
+                        .header(RequestCorrelation.REQUEST_ID_HEADER, "req-123")
                         .build());
 
         run(filter, exchange);
@@ -177,7 +180,7 @@ class RequestLoggingWebFilterTest {
     void requestEndLogContainsStatusAndElapsedMs() {
         MockServerWebExchange exchange = exchange(
                 MockServerHttpRequest.get("/api/v1/notifications")
-                        .header(RequestLoggingWebFilter.REQUEST_ID_HEADER, "req-456")
+                        .header(RequestCorrelation.REQUEST_ID_HEADER, "req-456")
                         .build());
 
         run(filter, exchange);
@@ -194,7 +197,7 @@ class RequestLoggingWebFilterTest {
     void requestErrorLogContainsExceptionTypeAndElapsedMs() {
         MockServerWebExchange exchange = exchange(
                 MockServerHttpRequest.get("/api/v1/notifications")
-                        .header(RequestLoggingWebFilter.REQUEST_ID_HEADER, "req-789")
+                        .header(RequestCorrelation.REQUEST_ID_HEADER, "req-789")
                         .build());
         WebFilterChain errorChain = ex -> Mono.error(new IllegalStateException("downstream failure"));
 
@@ -324,7 +327,6 @@ class RequestLoggingWebFilterTest {
 
         String startMsg = listAppender.list.get(0).getFormattedMessage();
         assertTrue(startMsg.contains("[truncated]"), "Long body should be truncated");
-        // Should not contain the full 100 chars of 'A'
         assertFalse(startMsg.contains("A".repeat(20)), "Body should be truncated");
     }
 

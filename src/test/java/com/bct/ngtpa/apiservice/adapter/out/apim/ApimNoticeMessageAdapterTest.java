@@ -8,7 +8,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetMessageBoardDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetMessageBoardMessageItem;
 import com.bct.ngtpa.apiservice.application.dto.GetNotificationsCommand;
 import com.bct.ngtpa.apiservice.application.dto.NotificationListResult;
-import com.bct.ngtpa.apiservice.config.ApimProperties;
+import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;

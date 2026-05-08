@@ -26,22 +26,22 @@ reference-date:
   override-zone-id: ${REFERENCE_DATE_OVERRIDE_ZONE_ID:}
 
 apim:
-  baseUrl: ${APIM_BASEURL:}
-  timeoutMilliseconds: ${APIM_TIMEOUTMILLISECONDS:10000}
+  base-url: ${APIM_BASE_URL:${APIM_BASEURL:}}
+  timeout-milliseconds: ${APIM_TIMEOUT_MILLISECONDS:${APIM_TIMEOUTMILLISECONDS:10000}}
   oauth:
-    registrationId: ${APIM_CLIENT_REGISTRATION_ID:apim-client}
-    clientId: ${APIM_CLIENT_ID:local-dev}
-    clientSecret: ${APIM_CLIENT_SECRET:local-dev}
-    clientAuthenticationMethod: ${APIM_CLIENT_AUTH_METHOD:client_secret_basic}
-    tokenUri: ${APIM_TOKEN_URI:http://localhost/token}
+    registration-id: ${APIM_CLIENT_REGISTRATION_ID:apim-client}
+    client-id: ${APIM_CLIENT_ID:local-dev}
+    client-secret: ${APIM_CLIENT_SECRET:local-dev}
+    client-authentication-method: ${APIM_CLIENT_AUTH_METHOD:client_secret_basic}
+    token-uri: ${APIM_TOKEN_URI:http://localhost/token}
     scope: ${APIM_CLIENT_SCOPE:}
   encryption:
     enabled: ${APIM_ENCRYPTION_ENABLED:true}
-    certificatePath: ${APIM_CERTIFICATE_PATH:/api/wssupport/v1/encryption/certificate}
-    apiKey: ${APIM_API_KEY:}
-    privateKeyPem: ${APIM_PRIVATE_KEY_PEM:}
-    publicKeyPem: ${APIM_PUBLIC_KEY_PEM:}
-    requestFields:
+    certificate-path: ${APIM_CERTIFICATE_PATH:/api/wssupport/v1/encryption/certificate}
+    api-key: ${APIM_API_KEY:}
+    private-key-pem: ${APIM_PRIVATE_KEY_PEM:}
+    public-key-pem: ${APIM_PUBLIC_KEY_PEM:}
+    request-fields:
       - policy-no
       - cert-no
       - user-id
@@ -64,6 +64,6 @@ request-logging:
 
 logging:
   level:
-    org.springframework.security: DEBUG
-    com.bct.ngtpa: DEBUG
+    org.springframework.security: INFO
+    com.bct.ngtpa: INFO
 

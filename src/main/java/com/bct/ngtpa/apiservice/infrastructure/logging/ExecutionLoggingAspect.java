@@ -1,6 +1,7 @@
-package com.bct.ngtpa.apiservice.config.logging;
+package com.bct.ngtpa.apiservice.infrastructure.logging;
 
 import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
+import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.LinkedHashMap;
@@ -31,14 +32,33 @@ public class ExecutionLoggingAspect {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * Annotation-based pointcut: logs methods annotated with {@link LogExecution}.
+     * Used for infrastructure adapters, utilities, and any class that explicitly opts in.
+     */
     @Around("@annotation(logExecution)")
-    public Object logExecution(ProceedingJoinPoint joinPoint, LogExecution logExecution) throws Throwable {
+    public Object logAnnotatedExecution(ProceedingJoinPoint joinPoint, LogExecution logExecution) throws Throwable {
         InvocationContext context = InvocationContext.from(joinPoint, logExecution);
+        return executeWithLogging(joinPoint, context);
+    }
+
+    /**
+     * Package-based pointcut: automatically logs all {@code execute} methods on application
+     * use case service implementations without requiring {@link LogExecution} annotations.
+     * This keeps the application layer free of Spring/infrastructure dependencies.
+     */
+    @Around("execution(* com.bct.ngtpa.apiservice.application.usecase..*Service.execute(..))")
+    public Object logUseCaseExecution(ProceedingJoinPoint joinPoint) throws Throwable {
+        InvocationContext context = InvocationContext.fromJoinPoint(joinPoint);
+        return executeWithLogging(joinPoint, context);
+    }
+
+    private Object executeWithLogging(ProceedingJoinPoint joinPoint, InvocationContext context) throws Throwable {
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
         Class<?> returnType = signature.getReturnType();
 
         if (!Mono.class.isAssignableFrom(returnType) && !Flux.class.isAssignableFrom(returnType)) {
-            String requestId = MDC.get(RequestLoggingWebFilter.REQUEST_ID_CONTEXT_KEY);
+            String requestId = MDC.get(RequestCorrelation.REQUEST_ID_CONTEXT_KEY);
             long startNanos = System.nanoTime();
             logStart(context, requestId);
             try {
@@ -69,7 +89,7 @@ public class ExecutionLoggingAspect {
 
     private Mono<?> decorateMono(Mono<?> mono, InvocationContext context) {
         return Mono.deferContextual(ctx -> {
-            String requestId = ctx.getOrDefault(RequestLoggingWebFilter.REQUEST_ID_CONTEXT_KEY, null);
+            String requestId = ctx.getOrDefault(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, null);
             AtomicLong startNanos = new AtomicLong();
             return mono
                     .doOnSubscribe(subscription -> {
@@ -83,7 +103,7 @@ public class ExecutionLoggingAspect {
 
     private Flux<?> decorateFlux(Flux<?> flux, InvocationContext context) {
         return Flux.deferContextual(ctx -> {
-            String requestId = ctx.getOrDefault(RequestLoggingWebFilter.REQUEST_ID_CONTEXT_KEY, null);
+            String requestId = ctx.getOrDefault(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, null);
             AtomicLong startNanos = new AtomicLong();
             AtomicLong itemCount = new AtomicLong();
             return flux
@@ -178,6 +198,19 @@ public class ExecutionLoggingAspect {
                     logExecution.value(),
                     logExecution.logArgs(),
                     logExecution.logResult(),
+                    joinPoint.getArgs());
+        }
+
+        static InvocationContext fromJoinPoint(ProceedingJoinPoint joinPoint) {
+            MethodSignature signature = (MethodSignature) joinPoint.getSignature();
+            String className = signature.getDeclaringType().getSimpleName();
+            String methodName = signature.getName();
+            return new InvocationContext(
+                    className,
+                    methodName,
+                    className + "." + methodName,
+                    true,
+                    false,
                     joinPoint.getArgs());
         }
     }

@@ -9,7 +9,7 @@ import com.bct.ngtpa.apiservice.application.dto.GetContributionSummaryCommand;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import com.bct.ngtpa.apiservice.application.port.in.ExportContributionSummaryUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetContributionSummaryUseCase;
-import com.bct.ngtpa.apiservice.config.ContributionSummaryProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionSummaryProperties;
 import com.bct.ngtpa.apiservice.domain.model.ContributionLabels;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSource;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryReport;

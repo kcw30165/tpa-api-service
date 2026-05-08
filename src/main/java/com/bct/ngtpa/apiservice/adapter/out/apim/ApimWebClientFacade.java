@@ -5,10 +5,10 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfil
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfileResolver;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
 import com.bct.ngtpa.apiservice.adapter.out.apim.oauth.ApimTokenService;
-import com.bct.ngtpa.apiservice.config.ApimProperties;
+import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
-import com.bct.ngtpa.apiservice.config.logging.LoggingSanitizer;
-import com.bct.ngtpa.apiservice.config.logging.LoggingSanitizerProperties;
+import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
+import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;

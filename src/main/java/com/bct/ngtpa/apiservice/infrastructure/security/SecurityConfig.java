@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.config;
+package com.bct.ngtpa.apiservice.infrastructure.security;
 
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -86,4 +86,3 @@ public class SecurityConfig {
         return source;
     }
 }
-
