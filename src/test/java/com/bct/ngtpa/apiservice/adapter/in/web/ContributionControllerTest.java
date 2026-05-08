@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionWebDisplayConfigProvider;
+import com.bct.ngtpa.apiservice.adapter.in.web.mapper.ContributionSummaryWebMapper;
 import com.bct.ngtpa.apiservice.application.dto.CurrencyDisplay;
 import com.bct.ngtpa.apiservice.application.dto.ContributionSummaryReportResult;
 import com.bct.ngtpa.apiservice.application.dto.ExportContributionSummaryCommand;
@@ -119,14 +121,20 @@ class ContributionControllerTest {
     private WebTestClient webClient(
             GetContributionSummaryUseCase getContributionSummaryUseCase,
             ExportContributionSummaryUseCase exportContributionSummaryUseCase) {
-        var properties = new ContributionSummaryProperties();
+        var provider = displayConfigProvider();
         return WebTestClient.bindToController(new ContributionController(
                         getContributionSummaryUseCase,
                         exportContributionSummaryUseCase,
-                        new ContributionSummaryWorkbookExporter(properties),
-                        properties))
+                        new ContributionSummaryWorkbookExporter(provider),
+                        provider,
+                        new ContributionSummaryWebMapper()))
                 .controllerAdvice(new ApiExceptionHandler())
                 .build();
+    }
+
+    private ContributionWebDisplayConfigProvider displayConfigProvider() {
+        var properties = new ContributionSummaryProperties();
+        return new ContributionWebDisplayConfigProvider(properties);
     }
 
     private GetContributionSummaryUseCase unusedGetUseCase() {

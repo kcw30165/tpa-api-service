@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionWebDisplayConfigProvider;
 import com.bct.ngtpa.apiservice.application.dto.ContributionSummaryReportResult;
-import com.bct.ngtpa.apiservice.config.ContributionSummaryProperties;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.CellStyle;
@@ -19,7 +19,7 @@ import java.math.RoundingMode;
 @RequiredArgsConstructor
 public class ContributionSummaryWorkbookExporter {
 
-    private final ContributionSummaryProperties properties;
+    private final ContributionWebDisplayConfigProvider displayConfigProvider;
 
     public byte[] write(ContributionSummaryReportResult result) {
         try (var workbook = new XSSFWorkbook(); var outputStream = new ByteArrayOutputStream()) {
@@ -54,9 +54,10 @@ public class ContributionSummaryWorkbookExporter {
     }
 
     private void writeHeaderRow(Row row, ContributionSummaryReportResult result) {
-        row.createCell(0).setCellValue(properties.getHeaders().getDealingDate());
-        row.createCell(1).setCellValue(properties.getHeaders().getContributionPeriod());
-        row.createCell(2).setCellValue(properties.getHeaders().getTotalContribution());
+        var displayConfig = displayConfigProvider.get();
+        row.createCell(0).setCellValue(displayConfig.dealingDateHeader());
+        row.createCell(1).setCellValue(displayConfig.contributionPeriodHeader());
+        row.createCell(2).setCellValue(displayConfig.totalContributionHeader());
 
         int columnIndex = 3;
         for (var source : result.report().sources()) {

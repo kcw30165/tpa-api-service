@@ -1,0 +1,79 @@
+package com.bct.ngtpa.apiservice.adapter.out.apim.client;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+
+import com.bct.ngtpa.apiservice.config.logging.RequestLoggingWebFilter;
+import java.net.URI;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
+import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.reactive.function.client.ClientRequest;
+import org.springframework.web.reactive.function.client.ClientResponse;
+import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
+import reactor.core.publisher.Mono;
+
+class ApimRequestIdExchangeFilterTest {
+
+    private final ApimRequestIdExchangeFilter filter = new ApimRequestIdExchangeFilter();
+
+    @Test
+    void addsRequestIdHeaderWhenContextContainsRequestId() {
+        ExchangeFilterFunction exchangeFilter = filter.filter();
+        ClientRequest request = ClientRequest
+                .create(HttpMethod.GET, URI.create("https://api.example.test/test"))
+                .build();
+        AtomicReference<ClientRequest> captured = new AtomicReference<>();
+
+        exchangeFilter.filter(request, req -> {
+            captured.set(req);
+            return Mono.just(ClientResponse.create(HttpStatus.OK).build());
+        })
+        .contextWrite(ctx -> ctx.put(RequestLoggingWebFilter.REQUEST_ID_CONTEXT_KEY, "test-request-id-123"))
+        .block();
+
+        assertNotNull(captured.get());
+        List<String> requestIdHeader = captured.get().headers().get(RequestLoggingWebFilter.REQUEST_ID_HEADER);
+        assertNotNull(requestIdHeader);
+        assertEquals(List.of("test-request-id-123"), requestIdHeader);
+    }
+
+    @Test
+    void doesNotAddRequestIdHeaderWhenContextLacksRequestId() {
+        ExchangeFilterFunction exchangeFilter = filter.filter();
+        ClientRequest request = ClientRequest
+                .create(HttpMethod.GET, URI.create("https://api.example.test/test"))
+                .build();
+        AtomicReference<ClientRequest> captured = new AtomicReference<>();
+
+        exchangeFilter.filter(request, req -> {
+            captured.set(req);
+            return Mono.just(ClientResponse.create(HttpStatus.OK).build());
+        }).block();
+
+        assertNotNull(captured.get());
+        assertNull(captured.get().headers().get(RequestLoggingWebFilter.REQUEST_ID_HEADER));
+    }
+
+    @Test
+    void doesNotAddRequestIdHeaderWhenContextRequestIdIsBlank() {
+        ExchangeFilterFunction exchangeFilter = filter.filter();
+        ClientRequest request = ClientRequest
+                .create(HttpMethod.GET, URI.create("https://api.example.test/test"))
+                .build();
+        AtomicReference<ClientRequest> captured = new AtomicReference<>();
+
+        exchangeFilter.filter(request, req -> {
+            captured.set(req);
+            return Mono.just(ClientResponse.create(HttpStatus.OK).build());
+        })
+        .contextWrite(ctx -> ctx.put(RequestLoggingWebFilter.REQUEST_ID_CONTEXT_KEY, "   "))
+        .block();
+
+        assertNotNull(captured.get());
+        assertNull(captured.get().headers().get(RequestLoggingWebFilter.REQUEST_ID_HEADER));
+    }
+}

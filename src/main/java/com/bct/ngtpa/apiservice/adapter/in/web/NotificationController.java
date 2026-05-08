@@ -1,14 +1,14 @@
 package com.bct.ngtpa.apiservice.adapter.in.web;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.mapper.NotificationReadStatusWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.mapper.NotificationWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdateNotificationsReadStatusRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.NotificationListResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.UpdateNotificationsReadStatusResponse;
 import com.bct.ngtpa.apiservice.application.dto.GetNotificationsCommand;
 import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusCommand;
-import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.application.port.in.GetNotificationsUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.UpdateNotificationsReadStatusUseCase;
-import com.bct.ngtpa.apiservice.config.logging.LogExecution;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -26,10 +26,11 @@ import reactor.core.publisher.Mono;
 public class NotificationController {
 
     private final GetNotificationsUseCase getNotificationsUseCase;
-        private final UpdateNotificationsReadStatusUseCase updateNotificationsReadStatusUseCase;
+    private final UpdateNotificationsReadStatusUseCase updateNotificationsReadStatusUseCase;
+    private final NotificationWebMapper notificationWebMapper;
+    private final NotificationReadStatusWebMapper notificationReadStatusWebMapper;
 
     @GetMapping(value = "/notifications", produces = MediaType.APPLICATION_JSON_VALUE)
-        @LogExecution(value = "notifications.get", logArgs = true)
     public Mono<NotificationListResponse> getNotifications(
             @RequestParam(value = "env", required = false) String env,
             @RequestParam(value = "mbrType", required = false) String mbrType,
@@ -49,14 +50,13 @@ public class NotificationController {
                         null,
                         null,
                         null))
-                .map(NotificationListResponse::from);
+                .map(notificationWebMapper::toResponse);
     }
 
     @PatchMapping(
             value = "/notifications",
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
-    @LogExecution(value = "notifications.updateReadStatus", logArgs = true)
     public Mono<UpdateNotificationsReadStatusResponse> updateNotificationsReadStatus(
             @Valid @RequestBody UpdateNotificationsReadStatusRequest request) {
         return updateNotificationsReadStatusUseCase
@@ -69,6 +69,6 @@ public class NotificationController {
                         null,
                         null,
                         null))
-                .map(UpdateNotificationsReadStatusResponse::from);
+                .map(notificationReadStatusWebMapper::toResponse);
     }
 }

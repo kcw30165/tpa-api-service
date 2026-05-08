@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.application.usecase;
 
 import com.bct.ngtpa.apiservice.application.dto.FetchContributionSummaryCommand;
+import com.bct.ngtpa.apiservice.application.dto.MemberContext;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 
 import java.time.LocalDate;
@@ -10,11 +11,6 @@ import java.time.format.DateTimeParseException;
 final class ContributionSummarySupport {
 
     static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    static final String HARDCODED_POLICY_NO = "00000000217";
-    static final String HARDCODED_CERT_NO = "95";
-    static final String HARDCODED_USER_ID = "C402400A";
-    static final String EMPTY_TRUST_CODE = "";
-    static final String EMPTY_SCHEME_TYPE = "";
 
     private ContributionSummarySupport() {
     }
@@ -50,16 +46,21 @@ final class ContributionSummarySupport {
         }
     }
 
-    static FetchContributionSummaryCommand newFetchCommand(String env, String mbrType, String coverFrom, String coverTo) {
+    static FetchContributionSummaryCommand newFetchCommand(
+            String env,
+            String mbrType,
+            String coverFrom,
+            String coverTo,
+            MemberContext memberContext) {
         return new FetchContributionSummaryCommand(
                 env,
                 mbrType,
                 coverFrom,
                 coverTo,
-                HARDCODED_POLICY_NO,
-                HARDCODED_CERT_NO,
-                HARDCODED_USER_ID,
-                EMPTY_TRUST_CODE,
-                EMPTY_SCHEME_TYPE);
+                memberContext.policyNo(),
+                memberContext.certNo(),
+                memberContext.userId(),
+                memberContext.trustCode(),
+                memberContext.schemeType());
     }
 }

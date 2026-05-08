@@ -2,30 +2,39 @@ package com.bct.ngtpa.apiservice.adapter.in.web;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiErrorResponse;
 import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
+import com.bct.ngtpa.apiservice.application.exception.MemberContextResolutionException;
+import com.bct.ngtpa.apiservice.config.logging.RequestLoggingWebFilter;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import java.lang.reflect.Method;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
+import org.springframework.mock.web.server.MockServerWebExchange;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.support.WebExchangeBindException;
+import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.ServerWebInputException;
 
 class ApiExceptionHandlerTest {
 
     private final ApiExceptionHandler handler = new ApiExceptionHandler();
 
+    // ── Existing body contract tests (body must only have errorCode and message) ──
+
     @Test
     void mapsApimExceptionToItsStatusAndErrorCode() {
         ResponseEntity<ApiErrorResponse> response = handler.handleApimException(
-                new ApimException(HttpStatus.BAD_GATEWAY, "UPSTREAM_FAILURE", "APIM failure"));
+                new ApimException(HttpStatus.BAD_GATEWAY, "UPSTREAM_FAILURE", "APIM failure"),
+                emptyExchange());
 
         assertEquals(HttpStatus.BAD_GATEWAY, response.getStatusCode());
         assertEquals("UPSTREAM_FAILURE", response.getBody().errorCode());
@@ -35,7 +44,7 @@ class ApiExceptionHandlerTest {
     @Test
     void mapsApimCryptoExceptionToInternalServerError() {
         ResponseEntity<ApiErrorResponse> response = handler.handleApimCryptoException(
-                new ApimCryptoException("Crypto failed"));
+                new ApimCryptoException("Crypto failed"), emptyExchange());
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
         assertEquals("500", response.getBody().errorCode());
@@ -45,7 +54,7 @@ class ApiExceptionHandlerTest {
     @Test
     void mapsInvalidNotificationRequestExceptionToBadRequest() {
         ResponseEntity<ApiErrorResponse> response = handler.handleInvalidNotificationRequestException(
-                new InvalidNotificationRequestException("Invalid request"));
+                new InvalidNotificationRequestException("Invalid request"), emptyExchange());
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals("400", response.getBody().errorCode());
@@ -58,7 +67,7 @@ class ApiExceptionHandlerTest {
         bindingResult.addError(new FieldError("request", "field", "must not be blank"));
 
         ResponseEntity<ApiErrorResponse> response = handler.handleWebExchangeBindException(
-                new WebExchangeBindException(methodParameter(), bindingResult));
+                new WebExchangeBindException(methodParameter(), bindingResult), emptyExchange());
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals("400", response.getBody().errorCode());
@@ -71,7 +80,7 @@ class ApiExceptionHandlerTest {
         bindingResult.addError(new FieldError("request", "field", null, false, null, null, "  "));
 
         ResponseEntity<ApiErrorResponse> response = handler.handleWebExchangeBindException(
-                new WebExchangeBindException(methodParameter(), bindingResult));
+                new WebExchangeBindException(methodParameter(), bindingResult), emptyExchange());
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals("Invalid request payload.", response.getBody().message());
@@ -80,7 +89,7 @@ class ApiExceptionHandlerTest {
     @Test
     void usesServerInputReasonWhenPresent() {
         ResponseEntity<ApiErrorResponse> response = handler.handleServerWebInputException(
-                new ServerWebInputException("Malformed JSON"));
+                new ServerWebInputException("Malformed JSON"), emptyExchange());
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals("400", response.getBody().errorCode());
@@ -90,10 +99,122 @@ class ApiExceptionHandlerTest {
     @Test
     void fallsBackForBlankServerInputReason() {
         ResponseEntity<ApiErrorResponse> response = handler.handleServerWebInputException(
-                new ServerWebInputException("  "));
+                new ServerWebInputException("  "), emptyExchange());
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals("Invalid request payload.", response.getBody().message());
+    }
+
+    // ── Error body does NOT contain requestId ────────────────────────────────
+
+    @Test
+    void errorBodyDoesNotContainRequestId() {
+        MockServerWebExchange exchange = exchangeWithRequestId("test-req-id-123");
+
+        ResponseEntity<ApiErrorResponse> response = handler.handleApimException(
+                new ApimException(HttpStatus.BAD_GATEWAY, "ERR", "msg"), exchange);
+
+        // Body has only errorCode and message
+        assertNotNull(response.getBody());
+        assertEquals("ERR", response.getBody().errorCode());
+        assertEquals("msg", response.getBody().message());
+        // Verify by checking the record only has 2 components
+        assertEquals(2, response.getBody().getClass().getRecordComponents().length);
+    }
+
+    // ── X-Request-Id present in response header ───────────────────────────────
+
+    @Test
+    void apimExceptionResponseIncludesRequestIdHeader() {
+        MockServerWebExchange exchange = exchangeWithRequestId("apim-req-id");
+
+        ResponseEntity<ApiErrorResponse> response = handler.handleApimException(
+                new ApimException(HttpStatus.BAD_GATEWAY, "ERR", "msg"), exchange);
+
+        assertEquals("apim-req-id", response.getHeaders().getFirst(RequestLoggingWebFilter.REQUEST_ID_HEADER));
+    }
+
+    @Test
+    void cryptoExceptionResponseIncludesRequestIdHeader() {
+        MockServerWebExchange exchange = exchangeWithRequestId("crypto-req-id");
+
+        ResponseEntity<ApiErrorResponse> response = handler.handleApimCryptoException(
+                new ApimCryptoException("fail"), exchange);
+
+        assertEquals("crypto-req-id", response.getHeaders().getFirst(RequestLoggingWebFilter.REQUEST_ID_HEADER));
+    }
+
+    @Test
+    void invalidNotificationResponseIncludesRequestIdHeader() {
+        MockServerWebExchange exchange = exchangeWithRequestId("notif-req-id");
+
+        ResponseEntity<ApiErrorResponse> response = handler.handleInvalidNotificationRequestException(
+                new InvalidNotificationRequestException("bad"), exchange);
+
+        assertEquals("notif-req-id", response.getHeaders().getFirst(RequestLoggingWebFilter.REQUEST_ID_HEADER));
+    }
+
+    @Test
+    void bindExceptionResponseIncludesRequestIdHeader() throws Exception {
+        MockServerWebExchange exchange = exchangeWithRequestId("bind-req-id");
+        BindingResult bindingResult = new BeanPropertyBindingResult(new Object(), "request");
+        bindingResult.addError(new FieldError("request", "field", "err"));
+
+        ResponseEntity<ApiErrorResponse> response = handler.handleWebExchangeBindException(
+                new WebExchangeBindException(methodParameter(), bindingResult), exchange);
+
+        assertEquals("bind-req-id", response.getHeaders().getFirst(RequestLoggingWebFilter.REQUEST_ID_HEADER));
+    }
+
+    @Test
+    void serverInputExceptionResponseIncludesRequestIdHeader() {
+        MockServerWebExchange exchange = exchangeWithRequestId("input-req-id");
+
+        ResponseEntity<ApiErrorResponse> response = handler.handleServerWebInputException(
+                new ServerWebInputException("bad input"), exchange);
+
+        assertEquals("input-req-id", response.getHeaders().getFirst(RequestLoggingWebFilter.REQUEST_ID_HEADER));
+    }
+
+    @Test
+    void omitsRequestIdHeaderWhenNotInExchangeAttributes() {
+        ResponseEntity<ApiErrorResponse> response = handler.handleApimException(
+                new ApimException(HttpStatus.BAD_GATEWAY, "ERR", "msg"), emptyExchange());
+
+        assertNull(response.getHeaders().getFirst(RequestLoggingWebFilter.REQUEST_ID_HEADER));
+    }
+
+    @Test
+    void mapsMemberContextResolutionExceptionToInternalServerError() {
+        ResponseEntity<ApiErrorResponse> response = handler.handleMemberContextResolutionException(
+                new MemberContextResolutionException("No profile for NOTIFICATIONS"), emptyExchange());
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertEquals("500", response.getBody().errorCode());
+        assertEquals("No profile for NOTIFICATIONS", response.getBody().message());
+    }
+
+    @Test
+    void memberContextResolutionExceptionResponseIncludesRequestIdHeader() {
+        MockServerWebExchange exchange = exchangeWithRequestId("member-ctx-req-id");
+
+        ResponseEntity<ApiErrorResponse> response = handler.handleMemberContextResolutionException(
+                new MemberContextResolutionException("No profile"), exchange);
+
+        assertEquals("member-ctx-req-id", response.getHeaders().getFirst(RequestLoggingWebFilter.REQUEST_ID_HEADER));
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private static ServerWebExchange emptyExchange() {
+        return MockServerWebExchange.from(MockServerHttpRequest.get("/test").build());
+    }
+
+    private static MockServerWebExchange exchangeWithRequestId(String requestId) {
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/test").build());
+        exchange.getAttributes().put(RequestLoggingWebFilter.REQUEST_ID_ATTRIBUTE_KEY, requestId);
+        return exchange;
     }
 
     private static MethodParameter methodParameter() throws Exception {

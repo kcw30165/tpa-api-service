@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.mapper.NotificationReadStatusWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.mapper.NotificationWebMapper;
 import com.bct.ngtpa.apiservice.application.dto.GetNotificationsCommand;
 import com.bct.ngtpa.apiservice.application.dto.NotificationDateOptions;
 import com.bct.ngtpa.apiservice.application.dto.NotificationListResult;
@@ -198,7 +200,9 @@ class NotificationControllerTest {
             UpdateNotificationsReadStatusUseCase updateNotificationsReadStatusUseCase) {
         return WebTestClient.bindToController(new NotificationController(
                         getNotificationsUseCase,
-                        updateNotificationsReadStatusUseCase))
+                        updateNotificationsReadStatusUseCase,
+                        new NotificationWebMapper(),
+                        new NotificationReadStatusWebMapper()))
                 .controllerAdvice(new ApiExceptionHandler())
                 .build();
     }

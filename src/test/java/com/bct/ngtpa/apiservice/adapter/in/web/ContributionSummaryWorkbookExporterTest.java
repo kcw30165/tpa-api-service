@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionWebDisplayConfigProvider;
 import com.bct.ngtpa.apiservice.application.dto.CurrencyDisplay;
 import com.bct.ngtpa.apiservice.application.dto.ContributionSummaryReportResult;
 import com.bct.ngtpa.apiservice.config.ContributionSummaryProperties;
@@ -23,7 +24,8 @@ class ContributionSummaryWorkbookExporterTest {
 
     @Test
     void writesConfiguredHeadersNumericCellsAndLeavesMissingSourceBlank() throws Exception {
-        var exporter = new ContributionSummaryWorkbookExporter(new ContributionSummaryProperties());
+        var exporter = new ContributionSummaryWorkbookExporter(
+                new ContributionWebDisplayConfigProvider(new ContributionSummaryProperties()));
         var report = new ContributionSummaryReportResult(
                 new ContributionSummaryReport(
                         "HKD",

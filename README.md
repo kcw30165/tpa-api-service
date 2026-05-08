@@ -19,7 +19,7 @@ The service runs as a reactive Spring Boot application and reads local developme
 | Auth (outbound) | Spring Security OAuth2 Client Credentials |
 | Encryption | BouncyCastle 1.82 (RSA + AES/CBC) |
 | Spreadsheet export | Apache POI OOXML |
-| Build | Maven 3.9.x (wrapper — `./mvnw`) |
+| Build | Maven 3.9.x (/d/Tools/apache-maven-3.9.15) |
 | JDK | OpenJDK 21 (`C:\Java\OpenJDK\jdk-21`) |
 
 ---
@@ -36,34 +36,54 @@ com.bct.ngtpa.apiservice
 ├── application/         # Orchestration — @Service only
 │   ├── port/
 │   │   ├── in/          # GetNotificationsUseCase, UpdateNotificationsReadStatusUseCase, GetContributionSummaryUseCase, ExportContributionSummaryUseCase
-│   │   └── out/         # ApimNoticeMessagePort, ApimNotificationReadStatusPort, ApimContributionSummaryPort, ReferenceDatePort
+│   │   └── out/         # ApimNoticeMessagePort, ApimNotificationReadStatusPort, ApimContributionSummaryPort, ReferenceDatePort, MemberContextPort, CurrencyDisplayPort
 │   ├── usecase/         # GetNotificationsService, UpdateNotificationsReadStatusService, GetContributionSummaryService, ExportContributionSummaryService
-│   └── dto/             # Notification and contribution summary commands/results
+│   ├── dto/             # Notification and contribution summary commands/results; CurrencyDisplay; MemberContext, MemberContextPurpose
+│   └── exception/       # InvalidContributionRequestException, InvalidNotificationRequestException, MemberContextResolutionException
 ├── adapter/
 │   ├── in/web/          # Reactive controllers, request/response records
 │   │   ├── NotificationController
 │   │   ├── ContributionController
 │   │   ├── ContributionSummaryWorkbookExporter
 │   │   ├── ApiExceptionHandler (@RestControllerAdvice)
+│   │   ├── config/      # Web presentation config (Stage 2.2)
+│   │   │   ├── ContributionWebDisplayConfig     # Neutral record: total labels + XLSX headers
+│   │   │   └── ContributionWebDisplayConfigProvider # Adapts ContributionSummaryProperties → ContributionWebDisplayConfig
 │   │   ├── request/     # UpdateNotificationsReadStatusRequest
 │   │   └── response/    # Notification and contribution summary response records
-│   └── out/apim/        # APIM integration
-│       ├── ApimWebClientFacade        # Pure HTTP transport (OAuth2 token attach)
-│       ├── ApimNoticeMessageAdapter   # Implements ApimNoticeMessagePort
-│       ├── ApimNotificationReadStatusAdapter # Implements ApimNotificationReadStatusPort
-│       ├── ApimContributionSummaryAdapter # Implements ApimContributionSummaryPort
-│       ├── configserver/ConfigBackedReferenceDateAdapter # Current ConfigMap-backed ReferenceDatePort implementation
-│       ├── configserver/ConfigServiceReferenceDateAdapter # Planned future API-backed ReferenceDatePort implementation
-│       ├── configserver/ReferenceDateResolver # Shared production-like / override resolution policy
-│       ├── ApimCertificateService     # Fetches BCT public key from APIM
-│       ├── ApimAppCertificateService  # Loads app RSA keys + X509 cert
-│       ├── ApimPayloadCryptoService   # AES/CBC + RSA field encryption/decryption
-│       ├── crypto/                    # APIM-specific crypto helpers and exceptions
-│       └── dto/                       # APIM request/response POJOs
-├── config/              # Spring configuration beans (unchanged across layers)
+│   └── out/
+│       ├── apim/            # APIM integration
+│       │   ├── client/                    # APIM-specific WebClient construction and filters
+│       │   │   ├── ApimWebClientConfig    # @Bean apimWebClient (OAuth2, cert header, filters)
+│       │   │   ├── ApimRequestIdExchangeFilter    # Propagates X-Request-Id from Reactor Context
+│       │   │   └── ApimRequestLoggingExchangeFilter # Logs outbound APIM requests as structured JSON
+│       │   ├── oauth/                     # APIM OAuth2 bean registration
+│       │   │   └── ApimOAuthClientConfig  # ReactiveClientRegistrationRepository, ReactiveOAuth2AuthorizedClientManager
+│       │   ├── certificate/               # APIM certificate header utilities
+│       │   │   └── ApimCertificateHeaderProvider  # Thin wrapper over ApimAppCertificateService
+│       │   ├── credential/                # APIM credential profile resolution
+│       │   ├── crypto/                    # APIM-specific crypto helpers and exceptions
+│       │   ├── dto/                       # APIM request/response POJOs
+│       │   ├── ApimWebClientFacade        # Pure HTTP transport (OAuth2 token attach)
+│       │   ├── ApimNoticeMessageAdapter   # Implements ApimNoticeMessagePort
+│       │   ├── ApimNotificationReadStatusAdapter  # Implements ApimNotificationReadStatusPort
+│       │   ├── ApimContributionSummaryAdapter     # Implements ApimContributionSummaryPort
+│       │   ├── ApimCertificateService     # Fetches BCT public key from APIM
+│       │   ├── ApimAppCertificateService  # Loads app RSA keys + X509 cert
+│       │   └── ApimPayloadCryptoService   # AES/CBC + RSA field encryption/decryption
+│       ├── config/          # Config-property-backed adapters
+│       │   └── ConfigBackedCurrencyDisplayAdapter  # Implements CurrencyDisplayPort; reads CurrencyMappingProperties
+│       ├── configserver/    # ConfigMap/Config-Server-backed adapters
+│       │   ├── ConfigBackedReferenceDateAdapter    # Current ConfigMap-backed ReferenceDatePort implementation
+│       │   ├── ConfigServiceReferenceDateAdapter   # Planned future API-backed ReferenceDatePort implementation
+│       │   └── ReferenceDateResolver               # Shared production-like / override resolution policy
+│       └── security/        # Non-APIM security concerns
+│           └── TemporaryMemberContextAdapter  # Implements MemberContextPort; reads temporary-member-context profiles
+├── config/              # Spring configuration beans — property binding and generic infrastructure only
 │   ├── ApimProperties
 │   ├── ContributionSummaryProperties
-│   ├── WebClientConfig
+│   ├── TemporaryMemberContextProperties  # Binds temporary-member-context.profiles.*
+│   ├── WebClientBaseConfig              # Generic WebClient.Builder bean (no APIM concerns)
 │   ├── SecurityConfig
 │   ├── JacksonConfig
 │   ├── ApimCryptoConfig
@@ -89,9 +109,12 @@ Use `ApimResponseEnvelope<T>` / `ApimResponseBody<T>` for outbound APIM parsing;
 ### Dependency Rule
 
 ```
-adapter/in/web  →  application  →  domain
-adapter/out/apim →  application  →  domain
-config          →  framework composition only
+adapter/in/web          →  application  →  domain
+adapter/out/apim        →  application  →  domain
+adapter/out/config      →  application  →  domain
+adapter/out/configserver →  application  →  domain
+adapter/out/security    →  application  →  domain
+config                  →  framework composition only (must not be imported by application or domain)
 ```
 
 ---
@@ -108,10 +131,10 @@ config          →  framework composition only
 
 ```bash
 # Compile
-./mvnw compile -DskipTests
+export JAVA_HOME="C:/Java/OpenJDK/jdk-21" && export M2_HOME="/d/Tools/apache-maven-3.9.15" && export PATH="$JAVA_HOME/bin:$M2_HOME/bin:$PATH" && mvn compile -DskipTests
 
 # Run tests
-./mvnw test
+export JAVA_HOME="C:/Java/OpenJDK/jdk-21" && export M2_HOME="/d/Tools/apache-maven-3.9.15" && export PATH="$JAVA_HOME/bin:$M2_HOME/bin:$PATH" && mvn test
 ```
 
 > On Windows without `JAVA_HOME` in PATH, prefix each command with `JAVA_HOME="C:/Java/OpenJDK/jdk-21"` or use the VS Code tasks defined in `.vscode/tasks.json`.
@@ -129,8 +152,9 @@ All required environment variables are pre-configured in `.vscode/launch.json`.
 ### Via Maven task or shell
 
 ```bash
-export JAVA_HOME="C:/Java/OpenJDK/jdk-21"
-./mvnw spring-boot:run
+export JAVA_HOME="C:/Java/OpenJDK/jdk-21" && export M2_HOME="/d/Tools/apache-maven-3.9.15" && export PATH="$JAVA_HOME/bin:$M2_HOME/bin:$PATH" && mvn spring-boot:run
+
+export JAVA_HOME="C:/Java/OpenJDK/jdk-21" && export M2_HOME="/d/Tools/apache-maven-3.9.15" && export PATH="$JAVA_HOME/bin:$M2_HOME/bin:$PATH" && mvn spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
 Spring Boot imports the repository root `.env` file automatically via `spring.config.import`, so local `APIM_*` variables do not need to be exported one by one.
@@ -140,8 +164,7 @@ Browser access from a local frontend to a deployed API stays closed by default. 
 If you hit a stale class problem after refactors, run a clean rebuild first:
 
 ```bash
-export JAVA_HOME="C:/Java/OpenJDK/jdk-21"
-./mvnw clean compile -DskipTests
+export JAVA_HOME="C:/Java/OpenJDK/jdk-21" && export M2_HOME="/d/Tools/apache-maven-3.9.15" && export PATH="$JAVA_HOME/bin:$M2_HOME/bin:$PATH" && mvn clean compile -DskipTests
 ```
 
 ---
@@ -169,8 +192,57 @@ export JAVA_HOME="C:/Java/OpenJDK/jdk-21"
 | `APIM_API_KEY` | API key sent as `KeyId` header | _(required if encryption enabled)_ |
 | `APIM_PRIVATE_KEY_PEM` | App RSA private key (Base64 PEM) | _(required if encryption enabled)_ |
 | `APIM_PUBLIC_KEY_PEM` | App RSA public key (Base64 PEM) | _(required if encryption enabled)_ |
+| `TEMP_NOTIF_POLICY_NO` | Temporary notification policy number | `policyNo_for_notifications` |
+| `TEMP_NOTIF_CERT_NO` | Temporary notification certificate number | `certNo_for_notifications` |
+| `TEMP_NOTIF_USER_ID` | Temporary notification user ID | `userId_for_notifications` |
+| `TEMP_NOTIF_TRUST_CODE` | Temporary notification trust code | `trustCode_for_notifications` |
+| `TEMP_NOTIF_SCHEME_TYPE` | Temporary notification scheme type | `schemeType_for_notifications` |
+| `TEMP_CONT_POLICY_NO` | Temporary contribution policy number | `policyNo_for_contributions` |
+| `TEMP_CONT_CERT_NO` | Temporary contribution certificate number | `certNo_for_contributions` |
+| `TEMP_CONT_USER_ID` | Temporary contribution user ID | `userId_for_contributions` |
+| `TEMP_CONT_TRUST_CODE` | Temporary contribution trust code | `trustCode_for_contributions` |
+| `TEMP_CONT_SCHEME_TYPE` | Temporary contribution scheme type | `schemeType_for_contributions` |
 
 For the dev cluster, the Kubernetes deployment or external config repository must set `CORS_ALLOWED_ORIGINS=http://localhost:4200` before local frontend calls from that origin will succeed. Those deployment manifests are outside this repository.
+
+---
+
+## Temporary Member Context Configuration
+
+Until Auth Server integration is implemented, the `policy-no`, `cert-no`, `user-id`, `trustCode`, and `schemeType` values used in APIM calls are sourced from a temporary feature-specific profile configuration rather than hardcoded constants.
+
+The property class `TemporaryMemberContextProperties` binds `temporary-member-context.profiles.*`. The outbound adapter `TemporaryMemberContextAdapter` (under `adapter/out/security`) implements `MemberContextPort` and resolves the correct profile by feature purpose (`NOTIFICATIONS` or `CONTRIBUTIONS`).
+
+If a required profile is missing from configuration, the service fails fast with `MemberContextResolutionException`, which maps to HTTP **500** with the standard error body.
+
+Example YAML (already present in `application-local.yml`):
+
+```yaml
+temporary-member-context:
+  profiles:
+    notifications:
+      policy-no: ${TEMP_NOTIF_POLICY_NO:policyNo_for_notifications}
+      cert-no: ${TEMP_NOTIF_CERT_NO:certNo_for_notifications}
+      user-id: ${TEMP_NOTIF_USER_ID:userId_for_notifications}
+      trust-code: ${TEMP_NOTIF_TRUST_CODE:trustCode_for_notifications}
+      scheme-type: ${TEMP_NOTIF_SCHEME_TYPE:schemeType_for_notifications}
+    contributions:
+      policy-no: ${TEMP_CONT_POLICY_NO:policyNo_for_contributions}
+      cert-no: ${TEMP_CONT_CERT_NO:certNo_for_contributions}
+      user-id: ${TEMP_CONT_USER_ID:userId_for_contributions}
+      trust-code: ${TEMP_CONT_TRUST_CODE:trustCode_for_contributions}
+      scheme-type: ${TEMP_CONT_SCHEME_TYPE:schemeType_for_contributions}
+```
+
+This configuration is **temporary**. It will be replaced once the Auth Server is integrated and member context is extracted from the JWT access token claims.
+
+---
+
+## Reference Date Configuration (Stage 1.2)
+
+`ref-date` is resolved through the `ReferenceDatePort` outbound port for **all** flows that require it: contribution summary validation, contribution export, and notification flows (`GetNotificationsService`, `UpdateNotificationsReadStatusService`). Neither notification service contains a hardcoded date constant.
+
+The single shared implementation is `ConfigBackedReferenceDateAdapter` (under `adapter/out/configserver`), backed by `ReferenceDateProperties`. Application services depend only on `ReferenceDatePort`; they do not import `ReferenceDateProperties`.
 
 ---
 
@@ -211,6 +283,85 @@ Global execution logging is implemented as a configuration-level cross-cutting c
 - Logged arguments and results are opt-in through annotation attributes and are sanitized before serialization.
 - Sensitive header and payload fields such as `Authorization`, `Certificate`, API keys, tokens, secrets, policy numbers, certificate numbers, user IDs, and key material are masked in logs.
 - The sensitive key list is configured through `logging-sanitizer.sensitive-tokens`, using `src/main/resources/application-local.yml` for local development and the deployed `ngtpa-display-config` Spring YAML in Kubernetes.
+- All log events are emitted as JSON-structured strings (using `ObjectMapper`) suitable for ingestion by Elasticsearch/Logstash.
+
+Log event names: `method.execution.start`, `method.execution.success`, `method.execution.error`. When a `requestId` is available in Reactor Context (set by `RequestLoggingWebFilter`), it is included in every event.
+
+---
+
+## Request Correlation and Structured Logging
+
+### X-Request-Id Header
+
+Every inbound HTTP request is assigned a correlation identifier managed by `RequestLoggingWebFilter`:
+
+| Scenario | Behavior |
+|---|---|
+| `X-Request-Id` header present and non-blank | Reuse the inbound value |
+| `X-Request-Id` header missing or blank | Generate a new UUID |
+| All responses | `X-Request-Id` header is always returned in the response |
+| Error responses | `X-Request-Id` is in the response **header only** — never in the response body |
+
+Error response body remains:
+```json
+{
+  "errorCode": "...",
+  "message": "..."
+}
+```
+
+### Outbound APIM Propagation
+
+`ApimRequestIdExchangeFilter` (under `adapter/out/apim/client`) propagates the resolved `X-Request-Id` from Reactor Context to every outbound APIM call as an HTTP header. This allows APIM-side log correlation with BFF-side logs.
+
+### JSON Structured Log Events
+
+All global and method-level log events are serialized as JSON strings. Key event types:
+
+| Event | Source | Key Fields |
+|---|---|---|
+| `http.request.start` | `RequestLoggingWebFilter` | `requestId`, `method`, `path`, `query`, `headers` |
+| `http.request.end` | `RequestLoggingWebFilter` | `requestId`, `method`, `path`, `status`, `elapsedMs` |
+| `http.request.error` | `RequestLoggingWebFilter` | `requestId`, `method`, `path`, `elapsedMs`, `exceptionType`, `errorMessage` |
+| `apim.request` | `ApimRequestLoggingExchangeFilter` | `requestId`, `method`, `url`, `headers` |
+| `method.execution.start` | `ExecutionLoggingAspect` | `requestId`*, `className`, `methodName`, `label`, `args` |
+| `method.execution.success` | `ExecutionLoggingAspect` | `requestId`*, `className`, `methodName`, `elapsedMs`, `result` |
+| `method.execution.error` | `ExecutionLoggingAspect` | `requestId`*, `className`, `methodName`, `elapsedMs`, `exceptionType`, `errorMessage` |
+
+\* `requestId` is included when available from Reactor Context (Mono/Flux methods) or MDC (synchronous methods).
+
+### Body Logging Configuration
+
+Request/response body logging is **disabled by default** and must be explicitly enabled:
+
+```yaml
+request-logging:
+  enabled: true          # enables lifecycle logging (start/end/error); default: true
+  log-headers: false     # includes allowlisted headers in start log; default: false
+  header-allowlist:
+    - User-Agent
+    - Accept
+    - Content-Type
+  body-logging:
+    enabled: false                      # global body logging gate; default: false
+    default-max-body-size-bytes: 4096   # max logged body bytes
+    endpoints:
+      - method: POST
+        path-pattern: /api/v1/some-endpoint
+        log-request-body: true
+        log-response-body: false
+        max-body-size-bytes: 4096       # overrides default for this endpoint
+```
+
+Effective rules:
+- `shouldLogRequestBody = request-logging.body-logging.enabled AND endpoint.log-request-body`
+- `shouldLogResponseBody = request-logging.body-logging.enabled AND endpoint.log-response-body`
+- No endpoint match → no body logging.
+- Binary response bodies (Excel, PDF, octet-stream) are never logged regardless of configuration.
+
+> **Security warning:** Body logging may expose PII or sensitive business data. Keep `body-logging.enabled=false` in all production and production-like environments. Only enable on specific endpoints in lower non-production environments for debugging.
+
+
 
 ## Contribution Summary Configuration
 
@@ -242,7 +393,7 @@ currency-mapping:
     HKD.JP: 港元
 ```
 
-`reference-date.deployment-env` is the runtime deployment environment, separate from the request query `env`. For production-like deployments (`PROD`, `PRD`, `PRODUCTION`, `DR`, blank, and null), contribution summary validation and export always use the app server timezone and current date. For non-production-like deployments, `reference-date.override-date` and `reference-date.override-zone-id` may be provided as a pair; when both are absent the app falls back to the server clock, and when only one is present startup-time validation is rejected when the resolver is used. Today these values come from Spring externalized configuration / ConfigMap through `ConfigBackedReferenceDateAdapter`; when the external Config Service API is available, `ConfigServiceReferenceDateAdapter` should become the alternative `ReferenceDatePort` implementation while reusing the same `ReferenceDateResolver` policy.
+`reference-date.deployment-env` is the runtime deployment environment, separate from the request query `env`. For production-like deployments (`PROD`, `PRD`, `PRODUCTION`, `DR`, blank, and null), all use cases that require `ref-date` — contribution summary validation, contribution export, and notification flows — always use the app server timezone and current date. For non-production-like deployments, `reference-date.override-date` and `reference-date.override-zone-id` may be provided as a pair; when both are absent the app falls back to the server clock, and when only one is present startup-time validation is rejected when the resolver is used. Today these values come from Spring externalized configuration / ConfigMap through `ConfigBackedReferenceDateAdapter`; when the external Config Service API is available, `ConfigServiceReferenceDateAdapter` should become the alternative `ReferenceDatePort` implementation while reusing the same `ReferenceDateResolver` policy.
 
 These values drive the synthetic total detail row in the JSON response, the first three column headers in the XLSX export, the locale-specific currency display returned in contribution summary JSON, and the effective contribution reference date. `trustCode` and `schemeType` stay empty until access-token claim extraction is implemented, so currency lookup currently falls back from `${code}.${env}` to `${code}`.
 
@@ -342,7 +493,7 @@ Updates the read status for one or more notifications.
 - `env` and `mbrType` must be non-blank.
 - `notificationId` must contain at least one non-blank value.
 - Duplicate notification IDs are preserved in request order and forwarded to APIM unchanged.
-- The BFF currently hardcodes `cert-no`, `policy-no`, `user-id`, and `ref-date` while auth/config integration is pending.
+- `policy-no`, `cert-no`, and `user-id` are resolved from externalized `temporary-member-context.profiles.notifications.*` configuration (see **Temporary Member Context Configuration** below) until Auth Server integration is implemented. `ref-date` remains temporarily hardcoded.
 
 **Response:**
 ```json
@@ -402,8 +553,7 @@ GET /api/v1/contributions?env=JP&mbrType=MBR&fromDate=05/04/2026&toDate=05/05/20
 - Each detail label exposes only `en` and `zh`.
 - Detail `amountEn` and `amountZh` are pre-formatted strings using the resolved currency display.
 - `totalContributionEn` and `totalContributionZh` use the same formatting logic with insignificant trailing zeros stripped.
-- The BFF currently hardcodes `policy-no`, `cert-no`, and `user-id` while auth/progress integrations are pending.
-- The BFF currently hardcodes empty `trustCode` and `schemeType` until access-token claim extraction is implemented.
+- `policy-no`, `cert-no`, `user-id`, `trustCode`, and `schemeType` are resolved from externalized `temporary-member-context.profiles.contributions.*` configuration (see **Temporary Member Context Configuration** below) until Auth Server integration is implemented.
 
 **Response:**
 
@@ -479,6 +629,7 @@ Accept: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
 - The BFF resolves `ref-date` through `ReferenceDatePort`.
 - `ReferenceDatePort` uses deployment environment configuration, not the request query `env`, to decide whether non-production override rules apply.
 - `cover-from` is computed as `ref-date.minusMonths(36)`; `cover-to` is the resolved `ref-date`.
+- `policy-no`, `cert-no`, `user-id`, `trustCode`, and `schemeType` are resolved from externalized `temporary-member-context.profiles.contributions.*` configuration until Auth Server integration is implemented.
 - The first three headers come from `contribution-summary.headers.*`.
 - Dynamic source columns are sorted by `dispSrc.seq` ascending.
 - Amount cells are numeric, formatted as `0.00`, and rounded with `HALF_UP`.

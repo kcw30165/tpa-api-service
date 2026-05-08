@@ -1,12 +1,12 @@
 package com.bct.ngtpa.apiservice.adapter.in.web;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionWebDisplayConfigProvider;
+import com.bct.ngtpa.apiservice.adapter.in.web.mapper.ContributionSummaryWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ContributionSummaryResponse;
 import com.bct.ngtpa.apiservice.application.dto.ExportContributionSummaryCommand;
 import com.bct.ngtpa.apiservice.application.dto.GetContributionSummaryCommand;
 import com.bct.ngtpa.apiservice.application.port.in.ExportContributionSummaryUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetContributionSummaryUseCase;
-import com.bct.ngtpa.apiservice.config.ContributionSummaryProperties;
-import com.bct.ngtpa.apiservice.config.logging.LogExecution;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -29,10 +29,10 @@ public class ContributionController {
         private final GetContributionSummaryUseCase getContributionSummaryUseCase;
         private final ExportContributionSummaryUseCase exportContributionSummaryUseCase;
         private final ContributionSummaryWorkbookExporter contributionSummaryWorkbookExporter;
-        private final ContributionSummaryProperties contributionSummaryProperties;
+        private final ContributionWebDisplayConfigProvider contributionWebDisplayConfigProvider;
+        private final ContributionSummaryWebMapper contributionSummaryWebMapper;
 
         @GetMapping(value = "/contributions", produces = MediaType.APPLICATION_JSON_VALUE)
-        @LogExecution(value = "contributions.get", logArgs = true)
         public Mono<ContributionSummaryResponse> getContributionSummary(
                         @RequestParam(value = "env", required = false) String env,
                         @RequestParam(value = "mbrType", required = false) String mbrType,
@@ -40,11 +40,12 @@ public class ContributionController {
                         @RequestParam(value = "toDate", required = false) String toDate) {
                 return getContributionSummaryUseCase
                                 .execute(new GetContributionSummaryCommand(env, mbrType, fromDate, toDate))
-                                .map(result -> ContributionSummaryResponse.from(result, contributionSummaryProperties));
+                                .map(result -> contributionSummaryWebMapper.toResponse(
+                                                result,
+                                                contributionWebDisplayConfigProvider.get()));
         }
 
         @GetMapping(value = "/contributions/export", produces = EXCEL_MEDIA_TYPE)
-        @LogExecution(value = "contributions.export", logArgs = true)
         public Mono<ResponseEntity<byte[]>> exportContributionSummary(
                         @RequestParam(value = "env", required = false) String env,
                         @RequestParam(value = "mbrType", required = false) String mbrType) {

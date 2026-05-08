@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.config.logging;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
@@ -9,6 +11,7 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -20,9 +23,11 @@ public class ExecutionLoggingAspect {
     private static final Logger log = LoggerFactory.getLogger(ExecutionLoggingAspect.class);
 
     private final LoggingSanitizer loggingSanitizer;
+    private final ObjectMapper objectMapper;
 
-    public ExecutionLoggingAspect(LoggingSanitizer loggingSanitizer) {
+    public ExecutionLoggingAspect(LoggingSanitizer loggingSanitizer, ObjectMapper objectMapper) {
         this.loggingSanitizer = loggingSanitizer;
+        this.objectMapper = objectMapper;
     }
 
     @Around("@annotation(logExecution)")
@@ -32,14 +37,15 @@ public class ExecutionLoggingAspect {
         Class<?> returnType = signature.getReturnType();
 
         if (!Mono.class.isAssignableFrom(returnType) && !Flux.class.isAssignableFrom(returnType)) {
+            String requestId = MDC.get(RequestLoggingWebFilter.REQUEST_ID_CONTEXT_KEY);
             long startNanos = System.nanoTime();
-            logStart(context);
+            logStart(context, requestId);
             try {
                 Object result = joinPoint.proceed();
-                logSuccess(context, elapsedMillis(startNanos), result);
+                logSuccess(context, elapsedMillis(startNanos), result, requestId);
                 return result;
             } catch (Throwable throwable) {
-                logError(context, elapsedMillis(startNanos), throwable);
+                logError(context, elapsedMillis(startNanos), throwable, requestId);
                 throw throwable;
             }
         }
@@ -55,67 +61,97 @@ public class ExecutionLoggingAspect {
             }
             return result;
         } catch (Throwable throwable) {
-            logError(context, -1L, throwable);
+            logError(context, -1L, throwable, null);
             throw throwable;
         }
     }
 
     private Mono<?> decorateMono(Mono<?> mono, InvocationContext context) {
-        AtomicLong startNanos = new AtomicLong();
-        return mono
-                .doOnSubscribe(subscription -> {
-                    startNanos.set(System.nanoTime());
-                    logStart(context);
-                })
-                .doOnSuccess(result -> logSuccess(context, elapsedMillis(startNanos.get()), result))
-                .doOnError(throwable -> logError(context, elapsedMillis(startNanos.get()), throwable));
+        return Mono.deferContextual(ctx -> {
+            String requestId = ctx.getOrDefault(RequestLoggingWebFilter.REQUEST_ID_CONTEXT_KEY, null);
+            AtomicLong startNanos = new AtomicLong();
+            return mono
+                    .doOnSubscribe(subscription -> {
+                        startNanos.set(System.nanoTime());
+                        logStart(context, requestId);
+                    })
+                    .doOnSuccess(result -> logSuccess(context, elapsedMillis(startNanos.get()), result, requestId))
+                    .doOnError(throwable -> logError(context, elapsedMillis(startNanos.get()), throwable, requestId));
+        });
     }
 
     private Flux<?> decorateFlux(Flux<?> flux, InvocationContext context) {
-        AtomicLong startNanos = new AtomicLong();
-        AtomicLong itemCount = new AtomicLong();
-        return flux
-                .doOnSubscribe(subscription -> {
-                    startNanos.set(System.nanoTime());
-                    logStart(context);
-                })
-                .doOnNext(item -> itemCount.incrementAndGet())
-                .doOnComplete(() -> logFluxSuccess(context, elapsedMillis(startNanos.get()), itemCount.get()))
-                .doOnError(throwable -> logError(context, elapsedMillis(startNanos.get()), throwable));
+        return Flux.deferContextual(ctx -> {
+            String requestId = ctx.getOrDefault(RequestLoggingWebFilter.REQUEST_ID_CONTEXT_KEY, null);
+            AtomicLong startNanos = new AtomicLong();
+            AtomicLong itemCount = new AtomicLong();
+            return flux
+                    .doOnSubscribe(subscription -> {
+                        startNanos.set(System.nanoTime());
+                        logStart(context, requestId);
+                    })
+                    .doOnNext(item -> itemCount.incrementAndGet())
+                    .doOnComplete(() -> logFluxSuccess(context, elapsedMillis(startNanos.get()), itemCount.get(), requestId))
+                    .doOnError(throwable -> logError(context, elapsedMillis(startNanos.get()), throwable, requestId));
+        });
     }
 
-    private void logStart(InvocationContext context) {
-        Map<String, Object> fields = context.baseFields();
+    private void logStart(InvocationContext context, String requestId) {
+        Map<String, Object> event = buildEventBase("method.execution.start", context, requestId);
         if (context.logArgs()) {
-            fields.put("args", loggingSanitizer.sanitizeArguments(context.args()));
+            event.put("args", loggingSanitizer.sanitizeArguments(context.args()));
         }
-        log.info("Execution start {}", fields);
+        log.info("{}", toJson(event));
     }
 
-    private void logSuccess(InvocationContext context, long elapsedMillis, Object result) {
-        Map<String, Object> fields = context.baseFields();
-        fields.put("elapsedMs", elapsedMillis);
+    private void logSuccess(InvocationContext context, long elapsedMillis, Object result, String requestId) {
+        Map<String, Object> event = buildEventBase("method.execution.success", context, requestId);
+        event.put("elapsedMs", elapsedMillis);
         if (context.logResult()) {
-            fields.put("result", loggingSanitizer.sanitizeValue(result));
+            event.put("result", loggingSanitizer.sanitizeValue(result));
         }
-        log.info("Execution success {}", fields);
+        log.info("{}", toJson(event));
     }
 
-    private void logFluxSuccess(InvocationContext context, long elapsedMillis, long itemCount) {
-        Map<String, Object> fields = context.baseFields();
-        fields.put("elapsedMs", elapsedMillis);
+    private void logFluxSuccess(InvocationContext context, long elapsedMillis, long itemCount, String requestId) {
+        Map<String, Object> event = buildEventBase("method.execution.success", context, requestId);
+        event.put("elapsedMs", elapsedMillis);
         if (context.logResult()) {
-            fields.put("emittedItems", itemCount);
+            event.put("emittedItems", itemCount);
         }
-        log.info("Execution success {}", fields);
+        log.info("{}", toJson(event));
     }
 
-    private void logError(InvocationContext context, long elapsedMillis, Throwable throwable) {
-        Map<String, Object> fields = context.baseFields();
+    private void logError(InvocationContext context, long elapsedMillis, Throwable throwable, String requestId) {
+        Map<String, Object> event = buildEventBase("method.execution.error", context, requestId);
         if (elapsedMillis >= 0) {
-            fields.put("elapsedMs", elapsedMillis);
+            event.put("elapsedMs", elapsedMillis);
         }
-        log.error("Execution error {}", fields, throwable);
+        event.put("exceptionType", throwable.getClass().getSimpleName());
+        event.put("errorMessage", loggingSanitizer.toSafeString(throwable.getMessage()));
+        log.error("{}", toJson(event), throwable);
+    }
+
+    private Map<String, Object> buildEventBase(String eventName, InvocationContext context, String requestId) {
+        Map<String, Object> event = new LinkedHashMap<>();
+        event.put("event", eventName);
+        if (requestId != null) {
+            event.put("requestId", requestId);
+        }
+        event.put("className", context.className());
+        event.put("methodName", context.methodName());
+        if (context.label() != null && !context.label().isBlank()) {
+            event.put("label", context.label());
+        }
+        return event;
+    }
+
+    private String toJson(Object obj) {
+        try {
+            return objectMapper.writeValueAsString(obj);
+        } catch (JsonProcessingException e) {
+            return "{\"event\":\"log-serialization-failed\"}";
+        }
     }
 
     private long elapsedMillis(long startNanos) {
@@ -142,16 +178,6 @@ public class ExecutionLoggingAspect {
                     logExecution.logArgs(),
                     logExecution.logResult(),
                     joinPoint.getArgs());
-        }
-
-        Map<String, Object> baseFields() {
-            Map<String, Object> fields = new LinkedHashMap<>();
-            fields.put("className", className);
-            fields.put("methodName", methodName);
-            if (label != null && !label.isBlank()) {
-                fields.put("label", label);
-            }
-            return fields;
         }
     }
 }
