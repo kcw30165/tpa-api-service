@@ -8,10 +8,10 @@ import com.bct.ngtpa.apiservice.application.dto.MemberContext;
 import com.bct.ngtpa.apiservice.application.dto.MemberContextPurpose;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import com.bct.ngtpa.apiservice.application.port.out.ApimContributionSummaryPort;
+import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
 import com.bct.ngtpa.apiservice.application.port.out.MemberContextPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.config.ContributionSummaryProperties;
-import com.bct.ngtpa.apiservice.config.CurrencyMappingProperties;
 import com.bct.ngtpa.apiservice.domain.model.ContributionEntry;
 import com.bct.ngtpa.apiservice.domain.model.ContributionLabels;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSource;
@@ -21,9 +21,7 @@ import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -45,6 +43,10 @@ class GetContributionSummaryServiceTest {
         return purpose -> Mono.just(CONTRIBUTIONS_CONTEXT);
     }
 
+    private static ReferenceDatePort referenceDatePort() {
+        return () -> Mono.just(REFERENCE_DATE);
+    }
+
     @Test
     void acceptsValidDatesWithinReferenceWindowAndCallsApim() {
         AtomicReference<FetchContributionSummaryCommand> captured = new AtomicReference<>();
@@ -55,8 +57,8 @@ class GetContributionSummaryServiceTest {
             return Mono.just(sampleDataset());
         };
 
-        var currencyMappingService = new RecordingCurrencyMappingService();
-        var service = new GetContributionSummaryService(port, currencyMappingService, referenceDatePort(), memberContextPort());
+        var recordingPort = new RecordingCurrencyDisplayPort();
+        var service = new GetContributionSummaryService(port, recordingPort, referenceDatePort(), memberContextPort());
 
         var result = service.execute(new GetContributionSummaryCommand("JP", "MBR", "01/01/2026", "31/03/2026")).block();
 
@@ -69,12 +71,10 @@ class GetContributionSummaryServiceTest {
         assertEquals("trustCode_for_contributions", captured.get().trustCode());
         assertEquals("schemeType_for_contributions", captured.get().schemeType());
         assertEquals(new CurrencyDisplay("HKD", "港元"), result.currencyDisplay());
-        assertEquals("JP", currencyMappingService.envByLocale.get("en"));
-        assertEquals("trustCode_for_contributions", currencyMappingService.trustCodeByLocale.get("en"));
-        assertEquals("schemeType_for_contributions", currencyMappingService.schemeTypeByLocale.get("en"));
-        assertEquals("JP", currencyMappingService.envByLocale.get("zh_HK"));
-        assertEquals("trustCode_for_contributions", currencyMappingService.trustCodeByLocale.get("zh_HK"));
-        assertEquals("schemeType_for_contributions", currencyMappingService.schemeTypeByLocale.get("zh_HK"));
+        assertEquals("HKD", recordingPort.capturedCode);
+        assertEquals("JP", recordingPort.capturedEnv);
+        assertEquals("trustCode_for_contributions", recordingPort.capturedTrustCode);
+        assertEquals("schemeType_for_contributions", recordingPort.capturedSchemeType);
         assertEquals("HKD 24908.45", ContributionSummaryResponse
                 .from(result, new ContributionSummaryProperties())
                 .contributions().getFirst().totalContributionEn());
@@ -91,9 +91,12 @@ class GetContributionSummaryServiceTest {
             return Mono.just(CONTRIBUTIONS_CONTEXT);
         };
 
+        CurrencyDisplayPort currencyDisplayPort = (code, env, trustCode, schemeType) ->
+                new CurrencyDisplay(code, code);
+
         var service = new GetContributionSummaryService(
                 command -> Mono.just(sampleDataset()),
-                new CurrencyMappingService(new CurrencyMappingProperties()),
+                currencyDisplayPort,
                 referenceDatePort(),
                 capturingPort);
 
@@ -105,12 +108,15 @@ class GetContributionSummaryServiceTest {
     @Test
     void rejectsFromDateBeforeReferenceWindow() {
         AtomicInteger apimCalls = new AtomicInteger();
+        CurrencyDisplayPort currencyDisplayPort = (code, env, trustCode, schemeType) ->
+                new CurrencyDisplay(code, code);
+
         var service = new GetContributionSummaryService(
                 command -> {
                     apimCalls.incrementAndGet();
                     return Mono.just(sampleDataset());
                 },
-                new CurrencyMappingService(new CurrencyMappingProperties()),
+                currencyDisplayPort,
                 referenceDatePort(),
                 memberContextPort());
 
@@ -124,12 +130,15 @@ class GetContributionSummaryServiceTest {
     @Test
     void rejectsToDateAfterReferenceDate() {
         AtomicInteger apimCalls = new AtomicInteger();
+        CurrencyDisplayPort currencyDisplayPort = (code, env, trustCode, schemeType) ->
+                new CurrencyDisplay(code, code);
+
         var service = new GetContributionSummaryService(
                 command -> {
                     apimCalls.incrementAndGet();
                     return Mono.just(sampleDataset());
                 },
-                new CurrencyMappingService(new CurrencyMappingProperties()),
+                currencyDisplayPort,
                 referenceDatePort(),
                 memberContextPort());
 
@@ -143,12 +152,15 @@ class GetContributionSummaryServiceTest {
     @Test
     void rejectsFromDateAfterToDate() {
         AtomicInteger apimCalls = new AtomicInteger();
+        CurrencyDisplayPort currencyDisplayPort = (code, env, trustCode, schemeType) ->
+                new CurrencyDisplay(code, code);
+
         var service = new GetContributionSummaryService(
                 command -> {
                     apimCalls.incrementAndGet();
                     return Mono.just(sampleDataset());
                 },
-                new CurrencyMappingService(new CurrencyMappingProperties()),
+                currencyDisplayPort,
                 referenceDatePort(),
                 memberContextPort());
 
@@ -162,12 +174,15 @@ class GetContributionSummaryServiceTest {
     @Test
     void acceptsInclusiveBoundaryDates() {
         AtomicInteger apimCalls = new AtomicInteger();
+        CurrencyDisplayPort currencyDisplayPort = (code, env, trustCode, schemeType) ->
+                new CurrencyDisplay(code, code);
+
         var service = new GetContributionSummaryService(
                 command -> {
                     apimCalls.incrementAndGet();
                     return Mono.just(sampleDataset());
                 },
-                new CurrencyMappingService(new CurrencyMappingProperties()),
+                currencyDisplayPort,
                 referenceDatePort(),
                 memberContextPort());
 
@@ -178,9 +193,12 @@ class GetContributionSummaryServiceTest {
 
     @Test
     void rejectsMissingOrInvalidDates() {
+        CurrencyDisplayPort currencyDisplayPort = (code, env, trustCode, schemeType) ->
+                new CurrencyDisplay(code, code);
+
         var service = new GetContributionSummaryService(
                 command -> Mono.just(new ContributionSummaryDataset("", List.of(), List.of())),
-                new CurrencyMappingService(new CurrencyMappingProperties()),
+                currencyDisplayPort,
                 referenceDatePort(),
                 memberContextPort());
 
@@ -198,10 +216,6 @@ class GetContributionSummaryServiceTest {
                 () -> service.execute(new GetContributionSummaryCommand("JP", "MBR", "05/04/2026", "2026-05-05")).block()).getMessage());
     }
 
-    private static ReferenceDatePort referenceDatePort() {
-        return () -> Mono.just(REFERENCE_DATE);
-    }
-
     private static ContributionSummaryDataset sampleDataset() {
         return new ContributionSummaryDataset(
                 "HKD",
@@ -213,22 +227,20 @@ class GetContributionSummaryServiceTest {
                         new ContributionEntry("EE", "05/04/2026", "31/03/2026", "01/03/2026", new BigDecimal("7116.7"))));
     }
 
-    private static final class RecordingCurrencyMappingService extends CurrencyMappingService {
+    private static final class RecordingCurrencyDisplayPort implements CurrencyDisplayPort {
 
-        private final Map<String, String> envByLocale = new HashMap<>();
-        private final Map<String, String> trustCodeByLocale = new HashMap<>();
-        private final Map<String, String> schemeTypeByLocale = new HashMap<>();
-
-        private RecordingCurrencyMappingService() {
-            super(new CurrencyMappingProperties());
-        }
+        String capturedCode;
+        String capturedEnv;
+        String capturedTrustCode;
+        String capturedSchemeType;
 
         @Override
-        public String resolve(String locale, String code, String env, String trustCode, String schemeType) {
-            envByLocale.put(locale, env);
-            trustCodeByLocale.put(locale, trustCode);
-            schemeTypeByLocale.put(locale, schemeType);
-            return "zh_HK".equals(locale) ? "港元" : code;
+        public CurrencyDisplay resolveCurrencyDisplay(String code, String env, String trustCode, String schemeType) {
+            this.capturedCode = code;
+            this.capturedEnv = env;
+            this.capturedTrustCode = trustCode;
+            this.capturedSchemeType = schemeType;
+            return new CurrencyDisplay(code, "港元");
         }
     }
 }

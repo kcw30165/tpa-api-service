@@ -36,9 +36,9 @@ com.bct.ngtpa.apiservice
 ├── application/         # Orchestration — @Service only
 │   ├── port/
 │   │   ├── in/          # GetNotificationsUseCase, UpdateNotificationsReadStatusUseCase, GetContributionSummaryUseCase, ExportContributionSummaryUseCase
-│   │   └── out/         # ApimNoticeMessagePort, ApimNotificationReadStatusPort, ApimContributionSummaryPort, ReferenceDatePort, MemberContextPort
+│   │   └── out/         # ApimNoticeMessagePort, ApimNotificationReadStatusPort, ApimContributionSummaryPort, ReferenceDatePort, MemberContextPort, CurrencyDisplayPort
 │   ├── usecase/         # GetNotificationsService, UpdateNotificationsReadStatusService, GetContributionSummaryService, ExportContributionSummaryService
-│   ├── dto/             # Notification and contribution summary commands/results; MemberContext, MemberContextPurpose
+│   ├── dto/             # Notification and contribution summary commands/results; CurrencyDisplay; MemberContext, MemberContextPurpose
 │   └── exception/       # InvalidContributionRequestException, InvalidNotificationRequestException, MemberContextResolutionException
 ├── adapter/
 │   ├── in/web/          # Reactive controllers, request/response records
@@ -62,6 +62,8 @@ com.bct.ngtpa.apiservice
 │       │   ├── ApimPayloadCryptoService   # AES/CBC + RSA field encryption/decryption
 │       │   ├── crypto/                    # APIM-specific crypto helpers and exceptions
 │       │   └── dto/                       # APIM request/response POJOs
+│       ├── config/          # Config-property-backed adapters
+│       │   └── ConfigBackedCurrencyDisplayAdapter  # Implements CurrencyDisplayPort; reads CurrencyMappingProperties
 │       └── security/        # Non-APIM security concerns
 │           └── TemporaryMemberContextAdapter  # Implements MemberContextPort; reads temporary-member-context profiles
 ├── config/              # Spring configuration beans (unchanged across layers)
@@ -94,9 +96,12 @@ Use `ApimResponseEnvelope<T>` / `ApimResponseBody<T>` for outbound APIM parsing;
 ### Dependency Rule
 
 ```
-adapter/in/web  →  application  →  domain
-adapter/out/apim →  application  →  domain
-config          →  framework composition only
+adapter/in/web          →  application  →  domain
+adapter/out/apim        →  application  →  domain
+adapter/out/config      →  application  →  domain
+adapter/out/configserver →  application  →  domain
+adapter/out/security    →  application  →  domain
+config                  →  framework composition only (must not be imported by application or domain)
 ```
 
 ---

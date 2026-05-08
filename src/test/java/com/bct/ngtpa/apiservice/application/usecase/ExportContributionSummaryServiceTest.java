@@ -6,15 +6,15 @@ import com.bct.ngtpa.apiservice.application.dto.FetchContributionSummaryCommand;
 import com.bct.ngtpa.apiservice.application.dto.MemberContext;
 import com.bct.ngtpa.apiservice.application.dto.MemberContextPurpose;
 import com.bct.ngtpa.apiservice.application.port.out.ApimContributionSummaryPort;
+import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
 import com.bct.ngtpa.apiservice.application.port.out.MemberContextPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
-import com.bct.ngtpa.apiservice.config.CurrencyMappingProperties;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryDataset;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 
-import java.util.List;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -40,10 +40,10 @@ class ExportContributionSummaryServiceTest {
             return Mono.just(new ContributionSummaryDataset("HKD", List.of(), List.of()));
         };
 
-        var currencyMappingService = new RecordingCurrencyMappingService();
+        var recordingPort = new RecordingCurrencyDisplayPort();
         ReferenceDatePort referenceDatePort = () -> Mono.just(LocalDate.of(2026, 3, 31));
 
-        var service = new ExportContributionSummaryService(port, currencyMappingService, referenceDatePort, memberContextPort());
+        var service = new ExportContributionSummaryService(port, recordingPort, referenceDatePort, memberContextPort());
         var result = service.execute(new ExportContributionSummaryCommand("JP", "MBR")).block();
 
         assertEquals("31/03/2023", captured.get().coverFrom());
@@ -54,12 +54,10 @@ class ExportContributionSummaryServiceTest {
         assertEquals("trustCode_for_contributions", captured.get().trustCode());
         assertEquals("schemeType_for_contributions", captured.get().schemeType());
         assertEquals(new CurrencyDisplay("HKD", "港元"), result.currencyDisplay());
-        assertEquals("JP", currencyMappingService.envByLocale.get("en"));
-        assertEquals("trustCode_for_contributions", currencyMappingService.trustCodeByLocale.get("en"));
-        assertEquals("schemeType_for_contributions", currencyMappingService.schemeTypeByLocale.get("en"));
-        assertEquals("JP", currencyMappingService.envByLocale.get("zh_HK"));
-        assertEquals("trustCode_for_contributions", currencyMappingService.trustCodeByLocale.get("zh_HK"));
-        assertEquals("schemeType_for_contributions", currencyMappingService.schemeTypeByLocale.get("zh_HK"));
+        assertEquals("HKD", recordingPort.capturedCode);
+        assertEquals("JP", recordingPort.capturedEnv);
+        assertEquals("trustCode_for_contributions", recordingPort.capturedTrustCode);
+        assertEquals("schemeType_for_contributions", recordingPort.capturedSchemeType);
     }
 
     @Test
@@ -70,9 +68,12 @@ class ExportContributionSummaryServiceTest {
             return Mono.just(CONTRIBUTIONS_CONTEXT);
         };
 
+        CurrencyDisplayPort currencyDisplayPort = (code, env, trustCode, schemeType) ->
+                new CurrencyDisplay(code, code);
+
         var service = new ExportContributionSummaryService(
                 command -> Mono.just(new ContributionSummaryDataset("HKD", List.of(), List.of())),
-                new CurrencyMappingService(new CurrencyMappingProperties()),
+                currencyDisplayPort,
                 () -> Mono.just(LocalDate.of(2026, 3, 31)),
                 capturingPort);
 
@@ -81,22 +82,20 @@ class ExportContributionSummaryServiceTest {
         assertEquals(MemberContextPurpose.CONTRIBUTIONS, capturedPurpose.get());
     }
 
-    private static final class RecordingCurrencyMappingService extends CurrencyMappingService {
+    private static final class RecordingCurrencyDisplayPort implements CurrencyDisplayPort {
 
-        private final java.util.Map<String, String> envByLocale = new java.util.HashMap<>();
-        private final java.util.Map<String, String> trustCodeByLocale = new java.util.HashMap<>();
-        private final java.util.Map<String, String> schemeTypeByLocale = new java.util.HashMap<>();
-
-        private RecordingCurrencyMappingService() {
-            super(new CurrencyMappingProperties());
-        }
+        String capturedCode;
+        String capturedEnv;
+        String capturedTrustCode;
+        String capturedSchemeType;
 
         @Override
-        public String resolve(String locale, String code, String env, String trustCode, String schemeType) {
-            envByLocale.put(locale, env);
-            trustCodeByLocale.put(locale, trustCode);
-            schemeTypeByLocale.put(locale, schemeType);
-            return "zh_HK".equals(locale) ? "港元" : code;
+        public CurrencyDisplay resolveCurrencyDisplay(String code, String env, String trustCode, String schemeType) {
+            this.capturedCode = code;
+            this.capturedEnv = env;
+            this.capturedTrustCode = trustCode;
+            this.capturedSchemeType = schemeType;
+            return new CurrencyDisplay(code, "港元");
         }
     }
 }
