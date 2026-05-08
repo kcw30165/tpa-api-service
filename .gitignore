@@ -40,4 +40,3 @@ set-java-home.sh
 docs/
 fix-ssl-maven.bat
 all.txt
-.mvn/wrapper/maven-wrapper.properties
