@@ -75,11 +75,54 @@ class CleanArchitectureDependencyTest {
             .should().dependOnClassesThat().resideInAPackage("..config..")
             .as("Domain must not import from the config package");
 
-    // ── Rule 7: APIM internal types must not leak outside adapter/out/apim ────
+    // ── Rule 7: APIM internal implementation types must not leak outside adapter/out/apim ────
+    //
+    // Option B (narrowed rule) is used here intentionally.
+    // Spring @Configuration classes in config/ may need to wire APIM adapter beans by type
+    // (e.g. ApimWebClientFacade, ApimPayloadCryptoService) as legitimate Spring composition.
+    // A blanket rule blocking all external references to adapter.out.apim would prevent that.
+    // Instead, we target the internal sub-packages that must never be visible to outer layers:
+    //   - dto      : APIM request/response schema POJOs and envelope wrappers
+    //   - crypto   : ApimCryptoException and low-level crypto primitives
+    //   - credential: APIM credential resolution internals
+    //   - oauth    : APIM token service internals
+    //   - certificate: certificate header provider internals
+    //   - client   : WebClient exchange filter internals
+    // These sub-packages represent implementation details that must stay inside the APIM adapter.
 
     @ArchTest
-    static final ArchRule apimTypesDoNotLeakOutsideApimAdapter = noClasses()
+    static final ArchRule apimDtoTypesDoNotLeakOutsideApimAdapter = noClasses()
             .that().resideOutsideOfPackage("..adapter.out.apim..")
-            .should().dependOnClassesThat().resideInAPackage("..adapter.out.apim..")
-            .as("APIM DTOs, envelope classes, and crypto types must not be used outside adapter/out/apim");
+            .should().dependOnClassesThat().resideInAPackage("..adapter.out.apim.dto..")
+            .as("APIM DTO / envelope types must not be used outside adapter/out/apim");
+
+    @ArchTest
+    static final ArchRule apimCryptoTypesDoNotLeakOutsideApimAdapter = noClasses()
+            .that().resideOutsideOfPackage("..adapter.out.apim..")
+            .should().dependOnClassesThat().resideInAPackage("..adapter.out.apim.crypto..")
+            .as("APIM crypto types (including ApimCryptoException) must not be used outside adapter/out/apim");
+
+    @ArchTest
+    static final ArchRule apimCredentialTypesDoNotLeakOutsideApimAdapter = noClasses()
+            .that().resideOutsideOfPackage("..adapter.out.apim..")
+            .should().dependOnClassesThat().resideInAPackage("..adapter.out.apim.credential..")
+            .as("APIM credential resolution internals must not be used outside adapter/out/apim");
+
+    @ArchTest
+    static final ArchRule apimOAuthTypesDoNotLeakOutsideApimAdapter = noClasses()
+            .that().resideOutsideOfPackage("..adapter.out.apim..")
+            .should().dependOnClassesThat().resideInAPackage("..adapter.out.apim.oauth..")
+            .as("APIM OAuth/token service internals must not be used outside adapter/out/apim");
+
+    @ArchTest
+    static final ArchRule apimCertificateTypesDoNotLeakOutsideApimAdapter = noClasses()
+            .that().resideOutsideOfPackage("..adapter.out.apim..")
+            .should().dependOnClassesThat().resideInAPackage("..adapter.out.apim.certificate..")
+            .as("APIM certificate header provider internals must not be used outside adapter/out/apim");
+
+    @ArchTest
+    static final ArchRule apimClientTypesDoNotLeakOutsideApimAdapter = noClasses()
+            .that().resideOutsideOfPackage("..adapter.out.apim..")
+            .should().dependOnClassesThat().resideInAPackage("..adapter.out.apim.client..")
+            .as("APIM WebClient exchange filter internals must not be used outside adapter/out/apim");
 }

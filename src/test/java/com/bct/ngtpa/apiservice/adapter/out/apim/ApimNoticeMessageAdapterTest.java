@@ -106,6 +106,22 @@ class ApimNoticeMessageAdapterTest {
                 assertFalse(result.notifications().getFirst().isRead());
         }
 
+    @Test
+    void cryptoFailureIsMappedToApimException() {
+        ApimProperties properties = new ApimProperties();
+        properties.getEncryption().setEnabled(true);
+        ApimNoticeMessageAdapter flowAdapter = new ApimNoticeMessageAdapter(
+                new FixedBodyApimWebClientFacade(),
+                new FailingCertificateService(),
+                new FixedEnvelopePayloadCryptoService(messageEnvelope(messageItem("IMP_NOTE", "R", "29/04/2026 14:15:00"))),
+                properties);
+
+        ApimException ex = assertThrows(ApimException.class, () -> flowAdapter.fetchNotifications(command()).block());
+
+        assertEquals("500", ex.getErrorCode());
+        assertEquals("Certificate crypto error", ex.getMessage());
+    }
+
         @Test
         void parsesApimDateTimeWithoutSeconds() {
                 LocalDateTime parsed = (LocalDateTime) ReflectionTestUtils.invokeMethod(

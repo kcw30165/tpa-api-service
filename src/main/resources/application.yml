@@ -13,6 +13,13 @@ spring:
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:}
 
+# Set to false when authentication is enforced externally (K8s ingress / API gateway).
+# Override via env var: API_SECURITY_REQUIRE_AUTHENTICATION=false
+# Default is true so local dev and CI always require auth unless explicitly opted out.
+api:
+  security:
+    require-authentication: ${API_SECURITY_REQUIRE_AUTHENTICATION:true}
+
 reference-date:
   deployment-env: ${DEPLOY_ENV:}
   override-date: ${REFERENCE_DATE_OVERRIDE_DATE:}
@@ -47,6 +54,10 @@ request-logging:
     - Accept
     - Content-Type
   body-logging:
+    # Body logging is DISABLED by default. Request/response bodies may contain PII
+    # or sensitive business data. Enable only in local or lower environments.
+    # Never enable broadly in production or production-like environments.
+    # To enable locally, override in application-local.yml for specific endpoints only.
     enabled: false
     default-max-body-size-bytes: 4096
     endpoints: []

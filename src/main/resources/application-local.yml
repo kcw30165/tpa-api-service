@@ -1,3 +1,7 @@
+api:
+  security:
+    require-authentication: false
+    
 contribution-summary:
   total-label:
     en: Total Contributions

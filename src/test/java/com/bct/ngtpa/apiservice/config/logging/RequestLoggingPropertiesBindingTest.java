@@ -14,6 +14,7 @@ import org.springframework.boot.env.YamlPropertySourceLoader;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.ClassPathResource;
 
 class RequestLoggingPropertiesBindingTest {
 
@@ -117,6 +118,29 @@ class RequestLoggingPropertiesBindingTest {
         } catch (java.io.IOException ex) {
             throw new IllegalStateException("Failed to load YAML", ex);
         }
+    }
+
+    @Test
+    void baseApplicationYmlHasBodyLoggingDisabledByDefault() {
+        // Verifies that the base application.yml explicitly keeps body logging disabled.
+        // Body logging must remain opt-in (local/lower environments only) to protect PII.
+        new ApplicationContextRunner()
+                .withUserConfiguration(TestConfig.class)
+                .withInitializer(ctx -> {
+                    var resource = new ClassPathResource("application.yml");
+                    try {
+                        var sources = new YamlPropertySourceLoader().load("application", resource);
+                        sources.forEach(s -> ctx.getEnvironment().getPropertySources().addLast(s));
+                    } catch (java.io.IOException ex) {
+                        throw new IllegalStateException("Failed to load application.yml", ex);
+                    }
+                })
+                .run(context -> {
+                    RequestLoggingProperties props = context.getBean(RequestLoggingProperties.class);
+                    assertFalse(props.getBodyLogging().isEnabled(),
+                            "Body logging must be disabled in the base application.yml to protect PII. " +
+                            "Enable only in local/non-production profiles.");
+                });
     }
 
     @Configuration(proxyBeanMethods = false)

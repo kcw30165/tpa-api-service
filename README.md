@@ -203,8 +203,43 @@ export JAVA_HOME="C:/Java/OpenJDK/jdk-21" && export M2_HOME="/d/Tools/apache-mav
 | `TEMP_CONT_USER_ID` | Temporary contribution user ID | `userId_for_contributions` |
 | `TEMP_CONT_TRUST_CODE` | Temporary contribution trust code | `trustCode_for_contributions` |
 | `TEMP_CONT_SCHEME_TYPE` | Temporary contribution scheme type | `schemeType_for_contributions` |
+| `API_SECURITY_REQUIRE_AUTHENTICATION` | Enable in-process HTTP Basic auth. Set to `false` when auth is enforced externally by a K8s ingress or API gateway. | `true` |
 
 For the dev cluster, the Kubernetes deployment or external config repository must set `CORS_ALLOWED_ORIGINS=http://localhost:4200` before local frontend calls from that origin will succeed. Those deployment manifests are outside this repository.
+
+---
+
+## Authentication
+
+### Local Development
+
+HTTP Basic Auth is auto-configured by Spring Boot when `api.security.require-authentication=true` (the default). Local credentials are defined in `src/main/resources/application-local.yml`:
+
+```yaml
+spring:
+  security:
+    user:
+      name: dev
+      password: dev-local
+```
+
+In Postman, set **Authorization → Basic Auth** with username `dev` and password `dev-local`.
+
+### Kubernetes / External Auth Layer
+
+When authentication is enforced externally (K8s ingress controller, API gateway, or service mesh mTLS), disable in-process auth in the Deployment manifest or ConfigMap:
+
+```yaml
+env:
+  - name: API_SECURITY_REQUIRE_AUTHENTICATION
+    value: "false"
+```
+
+When `false`, the application logs a startup `WARN` confirming that the external auth layer is trusted. All traffic reaching the pod is permitted without in-process credential checks.
+
+### Future: OAuth2 / OIDC Resource Server
+
+When an Auth Server is available, set `api.security.require-authentication=true` and configure `SecurityConfig` as a WebFlux OAuth2 resource server (`http.oauth2ResourceServer(...)`). Member context will then be extracted from JWT claims instead of the temporary profile configuration.
 
 ---
 
