@@ -94,6 +94,21 @@ reference-date:
   override-date: 04/05/2023
   override-zone-id: Asia/Hong_Kong
 
+temporary-member-context:
+  profiles:
+    notifications:
+      policy-no: ${TEMP_NOTIF_POLICY_NO:00000000118}
+      cert-no: ${TEMP_NOTIF_CERT_NO:2}
+      user-id: ${TEMP_NOTIF_USER_ID:C402400A}
+      trust-code: ${TEMP_NOTIF_TRUST_CODE:}
+      scheme-type: ${TEMP_NOTIF_SCHEME_TYPE:}
+    contributions:
+      policy-no: ${TEMP_CONT_POLICY_NO:00000000217}
+      cert-no: ${TEMP_CONT_CERT_NO:95}
+      user-id: ${TEMP_CONT_USER_ID:C402400A}
+      trust-code: ${TEMP_CONT_TRUST_CODE:}
+      scheme-type: ${TEMP_CONT_SCHEME_TYPE:}
+
 request-logging:
   body-logging:
     enabled: true

@@ -1,9 +1,11 @@
 package com.bct.ngtpa.apiservice.application.usecase;
 
+import com.bct.ngtpa.apiservice.application.dto.MemberContextPurpose;
 import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusCommand;
 import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusResult;
 import com.bct.ngtpa.apiservice.application.port.in.UpdateNotificationsReadStatusUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNotificationReadStatusPort;
+import com.bct.ngtpa.apiservice.application.port.out.MemberContextPort;
 import com.bct.ngtpa.apiservice.config.logging.LogExecution;
 import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
 import lombok.RequiredArgsConstructor;
@@ -14,30 +16,27 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class UpdateNotificationsReadStatusService implements UpdateNotificationsReadStatusUseCase {
 
-    // TODO: extract cert-no from access token once auth server is implemented.
-    private static final String HARDCODED_CERT_NO = "2";
-    // TODO: extract policy-no from access token once auth server is implemented.
-    private static final String HARDCODED_POLICY_NO = "00000000118";
-    // TODO: extract user-id from access token once auth server is implemented.
-    private static final String HARDCODED_USER_ID = "C402400A";
-    // TODO: read ref-date from config server once it is implemented.
+    // TODO: read ref-date from config server once ReferenceDatePort is wired for notifications (Stage 1.2)
     private static final String HARDCODED_REF_DATE = "01/10/2025";
 
     private final ApimNotificationReadStatusPort apimNotificationReadStatusPort;
+    private final MemberContextPort memberContextPort;
 
     @Override
     @LogExecution(value = "usecase.updateNotificationsReadStatus", logArgs = true)
     public Mono<UpdateNotificationsReadStatusResult> execute(UpdateNotificationsReadStatusCommand command) {
-        var enrichedCommand = new UpdateNotificationsReadStatusCommand(
-                command.env(),
-                command.mbrType(),
-                command.notificationIds(),
-                HARDCODED_POLICY_NO,
-                HARDCODED_CERT_NO,
-                HARDCODED_USER_ID,
-                HARDCODED_REF_DATE,
-                MessageStatus.READ);
-
-        return apimNotificationReadStatusPort.updateReadStatus(enrichedCommand);
+        return memberContextPort.resolveMemberContext(MemberContextPurpose.NOTIFICATIONS)
+                .flatMap(memberContext -> {
+                    var enrichedCommand = new UpdateNotificationsReadStatusCommand(
+                            command.env(),
+                            command.mbrType(),
+                            command.notificationIds(),
+                            memberContext.policyNo(),
+                            memberContext.certNo(),
+                            memberContext.userId(),
+                            HARDCODED_REF_DATE,
+                            MessageStatus.READ);
+                    return apimNotificationReadStatusPort.updateReadStatus(enrichedCommand);
+                });
     }
 }

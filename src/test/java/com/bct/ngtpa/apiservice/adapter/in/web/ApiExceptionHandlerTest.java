@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiErrorResponse;
 import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
+import com.bct.ngtpa.apiservice.application.exception.MemberContextResolutionException;
 import com.bct.ngtpa.apiservice.config.logging.RequestLoggingWebFilter;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import java.lang.reflect.Method;
@@ -181,6 +182,26 @@ class ApiExceptionHandlerTest {
                 new ApimException(HttpStatus.BAD_GATEWAY, "ERR", "msg"), emptyExchange());
 
         assertNull(response.getHeaders().getFirst(RequestLoggingWebFilter.REQUEST_ID_HEADER));
+    }
+
+    @Test
+    void mapsMemberContextResolutionExceptionToInternalServerError() {
+        ResponseEntity<ApiErrorResponse> response = handler.handleMemberContextResolutionException(
+                new MemberContextResolutionException("No profile for NOTIFICATIONS"), emptyExchange());
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertEquals("500", response.getBody().errorCode());
+        assertEquals("No profile for NOTIFICATIONS", response.getBody().message());
+    }
+
+    @Test
+    void memberContextResolutionExceptionResponseIncludesRequestIdHeader() {
+        MockServerWebExchange exchange = exchangeWithRequestId("member-ctx-req-id");
+
+        ResponseEntity<ApiErrorResponse> response = handler.handleMemberContextResolutionException(
+                new MemberContextResolutionException("No profile"), exchange);
+
+        assertEquals("member-ctx-req-id", response.getHeaders().getFirst(RequestLoggingWebFilter.REQUEST_ID_HEADER));
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

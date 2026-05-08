@@ -4,8 +4,11 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.ContributionSummaryRespo
 import com.bct.ngtpa.apiservice.application.dto.CurrencyDisplay;
 import com.bct.ngtpa.apiservice.application.dto.FetchContributionSummaryCommand;
 import com.bct.ngtpa.apiservice.application.dto.GetContributionSummaryCommand;
+import com.bct.ngtpa.apiservice.application.dto.MemberContext;
+import com.bct.ngtpa.apiservice.application.dto.MemberContextPurpose;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import com.bct.ngtpa.apiservice.application.port.out.ApimContributionSummaryPort;
+import com.bct.ngtpa.apiservice.application.port.out.MemberContextPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.config.ContributionSummaryProperties;
 import com.bct.ngtpa.apiservice.config.CurrencyMappingProperties;
@@ -31,6 +34,17 @@ class GetContributionSummaryServiceTest {
 
     private static final LocalDate REFERENCE_DATE = LocalDate.of(2026, 3, 31);
 
+    private static final MemberContext CONTRIBUTIONS_CONTEXT = new MemberContext(
+            "policyNo_for_contributions",
+            "certNo_for_contributions",
+            "userId_for_contributions",
+            "trustCode_for_contributions",
+            "schemeType_for_contributions");
+
+    private static MemberContextPort memberContextPort() {
+        return purpose -> Mono.just(CONTRIBUTIONS_CONTEXT);
+    }
+
     @Test
     void acceptsValidDatesWithinReferenceWindowAndCallsApim() {
         AtomicReference<FetchContributionSummaryCommand> captured = new AtomicReference<>();
@@ -42,31 +56,50 @@ class GetContributionSummaryServiceTest {
         };
 
         var currencyMappingService = new RecordingCurrencyMappingService();
-        var service = new GetContributionSummaryService(port, currencyMappingService, referenceDatePort());
+        var service = new GetContributionSummaryService(port, currencyMappingService, referenceDatePort(), memberContextPort());
 
         var result = service.execute(new GetContributionSummaryCommand("JP", "MBR", "01/01/2026", "31/03/2026")).block();
 
         assertEquals(1, apimCalls.get());
         assertEquals("01/01/2026", captured.get().coverFrom());
         assertEquals("31/03/2026", captured.get().coverTo());
-        assertEquals("00000000217", captured.get().policyNo());
-        assertEquals("95", captured.get().certNo());
-        assertEquals("C402400A", captured.get().userId());
-        assertEquals("", captured.get().trustCode());
-        assertEquals("", captured.get().schemeType());
+        assertEquals("policyNo_for_contributions", captured.get().policyNo());
+        assertEquals("certNo_for_contributions", captured.get().certNo());
+        assertEquals("userId_for_contributions", captured.get().userId());
+        assertEquals("trustCode_for_contributions", captured.get().trustCode());
+        assertEquals("schemeType_for_contributions", captured.get().schemeType());
         assertEquals(new CurrencyDisplay("HKD", "港元"), result.currencyDisplay());
         assertEquals("JP", currencyMappingService.envByLocale.get("en"));
-        assertEquals("", currencyMappingService.trustCodeByLocale.get("en"));
-        assertEquals("", currencyMappingService.schemeTypeByLocale.get("en"));
+        assertEquals("trustCode_for_contributions", currencyMappingService.trustCodeByLocale.get("en"));
+        assertEquals("schemeType_for_contributions", currencyMappingService.schemeTypeByLocale.get("en"));
         assertEquals("JP", currencyMappingService.envByLocale.get("zh_HK"));
-        assertEquals("", currencyMappingService.trustCodeByLocale.get("zh_HK"));
-        assertEquals("", currencyMappingService.schemeTypeByLocale.get("zh_HK"));
+        assertEquals("trustCode_for_contributions", currencyMappingService.trustCodeByLocale.get("zh_HK"));
+        assertEquals("schemeType_for_contributions", currencyMappingService.schemeTypeByLocale.get("zh_HK"));
         assertEquals("HKD 24908.45", ContributionSummaryResponse
                 .from(result, new ContributionSummaryProperties())
                 .contributions().getFirst().totalContributionEn());
         assertEquals("港元 24908.45", ContributionSummaryResponse
                 .from(result, new ContributionSummaryProperties())
                 .contributions().getFirst().totalContributionZh());
+    }
+
+    @Test
+    void resolvesMemberContextWithContributionsPurpose() {
+        AtomicReference<MemberContextPurpose> capturedPurpose = new AtomicReference<>();
+        MemberContextPort capturingPort = purpose -> {
+            capturedPurpose.set(purpose);
+            return Mono.just(CONTRIBUTIONS_CONTEXT);
+        };
+
+        var service = new GetContributionSummaryService(
+                command -> Mono.just(sampleDataset()),
+                new CurrencyMappingService(new CurrencyMappingProperties()),
+                referenceDatePort(),
+                capturingPort);
+
+        service.execute(new GetContributionSummaryCommand("JP", "MBR", "01/01/2026", "31/03/2026")).block();
+
+        assertEquals(MemberContextPurpose.CONTRIBUTIONS, capturedPurpose.get());
     }
 
     @Test
@@ -78,7 +111,8 @@ class GetContributionSummaryServiceTest {
                     return Mono.just(sampleDataset());
                 },
                 new CurrencyMappingService(new CurrencyMappingProperties()),
-                referenceDatePort());
+                referenceDatePort(),
+                memberContextPort());
 
         var ex = assertThrows(InvalidContributionRequestException.class,
                 () -> service.execute(new GetContributionSummaryCommand("JP", "MBR", "30/03/2023", "31/03/2026")).block());
@@ -96,7 +130,8 @@ class GetContributionSummaryServiceTest {
                     return Mono.just(sampleDataset());
                 },
                 new CurrencyMappingService(new CurrencyMappingProperties()),
-                referenceDatePort());
+                referenceDatePort(),
+                memberContextPort());
 
         var ex = assertThrows(InvalidContributionRequestException.class,
                 () -> service.execute(new GetContributionSummaryCommand("JP", "MBR", "01/01/2026", "01/04/2026")).block());
@@ -114,7 +149,8 @@ class GetContributionSummaryServiceTest {
                     return Mono.just(sampleDataset());
                 },
                 new CurrencyMappingService(new CurrencyMappingProperties()),
-                referenceDatePort());
+                referenceDatePort(),
+                memberContextPort());
 
         var ex = assertThrows(InvalidContributionRequestException.class,
                 () -> service.execute(new GetContributionSummaryCommand("JP", "MBR", "31/03/2026", "01/01/2026")).block());
@@ -132,7 +168,8 @@ class GetContributionSummaryServiceTest {
                     return Mono.just(sampleDataset());
                 },
                 new CurrencyMappingService(new CurrencyMappingProperties()),
-                referenceDatePort());
+                referenceDatePort(),
+                memberContextPort());
 
         service.execute(new GetContributionSummaryCommand("JP", "MBR", "31/03/2023", "31/03/2026")).block();
 
@@ -144,7 +181,8 @@ class GetContributionSummaryServiceTest {
         var service = new GetContributionSummaryService(
                 command -> Mono.just(new ContributionSummaryDataset("", List.of(), List.of())),
                 new CurrencyMappingService(new CurrencyMappingProperties()),
-                referenceDatePort());
+                referenceDatePort(),
+                memberContextPort());
 
         assertEquals("fromDate must be provided in dd/MM/yyyy format", assertThrows(
                 InvalidContributionRequestException.class,

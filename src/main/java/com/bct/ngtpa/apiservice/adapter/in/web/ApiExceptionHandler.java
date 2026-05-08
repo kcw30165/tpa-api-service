@@ -4,6 +4,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiErrorResponse;
 import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
+import com.bct.ngtpa.apiservice.application.exception.MemberContextResolutionException;
 import com.bct.ngtpa.apiservice.config.logging.RequestLoggingWebFilter;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import org.springframework.http.HttpStatus;
@@ -31,13 +32,15 @@ public class ApiExceptionHandler {
     }
 
     @ExceptionHandler(ApimCryptoException.class)
-    public ResponseEntity<ApiErrorResponse> handleApimCryptoException(ApimCryptoException ex, ServerWebExchange exchange) {
+    public ResponseEntity<ApiErrorResponse> handleApimCryptoException(ApimCryptoException ex,
+            ServerWebExchange exchange) {
         String requestId = getRequestId(exchange);
         ResponseEntity.BodyBuilder builder = ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR);
         if (requestId != null) {
             builder.header(RequestLoggingWebFilter.REQUEST_ID_HEADER, requestId);
         }
-        return builder.body(ApiErrorResponse.of(String.valueOf(HttpStatus.INTERNAL_SERVER_ERROR.value()), ex.getMessage()));
+        return builder
+                .body(ApiErrorResponse.of(String.valueOf(HttpStatus.INTERNAL_SERVER_ERROR.value()), ex.getMessage()));
     }
 
     @ExceptionHandler(InvalidNotificationRequestException.class)
@@ -62,14 +65,26 @@ public class ApiExceptionHandler {
         return builder.body(ApiErrorResponse.of(String.valueOf(HttpStatus.BAD_REQUEST.value()), ex.getMessage()));
     }
 
+    @ExceptionHandler(MemberContextResolutionException.class)
+    public ResponseEntity<ApiErrorResponse> handleMemberContextResolutionException(
+            MemberContextResolutionException ex, ServerWebExchange exchange) {
+        String requestId = getRequestId(exchange);
+        ResponseEntity.BodyBuilder builder = ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR);
+        if (requestId != null) {
+            builder.header(RequestLoggingWebFilter.REQUEST_ID_HEADER, requestId);
+        }
+        return builder
+                .body(ApiErrorResponse.of(String.valueOf(HttpStatus.INTERNAL_SERVER_ERROR.value()), ex.getMessage()));
+    }
+
     @ExceptionHandler(WebExchangeBindException.class)
     public ResponseEntity<ApiErrorResponse> handleWebExchangeBindException(
             WebExchangeBindException ex, ServerWebExchange exchange) {
         String message = ex.getFieldErrors().stream()
-            .map(FieldError::getDefaultMessage)
-            .filter(msg -> msg != null && !msg.isBlank())
-            .findFirst()
-            .orElse("Invalid request payload.");
+                .map(FieldError::getDefaultMessage)
+                .filter(msg -> msg != null && !msg.isBlank())
+                .findFirst()
+                .orElse("Invalid request payload.");
 
         String requestId = getRequestId(exchange);
         ResponseEntity.BodyBuilder builder = ResponseEntity.status(HttpStatus.BAD_REQUEST);
@@ -83,8 +98,8 @@ public class ApiExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleServerWebInputException(
             ServerWebInputException ex, ServerWebExchange exchange) {
         String message = Optional.ofNullable(ex.getReason())
-            .filter(reason -> !reason.isBlank())
-            .orElse("Invalid request payload.");
+                .filter(reason -> !reason.isBlank())
+                .orElse("Invalid request payload.");
 
         String requestId = getRequestId(exchange);
         ResponseEntity.BodyBuilder builder = ResponseEntity.status(HttpStatus.BAD_REQUEST);
@@ -98,4 +113,3 @@ public class ApiExceptionHandler {
         return (String) exchange.getAttributes().get(RequestLoggingWebFilter.REQUEST_ID_ATTRIBUTE_KEY);
     }
 }
-
