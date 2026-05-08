@@ -53,27 +53,37 @@ com.bct.ngtpa.apiservice
 │   │   └── response/    # Notification and contribution summary response records
 │   └── out/
 │       ├── apim/            # APIM integration
+│       │   ├── client/                    # APIM-specific WebClient construction and filters
+│       │   │   ├── ApimWebClientConfig    # @Bean apimWebClient (OAuth2, cert header, filters)
+│       │   │   ├── ApimRequestIdExchangeFilter    # Propagates X-Request-Id from Reactor Context
+│       │   │   └── ApimRequestLoggingExchangeFilter # Logs outbound APIM requests as structured JSON
+│       │   ├── oauth/                     # APIM OAuth2 bean registration
+│       │   │   └── ApimOAuthClientConfig  # ReactiveClientRegistrationRepository, ReactiveOAuth2AuthorizedClientManager
+│       │   ├── certificate/               # APIM certificate header utilities
+│       │   │   └── ApimCertificateHeaderProvider  # Thin wrapper over ApimAppCertificateService
+│       │   ├── credential/                # APIM credential profile resolution
+│       │   ├── crypto/                    # APIM-specific crypto helpers and exceptions
+│       │   ├── dto/                       # APIM request/response POJOs
 │       │   ├── ApimWebClientFacade        # Pure HTTP transport (OAuth2 token attach)
 │       │   ├── ApimNoticeMessageAdapter   # Implements ApimNoticeMessagePort
-│       ├── ApimNotificationReadStatusAdapter # Implements ApimNotificationReadStatusPort
-│       ├── ApimContributionSummaryAdapter # Implements ApimContributionSummaryPort
-│       │   ├── configserver/ConfigBackedReferenceDateAdapter # Current ConfigMap-backed ReferenceDatePort implementation
-│       │   ├── configserver/ConfigServiceReferenceDateAdapter # Planned future API-backed ReferenceDatePort implementation
-│       │   ├── configserver/ReferenceDateResolver # Shared production-like / override resolution policy
+│       │   ├── ApimNotificationReadStatusAdapter  # Implements ApimNotificationReadStatusPort
+│       │   ├── ApimContributionSummaryAdapter     # Implements ApimContributionSummaryPort
 │       │   ├── ApimCertificateService     # Fetches BCT public key from APIM
 │       │   ├── ApimAppCertificateService  # Loads app RSA keys + X509 cert
-│       │   ├── ApimPayloadCryptoService   # AES/CBC + RSA field encryption/decryption
-│       │   ├── crypto/                    # APIM-specific crypto helpers and exceptions
-│       │   └── dto/                       # APIM request/response POJOs
+│       │   └── ApimPayloadCryptoService   # AES/CBC + RSA field encryption/decryption
 │       ├── config/          # Config-property-backed adapters
 │       │   └── ConfigBackedCurrencyDisplayAdapter  # Implements CurrencyDisplayPort; reads CurrencyMappingProperties
+│       ├── configserver/    # ConfigMap/Config-Server-backed adapters
+│       │   ├── ConfigBackedReferenceDateAdapter    # Current ConfigMap-backed ReferenceDatePort implementation
+│       │   ├── ConfigServiceReferenceDateAdapter   # Planned future API-backed ReferenceDatePort implementation
+│       │   └── ReferenceDateResolver               # Shared production-like / override resolution policy
 │       └── security/        # Non-APIM security concerns
 │           └── TemporaryMemberContextAdapter  # Implements MemberContextPort; reads temporary-member-context profiles
-├── config/              # Spring configuration beans (unchanged across layers)
+├── config/              # Spring configuration beans — property binding and generic infrastructure only
 │   ├── ApimProperties
 │   ├── ContributionSummaryProperties
 │   ├── TemporaryMemberContextProperties  # Binds temporary-member-context.profiles.*
-│   ├── WebClientConfig
+│   ├── WebClientBaseConfig              # Generic WebClient.Builder bean (no APIM concerns)
 │   ├── SecurityConfig
 │   ├── JacksonConfig
 │   ├── ApimCryptoConfig
@@ -121,10 +131,10 @@ config                  →  framework composition only (must not be imported by
 
 ```bash
 # Compile
-./mvnw compile -DskipTests
+export JAVA_HOME="C:/Java/OpenJDK/jdk-21" && export M2_HOME="/d/Tools/apache-maven-3.9.15" && export PATH="$JAVA_HOME/bin:$M2_HOME/bin:$PATH" && mvn compile -DskipTests
 
 # Run tests
-./mvnw test
+export JAVA_HOME="C:/Java/OpenJDK/jdk-21" && export M2_HOME="/d/Tools/apache-maven-3.9.15" && export PATH="$JAVA_HOME/bin:$M2_HOME/bin:$PATH" && mvn test
 ```
 
 > On Windows without `JAVA_HOME` in PATH, prefix each command with `JAVA_HOME="C:/Java/OpenJDK/jdk-21"` or use the VS Code tasks defined in `.vscode/tasks.json`.
@@ -142,8 +152,9 @@ All required environment variables are pre-configured in `.vscode/launch.json`.
 ### Via Maven task or shell
 
 ```bash
-export JAVA_HOME="C:/Java/OpenJDK/jdk-21"
-./mvnw spring-boot:run
+export JAVA_HOME="C:/Java/OpenJDK/jdk-21" && export M2_HOME="/d/Tools/apache-maven-3.9.15" && export PATH="$JAVA_HOME/bin:$M2_HOME/bin:$PATH" && mvn spring-boot:run
+
+export JAVA_HOME="C:/Java/OpenJDK/jdk-21" && export M2_HOME="/d/Tools/apache-maven-3.9.15" && export PATH="$JAVA_HOME/bin:$M2_HOME/bin:$PATH" && mvn spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
 Spring Boot imports the repository root `.env` file automatically via `spring.config.import`, so local `APIM_*` variables do not need to be exported one by one.
@@ -153,8 +164,7 @@ Browser access from a local frontend to a deployed API stays closed by default. 
 If you hit a stale class problem after refactors, run a clean rebuild first:
 
 ```bash
-export JAVA_HOME="C:/Java/OpenJDK/jdk-21"
-./mvnw clean compile -DskipTests
+export JAVA_HOME="C:/Java/OpenJDK/jdk-21" && export M2_HOME="/d/Tools/apache-maven-3.9.15" && export PATH="$JAVA_HOME/bin:$M2_HOME/bin:$PATH" && mvn clean compile -DskipTests
 ```
 
 ---
@@ -302,7 +312,7 @@ Error response body remains:
 
 ### Outbound APIM Propagation
 
-`WebClientConfig` propagates the resolved `X-Request-Id` to every outbound APIM call as an HTTP header. This allows APIM-side log correlation with BFF-side logs.
+`ApimRequestIdExchangeFilter` (under `adapter/out/apim/client`) propagates the resolved `X-Request-Id` from Reactor Context to every outbound APIM call as an HTTP header. This allows APIM-side log correlation with BFF-side logs.
 
 ### JSON Structured Log Events
 
@@ -313,7 +323,7 @@ All global and method-level log events are serialized as JSON strings. Key event
 | `http.request.start` | `RequestLoggingWebFilter` | `requestId`, `method`, `path`, `query`, `headers` |
 | `http.request.end` | `RequestLoggingWebFilter` | `requestId`, `method`, `path`, `status`, `elapsedMs` |
 | `http.request.error` | `RequestLoggingWebFilter` | `requestId`, `method`, `path`, `elapsedMs`, `exceptionType`, `errorMessage` |
-| `apim.request` | `WebClientConfig` | `requestId`, `method`, `url`, `headers` |
+| `apim.request` | `ApimRequestLoggingExchangeFilter` | `requestId`, `method`, `url`, `headers` |
 | `method.execution.start` | `ExecutionLoggingAspect` | `requestId`*, `className`, `methodName`, `label`, `args` |
 | `method.execution.success` | `ExecutionLoggingAspect` | `requestId`*, `className`, `methodName`, `elapsedMs`, `result` |
 | `method.execution.error` | `ExecutionLoggingAspect` | `requestId`*, `className`, `methodName`, `elapsedMs`, `exceptionType`, `errorMessage` |
