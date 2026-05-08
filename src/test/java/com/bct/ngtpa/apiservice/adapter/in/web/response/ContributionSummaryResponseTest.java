@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.response;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionWebDisplayConfig;
 import com.bct.ngtpa.apiservice.application.dto.ContributionSummaryReportResult;
-import com.bct.ngtpa.apiservice.config.ContributionSummaryProperties;
 import com.bct.ngtpa.apiservice.domain.model.ContributionLabels;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSource;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryReport;
@@ -29,7 +29,13 @@ class ContributionSummaryResponseTest {
                                         null,
                                         new LinkedHashMap<>()))),
                         null),
-                new ContributionSummaryProperties());
+                new ContributionWebDisplayConfig(
+                    "Total Contributions",
+                    "供款總額",
+                    "Dealing date處理日期",
+                    "Contribution Periods供款期",
+                    "Total Contributions供款總額"
+                ));
 
         assertEquals("0", response.contributions().getFirst().totalContributionEn());
         assertEquals("0", response.contributions().getFirst().totalContributionZh());

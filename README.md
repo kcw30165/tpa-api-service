@@ -19,7 +19,7 @@ The service runs as a reactive Spring Boot application and reads local developme
 | Auth (outbound) | Spring Security OAuth2 Client Credentials |
 | Encryption | BouncyCastle 1.82 (RSA + AES/CBC) |
 | Spreadsheet export | Apache POI OOXML |
-| Build | Maven 3.9.x (wrapper — `./mvnw`) |
+| Build | Maven 3.9.x (/d/Tools/apache-maven-3.9.15) |
 | JDK | OpenJDK 21 (`C:\Java\OpenJDK\jdk-21`) |
 
 ---
@@ -46,6 +46,9 @@ com.bct.ngtpa.apiservice
 │   │   ├── ContributionController
 │   │   ├── ContributionSummaryWorkbookExporter
 │   │   ├── ApiExceptionHandler (@RestControllerAdvice)
+│   │   ├── config/      # Web presentation config (Stage 2.2)
+│   │   │   ├── ContributionWebDisplayConfig     # Neutral record: total labels + XLSX headers
+│   │   │   └── ContributionWebDisplayConfigProvider # Adapts ContributionSummaryProperties → ContributionWebDisplayConfig
 │   │   ├── request/     # UpdateNotificationsReadStatusRequest
 │   │   └── response/    # Notification and contribution summary response records
 │   └── out/

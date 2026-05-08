@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.application.usecase;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionWebDisplayConfig;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ContributionSummaryResponse;
 import com.bct.ngtpa.apiservice.application.dto.CurrencyDisplay;
 import com.bct.ngtpa.apiservice.application.dto.FetchContributionSummaryCommand;
@@ -11,7 +12,6 @@ import com.bct.ngtpa.apiservice.application.port.out.ApimContributionSummaryPort
 import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
 import com.bct.ngtpa.apiservice.application.port.out.MemberContextPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
-import com.bct.ngtpa.apiservice.config.ContributionSummaryProperties;
 import com.bct.ngtpa.apiservice.domain.model.ContributionEntry;
 import com.bct.ngtpa.apiservice.domain.model.ContributionLabels;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSource;
@@ -76,10 +76,22 @@ class GetContributionSummaryServiceTest {
         assertEquals("trustCode_for_contributions", recordingPort.capturedTrustCode);
         assertEquals("schemeType_for_contributions", recordingPort.capturedSchemeType);
         assertEquals("HKD 24908.45", ContributionSummaryResponse
-                .from(result, new ContributionSummaryProperties())
+                .from(result, new ContributionWebDisplayConfig(
+                    "Total Contributions",
+                    "供款總額",
+                    "Dealing date處理日期",
+                    "Contribution Periods供款期",
+                    "Total Contributions供款總額"
+                ))
                 .contributions().getFirst().totalContributionEn());
         assertEquals("港元 24908.45", ContributionSummaryResponse
-                .from(result, new ContributionSummaryProperties())
+                .from(result, new ContributionWebDisplayConfig(
+                    "Total Contributions",
+                    "供款總額",
+                    "Dealing date處理日期",
+                    "Contribution Periods供款期",
+                    "Total Contributions供款總額"
+                ))
                 .contributions().getFirst().totalContributionZh());
     }
 

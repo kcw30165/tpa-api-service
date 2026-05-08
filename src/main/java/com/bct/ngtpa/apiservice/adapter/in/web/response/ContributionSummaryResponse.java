@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.response;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionWebDisplayConfig;
 import com.bct.ngtpa.apiservice.application.dto.ContributionSummaryReportResult;
-import com.bct.ngtpa.apiservice.config.ContributionSummaryProperties;
 import com.bct.ngtpa.apiservice.domain.model.ContributionLabels;
 
 import java.math.BigDecimal;
@@ -12,10 +12,10 @@ public record ContributionSummaryResponse(List<ContributionSummaryItemResponse> 
 
     public static ContributionSummaryResponse from(
             ContributionSummaryReportResult result,
-            ContributionSummaryProperties properties) {
+            ContributionWebDisplayConfig displayConfig) {
         var totalLabels = new ContributionLabels(
-                properties.getTotalLabel().getEn(),
-                properties.getTotalLabel().getZh());
+                displayConfig.totalLabelEn(),
+                displayConfig.totalLabelZh());
         var currencyDisplay = result.currencyDisplay();
         var currencyEn = currencyDisplay == null ? "" : currencyDisplay.en();
         var currencyZh = currencyDisplay == null ? "" : currencyDisplay.zh();
