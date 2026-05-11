@@ -15,7 +15,7 @@ The service runs as a reactive Spring Boot application and reads local developme
 | Framework | Spring Boot 4.0.6 |
 | HTTP (inbound) | Spring WebFlux |
 | HTTP (outbound) | Spring WebFlux `WebClient` |
-| Cross-cutting logging | Spring AOP + custom `@LogExecution` |
+| Cross-cutting logging | Spring AOP (`ExecutionLoggingAspect`) — package-pattern pointcut for use cases; `@LogExecution` for adapters/facades |
 | Auth (outbound) | Spring Security OAuth2 Client Credentials |
 | Encryption | BouncyCastle 1.82 (RSA + AES/CBC) |
 | Spreadsheet export | Apache POI OOXML |
@@ -33,7 +33,7 @@ com.bct.ngtpa.apiservice
 ├── domain/              # Pure Java — no Spring, no I/O
 │   ├── model/           # NoticeMessage, MessageType, MessageStatus, AudienceType, Hyperlink
 │   └── exception/       # DomainException
-├── application/         # Orchestration — @Service only
+├── application/         # Orchestration — no Spring @Service; wired by UseCaseConfig
 │   ├── port/
 │   │   ├── in/          # GetNotificationsUseCase, UpdateNotificationsReadStatusUseCase, GetContributionSummaryUseCase, ExportContributionSummaryUseCase
 │   │   └── out/         # ApimNoticeMessagePort, ApimNotificationReadStatusPort, ApimContributionSummaryPort, ReferenceDatePort, MemberContextPort, CurrencyDisplayPort
@@ -46,13 +46,20 @@ com.bct.ngtpa.apiservice
 │   │   ├── ContributionController
 │   │   ├── ContributionSummaryWorkbookExporter
 │   │   ├── ApiExceptionHandler (@RestControllerAdvice)
-│   │   ├── config/      # Web presentation config (Stage 2.2)
-│   │   │   ├── ContributionWebDisplayConfig     # Neutral record: total labels + XLSX headers
-│   │   │   └── ContributionWebDisplayConfigProvider # Adapts ContributionSummaryProperties → ContributionWebDisplayConfig
+│   │   ├── config/      # Web presentation config
+│   │   │   ├── ContributionSummaryProperties     # Binds contribution-summary.* YAML
+│   │   │   ├── ContributionWebDisplayConfig      # Neutral record: total labels + XLSX headers
+│   │   │   └── ContributionWebDisplayConfigProvider  # Adapts ContributionSummaryProperties → ContributionWebDisplayConfig
+│   │   ├── filter/      # Inbound WebFilter infrastructure
+│   │   │   ├── RequestLoggingWebFilter           # Correlation ID + lifecycle logs
+│   │   │   └── RequestLoggingProperties          # Binds request-logging.* YAML
 │   │   ├── request/     # UpdateNotificationsReadStatusRequest
 │   │   └── response/    # Notification and contribution summary response records
 │   └── out/
 │       ├── apim/            # APIM integration
+│       │   ├── config/                        # APIM-specific configuration
+│       │   │   ├── ApimProperties             # Binds apim.* YAML (base-url, timeout, oauth, encryption)
+│       │   │   └── ApimCryptoConfig           # Registers BouncyCastle JCA provider @Bean
 │       │   ├── client/                    # APIM-specific WebClient construction and filters
 │       │   │   ├── ApimWebClientConfig    # @Bean apimWebClient (OAuth2, cert header, filters)
 │       │   │   ├── ApimRequestIdExchangeFilter    # Propagates X-Request-Id from Reactor Context
@@ -72,22 +79,35 @@ com.bct.ngtpa.apiservice
 │       │   ├── ApimAppCertificateService  # Loads app RSA keys + X509 cert
 │       │   └── ApimPayloadCryptoService   # AES/CBC + RSA field encryption/decryption
 │       ├── config/          # Config-property-backed adapters
-│       │   └── ConfigBackedCurrencyDisplayAdapter  # Implements CurrencyDisplayPort; reads CurrencyMappingProperties
+│       │   ├── CurrencyMappingProperties              # Binds currency-mapping.* YAML
+│       │   └── ConfigBackedCurrencyDisplayAdapter     # Implements CurrencyDisplayPort
 │       ├── configserver/    # ConfigMap/Config-Server-backed adapters
-│       │   ├── ConfigBackedReferenceDateAdapter    # Current ConfigMap-backed ReferenceDatePort implementation
-│       │   ├── ConfigServiceReferenceDateAdapter   # Planned future API-backed ReferenceDatePort implementation
-│       │   └── ReferenceDateResolver               # Shared production-like / override resolution policy
+│       │   ├── ReferenceDateProperties                # Binds reference-date.* YAML
+│       │   ├── ConfigBackedReferenceDateAdapter       # Current ConfigMap-backed ReferenceDatePort implementation
+│       │   ├── ConfigServiceReferenceDateAdapter      # Planned future API-backed ReferenceDatePort implementation
+│       │   └── ReferenceDateResolver                  # Shared production-like / override resolution policy
 │       └── security/        # Non-APIM security concerns
-│           └── TemporaryMemberContextAdapter  # Implements MemberContextPort; reads temporary-member-context profiles
-├── config/              # Spring configuration beans — property binding and generic infrastructure only
-│   ├── ApimProperties
-│   ├── ContributionSummaryProperties
-│   ├── TemporaryMemberContextProperties  # Binds temporary-member-context.profiles.*
-│   ├── WebClientBaseConfig              # Generic WebClient.Builder bean (no APIM concerns)
-│   ├── SecurityConfig
-│   ├── JacksonConfig
-│   ├── ApimCryptoConfig
-│   └── logging/        # `@LogExecution`, aspect, and log sanitization
+│           ├── TemporaryMemberContextProperties      # Binds temporary-member-context.profiles.*
+│           └── TemporaryMemberContextAdapter         # Implements MemberContextPort
+├── config/              # Spring composition only — use case @Bean wiring
+│   └── UseCaseConfig    # @Bean definitions for all four application use case implementations
+├── infrastructure/      # Cross-cutting Spring infrastructure
+│   ├── logging/         # AOP execution logging and sanitization
+│   │   ├── ExecutionLoggingAspect         # AOP around @LogExecution + package-pattern for use cases
+│   │   ├── LoggingSanitizer               # Masks sensitive fields in logged values
+│   │   └── LoggingSanitizerProperties     # Binds logging-sanitizer.* YAML
+│   ├── security/        # Security filter chain and CORS configuration
+│   │   ├── SecurityConfig                 # Spring Security WebFlux filter chain
+│   │   └── CorsProperties                 # Binds cors.* YAML
+│   ├── jackson/         # Jackson ObjectMapper customization
+│   │   └── JacksonConfig
+│   └── webclient/       # Generic WebClient.Builder bean
+│       └── WebClientBaseConfig
+├── shared/
+│   ├── logging/
+│   │   └── LogExecution.java              # Method-level AOP annotation (adapters/facades only)
+│   └── web/
+│       └── RequestCorrelation.java        # X-Request-Id header/attribute/context key constants
 └── exception/           # ApimException (shared)
 ```
 
@@ -114,7 +134,8 @@ adapter/out/apim        →  application  →  domain
 adapter/out/config      →  application  →  domain
 adapter/out/configserver →  application  →  domain
 adapter/out/security    →  application  →  domain
-config                  →  framework composition only (must not be imported by application or domain)
+config                  →  application use case @Bean wiring only (UseCaseConfig)
+infrastructure          →  Spring/framework infrastructure only (no application/domain imports)
 ```
 
 ---
@@ -179,8 +200,10 @@ export JAVA_HOME="C:/Java/OpenJDK/jdk-21" && export M2_HOME="/d/Tools/apache-mav
 | `DEPLOY_ENV` | Runtime deployment environment used for production-safe reference-date resolution | _(empty / production-safe)_ |
 | `REFERENCE_DATE_OVERRIDE_DATE` | Optional non-production override date in `dd/MM/yyyy` | _(empty)_ |
 | `REFERENCE_DATE_OVERRIDE_ZONE_ID` | Optional non-production override zone ID paired with `REFERENCE_DATE_OVERRIDE_DATE` | _(empty)_ |
-| `APIM_BASEURL` | APIM base URL | _(required)_ |
-| `APIM_TIMEOUTMILLISECONDS` | WebClient timeout | `10000` |
+| `APIM_BASE_URL` | APIM base URL (preferred) | _(required)_ |
+| `APIM_BASEURL` | APIM base URL (legacy fallback) | _(see `APIM_BASE_URL`)_ |
+| `APIM_TIMEOUT_MILLISECONDS` | WebClient timeout in ms (preferred) | `10000` |
+| `APIM_TIMEOUTMILLISECONDS` | WebClient timeout in ms (legacy fallback) | _(see `APIM_TIMEOUT_MILLISECONDS`)_ |
 | `APIM_CLIENT_REGISTRATION_ID` | OAuth2 client registration id | `apim-client` |
 | `APIM_CLIENT_ID` | OAuth2 client ID | `local-dev` |
 | `APIM_CLIENT_SECRET` | OAuth2 client secret | `local-dev` |
@@ -202,8 +225,43 @@ export JAVA_HOME="C:/Java/OpenJDK/jdk-21" && export M2_HOME="/d/Tools/apache-mav
 | `TEMP_CONT_USER_ID` | Temporary contribution user ID | `userId_for_contributions` |
 | `TEMP_CONT_TRUST_CODE` | Temporary contribution trust code | `trustCode_for_contributions` |
 | `TEMP_CONT_SCHEME_TYPE` | Temporary contribution scheme type | `schemeType_for_contributions` |
+| `API_SECURITY_REQUIRE_AUTHENTICATION` | Enable in-process HTTP Basic auth. Set to `false` when auth is enforced externally by a K8s ingress or API gateway. | `true` |
 
 For the dev cluster, the Kubernetes deployment or external config repository must set `CORS_ALLOWED_ORIGINS=http://localhost:4200` before local frontend calls from that origin will succeed. Those deployment manifests are outside this repository.
+
+---
+
+## Authentication
+
+### Local Development
+
+HTTP Basic Auth is auto-configured by Spring Boot when `api.security.require-authentication=true` (the default). Local credentials are defined in `src/main/resources/application-local.yml`:
+
+```yaml
+spring:
+  security:
+    user:
+      name: dev
+      password: dev-local
+```
+
+In Postman, set **Authorization → Basic Auth** with username `dev` and password `dev-local`.
+
+### Kubernetes / External Auth Layer
+
+When authentication is enforced externally (K8s ingress controller, API gateway, or service mesh mTLS), disable in-process auth in the Deployment manifest or ConfigMap:
+
+```yaml
+env:
+  - name: API_SECURITY_REQUIRE_AUTHENTICATION
+    value: "false"
+```
+
+When `false`, the application logs a startup `WARN` confirming that the external auth layer is trusted. All traffic reaching the pod is permitted without in-process credential checks.
+
+### Future: OAuth2 / OIDC Resource Server
+
+When an Auth Server is available, set `api.security.require-authentication=true` and configure `SecurityConfig` as a WebFlux OAuth2 resource server (`http.oauth2ResourceServer(...)`). Member context will then be extracted from JWT claims instead of the temporary profile configuration.
 
 ---
 
@@ -248,20 +306,21 @@ The single shared implementation is `ConfigBackedReferenceDateAdapter` (under `a
 
 ## APIM encryption configuration
 
-APIM encryption is configured per APIM base URL (not per endpoint). The list `apim.encryption.requestFields` contains JSON field names that the APIM adapter will encrypt for every outbound request sent to the configured `apim.baseUrl`.
+APIM encryption is configured per APIM base URL (not per endpoint). The list `apim.encryption.request-fields` contains JSON field names that the APIM adapter will encrypt for every outbound request sent to the configured `apim.base-url`.
 
 Example configuration:
 
 ```yaml
 apim:
-  baseUrl: ${APIM_BASEURL:}
+  base-url: ${APIM_BASE_URL:${APIM_BASEURL:}}
+  timeout-milliseconds: ${APIM_TIMEOUT_MILLISECONDS:${APIM_TIMEOUTMILLISECONDS:10000}}
   encryption:
     enabled: ${APIM_ENCRYPTION_ENABLED:true}
-    certificatePath: ${APIM_CERTIFICATE_PATH:/api/wssupport/v1/encryption/certificate}
-    apiKey: ${APIM_API_KEY:}
-    privateKeyPem: ${APIM_PRIVATE_KEY_PEM:}
-    publicKeyPem: ${APIM_PUBLIC_KEY_PEM:}
-    requestFields:
+    certificate-path: ${APIM_CERTIFICATE_PATH:/api/wssupport/v1/encryption/certificate}
+    api-key: ${APIM_API_KEY:}
+    private-key-pem: ${APIM_PRIVATE_KEY_PEM:}
+    public-key-pem: ${APIM_PUBLIC_KEY_PEM:}
+    request-fields:
       - policy-no
       - cert-no
       - user-id
@@ -269,15 +328,20 @@ apim:
 
 Notes:
 
-- `requestFields` is global for the `apim.baseUrl` and applies to every outbound request handled by the APIM client.
+- `apim.encryption.request-fields` is global for the `apim.base-url` and applies to every outbound request handled by the APIM client.
 - It is not configured per APIM operation (for example `TRPGetMsgBoard`).
-- To add encryption for a new field, add it once under `apim.encryption.requestFields`.
+- To add encryption for a new field, add it once under `apim.encryption.request-fields`.
 
 ## Execution Logging
 
-Global execution logging is implemented as a configuration-level cross-cutting concern under `config/logging`.
+Global execution logging is implemented as a cross-cutting concern in `infrastructure/logging`.
 
-- Use `@LogExecution` on controller, use-case, and outbound adapter/facade methods that represent entry or orchestration points.
+- Application use case execution is logged automatically via a **package-pattern pointcut** in `ExecutionLoggingAspect`:
+  ```
+  execution(* com.bct.ngtpa.apiservice.application.usecase..*Service.execute(..))
+  ```
+  No `@LogExecution` annotation is needed on use case classes — this keeps the application layer free of Spring/framework dependencies.
+- Use `@LogExecution` (from `com.bct.ngtpa.apiservice.shared.logging`) on **controller, adapter, and facade methods** that represent entry or orchestration points outside the application layer.
 - Annotated synchronous methods log start, success, error, and elapsed time.
 - Annotated `Mono` and `Flux` methods stay lazy; the aspect logs on subscription and completion/error without calling `block()` or subscribing internally.
 - Logged arguments and results are opt-in through annotation attributes and are sanitized before serialization.
@@ -286,6 +350,10 @@ Global execution logging is implemented as a configuration-level cross-cutting c
 - All log events are emitted as JSON-structured strings (using `ObjectMapper`) suitable for ingestion by Elasticsearch/Logstash.
 
 Log event names: `method.execution.start`, `method.execution.success`, `method.execution.error`. When a `requestId` is available in Reactor Context (set by `RequestLoggingWebFilter`), it is included in every event.
+
+### X-Request-Id Correlation Constants
+
+The `X-Request-Id` header name and Reactor Context key are centralised in `com.bct.ngtpa.apiservice.shared.web.RequestCorrelation`. All components that read or write the correlation identifier — `RequestLoggingWebFilter`, `ApiExceptionHandler`, `ExecutionLoggingAspect`, `ApimRequestIdExchangeFilter`, `ApimRequestLoggingExchangeFilter` — import constants from this class. This prevents `ApiExceptionHandler` from depending on the filter implementation.
 
 ---
 

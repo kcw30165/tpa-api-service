@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile;
 import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCertificateHelper;
 import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
-import com.bct.ngtpa.apiservice.config.ApimProperties;
+import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import java.net.URI;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.junit.jupiter.api.Test;

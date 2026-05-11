@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.oauth;
 
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile;
-import com.bct.ngtpa.apiservice.config.ApimProperties;
+import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

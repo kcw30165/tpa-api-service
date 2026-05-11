@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.out.configserver;
 
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
-import com.bct.ngtpa.apiservice.config.ReferenceDateProperties;
+import com.bct.ngtpa.apiservice.adapter.out.configserver.ReferenceDateProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;

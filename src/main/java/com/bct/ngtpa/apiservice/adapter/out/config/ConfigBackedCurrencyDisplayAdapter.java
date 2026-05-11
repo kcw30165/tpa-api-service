@@ -2,7 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.out.config;
 
 import com.bct.ngtpa.apiservice.application.dto.CurrencyDisplay;
 import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
-import com.bct.ngtpa.apiservice.config.CurrencyMappingProperties;
+import com.bct.ngtpa.apiservice.adapter.out.config.CurrencyMappingProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;

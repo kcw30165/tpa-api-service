@@ -1,13 +1,14 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim;
 
+import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateNotificationReadStatusApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateNotificationReadStatusApimRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusCommand;
 import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusResult;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNotificationReadStatusPort;
-import com.bct.ngtpa.apiservice.config.ApimProperties;
-import com.bct.ngtpa.apiservice.config.logging.LogExecution;
+import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
+import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
 import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
 import com.bct.ngtpa.apiservice.domain.model.NotificationReadStatus;
 import com.bct.ngtpa.apiservice.exception.ApimException;
@@ -41,7 +42,9 @@ public class ApimNotificationReadStatusAdapter implements ApimNotificationReadSt
                 return apimWebClientFacade.post(API_NAME, request)
                     .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
                         API_NAME, body, UpdateNotificationReadStatusApimDataItem.class, null))
-                    .map(response -> toResult(response, command.targetStatus()));
+                    .map(response -> toResult(response, command.targetStatus()))
+                    .onErrorMap(ApimCryptoException.class, ex ->
+                        new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, "500", ex.getMessage()));
         }
 
         return apimCertificateService.getBctPublicKey()
@@ -52,7 +55,9 @@ public class ApimNotificationReadStatusAdapter implements ApimNotificationReadSt
                             .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
                                 API_NAME, body, UpdateNotificationReadStatusApimDataItem.class, publicKey))
                             .map(response -> toResult(response, command.targetStatus()));
-                });
+                })
+                .onErrorMap(ApimCryptoException.class, ex ->
+                    new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, "500", ex.getMessage()));
     }
 
     private UpdateNotificationReadStatusApimRequest toApimRequest(UpdateNotificationsReadStatusCommand command) {

@@ -9,7 +9,7 @@ import static org.mockito.Mockito.when;
 
 import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCertificateHelper;
 import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
-import com.bct.ngtpa.apiservice.config.ApimProperties;
+import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;

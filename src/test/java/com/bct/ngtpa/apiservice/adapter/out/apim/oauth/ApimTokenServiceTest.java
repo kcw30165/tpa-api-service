@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.oauth;
 
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile;
-import com.bct.ngtpa.apiservice.config.ApimProperties;
+import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.reactive.function.client.ClientResponse;

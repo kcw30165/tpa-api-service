@@ -1,12 +1,11 @@
 package com.bct.ngtpa.apiservice.adapter.in.web;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiErrorResponse;
-import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.application.exception.MemberContextResolutionException;
-import com.bct.ngtpa.apiservice.config.logging.RequestLoggingWebFilter;
 import com.bct.ngtpa.apiservice.exception.ApimException;
+import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -26,21 +25,9 @@ public class ApiExceptionHandler {
         String requestId = getRequestId(exchange);
         ResponseEntity.BodyBuilder builder = ResponseEntity.status(ex.getStatusCode());
         if (requestId != null) {
-            builder.header(RequestLoggingWebFilter.REQUEST_ID_HEADER, requestId);
+            builder.header(RequestCorrelation.REQUEST_ID_HEADER, requestId);
         }
         return builder.body(ApiErrorResponse.of(ex.getErrorCode(), ex.getMessage()));
-    }
-
-    @ExceptionHandler(ApimCryptoException.class)
-    public ResponseEntity<ApiErrorResponse> handleApimCryptoException(ApimCryptoException ex,
-            ServerWebExchange exchange) {
-        String requestId = getRequestId(exchange);
-        ResponseEntity.BodyBuilder builder = ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR);
-        if (requestId != null) {
-            builder.header(RequestLoggingWebFilter.REQUEST_ID_HEADER, requestId);
-        }
-        return builder
-                .body(ApiErrorResponse.of(String.valueOf(HttpStatus.INTERNAL_SERVER_ERROR.value()), ex.getMessage()));
     }
 
     @ExceptionHandler(InvalidNotificationRequestException.class)
@@ -49,7 +36,7 @@ public class ApiExceptionHandler {
         String requestId = getRequestId(exchange);
         ResponseEntity.BodyBuilder builder = ResponseEntity.status(HttpStatus.BAD_REQUEST);
         if (requestId != null) {
-            builder.header(RequestLoggingWebFilter.REQUEST_ID_HEADER, requestId);
+            builder.header(RequestCorrelation.REQUEST_ID_HEADER, requestId);
         }
         return builder.body(ApiErrorResponse.of(String.valueOf(HttpStatus.BAD_REQUEST.value()), ex.getMessage()));
     }
@@ -60,7 +47,7 @@ public class ApiExceptionHandler {
         String requestId = getRequestId(exchange);
         ResponseEntity.BodyBuilder builder = ResponseEntity.status(HttpStatus.BAD_REQUEST);
         if (requestId != null) {
-            builder.header(RequestLoggingWebFilter.REQUEST_ID_HEADER, requestId);
+            builder.header(RequestCorrelation.REQUEST_ID_HEADER, requestId);
         }
         return builder.body(ApiErrorResponse.of(String.valueOf(HttpStatus.BAD_REQUEST.value()), ex.getMessage()));
     }
@@ -71,7 +58,7 @@ public class ApiExceptionHandler {
         String requestId = getRequestId(exchange);
         ResponseEntity.BodyBuilder builder = ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR);
         if (requestId != null) {
-            builder.header(RequestLoggingWebFilter.REQUEST_ID_HEADER, requestId);
+            builder.header(RequestCorrelation.REQUEST_ID_HEADER, requestId);
         }
         return builder
                 .body(ApiErrorResponse.of(String.valueOf(HttpStatus.INTERNAL_SERVER_ERROR.value()), ex.getMessage()));
@@ -89,7 +76,7 @@ public class ApiExceptionHandler {
         String requestId = getRequestId(exchange);
         ResponseEntity.BodyBuilder builder = ResponseEntity.status(HttpStatus.BAD_REQUEST);
         if (requestId != null) {
-            builder.header(RequestLoggingWebFilter.REQUEST_ID_HEADER, requestId);
+            builder.header(RequestCorrelation.REQUEST_ID_HEADER, requestId);
         }
         return builder.body(ApiErrorResponse.of(String.valueOf(HttpStatus.BAD_REQUEST.value()), message));
     }
@@ -104,12 +91,12 @@ public class ApiExceptionHandler {
         String requestId = getRequestId(exchange);
         ResponseEntity.BodyBuilder builder = ResponseEntity.status(HttpStatus.BAD_REQUEST);
         if (requestId != null) {
-            builder.header(RequestLoggingWebFilter.REQUEST_ID_HEADER, requestId);
+            builder.header(RequestCorrelation.REQUEST_ID_HEADER, requestId);
         }
         return builder.body(ApiErrorResponse.of(String.valueOf(HttpStatus.BAD_REQUEST.value()), message));
     }
 
     private String getRequestId(ServerWebExchange exchange) {
-        return (String) exchange.getAttributes().get(RequestLoggingWebFilter.REQUEST_ID_ATTRIBUTE_KEY);
+        return (String) exchange.getAttributes().get(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY);
     }
 }

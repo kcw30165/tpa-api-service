@@ -1,6 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.credential;
 
-import com.bct.ngtpa.apiservice.config.ApimProperties;
+import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

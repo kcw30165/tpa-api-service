@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.client;
 
-import com.bct.ngtpa.apiservice.config.logging.LoggingSanitizer;
-import com.bct.ngtpa.apiservice.config.logging.RequestLoggingWebFilter;
+import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
+import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.LinkedHashMap;
@@ -27,7 +27,7 @@ public class ApimRequestLoggingExchangeFilter {
         return ExchangeFilterFunction.ofRequestProcessor(request ->
                 Mono.deferContextual(ctx -> {
                     String requestId = ctx.getOrDefault(
-                            RequestLoggingWebFilter.REQUEST_ID_CONTEXT_KEY,
+                            RequestCorrelation.REQUEST_ID_CONTEXT_KEY,
                             ""
                     );
 

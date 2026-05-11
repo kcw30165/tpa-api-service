@@ -1,6 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.config;
 
-import com.bct.ngtpa.apiservice.config.ContributionSummaryProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionSummaryProperties;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

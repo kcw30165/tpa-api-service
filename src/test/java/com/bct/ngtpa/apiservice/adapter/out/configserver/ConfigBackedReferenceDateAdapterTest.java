@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.out.configserver;
 
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
-import com.bct.ngtpa.apiservice.config.ReferenceDateProperties;
+import com.bct.ngtpa.apiservice.adapter.out.configserver.ReferenceDateProperties;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;

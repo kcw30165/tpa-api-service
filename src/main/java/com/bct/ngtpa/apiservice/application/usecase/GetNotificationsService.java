@@ -8,9 +8,7 @@ import com.bct.ngtpa.apiservice.application.port.in.GetNotificationsUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNoticeMessagePort;
 import com.bct.ngtpa.apiservice.application.port.out.MemberContextPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
-import com.bct.ngtpa.apiservice.config.logging.LogExecution;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
@@ -18,7 +16,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.Optional;
 
-@Service
 @RequiredArgsConstructor
 public class GetNotificationsService implements GetNotificationsUseCase {
 
@@ -29,7 +26,6 @@ public class GetNotificationsService implements GetNotificationsUseCase {
         private final ReferenceDatePort referenceDatePort;
 
         @Override
-        @LogExecution(value = "usecase.getNotifications", logArgs = true)
         public Mono<NotificationListResult> execute(GetNotificationsCommand command) {
                 var dateOptions = NotificationDateOptions.resolve(command.dateFormat(), command.timezone());
                 LocalDateTime now = dateOptions.now();

@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim;
 
+import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetMessageBoardApimRequest;
@@ -7,7 +8,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetMessageBoardDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetMessageBoardMessageItem;
 import com.bct.ngtpa.apiservice.application.dto.GetNotificationsCommand;
 import com.bct.ngtpa.apiservice.application.dto.NotificationListResult;
-import com.bct.ngtpa.apiservice.config.ApimProperties;
+import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -104,6 +105,22 @@ class ApimNoticeMessageAdapterTest {
                 assertEquals(1, result.notifications().size());
                 assertFalse(result.notifications().getFirst().isRead());
         }
+
+    @Test
+    void cryptoFailureIsMappedToApimException() {
+        ApimProperties properties = new ApimProperties();
+        properties.getEncryption().setEnabled(true);
+        ApimNoticeMessageAdapter flowAdapter = new ApimNoticeMessageAdapter(
+                new FixedBodyApimWebClientFacade(),
+                new FailingCertificateService(),
+                new FixedEnvelopePayloadCryptoService(messageEnvelope(messageItem("IMP_NOTE", "R", "29/04/2026 14:15:00"))),
+                properties);
+
+        ApimException ex = assertThrows(ApimException.class, () -> flowAdapter.fetchNotifications(command()).block());
+
+        assertEquals("500", ex.getErrorCode());
+        assertEquals("Certificate crypto error", ex.getMessage());
+    }
 
         @Test
         void parsesApimDateTimeWithoutSeconds() {
@@ -269,6 +286,17 @@ class ApimNoticeMessageAdapterTest {
                 @Override
                 public Mono<PublicKey> getBctPublicKey() {
                         return Mono.error(new AssertionError("Certificate lookup should not run when encryption is disabled."));
+                }
+        }
+
+        private static final class FailingCertificateService extends ApimCertificateService {
+                private FailingCertificateService() {
+                        super(null, new ApimProperties(), null);
+                }
+
+                @Override
+                public Mono<PublicKey> getBctPublicKey() {
+                        return Mono.error(new ApimCryptoException("Certificate crypto error"));
                 }
         }
 

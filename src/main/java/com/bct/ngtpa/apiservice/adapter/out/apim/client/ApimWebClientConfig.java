@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.client;
 
 import com.bct.ngtpa.apiservice.adapter.out.apim.certificate.ApimCertificateHeaderProvider;
-import com.bct.ngtpa.apiservice.config.ApimProperties;
+import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

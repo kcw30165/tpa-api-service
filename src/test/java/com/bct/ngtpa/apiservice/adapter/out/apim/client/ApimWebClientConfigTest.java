@@ -6,9 +6,9 @@ import static org.mockito.Mockito.when;
 
 import com.bct.ngtpa.apiservice.adapter.out.apim.certificate.ApimCertificateHeaderProvider;
 import com.bct.ngtpa.apiservice.adapter.out.apim.oauth.ApimOAuthClientConfig;
-import com.bct.ngtpa.apiservice.config.ApimProperties;
-import com.bct.ngtpa.apiservice.config.logging.LoggingSanitizer;
-import com.bct.ngtpa.apiservice.config.logging.LoggingSanitizerProperties;
+import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
+import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
+import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.junit.jupiter.api.Test;

@@ -1,5 +1,8 @@
 package com.bct.ngtpa.apiservice.config;
 
+import com.bct.ngtpa.apiservice.infrastructure.security.CorsProperties;
+import com.bct.ngtpa.apiservice.infrastructure.security.SecurityConfig;
+
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 

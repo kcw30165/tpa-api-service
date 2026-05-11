@@ -5,7 +5,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfil
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
 import com.bct.ngtpa.apiservice.adapter.out.apim.oauth.ApimTokenCacheEntry;
 import com.bct.ngtpa.apiservice.adapter.out.apim.oauth.ApimTokenService;
-import com.bct.ngtpa.apiservice.config.ApimProperties;
+import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
