@@ -2,6 +2,8 @@ package com.bct.ngtpa.apiservice.adapter.in.web;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionWebDisplayConfigProvider;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.ContributionSummaryWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.sort.ApplySortsAspect;
+import com.bct.ngtpa.apiservice.adapter.in.web.sort.SortEngine;
 import com.bct.ngtpa.apiservice.application.dto.ContributionActions;
 import com.bct.ngtpa.apiservice.application.dto.CurrencyDisplay;
 import com.bct.ngtpa.apiservice.application.dto.ContributionSummaryReportResult;
@@ -16,6 +18,7 @@ import com.bct.ngtpa.apiservice.domain.model.ContributionSource;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryReport;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryRow;
 import org.junit.jupiter.api.Test;
+import org.springframework.aop.aspectj.annotation.AspectJProxyFactory;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
@@ -221,9 +224,107 @@ class ContributionControllerTest {
                         exportContributionSummaryUseCase,
                         new ContributionSummaryWorkbookExporter(provider),
                         provider,
-                        mapper))
+                        mapper,
+                        new ContributionSortingSupport()))
                 .controllerAdvice(new ApiExceptionHandler())
                 .build();
+    }
+
+    /** Creates a WebTestClient with an AOP-proxied {@link ContributionSortingSupport}. */
+    private WebTestClient sortingWebClient(
+            GetContributionSummaryUseCase getContributionSummaryUseCase,
+            ExportContributionSummaryUseCase exportContributionSummaryUseCase) {
+        var provider = displayConfigProvider();
+        var mapper = new ContributionSummaryWebMapper(
+                (amount, lang, env, trustCode, schemeType) -> amount == null ? "0" : amount.toPlainString());
+        return WebTestClient.bindToController(new ContributionController(
+                        getContributionSummaryUseCase,
+                        exportContributionSummaryUseCase,
+                        new ContributionSummaryWorkbookExporter(provider),
+                        provider,
+                        mapper,
+                        sortingSupportProxy()))
+                .controllerAdvice(new ApiExceptionHandler())
+                .build();
+    }
+
+    /** Creates an AOP-proxied {@link ContributionSortingSupport} with the real aspect applied. */
+    private ContributionSortingSupport sortingSupportProxy() {
+        var factory = new AspectJProxyFactory(new ContributionSortingSupport());
+        factory.addAspect(new ApplySortsAspect(new SortEngine()));
+        return factory.getProxy();
+    }
+
+    @Test
+    void getContributionSummaryReturnsSortedItemsByDealingDateDesc() {
+        // Use case returns rows in un-sorted order: Jan, Mar, Feb
+        GetContributionSummaryUseCase getUseCase = command -> Mono.just(unsortedResult());
+
+        sortingWebClient(getUseCase, unusedExportUseCase())
+                .get()
+                .uri("/api/v1/contributions")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                // After sorting, Apr (latest) must appear first
+                .jsonPath("$.items[0].dealingDate.text").isEqualTo("01/04/2026")
+                .jsonPath("$.items[1].dealingDate.text").isEqualTo("01/03/2026")
+                .jsonPath("$.items[2].dealingDate.text").isEqualTo("01/01/2026");
+    }
+
+    @Test
+    void breakdownRowsFollowSourceSequenceOrderAfterSorting() {
+        // Sources given in wrong sequence order (EE=20 before ER=10);
+        // after sorting, ER (seq 10) must precede EE (seq 20) in the breakdown
+        GetContributionSummaryUseCase getUseCase = command -> Mono.just(unsortedSourcesResult());
+
+        sortingWebClient(getUseCase, unusedExportUseCase())
+                .get()
+                .uri("/api/v1/contributions")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                // rows[0] is the hardcoded total, rows[1] should be Company (ER, seq=10)
+                .jsonPath("$.items[0].breakdown.rows[1].label").isEqualTo("Company")
+                .jsonPath("$.items[0].breakdown.rows[2].label").isEqualTo("Member");
+    }
+
+    private ContributionSummaryReportResult unsortedResult() {
+        return new ContributionSummaryReportResult(
+                new ContributionSummaryReport(
+                        "HKD",
+                        List.of(
+                                new ContributionSource("ER", new ContributionLabels("Company", ""), 10),
+                                new ContributionSource("EE", new ContributionLabels("Member", ""), 20)),
+                        List.of(
+                                new ContributionSummaryRow("01/01/2026", "01/01/2026", "31/01/2026",
+                                        new BigDecimal("100"), new LinkedHashMap<>(java.util.Map.of("ER", new BigDecimal("100")))),
+                                new ContributionSummaryRow("01/04/2026", "01/04/2026", "30/04/2026",
+                                        new BigDecimal("400"), new LinkedHashMap<>(java.util.Map.of("ER", new BigDecimal("400")))),
+                                new ContributionSummaryRow("01/03/2026", "01/03/2026", "31/03/2026",
+                                        new BigDecimal("300"), new LinkedHashMap<>(java.util.Map.of("ER", new BigDecimal("300")))))),
+                new CurrencyDisplay("HKD", "港元"),
+                new ContributionActions(true),
+                "", "");
+    }
+
+    private ContributionSummaryReportResult unsortedSourcesResult() {
+        // Sources in wrong order: EE (seq=20) before ER (seq=10)
+        return new ContributionSummaryReportResult(
+                new ContributionSummaryReport(
+                        "HKD",
+                        List.of(
+                                new ContributionSource("EE", new ContributionLabels("Member", ""), 20),
+                                new ContributionSource("ER", new ContributionLabels("Company", ""), 10)),
+                        List.of(new ContributionSummaryRow(
+                                "01/03/2026", "01/03/2026", "31/03/2026",
+                                new BigDecimal("24908.45"),
+                                new LinkedHashMap<>(java.util.Map.of(
+                                        "ER", new BigDecimal("17791.75"),
+                                        "EE", new BigDecimal("7116.7")))))),
+                new CurrencyDisplay("HKD", "港元"),
+                new ContributionActions(true),
+                "", "");
     }
 
     private ContributionWebDisplayConfigProvider displayConfigProvider() {

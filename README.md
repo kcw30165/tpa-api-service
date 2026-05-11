@@ -431,6 +431,152 @@ Effective rules:
 
 
 
+---
+
+## Presentation Sorting: `@ApplySorts`
+
+The `@ApplySorts` annotation provides opt-in, path-based sorting for JSON API responses and Excel export data. It lives entirely in the web adapter layer (`adapter/in/web/sort`) and does **not** modify application or domain code.
+
+### When to use
+
+Apply `@ApplySorts` to **web-adapter methods** that return a value needing sorted lists before it is mapped to JSON or written to an Excel workbook. Never apply it to application use case `execute()` methods.
+
+### How it works
+
+1. The `ApplySortsAspect` intercepts any method annotated with `@ApplySorts`.
+2. For synchronous return types the sorting is applied inline.
+3. For `Mono<T>` the sorting is deferred via `.map()` — the aspect never subscribes or blocks internally.
+4. Sorting is delegated to `SortEngine`, which navigates the object graph, sorts the target list, and rebuilds any immutable Java records in the path using the canonical constructor.
+
+### Annotation reference
+
+```java
+// Container annotation — one or more lists to sort
+@ApplySorts({
+    @SortList(
+        path  = "report.rows",   // dot-separated accessor path to the target List
+        by    = {
+            @SortBy(
+                field       = "dealingDate",       // accessor name (or dot-separated nested path)
+                direction   = SortDirection.DESC,  // ASC | DESC
+                type        = SortType.DATE,       // STRING | NUMBER | DATE | BOOLEAN
+                datePattern = "dd/MM/yyyy",        // required for DATE type
+                nullsLast   = true                 // nullsLast=true (default) → nulls sort after values
+            )
+        }
+    )
+})
+public MyResult sort(MyResult result) { return result; }
+```
+
+### Supported `SortType` values
+
+| Type | Comparison | Notes |
+|---|---|---|
+| `STRING` | Lexicographic via `String.compareTo` | Case-sensitive |
+| `NUMBER` | Numeric via `BigDecimal` | Handles `Integer`, `Long`, `Double`, `BigDecimal` |
+| `DATE` | Temporal via `LocalDate` parsed with `datePattern` | Blank/null/unparseable → treated as `null` |
+| `BOOLEAN` | Natural order (`false < true`) | |
+
+### Null handling
+
+- `nullsLast = true` (default) — null, blank, and unparseable DATE values sort **after** all non-null values.
+- `nullsLast = false` — those values sort **before** all non-null values.
+
+### Date pattern behaviour
+
+- `datePattern` must be a valid `DateTimeFormatter` pattern (e.g. `"dd/MM/yyyy"`).
+- If the field value cannot be parsed using the pattern it is treated as `null`.
+- An empty `datePattern` defaults to ISO 8601 local date format (`yyyy-MM-dd`).
+
+### Path syntax
+
+| Path example | Description |
+|---|---|
+| `"items"` | Direct `List` field named `items` on the root object |
+| `"report.rows"` | Navigate `root.report()` then sort `report.rows()` |
+| `"report.sources"` | Navigate `root.report()` then sort `report.sources()` |
+| `"data.items"` | Navigate `root.data()` then sort `data.items()` |
+
+> **Note:** Collection traversal paths (e.g. `"items[].breakdown.rows"`) are not yet implemented. Only direct field and nested object paths are supported. This can be added without changing the annotation contract.
+
+### Multi-field sorting
+
+Multiple `@SortBy` rules in the same `@SortList` form a compound comparator applied in declaration order (primary, secondary, tertiary …). If two values are equal on the primary field the secondary rule is used, and so on.
+
+### Limitations
+
+- **Opt-in only.** The annotation does **not** recursively discover and sort all lists. Only the list at the declared `path` is sorted.
+- **Records required for nested paths.** When the path includes intermediate segments (e.g. `"report.rows"`), every intermediate object must be a Java record. The engine uses the canonical constructor to rebuild the record immutably.
+- **Binary exports.** Do not apply `@ApplySorts` to methods that return `ResponseEntity<byte[]>` or raw Excel bytes. Sorting must happen **before** the workbook exporter writes bytes. See the Contribution Summary example below.
+- **Flux support.** `Flux<T>` sorting is not yet implemented. Existing endpoints use `Mono`. Flux support can be added without changing the annotation contract.
+
+### Contribution Summary example
+
+```java
+@Component
+public class ContributionSortingSupport {
+
+    @ApplySorts({
+        @SortList(
+            path = "report.rows",
+            by = {
+                @SortBy(field = "dealingDate", direction = SortDirection.DESC,
+                        type = SortType.DATE, datePattern = "dd/MM/yyyy"),
+                @SortBy(field = "coverFrom",   direction = SortDirection.DESC,
+                        type = SortType.DATE, datePattern = "dd/MM/yyyy"),
+                @SortBy(field = "coverTo",     direction = SortDirection.DESC,
+                        type = SortType.DATE, datePattern = "dd/MM/yyyy")
+            }
+        ),
+        @SortList(
+            path = "report.sources",
+            by = {
+                @SortBy(field = "sequence", direction = SortDirection.ASC, type = SortType.NUMBER),
+                @SortBy(field = "code",     direction = SortDirection.ASC, type = SortType.STRING)
+            }
+        )
+    })
+    public ContributionSummaryReportResult sort(ContributionSummaryReportResult result) {
+        return result; // AOP intercepts and sorts
+    }
+}
+```
+
+The controller calls `contributionSortingSupport::sort` before mapping to JSON and before writing Excel bytes:
+
+```java
+// JSON endpoint
+getContributionSummaryUseCase.execute(command)
+    .map(contributionSortingSupport::sort)           // sort first
+    .map(result -> webMapper.toListResponse(...));   // then map
+
+// Export endpoint
+exportContributionSummaryUseCase.execute(command)
+    .map(contributionSortingSupport::sort)           // sort first
+    .map(workbookExporter::write)                    // then write bytes
+    .map(body -> ResponseEntity.ok()...);
+```
+
+### Future endpoint example
+
+```java
+@ApplySorts({
+    @SortList(
+        path = "items",
+        by = {
+            @SortBy(field = "tradeDate", direction = SortDirection.DESC,
+                    type = SortType.DATE, datePattern = "dd/MM/yyyy"),
+            @SortBy(field = "fundCode",  direction = SortDirection.ASC,
+                    type = SortType.STRING)
+        }
+    )
+})
+public TradeListResult sort(TradeListResult result) { return result; }
+```
+
+---
+
 ## Contribution Summary Configuration
 
 Contribution summary labels, currency display mappings, and Excel headers are configured as regular Spring properties rather than environment variables. For now the runtime source is `src/main/resources/application-local.yml` plus the Kubernetes ConfigMap `ngtpa-display-config`. Config Service remains future work.

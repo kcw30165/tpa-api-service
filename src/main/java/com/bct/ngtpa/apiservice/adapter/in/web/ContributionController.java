@@ -33,6 +33,7 @@ public class ContributionController {
         private final ContributionSummaryWorkbookExporter contributionSummaryWorkbookExporter;
         private final ContributionWebDisplayConfigProvider contributionWebDisplayConfigProvider;
         private final ContributionSummaryWebMapper contributionSummaryWebMapper;
+        private final ContributionSortingSupport contributionSortingSupport;
 
         @GetMapping(value = "/contributions", produces = MediaType.APPLICATION_JSON_VALUE)
         public Mono<ContributionListResponse> getContributionSummary(
@@ -52,6 +53,7 @@ public class ContributionController {
                                 .execute(new GetContributionSummaryCommand(
                                                 env, mbrType, fromDate, toDate,
                                                 resolvedLang, resolvedPage, resolvedPageSize))
+                                .map(contributionSortingSupport::sort)
                                 .map(result -> contributionSummaryWebMapper.toListResponse(
                                                 result,
                                                 contributionWebDisplayConfigProvider.get(),
@@ -68,6 +70,7 @@ public class ContributionController {
                         @RequestParam(value = "env", required = false) String env,
                         @RequestParam(value = "mbrType", required = false) String mbrType) {
                 return exportContributionSummaryUseCase.execute(new ExportContributionSummaryCommand(env, mbrType))
+                                .map(contributionSortingSupport::sort)
                                 .map(contributionSummaryWorkbookExporter::write)
                                 .map(body -> ResponseEntity.ok()
                                                 .contentType(MediaType.parseMediaType(EXCEL_MEDIA_TYPE))
