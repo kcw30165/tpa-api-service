@@ -4,5 +4,8 @@ public record GetContributionSummaryCommand(
         String env,
         String mbrType,
         String fromDate,
-        String toDate
+        String toDate,
+        String lang,
+        int page,
+        int pageSize
 ) {}

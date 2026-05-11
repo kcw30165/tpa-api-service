@@ -1,71 +1,201 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.mapper;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionWebDisplayConfig;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.ContributionSummaryDetailResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.ContributionSummaryItemResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.ContributionSummaryLabelsResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.ContributionSummaryResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ContributionActionsResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ContributionAmountValueResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ContributionBreakdownResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ContributionBreakdownRowResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ContributionCurrencyValueResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ContributionDateValueResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ContributionExportActionResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ContributionItemResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ContributionItemType;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ContributionListResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ContributionPaginationResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ContributionPeriodResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ContributionTotalContributionResponse;
 import com.bct.ngtpa.apiservice.application.dto.ContributionSummaryReportResult;
-import com.bct.ngtpa.apiservice.domain.model.ContributionLabels;
+import com.bct.ngtpa.apiservice.application.port.out.AmountDisplayPort;
+import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryRow;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Component
+@RequiredArgsConstructor
 public class ContributionSummaryWebMapper {
 
-    public ContributionSummaryResponse toResponse(
-            ContributionSummaryReportResult result,
-            ContributionWebDisplayConfig displayConfig) {
+    static final DateTimeFormatter APIM_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    static final DateTimeFormatter ISO_DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
 
-        var totalLabels = new ContributionLabels(
-                displayConfig.totalLabelEn(),
-                displayConfig.totalLabelZh());
+    private final AmountDisplayPort amountDisplayPort;
+
+    public ContributionListResponse toListResponse(
+            ContributionSummaryReportResult result,
+            ContributionWebDisplayConfig displayConfig,
+            String fromDateText,
+            String toDateText,
+            String lang,
+            String env,
+            int page,
+            int pageSize) {
+
+        var trustCode = result.trustCode() != null ? result.trustCode() : "";
+        var schemeType = result.schemeType() != null ? result.schemeType() : "";
 
         var currencyDisplay = result.currencyDisplay();
-        var currencyEn = currencyDisplay == null ? "" : currencyDisplay.en();
-        var currencyZh = currencyDisplay == null ? "" : currencyDisplay.zh();
+        var currencyCode = result.report().currency();
+        var currencyText = resolveCurrencyText(currencyDisplay, lang);
 
-        return new ContributionSummaryResponse(
-                result.report().rows().stream()
-                        .map(row -> {
-                            List<ContributionSummaryDetailResponse> details = new ArrayList<>();
+        var rows = result.report().rows();
+        var itemIds = buildItemIds(rows);
 
-                            details.add(new ContributionSummaryDetailResponse(
-                                    toLabelsResponse(totalLabels),
-                                    formatAmount(currencyEn, row.totalAmount()),
-                                    formatAmount(currencyZh, row.totalAmount())));
-
-                            row.details(result.report().sources()).forEach(detail -> details.add(
-                                    new ContributionSummaryDetailResponse(
-                                            toLabelsResponse(detail.source().labels()),
-                                            formatAmount(currencyEn, detail.amount()),
-                                            formatAmount(currencyZh, detail.amount()))));
-
-                            return new ContributionSummaryItemResponse(
-                                    row.dealingDate(),
-                                    row.coveringPeriod(),
-                                    formatAmount(currencyEn, row.totalAmount()),
-                                    formatAmount(currencyZh, row.totalAmount()),
-                                    List.copyOf(details));
-                        })
-                        .toList());
-    }
-
-    ContributionSummaryLabelsResponse toLabelsResponse(ContributionLabels labels) {
-        return new ContributionSummaryLabelsResponse(labels.en(), labels.zh());
-    }
-
-    String formatAmount(String currencyDisplay, BigDecimal amount) {
-        var normalizedAmount = amount == null ? BigDecimal.ZERO : amount.stripTrailingZeros();
-        var amountText = normalizedAmount.toPlainString();
-
-        if (currencyDisplay == null || currencyDisplay.isBlank()) {
-            return amountText;
+        List<ContributionItemResponse> items = new ArrayList<>();
+        for (int i = 0; i < rows.size(); i++) {
+            items.add(toItemResponse(
+                    rows.get(i), result, displayConfig, itemIds.get(i),
+                    fromDateText, toDateText,
+                    lang, env, trustCode, schemeType,
+                    currencyCode, currencyText));
         }
 
-        return currencyDisplay.trim() + " " + amountText;
+        var actions = new ContributionActionsResponse(
+                new ContributionExportActionResponse(
+                        result.actions() != null && result.actions().exportEnabled()));
+
+        var pagination = new ContributionPaginationResponse(page, pageSize, items.size(), false);
+
+        return new ContributionListResponse(actions, List.copyOf(items), pagination);
+    }
+
+    private ContributionItemResponse toItemResponse(
+            ContributionSummaryRow row,
+            ContributionSummaryReportResult result,
+            ContributionWebDisplayConfig displayConfig,
+            String itemId,
+            String fromDateText,
+            String toDateText,
+            String lang,
+            String env,
+            String trustCode,
+            String schemeType,
+            String currencyCode,
+            String currencyText) {
+
+        // Period: value=ISO, text=preserve query string value exactly
+        LocalDate periodFrom = tryParseApimDate(row.coverFrom());
+        LocalDate periodTo = tryParseApimDate(row.coverTo());
+        String fromIso = periodFrom != null ? periodFrom.format(ISO_DATE_FORMATTER) : row.coverFrom();
+        String toIso = periodTo != null ? periodTo.format(ISO_DATE_FORMATTER) : row.coverTo();
+
+        var period = new ContributionPeriodResponse(
+                new ContributionDateValueResponse(fromIso, fromDateText),
+                new ContributionDateValueResponse(toIso, toDateText));
+
+        // Dealing date: value=ISO, text=preserve APIM text exactly
+        LocalDate dealing = tryParseApimDate(row.dealingDate());
+        String dealingIso = dealing != null ? dealing.format(ISO_DATE_FORMATTER) : row.dealingDate();
+        var dealingDateResponse = new ContributionDateValueResponse(dealingIso, row.dealingDate());
+
+        // Currency
+        var currency = new ContributionCurrencyValueResponse(
+                currencyCode != null ? currencyCode : "",
+                currencyText);
+
+        // Total contribution
+        BigDecimal totalAmount = row.totalAmount() != null ? row.totalAmount() : BigDecimal.ZERO;
+        String totalText = amountDisplayPort.formatAmount(totalAmount, lang, env, trustCode, schemeType);
+        var totalContribution = new ContributionTotalContributionResponse(
+                new ContributionAmountValueResponse(totalAmount, totalText));
+
+        // Breakdown rows: total first, then by source order
+        List<ContributionBreakdownRowResponse> breakdownRows = new ArrayList<>();
+        breakdownRows.add(new ContributionBreakdownRowResponse(
+                displayConfig.totalLabelEn(),
+                new ContributionAmountValueResponse(totalAmount, totalText)));
+
+        row.details(result.report().sources()).forEach(detail -> {
+            var amt = detail.amount() != null ? detail.amount() : BigDecimal.ZERO;
+            String amtText = amountDisplayPort.formatAmount(amt, lang, env, trustCode, schemeType);
+            var label = resolveLabel(detail.source().labels(), lang);
+            breakdownRows.add(new ContributionBreakdownRowResponse(
+                    label,
+                    new ContributionAmountValueResponse(amt, amtText)));
+        });
+
+        return new ContributionItemResponse(
+                itemId,
+                ContributionItemType.CONTRIBUTION,
+                period,
+                dealingDateResponse,
+                currency,
+                totalContribution,
+                new ContributionBreakdownResponse(List.copyOf(breakdownRows)));
+    }
+
+    // --- Helpers ---
+
+    private String resolveCurrencyText(com.bct.ngtpa.apiservice.application.dto.CurrencyDisplay display, String lang) {
+        if (display == null) return "";
+        if (isZhHk(lang)) return display.zh() != null ? display.zh() : "";
+        return display.en() != null ? display.en() : "";
+    }
+
+    private String resolveLabel(com.bct.ngtpa.apiservice.domain.model.ContributionLabels labels, String lang) {
+        if (labels == null) return "";
+        if (isZhHk(lang)) return StringUtils.hasText(labels.zh()) ? labels.zh() : labels.en();
+        return StringUtils.hasText(labels.en()) ? labels.en() : "";
+    }
+
+    private boolean isZhHk(String lang) {
+        return "zh_HK".equalsIgnoreCase(lang);
+    }
+
+    static LocalDate tryParseApimDate(String raw) {
+        if (!StringUtils.hasText(raw)) return null;
+        try {
+            return LocalDate.parse(raw.trim(), APIM_DATE_FORMATTER);
+        } catch (DateTimeParseException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Builds a stable list of unique item IDs for the given rows.
+     * If a base ID (CONTRIB-yyyy-MM) appears multiple times, duplicates are suffixed with -2, -3, etc.
+     * The first occurrence keeps the unsuffixed base ID.
+     */
+    static List<String> buildItemIds(List<ContributionSummaryRow> rows) {
+        Map<String, Integer> occurrenceCounts = new HashMap<>();
+        for (var row : rows) {
+            occurrenceCounts.merge(baseItemId(row), 1, Integer::sum);
+        }
+        Map<String, Integer> seenSoFar = new HashMap<>();
+        List<String> ids = new ArrayList<>();
+        for (var row : rows) {
+            String base = baseItemId(row);
+            if (occurrenceCounts.get(base) <= 1) {
+                ids.add(base);
+            } else {
+                int seq = seenSoFar.merge(base, 1, Integer::sum);
+                ids.add(seq == 1 ? base : base + "-" + seq);
+            }
+        }
+        return List.copyOf(ids);
+    }
+
+    static String baseItemId(ContributionSummaryRow row) {
+        LocalDate date = tryParseApimDate(row.coverFrom());
+        if (date == null) return "CONTRIB-unknown";
+        return "CONTRIB-" + date.format(DateTimeFormatter.ofPattern("yyyy-MM"));
     }
 }

@@ -600,11 +600,14 @@ Retrieves grouped contribution summary rows for a member context as JSON.
 - `mbrType` (required by frontend contract; currently forwarded only as application context)
 - `fromDate` (required; `dd/MM/yyyy`)
 - `toDate` (required; `dd/MM/yyyy`)
+- `lang` (optional; language code for display formatting, e.g. `en`, `zh_HK`; defaults to `en`)
+- `page` (optional; pagination page number, must be > 0; defaults to `1`)
+- `pageSize` (optional; number of items per page, must be > 0; defaults to `20`)
 
 **Example:**
 
 ```http
-GET /api/v1/contributions?env=JP&mbrType=MBR&fromDate=05/04/2026&toDate=05/05/2026
+GET /api/v1/contributions?env=JP&mbrType=MBR&fromDate=05/04/2026&toDate=05/05/2026&lang=en&page=1&pageSize=20
 ```
 
 **Behavior:**
@@ -614,53 +617,59 @@ GET /api/v1/contributions?env=JP&mbrType=MBR&fromDate=05/04/2026&toDate=05/05/20
 - `fromDate` and `toDate` must both be within `[ref-date - 36 months, ref-date]`, inclusive.
 - `ref-date` is resolved from deployment-scoped reference date config, not from the request query `env`.
 - `reference-date.deployment-env` controls whether the paired non-production override may be used.
+- `page` and `pageSize` must both be greater than 0; HTTP 400 is returned otherwise. No real backend pagination is performed yet — all data is returned from APIM and the pagination fields reflect the full dataset.
+- `lang` is normalized to `en` when blank.
 - Contribution rows are grouped by `deal-date + cover-from + cover-to`.
 - Dynamic detail items are joined from `contDtl[*].disp-src` to `dispSrc[*].disp-src` and sorted by `dispSrc.seq` ascending.
-- `totalContributionEn` is the sum of the grouped detail amounts using `BigDecimal`.
-- The first detail item is synthetic and uses the configured `contribution-summary.total-label.*` values.
-- Each detail label exposes only `en` and `zh`.
-- Detail `amountEn` and `amountZh` are pre-formatted strings using the resolved currency display.
-- `totalContributionEn` and `totalContributionZh` use the same formatting logic with insignificant trailing zeros stripped.
+- Amount `text` values are formatted using `display-format.amount.*` configuration (language and env-specific). Value `value` is the raw `BigDecimal`.
+- Date values carry the query-string text (`fromDate`/`toDate`) and also the ISO date string derived from APIM `cover-from`/`cover-to` date parsing.
 - `policy-no`, `cert-no`, `user-id`, `trustCode`, and `schemeType` are resolved from externalized `temporary-member-context.profiles.contributions.*` configuration (see **Temporary Member Context Configuration** below) until Auth Server integration is implemented.
+- `actions.export.enabled` is always `true` (temporary stub via `TemporaryContributionActionPermissionAdapter`).
 
 **Response:**
 
 ```json
 {
-  "contributions": [
+  "actions": {
+    "export": { "enabled": true }
+  },
+  "items": [
     {
-      "dealingDate": "01/03/2026",
-      "coveringPeriod": "01/03/2026 - 31/03/2026",
-      "totalContributionEn": "HKD 24908.45",
-      "totalContributionZh": "港元 24908.45",
-      "details": [
-        {
-          "labels": {
-            "en": "Total Contributions",
-            "zh": "供款總額"
+      "itemId": "CONTRIB-2026-03",
+      "itemType": "contribution",
+      "period": {
+        "fromDate": { "value": "2026-03-01", "text": "01/03/2026" },
+        "toDate":   { "value": "2026-03-31", "text": "31/03/2026" }
+      },
+      "dealingDate": { "value": "2026-03-01", "text": "01/03/2026" },
+      "currency": { "value": "HKD", "text": "HKD" },
+      "totalContribution": {
+        "amount": { "value": 24908.45, "text": "24,908.45" }
+      },
+      "breakdown": {
+        "rows": [
+          {
+            "label": "Total Contributions",
+            "amount": { "value": 24908.45, "text": "24,908.45" }
           },
-          "amountEn": "HKD 24908.45",
-          "amountZh": "港元 24908.45"
-        },
-        {
-          "labels": {
-            "en": "Company",
-            "zh": ""
+          {
+            "label": "Company",
+            "amount": { "value": 17791.75, "text": "17,791.75" }
           },
-          "amountEn": "HKD 17791.75",
-          "amountZh": "港元 17791.75"
-        },
-        {
-          "labels": {
-            "en": "Member",
-            "zh": ""
-          },
-          "amountEn": "HKD 7116.7",
-          "amountZh": "港元 7116.7"
-        }
-      ]
+          {
+            "label": "Member",
+            "amount": { "value": 7116.70, "text": "7,116.70" }
+          }
+        ]
+      }
     }
-  ]
+  ],
+  "pagination": {
+    "page": 1,
+    "pageSize": 20,
+    "totalRecords": 1,
+    "hasNextPage": false
+  }
 }
 ```
 
@@ -675,6 +684,43 @@ GET /api/v1/contributions?env=JP&mbrType=MBR&fromDate=05/04/2026&toDate=05/05/20
 ```
 
 Range validation failures also use the same envelope with messages such as `fromDate must not be after toDate` and `fromDate and toDate must be within the range from ref-date minus 36 months to ref-date`.
+
+Pagination validation failures:
+- `page must be greater than 0`
+- `pageSize must be greater than 0`
+
+### Display Format Configuration
+
+Amount and date display formatting for the contribution JSON response is driven by `display-format.*` properties:
+
+```yaml
+display-format:
+  date:
+    en:
+      default: dd/MM/yyyy
+      JP: dd/MM/yyyy
+    zh_HK:
+      default: dd/MM/yyyy
+  amount:
+    en:
+      default:
+        min-fraction-digits: 0
+        max-fraction-digits: 2
+        grouping-separator: ","
+        decimal-separator: "."
+        rounding-mode: HALF_UP
+        strip-trailing-zeros: true
+        negative-style: minus
+      JP:
+        # ...env-specific override
+    zh_HK:
+      default:
+        # ...
+```
+
+- Keys under each locale are resolved by priority: `${env}.${trustCode}.${schemeType}` → `${env}.${trustCode}` → `${env}` → `default`.
+- Blank trustCode or schemeType segments are skipped in the key lookup.
+- If no config entry is found, amount falls back to a built-in standard format; date falls back to ISO `yyyy-MM-dd`.
 
 ### `GET /api/v1/contributions/export`
 

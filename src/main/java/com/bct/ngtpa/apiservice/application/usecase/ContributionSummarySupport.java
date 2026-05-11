@@ -31,6 +31,15 @@ final class ContributionSummarySupport {
         return date.format(DATE_FORMATTER);
     }
 
+    static void validatePagination(int page, int pageSize) {
+        if (page <= 0) {
+            throw new InvalidContributionRequestException("page must be greater than 0");
+        }
+        if (pageSize <= 0) {
+            throw new InvalidContributionRequestException("pageSize must be greater than 0");
+        }
+    }
+
     static void validateDateRangeWithinReferenceWindow(LocalDate fromDate, LocalDate toDate, LocalDate refDate) {
         if (fromDate.isAfter(toDate)) {
             throw new InvalidContributionRequestException("fromDate must not be after toDate");

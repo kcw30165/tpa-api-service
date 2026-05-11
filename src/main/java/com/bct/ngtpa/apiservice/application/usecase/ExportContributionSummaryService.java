@@ -41,6 +41,9 @@ public class ExportContributionSummaryService implements ExportContributionSumma
                                                                                 report.currency(),
                                                                                 fetchCommand.env(),
                                                                                 fetchCommand.trustCode(),
-                                                                                fetchCommand.schemeType()))));
+                                                                                fetchCommand.schemeType()),
+                                                                null,
+                                                                fetchCommand.trustCode(),
+                                                                fetchCommand.schemeType())));
         }
 }

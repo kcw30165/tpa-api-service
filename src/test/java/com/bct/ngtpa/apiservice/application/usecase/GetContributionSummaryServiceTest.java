@@ -1,7 +1,6 @@
 package com.bct.ngtpa.apiservice.application.usecase;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionWebDisplayConfig;
-import com.bct.ngtpa.apiservice.adapter.in.web.mapper.ContributionSummaryWebMapper;
+import com.bct.ngtpa.apiservice.application.dto.ContributionActions;
 import com.bct.ngtpa.apiservice.application.dto.CurrencyDisplay;
 import com.bct.ngtpa.apiservice.application.dto.FetchContributionSummaryCommand;
 import com.bct.ngtpa.apiservice.application.dto.GetContributionSummaryCommand;
@@ -9,6 +8,7 @@ import com.bct.ngtpa.apiservice.application.dto.MemberContext;
 import com.bct.ngtpa.apiservice.application.dto.MemberContextPurpose;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import com.bct.ngtpa.apiservice.application.port.out.ApimContributionSummaryPort;
+import com.bct.ngtpa.apiservice.application.port.out.ContributionActionPermissionPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
 import com.bct.ngtpa.apiservice.application.port.out.MemberContextPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
@@ -26,7 +26,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GetContributionSummaryServiceTest {
 
@@ -47,6 +49,16 @@ class GetContributionSummaryServiceTest {
         return () -> Mono.just(REFERENCE_DATE);
     }
 
+    private static ContributionActionPermissionPort actionPermissionPort() {
+        return () -> new ContributionActions(true);
+    }
+
+    private GetContributionSummaryService serviceWith(ApimContributionSummaryPort apimPort,
+                                                       CurrencyDisplayPort currencyPort) {
+        return new GetContributionSummaryService(
+                apimPort, currencyPort, referenceDatePort(), memberContextPort(), actionPermissionPort());
+    }
+
     @Test
     void acceptsValidDatesWithinReferenceWindowAndCallsApim() {
         AtomicReference<FetchContributionSummaryCommand> captured = new AtomicReference<>();
@@ -58,9 +70,10 @@ class GetContributionSummaryServiceTest {
         };
 
         var recordingPort = new RecordingCurrencyDisplayPort();
-        var service = new GetContributionSummaryService(port, recordingPort, referenceDatePort(), memberContextPort());
+        var service = serviceWith(port, recordingPort);
 
-        var result = service.execute(new GetContributionSummaryCommand("JP", "MBR", "01/01/2026", "31/03/2026")).block();
+        var result = service.execute(new GetContributionSummaryCommand(
+                "JP", "MBR", "01/01/2026", "31/03/2026", "en", 1, 99999)).block();
 
         assertEquals(1, apimCalls.get());
         assertEquals("01/01/2026", captured.get().coverFrom());
@@ -75,24 +88,10 @@ class GetContributionSummaryServiceTest {
         assertEquals("JP", recordingPort.capturedEnv);
         assertEquals("trustCode_for_contributions", recordingPort.capturedTrustCode);
         assertEquals("schemeType_for_contributions", recordingPort.capturedSchemeType);
-        assertEquals("HKD 24908.45", new ContributionSummaryWebMapper()
-                .toResponse(result, new ContributionWebDisplayConfig(
-                    "Total Contributions",
-                    "供款總額",
-                    "Dealing date處理日期",
-                    "Contribution Periods供款期",
-                    "Total Contributions供款總額"
-                ))
-                .contributions().getFirst().totalContributionEn());
-        assertEquals("港元 24908.45", new ContributionSummaryWebMapper()
-                .toResponse(result, new ContributionWebDisplayConfig(
-                    "Total Contributions",
-                    "供款總額",
-                    "Dealing date處理日期",
-                    "Contribution Periods供款期",
-                    "Total Contributions供款總額"
-                ))
-                .contributions().getFirst().totalContributionZh());
+        assertNotNull(result.actions());
+        assertTrue(result.actions().exportEnabled());
+        assertEquals("trustCode_for_contributions", result.trustCode());
+        assertEquals("schemeType_for_contributions", result.schemeType());
     }
 
     @Test
@@ -110,9 +109,11 @@ class GetContributionSummaryServiceTest {
                 command -> Mono.just(sampleDataset()),
                 currencyDisplayPort,
                 referenceDatePort(),
-                capturingPort);
+                capturingPort,
+                actionPermissionPort());
 
-        service.execute(new GetContributionSummaryCommand("JP", "MBR", "01/01/2026", "31/03/2026")).block();
+        service.execute(new GetContributionSummaryCommand(
+                "JP", "MBR", "01/01/2026", "31/03/2026", "en", 1, 99999)).block();
 
         assertEquals(MemberContextPurpose.CONTRIBUTIONS, capturedPurpose.get());
     }
@@ -120,20 +121,14 @@ class GetContributionSummaryServiceTest {
     @Test
     void rejectsFromDateBeforeReferenceWindow() {
         AtomicInteger apimCalls = new AtomicInteger();
-        CurrencyDisplayPort currencyDisplayPort = (code, env, trustCode, schemeType) ->
-                new CurrencyDisplay(code, code);
-
-        var service = new GetContributionSummaryService(
-                command -> {
-                    apimCalls.incrementAndGet();
-                    return Mono.just(sampleDataset());
-                },
-                currencyDisplayPort,
-                referenceDatePort(),
-                memberContextPort());
+        var service = serviceWith(command -> {
+            apimCalls.incrementAndGet();
+            return Mono.just(sampleDataset());
+        }, (code, env, trustCode, schemeType) -> new CurrencyDisplay(code, code));
 
         var ex = assertThrows(InvalidContributionRequestException.class,
-                () -> service.execute(new GetContributionSummaryCommand("JP", "MBR", "30/03/2023", "31/03/2026")).block());
+                () -> service.execute(new GetContributionSummaryCommand(
+                        "JP", "MBR", "30/03/2023", "31/03/2026", "en", 1, 99999)).block());
 
         assertEquals("fromDate and toDate must be within the range from ref-date minus 36 months to ref-date", ex.getMessage());
         assertEquals(0, apimCalls.get());
@@ -142,20 +137,14 @@ class GetContributionSummaryServiceTest {
     @Test
     void rejectsToDateAfterReferenceDate() {
         AtomicInteger apimCalls = new AtomicInteger();
-        CurrencyDisplayPort currencyDisplayPort = (code, env, trustCode, schemeType) ->
-                new CurrencyDisplay(code, code);
-
-        var service = new GetContributionSummaryService(
-                command -> {
-                    apimCalls.incrementAndGet();
-                    return Mono.just(sampleDataset());
-                },
-                currencyDisplayPort,
-                referenceDatePort(),
-                memberContextPort());
+        var service = serviceWith(command -> {
+            apimCalls.incrementAndGet();
+            return Mono.just(sampleDataset());
+        }, (code, env, trustCode, schemeType) -> new CurrencyDisplay(code, code));
 
         var ex = assertThrows(InvalidContributionRequestException.class,
-                () -> service.execute(new GetContributionSummaryCommand("JP", "MBR", "01/01/2026", "01/04/2026")).block());
+                () -> service.execute(new GetContributionSummaryCommand(
+                        "JP", "MBR", "01/01/2026", "01/04/2026", "en", 1, 99999)).block());
 
         assertEquals("fromDate and toDate must be within the range from ref-date minus 36 months to ref-date", ex.getMessage());
         assertEquals(0, apimCalls.get());
@@ -164,20 +153,14 @@ class GetContributionSummaryServiceTest {
     @Test
     void rejectsFromDateAfterToDate() {
         AtomicInteger apimCalls = new AtomicInteger();
-        CurrencyDisplayPort currencyDisplayPort = (code, env, trustCode, schemeType) ->
-                new CurrencyDisplay(code, code);
-
-        var service = new GetContributionSummaryService(
-                command -> {
-                    apimCalls.incrementAndGet();
-                    return Mono.just(sampleDataset());
-                },
-                currencyDisplayPort,
-                referenceDatePort(),
-                memberContextPort());
+        var service = serviceWith(command -> {
+            apimCalls.incrementAndGet();
+            return Mono.just(sampleDataset());
+        }, (code, env, trustCode, schemeType) -> new CurrencyDisplay(code, code));
 
         var ex = assertThrows(InvalidContributionRequestException.class,
-                () -> service.execute(new GetContributionSummaryCommand("JP", "MBR", "31/03/2026", "01/01/2026")).block());
+                () -> service.execute(new GetContributionSummaryCommand(
+                        "JP", "MBR", "31/03/2026", "01/01/2026", "en", 1, 99999)).block());
 
         assertEquals("fromDate must not be after toDate", ex.getMessage());
         assertEquals(0, apimCalls.get());
@@ -186,46 +169,63 @@ class GetContributionSummaryServiceTest {
     @Test
     void acceptsInclusiveBoundaryDates() {
         AtomicInteger apimCalls = new AtomicInteger();
-        CurrencyDisplayPort currencyDisplayPort = (code, env, trustCode, schemeType) ->
-                new CurrencyDisplay(code, code);
+        var service = serviceWith(command -> {
+            apimCalls.incrementAndGet();
+            return Mono.just(sampleDataset());
+        }, (code, env, trustCode, schemeType) -> new CurrencyDisplay(code, code));
 
-        var service = new GetContributionSummaryService(
-                command -> {
-                    apimCalls.incrementAndGet();
-                    return Mono.just(sampleDataset());
-                },
-                currencyDisplayPort,
-                referenceDatePort(),
-                memberContextPort());
-
-        service.execute(new GetContributionSummaryCommand("JP", "MBR", "31/03/2023", "31/03/2026")).block();
+        service.execute(new GetContributionSummaryCommand(
+                "JP", "MBR", "31/03/2023", "31/03/2026", "en", 1, 99999)).block();
 
         assertEquals(1, apimCalls.get());
     }
 
     @Test
     void rejectsMissingOrInvalidDates() {
-        CurrencyDisplayPort currencyDisplayPort = (code, env, trustCode, schemeType) ->
-                new CurrencyDisplay(code, code);
-
-        var service = new GetContributionSummaryService(
+        var service = serviceWith(
                 command -> Mono.just(new ContributionSummaryDataset("", List.of(), List.of())),
-                currencyDisplayPort,
-                referenceDatePort(),
-                memberContextPort());
+                (code, env, trustCode, schemeType) -> new CurrencyDisplay(code, code));
 
         assertEquals("fromDate must be provided in dd/MM/yyyy format", assertThrows(
                 InvalidContributionRequestException.class,
-                () -> service.execute(new GetContributionSummaryCommand("JP", "MBR", null, "05/05/2026")).block()).getMessage());
+                () -> service.execute(new GetContributionSummaryCommand(
+                        "JP", "MBR", null, "05/05/2026", "en", 1, 99999)).block()).getMessage());
         assertEquals("toDate must be provided in dd/MM/yyyy format", assertThrows(
                 InvalidContributionRequestException.class,
-                () -> service.execute(new GetContributionSummaryCommand("JP", "MBR", "05/04/2026", null)).block()).getMessage());
+                () -> service.execute(new GetContributionSummaryCommand(
+                        "JP", "MBR", "05/04/2026", null, "en", 1, 99999)).block()).getMessage());
         assertEquals("fromDate must be provided in dd/MM/yyyy format", assertThrows(
                 InvalidContributionRequestException.class,
-                () -> service.execute(new GetContributionSummaryCommand("JP", "MBR", "2026-04-05", "05/05/2026")).block()).getMessage());
+                () -> service.execute(new GetContributionSummaryCommand(
+                        "JP", "MBR", "2026-04-05", "05/05/2026", "en", 1, 99999)).block()).getMessage());
         assertEquals("toDate must be provided in dd/MM/yyyy format", assertThrows(
                 InvalidContributionRequestException.class,
-                () -> service.execute(new GetContributionSummaryCommand("JP", "MBR", "05/04/2026", "2026-05-05")).block()).getMessage());
+                () -> service.execute(new GetContributionSummaryCommand(
+                        "JP", "MBR", "05/04/2026", "2026-05-05", "en", 1, 99999)).block()).getMessage());
+    }
+
+    @Test
+    void rejectsPageLessThanOrEqualZero() {
+        var service = serviceWith(
+                command -> Mono.just(sampleDataset()),
+                (code, env, trustCode, schemeType) -> new CurrencyDisplay(code, code));
+
+        var ex = assertThrows(InvalidContributionRequestException.class,
+                () -> service.execute(new GetContributionSummaryCommand(
+                        "JP", "MBR", "01/01/2026", "31/03/2026", "en", 0, 99999)).block());
+        assertEquals("page must be greater than 0", ex.getMessage());
+    }
+
+    @Test
+    void rejectsPageSizeLessThanOrEqualZero() {
+        var service = serviceWith(
+                command -> Mono.just(sampleDataset()),
+                (code, env, trustCode, schemeType) -> new CurrencyDisplay(code, code));
+
+        var ex = assertThrows(InvalidContributionRequestException.class,
+                () -> service.execute(new GetContributionSummaryCommand(
+                        "JP", "MBR", "01/01/2026", "31/03/2026", "en", 1, 0)).block());
+        assertEquals("pageSize must be greater than 0", ex.getMessage());
     }
 
     private static ContributionSummaryDataset sampleDataset() {
@@ -256,3 +256,5 @@ class GetContributionSummaryServiceTest {
         }
     }
 }
+
+

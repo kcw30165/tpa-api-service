@@ -11,6 +11,41 @@ contribution-summary:
     contribution-period: Contribution Periods供款期
     total-contribution: Total Contributions供款總額
 
+display-format:
+  date:
+    en:
+      default: dd/MM/yyyy
+      JP: MM/dd/yyyy
+    zh_HK:
+      default: dd/MM/yyyy
+  amount:
+    en:
+      default:
+        min-fraction-digits: 0
+        max-fraction-digits: 2
+        grouping-separator: ","
+        decimal-separator: "."
+        rounding-mode: HALF_UP
+        strip-trailing-zeros: true
+        negative-style: minus
+      JP:
+        min-fraction-digits: 0
+        max-fraction-digits: 0
+        grouping-separator: ","
+        decimal-separator: "."
+        rounding-mode: HALF_UP
+        strip-trailing-zeros: true
+        negative-style: minus
+    zh_HK:
+      default:
+        min-fraction-digits: 0
+        max-fraction-digits: 2
+        grouping-separator: ","
+        decimal-separator: "."
+        rounding-mode: HALF_UP
+        strip-trailing-zeros: true
+        negative-style: minus
+
 logging-sanitizer:
   sensitive-tokens:
     - authorization

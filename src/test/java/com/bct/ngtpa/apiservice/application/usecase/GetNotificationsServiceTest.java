@@ -56,7 +56,7 @@ class GetNotificationsServiceTest {
         GetNotificationsService service = new GetNotificationsService(port, memberContextPort(), REFERENCE_DATE_PORT);
 
         NotificationListResult result = service.execute(new GetNotificationsCommand(
-                "DEV", "MBR", 1, 20, null, null, null, null, null, null)).block();
+                "DEV", "MBR", 1, 99999, null, null, null, null, null, null)).block();
 
         assertEquals(NotificationDateOptions.DEFAULT_DATE_FORMAT, result.dateOptions().dateFormat());
         assertEquals(NotificationDateOptions.DEFAULT_ZONE_ID, result.dateOptions().zoneId());
@@ -103,7 +103,7 @@ class GetNotificationsServiceTest {
         };
 
         GetNotificationsService service = new GetNotificationsService(noticePort, capturingPort, REFERENCE_DATE_PORT);
-        service.execute(new GetNotificationsCommand("DEV", "MBR", 1, 20, null, null, null, null, null, null)).block();
+        service.execute(new GetNotificationsCommand("DEV", "MBR", 1, 99999, null, null, null, null, null, null)).block();
 
         assertEquals(MemberContextPurpose.NOTIFICATIONS, capturedPurpose.get());
         assertEquals("policyNo_for_notifications", capturedCommand.get().policyNo());
@@ -121,7 +121,7 @@ class GetNotificationsServiceTest {
         };
 
         GetNotificationsService service = new GetNotificationsService(noticePort, memberContextPort(), REFERENCE_DATE_PORT);
-        service.execute(new GetNotificationsCommand("DEV", "MBR", 1, 20, null, null, null, null, null, null)).block();
+        service.execute(new GetNotificationsCommand("DEV", "MBR", 1, 99999, null, null, null, null, null, null)).block();
 
         assertEquals("01/10/2025", capturedCommand.get().refDate());
     }

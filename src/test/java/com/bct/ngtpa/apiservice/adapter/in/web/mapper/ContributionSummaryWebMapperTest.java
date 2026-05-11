@@ -1,6 +1,8 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.mapper;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionWebDisplayConfig;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ContributionItemType;
+import com.bct.ngtpa.apiservice.application.dto.ContributionActions;
 import com.bct.ngtpa.apiservice.application.dto.ContributionSummaryReportResult;
 import com.bct.ngtpa.apiservice.application.dto.CurrencyDisplay;
 import com.bct.ngtpa.apiservice.domain.model.ContributionLabels;
@@ -14,10 +16,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ContributionSummaryWebMapperTest {
 
-    private final ContributionSummaryWebMapper mapper = new ContributionSummaryWebMapper();
+    /** Plain amount formatter that just calls toPlainString (no thousands separator). */
+    private static final ContributionSummaryWebMapper MAPPER = new ContributionSummaryWebMapper(
+            (amount, lang, env, trustCode, schemeType) -> amount == null ? "0" : amount.stripTrailingZeros().toPlainString());
 
     private static final ContributionWebDisplayConfig DISPLAY_CONFIG = new ContributionWebDisplayConfig(
             "Total Contributions",
@@ -27,141 +33,183 @@ class ContributionSummaryWebMapperTest {
             "Total Contributions供款總額");
 
     @Test
-    void toResponseFormatsNullAmountAsZeroWhenCurrencyDisplayIsNull() {
+    void toListResponsePopulatesTopLevelStructure() {
+        var result = buildResult(new CurrencyDisplay("HKD", "港元"), new BigDecimal("100"), BigDecimal.TEN, new BigDecimal("90"));
+        var response = MAPPER.toListResponse(result, DISPLAY_CONFIG, "01/03/2026", "31/03/2026", "en", "JP", 1, 99999);
+
+        assertEquals(1, response.items().size());
+        assertTrue(response.actions().export().enabled());
+        assertEquals(1, response.pagination().page());
+        assertEquals(99999, response.pagination().pageSize());
+        assertEquals(1, response.pagination().totalRecords());
+        assertFalse(response.pagination().hasNextPage());
+    }
+
+    @Test
+    void toListResponseSetsItemTypeAsContribution() {
+        var result = buildResult(new CurrencyDisplay("HKD", "港元"), new BigDecimal("100"), BigDecimal.TEN, new BigDecimal("90"));
+        var response = MAPPER.toListResponse(result, DISPLAY_CONFIG, "01/03/2026", "31/03/2026", "en", "JP", 1, 99999);
+
+        assertEquals(ContributionItemType.CONTRIBUTION, response.items().getFirst().itemType());
+    }
+
+    @Test
+    void toListResponsePreservesQueryStringDateTexts() {
+        var result = buildResult(new CurrencyDisplay("HKD", "港元"), new BigDecimal("100"), BigDecimal.TEN, new BigDecimal("90"));
+        var response = MAPPER.toListResponse(result, DISPLAY_CONFIG, "01/03/2026", "31/03/2026", "en", "JP", 1, 99999);
+
+        var item = response.items().getFirst();
+        assertEquals("01/03/2026", item.period().fromDate().text());
+        assertEquals("31/03/2026", item.period().toDate().text());
+    }
+
+    @Test
+    void toListResponseConvertsDateValuesToIso() {
+        var result = buildResult(new CurrencyDisplay("HKD", "港元"), new BigDecimal("100"), BigDecimal.TEN, new BigDecimal("90"));
+        var response = MAPPER.toListResponse(result, DISPLAY_CONFIG, "01/03/2026", "31/03/2026", "en", "JP", 1, 99999);
+
+        var item = response.items().getFirst();
+        assertEquals("2026-03-01", item.period().fromDate().value());
+        assertEquals("2026-03-31", item.period().toDate().value());
+    }
+
+    @Test
+    void toListResponsePreservesApimDealingDateText() {
+        var result = buildResult(new CurrencyDisplay("HKD", "港元"), new BigDecimal("100"), BigDecimal.TEN, new BigDecimal("90"));
+        var response = MAPPER.toListResponse(result, DISPLAY_CONFIG, "01/03/2026", "31/03/2026", "en", "JP", 1, 99999);
+
+        var item = response.items().getFirst();
+        assertEquals("01/03/2026", item.dealingDate().text());
+        assertEquals("2026-03-01", item.dealingDate().value());
+    }
+
+    @Test
+    void toListResponseMapsCurrencyFromDisplayForEnLocale() {
+        var result = buildResult(new CurrencyDisplay("HKD", "港元"), new BigDecimal("100"), BigDecimal.TEN, new BigDecimal("90"));
+        var response = MAPPER.toListResponse(result, DISPLAY_CONFIG, "01/03/2026", "31/03/2026", "en", "JP", 1, 99999);
+
+        assertEquals("HKD", response.items().getFirst().currency().value());
+        assertEquals("HKD", response.items().getFirst().currency().text());
+    }
+
+    @Test
+    void toListResponseMapsCurrencyFromDisplayForZhHkLocale() {
+        var result = buildResult(new CurrencyDisplay("HKD", "港元"), new BigDecimal("100"), BigDecimal.TEN, new BigDecimal("90"));
+        var response = MAPPER.toListResponse(result, DISPLAY_CONFIG, "01/03/2026", "31/03/2026", "zh_HK", "JP", 1, 99999);
+
+        assertEquals("HKD", response.items().getFirst().currency().value());
+        assertEquals("港元", response.items().getFirst().currency().text());
+    }
+
+    @Test
+    void toListResponseBreakdownHasTotalFirstThenSources() {
+        var result = buildResult(new CurrencyDisplay("HKD", "港元"), new BigDecimal("100"), BigDecimal.TEN, new BigDecimal("90"));
+        var response = MAPPER.toListResponse(result, DISPLAY_CONFIG, "01/03/2026", "31/03/2026", "en", "JP", 1, 99999);
+
+        var rows = response.items().getFirst().breakdown().rows();
+        assertEquals(3, rows.size());
+        assertEquals("Total Contributions", rows.get(0).label());
+        assertEquals("Company", rows.get(1).label());
+        assertEquals("Member", rows.get(2).label());
+    }
+
+    @Test
+    void toListResponseBreakdownUsesZhLabelsForZhHkLocale() {
         var result = new ContributionSummaryReportResult(
                 new ContributionSummaryReport(
                         "HKD",
-                        List.of(new ContributionSource("ER", new ContributionLabels("Company", ""), 10)),
+                        List.of(
+                                new ContributionSource("ER", new ContributionLabels("Company", "公司"), 10),
+                                new ContributionSource("EE", new ContributionLabels("Member", "員工"), 20)),
                         List.of(new ContributionSummaryRow(
-                                "01/03/2026",
-                                "01/03/2026",
-                                "31/03/2026",
-                                null,
-                                new LinkedHashMap<>()))),
-                null);
+                                "01/03/2026", "01/03/2026", "31/03/2026",
+                                new BigDecimal("100"),
+                                new LinkedHashMap<>(java.util.Map.of(
+                                        "ER", BigDecimal.TEN,
+                                        "EE", new BigDecimal("90")))))),
+                new CurrencyDisplay("HKD", "港元"),
+                new ContributionActions(true),
+                "", "");
 
-        var response = mapper.toResponse(result, DISPLAY_CONFIG);
+        var response = MAPPER.toListResponse(result, DISPLAY_CONFIG, "01/03/2026", "31/03/2026", "zh_HK", "JP", 1, 99999);
 
-        assertEquals("0", response.contributions().getFirst().totalContributionEn());
-        assertEquals("0", response.contributions().getFirst().totalContributionZh());
-        assertEquals("0", response.contributions().getFirst().details().getFirst().amountEn());
-        assertEquals("0", response.contributions().getFirst().details().getFirst().amountZh());
+        var rows = response.items().getFirst().breakdown().rows();
+        assertEquals("公司", rows.get(1).label());
+        assertEquals("員工", rows.get(2).label());
     }
 
     @Test
-    void toResponseOmitsCurrencyPrefixWhenCurrencyDisplayIsBlank() {
+    void toListResponseActionsExportDisabledWhenActionsNull() {
         var result = new ContributionSummaryReportResult(
-                new ContributionSummaryReport(
-                        "HKD",
-                        List.of(),
-                        List.of(new ContributionSummaryRow(
-                                "01/03/2026",
-                                "01/03/2026",
-                                "31/03/2026",
-                                new BigDecimal("100.50"),
-                                new LinkedHashMap<>()))),
-                new CurrencyDisplay("", ""));
+                new ContributionSummaryReport("HKD", List.of(), List.of(new ContributionSummaryRow(
+                        "01/03/2026", "01/03/2026", "31/03/2026", BigDecimal.ZERO, new LinkedHashMap<>()))),
+                new CurrencyDisplay("HKD", "HKD"),
+                null,
+                "", "");
 
-        var response = mapper.toResponse(result, DISPLAY_CONFIG);
-
-        assertEquals("100.5", response.contributions().getFirst().totalContributionEn());
-        assertEquals("100.5", response.contributions().getFirst().totalContributionZh());
+        var response = MAPPER.toListResponse(result, DISPLAY_CONFIG, "01/03/2026", "31/03/2026", "en", "JP", 1, 99999);
+        assertFalse(response.actions().export().enabled());
     }
 
     @Test
-    void toResponseIncludesCurrencyPrefixWhenAvailable() {
-        var result = buildResultWithSources(
-                new CurrencyDisplay("HKD", "港元"),
-                new BigDecimal("24908.45"),
-                new BigDecimal("17791.75"),
-                new BigDecimal("7116.7"));
+    void buildItemIdsGeneratesStableIdsFromPeriodFromDate() {
+        var rows = List.of(
+                new ContributionSummaryRow("01/03/2026", "01/03/2026", "31/03/2026", BigDecimal.ONE, new LinkedHashMap<>()),
+                new ContributionSummaryRow("01/04/2026", "01/04/2026", "30/04/2026", BigDecimal.ONE, new LinkedHashMap<>()));
 
-        var response = mapper.toResponse(result, DISPLAY_CONFIG);
-        var item = response.contributions().getFirst();
-
-        assertEquals("HKD 24908.45", item.totalContributionEn());
-        assertEquals("港元 24908.45", item.totalContributionZh());
+        var ids = ContributionSummaryWebMapper.buildItemIds(rows);
+        assertEquals("CONTRIB-2026-03", ids.get(0));
+        assertEquals("CONTRIB-2026-04", ids.get(1));
     }
 
     @Test
-    void toResponseInsertsTotalContributionDetailRowFirst() {
-        var result = buildResultWithSources(
-                new CurrencyDisplay("HKD", "港元"),
-                new BigDecimal("24908.45"),
-                new BigDecimal("17791.75"),
-                new BigDecimal("7116.7"));
+    void buildItemIdsSuffixesDuplicatePeriods() {
+        var rows = List.of(
+                new ContributionSummaryRow("01/03/2026", "01/03/2026", "31/03/2026", BigDecimal.ONE, new LinkedHashMap<>()),
+                new ContributionSummaryRow("01/04/2026", "01/03/2026", "31/03/2026", BigDecimal.ONE, new LinkedHashMap<>()));
 
-        var response = mapper.toResponse(result, DISPLAY_CONFIG);
-        var firstDetail = response.contributions().getFirst().details().getFirst();
-
-        assertEquals("Total Contributions", firstDetail.labels().en());
-        assertEquals("供款總額", firstDetail.labels().zh());
-        assertEquals("HKD 24908.45", firstDetail.amountEn());
-        assertEquals("港元 24908.45", firstDetail.amountZh());
+        var ids = ContributionSummaryWebMapper.buildItemIds(rows);
+        assertEquals("CONTRIB-2026-03", ids.get(0));
+        assertEquals("CONTRIB-2026-03-2", ids.get(1));
     }
 
     @Test
-    void toResponsePreservesSourceOrderInDetails() {
-        var result = buildResultWithSources(
-                new CurrencyDisplay("HKD", "港元"),
-                new BigDecimal("24908.45"),
-                new BigDecimal("17791.75"),
-                new BigDecimal("7116.7"));
+    void buildItemIdsFallsBackWhenDateUnparseable() {
+        var rows = List.of(
+                new ContributionSummaryRow("01/03/2026", "not-a-date", "31/03/2026", BigDecimal.ONE, new LinkedHashMap<>()));
 
-        var response = mapper.toResponse(result, DISPLAY_CONFIG);
-        var details = response.contributions().getFirst().details();
-
-        assertEquals(3, details.size());
-        assertEquals("Company", details.get(1).labels().en());
-        assertEquals("HKD 17791.75", details.get(1).amountEn());
-        assertEquals("Member", details.get(2).labels().en());
-        assertEquals("HKD 7116.7", details.get(2).amountEn());
+        var ids = ContributionSummaryWebMapper.buildItemIds(rows);
+        assertEquals("CONTRIB-unknown", ids.get(0));
     }
 
     @Test
-    void toResponseUsesTotalLabelsFromDisplayConfig() {
-        var result = buildResultWithSources(
-                new CurrencyDisplay("HKD", "港元"),
-                new BigDecimal("100"),
-                new BigDecimal("60"),
-                new BigDecimal("40"));
-
-        var customConfig = new ContributionWebDisplayConfig(
-                "My Total En",
-                "My Total Zh",
-                "header",
-                "period",
-                "total");
-
-        var response = mapper.toResponse(result, customConfig);
-        var totalDetail = response.contributions().getFirst().details().getFirst();
-
-        assertEquals("My Total En", totalDetail.labels().en());
-        assertEquals("My Total Zh", totalDetail.labels().zh());
+    void tryParseApimDateParsesCorrectly() {
+        var date = ContributionSummaryWebMapper.tryParseApimDate("01/03/2026");
+        assertEquals(2026, date.getYear());
+        assertEquals(3, date.getMonthValue());
+        assertEquals(1, date.getDayOfMonth());
     }
 
     @Test
-    void formatAmountStripsTrailingZerosFromDecimal() {
-        assertEquals("100", mapper.formatAmount("", new BigDecimal("100.00")));
-        assertEquals("100.5", mapper.formatAmount("", new BigDecimal("100.50")));
-        assertEquals("24908.45", mapper.formatAmount("", new BigDecimal("24908.45")));
+    void tryParseApimDateReturnsNullForInvalidInput() {
+        assertEquals(null, ContributionSummaryWebMapper.tryParseApimDate(null));
+        assertEquals(null, ContributionSummaryWebMapper.tryParseApimDate(""));
+        assertEquals(null, ContributionSummaryWebMapper.tryParseApimDate("2026-03-01"));
     }
 
     @Test
-    void formatAmountReturnsZeroForNullAmount() {
-        assertEquals("0", mapper.formatAmount("", null));
+    void toListResponsePaginationTotalRecordsIsItemCount() {
+        var result = buildResultWithTwoRows();
+        var response = MAPPER.toListResponse(result, DISPLAY_CONFIG, "01/01/2026", "31/03/2026", "en", "JP", 2, 10);
+
+        assertEquals(2, response.pagination().totalRecords());
+        assertEquals(2, response.pagination().page());
+        assertEquals(10, response.pagination().pageSize());
     }
 
-    @Test
-    void toLabelsResponseMapsEnAndZh() {
-        var labels = new ContributionLabels("English", "中文");
-        var response = mapper.toLabelsResponse(labels);
+    // --- helpers ---
 
-        assertEquals("English", response.en());
-        assertEquals("中文", response.zh());
-    }
-
-    private ContributionSummaryReportResult buildResultWithSources(
+    private ContributionSummaryReportResult buildResult(
             CurrencyDisplay currencyDisplay,
             BigDecimal totalAmount,
             BigDecimal erAmount,
@@ -180,6 +228,24 @@ class ContributionSummaryWebMapperTest {
                                 new LinkedHashMap<>(java.util.Map.of(
                                         "ER", erAmount,
                                         "EE", eeAmount))))),
-                currencyDisplay);
+                currencyDisplay,
+                new ContributionActions(true),
+                "", "");
+    }
+
+    private ContributionSummaryReportResult buildResultWithTwoRows() {
+        return new ContributionSummaryReportResult(
+                new ContributionSummaryReport(
+                        "HKD",
+                        List.of(new ContributionSource("ER", new ContributionLabels("Company", ""), 10)),
+                        List.of(
+                                new ContributionSummaryRow("01/01/2026", "01/01/2026", "31/01/2026",
+                                        new BigDecimal("100"), new LinkedHashMap<>(java.util.Map.of("ER", new BigDecimal("100")))),
+                                new ContributionSummaryRow("01/02/2026", "01/02/2026", "28/02/2026",
+                                        new BigDecimal("200"), new LinkedHashMap<>(java.util.Map.of("ER", new BigDecimal("200")))))),
+                new CurrencyDisplay("HKD", "HKD"),
+                new ContributionActions(false),
+                "", "");
     }
 }
+

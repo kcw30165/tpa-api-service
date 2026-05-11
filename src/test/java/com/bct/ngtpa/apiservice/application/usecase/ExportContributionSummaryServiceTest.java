@@ -58,6 +58,8 @@ class ExportContributionSummaryServiceTest {
         assertEquals("JP", recordingPort.capturedEnv);
         assertEquals("trustCode_for_contributions", recordingPort.capturedTrustCode);
         assertEquals("schemeType_for_contributions", recordingPort.capturedSchemeType);
+        assertEquals("trustCode_for_contributions", result.trustCode());
+        assertEquals("schemeType_for_contributions", result.schemeType());
     }
 
     @Test

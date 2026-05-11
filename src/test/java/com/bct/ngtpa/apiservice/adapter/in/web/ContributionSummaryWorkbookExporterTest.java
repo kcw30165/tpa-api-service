@@ -48,7 +48,10 @@ class ContributionSummaryWorkbookExporterTest {
                                         new BigDecimal("400.00"),
                                         new LinkedHashMap<>(java.util.Map.of(
                                                 "EE", new BigDecimal("400.00")))))),
-                new CurrencyDisplay("HKD", "港元"));
+                new CurrencyDisplay("HKD", "港元"),
+                null,
+                "",
+                "");
 
         byte[] bytes = exporter.write(report);
 

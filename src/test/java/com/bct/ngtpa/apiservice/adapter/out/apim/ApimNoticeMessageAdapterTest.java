@@ -52,7 +52,7 @@ class ApimNoticeMessageAdapterTest {
                 .response(ApimResponseBody.<GetMessageBoardDataItem>builder()
                         .data(List.of(GetMessageBoardDataItem.builder()
                                 .page(1)
-                                .size(20)
+                                .size(99999)
                                 .message(List.of(messageItem))
                                 .build()))
                         .build())
@@ -134,7 +134,7 @@ class ApimNoticeMessageAdapterTest {
     @Test
     void doesNotIncludePageOrSizeInApimRequestPayload() throws Exception {
         GetNotificationsCommand command = new GetNotificationsCommand(
-                "DEV", "MBR", 1, 20, "dd/MM/yyyy HH:mm", "Asia/Hong_Kong", "P1", "C1", "U1", "29/04/2026");
+                "DEV", "MBR", 1, 99999, "dd/MM/yyyy HH:mm", "Asia/Hong_Kong", "P1", "C1", "U1", "29/04/2026");
 
         GetMessageBoardApimRequest request = (GetMessageBoardApimRequest) ReflectionTestUtils.invokeMethod(
                 adapter, "toApimRequest", command);
@@ -196,7 +196,7 @@ class ApimNoticeMessageAdapterTest {
         }
 
         private static GetNotificationsCommand command() {
-                return new GetNotificationsCommand("DEV", "MBR", 1, 20, "dd/MM/yyyy HH:mm", "Asia/Hong_Kong", "P1", "C1", "U1", "29/04/2026");
+                return new GetNotificationsCommand("DEV", "MBR", 1, 99999, "dd/MM/yyyy HH:mm", "Asia/Hong_Kong", "P1", "C1", "U1", "29/04/2026");
         }
 
         private static GetMessageBoardMessageItem messageItem(String category, String status, String startDatetime) {
