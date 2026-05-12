@@ -20,31 +20,11 @@ display-format:
       default: dd/MM/yyyy
   amount:
     en:
-      default:
-        min-fraction-digits: 0
-        max-fraction-digits: 2
-        grouping-separator: ","
-        decimal-separator: "."
-        rounding-mode: HALF_UP
-        strip-trailing-zeros: true
-        negative-style: minus
-      JP:
-        min-fraction-digits: 0
-        max-fraction-digits: 0
-        grouping-separator: ","
-        decimal-separator: "."
-        rounding-mode: HALF_UP
-        strip-trailing-zeros: true
-        negative-style: minus
+      "[*]": "#,##0.00"
+      JP: "#,##0.00"
     zh_HK:
-      default:
-        min-fraction-digits: 0
-        max-fraction-digits: 2
-        grouping-separator: ","
-        decimal-separator: "."
-        rounding-mode: HALF_UP
-        strip-trailing-zeros: true
-        negative-style: minus
+      "[*]": "#,##0.00"
+      JP: "#,##0.00"
 
 logging-sanitizer:
   sensitive-tokens:

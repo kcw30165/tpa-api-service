@@ -851,7 +851,49 @@ Pagination validation failures:
 
 ### Display Format Configuration
 
-Amount and date display formatting for the contribution JSON response is driven by `display-format.*` properties:
+Amount display formatting for the contribution JSON response is driven by a pattern-based `display-format.amount` configuration. Date formatting is driven by `display-format.date`.
+
+#### Amount format (pattern-based)
+
+Each locale maps trust codes (or a wildcard `*`) to a `DecimalFormat` pattern string:
+
+```yaml
+display-format:
+  amount:
+    en:
+      "[*]": "#,##0.00"
+      JP: "#,##0.00"
+    zh_HK:
+      "[*]": "#,##0.00"
+      JP: "#,##0.00"
+```
+
+**Wildcard `[*]`**: The `[*]` YAML key (bracket notation required so Spring Boot binds it as the literal `*` map key) is the wildcard fallback when no trust-code-specific entry is found.
+
+**Fallback order** (tried in sequence until a pattern is found):
+
+1. `display-format.amount.<lang>.<trustCode>`
+2. `display-format.amount.<lang>.*`
+3. `display-format.amount.en.<trustCode>`
+4. `display-format.amount.en.*`
+5. Hardcoded default: `#,##0.00`
+
+**Formatting rules**: `DecimalFormat` is used with English-locale symbols (`,` grouping, `.` decimal), rounding mode `HALF_UP`. The pattern `#,##0.00` always produces exactly two decimal places and never strips trailing zeros.
+
+**Example outputs**:
+
+| Input | Output |
+|-------|--------|
+| `0` | `0.00` |
+| `1` | `1.00` |
+| `12.3` | `12.30` |
+| `1234.5` | `1,234.50` |
+| `1234.567` | `1,234.57` |
+| `-1234.5` | `-1,234.50` |
+
+> **Note**: The global config variant resolver and annotation-based AOP are not part of this implementation. The `env` and `schemeType` parameters are accepted by `AmountDisplayPort.formatAmount` but do not affect pattern selection at this time.
+
+#### Date format
 
 ```yaml
 display-format:
@@ -861,26 +903,9 @@ display-format:
       JP: dd/MM/yyyy
     zh_HK:
       default: dd/MM/yyyy
-  amount:
-    en:
-      default:
-        min-fraction-digits: 0
-        max-fraction-digits: 2
-        grouping-separator: ","
-        decimal-separator: "."
-        rounding-mode: HALF_UP
-        strip-trailing-zeros: true
-        negative-style: minus
-      JP:
-        # ...env-specific override
-    zh_HK:
-      default:
-        # ...
 ```
 
-- Keys under each locale are resolved by priority: `${env}.${trustCode}.${schemeType}` → `${env}.${trustCode}` → `${env}` → `default`.
-- Blank trustCode or schemeType segments are skipped in the key lookup.
-- If no config entry is found, amount falls back to a built-in standard format; date falls back to ISO `yyyy-MM-dd`.
+- Keys under each locale are resolved by priority: `${env}` → `default`. Date falls back to ISO `yyyy-MM-dd` when no config entry is found.
 
 ### `GET /api/v1/contributions/export`
 
