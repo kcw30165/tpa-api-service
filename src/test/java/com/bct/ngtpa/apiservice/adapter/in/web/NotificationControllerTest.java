@@ -47,7 +47,7 @@ class NotificationControllerTest {
                         .queryParam("env", "DEV")
                         .queryParam("mbrType", "MBR")
                         .queryParam("page", 1)
-                        .queryParam("size", 20)
+                        .queryParam("size", 99999)
                         .queryParam("dateFormat", "dd/MM/yyyy HH:mm")
                         .queryParam("timezone", "Asia/Hong_Kong")
                         .build())
@@ -64,7 +64,7 @@ class NotificationControllerTest {
         assertEquals("DEV", captured.get().env());
         assertEquals("MBR", captured.get().mbrType());
         assertEquals(1, captured.get().page());
-        assertEquals(20, captured.get().size());
+        assertEquals(99999, captured.get().size());
         assertEquals("dd/MM/yyyy HH:mm", captured.get().dateFormat());
         assertEquals("Asia/Hong_Kong", captured.get().timezone());
     }

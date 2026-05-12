@@ -2,6 +2,9 @@ package com.bct.ngtpa.apiservice.adapter.in.web;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionWebDisplayConfigProvider;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.ContributionSummaryWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.sort.ApplySortsAspect;
+import com.bct.ngtpa.apiservice.adapter.in.web.sort.SortEngine;
+import com.bct.ngtpa.apiservice.application.dto.ContributionActions;
 import com.bct.ngtpa.apiservice.application.dto.CurrencyDisplay;
 import com.bct.ngtpa.apiservice.application.dto.ContributionSummaryReportResult;
 import com.bct.ngtpa.apiservice.application.dto.ExportContributionSummaryCommand;
@@ -15,6 +18,7 @@ import com.bct.ngtpa.apiservice.domain.model.ContributionSource;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryReport;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryRow;
 import org.junit.jupiter.api.Test;
+import org.springframework.aop.aspectj.annotation.AspectJProxyFactory;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
@@ -29,7 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ContributionControllerTest {
 
     @Test
-    void returnsContributionSummaryJsonAndPassesQueryParamsToUseCase() {
+    void returnsContributionListJsonAndPassesQueryParamsToUseCase() {
         AtomicReference<GetContributionSummaryCommand> captured = new AtomicReference<>();
         GetContributionSummaryUseCase getUseCase = command -> {
             captured.set(command);
@@ -42,35 +46,126 @@ class ContributionControllerTest {
                 .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions")
                         .queryParam("env", "JP")
                         .queryParam("mbrType", "MBR")
-                        .queryParam("fromDate", "05/04/2026")
-                        .queryParam("toDate", "05/05/2026")
+                        .queryParam("fromDate", "01/03/2026")
+                        .queryParam("toDate", "31/03/2026")
+                        .queryParam("lang", "en")
+                        .queryParam("page", "1")
+                        .queryParam("pageSize", "99999")
                         .build())
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.contributions[0].dealingDate").isEqualTo("01/03/2026")
-                .jsonPath("$.contributions[0].coveringPeriod").isEqualTo("01/03/2026 - 31/03/2026")
-                .jsonPath("$.contributions[0].totalContribution").doesNotExist()
-                .jsonPath("$.contributions[0].totalContributionEn").isEqualTo("HKD 24908.45")
-                .jsonPath("$.contributions[0].totalContributionZh").isEqualTo("港元 24908.45")
-                .jsonPath("$.contributions[0].details[0].labels.en").isEqualTo("Total Contributions")
-                .jsonPath("$.contributions[0].details[0].labels.zh").isEqualTo("供款總額")
-                .jsonPath("$.contributions[0].details[0].labels.currencyEn").doesNotExist()
-                .jsonPath("$.contributions[0].details[0].labels.currencyZh").doesNotExist()
-                .jsonPath("$.contributions[0].details[0].amount").doesNotExist()
-                .jsonPath("$.contributions[0].details[0].amountEn").isEqualTo("HKD 24908.45")
-                .jsonPath("$.contributions[0].details[0].amountZh").isEqualTo("港元 24908.45")
-                .jsonPath("$.contributions[0].details[1].labels.en").isEqualTo("Company")
-                .jsonPath("$.contributions[0].details[1].amountEn").isEqualTo("HKD 17791.75")
-                .jsonPath("$.contributions[0].details[1].amountZh").isEqualTo("港元 17791.75")
-                .jsonPath("$.contributions[0].details[2].labels.en").isEqualTo("Member")
-                .jsonPath("$.contributions[0].details[2].amountEn").isEqualTo("HKD 7116.7")
-                .jsonPath("$.contributions[0].details[2].amountZh").isEqualTo("港元 7116.7");
+                .jsonPath("$.actions.export.enabled").isEqualTo(true)
+                .jsonPath("$.items[0].itemId").isEqualTo("CONTRIB-2026-03")
+                .jsonPath("$.items[0].itemType").isEqualTo("contribution")
+                .jsonPath("$.items[0].period.fromDate.value").isEqualTo("2026-03-01")
+                .jsonPath("$.items[0].period.fromDate.text").isEqualTo("01/03/2026")
+                .jsonPath("$.items[0].period.toDate.value").isEqualTo("2026-03-31")
+                .jsonPath("$.items[0].period.toDate.text").isEqualTo("31/03/2026")
+                .jsonPath("$.items[0].dealingDate.value").isEqualTo("2026-03-01")
+                .jsonPath("$.items[0].dealingDate.text").isEqualTo("01/03/2026")
+                .jsonPath("$.items[0].currency.value").isEqualTo("HKD")
+                .jsonPath("$.items[0].currency.text").isEqualTo("HKD")
+                .jsonPath("$.items[0].totalContribution.amount.value").isEqualTo(24908.45)
+                .jsonPath("$.items[0].breakdown.rows[0].label").isEqualTo("Total Contributions")
+                .jsonPath("$.items[0].breakdown.rows[1].label").isEqualTo("Company")
+                .jsonPath("$.items[0].breakdown.rows[2].label").isEqualTo("Member")
+                .jsonPath("$.pagination.page").isEqualTo(1)
+                .jsonPath("$.pagination.pageSize").isEqualTo(99999)
+                .jsonPath("$.pagination.totalRecords").isEqualTo(1)
+                .jsonPath("$.pagination.hasNextPage").isEqualTo(false);
 
         assertEquals("JP", captured.get().env());
         assertEquals("MBR", captured.get().mbrType());
-        assertEquals("05/04/2026", captured.get().fromDate());
-        assertEquals("05/05/2026", captured.get().toDate());
+        assertEquals("01/03/2026", captured.get().fromDate());
+        assertEquals("31/03/2026", captured.get().toDate());
+        assertEquals("en", captured.get().lang());
+        assertEquals(1, captured.get().page());
+        assertEquals(99999, captured.get().pageSize());
+    }
+
+    @Test
+    void usesDefaultPageAndPageSizeWhenNotProvided() {
+        AtomicReference<GetContributionSummaryCommand> captured = new AtomicReference<>();
+        GetContributionSummaryUseCase getUseCase = command -> {
+            captured.set(command);
+            return Mono.just(sampleResult());
+        };
+
+        WebTestClient client = webClient(getUseCase, unusedExportUseCase());
+
+        client.get()
+                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions")
+                        .queryParam("env", "JP")
+                        .queryParam("fromDate", "01/03/2026")
+                        .queryParam("toDate", "31/03/2026")
+                        .build())
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.pagination.page").isEqualTo(1)
+                .jsonPath("$.pagination.pageSize").isEqualTo(99999);
+
+        assertEquals(1, captured.get().page());
+        assertEquals(99999, captured.get().pageSize());
+    }
+
+    @Test
+    void defaultsLangToEnWhenNotProvided() {
+        AtomicReference<GetContributionSummaryCommand> captured = new AtomicReference<>();
+        GetContributionSummaryUseCase getUseCase = command -> {
+            captured.set(command);
+            return Mono.just(sampleResult());
+        };
+
+        webClient(getUseCase, unusedExportUseCase())
+                .get()
+                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions")
+                        .queryParam("fromDate", "01/03/2026")
+                        .queryParam("toDate", "31/03/2026")
+                        .build())
+                .exchange()
+                .expectStatus().isOk();
+
+        assertEquals("en", captured.get().lang());
+    }
+
+    @Test
+    void returnsBadRequestWhenPageIsZero() {
+        GetContributionSummaryUseCase getUseCase = command -> Mono.error(
+                new InvalidContributionRequestException("page must be greater than 0"));
+
+        webClient(getUseCase, unusedExportUseCase())
+                .get()
+                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions")
+                        .queryParam("fromDate", "01/03/2026")
+                        .queryParam("toDate", "31/03/2026")
+                        .queryParam("page", "0")
+                        .build())
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("400")
+                .jsonPath("$.message").isEqualTo("page must be greater than 0");
+    }
+
+    @Test
+    void returnsBadRequestWhenPageSizeIsZero() {
+        GetContributionSummaryUseCase getUseCase = command -> Mono.error(
+                new InvalidContributionRequestException("pageSize must be greater than 0"));
+
+        webClient(getUseCase, unusedExportUseCase())
+                .get()
+                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions")
+                        .queryParam("fromDate", "01/03/2026")
+                        .queryParam("toDate", "31/03/2026")
+                        .queryParam("pageSize", "0")
+                        .build())
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo("400")
+                .jsonPath("$.message").isEqualTo("pageSize must be greater than 0");
     }
 
     @Test
@@ -89,7 +184,7 @@ class ContributionControllerTest {
                 .expectStatus().isBadRequest()
                 .expectBody()
                 .jsonPath("$.errorCode").isEqualTo("400")
-                .jsonPath("$.message").isEqualTo("fromDate must be provided in dd/MM/yyyy format");                
+                .jsonPath("$.message").isEqualTo("fromDate must be provided in dd/MM/yyyy format");
     }
 
     @Test
@@ -122,14 +217,114 @@ class ContributionControllerTest {
             GetContributionSummaryUseCase getContributionSummaryUseCase,
             ExportContributionSummaryUseCase exportContributionSummaryUseCase) {
         var provider = displayConfigProvider();
+        var mapper = new ContributionSummaryWebMapper(
+                (amount, lang, env, trustCode, schemeType) -> amount == null ? "0" : amount.toPlainString());
         return WebTestClient.bindToController(new ContributionController(
                         getContributionSummaryUseCase,
                         exportContributionSummaryUseCase,
                         new ContributionSummaryWorkbookExporter(provider),
                         provider,
-                        new ContributionSummaryWebMapper()))
+                        mapper,
+                        new ContributionSortingSupport()))
                 .controllerAdvice(new ApiExceptionHandler())
                 .build();
+    }
+
+    /** Creates a WebTestClient with an AOP-proxied {@link ContributionSortingSupport}. */
+    private WebTestClient sortingWebClient(
+            GetContributionSummaryUseCase getContributionSummaryUseCase,
+            ExportContributionSummaryUseCase exportContributionSummaryUseCase) {
+        var provider = displayConfigProvider();
+        var mapper = new ContributionSummaryWebMapper(
+                (amount, lang, env, trustCode, schemeType) -> amount == null ? "0" : amount.toPlainString());
+        return WebTestClient.bindToController(new ContributionController(
+                        getContributionSummaryUseCase,
+                        exportContributionSummaryUseCase,
+                        new ContributionSummaryWorkbookExporter(provider),
+                        provider,
+                        mapper,
+                        sortingSupportProxy()))
+                .controllerAdvice(new ApiExceptionHandler())
+                .build();
+    }
+
+    /** Creates an AOP-proxied {@link ContributionSortingSupport} with the real aspect applied. */
+    private ContributionSortingSupport sortingSupportProxy() {
+        var factory = new AspectJProxyFactory(new ContributionSortingSupport());
+        factory.addAspect(new ApplySortsAspect(new SortEngine()));
+        return factory.getProxy();
+    }
+
+    @Test
+    void getContributionSummaryReturnsSortedItemsByDealingDateDesc() {
+        // Use case returns rows in un-sorted order: Jan, Mar, Feb
+        GetContributionSummaryUseCase getUseCase = command -> Mono.just(unsortedResult());
+
+        sortingWebClient(getUseCase, unusedExportUseCase())
+                .get()
+                .uri("/api/v1/contributions")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                // After sorting, Apr (latest) must appear first
+                .jsonPath("$.items[0].dealingDate.text").isEqualTo("01/04/2026")
+                .jsonPath("$.items[1].dealingDate.text").isEqualTo("01/03/2026")
+                .jsonPath("$.items[2].dealingDate.text").isEqualTo("01/01/2026");
+    }
+
+    @Test
+    void breakdownRowsFollowSourceSequenceOrderAfterSorting() {
+        // Sources given in wrong sequence order (EE=20 before ER=10);
+        // after sorting, ER (seq 10) must precede EE (seq 20) in the breakdown
+        GetContributionSummaryUseCase getUseCase = command -> Mono.just(unsortedSourcesResult());
+
+        sortingWebClient(getUseCase, unusedExportUseCase())
+                .get()
+                .uri("/api/v1/contributions")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                // rows[0] is the hardcoded total, rows[1] should be Company (ER, seq=10)
+                .jsonPath("$.items[0].breakdown.rows[1].label").isEqualTo("Company")
+                .jsonPath("$.items[0].breakdown.rows[2].label").isEqualTo("Member");
+    }
+
+    private ContributionSummaryReportResult unsortedResult() {
+        return new ContributionSummaryReportResult(
+                new ContributionSummaryReport(
+                        "HKD",
+                        List.of(
+                                new ContributionSource("ER", new ContributionLabels("Company", ""), 10),
+                                new ContributionSource("EE", new ContributionLabels("Member", ""), 20)),
+                        List.of(
+                                new ContributionSummaryRow("01/01/2026", "01/01/2026", "31/01/2026",
+                                        new BigDecimal("100"), new LinkedHashMap<>(java.util.Map.of("ER", new BigDecimal("100")))),
+                                new ContributionSummaryRow("01/04/2026", "01/04/2026", "30/04/2026",
+                                        new BigDecimal("400"), new LinkedHashMap<>(java.util.Map.of("ER", new BigDecimal("400")))),
+                                new ContributionSummaryRow("01/03/2026", "01/03/2026", "31/03/2026",
+                                        new BigDecimal("300"), new LinkedHashMap<>(java.util.Map.of("ER", new BigDecimal("300")))))),
+                new CurrencyDisplay("HKD", "港元"),
+                new ContributionActions(true),
+                "", "");
+    }
+
+    private ContributionSummaryReportResult unsortedSourcesResult() {
+        // Sources in wrong order: EE (seq=20) before ER (seq=10)
+        return new ContributionSummaryReportResult(
+                new ContributionSummaryReport(
+                        "HKD",
+                        List.of(
+                                new ContributionSource("EE", new ContributionLabels("Member", ""), 20),
+                                new ContributionSource("ER", new ContributionLabels("Company", ""), 10)),
+                        List.of(new ContributionSummaryRow(
+                                "01/03/2026", "01/03/2026", "31/03/2026",
+                                new BigDecimal("24908.45"),
+                                new LinkedHashMap<>(java.util.Map.of(
+                                        "ER", new BigDecimal("17791.75"),
+                                        "EE", new BigDecimal("7116.7")))))),
+                new CurrencyDisplay("HKD", "港元"),
+                new ContributionActions(true),
+                "", "");
     }
 
     private ContributionWebDisplayConfigProvider displayConfigProvider() {
@@ -160,6 +355,9 @@ class ContributionControllerTest {
                                 new LinkedHashMap<>(java.util.Map.of(
                                         "ER", new BigDecimal("17791.75"),
                                         "EE", new BigDecimal("7116.7")))))),
-                                new CurrencyDisplay("HKD", "港元"));
+                new CurrencyDisplay("HKD", "港元"),
+                new ContributionActions(true),
+                "",
+                "");
     }
 }

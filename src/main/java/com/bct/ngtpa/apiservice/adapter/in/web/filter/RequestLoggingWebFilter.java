@@ -4,14 +4,15 @@ import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import lombok.extern.slf4j.Slf4j;
+
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.reactivestreams.Publisher;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.io.buffer.DataBuffer;
@@ -48,9 +49,8 @@ import reactor.core.publisher.Mono;
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
+@Slf4j
 public class RequestLoggingWebFilter implements WebFilter {
-
-    private static final Logger log = LoggerFactory.getLogger(RequestLoggingWebFilter.class);
 
     private final RequestLoggingProperties properties;
     private final LoggingSanitizer loggingSanitizer;

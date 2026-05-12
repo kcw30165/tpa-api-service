@@ -1,5 +1,9 @@
 # NGTPA API Service
 
+
+> **Document ownership:** This README is the source of truth for the current implemented service behaviour, local setup, configuration, API contracts, logging behaviour, and developer/operator guidance.  
+> `architecture_plan.md` is retained as the architecture baseline and decision-history document; it should not duplicate every implementation detail.
+
 Backend-for-Frontend (BFF) service for the **ORSO NGTPA** member portal.  
 Acts as the single gateway between the Angular frontend and the APIM layer (which fronts the Progress OpenEdge business logic). No local database — all state lives in Progress via APIM.
 
@@ -25,6 +29,16 @@ The service runs as a reactive Spring Boot application and reads local developme
 ---
 
 ## Architecture
+
+## Logging Stack
+
+The project uses the SLF4J API with Logback as the runtime implementation:
+
+- **API**: SLF4J (`org.slf4j`) is used in application code (for example, `ExecutionLoggingAspect`).
+- **Runtime**: Logback (`ch.qos.logback:logback-classic`) is provided via the Spring Boot starters.
+- **Bridging**: `log4j-to-slf4j` and `jul-to-slf4j` bridge Log4j and java.util.logging to SLF4J → Logback.
+- **Configuration**: Use `logging.level.*` in `src/main/resources/application.yml` for simple overrides. For advanced configuration add `logback-spring.xml` or `logback.xml` to `src/main/resources`.
+
 
 Clean Architecture / Hexagonal (Ports & Adapters):
 
@@ -431,6 +445,152 @@ Effective rules:
 
 
 
+---
+
+## Presentation Sorting: `@ApplySorts`
+
+The `@ApplySorts` annotation provides opt-in, path-based sorting for JSON API responses and Excel export data. It lives entirely in the web adapter layer (`adapter/in/web/sort`) and does **not** modify application or domain code.
+
+### When to use
+
+Apply `@ApplySorts` to **web-adapter methods** that return a value needing sorted lists before it is mapped to JSON or written to an Excel workbook. Never apply it to application use case `execute()` methods.
+
+### How it works
+
+1. The `ApplySortsAspect` intercepts any method annotated with `@ApplySorts`.
+2. For synchronous return types the sorting is applied inline.
+3. For `Mono<T>` the sorting is deferred via `.map()` — the aspect never subscribes or blocks internally.
+4. Sorting is delegated to `SortEngine`, which navigates the object graph, sorts the target list, and rebuilds any immutable Java records in the path using the canonical constructor.
+
+### Annotation reference
+
+```java
+// Container annotation — one or more lists to sort
+@ApplySorts({
+    @SortList(
+        path  = "report.rows",   // dot-separated accessor path to the target List
+        by    = {
+            @SortBy(
+                field       = "dealingDate",       // accessor name (or dot-separated nested path)
+                direction   = SortDirection.DESC,  // ASC | DESC
+                type        = SortType.DATE,       // STRING | NUMBER | DATE | BOOLEAN
+                datePattern = "dd/MM/yyyy",        // required for DATE type
+                nullsLast   = true                 // nullsLast=true (default) → nulls sort after values
+            )
+        }
+    )
+})
+public MyResult sort(MyResult result) { return result; }
+```
+
+### Supported `SortType` values
+
+| Type | Comparison | Notes |
+|---|---|---|
+| `STRING` | Lexicographic via `String.compareTo` | Case-sensitive |
+| `NUMBER` | Numeric via `BigDecimal` | Handles `Integer`, `Long`, `Double`, `BigDecimal` |
+| `DATE` | Temporal via `LocalDate` parsed with `datePattern` | Blank/null/unparseable → treated as `null` |
+| `BOOLEAN` | Natural order (`false < true`) | |
+
+### Null handling
+
+- `nullsLast = true` (default) — null, blank, and unparseable DATE values sort **after** all non-null values.
+- `nullsLast = false` — those values sort **before** all non-null values.
+
+### Date pattern behaviour
+
+- `datePattern` must be a valid `DateTimeFormatter` pattern (e.g. `"dd/MM/yyyy"`).
+- If the field value cannot be parsed using the pattern it is treated as `null`.
+- An empty `datePattern` defaults to ISO 8601 local date format (`yyyy-MM-dd`).
+
+### Path syntax
+
+| Path example | Description |
+|---|---|
+| `"items"` | Direct `List` field named `items` on the root object |
+| `"report.rows"` | Navigate `root.report()` then sort `report.rows()` |
+| `"report.sources"` | Navigate `root.report()` then sort `report.sources()` |
+| `"data.items"` | Navigate `root.data()` then sort `data.items()` |
+
+> **Note:** Collection traversal paths (e.g. `"items[].breakdown.rows"`) are not yet implemented. Only direct field and nested object paths are supported. This can be added without changing the annotation contract.
+
+### Multi-field sorting
+
+Multiple `@SortBy` rules in the same `@SortList` form a compound comparator applied in declaration order (primary, secondary, tertiary …). If two values are equal on the primary field the secondary rule is used, and so on.
+
+### Limitations
+
+- **Opt-in only.** The annotation does **not** recursively discover and sort all lists. Only the list at the declared `path` is sorted.
+- **Records required for nested paths.** When the path includes intermediate segments (e.g. `"report.rows"`), every intermediate object must be a Java record. The engine uses the canonical constructor to rebuild the record immutably.
+- **Binary exports.** Do not apply `@ApplySorts` to methods that return `ResponseEntity<byte[]>` or raw Excel bytes. Sorting must happen **before** the workbook exporter writes bytes. See the Contribution Summary example below.
+- **Flux support.** `Flux<T>` sorting is not yet implemented. Existing endpoints use `Mono`. Flux support can be added without changing the annotation contract.
+
+### Contribution Summary example
+
+```java
+@Component
+public class ContributionSortingSupport {
+
+    @ApplySorts({
+        @SortList(
+            path = "report.rows",
+            by = {
+                @SortBy(field = "dealingDate", direction = SortDirection.DESC,
+                        type = SortType.DATE, datePattern = "dd/MM/yyyy"),
+                @SortBy(field = "coverFrom",   direction = SortDirection.DESC,
+                        type = SortType.DATE, datePattern = "dd/MM/yyyy"),
+                @SortBy(field = "coverTo",     direction = SortDirection.DESC,
+                        type = SortType.DATE, datePattern = "dd/MM/yyyy")
+            }
+        ),
+        @SortList(
+            path = "report.sources",
+            by = {
+                @SortBy(field = "sequence", direction = SortDirection.ASC, type = SortType.NUMBER),
+                @SortBy(field = "code",     direction = SortDirection.ASC, type = SortType.STRING)
+            }
+        )
+    })
+    public ContributionSummaryReportResult sort(ContributionSummaryReportResult result) {
+        return result; // AOP intercepts and sorts
+    }
+}
+```
+
+The controller calls `contributionSortingSupport::sort` before mapping to JSON and before writing Excel bytes:
+
+```java
+// JSON endpoint
+getContributionSummaryUseCase.execute(command)
+    .map(contributionSortingSupport::sort)           // sort first
+    .map(result -> webMapper.toListResponse(...));   // then map
+
+// Export endpoint
+exportContributionSummaryUseCase.execute(command)
+    .map(contributionSortingSupport::sort)           // sort first
+    .map(workbookExporter::write)                    // then write bytes
+    .map(body -> ResponseEntity.ok()...);
+```
+
+### Future endpoint example
+
+```java
+@ApplySorts({
+    @SortList(
+        path = "items",
+        by = {
+            @SortBy(field = "tradeDate", direction = SortDirection.DESC,
+                    type = SortType.DATE, datePattern = "dd/MM/yyyy"),
+            @SortBy(field = "fundCode",  direction = SortDirection.ASC,
+                    type = SortType.STRING)
+        }
+    )
+})
+public TradeListResult sort(TradeListResult result) { return result; }
+```
+
+---
+
 ## Contribution Summary Configuration
 
 Contribution summary labels, currency display mappings, and Excel headers are configured as regular Spring properties rather than environment variables. For now the runtime source is `src/main/resources/application-local.yml` plus the Kubernetes ConfigMap `ngtpa-display-config`. Config Service remains future work.
@@ -600,11 +760,14 @@ Retrieves grouped contribution summary rows for a member context as JSON.
 - `mbrType` (required by frontend contract; currently forwarded only as application context)
 - `fromDate` (required; `dd/MM/yyyy`)
 - `toDate` (required; `dd/MM/yyyy`)
+- `lang` (optional; language code for display formatting, e.g. `en`, `zh_HK`; defaults to `en`)
+- `page` (optional; pagination page number, must be > 0; defaults to `1`)
+- `pageSize` (optional; number of items per page, must be > 0; defaults to `20`)
 
 **Example:**
 
 ```http
-GET /api/v1/contributions?env=JP&mbrType=MBR&fromDate=05/04/2026&toDate=05/05/2026
+GET /api/v1/contributions?env=JP&mbrType=MBR&fromDate=05/04/2026&toDate=05/05/2026&lang=en&page=1&pageSize=20
 ```
 
 **Behavior:**
@@ -614,53 +777,59 @@ GET /api/v1/contributions?env=JP&mbrType=MBR&fromDate=05/04/2026&toDate=05/05/20
 - `fromDate` and `toDate` must both be within `[ref-date - 36 months, ref-date]`, inclusive.
 - `ref-date` is resolved from deployment-scoped reference date config, not from the request query `env`.
 - `reference-date.deployment-env` controls whether the paired non-production override may be used.
+- `page` and `pageSize` must both be greater than 0; HTTP 400 is returned otherwise. No real backend pagination is performed yet — all data is returned from APIM and the pagination fields reflect the full dataset.
+- `lang` is normalized to `en` when blank.
 - Contribution rows are grouped by `deal-date + cover-from + cover-to`.
 - Dynamic detail items are joined from `contDtl[*].disp-src` to `dispSrc[*].disp-src` and sorted by `dispSrc.seq` ascending.
-- `totalContributionEn` is the sum of the grouped detail amounts using `BigDecimal`.
-- The first detail item is synthetic and uses the configured `contribution-summary.total-label.*` values.
-- Each detail label exposes only `en` and `zh`.
-- Detail `amountEn` and `amountZh` are pre-formatted strings using the resolved currency display.
-- `totalContributionEn` and `totalContributionZh` use the same formatting logic with insignificant trailing zeros stripped.
+- Amount `text` values are formatted using `display-format.amount.*` configuration (language and env-specific). Value `value` is the raw `BigDecimal`.
+- Date values carry the query-string text (`fromDate`/`toDate`) and also the ISO date string derived from APIM `cover-from`/`cover-to` date parsing.
 - `policy-no`, `cert-no`, `user-id`, `trustCode`, and `schemeType` are resolved from externalized `temporary-member-context.profiles.contributions.*` configuration (see **Temporary Member Context Configuration** below) until Auth Server integration is implemented.
+- `actions.export.enabled` is always `true` (temporary stub via `TemporaryContributionActionPermissionAdapter`).
 
 **Response:**
 
 ```json
 {
-  "contributions": [
+  "actions": {
+    "export": { "enabled": true }
+  },
+  "items": [
     {
-      "dealingDate": "01/03/2026",
-      "coveringPeriod": "01/03/2026 - 31/03/2026",
-      "totalContributionEn": "HKD 24908.45",
-      "totalContributionZh": "港元 24908.45",
-      "details": [
-        {
-          "labels": {
-            "en": "Total Contributions",
-            "zh": "供款總額"
+      "itemId": "CONTRIB-2026-03",
+      "itemType": "contribution",
+      "period": {
+        "fromDate": { "value": "2026-03-01", "text": "01/03/2026" },
+        "toDate":   { "value": "2026-03-31", "text": "31/03/2026" }
+      },
+      "dealingDate": { "value": "2026-03-01", "text": "01/03/2026" },
+      "currency": { "value": "HKD", "text": "HKD" },
+      "totalContribution": {
+        "amount": { "value": 24908.45, "text": "24,908.45" }
+      },
+      "breakdown": {
+        "rows": [
+          {
+            "label": "Total Contributions",
+            "amount": { "value": 24908.45, "text": "24,908.45" }
           },
-          "amountEn": "HKD 24908.45",
-          "amountZh": "港元 24908.45"
-        },
-        {
-          "labels": {
-            "en": "Company",
-            "zh": ""
+          {
+            "label": "Company",
+            "amount": { "value": 17791.75, "text": "17,791.75" }
           },
-          "amountEn": "HKD 17791.75",
-          "amountZh": "港元 17791.75"
-        },
-        {
-          "labels": {
-            "en": "Member",
-            "zh": ""
-          },
-          "amountEn": "HKD 7116.7",
-          "amountZh": "港元 7116.7"
-        }
-      ]
+          {
+            "label": "Member",
+            "amount": { "value": 7116.70, "text": "7,116.70" }
+          }
+        ]
+      }
     }
-  ]
+  ],
+  "pagination": {
+    "page": 1,
+    "pageSize": 20,
+    "totalRecords": 1,
+    "hasNextPage": false
+  }
 }
 ```
 
@@ -675,6 +844,43 @@ GET /api/v1/contributions?env=JP&mbrType=MBR&fromDate=05/04/2026&toDate=05/05/20
 ```
 
 Range validation failures also use the same envelope with messages such as `fromDate must not be after toDate` and `fromDate and toDate must be within the range from ref-date minus 36 months to ref-date`.
+
+Pagination validation failures:
+- `page must be greater than 0`
+- `pageSize must be greater than 0`
+
+### Display Format Configuration
+
+Amount and date display formatting for the contribution JSON response is driven by `display-format.*` properties:
+
+```yaml
+display-format:
+  date:
+    en:
+      default: dd/MM/yyyy
+      JP: dd/MM/yyyy
+    zh_HK:
+      default: dd/MM/yyyy
+  amount:
+    en:
+      default:
+        min-fraction-digits: 0
+        max-fraction-digits: 2
+        grouping-separator: ","
+        decimal-separator: "."
+        rounding-mode: HALF_UP
+        strip-trailing-zeros: true
+        negative-style: minus
+      JP:
+        # ...env-specific override
+    zh_HK:
+      default:
+        # ...
+```
+
+- Keys under each locale are resolved by priority: `${env}.${trustCode}.${schemeType}` → `${env}.${trustCode}` → `${env}` → `default`.
+- Blank trustCode or schemeType segments are skipped in the key lookup.
+- If no config entry is found, amount falls back to a built-in standard format; date falls back to ISO `yyyy-MM-dd`.
 
 ### `GET /api/v1/contributions/export`
 
@@ -721,3 +927,75 @@ Failures use the same standardized JSON error envelope as the rest of the API.
 | Data Models | `docs/brd/converted/data_models.md` |
 | Gap Analysis | `docs/brd/analysis/gap_analysis.md` |
 | Architecture Plan | `docs/brd/analysis/architecture_plan.md` |
+
+
+## Architecture and Implementation Conventions
+
+This section contains the current implementation conventions that were previously mixed into `architecture_plan.md`. Keep these details here because they describe how the repository currently works and how developers should extend it.
+
+### Document Ownership
+
+- Update this README when implementation changes affect build/run steps, endpoint contracts, environment variables, configuration properties, logging, authentication, packaging, or operational behaviour.
+- Update `architecture_plan.md` only for architecture direction changes, major design decisions, confirmed TBC integrations, or new/removed architectural constraints.
+
+### Application Layer Rules
+
+Application use case implementations must remain framework-free:
+
+- no `org.springframework.*` imports in `application.*`;
+- no adapter imports in `application.*`;
+- no `@Service`, `@Component`, or web/security annotations on use-case classes;
+- use cases are wired from `config/UseCaseConfig`;
+- execution logging for use cases is applied by infrastructure pointcut, not by annotating use cases.
+
+### Web Adapter Mapping Rules
+
+Response DTO records should remain simple data carriers. Mapping belongs in `adapter/in/web/mapper` or focused web-support classes when it involves:
+
+- fallback logic;
+- type conversion;
+- dynamic formatting;
+- display configuration;
+- synthetic rows;
+- presentation ordering;
+- public API contract decisions.
+
+ObjectMapper should be used for mechanical JSON serialization/deserialization only, not to hide business or presentation rules.
+
+### Presentation Sorting Rules
+
+`@ApplySorts` is a web-adapter mechanism. Apply it only to methods that sort presentation/export results before JSON mapping or workbook generation.
+
+Do not apply presentation sorting directly to application use-case `execute(...)` methods. Binary export bytes must not be sorted directly; sort the result object before writing the workbook.
+
+### Exception Boundary Rules
+
+- Adapter-private exceptions should not cross architectural boundaries.
+- APIM crypto or transport-specific exceptions should be mapped to the standard APIM/application error path before reaching the application or web layer.
+- `ApiExceptionHandler` should not import outbound adapter internals.
+- Error responses should follow the standard BFF error envelope documented in the endpoint sections.
+
+### APIM DTO Boundary Rules
+
+- `ApimResponseEnvelope`, `ApimResponseBody`, and endpoint-specific APIM item DTOs are confined to `adapter/out/apim`.
+- Outbound ports must not expose APIM DTOs.
+- Application use cases, domain models, and web controllers must not return APIM DTOs.
+- Endpoint-specific APIM DTOs should model outbound request payloads and `response.data[]` item schemas only; the shared APIM response envelope should be modelled once.
+
+### Configuration Placement Rules
+
+- Global `config/` is composition-only and should contain use-case wiring or equivalent composition classes.
+- APIM properties belong under the APIM adapter package.
+- Web presentation properties belong under the web adapter package.
+- Temporary member-context, display-format, reference-date, and permission adapters should stay near the adapter implementation that consumes them.
+
+### ArchUnit Guardrails
+
+The architecture test suite should continue to enforce these constraints:
+
+- domain does not depend on Spring, adapter, application, or config;
+- application does not depend on adapter, config, or Spring Framework;
+- application does not depend on shared logging annotations;
+- inbound adapters do not depend on outbound adapters;
+- global `config/` remains composition-only;
+- APIM internal subpackages such as DTO, crypto, credential, OAuth, certificate, and client packages do not leak outside the APIM adapter.

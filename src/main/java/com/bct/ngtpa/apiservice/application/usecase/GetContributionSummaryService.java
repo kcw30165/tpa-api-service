@@ -5,6 +5,7 @@ import com.bct.ngtpa.apiservice.application.dto.GetContributionSummaryCommand;
 import com.bct.ngtpa.apiservice.application.dto.MemberContextPurpose;
 import com.bct.ngtpa.apiservice.application.port.in.GetContributionSummaryUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimContributionSummaryPort;
+import com.bct.ngtpa.apiservice.application.port.out.ContributionActionPermissionPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
 import com.bct.ngtpa.apiservice.application.port.out.MemberContextPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
@@ -19,9 +20,12 @@ public class GetContributionSummaryService implements GetContributionSummaryUseC
         private final CurrencyDisplayPort currencyDisplayPort;
         private final ReferenceDatePort referenceDatePort;
         private final MemberContextPort memberContextPort;
+        private final ContributionActionPermissionPort contributionActionPermissionPort;
 
         @Override
         public Mono<ContributionSummaryReportResult> execute(GetContributionSummaryCommand command) {
+                ContributionSummarySupport.validatePagination(command.page(), command.pageSize());
+
                 var fromDate = ContributionSummarySupport.parseRequiredDate(command.fromDate(), "fromDate");
                 var toDate = ContributionSummarySupport.parseRequiredDate(command.toDate(), "toDate");
 
@@ -50,6 +54,10 @@ public class GetContributionSummaryService implements GetContributionSummaryUseC
                                                                                 report.currency(),
                                                                                 fetchCommand.env(),
                                                                                 fetchCommand.trustCode(),
-                                                                                fetchCommand.schemeType()))));
+                                                                                fetchCommand.schemeType()),
+                                                                contributionActionPermissionPort
+                                                                                .resolveContributionActions(),
+                                                                fetchCommand.trustCode(),
+                                                                fetchCommand.schemeType())));
         }
 }

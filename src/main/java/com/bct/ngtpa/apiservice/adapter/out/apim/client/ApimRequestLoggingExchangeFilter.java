@@ -8,17 +8,16 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import reactor.core.publisher.Mono;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class ApimRequestLoggingExchangeFilter {
-
-    private static final Logger logger = LoggerFactory.getLogger(ApimRequestLoggingExchangeFilter.class);
 
     private final LoggingSanitizer loggingSanitizer;
     private final ObjectMapper objectMapper;
@@ -41,7 +40,7 @@ public class ApimRequestLoggingExchangeFilter {
                     event.put("url", String.valueOf(request.url()));
                     event.put("headers", loggingSanitizer.sanitizeValue(headers));
 
-                    logger.info("{}", toJson(event));
+                    log.info("{}", toJson(event));
 
                     return Mono.just(request);
                 })
