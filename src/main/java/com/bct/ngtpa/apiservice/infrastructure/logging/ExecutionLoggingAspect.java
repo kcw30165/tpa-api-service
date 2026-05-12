@@ -4,6 +4,9 @@ import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
@@ -11,8 +14,6 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
@@ -20,9 +21,8 @@ import reactor.core.publisher.Mono;
 
 @Aspect
 @Component
+@Slf4j
 public class ExecutionLoggingAspect {
-
-    private static final Logger log = LoggerFactory.getLogger(ExecutionLoggingAspect.class);
 
     private final LoggingSanitizer loggingSanitizer;
     private final ObjectMapper objectMapper;

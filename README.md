@@ -1,5 +1,9 @@
 # NGTPA API Service
 
+
+> **Document ownership:** This README is the source of truth for the current implemented service behaviour, local setup, configuration, API contracts, logging behaviour, and developer/operator guidance.  
+> `architecture_plan.md` is retained as the architecture baseline and decision-history document; it should not duplicate every implementation detail.
+
 Backend-for-Frontend (BFF) service for the **ORSO NGTPA** member portal.  
 Acts as the single gateway between the Angular frontend and the APIM layer (which fronts the Progress OpenEdge business logic). No local database — all state lives in Progress via APIM.
 
@@ -25,6 +29,16 @@ The service runs as a reactive Spring Boot application and reads local developme
 ---
 
 ## Architecture
+
+## Logging Stack
+
+The project uses the SLF4J API with Logback as the runtime implementation:
+
+- **API**: SLF4J (`org.slf4j`) is used in application code (for example, `ExecutionLoggingAspect`).
+- **Runtime**: Logback (`ch.qos.logback:logback-classic`) is provided via the Spring Boot starters.
+- **Bridging**: `log4j-to-slf4j` and `jul-to-slf4j` bridge Log4j and java.util.logging to SLF4J → Logback.
+- **Configuration**: Use `logging.level.*` in `src/main/resources/application.yml` for simple overrides. For advanced configuration add `logback-spring.xml` or `logback.xml` to `src/main/resources`.
+
 
 Clean Architecture / Hexagonal (Ports & Adapters):
 
@@ -913,3 +927,75 @@ Failures use the same standardized JSON error envelope as the rest of the API.
 | Data Models | `docs/brd/converted/data_models.md` |
 | Gap Analysis | `docs/brd/analysis/gap_analysis.md` |
 | Architecture Plan | `docs/brd/analysis/architecture_plan.md` |
+
+
+## Architecture and Implementation Conventions
+
+This section contains the current implementation conventions that were previously mixed into `architecture_plan.md`. Keep these details here because they describe how the repository currently works and how developers should extend it.
+
+### Document Ownership
+
+- Update this README when implementation changes affect build/run steps, endpoint contracts, environment variables, configuration properties, logging, authentication, packaging, or operational behaviour.
+- Update `architecture_plan.md` only for architecture direction changes, major design decisions, confirmed TBC integrations, or new/removed architectural constraints.
+
+### Application Layer Rules
+
+Application use case implementations must remain framework-free:
+
+- no `org.springframework.*` imports in `application.*`;
+- no adapter imports in `application.*`;
+- no `@Service`, `@Component`, or web/security annotations on use-case classes;
+- use cases are wired from `config/UseCaseConfig`;
+- execution logging for use cases is applied by infrastructure pointcut, not by annotating use cases.
+
+### Web Adapter Mapping Rules
+
+Response DTO records should remain simple data carriers. Mapping belongs in `adapter/in/web/mapper` or focused web-support classes when it involves:
+
+- fallback logic;
+- type conversion;
+- dynamic formatting;
+- display configuration;
+- synthetic rows;
+- presentation ordering;
+- public API contract decisions.
+
+ObjectMapper should be used for mechanical JSON serialization/deserialization only, not to hide business or presentation rules.
+
+### Presentation Sorting Rules
+
+`@ApplySorts` is a web-adapter mechanism. Apply it only to methods that sort presentation/export results before JSON mapping or workbook generation.
+
+Do not apply presentation sorting directly to application use-case `execute(...)` methods. Binary export bytes must not be sorted directly; sort the result object before writing the workbook.
+
+### Exception Boundary Rules
+
+- Adapter-private exceptions should not cross architectural boundaries.
+- APIM crypto or transport-specific exceptions should be mapped to the standard APIM/application error path before reaching the application or web layer.
+- `ApiExceptionHandler` should not import outbound adapter internals.
+- Error responses should follow the standard BFF error envelope documented in the endpoint sections.
+
+### APIM DTO Boundary Rules
+
+- `ApimResponseEnvelope`, `ApimResponseBody`, and endpoint-specific APIM item DTOs are confined to `adapter/out/apim`.
+- Outbound ports must not expose APIM DTOs.
+- Application use cases, domain models, and web controllers must not return APIM DTOs.
+- Endpoint-specific APIM DTOs should model outbound request payloads and `response.data[]` item schemas only; the shared APIM response envelope should be modelled once.
+
+### Configuration Placement Rules
+
+- Global `config/` is composition-only and should contain use-case wiring or equivalent composition classes.
+- APIM properties belong under the APIM adapter package.
+- Web presentation properties belong under the web adapter package.
+- Temporary member-context, display-format, reference-date, and permission adapters should stay near the adapter implementation that consumes them.
+
+### ArchUnit Guardrails
+
+The architecture test suite should continue to enforce these constraints:
+
+- domain does not depend on Spring, adapter, application, or config;
+- application does not depend on adapter, config, or Spring Framework;
+- application does not depend on shared logging annotations;
+- inbound adapters do not depend on outbound adapters;
+- global `config/` remains composition-only;
+- APIM internal subpackages such as DTO, crypto, credential, OAuth, certificate, and client packages do not leak outside the APIM adapter.
