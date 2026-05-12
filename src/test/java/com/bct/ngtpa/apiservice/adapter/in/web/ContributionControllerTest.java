@@ -23,6 +23,7 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
+import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -59,11 +60,11 @@ class ContributionControllerTest {
                 .jsonPath("$.items[0].itemId").isEqualTo("CONTRIB-2026-03")
                 .jsonPath("$.items[0].itemType").isEqualTo("contribution")
                 .jsonPath("$.items[0].period.fromDate.value").isEqualTo("2026-03-01")
-                .jsonPath("$.items[0].period.fromDate.text").isEqualTo("01/03/2026")
+                .jsonPath("$.items[0].period.fromDate.text").isEqualTo("03/01/2026")
                 .jsonPath("$.items[0].period.toDate.value").isEqualTo("2026-03-31")
-                .jsonPath("$.items[0].period.toDate.text").isEqualTo("31/03/2026")
+                .jsonPath("$.items[0].period.toDate.text").isEqualTo("03/31/2026")
                 .jsonPath("$.items[0].dealingDate.value").isEqualTo("2026-03-01")
-                .jsonPath("$.items[0].dealingDate.text").isEqualTo("01/03/2026")
+                .jsonPath("$.items[0].dealingDate.text").isEqualTo("03/01/2026")
                 .jsonPath("$.items[0].currency.value").isEqualTo("HKD")
                 .jsonPath("$.items[0].currency.text").isEqualTo("HKD")
                 .jsonPath("$.items[0].totalContribution.amount.value").isEqualTo(24908.45)
@@ -218,7 +219,8 @@ class ContributionControllerTest {
             ExportContributionSummaryUseCase exportContributionSummaryUseCase) {
         var provider = displayConfigProvider();
         var mapper = new ContributionSummaryWebMapper(
-                (amount, lang, env, trustCode, schemeType) -> amount == null ? "0" : amount.toPlainString());
+                (amount, lang, env, trustCode, schemeType) -> amount == null ? "0" : amount.toPlainString(),
+                (date, lang, env, trustCode, schemeType) -> date != null ? date.format(DateTimeFormatter.ofPattern("MM/dd/yyyy")) : "");
         return WebTestClient.bindToController(new ContributionController(
                         getContributionSummaryUseCase,
                         exportContributionSummaryUseCase,
@@ -236,7 +238,8 @@ class ContributionControllerTest {
             ExportContributionSummaryUseCase exportContributionSummaryUseCase) {
         var provider = displayConfigProvider();
         var mapper = new ContributionSummaryWebMapper(
-                (amount, lang, env, trustCode, schemeType) -> amount == null ? "0" : amount.toPlainString());
+                (amount, lang, env, trustCode, schemeType) -> amount == null ? "0" : amount.toPlainString(),
+                (date, lang, env, trustCode, schemeType) -> date != null ? date.format(DateTimeFormatter.ofPattern("MM/dd/yyyy")) : "");
         return WebTestClient.bindToController(new ContributionController(
                         getContributionSummaryUseCase,
                         exportContributionSummaryUseCase,
@@ -267,8 +270,8 @@ class ContributionControllerTest {
                 .expectStatus().isOk()
                 .expectBody()
                 // After sorting, Apr (latest) must appear first
-                .jsonPath("$.items[0].dealingDate.text").isEqualTo("01/04/2026")
-                .jsonPath("$.items[1].dealingDate.text").isEqualTo("01/03/2026")
+                .jsonPath("$.items[0].dealingDate.text").isEqualTo("04/01/2026")
+                .jsonPath("$.items[1].dealingDate.text").isEqualTo("03/01/2026")
                 .jsonPath("$.items[2].dealingDate.text").isEqualTo("01/01/2026");
     }
 

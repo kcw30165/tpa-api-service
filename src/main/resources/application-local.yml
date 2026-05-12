@@ -14,17 +14,17 @@ contribution-summary:
 display-format:
   date:
     en:
-      default: dd/MM/yyyy
+      "[*]": dd/MM/yyyy
       JP: MM/dd/yyyy
     zh_HK:
-      default: dd/MM/yyyy
+      "[*]": dd/MM/yyyy
   amount:
     en:
       "[*]": "#,##0.00"
       JP: "#,##0.00"
     zh_HK:
       "[*]": "#,##0.00"
-      JP: "#,##0.00"
+      JP: "#,##0.000"
 
 logging-sanitizer:
   sensitive-tokens:
@@ -115,8 +115,8 @@ currency-mapping:
 
 reference-date:
   deployment-env: dev
-  override-date: 30/06/2026
-  override-zone-id: Asia/Hong_Kong
+  # override-date: 30/06/2026
+  # override-zone-id: Asia/Hong_Kong
 
 temporary-member-context:
   profiles:

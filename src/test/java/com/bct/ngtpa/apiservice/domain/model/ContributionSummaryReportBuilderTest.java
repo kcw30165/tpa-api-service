@@ -3,12 +3,54 @@ package com.bct.ngtpa.apiservice.domain.model;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 class ContributionSummaryReportBuilderTest {
+
+    @Test
+    void nullEntryIsSkipped() {
+        var dataset = new ContributionSummaryDataset(
+                "HKD",
+                List.of(new ContributionSource("EE", new ContributionLabels("Member", ""), 10)),
+                Arrays.asList(
+                        null,
+                        new ContributionEntry("EE", "01/03/2026", "31/03/2026", "01/03/2026", new BigDecimal("100.00"))));
+
+        var report = ContributionSummaryReportBuilder.build(dataset);
+
+        assertEquals(1, report.rows().size());
+        assertEquals(new BigDecimal("100.00"), report.rows().getFirst().totalAmount());
+    }
+
+    @Test
+    void nullAmountDefaultsToZero() {
+        var dataset = new ContributionSummaryDataset(
+                "HKD",
+                List.of(new ContributionSource("EE", new ContributionLabels("Member", ""), 10)),
+                List.of(new ContributionEntry("EE", "01/03/2026", "31/03/2026", "01/03/2026", null)));
+
+        var report = ContributionSummaryReportBuilder.build(dataset);
+
+        assertEquals(BigDecimal.ZERO, report.rows().getFirst().totalAmount());
+    }
+
+    @Test
+    void nullSourceSequenceSortsToEnd() {
+        var dataset = new ContributionSummaryDataset(
+                "HKD",
+                List.of(
+                        new ContributionSource("ER", new ContributionLabels("Company", ""), null),
+                        new ContributionSource("EE", new ContributionLabels("Member", ""), 10)),
+                List.of());
+
+        var report = ContributionSummaryReportBuilder.build(dataset);
+
+        assertEquals(List.of("EE", "ER"), report.sources().stream().map(ContributionSource::code).toList());
+    }
 
     @Test
     void groupsEntriesByDealingDateAndCoveringPeriodAndOrdersSourcesBySequence() {

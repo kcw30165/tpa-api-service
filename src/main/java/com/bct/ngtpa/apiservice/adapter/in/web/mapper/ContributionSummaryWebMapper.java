@@ -16,6 +16,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.ContributionPeriodRespon
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ContributionTotalContributionResponse;
 import com.bct.ngtpa.apiservice.application.dto.ContributionSummaryReportResult;
 import com.bct.ngtpa.apiservice.application.port.out.AmountDisplayPort;
+import com.bct.ngtpa.apiservice.application.port.out.DateDisplayPort;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryRow;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -38,12 +39,11 @@ public class ContributionSummaryWebMapper {
     static final DateTimeFormatter ISO_DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
 
     private final AmountDisplayPort amountDisplayPort;
+    private final DateDisplayPort dateDisplayPort;
 
     public ContributionListResponse toListResponse(
             ContributionSummaryReportResult result,
             ContributionWebDisplayConfig displayConfig,
-            String fromDateText,
-            String toDateText,
             String lang,
             String env,
             int page,
@@ -63,7 +63,6 @@ public class ContributionSummaryWebMapper {
         for (int i = 0; i < rows.size(); i++) {
             items.add(toItemResponse(
                     rows.get(i), result, displayConfig, itemIds.get(i),
-                    fromDateText, toDateText,
                     lang, env, trustCode, schemeType,
                     currencyCode, currencyText));
         }
@@ -82,8 +81,6 @@ public class ContributionSummaryWebMapper {
             ContributionSummaryReportResult result,
             ContributionWebDisplayConfig displayConfig,
             String itemId,
-            String fromDateText,
-            String toDateText,
             String lang,
             String env,
             String trustCode,
@@ -91,20 +88,29 @@ public class ContributionSummaryWebMapper {
             String currencyCode,
             String currencyText) {
 
-        // Period: value=ISO, text=preserve query string value exactly
+        // Period: value=ISO, text=formatted via DateDisplayPort from the actual row period dates
         LocalDate periodFrom = tryParseApimDate(row.coverFrom());
         LocalDate periodTo = tryParseApimDate(row.coverTo());
         String fromIso = periodFrom != null ? periodFrom.format(ISO_DATE_FORMATTER) : row.coverFrom();
         String toIso = periodTo != null ? periodTo.format(ISO_DATE_FORMATTER) : row.coverTo();
+        String fromText = periodFrom != null
+                ? dateDisplayPort.formatDate(periodFrom, lang, env, trustCode, schemeType)
+                : (StringUtils.hasText(row.coverFrom()) ? row.coverFrom() : "");
+        String toText = periodTo != null
+                ? dateDisplayPort.formatDate(periodTo, lang, env, trustCode, schemeType)
+                : (StringUtils.hasText(row.coverTo()) ? row.coverTo() : "");
 
         var period = new ContributionPeriodResponse(
-                new ContributionDateValueResponse(fromIso, fromDateText),
-                new ContributionDateValueResponse(toIso, toDateText));
+                new ContributionDateValueResponse(fromIso, fromText),
+                new ContributionDateValueResponse(toIso, toText));
 
-        // Dealing date: value=ISO, text=preserve APIM text exactly
+        // Dealing date: value=ISO, text=formatted via DateDisplayPort (same as period dates)
         LocalDate dealing = tryParseApimDate(row.dealingDate());
         String dealingIso = dealing != null ? dealing.format(ISO_DATE_FORMATTER) : row.dealingDate();
-        var dealingDateResponse = new ContributionDateValueResponse(dealingIso, row.dealingDate());
+        String dealingText = dealing != null
+                ? dateDisplayPort.formatDate(dealing, lang, env, trustCode, schemeType)
+                : (StringUtils.hasText(row.dealingDate()) ? row.dealingDate() : "");
+        var dealingDateResponse = new ContributionDateValueResponse(dealingIso, dealingText);
 
         // Currency
         var currency = new ContributionCurrencyValueResponse(

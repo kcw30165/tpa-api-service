@@ -899,13 +899,25 @@ display-format:
 display-format:
   date:
     en:
-      default: dd/MM/yyyy
-      JP: dd/MM/yyyy
+      "[*]": dd/MM/yyyy
+      JP: MM/dd/yyyy
     zh_HK:
-      default: dd/MM/yyyy
+      "[*]": dd/MM/yyyy
 ```
 
-- Keys under each locale are resolved by priority: `${env}` → `default`. Date falls back to ISO `yyyy-MM-dd` when no config entry is found.
+**Wildcard `[*]`**: The `[*]` YAML key (bracket notation required so Spring Boot binds it as the literal `*` map key) is the wildcard fallback for a given locale, replacing the old `default` key.
+
+**Fallback order** (tried in sequence until a pattern is found):
+
+1. `display-format.date.<lang>.<env>.<trustCode>.<schemeType>`
+2. `display-format.date.<lang>.<env>.<trustCode>`
+3. `display-format.date.<lang>.<trustCode>.<schemeType>`
+4. `display-format.date.<lang>.<trustCode>`
+5. `display-format.date.<lang>.*`
+6. Retry steps 1–5 with `en` locale if the requested locale is missing or has no match
+7. ISO `yyyy-MM-dd` if no config entry is found at all
+
+Segments that are blank or absent are skipped; compound keys are only emitted when all constituent segments are present. This means composite override keys such as `PROD.RM.MPF` or `RM.MPF` are ready for future use.
 
 ### `GET /api/v1/contributions/export`
 

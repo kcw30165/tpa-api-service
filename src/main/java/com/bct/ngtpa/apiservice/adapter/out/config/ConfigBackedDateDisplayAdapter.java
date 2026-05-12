@@ -19,17 +19,21 @@ import java.util.Map;
  *   <li>{@code ${env}.${trustCode}.${schemeType}}</li>
  *   <li>{@code ${env}.${trustCode}}</li>
  *   <li>{@code ${env}}</li>
- *   <li>{@code default}</li>
+ *   <li>{@code ${trustCode}.${schemeType}}</li>
+ *   <li>{@code ${trustCode}}</li>
+ *   <li>{@code *} (wildcard fallback)</li>
  * </ol>
  *
- * <p>Malformed keys caused by blank trustCode/schemeType are skipped.
- * Falls back to ISO {@code yyyy-MM-dd} if no config entry is found.
+ * <p>Segments that are blank are skipped; compound keys are only emitted when all
+ * constituent segments are present. If the requested locale has no matching entry,
+ * the resolver retries with the {@code en} locale. Falls back to ISO {@code yyyy-MM-dd}
+ * if no config entry is found at all.
  */
 @Component
 @RequiredArgsConstructor
 public class ConfigBackedDateDisplayAdapter implements DateDisplayPort {
 
-    private static final String DEFAULT_KEY = "default";
+    private static final String WILDCARD_KEY = "*";
     private static final DateTimeFormatter ISO_FALLBACK = DateTimeFormatter.ISO_LOCAL_DATE;
 
     private final DateFormatProperties dateFormatProperties;
@@ -48,17 +52,27 @@ public class ConfigBackedDateDisplayAdapter implements DateDisplayPort {
 
     private String resolvePattern(String lang, String env, String trustCode, String schemeType) {
         var normalizedLang = StringUtils.hasText(lang) ? lang.trim() : "en";
-        Map<String, String> localeFormats = dateFormatProperties.getLocaleFormats(normalizedLang);
+        var candidates = candidateKeys(env, trustCode, schemeType);
 
-        if (localeFormats.isEmpty()) {
-            // Try "en" as a safe fallback locale
-            localeFormats = dateFormatProperties.getLocaleFormats("en");
+        // First pass: requested locale
+        Map<String, String> localeFormats = dateFormatProperties.getLocaleFormats(normalizedLang);
+        if (!localeFormats.isEmpty()) {
+            for (var candidate : candidates) {
+                var p = localeFormats.get(candidate);
+                if (StringUtils.hasText(p)) {
+                    return p;
+                }
+            }
         }
 
-        for (var candidate : candidateKeys(env, trustCode, schemeType)) {
-            var p = localeFormats.get(candidate);
-            if (StringUtils.hasText(p)) {
-                return p;
+        // Second pass: fall back to English when the requested locale is missing or has no match
+        if (!"en".equals(normalizedLang)) {
+            var enFormats = dateFormatProperties.getLocaleFormats("en");
+            for (var candidate : candidates) {
+                var p = enFormats.get(candidate);
+                if (StringUtils.hasText(p)) {
+                    return p;
+                }
             }
         }
 
@@ -66,22 +80,29 @@ public class ConfigBackedDateDisplayAdapter implements DateDisplayPort {
     }
 
     private List<String> candidateKeys(String env, String trustCode, String schemeType) {
-        List<String> suffixSegments = new ArrayList<>();
-        addIfPresent(suffixSegments, env);
-        addIfPresent(suffixSegments, trustCode);
-        addIfPresent(suffixSegments, schemeType);
+        boolean hasEnv = StringUtils.hasText(env);
+        boolean hasTrustCode = StringUtils.hasText(trustCode);
+        boolean hasSchemeType = StringUtils.hasText(schemeType);
 
         List<String> candidates = new ArrayList<>();
-        for (int size = suffixSegments.size(); size > 0; size--) {
-            candidates.add(String.join(".", suffixSegments.subList(0, size)));
-        }
-        candidates.add(DEFAULT_KEY);
-        return List.copyOf(candidates);
-    }
 
-    private void addIfPresent(List<String> segments, String value) {
-        if (StringUtils.hasText(value)) {
-            segments.add(value.trim());
+        if (hasEnv && hasTrustCode && hasSchemeType) {
+            candidates.add(env.trim() + "." + trustCode.trim() + "." + schemeType.trim());
         }
+        if (hasEnv && hasTrustCode) {
+            candidates.add(env.trim() + "." + trustCode.trim());
+        }
+        if (hasEnv) {
+            candidates.add(env.trim());
+        }
+        if (hasTrustCode && hasSchemeType) {
+            candidates.add(trustCode.trim() + "." + schemeType.trim());
+        }
+        if (hasTrustCode) {
+            candidates.add(trustCode.trim());
+        }
+        candidates.add(WILDCARD_KEY);
+
+        return List.copyOf(candidates);
     }
 }
