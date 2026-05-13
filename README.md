@@ -952,7 +952,35 @@ The shared resolver accepts a config category, a code, and a lookup context (`en
 
 Requested language keys are tried first. If the requested language is not `en` and has no match, the resolver retries the same candidate sequence under `en`.
 
-The `ERROR_MESSAGE` category is reserved for future migration work only. Global exception handling and API error response behavior were not changed by this resolver implementation.
+The `ERROR_MESSAGE` category uses the same lookup dimensions and candidate order. Error-message resolution now delegates to the shared config resolver, while global exception handling and API error response behavior remain unchanged in this task.
+
+#### Error message configuration
+
+User-facing error messages are configured under `error-message.<locale>.<errorCode>`.
+
+- Supported locales: `en`, `zh_HK`
+- Variant-specific overrides use the existing config dimensions: `env`, `trustCode`, `schemeType`
+- Full dotted error-code keys and full variant keys should stay quoted in YAML so they bind as single map keys
+- Message values must be safe for frontend display and must not contain stack traces, raw upstream payloads, tokens, request IDs, policy numbers, certificate numbers, or other internal details
+
+Example shape:
+
+```yaml
+error-message:
+  en:
+    "err.apim.service.unavailable.JP": "Service is temporarily unavailable in JP environment. Please try again later."
+    "err.member.context.unavailable.JP.JPM.OE": "Member context is unavailable for this scheme. Please try again later."
+  zh_HK:
+    "err.apim.service.unavailable.JP": "JP服務暫時未能提供，請稍後再嘗試。"
+    "err.member.context.unavailable.JP.JPM.OE": "此計劃的成員資料暫時未能提供，請稍後再嘗試。"
+```
+
+Resolver fallback order:
+
+1. Requested locale + context-specific variant candidates + base key
+2. English + context-specific variant candidates + base key
+3. English `err.system.unexpected`
+4. Hardcoded safe fallback: `Sorry, this service might be interrupted. Please try again later.`
 
 #### Amount format (pattern-based)
 

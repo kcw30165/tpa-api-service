@@ -62,6 +62,46 @@ request-logging:
     default-max-body-size-bytes: 4096
     endpoints: []
 
+error-message:
+  en:
+    "err.request.invalid": "Invalid request."
+    "err.request.validation.failed": "Invalid request payload."
+    "err.request.body.malformed": "Malformed request body."
+    "err.security.access.denied": "Access is denied."
+    "err.security.authentication.required": "Authentication is required."
+    "err.member.context.unavailable": "Member context is unavailable."
+    "err.member.context.invalid": "Member context is invalid."
+    "err.apim.upstream.failure": "Service is temporarily unavailable. Please try again later."
+    "err.apim.service.unavailable": "Service is temporarily unavailable. Please try again later."
+    "err.apim.timeout": "Service is temporarily unavailable. Please try again later."
+    "err.apim.response.invalid": "Service is temporarily unavailable. Please try again later."
+    "err.config.error-message.missing": "Error message configuration is missing."
+    "err.config.resolution.failed": "Configuration resolution failed."
+    "err.contribution.request.invalid": "Invalid contribution request."
+    "err.notification.request.invalid": "Invalid notification request."
+    "err.system.unexpected": "Sorry, this service might be interrupted. Please try again later."
+    "err.apim.service.unavailable.JP": "Service is temporarily unavailable in JP environment. Please try again later."
+    "err.member.context.unavailable.JP.JPM.OE": "Member context is unavailable for this scheme. Please try again later."
+  zh_HK:
+    "err.request.invalid": "請求無效。"
+    "err.request.validation.failed": "請求內容無效。"
+    "err.request.body.malformed": "請求內容格式錯誤。"
+    "err.security.access.denied": "存取被拒。"
+    "err.security.authentication.required": "需要身份驗證。"
+    "err.member.context.unavailable": "成員資料暫時未能提供。"
+    "err.member.context.invalid": "成員資料無效。"
+    "err.apim.upstream.failure": "對不起，此服務可能暫受阻延，請稍後再嘗試。"
+    "err.apim.service.unavailable": "對不起，此服務可能暫受阻延，請稍後再嘗試。"
+    "err.apim.timeout": "對不起，此服務可能暫受阻延，請稍後再嘗試。"
+    "err.apim.response.invalid": "對不起，此服務可能暫受阻延，請稍後再嘗試。"
+    "err.config.error-message.missing": "錯誤訊息設定不存在。"
+    "err.config.resolution.failed": "設定解析失敗。"
+    "err.contribution.request.invalid": "供款請求無效。"
+    "err.notification.request.invalid": "通知請求無效。"
+    "err.system.unexpected": "對不起，此服務可能暫受阻延，請稍後再嘗試。"
+    "err.apim.service.unavailable.JP": "JP服務暫時未能提供，請稍後再嘗試。"
+    "err.member.context.unavailable.JP.JPM.OE": "此計劃的成員資料暫時未能提供，請稍後再嘗試。"
+
 logging:
   level:
     org.springframework.security: INFO
