@@ -17,6 +17,8 @@ import com.bct.ngtpa.apiservice.domain.model.ContributionLabels;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSource;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryReport;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryRow;
+import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
+import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import org.junit.jupiter.api.Test;
 import org.springframework.aop.aspectj.annotation.AspectJProxyFactory;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -146,8 +148,8 @@ class ContributionControllerTest {
                 .exchange()
                 .expectStatus().isBadRequest()
                 .expectBody()
-                .jsonPath("$.errorCode").isEqualTo("400")
-                .jsonPath("$.message").isEqualTo("page must be greater than 0");
+                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.CONTRIBUTION_REQUEST_INVALID)
+                .jsonPath("$.message").isEqualTo("Invalid contribution request.");
     }
 
     @Test
@@ -165,8 +167,8 @@ class ContributionControllerTest {
                 .exchange()
                 .expectStatus().isBadRequest()
                 .expectBody()
-                .jsonPath("$.errorCode").isEqualTo("400")
-                .jsonPath("$.message").isEqualTo("pageSize must be greater than 0");
+                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.CONTRIBUTION_REQUEST_INVALID)
+                .jsonPath("$.message").isEqualTo("Invalid contribution request.");
     }
 
     @Test
@@ -184,8 +186,8 @@ class ContributionControllerTest {
                 .exchange()
                 .expectStatus().isBadRequest()
                 .expectBody()
-                .jsonPath("$.errorCode").isEqualTo("400")
-                .jsonPath("$.message").isEqualTo("fromDate must be provided in dd/MM/yyyy format");
+                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.CONTRIBUTION_REQUEST_INVALID)
+                .jsonPath("$.message").isEqualTo("Invalid contribution request.");
     }
 
     @Test
@@ -228,7 +230,7 @@ class ContributionControllerTest {
                         provider,
                         mapper,
                         new ContributionSortingSupport()))
-                .controllerAdvice(new ApiExceptionHandler())
+                .controllerAdvice(new ApiExceptionHandler(testErrorMessageResolver()))
                 .build();
     }
 
@@ -247,7 +249,7 @@ class ContributionControllerTest {
                         provider,
                         mapper,
                         sortingSupportProxy()))
-                .controllerAdvice(new ApiExceptionHandler())
+                .controllerAdvice(new ApiExceptionHandler(testErrorMessageResolver()))
                 .build();
     }
 
@@ -338,6 +340,14 @@ class ContributionControllerTest {
     private GetContributionSummaryUseCase unusedGetUseCase() {
         return command -> Mono.just(sampleResult());
     }
+
+        private static ErrorMessageResolver testErrorMessageResolver() {
+                return (errorCode, locale, env, trustCode, schemeType) -> switch (errorCode) {
+                        case ErrorCodes.CONTRIBUTION_REQUEST_INVALID -> "Invalid contribution request.";
+                        case ErrorCodes.SYSTEM_UNEXPECTED -> "Sorry, this service might be interrupted. Please try again later.";
+                        default -> errorCode;
+                };
+        }
 
     private ExportContributionSummaryUseCase unusedExportUseCase() {
         return command -> Mono.just(sampleResult());

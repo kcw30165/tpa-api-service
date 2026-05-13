@@ -7,6 +7,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolu
 import com.bct.ngtpa.apiservice.adapter.out.apim.oauth.ApimTokenService;
 import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
+import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
 import com.bct.ngtpa.apiservice.exception.ApimException;
@@ -144,7 +145,10 @@ public class ApimWebClientFacade {
                         }
 
                         log.error("APIM request failed with status={} body={}", statusCode.value(), body);
-                        return Mono.error(new ApimException(HttpStatus.BAD_GATEWAY, "APIM request failed with status=%s body=%s".formatted(statusCode.value(), body)));
+                        return Mono.error(new ApimException(
+                                HttpStatus.BAD_GATEWAY,
+                                mapUpstreamErrorCode(statusCode),
+                                "APIM request failed with status=%s body=%s".formatted(statusCode.value(), body)));
                     }
                     return Mono.just(body);
                 });
@@ -172,6 +176,14 @@ public class ApimWebClientFacade {
         } catch (Exception ex) {
             log.warn("Failed to serialise APIM request body for logging.", ex);
         }
+    }
+
+    private static String mapUpstreamErrorCode(HttpStatusCode statusCode) {
+        return switch (statusCode.value()) {
+            case 503 -> ErrorCodes.APIM_SERVICE_UNAVAILABLE;
+            case 504 -> ErrorCodes.APIM_TIMEOUT;
+            default -> ErrorCodes.APIM_UPSTREAM_FAILURE;
+        };
     }
 
     private static final class RetryContext {

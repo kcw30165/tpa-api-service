@@ -16,6 +16,8 @@ import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
 import com.bct.ngtpa.apiservice.domain.model.NotificationReadStatus;
 import com.bct.ngtpa.apiservice.domain.model.MessageType;
 import com.bct.ngtpa.apiservice.domain.model.NoticeMessage;
+import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
+import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -107,8 +109,8 @@ class NotificationControllerTest {
                 .exchange()
                 .expectStatus().isBadRequest()
                 .expectBody()
-                .jsonPath("$.errorCode").isEqualTo("400")
-                .jsonPath("$.message").isEqualTo("Invalid timezone: Mars/Olympus");
+                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.NOTIFICATION_REQUEST_INVALID)
+                .jsonPath("$.message").isEqualTo("Invalid notification request.");
     }
 
     @Test
@@ -182,7 +184,7 @@ class NotificationControllerTest {
                 "notificationId must not contain blank values");
     }
 
-    private void assertInvalidPatchRequest(Object requestBody, String expectedMessage) {
+        private void assertInvalidPatchRequest(Object requestBody, String expectedMessage) {
         webClient(unusedGetNotificationsUseCase(), unusedUpdateNotificationsReadStatusUseCase())
                 .patch()
                 .uri("/api/v1/notifications")
@@ -191,8 +193,8 @@ class NotificationControllerTest {
                 .exchange()
                 .expectStatus().isBadRequest()
                 .expectBody()
-                .jsonPath("$.errorCode").isEqualTo("400")
-                .jsonPath("$.message").isEqualTo(expectedMessage);
+                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.REQUEST_VALIDATION_FAILED)
+                .jsonPath("$.message").isEqualTo("Invalid request payload.");
     }
 
     private WebTestClient webClient(
@@ -203,7 +205,7 @@ class NotificationControllerTest {
                         updateNotificationsReadStatusUseCase,
                         new NotificationWebMapper(),
                         new NotificationReadStatusWebMapper()))
-                .controllerAdvice(new ApiExceptionHandler())
+                .controllerAdvice(new ApiExceptionHandler(testErrorMessageResolver()))
                 .build();
     }
 
@@ -234,4 +236,13 @@ class NotificationControllerTest {
                 List.<Hyperlink>of()
         );
     }
+
+        private static ErrorMessageResolver testErrorMessageResolver() {
+                return (errorCode, locale, env, trustCode, schemeType) -> switch (errorCode) {
+                        case ErrorCodes.NOTIFICATION_REQUEST_INVALID -> "Invalid notification request.";
+                        case ErrorCodes.REQUEST_VALIDATION_FAILED -> "Invalid request payload.";
+                        case ErrorCodes.SYSTEM_UNEXPECTED -> "Sorry, this service might be interrupted. Please try again later.";
+                        default -> errorCode;
+                };
+        }
 }

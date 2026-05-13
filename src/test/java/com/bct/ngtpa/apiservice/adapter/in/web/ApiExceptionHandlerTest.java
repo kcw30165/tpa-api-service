@@ -5,10 +5,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiErrorResponse;
+import com.bct.ngtpa.apiservice.application.exception.ApplicationException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.application.exception.MemberContextResolutionException;
-import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.bct.ngtpa.apiservice.exception.ApimException;
+import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
+import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
+import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import java.lang.reflect.Method;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.MethodParameter;
@@ -16,6 +19,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.BindingResult;
@@ -25,30 +30,30 @@ import org.springframework.web.server.ServerWebInputException;
 
 class ApiExceptionHandlerTest {
 
-    private final ApiExceptionHandler handler = new ApiExceptionHandler();
+    private final ApiExceptionHandler handler = new ApiExceptionHandler(testErrorMessageResolver());
 
     // ── Existing body contract tests (body must only have errorCode and message) ──
 
     @Test
     void mapsApimExceptionToItsStatusAndErrorCode() {
         ResponseEntity<ApiErrorResponse> response = handler.handleApimException(
-                new ApimException(HttpStatus.BAD_GATEWAY, "UPSTREAM_FAILURE", "APIM failure"),
+            new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "APIM failure"),
                 emptyExchange());
 
         assertEquals(HttpStatus.BAD_GATEWAY, response.getStatusCode());
-        assertEquals("UPSTREAM_FAILURE", response.getBody().errorCode());
-        assertEquals("APIM failure", response.getBody().message());
+        assertEquals(ErrorCodes.APIM_UPSTREAM_FAILURE, response.getBody().errorCode());
+        assertEquals("Service is temporarily unavailable. Please try again later.", response.getBody().message());
     }
 
     @Test
     void mapsApimInternalServerErrorToItsStatusAndErrorCode() {
         ResponseEntity<ApiErrorResponse> response = handler.handleApimException(
-                new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, "500", "Crypto failure"),
+            new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCodes.SYSTEM_UNEXPECTED, "Crypto failure"),
                 emptyExchange());
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-        assertEquals("500", response.getBody().errorCode());
-        assertEquals("Crypto failure", response.getBody().message());
+        assertEquals(ErrorCodes.SYSTEM_UNEXPECTED, response.getBody().errorCode());
+        assertEquals("Sorry, this service might be interrupted. Please try again later.", response.getBody().message());
     }
 
     @Test
@@ -57,8 +62,8 @@ class ApiExceptionHandlerTest {
                 new InvalidNotificationRequestException("Invalid request"), emptyExchange());
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        assertEquals("400", response.getBody().errorCode());
-        assertEquals("Invalid request", response.getBody().message());
+        assertEquals(ErrorCodes.NOTIFICATION_REQUEST_INVALID, response.getBody().errorCode());
+        assertEquals("Invalid notification request.", response.getBody().message());
     }
 
     @Test
@@ -70,8 +75,8 @@ class ApiExceptionHandlerTest {
                 new WebExchangeBindException(methodParameter(), bindingResult), emptyExchange());
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        assertEquals("400", response.getBody().errorCode());
-        assertEquals("must not be blank", response.getBody().message());
+        assertEquals(ErrorCodes.REQUEST_VALIDATION_FAILED, response.getBody().errorCode());
+        assertEquals("Invalid request payload.", response.getBody().message());
     }
 
     @Test
@@ -83,6 +88,7 @@ class ApiExceptionHandlerTest {
                 new WebExchangeBindException(methodParameter(), bindingResult), emptyExchange());
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(ErrorCodes.REQUEST_VALIDATION_FAILED, response.getBody().errorCode());
         assertEquals("Invalid request payload.", response.getBody().message());
     }
 
@@ -92,8 +98,8 @@ class ApiExceptionHandlerTest {
                 new ServerWebInputException("Malformed JSON"), emptyExchange());
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        assertEquals("400", response.getBody().errorCode());
-        assertEquals("Malformed JSON", response.getBody().message());
+        assertEquals(ErrorCodes.REQUEST_BODY_MALFORMED, response.getBody().errorCode());
+        assertEquals("Malformed request body.", response.getBody().message());
     }
 
     @Test
@@ -102,7 +108,49 @@ class ApiExceptionHandlerTest {
                 new ServerWebInputException("  "), emptyExchange());
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
-        assertEquals("Invalid request payload.", response.getBody().message());
+        assertEquals(ErrorCodes.REQUEST_BODY_MALFORMED, response.getBody().errorCode());
+        assertEquals("Malformed request body.", response.getBody().message());
+        }
+
+        @Test
+        void mapsGenericApplicationExceptionToItsOwnErrorCode() {
+        ResponseEntity<ApiErrorResponse> response = handler.handleApplicationException(
+            new ApplicationException(ErrorCodes.REQUEST_INVALID, "internal only"),
+            emptyExchange());
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(ErrorCodes.REQUEST_INVALID, response.getBody().errorCode());
+        assertEquals("Invalid request.", response.getBody().message());
+        }
+
+        @Test
+        void mapsAuthenticationExceptionToUnauthorizedBusinessError() {
+        ResponseEntity<ApiErrorResponse> response = handler.handleAuthenticationException(
+            new BadCredentialsException("raw auth failure"), emptyExchange());
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertEquals(ErrorCodes.SECURITY_AUTHENTICATION_REQUIRED, response.getBody().errorCode());
+        assertEquals("Authentication is required.", response.getBody().message());
+        }
+
+        @Test
+        void mapsAccessDeniedExceptionToForbiddenBusinessError() {
+        ResponseEntity<ApiErrorResponse> response = handler.handleAccessDeniedException(
+            new AccessDeniedException("raw access denied"), emptyExchange());
+
+        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
+        assertEquals(ErrorCodes.SECURITY_ACCESS_DENIED, response.getBody().errorCode());
+        assertEquals("Access is denied.", response.getBody().message());
+        }
+
+        @Test
+        void mapsUnknownExceptionToSystemUnexpectedWithSafeMessage() {
+        ResponseEntity<ApiErrorResponse> response = handler.handleUnexpectedException(
+            new IllegalStateException("raw internal failure"), emptyExchange());
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertEquals(ErrorCodes.SYSTEM_UNEXPECTED, response.getBody().errorCode());
+        assertEquals("Sorry, this service might be interrupted. Please try again later.", response.getBody().message());
     }
 
     // ── Error body does NOT contain requestId ────────────────────────────────
@@ -117,7 +165,7 @@ class ApiExceptionHandlerTest {
         // Body has only errorCode and message
         assertNotNull(response.getBody());
         assertEquals("ERR", response.getBody().errorCode());
-        assertEquals("msg", response.getBody().message());
+        assertEquals("Sorry, this service might be interrupted. Please try again later.", response.getBody().message());
         // Verify by checking the record only has 2 components
         assertEquals(2, response.getBody().getClass().getRecordComponents().length);
     }
@@ -129,7 +177,7 @@ class ApiExceptionHandlerTest {
         MockServerWebExchange exchange = exchangeWithRequestId("apim-req-id");
 
         ResponseEntity<ApiErrorResponse> response = handler.handleApimException(
-                new ApimException(HttpStatus.BAD_GATEWAY, "ERR", "msg"), exchange);
+            new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "msg"), exchange);
 
         assertEquals("apim-req-id", response.getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
     }
@@ -139,7 +187,7 @@ class ApiExceptionHandlerTest {
         MockServerWebExchange exchange = exchangeWithRequestId("crypto-req-id");
 
         ResponseEntity<ApiErrorResponse> response = handler.handleApimException(
-                new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, "500", "fail"), exchange);
+            new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCodes.SYSTEM_UNEXPECTED, "fail"), exchange);
 
         assertEquals("crypto-req-id", response.getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
     }
@@ -177,9 +225,19 @@ class ApiExceptionHandlerTest {
     }
 
     @Test
+    void unexpectedExceptionResponseIncludesRequestIdHeader() {
+        MockServerWebExchange exchange = exchangeWithRequestId("unexpected-req-id");
+
+        ResponseEntity<ApiErrorResponse> response = handler.handleUnexpectedException(
+                new IllegalStateException("boom"), exchange);
+
+        assertEquals("unexpected-req-id", response.getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
+    }
+
+    @Test
     void omitsRequestIdHeaderWhenNotInExchangeAttributes() {
         ResponseEntity<ApiErrorResponse> response = handler.handleApimException(
-                new ApimException(HttpStatus.BAD_GATEWAY, "ERR", "msg"), emptyExchange());
+            new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "msg"), emptyExchange());
 
         assertNull(response.getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
     }
@@ -190,8 +248,8 @@ class ApiExceptionHandlerTest {
                 new MemberContextResolutionException("No profile for NOTIFICATIONS"), emptyExchange());
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
-        assertEquals("500", response.getBody().errorCode());
-        assertEquals("No profile for NOTIFICATIONS", response.getBody().message());
+        assertEquals(ErrorCodes.MEMBER_CONTEXT_UNAVAILABLE, response.getBody().errorCode());
+        assertEquals("Member context is unavailable.", response.getBody().message());
     }
 
     @Test
@@ -224,5 +282,23 @@ class ApiExceptionHandlerTest {
 
     @SuppressWarnings("unused")
     private void sampleHandler(String requestBody) {
+    }
+
+    private static ErrorMessageResolver testErrorMessageResolver() {
+        return (errorCode, locale, env, trustCode, schemeType) -> switch (errorCode) {
+            case ErrorCodes.APIM_UPSTREAM_FAILURE,
+                    ErrorCodes.APIM_SERVICE_UNAVAILABLE,
+                    ErrorCodes.APIM_TIMEOUT,
+                    ErrorCodes.APIM_RESPONSE_INVALID -> "Service is temporarily unavailable. Please try again later.";
+            case ErrorCodes.REQUEST_INVALID -> "Invalid request.";
+            case ErrorCodes.REQUEST_VALIDATION_FAILED -> "Invalid request payload.";
+            case ErrorCodes.REQUEST_BODY_MALFORMED -> "Malformed request body.";
+            case ErrorCodes.SECURITY_ACCESS_DENIED -> "Access is denied.";
+            case ErrorCodes.SECURITY_AUTHENTICATION_REQUIRED -> "Authentication is required.";
+            case ErrorCodes.NOTIFICATION_REQUEST_INVALID -> "Invalid notification request.";
+            case ErrorCodes.MEMBER_CONTEXT_UNAVAILABLE -> "Member context is unavailable.";
+            case ErrorCodes.SYSTEM_UNEXPECTED -> "Sorry, this service might be interrupted. Please try again later.";
+            default -> "Sorry, this service might be interrupted. Please try again later.";
+        };
     }
 }

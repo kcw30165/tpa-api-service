@@ -10,6 +10,7 @@ import com.bct.ngtpa.apiservice.application.dto.GetNotificationsCommand;
 import com.bct.ngtpa.apiservice.application.dto.NotificationListResult;
 import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.exception.ApimException;
+import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -118,7 +119,7 @@ class ApimNoticeMessageAdapterTest {
 
         ApimException ex = assertThrows(ApimException.class, () -> flowAdapter.fetchNotifications(command()).block());
 
-        assertEquals("500", ex.getErrorCode());
+        assertEquals(ErrorCodes.SYSTEM_UNEXPECTED, ex.getErrorCode());
         assertEquals("Certificate crypto error", ex.getMessage());
     }
 
@@ -169,6 +170,8 @@ class ApimNoticeMessageAdapterTest {
                 ApimException topLevelError = assertThrows(ApimException.class,
                                 () -> ReflectionTestUtils.invokeMethod(adapter, "toNotificationListResult", response));
 
+                assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, missingPayload.getErrorCode());
+                assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, topLevelError.getErrorCode());
                 assertEquals("APIM response payload is missing.", missingPayload.getMessage());
                 assertEquals("APIM failed", topLevelError.getMessage());
         }

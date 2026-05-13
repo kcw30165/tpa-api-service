@@ -10,6 +10,7 @@ import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusRes
 import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
 import com.bct.ngtpa.apiservice.exception.ApimException;
+import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -95,7 +96,7 @@ class ApimNotificationReadStatusAdapterTest {
         ApimException ex = assertThrows(ApimException.class, () -> adapter.updateReadStatus(command()).block());
 
         assertEquals("APIM update failed", ex.getMessage());
-        assertEquals("502", ex.getErrorCode());
+        assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, ex.getErrorCode());
     }
 
         @Test
@@ -132,7 +133,7 @@ class ApimNotificationReadStatusAdapterTest {
 
 		ApimException ex = assertThrows(ApimException.class, () -> adapter.updateReadStatus(command()).block());
 
-		assertEquals("500", ex.getErrorCode());
+        assertEquals(ErrorCodes.SYSTEM_UNEXPECTED, ex.getErrorCode());
 		assertEquals("Certificate crypto error", ex.getMessage());
 	}
 
@@ -176,6 +177,7 @@ class ApimNotificationReadStatusAdapterTest {
         ApimException ex = assertThrows(ApimException.class,
             () -> ReflectionTestUtils.invokeMethod(adapter, "toResult", null, MessageStatus.READ));
 
+        assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, ex.getErrorCode());
         assertEquals("APIM response payload is missing.", ex.getMessage());
         }
 

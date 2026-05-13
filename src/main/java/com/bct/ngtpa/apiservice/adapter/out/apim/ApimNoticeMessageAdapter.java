@@ -16,6 +16,7 @@ import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
 import com.bct.ngtpa.apiservice.domain.model.MessageType;
 import com.bct.ngtpa.apiservice.domain.model.NoticeMessage;
 import com.bct.ngtpa.apiservice.exception.ApimException;
+import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -61,7 +62,7 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
                     API_NAME, body, GetMessageBoardDataItem.class, null))
                 .map(this::toNotificationListResult)
                 .onErrorMap(ApimCryptoException.class, ex ->
-                    new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, "500", ex.getMessage()));
+                    new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
         }
 
         return apimCertificateService.getBctPublicKey()
@@ -74,7 +75,7 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
                         .map(this::toNotificationListResult);
                 })
                 .onErrorMap(ApimCryptoException.class, ex ->
-                    new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, "500", ex.getMessage()));
+                    new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
     }
 
     private GetMessageBoardApimRequest toApimRequest(GetNotificationsCommand command) {
@@ -91,10 +92,12 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
     private NotificationListResult toNotificationListResult(ApimResponseEnvelope<GetMessageBoardDataItem> response) {
         var payload = response != null ? response.getResponse() : null;
         if (payload == null) {
-            throw new ApimException(HttpStatus.BAD_GATEWAY, "APIM response payload is missing.");
+            throw new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID,
+                    "APIM response payload is missing.");
         }
         if (StringUtils.hasText(payload.getErrMessage())) {
-            throw new ApimException(HttpStatus.BAD_GATEWAY, payload.getErrMessage());
+            throw new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID,
+                    payload.getErrMessage());
         }
 
         var dataItems = payload.getData();
