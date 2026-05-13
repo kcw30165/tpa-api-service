@@ -160,6 +160,11 @@ class LoggingSanitizerTest {
     }
 
     @Test
+    void sanitizeTextMasksSensitiveAssignmentsInPlainText() {
+        assertEquals("policyNo=*** userId=***", sanitizer.sanitizeText("policyNo=P001 userId=member-1"));
+    }
+
+    @Test
     void toSafeStringWithObjectSerializesToJson() {
         String s = sanitizer.toSafeString(new AuditPayload("trace-1", "DEV"));
         assertTrue(s.contains("trace-1"));

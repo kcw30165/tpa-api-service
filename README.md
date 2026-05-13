@@ -401,6 +401,89 @@ Error response body remains:
 }
 ```
 
+---
+
+## Global Exception Handling
+
+### Business Error Code Convention
+
+The BFF owns the `errorCode` values returned in API error responses. These values are business error codes, not HTTP status-code strings, Java exception names, APIM-specific identifiers, or raw upstream payload fragments.
+
+The centralized registry for these stable contract values is `com.bct.ngtpa.apiservice.shared.error.ErrorCodes`.
+
+HTTP status remains in the HTTP response status only. The JSON error response body remains:
+
+```json
+{
+  "errorCode": "err.some.business.code",
+  "message": "Resolved user-facing message"
+}
+```
+
+`X-Request-Id` remains in the response header only and must not be added to the response body.
+
+All public API errors handled by `ApiExceptionHandler` return exactly these two fields: `errorCode` and `message`.
+The public `message` is always resolved through `ErrorMessageResolver` backed by `error-message.*` configuration; raw exception text is used only as sanitized diagnostic input for logs.
+Unknown exceptions are mapped to HTTP `500` with business error code `err.system.unexpected` and a resolver-backed safe message.
+
+Purpose of business error codes:
+
+- Provide a stable BFF-owned API contract value that frontend clients can safely use for flow handling, analytics, and localized presentation decisions.
+- Decouple client-visible error semantics from transport details such as HTTP status, Java exception class names, APIM internals, and deployment-specific implementation details.
+
+Naming pattern:
+
+- `err.<area>.<scenario>`
+- `err.<area>.<sub-area>.<scenario>`
+- `err.<area>.<sub-area>.<scenario>.<variant>`
+
+Naming rules:
+
+- Error codes must be stable API contract values.
+- Error codes must be safe to expose to frontend clients.
+- Error codes must use lowercase dot-separated tokens.
+- Error-code naming must be independent from Java exception class names.
+- Variant suffixes may be used only when the same scenario needs a product, trust, scheme, channel, locale, or deployment-specific variant.
+
+Safety rules:
+
+- Do not include sensitive identifiers, member IDs, policy numbers, certificate numbers, tokens, secrets, request IDs, or raw upstream error payloads.
+- Do not embed HTTP status numbers, stack-trace details, Java class names, APIM error keys, or other implementation-specific internals.
+
+Initial BFF error-code catalog:
+
+- `err.request.invalid`
+- `err.request.validation.failed`
+- `err.request.body.malformed`
+- `err.security.access.denied`
+- `err.security.authentication.required`
+- `err.member.context.unavailable`
+- `err.member.context.invalid`
+- `err.apim.upstream.failure`
+- `err.apim.service.unavailable`
+- `err.apim.timeout`
+- `err.apim.response.invalid`
+- `err.config.error-message.missing`
+- `err.config.resolution.failed`
+- `err.contribution.request.invalid`
+- `err.notification.request.invalid`
+- `err.system.unexpected`
+
+Good error codes:
+
+- `err.request.validation.failed`
+- `err.apim.service.unavailable`
+- `err.member.context.unavailable`
+
+Bad error codes:
+
+- `400`
+- `500`
+- `NullPointerException`
+- `APIM_ERR_001`
+- `err.member.12345678.failed`
+- `err.token.expired.raw.jwt.value`
+
 ### Outbound APIM Propagation
 
 `ApimRequestIdExchangeFilter` (under `adapter/out/apim/client`) propagates the resolved `X-Request-Id` from Reactor Context to every outbound APIM call as an HTTP header. This allows APIM-side log correlation with BFF-side logs.
@@ -414,12 +497,33 @@ All global and method-level log events are serialized as JSON strings. Key event
 | `http.request.start` | `RequestLoggingWebFilter` | `requestId`, `method`, `path`, `query`, `headers` |
 | `http.request.end` | `RequestLoggingWebFilter` | `requestId`, `method`, `path`, `status`, `elapsedMs` |
 | `http.request.error` | `RequestLoggingWebFilter` | `requestId`, `method`, `path`, `elapsedMs`, `exceptionType`, `errorMessage` |
+| `http.api.error` | `ApiExceptionHandler` | `requestId`, `httpMethod`, `path`, `httpStatus`, `errorCode`, `exceptionType`, `sanitizedMessage` |
 | `apim.request` | `ApimRequestLoggingExchangeFilter` | `requestId`, `method`, `url`, `headers` |
 | `method.execution.start` | `ExecutionLoggingAspect` | `requestId`*, `className`, `methodName`, `label`, `args` |
 | `method.execution.success` | `ExecutionLoggingAspect` | `requestId`*, `className`, `methodName`, `elapsedMs`, `result` |
 | `method.execution.error` | `ExecutionLoggingAspect` | `requestId`*, `className`, `methodName`, `elapsedMs`, `exceptionType`, `errorMessage` |
 
 \* `requestId` is included when available from Reactor Context (Mono/Flux methods) or MDC (synchronous methods).
+
+### Global Exception Logging Policy
+
+`ApiExceptionHandler` logs the final API error mapping once per handled exception using the structured `http.api.error` event.
+
+Severity policy:
+
+- Validation errors (`err.request.validation.failed`, `err.request.body.malformed`) log at `WARN`.
+- Business/application exceptions log at `WARN`.
+- Authentication and access-denied failures log at `WARN`.
+- APIM/integration failures log at `ERROR`.
+- Unexpected exceptions log at `ERROR` and include a single stack trace.
+
+Operational rules:
+
+- `requestId` is included when available from `X-Request-Id` correlation.
+- `errorCode` is always logged for mapped API errors.
+- `sanitizedMessage` uses `LoggingSanitizer`; sensitive tokens such as API keys, tokens, certificates, policy numbers, certificate numbers, member IDs, and user IDs must be masked.
+- Unexpected exceptions include the stack trace once from `ApiExceptionHandler`; expected validation/business failures do not emit stack traces by default.
+- Request lifecycle logs from `RequestLoggingWebFilter` may still log start/end/status, but the detailed exception mapping is owned by `ApiExceptionHandler` to avoid duplicate exception stack traces.
 
 ### Body Logging Configuration
 
@@ -703,9 +807,8 @@ GET /api/v1/notifications?env=JP&mbrType=MBR&page=1&size=10&dateFormat=dd/MM/yyy
 **Error response:**
 ```json
 {
-  "errorCode": "400",
-  "message": "Invalid timezone: Mars/Olympus",
-  "timestamp": "2026-04-29T07:42:40.643070200Z"
+  "errorCode": "err.notification.request.invalid",
+  "message": "Invalid notification request."
 }
 ```
 
@@ -751,9 +854,8 @@ Updates the read status for one or more notifications.
 **Error response:**
 ```json
 {
-  "errorCode": "400",
-  "message": "notificationId must not be empty",
-  "timestamp": "2026-04-29T07:42:40.643070200Z"
+  "errorCode": "err.request.validation.failed",
+  "message": "Invalid request payload."
 }
 ```
 
@@ -846,17 +948,12 @@ GET /api/v1/contributions?env=JP&mbrType=MBR&fromDate=05/04/2026&toDate=05/05/20
 
 ```json
 {
-  "errorCode": "400",
-  "message": "fromDate must be provided in dd/MM/yyyy format",
-  "timestamp": "2026-05-06T11:33:53.000000000Z"
+  "errorCode": "err.contribution.request.invalid",
+  "message": "Invalid contribution request."
 }
 ```
 
-Range validation failures also use the same envelope with messages such as `fromDate must not be after toDate` and `fromDate and toDate must be within the range from ref-date minus 36 months to ref-date`.
-
-Pagination validation failures:
-- `page must be greater than 0`
-- `pageSize must be greater than 0`
+Range validation failures and pagination validation failures use the same standardized envelope with the same business error code and a resolver-backed safe message.
 
 ### Display Format Configuration
 
@@ -876,7 +973,36 @@ The shared resolver accepts a config category, a code, and a lookup context (`en
 
 Requested language keys are tried first. If the requested language is not `en` and has no match, the resolver retries the same candidate sequence under `en`.
 
-The `ERROR_MESSAGE` category is reserved for future migration work only. Global exception handling and API error response behavior were not changed by this resolver implementation.
+The `ERROR_MESSAGE` category uses the same lookup dimensions and candidate order. `ConfiguredErrorMessageResolver` resolves the final public API error message from this category, and `ApiExceptionHandler` returns that resolved value in the response body instead of raw exception text.
+
+#### Error message configuration
+
+User-facing error messages are configured under `error-message.<locale>.<errorCode>`.
+
+- Supported locales: `en`, `zh_HK`
+- Incoming locale aliases are normalized to `en` or `zh_HK` (`zh-HK` and `zh_HK` are treated the same); any other locale falls back to English
+- Variant-specific overrides use the existing config dimensions: `env`, `trustCode`, `schemeType`
+- Full dotted error-code keys and full variant keys should stay quoted in YAML so they bind as single map keys
+- Message values must be safe for frontend display and must not contain stack traces, raw upstream payloads, tokens, request IDs, policy numbers, certificate numbers, or other internal details
+
+Example shape:
+
+```yaml
+error-message:
+  en:
+    "err.apim.service.unavailable.JP": "Service is temporarily unavailable in JP environment. Please try again later."
+    "err.member.context.unavailable.JP.JPM.OE": "Member context is unavailable for this scheme. Please try again later."
+  zh_HK:
+    "err.apim.service.unavailable.JP": "JP服務暫時未能提供，請稍後再嘗試。"
+    "err.member.context.unavailable.JP.JPM.OE": "此計劃的成員資料暫時未能提供，請稍後再嘗試。"
+```
+
+Resolver fallback order:
+
+1. Requested locale + context-specific variant candidates + base key
+2. English + context-specific variant candidates + base key
+3. English `err.system.unexpected`
+4. Hardcoded safe fallback: `Sorry, this service might be interrupted. Please try again later.`
 
 #### Amount format (pattern-based)
 

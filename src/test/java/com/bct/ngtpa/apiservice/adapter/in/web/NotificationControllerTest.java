@@ -16,6 +16,13 @@ import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
 import com.bct.ngtpa.apiservice.domain.model.NotificationReadStatus;
 import com.bct.ngtpa.apiservice.domain.model.MessageType;
 import com.bct.ngtpa.apiservice.domain.model.NoticeMessage;
+import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
+import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingWebFilter;
+import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
+import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -107,8 +114,38 @@ class NotificationControllerTest {
                 .exchange()
                 .expectStatus().isBadRequest()
                 .expectBody()
-                .jsonPath("$.errorCode").isEqualTo("400")
-                .jsonPath("$.message").isEqualTo("Invalid timezone: Mars/Olympus");
+                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.NOTIFICATION_REQUEST_INVALID)
+                .jsonPath("$.message").isEqualTo("Invalid notification request.");
+    }
+
+    @Test
+    void errorResponsesIncludeGeneratedRequestIdHeaderAndKeepBodyHeaderOnly() throws Exception {
+        GetNotificationsUseCase useCase = command -> Mono.error(
+                new InvalidNotificationRequestException("Invalid timezone: Mars/Olympus"));
+
+        webClientWithRequestLoggingFilter(useCase, unusedUpdateNotificationsReadStatusUseCase())
+                .get()
+                .uri(uriBuilder -> uriBuilder.path("/api/v1/notifications")
+                        .queryParam("env", "DEV")
+                        .queryParam("mbrType", "MBR")
+                        .queryParam("timezone", "Mars/Olympus")
+                        .build())
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectHeader().valueMatches("X-Request-Id",
+                        "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.NOTIFICATION_REQUEST_INVALID)
+                .jsonPath("$.message").isEqualTo("Invalid notification request.")
+                .jsonPath("$.requestId").doesNotExist()
+                .consumeWith(result -> {
+                                        try {
+                                                var body = new ObjectMapper().readTree(result.getResponseBody());
+                                                assertEquals(2, body.size());
+                                        } catch (Exception exception) {
+                                                throw new AssertionError(exception);
+                                        }
+                });
     }
 
     @Test
@@ -182,7 +219,24 @@ class NotificationControllerTest {
                 "notificationId must not contain blank values");
     }
 
-    private void assertInvalidPatchRequest(Object requestBody, String expectedMessage) {
+    @Test
+    void rejectsPatchRequestUsingEnvSpecificValidationMessageVariant() {
+        webClient(unusedGetNotificationsUseCase(), unusedUpdateNotificationsReadStatusUseCase())
+                .patch()
+                .uri("/api/v1/notifications")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(Map.of(
+                        "env", "JP",
+                        "mbrType", "MBR",
+                        "notificationId", List.of("")))
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.REQUEST_VALIDATION_FAILED)
+                .jsonPath("$.message").isEqualTo("Invalid request payload for JP.");
+    }
+
+        private void assertInvalidPatchRequest(Object requestBody, String expectedMessage) {
         webClient(unusedGetNotificationsUseCase(), unusedUpdateNotificationsReadStatusUseCase())
                 .patch()
                 .uri("/api/v1/notifications")
@@ -191,8 +245,8 @@ class NotificationControllerTest {
                 .exchange()
                 .expectStatus().isBadRequest()
                 .expectBody()
-                .jsonPath("$.errorCode").isEqualTo("400")
-                .jsonPath("$.message").isEqualTo(expectedMessage);
+                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.REQUEST_VALIDATION_FAILED)
+                .jsonPath("$.message").isEqualTo("Invalid request payload.");
     }
 
     private WebTestClient webClient(
@@ -203,9 +257,22 @@ class NotificationControllerTest {
                         updateNotificationsReadStatusUseCase,
                         new NotificationWebMapper(),
                         new NotificationReadStatusWebMapper()))
-                .controllerAdvice(new ApiExceptionHandler())
+                .controllerAdvice(new ApiExceptionHandler(testErrorMessageResolver(), testLoggingSanitizer()))
                 .build();
     }
+
+        private WebTestClient webClientWithRequestLoggingFilter(
+                        GetNotificationsUseCase getNotificationsUseCase,
+                        UpdateNotificationsReadStatusUseCase updateNotificationsReadStatusUseCase) {
+                return WebTestClient.bindToController(new NotificationController(
+                                                getNotificationsUseCase,
+                                                updateNotificationsReadStatusUseCase,
+                                                new NotificationWebMapper(),
+                                                new NotificationReadStatusWebMapper()))
+                                .controllerAdvice(new ApiExceptionHandler(testErrorMessageResolver(), testLoggingSanitizer()))
+                                .webFilter(new RequestLoggingWebFilter(new RequestLoggingProperties(), testLoggingSanitizer(), new ObjectMapper()))
+                                .build();
+        }
 
     private GetNotificationsUseCase unusedGetNotificationsUseCase() {
         return command -> Mono.just(new NotificationListResult(List.of(), NotificationDateOptions.defaults()));
@@ -234,4 +301,21 @@ class NotificationControllerTest {
                 List.<Hyperlink>of()
         );
     }
+
+        private static ErrorMessageResolver testErrorMessageResolver() {
+                return (errorCode, locale, env, trustCode, schemeType) -> switch (errorCode) {
+                        case ErrorCodes.NOTIFICATION_REQUEST_INVALID -> "Invalid notification request.";
+                        case ErrorCodes.REQUEST_VALIDATION_FAILED -> "JP".equals(env)
+                                        ? "Invalid request payload for JP."
+                                        : "Invalid request payload.";
+                        case ErrorCodes.SYSTEM_UNEXPECTED -> "Sorry, this service might be interrupted. Please try again later.";
+                        default -> errorCode;
+                };
+        }
+
+        private static LoggingSanitizer testLoggingSanitizer() {
+                LoggingSanitizerProperties properties = new LoggingSanitizerProperties();
+                properties.setSensitiveTokens(List.of("policyNo", "userId", "apiKey", "token", "memberId"));
+                return new LoggingSanitizer(new ObjectMapper(), properties);
+        }
 }

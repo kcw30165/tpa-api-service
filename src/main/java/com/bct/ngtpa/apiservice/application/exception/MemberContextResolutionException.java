@@ -1,8 +1,10 @@
 package com.bct.ngtpa.apiservice.application.exception;
 
-public class MemberContextResolutionException extends RuntimeException {
+import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
+
+public class MemberContextResolutionException extends ApplicationException {
 
     public MemberContextResolutionException(String message) {
-        super(message);
+        super(ErrorCodes.MEMBER_CONTEXT_UNAVAILABLE, message);
     }
 }

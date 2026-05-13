@@ -14,6 +14,7 @@ import com.bct.ngtpa.apiservice.domain.model.ContributionLabels;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSource;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryDataset;
 import com.bct.ngtpa.apiservice.exception.ApimException;
+import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -48,7 +49,7 @@ public class ApimContributionSummaryAdapter implements ApimContributionSummaryPo
                             API_NAME, body, GetContributionSummaryDataItem.class, null))
                     .map(this::toContributionSummaryDataset)
                     .onErrorMap(ApimCryptoException.class,
-                            ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, "500", ex.getMessage()));
+                            ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
         }
 
         return apimCertificateService.getBctPublicKey()
@@ -61,7 +62,7 @@ public class ApimContributionSummaryAdapter implements ApimContributionSummaryPo
                             .map(this::toContributionSummaryDataset);
                 })
                 .onErrorMap(ApimCryptoException.class,
-                        ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, "500", ex.getMessage()));
+                        ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
     }
 
     private GetContributionSummaryApimRequest toApimRequest(FetchContributionSummaryCommand command) {
@@ -78,10 +79,12 @@ public class ApimContributionSummaryAdapter implements ApimContributionSummaryPo
             ApimResponseEnvelope<GetContributionSummaryDataItem> response) {
         var payload = response != null ? response.getResponse() : null;
         if (payload == null) {
-            throw new ApimException(HttpStatus.BAD_GATEWAY, "APIM response payload is missing.");
+                        throw new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID,
+                                        "APIM response payload is missing.");
         }
         if (StringUtils.hasText(payload.getErrMessage())) {
-            throw new ApimException(HttpStatus.BAD_GATEWAY, payload.getErrMessage());
+                        throw new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID,
+                                        payload.getErrMessage());
         }
         if (CollectionUtils.isEmpty(payload.getData())) {
             return new ContributionSummaryDataset("", List.of(), List.of());
