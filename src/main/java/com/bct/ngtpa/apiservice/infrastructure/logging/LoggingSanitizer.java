@@ -9,6 +9,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -53,6 +55,20 @@ public class LoggingSanitizer {
             return objectMapper.writeValueAsString(sanitized);
         } catch (Exception ex) {
             return typeName(value);
+        }
+    }
+
+    public String sanitizeText(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        try {
+            JsonNode tree = objectMapper.readTree(value);
+            Object sanitized = sanitizeJsonNode(null, tree);
+            return sanitized == null ? null : objectMapper.writeValueAsString(sanitized);
+        } catch (Exception ex) {
+            return maskSensitiveAssignments(value);
         }
     }
 
@@ -157,5 +173,40 @@ public class LoggingSanitizer {
             return value.getClass().getComponentType().getSimpleName() + "[]";
         }
         return value.getClass().getSimpleName();
+    }
+
+    private String maskSensitiveAssignments(String value) {
+        String sanitized = value;
+        for (String sensitiveToken : properties.getSensitiveTokens()) {
+            sanitized = maskTokenAssignment(sanitized, sensitiveToken);
+        }
+        return sanitized;
+    }
+
+    private String maskTokenAssignment(String value, String sensitiveToken) {
+        String normalizedToken = sensitiveToken == null ? "" : sensitiveToken.replaceAll("[^A-Za-z0-9]", "");
+        if (normalizedToken.isEmpty()) {
+            return value;
+        }
+
+        StringBuilder tokenPattern = new StringBuilder();
+        for (int index = 0; index < normalizedToken.length(); index++) {
+            if (index > 0) {
+                tokenPattern.append("[\\W_]*");
+            }
+            tokenPattern.append(Pattern.quote(String.valueOf(normalizedToken.charAt(index))));
+        }
+
+        Pattern pattern = Pattern.compile(
+                "(\\\"?(?:" + tokenPattern + ")\\\"?\\s*[:=]\\s*)(\\\"[^\\\"]*\\\"|[^\\s,;]+)",
+                Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(value);
+        StringBuffer buffer = new StringBuffer();
+        while (matcher.find()) {
+            String maskedValue = matcher.group(2).startsWith("\"") ? "\"***\"" : "***";
+            matcher.appendReplacement(buffer, Matcher.quoteReplacement(matcher.group(1) + maskedValue));
+        }
+        matcher.appendTail(buffer);
+        return buffer.toString();
     }
 }

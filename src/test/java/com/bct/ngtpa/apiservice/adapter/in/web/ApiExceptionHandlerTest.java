@@ -3,16 +3,24 @@ package com.bct.ngtpa.apiservice.adapter.in.web;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiErrorResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdateNotificationsReadStatusRequest;
 import com.bct.ngtpa.apiservice.application.exception.ApplicationException;
+import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.application.exception.MemberContextResolutionException;
 import com.bct.ngtpa.apiservice.exception.ApimException;
+import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
+import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
@@ -30,7 +38,7 @@ import org.springframework.web.server.ServerWebInputException;
 
 class ApiExceptionHandlerTest {
 
-    private final ApiExceptionHandler handler = new ApiExceptionHandler(testErrorMessageResolver());
+    private final ApiExceptionHandler handler = new ApiExceptionHandler(testErrorMessageResolver(), testLoggingSanitizer());
 
     // ── Existing body contract tests (body must only have errorCode and message) ──
 
@@ -67,6 +75,16 @@ class ApiExceptionHandlerTest {
     }
 
     @Test
+    void mapsInvalidContributionRequestExceptionToBadRequest() {
+        ResponseEntity<ApiErrorResponse> response = handler.handleInvalidContributionRequestException(
+                new InvalidContributionRequestException("Invalid contribution request"), emptyExchange());
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(ErrorCodes.CONTRIBUTION_REQUEST_INVALID, response.getBody().errorCode());
+        assertEquals("Invalid contribution request.", response.getBody().message());
+    }
+
+    @Test
     void usesFirstFieldErrorMessageForBindFailures() throws Exception {
         BindingResult bindingResult = new BeanPropertyBindingResult(new Object(), "request");
         bindingResult.addError(new FieldError("request", "field", "must not be blank"));
@@ -90,6 +108,20 @@ class ApiExceptionHandlerTest {
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals(ErrorCodes.REQUEST_VALIDATION_FAILED, response.getBody().errorCode());
         assertEquals("Invalid request payload.", response.getBody().message());
+    }
+
+    @Test
+    void usesEnvSpecificMessageForBindFailuresFromBoundRequestTarget() throws Exception {
+        UpdateNotificationsReadStatusRequest target = new UpdateNotificationsReadStatusRequest("JP", "MBR", List.of(""));
+        BindingResult bindingResult = new BeanPropertyBindingResult(target, "request");
+        bindingResult.addError(new FieldError("request", "notificationId", "must not contain blank values"));
+
+        ResponseEntity<ApiErrorResponse> response = handler.handleWebExchangeBindException(
+                new WebExchangeBindException(methodParameter(), bindingResult), emptyExchange());
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(ErrorCodes.REQUEST_VALIDATION_FAILED, response.getBody().errorCode());
+        assertEquals("Invalid request payload for JP.", response.getBody().message());
     }
 
     @Test
@@ -151,6 +183,19 @@ class ApiExceptionHandlerTest {
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
         assertEquals(ErrorCodes.SYSTEM_UNEXPECTED, response.getBody().errorCode());
         assertEquals("Sorry, this service might be interrupted. Please try again later.", response.getBody().message());
+    }
+
+    @Test
+    void usesQueryLanguageWhenResolvingPublicMessages() {
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/api/v1/contributions?lang=zh_HK").build());
+
+        ResponseEntity<ApiErrorResponse> response = handler.handleUnexpectedException(
+                new IllegalStateException("raw internal failure"), exchange);
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        assertEquals(ErrorCodes.SYSTEM_UNEXPECTED, response.getBody().errorCode());
+        assertEquals("對不起，此服務可能暫受阻延，請稍後再嘗試。", response.getBody().message());
     }
 
     // ── Error body does NOT contain requestId ────────────────────────────────
@@ -262,6 +307,36 @@ class ApiExceptionHandlerTest {
         assertEquals("member-ctx-req-id", response.getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
     }
 
+    @Test
+    void mappedExceptionsNeverExposeHttpStatusStringsAsErrorCodeAndKeepStandardBodyShape() throws Exception {
+    BindingResult bindingResult = new BeanPropertyBindingResult(new Object(), "request");
+    bindingResult.addError(new FieldError("request", "field", "must not be blank"));
+
+    List<ResponseEntity<ApiErrorResponse>> responses = new ArrayList<>();
+    responses.add(handler.handleApplicationException(
+        new ApplicationException(ErrorCodes.REQUEST_INVALID, "internal only"), emptyExchange()));
+    responses.add(handler.handleInvalidNotificationRequestException(
+        new InvalidNotificationRequestException("bad"), emptyExchange()));
+    responses.add(handler.handleInvalidContributionRequestException(
+        new InvalidContributionRequestException("bad"), emptyExchange()));
+    responses.add(handler.handleMemberContextResolutionException(
+        new MemberContextResolutionException("missing"), emptyExchange()));
+    responses.add(handler.handleApimException(
+        new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "upstream"), emptyExchange()));
+    responses.add(handler.handleWebExchangeBindException(
+        new WebExchangeBindException(methodParameter(), bindingResult), emptyExchange()));
+    responses.add(handler.handleServerWebInputException(
+        new ServerWebInputException("Malformed JSON"), emptyExchange()));
+    responses.add(handler.handleUnexpectedException(new RuntimeException("boom"), emptyExchange()));
+
+    for (ResponseEntity<ApiErrorResponse> response : responses) {
+        assertNotNull(response.getBody());
+        assertEquals(2, response.getBody().getClass().getRecordComponents().length);
+        assertTrue(!response.getBody().errorCode().matches("\\d+"),
+            () -> "Expected business error code but got: " + response.getBody().errorCode());
+    }
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private static ServerWebExchange emptyExchange() {
@@ -291,14 +366,33 @@ class ApiExceptionHandlerTest {
                     ErrorCodes.APIM_TIMEOUT,
                     ErrorCodes.APIM_RESPONSE_INVALID -> "Service is temporarily unavailable. Please try again later.";
             case ErrorCodes.REQUEST_INVALID -> "Invalid request.";
-            case ErrorCodes.REQUEST_VALIDATION_FAILED -> "Invalid request payload.";
+            case ErrorCodes.REQUEST_VALIDATION_FAILED -> "JP".equals(env)
+                ? "Invalid request payload for JP."
+                : "Invalid request payload.";
             case ErrorCodes.REQUEST_BODY_MALFORMED -> "Malformed request body.";
             case ErrorCodes.SECURITY_ACCESS_DENIED -> "Access is denied.";
             case ErrorCodes.SECURITY_AUTHENTICATION_REQUIRED -> "Authentication is required.";
+            case ErrorCodes.CONTRIBUTION_REQUEST_INVALID -> "Invalid contribution request.";
             case ErrorCodes.NOTIFICATION_REQUEST_INVALID -> "Invalid notification request.";
             case ErrorCodes.MEMBER_CONTEXT_UNAVAILABLE -> "Member context is unavailable.";
-            case ErrorCodes.SYSTEM_UNEXPECTED -> "Sorry, this service might be interrupted. Please try again later.";
+            case ErrorCodes.SYSTEM_UNEXPECTED -> "zh_HK".equalsIgnoreCase(locale)
+                ? "對不起，此服務可能暫受阻延，請稍後再嘗試。"
+                : "Sorry, this service might be interrupted. Please try again later.";
             default -> "Sorry, this service might be interrupted. Please try again later.";
         };
+    }
+
+    private static LoggingSanitizer testLoggingSanitizer() {
+        LoggingSanitizerProperties properties = new LoggingSanitizerProperties();
+        properties.setSensitiveTokens(List.of(
+                "authorization",
+                "token",
+                "apiKey",
+                "Certificate",
+                "policyNo",
+                "certNo",
+                "memberId",
+                "userId"));
+        return new LoggingSanitizer(new ObjectMapper(), properties);
     }
 }

@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 class ApimExceptionTest {
 
     @Test
-    void mapsLegacyStatusCodeStringToBusinessErrorCode() {
+    void normalizesNumericStatusCodeStringToBusinessErrorCode() {
         var exception = new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, "500", "diagnostic");
 
         assertEquals(ErrorCodes.SYSTEM_UNEXPECTED, exception.getErrorCode());

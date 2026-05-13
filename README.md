@@ -422,6 +422,10 @@ HTTP status remains in the HTTP response status only. The JSON error response bo
 
 `X-Request-Id` remains in the response header only and must not be added to the response body.
 
+All public API errors handled by `ApiExceptionHandler` return exactly these two fields: `errorCode` and `message`.
+The public `message` is always resolved through `ErrorMessageResolver` backed by `error-message.*` configuration; raw exception text is used only as sanitized diagnostic input for logs.
+Unknown exceptions are mapped to HTTP `500` with business error code `err.system.unexpected` and a resolver-backed safe message.
+
 Purpose of business error codes:
 
 - Provide a stable BFF-owned API contract value that frontend clients can safely use for flow handling, analytics, and localized presentation decisions.
@@ -493,12 +497,33 @@ All global and method-level log events are serialized as JSON strings. Key event
 | `http.request.start` | `RequestLoggingWebFilter` | `requestId`, `method`, `path`, `query`, `headers` |
 | `http.request.end` | `RequestLoggingWebFilter` | `requestId`, `method`, `path`, `status`, `elapsedMs` |
 | `http.request.error` | `RequestLoggingWebFilter` | `requestId`, `method`, `path`, `elapsedMs`, `exceptionType`, `errorMessage` |
+| `http.api.error` | `ApiExceptionHandler` | `requestId`, `httpMethod`, `path`, `httpStatus`, `errorCode`, `exceptionType`, `sanitizedMessage` |
 | `apim.request` | `ApimRequestLoggingExchangeFilter` | `requestId`, `method`, `url`, `headers` |
 | `method.execution.start` | `ExecutionLoggingAspect` | `requestId`*, `className`, `methodName`, `label`, `args` |
 | `method.execution.success` | `ExecutionLoggingAspect` | `requestId`*, `className`, `methodName`, `elapsedMs`, `result` |
 | `method.execution.error` | `ExecutionLoggingAspect` | `requestId`*, `className`, `methodName`, `elapsedMs`, `exceptionType`, `errorMessage` |
 
 \* `requestId` is included when available from Reactor Context (Mono/Flux methods) or MDC (synchronous methods).
+
+### Global Exception Logging Policy
+
+`ApiExceptionHandler` logs the final API error mapping once per handled exception using the structured `http.api.error` event.
+
+Severity policy:
+
+- Validation errors (`err.request.validation.failed`, `err.request.body.malformed`) log at `WARN`.
+- Business/application exceptions log at `WARN`.
+- Authentication and access-denied failures log at `WARN`.
+- APIM/integration failures log at `ERROR`.
+- Unexpected exceptions log at `ERROR` and include a single stack trace.
+
+Operational rules:
+
+- `requestId` is included when available from `X-Request-Id` correlation.
+- `errorCode` is always logged for mapped API errors.
+- `sanitizedMessage` uses `LoggingSanitizer`; sensitive tokens such as API keys, tokens, certificates, policy numbers, certificate numbers, member IDs, and user IDs must be masked.
+- Unexpected exceptions include the stack trace once from `ApiExceptionHandler`; expected validation/business failures do not emit stack traces by default.
+- Request lifecycle logs from `RequestLoggingWebFilter` may still log start/end/status, but the detailed exception mapping is owned by `ApiExceptionHandler` to avoid duplicate exception stack traces.
 
 ### Body Logging Configuration
 
@@ -782,8 +807,8 @@ GET /api/v1/notifications?env=JP&mbrType=MBR&page=1&size=10&dateFormat=dd/MM/yyy
 **Error response:**
 ```json
 {
-  "errorCode": "err.request.validation.failed",
-  "message": "Invalid timezone: Mars/Olympus"
+  "errorCode": "err.notification.request.invalid",
+  "message": "Invalid notification request."
 }
 ```
 
@@ -829,8 +854,8 @@ Updates the read status for one or more notifications.
 **Error response:**
 ```json
 {
-  "errorCode": "err.notification.request.invalid",
-  "message": "notificationId must not be empty"
+  "errorCode": "err.request.validation.failed",
+  "message": "Invalid request payload."
 }
 ```
 
@@ -924,15 +949,11 @@ GET /api/v1/contributions?env=JP&mbrType=MBR&fromDate=05/04/2026&toDate=05/05/20
 ```json
 {
   "errorCode": "err.contribution.request.invalid",
-  "message": "fromDate must be provided in dd/MM/yyyy format"
+  "message": "Invalid contribution request."
 }
 ```
 
-Range validation failures also use the same envelope with messages such as `fromDate must not be after toDate` and `fromDate and toDate must be within the range from ref-date minus 36 months to ref-date`.
-
-Pagination validation failures:
-- `page must be greater than 0`
-- `pageSize must be greater than 0`
+Range validation failures and pagination validation failures use the same standardized envelope with the same business error code and a resolver-backed safe message.
 
 ### Display Format Configuration
 
@@ -952,13 +973,14 @@ The shared resolver accepts a config category, a code, and a lookup context (`en
 
 Requested language keys are tried first. If the requested language is not `en` and has no match, the resolver retries the same candidate sequence under `en`.
 
-The `ERROR_MESSAGE` category uses the same lookup dimensions and candidate order. Error-message resolution now delegates to the shared config resolver, while global exception handling and API error response behavior remain unchanged in this task.
+The `ERROR_MESSAGE` category uses the same lookup dimensions and candidate order. `ConfiguredErrorMessageResolver` resolves the final public API error message from this category, and `ApiExceptionHandler` returns that resolved value in the response body instead of raw exception text.
 
 #### Error message configuration
 
 User-facing error messages are configured under `error-message.<locale>.<errorCode>`.
 
 - Supported locales: `en`, `zh_HK`
+- Incoming locale aliases are normalized to `en` or `zh_HK` (`zh-HK` and `zh_HK` are treated the same); any other locale falls back to English
 - Variant-specific overrides use the existing config dimensions: `env`, `trustCode`, `schemeType`
 - Full dotted error-code keys and full variant keys should stay quoted in YAML so they bind as single map keys
 - Message values must be safe for frontend display and must not contain stack traces, raw upstream payloads, tokens, request IDs, policy numbers, certificate numbers, or other internal details

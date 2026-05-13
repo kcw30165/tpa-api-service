@@ -17,8 +17,11 @@ import com.bct.ngtpa.apiservice.domain.model.ContributionLabels;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSource;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryReport;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryRow;
+import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
+import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.aop.aspectj.annotation.AspectJProxyFactory;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -230,7 +233,7 @@ class ContributionControllerTest {
                         provider,
                         mapper,
                         new ContributionSortingSupport()))
-                .controllerAdvice(new ApiExceptionHandler(testErrorMessageResolver()))
+                .controllerAdvice(new ApiExceptionHandler(testErrorMessageResolver(), testLoggingSanitizer()))
                 .build();
     }
 
@@ -249,7 +252,7 @@ class ContributionControllerTest {
                         provider,
                         mapper,
                         sortingSupportProxy()))
-                .controllerAdvice(new ApiExceptionHandler(testErrorMessageResolver()))
+                .controllerAdvice(new ApiExceptionHandler(testErrorMessageResolver(), testLoggingSanitizer()))
                 .build();
     }
 
@@ -347,6 +350,12 @@ class ContributionControllerTest {
                         case ErrorCodes.SYSTEM_UNEXPECTED -> "Sorry, this service might be interrupted. Please try again later.";
                         default -> errorCode;
                 };
+        }
+
+        private static LoggingSanitizer testLoggingSanitizer() {
+                LoggingSanitizerProperties properties = new LoggingSanitizerProperties();
+                properties.setSensitiveTokens(List.of("policyNo", "userId", "apiKey", "token", "memberId"));
+                return new LoggingSanitizer(new ObjectMapper(), properties);
         }
 
     private ExportContributionSummaryUseCase unusedExportUseCase() {

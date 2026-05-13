@@ -130,8 +130,8 @@ temporary-member-context:
       policy-no: ${TEMP_CONT_POLICY_NO:00000000217}
       cert-no: ${TEMP_CONT_CERT_NO:95}
       user-id: ${TEMP_CONT_USER_ID:C402400A}
-      trust-code: ${TEMP_CONT_TRUST_CODE:}
-      scheme-type: ${TEMP_CONT_SCHEME_TYPE:}
+      trust-code: ${TEMP_CONT_TRUST_CODE:JPM}
+      scheme-type: ${TEMP_CONT_SCHEME_TYPE:OE}
 
 request-logging:
   body-logging:
@@ -146,3 +146,15 @@ request-logging:
         path-pattern: /api/v1/notifications
         log-request-body: false
         log-response-body: true  
+
+error-message:
+  en:
+    "err.request.invalid.JP": "Invalid request for JP."
+    "err.request.validation.failed.JP": "Invalid request payload for JP."
+    "err.contribution.request.invalid.JP": "Invalid contribution request for JP."
+    "err.contribution.request.invalid.JP.JPM": "Invalid contribution request for JP JPM."
+    "err.contribution.request.invalid.JP.JPM.OE": "Invalid contribution request for JP JPM OE."
+    "err.contribution.request.invalid.JP.OE": "Invalid contribution request for JP OE."    
+    "err.contribution.request.invalid.JPM.OE": "Invalid contribution request for JPM OE."
+    "err.contribution.request.invalid.JPM": "Invalid contribution request for JPM."
+    "err.contribution.request.invalid.OE": "Invalid contribution request for OE."
