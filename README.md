@@ -401,6 +401,85 @@ Error response body remains:
 }
 ```
 
+---
+
+## Global Exception Handling
+
+### Business Error Code Convention
+
+The BFF owns the `errorCode` values returned in API error responses. These values are business error codes, not HTTP status-code strings, Java exception names, APIM-specific identifiers, or raw upstream payload fragments.
+
+The centralized registry for these stable contract values is `com.bct.ngtpa.apiservice.shared.error.ErrorCodes`.
+
+HTTP status remains in the HTTP response status only. The JSON error response body remains:
+
+```json
+{
+  "errorCode": "err.some.business.code",
+  "message": "Resolved user-facing message"
+}
+```
+
+`X-Request-Id` remains in the response header only and must not be added to the response body.
+
+Purpose of business error codes:
+
+- Provide a stable BFF-owned API contract value that frontend clients can safely use for flow handling, analytics, and localized presentation decisions.
+- Decouple client-visible error semantics from transport details such as HTTP status, Java exception class names, APIM internals, and deployment-specific implementation details.
+
+Naming pattern:
+
+- `err.<area>.<scenario>`
+- `err.<area>.<sub-area>.<scenario>`
+- `err.<area>.<sub-area>.<scenario>.<variant>`
+
+Naming rules:
+
+- Error codes must be stable API contract values.
+- Error codes must be safe to expose to frontend clients.
+- Error codes must use lowercase dot-separated tokens.
+- Error-code naming must be independent from Java exception class names.
+- Variant suffixes may be used only when the same scenario needs a product, trust, scheme, channel, locale, or deployment-specific variant.
+
+Safety rules:
+
+- Do not include sensitive identifiers, member IDs, policy numbers, certificate numbers, tokens, secrets, request IDs, or raw upstream error payloads.
+- Do not embed HTTP status numbers, stack-trace details, Java class names, APIM error keys, or other implementation-specific internals.
+
+Initial BFF error-code catalog:
+
+- `err.request.invalid`
+- `err.request.validation.failed`
+- `err.request.body.malformed`
+- `err.security.access.denied`
+- `err.security.authentication.required`
+- `err.member.context.unavailable`
+- `err.member.context.invalid`
+- `err.apim.upstream.failure`
+- `err.apim.service.unavailable`
+- `err.apim.timeout`
+- `err.apim.response.invalid`
+- `err.config.error-message.missing`
+- `err.config.resolution.failed`
+- `err.contribution.request.invalid`
+- `err.notification.request.invalid`
+- `err.system.unexpected`
+
+Good error codes:
+
+- `err.request.validation.failed`
+- `err.apim.service.unavailable`
+- `err.member.context.unavailable`
+
+Bad error codes:
+
+- `400`
+- `500`
+- `NullPointerException`
+- `APIM_ERR_001`
+- `err.member.12345678.failed`
+- `err.token.expired.raw.jwt.value`
+
 ### Outbound APIM Propagation
 
 `ApimRequestIdExchangeFilter` (under `adapter/out/apim/client`) propagates the resolved `X-Request-Id` from Reactor Context to every outbound APIM call as an HTTP header. This allows APIM-side log correlation with BFF-side logs.
@@ -703,9 +782,8 @@ GET /api/v1/notifications?env=JP&mbrType=MBR&page=1&size=10&dateFormat=dd/MM/yyy
 **Error response:**
 ```json
 {
-  "errorCode": "400",
-  "message": "Invalid timezone: Mars/Olympus",
-  "timestamp": "2026-04-29T07:42:40.643070200Z"
+  "errorCode": "err.request.validation.failed",
+  "message": "Invalid timezone: Mars/Olympus"
 }
 ```
 
@@ -751,9 +829,8 @@ Updates the read status for one or more notifications.
 **Error response:**
 ```json
 {
-  "errorCode": "400",
-  "message": "notificationId must not be empty",
-  "timestamp": "2026-04-29T07:42:40.643070200Z"
+  "errorCode": "err.notification.request.invalid",
+  "message": "notificationId must not be empty"
 }
 ```
 
@@ -846,9 +923,8 @@ GET /api/v1/contributions?env=JP&mbrType=MBR&fromDate=05/04/2026&toDate=05/05/20
 
 ```json
 {
-  "errorCode": "400",
-  "message": "fromDate must be provided in dd/MM/yyyy format",
-  "timestamp": "2026-05-06T11:33:53.000000000Z"
+  "errorCode": "err.contribution.request.invalid",
+  "message": "fromDate must be provided in dd/MM/yyyy format"
 }
 ```
 
