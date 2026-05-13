@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.infrastructure.logging;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import ch.qos.logback.classic.Level;
@@ -200,6 +201,101 @@ class ExecutionLoggingAspectTest {
         assertTrue(!startMsg.contains("\"requestId\""), "requestId should be absent when not in context");
     }
 
+    @Test
+    void omitsArgsWhenLogArgsFalse() {
+        ProxiedService proxied = proxiedService();
+        proxied.proxy().synchronousFailureNoLogArgs();
+        // even without try/catch it just throws; use a callable pattern
+        // Actually synchronousFailure is the method with logArgs=false — let's use synchronousSuccess with logArgs=false
+        // Add a new method: see TestService.noArgsLog()
+        proxied.proxy().noArgsLog(Map.of("traceId", "t1"));
+
+        String startMsg = listAppender.list.get(listAppender.list.size() - 2).getFormattedMessage();
+        // "args" should NOT appear
+        assertTrue(!startMsg.contains("\"args\""), "args should be omitted when logArgs=false");
+    }
+
+    @Test
+    void omitsResultWhenLogResultFalse() {
+        ProxiedService proxied = proxiedService();
+
+        StepVerifier.create(proxied.proxy().monoNoResultLog())
+                .expectNext("no-result")
+                .verifyComplete();
+
+        String successMsg = listAppender.list.get(1).getFormattedMessage();
+        assertTrue(!successMsg.contains("\"result\""), "result should be omitted when logResult=false");
+    }
+
+    @Test
+    void synchMethodReturningNullLogsNullResult() {
+        ProxiedService proxied = proxiedService();
+        proxied.proxy().synchronousNullReturn();
+
+        String successMsg = listAppender.list.get(1).getFormattedMessage();
+        assertTrue(successMsg.contains("\"result\":null"), "null result should be logged");
+    }
+
+    @Test
+    void logsLabelAsBlankWhenAnnotationValueEmpty() {
+        ProxiedService proxied = proxiedService();
+        proxied.proxy().noLabel();
+
+        String startMsg = listAppender.list.get(0).getFormattedMessage();
+        // label is blank → should NOT be present in the event
+        assertTrue(!startMsg.contains("\"label\""), "blank label should be omitted");
+    }
+
+    @Test
+    void logsErrorWithNoElapsedMsWhenMonoThrowsSynchronously() {
+        ProxiedService proxied = proxiedService();
+
+        try {
+            proxied.proxy().monoThrowsSynchronously();
+        } catch (IllegalStateException ignored) {
+            // expected
+        }
+
+        assertTrue(listAppender.list.size() >= 1);
+        ILoggingEvent errorEvent = listAppender.list.stream()
+                .filter(e -> e.getLevel() == Level.ERROR)
+                .findFirst()
+                .orElseThrow();
+        String msg = errorEvent.getFormattedMessage();
+        assertTrue(msg.contains("method.execution.error"));
+        // elapsedMs is -1 → should NOT appear in the event (elapsedMillis < 0)
+        assertTrue(!msg.contains("\"elapsedMs\""), "elapsedMs should be omitted when -1");
+    }
+
+    @Test
+    void logsErrorWithNoElapsedMsWhenFluxThrowsSynchronously() {
+        ProxiedService proxied = proxiedService();
+
+        try {
+            proxied.proxy().fluxThrowsSynchronously();
+        } catch (IllegalStateException ignored) {
+            // expected
+        }
+
+        ILoggingEvent errorEvent = listAppender.list.stream()
+                .filter(e -> e.getLevel() == Level.ERROR)
+                .findFirst()
+                .orElseThrow();
+        assertTrue(errorEvent.getFormattedMessage().contains("sync-throw-from-flux"));
+    }
+
+    @Test
+    void omitsEmittedItemsWhenFluxLogResultFalse() {
+        ProxiedService proxied = proxiedService();
+
+        StepVerifier.create(proxied.proxy().fluxNoResultLog())
+                .expectNext("x", "y")
+                .verifyComplete();
+
+        String successMsg = listAppender.list.get(1).getFormattedMessage();
+        assertFalse(successMsg.contains("\"emittedItems\""), "emittedItems should be omitted when logResult=false");
+    }
+
     private ProxiedService proxiedService() {
         TestService target = new TestService();
         AspectJProxyFactory proxyFactory = new AspectJProxyFactory(target);
@@ -270,12 +366,52 @@ class ExecutionLoggingAspectTest {
             });
         }
 
+        @LogExecution(value = "flux.no.result", logResult = false)
+        Flux<String> fluxNoResultLog() {
+            return Flux.just("x", "y");
+        }
+
         @LogExecution(value = "flux.failure")
         Flux<String> fluxFailure() {
             return Flux.defer(() -> {
                 fluxSubscriptions.incrementAndGet();
                 return Flux.error(new IllegalStateException("flux-boom"));
             });
+        }
+
+        @LogExecution(value = "sync.no.args", logArgs = false, logResult = true)
+        String noArgsLog(Map<String, Object> payload) {
+            return "no-args-ok";
+        }
+
+        @LogExecution(value = "sync.failure.noargs", logArgs = false, logResult = false)
+        String synchronousFailureNoLogArgs() {
+            return "ok";
+        }
+
+        @LogExecution(value = "mono.no.result", logResult = false)
+        Mono<String> monoNoResultLog() {
+            return Mono.just("no-result");
+        }
+
+        @LogExecution(value = "sync.null.return", logArgs = false, logResult = true)
+        String synchronousNullReturn() {
+            return null;
+        }
+
+        @LogExecution(value = "", logArgs = false, logResult = false)
+        String noLabel() {
+            return "ok";
+        }
+
+        @LogExecution(value = "mono.throw", logArgs = false, logResult = false)
+        Mono<String> monoThrowsSynchronously() {
+            throw new IllegalStateException("sync-throw-from-mono");
+        }
+
+        @LogExecution(value = "flux.throw", logArgs = false, logResult = false)
+        Flux<String> fluxThrowsSynchronously() {
+            throw new IllegalStateException("sync-throw-from-flux");
         }
     }
 }

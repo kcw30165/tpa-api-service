@@ -57,8 +57,6 @@ public class ContributionController {
                                 .map(result -> contributionSummaryWebMapper.toListResponse(
                                                 result,
                                                 contributionWebDisplayConfigProvider.get(),
-                                                fromDate != null ? fromDate : "",
-                                                toDate != null ? toDate : "",
                                                 resolvedLang,
                                                 env != null ? env : "",
                                                 resolvedPage,

@@ -39,4 +39,6 @@ set-java-home.sh
 .github/
 docs/
 fix-ssl-maven.bat
-all.txt
+*.txt
+aa.md
+**/*.log

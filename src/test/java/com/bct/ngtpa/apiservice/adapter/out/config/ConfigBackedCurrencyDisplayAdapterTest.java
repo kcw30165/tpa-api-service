@@ -121,4 +121,28 @@ class ConfigBackedCurrencyDisplayAdapterTest {
         assertEquals("HKD", result.en());
         assertEquals("HKD", result.zh());
     }
+
+    @Test
+    void usesTrustSchemeWhenEnvMissing() {
+        Map<String, String> english = new LinkedHashMap<>();
+        english.put("HKD", "HKD");
+        english.put("HKD.TRUST.SCHEME", "HKD TRUST SCHEME");
+
+        var adapter = adapterWithMappings(english);
+
+        CurrencyDisplay result = adapter.resolveCurrencyDisplay("HKD", "", "TRUST", "SCHEME");
+        assertEquals("HKD TRUST SCHEME", result.en());
+    }
+
+    @Test
+    void fallsBackToEnglishMappingForZhWhenChineseLocaleMissing() {
+        Map<String, String> english = new LinkedHashMap<>();
+        english.put("HKD.TRUST", "Hong Kong Dollar");
+
+        var adapter = adapterWithBothLocales(english, new LinkedHashMap<>());
+
+        CurrencyDisplay result = adapter.resolveCurrencyDisplay("HKD", "", "TRUST", "");
+        assertEquals("Hong Kong Dollar", result.en());
+        assertEquals("Hong Kong Dollar", result.zh());
+    }
 }

@@ -8,18 +8,20 @@ import java.util.Map;
 /**
  * Configuration properties for date display formatting.
  *
- * <p>Structure: locale → (env-key → DateTimeFormatter pattern string).
- * The special key {@code default} is used as the fallback format for a given locale.
+ * <p>Structure: locale → (key → DateTimeFormatter pattern string).
+ * The special key {@code *} is the wildcard fallback for a given locale.
+ * In YAML the wildcard key must be quoted as {@code "[*]"} so Spring Boot binds it
+ * as the literal map key {@code *}.
  *
  * <p>Example YAML:
  * <pre>
  * display-format:
  *   date:
  *     en:
- *       default: dd/MM/yyyy
+ *       "[*]": dd/MM/yyyy
  *       JP: MM/dd/yyyy
  *     zh_HK:
- *       default: yyyy-MM-dd
+ *       "[*]": dd/MM/yyyy
  * </pre>
  */
 @ConfigurationProperties(prefix = "display-format.date")

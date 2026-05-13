@@ -24,6 +24,36 @@ class ReferenceDateResolverTest {
     }
 
     @Test
+    void treatsUppercaseProdAsProductionLike() {
+        assertEquals(LocalDate.of(2026, 5, 7), resolver.resolve("PROD", "31/03/2026", "Asia/Hong_Kong"));
+    }
+
+    @Test
+    void treatsPrdAsProductionLike() {
+        assertEquals(LocalDate.of(2026, 5, 7), resolver.resolve("PRD", "31/03/2026", "Asia/Hong_Kong"));
+    }
+
+    @Test
+    void treatsProductionAsProductionLike() {
+        assertEquals(LocalDate.of(2026, 5, 7), resolver.resolve("PRODUCTION", "31/03/2026", "Asia/Hong_Kong"));
+    }
+
+    @Test
+    void treatsDrAsProductionLike() {
+        assertEquals(LocalDate.of(2026, 5, 7), resolver.resolve("DR", "31/03/2026", "Asia/Hong_Kong"));
+    }
+
+    @Test
+    void treatsNullDeploymentEnvAsProductionLike() {
+        assertEquals(LocalDate.of(2026, 5, 7), resolver.resolve(null, "31/03/2026", "Asia/Hong_Kong"));
+    }
+
+    @Test
+    void treatsBlankDeploymentEnvAsProductionLike() {
+        assertEquals(LocalDate.of(2026, 5, 7), resolver.resolve("   ", "31/03/2026", "Asia/Hong_Kong"));
+    }
+
+    @Test
     void usesServerDateWhenNonProductionOverridePairIsAbsent() {
         var resolved = resolver.resolve("sit", "", "");
 

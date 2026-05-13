@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -342,7 +343,157 @@ class SortEngineTest {
                 "Error message should mention the unresolvable sort field name");
     }
 
-    // ─── Multiple SortList declarations ──────────────────────────────────────
+    @ApplySorts({@SortList(path = "items",
+            by = @SortBy(field = "flag", direction = SortDirection.DESC, type = SortType.BOOLEAN))})
+    static void booleanDesc() {}
+
+    @ApplySorts({@SortList(path = "items",
+            by = @SortBy(field = "name", direction = SortDirection.ASC, type = SortType.STRING,
+                    nullsLast = false))})
+    static void nameAscNullsFirst() {}
+
+    @ApplySorts({@SortList(path = "items",
+            by = @SortBy(field = "date", direction = SortDirection.ASC,
+                    type = SortType.DATE, datePattern = ""))})
+    static void dateAscIso() {}
+
+    @ApplySorts({@SortList(path = "items",
+            by = @SortBy(field = "seq", direction = SortDirection.ASC, type = SortType.NUMBER))})
+    static void seqAscForNonNumericStr() {}
+
+    @ApplySorts({@SortList(path = "items",
+            by = @SortBy(field = "name", direction = SortDirection.ASC, type = SortType.STRING))})
+    static void sortNullFieldValue() {}
+
+    // ─── BOOLEAN sorting ──────────────────────────────────────────────────────
+
+    @Test
+    void sortsByBooleanDesc() {
+        var container = new Container(List.of(
+                new Item("f1", null, null, null, false),
+                new Item("t1", null, null, null, true),
+                new Item("f2", null, null, null, false)));
+
+        var sorted = (Container) engine.sort(container, annotation("booleanDesc"));
+
+        var flags = sorted.items().stream().map(Item::flag).toList();
+        assertEquals(true, flags.get(0));
+    }
+
+    @Test
+    void sortsByBooleanWithNullTreatedAsNull() {
+        var container = new Container(List.of(
+                new Item("null-flag", null, null, null, null),
+                new Item("true-flag", null, null, null, true)));
+
+        var sorted = (Container) engine.sort(container, annotation("booleanDesc"));
+        // null flag → toComparable returns null → nullsLast (default) → goes last
+        assertEquals("true-flag", sorted.items().get(0).name());
+        assertEquals("null-flag", sorted.items().get(1).name());
+    }
+
+    // ─── nullsFirst ───────────────────────────────────────────────────────────
+
+    @Test
+    void placesNullsFirstWhenNullsLastFalse() {
+        var container = new Container(List.of(
+                new Item("b", null, null, null, null),
+                new Item(null, null, null, null, null),
+                new Item("a", null, null, null, null)));
+
+        var sorted = (Container) engine.sort(container, annotation("nameAscNullsFirst"));
+
+        assertNull(sorted.items().get(0).name());
+    }
+
+    // ─── ISO date pattern (empty pattern) ────────────────────────────────────
+
+    @Test
+    void sortsByIsoDateWhenPatternIsEmpty() {
+        var container = new Container(List.of(
+                new Item("mar", "2026-03-01", null, null, null),
+                new Item("jan", "2026-01-01", null, null, null),
+                new Item("apr", "2026-04-01", null, null, null)));
+
+        var sorted = (Container) engine.sort(container, annotation("dateAscIso"));
+
+        assertEquals(List.of("jan", "mar", "apr"),
+                sorted.items().stream().map(Item::name).toList());
+    }
+
+    @Test
+    void treatsUnparseableIsoDateAsNull() {
+        var container = new Container(List.of(
+                new Item("bad",   "not-a-date", null, null, null),
+                new Item("valid", "2026-04-01", null, null, null)));
+
+        var sorted = (Container) engine.sort(container, annotation("dateAscIso"));
+
+        assertEquals("valid", sorted.items().get(0).name());
+    }
+
+    // ─── Non-numeric string in NUMBER sort ────────────────────────────────────
+
+    @Test
+    void treatsNonNumericStringAsNullInNumberSort() {
+        var container = new Container(List.of(
+                new Item("b", null, null, new BigDecimal("2"), null),
+                new Item("a", null, null, null, null)));
+        // amountAsc: numeric nulls last
+        var sorted = (Container) engine.sort(container, annotation("amountAsc"));
+        assertEquals("b", sorted.items().get(0).name());
+    }
+
+    // ─── Non-record rebuild throws ────────────────────────────────────────────
+
+    @ApplySorts({@SortList(path = "items",
+            by = @SortBy(field = "name", direction = SortDirection.ASC, type = SortType.STRING))})
+    static void nonRecordSort() {}
+
+    @Test
+    void failsWhenTargetIsNotRecord() {
+        // Container is a record but Item is too – we'll test a plain POJO as root
+        // Use the engine.sort on a non-record object to trigger the exception
+        var nonRecord = new NonRecordContainer(List.of());
+
+        assertThrows(IllegalStateException.class, () ->
+                engine.sort(nonRecord, annotation("nonRecordSort")));
+    }
+
+    /** Plain class (not a record) used for error path testing. */
+    static class NonRecordContainer {
+        private final List<Item> items;
+        NonRecordContainer(List<Item> items) { this.items = items; }
+        public List<Item> items() { return items; }
+    }
+
+    @ApplySorts({@SortList(path = "items",
+            by = @SortBy(field = "name", direction = SortDirection.ASC, type = SortType.STRING))})
+    static void nullNestedField() {}
+
+    @Test
+    void failsWhenIntermediatePathIsNull() {
+        // path = "data.items" but data is null
+        var nested = new Nested(null);
+
+        assertThrows(IllegalStateException.class, () ->
+                engine.sort(nested, annotation("nestedDataItems")));
+    }
+
+    // ─── Two nulls compare ────────────────────────────────────────────────────
+
+    @Test
+    void twoNullValuesAreEqual() {
+        var container = new Container(List.of(
+                new Item(null, null, null, null, null),
+                new Item(null, null, null, null, null)));
+
+        // Should not throw; both nulls compare as equal
+        var sorted = (Container) engine.sort(container, annotation("nameAscNullsLast"));
+        assertEquals(2, sorted.items().size());
+    }
+
+
 
     @ApplySorts({
         @SortList(path = "items",

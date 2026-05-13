@@ -370,7 +370,233 @@ class RequestLoggingWebFilterTest {
         assertTrue(startMsg.contains("requestBody"), "Wildcard pattern should match");
     }
 
-    // ── Helpers ───────────────────────────────────────────────────────────────
+    // ── Response body logging ─────────────────────────────────────────────────
+
+    @Test
+    void logsResponseBodyWhenResponseBodyLoggingEnabled() {
+        RequestLoggingProperties props = enabledProperties();
+        props.getBodyLogging().setEnabled(true);
+        RequestLoggingProperties.EndpointRule rule = new RequestLoggingProperties.EndpointRule();
+        rule.setMethod("GET");
+        rule.setPathPattern("/api/v1/data");
+        rule.setLogResponseBody(true);
+        props.getBodyLogging().getEndpoints().add(rule);
+
+        MockServerWebExchange exchange = exchange(MockServerHttpRequest.get("/api/v1/data").build());
+        RequestLoggingWebFilter responseFilter = new RequestLoggingWebFilter(props, sanitizer(), OBJECT_MAPPER);
+
+        WebFilterChain chain = ex -> {
+            ex.getResponse().getHeaders().setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+            return ex.getResponse().writeWith(reactor.core.publisher.Mono.just(
+                    ex.getResponse().bufferFactory().wrap("{\"key\":\"value\"}".getBytes())));
+        };
+
+        StepVerifier.create(responseFilter.filter(exchange, chain)).verifyComplete();
+
+        boolean foundResponseBody = listAppender.list.stream()
+                .anyMatch(e -> e.getFormattedMessage().contains("http.response.body"));
+        assertTrue(foundResponseBody, "Should log http.response.body event");
+    }
+
+    @Test
+    void skipsResponseBodyLoggingForBinaryContentType() {
+        RequestLoggingProperties props = enabledProperties();
+        props.getBodyLogging().setEnabled(true);
+        RequestLoggingProperties.EndpointRule rule = new RequestLoggingProperties.EndpointRule();
+        rule.setMethod("GET");
+        rule.setPathPattern("/api/v1/export");
+        rule.setLogResponseBody(true);
+        props.getBodyLogging().getEndpoints().add(rule);
+
+        MockServerWebExchange exchange = exchange(MockServerHttpRequest.get("/api/v1/export").build());
+        RequestLoggingWebFilter responseFilter = new RequestLoggingWebFilter(props, sanitizer(), OBJECT_MAPPER);
+
+        WebFilterChain chain = ex -> {
+            ex.getResponse().getHeaders().setContentType(org.springframework.http.MediaType.APPLICATION_OCTET_STREAM);
+            return ex.getResponse().writeWith(reactor.core.publisher.Mono.just(
+                    ex.getResponse().bufferFactory().wrap(new byte[]{1, 2, 3})));
+        };
+
+        StepVerifier.create(responseFilter.filter(exchange, chain)).verifyComplete();
+
+        boolean foundResponseBody = listAppender.list.stream()
+                .anyMatch(e -> e.getFormattedMessage().contains("http.response.body"));
+        assertFalse(foundResponseBody, "Should not log body for binary content type");
+    }
+
+    @Test
+    void skipsResponseBodyLoggingForExcelContentType() {
+        RequestLoggingProperties props = enabledProperties();
+        props.getBodyLogging().setEnabled(true);
+        RequestLoggingProperties.EndpointRule rule = new RequestLoggingProperties.EndpointRule();
+        rule.setMethod("GET");
+        rule.setPathPattern("/api/v1/export");
+        rule.setLogResponseBody(true);
+        props.getBodyLogging().getEndpoints().add(rule);
+
+        MockServerWebExchange exchange = exchange(MockServerHttpRequest.get("/api/v1/export").build());
+        RequestLoggingWebFilter responseFilter = new RequestLoggingWebFilter(props, sanitizer(), OBJECT_MAPPER);
+
+        WebFilterChain chain = ex -> {
+            ex.getResponse().getHeaders().set("Content-Type",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            return ex.getResponse().writeWith(reactor.core.publisher.Mono.just(
+                    ex.getResponse().bufferFactory().wrap(new byte[]{1, 2, 3})));
+        };
+
+        StepVerifier.create(responseFilter.filter(exchange, chain)).verifyComplete();
+
+        boolean foundResponseBody = listAppender.list.stream()
+                .anyMatch(e -> e.getFormattedMessage().contains("http.response.body"));
+        assertFalse(foundResponseBody, "Should not log body for Excel content type");
+    }
+
+    @Test
+    void skipsResponseBodyLoggingForPdfContentType() {
+        RequestLoggingProperties props = enabledProperties();
+        props.getBodyLogging().setEnabled(true);
+        RequestLoggingProperties.EndpointRule rule = new RequestLoggingProperties.EndpointRule();
+        rule.setMethod("GET");
+        rule.setPathPattern("/api/v1/export");
+        rule.setLogResponseBody(true);
+        props.getBodyLogging().getEndpoints().add(rule);
+
+        MockServerWebExchange exchange = exchange(MockServerHttpRequest.get("/api/v1/export").build());
+        RequestLoggingWebFilter responseFilter = new RequestLoggingWebFilter(props, sanitizer(), OBJECT_MAPPER);
+
+        WebFilterChain chain = ex -> {
+            ex.getResponse().getHeaders().set("Content-Type", "application/pdf");
+            return ex.getResponse().writeWith(reactor.core.publisher.Mono.just(
+                    ex.getResponse().bufferFactory().wrap(new byte[]{1, 2, 3})));
+        };
+
+        StepVerifier.create(responseFilter.filter(exchange, chain)).verifyComplete();
+
+        boolean foundResponseBody = listAppender.list.stream()
+                .anyMatch(e -> e.getFormattedMessage().contains("http.response.body"));
+        assertFalse(foundResponseBody, "Should not log body for PDF content type");
+    }
+
+    @Test
+    void logsHeadersWhenLogHeadersEnabled() {
+        RequestLoggingProperties props = enabledProperties();
+        props.setLogHeaders(true);
+        props.setHeaderAllowlist(List.of("X-Custom-Header"));
+
+        MockServerWebExchange exchange = exchange(
+                MockServerHttpRequest.get("/api/test")
+                        .header("X-Custom-Header", "custom-value")
+                        .build());
+
+        run(new RequestLoggingWebFilter(props, sanitizer(), OBJECT_MAPPER), exchange);
+
+        String startMsg = listAppender.list.get(0).getFormattedMessage();
+        assertTrue(startMsg.contains("headers"), "Should log headers when logHeaders is enabled");
+        assertTrue(startMsg.contains("custom-value"), "Should include allowed header value");
+    }
+
+    @Test
+    void doesNotLogHeadersWhenNotInAllowlist() {
+        RequestLoggingProperties props = enabledProperties();
+        props.setLogHeaders(true);
+        props.setHeaderAllowlist(List.of("X-Allowed-Header"));
+
+        MockServerWebExchange exchange = exchange(
+                MockServerHttpRequest.get("/api/test")
+                        .header("X-Other-Header", "other-value")
+                        .build());
+
+        run(new RequestLoggingWebFilter(props, sanitizer(), OBJECT_MAPPER), exchange);
+
+        String startMsg = listAppender.list.get(0).getFormattedMessage();
+        assertFalse(startMsg.contains("other-value"), "Should not include non-allowlisted headers");
+    }
+
+    @Test
+    void logsRequestBodyWithBothRequestAndResponseBodyEnabled() {
+        RequestLoggingProperties props = enabledProperties();
+        props.getBodyLogging().setEnabled(true);
+        RequestLoggingProperties.EndpointRule rule = new RequestLoggingProperties.EndpointRule();
+        rule.setMethod("POST");
+        rule.setPathPattern("/api/v1/data");
+        rule.setLogRequestBody(true);
+        rule.setLogResponseBody(true);
+        props.getBodyLogging().getEndpoints().add(rule);
+
+        MockServerWebExchange exchange = exchange(
+                MockServerHttpRequest.post("/api/v1/data").body("request-payload"));
+        RequestLoggingWebFilter responseFilter = new RequestLoggingWebFilter(props, sanitizer(), OBJECT_MAPPER);
+
+        WebFilterChain chain = ex -> {
+            ex.getResponse().getHeaders().setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+            return ex.getResponse().writeWith(reactor.core.publisher.Mono.just(
+                    ex.getResponse().bufferFactory().wrap("{\"result\":\"ok\"}".getBytes())));
+        };
+
+        StepVerifier.create(responseFilter.filter(exchange, chain)).verifyComplete();
+
+        boolean hasRequestBody = listAppender.list.stream()
+                .anyMatch(e -> e.getFormattedMessage().contains("requestBody"));
+        boolean hasResponseBody = listAppender.list.stream()
+                .anyMatch(e -> e.getFormattedMessage().contains("http.response.body"));
+        assertTrue(hasRequestBody, "Should log requestBody");
+        assertTrue(hasResponseBody, "Should log http.response.body");
+    }
+
+    @Test
+    void requestErrorLogOmitsStatusWhenZero() {
+        MockServerWebExchange exchange = exchange(MockServerHttpRequest.get("/api/test").build());
+        WebFilterChain errorChain = ex -> Mono.error(new RuntimeException("fail"));
+
+        StepVerifier.create(filter.filter(exchange, errorChain))
+                .expectError(RuntimeException.class)
+                .verify();
+
+        ILoggingEvent errorEvent = listAppender.list.stream()
+                .filter(e -> e.getLevel() == Level.ERROR)
+                .findFirst()
+                .orElseThrow();
+        JsonNode errorLog = parseJson(errorEvent.getFormattedMessage());
+        // status = 0 → should NOT be present
+        assertFalse(errorLog.has("status"), "Status 0 should be omitted from error log");
+    }
+
+    @Test
+    void logsEmptyRequestBodyWithNoRequestBodyField() {
+        RequestLoggingProperties props = enabledProperties();
+        props.getBodyLogging().setEnabled(true);
+        RequestLoggingProperties.EndpointRule rule = new RequestLoggingProperties.EndpointRule();
+        rule.setMethod("POST");
+        rule.setPathPattern("/api/v1/test");
+        rule.setLogRequestBody(true);
+        props.getBodyLogging().getEndpoints().add(rule);
+
+        // POST with empty body (no body bytes → Flux.empty() branch in anonymous ServerHttpRequestDecorator)
+        MockServerWebExchange exchange = exchange(
+                MockServerHttpRequest.post("/api/v1/test").build());
+
+        run(new RequestLoggingWebFilter(props, sanitizer(), OBJECT_MAPPER), exchange);
+
+        // Should not contain requestBody field since body is empty
+        String startMsg = listAppender.list.get(0).getFormattedMessage();
+        assertFalse(startMsg.contains("requestBody"), "Empty body should not add requestBody field");
+    }
+
+    @Test
+    void requestLoggingPropertiesSetHeaderAllowlistNullUsesEmpty() {
+        RequestLoggingProperties props = new RequestLoggingProperties();
+        props.setHeaderAllowlist(null);
+        assertTrue(props.getHeaderAllowlist().isEmpty(), "null allowlist should produce empty list");
+    }
+
+    @Test
+    void requestLoggingPropertiesSetBodyLoggingNullUsesDefault() {
+        RequestLoggingProperties props = new RequestLoggingProperties();
+        props.setBodyLogging(null);
+        assertNotNull(props.getBodyLogging(), "null bodyLogging should produce default");
+    }
+
+
 
     private static void run(RequestLoggingWebFilter f, MockServerWebExchange exchange) {
         WebFilterChain chain = ex -> Mono.empty();

@@ -6,30 +6,27 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Configuration properties for amount/number display formatting.
+ * Configuration properties for amount display formatting.
  *
- * <p>Structure: locale → (env-key → {@link AmountFormatConfig}).
- * The special key {@code default} is used as the fallback format for a given locale.
+ * <p>Structure: locale → (variant-key-or-wildcard → decimal format pattern string).
+ * The special key {@code *} is the wildcard fallback for a given locale.
  *
  * <p>Example YAML:
  * <pre>
  * display-format:
  *   amount:
  *     en:
- *       default:
- *         min-fraction-digits: 0
- *         max-fraction-digits: 2
- *         grouping-separator: ","
- *         decimal-separator: "."
- *         rounding-mode: HALF_UP
- *         strip-trailing-zeros: true
- *         negative-style: minus
+ *       "[*]": "#,##0.00"
+ *       JP: "#,##0.00"
+ *     zh_HK:
+ *       "[*]": "#,##0.00"
+ *       JP: "#,##0.00"
  * </pre>
  */
 @ConfigurationProperties(prefix = "display-format.amount")
-public class AmountFormatProperties extends LinkedHashMap<String, Map<String, AmountFormatConfig>> {
+public class AmountFormatProperties extends LinkedHashMap<String, Map<String, String>> {
 
-    public Map<String, AmountFormatConfig> getLocaleFormats(String locale) {
+    public Map<String, String> getLocaleFormats(String locale) {
         if (locale == null || locale.isBlank()) {
             return Map.of();
         }
