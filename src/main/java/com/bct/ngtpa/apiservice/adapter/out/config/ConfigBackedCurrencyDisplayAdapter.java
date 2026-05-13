@@ -1,23 +1,36 @@
 package com.bct.ngtpa.apiservice.adapter.out.config;
 
-import com.bct.ngtpa.apiservice.application.dto.CurrencyDisplay;
 import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
-import com.bct.ngtpa.apiservice.adapter.out.config.CurrencyMappingProperties;
-import lombok.RequiredArgsConstructor;
+import com.bct.ngtpa.apiservice.application.dto.CurrencyDisplay;
+import com.bct.ngtpa.apiservice.shared.config.ConfigCategory;
+import com.bct.ngtpa.apiservice.shared.config.ConfigLookupContext;
+import com.bct.ngtpa.apiservice.shared.config.ConfigLookupRequest;
+import com.bct.ngtpa.apiservice.shared.config.ConfigVariantCandidateGenerator;
+import com.bct.ngtpa.apiservice.shared.config.ConfigVariantResolver;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 @Component
-@RequiredArgsConstructor
 public class ConfigBackedCurrencyDisplayAdapter implements CurrencyDisplayPort {
 
-    private static final String EN_LOCALE = "en";
-    private static final String ZH_HK_LOCALE = "zh_HK";
+    private static final Locale ZH_HK_LOCALE = Locale.forLanguageTag("zh-HK");
 
-    private final CurrencyMappingProperties currencyMappingProperties;
+    private final ConfigVariantResolver configVariantResolver;
+
+    @Autowired
+    public ConfigBackedCurrencyDisplayAdapter(ConfigVariantResolver configVariantResolver) {
+        this.configVariantResolver = configVariantResolver;
+    }
+
+    ConfigBackedCurrencyDisplayAdapter(CurrencyMappingProperties currencyMappingProperties) {
+        this(new DefaultConfigVariantResolver(
+                List.of(new CurrencyMappingConfigSource(currencyMappingProperties)),
+                List.of(new CurrencyMappingKeyCandidateStrategy(new ConfigVariantCandidateGenerator()))));
+    }
 
     @Override
     public CurrencyDisplay resolveCurrencyDisplay(
@@ -25,48 +38,23 @@ public class ConfigBackedCurrencyDisplayAdapter implements CurrencyDisplayPort {
             String env,
             String trustCode,
             String schemeType) {
-        return new CurrencyDisplay(
-            resolve(EN_LOCALE, code, env, trustCode, schemeType),
-            resolve(ZH_HK_LOCALE, code, env, trustCode, schemeType)
-        );
-    }
-
-    private String resolve(String locale, String code, String env, String trustCode, String schemeType) {
         if (!StringUtils.hasText(code)) {
-            return "";
+            return new CurrencyDisplay("", "");
         }
 
         var normalizedCode = code.trim();
-        var localeMappings = currencyMappingProperties.getLocaleMappings(locale);
-
-        for (var candidate : candidateKeys(normalizedCode, env, trustCode, schemeType)) {
-            var mapped = localeMappings.get(candidate);
-            if (StringUtils.hasText(mapped)) {
-                return mapped;
-            }
-        }
-
-        return normalizedCode;
+        return new CurrencyDisplay(
+                resolve(normalizedCode, env, trustCode, schemeType, Locale.ENGLISH),
+                resolve(normalizedCode, env, trustCode, schemeType, ZH_HK_LOCALE)
+        );
     }
 
-    private List<String> candidateKeys(String code, String env, String trustCode, String schemeType) {
-        List<String> suffixSegments = new ArrayList<>();
-        addIfPresent(suffixSegments, env);
-        addIfPresent(suffixSegments, trustCode);
-        addIfPresent(suffixSegments, schemeType);
+    private String resolve(String code, String env, String trustCode, String schemeType, Locale locale) {
+        var request = ConfigLookupRequest.optional(
+                ConfigCategory.CURRENCY_MAPPING,
+                code,
+                ConfigLookupContext.of(env, trustCode, schemeType, locale));
 
-        List<String> candidates = new ArrayList<>();
-        for (int size = suffixSegments.size(); size > 0; size--) {
-            candidates.add(code + "." + String.join(".", suffixSegments.subList(0, size)));
-        }
-        candidates.add(code);
-
-        return List.copyOf(candidates);
-    }
-
-    private void addIfPresent(List<String> segments, String value) {
-        if (StringUtils.hasText(value)) {
-            segments.add(value.trim());
-        }
+        return configVariantResolver.resolve(request).orElse(code);
     }
 }

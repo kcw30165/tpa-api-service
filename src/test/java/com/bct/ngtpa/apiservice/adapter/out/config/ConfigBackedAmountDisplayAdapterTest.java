@@ -131,4 +131,27 @@ class ConfigBackedAmountDisplayAdapterTest {
         var adapter = adapterWith(Map.of());
         assertEquals(ConfigBackedAmountDisplayAdapter.FALLBACK_PATTERN, adapter.resolvePattern("en", "JP"));
     }
+
+    @Test
+    void resolvePatternUsesEnvTrustSchemeBeforeLessSpecificCandidates() {
+        var adapter = adapterWith(Map.of("en", Map.of(
+                "PROD.RM.MPF", "#,##0.000",
+                "PROD.MPF", "#,##0.0",
+                "PROD.RM", "#,##0",
+                "RM.MPF", "0.00",
+                "*", "#,##0.00")));
+
+        assertEquals("#,##0.000", adapter.resolvePattern("en", "PROD", "RM", "MPF"));
+    }
+
+    @Test
+    void resolvePatternUsesEnvSchemeBeforeEnvTrustAndTrustScheme() {
+        var adapter = adapterWith(Map.of("en", Map.of(
+                "PROD.MPF", "#,##0.0",
+                "PROD.RM", "#,##0",
+                "RM.MPF", "0.00",
+                "*", "#,##0.00")));
+
+        assertEquals("#,##0.0", adapter.resolvePattern("en", "PROD", "RM", "MPF"));
+    }
 }

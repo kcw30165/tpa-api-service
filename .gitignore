@@ -41,3 +41,4 @@ docs/
 fix-ssl-maven.bat
 *.txt
 aa.md
+**/*.log

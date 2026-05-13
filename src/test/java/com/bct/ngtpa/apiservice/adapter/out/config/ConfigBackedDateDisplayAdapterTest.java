@@ -99,10 +99,10 @@ class ConfigBackedDateDisplayAdapterTest {
     // --- ISO fallback when no pattern configured ---
 
     @Test
-    void fallsBackToIsoWhenNoPatternConfigured() {
+    void fallsBackToDefaultPatternWhenNoPatternConfigured() {
         var adapter = adapterWith(Map.of());
         var result = adapter.formatDate(LocalDate.of(2026, 3, 1), "en", "", "JP", "");
-        assertEquals("2026-03-01", result);
+        assertEquals("01/03/2026", result);
     }
 
     // --- blank segments are not assembled into malformed keys ---

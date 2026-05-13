@@ -8,7 +8,7 @@ import java.util.Map;
 /**
  * Configuration properties for amount display formatting.
  *
- * <p>Structure: locale → (trustCode-or-wildcard → decimal format pattern string).
+ * <p>Structure: locale → (variant-key-or-wildcard → decimal format pattern string).
  * The special key {@code *} is the wildcard fallback for a given locale.
  *
  * <p>Example YAML:
@@ -16,10 +16,10 @@ import java.util.Map;
  * display-format:
  *   amount:
  *     en:
- *       "*": "#,##0.00"
+ *       "[*]": "#,##0.00"
  *       JP: "#,##0.00"
  *     zh_HK:
- *       "*": "#,##0.00"
+ *       "[*]": "#,##0.00"
  *       JP: "#,##0.00"
  * </pre>
  */

@@ -94,6 +94,11 @@ com.bct.ngtpa.apiservice
 │       │   └── ApimPayloadCryptoService   # AES/CBC + RSA field encryption/decryption
 │       ├── config/          # Config-property-backed adapters
 │       │   ├── CurrencyMappingProperties              # Binds currency-mapping.* YAML
+│       │   ├── DisplayFormatConfigSource              # Reads display-format.* values behind ConfigSource
+│       │   ├── CurrencyMappingConfigSource            # Reads currency-mapping.* values behind ConfigSource
+│       │   ├── DefaultConfigVariantResolver           # Global variant resolver for display/currency config lookups
+│       │   ├── DisplayFormatKeyCandidateStrategy      # Builds display-format candidate keys + en fallback
+│       │   ├── CurrencyMappingKeyCandidateStrategy    # Builds currency-mapping candidate keys + en fallback
 │       │   └── ConfigBackedCurrencyDisplayAdapter     # Implements CurrencyDisplayPort
 │       ├── configserver/    # ConfigMap/Config-Server-backed adapters
 │       │   ├── ReferenceDateProperties                # Binds reference-date.* YAML
@@ -106,6 +111,9 @@ com.bct.ngtpa.apiservice
 ├── config/              # Spring composition only — use case @Bean wiring
 │   └── UseCaseConfig    # @Bean definitions for all four application use case implementations
 ├── infrastructure/      # Cross-cutting Spring infrastructure
+│   ├── config/          # Shared config resolver AOP + bean wiring
+│   │   ├── ConfigVariantResolverConfiguration
+│   │   └── ResolveConfigAspect
 │   ├── logging/         # AOP execution logging and sanitization
 │   │   ├── ExecutionLoggingAspect         # AOP around @LogExecution + package-pattern for use cases
 │   │   ├── LoggingSanitizer               # Masks sensitive fields in logged values
@@ -118,6 +126,7 @@ com.bct.ngtpa.apiservice
 │   └── webclient/       # Generic WebClient.Builder bean
 │       └── WebClientBaseConfig
 ├── shared/
+│   ├── config/          # Framework-free config resolver contracts and records
 │   ├── logging/
 │   │   └── LogExecution.java              # Method-level AOP annotation (adapters/facades only)
 │   └── web/
@@ -615,15 +624,15 @@ contribution-summary:
 currency-mapping:
   en:
     HKD: HKD
-    HKD.JP: HKD
+    HKD.TB.HKBU: HKD
   zh_HK:
     HKD: 港元
-    HKD.JP: 港元
+    HKD.TB.HKBU: 港元
 ```
 
 `reference-date.deployment-env` is the runtime deployment environment, separate from the request query `env`. For production-like deployments (`PROD`, `PRD`, `PRODUCTION`, `DR`, blank, and null), all use cases that require `ref-date` — contribution summary validation, contribution export, and notification flows — always use the app server timezone and current date. For non-production-like deployments, `reference-date.override-date` and `reference-date.override-zone-id` may be provided as a pair; when both are absent the app falls back to the server clock, and when only one is present startup-time validation is rejected when the resolver is used. Today these values come from Spring externalized configuration / ConfigMap through `ConfigBackedReferenceDateAdapter`; when the external Config Service API is available, `ConfigServiceReferenceDateAdapter` should become the alternative `ReferenceDatePort` implementation while reusing the same `ReferenceDateResolver` policy.
 
-These values drive the synthetic total detail row in the JSON response, the first three column headers in the XLSX export, the locale-specific currency display returned in contribution summary JSON, and the effective contribution reference date. `trustCode` and `schemeType` stay empty until access-token claim extraction is implemented, so currency lookup currently falls back from `${code}.${env}` to `${code}`.
+These values drive the synthetic total detail row in the JSON response, the first three column headers in the XLSX export, the locale-specific currency display returned in contribution summary JSON, and the effective contribution reference date. Currency, date, and amount lookups now run through the global config variant resolver, which evaluates `env`, `trustCode`, and `schemeType` suffix combinations in a fixed order and then falls back to English when the requested language has no match.
 
 
 ---
@@ -851,32 +860,54 @@ Pagination validation failures:
 
 ### Display Format Configuration
 
-Amount display formatting for the contribution JSON response is driven by a pattern-based `display-format.amount` configuration. Date formatting is driven by `display-format.date`.
+Amount display formatting for the contribution JSON response is driven by `display-format.amount`. Date formatting is driven by `display-format.date`. Both now resolve through the same global config variant resolver instead of per-adapter key-building logic.
+
+#### Global config variant resolver
+
+The shared resolver accepts a config category, a code, and a lookup context (`env`, `trustCode`, `schemeType`, locale). It generates suffix candidates in this exact order, skipping blank dimensions, removing duplicates, and never emitting malformed keys:
+
+1. `env.trustCode.schemeType`
+2. `env.schemeType`
+3. `env.trustCode`
+4. `trustCode.schemeType`
+5. `env`
+6. `trustCode`
+7. `schemeType`
+
+Requested language keys are tried first. If the requested language is not `en` and has no match, the resolver retries the same candidate sequence under `en`.
+
+The `ERROR_MESSAGE` category is reserved for future migration work only. Global exception handling and API error response behavior were not changed by this resolver implementation.
 
 #### Amount format (pattern-based)
 
-Each locale maps trust codes (or a wildcard `*`) to a `DecimalFormat` pattern string:
+Each locale maps variant keys (or a wildcard `*`) to a `DecimalFormat` pattern string:
 
 ```yaml
 display-format:
   amount:
     en:
       "[*]": "#,##0.00"
+      PROD.RM.MPF: "#,##0.000"
       JP: "#,##0.00"
     zh_HK:
       "[*]": "#,##0.00"
-      JP: "#,##0.00"
+      JP: "#,##0.000"
 ```
 
-**Wildcard `[*]`**: The `[*]` YAML key (bracket notation required so Spring Boot binds it as the literal `*` map key) is the wildcard fallback when no trust-code-specific entry is found.
+**Wildcard `[*]`**: The `[*]` YAML key must stay quoted so Spring Boot binds it as the literal `*` map key. Do not use `default`, and do not reintroduce the old object-based amount-format wrapper fields.
 
 **Fallback order** (tried in sequence until a pattern is found):
 
-1. `display-format.amount.<lang>.<trustCode>`
-2. `display-format.amount.<lang>.*`
-3. `display-format.amount.en.<trustCode>`
-4. `display-format.amount.en.*`
-5. Hardcoded default: `#,##0.00`
+1. `display-format.amount.<lang>.<env>.<trustCode>.<schemeType>`
+2. `display-format.amount.<lang>.<env>.<schemeType>`
+3. `display-format.amount.<lang>.<env>.<trustCode>`
+4. `display-format.amount.<lang>.<trustCode>.<schemeType>`
+5. `display-format.amount.<lang>.<env>`
+6. `display-format.amount.<lang>.<trustCode>`
+7. `display-format.amount.<lang>.<schemeType>`
+8. `display-format.amount.<lang>.*`
+9. Retry steps 1-8 with `en` locale if the requested locale has no match
+10. Hardcoded default: `#,##0.00`
 
 **Formatting rules**: `DecimalFormat` is used with English-locale symbols (`,` grouping, `.` decimal), rounding mode `HALF_UP`. The pattern `#,##0.00` always produces exactly two decimal places and never strips trailing zeros.
 
@@ -891,8 +922,6 @@ display-format:
 | `1234.567` | `1,234.57` |
 | `-1234.5` | `-1,234.50` |
 
-> **Note**: The global config variant resolver and annotation-based AOP are not part of this implementation. The `env` and `schemeType` parameters are accepted by `AmountDisplayPort.formatAmount` but do not affect pattern selection at this time.
-
 #### Date format
 
 ```yaml
@@ -905,19 +934,52 @@ display-format:
       "[*]": dd/MM/yyyy
 ```
 
-**Wildcard `[*]`**: The `[*]` YAML key (bracket notation required so Spring Boot binds it as the literal `*` map key) is the wildcard fallback for a given locale, replacing the old `default` key.
+**Wildcard `[*]`**: The `[*]` YAML key is the locale wildcard fallback. Keep it quoted, and do not use `default`.
 
 **Fallback order** (tried in sequence until a pattern is found):
 
 1. `display-format.date.<lang>.<env>.<trustCode>.<schemeType>`
-2. `display-format.date.<lang>.<env>.<trustCode>`
-3. `display-format.date.<lang>.<trustCode>.<schemeType>`
-4. `display-format.date.<lang>.<trustCode>`
-5. `display-format.date.<lang>.*`
-6. Retry steps 1–5 with `en` locale if the requested locale is missing or has no match
-7. ISO `yyyy-MM-dd` if no config entry is found at all
+2. `display-format.date.<lang>.<env>.<schemeType>`
+3. `display-format.date.<lang>.<env>.<trustCode>`
+4. `display-format.date.<lang>.<trustCode>.<schemeType>`
+5. `display-format.date.<lang>.<env>`
+6. `display-format.date.<lang>.<trustCode>`
+7. `display-format.date.<lang>.<schemeType>`
+8. `display-format.date.<lang>.*`
+9. Retry steps 1-8 with `en` locale if the requested locale is missing or has no match
+10. Adapter default `dd/MM/yyyy` if no config entry is found at all
 
-Segments that are blank or absent are skipped; compound keys are only emitted when all constituent segments are present. This means composite override keys such as `PROD.RM.MPF` or `RM.MPF` are ready for future use.
+Segments that are blank or absent are skipped; compound keys are only emitted when all constituent segments are present.
+
+#### Currency mapping
+
+Currency labels use a flat key schema under each locale. The code itself is the base key, and the suffix candidates are appended after the currency code:
+
+```yaml
+currency-mapping:
+  zh_HK:
+    AUD: 澳元
+    EUR: 歐羅
+    EUR.TB.HKBU: 歐元
+  en:
+    AUD: AUD
+    EUR: EUR
+    EUR.TB.HKBU: EUR
+```
+
+**Lookup order** (tried in sequence until a value is found):
+
+1. `currency-mapping.<lang>.<code>.<env>.<trustCode>.<schemeType>`
+2. `currency-mapping.<lang>.<code>.<env>.<schemeType>`
+3. `currency-mapping.<lang>.<code>.<env>.<trustCode>`
+4. `currency-mapping.<lang>.<code>.<trustCode>.<schemeType>`
+5. `currency-mapping.<lang>.<code>.<env>`
+6. `currency-mapping.<lang>.<code>.<trustCode>`
+7. `currency-mapping.<lang>.<code>.<schemeType>`
+8. `currency-mapping.<lang>.<code>`
+9. Retry steps 1-8 with `en` locale if the requested locale has no match
+
+This preserves existing flat keys such as `EUR.TB.HKBU` and `AUD.OG` while allowing more specific `env`-aware variants. At the adapter level, if no mapping resolves even after language fallback, both the English and Chinese display values fall back to the raw currency code.
 
 ### `GET /api/v1/contributions/export`
 

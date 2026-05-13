@@ -1,14 +1,19 @@
 package com.bct.ngtpa.apiservice.adapter.out.config;
 
 import com.bct.ngtpa.apiservice.application.port.out.AmountDisplayPort;
-import lombok.RequiredArgsConstructor;
+import com.bct.ngtpa.apiservice.shared.config.ConfigCategory;
+import com.bct.ngtpa.apiservice.shared.config.ConfigLookupContext;
+import com.bct.ngtpa.apiservice.shared.config.ConfigLookupRequest;
+import com.bct.ngtpa.apiservice.shared.config.ConfigVariantCandidateGenerator;
+import com.bct.ngtpa.apiservice.shared.config.ConfigVariantResolver;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -27,53 +32,41 @@ import java.util.Locale;
  * resolution in this implementation; they are reserved for the future global config resolver.
  */
 @Component
-@RequiredArgsConstructor
 public class ConfigBackedAmountDisplayAdapter implements AmountDisplayPort {
 
-    static final String WILDCARD = "*";
-    static final String DEFAULT_LANG = "en";
     static final String FALLBACK_PATTERN = "#,##0.00";
 
-    private final AmountFormatProperties amountFormatProperties;
+    private final ConfigVariantResolver configVariantResolver;
+
+    @Autowired
+    public ConfigBackedAmountDisplayAdapter(ConfigVariantResolver configVariantResolver) {
+        this.configVariantResolver = configVariantResolver;
+    }
+
+    ConfigBackedAmountDisplayAdapter(AmountFormatProperties amountFormatProperties) {
+        this(new DefaultConfigVariantResolver(
+                List.of(new DisplayFormatConfigSource(new DateFormatProperties(), amountFormatProperties)),
+                List.of(new DisplayFormatKeyCandidateStrategy(new ConfigVariantCandidateGenerator()))));
+    }
 
     @Override
     public String formatAmount(BigDecimal amount, String lang, String env, String trustCode, String schemeType) {
         var value = amount == null ? BigDecimal.ZERO : amount;
-        var pattern = resolvePattern(lang, trustCode);
+        var pattern = resolvePattern(lang, env, trustCode, schemeType);
         return applyFormat(value, pattern);
     }
 
-    String resolvePattern(String lang, String trustCode) {
-        var normalizedLang = StringUtils.hasText(lang) ? lang.trim() : DEFAULT_LANG;
-        var normalizedTrust = StringUtils.hasText(trustCode) ? trustCode.trim() : null;
+    String resolvePattern(String lang, String env, String trustCode, String schemeType) {
+        var request = ConfigLookupRequest.optional(
+                ConfigCategory.DISPLAY_FORMAT,
+                "amount",
+                ConfigLookupContext.of(env, trustCode, schemeType, lang));
 
-        // Try lang + trustCode
-        if (normalizedTrust != null) {
-            var pattern = lookupPattern(normalizedLang, normalizedTrust);
-            if (pattern != null) return pattern;
-        }
-
-        // Try lang + *
-        var pattern = lookupPattern(normalizedLang, WILDCARD);
-        if (pattern != null) return pattern;
-
-        // Try en fallbacks only when lang is not already "en"
-        if (!DEFAULT_LANG.equals(normalizedLang)) {
-            if (normalizedTrust != null) {
-                var enPattern = lookupPattern(DEFAULT_LANG, normalizedTrust);
-                if (enPattern != null) return enPattern;
-            }
-            var enPattern = lookupPattern(DEFAULT_LANG, WILDCARD);
-            if (enPattern != null) return enPattern;
-        }
-
-        return FALLBACK_PATTERN;
+        return configVariantResolver.resolve(request).orElse(FALLBACK_PATTERN);
     }
 
-    private String lookupPattern(String lang, String key) {
-        var localeFormats = amountFormatProperties.getLocaleFormats(lang);
-        if (localeFormats.isEmpty()) return null;
-        return localeFormats.get(key);
+    String resolvePattern(String lang, String trustCode) {
+        return resolvePattern(lang, "", trustCode, "");
     }
 
     private String applyFormat(BigDecimal value, String pattern) {
