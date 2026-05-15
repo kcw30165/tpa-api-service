@@ -44,12 +44,12 @@ class ReferenceDateResolverTest {
     }
 
     @Test
-    void treatsNullDeploymentEnvAsProductionLike() {
+    void treatsNullAccountEnvAsProductionSafe() {
         assertEquals(LocalDate.of(2026, 5, 7), resolver.resolve(null, "31/03/2026", "Asia/Hong_Kong"));
     }
 
     @Test
-    void treatsBlankDeploymentEnvAsProductionLike() {
+    void treatsBlankAccountEnvAsProductionSafe() {
         assertEquals(LocalDate.of(2026, 5, 7), resolver.resolve("   ", "31/03/2026", "Asia/Hong_Kong"));
     }
 

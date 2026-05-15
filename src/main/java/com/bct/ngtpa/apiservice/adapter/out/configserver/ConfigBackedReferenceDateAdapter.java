@@ -21,7 +21,7 @@ public class ConfigBackedReferenceDateAdapter implements ReferenceDatePort {
 
     private LocalDate resolve() {
         return referenceDateResolver.resolve(
-                properties.getDeploymentEnv(),
+                properties.getAccountEnv(),
                 properties.getOverrideDate(),
                 properties.getOverrideZoneId());
     }

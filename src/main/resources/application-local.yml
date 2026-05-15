@@ -114,7 +114,7 @@ currency-mapping:
     INR.OG: INR
 
 reference-date:
-  deployment-env: dev
+  account-env: mp
   # override-date: 30/06/2026
   # override-zone-id: Asia/Hong_Kong
 

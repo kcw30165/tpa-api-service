@@ -24,8 +24,8 @@ public class ReferenceDateResolver {
         this.clock = clock;
     }
 
-    public LocalDate resolve(String deploymentEnv, String overrideDate, String overrideZoneId) {
-        if (isProductionLikeDeployment(deploymentEnv)) {
+    public LocalDate resolve(String accountEnv, String overrideDate, String overrideZoneId) {
+        if (isProductionLikeAccountEnv(accountEnv)) {
             return resolveServerDate();
         }
 
@@ -59,15 +59,15 @@ public class ReferenceDateResolver {
         }
     }
 
-    private boolean isProductionLikeDeployment(String deploymentEnv) {
-        if (deploymentEnv == null || deploymentEnv.isBlank()) {
+    private boolean isProductionLikeAccountEnv(String accountEnv) {
+        if (accountEnv == null || accountEnv.isBlank()) {
             return true;
         }
 
-        return "PROD".equalsIgnoreCase(deploymentEnv)
-                || "PRD".equalsIgnoreCase(deploymentEnv)
-                || "PRODUCTION".equalsIgnoreCase(deploymentEnv)
-                || "DR".equalsIgnoreCase(deploymentEnv);
+        return "PROD".equalsIgnoreCase(accountEnv)
+                || "PRD".equalsIgnoreCase(accountEnv)
+                || "PRODUCTION".equalsIgnoreCase(accountEnv)
+                || "DR".equalsIgnoreCase(accountEnv);
     }
 
     private boolean isBlank(String value) {

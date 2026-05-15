@@ -15,7 +15,7 @@ class ConfigBackedReferenceDateAdapterTest {
     @Test
     void ignoresOverridePairForProductionLikeEnv() {
         var properties = new ReferenceDateProperties();
-        properties.setDeploymentEnv("pRoD");
+        properties.setAccountEnv("pRoD");
         properties.setOverrideDate("31/03/2026");
         properties.setOverrideZoneId("Asia/Tokyo");
         var adapter = new ConfigBackedReferenceDateAdapter(properties, referenceDateResolver);
@@ -28,7 +28,7 @@ class ConfigBackedReferenceDateAdapterTest {
     @Test
     void treatsDrAsProductionLikeEnv() {
         var properties = new ReferenceDateProperties();
-        properties.setDeploymentEnv("dr");
+        properties.setAccountEnv("dr");
         properties.setOverrideDate("31/03/2026");
         properties.setOverrideZoneId("Asia/Tokyo");
         var adapter = new ConfigBackedReferenceDateAdapter(properties, referenceDateResolver);
@@ -41,7 +41,7 @@ class ConfigBackedReferenceDateAdapterTest {
     @Test
     void usesConfiguredOverridePairForNonProductionLikeEnv() {
         var properties = new ReferenceDateProperties();
-        properties.setDeploymentEnv("sit");
+        properties.setAccountEnv("sit");
         properties.setOverrideDate("31/03/2026");
         properties.setOverrideZoneId("Asia/Hong_Kong");
         var adapter = new ConfigBackedReferenceDateAdapter(properties, referenceDateResolver);
@@ -52,7 +52,7 @@ class ConfigBackedReferenceDateAdapterTest {
     @Test
     void returnsServerDateWhenNonProductionOverridePairIsBlank() {
         var properties = new ReferenceDateProperties();
-        properties.setDeploymentEnv("uat");
+        properties.setAccountEnv("uat");
         var adapter = new ConfigBackedReferenceDateAdapter(properties, referenceDateResolver);
 
         var expected = LocalDate.now(java.time.ZoneId.systemDefault());
@@ -61,7 +61,7 @@ class ConfigBackedReferenceDateAdapterTest {
     }
 
     @Test
-    void treatsBlankDeploymentEnvAsProductionSafe() {
+    void treatsBlankAccountEnvAsProductionSafe() {
         var properties = new ReferenceDateProperties();
         properties.setOverrideDate("31/03/2026");
         properties.setOverrideZoneId("Asia/Hong_Kong");
@@ -75,7 +75,7 @@ class ConfigBackedReferenceDateAdapterTest {
     @Test
     void rejectsInvalidOverrideDateFormat() {
         var properties = new ReferenceDateProperties();
-        properties.setDeploymentEnv("dev");
+        properties.setAccountEnv("dev");
         properties.setOverrideDate("2026-03-31");
         properties.setOverrideZoneId("Asia/Hong_Kong");
         var adapter = new ConfigBackedReferenceDateAdapter(properties, referenceDateResolver);
@@ -89,7 +89,7 @@ class ConfigBackedReferenceDateAdapterTest {
     @Test
     void rejectsInvalidOverrideZoneId() {
         var properties = new ReferenceDateProperties();
-        properties.setDeploymentEnv("sit");
+        properties.setAccountEnv("sit");
         properties.setOverrideDate("31/03/2026");
         properties.setOverrideZoneId("Mars/Olympus");
         var adapter = new ConfigBackedReferenceDateAdapter(properties, referenceDateResolver);
@@ -103,7 +103,7 @@ class ConfigBackedReferenceDateAdapterTest {
     @Test
     void rejectsPartialOverridePair() {
         var properties = new ReferenceDateProperties();
-        properties.setDeploymentEnv("sit");
+        properties.setAccountEnv("sit");
         properties.setOverrideDate("31/03/2026");
         var adapter = new ConfigBackedReferenceDateAdapter(properties, referenceDateResolver);
 
