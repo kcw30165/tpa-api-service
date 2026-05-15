@@ -1,6 +1,6 @@
-package com.bct.ngtpa.apiservice.adapter.out.configserver;
+package com.bct.ngtpa.apiservice.adapter.out.configservice;
 
-import com.bct.ngtpa.apiservice.adapter.out.configserver.config.ConfigServiceProperties;
+import com.bct.ngtpa.apiservice.adapter.out.configservice.config.ConfigServiceProperties;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.env.YamlPropertySourceLoader;
@@ -58,6 +58,33 @@ class ConfigServicePropertiesBindingTest {
                 .run(context -> {
                     var props = context.getBean(ConfigServiceProperties.class);
                     assertEquals("", props.getBaseUrl());
+                });
+    }
+
+    @Test
+    void bindsUsernameAndPassword() {
+        new ApplicationContextRunner()
+                .withUserConfiguration(TestConfig.class)
+                .withPropertyValues(
+                        "config-service.base-url=http://localhost",
+                        "config-service.username=svc-user",
+                        "config-service.password=svc-pass"
+                )
+                .run(context -> {
+                    var props = context.getBean(ConfigServiceProperties.class);
+                    assertEquals("svc-user", props.getUsername());
+                    assertEquals("svc-pass", props.getPassword());
+                });
+    }
+
+    @Test
+    void defaultUsernameAndPasswordAreEmpty() {
+        new ApplicationContextRunner()
+                .withUserConfiguration(TestConfig.class)
+                .run(context -> {
+                    var props = context.getBean(ConfigServiceProperties.class);
+                    assertEquals("", props.getUsername());
+                    assertEquals("", props.getPassword());
                 });
     }
 

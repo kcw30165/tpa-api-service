@@ -1,8 +1,8 @@
-package com.bct.ngtpa.apiservice.adapter.out.configserver;
+package com.bct.ngtpa.apiservice.adapter.out.configservice;
 
-import com.bct.ngtpa.apiservice.adapter.out.configserver.config.ConfigServiceProperties;
-import com.bct.ngtpa.apiservice.adapter.out.configserver.dto.ConfigServiceRequest;
-import com.bct.ngtpa.apiservice.adapter.out.configserver.dto.ConfigServiceResponse;
+import com.bct.ngtpa.apiservice.adapter.out.configservice.config.ConfigServiceProperties;
+import com.bct.ngtpa.apiservice.adapter.out.configservice.dto.ConfigServiceRequest;
+import com.bct.ngtpa.apiservice.adapter.out.configservice.dto.ConfigServiceResponse;
 import com.bct.ngtpa.apiservice.application.dto.ConfigEntry;
 import com.bct.ngtpa.apiservice.application.dto.ConfigQuery;
 import com.bct.ngtpa.apiservice.application.dto.ConfigUpsertCommand;

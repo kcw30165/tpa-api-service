@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.adapter.out.configserver.config;
+package com.bct.ngtpa.apiservice.adapter.out.configservice.config;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -11,4 +11,6 @@ public class ConfigServiceProperties {
 
     private String baseUrl = "";
     private int timeoutMilliseconds = 10000;
+    private String username = "";
+    private String password = "";
 }

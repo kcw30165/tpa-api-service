@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.adapter.out.configserver.dto;
+package com.bct.ngtpa.apiservice.adapter.out.configservice.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
  * parameter naming convention. Verify the exact JSON keys against the actual
  * Config Service {@code ConfigRequest} before promoting to production.
  *
- * <p>Must not be used outside {@code adapter/out/configserver} — enforced by ArchUnit.
+ * <p>Must not be used outside {@code adapter/out/configservice} — enforced by ArchUnit.
  */
 @Data
 @Builder

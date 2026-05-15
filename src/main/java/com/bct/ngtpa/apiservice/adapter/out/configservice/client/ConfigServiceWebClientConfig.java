@@ -1,12 +1,11 @@
-package com.bct.ngtpa.apiservice.adapter.out.configserver.client;
+package com.bct.ngtpa.apiservice.adapter.out.configservice.client;
 
-import com.bct.ngtpa.apiservice.adapter.out.configserver.config.ConfigServiceProperties;
+import com.bct.ngtpa.apiservice.adapter.out.configservice.config.ConfigServiceProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.WebClient;
-
-import java.time.Duration;
 
 /**
  * Spring configuration for the Config Service outbound WebClient.
@@ -18,9 +17,14 @@ public class ConfigServiceWebClientConfig {
 
     @Bean
     public WebClient configServiceWebClient(ConfigServiceProperties configServiceProperties) {
-        return WebClient.builder()
+        var builder = WebClient.builder()
                 .baseUrl(configServiceProperties.getBaseUrl())
-                .defaultHeader("Accept", "application/json")
-                .build();
+                .defaultHeader("Accept", "application/json");
+        if (StringUtils.hasText(configServiceProperties.getUsername())) {
+            builder.defaultHeaders(headers -> headers.setBasicAuth(
+                    configServiceProperties.getUsername(),
+                    configServiceProperties.getPassword()));
+        }
+        return builder.build();
     }
 }

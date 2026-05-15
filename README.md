@@ -107,11 +107,20 @@ com.bct.ngtpa.apiservice
 │       │   ├── DisplayFormatKeyCandidateStrategy      # Legacy display-format candidate strategy; to be replaced by DefaultConfigKeyCandidateStrategy
 │       │   ├── CurrencyMappingKeyCandidateStrategy    # Legacy currency candidate strategy; to be replaced by DefaultConfigKeyCandidateStrategy
 │       │   └── ConfigBackedCurrencyDisplayAdapter     # Implements CurrencyDisplayPort
-│       ├── configserver/    # ConfigMap/Config-Server-backed adapters
+│       ├── configserver/    # ConfigMap / Spring Cloud Config Server YAML-backed adapters
 │       │   ├── ReferenceDateProperties                # Binds reference-date.* YAML
 │       │   ├── ConfigBackedReferenceDateAdapter       # Current ConfigMap-backed ReferenceDatePort implementation
 │       │   ├── ConfigServiceReferenceDateAdapter      # Planned future API-backed ReferenceDatePort implementation
 │       │   └── ReferenceDateResolver                  # Shared production-like / override resolution policy
+│       ├── configservice/   # Config Service REST API outbound adapter
+│       │   ├── config/
+│       │   │   └── ConfigServiceProperties            # Binds config-service.* YAML (base-url, timeout-milliseconds)
+│       │   ├── client/
+│       │   │   └── ConfigServiceWebClientConfig       # @Bean configServiceWebClient
+│       │   ├── dto/
+│       │   │   ├── ConfigServiceRequest               # Adapter-private PUT request DTO (must not leak outside adapter)
+│       │   │   └── ConfigServiceResponse              # Adapter-private GET/PUT response DTO (must not leak outside adapter)
+│       │   └── ConfigServiceWebClientAdapter          # Implements ConfigServicePort — GET, PUT, DELETE
 │       └── security/        # Non-APIM security concerns
 │           ├── TemporaryPortalAccessContextProperties  # Binds temporary-portal-access-context.profiles.*
 │           └── TemporaryPortalAccessContextAdapter     # Implements PortalAccessContextPort
@@ -202,6 +211,7 @@ adapter/in/web          →  application  →  domain
 adapter/out/apim        →  application  →  domain
 adapter/out/config      →  application  →  domain
 adapter/out/configserver →  application  →  domain
+adapter/out/configservice →  application  →  domain
 adapter/out/security    →  application  →  domain
 config                  →  application use case @Bean wiring only (UseCaseConfig)
 infrastructure          →  Spring/framework infrastructure only (no application/domain imports)
@@ -338,6 +348,8 @@ Notes:
 | `API_SECURITY_REQUIRE_AUTHENTICATION` | Enable in-process HTTP Basic auth. Set to `false` when auth is enforced externally by a K8s ingress or API gateway. | `true` |
 | `CONFIG_SERVICE_BASE_URL` | Base URL of the internal Config Service REST API | _(empty / disabled)_ |
 | `CONFIG_SERVICE_TIMEOUT_MILLISECONDS` | WebClient read timeout in ms for the Config Service | `10000` |
+| `CONFIG_SERVICE_USERNAME` | HTTP Basic auth username sent to the Config Service | _(empty)_ |
+| `CONFIG_SERVICE_PASSWORD` | HTTP Basic auth password sent to the Config Service | _(empty)_ |
 
 For the dev cluster, the Kubernetes deployment or external config repository must set `CORS_ALLOWED_ORIGINS=http://localhost:4200` before local frontend calls from that origin will succeed. Those deployment manifests are outside this repository.
 
@@ -458,13 +470,13 @@ Blank or missing `term-status` maps to `TermStatus.BLANK` without warning. Unsup
 
 `ref-date` is resolved through the `ReferenceDatePort` outbound port for **all** flows that require it: contribution summary validation, contribution export, and notification flows (`GetNotificationsService`, `UpdateNotificationsReadStatusService`). Neither notification service contains a hardcoded date constant.
 
-The single shared implementation is `ConfigBackedReferenceDateAdapter` (under `adapter/out/configserver`), backed by `ReferenceDateProperties`. Application services depend only on `ReferenceDatePort`; they do not import `ReferenceDateProperties`.
+The single shared implementation is `ConfigBackedReferenceDateAdapter` (under `adapter/out/configserver`), backed by `ReferenceDateProperties`. Application services depend only on `ReferenceDatePort`; they do not import `ReferenceDateProperties`. Application services depend only on `ReferenceDatePort`; they do not import `ReferenceDateProperties`.
 
 ---
 
 ## Config Service Adapter
 
-The `ConfigServiceWebClientAdapter` (under `adapter/out/configserver`) provides the BFF with read, write, and delete access to the internal Config Service via three outbound operations:
+The `ConfigServiceWebClientAdapter` (under `adapter/out/configservice`) provides the BFF with read, write, and delete access to the internal Config Service via three outbound operations:
 
 | HTTP method | Path | Port method |
 |---|---|---|
@@ -474,7 +486,7 @@ The `ConfigServiceWebClientAdapter` (under `adapter/out/configserver`) provides 
 
 **Architecture boundaries:**
 - Application code depends only on `ConfigServicePort`, `ConfigEntry`, `ConfigQuery`, and `ConfigUpsertCommand` — all framework-free records in `application/port/out/` and `application/dto/`.
-- HTTP request/response DTOs (`ConfigServiceRequest`, `ConfigServiceResponse`) are adapter-private to `adapter/out/configserver/dto/` and are enforced by an ArchUnit rule (`configServerDtoTypesDoNotLeakOutsideAdapter`).
+- HTTP request/response DTOs (`ConfigServiceRequest`, `ConfigServiceResponse`) are adapter-private to `adapter/out/configservice/dto/` and are enforced by an ArchUnit rule (`configServiceDtoTypesDoNotLeakOutsideAdapter`).
 - `ConfigServiceException` maps all Config Service HTTP errors to a safe exception; it does not expose raw Config Service response bodies.
 
 **Configuration:**
@@ -483,6 +495,8 @@ The `ConfigServiceWebClientAdapter` (under `adapter/out/configserver`) provides 
 config-service:
   base-url: ${CONFIG_SERVICE_BASE_URL:}
   timeout-milliseconds: ${CONFIG_SERVICE_TIMEOUT_MILLISECONDS:10000}
+  username: ${CONFIG_SERVICE_USERNAME:}
+  password: ${CONFIG_SERVICE_PASSWORD:}
 ```
 
 **Scope of this task:** This task adds the outbound adapter capability only. Redis caching, read-through strategy, APIM write-back, and `ReferenceDate` orchestration are out of scope and will be addressed in later tasks.
