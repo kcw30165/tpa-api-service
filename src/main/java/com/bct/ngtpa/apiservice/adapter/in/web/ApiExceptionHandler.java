@@ -219,7 +219,7 @@ public class ApiExceptionHandler {
         return errorMessageResolver.resolve(
                 errorCode,
                 context.locale(),
-                context.env(),
+                context.accountEnv(),
                 context.trustCode(),
                 context.schemeType());
     }
@@ -299,6 +299,6 @@ public class ApiExceptionHandler {
         return StringUtils.hasText(text) ? text : null;
     }
 
-    private record ErrorMessageContext(String locale, String env, String trustCode, String schemeType) {
+    private record ErrorMessageContext(String locale, String accountEnv, String trustCode, String schemeType) {
     }
 }

@@ -361,13 +361,13 @@ class ApiExceptionHandlerTest {
     }
 
     private static ErrorMessageResolver testErrorMessageResolver() {
-        return (errorCode, locale, env, trustCode, schemeType) -> switch (errorCode) {
+        return (errorCode, locale, accountEnv, trustCode, schemeType) -> switch (errorCode) {
             case ErrorCodes.APIM_UPSTREAM_FAILURE,
                     ErrorCodes.APIM_SERVICE_UNAVAILABLE,
                     ErrorCodes.APIM_TIMEOUT,
                     ErrorCodes.APIM_RESPONSE_INVALID -> "Service is temporarily unavailable. Please try again later.";
             case ErrorCodes.REQUEST_INVALID -> "Invalid request.";
-            case ErrorCodes.REQUEST_VALIDATION_FAILED -> "JP".equals(env)
+            case ErrorCodes.REQUEST_VALIDATION_FAILED -> "JP".equals(accountEnv)
                 ? "Invalid request payload for JP."
                 : "Invalid request payload.";
             case ErrorCodes.REQUEST_BODY_MALFORMED -> "Malformed request body.";

@@ -29,18 +29,18 @@ public class ConfiguredErrorMessageResolver implements ErrorMessageResolver {
     }
 
     @Override
-    public String resolve(String errorCode, String locale, String env, String trustCode, String schemeType) {
+    public String resolve(String errorCode, String locale, String accountEnv, String trustCode, String schemeType) {
         var normalizedLocale = normalizeLocale(locale);
         var normalizedCode = normalizeCode(errorCode);
 
         if (StringUtils.hasText(normalizedCode)) {
-            var requested = resolveConfiguredMessage(normalizedCode, env, trustCode, schemeType, normalizedLocale);
+            var requested = resolveConfiguredMessage(normalizedCode, accountEnv, trustCode, schemeType, normalizedLocale);
             if (requested.isPresent()) {
                 return requested.orElseThrow();
             }
 
             if (!Locale.ENGLISH.equals(normalizedLocale)) {
-                var english = resolveConfiguredMessage(normalizedCode, env, trustCode, schemeType, Locale.ENGLISH);
+                var english = resolveConfiguredMessage(normalizedCode, accountEnv, trustCode, schemeType, Locale.ENGLISH);
                 if (english.isPresent()) {
                     return english.orElseThrow();
                 }
@@ -53,7 +53,7 @@ public class ConfiguredErrorMessageResolver implements ErrorMessageResolver {
 
     private Optional<String> resolveConfiguredMessage(
             String errorCode,
-            String env,
+            String accountEnv,
             String trustCode,
             String schemeType,
             Locale locale) {
@@ -61,7 +61,7 @@ public class ConfiguredErrorMessageResolver implements ErrorMessageResolver {
             return configVariantResolver.resolve(ConfigLookupRequest.optional(
                     ConfigCategory.ERROR_MESSAGE,
                     errorCode,
-                    ConfigLookupContext.of(env, trustCode, schemeType, locale)))
+                    ConfigLookupContext.of(accountEnv, trustCode, schemeType, locale)))
                     .map(String::trim)
                     .filter(StringUtils::hasText);
         } catch (ConfigResolutionException exception) {

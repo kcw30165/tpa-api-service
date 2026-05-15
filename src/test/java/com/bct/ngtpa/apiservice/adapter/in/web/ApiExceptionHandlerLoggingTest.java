@@ -141,7 +141,7 @@ class ApiExceptionHandlerLoggingTest {
     }
 
     private static ErrorMessageResolver testErrorMessageResolver() {
-        return (errorCode, locale, env, trustCode, schemeType) -> switch (errorCode) {
+        return (errorCode, locale, accountEnv, trustCode, schemeType) -> switch (errorCode) {
             case ErrorCodes.APIM_UPSTREAM_FAILURE -> "Service is temporarily unavailable. Please try again later.";
             case ErrorCodes.NOTIFICATION_REQUEST_INVALID -> "Invalid notification request.";
             case ErrorCodes.REQUEST_BODY_MALFORMED -> "Malformed request body.";

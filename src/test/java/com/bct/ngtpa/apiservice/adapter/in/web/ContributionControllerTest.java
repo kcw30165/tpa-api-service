@@ -178,6 +178,8 @@ class ContributionControllerTest {
 
         client.get()
                 .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions")
+                        .queryParam("fromDate", "not-a-date")
+                        .queryParam("toDate", "not-a-date")
                         .build())
                 .exchange()
                 .expectStatus().isBadRequest()
@@ -208,8 +210,8 @@ class ContributionControllerTest {
             ExportContributionSummaryUseCase exportContributionSummaryUseCase) {
         var provider = displayConfigProvider();
         var mapper = new ContributionSummaryWebMapper(
-                (amount, lang, env, trustCode, schemeType) -> amount == null ? "0" : amount.toPlainString(),
-                (date, lang, env, trustCode, schemeType) -> date != null ? date.format(DateTimeFormatter.ofPattern("MM/dd/yyyy")) : "");
+                (amount, lang, accountEnv, trustCode, schemeType) -> amount == null ? "0" : amount.toPlainString(),
+                (date, lang, accountEnv, trustCode, schemeType) -> date != null ? date.format(DateTimeFormatter.ofPattern("MM/dd/yyyy")) : "");
         return WebTestClient.bindToController(new ContributionController(
                         getContributionSummaryUseCase,
                         exportContributionSummaryUseCase,
@@ -227,8 +229,8 @@ class ContributionControllerTest {
             ExportContributionSummaryUseCase exportContributionSummaryUseCase) {
         var provider = displayConfigProvider();
         var mapper = new ContributionSummaryWebMapper(
-                (amount, lang, env, trustCode, schemeType) -> amount == null ? "0" : amount.toPlainString(),
-                (date, lang, env, trustCode, schemeType) -> date != null ? date.format(DateTimeFormatter.ofPattern("MM/dd/yyyy")) : "");
+                (amount, lang, accountEnv, trustCode, schemeType) -> amount == null ? "0" : amount.toPlainString(),
+                (date, lang, accountEnv, trustCode, schemeType) -> date != null ? date.format(DateTimeFormatter.ofPattern("MM/dd/yyyy")) : "");
         return WebTestClient.bindToController(new ContributionController(
                         getContributionSummaryUseCase,
                         exportContributionSummaryUseCase,
@@ -254,7 +256,10 @@ class ContributionControllerTest {
 
         sortingWebClient(getUseCase, unusedExportUseCase())
                 .get()
-                .uri("/api/v1/contributions")
+                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions")
+                        .queryParam("fromDate", "01/01/2026")
+                        .queryParam("toDate", "30/04/2026")
+                        .build())
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -272,7 +277,10 @@ class ContributionControllerTest {
 
         sortingWebClient(getUseCase, unusedExportUseCase())
                 .get()
-                .uri("/api/v1/contributions")
+                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions")
+                        .queryParam("fromDate", "01/01/2026")
+                        .queryParam("toDate", "30/04/2026")
+                        .build())
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
@@ -329,7 +337,7 @@ class ContributionControllerTest {
     }
 
         private static ErrorMessageResolver testErrorMessageResolver() {
-                return (errorCode, locale, env, trustCode, schemeType) -> switch (errorCode) {
+                return (errorCode, locale, accountEnv, trustCode, schemeType) -> switch (errorCode) {
                         case ErrorCodes.CONTRIBUTION_REQUEST_INVALID -> "Invalid contribution request.";
                         case ErrorCodes.SYSTEM_UNEXPECTED -> "Sorry, this service might be interrupted. Please try again later.";
                         default -> errorCode;

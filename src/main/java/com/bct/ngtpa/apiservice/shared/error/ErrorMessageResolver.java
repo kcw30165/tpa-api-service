@@ -5,5 +5,5 @@ package com.bct.ngtpa.apiservice.shared.error;
  */
 public interface ErrorMessageResolver {
 
-    String resolve(String errorCode, String locale, String env, String trustCode, String schemeType);
+    String resolve(String errorCode, String locale, String accountEnv, String trustCode, String schemeType);
 }

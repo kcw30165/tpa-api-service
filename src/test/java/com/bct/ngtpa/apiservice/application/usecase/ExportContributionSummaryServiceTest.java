@@ -80,7 +80,7 @@ class ExportContributionSummaryServiceTest {
             return Mono.just(CONTRIBUTIONS_CONTEXT);
         };
 
-        CurrencyDisplayPort currencyDisplayPort = (code, env, trustCode, schemeType) ->
+        CurrencyDisplayPort currencyDisplayPort = (code, accountEnv, trustCode, schemeType) ->
                 new CurrencyDisplay(code, code);
 
         var service = new ExportContributionSummaryService(
@@ -102,9 +102,9 @@ class ExportContributionSummaryServiceTest {
         String capturedSchemeType;
 
         @Override
-        public CurrencyDisplay resolveCurrencyDisplay(String code, String env, String trustCode, String schemeType) {
+        public CurrencyDisplay resolveCurrencyDisplay(String code, String accountEnv, String trustCode, String schemeType) {
             this.capturedCode = code;
-            this.capturedAccountEnv = env;
+            this.capturedAccountEnv = accountEnv;
             this.capturedTrustCode = trustCode;
             this.capturedSchemeType = schemeType;
             return new CurrencyDisplay(code, "港元");

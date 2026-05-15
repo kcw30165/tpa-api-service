@@ -35,7 +35,7 @@ public class ConfigBackedCurrencyDisplayAdapter implements CurrencyDisplayPort {
     @Override
     public CurrencyDisplay resolveCurrencyDisplay(
             String code,
-            String env,
+            String accountEnv,
             String trustCode,
             String schemeType) {
         if (!StringUtils.hasText(code)) {
@@ -44,16 +44,16 @@ public class ConfigBackedCurrencyDisplayAdapter implements CurrencyDisplayPort {
 
         var normalizedCode = code.trim();
         return new CurrencyDisplay(
-                resolve(normalizedCode, env, trustCode, schemeType, Locale.ENGLISH),
-                resolve(normalizedCode, env, trustCode, schemeType, ZH_HK_LOCALE)
+                resolve(normalizedCode, accountEnv, trustCode, schemeType, Locale.ENGLISH),
+                resolve(normalizedCode, accountEnv, trustCode, schemeType, ZH_HK_LOCALE)
         );
     }
 
-    private String resolve(String code, String env, String trustCode, String schemeType, Locale locale) {
+    private String resolve(String code, String accountEnv, String trustCode, String schemeType, Locale locale) {
         var request = ConfigLookupRequest.optional(
                 ConfigCategory.CURRENCY_MAPPING,
                 code,
-                ConfigLookupContext.of(env, trustCode, schemeType, locale));
+                ConfigLookupContext.of(accountEnv, trustCode, schemeType, locale));
 
         return configVariantResolver.resolve(request).orElse(code);
     }

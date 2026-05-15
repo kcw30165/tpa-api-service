@@ -35,19 +35,19 @@ public class ConfigBackedDateDisplayAdapter implements DateDisplayPort {
     }
 
     @Override
-    public String formatDate(LocalDate date, String lang, String env, String trustCode, String schemeType) {
+    public String formatDate(LocalDate date, String lang, String accountEnv, String trustCode, String schemeType) {
         if (date == null) {
             return "";
         }
-        var pattern = resolvePattern(lang, env, trustCode, schemeType);
+        var pattern = resolvePattern(lang, accountEnv, trustCode, schemeType);
         return date.format(DateTimeFormatter.ofPattern(pattern));
     }
 
-    String resolvePattern(String lang, String env, String trustCode, String schemeType) {
+    String resolvePattern(String lang, String accountEnv, String trustCode, String schemeType) {
         var request = ConfigLookupRequest.optional(
                 ConfigCategory.DISPLAY_FORMAT,
                 "date",
-                ConfigLookupContext.of(env, trustCode, schemeType, lang));
+                ConfigLookupContext.of(accountEnv, trustCode, schemeType, lang));
 
         return configVariantResolver.resolve(request).orElse(FALLBACK_PATTERN);
     }
