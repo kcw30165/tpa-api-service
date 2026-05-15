@@ -46,15 +46,18 @@ public class GetNotificationsService implements GetNotificationsUseCase {
                             ctx.actor().actorUserId(),
                             referenceDate.format(DATE_FORMATTER));
 
-                    return apimNoticeMessagePort.fetchNotifications(enriched)
-                            .map(result -> {
-                                var visible = result.notifications().stream()
-                                        .filter(message -> message.isVisible(now))
-                                        .sorted(Comparator.comparingInt(
-                                                m -> Optional.ofNullable(m.seq()).orElse(Integer.MAX_VALUE)))
-                                        .toList();
-                                return new NotificationListResult(visible, dateOptions);
-                            });
-                });
-    }
+                                        return apimNoticeMessagePort.fetchNotifications(enriched)
+                                                        .map(result -> {
+                                                                var visible = result.notifications().stream()
+                                                                                .filter(message -> message
+                                                                                                .isVisible(now))
+                                                                                .sorted(Comparator.comparingInt(
+                                                                                                m -> Optional.ofNullable(
+                                                                                                                m.seq())
+                                                                                                                .orElse(Integer.MAX_VALUE)))
+                                                                                .toList();
+                                                                return new NotificationListResult(visible, dateOptions);
+                                                        });
+                                });
+        }
 }

@@ -70,7 +70,7 @@ class ConfigBackedReferenceDateAdapterTest {
                 referenceDateResolver,
                 environment("sit"));
 
-        assertEquals(LocalDate.of(2026, 3, 31), adapter.resolveReferenceDate().block());
+        assertEquals(LocalDate.of(2026, 3, 31), adapter.resolveReferenceDate("sit").block());
     }
 
     @Test

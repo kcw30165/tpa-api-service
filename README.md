@@ -336,6 +336,8 @@ Notes:
 | `TEMP_CONT_TERM_STATUS` | Temporary contribution raw term status (`O`/`P`/`S`/`T` or blank) | _(empty)_ |
 | `TEMP_CONT_TERM_COMPLETION_DATE` | Temporary contribution term completion date (`dd/MM/yyyy`) | _(empty)_ |
 | `API_SECURITY_REQUIRE_AUTHENTICATION` | Enable in-process HTTP Basic auth. Set to `false` when auth is enforced externally by a K8s ingress or API gateway. | `true` |
+| `CONFIG_SERVICE_BASE_URL` | Base URL of the internal Config Service REST API | _(empty / disabled)_ |
+| `CONFIG_SERVICE_TIMEOUT_MILLISECONDS` | WebClient read timeout in ms for the Config Service | `10000` |
 
 For the dev cluster, the Kubernetes deployment or external config repository must set `CORS_ALLOWED_ORIGINS=http://localhost:4200` before local frontend calls from that origin will succeed. Those deployment manifests are outside this repository.
 
@@ -457,6 +459,33 @@ Blank or missing `term-status` maps to `TermStatus.BLANK` without warning. Unsup
 `ref-date` is resolved through the `ReferenceDatePort` outbound port for **all** flows that require it: contribution summary validation, contribution export, and notification flows (`GetNotificationsService`, `UpdateNotificationsReadStatusService`). Neither notification service contains a hardcoded date constant.
 
 The single shared implementation is `ConfigBackedReferenceDateAdapter` (under `adapter/out/configserver`), backed by `ReferenceDateProperties`. Application services depend only on `ReferenceDatePort`; they do not import `ReferenceDateProperties`.
+
+---
+
+## Config Service Adapter
+
+The `ConfigServiceWebClientAdapter` (under `adapter/out/configserver`) provides the BFF with read, write, and delete access to the internal Config Service via three outbound operations:
+
+| HTTP method | Path | Port method |
+|---|---|---|
+| `GET` | `/api/configs?application=&profile=&label=&configKey=` | `ConfigServicePort.listConfigs(ConfigQuery)` |
+| `PUT` | `/api/configs` | `ConfigServicePort.upsertConfig(ConfigUpsertCommand)` |
+| `DELETE` | `/api/configs/{application}/{profile}/{label}/{configKey}` | `ConfigServicePort.deleteConfig(String, String, String, String)` |
+
+**Architecture boundaries:**
+- Application code depends only on `ConfigServicePort`, `ConfigEntry`, `ConfigQuery`, and `ConfigUpsertCommand` — all framework-free records in `application/port/out/` and `application/dto/`.
+- HTTP request/response DTOs (`ConfigServiceRequest`, `ConfigServiceResponse`) are adapter-private to `adapter/out/configserver/dto/` and are enforced by an ArchUnit rule (`configServerDtoTypesDoNotLeakOutsideAdapter`).
+- `ConfigServiceException` maps all Config Service HTTP errors to a safe exception; it does not expose raw Config Service response bodies.
+
+**Configuration:**
+
+```yaml
+config-service:
+  base-url: ${CONFIG_SERVICE_BASE_URL:}
+  timeout-milliseconds: ${CONFIG_SERVICE_TIMEOUT_MILLISECONDS:10000}
+```
+
+**Scope of this task:** This task adds the outbound adapter capability only. Redis caching, read-through strategy, APIM write-back, and `ReferenceDate` orchestration are out of scope and will be addressed in later tasks.
 
 ---
 
@@ -845,7 +874,6 @@ Current local defaults in `src/main/resources/application.yml`:
 
 ```yaml
 reference-date:
-  account-env: ${REFERENCE_DATE_ACCOUNT_ENV:}
   override-date: ${REFERENCE_DATE_OVERRIDE_DATE:}
   override-zone-id: ${REFERENCE_DATE_OVERRIDE_ZONE_ID:}
 
@@ -1080,9 +1108,8 @@ Accept-Language: zh-HK
 - The BFF calls APIM `POST /ws/NGTPA/v1/TRPGetContSumy`.
 - `cover-from` is taken from `fromDate`; `cover-to` is taken from `toDate`.
 - `fromDate` and `toDate` must both be within `[ref-date - 36 months, ref-date]`, inclusive.
-- `ref-date` is resolved through `ReferenceDatePort`.
-- The current configured lookup source is `reference-date.account-env`; a future request-specific source can be `PortalAccessContext.account().accountEnv()` after `Account-Ref` resolution.
-- Production-like safety is based on runtime deployment environment, not on request query `env` and not on `reference-date.account-env`.
+- `ref-date` is resolved from `PortalAccessContext.account().accountEnv()` via `ReferenceDatePort`, not from a deployment-scoped config property or the request query parameter `env`.
+- `accountEnv` controls whether the paired non-production override (`reference-date.override-date` / `reference-date.override-zone-id`) may be used.
 - `page` and `pageSize` must both be greater than 0; HTTP 400 is returned otherwise. No real backend pagination is performed yet — all data is returned from APIM and the pagination fields reflect the full dataset.
 - Effective contribution language is resolved in the web adapter with this priority: `Accept-Language` header, then `lang` query parameter, then `en`.
 - Contribution language normalization is `en`, `en-US`, `en_HK` -> `en`; `zh-HK`, `zh_HK`, `zh` -> `zh_HK`; blank, missing, and unknown values -> `en`.
@@ -1381,9 +1408,7 @@ Accept-Language: zh-HK
 **Behavior:**
 
 - The BFF resolves `ref-date` through `ReferenceDatePort`.
-- The current configured lookup source is `reference-date.account-env`; a future request-specific source can be `PortalAccessContext.account().accountEnv()` after `Account-Ref` resolution.
-- Production-like safety is based on runtime deployment environment, not on request query `env` and not on `reference-date.account-env`.
-- `deploymentEnv` is not part of `PortalAccessContext`.
+- `ReferenceDatePort` receives `accountEnv` from `PortalAccessContext.account().accountEnv()`, resolved at request time before the reference-date lookup, to decide whether non-production override rules apply. This is not the request query parameter `env`.
 - `cover-from` is computed as `ref-date.minusMonths(36)`; `cover-to` is the resolved `ref-date`.
 - Actor identity, member ownership, and account routing fields (`actor-user-id`, `policy-no`, `cert-no`, `trustCode`, `schemeType`, etc.) are resolved from externalized `temporary-portal-access-context.profiles.contributions.*` configuration until Auth Server integration is implemented.
 - Effective contribution language is resolved in the web adapter with this priority: `Accept-Language` header, then `lang` query parameter, then `en`.
