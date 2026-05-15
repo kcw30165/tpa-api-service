@@ -4,7 +4,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiErrorResponse;
 import com.bct.ngtpa.apiservice.application.exception.ApplicationException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
-import com.bct.ngtpa.apiservice.application.exception.MemberContextResolutionException;
+import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 // import java.lang.reflect.ReflectiveOperationException;
 import java.util.Locale;
 import com.bct.ngtpa.apiservice.exception.ApimException;
@@ -66,9 +66,9 @@ public class ApiExceptionHandler {
         return handleApplicationException(ex, exchange, HttpStatus.BAD_REQUEST);
     }
 
-    @ExceptionHandler(MemberContextResolutionException.class)
-    public ResponseEntity<ApiErrorResponse> handleMemberContextResolutionException(
-            MemberContextResolutionException ex, ServerWebExchange exchange) {
+    @ExceptionHandler(PortalAccessContextResolutionException.class)
+    public ResponseEntity<ApiErrorResponse> handlePortalAccessContextResolutionException(
+            PortalAccessContextResolutionException ex, ServerWebExchange exchange) {
         return handleApplicationException(ex, exchange, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 

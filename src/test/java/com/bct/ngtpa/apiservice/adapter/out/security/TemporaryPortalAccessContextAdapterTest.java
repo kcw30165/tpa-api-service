@@ -1,6 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.out.security;
 
-import com.bct.ngtpa.apiservice.application.exception.MemberContextResolutionException;
+import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import org.junit.jupiter.api.Test;
 import reactor.test.StepVerifier;
 
@@ -62,7 +62,7 @@ class TemporaryPortalAccessContextAdapterTest {
 
         StepVerifier.create(adapter.resolvePortalAccessContext("notifications"))
                 .expectErrorSatisfies(ex -> {
-                    assertInstanceOf(MemberContextResolutionException.class, ex);
+                    assertInstanceOf(PortalAccessContextResolutionException.class, ex);
                     assertEquals(
                             "No temporary portal access context profile configured for accountRef: notifications",
                             ex.getMessage());

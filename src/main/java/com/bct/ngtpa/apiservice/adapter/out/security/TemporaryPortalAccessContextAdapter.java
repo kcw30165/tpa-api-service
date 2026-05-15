@@ -4,7 +4,7 @@ import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.MemberOwnerContext;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
-import com.bct.ngtpa.apiservice.application.exception.MemberContextResolutionException;
+import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -20,7 +20,7 @@ public class TemporaryPortalAccessContextAdapter implements PortalAccessContextP
     public Mono<PortalAccessContext> resolvePortalAccessContext(String accountRef) {
         var profile = properties.getProfiles().get(accountRef);
         if (profile == null) {
-            return Mono.error(new MemberContextResolutionException(
+            return Mono.error(new PortalAccessContextResolutionException(
                     "No temporary portal access context profile configured for accountRef: " + accountRef));
         }
         return Mono.just(new PortalAccessContext(
