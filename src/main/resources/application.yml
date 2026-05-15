@@ -112,6 +112,25 @@ error-message:
     "err.apim.service.unavailable.JP": "JP服務暫時未能提供，請稍後再嘗試。"
     "err.member.context.unavailable.JP.JPM.OE": "此計劃的成員資料暫時未能提供，請稍後再嘗試。"
 
+redis-cache:
+  enabled: ${REDIS_CACHE_ENABLED:true}
+  password: ${REDIS_PASSWORD:}
+  timeout-milliseconds: ${REDIS_TIMEOUT_MILLISECONDS:1000}
+  sentinel:
+    master: ${REDIS_SENTINEL_MASTER:ngtpaMaster}
+    nodes: ${REDIS_SENTINEL_NODES:}
+    password: ${REDIS_SENTINEL_PASSWORD:${REDIS_PASSWORD:}}
+  ssl:
+    enabled: ${REDIS_SSL_ENABLED:true}
+    bundle: ${REDIS_SSL_BUNDLE:redis-mtls}
+  lettuce:
+    pool:
+      max-active: ${REDIS_POOL_MAX_ACTIVE:20}
+      max-idle: ${REDIS_POOL_MAX_IDLE:10}
+      min-idle: ${REDIS_POOL_MIN_IDLE:0}
+      max-wait-milliseconds: ${REDIS_POOL_MAX_WAIT_MILLISECONDS:3000}
+    shutdown-timeout-milliseconds: ${REDIS_SHUTDOWN_TIMEOUT_MILLISECONDS:5000}
+
 logging:
   level:
     org.springframework.security: INFO
