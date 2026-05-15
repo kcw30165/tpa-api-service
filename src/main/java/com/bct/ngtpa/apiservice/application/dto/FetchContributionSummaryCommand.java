@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.application.dto;
 
 public record FetchContributionSummaryCommand(
-        String env,
+        String accountEnv,
         String mbrType,
         String coverFrom,
         String coverTo,

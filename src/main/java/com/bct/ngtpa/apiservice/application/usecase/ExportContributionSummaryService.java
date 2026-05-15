@@ -36,12 +36,12 @@ public class ExportContributionSummaryService implements ExportContributionSumma
                                                                 report,
                                                                 currencyDisplayPort.resolveCurrencyDisplay(
                                                                                 report.currency(),
-                                                                                fetchCommand.env(),
+                                                                                fetchCommand.accountEnv(),
                                                                                 fetchCommand.trustCode(),
                                                                                 fetchCommand.schemeType()),
                                                                 null,
                                                                 fetchCommand.trustCode(),
                                                                 fetchCommand.schemeType(),
-                                                                fetchCommand.env())));
+                                                                fetchCommand.accountEnv())));
         }
 }

@@ -115,7 +115,7 @@ class GetNotificationsServiceTest {
         service.execute(new GetNotificationsCommand(null, null, 1, 99999, null, null, null, null, null, null)).block();
 
         assertEquals("notifications", capturedRef.get());
-        assertEquals("JP", capturedCommand.get().env());
+        assertEquals("JP", capturedCommand.get().accountEnv());
         assertEquals("MBR", capturedCommand.get().mbrType());
         assertEquals("policyNo_for_notifications", capturedCommand.get().policyNo());
         assertEquals("certNo_for_notifications", capturedCommand.get().certNo());

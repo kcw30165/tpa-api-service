@@ -5,7 +5,7 @@ import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
 import java.util.List;
 
 public record UpdateNotificationsReadStatusCommand(
-        String env,
+        String accountEnv,
         String mbrType,
         List<String> notificationIds,
         String policyNo,

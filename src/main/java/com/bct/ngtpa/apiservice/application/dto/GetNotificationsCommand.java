@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.application.dto;
 
 public record GetNotificationsCommand(
-        String env,
+        String accountEnv,
         String mbrType,
         Integer page,
         Integer size,
