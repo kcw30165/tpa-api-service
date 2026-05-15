@@ -18,7 +18,7 @@ public class UpdateNotificationReadStatusApimRequest {
     private String certNo;
 
     @JsonProperty("env")
-    private String env;
+    private String accountEnv;
 
     @JsonProperty("mbr-type")
     private String mbrType;

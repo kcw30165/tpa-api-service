@@ -147,6 +147,20 @@ class ApimNoticeMessageAdapterTest {
         assertFalse(json.contains("size"));
     }
 
+    @Test
+    void mapsCommandAccountEnvToApimJsonEnvField() throws Exception {
+        GetNotificationsCommand command = new GetNotificationsCommand(
+                "UAT", "MBR", 1, 99999, "dd/MM/yyyy HH:mm", "Asia/Hong_Kong", "P1", "C1", "U1", "29/04/2026");
+
+        GetMessageBoardApimRequest request = (GetMessageBoardApimRequest) ReflectionTestUtils.invokeMethod(
+                adapter, "toApimRequest", command);
+        String json = new ObjectMapper().writeValueAsString(request);
+
+        // Java field is accountEnv; external APIM JSON field must still be "env"
+        assertEquals("UAT", request.getAccountEnv());
+        assertTrue(json.contains("\"env\":\"UAT\""));
+    }
+
         @Test
         void returnsEmptyResultWhenDataIsMissing() {
                 ApimResponseEnvelope<GetMessageBoardDataItem> response = ApimResponseEnvelope.<GetMessageBoardDataItem>builder()

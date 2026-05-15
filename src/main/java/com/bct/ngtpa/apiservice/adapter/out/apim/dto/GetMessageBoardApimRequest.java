@@ -36,7 +36,7 @@ public class GetMessageBoardApimRequest {
     private String refDate = currentRefDate();
 
     @JsonProperty("env")
-    private String env;
+    private String accountEnv;
 
     @JsonProperty("mbr-type")
     private String mbrType;

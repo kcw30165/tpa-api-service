@@ -8,7 +8,7 @@ public record ApimCredentialResolutionContext(
         String policyNo,
         String memberId,
         String userId,
-        String env,
+        String accountEnv,
         String mbrType,
         String operationName,
         Map<String, String> requestMetadata

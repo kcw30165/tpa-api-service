@@ -66,6 +66,8 @@ class ApimNotificationReadStatusAdapterTest {
         assertEquals("msgCode1,msgCode2", facade.capturedRequest.getMsgCodeLong());
         assertEquals("READ", facade.capturedRequest.getStatus());
         assertEquals("2", facade.capturedRequest.getCertNo());
+        // Java field is accountEnv; external APIM JSON serializes as "env"
+        assertEquals("DEV", facade.capturedRequest.getAccountEnv());
         assertEquals(2, result.notifications().size());
         assertEquals("msgCode1", result.notifications().getFirst().msgCode());
         assertTrue(result.notifications().getFirst().isRead());
