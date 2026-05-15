@@ -2,11 +2,10 @@ package com.bct.ngtpa.apiservice.application.usecase;
 
 import com.bct.ngtpa.apiservice.application.dto.ContributionSummaryReportResult;
 import com.bct.ngtpa.apiservice.application.dto.ExportContributionSummaryCommand;
-import com.bct.ngtpa.apiservice.application.dto.MemberContextPurpose;
 import com.bct.ngtpa.apiservice.application.port.in.ExportContributionSummaryUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimContributionSummaryPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
-import com.bct.ngtpa.apiservice.application.port.out.MemberContextPort;
+import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryReportBuilder;
 import lombok.RequiredArgsConstructor;
@@ -18,20 +17,20 @@ public class ExportContributionSummaryService implements ExportContributionSumma
         private final ApimContributionSummaryPort apimContributionSummaryPort;
         private final CurrencyDisplayPort currencyDisplayPort;
         private final ReferenceDatePort referenceDatePort;
-        private final MemberContextPort memberContextPort;
+        private final PortalAccessContextPort portalAccessContextPort;
 
         @Override
         public Mono<ContributionSummaryReportResult> execute(ExportContributionSummaryCommand command) {
                 return referenceDatePort.resolveReferenceDate()
-                                .flatMap(refDate -> memberContextPort
-                                                .resolveMemberContext(MemberContextPurpose.CONTRIBUTIONS)
-                                                .map(memberContext -> ContributionSummarySupport.newFetchCommand(
+                                .flatMap(refDate -> portalAccessContextPort
+                                                .resolvePortalAccessContext("contributions")
+                                                .map(ctx -> ContributionSummarySupport.newFetchCommand(
                                                                 command.env(),
                                                                 command.mbrType(),
                                                                 ContributionSummarySupport
                                                                                 .formatDate(refDate.minusMonths(36)),
                                                                 ContributionSummarySupport.formatDate(refDate),
-                                                                memberContext)))
+                                                                ctx)))
                                 .flatMap(fetchCommand -> apimContributionSummaryPort
                                                 .fetchContributionSummary(fetchCommand)
                                                 .map(ContributionSummaryReportBuilder::build)

@@ -9,7 +9,6 @@ import com.bct.ngtpa.apiservice.application.port.out.ApimNoticeMessagePort;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNotificationReadStatusPort;
 import com.bct.ngtpa.apiservice.application.port.out.ContributionActionPermissionPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
-import com.bct.ngtpa.apiservice.application.port.out.MemberContextPort;
 import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.usecase.ExportContributionSummaryService;
@@ -51,10 +50,10 @@ public class UseCaseConfig {
             ApimContributionSummaryPort apimContributionSummaryPort,
             CurrencyDisplayPort currencyDisplayPort,
             ReferenceDatePort referenceDatePort,
-            MemberContextPort memberContextPort,
+            PortalAccessContextPort portalAccessContextPort,
             ContributionActionPermissionPort contributionActionPermissionPort) {
         return new GetContributionSummaryService(
-                apimContributionSummaryPort, currencyDisplayPort, referenceDatePort, memberContextPort,
+                apimContributionSummaryPort, currencyDisplayPort, referenceDatePort, portalAccessContextPort,
                 contributionActionPermissionPort);
     }
 
@@ -63,8 +62,8 @@ public class UseCaseConfig {
             ApimContributionSummaryPort apimContributionSummaryPort,
             CurrencyDisplayPort currencyDisplayPort,
             ReferenceDatePort referenceDatePort,
-            MemberContextPort memberContextPort) {
+            PortalAccessContextPort portalAccessContextPort) {
         return new ExportContributionSummaryService(
-                apimContributionSummaryPort, currencyDisplayPort, referenceDatePort, memberContextPort);
+                apimContributionSummaryPort, currencyDisplayPort, referenceDatePort, portalAccessContextPort);
     }
 }
