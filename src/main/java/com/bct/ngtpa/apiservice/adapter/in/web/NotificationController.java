@@ -32,16 +32,14 @@ public class NotificationController {
 
     @GetMapping(value = "/notifications", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<NotificationListResponse> getNotifications(
-            @RequestParam(value = "env", required = false) String env,
-            @RequestParam(value = "mbrType", required = false) String mbrType,
             @RequestParam(value = "page", required = false) Integer page,
             @RequestParam(value = "size", required = false) Integer size,
             @RequestParam(value = "dateFormat", required = false) String dateFormat,
             @RequestParam(value = "timezone", required = false) String timezone) {
         return getNotificationsUseCase
                 .execute(new GetNotificationsCommand(
-                        env,
-                        mbrType,
+                        null,
+                        null,
                         page,
                         size,
                         dateFormat,
@@ -61,8 +59,8 @@ public class NotificationController {
             @Valid @RequestBody UpdateNotificationsReadStatusRequest request) {
         return updateNotificationsReadStatusUseCase
                 .execute(new UpdateNotificationsReadStatusCommand(
-                        request.env(),
-                        request.mbrType(),
+                        null,
+                        null,
                         request.notificationId(),
                         null,
                         null,

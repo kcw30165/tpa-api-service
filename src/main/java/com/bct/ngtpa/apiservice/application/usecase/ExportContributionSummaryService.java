@@ -25,8 +25,6 @@ public class ExportContributionSummaryService implements ExportContributionSumma
                                 .flatMap(refDate -> portalAccessContextPort
                                                 .resolvePortalAccessContext("contributions")
                                                 .map(ctx -> ContributionSummarySupport.newFetchCommand(
-                                                                command.env(),
-                                                                command.mbrType(),
                                                                 ContributionSummarySupport
                                                                                 .formatDate(refDate.minusMonths(36)),
                                                                 ContributionSummarySupport.formatDate(refDate),
@@ -43,6 +41,7 @@ public class ExportContributionSummaryService implements ExportContributionSumma
                                                                                 fetchCommand.schemeType()),
                                                                 null,
                                                                 fetchCommand.trustCode(),
-                                                                fetchCommand.schemeType())));
+                                                                fetchCommand.schemeType(),
+                                                                fetchCommand.env())));
         }
 }

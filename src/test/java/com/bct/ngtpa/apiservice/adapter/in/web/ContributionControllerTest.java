@@ -7,7 +7,6 @@ import com.bct.ngtpa.apiservice.adapter.in.web.sort.SortEngine;
 import com.bct.ngtpa.apiservice.application.dto.ContributionActions;
 import com.bct.ngtpa.apiservice.application.dto.CurrencyDisplay;
 import com.bct.ngtpa.apiservice.application.dto.ContributionSummaryReportResult;
-import com.bct.ngtpa.apiservice.application.dto.ExportContributionSummaryCommand;
 import com.bct.ngtpa.apiservice.application.dto.GetContributionSummaryCommand;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import com.bct.ngtpa.apiservice.application.port.in.ExportContributionSummaryUseCase;
@@ -50,8 +49,6 @@ class ContributionControllerTest {
 
         client.get()
                 .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions")
-                        .queryParam("env", "JP")
-                        .queryParam("mbrType", "MBR")
                         .queryParam("fromDate", "01/03/2026")
                         .queryParam("toDate", "31/03/2026")
                         .queryParam("lang", "en")
@@ -81,8 +78,6 @@ class ContributionControllerTest {
                 .jsonPath("$.pagination.totalRecords").isEqualTo(1)
                 .jsonPath("$.pagination.hasNextPage").isEqualTo(false);
 
-        assertEquals("JP", captured.get().env());
-        assertEquals("MBR", captured.get().mbrType());
         assertEquals("01/03/2026", captured.get().fromDate());
         assertEquals("31/03/2026", captured.get().toDate());
         assertEquals("en", captured.get().lang());
@@ -183,8 +178,6 @@ class ContributionControllerTest {
 
         client.get()
                 .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions")
-                        .queryParam("env", "JP")
-                        .queryParam("mbrType", "MBR")
                         .build())
                 .exchange()
                 .expectStatus().isBadRequest()
@@ -195,18 +188,12 @@ class ContributionControllerTest {
 
     @Test
     void returnsExcelDownloadForContributionExport() {
-        AtomicReference<ExportContributionSummaryCommand> captured = new AtomicReference<>();
-        ExportContributionSummaryUseCase exportUseCase = command -> {
-            captured.set(command);
-            return Mono.just(sampleResult());
-        };
+        ExportContributionSummaryUseCase exportUseCase = command -> Mono.just(sampleResult());
 
         WebTestClient client = webClient(unusedGetUseCase(), exportUseCase);
 
         client.get()
                 .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions/export")
-                        .queryParam("env", "JP")
-                        .queryParam("mbrType", "MBR")
                         .build())
                 .exchange()
                 .expectStatus().isOk()
@@ -214,9 +201,6 @@ class ContributionControllerTest {
                 .expectHeader().valueEquals("Content-Disposition", "attachment; filename=\"Contribution_Summary.xlsx\"")
                 .expectBody()
                 .consumeWith(result -> assertTrue(result.getResponseBody() != null && result.getResponseBody().length > 0));
-
-        assertEquals("JP", captured.get().env());
-        assertEquals("MBR", captured.get().mbrType());
     }
 
     private WebTestClient webClient(
@@ -313,7 +297,7 @@ class ContributionControllerTest {
                                         new BigDecimal("300"), new LinkedHashMap<>(java.util.Map.of("ER", new BigDecimal("300")))))),
                 new CurrencyDisplay("HKD", "港元"),
                 new ContributionActions(true),
-                "", "");
+                "", "", "");
     }
 
     private ContributionSummaryReportResult unsortedSourcesResult() {
@@ -332,7 +316,7 @@ class ContributionControllerTest {
                                         "EE", new BigDecimal("7116.7")))))),
                 new CurrencyDisplay("HKD", "港元"),
                 new ContributionActions(true),
-                "", "");
+                "", "", "");
     }
 
     private ContributionWebDisplayConfigProvider displayConfigProvider() {
@@ -379,6 +363,7 @@ class ContributionControllerTest {
                                         "EE", new BigDecimal("7116.7")))))),
                 new CurrencyDisplay("HKD", "港元"),
                 new ContributionActions(true),
+                "",
                 "",
                 "");
     }

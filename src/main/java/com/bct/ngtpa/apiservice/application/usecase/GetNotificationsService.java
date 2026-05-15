@@ -36,8 +36,8 @@ public class GetNotificationsService implements GetNotificationsUseCase {
                                         var referenceDate = tuple.getT2();
 
                                         var enriched = new GetNotificationsCommand(
-                                                        command.env(),
-                                                        command.mbrType(),
+                                                        ctx.account().accountEnv(),
+                                                        ctx.memberOwner().memberType(),
                                                         command.page(),
                                                         command.size(),
                                                         command.dateFormat(),

@@ -111,8 +111,8 @@ class ApiExceptionHandlerTest {
     }
 
     @Test
-    void usesEnvSpecificMessageForBindFailuresFromBoundRequestTarget() throws Exception {
-        UpdateNotificationsReadStatusRequest target = new UpdateNotificationsReadStatusRequest("JP", "MBR", List.of(""));
+    void usesDefaultMessageForBindFailuresFromBoundRequestTargetWithoutEnv() throws Exception {
+        UpdateNotificationsReadStatusRequest target = new UpdateNotificationsReadStatusRequest(List.of(""));
         BindingResult bindingResult = new BeanPropertyBindingResult(target, "request");
         bindingResult.addError(new FieldError("request", "notificationId", "must not contain blank values"));
 
@@ -121,7 +121,7 @@ class ApiExceptionHandlerTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals(ErrorCodes.REQUEST_VALIDATION_FAILED, response.getBody().errorCode());
-        assertEquals("Invalid request payload for JP.", response.getBody().message());
+        assertEquals("Invalid request payload.", response.getBody().message());
     }
 
     @Test

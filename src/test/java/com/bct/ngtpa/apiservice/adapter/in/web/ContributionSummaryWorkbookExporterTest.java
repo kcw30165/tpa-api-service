@@ -51,6 +51,7 @@ class ContributionSummaryWorkbookExporterTest {
                 new CurrencyDisplay("HKD", "港元"),
                 null,
                 "",
+                "",
                 "");
 
         byte[] bytes = exporter.write(report);

@@ -311,7 +311,7 @@ temporary-portal-access-context:
       actor-user-type: ${TEMP_NOTIF_ACTOR_USER_TYPE:MEMBER}
       actor-user-role: ${TEMP_NOTIF_ACTOR_USER_ROLE:SELF}
       member-user-id: ${TEMP_NOTIF_MEMBER_USER_ID:C402400A}
-      member-type: ${TEMP_NOTIF_MEMBER_TYPE:INDIVIDUAL}
+      member-type: ${TEMP_NOTIF_MEMBER_TYPE:MBR}
       account-env: ${TEMP_NOTIF_ACCOUNT_ENV:JP}
       policy-no: ${TEMP_NOTIF_POLICY_NO:00000000118}
       cert-no: ${TEMP_NOTIF_CERT_NO:2}
@@ -322,7 +322,7 @@ temporary-portal-access-context:
       actor-user-type: ${TEMP_CONT_ACTOR_USER_TYPE:MEMBER}
       actor-user-role: ${TEMP_CONT_ACTOR_USER_ROLE:SELF}
       member-user-id: ${TEMP_CONT_MEMBER_USER_ID:C402400A}
-      member-type: ${TEMP_CONT_MEMBER_TYPE:INDIVIDUAL}
+      member-type: ${TEMP_CONT_MEMBER_TYPE:MBR}
       account-env: ${TEMP_CONT_ACCOUNT_ENV:JP}
       policy-no: ${TEMP_CONT_POLICY_NO:00000000217}
       cert-no: ${TEMP_CONT_CERT_NO:95}

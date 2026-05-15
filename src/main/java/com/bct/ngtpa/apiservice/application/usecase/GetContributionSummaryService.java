@@ -37,8 +37,6 @@ public class GetContributionSummaryService implements GetContributionSummaryUseC
                                                         .resolvePortalAccessContext("contributions")
                                                         .map(ctx -> ContributionSummarySupport
                                                                         .newFetchCommand(
-                                                                                        command.env(),
-                                                                                        command.mbrType(),
                                                                                         ContributionSummarySupport
                                                                                                         .formatDate(fromDate),
                                                                                         ContributionSummarySupport
@@ -58,6 +56,7 @@ public class GetContributionSummaryService implements GetContributionSummaryUseC
                                                                 contributionActionPermissionPort
                                                                                 .resolveContributionActions(),
                                                                 fetchCommand.trustCode(),
-                                                                fetchCommand.schemeType())));
+                                                                fetchCommand.schemeType(),
+                                                                fetchCommand.env())));
         }
 }

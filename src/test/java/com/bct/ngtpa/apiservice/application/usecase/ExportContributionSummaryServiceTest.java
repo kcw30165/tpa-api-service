@@ -25,7 +25,7 @@ class ExportContributionSummaryServiceTest {
 
     private static final PortalAccessContext CONTRIBUTIONS_CONTEXT = new PortalAccessContext(
             new ActorContext("userId_for_contributions", "MEMBER", "SELF"),
-            new MemberOwnerContext("userId_for_contributions", "INDIVIDUAL"),
+            new MemberOwnerContext("userId_for_contributions", "MBR"),
             new AccountContext(
                     "contributions",
                     "JP",
@@ -50,7 +50,7 @@ class ExportContributionSummaryServiceTest {
         ReferenceDatePort referenceDatePort = () -> Mono.just(LocalDate.of(2026, 3, 31));
 
         var service = new ExportContributionSummaryService(port, recordingPort, referenceDatePort, portalAccessContextPort());
-        var result = service.execute(new ExportContributionSummaryCommand("JP", "MBR")).block();
+        var result = service.execute(new ExportContributionSummaryCommand()).block();
 
         assertEquals("31/03/2023", captured.get().coverFrom());
         assertEquals("31/03/2026", captured.get().coverTo());
@@ -66,6 +66,7 @@ class ExportContributionSummaryServiceTest {
         assertEquals("schemeType_for_contributions", recordingPort.capturedSchemeType);
         assertEquals("trustCode_for_contributions", result.trustCode());
         assertEquals("schemeType_for_contributions", result.schemeType());
+        assertEquals("JP", result.accountEnv());
     }
 
     @Test
@@ -85,7 +86,7 @@ class ExportContributionSummaryServiceTest {
                 () -> Mono.just(LocalDate.of(2026, 3, 31)),
                 capturingPort);
 
-        service.execute(new ExportContributionSummaryCommand("JP", "MBR")).block();
+        service.execute(new ExportContributionSummaryCommand()).block();
 
         assertEquals("contributions", capturedRef.get());
     }

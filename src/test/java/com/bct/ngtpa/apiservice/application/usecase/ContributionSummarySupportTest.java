@@ -23,7 +23,7 @@ class ContributionSummarySupportTest {
         var ctx = contextWith("pol", "cert", "user", "trust", "scheme");
 
         var cmd = ContributionSummarySupport.newFetchCommand(
-                "JP", "MBR", "01/01/2026", "31/03/2026", ctx);
+                "01/01/2026", "31/03/2026", ctx);
 
         assertEquals("JP", cmd.env());
         assertEquals("MBR", cmd.mbrType());
@@ -36,7 +36,7 @@ class ContributionSummarySupportTest {
         var ctx = contextWith("policyNo_test", "certNo_test", "userId_test", "trust_test", "scheme_test");
 
         var cmd = ContributionSummarySupport.newFetchCommand(
-                "JP", "MBR", "01/01/2026", "31/03/2026", ctx);
+                "01/01/2026", "31/03/2026", ctx);
 
         assertEquals("policyNo_test", cmd.policyNo());
         assertEquals("certNo_test", cmd.certNo());
@@ -48,12 +48,12 @@ class ContributionSummarySupportTest {
         // that userId is sourced from actor, not from account or memberOwner
         var ctx = new PortalAccessContext(
                 new ActorContext("actor_user_id", "MEMBER", "SELF"),
-                new MemberOwnerContext("owner_user_id", "INDIVIDUAL"),
+                new MemberOwnerContext("owner_user_id", "MBR"),
                 new AccountContext("contributions", "JP",
                         "policyNo", "certNo", "trust", "scheme"));
 
         var cmd = ContributionSummarySupport.newFetchCommand(
-                "JP", "MBR", "01/01/2026", "31/03/2026", ctx);
+                "01/01/2026", "31/03/2026", ctx);
 
         assertEquals("actor_user_id", cmd.userId());
     }
@@ -63,7 +63,7 @@ class ContributionSummarySupportTest {
         var ctx = contextWith("pol", "cert", "user", "trustCode_test", "schemeType_test");
 
         var cmd = ContributionSummarySupport.newFetchCommand(
-                "JP", "MBR", "01/01/2026", "31/03/2026", ctx);
+                "01/01/2026", "31/03/2026", ctx);
 
         assertEquals("trustCode_test", cmd.trustCode());
         assertEquals("schemeType_test", cmd.schemeType());
@@ -106,7 +106,7 @@ class ContributionSummarySupportTest {
             String policyNo, String certNo, String actorUserId, String trustCode, String schemeType) {
         return new PortalAccessContext(
                 new ActorContext(actorUserId, "MEMBER", "SELF"),
-                new MemberOwnerContext(actorUserId, "INDIVIDUAL"),
+                new MemberOwnerContext(actorUserId, "MBR"),
                 new AccountContext("contributions", "JP", policyNo, certNo, trustCode, schemeType));
     }
 }

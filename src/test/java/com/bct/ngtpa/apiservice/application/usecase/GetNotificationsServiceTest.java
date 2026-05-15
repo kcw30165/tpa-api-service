@@ -31,7 +31,7 @@ class GetNotificationsServiceTest {
 
     private static final PortalAccessContext NOTIFICATIONS_CONTEXT = new PortalAccessContext(
             new ActorContext("userId_for_notifications", "STAFF", "RM"),
-            new MemberOwnerContext("member-notif", "INDIVIDUAL"),
+            new MemberOwnerContext("member-notif", "MBR"),
             new AccountContext(
                     "notifications",
                     "JP",
@@ -62,7 +62,7 @@ class GetNotificationsServiceTest {
         GetNotificationsService service = new GetNotificationsService(port, portalAccessContextPort(), REFERENCE_DATE_PORT);
 
         NotificationListResult result = service.execute(new GetNotificationsCommand(
-                "DEV", "MBR", 1, 99999, null, null, null, null, null, null)).block();
+                null, null, 1, 99999, null, null, null, null, null, null)).block();
 
         assertEquals(NotificationDateOptions.DEFAULT_DATE_FORMAT, result.dateOptions().dateFormat());
         assertEquals(NotificationDateOptions.DEFAULT_ZONE_ID, result.dateOptions().zoneId());
@@ -75,7 +75,7 @@ class GetNotificationsServiceTest {
         GetNotificationsService service = new GetNotificationsService(port, portalAccessContextPort(), REFERENCE_DATE_PORT);
 
         NotificationListResult result = service.execute(new GetNotificationsCommand(
-                "DEV", "MBR", null, null, "yyyy-MM-dd HH:mm", "Europe/London", null, null, null, null)).block();
+                null, null, null, null, "yyyy-MM-dd HH:mm", "Europe/London", null, null, null, null)).block();
 
         assertEquals("yyyy-MM-dd HH:mm", result.dateOptions().dateFormat());
         assertEquals("Europe/London", result.dateOptions().zoneId().getId());
@@ -87,10 +87,10 @@ class GetNotificationsServiceTest {
         GetNotificationsService service = new GetNotificationsService(port, portalAccessContextPort(), REFERENCE_DATE_PORT);
 
         assertThrows(InvalidNotificationRequestException.class, () -> service.execute(new GetNotificationsCommand(
-                "DEV", "MBR", null, null, "bad-[", null, null, null, null, null)).block());
+                null, null, null, null, "bad-[", null, null, null, null, null)).block());
 
         assertThrows(InvalidNotificationRequestException.class, () -> service.execute(new GetNotificationsCommand(
-                "DEV", "MBR", null, null, null, "Mars/Olympus", null, null, null, null)).block());
+                null, null, null, null, null, "Mars/Olympus", null, null, null, null)).block());
     }
 
     @Test
@@ -109,9 +109,11 @@ class GetNotificationsServiceTest {
         };
 
         GetNotificationsService service = new GetNotificationsService(noticePort, capturingPort, REFERENCE_DATE_PORT);
-        service.execute(new GetNotificationsCommand("DEV", "MBR", 1, 99999, null, null, null, null, null, null)).block();
+        service.execute(new GetNotificationsCommand(null, null, 1, 99999, null, null, null, null, null, null)).block();
 
         assertEquals("notifications", capturedRef.get());
+        assertEquals("JP", capturedCommand.get().env());
+        assertEquals("MBR", capturedCommand.get().mbrType());
         assertEquals("policyNo_for_notifications", capturedCommand.get().policyNo());
         assertEquals("certNo_for_notifications", capturedCommand.get().certNo());
         // userId comes from actor.actorUserId(), not from account
@@ -128,7 +130,7 @@ class GetNotificationsServiceTest {
         };
 
         GetNotificationsService service = new GetNotificationsService(noticePort, portalAccessContextPort(), REFERENCE_DATE_PORT);
-        service.execute(new GetNotificationsCommand("DEV", "MBR", 1, 99999, null, null, null, null, null, null)).block();
+        service.execute(new GetNotificationsCommand(null, null, 1, 99999, null, null, null, null, null, null)).block();
 
         assertEquals("01/10/2025", capturedCommand.get().refDate());
     }

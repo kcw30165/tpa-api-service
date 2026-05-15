@@ -37,10 +37,8 @@ public class ContributionController {
 
         @GetMapping(value = "/contributions", produces = MediaType.APPLICATION_JSON_VALUE)
         public Mono<ContributionListResponse> getContributionSummary(
-                        @RequestParam(value = "env", required = false) String env,
-                        @RequestParam(value = "mbrType", required = false) String mbrType,
-                        @RequestParam(value = "fromDate", required = false) String fromDate,
-                        @RequestParam(value = "toDate", required = false) String toDate,
+                        @RequestParam(value = "fromDate", required = true) String fromDate,
+                        @RequestParam(value = "toDate", required = true) String toDate,
                         @RequestParam(value = "lang", required = false) String lang,
                         @RequestParam(value = "page", required = false) Integer page,
                         @RequestParam(value = "pageSize", required = false) Integer pageSize) {
@@ -51,23 +49,21 @@ public class ContributionController {
 
                 return getContributionSummaryUseCase
                                 .execute(new GetContributionSummaryCommand(
-                                                env, mbrType, fromDate, toDate,
+                                                fromDate, toDate,
                                                 resolvedLang, resolvedPage, resolvedPageSize))
                                 .map(contributionSortingSupport::sort)
                                 .map(result -> contributionSummaryWebMapper.toListResponse(
                                                 result,
                                                 contributionWebDisplayConfigProvider.get(),
                                                 resolvedLang,
-                                                env != null ? env : "",
+                                                result.accountEnv() != null ? result.accountEnv() : "",
                                                 resolvedPage,
                                                 resolvedPageSize));
         }
 
         @GetMapping(value = "/contributions/export", produces = EXCEL_MEDIA_TYPE)
-        public Mono<ResponseEntity<byte[]>> exportContributionSummary(
-                        @RequestParam(value = "env", required = false) String env,
-                        @RequestParam(value = "mbrType", required = false) String mbrType) {
-                return exportContributionSummaryUseCase.execute(new ExportContributionSummaryCommand(env, mbrType))
+        public Mono<ResponseEntity<byte[]>> exportContributionSummary() {
+                return exportContributionSummaryUseCase.execute(new ExportContributionSummaryCommand())
                                 .map(contributionSortingSupport::sort)
                                 .map(contributionSummaryWorkbookExporter::write)
                                 .map(body -> ResponseEntity.ok()

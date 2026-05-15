@@ -30,8 +30,8 @@ public class UpdateNotificationsReadStatusService implements UpdateNotifications
                     var referenceDate = tuple.getT2();
 
                     var enrichedCommand = new UpdateNotificationsReadStatusCommand(
-                            command.env(),
-                            command.mbrType(),
+                            ctx.account().accountEnv(),
+                            ctx.memberOwner().memberType(),
                             command.notificationIds(),
                             ctx.account().policyNo(),
                             ctx.account().certNo(),

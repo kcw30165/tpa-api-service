@@ -19,7 +19,7 @@ class TemporaryPortalAccessContextPropertiesBindingTest {
                 "temporary-portal-access-context.profiles.notifications.actor-user-type", "MEMBER",
                 "temporary-portal-access-context.profiles.notifications.actor-user-role", "SELF",
                 "temporary-portal-access-context.profiles.notifications.member-user-id", "member_user_notifications",
-                "temporary-portal-access-context.profiles.notifications.member-type", "INDIVIDUAL",
+                "temporary-portal-access-context.profiles.notifications.member-type", "MBR",
                 "temporary-portal-access-context.profiles.notifications.account-env", "JP",
                 "temporary-portal-access-context.profiles.notifications.policy-no", "policyNo_for_notifications",
                 "temporary-portal-access-context.profiles.notifications.cert-no", "certNo_for_notifications",
@@ -35,7 +35,7 @@ class TemporaryPortalAccessContextPropertiesBindingTest {
         assertEquals("MEMBER", profile.getActorUserType());
         assertEquals("SELF", profile.getActorUserRole());
         assertEquals("member_user_notifications", profile.getMemberUserId());
-        assertEquals("INDIVIDUAL", profile.getMemberType());
+        assertEquals("MBR", profile.getMemberType());
         assertEquals("JP", profile.getAccountEnv());
         assertEquals("policyNo_for_notifications", profile.getPolicyNo());
         assertEquals("certNo_for_notifications", profile.getCertNo());
@@ -50,7 +50,7 @@ class TemporaryPortalAccessContextPropertiesBindingTest {
                 "temporary-portal-access-context.profiles.contributions.actor-user-type", "MEMBER",
                 "temporary-portal-access-context.profiles.contributions.actor-user-role", "SELF",
                 "temporary-portal-access-context.profiles.contributions.member-user-id", "member_user_contributions",
-                "temporary-portal-access-context.profiles.contributions.member-type", "INDIVIDUAL",
+                "temporary-portal-access-context.profiles.contributions.member-type", "MBR",
                 "temporary-portal-access-context.profiles.contributions.account-env", "JP",
                 "temporary-portal-access-context.profiles.contributions.policy-no", "policyNo_for_contributions",
                 "temporary-portal-access-context.profiles.contributions.cert-no", "certNo_for_contributions",
@@ -66,7 +66,7 @@ class TemporaryPortalAccessContextPropertiesBindingTest {
         assertEquals("MEMBER", profile.getActorUserType());
         assertEquals("SELF", profile.getActorUserRole());
         assertEquals("member_user_contributions", profile.getMemberUserId());
-        assertEquals("INDIVIDUAL", profile.getMemberType());
+        assertEquals("MBR", profile.getMemberType());
         assertEquals("JP", profile.getAccountEnv());
         assertEquals("policyNo_for_contributions", profile.getPolicyNo());
         assertEquals("certNo_for_contributions", profile.getCertNo());

@@ -38,7 +38,7 @@ class GetContributionSummaryServiceTest {
 
     private static final PortalAccessContext CONTRIBUTIONS_CONTEXT = new PortalAccessContext(
             new ActorContext("userId_for_contributions", "MEMBER", "SELF"),
-            new MemberOwnerContext("userId_for_contributions", "INDIVIDUAL"),
+            new MemberOwnerContext("userId_for_contributions", "MBR"),
             new AccountContext(
                     "contributions",
                     "JP",
@@ -79,7 +79,7 @@ class GetContributionSummaryServiceTest {
         var service = serviceWith(port, recordingPort);
 
         var result = service.execute(new GetContributionSummaryCommand(
-                "JP", "MBR", "01/01/2026", "31/03/2026", "en", 1, 99999)).block();
+                "01/01/2026", "31/03/2026", "en", 1, 99999)).block();
 
         assertEquals(1, apimCalls.get());
         assertEquals("01/01/2026", captured.get().coverFrom());
@@ -98,6 +98,7 @@ class GetContributionSummaryServiceTest {
         assertTrue(result.actions().exportEnabled());
         assertEquals("trustCode_for_contributions", result.trustCode());
         assertEquals("schemeType_for_contributions", result.schemeType());
+        assertEquals("JP", result.accountEnv());
     }
 
     @Test
@@ -119,7 +120,7 @@ class GetContributionSummaryServiceTest {
                 actionPermissionPort());
 
         service.execute(new GetContributionSummaryCommand(
-                "JP", "MBR", "01/01/2026", "31/03/2026", "en", 1, 99999)).block();
+                "01/01/2026", "31/03/2026", "en", 1, 99999)).block();
 
         assertEquals("contributions", capturedRef.get());
     }
@@ -134,7 +135,7 @@ class GetContributionSummaryServiceTest {
 
         var ex = assertThrows(InvalidContributionRequestException.class,
                 () -> service.execute(new GetContributionSummaryCommand(
-                        "JP", "MBR", "30/03/2023", "31/03/2026", "en", 1, 99999)).block());
+                        "30/03/2023", "31/03/2026", "en", 1, 99999)).block());
 
         assertEquals("fromDate and toDate must be within the range from ref-date minus 36 months to ref-date", ex.getMessage());
         assertEquals(0, apimCalls.get());
@@ -150,7 +151,7 @@ class GetContributionSummaryServiceTest {
 
         var ex = assertThrows(InvalidContributionRequestException.class,
                 () -> service.execute(new GetContributionSummaryCommand(
-                        "JP", "MBR", "01/01/2026", "01/04/2026", "en", 1, 99999)).block());
+                        "01/01/2026", "01/04/2026", "en", 1, 99999)).block());
 
         assertEquals("fromDate and toDate must be within the range from ref-date minus 36 months to ref-date", ex.getMessage());
         assertEquals(0, apimCalls.get());
@@ -166,7 +167,7 @@ class GetContributionSummaryServiceTest {
 
         var ex = assertThrows(InvalidContributionRequestException.class,
                 () -> service.execute(new GetContributionSummaryCommand(
-                        "JP", "MBR", "31/03/2026", "01/01/2026", "en", 1, 99999)).block());
+                        "31/03/2026", "01/01/2026", "en", 1, 99999)).block());
 
         assertEquals("fromDate must not be after toDate", ex.getMessage());
         assertEquals(0, apimCalls.get());
@@ -181,7 +182,7 @@ class GetContributionSummaryServiceTest {
         }, (code, env, trustCode, schemeType) -> new CurrencyDisplay(code, code));
 
         service.execute(new GetContributionSummaryCommand(
-                "JP", "MBR", "31/03/2023", "31/03/2026", "en", 1, 99999)).block();
+                "31/03/2023", "31/03/2026", "en", 1, 99999)).block();
 
         assertEquals(1, apimCalls.get());
     }
@@ -195,19 +196,19 @@ class GetContributionSummaryServiceTest {
         assertEquals("fromDate must be provided in dd/MM/yyyy format", assertThrows(
                 InvalidContributionRequestException.class,
                 () -> service.execute(new GetContributionSummaryCommand(
-                        "JP", "MBR", null, "05/05/2026", "en", 1, 99999)).block()).getMessage());
+                        null, "05/05/2026", "en", 1, 99999)).block()).getMessage());
         assertEquals("toDate must be provided in dd/MM/yyyy format", assertThrows(
                 InvalidContributionRequestException.class,
                 () -> service.execute(new GetContributionSummaryCommand(
-                        "JP", "MBR", "05/04/2026", null, "en", 1, 99999)).block()).getMessage());
+                        "05/04/2026", null, "en", 1, 99999)).block()).getMessage());
         assertEquals("fromDate must be provided in dd/MM/yyyy format", assertThrows(
                 InvalidContributionRequestException.class,
                 () -> service.execute(new GetContributionSummaryCommand(
-                        "JP", "MBR", "2026-04-05", "05/05/2026", "en", 1, 99999)).block()).getMessage());
+                        "2026-04-05", "05/05/2026", "en", 1, 99999)).block()).getMessage());
         assertEquals("toDate must be provided in dd/MM/yyyy format", assertThrows(
                 InvalidContributionRequestException.class,
                 () -> service.execute(new GetContributionSummaryCommand(
-                        "JP", "MBR", "05/04/2026", "2026-05-05", "en", 1, 99999)).block()).getMessage());
+                        "05/04/2026", "2026-05-05", "en", 1, 99999)).block()).getMessage());
     }
 
     @Test
@@ -218,7 +219,7 @@ class GetContributionSummaryServiceTest {
 
         var ex = assertThrows(InvalidContributionRequestException.class,
                 () -> service.execute(new GetContributionSummaryCommand(
-                        "JP", "MBR", "01/01/2026", "31/03/2026", "en", 0, 99999)).block());
+                        "01/01/2026", "31/03/2026", "en", 0, 99999)).block());
         assertEquals("page must be greater than 0", ex.getMessage());
     }
 
@@ -230,7 +231,7 @@ class GetContributionSummaryServiceTest {
 
         var ex = assertThrows(InvalidContributionRequestException.class,
                 () -> service.execute(new GetContributionSummaryCommand(
-                        "JP", "MBR", "01/01/2026", "31/03/2026", "en", 1, 0)).block());
+                        "01/01/2026", "31/03/2026", "en", 1, 0)).block());
         assertEquals("pageSize must be greater than 0", ex.getMessage());
     }
 

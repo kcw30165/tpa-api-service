@@ -25,7 +25,7 @@ class UpdateNotificationsReadStatusServiceTest {
 
     private static final PortalAccessContext NOTIFICATIONS_CONTEXT = new PortalAccessContext(
             new ActorContext("userId_for_notifications", "MEMBER", "SELF"),
-            new MemberOwnerContext("userId_for_notifications", "INDIVIDUAL"),
+            new MemberOwnerContext("userId_for_notifications", "MBR"),
             new AccountContext(
                     "notifications",
                     "JP",
@@ -71,7 +71,7 @@ class UpdateNotificationsReadStatusServiceTest {
         assertEquals(expectedResult, result);
         assertEquals(1, invocationCount.get());
         assertEquals("notifications", capturedRef.get());
-        assertEquals("DEV", captured.get().env());
+        assertEquals("JP", captured.get().env());
         assertEquals("MBR", captured.get().mbrType());
         assertEquals(List.of("msgCode1", "msgCode2"), captured.get().notificationIds());
         // policyNo and certNo come from account context

@@ -56,14 +56,12 @@ final class ContributionSummarySupport {
     }
 
     static FetchContributionSummaryCommand newFetchCommand(
-            String env,
-            String mbrType,
             String coverFrom,
             String coverTo,
             PortalAccessContext context) {
         return new FetchContributionSummaryCommand(
-                env,
-                mbrType,
+                context.account().accountEnv(),
+                context.memberOwner().memberType(),
                 coverFrom,
                 coverTo,
                 context.account().policyNo(),

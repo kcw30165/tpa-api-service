@@ -12,7 +12,7 @@ class UpdateNotificationsReadStatusRequestTest {
 
     @Test
     void keepsNotificationIdsNullWhenInputIsNull() {
-        UpdateNotificationsReadStatusRequest request = new UpdateNotificationsReadStatusRequest("SIT", "EMP", null);
+        UpdateNotificationsReadStatusRequest request = new UpdateNotificationsReadStatusRequest(null);
 
         assertNull(request.notificationId());
     }
@@ -21,7 +21,7 @@ class UpdateNotificationsReadStatusRequestTest {
     void defensivelyCopiesNotificationIds() {
         List<String> ids = new ArrayList<>(List.of("n1", "n2"));
 
-        UpdateNotificationsReadStatusRequest request = new UpdateNotificationsReadStatusRequest("SIT", "EMP", ids);
+        UpdateNotificationsReadStatusRequest request = new UpdateNotificationsReadStatusRequest(ids);
         ids.add("n3");
 
         assertEquals(List.of("n1", "n2"), request.notificationId());

@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class NotificationControllerTest {
 
@@ -51,8 +52,6 @@ class NotificationControllerTest {
 
         client.get()
                 .uri(uriBuilder -> uriBuilder.path("/api/v1/notifications")
-                        .queryParam("env", "DEV")
-                        .queryParam("mbrType", "MBR")
                         .queryParam("page", 1)
                         .queryParam("size", 99999)
                         .queryParam("dateFormat", "dd/MM/yyyy HH:mm")
@@ -68,8 +67,6 @@ class NotificationControllerTest {
                 .jsonPath("$.notifications[0].isRead").isEqualTo(false)
                 .jsonPath("$.notifications[0].startDateTime").isEqualTo("29/04/2026 14:15");
 
-        assertEquals("DEV", captured.get().env());
-        assertEquals("MBR", captured.get().mbrType());
         assertEquals(1, captured.get().page());
         assertEquals(99999, captured.get().size());
         assertEquals("dd/MM/yyyy HH:mm", captured.get().dateFormat());
@@ -94,8 +91,10 @@ class NotificationControllerTest {
                 .exchange()
                 .expectStatus().isOk();
 
-        assertEquals("UAT", captured.get().env());
-        assertEquals("VIP", captured.get().mbrType());
+        // env and mbrType query params are no longer accepted; they are ignored by Spring MVC
+        // and env/mbrType on the command are populated from PortalAccessContext by the use case
+        assertNull(captured.get().env());
+        assertNull(captured.get().mbrType());
     }
 
     @Test
@@ -107,8 +106,6 @@ class NotificationControllerTest {
 
         client.get()
                 .uri(uriBuilder -> uriBuilder.path("/api/v1/notifications")
-                        .queryParam("env", "DEV")
-                        .queryParam("mbrType", "MBR")
                         .queryParam("timezone", "Mars/Olympus")
                         .build())
                 .exchange()
@@ -126,8 +123,6 @@ class NotificationControllerTest {
         webClientWithRequestLoggingFilter(useCase, unusedUpdateNotificationsReadStatusUseCase())
                 .get()
                 .uri(uriBuilder -> uriBuilder.path("/api/v1/notifications")
-                        .queryParam("env", "DEV")
-                        .queryParam("mbrType", "MBR")
                         .queryParam("timezone", "Mars/Olympus")
                         .build())
                 .exchange()
@@ -165,8 +160,6 @@ class NotificationControllerTest {
                 .uri("/api/v1/notifications")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(Map.of(
-                        "env", "DEV",
-                        "mbrType", "MBR",
                         "notificationId", List.of("msgCode1", "msgCode2")))
                 .exchange()
                 .expectStatus().isOk()
@@ -176,35 +169,13 @@ class NotificationControllerTest {
                 .jsonPath("$.notifications[1].msgCode").isEqualTo("msgCode2")
                 .jsonPath("$.notifications[1].isRead").isEqualTo(false);
 
-        assertEquals("DEV", captured.get().env());
-        assertEquals("MBR", captured.get().mbrType());
         assertEquals(List.of("msgCode1", "msgCode2"), captured.get().notificationIds());
-    }
-
-    @Test
-    void rejectsPatchRequestWhenEnvIsMissing() {
-        assertInvalidPatchRequest(
-                Map.of(
-                        "mbrType", "MBR",
-                        "notificationId", List.of("msgCode1")),
-                "env must not be blank");
-    }
-
-    @Test
-    void rejectsPatchRequestWhenMbrTypeIsMissing() {
-        assertInvalidPatchRequest(
-                Map.of(
-                        "env", "DEV",
-                        "notificationId", List.of("msgCode1")),
-                "mbrType must not be blank");
     }
 
     @Test
     void rejectsPatchRequestWhenNotificationIdIsEmpty() {
         assertInvalidPatchRequest(
                 Map.of(
-                        "env", "DEV",
-                        "mbrType", "MBR",
                         "notificationId", List.of()),
                 "notificationId must not be empty");
     }
@@ -213,27 +184,8 @@ class NotificationControllerTest {
     void rejectsPatchRequestWhenNotificationIdContainsBlankValues() {
         assertInvalidPatchRequest(
                 Map.of(
-                        "env", "DEV",
-                        "mbrType", "MBR",
                         "notificationId", List.of(" ")),
                 "notificationId must not contain blank values");
-    }
-
-    @Test
-    void rejectsPatchRequestUsingEnvSpecificValidationMessageVariant() {
-        webClient(unusedGetNotificationsUseCase(), unusedUpdateNotificationsReadStatusUseCase())
-                .patch()
-                .uri("/api/v1/notifications")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(Map.of(
-                        "env", "JP",
-                        "mbrType", "MBR",
-                        "notificationId", List.of("")))
-                .exchange()
-                .expectStatus().isBadRequest()
-                .expectBody()
-                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.REQUEST_VALIDATION_FAILED)
-                .jsonPath("$.message").isEqualTo("Invalid request payload for JP.");
     }
 
         private void assertInvalidPatchRequest(Object requestBody, String expectedMessage) {

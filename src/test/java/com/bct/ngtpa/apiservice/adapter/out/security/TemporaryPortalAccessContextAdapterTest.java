@@ -22,7 +22,7 @@ class TemporaryPortalAccessContextAdapterTest {
                     assertEquals("MEMBER", ctx.actor().actorUserType());
                     assertEquals("SELF", ctx.actor().actorUserRole());
                     assertEquals("memberUserId_for_notifications", ctx.memberOwner().memberUserId());
-                    assertEquals("INDIVIDUAL", ctx.memberOwner().memberType());
+                    assertEquals("MBR", ctx.memberOwner().memberType());
                     assertEquals("JP", ctx.account().accountEnv());
                     assertEquals("policyNo_for_notifications", ctx.account().policyNo());
                     assertEquals("certNo_for_notifications", ctx.account().certNo());
@@ -43,7 +43,7 @@ class TemporaryPortalAccessContextAdapterTest {
                     assertEquals("MEMBER", ctx.actor().actorUserType());
                     assertEquals("SELF", ctx.actor().actorUserRole());
                     assertEquals("memberUserId_for_contributions", ctx.memberOwner().memberUserId());
-                    assertEquals("INDIVIDUAL", ctx.memberOwner().memberType());
+                    assertEquals("MBR", ctx.memberOwner().memberType());
                     assertEquals("JP", ctx.account().accountEnv());
                     assertEquals("policyNo_for_contributions", ctx.account().policyNo());
                     assertEquals("certNo_for_contributions", ctx.account().certNo());
@@ -105,7 +105,7 @@ class TemporaryPortalAccessContextAdapterTest {
         notifProfile.setActorUserType("MEMBER");
         notifProfile.setActorUserRole("SELF");
         notifProfile.setMemberUserId("memberUserId_for_notifications");
-        notifProfile.setMemberType("INDIVIDUAL");
+        notifProfile.setMemberType("MBR");
         notifProfile.setAccountEnv("JP");
         notifProfile.setPolicyNo("policyNo_for_notifications");
         notifProfile.setCertNo("certNo_for_notifications");
@@ -117,7 +117,7 @@ class TemporaryPortalAccessContextAdapterTest {
         contribProfile.setActorUserType("MEMBER");
         contribProfile.setActorUserRole("SELF");
         contribProfile.setMemberUserId("memberUserId_for_contributions");
-        contribProfile.setMemberType("INDIVIDUAL");
+        contribProfile.setMemberType("MBR");
         contribProfile.setAccountEnv("JP");
         contribProfile.setPolicyNo("policyNo_for_contributions");
         contribProfile.setCertNo("certNo_for_contributions");

@@ -22,7 +22,7 @@ class PortalAccessContextPortTest {
 
     private static final PortalAccessContext STUB_CONTEXT = new PortalAccessContext(
             new ActorContext("staff-01", "STAFF", "RM"),
-            new MemberOwnerContext("member-99", "INDIVIDUAL"),
+            new MemberOwnerContext("member-99", "MBR"),
             new AccountContext("ACC-001", "JP", "POL-001", "CERT-001", "JPM", "OE"));
 
     // ---------------------------------------------------------------------------
