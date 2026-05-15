@@ -10,6 +10,7 @@ import com.bct.ngtpa.apiservice.application.port.out.ApimNotificationReadStatusP
 import com.bct.ngtpa.apiservice.application.port.out.ContributionActionPermissionPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
 import com.bct.ngtpa.apiservice.application.port.out.MemberContextPort;
+import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.usecase.ExportContributionSummaryService;
 import com.bct.ngtpa.apiservice.application.usecase.GetContributionSummaryService;
@@ -31,18 +32,18 @@ public class UseCaseConfig {
     @Bean
     public GetNotificationsUseCase getNotificationsUseCase(
             ApimNoticeMessagePort apimNoticeMessagePort,
-            MemberContextPort memberContextPort,
+            PortalAccessContextPort portalAccessContextPort,
             ReferenceDatePort referenceDatePort) {
-        return new GetNotificationsService(apimNoticeMessagePort, memberContextPort, referenceDatePort);
+        return new GetNotificationsService(apimNoticeMessagePort, portalAccessContextPort, referenceDatePort);
     }
 
     @Bean
     public UpdateNotificationsReadStatusUseCase updateNotificationsReadStatusUseCase(
             ApimNotificationReadStatusPort apimNotificationReadStatusPort,
-            MemberContextPort memberContextPort,
+            PortalAccessContextPort portalAccessContextPort,
             ReferenceDatePort referenceDatePort) {
         return new UpdateNotificationsReadStatusService(
-                apimNotificationReadStatusPort, memberContextPort, referenceDatePort);
+                apimNotificationReadStatusPort, portalAccessContextPort, referenceDatePort);
     }
 
     @Bean

@@ -1,12 +1,11 @@
 package com.bct.ngtpa.apiservice.application.usecase;
 
 import com.bct.ngtpa.apiservice.application.dto.GetNotificationsCommand;
-import com.bct.ngtpa.apiservice.application.dto.MemberContextPurpose;
 import com.bct.ngtpa.apiservice.application.dto.NotificationDateOptions;
 import com.bct.ngtpa.apiservice.application.dto.NotificationListResult;
 import com.bct.ngtpa.apiservice.application.port.in.GetNotificationsUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNoticeMessagePort;
-import com.bct.ngtpa.apiservice.application.port.out.MemberContextPort;
+import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
@@ -22,7 +21,7 @@ public class GetNotificationsService implements GetNotificationsUseCase {
         private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
         private final ApimNoticeMessagePort apimNoticeMessagePort;
-        private final MemberContextPort memberContextPort;
+        private final PortalAccessContextPort portalAccessContextPort;
         private final ReferenceDatePort referenceDatePort;
 
         @Override
@@ -30,10 +29,10 @@ public class GetNotificationsService implements GetNotificationsUseCase {
                 var dateOptions = NotificationDateOptions.resolve(command.dateFormat(), command.timezone());
                 LocalDateTime now = dateOptions.now();
 
-                return memberContextPort.resolveMemberContext(MemberContextPurpose.NOTIFICATIONS)
+                return portalAccessContextPort.resolvePortalAccessContext("notifications")
                                 .zipWith(referenceDatePort.resolveReferenceDate())
                                 .flatMap(tuple -> {
-                                        var memberContext = tuple.getT1();
+                                        var ctx = tuple.getT1();
                                         var referenceDate = tuple.getT2();
 
                                         var enriched = new GetNotificationsCommand(
@@ -43,9 +42,9 @@ public class GetNotificationsService implements GetNotificationsUseCase {
                                                         command.size(),
                                                         command.dateFormat(),
                                                         command.timezone(),
-                                                        memberContext.policyNo(),
-                                                        memberContext.certNo(),
-                                                        memberContext.userId(),
+                                                        ctx.account().policyNo(),
+                                                        ctx.account().certNo(),
+                                                        ctx.actor().actorUserId(),
                                                         referenceDate.format(DATE_FORMATTER));
 
                                         return apimNoticeMessagePort.fetchNotifications(enriched)
