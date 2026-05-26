@@ -1,5 +1,8 @@
 package com.bct.ngtpa.apiservice.adapter.out.redis.config;
 
+import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
+import com.bct.ngtpa.apiservice.adapter.out.redis.RedisStringCacheAdapter;
+import com.bct.ngtpa.apiservice.application.port.out.CachePort;
 import io.lettuce.core.ClientOptions;
 import io.lettuce.core.SslOptions;
 import io.lettuce.core.TimeoutOptions;
@@ -58,6 +61,17 @@ public class RedisAdapterConfig {
             LettuceConnectionFactory lettuceConnectionFactory) {
         RedisSerializationContext<String, String> context = RedisSerializationContext.string();
         return new ReactiveRedisTemplate<>(lettuceConnectionFactory, context);
+    }
+
+    @Bean
+    public RedisCacheKeyFactory redisCacheKeyFactory() {
+        return new RedisCacheKeyFactory(properties.getKeyPrefix());
+    }
+
+    @Bean
+    public CachePort redisStringCacheAdapter(
+            ReactiveRedisTemplate<String, String> reactiveRedisTemplate) {
+        return new RedisStringCacheAdapter(reactiveRedisTemplate);
     }
 
     // ── Internal configuration builders ──────────────────────────────────────

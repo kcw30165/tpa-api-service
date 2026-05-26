@@ -15,6 +15,7 @@ public class RedisCacheProperties {
     private boolean enabled = true;
     private String password = "";
     private int timeoutMilliseconds = 1000;
+    private String keyPrefix = "ngtpa";
 
     private final Sentinel sentinel = new Sentinel();
     private final Ssl ssl = new Ssl();

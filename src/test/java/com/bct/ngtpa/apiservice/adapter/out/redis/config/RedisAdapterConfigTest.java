@@ -1,5 +1,8 @@
 package com.bct.ngtpa.apiservice.adapter.out.redis.config;
 
+import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
+import com.bct.ngtpa.apiservice.adapter.out.redis.RedisStringCacheAdapter;
+import com.bct.ngtpa.apiservice.application.port.out.CachePort;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.ssl.SslBundles;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
@@ -111,6 +114,59 @@ class RedisAdapterConfigTest {
         LettuceConnectionFactory factory = config.lettuceConnectionFactory();
         assertNotNull(factory);
 
+    }
+
+    // ── Hash serializers ────────────────────────────────────────────────────────
+
+    @Test
+    void hashKeySerializerIsPlainUtf8String() {
+        var config = configWithSslDisabled();
+        ReactiveRedisTemplate<String, String> template =
+                config.reactiveRedisTemplate(config.lettuceConnectionFactory());
+
+        ByteBuffer buf = template.getSerializationContext()
+                .getHashKeySerializationPair().getWriter().write("hash-field");
+
+        assertEquals("hash-field", StandardCharsets.UTF_8.decode(buf).toString());
+    }
+
+    @Test
+    void hashValueSerializerIsPlainUtf8String() {
+        var config = configWithSslDisabled();
+        ReactiveRedisTemplate<String, String> template =
+                config.reactiveRedisTemplate(config.lettuceConnectionFactory());
+
+        ByteBuffer buf = template.getSerializationContext()
+                .getHashValueSerializationPair().getWriter().write("{\"field\":\"v\"}");
+
+        assertEquals("{\"field\":\"v\"}", StandardCharsets.UTF_8.decode(buf).toString());
+    }
+
+    // ── Key factory bean ──────────────────────────────────────────────────────
+
+    @Test
+    void redisCacheKeyFactoryBeanUsesConfiguredKeyPrefix() {
+        var props = new RedisCacheProperties();
+        props.getSsl().setEnabled(false);
+        props.setKeyPrefix("testapp");
+
+        RedisAdapterConfig config = new RedisAdapterConfig(props, mock(SslBundles.class));
+        var factory = config.redisCacheKeyFactory();
+
+        assertEquals("testapp:capability:part", factory.buildKey("capability", "part"));
+    }
+
+    // ── Cache adapter bean ────────────────────────────────────────────────────
+
+    @Test
+    void redisStringCacheAdapterBeanImplementsCachePort() {
+        var config = configWithSslDisabled();
+        LettuceConnectionFactory factory = config.lettuceConnectionFactory();
+        ReactiveRedisTemplate<String, String> template = config.reactiveRedisTemplate(factory);
+
+        CachePort adapter = config.redisStringCacheAdapter(template);
+
+        assertInstanceOf(RedisStringCacheAdapter.class, adapter);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

@@ -252,6 +252,24 @@ class RedisCachePropertiesBindingTest {
                 });
     }
 
+    @Test
+    void defaultKeyPrefixIsNgtpa() {
+        contextRunner.run(context -> {
+            var props = context.getBean(RedisCacheProperties.class);
+            assertEquals("ngtpa", props.getKeyPrefix());
+        });
+    }
+
+    @Test
+    void bindsKeyPrefixFromPropertyValue() {
+        contextRunner
+                .withPropertyValues("redis-cache.key-prefix=myservice")
+                .run(context -> {
+                    var props = context.getBean(RedisCacheProperties.class);
+                    assertEquals("myservice", props.getKeyPrefix());
+                });
+    }
+
     // ── Minimal test config ───────────────────────────────────────────────────
 
     @Configuration(proxyBeanMethods = false)

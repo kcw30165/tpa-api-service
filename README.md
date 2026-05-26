@@ -23,6 +23,7 @@ The service runs as a reactive Spring Boot application and reads local developme
 | Auth (outbound) | Spring Security OAuth2 Client Credentials |
 | Encryption | BouncyCastle 1.82 (RSA + AES/CBC) |
 | Spreadsheet export | Apache POI OOXML |
+| Cache | Redis (Lettuce reactive driver, Sentinel mode) |
 | Build | Maven 3.9.x (/d/Tools/apache-maven-3.9.15) |
 | JDK | OpenJDK 21 (`C:\Java\OpenJDK\jdk-21`) |
 
@@ -121,6 +122,12 @@ com.bct.ngtpa.apiservice
 │       │   │   ├── ConfigServiceRequest               # Adapter-private PUT request DTO (must not leak outside adapter)
 │       │   │   └── ConfigServiceResponse              # Adapter-private GET/PUT response DTO (must not leak outside adapter)
 │       │   └── ConfigServiceWebClientAdapter          # Implements ConfigServicePort — GET, PUT, DELETE
+│       ├── redis/           # Redis outbound cache adapter
+│       │   ├── config/
+│       │   │   ├── RedisCacheProperties               # Binds redis-cache.* YAML (Sentinel, SSL, pool)
+│       │   │   └── RedisAdapterConfig                 # @Bean LettuceConnectionFactory, ReactiveRedisTemplate, RedisCacheKeyFactory, CachePort
+│       │   ├── RedisCacheKeyFactory                   # Deterministic key builder: <prefix>:<capability>[:<part>...]
+│       │   └── RedisStringCacheAdapter                # Implements CachePort via ReactiveRedisTemplate<String,String>
 │       └── security/        # Non-APIM security concerns
 │           ├── TemporaryPortalAccessContextProperties  # Binds temporary-portal-access-context.profiles.*
 │           └── TemporaryPortalAccessContextAdapter     # Implements PortalAccessContextPort
@@ -500,6 +507,90 @@ config-service:
 ```
 
 **Scope of this task:** This task adds the outbound adapter capability only. Redis caching, read-through strategy, APIM write-back, and `ReferenceDate` orchestration are out of scope and will be addressed in later tasks.
+
+---
+
+## Redis Cache Adapter
+
+The `RedisStringCacheAdapter` (under `adapter/out/redis/`) provides an outbound reactive key-value cache using Redis Sentinel with optional mTLS, backed by the Lettuce reactive driver.
+
+### Architecture boundaries
+
+- Application code depends only on `CachePort` (in `application/port/out/`) — framework-free (`Mono`, `Optional`, `Duration`).
+- All Redis types (`ReactiveRedisTemplate`, Lettuce, Sentinel configuration) are confined to `adapter/out/redis/` and enforced by ArchUnit.
+- `RedisCacheKeyFactory` enforces key format and key safety: raw PII (policy numbers, certificate numbers, user IDs, tokens) must **never** appear as key parts.
+- `CacheException` maps all Redis errors to a safe exception; sensitive details (passwords, certificate paths, Sentinel addresses) are never included in the exception message. The raw cause is accessible via `getCause()` for diagnostic purposes only.
+- `CacheException` is handled by `ApiExceptionHandler` and returns `503 Service Unavailable` with error code `SYSTEM_UNEXPECTED`. No stack trace is logged.
+
+### Key format
+
+```
+<prefix>:<capability>[:<part>...]
+```
+
+Examples:
+
+| Key | Meaning |
+|---|---|
+| `ngtpa:reference-date:JP` | Reference date for scheme JP |
+| `ngtpa:display-format:en:amount` | Display format for locale `en`, field `amount` |
+
+The prefix defaults to `ngtpa` and is set via `REDIS_KEY_PREFIX`.
+
+### Configuration
+
+```yaml
+redis-cache:
+  enabled: ${REDIS_CACHE_ENABLED:true}
+  key-prefix: ${REDIS_KEY_PREFIX:ngtpa}
+  password: ${REDIS_PASSWORD:}
+  timeout-milliseconds: ${REDIS_TIMEOUT_MILLISECONDS:1000}
+  sentinel:
+    master: ${REDIS_SENTINEL_MASTER:ngtpaMaster}
+    nodes: ${REDIS_SENTINEL_NODES:}
+    password: ${REDIS_SENTINEL_PASSWORD:${REDIS_PASSWORD:}}
+  ssl:
+    enabled: ${REDIS_SSL_ENABLED:true}
+    bundle: ${REDIS_SSL_BUNDLE:redis-mtls}
+  lettuce:
+    pool:
+      max-active: ${REDIS_POOL_MAX_ACTIVE:20}
+      max-idle: ${REDIS_POOL_MAX_IDLE:10}
+      min-idle: ${REDIS_POOL_MIN_IDLE:0}
+      max-wait-milliseconds: ${REDIS_POOL_MAX_WAIT_MILLISECONDS:3000}
+    shutdown-timeout-milliseconds: ${REDIS_SHUTDOWN_TIMEOUT_MILLISECONDS:5000}
+```
+
+| Environment variable | Default | Description |
+|---|---|---|
+| `REDIS_CACHE_ENABLED` | `true` | Set to `false` to disable the Redis adapter entirely (local dev without Sentinel) |
+| `REDIS_KEY_PREFIX` | `ngtpa` | Prefix prepended to every cache key |
+| `REDIS_PASSWORD` | _(empty)_ | Redis AUTH password (also used as Sentinel password fallback) |
+| `REDIS_TIMEOUT_MILLISECONDS` | `1000` | Command timeout for Redis operations |
+| `REDIS_SENTINEL_MASTER` | `ngtpaMaster` | Sentinel master name |
+| `REDIS_SENTINEL_NODES` | _(empty)_ | Comma-separated `host:port` list of Sentinel nodes |
+| `REDIS_SENTINEL_PASSWORD` | `$REDIS_PASSWORD` | Sentinel-specific password; falls back to `REDIS_PASSWORD` |
+| `REDIS_SSL_ENABLED` | `true` | Enable TLS on Redis connections |
+| `REDIS_SSL_BUNDLE` | `redis-mtls` | Spring SSL bundle name for mTLS client certificate |
+| `REDIS_POOL_MAX_ACTIVE` | `20` | Maximum active connections in the Lettuce pool |
+| `REDIS_POOL_MAX_IDLE` | `10` | Maximum idle connections |
+| `REDIS_POOL_MIN_IDLE` | `0` | Minimum idle connections |
+| `REDIS_POOL_MAX_WAIT_MILLISECONDS` | `3000` | Maximum wait time for a connection from the pool |
+| `REDIS_SHUTDOWN_TIMEOUT_MILLISECONDS` | `5000` | Lettuce client shutdown grace period |
+
+### Kubernetes deployment assumptions
+
+- Redis runs as a Sentinel cluster in the **same namespace** as the BFF pod.
+- Sentinel nodes are reachable via in-cluster DNS, e.g., `redis-sentinel.<namespace>.svc.cluster.local:26379`.
+- Set `REDIS_SENTINEL_NODES` to a comma-separated list of all Sentinel node endpoints.
+- mTLS client certificate and key are provided to the pod via a Kubernetes Secret mounted at a path configured in the Spring SSL bundle (`redis-mtls`). The exact mount path is deployment-specific.
+- For local development without a Sentinel cluster, set `REDIS_CACHE_ENABLED=false` to skip all Redis bean initialisation.
+
+### Disabled mode
+
+When `REDIS_CACHE_ENABLED=false`, the entire `RedisAdapterConfig` is skipped (via `@ConditionalOnProperty`). No `LettuceConnectionFactory`, `ReactiveRedisTemplate`, or `CachePort` bean is registered. Any use case that injects `CachePort` will fail to start — this is intentional to prevent silent cache-bypass in production.
+
+**Scope of this task:** This task adds the outbound cache capability only. Redis-first `ReferenceDate` strategy, cache warm-up, TTL policy, and Config Service fallback orchestration are addressed in later tasks.
 
 ---
 

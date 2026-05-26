@@ -114,6 +114,7 @@ error-message:
 
 redis-cache:
   enabled: ${REDIS_CACHE_ENABLED:true}
+  key-prefix: ${REDIS_KEY_PREFIX:ngtpa}
   password: ${REDIS_PASSWORD:}
   timeout-milliseconds: ${REDIS_TIMEOUT_MILLISECONDS:1000}
   sentinel:
