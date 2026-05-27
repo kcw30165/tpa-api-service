@@ -16,11 +16,16 @@ class ReferenceDatePropertiesBindingTest {
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withUserConfiguration(TestConfig.class)
             .withInitializer(context -> {
-                var yaml = """
-                        reference-date:
-                          override-date: 31/03/2026
-                          override-zone-id: Asia/Hong_Kong
-                        """;
+            var yaml = String.join("\n",
+                "reference-date:",
+                "  override-date: 31/03/2026",
+                "  override-zone-id: Asia/Hong_Kong",
+                "  refresh:",
+                "    cache-ttl-seconds: 43200",
+                "    config-service:",
+                "      application: ngtpa-api-server",
+                "      profile: local",
+                "      label: main");
                 var resource = new ByteArrayResource(yaml.getBytes(StandardCharsets.UTF_8));
                 try {
                     var propertySources = new YamlPropertySourceLoader().load("referenceDateTest", resource);
@@ -36,6 +41,10 @@ class ReferenceDatePropertiesBindingTest {
             var props = context.getBean(ReferenceDateProperties.class);
             assertEquals("31/03/2026", props.getOverrideDate());
             assertEquals("Asia/Hong_Kong", props.getOverrideZoneId());
+            assertEquals(43200, props.getRefresh().getCacheTtlSeconds());
+            assertEquals("ngtpa-api-server", props.getRefresh().getConfigService().getApplication());
+            assertEquals("local", props.getRefresh().getConfigService().getProfile());
+            assertEquals("main", props.getRefresh().getConfigService().getLabel());
         });
     }
 

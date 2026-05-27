@@ -50,9 +50,9 @@ com.bct.ngtpa.apiservice
 │   └── exception/       # DomainException
 ├── application/         # Orchestration — no Spring @Service; wired by UseCaseConfig
 │   ├── port/
-│   │   ├── in/          # GetNotificationsUseCase, UpdateNotificationsReadStatusUseCase, GetContributionSummaryUseCase, ExportContributionSummaryUseCase, GetReferenceDataCountriesUseCase, GetPersonalInformationUseCase, UpdatePersonalInformationUseCase
-│   │   └── out/         # ApimNoticeMessagePort, ApimNotificationReadStatusPort, ApimContributionSummaryPort, ApimReferenceDataCountriesPort, ApimMemberInfoPort, ApimUpdatePersonalInformationPort, ReferenceDatePort, PortalAccessContextPort, CurrencyDisplayPort
-│   ├── usecase/         # GetNotificationsService, UpdateNotificationsReadStatusService, GetContributionSummaryService, ExportContributionSummaryService, GetReferenceDataCountriesService, GetPersonalInformationService, UpdatePersonalInformationService
+│   │   ├── in/          # GetNotificationsUseCase, UpdateNotificationsReadStatusUseCase, GetContributionSummaryUseCase, ExportContributionSummaryUseCase, RefreshReferenceDateUseCase, GetReferenceDataCountriesUseCase, GetPersonalInformationUseCase, UpdatePersonalInformationUseCase
+│   │   └── out/         # ApimNoticeMessagePort, ApimNotificationReadStatusPort, ApimContributionSummaryPort, ApimApimReferenceDataCountriesRefreshPort, ReferenceDatePort, ReferenceDateConfigPort, ReferenceDateCacheUpdatePort, ApimMemberInfoPort, ApimUpdatePersonalInformationPort, ReferenceDatePort, PortalAccessContextPort, CurrencyDisplayPort
+│   ├── usecase/         # GetNotificationsService, UpdateNotificationsReadStatusService, GetContributionSummaryService, ExportContributionSummaryService, RefreshReferenceDateService, GetReferenceDataCountriesService, GetPersonalInformationService, UpdatePersonalInformationService
 │   ├── dto/             # Notification, contribution summary, reference data, and personal-information commands/results; CurrencyDisplay; PortalAccessContext (ActorContext, MemberOwnerContext, AccountContext)
 │   └── exception/       # InvalidContributionRequestException, InvalidNotificationRequestException, InvalidPersonalInformationUpdateException, PortalAccessContextResolutionException
 ├── adapter/
@@ -72,8 +72,8 @@ com.bct.ngtpa.apiservice
 │   │   │   ├── RequestLoggingWebFilter           # Correlation ID + global RequestHeaderContext extraction + lifecycle logs
 │   │   │   ├── RequestHeaderContextWebFilter     # Thin test wrapper over the live global filter path
 │   │   │   └── RequestLoggingProperties          # Binds request-logging.* YAML
-│   │   ├── request/     # UpdateNotificationsReadStatusRequest
-│   │   └── response/    # Notification and contribution summary response records
+│   │   ├── request/     # UpdateNotificationsReadStatusRequest, RefreshReferenceDateRequest
+│   │   └── response/    # Notification, contribution summary, and refresh response records
 │   └── out/
 │       ├── apim/            # APIM integration
 │       │   ├── config/                        # APIM-specific configuration
@@ -109,11 +109,13 @@ com.bct.ngtpa.apiservice
 │       │   ├── CurrencyMappingKeyCandidateStrategy    # Legacy currency candidate strategy; to be replaced by DefaultConfigKeyCandidateStrategy
 │       │   └── ConfigBackedCurrencyDisplayAdapter     # Implements CurrencyDisplayPort
 │       ├── configserver/    # ConfigMap / Spring Cloud Config Server YAML-backed adapters (legacy)
-│       │   ├── ReferenceDateProperties                # Binds reference-date.* YAML (override-date, override-zone-id, cache-ttl-seconds)
+│       │   ├── ReferenceDateProperties                # Binds reference-date.* YAML (override-date, override-zone-id, cache-ttl-seconds, refresh.*)
 │       │   ├── ConfigBackedReferenceDateAdapter       # Retained for reference; superseded by OrchestratedReferenceDateAdapter
 │       │   └── ReferenceDateResolver                  # Shared production-like / override resolution (used by legacy adapter only)
 │       ├── referencedate/   # Orchestrated ReferenceDate — active ReferenceDatePort bean
 │       │   ├── OrchestratedReferenceDateAdapter       # Source chain: override-date → Redis → Config Service → system date
+│       │   ├── ReferenceDateConfigServiceAdapter      # Implements ReferenceDateConfigPort via ConfigServicePort
+│       │   ├── ReferenceDateRedisCacheAdapter         # Implements ReferenceDateCacheUpdatePort via CachePort
 │       │   └── config/
 │       │       └── ReferenceDateAdapterConfig         # @Bean referenceDatePort (wires orchestrator: keyPrefix, optional CachePort, TTL)
 │       ├── configservice/   # Config Service REST API outbound adapter
@@ -328,6 +330,10 @@ Notes:
 | `REFERENCE_DATE_OVERRIDE_DATE` | Optional non-production override date in `dd/MM/yyyy` | _(empty)_ |
 | `REFERENCE_DATE_OVERRIDE_ZONE_ID` | Optional non-production override zone ID paired with `REFERENCE_DATE_OVERRIDE_DATE` | _(empty)_ |
 | `REFERENCE_DATE_CACHE_TTL_SECONDS` | TTL in seconds for Redis populate after a Config Service hit. `0` = skip Redis write. | `0` |
+| `REFERENCE_DATE_REFRESH_CACHE_TTL_SECONDS` | TTL in seconds for the internal refresh Redis write. | `86400` |
+| `REFERENCE_DATE_REFRESH_CONFIG_SERVICE_APPLICATION` | Config Service `application` for internal reference-date refresh upserts. | _(empty)_ |
+| `REFERENCE_DATE_REFRESH_CONFIG_SERVICE_PROFILE` | Config Service `profile` for internal reference-date refresh upserts. | _(empty)_ |
+| `REFERENCE_DATE_REFRESH_CONFIG_SERVICE_LABEL` | Config Service `label` for internal reference-date refresh upserts. | _(empty)_ |
 | `APIM_BASE_URL` | APIM base URL (preferred) | _(required)_ |
 | `APIM_BASEURL` | APIM base URL (legacy fallback) | _(see `APIM_BASE_URL`)_ |
 | `APIM_TIMEOUT_MILLISECONDS` | WebClient timeout in ms (preferred) | `10000` |
@@ -524,6 +530,12 @@ reference-date:
   override-date: ${REFERENCE_DATE_OVERRIDE_DATE:}           # non-production override date (dd/MM/yyyy)
   override-zone-id: ${REFERENCE_DATE_OVERRIDE_ZONE_ID:}     # must be paired with override-date
   cache-ttl-seconds: ${REFERENCE_DATE_CACHE_TTL_SECONDS:0}  # 0 = skip Redis write after Config Service hit
+  refresh:
+    cache-ttl-seconds: ${REFERENCE_DATE_REFRESH_CACHE_TTL_SECONDS:86400}
+    config-service:
+      application: ${REFERENCE_DATE_REFRESH_CONFIG_SERVICE_APPLICATION:}
+      profile: ${REFERENCE_DATE_REFRESH_CONFIG_SERVICE_PROFILE:}
+      label: ${REFERENCE_DATE_REFRESH_CONFIG_SERVICE_LABEL:}
 ```
 
 ---
@@ -1055,6 +1067,37 @@ These values drive the synthetic total detail row in the JSON response, the firs
 ---
 
 ## API Endpoints
+
+### `POST /internal/reference-date/refresh`
+
+Manually refreshes the reference date for a single `accountEnv`.
+
+**Request:**
+
+```json
+{ "accountEnv": "JP" }
+```
+
+**Success response:**
+
+```json
+{ "accountEnv": "JP", "refDate": "31/12/2025", "configServiceUpdated": true, "redisUpdated": true }
+```
+
+**Redis partial failure response:**
+
+```json
+{ "accountEnv": "JP", "refDate": "31/12/2025", "configServiceUpdated": true, "redisUpdated": false }
+```
+
+**Behavior:**
+
+- This is an internal operational endpoint and is authenticated when `api.security.require-authentication=true`.
+- Scope is one `accountEnv` per request. Scheduler-driven refresh and all-accountEnv refresh are out of scope.
+- The APIM fetch uses `POST /ws/NGTPA/v1/TRPGetWebSysDate` with request body `{ "env": "<accountEnv>" }`.
+- `accountEnv` is passed to APIM unchanged. Java does not derive or remap it.
+- Java does not send `X-Datadomain` for this APIM operation.
+- The refreshed date is read from `response.data[0].sys-date`, then written to Config Service key `reference-date.<accountEnv>` and Redis key `${redis-cache.key-prefix}:reference-date:<accountEnv>`.
 
 ## APIM Certificate, OAuth Token, and Credential Profile Caching
 

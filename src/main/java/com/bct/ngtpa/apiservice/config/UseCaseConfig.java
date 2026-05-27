@@ -3,9 +3,11 @@ package com.bct.ngtpa.apiservice.config;
 import com.bct.ngtpa.apiservice.application.port.in.ExportContributionSummaryUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetContributionSummaryUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetNotificationsUseCase;
+import com.bct.ngtpa.apiservice.application.port.in.RefreshReferenceDateUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetPersonalInformationUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetReferenceDataCountriesUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.UpdateNotificationsReadStatusUseCase;
+import com.bct.ngtpa.apiservice.application.port.out.ApimReferenceDateRefreshPort;
 import com.bct.ngtpa.apiservice.application.port.in.UpdatePersonalInformationUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimContributionSummaryPort;
 import com.bct.ngtpa.apiservice.application.port.out.ApimMemberInfoPort;
@@ -16,13 +18,17 @@ import com.bct.ngtpa.apiservice.application.port.out.ApimUpdatePersonalInformati
 import com.bct.ngtpa.apiservice.application.port.out.ContributionActionPermissionPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
+import com.bct.ngtpa.apiservice.application.port.out.ReferenceDateCacheUpdatePort;
+import com.bct.ngtpa.apiservice.application.port.out.ReferenceDateConfigPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.usecase.ExportContributionSummaryService;
 import com.bct.ngtpa.apiservice.application.usecase.GetContributionSummaryService;
 import com.bct.ngtpa.apiservice.application.usecase.GetNotificationsService;
+import com.bct.ngtpa.apiservice.application.usecase.RefreshReferenceDateService;
 import com.bct.ngtpa.apiservice.application.usecase.GetPersonalInformationService;
 import com.bct.ngtpa.apiservice.application.usecase.GetReferenceDataCountriesService;
 import com.bct.ngtpa.apiservice.application.usecase.UpdateNotificationsReadStatusService;
+import org.springframework.beans.factory.annotation.Value;
 import com.bct.ngtpa.apiservice.application.usecase.UpdatePersonalInformationService;
 
 import org.springframework.context.annotation.Bean;
@@ -103,5 +109,18 @@ public class UseCaseConfig {
         return new UpdatePersonalInformationService(
                 apimUpdatePersonalInformationPort,
                 currentPortalAccessContextResolver);
+    }
+
+    @Bean
+    public RefreshReferenceDateUseCase refreshReferenceDateUseCase(
+            ApimReferenceDateRefreshPort apimReferenceDateRefreshPort,
+            ReferenceDateConfigPort referenceDateConfigPort,
+            ReferenceDateCacheUpdatePort referenceDateCacheUpdatePort,
+            @Value("${redis-cache.key-prefix:ngtpa}") String redisKeyPrefix) {
+        return new RefreshReferenceDateService(
+                apimReferenceDateRefreshPort,
+                referenceDateConfigPort,
+                referenceDateCacheUpdatePort,
+                redisKeyPrefix);
     }
 }
