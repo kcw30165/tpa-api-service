@@ -149,12 +149,12 @@ public class OrchestratedReferenceDateAdapter implements ReferenceDatePort {
                         LocalDate date = LocalDate.parse(rawDate, DATE_FORMATTER);
                         return populateRedis(accountEnv, rawDate).thenReturn(date);
                     } catch (DateTimeParseException ex) {
-                        log.warn("reference-date: Config Service value is not a valid date; falling through to system date");
+                        log.warn("reference-date: Config Service value for [{}] is not a valid date; falling through to system date", accountEnv);
                         return Mono.<LocalDate>empty();
                     }
                 })
                 .onErrorResume(ex -> {
-                    log.warn("reference-date: Config Service read failed; falling through to system date");
+                    log.warn("reference-date: Config Service read failed for [{}]; falling through to system date", accountEnv);
                     return Mono.empty();
                 });
     }

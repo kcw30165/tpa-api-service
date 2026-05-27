@@ -30,6 +30,7 @@ import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.application.dto.ConfigEntry;
 import com.bct.ngtpa.apiservice.exception.CacheException;
 import java.util.List;
+import java.util.concurrent.TimeoutException;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
@@ -591,6 +592,88 @@ class OrchestratedReferenceDateAdapterTest {
                     .anyMatch(e -> e.getLevel() == Level.WARN
                             && e.getFormattedMessage().contains("reference-date")
                             && !e.getFormattedMessage().contains("connection timeout"));
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
+    }
+
+    // ── Config Service timeout ────────────────────────────────────────────────
+
+    @Test
+    void configServiceTimeout_fallsBackToSystemDateWithSanitizedWarn() {
+        var configServicePort = mock(ConfigServicePort.class);
+        when(configServicePort.listConfigs(any())).thenReturn(
+                Mono.error(new TimeoutException("socket read timeout after 5000ms")));
+
+        var logger = (Logger) LoggerFactory.getLogger(OrchestratedReferenceDateAdapter.class);
+        var appender = new ListAppender<ILoggingEvent>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            StepVerifier.create(adapterForConfigService(Optional.empty(), 0, configServicePort)
+                    .resolveReferenceDate("HK"))
+                    .assertNext(date -> assertThat(date).isEqualTo(FIXED_DATE))
+                    .verifyComplete();
+
+            assertThat(appender.list)
+                    .anyMatch(e -> e.getLevel() == Level.WARN
+                            && e.getFormattedMessage().contains("reference-date")
+                            && e.getFormattedMessage().contains("HK")
+                            && !e.getFormattedMessage().contains("socket read timeout after 5000ms"));
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
+    }
+
+    // ── Config Service observability: log context ─────────────────────────────
+
+    @Test
+    void configServiceError_warnLogIncludesAccountEnv() {
+        var configServicePort = mock(ConfigServicePort.class);
+        when(configServicePort.listConfigs(any())).thenReturn(
+                Mono.error(new RuntimeException("connection refused")));
+
+        var logger = (Logger) LoggerFactory.getLogger(OrchestratedReferenceDateAdapter.class);
+        var appender = new ListAppender<ILoggingEvent>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            StepVerifier.create(adapterForConfigService(Optional.empty(), 0, configServicePort)
+                    .resolveReferenceDate("JP"))
+                    .assertNext(date -> assertThat(date).isEqualTo(FIXED_DATE))
+                    .verifyComplete();
+
+            assertThat(appender.list)
+                    .anyMatch(e -> e.getLevel() == Level.WARN
+                            && e.getFormattedMessage().contains("JP")
+                            && !e.getFormattedMessage().contains("connection refused"));
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
+    }
+
+    @Test
+    void configServiceInvalidDate_warnLogIncludesAccountEnv() {
+        var configServicePort = mock(ConfigServicePort.class);
+        when(configServicePort.listConfigs(any())).thenReturn(Mono.just(List.of(
+                new ConfigEntry(null, null, null, "reference-date.JP", "not-a-valid-date"))));
+
+        var logger = (Logger) LoggerFactory.getLogger(OrchestratedReferenceDateAdapter.class);
+        var appender = new ListAppender<ILoggingEvent>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            StepVerifier.create(adapterForConfigService(Optional.empty(), 0, configServicePort)
+                    .resolveReferenceDate("JP"))
+                    .assertNext(date -> assertThat(date).isEqualTo(FIXED_DATE))
+                    .verifyComplete();
+
+            assertThat(appender.list)
+                    .anyMatch(e -> e.getLevel() == Level.WARN
+                            && e.getFormattedMessage().contains("JP"));
         } finally {
             logger.detachAppender(appender);
             appender.stop();
