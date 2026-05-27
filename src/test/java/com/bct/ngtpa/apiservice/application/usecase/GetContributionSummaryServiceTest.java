@@ -148,6 +148,34 @@ class GetContributionSummaryServiceTest {
     }
 
     @Test
+    void usesResolvedReferenceDateFromPortForThirtySixMonthWindowValidation() {
+        AtomicInteger apimCalls = new AtomicInteger();
+        AtomicReference<String> capturedAccountEnv = new AtomicReference<>();
+        ReferenceDatePort capturingReferenceDatePort = accountEnv -> {
+            capturedAccountEnv.set(accountEnv);
+            return Mono.just(LocalDate.of(2024, 1, 31));
+        };
+
+        var service = new GetContributionSummaryService(
+                command -> {
+                    apimCalls.incrementAndGet();
+                    return Mono.just(sampleDataset());
+                },
+                (code, accountEnv, trustCode, schemeType) -> new CurrencyDisplay(code, code),
+                capturingReferenceDatePort,
+                portalAccessContextPort(),
+                actionPermissionPort());
+
+        var ex = assertThrows(InvalidContributionRequestException.class,
+                () -> service.execute(new GetContributionSummaryCommand(
+                        "01/01/2024", "01/02/2024", "en", 1, 99999)).block());
+
+        assertEquals("JP", capturedAccountEnv.get());
+        assertEquals("fromDate and toDate must be within the range from ref-date minus 36 months to ref-date", ex.getMessage());
+        assertEquals(0, apimCalls.get());
+    }
+
+    @Test
     void rejectsFromDateAfterToDate() {
         AtomicInteger apimCalls = new AtomicInteger();
         var service = serviceWith(command -> {
