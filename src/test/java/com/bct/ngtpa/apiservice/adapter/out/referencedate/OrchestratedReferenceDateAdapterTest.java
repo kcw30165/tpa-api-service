@@ -18,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -26,6 +27,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.bct.ngtpa.apiservice.application.dto.ConfigEntry;
 import com.bct.ngtpa.apiservice.exception.CacheException;
 import java.util.List;
 import org.slf4j.LoggerFactory;
@@ -371,6 +373,224 @@ class OrchestratedReferenceDateAdapterTest {
 
             verify(configServicePort).listConfigs(
                     argThat(q -> "reference-date.JP".equals(q.configKey())));
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
+    }
+
+    // ── Config Service read-path helper ────────────────────────────────────────
+
+    /**
+     * Builds an adapter configured for Config Service read-path tests.
+     * Sets {@code cacheTtlSeconds} on {@link ReferenceDateProperties} to control
+     * whether Redis populate is expected after a Config Service hit.
+     */
+    private OrchestratedReferenceDateAdapter adapterForConfigService(
+            Optional<CachePort> cachePort,
+            long cacheTtlSeconds,
+            ConfigServicePort configServicePort) {
+        var props = new ReferenceDateProperties();
+        props.setCacheTtlSeconds(cacheTtlSeconds);
+        return new OrchestratedReferenceDateAdapter(
+                props, cachePort, "ngtpa", configServicePort, FIXED_CLOCK);
+    }
+
+    // ── Config Service hit: date parsing ─────────────────────────────────────
+
+    @Test
+    void configServiceHit_parsesDateAndReturnsLocalDate() {
+        var configServicePort = mock(ConfigServicePort.class);
+        when(configServicePort.listConfigs(any())).thenReturn(Mono.just(List.of(
+                new ConfigEntry(null, null, null, "reference-date.JP", "25/12/2025"))));
+
+        StepVerifier.create(adapterForConfigService(Optional.empty(), 0, configServicePort)
+                .resolveReferenceDate("JP"))
+                .assertNext(date -> assertThat(date).isEqualTo(LocalDate.of(2025, 12, 25)))
+                .verifyComplete();
+    }
+
+    @Test
+    void configServiceHit_usesConfigKeyFormat_referenceDate_dot_accountEnv() {
+        var configServicePort = mock(ConfigServicePort.class);
+        when(configServicePort.listConfigs(argThat(q -> "reference-date.HK".equals(q.configKey()))))
+                .thenReturn(Mono.just(List.of(
+                        new ConfigEntry(null, null, null, "reference-date.HK", "01/06/2026"))));
+
+        StepVerifier.create(adapterForConfigService(Optional.empty(), 0, configServicePort)
+                .resolveReferenceDate("HK"))
+                .assertNext(date -> assertThat(date).isEqualTo(LocalDate.of(2026, 6, 1)))
+                .verifyComplete();
+
+        verify(configServicePort).listConfigs(argThat(q -> "reference-date.HK".equals(q.configKey())));
+    }
+
+    // ── Config Service hit: Redis populate ──────────────────────────────────
+
+    @Test
+    void configServiceHit_populatesRedisWithKeyAndTtl() {
+        var cachePort = mock(CachePort.class);
+        var configServicePort = mock(ConfigServicePort.class);
+        when(cachePort.get(any())).thenReturn(Mono.just(Optional.empty())); // Redis miss → Config Service
+        when(configServicePort.listConfigs(any())).thenReturn(Mono.just(List.of(
+                new ConfigEntry(null, null, null, "reference-date.JP", "25/12/2025"))));
+        when(cachePort.set(any(), any(), any())).thenReturn(Mono.empty());
+
+        StepVerifier.create(adapterForConfigService(Optional.of(cachePort), 86400, configServicePort)
+                .resolveReferenceDate("JP"))
+                .assertNext(date -> assertThat(date).isEqualTo(LocalDate.of(2025, 12, 25)))
+                .verifyComplete();
+
+        verify(cachePort).set(
+                argThat(k -> "ngtpa:reference-date:JP".equals(k)),
+                argThat(v -> "25/12/2025".equals(v)),
+                argThat(d -> d.getSeconds() == 86400));
+    }
+
+    @Test
+    void configServiceHit_populatesRedisWithCorrectKeyPrefix() {
+        var cachePort = mock(CachePort.class);
+        var configServicePort = mock(ConfigServicePort.class);
+        when(cachePort.get(any())).thenReturn(Mono.just(Optional.empty())); // Redis miss → Config Service
+        when(configServicePort.listConfigs(any())).thenReturn(Mono.just(List.of(
+                new ConfigEntry(null, null, null, "reference-date.HK", "15/03/2026"))));
+        when(cachePort.set(any(), any(), any())).thenReturn(Mono.empty());
+
+        var props = new ReferenceDateProperties();
+        props.setCacheTtlSeconds(3600);
+        var adapter = new OrchestratedReferenceDateAdapter(
+                props, Optional.of(cachePort), "mypfx", configServicePort, FIXED_CLOCK);
+
+        StepVerifier.create(adapter.resolveReferenceDate("HK"))
+                .assertNext(date -> assertThat(date).isEqualTo(LocalDate.of(2026, 3, 15)))
+                .verifyComplete();
+
+        verify(cachePort).set(
+                argThat(k -> "mypfx:reference-date:HK".equals(k)),
+                argThat(v -> "15/03/2026".equals(v)),
+                any());
+    }
+
+    @Test
+    void configServiceHit_noTtlConfigured_skipsRedisPopulate() {
+        var cachePort = mock(CachePort.class);
+        var configServicePort = mock(ConfigServicePort.class);
+        when(cachePort.get(any())).thenReturn(Mono.just(Optional.empty())); // Redis miss → Config Service
+        when(configServicePort.listConfigs(any())).thenReturn(Mono.just(List.of(
+                new ConfigEntry(null, null, null, "reference-date.JP", "25/12/2025"))));
+
+        StepVerifier.create(adapterForConfigService(Optional.of(cachePort), 0, configServicePort)
+                .resolveReferenceDate("JP"))
+                .assertNext(date -> assertThat(date).isEqualTo(LocalDate.of(2025, 12, 25)))
+                .verifyComplete();
+
+        verify(cachePort, never()).set(any(), any(), any());
+    }
+
+    @Test
+    void configServiceHit_redisDisabled_skipsRedisPopulate() {
+        var configServicePort = mock(ConfigServicePort.class);
+        when(configServicePort.listConfigs(any())).thenReturn(Mono.just(List.of(
+                new ConfigEntry(null, null, null, "reference-date.JP", "25/12/2025"))));
+
+        StepVerifier.create(adapterForConfigService(Optional.empty(), 86400, configServicePort)
+                .resolveReferenceDate("JP"))
+                .assertNext(date -> assertThat(date).isEqualTo(LocalDate.of(2025, 12, 25)))
+                .verifyComplete();
+    }
+
+    @Test
+    void configServiceHit_redisPopulateError_logsWarnAndStillReturnsDate() {
+        var cachePort = mock(CachePort.class);
+        var configServicePort = mock(ConfigServicePort.class);
+        when(cachePort.get(any())).thenReturn(Mono.just(Optional.empty())); // Redis miss → Config Service
+        when(configServicePort.listConfigs(any())).thenReturn(Mono.just(List.of(
+                new ConfigEntry(null, null, null, "reference-date.JP", "25/12/2025"))));
+        when(cachePort.set(any(), any(), any())).thenReturn(Mono.error(
+                new CacheException("Cache set operation failed",
+                        new RuntimeException("lettuce write failed redis://secret-host:6379"))));
+
+        var logger = (Logger) LoggerFactory.getLogger(OrchestratedReferenceDateAdapter.class);
+        var appender = new ListAppender<ILoggingEvent>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            StepVerifier.create(adapterForConfigService(Optional.of(cachePort), 86400, configServicePort)
+                    .resolveReferenceDate("JP"))
+                    .assertNext(date -> assertThat(date).isEqualTo(LocalDate.of(2025, 12, 25)))
+                    .verifyComplete();
+
+            assertThat(appender.list)
+                    .anyMatch(e -> e.getLevel() == Level.WARN
+                            && e.getFormattedMessage().contains("reference-date")
+                            && !e.getFormattedMessage().contains("secret-host")
+                            && !e.getFormattedMessage().contains("6379"));
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
+    }
+
+    // ── Config Service miss / invalid value ───────────────────────────────
+
+    @Test
+    void configServiceMiss_fallsBackToSystemDate() {
+        var configServicePort = mock(ConfigServicePort.class);
+        when(configServicePort.listConfigs(any())).thenReturn(Mono.just(List.of()));
+
+        StepVerifier.create(adapterForConfigService(Optional.empty(), 0, configServicePort)
+                .resolveReferenceDate("JP"))
+                .assertNext(date -> assertThat(date).isEqualTo(FIXED_DATE))
+                .verifyComplete();
+    }
+
+    @Test
+    void configServiceHit_invalidDateValue_logsWarnAndFallsBackToSystemDate() {
+        var configServicePort = mock(ConfigServicePort.class);
+        when(configServicePort.listConfigs(any())).thenReturn(Mono.just(List.of(
+                new ConfigEntry(null, null, null, "reference-date.JP", "not-a-date"))));
+
+        var logger = (Logger) LoggerFactory.getLogger(OrchestratedReferenceDateAdapter.class);
+        var appender = new ListAppender<ILoggingEvent>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            StepVerifier.create(adapterForConfigService(Optional.empty(), 0, configServicePort)
+                    .resolveReferenceDate("JP"))
+                    .assertNext(date -> assertThat(date).isEqualTo(FIXED_DATE))
+                    .verifyComplete();
+
+            assertThat(appender.list)
+                    .anyMatch(e -> e.getLevel() == Level.WARN
+                            && e.getFormattedMessage().contains("reference-date"));
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
+    }
+
+    // ── Config Service error ─────────────────────────────────────────────────────
+
+    @Test
+    void configServiceError_logsWarnAndFallsBackToSystemDate() {
+        var configServicePort = mock(ConfigServicePort.class);
+        when(configServicePort.listConfigs(any())).thenReturn(
+                Mono.error(new RuntimeException("Config Service connection timeout")));
+
+        var logger = (Logger) LoggerFactory.getLogger(OrchestratedReferenceDateAdapter.class);
+        var appender = new ListAppender<ILoggingEvent>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            StepVerifier.create(adapterForConfigService(Optional.empty(), 0, configServicePort)
+                    .resolveReferenceDate("JP"))
+                    .assertNext(date -> assertThat(date).isEqualTo(FIXED_DATE))
+                    .verifyComplete();
+
+            assertThat(appender.list)
+                    .anyMatch(e -> e.getLevel() == Level.WARN
+                            && e.getFormattedMessage().contains("reference-date")
+                            && !e.getFormattedMessage().contains("connection timeout"));
         } finally {
             logger.detachAppender(appender);
             appender.stop();

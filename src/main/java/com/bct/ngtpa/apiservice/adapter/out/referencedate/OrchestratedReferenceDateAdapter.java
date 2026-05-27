@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -128,15 +129,58 @@ public class OrchestratedReferenceDateAdapter implements ReferenceDatePort {
     /**
      * Consults the Config Service for the reference date.
      *
-     * <p>Full parsing and Redis write-back are wired in a later prompt.
-     * This stub ensures the Config Service is called on Redis miss/skip,
-     * and always returns {@link Mono#empty()} so the system-date fallback
-     * is still reached.
+     * <p>On a hit, the value is parsed as {@code dd/MM/yyyy} and Redis is populated
+     * (when Redis is enabled and a positive TTL is configured).
+     * Any Redis populate failure is logged with a sanitized warning and swallowed so
+     * the Config Service date is still returned.
+     *
+     * <p>On a miss (empty list) or on any error, falls through by returning
+     * {@link Mono#empty()} so the system-date fallback is reached.
      */
     private Mono<LocalDate> readFromConfigService(String accountEnv) {
         String configKey = "reference-date." + accountEnv;
         return configServicePort.listConfigs(new ConfigQuery(null, null, null, configKey))
-                .flatMap(entries -> Mono.<LocalDate>empty());
+                .flatMap(entries -> {
+                    if (entries.isEmpty()) {
+                        return Mono.<LocalDate>empty();
+                    }
+                    String rawDate = entries.get(0).configValue();
+                    try {
+                        LocalDate date = LocalDate.parse(rawDate, DATE_FORMATTER);
+                        return populateRedis(accountEnv, rawDate).thenReturn(date);
+                    } catch (DateTimeParseException ex) {
+                        log.warn("reference-date: Config Service value is not a valid date; falling through to system date");
+                        return Mono.<LocalDate>empty();
+                    }
+                })
+                .onErrorResume(ex -> {
+                    log.warn("reference-date: Config Service read failed; falling through to system date");
+                    return Mono.empty();
+                });
+    }
+
+    /**
+     * Populates Redis with the given raw date string for the supplied environment.
+     *
+     * <p>Skipped when Redis is disabled (no {@link CachePort} bean) or when
+     * {@code reference-date.cache-ttl-seconds} is zero or negative.
+     * Any {@link CacheException} from the write is absorbed with a sanitized WARN
+     * log so the caller always receives the Config Service date.
+     */
+    private Mono<Void> populateRedis(String accountEnv, String rawDate) {
+        if (cachePort.isEmpty()) {
+            return Mono.empty();
+        }
+        long ttlSeconds = properties.getCacheTtlSeconds();
+        if (ttlSeconds <= 0) {
+            return Mono.empty();
+        }
+        String key = keyPrefix + ":reference-date:" + accountEnv;
+        return cachePort.get().set(key, rawDate, Duration.ofSeconds(ttlSeconds))
+                .onErrorResume(CacheException.class, ex -> {
+                    log.warn("reference-date: Redis populate failed; Config Service value will still be returned");
+                    return Mono.empty();
+                });
     }
 
     // ── Override-date resolution ──────────────────────────────────────────────

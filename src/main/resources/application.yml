@@ -27,6 +27,7 @@ api:
 reference-date:
   override-date: ${REFERENCE_DATE_OVERRIDE_DATE:}
   override-zone-id: ${REFERENCE_DATE_OVERRIDE_ZONE_ID:}
+  cache-ttl-seconds: ${REFERENCE_DATE_CACHE_TTL_SECONDS:0}
 
 config-service:
   base-url: ${CONFIG_SERVICE_BASE_URL:}
