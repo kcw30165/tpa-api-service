@@ -295,6 +295,25 @@ class OrchestratedReferenceDateAdapterTest {
                 argThat(q -> "reference-date.JP".equals(q.configKey())));
     }
 
+    @Test
+    void redisCacheMiss_configServiceHit_returnsConfigServiceDate() {
+        var cachePort = mock(CachePort.class);
+        var configServicePort = mock(ConfigServicePort.class);
+        when(cachePort.get("ngtpa:reference-date:JP")).thenReturn(Mono.just(Optional.empty()));
+        when(configServicePort.listConfigs(any())).thenReturn(Mono.just(List.of(
+                new ConfigEntry(null, null, null, "reference-date.JP", "01/06/2026"))));
+
+        StepVerifier.create(adapterWithRedis("", "", "ngtpa",
+                Optional.of(cachePort), configServicePort)
+                .resolveReferenceDate("JP"))
+                .assertNext(date -> assertThat(date).isEqualTo(LocalDate.of(2026, 6, 1)))
+                .verifyComplete();
+
+        verify(cachePort).get("ngtpa:reference-date:JP");
+        verify(configServicePort).listConfigs(
+                argThat(q -> "reference-date.JP".equals(q.configKey())));
+    }
+
     // ── Redis disabled ────────────────────────────────────────────────────────
 
     @Test
@@ -306,6 +325,22 @@ class OrchestratedReferenceDateAdapterTest {
                 Optional.empty(), configServicePort)
                 .resolveReferenceDate())
                 .assertNext(date -> assertThat(date).isEqualTo(FIXED_DATE))
+                .verifyComplete();
+
+        verify(configServicePort).listConfigs(
+                argThat(q -> "reference-date.JP".equals(q.configKey())));
+    }
+
+    @Test
+    void redisCacheDisabled_configServiceHit_returnsConfigServiceDate() {
+        var configServicePort = mock(ConfigServicePort.class);
+        when(configServicePort.listConfigs(any())).thenReturn(Mono.just(List.of(
+                new ConfigEntry(null, null, null, "reference-date.JP", "25/12/2025"))));
+
+        StepVerifier.create(adapterWithRedis("", "", "ngtpa",
+                Optional.empty(), configServicePort)
+                .resolveReferenceDate("JP"))
+                .assertNext(date -> assertThat(date).isEqualTo(LocalDate.of(2025, 12, 25)))
                 .verifyComplete();
 
         verify(configServicePort).listConfigs(
@@ -347,6 +382,41 @@ class OrchestratedReferenceDateAdapterTest {
         }
     }
 
+    @Test
+    void redisCacheReadError_configServiceHit_returnsConfigServiceDateAndLogsSanitizedWarning() {
+        var cachePort = mock(CachePort.class);
+        var configServicePort = mock(ConfigServicePort.class);
+        when(cachePort.get(any())).thenReturn(Mono.error(
+                new CacheException("Cache get operation failed",
+                        new RuntimeException("lettuce connection refused redis://secret-host:6379"))));
+        when(configServicePort.listConfigs(any())).thenReturn(Mono.just(List.of(
+                new ConfigEntry(null, null, null, "reference-date.JP", "01/06/2026"))));
+
+        var logger = (Logger) LoggerFactory.getLogger(OrchestratedReferenceDateAdapter.class);
+        var appender = new ListAppender<ILoggingEvent>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            StepVerifier.create(adapterWithRedis("", "", "ngtpa",
+                    Optional.of(cachePort), configServicePort)
+                    .resolveReferenceDate("JP"))
+                    .assertNext(date -> assertThat(date).isEqualTo(LocalDate.of(2026, 6, 1)))
+                    .verifyComplete();
+
+            assertThat(appender.list)
+                    .anyMatch(e -> e.getLevel() == Level.WARN
+                            && e.getFormattedMessage().contains("reference-date")
+                            && !e.getFormattedMessage().contains("secret-host")
+                            && !e.getFormattedMessage().contains("6379"));
+
+            verify(configServicePort).listConfigs(
+                    argThat(q -> "reference-date.JP".equals(q.configKey())));
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
+    }
+
     // ── Redis invalid date ────────────────────────────────────────────────────
 
     @Test
@@ -371,6 +441,39 @@ class OrchestratedReferenceDateAdapterTest {
             assertThat(appender.list)
                     .anyMatch(e -> e.getLevel() == Level.WARN
                             && e.getFormattedMessage().contains("reference-date"));
+
+            verify(configServicePort).listConfigs(
+                    argThat(q -> "reference-date.JP".equals(q.configKey())));
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
+    }
+
+    @Test
+    void redisCacheInvalidDate_configServiceHit_returnsConfigServiceDateAndLogsSanitizedWarning() {
+        var cachePort = mock(CachePort.class);
+        var configServicePort = mock(ConfigServicePort.class);
+        when(cachePort.get("ngtpa:reference-date:JP"))
+                .thenReturn(Mono.just(Optional.of("not-a-valid-date")));
+        when(configServicePort.listConfigs(any())).thenReturn(Mono.just(List.of(
+                new ConfigEntry(null, null, null, "reference-date.JP", "01/06/2026"))));
+
+        var logger = (Logger) LoggerFactory.getLogger(OrchestratedReferenceDateAdapter.class);
+        var appender = new ListAppender<ILoggingEvent>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            StepVerifier.create(adapterWithRedis("", "", "ngtpa",
+                    Optional.of(cachePort), configServicePort)
+                    .resolveReferenceDate("JP"))
+                    .assertNext(date -> assertThat(date).isEqualTo(LocalDate.of(2026, 6, 1)))
+                    .verifyComplete();
+
+            assertThat(appender.list)
+                    .anyMatch(e -> e.getLevel() == Level.WARN
+                            && e.getFormattedMessage().contains("reference-date")
+                            && !e.getFormattedMessage().contains("not-a-valid-date"));
 
             verify(configServicePort).listConfigs(
                     argThat(q -> "reference-date.JP".equals(q.configKey())));
