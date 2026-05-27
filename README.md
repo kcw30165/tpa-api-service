@@ -1068,7 +1068,7 @@ These values drive the synthetic total detail row in the JSON response, the firs
 
 ## API Endpoints
 
-### `POST /internal/reference-date/refresh`
+### `POST /api/v1/internal/reference-date/refresh`
 
 Manually refreshes the reference date for a single `accountEnv`.
 
@@ -1093,6 +1093,8 @@ Manually refreshes the reference date for a single `accountEnv`.
 **Behavior:**
 
 - This is an internal operational endpoint and is authenticated when `api.security.require-authentication=true`.
+- Final read path: `override-date -> Redis -> Config Service -> system date`.
+- Final refresh/write path: `APIM -> Config Service -> Redis`.
 - Scope is one `accountEnv` per request. Scheduler-driven refresh and all-accountEnv refresh are out of scope.
 - The APIM fetch uses `POST /ws/NGTPA/v1/TRPGetWebSysDate` with request body `{ "env": "<accountEnv>" }`.
 - `accountEnv` is passed to APIM unchanged. Java does not derive or remap it.

@@ -39,6 +39,8 @@ import reactor.core.publisher.Mono;
 @AutoConfigureWebTestClient
 class SecurityConfigAuthDisabledTest {
 
+    private static final String REFRESH_PATH = "/api/v1/internal/reference-date/refresh";
+
     @Autowired
     private WebTestClient webTestClient;
 
@@ -65,7 +67,7 @@ class SecurityConfigAuthDisabledTest {
     @Test
     void unauthenticatedInternalReferenceDateRefreshIsAllowedWhenAuthDisabled() {
         webTestClient.post()
-                .uri("/internal/reference-date/refresh")
+                .uri(REFRESH_PATH)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("{}")
                 .exchange()
@@ -90,7 +92,7 @@ class SecurityConfigAuthDisabledTest {
     }
 
     @RestController
-    @RequestMapping(path = "/internal/reference-date", produces = MediaType.APPLICATION_JSON_VALUE)
+    @RequestMapping(path = "/api/v1/internal/reference-date", produces = MediaType.APPLICATION_JSON_VALUE)
     static class StubInternalReferenceDateController {
         @PostMapping(path = "/refresh", consumes = MediaType.APPLICATION_JSON_VALUE)
         Mono<String> refresh(@RequestBody String body) { return Mono.just("{}"); }

@@ -20,14 +20,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class ReferenceDateRefreshControllerTest {
 
+    private static final String REFRESH_PATH = "/api/v1/internal/reference-date/refresh";
+
     @Test
-    void basePathAlsoAcceptsRefreshRequest() {
+    void validEndpointPathAcceptsRefreshRequest() {
         RefreshReferenceDateUseCase useCase = command ->
                 Mono.just(new RefreshReferenceDateResult("JP", "31/12/2025", true, true));
 
         webClient(useCase)
                 .post()
-                .uri("/internal/reference-date")
+                .uri(REFRESH_PATH)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(Map.of("accountEnv", "JP"))
                 .exchange()
@@ -49,7 +51,7 @@ class ReferenceDateRefreshControllerTest {
 
         webClient(useCase)
                 .post()
-                .uri("/internal/reference-date/refresh")
+            .uri(REFRESH_PATH)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(Map.of("accountEnv", "JP"))
                 .exchange()
@@ -70,7 +72,7 @@ class ReferenceDateRefreshControllerTest {
 
         webClient(useCase)
                 .post()
-                .uri("/internal/reference-date/refresh")
+            .uri(REFRESH_PATH)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(Map.of("accountEnv", "JP"))
                 .exchange()
@@ -86,7 +88,7 @@ class ReferenceDateRefreshControllerTest {
     void missingAccountEnvReturnsStandardizedValidationError() {
         webClient(unusedUseCase())
                 .post()
-                .uri("/internal/reference-date/refresh")
+            .uri(REFRESH_PATH)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(Map.of())
                 .exchange()
@@ -100,7 +102,7 @@ class ReferenceDateRefreshControllerTest {
     void blankAccountEnvReturnsStandardizedValidationError() {
         webClient(unusedUseCase())
                 .post()
-                .uri("/internal/reference-date/refresh")
+            .uri(REFRESH_PATH)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(Map.of("accountEnv", "  "))
                 .exchange()
