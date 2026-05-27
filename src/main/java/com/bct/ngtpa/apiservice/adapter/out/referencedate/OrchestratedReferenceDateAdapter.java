@@ -1,10 +1,13 @@
 package com.bct.ngtpa.apiservice.adapter.out.referencedate;
 
 import com.bct.ngtpa.apiservice.adapter.out.configserver.ReferenceDateProperties;
+import com.bct.ngtpa.apiservice.application.dto.ConfigQuery;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import com.bct.ngtpa.apiservice.application.port.out.CachePort;
 import com.bct.ngtpa.apiservice.application.port.out.ConfigServicePort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
+import com.bct.ngtpa.apiservice.exception.CacheException;
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 
 import java.time.Clock;
@@ -35,6 +38,7 @@ import java.util.Set;
  * {@code ReferenceDateAdapterConfig} so that Redis / Config Service
  * dependencies can be made conditional without polluting this class.
  */
+@Slf4j
 public class OrchestratedReferenceDateAdapter implements ReferenceDatePort {
 
     private static final DateTimeFormatter DATE_FORMATTER =
@@ -45,16 +49,19 @@ public class OrchestratedReferenceDateAdapter implements ReferenceDatePort {
 
     private final ReferenceDateProperties properties;
     private final Optional<CachePort> cachePort;
+    private final String keyPrefix;
     private final ConfigServicePort configServicePort;
     private final Clock clock;
 
     public OrchestratedReferenceDateAdapter(
             ReferenceDateProperties properties,
             Optional<CachePort> cachePort,
+            String keyPrefix,
             ConfigServicePort configServicePort,
             Clock clock) {
         this.properties = properties;
         this.cachePort = cachePort;
+        this.keyPrefix = keyPrefix;
         this.configServicePort = configServicePort;
         this.clock = clock;
     }
@@ -68,10 +75,68 @@ public class OrchestratedReferenceDateAdapter implements ReferenceDatePort {
                     properties.getOverrideZoneId()));
         }
 
-        // ── Steps 2 & 3: Redis and Config Service (wired in later prompts) ─────
+        // ── Steps 2 & 3: Redis → Config Service (Step 4: system-date fallback) ─
+        return resolveFromDynamicSources(accountEnv)
+                .switchIfEmpty(Mono.fromSupplier(this::resolveSystemDate));
+    }
 
-        // ── Step 4: System-date fallback ──────────────────────────────────────
-        return Mono.fromSupplier(this::resolveSystemDate);
+    // ── Dynamic source chain (Redis → Config Service) ─────────────────────────
+
+    private Mono<LocalDate> resolveFromDynamicSources(String accountEnv) {
+        return readFromRedis(accountEnv)
+                .switchIfEmpty(Mono.defer(() -> readFromConfigService(accountEnv)));
+    }
+
+    /**
+     * Attempts to read the reference date from Redis.
+     *
+     * <p>Returns {@link Mono#empty()} when:
+     * <ul>
+     *   <li>Redis is disabled (no {@link CachePort} bean).</li>
+     *   <li>The key is absent in the cache.</li>
+     *   <li>The cached value is not a valid {@code dd/MM/yyyy} date (WARN logged).</li>
+     *   <li>A {@link CacheException} is thrown during the read (WARN logged).</li>
+     * </ul>
+     *
+     * <p>In all fallthrough cases only a sanitized static message is logged;
+     * raw connection details from {@link CacheException#getCause()} are never
+     * emitted to the log.
+     */
+    private Mono<LocalDate> readFromRedis(String accountEnv) {
+        if (cachePort.isEmpty()) {
+            return Mono.empty();
+        }
+        String key = keyPrefix + ":reference-date:" + accountEnv;
+        return cachePort.get().get(key)
+                .flatMap(opt -> {
+                    if (opt.isEmpty()) {
+                        return Mono.<LocalDate>empty();
+                    }
+                    try {
+                        return Mono.just(LocalDate.parse(opt.get(), DATE_FORMATTER));
+                    } catch (DateTimeParseException ex) {
+                        log.warn("reference-date: Redis cache value is not a valid date; treating as cache miss");
+                        return Mono.<LocalDate>empty();
+                    }
+                })
+                .onErrorResume(CacheException.class, ex -> {
+                    log.warn("reference-date: Redis cache read failed; falling through to Config Service");
+                    return Mono.empty();
+                });
+    }
+
+    /**
+     * Consults the Config Service for the reference date.
+     *
+     * <p>Full parsing and Redis write-back are wired in a later prompt.
+     * This stub ensures the Config Service is called on Redis miss/skip,
+     * and always returns {@link Mono#empty()} so the system-date fallback
+     * is still reached.
+     */
+    private Mono<LocalDate> readFromConfigService(String accountEnv) {
+        String configKey = "reference-date." + accountEnv;
+        return configServicePort.listConfigs(new ConfigQuery(null, null, null, configKey))
+                .flatMap(entries -> Mono.<LocalDate>empty());
     }
 
     // ── Override-date resolution ──────────────────────────────────────────────
