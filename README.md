@@ -108,11 +108,14 @@ com.bct.ngtpa.apiservice
 │       │   ├── DisplayFormatKeyCandidateStrategy      # Legacy display-format candidate strategy; to be replaced by DefaultConfigKeyCandidateStrategy
 │       │   ├── CurrencyMappingKeyCandidateStrategy    # Legacy currency candidate strategy; to be replaced by DefaultConfigKeyCandidateStrategy
 │       │   └── ConfigBackedCurrencyDisplayAdapter     # Implements CurrencyDisplayPort
-│       ├── configserver/    # ConfigMap / Spring Cloud Config Server YAML-backed adapters
-│       │   ├── ReferenceDateProperties                # Binds reference-date.* YAML
-│       │   ├── ConfigBackedReferenceDateAdapter       # Current ConfigMap-backed ReferenceDatePort implementation
-│       │   ├── ConfigServiceReferenceDateAdapter      # Planned future API-backed ReferenceDatePort implementation
-│       │   └── ReferenceDateResolver                  # Shared production-like / override resolution policy
+│       ├── configserver/    # ConfigMap / Spring Cloud Config Server YAML-backed adapters (legacy)
+│       │   ├── ReferenceDateProperties                # Binds reference-date.* YAML (override-date, override-zone-id, cache-ttl-seconds)
+│       │   ├── ConfigBackedReferenceDateAdapter       # Retained for reference; superseded by OrchestratedReferenceDateAdapter
+│       │   └── ReferenceDateResolver                  # Shared production-like / override resolution (used by legacy adapter only)
+│       ├── referencedate/   # Orchestrated ReferenceDate — active ReferenceDatePort bean
+│       │   ├── OrchestratedReferenceDateAdapter       # Source chain: override-date → Redis → Config Service → system date
+│       │   └── config/
+│       │       └── ReferenceDateAdapterConfig         # @Bean referenceDatePort (wires orchestrator: keyPrefix, optional CachePort, TTL)
 │       ├── configservice/   # Config Service REST API outbound adapter
 │       │   ├── config/
 │       │   │   └── ConfigServiceProperties            # Binds config-service.* YAML (base-url, timeout-milliseconds)
@@ -219,6 +222,7 @@ adapter/out/apim        →  application  →  domain
 adapter/out/config      →  application  →  domain
 adapter/out/configserver →  application  →  domain
 adapter/out/configservice →  application  →  domain
+adapter/out/referencedate →  application  →  domain
 adapter/out/security    →  application  →  domain
 config                  →  application use case @Bean wiring only (UseCaseConfig)
 infrastructure          →  Spring/framework infrastructure only (no application/domain imports)
@@ -323,6 +327,7 @@ Notes:
 | `REFERENCE_DATE_ACCOUNT_ENV` | Current configured business/account environment used for reference-date lookup | _(empty)_ |
 | `REFERENCE_DATE_OVERRIDE_DATE` | Optional non-production override date in `dd/MM/yyyy` | _(empty)_ |
 | `REFERENCE_DATE_OVERRIDE_ZONE_ID` | Optional non-production override zone ID paired with `REFERENCE_DATE_OVERRIDE_DATE` | _(empty)_ |
+| `REFERENCE_DATE_CACHE_TTL_SECONDS` | TTL in seconds for Redis populate after a Config Service hit. `0` = skip Redis write. | `0` |
 | `APIM_BASE_URL` | APIM base URL (preferred) | _(required)_ |
 | `APIM_BASEURL` | APIM base URL (legacy fallback) | _(see `APIM_BASE_URL`)_ |
 | `APIM_TIMEOUT_MILLISECONDS` | WebClient timeout in ms (preferred) | `10000` |
@@ -473,11 +478,53 @@ Blank or missing `term-status` maps to `TermStatus.BLANK` without warning. Unsup
 
 ---
 
-## Reference Date Configuration (Stage 1.2)
+## Reference Date Orchestration
 
-`ref-date` is resolved through the `ReferenceDatePort` outbound port for **all** flows that require it: contribution summary validation, contribution export, and notification flows (`GetNotificationsService`, `UpdateNotificationsReadStatusService`). Neither notification service contains a hardcoded date constant.
+The reference date is resolved through the `ReferenceDatePort` outbound port for **all** flows that require it: contribution summary validation, contribution export, and notification flows (`GetNotificationsService`, `UpdateNotificationsReadStatusService`). Neither notification service contains a hardcoded date constant.
 
-The single shared implementation is `ConfigBackedReferenceDateAdapter` (under `adapter/out/configserver`), backed by `ReferenceDateProperties`. Application services depend only on `ReferenceDatePort`; they do not import `ReferenceDateProperties`. Application services depend only on `ReferenceDatePort`; they do not import `ReferenceDateProperties`.
+The active implementation is `OrchestratedReferenceDateAdapter` (under `adapter/out/referencedate`), registered by `ReferenceDateAdapterConfig`. Application services depend only on `ReferenceDatePort`; they do not import Redis, Config Service, or Spring types.
+
+### Source chain
+
+```
+1. reference-date.override-date (non-production only, requires override-zone-id pair)
+2. Redis cache  — key: ${redis-cache.key-prefix}:reference-date:<accountEnv>  (e.g. ngtpa:reference-date:JP)
+3. Config Service — key: reference-date.<accountEnv>  (e.g. reference-date.JP)
+4. System date  — using override-zone-id if configured, otherwise JVM default zone
+```
+
+### Fallback rules
+
+| Scenario | Behaviour |
+|---|---|
+| Redis disabled | Skip Redis; read Config Service |
+| Redis miss | Read Config Service |
+| Redis read error | Log sanitised WARN (no connection details); read Config Service |
+| Config Service hit | Parse `dd/MM/yyyy` value; populate Redis if Redis is enabled and TTL > 0; return date |
+| Config Service miss | Fall back to system date (no warning) |
+| Config Service error / timeout | Log sanitised WARN (includes `accountEnv`, no exception message); fall back to system date |
+| Redis populate error after Config Service hit | Log sanitised WARN; still return Config Service value |
+
+### Production-like environments
+
+Environments with `accountEnv` matching `PROD`, `PRD`, `PRODUCTION`, or `DR` (case-insensitive) never use `override-date`. They proceed directly to the Redis → Config Service → system date chain.
+
+### Date format
+
+All dates are stored and parsed in `dd/MM/yyyy` format (e.g. `25/12/2025`).
+
+### APIM refresh/update flow
+
+The APIM write-back flow (updating the Config Service entry from APIM data) is **not** part of this orchestration. It will be addressed in a separate task.
+
+### Configuration
+
+```yaml
+reference-date:
+  override-date: ${REFERENCE_DATE_OVERRIDE_DATE:}           # non-production override date (dd/MM/yyyy)
+  override-zone-id: ${REFERENCE_DATE_OVERRIDE_ZONE_ID:}     # must be paired with override-date
+  cache-ttl-seconds: ${REFERENCE_DATE_CACHE_TTL_SECONDS:0}  # 0 = skip Redis write after Config Service hit
+```
 
 ---
 

@@ -3,12 +3,20 @@ package com.bct.ngtpa.apiservice.adapter.out.configserver;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.env.Environment;
-import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
 
-@Component
+/**
+ * Legacy config-server-backed implementation of {@link ReferenceDatePort}.
+ *
+ * <p>Retained for reference and historical context. The active {@link ReferenceDatePort}
+ * bean is now {@code OrchestratedReferenceDateAdapter}, registered by
+ * {@code ReferenceDateAdapterConfig} with the full source chain:
+ * override-date → Redis → Config Service → system date.
+ *
+ * <p>This class no longer carries {@code @Component} and is not auto-detected by Spring.
+ */
 @RequiredArgsConstructor
 public class ConfigBackedReferenceDateAdapter implements ReferenceDatePort {
 
