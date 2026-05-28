@@ -4,6 +4,7 @@ import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.MemberOwnerContext;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
+import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusCommand;
 import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusResult;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNotificationReadStatusPort;
@@ -32,7 +33,9 @@ class UpdateNotificationsReadStatusServiceTest {
                     "policyNo_for_notifications",
                     "certNo_for_notifications",
                     "trustCode_for_notifications",
-                    "schemeType_for_notifications"));
+                    "schemeType_for_notifications",
+                    TermStatus.BLANK,
+                    null));
 
     private static final ReferenceDatePort REFERENCE_DATE_PORT =
             () -> Mono.just(LocalDate.of(2025, 10, 1));

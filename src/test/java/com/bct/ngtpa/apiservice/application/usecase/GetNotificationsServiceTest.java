@@ -7,6 +7,7 @@ import com.bct.ngtpa.apiservice.application.dto.MemberOwnerContext;
 import com.bct.ngtpa.apiservice.application.dto.NotificationDateOptions;
 import com.bct.ngtpa.apiservice.application.dto.NotificationListResult;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
+import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNoticeMessagePort;
 import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
@@ -38,7 +39,9 @@ class GetNotificationsServiceTest {
                     "policyNo_for_notifications",
                     "certNo_for_notifications",
                     "trustCode_for_notifications",
-                    "schemeType_for_notifications"));
+                    "schemeType_for_notifications",
+                    TermStatus.BLANK,
+                    null));
 
     private static final ReferenceDatePort REFERENCE_DATE_PORT =
             () -> Mono.just(LocalDate.of(2025, 10, 1));

@@ -4,6 +4,7 @@ import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.MemberOwnerContext;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
+import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import org.junit.jupiter.api.Test;
 
@@ -50,7 +51,7 @@ class ContributionSummarySupportTest {
                 new ActorContext("actor_user_id", "MEMBER", "SELF"),
                 new MemberOwnerContext("owner_user_id", "MBR"),
                 new AccountContext("contributions", "JP",
-                        "policyNo", "certNo", "trust", "scheme"));
+                "policyNo", "certNo", "trust", "scheme", TermStatus.BLANK, null));
 
         var cmd = ContributionSummarySupport.newFetchCommand(
                 "01/01/2026", "31/03/2026", ctx);
@@ -107,6 +108,8 @@ class ContributionSummarySupportTest {
         return new PortalAccessContext(
                 new ActorContext(actorUserId, "MEMBER", "SELF"),
                 new MemberOwnerContext(actorUserId, "MBR"),
-                new AccountContext("contributions", "JP", policyNo, certNo, trustCode, schemeType));
+            new AccountContext(
+                "contributions", "JP", policyNo, certNo, trustCode, schemeType,
+                TermStatus.BLANK, null));
     }
 }

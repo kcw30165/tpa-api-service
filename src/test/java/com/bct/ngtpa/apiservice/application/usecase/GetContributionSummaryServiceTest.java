@@ -8,6 +8,7 @@ import com.bct.ngtpa.apiservice.application.dto.FetchContributionSummaryCommand;
 import com.bct.ngtpa.apiservice.application.dto.GetContributionSummaryCommand;
 import com.bct.ngtpa.apiservice.application.dto.MemberOwnerContext;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
+import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import com.bct.ngtpa.apiservice.application.port.out.ApimContributionSummaryPort;
 import com.bct.ngtpa.apiservice.application.port.out.ContributionActionPermissionPort;
@@ -45,7 +46,9 @@ class GetContributionSummaryServiceTest {
                     "policyNo_for_contributions",
                     "certNo_for_contributions",
                     "trustCode_for_contributions",
-                    "schemeType_for_contributions"));
+                    "schemeType_for_contributions",
+                    TermStatus.BLANK,
+                    null));
 
     private static PortalAccessContextPort portalAccessContextPort() {
         return accountRef -> Mono.just(CONTRIBUTIONS_CONTEXT);

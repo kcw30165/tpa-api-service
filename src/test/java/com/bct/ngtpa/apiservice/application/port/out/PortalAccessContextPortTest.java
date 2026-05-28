@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.MemberOwnerContext;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
+import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import org.junit.jupiter.api.Test;
 import reactor.test.StepVerifier;
 
@@ -23,7 +24,7 @@ class PortalAccessContextPortTest {
     private static final PortalAccessContext STUB_CONTEXT = new PortalAccessContext(
             new ActorContext("staff-01", "STAFF", "RM"),
             new MemberOwnerContext("member-99", "MBR"),
-            new AccountContext("ACC-001", "JP", "POL-001", "CERT-001", "JPM", "OE"));
+            new AccountContext("ACC-001", "JP", "POL-001", "CERT-001", "JPM", "OE", TermStatus.BLANK, null));
 
     // ---------------------------------------------------------------------------
     // Port contract: functional-interface impl

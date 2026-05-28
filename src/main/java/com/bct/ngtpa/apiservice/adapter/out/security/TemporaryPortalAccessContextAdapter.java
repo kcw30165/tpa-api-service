@@ -4,6 +4,7 @@ import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.MemberOwnerContext;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
+import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +38,8 @@ public class TemporaryPortalAccessContextAdapter implements PortalAccessContextP
                         profile.getPolicyNo(),
                         profile.getCertNo(),
                         profile.getTrustCode(),
-                        profile.getSchemeType())));
+                        profile.getSchemeType(),
+                        TermStatus.BLANK,
+                        null)));
     }
 }
