@@ -27,5 +27,7 @@ public class TemporaryPortalAccessContextProperties {
         private String certNo = "";
         private String trustCode = "";
         private String schemeType = "";
+        private String termStatus = "";
+        private String termCompletionDate = "";
     }
 }

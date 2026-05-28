@@ -14,17 +14,19 @@ class TemporaryPortalAccessContextPropertiesBindingTest {
 
     @Test
     void bindsAllFieldsForNotificationsProfile() {
-        var props = Map.of(
-                "temporary-portal-access-context.profiles.notifications.actor-user-id", "actor_user_notifications",
-                "temporary-portal-access-context.profiles.notifications.actor-user-type", "MEMBER",
-                "temporary-portal-access-context.profiles.notifications.actor-user-role", "SELF",
-                "temporary-portal-access-context.profiles.notifications.member-user-id", "member_user_notifications",
-                "temporary-portal-access-context.profiles.notifications.member-type", "MBR",
-                "temporary-portal-access-context.profiles.notifications.account-env", "JP",
-                "temporary-portal-access-context.profiles.notifications.policy-no", "policyNo_for_notifications",
-                "temporary-portal-access-context.profiles.notifications.cert-no", "certNo_for_notifications",
-                "temporary-portal-access-context.profiles.notifications.trust-code", "trustCode_for_notifications",
-                "temporary-portal-access-context.profiles.notifications.scheme-type", "schemeType_for_notifications"
+        var props = Map.ofEntries(
+            Map.entry("temporary-portal-access-context.profiles.notifications.actor-user-id", "actor_user_notifications"),
+            Map.entry("temporary-portal-access-context.profiles.notifications.actor-user-type", "MEMBER"),
+            Map.entry("temporary-portal-access-context.profiles.notifications.actor-user-role", "SELF"),
+            Map.entry("temporary-portal-access-context.profiles.notifications.member-user-id", "member_user_notifications"),
+            Map.entry("temporary-portal-access-context.profiles.notifications.member-type", "MBR"),
+            Map.entry("temporary-portal-access-context.profiles.notifications.account-env", "JP"),
+            Map.entry("temporary-portal-access-context.profiles.notifications.policy-no", "policyNo_for_notifications"),
+            Map.entry("temporary-portal-access-context.profiles.notifications.cert-no", "certNo_for_notifications"),
+            Map.entry("temporary-portal-access-context.profiles.notifications.trust-code", "trustCode_for_notifications"),
+            Map.entry("temporary-portal-access-context.profiles.notifications.scheme-type", "schemeType_for_notifications"),
+            Map.entry("temporary-portal-access-context.profiles.notifications.term-status", "O"),
+            Map.entry("temporary-portal-access-context.profiles.notifications.term-completion-date", "31/03/2026")
         );
 
         var bound = bind(props);
@@ -41,21 +43,25 @@ class TemporaryPortalAccessContextPropertiesBindingTest {
         assertEquals("certNo_for_notifications", profile.getCertNo());
         assertEquals("trustCode_for_notifications", profile.getTrustCode());
         assertEquals("schemeType_for_notifications", profile.getSchemeType());
+        assertEquals("O", profile.getTermStatus());
+        assertEquals("31/03/2026", profile.getTermCompletionDate());
     }
 
     @Test
     void bindsAllFieldsForContributionsProfile() {
-        var props = Map.of(
-                "temporary-portal-access-context.profiles.contributions.actor-user-id", "actor_user_contributions",
-                "temporary-portal-access-context.profiles.contributions.actor-user-type", "MEMBER",
-                "temporary-portal-access-context.profiles.contributions.actor-user-role", "SELF",
-                "temporary-portal-access-context.profiles.contributions.member-user-id", "member_user_contributions",
-                "temporary-portal-access-context.profiles.contributions.member-type", "MBR",
-                "temporary-portal-access-context.profiles.contributions.account-env", "JP",
-                "temporary-portal-access-context.profiles.contributions.policy-no", "policyNo_for_contributions",
-                "temporary-portal-access-context.profiles.contributions.cert-no", "certNo_for_contributions",
-                "temporary-portal-access-context.profiles.contributions.trust-code", "trustCode_for_contributions",
-                "temporary-portal-access-context.profiles.contributions.scheme-type", "schemeType_for_contributions"
+        var props = Map.ofEntries(
+            Map.entry("temporary-portal-access-context.profiles.contributions.actor-user-id", "actor_user_contributions"),
+            Map.entry("temporary-portal-access-context.profiles.contributions.actor-user-type", "MEMBER"),
+            Map.entry("temporary-portal-access-context.profiles.contributions.actor-user-role", "SELF"),
+            Map.entry("temporary-portal-access-context.profiles.contributions.member-user-id", "member_user_contributions"),
+            Map.entry("temporary-portal-access-context.profiles.contributions.member-type", "MBR"),
+            Map.entry("temporary-portal-access-context.profiles.contributions.account-env", "JP"),
+            Map.entry("temporary-portal-access-context.profiles.contributions.policy-no", "policyNo_for_contributions"),
+            Map.entry("temporary-portal-access-context.profiles.contributions.cert-no", "certNo_for_contributions"),
+            Map.entry("temporary-portal-access-context.profiles.contributions.trust-code", "trustCode_for_contributions"),
+            Map.entry("temporary-portal-access-context.profiles.contributions.scheme-type", "schemeType_for_contributions"),
+            Map.entry("temporary-portal-access-context.profiles.contributions.term-status", "P"),
+            Map.entry("temporary-portal-access-context.profiles.contributions.term-completion-date", "30/04/2026")
         );
 
         var bound = bind(props);
@@ -72,6 +78,8 @@ class TemporaryPortalAccessContextPropertiesBindingTest {
         assertEquals("certNo_for_contributions", profile.getCertNo());
         assertEquals("trustCode_for_contributions", profile.getTrustCode());
         assertEquals("schemeType_for_contributions", profile.getSchemeType());
+        assertEquals("P", profile.getTermStatus());
+        assertEquals("30/04/2026", profile.getTermCompletionDate());
     }
 
     @Test
@@ -111,6 +119,8 @@ class TemporaryPortalAccessContextPropertiesBindingTest {
         assertEquals("", profile.getCertNo());
         assertEquals("", profile.getTrustCode());
         assertEquals("", profile.getSchemeType());
+        assertEquals("", profile.getTermStatus());
+        assertEquals("", profile.getTermCompletionDate());
     }
 
     private static TemporaryPortalAccessContextProperties bind(Map<String, String> props) {

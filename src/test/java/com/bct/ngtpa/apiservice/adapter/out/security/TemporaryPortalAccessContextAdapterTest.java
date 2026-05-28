@@ -1,16 +1,44 @@
 package com.bct.ngtpa.apiservice.adapter.out.security;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import reactor.test.StepVerifier;
 
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TemporaryPortalAccessContextAdapterTest {
+
+    private Logger logger;
+    private ListAppender<ILoggingEvent> listAppender;
+
+    @BeforeEach
+    void setUp() {
+        logger = (Logger) LoggerFactory.getLogger(TemporaryPortalAccessContextAdapter.class);
+        listAppender = new ListAppender<>();
+        listAppender.start();
+        logger.addAppender(listAppender);
+    }
+
+    @AfterEach
+    void tearDown() {
+        logger.detachAppender(listAppender);
+        listAppender.stop();
+    }
 
     @Test
     void resolvesNotificationsProfile() {
@@ -28,6 +56,8 @@ class TemporaryPortalAccessContextAdapterTest {
                     assertEquals("certNo_for_notifications", ctx.account().certNo());
                     assertEquals("trustCode_for_notifications", ctx.account().trustCode());
                     assertEquals("schemeType_for_notifications", ctx.account().schemeType());
+                    assertEquals(TermStatus.O, ctx.account().termStatus());
+                    assertEquals(LocalDate.of(2026, 3, 31), ctx.account().termCompletionDate());
                     assertEquals("notifications", ctx.account().accountRef());
                 })
                 .verifyComplete();
@@ -49,9 +79,68 @@ class TemporaryPortalAccessContextAdapterTest {
                     assertEquals("certNo_for_contributions", ctx.account().certNo());
                     assertEquals("trustCode_for_contributions", ctx.account().trustCode());
                     assertEquals("schemeType_for_contributions", ctx.account().schemeType());
+                    assertEquals(TermStatus.P, ctx.account().termStatus());
+                    assertEquals(LocalDate.of(2026, 4, 30), ctx.account().termCompletionDate());
                     assertEquals("contributions", ctx.account().accountRef());
                 })
                 .verifyComplete();
+    }
+
+    @Test
+    void mapsBlankRawTermStatusToBlankWithoutWarning() {
+        var adapter = adapterForProfile(profile("", "JP", "31/03/2026"));
+
+        StepVerifier.create(adapter.resolvePortalAccessContext("notifications"))
+                .assertNext(ctx -> assertEquals(TermStatus.BLANK, ctx.account().termStatus()))
+                .verifyComplete();
+
+        assertEquals(0, listAppender.list.size());
+
+        var nullAdapter = adapterForProfile(profile(null, "JP", "31/03/2026"));
+
+        StepVerifier.create(nullAdapter.resolvePortalAccessContext("notifications"))
+            .assertNext(ctx -> assertEquals(TermStatus.BLANK, ctx.account().termStatus()))
+            .verifyComplete();
+
+        assertEquals(0, listAppender.list.size());
+    }
+
+    @Test
+    void mapsSupportedRawTermStatusCodes() {
+        assertMappedTermStatus("O", TermStatus.O);
+        assertMappedTermStatus("P", TermStatus.P);
+        assertMappedTermStatus("S", TermStatus.S);
+        assertMappedTermStatus("T", TermStatus.T);
+    }
+
+    @Test
+    void mapsBlankTermCompletionDateToNull() {
+        var adapter = adapterForProfile(profile("S", "JP", ""));
+
+        StepVerifier.create(adapter.resolvePortalAccessContext("notifications"))
+                .assertNext(ctx -> assertNull(ctx.account().termCompletionDate()))
+                .verifyComplete();
+    }
+
+    @Test
+    void mapsInvalidNonBlankRawTermStatusToUnknownAndWarnsOnce() {
+        var adapter = adapterForProfile(profile("X", "JP", "31/03/2026"));
+
+        StepVerifier.create(adapter.resolvePortalAccessContext("notifications"))
+                .assertNext(ctx -> assertEquals(TermStatus.UNKNOWN, ctx.account().termStatus()))
+                .verifyComplete();
+
+        assertEquals(1, listAppender.list.size());
+        ILoggingEvent event = listAppender.list.getFirst();
+        assertEquals(Level.WARN, event.getLevel());
+        assertTrue(event.getFormattedMessage().contains("source=temporary-portal-access-context"));
+        assertTrue(event.getFormattedMessage().contains("accountRef=notifications"));
+        assertTrue(event.getFormattedMessage().contains("accountEnv=JP"));
+        assertTrue(event.getFormattedMessage().contains("rawTermStatus=X"));
+        assertTrue(!event.getFormattedMessage().contains("policyNo"));
+        assertTrue(!event.getFormattedMessage().contains("certNo"));
+        assertTrue(!event.getFormattedMessage().contains("actorUserId"));
+        assertTrue(!event.getFormattedMessage().contains("memberUserId"));
     }
 
     @Test
@@ -91,6 +180,8 @@ class TemporaryPortalAccessContextAdapterTest {
                     assertEquals("", ctx.account().certNo());
                     assertEquals("", ctx.account().trustCode());
                     assertEquals("", ctx.account().schemeType());
+                    assertEquals(TermStatus.BLANK, ctx.account().termStatus());
+                    assertNull(ctx.account().termCompletionDate());
                 })
                 .verifyComplete();
     }
@@ -111,6 +202,8 @@ class TemporaryPortalAccessContextAdapterTest {
         notifProfile.setCertNo("certNo_for_notifications");
         notifProfile.setTrustCode("trustCode_for_notifications");
         notifProfile.setSchemeType("schemeType_for_notifications");
+        notifProfile.setTermStatus("O");
+        notifProfile.setTermCompletionDate("31/03/2026");
 
         var contribProfile = new TemporaryPortalAccessContextProperties.Profile();
         contribProfile.setActorUserId("actorUserId_for_contributions");
@@ -123,6 +216,8 @@ class TemporaryPortalAccessContextAdapterTest {
         contribProfile.setCertNo("certNo_for_contributions");
         contribProfile.setTrustCode("trustCode_for_contributions");
         contribProfile.setSchemeType("schemeType_for_contributions");
+        contribProfile.setTermStatus("P");
+        contribProfile.setTermCompletionDate("30/04/2026");
 
         var profiles = new LinkedHashMap<String, TemporaryPortalAccessContextProperties.Profile>();
         profiles.put("notifications", notifProfile);
@@ -132,5 +227,39 @@ class TemporaryPortalAccessContextAdapterTest {
         properties.setProfiles(profiles);
 
         return new TemporaryPortalAccessContextAdapter(properties);
+    }
+
+    private void assertMappedTermStatus(String rawStatus, TermStatus expected) {
+        listAppender.list.clear();
+        var adapter = adapterForProfile(profile(rawStatus, "JP", "31/03/2026"));
+
+        StepVerifier.create(adapter.resolvePortalAccessContext("notifications"))
+                .assertNext(ctx -> assertEquals(expected, ctx.account().termStatus()))
+                .verifyComplete();
+
+        assertEquals(0, listAppender.list.size());
+    }
+
+    private static TemporaryPortalAccessContextAdapter adapterForProfile(TemporaryPortalAccessContextProperties.Profile profile) {
+        var properties = new TemporaryPortalAccessContextProperties();
+        properties.setProfiles(Map.of("notifications", profile));
+        return new TemporaryPortalAccessContextAdapter(properties);
+    }
+
+    private static TemporaryPortalAccessContextProperties.Profile profile(String rawTermStatus, String accountEnv, String termCompletionDate) {
+        var profile = new TemporaryPortalAccessContextProperties.Profile();
+        profile.setActorUserId("actorUserId");
+        profile.setActorUserType("MEMBER");
+        profile.setActorUserRole("SELF");
+        profile.setMemberUserId("memberUserId");
+        profile.setMemberType("MBR");
+        profile.setAccountEnv(accountEnv);
+        profile.setPolicyNo("policyNo_secret");
+        profile.setCertNo("certNo_secret");
+        profile.setTrustCode("trustCode");
+        profile.setSchemeType("schemeType");
+        profile.setTermStatus(rawTermStatus);
+        profile.setTermCompletionDate(termCompletionDate);
+        return profile;
     }
 }
