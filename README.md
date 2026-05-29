@@ -243,11 +243,15 @@ export JAVA_HOME="C:/Java/OpenJDK/jdk-21" && export M2_HOME="/d/Tools/apache-mav
 | `TEMP_NOTIF_USER_ID` | Temporary notification user ID | `userId_for_notifications` |
 | `TEMP_NOTIF_TRUST_CODE` | Temporary notification trust code | `trustCode_for_notifications` |
 | `TEMP_NOTIF_SCHEME_TYPE` | Temporary notification scheme type | `schemeType_for_notifications` |
+| `TEMP_NOTIF_TERM_STATUS` | Temporary notification raw term status (`O`/`P`/`S`/`T` or blank) | _(empty)_ |
+| `TEMP_NOTIF_TERM_COMPLETION_DATE` | Temporary notification term completion date (`dd/MM/yyyy`) | _(empty)_ |
 | `TEMP_CONT_POLICY_NO` | Temporary contribution policy number | `policyNo_for_contributions` |
 | `TEMP_CONT_CERT_NO` | Temporary contribution certificate number | `certNo_for_contributions` |
 | `TEMP_CONT_USER_ID` | Temporary contribution user ID | `userId_for_contributions` |
 | `TEMP_CONT_TRUST_CODE` | Temporary contribution trust code | `trustCode_for_contributions` |
 | `TEMP_CONT_SCHEME_TYPE` | Temporary contribution scheme type | `schemeType_for_contributions` |
+| `TEMP_CONT_TERM_STATUS` | Temporary contribution raw term status (`O`/`P`/`S`/`T` or blank) | _(empty)_ |
+| `TEMP_CONT_TERM_COMPLETION_DATE` | Temporary contribution term completion date (`dd/MM/yyyy`) | _(empty)_ |
 | `API_SECURITY_REQUIRE_AUTHENTICATION` | Enable in-process HTTP Basic auth. Set to `false` when auth is enforced externally by a K8s ingress or API gateway. | `true` |
 
 For the dev cluster, the Kubernetes deployment or external config repository must set `CORS_ALLOWED_ORIGINS=http://localhost:4200` before local frontend calls from that origin will succeed. Those deployment manifests are outside this repository.
@@ -293,15 +297,17 @@ When an Auth Server is available, set `api.security.require-authentication=true`
 Until Auth Server integration is implemented, the actor identity, member ownership, and account routing fields used in APIM calls are sourced from a temporary feature-specific profile configuration rather than derived from a JWT token.
 
 The context model is structured into three separate dimensions:
+
 - **Actor** (`actorUserId`, `actorUserType`, `actorUserRole`) — identifies who is acting (the logged-in user)
 - **Member owner** (`memberUserId`, `memberType`) — identifies the member whose data is being accessed
-- **Account** (`accountEnv`, `policyNo`, `certNo`, `trustCode`, `schemeType`) — routing fields for the target APIM account
+- **Account** (`accountEnv`, `policyNo`, `certNo`, `trustCode`, `schemeType`, `termStatus`, `termCompletionDate`) — routing fields and term metadata for the target APIM account
 
-The property class `TemporaryPortalAccessContextProperties` binds `temporary-portal-access-context.profiles.*`. The outbound adapter `TemporaryPortalAccessContextAdapter` (under `adapter/out/security`) implements `PortalAccessContextPort` and resolves the correct profile by account reference key (`"notifications"` or `"contributions"`).
+
+The property class `TemporaryPortalAccessContextProperties` binds `temporary-portal-access-context.profiles.*`. The outbound adapter `TemporaryPortalAccessContextAdapter` (under `adapter/out/security`) implements `PortalAccessContextPort`, resolves the correct profile by account reference key (`"notifications"` or `"contributions"`), converts raw `term-status` into the framework-free `TermStatus` enum, and parses `term-completion-date` as `dd/MM/yyyy` when present.
 
 If a required profile is missing from configuration, the service fails fast with `PortalAccessContextResolutionException`, which maps to HTTP **500** with the standard error body (error code `err.member.context.unavailable` — retained for API contract stability).
 
-Example YAML (already present in `application-local.yml`):
+Example YAML (present in `application-local.yml` with blank-safe defaults for the term fields):
 
 ```yaml
 temporary-portal-access-context:
@@ -317,6 +323,8 @@ temporary-portal-access-context:
       cert-no: ${TEMP_NOTIF_CERT_NO:2}
       trust-code: ${TEMP_NOTIF_TRUST_CODE:}
       scheme-type: ${TEMP_NOTIF_SCHEME_TYPE:}
+      term-status: ${TEMP_NOTIF_TERM_STATUS:}
+      term-completion-date: ${TEMP_NOTIF_TERM_COMPLETION_DATE:}
     contributions:
       actor-user-id: ${TEMP_CONT_ACTOR_USER_ID:C402400A}
       actor-user-type: ${TEMP_CONT_ACTOR_USER_TYPE:MEMBER}
@@ -328,7 +336,11 @@ temporary-portal-access-context:
       cert-no: ${TEMP_CONT_CERT_NO:95}
       trust-code: ${TEMP_CONT_TRUST_CODE:JPM}
       scheme-type: ${TEMP_CONT_SCHEME_TYPE:OE}
+      term-status: ${TEMP_CONT_TERM_STATUS:}
+      term-completion-date: ${TEMP_CONT_TERM_COMPLETION_DATE:}
 ```
+
+Blank or missing `term-status` maps to `TermStatus.BLANK` without warning. Unsupported non-blank raw values map to `TermStatus.UNKNOWN` and emit a sanitized warning from the temporary provider boundary only.
 
 This configuration is **temporary**. It will be replaced once the Auth Server is integrated and portal access context is extracted from JWT access token claims.
 
