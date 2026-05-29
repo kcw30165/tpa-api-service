@@ -10,7 +10,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdateNotificationsReadSt
 import com.bct.ngtpa.apiservice.application.exception.ApplicationException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
-import com.bct.ngtpa.apiservice.application.exception.MemberContextResolutionException;
+import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
@@ -111,8 +111,8 @@ class ApiExceptionHandlerTest {
     }
 
     @Test
-    void usesEnvSpecificMessageForBindFailuresFromBoundRequestTarget() throws Exception {
-        UpdateNotificationsReadStatusRequest target = new UpdateNotificationsReadStatusRequest("JP", "MBR", List.of(""));
+    void usesDefaultMessageForBindFailuresFromBoundRequestTargetWithoutEnv() throws Exception {
+        UpdateNotificationsReadStatusRequest target = new UpdateNotificationsReadStatusRequest(List.of(""));
         BindingResult bindingResult = new BeanPropertyBindingResult(target, "request");
         bindingResult.addError(new FieldError("request", "notificationId", "must not contain blank values"));
 
@@ -121,7 +121,7 @@ class ApiExceptionHandlerTest {
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals(ErrorCodes.REQUEST_VALIDATION_FAILED, response.getBody().errorCode());
-        assertEquals("Invalid request payload for JP.", response.getBody().message());
+        assertEquals("Invalid request payload.", response.getBody().message());
     }
 
     @Test
@@ -288,23 +288,24 @@ class ApiExceptionHandlerTest {
     }
 
     @Test
-    void mapsMemberContextResolutionExceptionToInternalServerError() {
-        ResponseEntity<ApiErrorResponse> response = handler.handleMemberContextResolutionException(
-                new MemberContextResolutionException("No profile for NOTIFICATIONS"), emptyExchange());
+    void mapsPortalAccessContextResolutionExceptionToInternalServerError() {
+        ResponseEntity<ApiErrorResponse> response = handler.handlePortalAccessContextResolutionException(
+                new PortalAccessContextResolutionException("No profile for notifications"), emptyExchange());
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
+        // Error code string is kept stable to avoid breaking API clients
         assertEquals(ErrorCodes.MEMBER_CONTEXT_UNAVAILABLE, response.getBody().errorCode());
         assertEquals("Member context is unavailable.", response.getBody().message());
     }
 
     @Test
-    void memberContextResolutionExceptionResponseIncludesRequestIdHeader() {
-        MockServerWebExchange exchange = exchangeWithRequestId("member-ctx-req-id");
+    void portalAccessContextResolutionExceptionResponseIncludesRequestIdHeader() {
+        MockServerWebExchange exchange = exchangeWithRequestId("portal-ctx-req-id");
 
-        ResponseEntity<ApiErrorResponse> response = handler.handleMemberContextResolutionException(
-                new MemberContextResolutionException("No profile"), exchange);
+        ResponseEntity<ApiErrorResponse> response = handler.handlePortalAccessContextResolutionException(
+                new PortalAccessContextResolutionException("No profile"), exchange);
 
-        assertEquals("member-ctx-req-id", response.getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
+        assertEquals("portal-ctx-req-id", response.getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
     }
 
     @Test
@@ -319,8 +320,8 @@ class ApiExceptionHandlerTest {
         new InvalidNotificationRequestException("bad"), emptyExchange()));
     responses.add(handler.handleInvalidContributionRequestException(
         new InvalidContributionRequestException("bad"), emptyExchange()));
-    responses.add(handler.handleMemberContextResolutionException(
-        new MemberContextResolutionException("missing"), emptyExchange()));
+    responses.add(handler.handlePortalAccessContextResolutionException(
+        new PortalAccessContextResolutionException("missing portal"), emptyExchange()));
     responses.add(handler.handleApimException(
         new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "upstream"), emptyExchange()));
     responses.add(handler.handleWebExchangeBindException(

@@ -50,10 +50,10 @@ com.bct.ngtpa.apiservice
 ├── application/         # Orchestration — no Spring @Service; wired by UseCaseConfig
 │   ├── port/
 │   │   ├── in/          # GetNotificationsUseCase, UpdateNotificationsReadStatusUseCase, GetContributionSummaryUseCase, ExportContributionSummaryUseCase
-│   │   └── out/         # ApimNoticeMessagePort, ApimNotificationReadStatusPort, ApimContributionSummaryPort, ReferenceDatePort, MemberContextPort, CurrencyDisplayPort
+│   │   └── out/         # ApimNoticeMessagePort, ApimNotificationReadStatusPort, ApimContributionSummaryPort, ReferenceDatePort, PortalAccessContextPort, CurrencyDisplayPort
 │   ├── usecase/         # GetNotificationsService, UpdateNotificationsReadStatusService, GetContributionSummaryService, ExportContributionSummaryService
-│   ├── dto/             # Notification and contribution summary commands/results; CurrencyDisplay; MemberContext, MemberContextPurpose
-│   └── exception/       # InvalidContributionRequestException, InvalidNotificationRequestException, MemberContextResolutionException
+│   ├── dto/             # Notification and contribution summary commands/results; CurrencyDisplay; PortalAccessContext (ActorContext, MemberOwnerContext, AccountContext)
+│   └── exception/       # InvalidContributionRequestException, InvalidNotificationRequestException, PortalAccessContextResolutionException
 ├── adapter/
 │   ├── in/web/          # Reactive controllers, request/response records
 │   │   ├── NotificationController
@@ -106,8 +106,8 @@ com.bct.ngtpa.apiservice
 │       │   ├── ConfigServiceReferenceDateAdapter      # Planned future API-backed ReferenceDatePort implementation
 │       │   └── ReferenceDateResolver                  # Shared production-like / override resolution policy
 │       └── security/        # Non-APIM security concerns
-│           ├── TemporaryMemberContextProperties      # Binds temporary-member-context.profiles.*
-│           └── TemporaryMemberContextAdapter         # Implements MemberContextPort
+│           ├── TemporaryPortalAccessContextProperties  # Binds temporary-portal-access-context.profiles.*
+│           └── TemporaryPortalAccessContextAdapter     # Implements PortalAccessContextPort
 ├── config/              # Spring composition only — use case @Bean wiring
 │   └── UseCaseConfig    # @Bean definitions for all four application use case implementations
 ├── infrastructure/      # Cross-cutting Spring infrastructure
@@ -243,11 +243,15 @@ export JAVA_HOME="C:/Java/OpenJDK/jdk-21" && export M2_HOME="/d/Tools/apache-mav
 | `TEMP_NOTIF_USER_ID` | Temporary notification user ID | `userId_for_notifications` |
 | `TEMP_NOTIF_TRUST_CODE` | Temporary notification trust code | `trustCode_for_notifications` |
 | `TEMP_NOTIF_SCHEME_TYPE` | Temporary notification scheme type | `schemeType_for_notifications` |
+| `TEMP_NOTIF_TERM_STATUS` | Temporary notification raw term status (`O`/`P`/`S`/`T` or blank) | _(empty)_ |
+| `TEMP_NOTIF_TERM_COMPLETION_DATE` | Temporary notification term completion date (`dd/MM/yyyy`) | _(empty)_ |
 | `TEMP_CONT_POLICY_NO` | Temporary contribution policy number | `policyNo_for_contributions` |
 | `TEMP_CONT_CERT_NO` | Temporary contribution certificate number | `certNo_for_contributions` |
 | `TEMP_CONT_USER_ID` | Temporary contribution user ID | `userId_for_contributions` |
 | `TEMP_CONT_TRUST_CODE` | Temporary contribution trust code | `trustCode_for_contributions` |
 | `TEMP_CONT_SCHEME_TYPE` | Temporary contribution scheme type | `schemeType_for_contributions` |
+| `TEMP_CONT_TERM_STATUS` | Temporary contribution raw term status (`O`/`P`/`S`/`T` or blank) | _(empty)_ |
+| `TEMP_CONT_TERM_COMPLETION_DATE` | Temporary contribution term completion date (`dd/MM/yyyy`) | _(empty)_ |
 | `API_SECURITY_REQUIRE_AUTHENTICATION` | Enable in-process HTTP Basic auth. Set to `false` when auth is enforced externally by a K8s ingress or API gateway. | `true` |
 
 For the dev cluster, the Kubernetes deployment or external config repository must set `CORS_ALLOWED_ORIGINS=http://localhost:4200` before local frontend calls from that origin will succeed. Those deployment manifests are outside this repository.
@@ -284,38 +288,61 @@ When `false`, the application logs a startup `WARN` confirming that the external
 
 ### Future: OAuth2 / OIDC Resource Server
 
-When an Auth Server is available, set `api.security.require-authentication=true` and configure `SecurityConfig` as a WebFlux OAuth2 resource server (`http.oauth2ResourceServer(...)`). Member context will then be extracted from JWT claims instead of the temporary profile configuration.
+When an Auth Server is available, set `api.security.require-authentication=true` and configure `SecurityConfig` as a WebFlux OAuth2 resource server (`http.oauth2ResourceServer(...)`). Portal access context will then be extracted from JWT claims instead of the temporary profile configuration.
 
 ---
 
-## Temporary Member Context Configuration
+## Temporary Portal Access Context Configuration
 
-Until Auth Server integration is implemented, the `policy-no`, `cert-no`, `user-id`, `trustCode`, and `schemeType` values used in APIM calls are sourced from a temporary feature-specific profile configuration rather than hardcoded constants.
+Until Auth Server integration is implemented, the actor identity, member ownership, and account routing fields used in APIM calls are sourced from a temporary feature-specific profile configuration rather than derived from a JWT token.
 
-The property class `TemporaryMemberContextProperties` binds `temporary-member-context.profiles.*`. The outbound adapter `TemporaryMemberContextAdapter` (under `adapter/out/security`) implements `MemberContextPort` and resolves the correct profile by feature purpose (`NOTIFICATIONS` or `CONTRIBUTIONS`).
+The context model is structured into three separate dimensions:
 
-If a required profile is missing from configuration, the service fails fast with `MemberContextResolutionException`, which maps to HTTP **500** with the standard error body.
+- **Actor** (`actorUserId`, `actorUserType`, `actorUserRole`) — identifies who is acting (the logged-in user)
+- **Member owner** (`memberUserId`, `memberType`) — identifies the member whose data is being accessed
+- **Account** (`accountEnv`, `policyNo`, `certNo`, `trustCode`, `schemeType`, `termStatus`, `termCompletionDate`) — routing fields and term metadata for the target APIM account
 
-Example YAML (already present in `application-local.yml`):
+
+The property class `TemporaryPortalAccessContextProperties` binds `temporary-portal-access-context.profiles.*`. The outbound adapter `TemporaryPortalAccessContextAdapter` (under `adapter/out/security`) implements `PortalAccessContextPort`, resolves the correct profile by account reference key (`"notifications"` or `"contributions"`), converts raw `term-status` into the framework-free `TermStatus` enum, and parses `term-completion-date` as `dd/MM/yyyy` when present.
+
+If a required profile is missing from configuration, the service fails fast with `PortalAccessContextResolutionException`, which maps to HTTP **500** with the standard error body (error code `err.member.context.unavailable` — retained for API contract stability).
+
+Example YAML (present in `application-local.yml` with blank-safe defaults for the term fields):
 
 ```yaml
-temporary-member-context:
+temporary-portal-access-context:
   profiles:
     notifications:
-      policy-no: ${TEMP_NOTIF_POLICY_NO:policyNo_for_notifications}
-      cert-no: ${TEMP_NOTIF_CERT_NO:certNo_for_notifications}
-      user-id: ${TEMP_NOTIF_USER_ID:userId_for_notifications}
-      trust-code: ${TEMP_NOTIF_TRUST_CODE:trustCode_for_notifications}
-      scheme-type: ${TEMP_NOTIF_SCHEME_TYPE:schemeType_for_notifications}
+      actor-user-id: ${TEMP_NOTIF_ACTOR_USER_ID:C402400A}
+      actor-user-type: ${TEMP_NOTIF_ACTOR_USER_TYPE:MEMBER}
+      actor-user-role: ${TEMP_NOTIF_ACTOR_USER_ROLE:SELF}
+      member-user-id: ${TEMP_NOTIF_MEMBER_USER_ID:C402400A}
+      member-type: ${TEMP_NOTIF_MEMBER_TYPE:MBR}
+      account-env: ${TEMP_NOTIF_ACCOUNT_ENV:JP}
+      policy-no: ${TEMP_NOTIF_POLICY_NO:00000000118}
+      cert-no: ${TEMP_NOTIF_CERT_NO:2}
+      trust-code: ${TEMP_NOTIF_TRUST_CODE:}
+      scheme-type: ${TEMP_NOTIF_SCHEME_TYPE:}
+      term-status: ${TEMP_NOTIF_TERM_STATUS:}
+      term-completion-date: ${TEMP_NOTIF_TERM_COMPLETION_DATE:}
     contributions:
-      policy-no: ${TEMP_CONT_POLICY_NO:policyNo_for_contributions}
-      cert-no: ${TEMP_CONT_CERT_NO:certNo_for_contributions}
-      user-id: ${TEMP_CONT_USER_ID:userId_for_contributions}
-      trust-code: ${TEMP_CONT_TRUST_CODE:trustCode_for_contributions}
-      scheme-type: ${TEMP_CONT_SCHEME_TYPE:schemeType_for_contributions}
+      actor-user-id: ${TEMP_CONT_ACTOR_USER_ID:C402400A}
+      actor-user-type: ${TEMP_CONT_ACTOR_USER_TYPE:MEMBER}
+      actor-user-role: ${TEMP_CONT_ACTOR_USER_ROLE:SELF}
+      member-user-id: ${TEMP_CONT_MEMBER_USER_ID:C402400A}
+      member-type: ${TEMP_CONT_MEMBER_TYPE:MBR}
+      account-env: ${TEMP_CONT_ACCOUNT_ENV:JP}
+      policy-no: ${TEMP_CONT_POLICY_NO:00000000217}
+      cert-no: ${TEMP_CONT_CERT_NO:95}
+      trust-code: ${TEMP_CONT_TRUST_CODE:JPM}
+      scheme-type: ${TEMP_CONT_SCHEME_TYPE:OE}
+      term-status: ${TEMP_CONT_TERM_STATUS:}
+      term-completion-date: ${TEMP_CONT_TERM_COMPLETION_DATE:}
 ```
 
-This configuration is **temporary**. It will be replaced once the Auth Server is integrated and member context is extracted from the JWT access token claims.
+Blank or missing `term-status` maps to `TermStatus.BLANK` without warning. Unsupported non-blank raw values map to `TermStatus.UNKNOWN` and emit a sanitized warning from the temporary provider boundary only.
+
+This configuration is **temporary**. It will be replaced once the Auth Server is integrated and portal access context is extracted from JWT access token claims.
 
 ---
 
@@ -833,7 +860,7 @@ Updates the read status for one or more notifications.
 - `env` and `mbrType` must be non-blank.
 - `notificationId` must contain at least one non-blank value.
 - Duplicate notification IDs are preserved in request order and forwarded to APIM unchanged.
-- `policy-no`, `cert-no`, and `user-id` are resolved from externalized `temporary-member-context.profiles.notifications.*` configuration (see **Temporary Member Context Configuration** below) until Auth Server integration is implemented. `ref-date` remains temporarily hardcoded.
+- Actor identity, member ownership, and account routing fields (`actor-user-id`, `policy-no`, `cert-no`, etc.) are resolved from externalized `temporary-portal-access-context.profiles.notifications.*` configuration (see **Temporary Portal Access Context Configuration** below) until Auth Server integration is implemented. `ref-date` remains temporarily hardcoded.
 
 **Response:**
 ```json
@@ -894,7 +921,7 @@ GET /api/v1/contributions?env=JP&mbrType=MBR&fromDate=05/04/2026&toDate=05/05/20
 - Dynamic detail items are joined from `contDtl[*].disp-src` to `dispSrc[*].disp-src` and sorted by `dispSrc.seq` ascending.
 - Amount `text` values are formatted using `display-format.amount.*` configuration (language and env-specific). Value `value` is the raw `BigDecimal`.
 - Date values carry the query-string text (`fromDate`/`toDate`) and also the ISO date string derived from APIM `cover-from`/`cover-to` date parsing.
-- `policy-no`, `cert-no`, `user-id`, `trustCode`, and `schemeType` are resolved from externalized `temporary-member-context.profiles.contributions.*` configuration (see **Temporary Member Context Configuration** below) until Auth Server integration is implemented.
+- Actor identity, member ownership, and account routing fields (`actor-user-id`, `policy-no`, `cert-no`, `trustCode`, `schemeType`, etc.) are resolved from externalized `temporary-portal-access-context.profiles.contributions.*` configuration (see **Temporary Portal Access Context Configuration** below) until Auth Server integration is implemented.
 - `actions.export.enabled` is always `true` (temporary stub via `TemporaryContributionActionPermissionAdapter`).
 
 **Response:**
@@ -1128,7 +1155,7 @@ Accept: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
 - The BFF resolves `ref-date` through `ReferenceDatePort`.
 - `ReferenceDatePort` uses deployment environment configuration, not the request query `env`, to decide whether non-production override rules apply.
 - `cover-from` is computed as `ref-date.minusMonths(36)`; `cover-to` is the resolved `ref-date`.
-- `policy-no`, `cert-no`, `user-id`, `trustCode`, and `schemeType` are resolved from externalized `temporary-member-context.profiles.contributions.*` configuration until Auth Server integration is implemented.
+- Actor identity, member ownership, and account routing fields (`actor-user-id`, `policy-no`, `cert-no`, `trustCode`, `schemeType`, etc.) are resolved from externalized `temporary-portal-access-context.profiles.contributions.*` configuration until Auth Server integration is implemented.
 - The first three headers come from `contribution-summary.headers.*`.
 - Dynamic source columns are sorted by `dispSrc.seq` ascending.
 - Amount cells are numeric, formatted as `0.00`, and rounded with `HALF_UP`.

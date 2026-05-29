@@ -118,20 +118,34 @@ reference-date:
   # override-date: 30/06/2026
   # override-zone-id: Asia/Hong_Kong
 
-temporary-member-context:
+temporary-portal-access-context:
   profiles:
     notifications:
+      actor-user-id: ${TEMP_NOTIF_ACTOR_USER_ID:C402400A}
+      actor-user-type: ${TEMP_NOTIF_ACTOR_USER_TYPE:MEMBER}
+      actor-user-role: ${TEMP_NOTIF_ACTOR_USER_ROLE:SELF}
+      member-user-id: ${TEMP_NOTIF_MEMBER_USER_ID:C402400A}
+      member-type: ${TEMP_NOTIF_MEMBER_TYPE:MBR}
+      account-env: ${TEMP_NOTIF_ACCOUNT_ENV:JP}
       policy-no: ${TEMP_NOTIF_POLICY_NO:00000000118}
       cert-no: ${TEMP_NOTIF_CERT_NO:2}
-      user-id: ${TEMP_NOTIF_USER_ID:C402400A}
       trust-code: ${TEMP_NOTIF_TRUST_CODE:}
       scheme-type: ${TEMP_NOTIF_SCHEME_TYPE:}
+      term-status: ${TEMP_NOTIF_TERM_STATUS:}
+      term-completion-date: ${TEMP_NOTIF_TERM_COMPLETION_DATE:}
     contributions:
+      actor-user-id: ${TEMP_CONT_ACTOR_USER_ID:C402400A}
+      actor-user-type: ${TEMP_CONT_ACTOR_USER_TYPE:MEMBER}
+      actor-user-role: ${TEMP_CONT_ACTOR_USER_ROLE:SELF}
+      member-user-id: ${TEMP_CONT_MEMBER_USER_ID:C402400A}
+      member-type: ${TEMP_CONT_MEMBER_TYPE:MBR}
+      account-env: ${TEMP_CONT_ACCOUNT_ENV:JP}
       policy-no: ${TEMP_CONT_POLICY_NO:00000000217}
       cert-no: ${TEMP_CONT_CERT_NO:95}
-      user-id: ${TEMP_CONT_USER_ID:C402400A}
       trust-code: ${TEMP_CONT_TRUST_CODE:JPM}
       scheme-type: ${TEMP_CONT_SCHEME_TYPE:OE}
+      term-status: ${TEMP_CONT_TERM_STATUS:}
+      term-completion-date: ${TEMP_CONT_TERM_COMPLETION_DATE:}
 
 request-logging:
   body-logging:

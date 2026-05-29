@@ -151,4 +151,21 @@ class CleanArchitectureDependencyTest {
                         .should().haveSimpleNameEndingWith("Config")
                         .orShould().haveSimpleNameEndingWith("Properties")
                         .as("Global config package should only contain composition/configuration classes");
+
+        // ── Guard: Legacy MemberContext types must not be reintroduced ────────────
+        // MemberContext*, MemberContextPort, and TemporaryMemberContext* were replaced
+        // by PortalAccessContext*, PortalAccessContextPort, and TemporaryPortalAccessContext*.
+        // These rules prevent accidental reintroduction.
+
+        @ArchTest
+        static final ArchRule legacyMemberContextPortMustNotExist = noClasses()
+                        .that().resideInAPackage("..application.port.out..")
+                        .should().haveSimpleName("MemberContextPort")
+                        .as("MemberContextPort is superseded by PortalAccessContextPort and must not be reintroduced");
+
+        @ArchTest
+        static final ArchRule legacyTemporaryMemberContextAdapterMustNotExist = noClasses()
+                        .that().resideInAPackage("..adapter.out.security..")
+                        .should().haveSimpleNameStartingWith("TemporaryMemberContext")
+                        .as("TemporaryMemberContext* was replaced by TemporaryPortalAccessContext* and must not be reintroduced");
 }

@@ -7,5 +7,6 @@ public record ContributionSummaryReportResult(
         CurrencyDisplay currencyDisplay,
         ContributionActions actions,
         String trustCode,
-        String schemeType
+        String schemeType,
+        String accountEnv
 ) {}

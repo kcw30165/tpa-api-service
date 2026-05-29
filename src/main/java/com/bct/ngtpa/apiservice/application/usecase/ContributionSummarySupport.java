@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.application.usecase;
 
 import com.bct.ngtpa.apiservice.application.dto.FetchContributionSummaryCommand;
-import com.bct.ngtpa.apiservice.application.dto.MemberContext;
+import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 
 import java.time.LocalDate;
@@ -56,20 +56,18 @@ final class ContributionSummarySupport {
     }
 
     static FetchContributionSummaryCommand newFetchCommand(
-            String env,
-            String mbrType,
             String coverFrom,
             String coverTo,
-            MemberContext memberContext) {
+            PortalAccessContext context) {
         return new FetchContributionSummaryCommand(
-                env,
-                mbrType,
+                context.account().accountEnv(),
+                context.memberOwner().memberType(),
                 coverFrom,
                 coverTo,
-                memberContext.policyNo(),
-                memberContext.certNo(),
-                memberContext.userId(),
-                memberContext.trustCode(),
-                memberContext.schemeType());
+                context.account().policyNo(),
+                context.account().certNo(),
+                context.actor().actorUserId(),
+                context.account().trustCode(),
+                context.account().schemeType());
     }
 }

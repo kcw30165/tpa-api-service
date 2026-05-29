@@ -201,7 +201,7 @@ class ContributionSortingSupportTest {
                                 row("01/02/2026", "01/02/2026", "28/02/2026", new BigDecimal("5")))),
                 new CurrencyDisplay("HKD", "港元"),
                 new ContributionActions(true),
-                "", "");
+                "", "", "");
 
         // Sort then export
         var sorted = sortingSupport.sort(unsorted);
@@ -235,7 +235,7 @@ class ContributionSortingSupportTest {
                                 row("15/03/2026", "01/02/2026", "28/02/2026", new BigDecimal("5")))),
                 new CurrencyDisplay("HKD", "港元"),
                 new ContributionActions(true),
-                "", "");
+                "", "", "");
 
         var sorted = sortingSupport.sort(result);
         var provider = new ContributionWebDisplayConfigProvider(new ContributionSummaryProperties());
@@ -263,14 +263,14 @@ class ContributionSortingSupportTest {
                 new ContributionSource("EE", new ContributionLabels("Member", ""), 20));
         var report = new ContributionSummaryReport("HKD", sources, List.of(rows));
         return new ContributionSummaryReportResult(
-                report, new CurrencyDisplay("HKD", "港元"), new ContributionActions(true), "", "");
+                report, new CurrencyDisplay("HKD", "港元"), new ContributionActions(true), "", "", "");
     }
 
     private ContributionSummaryReportResult resultWithSources(
             List<ContributionSource> sources, ContributionSummaryRow... rows) {
         var report = new ContributionSummaryReport("HKD", sources, List.of(rows));
         return new ContributionSummaryReportResult(
-                report, new CurrencyDisplay("HKD", "港元"), new ContributionActions(true), "", "");
+                report, new CurrencyDisplay("HKD", "港元"), new ContributionActions(true), "", "", "");
     }
 
     private ContributionSummaryRow row(String dealingDate, String coverFrom, String coverTo) {

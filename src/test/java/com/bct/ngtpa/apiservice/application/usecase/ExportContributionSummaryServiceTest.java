@@ -1,13 +1,16 @@
 package com.bct.ngtpa.apiservice.application.usecase;
 
+import com.bct.ngtpa.apiservice.application.dto.AccountContext;
+import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.CurrencyDisplay;
 import com.bct.ngtpa.apiservice.application.dto.ExportContributionSummaryCommand;
 import com.bct.ngtpa.apiservice.application.dto.FetchContributionSummaryCommand;
-import com.bct.ngtpa.apiservice.application.dto.MemberContext;
-import com.bct.ngtpa.apiservice.application.dto.MemberContextPurpose;
+import com.bct.ngtpa.apiservice.application.dto.MemberOwnerContext;
+import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
+import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.port.out.ApimContributionSummaryPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
-import com.bct.ngtpa.apiservice.application.port.out.MemberContextPort;
+import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryDataset;
 import org.junit.jupiter.api.Test;
@@ -21,15 +24,21 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class ExportContributionSummaryServiceTest {
 
-    private static final MemberContext CONTRIBUTIONS_CONTEXT = new MemberContext(
-            "policyNo_for_contributions",
-            "certNo_for_contributions",
-            "userId_for_contributions",
-            "trustCode_for_contributions",
-            "schemeType_for_contributions");
+    private static final PortalAccessContext CONTRIBUTIONS_CONTEXT = new PortalAccessContext(
+            new ActorContext("userId_for_contributions", "MEMBER", "SELF"),
+            new MemberOwnerContext("userId_for_contributions", "MBR"),
+            new AccountContext(
+                    "contributions",
+                    "JP",
+                    "policyNo_for_contributions",
+                    "certNo_for_contributions",
+                    "trustCode_for_contributions",
+                    "schemeType_for_contributions",
+                    TermStatus.BLANK,
+                    null));
 
-    private static MemberContextPort memberContextPort() {
-        return purpose -> Mono.just(CONTRIBUTIONS_CONTEXT);
+    private static PortalAccessContextPort portalAccessContextPort() {
+        return accountRef -> Mono.just(CONTRIBUTIONS_CONTEXT);
     }
 
     @Test
@@ -43,8 +52,8 @@ class ExportContributionSummaryServiceTest {
         var recordingPort = new RecordingCurrencyDisplayPort();
         ReferenceDatePort referenceDatePort = () -> Mono.just(LocalDate.of(2026, 3, 31));
 
-        var service = new ExportContributionSummaryService(port, recordingPort, referenceDatePort, memberContextPort());
-        var result = service.execute(new ExportContributionSummaryCommand("JP", "MBR")).block();
+        var service = new ExportContributionSummaryService(port, recordingPort, referenceDatePort, portalAccessContextPort());
+        var result = service.execute(new ExportContributionSummaryCommand()).block();
 
         assertEquals("31/03/2023", captured.get().coverFrom());
         assertEquals("31/03/2026", captured.get().coverTo());
@@ -60,13 +69,14 @@ class ExportContributionSummaryServiceTest {
         assertEquals("schemeType_for_contributions", recordingPort.capturedSchemeType);
         assertEquals("trustCode_for_contributions", result.trustCode());
         assertEquals("schemeType_for_contributions", result.schemeType());
+        assertEquals("JP", result.accountEnv());
     }
 
     @Test
-    void resolvesMemberContextWithContributionsPurpose() {
-        AtomicReference<MemberContextPurpose> capturedPurpose = new AtomicReference<>();
-        MemberContextPort capturingPort = purpose -> {
-            capturedPurpose.set(purpose);
+    void resolvesPortalAccessContextWithContributionsAccountRef() {
+        AtomicReference<String> capturedRef = new AtomicReference<>();
+        PortalAccessContextPort capturingPort = accountRef -> {
+            capturedRef.set(accountRef);
             return Mono.just(CONTRIBUTIONS_CONTEXT);
         };
 
@@ -79,9 +89,9 @@ class ExportContributionSummaryServiceTest {
                 () -> Mono.just(LocalDate.of(2026, 3, 31)),
                 capturingPort);
 
-        service.execute(new ExportContributionSummaryCommand("JP", "MBR")).block();
+        service.execute(new ExportContributionSummaryCommand()).block();
 
-        assertEquals(MemberContextPurpose.CONTRIBUTIONS, capturedPurpose.get());
+        assertEquals("contributions", capturedRef.get());
     }
 
     private static final class RecordingCurrencyDisplayPort implements CurrencyDisplayPort {

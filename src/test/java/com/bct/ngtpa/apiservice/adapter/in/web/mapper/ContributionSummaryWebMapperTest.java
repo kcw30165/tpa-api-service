@@ -133,8 +133,7 @@ class ContributionSummaryWebMapperTest {
                                         "ER", BigDecimal.TEN,
                                         "EE", new BigDecimal("90")))))),
                 new CurrencyDisplay("HKD", "港元"),
-                new ContributionActions(true),
-                "", "");
+                new ContributionActions(true), "", "", "");
 
         var response = MAPPER.toListResponse(result, DISPLAY_CONFIG, "zh_HK", "JP", 1, 99999);
 
@@ -149,8 +148,7 @@ class ContributionSummaryWebMapperTest {
                 new ContributionSummaryReport("HKD", List.of(), List.of(new ContributionSummaryRow(
                         "01/03/2026", "01/03/2026", "31/03/2026", BigDecimal.ZERO, new LinkedHashMap<>()))),
                 new CurrencyDisplay("HKD", "HKD"),
-                null,
-                "", "");
+                null, "", "", "");
 
         var response = MAPPER.toListResponse(result, DISPLAY_CONFIG, "en", "JP", 1, 99999);
         assertFalse(response.actions().export().enabled());
@@ -214,8 +212,7 @@ class ContributionSummaryWebMapperTest {
                                 new BigDecimal("100"),
                                 new LinkedHashMap<>(java.util.Map.of("ER", new BigDecimal("100")))))),
                 new CurrencyDisplay("HKD", "港元"),
-                new ContributionActions(true),
-                "", "");
+                new ContributionActions(true), "", "", "");
 
         var response = MAPPER.toListResponse(result, DISPLAY_CONFIG, "zh_HK", "JP", 1, 99999);
         var rows = response.items().getFirst().breakdown().rows();
@@ -234,8 +231,7 @@ class ContributionSummaryWebMapperTest {
                                 new BigDecimal("100"),
                                 new LinkedHashMap<>(java.util.Map.of("ER", new BigDecimal("100")))))),
                 new CurrencyDisplay("HKD", "港元"),
-                new ContributionActions(true),
-                "", "");
+                new ContributionActions(true), "", "", "");
 
         var response = MAPPER.toListResponse(result, DISPLAY_CONFIG, "zh_HK", "JP", 1, 99999);
         var rows = response.items().getFirst().breakdown().rows();
@@ -253,8 +249,7 @@ class ContributionSummaryWebMapperTest {
                                 new BigDecimal("100"),
                                 new LinkedHashMap<>(java.util.Map.of("ER", new BigDecimal("100")))))),
                 new CurrencyDisplay("HKD", "港元"),
-                new ContributionActions(true),
-                "", "");
+                new ContributionActions(true), "", "", "");
 
         var response = MAPPER.toListResponse(result, DISPLAY_CONFIG, "en", "JP", 1, 99999);
         var rows = response.items().getFirst().breakdown().rows();
@@ -272,8 +267,7 @@ class ContributionSummaryWebMapperTest {
                                 new BigDecimal("100"),
                                 new LinkedHashMap<>(java.util.Map.of("ER", new BigDecimal("100")))))),
                 new CurrencyDisplay("HKD", "港元"),
-                new ContributionActions(true),
-                "", "");
+                new ContributionActions(true), "", "", "");
 
         var response = MAPPER.toListResponse(result, DISPLAY_CONFIG, "zh_HK", "JP", 1, 99999);
         var rows = response.items().getFirst().breakdown().rows();
@@ -287,8 +281,7 @@ class ContributionSummaryWebMapperTest {
                         List.of(new ContributionSummaryRow("01/03/2026", "01/03/2026", "31/03/2026",
                                 BigDecimal.ZERO, new LinkedHashMap<>()))),
                 null,
-                new ContributionActions(false),
-                "", "");
+                new ContributionActions(false), "", "", "");
 
         var response = MAPPER.toListResponse(result, DISPLAY_CONFIG, "zh_HK", "JP", 1, 99999);
         assertEquals("", response.items().getFirst().currency().text());
@@ -301,8 +294,7 @@ class ContributionSummaryWebMapperTest {
                         List.of(new ContributionSummaryRow("01/03/2026", "01/03/2026", "31/03/2026",
                                 BigDecimal.ZERO, new LinkedHashMap<>()))),
                 new CurrencyDisplay("HKD", null),
-                new ContributionActions(false),
-                "", "");
+                new ContributionActions(false), "", "", "");
 
         var response = MAPPER.toListResponse(result, DISPLAY_CONFIG, "zh_HK", "JP", 1, 99999);
         assertEquals("", response.items().getFirst().currency().text());
@@ -315,8 +307,7 @@ class ContributionSummaryWebMapperTest {
                         List.of(new ContributionSummaryRow("01/03/2026", "01/03/2026", "31/03/2026",
                                 BigDecimal.ZERO, new LinkedHashMap<>()))),
                 new CurrencyDisplay(null, "港元"),
-                new ContributionActions(false),
-                "", "");
+                new ContributionActions(false), "", "", "");
 
         var response = MAPPER.toListResponse(result, DISPLAY_CONFIG, "en", "JP", 1, 99999);
         assertEquals("", response.items().getFirst().currency().text());
@@ -329,8 +320,7 @@ class ContributionSummaryWebMapperTest {
                         List.of(new ContributionSummaryRow("01/03/2026", "01/03/2026", "31/03/2026",
                                 null, new LinkedHashMap<>()))),
                 new CurrencyDisplay("HKD", "HKD"),
-                new ContributionActions(false),
-                "", "");
+                new ContributionActions(false), "", "", "");
 
         var response = MAPPER.toListResponse(result, DISPLAY_CONFIG, "en", "JP", 1, 99999);
         assertEquals(java.math.BigDecimal.ZERO, response.items().getFirst().totalContribution().amount().value());
@@ -343,8 +333,7 @@ class ContributionSummaryWebMapperTest {
                         List.of(new ContributionSummaryRow("not-a-date", "bad-from", "bad-to",
                                 BigDecimal.ZERO, new LinkedHashMap<>()))),
                 new CurrencyDisplay("HKD", "HKD"),
-                new ContributionActions(false),
-                "", "");
+                new ContributionActions(false), "", "", "");
 
         var response = MAPPER.toListResponse(result, DISPLAY_CONFIG, "en", "JP", 1, 99999);
         var item = response.items().getFirst();
@@ -386,8 +375,7 @@ class ContributionSummaryWebMapperTest {
                                         "ER", erAmount,
                                         "EE", eeAmount))))),
                 currencyDisplay,
-                new ContributionActions(true),
-                "", "");
+                new ContributionActions(true), "", "", "");
     }
 
     private ContributionSummaryReportResult buildResultWithTwoRows() {
@@ -401,8 +389,7 @@ class ContributionSummaryWebMapperTest {
                                 new ContributionSummaryRow("01/02/2026", "01/02/2026", "28/02/2026",
                                         new BigDecimal("200"), new LinkedHashMap<>(java.util.Map.of("ER", new BigDecimal("200")))))),
                 new CurrencyDisplay("HKD", "HKD"),
-                new ContributionActions(false),
-                "", "");
+                new ContributionActions(false), "", "", "");
     }
 
     @Test
@@ -415,8 +402,7 @@ class ContributionSummaryWebMapperTest {
                         List.of(new ContributionSummaryRow("01/03/2026", "01/03/2026", "31/03/2026",
                                 BigDecimal.ZERO, new LinkedHashMap<>(java.util.Map.of("ER", BigDecimal.ZERO))))),
                 new CurrencyDisplay("HKD", "HKD"),
-                new ContributionActions(false),
-                "", "");
+                new ContributionActions(false), "", "", "");
 
         var response = MAPPER.toListResponse(result, DISPLAY_CONFIG, "en", "JP", 1, 99999);
         // rows().get(0) is the "total" row; rows().get(1) is the ER source row
@@ -431,8 +417,7 @@ class ContributionSummaryWebMapperTest {
                         List.of(new ContributionSummaryRow("01/03/2026", "01/03/2026", "31/03/2026",
                                 BigDecimal.ZERO, new LinkedHashMap<>()))),
                 new CurrencyDisplay("HKD", "HKD"),
-                null,
-                "", "");
+                null, "", "", "");
 
         var response = MAPPER.toListResponse(result, DISPLAY_CONFIG, "en", "JP", 1, 99999);
         assertFalse(response.actions().export().enabled());
@@ -451,8 +436,7 @@ class ContributionSummaryWebMapperTest {
                         List.of(new ContributionSummaryRow("01/03/2026", "01/03/2026", "31/03/2026",
                                 BigDecimal.ZERO, breakdown))),
                 new CurrencyDisplay("HKD", "HKD"),
-                new ContributionActions(false),
-                "", "");
+                new ContributionActions(false), "", "", "");
 
         var response = MAPPER.toListResponse(result, DISPLAY_CONFIG, "en", "JP", 1, 99999);
         assertEquals(BigDecimal.ZERO, response.items().getFirst().breakdown().rows().get(1).amount().value());
@@ -467,7 +451,7 @@ class ContributionSummaryWebMapperTest {
                                 BigDecimal.ZERO, new LinkedHashMap<>()))),
                 new CurrencyDisplay("HKD", "HKD"),
                 new ContributionActions(false),
-                null, null);
+                null, null, null);
 
         var response = MAPPER.toListResponse(result, DISPLAY_CONFIG, "en", "JP", 1, 99999);
         assertNotNull(response);

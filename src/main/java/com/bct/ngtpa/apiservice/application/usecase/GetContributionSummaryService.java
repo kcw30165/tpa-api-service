@@ -2,12 +2,11 @@ package com.bct.ngtpa.apiservice.application.usecase;
 
 import com.bct.ngtpa.apiservice.application.dto.ContributionSummaryReportResult;
 import com.bct.ngtpa.apiservice.application.dto.GetContributionSummaryCommand;
-import com.bct.ngtpa.apiservice.application.dto.MemberContextPurpose;
 import com.bct.ngtpa.apiservice.application.port.in.GetContributionSummaryUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimContributionSummaryPort;
 import com.bct.ngtpa.apiservice.application.port.out.ContributionActionPermissionPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
-import com.bct.ngtpa.apiservice.application.port.out.MemberContextPort;
+import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryReportBuilder;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +18,7 @@ public class GetContributionSummaryService implements GetContributionSummaryUseC
         private final ApimContributionSummaryPort apimContributionSummaryPort;
         private final CurrencyDisplayPort currencyDisplayPort;
         private final ReferenceDatePort referenceDatePort;
-        private final MemberContextPort memberContextPort;
+        private final PortalAccessContextPort portalAccessContextPort;
         private final ContributionActionPermissionPort contributionActionPermissionPort;
 
         @Override
@@ -34,17 +33,15 @@ public class GetContributionSummaryService implements GetContributionSummaryUseC
                                 .flatMap(refDate -> {
                                         ContributionSummarySupport.validateDateRangeWithinReferenceWindow(fromDate,
                                                         toDate, refDate);
-                                        return memberContextPort
-                                                        .resolveMemberContext(MemberContextPurpose.CONTRIBUTIONS)
-                                                        .map(memberContext -> ContributionSummarySupport
+                                        return portalAccessContextPort
+                                                        .resolvePortalAccessContext("contributions")
+                                                        .map(ctx -> ContributionSummarySupport
                                                                         .newFetchCommand(
-                                                                                        command.env(),
-                                                                                        command.mbrType(),
                                                                                         ContributionSummarySupport
                                                                                                         .formatDate(fromDate),
                                                                                         ContributionSummarySupport
                                                                                                         .formatDate(toDate),
-                                                                                        memberContext));
+                                                                                        ctx));
                                 })
                                 .flatMap(fetchCommand -> apimContributionSummaryPort
                                                 .fetchContributionSummary(fetchCommand)
@@ -59,6 +56,7 @@ public class GetContributionSummaryService implements GetContributionSummaryUseC
                                                                 contributionActionPermissionPort
                                                                                 .resolveContributionActions(),
                                                                 fetchCommand.trustCode(),
-                                                                fetchCommand.schemeType())));
+                                                                fetchCommand.schemeType(),
+                                                                fetchCommand.env())));
         }
 }
