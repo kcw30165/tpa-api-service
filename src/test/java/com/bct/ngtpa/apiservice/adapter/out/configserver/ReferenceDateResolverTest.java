@@ -17,60 +17,47 @@ class ReferenceDateResolverTest {
             Clock.fixed(Instant.parse("2026-05-07T00:00:00Z"), ZoneId.of("UTC")));
 
     @Test
-    void usesServerDateForProductionLikeDeployment() {
-        var resolved = resolver.resolve("prod", "31/03/2026", "Asia/Tokyo");
+    void usesServerDateWhenDeploymentEnvIsProductionLikeEvenIfAccountEnvIsBusinessOnly() {
+        var resolved = resolver.resolve("JP", "prod", "31/03/2026", "Asia/Tokyo");
 
         assertEquals(LocalDate.of(2026, 5, 7), resolved);
     }
 
     @Test
-    void treatsUppercaseProdAsProductionLike() {
-        assertEquals(LocalDate.of(2026, 5, 7), resolver.resolve("PROD", "31/03/2026", "Asia/Hong_Kong"));
+    void treatsDrDeploymentEnvAsProductionLikeEvenWhenAccountEnvNeedsLookup() {
+        assertEquals(LocalDate.of(2026, 5, 7), resolver.resolve("JP", "DR", "31/03/2026", "Asia/Hong_Kong"));
     }
 
     @Test
-    void treatsPrdAsProductionLike() {
-        assertEquals(LocalDate.of(2026, 5, 7), resolver.resolve("PRD", "31/03/2026", "Asia/Hong_Kong"));
-    }
-
-    @Test
-    void treatsProductionAsProductionLike() {
-        assertEquals(LocalDate.of(2026, 5, 7), resolver.resolve("PRODUCTION", "31/03/2026", "Asia/Hong_Kong"));
-    }
-
-    @Test
-    void treatsDrAsProductionLike() {
-        assertEquals(LocalDate.of(2026, 5, 7), resolver.resolve("DR", "31/03/2026", "Asia/Hong_Kong"));
-    }
-
-    @Test
-    void treatsNullAccountEnvAsProductionSafe() {
-        assertEquals(LocalDate.of(2026, 5, 7), resolver.resolve(null, "31/03/2026", "Asia/Hong_Kong"));
-    }
-
-    @Test
-    void treatsBlankAccountEnvAsProductionSafe() {
-        assertEquals(LocalDate.of(2026, 5, 7), resolver.resolve("   ", "31/03/2026", "Asia/Hong_Kong"));
-    }
-
-    @Test
-    void usesServerDateWhenNonProductionOverridePairIsAbsent() {
-        var resolved = resolver.resolve("sit", "", "");
-
-        assertEquals(LocalDate.of(2026, 5, 7), resolved);
-    }
-
-    @Test
-    void usesConfiguredOverridePairForNonProductionLikeDeployment() {
-        var resolved = resolver.resolve("sit", "31/03/2026", "Asia/Hong_Kong");
+    void usesConfiguredOverridePairForNonProductionDeploymentUsingAccountEnvLookup() {
+        var resolved = resolver.resolve("JP", "sit", "31/03/2026", "Asia/Hong_Kong");
 
         assertEquals(LocalDate.of(2026, 3, 31), resolved);
     }
 
     @Test
+    void usesConfiguredOverridePairWhenAccountEnvLooksProductionLikeButDeploymentEnvIsNot() {
+        var resolved = resolver.resolve("PROD", "sit", "31/03/2026", "Asia/Hong_Kong");
+
+        assertEquals(LocalDate.of(2026, 3, 31), resolved);
+    }
+
+    @Test
+    void usesServerDateWhenDeploymentEnvIsBlankForFailSafeBehavior() {
+        assertEquals(LocalDate.of(2026, 5, 7), resolver.resolve("JP", "   ", "31/03/2026", "Asia/Hong_Kong"));
+    }
+
+    @Test
+    void usesServerDateWhenNonProductionOverridePairIsAbsent() {
+        var resolved = resolver.resolve("JP", "sit", "", "");
+
+        assertEquals(LocalDate.of(2026, 5, 7), resolved);
+    }
+
+    @Test
     void rejectsPartialOverridePair() {
         var ex = assertThrows(InvalidContributionRequestException.class,
-                () -> resolver.resolve("sit", "31/03/2026", ""));
+                () -> resolver.resolve("JP", "sit", "31/03/2026", ""));
 
         assertEquals("reference-date.override-date and reference-date.override-zone-id must be provided together",
                 ex.getMessage());
@@ -79,7 +66,7 @@ class ReferenceDateResolverTest {
     @Test
     void rejectsInvalidOverrideDateFormat() {
         var ex = assertThrows(InvalidContributionRequestException.class,
-                () -> resolver.resolve("sit", "2026-03-31", "Asia/Hong_Kong"));
+                () -> resolver.resolve("JP", "sit", "2026-03-31", "Asia/Hong_Kong"));
 
         assertEquals("reference-date.override-date must use dd/MM/yyyy format", ex.getMessage());
     }
@@ -87,7 +74,7 @@ class ReferenceDateResolverTest {
     @Test
     void rejectsInvalidOverrideZoneId() {
         var ex = assertThrows(InvalidContributionRequestException.class,
-                () -> resolver.resolve("sit", "31/03/2026", "Mars/Olympus"));
+                () -> resolver.resolve("JP", "sit", "31/03/2026", "Mars/Olympus"));
 
         assertEquals("reference-date.override-zone-id is invalid", ex.getMessage());
     }
