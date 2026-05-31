@@ -2,11 +2,11 @@ package com.bct.ngtpa.apiservice.adapter.in.web.filter;
 
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
+import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
+import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import lombok.extern.slf4j.Slf4j;
-
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -29,6 +29,7 @@ import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 /**
  * Global WebFilter that:
@@ -68,12 +69,14 @@ public class RequestLoggingWebFilter implements WebFilter {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         String requestId = resolveRequestId(exchange.getRequest());
+        RequestHeaderContext requestHeaderContext = resolveRequestHeaderContext(exchange.getRequest(), requestId);
         exchange.getResponse().getHeaders().set(RequestCorrelation.REQUEST_ID_HEADER, requestId);
         exchange.getAttributes().put(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY, requestId);
+        exchange.getAttributes().put(RequestHeaderContextKeys.ATTRIBUTE_KEY, requestHeaderContext);
 
         if (!properties.isEnabled()) {
             return chain.filter(exchange)
-                    .contextWrite(ctx -> ctx.put(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, requestId));
+                    .contextWrite(ctx -> withRequestContexts(ctx, requestId, requestHeaderContext));
         }
 
         long startNanos = System.nanoTime();
@@ -83,7 +86,14 @@ public class RequestLoggingWebFilter implements WebFilter {
         int maxBodyBytes = effectiveMaxBodyBytes(matchedRule);
 
         if (logRequestBody) {
-            return processWithRequestBodyLogging(exchange, chain, requestId, startNanos, logResponseBody, maxBodyBytes);
+            return processWithRequestBodyLogging(
+                    exchange,
+                    chain,
+                    requestId,
+                    requestHeaderContext,
+                    startNanos,
+                    logResponseBody,
+                    maxBodyBytes);
         }
 
         logRequestStart(exchange, requestId, null, maxBodyBytes);
@@ -94,10 +104,8 @@ public class RequestLoggingWebFilter implements WebFilter {
         return chain.filter(processExchange)
                 .doOnSuccess(v -> logRequestEnd(processExchange, requestId, startNanos))
                 .doOnError(t -> logRequestError(processExchange, requestId, startNanos, t))
-                .contextWrite(ctx -> ctx.put(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, requestId));
+                .contextWrite(ctx -> withRequestContexts(ctx, requestId, requestHeaderContext));
     }
-
-    // ── Request ID resolution ─────────────────────────────────────────────────
 
     private String resolveRequestId(ServerHttpRequest request) {
         String inbound = request.getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER);
@@ -107,10 +115,21 @@ public class RequestLoggingWebFilter implements WebFilter {
         return UUID.randomUUID().toString();
     }
 
-    // ── Request body logging path ─────────────────────────────────────────────
+    private RequestHeaderContext resolveRequestHeaderContext(ServerHttpRequest request, String requestId) {
+        return new RequestHeaderContext(
+                request.getHeaders().getFirst(RequestHeaderContextKeys.ACCOUNT_REF_HEADER),
+                requestId,
+                request.getHeaders().getFirst(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER));
+    }
 
-    private Mono<Void> processWithRequestBodyLogging(ServerWebExchange exchange, WebFilterChain chain,
-            String requestId, long startNanos, boolean logResponseBody, int maxBodyBytes) {
+    private Mono<Void> processWithRequestBodyLogging(
+            ServerWebExchange exchange,
+            WebFilterChain chain,
+            String requestId,
+            RequestHeaderContext requestHeaderContext,
+            long startNanos,
+            boolean logResponseBody,
+            int maxBodyBytes) {
         return DataBufferUtils.join(exchange.getRequest().getBody())
                 .defaultIfEmpty(exchange.getResponse().bufferFactory().allocateBuffer(0))
                 .flatMap(dataBuffer -> {
@@ -142,7 +161,7 @@ public class RequestLoggingWebFilter implements WebFilter {
                             .doOnSuccess(v -> logRequestEnd(processExchange, requestId, startNanos))
                             .doOnError(t -> logRequestError(processExchange, requestId, startNanos, t));
                 })
-                .contextWrite(ctx -> ctx.put(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, requestId));
+                .contextWrite(ctx -> withRequestContexts(ctx, requestId, requestHeaderContext));
     }
 
     private ServerWebExchange wrapWithResponseDecorator(ServerWebExchange exchange, String requestId, int maxBodyBytes) {
@@ -150,8 +169,6 @@ public class RequestLoggingWebFilter implements WebFilter {
                 .response(new ResponseBodyLoggingDecorator(exchange, requestId, maxBodyBytes))
                 .build();
     }
-
-    // ── Lifecycle log methods ─────────────────────────────────────────────────
 
     private void logRequestStart(ServerWebExchange exchange, String requestId, String body, int maxBodyBytes) {
         ServerHttpRequest req = exchange.getRequest();
@@ -162,7 +179,7 @@ public class RequestLoggingWebFilter implements WebFilter {
         event.put("path", req.getPath().value());
 
         Map<String, Object> query = new LinkedHashMap<>();
-        req.getQueryParams().forEach((k, v) -> query.put(k, v.size() == 1 ? v.get(0) : v));
+        req.getQueryParams().forEach((key, values) -> query.put(key, values.size() == 1 ? values.get(0) : values));
         if (!query.isEmpty()) {
             event.put("query", loggingSanitizer.sanitizeValue(query));
         }
@@ -216,14 +233,12 @@ public class RequestLoggingWebFilter implements WebFilter {
         log.info("{}", toJson(event));
     }
 
-    // ── Rule matching ─────────────────────────────────────────────────────────
-
     private RequestLoggingProperties.EndpointRule findMatchingRule(ServerHttpRequest request) {
         String method = request.getMethod().name();
         String path = request.getPath().value();
         return properties.getBodyLogging().getEndpoints().stream()
-                .filter(r -> method.equalsIgnoreCase(r.getMethod()))
-                .filter(r -> r.getPathPattern() != null && pathMatcher.match(r.getPathPattern(), path))
+                .filter(rule -> method.equalsIgnoreCase(rule.getMethod()))
+                .filter(rule -> rule.getPathPattern() != null && pathMatcher.match(rule.getPathPattern(), path))
                 .findFirst()
                 .orElse(null);
     }
@@ -243,7 +258,10 @@ public class RequestLoggingWebFilter implements WebFilter {
         return properties.getBodyLogging().getDefaultMaxBodySizeBytes();
     }
 
-    // ── Utilities ─────────────────────────────────────────────────────────────
+    private Context withRequestContexts(Context ctx, String requestId, RequestHeaderContext requestHeaderContext) {
+        return ctx.put(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, requestId)
+                .put(RequestHeaderContextKeys.CONTEXT_KEY, requestHeaderContext);
+    }
 
     private Map<String, String> buildAllowedHeaders(ServerHttpRequest req) {
         Map<String, String> headers = new LinkedHashMap<>();
@@ -265,22 +283,20 @@ public class RequestLoggingWebFilter implements WebFilter {
         return (System.nanoTime() - startNanos) / 1_000_000;
     }
 
-    private static String truncate(String s, int maxBytes) {
-        if (s == null || s.length() <= maxBytes) {
-            return s;
+    private static String truncate(String text, int maxBytes) {
+        if (text == null || text.length() <= maxBytes) {
+            return text;
         }
-        return s.substring(0, maxBytes) + "...[truncated]";
+        return text.substring(0, maxBytes) + "...[truncated]";
     }
 
     private String toJson(Object obj) {
         try {
             return objectMapper.writeValueAsString(obj);
-        } catch (JsonProcessingException e) {
+        } catch (JsonProcessingException exception) {
             return "{\"event\":\"log-serialization-failed\"}";
         }
     }
-
-    // ── Response body decorator ───────────────────────────────────────────────
 
     private class ResponseBodyLoggingDecorator extends ServerHttpResponseDecorator {
 
