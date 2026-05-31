@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
+import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
+import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import java.net.URI;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -75,5 +77,26 @@ class ApimRequestIdExchangeFilterTest {
 
         assertNotNull(captured.get());
         assertNull(captured.get().headers().get(RequestCorrelation.REQUEST_ID_HEADER));
+    }
+
+    @Test
+    void doesNotPropagateAcceptLanguageHeaderWhenRequestHeaderContextContainsLanguage() {
+        ExchangeFilterFunction exchangeFilter = filter.filter();
+        ClientRequest request = ClientRequest
+                .create(HttpMethod.GET, URI.create("https://api.example.test/test"))
+                .build();
+        AtomicReference<ClientRequest> captured = new AtomicReference<>();
+
+        exchangeFilter.filter(request, req -> {
+            captured.set(req);
+            return Mono.just(ClientResponse.create(HttpStatus.OK).build());
+        })
+        .contextWrite(ctx -> ctx.put(
+                RequestHeaderContextKeys.CONTEXT_KEY,
+                new RequestHeaderContext(null, "req-123", "zh-HK")))
+        .block();
+
+        assertNotNull(captured.get());
+        assertNull(captured.get().headers().get(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER));
     }
 }
