@@ -25,8 +25,8 @@ class ContributionSummaryWebMapperTest {
 
     /** Plain amount formatter that just calls toPlainString (no thousands separator). */
     private static final ContributionSummaryWebMapper MAPPER = new ContributionSummaryWebMapper(
-            (amount, lang, env, trustCode, schemeType) -> amount == null ? "0" : amount.stripTrailingZeros().toPlainString(),
-            (date, lang, env, trustCode, schemeType) -> date != null ? date.format(ContributionSummaryWebMapper.ISO_DATE_FORMATTER) : "");
+            (amount, lang, accountEnv, trustCode, schemeType) -> amount == null ? "0" : amount.stripTrailingZeros().toPlainString(),
+            (date, lang, accountEnv, trustCode, schemeType) -> date != null ? date.format(ContributionSummaryWebMapper.ISO_DATE_FORMATTER) : "");
 
     private static final ContributionWebDisplayConfig DISPLAY_CONFIG = new ContributionWebDisplayConfig(
             "Total Contributions",

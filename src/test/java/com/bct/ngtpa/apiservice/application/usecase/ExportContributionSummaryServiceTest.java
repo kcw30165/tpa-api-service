@@ -64,7 +64,7 @@ class ExportContributionSummaryServiceTest {
         assertEquals("schemeType_for_contributions", captured.get().schemeType());
         assertEquals(new CurrencyDisplay("HKD", "港元"), result.currencyDisplay());
         assertEquals("HKD", recordingPort.capturedCode);
-        assertEquals("JP", recordingPort.capturedEnv);
+        assertEquals("JP", recordingPort.capturedAccountEnv);
         assertEquals("trustCode_for_contributions", recordingPort.capturedTrustCode);
         assertEquals("schemeType_for_contributions", recordingPort.capturedSchemeType);
         assertEquals("trustCode_for_contributions", result.trustCode());
@@ -80,7 +80,7 @@ class ExportContributionSummaryServiceTest {
             return Mono.just(CONTRIBUTIONS_CONTEXT);
         };
 
-        CurrencyDisplayPort currencyDisplayPort = (code, env, trustCode, schemeType) ->
+        CurrencyDisplayPort currencyDisplayPort = (code, accountEnv, trustCode, schemeType) ->
                 new CurrencyDisplay(code, code);
 
         var service = new ExportContributionSummaryService(
@@ -97,14 +97,14 @@ class ExportContributionSummaryServiceTest {
     private static final class RecordingCurrencyDisplayPort implements CurrencyDisplayPort {
 
         String capturedCode;
-        String capturedEnv;
+        String capturedAccountEnv;
         String capturedTrustCode;
         String capturedSchemeType;
 
         @Override
-        public CurrencyDisplay resolveCurrencyDisplay(String code, String env, String trustCode, String schemeType) {
+        public CurrencyDisplay resolveCurrencyDisplay(String code, String accountEnv, String trustCode, String schemeType) {
             this.capturedCode = code;
-            this.capturedEnv = env;
+            this.capturedAccountEnv = accountEnv;
             this.capturedTrustCode = trustCode;
             this.capturedSchemeType = schemeType;
             return new CurrencyDisplay(code, "港元");

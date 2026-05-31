@@ -45,7 +45,7 @@ public class ContributionSummaryWebMapper {
             ContributionSummaryReportResult result,
             ContributionWebDisplayConfig displayConfig,
             String lang,
-            String env,
+            String accountEnv,
             int page,
             int pageSize) {
 
@@ -63,7 +63,7 @@ public class ContributionSummaryWebMapper {
         for (int i = 0; i < rows.size(); i++) {
             items.add(toItemResponse(
                     rows.get(i), result, displayConfig, itemIds.get(i),
-                    lang, env, trustCode, schemeType,
+                    lang, accountEnv, trustCode, schemeType,
                     currencyCode, currencyText));
         }
 
@@ -82,7 +82,7 @@ public class ContributionSummaryWebMapper {
             ContributionWebDisplayConfig displayConfig,
             String itemId,
             String lang,
-            String env,
+            String accountEnv,
             String trustCode,
             String schemeType,
             String currencyCode,
@@ -94,10 +94,10 @@ public class ContributionSummaryWebMapper {
         String fromIso = periodFrom != null ? periodFrom.format(ISO_DATE_FORMATTER) : row.coverFrom();
         String toIso = periodTo != null ? periodTo.format(ISO_DATE_FORMATTER) : row.coverTo();
         String fromText = periodFrom != null
-                ? dateDisplayPort.formatDate(periodFrom, lang, env, trustCode, schemeType)
+                ? dateDisplayPort.formatDate(periodFrom, lang, accountEnv, trustCode, schemeType)
                 : (StringUtils.hasText(row.coverFrom()) ? row.coverFrom() : "");
         String toText = periodTo != null
-                ? dateDisplayPort.formatDate(periodTo, lang, env, trustCode, schemeType)
+                ? dateDisplayPort.formatDate(periodTo, lang, accountEnv, trustCode, schemeType)
                 : (StringUtils.hasText(row.coverTo()) ? row.coverTo() : "");
 
         var period = new ContributionPeriodResponse(
@@ -108,7 +108,7 @@ public class ContributionSummaryWebMapper {
         LocalDate dealing = tryParseApimDate(row.dealingDate());
         String dealingIso = dealing != null ? dealing.format(ISO_DATE_FORMATTER) : row.dealingDate();
         String dealingText = dealing != null
-                ? dateDisplayPort.formatDate(dealing, lang, env, trustCode, schemeType)
+                ? dateDisplayPort.formatDate(dealing, lang, accountEnv, trustCode, schemeType)
                 : (StringUtils.hasText(row.dealingDate()) ? row.dealingDate() : "");
         var dealingDateResponse = new ContributionDateValueResponse(dealingIso, dealingText);
 
@@ -119,7 +119,7 @@ public class ContributionSummaryWebMapper {
 
         // Total contribution
         BigDecimal totalAmount = row.totalAmount() != null ? row.totalAmount() : BigDecimal.ZERO;
-        String totalText = amountDisplayPort.formatAmount(totalAmount, lang, env, trustCode, schemeType);
+        String totalText = amountDisplayPort.formatAmount(totalAmount, lang, accountEnv, trustCode, schemeType);
         var totalContribution = new ContributionTotalContributionResponse(
                 new ContributionAmountValueResponse(totalAmount, totalText));
 
@@ -131,7 +131,7 @@ public class ContributionSummaryWebMapper {
 
         row.details(result.report().sources()).forEach(detail -> {
             var amt = detail.amount() != null ? detail.amount() : BigDecimal.ZERO;
-            String amtText = amountDisplayPort.formatAmount(amt, lang, env, trustCode, schemeType);
+            String amtText = amountDisplayPort.formatAmount(amt, lang, accountEnv, trustCode, schemeType);
             var label = resolveLabel(detail.source().labels(), lang);
             breakdownRows.add(new ContributionBreakdownRowResponse(
                     label,

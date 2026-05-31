@@ -20,13 +20,13 @@ class ContributionSummarySupportTest {
     // -------------------------------------------------------------------------
 
     @Test
-    void newFetchCommandMapsEnvMbrTypeCoverDatesPassThrough() {
+    void newFetchCommandMapsAccountEnvAndMbrTypeFromContext() {
         var ctx = contextWith("pol", "cert", "user", "trust", "scheme");
 
         var cmd = ContributionSummarySupport.newFetchCommand(
                 "01/01/2026", "31/03/2026", ctx);
 
-        assertEquals("JP", cmd.env());
+        assertEquals("JP", cmd.accountEnv());
         assertEquals("MBR", cmd.mbrType());
         assertEquals("01/01/2026", cmd.coverFrom());
         assertEquals("31/03/2026", cmd.coverTo());

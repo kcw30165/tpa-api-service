@@ -28,7 +28,7 @@ import java.util.Locale;
  *   <li>Hardcoded fallback: {@value FALLBACK_PATTERN}</li>
  * </ol>
  *
- * <p>The {@code env} and {@code schemeType} parameters are accepted but not used for pattern
+ * <p>The {@code accountEnv} and {@code schemeType} parameters are accepted but not used for pattern
  * resolution in this implementation; they are reserved for the future global config resolver.
  */
 @Component
@@ -50,17 +50,17 @@ public class ConfigBackedAmountDisplayAdapter implements AmountDisplayPort {
     }
 
     @Override
-    public String formatAmount(BigDecimal amount, String lang, String env, String trustCode, String schemeType) {
+    public String formatAmount(BigDecimal amount, String lang, String accountEnv, String trustCode, String schemeType) {
         var value = amount == null ? BigDecimal.ZERO : amount;
-        var pattern = resolvePattern(lang, env, trustCode, schemeType);
+        var pattern = resolvePattern(lang, accountEnv, trustCode, schemeType);
         return applyFormat(value, pattern);
     }
 
-    String resolvePattern(String lang, String env, String trustCode, String schemeType) {
+    String resolvePattern(String lang, String accountEnv, String trustCode, String schemeType) {
         var request = ConfigLookupRequest.optional(
                 ConfigCategory.DISPLAY_FORMAT,
                 "amount",
-                ConfigLookupContext.of(env, trustCode, schemeType, lang));
+                ConfigLookupContext.of(accountEnv, trustCode, schemeType, lang));
 
         return configVariantResolver.resolve(request).orElse(FALLBACK_PATTERN);
     }

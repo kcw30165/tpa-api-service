@@ -94,7 +94,7 @@ class GetContributionSummaryServiceTest {
         assertEquals("schemeType_for_contributions", captured.get().schemeType());
         assertEquals(new CurrencyDisplay("HKD", "港元"), result.currencyDisplay());
         assertEquals("HKD", recordingPort.capturedCode);
-        assertEquals("JP", recordingPort.capturedEnv);
+        assertEquals("JP", recordingPort.capturedAccountEnv);
         assertEquals("trustCode_for_contributions", recordingPort.capturedTrustCode);
         assertEquals("schemeType_for_contributions", recordingPort.capturedSchemeType);
         assertNotNull(result.actions());
@@ -112,7 +112,7 @@ class GetContributionSummaryServiceTest {
             return Mono.just(CONTRIBUTIONS_CONTEXT);
         };
 
-        CurrencyDisplayPort currencyDisplayPort = (code, env, trustCode, schemeType) ->
+        CurrencyDisplayPort currencyDisplayPort = (code, accountEnv, trustCode, schemeType) ->
                 new CurrencyDisplay(code, code);
 
         var service = new GetContributionSummaryService(
@@ -134,7 +134,7 @@ class GetContributionSummaryServiceTest {
         var service = serviceWith(command -> {
             apimCalls.incrementAndGet();
             return Mono.just(sampleDataset());
-        }, (code, env, trustCode, schemeType) -> new CurrencyDisplay(code, code));
+        }, (code, accountEnv, trustCode, schemeType) -> new CurrencyDisplay(code, code));
 
         var ex = assertThrows(InvalidContributionRequestException.class,
                 () -> service.execute(new GetContributionSummaryCommand(
@@ -150,7 +150,7 @@ class GetContributionSummaryServiceTest {
         var service = serviceWith(command -> {
             apimCalls.incrementAndGet();
             return Mono.just(sampleDataset());
-        }, (code, env, trustCode, schemeType) -> new CurrencyDisplay(code, code));
+        }, (code, accountEnv, trustCode, schemeType) -> new CurrencyDisplay(code, code));
 
         var ex = assertThrows(InvalidContributionRequestException.class,
                 () -> service.execute(new GetContributionSummaryCommand(
@@ -166,7 +166,7 @@ class GetContributionSummaryServiceTest {
         var service = serviceWith(command -> {
             apimCalls.incrementAndGet();
             return Mono.just(sampleDataset());
-        }, (code, env, trustCode, schemeType) -> new CurrencyDisplay(code, code));
+        }, (code, accountEnv, trustCode, schemeType) -> new CurrencyDisplay(code, code));
 
         var ex = assertThrows(InvalidContributionRequestException.class,
                 () -> service.execute(new GetContributionSummaryCommand(
@@ -182,7 +182,7 @@ class GetContributionSummaryServiceTest {
         var service = serviceWith(command -> {
             apimCalls.incrementAndGet();
             return Mono.just(sampleDataset());
-        }, (code, env, trustCode, schemeType) -> new CurrencyDisplay(code, code));
+        }, (code, accountEnv, trustCode, schemeType) -> new CurrencyDisplay(code, code));
 
         service.execute(new GetContributionSummaryCommand(
                 "31/03/2023", "31/03/2026", "en", 1, 99999)).block();
@@ -194,7 +194,7 @@ class GetContributionSummaryServiceTest {
     void rejectsMissingOrInvalidDates() {
         var service = serviceWith(
                 command -> Mono.just(new ContributionSummaryDataset("", List.of(), List.of())),
-                (code, env, trustCode, schemeType) -> new CurrencyDisplay(code, code));
+                (code, accountEnv, trustCode, schemeType) -> new CurrencyDisplay(code, code));
 
         assertEquals("fromDate must be provided in dd/MM/yyyy format", assertThrows(
                 InvalidContributionRequestException.class,
@@ -218,7 +218,7 @@ class GetContributionSummaryServiceTest {
     void rejectsPageLessThanOrEqualZero() {
         var service = serviceWith(
                 command -> Mono.just(sampleDataset()),
-                (code, env, trustCode, schemeType) -> new CurrencyDisplay(code, code));
+                (code, accountEnv, trustCode, schemeType) -> new CurrencyDisplay(code, code));
 
         var ex = assertThrows(InvalidContributionRequestException.class,
                 () -> service.execute(new GetContributionSummaryCommand(
@@ -230,7 +230,7 @@ class GetContributionSummaryServiceTest {
     void rejectsPageSizeLessThanOrEqualZero() {
         var service = serviceWith(
                 command -> Mono.just(sampleDataset()),
-                (code, env, trustCode, schemeType) -> new CurrencyDisplay(code, code));
+                (code, accountEnv, trustCode, schemeType) -> new CurrencyDisplay(code, code));
 
         var ex = assertThrows(InvalidContributionRequestException.class,
                 () -> service.execute(new GetContributionSummaryCommand(
@@ -252,14 +252,14 @@ class GetContributionSummaryServiceTest {
     private static final class RecordingCurrencyDisplayPort implements CurrencyDisplayPort {
 
         String capturedCode;
-        String capturedEnv;
+        String capturedAccountEnv;
         String capturedTrustCode;
         String capturedSchemeType;
 
         @Override
-        public CurrencyDisplay resolveCurrencyDisplay(String code, String env, String trustCode, String schemeType) {
+        public CurrencyDisplay resolveCurrencyDisplay(String code, String accountEnv, String trustCode, String schemeType) {
             this.capturedCode = code;
-            this.capturedEnv = env;
+            this.capturedAccountEnv = accountEnv;
             this.capturedTrustCode = trustCode;
             this.capturedSchemeType = schemeType;
             return new CurrencyDisplay(code, "港元");

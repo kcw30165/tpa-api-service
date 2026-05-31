@@ -21,7 +21,7 @@ api:
     require-authentication: ${API_SECURITY_REQUIRE_AUTHENTICATION:true}
 
 reference-date:
-  deployment-env: ${DEPLOY_ENV:}
+  account-env: ${REFERENCE_DATE_ACCOUNT_ENV:}
   override-date: ${REFERENCE_DATE_OVERRIDE_DATE:}
   override-zone-id: ${REFERENCE_DATE_OVERRIDE_ZONE_ID:}
 

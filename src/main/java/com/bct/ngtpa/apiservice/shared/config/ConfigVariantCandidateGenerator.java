@@ -10,11 +10,11 @@ public class ConfigVariantCandidateGenerator {
     public List<String> generate(ConfigLookupContext context) {
         var candidates = new ArrayList<String>();
 
-        addJoined(candidates, context.env(), context.trustCode(), context.schemeType());
-        addJoined(candidates, context.env(), context.schemeType());
-        addJoined(candidates, context.env(), context.trustCode());
+        addJoined(candidates, context.accountEnv(), context.trustCode(), context.schemeType());
+        addJoined(candidates, context.accountEnv(), context.schemeType());
+        addJoined(candidates, context.accountEnv(), context.trustCode());
         addJoined(candidates, context.trustCode(), context.schemeType());
-        addSingle(candidates, context.env());
+        addSingle(candidates, context.accountEnv());
         addSingle(candidates, context.trustCode());
         addSingle(candidates, context.schemeType());
 

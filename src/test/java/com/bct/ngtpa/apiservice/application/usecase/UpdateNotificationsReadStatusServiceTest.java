@@ -74,7 +74,7 @@ class UpdateNotificationsReadStatusServiceTest {
         assertEquals(expectedResult, result);
         assertEquals(1, invocationCount.get());
         assertEquals("notifications", capturedRef.get());
-        assertEquals("JP", captured.get().env());
+        assertEquals("JP", captured.get().accountEnv());
         assertEquals("MBR", captured.get().mbrType());
         assertEquals(List.of("msgCode1", "msgCode2"), captured.get().notificationIds());
         // policyNo and certNo come from account context

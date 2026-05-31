@@ -93,7 +93,7 @@ class NotificationControllerTest {
 
         // env and mbrType query params are no longer accepted; they are ignored by Spring MVC
         // and env/mbrType on the command are populated from PortalAccessContext by the use case
-        assertNull(captured.get().env());
+        assertNull(captured.get().accountEnv());
         assertNull(captured.get().mbrType());
     }
 
@@ -255,9 +255,9 @@ class NotificationControllerTest {
     }
 
         private static ErrorMessageResolver testErrorMessageResolver() {
-                return (errorCode, locale, env, trustCode, schemeType) -> switch (errorCode) {
+                return (errorCode, locale, accountEnv, trustCode, schemeType) -> switch (errorCode) {
                         case ErrorCodes.NOTIFICATION_REQUEST_INVALID -> "Invalid notification request.";
-                        case ErrorCodes.REQUEST_VALIDATION_FAILED -> "JP".equals(env)
+                        case ErrorCodes.REQUEST_VALIDATION_FAILED -> "JP".equals(accountEnv)
                                         ? "Invalid request payload for JP."
                                         : "Invalid request payload.";
                         case ErrorCodes.SYSTEM_UNEXPECTED -> "Sorry, this service might be interrupted. Please try again later.";

@@ -33,14 +33,14 @@ class ConfigVariantCandidateGeneratorTest {
     }
 
     @Test
-    void skipsMissingEnv() {
+    void skipsMissingAccountEnv() {
         var context = ConfigLookupContext.of("  ", "RM", "MPF", Locale.ENGLISH);
 
         assertEquals(List.of("RM.MPF", "RM", "MPF"), generator.generate(context));
     }
 
     @Test
-    void returnsSingleEnvWhenOnlyEnvIsPresent() {
+    void returnsSingleAccountEnvWhenOnlyAccountEnvIsPresent() {
         var context = ConfigLookupContext.of("PROD", null, null, Locale.ENGLISH);
 
         assertEquals(List.of("PROD"), generator.generate(context));
@@ -86,5 +86,12 @@ class ConfigVariantCandidateGeneratorTest {
                 "PROD",
                 "RM",
                 "MPF"), generator.generate(context));
+    }
+
+    @Test
+    void configLookupContextExposesAccountEnvAccessor() {
+        var context = ConfigLookupContext.of("JP", "RM", "MPF", Locale.ENGLISH);
+
+        assertEquals("JP", context.accountEnv());
     }
 }

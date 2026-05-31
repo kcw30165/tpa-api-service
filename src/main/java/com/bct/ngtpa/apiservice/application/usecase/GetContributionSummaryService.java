@@ -50,13 +50,13 @@ public class GetContributionSummaryService implements GetContributionSummaryUseC
                                                                 report,
                                                                 currencyDisplayPort.resolveCurrencyDisplay(
                                                                                 report.currency(),
-                                                                                fetchCommand.env(),
+                                                                                fetchCommand.accountEnv(),
                                                                                 fetchCommand.trustCode(),
                                                                                 fetchCommand.schemeType()),
                                                                 contributionActionPermissionPort
                                                                                 .resolveContributionActions(),
                                                                 fetchCommand.trustCode(),
                                                                 fetchCommand.schemeType(),
-                                                                fetchCommand.env())));
+                                                                fetchCommand.accountEnv())));
         }
 }
