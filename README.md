@@ -65,7 +65,8 @@ com.bct.ngtpa.apiservice
 │   │   │   ├── ContributionWebDisplayConfig      # Neutral record: total labels + XLSX headers
 │   │   │   └── ContributionWebDisplayConfigProvider  # Adapts ContributionSummaryProperties → ContributionWebDisplayConfig
 │   │   ├── filter/      # Inbound WebFilter infrastructure
-│   │   │   ├── RequestLoggingWebFilter           # Correlation ID + lifecycle logs
+│   │   │   ├── RequestLoggingWebFilter           # Correlation ID + global RequestHeaderContext extraction + lifecycle logs
+│   │   │   ├── RequestHeaderContextWebFilter     # Thin test wrapper over the live global filter path
 │   │   │   └── RequestLoggingProperties          # Binds request-logging.* YAML
 │   │   ├── request/     # UpdateNotificationsReadStatusRequest
 │   │   └── response/    # Notification and contribution summary response records
@@ -130,9 +131,33 @@ com.bct.ngtpa.apiservice
 │   ├── logging/
 │   │   └── LogExecution.java              # Method-level AOP annotation (adapters/facades only)
 │   └── web/
-│       └── RequestCorrelation.java        # X-Request-Id header/attribute/context key constants
+│       ├── RequestCorrelation.java        # X-Request-Id header/attribute/context key constants
+│       ├── RequestHeaderContext.java      # Account-Ref, requestId, language carrier for inbound Reactor Context
+│       └── RequestHeaderContextKeys.java  # Shared header names and RequestHeaderContext attribute/context keys
 └── exception/           # ApimException (shared)
 ```
+
+## Inbound Request Header Context
+
+Phase 1 now provides a single global inbound request header context at the WebFlux boundary.
+
+The live owner is `RequestLoggingWebFilter`, which resolves a typed `RequestHeaderContext` once per inbound request and stores it in both Reactor Context and `ServerWebExchange` attributes for web and infrastructure code.
+
+Extracted headers:
+
+- `Account-Ref`
+- `X-Request-Id`
+- `Accept-Language`
+
+Behavior:
+
+- `Account-Ref` is optional globally and must not be required for login or account-list style flows.
+- `X-Request-Id` behavior is unchanged: the filter reuses a non-blank inbound value, generates a UUID when missing, returns the value in the response header, and keeps propagating it through Reactor Context.
+- Only `X-Request-Id` is propagated to APIM by `ApimRequestIdExchangeFilter`.
+- `Account-Ref` and `Accept-Language` are not propagated to APIM in Phase 1.
+- `Accept-Language` is extracted from the inbound request and defaults to `en` when missing or blank.
+- Phase 1 does not replace existing endpoint query parameter `lang` behavior; migration of success-path locale handling remains a later phase.
+- Phase 1 does not change temporary portal access context lookup, which still uses the existing transitional synthetic profile keys.
 
 ### APIM Response Envelope
 
