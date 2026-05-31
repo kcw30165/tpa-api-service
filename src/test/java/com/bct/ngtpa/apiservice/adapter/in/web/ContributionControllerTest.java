@@ -20,6 +20,7 @@ import com.bct.ngtpa.apiservice.domain.model.ContributionLabels;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSource;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryReport;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryRow;
+import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
@@ -29,6 +30,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 import org.springframework.aop.aspectj.annotation.AspectJProxyFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
@@ -405,6 +407,23 @@ class ContributionControllerTest {
                 .jsonPath("$.requestId").doesNotExist();
     }
 
+        @Test
+        void exportErrorsStillReturnStandardJsonEnvelopeWhenAcceptOnlyAllowsXlsx() {
+                ExportContributionSummaryUseCase exportUseCase = command -> Mono.error(
+                                new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "upstream failed"));
+
+                webClient(unusedGetUseCase(), exportUseCase)
+                                .get()
+                                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions/export").build())
+                                .header("Accept", ContributionController.EXCEL_MEDIA_TYPE)
+                                .exchange()
+                                .expectStatus().isEqualTo(HttpStatus.BAD_GATEWAY)
+                                .expectHeader().contentType("application/json")
+                                .expectBody()
+                                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.APIM_UPSTREAM_FAILURE)
+                                .jsonPath("$.message").isEqualTo("Service is temporarily unavailable. Please try again later.");
+        }
+
     @Test
     void prefersAcceptLanguageZhHkOverLangQueryForContributionExportWorkbook() {
         ExportContributionSummaryUseCase exportUseCase = command -> Mono.just(localizedSampleResult());
@@ -663,6 +682,7 @@ class ContributionControllerTest {
                 return (errorCode, locale, accountEnv, trustCode, schemeType) -> switch (errorCode) {
                         case ErrorCodes.CONTRIBUTION_REQUEST_INVALID -> "Invalid contribution request.";
                         case ErrorCodes.MEMBER_CONTEXT_INVALID -> "Member context is invalid.";
+                        case ErrorCodes.APIM_UPSTREAM_FAILURE -> "Service is temporarily unavailable. Please try again later.";
                         case ErrorCodes.SYSTEM_UNEXPECTED -> "Sorry, this service might be interrupted. Please try again later.";
                         default -> errorCode;
                 };

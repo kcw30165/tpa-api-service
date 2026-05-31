@@ -152,14 +152,21 @@ Extracted headers:
 Behavior:
 
 - `Account-Ref` is optional globally and must not be required for login or account-list style flows.
+- Selected-account APIs now require `Account-Ref` for:
+  - `GET /api/v1/contributions`
+  - `GET /api/v1/contributions/export`
+  - `GET /api/v1/notifications`
+  - `PATCH /api/v1/notifications`
+- Missing or invalid `Account-Ref` on those selected-account APIs returns HTTP `400` with error code `err.member.context.invalid`.
 - `X-Request-Id` behavior is unchanged: the filter reuses a non-blank inbound value, generates a UUID when missing, returns the value in the response header, and keeps propagating it through Reactor Context.
 - Only `X-Request-Id` is propagated to APIM by `ApimRequestIdExchangeFilter`.
-- `Account-Ref` and `Accept-Language` are not propagated to APIM in Phase 1.
+- `Account-Ref` is not propagated to APIM.
+- `Accept-Language` is not propagated to APIM.
 - `Accept-Language` is extracted from the inbound request and defaults to `en` when missing or blank.
 - Contribution success responses now prefer inbound `Accept-Language` for `GET /api/v1/contributions` and `GET /api/v1/contributions/export`, with `lang` kept as a temporary fallback and `en` as the default.
 - Contribution endpoint normalization is `en`, `en-US`, `en_HK` -> `en`; `zh-HK`, `zh_HK`, `zh` -> `zh_HK`; blank, missing, and unknown values -> `en`.
 - Error-message localization by `Accept-Language` is still deferred, and notification response behavior is unchanged.
-- Phase 1 does not change temporary portal access context lookup, which still uses the existing transitional synthetic profile keys.
+- Login, account-list, OAuth, and Account-Ref generation remain future work outside this phase.
 
 ### APIM Response Envelope
 
@@ -323,7 +330,15 @@ When an Auth Server is available, set `api.security.require-authentication=true`
 
 ## Temporary Portal Access Context Configuration
 
-Until Auth Server integration is implemented, the actor identity, member ownership, and account routing fields used in APIM calls are sourced from a temporary feature-specific profile configuration rather than derived from a JWT token.
+Until Auth Server integration is implemented, the actor identity, member ownership, and account routing fields used in APIM calls are sourced from a temporary profile configuration rather than derived from a JWT token.
+
+For the selected-account APIs, `TemporaryPortalAccessContextAdapter` now resolves the context from an account-ref keyed profile entry:
+
+```text
+temporary-portal-access-context.profiles[{accountRef}]
+```
+
+The older feature-key entries such as `notifications` and `contributions` remain only as a transitional fallback for non-migrated callers and should be removed once all selected-account flows supply real `Account-Ref` values end to end.
 
 The context model is structured into three separate dimensions:
 
@@ -332,15 +347,28 @@ The context model is structured into three separate dimensions:
 - **Account** (`accountEnv`, `policyNo`, `certNo`, `trustCode`, `schemeType`, `termStatus`, `termCompletionDate`) — routing fields and term metadata for the target APIM account
 
 
-The property class `TemporaryPortalAccessContextProperties` binds `temporary-portal-access-context.profiles.*`. The outbound adapter `TemporaryPortalAccessContextAdapter` (under `adapter/out/security`) implements `PortalAccessContextPort`, resolves the correct profile by account reference key (`"notifications"` or `"contributions"`), converts raw `term-status` into the framework-free `TermStatus` enum, and parses `term-completion-date` as `dd/MM/yyyy` when present.
+The property class `TemporaryPortalAccessContextProperties` binds `temporary-portal-access-context.profiles.*`. The outbound adapter `TemporaryPortalAccessContextAdapter` (under `adapter/out/security`) implements `PortalAccessContextPort`, resolves the correct profile by account reference key (for example `ACC-123`), retains transitional support for legacy feature-key entries when callers still pass `notifications` or `contributions`, converts raw `term-status` into the framework-free `TermStatus` enum, and parses `term-completion-date` as `dd/MM/yyyy` when present.
 
-If a required profile is missing from configuration, the service fails fast with `PortalAccessContextResolutionException`, which maps to HTTP **500** with the standard error body (error code `err.member.context.unavailable` — retained for API contract stability).
+For the selected-account APIs, missing or invalid `Account-Ref` values fail fast with `PortalAccessContextResolutionException` mapped to HTTP **400** with error code `err.member.context.invalid`. Genuine context unavailability still maps to HTTP **500** with `err.member.context.unavailable`.
 
 Example YAML (present in `application-local.yml` with blank-safe defaults for the term fields):
 
 ```yaml
 temporary-portal-access-context:
   profiles:
+    ACC-123:
+      actor-user-id: ${TEMP_ACC_123_ACTOR_USER_ID:C402400A}
+      actor-user-type: ${TEMP_ACC_123_ACTOR_USER_TYPE:MEMBER}
+      actor-user-role: ${TEMP_ACC_123_ACTOR_USER_ROLE:SELF}
+      member-user-id: ${TEMP_ACC_123_MEMBER_USER_ID:C402400A}
+      member-type: ${TEMP_ACC_123_MEMBER_TYPE:MBR}
+      account-env: ${TEMP_ACC_123_ACCOUNT_ENV:JP}
+      policy-no: ${TEMP_ACC_123_POLICY_NO:00000000217}
+      cert-no: ${TEMP_ACC_123_CERT_NO:95}
+      trust-code: ${TEMP_ACC_123_TRUST_CODE:JPM}
+      scheme-type: ${TEMP_ACC_123_SCHEME_TYPE:OE}
+      term-status: ${TEMP_ACC_123_TERM_STATUS:}
+      term-completion-date: ${TEMP_ACC_123_TERM_COMPLETION_DATE:}
     notifications:
       actor-user-id: ${TEMP_NOTIF_ACTOR_USER_ID:C402400A}
       actor-user-type: ${TEMP_NOTIF_ACTOR_USER_TYPE:MEMBER}
@@ -369,9 +397,11 @@ temporary-portal-access-context:
       term-completion-date: ${TEMP_CONT_TERM_COMPLETION_DATE:}
 ```
 
+  `ACC-123` demonstrates the preferred selected-account shape. The `notifications` and `contributions` entries are transitional examples kept only to support the legacy fallback during migration.
+
 Blank or missing `term-status` maps to `TermStatus.BLANK` without warning. Unsupported non-blank raw values map to `TermStatus.UNKNOWN` and emit a sanitized warning from the temporary provider boundary only.
 
-This configuration is **temporary**. It will be replaced once the Auth Server is integrated and portal access context is extracted from JWT access token claims.
+  This configuration is **temporary**. It will be replaced once the Auth Server is integrated and portal access context is extracted from JWT access token claims.
 
 ---
 

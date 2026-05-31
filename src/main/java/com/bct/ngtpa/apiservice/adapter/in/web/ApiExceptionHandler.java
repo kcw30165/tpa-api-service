@@ -19,6 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -167,7 +168,8 @@ public class ApiExceptionHandler {
             boolean includeStackTrace) {
         logException(status, errorCode, exchange, exception, diagnosticMessage, logAtError, includeStackTrace);
         String requestId = getRequestId(exchange);
-        ResponseEntity.BodyBuilder builder = ResponseEntity.status(status);
+        ResponseEntity.BodyBuilder builder = ResponseEntity.status(status)
+            .contentType(MediaType.APPLICATION_JSON);
         if (requestId != null) {
             builder.header(RequestCorrelation.REQUEST_ID_HEADER, requestId);
         }
