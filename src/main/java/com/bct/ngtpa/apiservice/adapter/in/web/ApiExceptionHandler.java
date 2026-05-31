@@ -69,7 +69,10 @@ public class ApiExceptionHandler {
     @ExceptionHandler(PortalAccessContextResolutionException.class)
     public ResponseEntity<ApiErrorResponse> handlePortalAccessContextResolutionException(
             PortalAccessContextResolutionException ex, ServerWebExchange exchange) {
-        return handleApplicationException(ex, exchange, HttpStatus.INTERNAL_SERVER_ERROR);
+        HttpStatus status = ErrorCodes.MEMBER_CONTEXT_INVALID.equals(ex.getErrorCode())
+            ? HttpStatus.BAD_REQUEST
+            : HttpStatus.INTERNAL_SERVER_ERROR;
+        return handleApplicationException(ex, exchange, status);
     }
 
     @ExceptionHandler(ApplicationException.class)

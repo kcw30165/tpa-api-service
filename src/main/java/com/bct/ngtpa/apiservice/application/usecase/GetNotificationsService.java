@@ -29,7 +29,8 @@ public class GetNotificationsService implements GetNotificationsUseCase {
                 var dateOptions = NotificationDateOptions.resolve(command.dateFormat(), command.timezone());
                 LocalDateTime now = dateOptions.now();
 
-                return portalAccessContextPort.resolvePortalAccessContext("notifications")
+                return portalAccessContextPort.resolvePortalAccessContext(
+                                resolveAccountRef(command.accountRef(), "notifications"))
                                 .zipWith(referenceDatePort.resolveReferenceDate())
                                 .flatMap(tuple -> {
                                         var ctx = tuple.getT1();
@@ -45,7 +46,8 @@ public class GetNotificationsService implements GetNotificationsUseCase {
                                                         ctx.account().policyNo(),
                                                         ctx.account().certNo(),
                                                         ctx.actor().actorUserId(),
-                                                        referenceDate.format(DATE_FORMATTER));
+                                                        referenceDate.format(DATE_FORMATTER),
+                                                        null);
 
                                         return apimNoticeMessagePort.fetchNotifications(enriched)
                                                         .map(result -> {
@@ -60,5 +62,9 @@ public class GetNotificationsService implements GetNotificationsUseCase {
                                                                 return new NotificationListResult(visible, dateOptions);
                                                         });
                                 });
+        }
+
+        private String resolveAccountRef(String accountRef, String fallbackAccountRef) {
+                return accountRef != null ? accountRef : fallbackAccountRef;
         }
 }

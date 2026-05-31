@@ -107,7 +107,7 @@ class ContributionControllerTest {
             return Mono.just(sampleResult());
         };
 
-        filteredWebClient(getUseCase, unusedExportUseCase())
+        webClientWithoutDefaultAccountRef(getUseCase, unusedExportUseCase())
                 .get()
                 .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions")
                         .queryParam("fromDate", "01/03/2026")
@@ -392,7 +392,7 @@ class ContributionControllerTest {
                 ErrorCodes.MEMBER_CONTEXT_INVALID,
                 "accountRef must be present"));
 
-        filteredWebClient(unusedGetUseCase(), exportUseCase)
+        webClientWithoutDefaultAccountRef(unusedGetUseCase(), exportUseCase)
                 .get()
                 .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions/export").build())
                 .exchange()
@@ -505,57 +505,59 @@ class ContributionControllerTest {
     private WebTestClient webClient(
             GetContributionSummaryUseCase getContributionSummaryUseCase,
             ExportContributionSummaryUseCase exportContributionSummaryUseCase) {
+        return buildContributionClient(getContributionSummaryUseCase, exportContributionSummaryUseCase,
+                new ContributionSortingSupport(), true);
+    }
+
+    private WebTestClient webClientWithoutDefaultAccountRef(
+            GetContributionSummaryUseCase getContributionSummaryUseCase,
+            ExportContributionSummaryUseCase exportContributionSummaryUseCase) {
+        return buildContributionClient(getContributionSummaryUseCase, exportContributionSummaryUseCase,
+                new ContributionSortingSupport(), false);
+    }
+
+    private WebTestClient buildContributionClient(
+            GetContributionSummaryUseCase getContributionSummaryUseCase,
+            ExportContributionSummaryUseCase exportContributionSummaryUseCase,
+            ContributionSortingSupport sortingSupport,
+            boolean withDefaultAccountRef) {
         var provider = displayConfigProvider();
         var mapper = new ContributionSummaryWebMapper(
                 (amount, lang, accountEnv, trustCode, schemeType) -> amount == null ? "0" : amount.toPlainString(),
                 (date, lang, accountEnv, trustCode, schemeType) -> date != null ? date.format(DateTimeFormatter.ofPattern("MM/dd/yyyy")) : "");
-        return WebTestClient.bindToController(new ContributionController(
+        var client = WebTestClient.bindToController(new ContributionController(
                         getContributionSummaryUseCase,
                         exportContributionSummaryUseCase,
                         new ContributionSummaryWorkbookExporter(provider),
                         provider,
                         mapper,
-                        new ContributionSortingSupport()))
+                        sortingSupport))
+                .webFilter(requestHeaderContextWebFilter())
                 .controllerAdvice(new ApiExceptionHandler(testErrorMessageResolver(), testLoggingSanitizer()))
                 .build();
+        if (withDefaultAccountRef) {
+            return client.mutate()
+                    .defaultHeader(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, VALID_ACCOUNT_REF)
+                    .build();
+        }
+        return client;
     }
 
     private WebTestClient filteredWebClient(
             GetContributionSummaryUseCase getContributionSummaryUseCase,
             ExportContributionSummaryUseCase exportContributionSummaryUseCase) {
-        var provider = displayConfigProvider();
-        var mapper = new ContributionSummaryWebMapper(
-                (amount, lang, accountEnv, trustCode, schemeType) -> amount == null ? "0" : amount.toPlainString(),
-                (date, lang, accountEnv, trustCode, schemeType) -> date != null ? date.format(DateTimeFormatter.ofPattern("MM/dd/yyyy")) : "");
-        return WebTestClient.bindToController(new ContributionController(
-                        getContributionSummaryUseCase,
-                        exportContributionSummaryUseCase,
-                        new ContributionSummaryWorkbookExporter(provider),
-                        provider,
-                        mapper,
-                        new ContributionSortingSupport()))
-                .webFilter(requestHeaderContextWebFilter())
-                .controllerAdvice(new ApiExceptionHandler(testErrorMessageResolver(), testLoggingSanitizer()))
-                .build();
+        return webClient(getContributionSummaryUseCase, exportContributionSummaryUseCase);
     }
 
     /** Creates a WebTestClient with an AOP-proxied {@link ContributionSortingSupport}. */
     private WebTestClient sortingWebClient(
             GetContributionSummaryUseCase getContributionSummaryUseCase,
             ExportContributionSummaryUseCase exportContributionSummaryUseCase) {
-        var provider = displayConfigProvider();
-        var mapper = new ContributionSummaryWebMapper(
-                (amount, lang, accountEnv, trustCode, schemeType) -> amount == null ? "0" : amount.toPlainString(),
-                (date, lang, accountEnv, trustCode, schemeType) -> date != null ? date.format(DateTimeFormatter.ofPattern("MM/dd/yyyy")) : "");
-        return WebTestClient.bindToController(new ContributionController(
-                        getContributionSummaryUseCase,
-                        exportContributionSummaryUseCase,
-                        new ContributionSummaryWorkbookExporter(provider),
-                        provider,
-                        mapper,
-                        sortingSupportProxy()))
-                .controllerAdvice(new ApiExceptionHandler(testErrorMessageResolver(), testLoggingSanitizer()))
-                .build();
+        return buildContributionClient(
+                getContributionSummaryUseCase,
+                exportContributionSummaryUseCase,
+                sortingSupportProxy(),
+                true);
     }
 
     /** Creates an AOP-proxied {@link ContributionSortingSupport} with the real aspect applied. */

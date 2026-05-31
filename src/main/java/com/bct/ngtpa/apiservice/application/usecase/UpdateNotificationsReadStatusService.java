@@ -23,7 +23,7 @@ public class UpdateNotificationsReadStatusService implements UpdateNotifications
 
     @Override
     public Mono<UpdateNotificationsReadStatusResult> execute(UpdateNotificationsReadStatusCommand command) {
-        return portalAccessContextPort.resolvePortalAccessContext("notifications")
+        return portalAccessContextPort.resolvePortalAccessContext(resolveAccountRef(command.accountRef(), "notifications"))
                 .zipWith(referenceDatePort.resolveReferenceDate())
                 .flatMap(tuple -> {
                     var ctx = tuple.getT1();
@@ -37,8 +37,13 @@ public class UpdateNotificationsReadStatusService implements UpdateNotifications
                             ctx.account().certNo(),
                             ctx.actor().actorUserId(),
                             referenceDate.format(DATE_FORMATTER),
-                            MessageStatus.READ);
+                            MessageStatus.READ,
+                            null);
                     return apimNotificationReadStatusPort.updateReadStatus(enrichedCommand);
                 });
+    }
+
+    private String resolveAccountRef(String accountRef, String fallbackAccountRef) {
+        return accountRef != null ? accountRef : fallbackAccountRef;
     }
 }

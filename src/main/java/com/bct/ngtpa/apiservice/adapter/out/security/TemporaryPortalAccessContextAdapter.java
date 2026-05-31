@@ -7,6 +7,7 @@ import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
+import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -27,9 +28,17 @@ public class TemporaryPortalAccessContextAdapter implements PortalAccessContextP
 
     @Override
     public Mono<PortalAccessContext> resolvePortalAccessContext(String accountRef) {
+        if (accountRef == null || accountRef.isBlank()) {
+            return Mono.error(new PortalAccessContextResolutionException(
+                    ErrorCodes.MEMBER_CONTEXT_INVALID,
+                    "No temporary portal access context profile configured for accountRef: "
+                            + (accountRef == null ? "null" : accountRef)));
+        }
+
         var profile = properties.getProfiles().get(accountRef);
         if (profile == null) {
             return Mono.error(new PortalAccessContextResolutionException(
+                    ErrorCodes.MEMBER_CONTEXT_INVALID,
                     "No temporary portal access context profile configured for accountRef: " + accountRef));
         }
         TermStatus termStatus = mapTermStatus(profile.getTermStatus(), accountRef, profile.getAccountEnv());

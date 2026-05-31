@@ -6,8 +6,10 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.ContributionListResponse
 import com.bct.ngtpa.apiservice.adapter.in.web.support.RequestLanguageResolver;
 import com.bct.ngtpa.apiservice.application.dto.ExportContributionSummaryCommand;
 import com.bct.ngtpa.apiservice.application.dto.GetContributionSummaryCommand;
+import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.application.port.in.ExportContributionSummaryUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetContributionSummaryUseCase;
+import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -54,10 +56,11 @@ public class ContributionController {
 
                 return Mono.deferContextual(contextView -> {
                         String resolvedLang = resolveLanguage(contextView, acceptLanguage, lang);
+                        String accountRef = resolveRequiredAccountRef(contextView);
                         return getContributionSummaryUseCase
                                         .execute(new GetContributionSummaryCommand(
                                                         fromDate, toDate,
-                                                        resolvedLang, resolvedPage, resolvedPageSize))
+                                                        resolvedLang, resolvedPage, resolvedPageSize, accountRef))
                                         .map(contributionSortingSupport::sort)
                                         .map(result -> contributionSummaryWebMapper.toListResponse(
                                                         result,
@@ -75,7 +78,8 @@ public class ContributionController {
                         @RequestHeader(value = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false) String acceptLanguage) {
                 return Mono.deferContextual(contextView -> {
                         String resolvedLang = resolveLanguage(contextView, acceptLanguage, lang);
-                        return exportContributionSummaryUseCase.execute(new ExportContributionSummaryCommand())
+                        String accountRef = resolveRequiredAccountRef(contextView);
+                        return exportContributionSummaryUseCase.execute(new ExportContributionSummaryCommand(accountRef))
                                         .map(contributionSortingSupport::sort)
                                         .map(result -> contributionSummaryWorkbookExporter.write(result, resolvedLang))
                                         .map(body -> ResponseEntity.ok()
@@ -93,5 +97,17 @@ public class ContributionController {
                                 RequestHeaderContextKeys.CONTEXT_KEY,
                                 null);
                 return RequestLanguageResolver.resolve(requestHeaderContext, acceptLanguage, fallbackLang);
+        }
+
+        private String resolveRequiredAccountRef(ContextView contextView) {
+                RequestHeaderContext requestHeaderContext = contextView.getOrDefault(
+                                RequestHeaderContextKeys.CONTEXT_KEY,
+                                null);
+                if (requestHeaderContext == null || requestHeaderContext.accountRef() == null) {
+                        throw new PortalAccessContextResolutionException(
+                                        ErrorCodes.MEMBER_CONTEXT_INVALID,
+                                        "Missing Account-Ref header for selected-account API");
+                }
+                return requestHeaderContext.accountRef();
         }
 }

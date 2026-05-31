@@ -106,7 +106,7 @@ class NotificationControllerTest {
                                 ErrorCodes.MEMBER_CONTEXT_INVALID,
                                 "accountRef must be present"));
 
-                webClientWithRequestLoggingFilter(useCase, unusedUpdateNotificationsReadStatusUseCase())
+                webClientWithRequestLoggingFilterWithoutDefaultAccountRef(useCase, unusedUpdateNotificationsReadStatusUseCase())
                                 .get()
                                 .uri(uriBuilder -> uriBuilder.path("/api/v1/notifications").build())
                                 .exchange()
@@ -125,7 +125,7 @@ class NotificationControllerTest {
                                 ErrorCodes.MEMBER_CONTEXT_INVALID,
                                 "accountRef is invalid"));
 
-                        webClientWithRequestLoggingFilter(useCase, unusedUpdateNotificationsReadStatusUseCase())
+                        webClientWithRequestLoggingFilterWithoutDefaultAccountRef(useCase, unusedUpdateNotificationsReadStatusUseCase())
                                 .get()
                                 .uri(uriBuilder -> uriBuilder.path("/api/v1/notifications").build())
                                 .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, "BAD-999")
@@ -269,7 +269,7 @@ class NotificationControllerTest {
                                 ErrorCodes.MEMBER_CONTEXT_INVALID,
                                 "accountRef is invalid"));
 
-                webClientWithRequestLoggingFilter(unusedGetNotificationsUseCase(), updateUseCase)
+                webClientWithRequestLoggingFilterWithoutDefaultAccountRef(unusedGetNotificationsUseCase(), updateUseCase)
                                 .patch()
                                 .uri("/api/v1/notifications")
                                 .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, "BAD-999")
@@ -291,7 +291,7 @@ class NotificationControllerTest {
                                 ErrorCodes.MEMBER_CONTEXT_INVALID,
                                 "accountRef must be present"));
 
-                        webClientWithRequestLoggingFilter(unusedGetNotificationsUseCase(), updateUseCase)
+                        webClientWithRequestLoggingFilterWithoutDefaultAccountRef(unusedGetNotificationsUseCase(), updateUseCase)
                                 .patch()
                                 .uri("/api/v1/notifications")
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -338,26 +338,45 @@ class NotificationControllerTest {
     private WebTestClient webClient(
             GetNotificationsUseCase getNotificationsUseCase,
             UpdateNotificationsReadStatusUseCase updateNotificationsReadStatusUseCase) {
-        return WebTestClient.bindToController(new NotificationController(
+        return buildNotificationClient(getNotificationsUseCase, updateNotificationsReadStatusUseCase, true);
+    }
+
+    private WebTestClient webClientWithoutDefaultAccountRef(
+            GetNotificationsUseCase getNotificationsUseCase,
+            UpdateNotificationsReadStatusUseCase updateNotificationsReadStatusUseCase) {
+        return buildNotificationClient(getNotificationsUseCase, updateNotificationsReadStatusUseCase, false);
+    }
+
+    private WebTestClient buildNotificationClient(
+            GetNotificationsUseCase getNotificationsUseCase,
+            UpdateNotificationsReadStatusUseCase updateNotificationsReadStatusUseCase,
+            boolean withDefaultAccountRef) {
+        var client = WebTestClient.bindToController(new NotificationController(
                         getNotificationsUseCase,
                         updateNotificationsReadStatusUseCase,
                         new NotificationWebMapper(),
                         new NotificationReadStatusWebMapper()))
+                .webFilter(new RequestLoggingWebFilter(new RequestLoggingProperties(), testLoggingSanitizer(), new ObjectMapper()))
                 .controllerAdvice(new ApiExceptionHandler(testErrorMessageResolver(), testLoggingSanitizer()))
                 .build();
+        if (withDefaultAccountRef) {
+            return client.mutate()
+                    .defaultHeader(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, VALID_ACCOUNT_REF)
+                    .build();
+        }
+        return client;
     }
 
         private WebTestClient webClientWithRequestLoggingFilter(
                         GetNotificationsUseCase getNotificationsUseCase,
                         UpdateNotificationsReadStatusUseCase updateNotificationsReadStatusUseCase) {
-                return WebTestClient.bindToController(new NotificationController(
-                                                getNotificationsUseCase,
-                                                updateNotificationsReadStatusUseCase,
-                                                new NotificationWebMapper(),
-                                                new NotificationReadStatusWebMapper()))
-                                .controllerAdvice(new ApiExceptionHandler(testErrorMessageResolver(), testLoggingSanitizer()))
-                                .webFilter(new RequestLoggingWebFilter(new RequestLoggingProperties(), testLoggingSanitizer(), new ObjectMapper()))
-                                .build();
+                return buildNotificationClient(getNotificationsUseCase, updateNotificationsReadStatusUseCase, true);
+        }
+
+        private WebTestClient webClientWithRequestLoggingFilterWithoutDefaultAccountRef(
+                        GetNotificationsUseCase getNotificationsUseCase,
+                        UpdateNotificationsReadStatusUseCase updateNotificationsReadStatusUseCase) {
+                return buildNotificationClient(getNotificationsUseCase, updateNotificationsReadStatusUseCase, false);
         }
 
     private GetNotificationsUseCase unusedGetNotificationsUseCase() {

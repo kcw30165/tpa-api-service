@@ -23,7 +23,7 @@ public class ExportContributionSummaryService implements ExportContributionSumma
         public Mono<ContributionSummaryReportResult> execute(ExportContributionSummaryCommand command) {
                 return referenceDatePort.resolveReferenceDate()
                                 .flatMap(refDate -> portalAccessContextPort
-                                                .resolvePortalAccessContext("contributions")
+                                                .resolvePortalAccessContext(resolveAccountRef(command.accountRef(), "contributions"))
                                                 .map(ctx -> ContributionSummarySupport.newFetchCommand(
                                                                 ContributionSummarySupport
                                                                                 .formatDate(refDate.minusMonths(36)),
@@ -43,5 +43,9 @@ public class ExportContributionSummaryService implements ExportContributionSumma
                                                                 fetchCommand.trustCode(),
                                                                 fetchCommand.schemeType(),
                                                                 fetchCommand.accountEnv())));
+        }
+
+        private String resolveAccountRef(String accountRef, String fallbackAccountRef) {
+                return accountRef != null ? accountRef : fallbackAccountRef;
         }
 }
