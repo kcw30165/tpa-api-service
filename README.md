@@ -156,7 +156,9 @@ Behavior:
 - Only `X-Request-Id` is propagated to APIM by `ApimRequestIdExchangeFilter`.
 - `Account-Ref` and `Accept-Language` are not propagated to APIM in Phase 1.
 - `Accept-Language` is extracted from the inbound request and defaults to `en` when missing or blank.
-- Phase 1 does not replace existing endpoint query parameter `lang` behavior; migration of success-path locale handling remains a later phase.
+- Contribution success responses now prefer inbound `Accept-Language` for `GET /api/v1/contributions` and `GET /api/v1/contributions/export`, with `lang` kept as a temporary fallback and `en` as the default.
+- Contribution endpoint normalization is `en`, `en-US`, `en_HK` -> `en`; `zh-HK`, `zh_HK`, `zh` -> `zh_HK`; blank, missing, and unknown values -> `en`.
+- Error-message localization by `Accept-Language` is still deferred, and notification response behavior is unchanged.
 - Phase 1 does not change temporary portal access context lookup, which still uses the existing transitional synthetic profile keys.
 
 ### APIM Response Envelope
@@ -925,7 +927,7 @@ Retrieves grouped contribution summary rows for a member context as JSON.
 - `mbrType` (required by frontend contract; currently forwarded only as application context)
 - `fromDate` (required; `dd/MM/yyyy`)
 - `toDate` (required; `dd/MM/yyyy`)
-- `lang` (optional; language code for display formatting, e.g. `en`, `zh_HK`; defaults to `en`)
+- `lang` (optional temporary fallback when `Accept-Language` is missing; normalized to `en` or `zh_HK`; defaults to `en`)
 - `page` (optional; pagination page number, must be > 0; defaults to `1`)
 - `pageSize` (optional; number of items per page, must be > 0; defaults to `20`)
 
@@ -933,6 +935,7 @@ Retrieves grouped contribution summary rows for a member context as JSON.
 
 ```http
 GET /api/v1/contributions?env=JP&mbrType=MBR&fromDate=05/04/2026&toDate=05/05/2026&lang=en&page=1&pageSize=20
+Accept-Language: zh-HK
 ```
 
 **Behavior:**
@@ -944,13 +947,16 @@ GET /api/v1/contributions?env=JP&mbrType=MBR&fromDate=05/04/2026&toDate=05/05/20
 - The current configured lookup source is `reference-date.account-env`; a future request-specific source can be `PortalAccessContext.account().accountEnv()` after `Account-Ref` resolution.
 - Production-like safety is based on runtime deployment environment, not on request query `env` and not on `reference-date.account-env`.
 - `page` and `pageSize` must both be greater than 0; HTTP 400 is returned otherwise. No real backend pagination is performed yet — all data is returned from APIM and the pagination fields reflect the full dataset.
-- `lang` is normalized to `en` when blank.
+- Effective contribution language is resolved in the web adapter with this priority: `Accept-Language` header, then `lang` query parameter, then `en`.
+- Contribution language normalization is `en`, `en-US`, `en_HK` -> `en`; `zh-HK`, `zh_HK`, `zh` -> `zh_HK`; blank, missing, and unknown values -> `en`.
+- The resolved contribution language drives success-path JSON labels, source labels, currency text, and display formatting.
 - Contribution rows are grouped by `deal-date + cover-from + cover-to`.
 - Dynamic detail items are joined from `contDtl[*].disp-src` to `dispSrc[*].disp-src` and sorted by `dispSrc.seq` ascending.
 - Amount `text` values are formatted using `display-format.amount.*` configuration (language and env-specific). Value `value` is the raw `BigDecimal`.
 - Date values carry the query-string text (`fromDate`/`toDate`) and also the ISO date string derived from APIM `cover-from`/`cover-to` date parsing.
 - Actor identity, member ownership, and account routing fields (`actor-user-id`, `policy-no`, `cert-no`, `trustCode`, `schemeType`, etc.) are resolved from externalized `temporary-portal-access-context.profiles.contributions.*` configuration (see **Temporary Portal Access Context Configuration** below) until Auth Server integration is implemented.
 - `actions.export.enabled` is always `true` (temporary stub via `TemporaryContributionActionPermissionAdapter`).
+- `Accept-Language` is not propagated to APIM; only `X-Request-Id` continues to be propagated.
 
 **Response:**
 
@@ -1170,12 +1176,14 @@ Exports the contribution summary as an XLSX workbook.
 
 - `env` (account environment, required by frontend contract; currently forwarded only as application context)
 - `mbrType` (required by frontend contract; currently forwarded only as application context)
+- `lang` (optional temporary fallback when `Accept-Language` is missing; normalized to `en` or `zh_HK`; defaults to `en`)
 
 **Example:**
 
 ```http
-GET /api/v1/contributions/export?env=JP&mbrType=MBR
+GET /api/v1/contributions/export?env=JP&mbrType=MBR&lang=en
 Accept: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+Accept-Language: zh-HK
 ```
 
 **Behavior:**
@@ -1186,10 +1194,14 @@ Accept: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
 - `deploymentEnv` is not part of `PortalAccessContext`.
 - `cover-from` is computed as `ref-date.minusMonths(36)`; `cover-to` is the resolved `ref-date`.
 - Actor identity, member ownership, and account routing fields (`actor-user-id`, `policy-no`, `cert-no`, `trustCode`, `schemeType`, etc.) are resolved from externalized `temporary-portal-access-context.profiles.contributions.*` configuration until Auth Server integration is implemented.
-- The first three headers come from `contribution-summary.headers.*`.
+- Effective contribution language is resolved in the web adapter with this priority: `Accept-Language` header, then `lang` query parameter, then `en`.
+- Contribution language normalization is `en`, `en-US`, `en_HK` -> `en`; `zh-HK`, `zh_HK`, `zh` -> `zh_HK`; blank, missing, and unknown values -> `en`.
+- The total and source workbook headers are selected from the resolved contribution language.
+- The first two structural headers come from `contribution-summary.headers.*`.
 - Dynamic source columns are sorted by `dispSrc.seq` ascending.
 - Amount cells are numeric, formatted as `0.00`, and rounded with `HALF_UP`.
 - Missing dynamic source amounts are written as blank cells.
+- `Accept-Language` is not propagated to APIM; only `X-Request-Id` continues to be propagated.
 
 **Success headers:**
 
@@ -1197,6 +1209,8 @@ Accept: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
 - `Content-Disposition: attachment; filename="Contribution_Summary.xlsx"`
 
 Failures use the same standardized JSON error envelope as the rest of the API.
+
+Error message localization by `Accept-Language` is deferred, and notification response behavior is unchanged.
 
 ---
 
