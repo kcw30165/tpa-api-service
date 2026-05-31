@@ -7,6 +7,7 @@ import com.bct.ngtpa.apiservice.application.dto.NotificationDateOptions;
 import com.bct.ngtpa.apiservice.application.dto.NotificationListResult;
 import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusCommand;
 import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusResult;
+import com.bct.ngtpa.apiservice.application.exception.ApplicationException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.application.port.in.GetNotificationsUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.UpdateNotificationsReadStatusUseCase;
@@ -22,6 +23,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingWebFilter;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
+import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -37,6 +39,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 class NotificationControllerTest {
+
+        private static final String VALID_ACCOUNT_REF = "ACC-123";
 
     @Test
     void acceptsNewQueryParamsAndBuildsFrontendResponse() {
@@ -72,6 +76,68 @@ class NotificationControllerTest {
         assertEquals("dd/MM/yyyy HH:mm", captured.get().dateFormat());
         assertEquals("Asia/Hong_Kong", captured.get().timezone());
     }
+
+        @Test
+        void passesAccountRefFromHeaderContextToGetNotificationsUseCase() {
+                AtomicReference<GetNotificationsCommand> captured = new AtomicReference<>();
+                GetNotificationsUseCase useCase = command -> {
+                        captured.set(command);
+                        if (!VALID_ACCOUNT_REF.equals(command.accountRef())) {
+                                return Mono.error(new ApplicationException(
+                                                ErrorCodes.MEMBER_CONTEXT_INVALID,
+                                                "accountRef must be present"));
+                        }
+                        return Mono.just(new NotificationListResult(List.of(), NotificationDateOptions.defaults()));
+                };
+
+                webClientWithRequestLoggingFilter(useCase, unusedUpdateNotificationsReadStatusUseCase())
+                                .get()
+                                .uri(uriBuilder -> uriBuilder.path("/api/v1/notifications").build())
+                                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, VALID_ACCOUNT_REF)
+                                .exchange()
+                                .expectStatus().isOk();
+
+                assertEquals(VALID_ACCOUNT_REF, captured.get().accountRef());
+        }
+
+        @Test
+        void missingAccountRefReturnsMemberContextInvalidForGetNotifications() {
+                GetNotificationsUseCase useCase = command -> Mono.error(new ApplicationException(
+                                ErrorCodes.MEMBER_CONTEXT_INVALID,
+                                "accountRef must be present"));
+
+                webClientWithRequestLoggingFilter(useCase, unusedUpdateNotificationsReadStatusUseCase())
+                                .get()
+                                .uri(uriBuilder -> uriBuilder.path("/api/v1/notifications").build())
+                                .exchange()
+                                .expectStatus().isBadRequest()
+                                .expectHeader().valueMatches("X-Request-Id",
+                                                "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+                                .expectBody()
+                                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.MEMBER_CONTEXT_INVALID)
+                                .jsonPath("$.message").isEqualTo("Member context is invalid.")
+                                .jsonPath("$.requestId").doesNotExist();
+        }
+
+                    @Test
+                    void invalidAccountRefReturnsMemberContextInvalidForGetNotifications() {
+                        GetNotificationsUseCase useCase = command -> Mono.error(new ApplicationException(
+                                ErrorCodes.MEMBER_CONTEXT_INVALID,
+                                "accountRef is invalid"));
+
+                        webClientWithRequestLoggingFilter(useCase, unusedUpdateNotificationsReadStatusUseCase())
+                                .get()
+                                .uri(uriBuilder -> uriBuilder.path("/api/v1/notifications").build())
+                                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, "BAD-999")
+                                .exchange()
+                                .expectStatus().isBadRequest()
+                                .expectHeader().valueMatches("X-Request-Id",
+                                        "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+                                .expectBody()
+                                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.MEMBER_CONTEXT_INVALID)
+                                .jsonPath("$.message").isEqualTo("Member context is invalid.")
+                                .jsonPath("$.requestId").doesNotExist();
+                    }
 
     @Test
     void acceptsLegacyQueryParamNamesForBackwardCompatibility() {
@@ -172,6 +238,74 @@ class NotificationControllerTest {
         assertEquals(List.of("msgCode1", "msgCode2"), captured.get().notificationIds());
     }
 
+        @Test
+        void passesAccountRefFromHeaderContextToUpdateNotificationsUseCase() {
+                AtomicReference<UpdateNotificationsReadStatusCommand> captured = new AtomicReference<>();
+                UpdateNotificationsReadStatusUseCase updateUseCase = command -> {
+                        captured.set(command);
+                        if (!VALID_ACCOUNT_REF.equals(command.accountRef())) {
+                                return Mono.error(new ApplicationException(
+                                                ErrorCodes.MEMBER_CONTEXT_INVALID,
+                                                "accountRef must be present"));
+                        }
+                        return Mono.just(new UpdateNotificationsReadStatusResult(List.of()));
+                };
+
+                webClientWithRequestLoggingFilter(unusedGetNotificationsUseCase(), updateUseCase)
+                                .patch()
+                                .uri("/api/v1/notifications")
+                                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, VALID_ACCOUNT_REF)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .bodyValue(Map.of("notificationId", List.of("msgCode1")))
+                                .exchange()
+                                .expectStatus().isOk();
+
+                assertEquals(VALID_ACCOUNT_REF, captured.get().accountRef());
+        }
+
+        @Test
+        void invalidAccountRefReturnsMemberContextInvalidForUpdateNotifications() {
+                UpdateNotificationsReadStatusUseCase updateUseCase = command -> Mono.error(new ApplicationException(
+                                ErrorCodes.MEMBER_CONTEXT_INVALID,
+                                "accountRef is invalid"));
+
+                webClientWithRequestLoggingFilter(unusedGetNotificationsUseCase(), updateUseCase)
+                                .patch()
+                                .uri("/api/v1/notifications")
+                                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, "BAD-999")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .bodyValue(Map.of("notificationId", List.of("msgCode1")))
+                                .exchange()
+                                .expectStatus().isBadRequest()
+                                .expectHeader().valueMatches("X-Request-Id",
+                                                "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+                                .expectBody()
+                                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.MEMBER_CONTEXT_INVALID)
+                                .jsonPath("$.message").isEqualTo("Member context is invalid.")
+                                .jsonPath("$.requestId").doesNotExist();
+        }
+
+                    @Test
+                    void missingAccountRefReturnsMemberContextInvalidForUpdateNotifications() {
+                        UpdateNotificationsReadStatusUseCase updateUseCase = command -> Mono.error(new ApplicationException(
+                                ErrorCodes.MEMBER_CONTEXT_INVALID,
+                                "accountRef must be present"));
+
+                        webClientWithRequestLoggingFilter(unusedGetNotificationsUseCase(), updateUseCase)
+                                .patch()
+                                .uri("/api/v1/notifications")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .bodyValue(Map.of("notificationId", List.of("msgCode1")))
+                                .exchange()
+                                .expectStatus().isBadRequest()
+                                .expectHeader().valueMatches("X-Request-Id",
+                                        "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+                                .expectBody()
+                                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.MEMBER_CONTEXT_INVALID)
+                                .jsonPath("$.message").isEqualTo("Member context is invalid.")
+                                .jsonPath("$.requestId").doesNotExist();
+                    }
+
     @Test
     void rejectsPatchRequestWhenNotificationIdIsEmpty() {
         assertInvalidPatchRequest(
@@ -257,6 +391,7 @@ class NotificationControllerTest {
         private static ErrorMessageResolver testErrorMessageResolver() {
                 return (errorCode, locale, accountEnv, trustCode, schemeType) -> switch (errorCode) {
                         case ErrorCodes.NOTIFICATION_REQUEST_INVALID -> "Invalid notification request.";
+                        case ErrorCodes.MEMBER_CONTEXT_INVALID -> "Member context is invalid.";
                         case ErrorCodes.REQUEST_VALIDATION_FAILED -> "JP".equals(accountEnv)
                                         ? "Invalid request payload for JP."
                                         : "Invalid request payload.";

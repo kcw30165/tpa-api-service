@@ -87,6 +87,37 @@ class TemporaryPortalAccessContextAdapterTest {
     }
 
     @Test
+    void resolvesAccountRefKeyedProfile() {
+        var accountRefProfile = new TemporaryPortalAccessContextProperties.Profile();
+        accountRefProfile.setActorUserId("actorUserId_for_acc_123");
+        accountRefProfile.setActorUserType("MEMBER");
+        accountRefProfile.setActorUserRole("SELF");
+        accountRefProfile.setMemberUserId("memberUserId_for_acc_123");
+        accountRefProfile.setMemberType("MBR");
+        accountRefProfile.setAccountEnv("JP");
+        accountRefProfile.setPolicyNo("policyNo_for_acc_123");
+        accountRefProfile.setCertNo("certNo_for_acc_123");
+        accountRefProfile.setTrustCode("trustCode_for_acc_123");
+        accountRefProfile.setSchemeType("schemeType_for_acc_123");
+        accountRefProfile.setTermStatus("O");
+        accountRefProfile.setTermCompletionDate("31/03/2026");
+
+        var properties = new TemporaryPortalAccessContextProperties();
+        properties.setProfiles(Map.of("ACC-123", accountRefProfile));
+
+        var adapter = new TemporaryPortalAccessContextAdapter(properties);
+
+        StepVerifier.create(adapter.resolvePortalAccessContext("ACC-123"))
+                .assertNext(ctx -> {
+                    assertEquals("actorUserId_for_acc_123", ctx.actor().actorUserId());
+                    assertEquals("memberUserId_for_acc_123", ctx.memberOwner().memberUserId());
+                    assertEquals("policyNo_for_acc_123", ctx.account().policyNo());
+                    assertEquals("ACC-123", ctx.account().accountRef());
+                })
+                .verifyComplete();
+    }
+
+    @Test
     void mapsBlankRawTermStatusToBlankWithoutWarning() {
         var adapter = adapterForProfile(profile("", "JP", "31/03/2026"));
 
@@ -154,6 +185,38 @@ class TemporaryPortalAccessContextAdapterTest {
                     assertInstanceOf(PortalAccessContextResolutionException.class, ex);
                     assertEquals(
                             "No temporary portal access context profile configured for accountRef: notifications",
+                            ex.getMessage());
+                })
+                .verify();
+    }
+
+    @Test
+    void unknownAccountRefFailsWithClearException() {
+        var properties = new TemporaryPortalAccessContextProperties();
+        properties.setProfiles(Map.of("ACC-123", profile("O", "JP", "31/03/2026")));
+        var adapter = new TemporaryPortalAccessContextAdapter(properties);
+
+        StepVerifier.create(adapter.resolvePortalAccessContext("ACC-999"))
+                .expectErrorSatisfies(ex -> {
+                    assertInstanceOf(PortalAccessContextResolutionException.class, ex);
+                    assertEquals(
+                            "No temporary portal access context profile configured for accountRef: ACC-999",
+                            ex.getMessage());
+                })
+                .verify();
+    }
+
+    @Test
+    void blankAccountRefFailsWithClearException() {
+        var properties = new TemporaryPortalAccessContextProperties();
+        properties.setProfiles(Map.of());
+        var adapter = new TemporaryPortalAccessContextAdapter(properties);
+
+        StepVerifier.create(adapter.resolvePortalAccessContext(""))
+                .expectErrorSatisfies(ex -> {
+                    assertInstanceOf(PortalAccessContextResolutionException.class, ex);
+                    assertEquals(
+                            "No temporary portal access context profile configured for accountRef: ",
                             ex.getMessage());
                 })
                 .verify();

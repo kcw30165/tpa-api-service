@@ -8,6 +8,7 @@ import com.bct.ngtpa.apiservice.application.dto.ContributionActions;
 import com.bct.ngtpa.apiservice.application.dto.CurrencyDisplay;
 import com.bct.ngtpa.apiservice.application.dto.ContributionSummaryReportResult;
 import com.bct.ngtpa.apiservice.application.dto.GetContributionSummaryCommand;
+import com.bct.ngtpa.apiservice.application.exception.ApplicationException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import com.bct.ngtpa.apiservice.application.port.in.ExportContributionSummaryUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetContributionSummaryUseCase;
@@ -42,6 +43,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ContributionControllerTest {
+
+        private static final String VALID_ACCOUNT_REF = "ACC-123";
 
     @Test
     void returnsContributionListJsonAndPassesQueryParamsToUseCase() {
@@ -89,6 +92,54 @@ class ContributionControllerTest {
         assertEquals("en", captured.get().lang());
         assertEquals(1, captured.get().page());
         assertEquals(99999, captured.get().pageSize());
+    }
+
+    @Test
+    void passesAccountRefFromHeaderContextToContributionSummaryUseCase() {
+        AtomicReference<GetContributionSummaryCommand> captured = new AtomicReference<>();
+        GetContributionSummaryUseCase getUseCase = command -> {
+            captured.set(command);
+            if (!VALID_ACCOUNT_REF.equals(command.accountRef())) {
+                return Mono.error(new ApplicationException(
+                        ErrorCodes.MEMBER_CONTEXT_INVALID,
+                        "accountRef must be present"));
+            }
+            return Mono.just(sampleResult());
+        };
+
+        filteredWebClient(getUseCase, unusedExportUseCase())
+                .get()
+                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions")
+                        .queryParam("fromDate", "01/03/2026")
+                        .queryParam("toDate", "31/03/2026")
+                        .build())
+                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, VALID_ACCOUNT_REF)
+                .exchange()
+                .expectStatus().isOk();
+
+        assertEquals(VALID_ACCOUNT_REF, captured.get().accountRef());
+    }
+
+    @Test
+    void missingAccountRefReturnsMemberContextInvalidForContributionSummary() {
+        GetContributionSummaryUseCase getUseCase = command -> Mono.error(new ApplicationException(
+                ErrorCodes.MEMBER_CONTEXT_INVALID,
+                "accountRef must be present"));
+
+        filteredWebClient(getUseCase, unusedExportUseCase())
+                .get()
+                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions")
+                        .queryParam("fromDate", "01/03/2026")
+                        .queryParam("toDate", "31/03/2026")
+                        .build())
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectHeader().valueMatches("X-Request-Id",
+                        "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.MEMBER_CONTEXT_INVALID)
+                .jsonPath("$.message").isEqualTo("Member context is invalid.")
+                .jsonPath("$.requestId").doesNotExist();
     }
 
     @Test
@@ -310,6 +361,48 @@ class ContributionControllerTest {
                 .expectHeader().valueEquals("Content-Disposition", "attachment; filename=\"Contribution_Summary.xlsx\"")
                 .expectBody()
                 .consumeWith(result -> assertTrue(result.getResponseBody() != null && result.getResponseBody().length > 0));
+    }
+
+        @Test
+        void passesAccountRefFromHeaderContextToContributionExportUseCase() {
+                AtomicReference<String> captured = new AtomicReference<>();
+                ExportContributionSummaryUseCase exportUseCase = command -> {
+                        captured.set(command.accountRef());
+                        if (!VALID_ACCOUNT_REF.equals(command.accountRef())) {
+                                return Mono.error(new ApplicationException(
+                                                ErrorCodes.MEMBER_CONTEXT_INVALID,
+                                                "accountRef must be present"));
+                        }
+                        return Mono.just(sampleResult());
+                };
+
+                filteredWebClient(unusedGetUseCase(), exportUseCase)
+                                .get()
+                                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions/export").build())
+                                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, VALID_ACCOUNT_REF)
+                                .exchange()
+                                .expectStatus().isOk();
+
+                assertEquals(VALID_ACCOUNT_REF, captured.get());
+        }
+
+    @Test
+    void missingAccountRefReturnsMemberContextInvalidForContributionExport() {
+        ExportContributionSummaryUseCase exportUseCase = command -> Mono.error(new ApplicationException(
+                ErrorCodes.MEMBER_CONTEXT_INVALID,
+                "accountRef must be present"));
+
+        filteredWebClient(unusedGetUseCase(), exportUseCase)
+                .get()
+                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions/export").build())
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectHeader().valueMatches("X-Request-Id",
+                        "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.MEMBER_CONTEXT_INVALID)
+                .jsonPath("$.message").isEqualTo("Member context is invalid.")
+                .jsonPath("$.requestId").doesNotExist();
     }
 
     @Test
@@ -567,6 +660,7 @@ class ContributionControllerTest {
         private static ErrorMessageResolver testErrorMessageResolver() {
                 return (errorCode, locale, accountEnv, trustCode, schemeType) -> switch (errorCode) {
                         case ErrorCodes.CONTRIBUTION_REQUEST_INVALID -> "Invalid contribution request.";
+                        case ErrorCodes.MEMBER_CONTEXT_INVALID -> "Member context is invalid.";
                         case ErrorCodes.SYSTEM_UNEXPECTED -> "Sorry, this service might be interrupted. Please try again later.";
                         default -> errorCode;
                 };

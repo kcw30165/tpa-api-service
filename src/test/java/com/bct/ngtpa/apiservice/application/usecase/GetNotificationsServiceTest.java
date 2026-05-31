@@ -97,7 +97,7 @@ class GetNotificationsServiceTest {
     }
 
     @Test
-    void resolvesPortalAccessContextWithNotificationsKey() {
+    void resolvesPortalAccessContextWithCommandAccountRef() {
         AtomicReference<String> capturedRef = new AtomicReference<>();
         AtomicReference<GetNotificationsCommand> capturedCommand = new AtomicReference<>();
 
@@ -112,9 +112,9 @@ class GetNotificationsServiceTest {
         };
 
         GetNotificationsService service = new GetNotificationsService(noticePort, capturingPort, REFERENCE_DATE_PORT);
-        service.execute(new GetNotificationsCommand(null, null, 1, 99999, null, null, null, null, null, null)).block();
+    service.execute(new GetNotificationsCommand(null, null, 1, 99999, null, null, null, null, null, null, "ACC-123")).block();
 
-        assertEquals("notifications", capturedRef.get());
+    assertEquals("ACC-123", capturedRef.get());
         assertEquals("JP", capturedCommand.get().accountEnv());
         assertEquals("MBR", capturedCommand.get().mbrType());
         assertEquals("policyNo_for_notifications", capturedCommand.get().policyNo());

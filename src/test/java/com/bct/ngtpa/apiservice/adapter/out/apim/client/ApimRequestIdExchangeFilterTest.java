@@ -99,4 +99,27 @@ class ApimRequestIdExchangeFilterTest {
         assertNotNull(captured.get());
         assertNull(captured.get().headers().get(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER));
     }
+
+    @Test
+    void doesNotPropagateAccountRefHeaderWhenRequestHeaderContextContainsAccountRef() {
+        ExchangeFilterFunction exchangeFilter = filter.filter();
+        ClientRequest request = ClientRequest
+                .create(HttpMethod.GET, URI.create("https://api.example.test/test"))
+                .build();
+        AtomicReference<ClientRequest> captured = new AtomicReference<>();
+
+        exchangeFilter.filter(request, req -> {
+            captured.set(req);
+            return Mono.just(ClientResponse.create(HttpStatus.OK).build());
+        })
+        .contextWrite(ctx -> ctx
+                .put(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, "req-123")
+                .put(RequestHeaderContextKeys.CONTEXT_KEY,
+                        new RequestHeaderContext("ACC-123", "req-123", "en")))
+        .block();
+
+        assertNotNull(captured.get());
+        assertEquals(List.of("req-123"), captured.get().headers().get(RequestCorrelation.REQUEST_ID_HEADER));
+        assertNull(captured.get().headers().get(RequestHeaderContextKeys.ACCOUNT_REF_HEADER));
+    }
 }
