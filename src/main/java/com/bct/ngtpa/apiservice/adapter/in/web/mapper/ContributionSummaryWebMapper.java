@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.mapper;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionWebDisplayConfig;
+import com.bct.ngtpa.apiservice.adapter.in.web.support.RequestLanguageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ContributionActionsResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ContributionAmountValueResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ContributionBreakdownResponse;
@@ -126,7 +127,7 @@ public class ContributionSummaryWebMapper {
         // Breakdown rows: total first, then by source order
         List<ContributionBreakdownRowResponse> breakdownRows = new ArrayList<>();
         breakdownRows.add(new ContributionBreakdownRowResponse(
-                displayConfig.totalLabelEn(),
+            resolveTotalLabel(displayConfig, lang),
                 new ContributionAmountValueResponse(totalAmount, totalText)));
 
         row.details(result.report().sources()).forEach(detail -> {
@@ -156,6 +157,11 @@ public class ContributionSummaryWebMapper {
         return display.en() != null ? display.en() : "";
     }
 
+    private String resolveTotalLabel(ContributionWebDisplayConfig displayConfig, String lang) {
+        if (isZhHk(lang)) return displayConfig.totalLabelZh();
+        return displayConfig.totalLabelEn();
+    }
+
     private String resolveLabel(com.bct.ngtpa.apiservice.domain.model.ContributionLabels labels, String lang) {
         if (labels == null) return "";
         if (isZhHk(lang)) return StringUtils.hasText(labels.zh()) ? labels.zh() : labels.en();
@@ -163,7 +169,7 @@ public class ContributionSummaryWebMapper {
     }
 
     private boolean isZhHk(String lang) {
-        return "zh_HK".equalsIgnoreCase(lang);
+        return RequestLanguageResolver.isZhHk(lang);
     }
 
     static LocalDate tryParseApimDate(String raw) {
