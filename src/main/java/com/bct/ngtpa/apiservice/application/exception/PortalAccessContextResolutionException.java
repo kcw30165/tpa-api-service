@@ -13,4 +13,8 @@ public class PortalAccessContextResolutionException extends ApplicationException
     public PortalAccessContextResolutionException(String message) {
         super(ErrorCodes.MEMBER_CONTEXT_UNAVAILABLE, message);
     }
+
+    public PortalAccessContextResolutionException(String errorCode, String message) {
+        super(errorCode, message);
+    }
 }

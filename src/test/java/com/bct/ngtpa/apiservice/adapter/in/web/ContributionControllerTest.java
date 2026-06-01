@@ -8,24 +8,33 @@ import com.bct.ngtpa.apiservice.application.dto.ContributionActions;
 import com.bct.ngtpa.apiservice.application.dto.CurrencyDisplay;
 import com.bct.ngtpa.apiservice.application.dto.ContributionSummaryReportResult;
 import com.bct.ngtpa.apiservice.application.dto.GetContributionSummaryCommand;
+import com.bct.ngtpa.apiservice.application.exception.ApplicationException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import com.bct.ngtpa.apiservice.application.port.in.ExportContributionSummaryUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetContributionSummaryUseCase;
 import com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionSummaryProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestHeaderContextWebFilter;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingWebFilter;
 import com.bct.ngtpa.apiservice.domain.model.ContributionLabels;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSource;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryReport;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryRow;
+import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
+import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 import org.springframework.aop.aspectj.annotation.AspectJProxyFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
+import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
@@ -36,6 +45,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ContributionControllerTest {
+
+        private static final String VALID_ACCOUNT_REF = "ACC-123";
 
     @Test
     void returnsContributionListJsonAndPassesQueryParamsToUseCase() {
@@ -86,6 +97,54 @@ class ContributionControllerTest {
     }
 
     @Test
+    void passesAccountRefFromHeaderContextToContributionSummaryUseCase() {
+        AtomicReference<GetContributionSummaryCommand> captured = new AtomicReference<>();
+        GetContributionSummaryUseCase getUseCase = command -> {
+            captured.set(command);
+            if (!VALID_ACCOUNT_REF.equals(command.accountRef())) {
+                return Mono.error(new ApplicationException(
+                        ErrorCodes.MEMBER_CONTEXT_INVALID,
+                        "accountRef must be present"));
+            }
+            return Mono.just(sampleResult());
+        };
+
+        webClientWithoutDefaultAccountRef(getUseCase, unusedExportUseCase())
+                .get()
+                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions")
+                        .queryParam("fromDate", "01/03/2026")
+                        .queryParam("toDate", "31/03/2026")
+                        .build())
+                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, VALID_ACCOUNT_REF)
+                .exchange()
+                .expectStatus().isOk();
+
+        assertEquals(VALID_ACCOUNT_REF, captured.get().accountRef());
+    }
+
+    @Test
+    void missingAccountRefReturnsMemberContextInvalidForContributionSummary() {
+        GetContributionSummaryUseCase getUseCase = command -> Mono.error(new ApplicationException(
+                ErrorCodes.MEMBER_CONTEXT_INVALID,
+                "accountRef must be present"));
+
+        filteredWebClient(getUseCase, unusedExportUseCase())
+                .get()
+                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions")
+                        .queryParam("fromDate", "01/03/2026")
+                        .queryParam("toDate", "31/03/2026")
+                        .build())
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectHeader().valueMatches("X-Request-Id",
+                        "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.MEMBER_CONTEXT_INVALID)
+                .jsonPath("$.message").isEqualTo("Member context is invalid.")
+                .jsonPath("$.requestId").doesNotExist();
+    }
+
+    @Test
     void usesDefaultPageAndPageSizeWhenNotProvided() {
         AtomicReference<GetContributionSummaryCommand> captured = new AtomicReference<>();
         GetContributionSummaryUseCase getUseCase = command -> {
@@ -129,6 +188,107 @@ class ContributionControllerTest {
                 .expectStatus().isOk();
 
         assertEquals("en", captured.get().lang());
+    }
+
+    @Test
+    void prefersAcceptLanguageZhHkOverLangQueryForContributionJson() {
+        GetContributionSummaryUseCase getUseCase = command -> Mono.just(localizedSampleResult());
+
+        filteredWebClient(getUseCase, unusedExportUseCase())
+                .get()
+                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions")
+                        .queryParam("fromDate", "01/03/2026")
+                        .queryParam("toDate", "31/03/2026")
+                        .queryParam("lang", "en")
+                        .build())
+                .header(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, "zh-HK")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.items[0].currency.text").isEqualTo("港元")
+                .jsonPath("$.items[0].breakdown.rows[0].label").isEqualTo("供款總額")
+                .jsonPath("$.items[0].breakdown.rows[1].label").isEqualTo("公司")
+                .jsonPath("$.items[0].breakdown.rows[2].label").isEqualTo("員工");
+    }
+
+    @Test
+    void normalizesAcceptLanguageEnUsToEnglishAndPrefersItOverLangQueryForContributionJson() {
+        GetContributionSummaryUseCase getUseCase = command -> Mono.just(localizedSampleResult());
+
+        filteredWebClient(getUseCase, unusedExportUseCase())
+                .get()
+                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions")
+                        .queryParam("fromDate", "01/03/2026")
+                        .queryParam("toDate", "31/03/2026")
+                        .queryParam("lang", "zh_HK")
+                        .build())
+                .header(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, "en-US")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.items[0].currency.text").isEqualTo("HKD")
+                .jsonPath("$.items[0].breakdown.rows[0].label").isEqualTo("Total Contributions")
+                .jsonPath("$.items[0].breakdown.rows[1].label").isEqualTo("Company")
+                .jsonPath("$.items[0].breakdown.rows[2].label").isEqualTo("Member");
+    }
+
+    @Test
+    void fallsBackToLangQueryWhenAcceptLanguageIsMissingForContributionJson() {
+        GetContributionSummaryUseCase getUseCase = command -> Mono.just(localizedSampleResult());
+
+        filteredWebClient(getUseCase, unusedExportUseCase())
+                .get()
+                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions")
+                        .queryParam("fromDate", "01/03/2026")
+                        .queryParam("toDate", "31/03/2026")
+                        .queryParam("lang", "zh_HK")
+                        .build())
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.items[0].currency.text").isEqualTo("港元")
+                .jsonPath("$.items[0].breakdown.rows[1].label").isEqualTo("公司")
+                .jsonPath("$.items[0].breakdown.rows[2].label").isEqualTo("員工");
+    }
+
+    @Test
+    void defaultsToEnglishWhenAcceptLanguageAndLangAreMissingForContributionJson() {
+        GetContributionSummaryUseCase getUseCase = command -> Mono.just(localizedSampleResult());
+
+        filteredWebClient(getUseCase, unusedExportUseCase())
+                .get()
+                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions")
+                        .queryParam("fromDate", "01/03/2026")
+                        .queryParam("toDate", "31/03/2026")
+                        .build())
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.items[0].currency.text").isEqualTo("HKD")
+                .jsonPath("$.items[0].breakdown.rows[0].label").isEqualTo("Total Contributions")
+                .jsonPath("$.items[0].breakdown.rows[1].label").isEqualTo("Company")
+                .jsonPath("$.items[0].breakdown.rows[2].label").isEqualTo("Member");
+    }
+
+    @Test
+    void defaultsUnknownAcceptLanguageToEnglishInsteadOfUsingLangFallbackForContributionJson() {
+        GetContributionSummaryUseCase getUseCase = command -> Mono.just(localizedSampleResult());
+
+        filteredWebClient(getUseCase, unusedExportUseCase())
+                .get()
+                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions")
+                        .queryParam("fromDate", "01/03/2026")
+                        .queryParam("toDate", "31/03/2026")
+                        .queryParam("lang", "zh_HK")
+                        .build())
+                .header(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, "fr-FR")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.items[0].currency.text").isEqualTo("HKD")
+                .jsonPath("$.items[0].breakdown.rows[0].label").isEqualTo("Total Contributions")
+                .jsonPath("$.items[0].breakdown.rows[1].label").isEqualTo("Company")
+                .jsonPath("$.items[0].breakdown.rows[2].label").isEqualTo("Member");
     }
 
     @Test
@@ -205,41 +365,218 @@ class ContributionControllerTest {
                 .consumeWith(result -> assertTrue(result.getResponseBody() != null && result.getResponseBody().length > 0));
     }
 
+        @Test
+        void passesAccountRefFromHeaderContextToContributionExportUseCase() {
+                AtomicReference<String> captured = new AtomicReference<>();
+                ExportContributionSummaryUseCase exportUseCase = command -> {
+                        captured.set(command.accountRef());
+                        if (!VALID_ACCOUNT_REF.equals(command.accountRef())) {
+                                return Mono.error(new ApplicationException(
+                                                ErrorCodes.MEMBER_CONTEXT_INVALID,
+                                                "accountRef must be present"));
+                        }
+                        return Mono.just(sampleResult());
+                };
+
+                filteredWebClient(unusedGetUseCase(), exportUseCase)
+                                .get()
+                                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions/export").build())
+                                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, VALID_ACCOUNT_REF)
+                                .exchange()
+                                .expectStatus().isOk();
+
+                assertEquals(VALID_ACCOUNT_REF, captured.get());
+        }
+
+    @Test
+    void missingAccountRefReturnsMemberContextInvalidForContributionExport() {
+        ExportContributionSummaryUseCase exportUseCase = command -> Mono.error(new ApplicationException(
+                ErrorCodes.MEMBER_CONTEXT_INVALID,
+                "accountRef must be present"));
+
+        webClientWithoutDefaultAccountRef(unusedGetUseCase(), exportUseCase)
+                .get()
+                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions/export").build())
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectHeader().valueMatches("X-Request-Id",
+                        "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.MEMBER_CONTEXT_INVALID)
+                .jsonPath("$.message").isEqualTo("Member context is invalid.")
+                .jsonPath("$.requestId").doesNotExist();
+    }
+
+        @Test
+        void exportErrorsStillReturnStandardJsonEnvelopeWhenAcceptOnlyAllowsXlsx() {
+                ExportContributionSummaryUseCase exportUseCase = command -> Mono.error(
+                                new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "upstream failed"));
+
+                webClient(unusedGetUseCase(), exportUseCase)
+                                .get()
+                                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions/export").build())
+                                .header("Accept", ContributionController.EXCEL_MEDIA_TYPE)
+                                .exchange()
+                                .expectStatus().isEqualTo(HttpStatus.BAD_GATEWAY)
+                                .expectHeader().contentType("application/json")
+                                .expectBody()
+                                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.APIM_UPSTREAM_FAILURE)
+                                .jsonPath("$.message").isEqualTo("Service is temporarily unavailable. Please try again later.");
+        }
+
+    @Test
+    void prefersAcceptLanguageZhHkOverLangQueryForContributionExportWorkbook() {
+        ExportContributionSummaryUseCase exportUseCase = command -> Mono.just(localizedSampleResult());
+
+        filteredWebClient(unusedGetUseCase(), exportUseCase)
+                .get()
+                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions/export")
+                        .queryParam("lang", "en")
+                        .build())
+                .header(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, "zh-HK")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .consumeWith(result -> assertWorkbookLanguage(
+                        result.getResponseBody(),
+                        "供款總額",
+                        "公司",
+                        "員工"));
+    }
+
+    @Test
+    void normalizesAcceptLanguageEnUsToEnglishAndPrefersItOverLangQueryForContributionExportWorkbook() {
+        ExportContributionSummaryUseCase exportUseCase = command -> Mono.just(localizedSampleResult());
+
+        filteredWebClient(unusedGetUseCase(), exportUseCase)
+                .get()
+                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions/export")
+                        .queryParam("lang", "zh_HK")
+                        .build())
+                .header(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, "en-US")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .consumeWith(result -> assertWorkbookLanguage(
+                        result.getResponseBody(),
+                        "Total Contributions",
+                        "Company",
+                        "Member"));
+    }
+
+    @Test
+    void fallsBackToLangQueryWhenAcceptLanguageIsMissingForContributionExportWorkbook() {
+        ExportContributionSummaryUseCase exportUseCase = command -> Mono.just(localizedSampleResult());
+
+        filteredWebClient(unusedGetUseCase(), exportUseCase)
+                .get()
+                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions/export")
+                        .queryParam("lang", "zh_HK")
+                        .build())
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .consumeWith(result -> assertWorkbookLanguage(
+                        result.getResponseBody(),
+                        "供款總額",
+                        "公司",
+                        "員工"));
+    }
+
+    @Test
+    void defaultsToEnglishWhenAcceptLanguageAndLangAreMissingForContributionExportWorkbook() {
+        ExportContributionSummaryUseCase exportUseCase = command -> Mono.just(localizedSampleResult());
+
+        filteredWebClient(unusedGetUseCase(), exportUseCase)
+                .get()
+                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions/export")
+                        .build())
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .consumeWith(result -> assertWorkbookLanguage(
+                        result.getResponseBody(),
+                        "Total Contributions",
+                        "Company",
+                        "Member"));
+    }
+
+    @Test
+    void defaultsUnknownAcceptLanguageToEnglishInsteadOfUsingLangFallbackForContributionExportWorkbook() {
+        ExportContributionSummaryUseCase exportUseCase = command -> Mono.just(localizedSampleResult());
+
+        filteredWebClient(unusedGetUseCase(), exportUseCase)
+                .get()
+                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions/export")
+                        .queryParam("lang", "zh_HK")
+                        .build())
+                .header(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, "fr-FR")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .consumeWith(result -> assertWorkbookLanguage(
+                        result.getResponseBody(),
+                        "Total Contributions",
+                        "Company",
+                        "Member"));
+    }
+
     private WebTestClient webClient(
             GetContributionSummaryUseCase getContributionSummaryUseCase,
             ExportContributionSummaryUseCase exportContributionSummaryUseCase) {
+        return buildContributionClient(getContributionSummaryUseCase, exportContributionSummaryUseCase,
+                new ContributionSortingSupport(), true);
+    }
+
+    private WebTestClient webClientWithoutDefaultAccountRef(
+            GetContributionSummaryUseCase getContributionSummaryUseCase,
+            ExportContributionSummaryUseCase exportContributionSummaryUseCase) {
+        return buildContributionClient(getContributionSummaryUseCase, exportContributionSummaryUseCase,
+                new ContributionSortingSupport(), false);
+    }
+
+    private WebTestClient buildContributionClient(
+            GetContributionSummaryUseCase getContributionSummaryUseCase,
+            ExportContributionSummaryUseCase exportContributionSummaryUseCase,
+            ContributionSortingSupport sortingSupport,
+            boolean withDefaultAccountRef) {
         var provider = displayConfigProvider();
         var mapper = new ContributionSummaryWebMapper(
                 (amount, lang, accountEnv, trustCode, schemeType) -> amount == null ? "0" : amount.toPlainString(),
                 (date, lang, accountEnv, trustCode, schemeType) -> date != null ? date.format(DateTimeFormatter.ofPattern("MM/dd/yyyy")) : "");
-        return WebTestClient.bindToController(new ContributionController(
+        var client = WebTestClient.bindToController(new ContributionController(
                         getContributionSummaryUseCase,
                         exportContributionSummaryUseCase,
                         new ContributionSummaryWorkbookExporter(provider),
                         provider,
                         mapper,
-                        new ContributionSortingSupport()))
+                        sortingSupport))
+                .webFilter(requestHeaderContextWebFilter())
                 .controllerAdvice(new ApiExceptionHandler(testErrorMessageResolver(), testLoggingSanitizer()))
                 .build();
+        if (withDefaultAccountRef) {
+            return client.mutate()
+                    .defaultHeader(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, VALID_ACCOUNT_REF)
+                    .build();
+        }
+        return client;
+    }
+
+    private WebTestClient filteredWebClient(
+            GetContributionSummaryUseCase getContributionSummaryUseCase,
+            ExportContributionSummaryUseCase exportContributionSummaryUseCase) {
+        return webClient(getContributionSummaryUseCase, exportContributionSummaryUseCase);
     }
 
     /** Creates a WebTestClient with an AOP-proxied {@link ContributionSortingSupport}. */
     private WebTestClient sortingWebClient(
             GetContributionSummaryUseCase getContributionSummaryUseCase,
             ExportContributionSummaryUseCase exportContributionSummaryUseCase) {
-        var provider = displayConfigProvider();
-        var mapper = new ContributionSummaryWebMapper(
-                (amount, lang, accountEnv, trustCode, schemeType) -> amount == null ? "0" : amount.toPlainString(),
-                (date, lang, accountEnv, trustCode, schemeType) -> date != null ? date.format(DateTimeFormatter.ofPattern("MM/dd/yyyy")) : "");
-        return WebTestClient.bindToController(new ContributionController(
-                        getContributionSummaryUseCase,
-                        exportContributionSummaryUseCase,
-                        new ContributionSummaryWorkbookExporter(provider),
-                        provider,
-                        mapper,
-                        sortingSupportProxy()))
-                .controllerAdvice(new ApiExceptionHandler(testErrorMessageResolver(), testLoggingSanitizer()))
-                .build();
+        return buildContributionClient(
+                getContributionSummaryUseCase,
+                exportContributionSummaryUseCase,
+                sortingSupportProxy(),
+                true);
     }
 
     /** Creates an AOP-proxied {@link ContributionSortingSupport} with the real aspect applied. */
@@ -332,6 +669,11 @@ class ContributionControllerTest {
         return new ContributionWebDisplayConfigProvider(properties);
     }
 
+        private RequestHeaderContextWebFilter requestHeaderContextWebFilter() {
+                return new RequestHeaderContextWebFilter(
+                                new RequestLoggingWebFilter(new RequestLoggingProperties(), testLoggingSanitizer(), new ObjectMapper()));
+        }
+
     private GetContributionSummaryUseCase unusedGetUseCase() {
         return command -> Mono.just(sampleResult());
     }
@@ -339,6 +681,8 @@ class ContributionControllerTest {
         private static ErrorMessageResolver testErrorMessageResolver() {
                 return (errorCode, locale, accountEnv, trustCode, schemeType) -> switch (errorCode) {
                         case ErrorCodes.CONTRIBUTION_REQUEST_INVALID -> "Invalid contribution request.";
+                        case ErrorCodes.MEMBER_CONTEXT_INVALID -> "Member context is invalid.";
+                        case ErrorCodes.APIM_UPSTREAM_FAILURE -> "Service is temporarily unavailable. Please try again later.";
                         case ErrorCodes.SYSTEM_UNEXPECTED -> "Sorry, this service might be interrupted. Please try again later.";
                         default -> errorCode;
                 };
@@ -375,4 +719,38 @@ class ContributionControllerTest {
                 "",
                 "");
     }
+
+        private ContributionSummaryReportResult localizedSampleResult() {
+                return new ContributionSummaryReportResult(
+                                new ContributionSummaryReport(
+                                                "HKD",
+                                                List.of(
+                                                                new ContributionSource("ER", new ContributionLabels("Company", "公司"), 10),
+                                                                new ContributionSource("EE", new ContributionLabels("Member", "員工"), 20)),
+                                                List.of(new ContributionSummaryRow(
+                                                                "01/03/2026",
+                                                                "01/03/2026",
+                                                                "31/03/2026",
+                                                                new BigDecimal("24908.45"),
+                                                                new LinkedHashMap<>(java.util.Map.of(
+                                                                                "ER", new BigDecimal("17791.75"),
+                                                                                "EE", new BigDecimal("7116.7")))))),
+                                new CurrencyDisplay("HKD", "港元"),
+                                new ContributionActions(true),
+                                "",
+                                "",
+                                "");
+        }
+
+        private void assertWorkbookLanguage(byte[] responseBody, String totalHeader, String employerHeader, String memberHeader) {
+                try (var workbook = new XSSFWorkbook(new ByteArrayInputStream(responseBody))) {
+                        var sheet = workbook.getSheetAt(0);
+                        var headerRow = sheet.getRow(0);
+                        assertEquals(totalHeader, headerRow.getCell(2).getStringCellValue());
+                        assertEquals(employerHeader, headerRow.getCell(3).getStringCellValue());
+                        assertEquals(memberHeader, headerRow.getCell(4).getStringCellValue());
+                } catch (Exception ex) {
+                        throw new AssertionError("Expected a readable contribution workbook.", ex);
+                }
+        }
 }

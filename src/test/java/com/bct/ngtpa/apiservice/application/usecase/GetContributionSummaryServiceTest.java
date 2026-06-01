@@ -105,7 +105,7 @@ class GetContributionSummaryServiceTest {
     }
 
     @Test
-    void resolvesPortalAccessContextWithContributionsAccountRef() {
+    void resolvesPortalAccessContextWithCommandAccountRef() {
         AtomicReference<String> capturedRef = new AtomicReference<>();
         PortalAccessContextPort capturingPort = accountRef -> {
             capturedRef.set(accountRef);
@@ -123,9 +123,9 @@ class GetContributionSummaryServiceTest {
                 actionPermissionPort());
 
         service.execute(new GetContributionSummaryCommand(
-                "01/01/2026", "31/03/2026", "en", 1, 99999)).block();
+        "01/01/2026", "31/03/2026", "en", 1, 99999, "ACC-123")).block();
 
-        assertEquals("contributions", capturedRef.get());
+    assertEquals("ACC-123", capturedRef.get());
     }
 
     @Test

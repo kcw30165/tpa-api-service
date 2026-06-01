@@ -7,8 +7,12 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.NotificationListResponse
 import com.bct.ngtpa.apiservice.adapter.in.web.response.UpdateNotificationsReadStatusResponse;
 import com.bct.ngtpa.apiservice.application.dto.GetNotificationsCommand;
 import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusCommand;
+import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.application.port.in.GetNotificationsUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.UpdateNotificationsReadStatusUseCase;
+import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
+import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
+import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -19,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
+import reactor.util.context.ContextView;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -36,7 +41,7 @@ public class NotificationController {
             @RequestParam(value = "size", required = false) Integer size,
             @RequestParam(value = "dateFormat", required = false) String dateFormat,
             @RequestParam(value = "timezone", required = false) String timezone) {
-        return getNotificationsUseCase
+        return Mono.deferContextual(contextView -> getNotificationsUseCase
                 .execute(new GetNotificationsCommand(
                         null,
                         null,
@@ -47,8 +52,9 @@ public class NotificationController {
                         null,
                         null,
                         null,
-                        null))
-                .map(notificationWebMapper::toResponse);
+                        null,
+                        resolveRequiredAccountRef(contextView)))
+                .map(notificationWebMapper::toResponse));
     }
 
     @PatchMapping(
@@ -57,7 +63,7 @@ public class NotificationController {
             produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<UpdateNotificationsReadStatusResponse> updateNotificationsReadStatus(
             @Valid @RequestBody UpdateNotificationsReadStatusRequest request) {
-        return updateNotificationsReadStatusUseCase
+        return Mono.deferContextual(contextView -> updateNotificationsReadStatusUseCase
                 .execute(new UpdateNotificationsReadStatusCommand(
                         null,
                         null,
@@ -66,7 +72,20 @@ public class NotificationController {
                         null,
                         null,
                         null,
-                        null))
-                .map(notificationReadStatusWebMapper::toResponse);
+                        null,
+                        resolveRequiredAccountRef(contextView)))
+                .map(notificationReadStatusWebMapper::toResponse));
+    }
+
+    private String resolveRequiredAccountRef(ContextView contextView) {
+        RequestHeaderContext requestHeaderContext = contextView.getOrDefault(
+                RequestHeaderContextKeys.CONTEXT_KEY,
+                null);
+        if (requestHeaderContext == null || requestHeaderContext.accountRef() == null) {
+            throw new PortalAccessContextResolutionException(
+                    ErrorCodes.MEMBER_CONTEXT_INVALID,
+                    "Missing Account-Ref header for selected-account API");
+        }
+        return requestHeaderContext.accountRef();
     }
 }

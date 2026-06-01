@@ -34,7 +34,7 @@ public class GetContributionSummaryService implements GetContributionSummaryUseC
                                         ContributionSummarySupport.validateDateRangeWithinReferenceWindow(fromDate,
                                                         toDate, refDate);
                                         return portalAccessContextPort
-                                                        .resolvePortalAccessContext("contributions")
+                                                        .resolvePortalAccessContext(resolveAccountRef(command.accountRef(), "contributions"))
                                                         .map(ctx -> ContributionSummarySupport
                                                                         .newFetchCommand(
                                                                                         ContributionSummarySupport
@@ -58,5 +58,9 @@ public class GetContributionSummaryService implements GetContributionSummaryUseC
                                                                 fetchCommand.trustCode(),
                                                                 fetchCommand.schemeType(),
                                                                 fetchCommand.accountEnv())));
+        }
+
+        private String resolveAccountRef(String accountRef, String fallbackAccountRef) {
+                return accountRef != null ? accountRef : fallbackAccountRef;
         }
 }

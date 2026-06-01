@@ -41,7 +41,7 @@ class UpdateNotificationsReadStatusServiceTest {
             () -> Mono.just(LocalDate.of(2025, 10, 1));
 
     @Test
-    void enrichesCommandFromPortalAccessContextPortAndReturnsPortResult() {
+    void enrichesCommandFromCommandAccountRefAndReturnsPortResult() {
         AtomicReference<UpdateNotificationsReadStatusCommand> captured = new AtomicReference<>();
         AtomicInteger invocationCount = new AtomicInteger();
         UpdateNotificationsReadStatusResult expectedResult = new UpdateNotificationsReadStatusResult(List.of(
@@ -69,11 +69,12 @@ class UpdateNotificationsReadStatusServiceTest {
                 null,
                 null,
                 null,
-                null)).block();
+            null,
+            "ACC-123")).block();
 
         assertEquals(expectedResult, result);
         assertEquals(1, invocationCount.get());
-        assertEquals("notifications", capturedRef.get());
+        assertEquals("ACC-123", capturedRef.get());
         assertEquals("JP", captured.get().accountEnv());
         assertEquals("MBR", captured.get().mbrType());
         assertEquals(List.of("msgCode1", "msgCode2"), captured.get().notificationIds());

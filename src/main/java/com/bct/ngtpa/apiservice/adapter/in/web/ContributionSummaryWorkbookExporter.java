@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionWebDisplayConfigProvider;
+import com.bct.ngtpa.apiservice.adapter.in.web.support.RequestLanguageResolver;
 import com.bct.ngtpa.apiservice.application.dto.ContributionSummaryReportResult;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.CellType;
@@ -22,10 +23,18 @@ public class ContributionSummaryWorkbookExporter {
     private final ContributionWebDisplayConfigProvider displayConfigProvider;
 
     public byte[] write(ContributionSummaryReportResult result) {
+        return writeInternal(result, null, false);
+    }
+
+    public byte[] write(ContributionSummaryReportResult result, String lang) {
+        return writeInternal(result, lang, true);
+    }
+
+    private byte[] writeInternal(ContributionSummaryReportResult result, String lang, boolean localized) {
         try (var workbook = new XSSFWorkbook(); var outputStream = new ByteArrayOutputStream()) {
             var sheet = workbook.createSheet("Contribution Summary");
             var amountStyle = numericAmountStyle(workbook);
-            writeHeaderRow(sheet.createRow(0), result);
+            writeHeaderRow(sheet.createRow(0), result, lang, localized);
 
             int rowIndex = 1;
             for (var reportRow : result.report().rows()) {
@@ -53,17 +62,35 @@ public class ContributionSummaryWorkbookExporter {
         }
     }
 
-    private void writeHeaderRow(Row row, ContributionSummaryReportResult result) {
+    private void writeHeaderRow(Row row, ContributionSummaryReportResult result, String lang, boolean localized) {
         var displayConfig = displayConfigProvider.get();
         row.createCell(0).setCellValue(displayConfig.dealingDateHeader());
         row.createCell(1).setCellValue(displayConfig.contributionPeriodHeader());
-        row.createCell(2).setCellValue(displayConfig.totalContributionHeader());
+        row.createCell(2).setCellValue(localized
+                ? resolveTotalHeader(displayConfig, lang)
+                : displayConfig.totalContributionHeader());
 
         int columnIndex = 3;
         for (var source : result.report().sources()) {
-            row.createCell(columnIndex++).setCellValue(
-                    safe(source.labels().en()) + safe(source.labels().zh()));
+            row.createCell(columnIndex++).setCellValue(localized
+                    ? resolveSourceHeader(source.labels(), lang)
+                    : safe(source.labels().en()) + safe(source.labels().zh()));
         }
+    }
+
+    private String resolveTotalHeader(com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionWebDisplayConfig displayConfig,
+            String lang) {
+        return RequestLanguageResolver.isZhHk(lang) ? displayConfig.totalLabelZh() : displayConfig.totalLabelEn();
+    }
+
+    private String resolveSourceHeader(com.bct.ngtpa.apiservice.domain.model.ContributionLabels labels, String lang) {
+        if (labels == null) {
+            return "";
+        }
+        if (RequestLanguageResolver.isZhHk(lang)) {
+            return safe(labels.zh());
+        }
+        return safe(labels.en());
     }
 
     private void writeAmountCell(Row row, int columnIndex, BigDecimal amount, CellStyle amountStyle) {

@@ -65,7 +65,8 @@ com.bct.ngtpa.apiservice
 │   │   │   ├── ContributionWebDisplayConfig      # Neutral record: total labels + XLSX headers
 │   │   │   └── ContributionWebDisplayConfigProvider  # Adapts ContributionSummaryProperties → ContributionWebDisplayConfig
 │   │   ├── filter/      # Inbound WebFilter infrastructure
-│   │   │   ├── RequestLoggingWebFilter           # Correlation ID + lifecycle logs
+│   │   │   ├── RequestLoggingWebFilter           # Correlation ID + global RequestHeaderContext extraction + lifecycle logs
+│   │   │   ├── RequestHeaderContextWebFilter     # Thin test wrapper over the live global filter path
 │   │   │   └── RequestLoggingProperties          # Binds request-logging.* YAML
 │   │   ├── request/     # UpdateNotificationsReadStatusRequest
 │   │   └── response/    # Notification and contribution summary response records
@@ -130,9 +131,42 @@ com.bct.ngtpa.apiservice
 │   ├── logging/
 │   │   └── LogExecution.java              # Method-level AOP annotation (adapters/facades only)
 │   └── web/
-│       └── RequestCorrelation.java        # X-Request-Id header/attribute/context key constants
+│       ├── RequestCorrelation.java        # X-Request-Id header/attribute/context key constants
+│       ├── RequestHeaderContext.java      # Account-Ref, requestId, language carrier for inbound Reactor Context
+│       └── RequestHeaderContextKeys.java  # Shared header names and RequestHeaderContext attribute/context keys
 └── exception/           # ApimException (shared)
 ```
+
+## Inbound Request Header Context
+
+Phase 1 now provides a single global inbound request header context at the WebFlux boundary.
+
+The live owner is `RequestLoggingWebFilter`, which resolves a typed `RequestHeaderContext` once per inbound request and stores it in both Reactor Context and `ServerWebExchange` attributes for web and infrastructure code.
+
+Extracted headers:
+
+- `Account-Ref`
+- `X-Request-Id`
+- `Accept-Language`
+
+Behavior:
+
+- `Account-Ref` is optional globally and must not be required for login or account-list style flows.
+- Selected-account APIs now require `Account-Ref` for:
+  - `GET /api/v1/contributions`
+  - `GET /api/v1/contributions/export`
+  - `GET /api/v1/notifications`
+  - `PATCH /api/v1/notifications`
+- Missing or invalid `Account-Ref` on those selected-account APIs returns HTTP `400` with error code `err.member.context.invalid`.
+- `X-Request-Id` behavior is unchanged: the filter reuses a non-blank inbound value, generates a UUID when missing, returns the value in the response header, and keeps propagating it through Reactor Context.
+- Only `X-Request-Id` is propagated to APIM by `ApimRequestIdExchangeFilter`.
+- `Account-Ref` is not propagated to APIM.
+- `Accept-Language` is not propagated to APIM.
+- `Accept-Language` is extracted from the inbound request and defaults to `en` when missing or blank.
+- Contribution success responses now prefer inbound `Accept-Language` for `GET /api/v1/contributions` and `GET /api/v1/contributions/export`, with `lang` kept as a temporary fallback and `en` as the default.
+- Contribution endpoint normalization is `en`, `en-US`, `en_HK` -> `en`; `zh-HK`, `zh_HK`, `zh` -> `zh_HK`; blank, missing, and unknown values -> `en`.
+- Error-message localization by `Accept-Language` is still deferred, and notification response behavior is unchanged.
+- Login, account-list, OAuth, and Account-Ref generation remain future work outside this phase.
 
 ### APIM Response Envelope
 
@@ -296,7 +330,15 @@ When an Auth Server is available, set `api.security.require-authentication=true`
 
 ## Temporary Portal Access Context Configuration
 
-Until Auth Server integration is implemented, the actor identity, member ownership, and account routing fields used in APIM calls are sourced from a temporary feature-specific profile configuration rather than derived from a JWT token.
+Until Auth Server integration is implemented, the actor identity, member ownership, and account routing fields used in APIM calls are sourced from a temporary profile configuration rather than derived from a JWT token.
+
+For the selected-account APIs, `TemporaryPortalAccessContextAdapter` now resolves the context from an account-ref keyed profile entry:
+
+```text
+temporary-portal-access-context.profiles[{accountRef}]
+```
+
+The older feature-key entries such as `notifications` and `contributions` remain only as a transitional fallback for non-migrated callers and should be removed once all selected-account flows supply real `Account-Ref` values end to end.
 
 The context model is structured into three separate dimensions:
 
@@ -305,15 +347,28 @@ The context model is structured into three separate dimensions:
 - **Account** (`accountEnv`, `policyNo`, `certNo`, `trustCode`, `schemeType`, `termStatus`, `termCompletionDate`) — routing fields and term metadata for the target APIM account
 
 
-The property class `TemporaryPortalAccessContextProperties` binds `temporary-portal-access-context.profiles.*`. The outbound adapter `TemporaryPortalAccessContextAdapter` (under `adapter/out/security`) implements `PortalAccessContextPort`, resolves the correct profile by account reference key (`"notifications"` or `"contributions"`), converts raw `term-status` into the framework-free `TermStatus` enum, and parses `term-completion-date` as `dd/MM/yyyy` when present.
+The property class `TemporaryPortalAccessContextProperties` binds `temporary-portal-access-context.profiles.*`. The outbound adapter `TemporaryPortalAccessContextAdapter` (under `adapter/out/security`) implements `PortalAccessContextPort`, resolves the correct profile by account reference key (for example `ACC-123`), retains transitional support for legacy feature-key entries when callers still pass `notifications` or `contributions`, converts raw `term-status` into the framework-free `TermStatus` enum, and parses `term-completion-date` as `dd/MM/yyyy` when present.
 
-If a required profile is missing from configuration, the service fails fast with `PortalAccessContextResolutionException`, which maps to HTTP **500** with the standard error body (error code `err.member.context.unavailable` — retained for API contract stability).
+For the selected-account APIs, missing or invalid `Account-Ref` values fail fast with `PortalAccessContextResolutionException` mapped to HTTP **400** with error code `err.member.context.invalid`. Genuine context unavailability still maps to HTTP **500** with `err.member.context.unavailable`.
 
 Example YAML (present in `application-local.yml` with blank-safe defaults for the term fields):
 
 ```yaml
 temporary-portal-access-context:
   profiles:
+    ACC-123:
+      actor-user-id: ${TEMP_ACC_123_ACTOR_USER_ID:C402400A}
+      actor-user-type: ${TEMP_ACC_123_ACTOR_USER_TYPE:MEMBER}
+      actor-user-role: ${TEMP_ACC_123_ACTOR_USER_ROLE:SELF}
+      member-user-id: ${TEMP_ACC_123_MEMBER_USER_ID:C402400A}
+      member-type: ${TEMP_ACC_123_MEMBER_TYPE:MBR}
+      account-env: ${TEMP_ACC_123_ACCOUNT_ENV:JP}
+      policy-no: ${TEMP_ACC_123_POLICY_NO:00000000217}
+      cert-no: ${TEMP_ACC_123_CERT_NO:95}
+      trust-code: ${TEMP_ACC_123_TRUST_CODE:JPM}
+      scheme-type: ${TEMP_ACC_123_SCHEME_TYPE:OE}
+      term-status: ${TEMP_ACC_123_TERM_STATUS:}
+      term-completion-date: ${TEMP_ACC_123_TERM_COMPLETION_DATE:}
     notifications:
       actor-user-id: ${TEMP_NOTIF_ACTOR_USER_ID:C402400A}
       actor-user-type: ${TEMP_NOTIF_ACTOR_USER_TYPE:MEMBER}
@@ -342,9 +397,11 @@ temporary-portal-access-context:
       term-completion-date: ${TEMP_CONT_TERM_COMPLETION_DATE:}
 ```
 
+  `ACC-123` demonstrates the preferred selected-account shape. The `notifications` and `contributions` entries are transitional examples kept only to support the legacy fallback during migration.
+
 Blank or missing `term-status` maps to `TermStatus.BLANK` without warning. Unsupported non-blank raw values map to `TermStatus.UNKNOWN` and emit a sanitized warning from the temporary provider boundary only.
 
-This configuration is **temporary**. It will be replaced once the Auth Server is integrated and portal access context is extracted from JWT access token claims.
+  This configuration is **temporary**. It will be replaced once the Auth Server is integrated and portal access context is extracted from JWT access token claims.
 
 ---
 
@@ -900,7 +957,7 @@ Retrieves grouped contribution summary rows for a member context as JSON.
 - `mbrType` (required by frontend contract; currently forwarded only as application context)
 - `fromDate` (required; `dd/MM/yyyy`)
 - `toDate` (required; `dd/MM/yyyy`)
-- `lang` (optional; language code for display formatting, e.g. `en`, `zh_HK`; defaults to `en`)
+- `lang` (optional temporary fallback when `Accept-Language` is missing; normalized to `en` or `zh_HK`; defaults to `en`)
 - `page` (optional; pagination page number, must be > 0; defaults to `1`)
 - `pageSize` (optional; number of items per page, must be > 0; defaults to `20`)
 
@@ -908,6 +965,7 @@ Retrieves grouped contribution summary rows for a member context as JSON.
 
 ```http
 GET /api/v1/contributions?env=JP&mbrType=MBR&fromDate=05/04/2026&toDate=05/05/2026&lang=en&page=1&pageSize=20
+Accept-Language: zh-HK
 ```
 
 **Behavior:**
@@ -919,13 +977,16 @@ GET /api/v1/contributions?env=JP&mbrType=MBR&fromDate=05/04/2026&toDate=05/05/20
 - The current configured lookup source is `reference-date.account-env`; a future request-specific source can be `PortalAccessContext.account().accountEnv()` after `Account-Ref` resolution.
 - Production-like safety is based on runtime deployment environment, not on request query `env` and not on `reference-date.account-env`.
 - `page` and `pageSize` must both be greater than 0; HTTP 400 is returned otherwise. No real backend pagination is performed yet — all data is returned from APIM and the pagination fields reflect the full dataset.
-- `lang` is normalized to `en` when blank.
+- Effective contribution language is resolved in the web adapter with this priority: `Accept-Language` header, then `lang` query parameter, then `en`.
+- Contribution language normalization is `en`, `en-US`, `en_HK` -> `en`; `zh-HK`, `zh_HK`, `zh` -> `zh_HK`; blank, missing, and unknown values -> `en`.
+- The resolved contribution language drives success-path JSON labels, source labels, currency text, and display formatting.
 - Contribution rows are grouped by `deal-date + cover-from + cover-to`.
 - Dynamic detail items are joined from `contDtl[*].disp-src` to `dispSrc[*].disp-src` and sorted by `dispSrc.seq` ascending.
 - Amount `text` values are formatted using `display-format.amount.*` configuration (language and env-specific). Value `value` is the raw `BigDecimal`.
 - Date values carry the query-string text (`fromDate`/`toDate`) and also the ISO date string derived from APIM `cover-from`/`cover-to` date parsing.
 - Actor identity, member ownership, and account routing fields (`actor-user-id`, `policy-no`, `cert-no`, `trustCode`, `schemeType`, etc.) are resolved from externalized `temporary-portal-access-context.profiles.contributions.*` configuration (see **Temporary Portal Access Context Configuration** below) until Auth Server integration is implemented.
 - `actions.export.enabled` is always `true` (temporary stub via `TemporaryContributionActionPermissionAdapter`).
+- `Accept-Language` is not propagated to APIM; only `X-Request-Id` continues to be propagated.
 
 **Response:**
 
@@ -1145,12 +1206,14 @@ Exports the contribution summary as an XLSX workbook.
 
 - `env` (account environment, required by frontend contract; currently forwarded only as application context)
 - `mbrType` (required by frontend contract; currently forwarded only as application context)
+- `lang` (optional temporary fallback when `Accept-Language` is missing; normalized to `en` or `zh_HK`; defaults to `en`)
 
 **Example:**
 
 ```http
-GET /api/v1/contributions/export?env=JP&mbrType=MBR
+GET /api/v1/contributions/export?env=JP&mbrType=MBR&lang=en
 Accept: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+Accept-Language: zh-HK
 ```
 
 **Behavior:**
@@ -1161,10 +1224,14 @@ Accept: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
 - `deploymentEnv` is not part of `PortalAccessContext`.
 - `cover-from` is computed as `ref-date.minusMonths(36)`; `cover-to` is the resolved `ref-date`.
 - Actor identity, member ownership, and account routing fields (`actor-user-id`, `policy-no`, `cert-no`, `trustCode`, `schemeType`, etc.) are resolved from externalized `temporary-portal-access-context.profiles.contributions.*` configuration until Auth Server integration is implemented.
-- The first three headers come from `contribution-summary.headers.*`.
+- Effective contribution language is resolved in the web adapter with this priority: `Accept-Language` header, then `lang` query parameter, then `en`.
+- Contribution language normalization is `en`, `en-US`, `en_HK` -> `en`; `zh-HK`, `zh_HK`, `zh` -> `zh_HK`; blank, missing, and unknown values -> `en`.
+- The total and source workbook headers are selected from the resolved contribution language.
+- The first two structural headers come from `contribution-summary.headers.*`.
 - Dynamic source columns are sorted by `dispSrc.seq` ascending.
 - Amount cells are numeric, formatted as `0.00`, and rounded with `HALF_UP`.
 - Missing dynamic source amounts are written as blank cells.
+- `Accept-Language` is not propagated to APIM; only `X-Request-Id` continues to be propagated.
 
 **Success headers:**
 
@@ -1172,6 +1239,8 @@ Accept: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
 - `Content-Disposition: attachment; filename="Contribution_Summary.xlsx"`
 
 Failures use the same standardized JSON error envelope as the rest of the API.
+
+Error message localization by `Accept-Language` is deferred, and notification response behavior is unchanged.
 
 ---
 

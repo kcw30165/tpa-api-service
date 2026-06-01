@@ -73,7 +73,7 @@ class ExportContributionSummaryServiceTest {
     }
 
     @Test
-    void resolvesPortalAccessContextWithContributionsAccountRef() {
+    void resolvesPortalAccessContextWithCommandAccountRef() {
         AtomicReference<String> capturedRef = new AtomicReference<>();
         PortalAccessContextPort capturingPort = accountRef -> {
             capturedRef.set(accountRef);
@@ -89,9 +89,9 @@ class ExportContributionSummaryServiceTest {
                 () -> Mono.just(LocalDate.of(2026, 3, 31)),
                 capturingPort);
 
-        service.execute(new ExportContributionSummaryCommand()).block();
+        service.execute(new ExportContributionSummaryCommand("ACC-123")).block();
 
-        assertEquals("contributions", capturedRef.get());
+        assertEquals("ACC-123", capturedRef.get());
     }
 
     private static final class RecordingCurrencyDisplayPort implements CurrencyDisplayPort {
