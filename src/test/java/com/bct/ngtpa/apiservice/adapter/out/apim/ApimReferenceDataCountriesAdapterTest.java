@@ -43,7 +43,7 @@ class ApimReferenceDataCountriesAdapterTest {
 
         flowAdapter.fetchCountryList().block();
 
-        assertEquals("/TRPGetCountryList", facade.capturedPath);
+        assertEquals("/ws/NGTPA/v1/TRPGetCountryList", facade.capturedPath);
 
         String requestJson = new ObjectMapper().writeValueAsString(facade.capturedRequestBody);
         assertEquals("{}", requestJson);
@@ -88,7 +88,7 @@ class ApimReferenceDataCountriesAdapterTest {
     @Test
     void requestIdFilterPropagatesOnlyXRequestId() {
         ExchangeFilterFunction exchangeFilter = new com.bct.ngtpa.apiservice.adapter.out.apim.client.ApimRequestIdExchangeFilter().filter();
-        ClientRequest request = ClientRequest.create(HttpMethod.POST, java.net.URI.create("https://example.test/TRPGetCountryList")).build();
+        ClientRequest request = ClientRequest.create(HttpMethod.POST, java.net.URI.create("https://example.test/ws/NGTPA/v1/TRPGetCountryList")).build();
         AtomicReference<ClientRequest> captured = new AtomicReference<>();
 
         exchangeFilter.filter(request, req -> {

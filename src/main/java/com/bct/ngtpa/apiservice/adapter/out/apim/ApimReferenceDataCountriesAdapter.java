@@ -21,7 +21,7 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class ApimReferenceDataCountriesAdapter implements ApimReferenceDataCountriesPort {
 
-    private static final String API_NAME = "/TRPGetCountryList";
+    private static final String API_NAME = "/ws/NGTPA/v1/TRPGetCountryList";
 
     private final ApimWebClientFacade apimWebClientFacade;
     private final ApimPayloadCryptoService apimPayloadCryptoService;
