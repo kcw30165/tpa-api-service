@@ -49,15 +49,16 @@ com.bct.ngtpa.apiservice
 │   └── exception/       # DomainException
 ├── application/         # Orchestration — no Spring @Service; wired by UseCaseConfig
 │   ├── port/
-│   │   ├── in/          # GetNotificationsUseCase, UpdateNotificationsReadStatusUseCase, GetContributionSummaryUseCase, ExportContributionSummaryUseCase
-│   │   └── out/         # ApimNoticeMessagePort, ApimNotificationReadStatusPort, ApimContributionSummaryPort, ReferenceDatePort, PortalAccessContextPort, CurrencyDisplayPort
-│   ├── usecase/         # GetNotificationsService, UpdateNotificationsReadStatusService, GetContributionSummaryService, ExportContributionSummaryService
+│   │   ├── in/          # GetNotificationsUseCase, UpdateNotificationsReadStatusUseCase, GetContributionSummaryUseCase, ExportContributionSummaryUseCase, GetReferenceDataCountriesUseCase
+│   │   └── out/         # ApimNoticeMessagePort, ApimNotificationReadStatusPort, ApimContributionSummaryPort, ApimReferenceDataCountriesPort, ReferenceDatePort, PortalAccessContextPort, CurrencyDisplayPort
+│   ├── usecase/         # GetNotificationsService, UpdateNotificationsReadStatusService, GetContributionSummaryService, ExportContributionSummaryService, GetReferenceDataCountriesService
 │   ├── dto/             # Notification and contribution summary commands/results; CurrencyDisplay; PortalAccessContext (ActorContext, MemberOwnerContext, AccountContext)
 │   └── exception/       # InvalidContributionRequestException, InvalidNotificationRequestException, PortalAccessContextResolutionException
 ├── adapter/
 │   ├── in/web/          # Reactive controllers, request/response records
 │   │   ├── NotificationController
 │   │   ├── ContributionController
+│   │   ├── ReferenceDataController
 │   │   ├── ContributionSummaryWorkbookExporter
 │   │   ├── ApiExceptionHandler (@RestControllerAdvice)
 │   │   ├── config/      # Web presentation config
@@ -90,6 +91,7 @@ com.bct.ngtpa.apiservice
 │       │   ├── ApimNoticeMessageAdapter   # Implements ApimNoticeMessagePort
 │       │   ├── ApimNotificationReadStatusAdapter  # Implements ApimNotificationReadStatusPort
 │       │   ├── ApimContributionSummaryAdapter     # Implements ApimContributionSummaryPort
+│       │   ├── ApimReferenceDataCountriesAdapter  # Implements ApimReferenceDataCountriesPort
 │       │   ├── ApimCertificateService     # Fetches BCT public key from APIM
 │       │   ├── ApimAppCertificateService  # Loads app RSA keys + X509 cert
 │       │   └── ApimPayloadCryptoService   # AES/CBC + RSA field encryption/decryption
@@ -157,6 +159,7 @@ Behavior:
   - `GET /api/v1/contributions/export`
   - `GET /api/v1/notifications`
   - `PATCH /api/v1/notifications`
+  - `GET /api/v1/reference-data/countries`
 - Missing or invalid `Account-Ref` on those selected-account APIs returns HTTP `400` with error code `err.member.context.invalid`.
 - `X-Request-Id` behavior is unchanged: the filter reuses a non-blank inbound value, generates a UUID when missing, returns the value in the response header, and keeps propagating it through Reactor Context.
 - Only `X-Request-Id` is propagated to APIM by `ApimRequestIdExchangeFilter`.
@@ -164,6 +167,7 @@ Behavior:
 - `Accept-Language` is not propagated to APIM.
 - `Accept-Language` is extracted from the inbound request and defaults to `en` when missing or blank.
 - Contribution success responses now prefer inbound `Accept-Language` for `GET /api/v1/contributions` and `GET /api/v1/contributions/export`, with `lang` kept as a temporary fallback and `en` as the default.
+- Reference-data countries response text uses inbound `Accept-Language`: English (`en`) uses `country-name-eng`, and `zh-HK` uses `country-name-chi` with fallback to English when Chinese text is blank.
 - Contribution endpoint normalization is `en`, `en-US`, `en_HK` -> `en`; `zh-HK`, `zh_HK`, `zh` -> `zh_HK`; blank, missing, and unknown values -> `en`.
 - Error-message localization by `Accept-Language` is still deferred, and notification response behavior is unchanged.
 - Login, account-list, OAuth, and Account-Ref generation remain future work outside this phase.
@@ -843,6 +847,66 @@ APIM credentials are represented as credential profiles. Today a single default 
 - **Retry behavior:** For recoverable failures the APIM adapter will evict and refresh only the affected token or certificate for the selected profile, and retry the original APIM request once. Retries are limited to avoid infinite loops.
 - **Security:** Secrets (client_secret, api_key, tokens, certificate bodies) must be provided via environment variables and are never logged.
 
+
+### `GET /api/v1/reference-data/countries`
+
+Retrieves country and calling-code options for reference-data lookup.
+
+**Required headers:**
+
+- `Account-Ref`
+- `X-Request-Id`
+- `Accept-Language`
+
+**Example:**
+
+```http
+GET /api/v1/reference-data/countries
+Content-Type: application/json
+Account-Ref: ACC-123
+X-Request-Id: client-request-uuid
+Accept-Language: en
+```
+
+**Behavior:**
+
+- The BFF calls APIM `POST /TRPGetCountryList` with JSON body `{}`.
+- APIM response envelope handling follows the shared pattern (`response`, `err-message`, `data`) and shared upstream error mapping behavior.
+- `countries[].value` maps from APIM `country-code`.
+- `callingCodes[].value` maps from APIM `calling-code`.
+- `countries[].text` and `callingCodes[].text` use the same localized name:
+  - English path: APIM `country-name-eng`
+  - `zh-HK` path: APIM `country-name-chi`
+  - Fallback path: English name if localized Chinese is blank
+- APIM order is preserved in the response arrays.
+- `alpha-two-code` is not exposed in the BFF response.
+- `Account-Ref` and `Accept-Language` are not propagated to APIM; only `X-Request-Id` continues to be propagated.
+
+**Response:**
+
+```json
+{
+  "countries": [
+    { "value": "HKG", "text": "Hong Kong" },
+    { "value": "CHN", "text": "China" }
+  ],
+  "callingCodes": [
+    { "value": "852", "text": "Hong Kong" },
+    { "value": "86", "text": "China" }
+  ]
+}
+```
+
+**Error response:**
+
+```json
+{
+  "errorCode": "err.member.context.invalid",
+  "message": "Member context is invalid."
+}
+```
+
+All failures continue to use the standardized API error response envelope.
 
 ### `GET /api/v1/notifications`
 
