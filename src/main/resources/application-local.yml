@@ -172,6 +172,19 @@ temporary-portal-access-context:
       scheme-type: ${TEMP_CONT_SCHEME_TYPE:OE}
       term-status: ${TEMP_CONT_TERM_STATUS:}
       term-completion-date: ${TEMP_CONT_TERM_COMPLETION_DATE:}
+    ACC-789:
+      actor-user-id: ${TEMP_ACC_123_ACTOR_USER_ID:C402400A}
+      actor-user-type: ${TEMP_ACC_123_ACTOR_USER_TYPE:MEMBER}
+      actor-user-role: ${TEMP_ACC_123_ACTOR_USER_ROLE:SELF}
+      member-user-id: ${TEMP_ACC_123_MEMBER_USER_ID:C402400A}
+      member-type: ${TEMP_ACC_123_MEMBER_TYPE:MBR}
+      account-env: ${TEMP_ACC_123_ACCOUNT_ENV:JP}
+      policy-no: ${TEMP_ACC_123_POLICY_NO:00000000118}
+      cert-no: ${TEMP_ACC_123_CERT_NO:2}
+      trust-code: ${TEMP_ACC_123_TRUST_CODE:JPM}
+      scheme-type: ${TEMP_ACC_123_SCHEME_TYPE:OE}
+      term-status: ${TEMP_ACC_123_TERM_STATUS:}
+      term-completion-date: ${TEMP_ACC_123_TERM_COMPLETION_DATE:}
 
 request-logging:
   body-logging:

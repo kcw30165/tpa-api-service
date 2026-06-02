@@ -1,6 +1,9 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.mapper;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.BffPagesProperties;
+import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
+import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.env.YamlPropertySourceLoader;
@@ -15,10 +18,14 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 class PersonalInformationFieldMappingTest {
 
-    private final ApplicationContextRunner contextRunner =
+        private final LoggingSanitizer testLoggingSanitizer = new LoggingSanitizer(new ObjectMapper(), new LoggingSanitizerProperties());
+
+        private final ApplicationContextRunner contextRunner =
             new ApplicationContextRunner()
-                    .withUserConfiguration(TestConfig.class)
-                    .withInitializer(context -> {
+                .withUserConfiguration(TestConfig.class)
+                .withBean(LoggingSanitizer.class, () -> testLoggingSanitizer)
+                .withBean(PersonalInformationFieldMapper.class, () -> new PersonalInformationFieldMapperImpl(testLoggingSanitizer))
+                .withInitializer(context -> {
                         var resource = new ClassPathResource("application-page-personal-information.yml");
                         try {
                             var propertySources = new YamlPropertySourceLoader().load("personalInformationPage", resource);
