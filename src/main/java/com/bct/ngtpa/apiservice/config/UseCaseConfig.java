@@ -3,10 +3,12 @@ package com.bct.ngtpa.apiservice.config;
 import com.bct.ngtpa.apiservice.application.port.in.ExportContributionSummaryUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetContributionSummaryUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetNotificationsUseCase;
+import com.bct.ngtpa.apiservice.application.port.in.GetReferenceDataCountriesUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.UpdateNotificationsReadStatusUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimContributionSummaryPort;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNoticeMessagePort;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNotificationReadStatusPort;
+import com.bct.ngtpa.apiservice.application.port.out.ApimReferenceDataCountriesPort;
 import com.bct.ngtpa.apiservice.application.port.out.ContributionActionPermissionPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
 import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
@@ -14,6 +16,7 @@ import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.usecase.ExportContributionSummaryService;
 import com.bct.ngtpa.apiservice.application.usecase.GetContributionSummaryService;
 import com.bct.ngtpa.apiservice.application.usecase.GetNotificationsService;
+import com.bct.ngtpa.apiservice.application.usecase.GetReferenceDataCountriesService;
 import com.bct.ngtpa.apiservice.application.usecase.UpdateNotificationsReadStatusService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -65,5 +68,11 @@ public class UseCaseConfig {
             PortalAccessContextPort portalAccessContextPort) {
         return new ExportContributionSummaryService(
                 apimContributionSummaryPort, currencyDisplayPort, referenceDatePort, portalAccessContextPort);
+    }
+
+    @Bean
+    public GetReferenceDataCountriesUseCase getReferenceDataCountriesUseCase(
+            ApimReferenceDataCountriesPort apimReferenceDataCountriesPort) {
+        return new GetReferenceDataCountriesService(apimReferenceDataCountriesPort);
     }
 }

@@ -88,7 +88,7 @@ class GetReferenceDataCountriesServiceTest {
 
     @Test
     void handlesNullOrBlankApimDataAsEmptyLists() {
-        ApimReferenceDataCountriesPort nullPort = () -> Mono.just(null);
+                ApimReferenceDataCountriesPort nullPort = Mono::empty;
         GetReferenceDataCountriesService nullService = new GetReferenceDataCountriesService(nullPort);
 
         ReferenceDataCountriesResult nullResult = nullService

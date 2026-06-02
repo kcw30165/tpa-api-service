@@ -77,7 +77,7 @@ class ReferenceDataCountriesControllerContractTest {
 
         client.get()
                 .uri("/api/v1/reference-data/countries")
-                .contentType(MediaType.APPLICATION_JSON)
+            .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
                 .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, ACCOUNT_REF)
                 .header(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
                 .header(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, ACCEPT_LANGUAGE)
@@ -106,7 +106,7 @@ class ReferenceDataCountriesControllerContractTest {
 
         client.get()
                 .uri("/api/v1/reference-data/countries")
-                .contentType(MediaType.APPLICATION_JSON)
+            .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
                 .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, ACCOUNT_REF)
                 .header(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
                 .header(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, ACCEPT_LANGUAGE)
@@ -123,7 +123,7 @@ class ReferenceDataCountriesControllerContractTest {
 
         client.get()
                 .uri("/api/v1/reference-data/countries")
-                .contentType(MediaType.APPLICATION_JSON)
+            .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
                 .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, ACCOUNT_REF)
                 .header(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
                 .header(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, ACCEPT_LANGUAGE)
@@ -136,7 +136,7 @@ class ReferenceDataCountriesControllerContractTest {
     void missingAccountRefReturnsStandardizedErrorEnvelope() {
         client.get()
                 .uri("/api/v1/reference-data/countries")
-                .contentType(MediaType.APPLICATION_JSON)
+            .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
                 .header(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
                 .header(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, ACCEPT_LANGUAGE)
                 .exchange()
@@ -152,7 +152,7 @@ class ReferenceDataCountriesControllerContractTest {
     void blankAccountRefReturnsStandardizedErrorEnvelope() {
         client.get()
                 .uri("/api/v1/reference-data/countries")
-                .contentType(MediaType.APPLICATION_JSON)
+            .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
                 .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, "   ")
                 .header(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
                 .header(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, ACCEPT_LANGUAGE)
@@ -171,7 +171,7 @@ class ReferenceDataCountriesControllerContractTest {
 
         client.get()
                 .uri("/api/v1/reference-data/countries")
-                .contentType(MediaType.APPLICATION_JSON)
+            .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
                 .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, ACCOUNT_REF)
                 .header(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
                 .header(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, "en-US")
