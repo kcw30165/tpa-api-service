@@ -26,169 +26,168 @@ class BffPagesPropertiesBindingTest {
             });
 
     @Test
-    void bindsCommonAndPages() {
-        contextRunner.run(context -> {
-            var bound = context.getBean(BffPagesProperties.class);
-            assertNotNull(bound);
-            assertNotNull(bound.getCommon());
-            assertNotNull(bound.getPages());
-            assertTrue(bound.getPages().containsKey("sample-page"));
-        });
-    }
+    package com.bct.ngtpa.apiservice.adapter.in.web.pageconfig;
 
-    @Test
-    void bindsOnePageWithMetadataFormActionsSectionsFieldsValidationsConfirmation() {
-        contextRunner.run(context -> {
-            var bound = context.getBean(BffPagesProperties.class);
-            @SuppressWarnings("unchecked")
-            Map<String, Object> page = (Map<String, Object>) bound.getPages().get("sample-page");
-            assertNotNull(page.get("metadata"));
-            assertNotNull(page.get("form"));
-            assertNotNull(page.get("validations"));
-            assertNotNull(page.get("confirmation"));
+    import org.junit.jupiter.api.Test;
+    import org.springframework.boot.context.properties.EnableConfigurationProperties;
+    import org.springframework.boot.env.YamlPropertySourceLoader;
+    import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+    import org.springframework.context.annotation.Configuration;
+    import org.springframework.core.io.ClassPathResource;
 
-            @SuppressWarnings("unchecked")
-            Map<String, Object> form = (Map<String, Object>) page.get("form");
-            assertNotNull(form.get("actions"));
-            assertNotNull(form.get("sections"));
+    import java.util.*;
 
-            List<Object> sections = asList(form.get("sections"));
-            assertEquals(2, sections.size());
+    import static org.junit.jupiter.api.Assertions.*;
 
-            // first section fields
-            @SuppressWarnings("unchecked")
-            Map<String, Object> section1 = (Map<String, Object>) sections.get(0);
-            List<Object> fields1 = asList(section1.get("fields"));
-            assertEquals(2, fields1.size());
-        });
-    }
+    class BffPagesPropertiesBindingTest {
 
-    @Test
-    void bindsAllWhenOperatorValues() {
-        contextRunner.run(context -> {
-            var bound = context.getBean(BffPagesProperties.class);
-            @SuppressWarnings("unchecked")
-            Map<String, Object> page = (Map<String, Object>) bound.getPages().get("sample-page");
-            Set<String> whenOps = collectOperatorValues(page, "when", "operator");
-            Set<String> expected = new HashSet<>(Arrays.asList("notBlank", "blank", "changed", "all", "any", "allGroupsEmpty"));
-            assertTrue(whenOps.containsAll(expected), "missing when.operator values: " + expected + " vs " + whenOps);
-        });
-    }
+        private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
+                .withUserConfiguration(TestConfig.class)
+                .withInitializer(context -> {
+                    var resource = new ClassPathResource("pageconfig/bff-pages-binding-test.yml");
+                    try {
+                        var propertySources = new YamlPropertySourceLoader().load("bffPagesTest", resource);
+                        propertySources.forEach(source -> context.getEnvironment().getPropertySources().addLast(source));
+                    } catch (java.io.IOException ex) {
+                        throw new IllegalStateException("Failed to load YAML", ex);
+                    }
+                });
 
-    @Test
-    void bindsAllThenOperatorValues() {
-        contextRunner.run(context -> {
-            var bound = context.getBean(BffPagesProperties.class);
-            @SuppressWarnings("unchecked")
-            Map<String, Object> page = (Map<String, Object>) bound.getPages().get("sample-page");
-            Set<String> thenOps = collectOperatorValues(page, "then", "operator");
-            Set<String> expected = new HashSet<>(Arrays.asList("fail", "required", "allRequired", "showMessage"));
-            assertTrue(thenOps.containsAll(expected), "missing then.operator values: " + expected + " vs " + thenOps);
-        });
-    }
-
-    @Test
-    void bindsAllSeverityValues() {
-        contextRunner.run(context -> {
-            var bound = context.getBean(BffPagesProperties.class);
-            @SuppressWarnings("unchecked")
-            Map<String, Object> page = (Map<String, Object>) bound.getPages().get("sample-page");
-            Set<String> severities = collectScalarValues(page, "severity");
-            Set<String> expected = new HashSet<>(Arrays.asList("error", "warning", "info"));
-            assertTrue(severities.containsAll(expected), "missing severity values: " + expected + " vs " + severities);
-        });
-    }
-
-    @Test
-    void preservesFieldAndSectionDisplayOrder() {
-        contextRunner.run(context -> {
-            var bound = context.getBean(BffPagesProperties.class);
-            @SuppressWarnings("unchecked")
-            Map<String, Object> page = (Map<String, Object>) bound.getPages().get("sample-page");
-            @SuppressWarnings("unchecked")
-            Map<String, Object> form = (Map<String, Object>) page.get("form");
-            List<Object> sections = asList(form.get("sections"));
-            assertEquals("section-1", ((Map<String, Object>) sections.get(0)).get("id"));
-            assertEquals("section-2", ((Map<String, Object>) sections.get(1)).get("id"));
-
-            List<Object> fields1 = asList(((Map<String, Object>) sections.get(0)).get("fields"));
-            assertEquals("field-a", ((Map<String, Object>) fields1.get(0)).get("id"));
-            assertEquals("field-b", ((Map<String, Object>) fields1.get(1)).get("id"));
-        });
-    }
-
-    @Test
-    void preservesLocalizedLabelsEnAndZhHk() {
-        contextRunner.run(context -> {
-            var bound = context.getBean(BffPagesProperties.class);
-            @SuppressWarnings("unchecked")
-            Map<String, Object> page = (Map<String, Object>) bound.getPages().get("sample-page");
-            @SuppressWarnings("unchecked")
-            Map<String, Object> form = (Map<String, Object>) page.get("form");
-            List<Object> sections = asList(form.get("sections"));
-            @SuppressWarnings("unchecked")
-            Map<String, Object> firstSection = (Map<String, Object>) sections.get(0);
-            List<Object> fields = asList(firstSection.get("fields"));
-            @SuppressWarnings("unchecked")
-            Map<String, Object> fieldA = (Map<String, Object>) fields.get(0);
-            @SuppressWarnings("unchecked")
-            Map<String, Object> label = (Map<String, Object>) fieldA.get("label");
-            assertTrue(label.containsKey("en"));
-            assertTrue(label.containsKey("zh_HK"));
-        });
-
-    }
-
-    private static List<Object> asList(Object obj) {
-        if (obj == null) {
-            return Collections.emptyList();
+        @Test
+        void bindsCommonAndPages() {
+            contextRunner.run(context -> {
+                var bound = context.getBean(BffPagesProperties.class);
+                assertNotNull(bound);
+                assertNotNull(bound.getCommon());
+                assertNotNull(bound.getPages());
+                assertTrue(bound.getPages().containsKey("sample-page"));
+            });
         }
-        if (obj instanceof List) {
-            return (List<Object>) obj;
+
+        @Test
+        void bindsOnePageWithMetadataFormActionsSectionsFieldsValidationsConfirmation() {
+            contextRunner.run(context -> {
+                var bound = context.getBean(BffPagesProperties.class);
+                PageSchemaProperties page = bound.getPages().get("sample-page");
+                assertNotNull(page.getMetadata());
+                assertNotNull(page.getForm());
+                assertNotNull(page.getValidations());
+                assertNotNull(page.getConfirmation());
+
+                FormMetadataProperties form = page.getForm();
+                assertNotNull(form.getActions());
+                assertNotNull(form.getSections());
+
+                List<SectionProperties> sections = form.getSections();
+                assertEquals(2, sections.size());
+
+                // first section fields
+                SectionProperties section1 = sections.get(0);
+                List<FieldProperties> fields1 = section1.getFields();
+                assertEquals(2, fields1.size());
+            });
         }
-        if (obj instanceof Map) {
-            Map<?, ?> map = (Map<?, ?>) obj;
-            // Map keys may be numeric strings produced by binder ("0","1",...)
-            List<String> keys = new ArrayList<>();
-            for (Object k : map.keySet()) {
-                keys.add(k.toString());
+
+        @Test
+        void bindsAllWhenOperatorValues() {
+            contextRunner.run(context -> {
+                var bound = context.getBean(BffPagesProperties.class);
+                PageSchemaProperties page = bound.getPages().get("sample-page");
+                Set<String> whenOps = collectWhenOperatorValues(page);
+                Set<String> expected = new HashSet<>(Arrays.asList("notBlank", "blank", "changed", "all", "any", "allGroupsEmpty"));
+                assertTrue(whenOps.containsAll(expected), "missing when.operator values: " + expected + " vs " + whenOps);
+            });
+        }
+
+        @Test
+        void bindsAllThenOperatorValues() {
+            contextRunner.run(context -> {
+                var bound = context.getBean(BffPagesProperties.class);
+                PageSchemaProperties page = bound.getPages().get("sample-page");
+                Set<String> thenOps = collectThenOperatorValues(page);
+                Set<String> expected = new HashSet<>(Arrays.asList("fail", "required", "allRequired", "showMessage"));
+                assertTrue(thenOps.containsAll(expected), "missing then.operator values: " + expected + " vs " + thenOps);
+            });
+        }
+
+        @Test
+        void bindsAllSeverityValues() {
+            contextRunner.run(context -> {
+                var bound = context.getBean(BffPagesProperties.class);
+                PageSchemaProperties page = bound.getPages().get("sample-page");
+                Set<String> severities = collectSeverityValues(page);
+                Set<String> expected = new HashSet<>(Arrays.asList("error", "warning", "info"));
+                assertTrue(severities.containsAll(expected), "missing severity values: " + expected + " vs " + severities);
+            });
+        }
+
+        @Test
+        void preservesFieldAndSectionDisplayOrder() {
+            contextRunner.run(context -> {
+                var bound = context.getBean(BffPagesProperties.class);
+                PageSchemaProperties page = bound.getPages().get("sample-page");
+                FormMetadataProperties form = page.getForm();
+                List<SectionProperties> sections = form.getSections();
+                assertEquals("section-1", sections.get(0).getId());
+                assertEquals("section-2", sections.get(1).getId());
+
+                List<FieldProperties> fields1 = sections.get(0).getFields();
+                assertEquals("field-a", fields1.get(0).getId());
+                assertEquals("field-b", fields1.get(1).getId());
+            });
+        }
+
+        @Test
+        void preservesLocalizedLabelsEnAndZhHk() {
+            contextRunner.run(context -> {
+                var bound = context.getBean(BffPagesProperties.class);
+                PageSchemaProperties page = bound.getPages().get("sample-page");
+                SectionProperties firstSection = page.getForm().getSections().get(0);
+                FieldProperties fieldA = firstSection.getFields().get(0);
+                Map<String, String> label = fieldA.getLabel();
+                assertTrue(label.containsKey("en"));
+                assertTrue(label.containsKey("zh_HK"));
+            });
+
+        }
+
+        private Set<String> collectWhenOperatorValues(PageSchemaProperties page) {
+            Set<String> result = new HashSet<>();
+            if (page.getForm() != null && page.getForm().getSections() != null) {
+                for (SectionProperties s : page.getForm().getSections()) {
+                    if (s.getFields() != null) {
+                        for (FieldProperties f : s.getFields()) {
+                            if (f.getValidations() != null) {
+                                for (ValidationRuleProperties v : f.getValidations()) {
+                                    if (v.getWhen() != null && v.getWhen().getOperator() != null) {
+                                        result.add(v.getWhen().getOperator().name());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
-            keys.sort(Comparator.comparingInt(Integer::parseInt));
-            List<Object> result = new ArrayList<>();
-            for (String k : keys) {
-                result.add(map.get(k));
+            if (page.getValidations() != null) {
+                for (ValidationRuleProperties v : page.getValidations()) {
+                    if (v.getWhen() != null && v.getWhen().getOperator() != null) {
+                        result.add(v.getWhen().getOperator().name());
+                    }
+                }
             }
             return result;
         }
-        return Collections.emptyList();
-    }
 
-    private Set<String> collectOperatorValues(Map<String, Object> page, String containerKey, String operatorKey) {
-        Set<String> result = new HashSet<>();
-        // field-level validations
-            @SuppressWarnings("unchecked")
-            Map<String, Object> form = (Map<String, Object>) page.get("form");
-            if (form != null) {
-                List<Object> sections = asList(form.get("sections"));
-                if (sections != null) {
-                    for (Object s : sections) {
-                        @SuppressWarnings("unchecked")
-                        Map<String, Object> section = (Map<String, Object>) s;
-                        List<Object> fields = asList(section.get("fields"));
-                        if (fields != null) {
-                            for (Object f : fields) {
-                                @SuppressWarnings("unchecked")
-                                Map<String, Object> field = (Map<String, Object>) f;
-                                List<Object> validations = asList(field.get("validations"));
-                                if (validations != null) {
-                                    for (Object v : validations) {
-                                        @SuppressWarnings("unchecked")
-                                        Map<String, Object> val = (Map<String, Object>) v;
-                                        @SuppressWarnings("unchecked")
-                                        Map<String, Object> container = (Map<String, Object>) val.get(containerKey);
-                                        if (container != null && container.get(operatorKey) != null) {
-                                            result.add(container.get(operatorKey).toString());
-                                        }
+        private Set<String> collectThenOperatorValues(PageSchemaProperties page) {
+            Set<String> result = new HashSet<>();
+            if (page.getForm() != null && page.getForm().getSections() != null) {
+                for (SectionProperties s : page.getForm().getSections()) {
+                    if (s.getFields() != null) {
+                        for (FieldProperties f : s.getFields()) {
+                            if (f.getValidations() != null) {
+                                for (ValidationRuleProperties v : f.getValidations()) {
+                                    if (v.getThen() != null && v.getThen().getOperator() != null) {
+                                        result.add(v.getThen().getOperator().name());
                                     }
                                 }
                             }
@@ -196,46 +195,26 @@ class BffPagesPropertiesBindingTest {
                     }
                 }
             }
-        // page-level validations
-        List<Object> pageValidations = asList(page.get("validations"));
-        if (pageValidations != null) {
-            for (Object pv : pageValidations) {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> val = (Map<String, Object>) pv;
-                @SuppressWarnings("unchecked")
-                Map<String, Object> container = (Map<String, Object>) val.get(containerKey);
-                if (container != null && container.get(operatorKey) != null) {
-                    result.add(container.get(operatorKey).toString());
+            if (page.getValidations() != null) {
+                for (ValidationRuleProperties v : page.getValidations()) {
+                    if (v.getThen() != null && v.getThen().getOperator() != null) {
+                        result.add(v.getThen().getOperator().name());
+                    }
                 }
             }
+            return result;
         }
-        return result;
-    }
 
-    private Set<String> collectScalarValues(Map<String, Object> page, String scalarKey) {
-        Set<String> result = new HashSet<>();
-        // field-level validations
-            @SuppressWarnings("unchecked")
-            Map<String, Object> form = (Map<String, Object>) page.get("form");
-            if (form != null) {
-                List<Object> sections = asList(form.get("sections"));
-                if (sections != null) {
-                    for (Object s : sections) {
-                        @SuppressWarnings("unchecked")
-                        Map<String, Object> section = (Map<String, Object>) s;
-                        List<Object> fields = asList(section.get("fields"));
-                        if (fields != null) {
-                            for (Object f : fields) {
-                                @SuppressWarnings("unchecked")
-                                Map<String, Object> field = (Map<String, Object>) f;
-                                List<Object> validations = asList(field.get("validations"));
-                                if (validations != null) {
-                                    for (Object v : validations) {
-                                        @SuppressWarnings("unchecked")
-                                        Map<String, Object> val = (Map<String, Object>) v;
-                                        if (val.get(scalarKey) != null) {
-                                            result.add(val.get(scalarKey).toString());
-                                        }
+        private Set<String> collectSeverityValues(PageSchemaProperties page) {
+            Set<String> result = new HashSet<>();
+            if (page.getForm() != null && page.getForm().getSections() != null) {
+                for (SectionProperties s : page.getForm().getSections()) {
+                    if (s.getFields() != null) {
+                        for (FieldProperties f : s.getFields()) {
+                            if (f.getValidations() != null) {
+                                for (ValidationRuleProperties v : f.getValidations()) {
+                                    if (v.getSeverity() != null) {
+                                        result.add(v.getSeverity().name());
                                     }
                                 }
                             }
@@ -243,22 +222,19 @@ class BffPagesPropertiesBindingTest {
                     }
                 }
             }
-        // page-level validations
-        List<Object> pageValidations = asList(page.get("validations"));
-        if (pageValidations != null) {
-            for (Object pv : pageValidations) {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> val = (Map<String, Object>) pv;
-                if (val.get(scalarKey) != null) {
-                    result.add(val.get(scalarKey).toString());
+            if (page.getValidations() != null) {
+                for (ValidationRuleProperties v : page.getValidations()) {
+                    if (v.getSeverity() != null) {
+                        result.add(v.getSeverity().name());
+                    }
                 }
             }
+            return result;
         }
-        return result;
+
+        @Configuration(proxyBeanMethods = false)
+        @EnableConfigurationProperties(BffPagesProperties.class)
+        static class TestConfig {
+        }
     }
 
-    @Configuration(proxyBeanMethods = false)
-    @EnableConfigurationProperties(BffPagesProperties.class)
-    static class TestConfig {
-    }
-}
