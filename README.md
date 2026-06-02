@@ -253,6 +253,20 @@ export JAVA_HOME="C:/Java/OpenJDK/jdk-21" && export M2_HOME="/d/Tools/apache-mav
 
 ---
 
+## Page Schema Validation DSL
+
+This repository includes a generic Page Schema Validation DSL bound to the `bff-pages` YAML root. The DSL is exposed as typed configuration and statically linted as part of the test-suite.
+
+- Documentation: `docs/pageconfig/045-page-schema-validation-dsl.md`
+- Binding model: `BffPagesProperties` and related classes under `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/pageconfig`
+- Linter: `com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.PageSchemaLinter` (returns `LintResult`)
+- Test fixtures: `src/test/resources/pageconfig/` and tests under `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/pageconfig`
+- Run tests and linter: `./mvnw test` (binding and linter tests are included in the suite)
+
+To add a page schema, place YAML under `src/main/resources/pageconfig/` or add entries to an existing `bff-pages` YAML. Prefer adding a test fixture under `src/test/resources/pageconfig/` and a focused unit test to verify binding and linting (TDD).
+
+---
+
 ## Environment Variables
 
 | Variable | Description | Default |
