@@ -7,7 +7,7 @@ public class ValidationRuleProperties {
     private String id;
     private RuleConditionProperties when;
     private RuleActionProperties then;
-    private Severity severity;
+    private String severity;
 
     public String getId() {
         return id;
@@ -33,11 +33,11 @@ public class ValidationRuleProperties {
         this.then = then;
     }
 
-    public Severity getSeverity() {
+    public String getSeverity() {
         return severity;
     }
 
-    public void setSeverity(Severity severity) {
+    public void setSeverity(String severity) {
         this.severity = severity;
     }
 }

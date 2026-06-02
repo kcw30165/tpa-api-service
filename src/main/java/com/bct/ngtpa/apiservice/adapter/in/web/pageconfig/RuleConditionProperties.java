@@ -4,14 +4,14 @@ import java.util.List;
 
 public class RuleConditionProperties {
 
-    private WhenOperator operator;
+    private String operator;
     private List<String> fields;
 
-    public WhenOperator getOperator() {
+    public String getOperator() {
         return operator;
     }
 
-    public void setOperator(WhenOperator operator) {
+    public void setOperator(String operator) {
         this.operator = operator;
     }
 
