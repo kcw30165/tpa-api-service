@@ -8,6 +8,7 @@ public class FieldProperties {
     private String id;
     private Integer displayOrder;
     private Map<String, String> label;
+    private String optionSource;
     private List<ValidationRuleProperties> validations;
 
     public String getId() {
@@ -32,6 +33,14 @@ public class FieldProperties {
 
     public void setLabel(Map<String, String> label) {
         this.label = label;
+    }
+
+    public String getOptionSource() {
+        return optionSource;
+    }
+
+    public void setOptionSource(String optionSource) {
+        this.optionSource = optionSource;
     }
 
     public List<ValidationRuleProperties> getValidations() {

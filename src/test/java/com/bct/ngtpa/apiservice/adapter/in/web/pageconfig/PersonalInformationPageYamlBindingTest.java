@@ -13,7 +13,18 @@ import static org.junit.jupiter.api.Assertions.*;
 class PersonalInformationPageYamlBindingTest {
 
     private final ApplicationContextRunner contextRunner =
-            new ApplicationContextRunner().withUserConfiguration(TestConfig.class);
+            new ApplicationContextRunner()
+                    .withUserConfiguration(TestConfig.class)
+                    .withInitializer(context -> {
+                        var resource = new org.springframework.core.io.ClassPathResource("application-page-personal-information.yml");
+                        try {
+                            var propertySources = new org.springframework.boot.env.YamlPropertySourceLoader()
+                                    .load("personalInformationPage", resource);
+                            propertySources.forEach(source -> context.getEnvironment().getPropertySources().addLast(source));
+                        } catch (java.io.IOException ex) {
+                            throw new IllegalStateException("Failed to load YAML", ex);
+                        }
+                    });
 
     @Test
     void personalInformationPage_shouldBeDeclaredUnderBffPages() {

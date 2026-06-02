@@ -6,6 +6,7 @@ public class PageMetadataProperties {
 
     private String id;
     private Map<String, String> title;
+    private String version;
 
     public String getId() {
         return id;
@@ -21,5 +22,13 @@ public class PageMetadataProperties {
 
     public void setTitle(Map<String, String> title) {
         this.title = title;
+    }
+
+    public String getVersion() {
+        return version;
+    }
+
+    public void setVersion(String version) {
+        this.version = version;
     }
 }

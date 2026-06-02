@@ -5,6 +5,7 @@ import java.util.List;
 public class FormMetadataProperties {
 
     private String id;
+    private String defaultMode;
     private List<ActionProperties> actions;
     private List<SectionProperties> sections;
 
@@ -14,6 +15,14 @@ public class FormMetadataProperties {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public String getDefaultMode() {
+        return defaultMode;
+    }
+
+    public void setDefaultMode(String defaultMode) {
+        this.defaultMode = defaultMode;
     }
 
     public List<ActionProperties> getActions() {
