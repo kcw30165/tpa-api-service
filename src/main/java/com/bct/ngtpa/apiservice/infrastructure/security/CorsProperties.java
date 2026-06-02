@@ -12,4 +12,6 @@ import lombok.Setter;
 @Setter
 public class CorsProperties {
     private List<String> allowedOrigins = new ArrayList<>();
+    private List<String> allowedHeaders = new ArrayList<>();
+    private List<String> allowedMethods = new ArrayList<>();
 }

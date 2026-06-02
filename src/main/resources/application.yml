@@ -12,6 +12,8 @@ spring:
 
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:}
+  allowed-headers: ${CORS_ALLOWED_HEADERS:Account-Ref,Accept-Language,X-Request-Id,Content-Type,Authorization}
+  allowed-methods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,PATCH}
 
 # Set to false when authentication is enforced externally (K8s ingress / API gateway).
 # Override via env var: API_SECURITY_REQUIRE_AUTHENTICATION=false

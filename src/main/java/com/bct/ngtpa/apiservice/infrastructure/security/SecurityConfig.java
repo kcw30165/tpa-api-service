@@ -21,9 +21,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class SecurityConfig {
 
-    private static final List<String> ALLOWED_METHODS = List.of("GET", "POST", "PUT", "PATCH"); // , "DELETE", "OPTIONS"
-    private static final List<String> ALLOWED_HEADERS = List.of("Authorization", "Content-Type", "Accept");
-
     /**
      * Controls whether in-process authentication is enforced.
      *
@@ -76,8 +73,8 @@ public class SecurityConfig {
 
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(corsProperties.getAllowedOrigins());
-        configuration.setAllowedMethods(ALLOWED_METHODS);
-        configuration.setAllowedHeaders(ALLOWED_HEADERS);
+        configuration.setAllowedMethods(corsProperties.getAllowedMethods());
+        configuration.setAllowedHeaders(corsProperties.getAllowedHeaders());
         configuration.setMaxAge(3600L);
 
         source.registerCorsConfiguration("/api/**", configuration);
