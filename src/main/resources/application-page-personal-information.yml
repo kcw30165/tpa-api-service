@@ -13,12 +13,12 @@ bff-pages:
         actions:
           - name: edit
             label:
-              en: "Edit"
-              zh_HK: "編輯"
+              en: "Edit Information"
+              zh_HK: "編輯個人資料"
           - name: submit
             label:
               en: "Submit"
-              zh_HK: "提交"
+              zh_HK: "遞交"
           - name: reset
             label:
               en: "Reset"
@@ -34,144 +34,376 @@ bff-pages:
               zh_HK: "地址資料"
             fields:
               - id: residentialAddressLine1
+                displayOrder: 10
                 label:
                   en: "Residential Address Line 1"
                   zh_HK: "居住地址第一行"
+                dataType: string
+                controlType: text
+                maxLength: 40
+                placeholder:
+                  en: "Enter residential address line 1"
+                  zh_HK: "請輸入居住地址第一行"
+                validations:
+                  - type: required
+                    code: personalInformation.residentialAddress.required
+                    message:
+                      en: "Please input a residential address."
+                      zh_HK: "請輸入居住地址。"
+                  - type: minLength
+                    value: 5
+                    when:
+                      fieldRequired: true
+                    code: personalInformation.residentialAddress.invalid
+                    message:
+                      en: "Please input a valid residential address."
+                      zh_HK: "請輸入有效居住地址。"
+                  - type: blockedAddress
+                    code: personalInformation.address.poBoxBlocked
+                    message:
+                      en: "PO Box address will not be accepted, please re-enter your address as our record."
+                      zh_HK: "郵政信箱恕不接受，請重新輸入住址，以作資料紀錄。"
               - id: residentialAddressLine2
+                displayOrder: 20
                 label:
                   en: "Residential Address Line 2"
                   zh_HK: "居住地址第二行"
+                dataType: string
+                controlType: text
+                maxLength: 40
+                placeholder:
+                  en: "Enter residential address line 2"
+                  zh_HK: "請輸入居住地址第二行"
               - id: residentialAddressLine3
+                displayOrder: 30
                 label:
                   en: "Residential Address Line 3"
                   zh_HK: "居住地址第三行"
+                dataType: string
+                controlType: text
+                maxLength: 40
+                placeholder:
+                  en: "Enter residential address line 3"
+                  zh_HK: "請輸入居住地址第三行"
               - id: residentialCountry
+                displayOrder: 40
                 label:
-                  en: "Residential Country"
-                  zh_HK: "居住國家"
+                  en: "Country"
+                  zh_HK: "國家"
+                dataType: string
+                controlType: select
                 optionSource: countries
+                placeholder:
+                  en: "Country"
+                  zh_HK: "國家"
+                validations:
+                  - type: required
+                    code: personalInformation.residentialCountry.required
+                    message:
+                      en: "Please select a country."
+                      zh_HK: "請選擇國家。"
               - id: mailingAddressSameAsResidential
+                displayOrder: 50
                 label:
-                  en: "Mailing address same as residential"
-                  zh_HK: "郵寄地址與居住地址相同"
+                  en: "Same as Residential Address"
+                  zh_HK: "與居住地址相同"
+                dataType: boolean
+                controlType: checkbox
+                copyWhenChecked:
+                  fromTo:
+                    residentialAddressLine1: mailingAddressLine1
+                    residentialAddressLine2: mailingAddressLine2
+                    residentialAddressLine3: mailingAddressLine3
+                    residentialCountry: mailingCountry
               - id: mailingAddressLine1
+                displayOrder: 60
                 label:
-                  en: "Mailing Address Line 1"
-                  zh_HK: "郵寄地址第一行"
+                  en: "Correspondence Address Line 1"
+                  zh_HK: "通訊地址第一行"
+                dataType: string
+                controlType: text
+                maxLength: 40
+                placeholder:
+                  en: "Enter correspondence address line 1"
+                  zh_HK: "請輸入通訊地址第一行"
+                validations:
+                  - type: minLength
+                    value: 5
+                    when:
+                      fieldRequired: true
+                    code: personalInformation.mailingAddress.invalid
+                    message:
+                      en: "Please input a valid correspondence address."
+                      zh_HK: "請輸入有效通訊地址。"
+                  - type: blockedAddress
+                    code: personalInformation.address.poBoxBlocked
+                    message:
+                      en: "PO Box address will not be accepted, please re-enter your address as our record."
+                      zh_HK: "郵政信箱恕不接受，請重新輸入住址，以作資料紀錄。"
               - id: mailingAddressLine2
+                displayOrder: 70
                 label:
-                  en: "Mailing Address Line 2"
-                  zh_HK: "郵寄地址第二行"
+                  en: "Correspondence Address Line 2"
+                  zh_HK: "通訊地址第二行"
+                dataType: string
+                controlType: text
+                maxLength: 40
+                placeholder:
+                  en: "Enter correspondence address line 2"
+                  zh_HK: "請輸入通訊地址第二行"
               - id: mailingAddressLine3
+                displayOrder: 80
                 label:
-                  en: "Mailing Address Line 3"
-                  zh_HK: "郵寄地址第三行"
+                  en: "Correspondence Address Line 3"
+                  zh_HK: "通訊地址第三行"
+                dataType: string
+                controlType: text
+                maxLength: 40
+                placeholder:
+                  en: "Enter correspondence address line 3"
+                  zh_HK: "請輸入通訊地址第三行"
               - id: mailingCountry
+                displayOrder: 90
                 label:
-                  en: "Mailing Country"
-                  zh_HK: "郵寄國家"
+                  en: "Country"
+                  zh_HK: "國家"
+                dataType: string
+                controlType: select
                 optionSource: countries
-
+                placeholder:
+                  en: "Country"
+                  zh_HK: "國家"
           - id: localContactNumber
             title:
-              en: "Local Contact Number"
-              zh_HK: "本地聯絡電話"
+              en: "Phone Numbers"
+              zh_HK: "聯絡電話"
             fields:
               - id: hongKongBusinessPhone
+                displayOrder: 10
                 label:
-                  en: "HK Business Phone"
-                  zh_HK: "香港公司電話"
+                  en: "Hong Kong Business Telephone Number"
+                  zh_HK: "香港公司電話號碼"
+                dataType: string
+                controlType: tel
+                maxLength: 8
+                pattern: '^[0-9]*$'
+                placeholder:
+                  en: "Enter 8-digit phone number"
+                  zh_HK: "請輸入8位數字電話號碼"
+                validations:
+                  - type: pattern
+                    code: personalInformation.businessPhone.invalid
+                    message:
+                      en: "Please input a valid Hong Kong Business Telephone Number."
+                      zh_HK: "請輸入有效香港公司電話號碼。"
               - id: hongKongBusinessPhoneExtension
+                displayOrder: 20
                 label:
-                  en: "HK Business Phone Extension"
-                  zh_HK: "香港電話分機"
+                  en: "Ext."
+                  zh_HK: "內線"
+                dataType: string
+                controlType: text
+                maxLength: 4
+                pattern: '^[0-9]*$'
+                placeholder:
+                  en: "Ext."
+                  zh_HK: "內線"
+                validations:
+                  - type: pattern
+                    code: personalInformation.businessPhoneExtension.invalid
+                    message:
+                      en: "Please input a valid Ext."
+                      zh_HK: "請輸入有效內線。"
               - id: homeTel
+                displayOrder: 30
                 label:
-                  en: "Home Telephone"
-                  zh_HK: "家居電話"
+                  en: "Hong Kong Home Telephone Number"
+                  zh_HK: "香港住所電話號碼"
+                dataType: string
+                controlType: tel
+                maxLength: 8
+                pattern: '^[0-9]*$'
+                placeholder:
+                  en: "Enter 8-digit home telephone number"
+                  zh_HK: "請輸入8位數字住所電話號碼"
+                validations:
+                  - type: pattern
+                    code: personalInformation.homeTel.invalid
+                    message:
+                      en: "Please input a valid Hong Kong Home Telephone Number."
+                      zh_HK: "請輸入有效香港住所電話號碼。"
               - id: hongKongMobilePhone
+                displayOrder: 40
                 label:
-                  en: "HK Mobile Phone"
-                  zh_HK: "香港手提電話"
+                  en: "Hong Kong Mobile Phone Number"
+                  zh_HK: "香港手提電話號碼"
+                dataType: string
+                controlType: tel
+                maxLength: 8
+                pattern: '^[4-9][0-9]{7}$'
+                placeholder:
+                  en: "Enter 8-digit mobile number"
+                  zh_HK: "請輸入8位數字手提電話號碼"
+                validations:
+                  - type: pattern
+                    code: personalInformation.mobilePhone.invalid
+                    message:
+                      en: "Please input a valid Hong Kong Mobile Telephone Number."
+                      zh_HK: "請輸入有效香港手提電話號碼。"
               - id: faxNo
+                displayOrder: 50
                 label:
-                  en: "Fax Number"
+                  en: "Fax No."
                   zh_HK: "傳真號碼"
-
+                dataType: string
+                controlType: text
+                pattern: '^[0-9+\- ]*$'
+                placeholder:
+                  en: "Enter fax number"
+                  zh_HK: "請輸入傳真號碼"
+                validations:
+                  - type: pattern
+                    code: personalInformation.faxNo.invalid
+                    message:
+                      en: "Please input a valid Fax No."
+                      zh_HK: "請輸入有效傳真號碼。"
           - id: overseasContacts
             title:
-              en: "Overseas Contacts"
-              zh_HK: "海外聯絡"
+              en: "Overseas Contact"
+              zh_HK: "海外聯絡電話"
             fields:
               - id: overseasCountryCode
+                displayOrder: 10
                 label:
-                  en: "Overseas Country Code"
-                  zh_HK: "海外國家代碼"
+                  en: "Country Code"
+                  zh_HK: "國家代碼"
+                dataType: string
+                controlType: select
                 optionSource: callingCodes
+                pattern: '^[0-9]*$'
+                placeholder:
+                  en: "Country Code"
+                  zh_HK: "國家號碼"
+                validations:
+                  - type: pattern
+                    value: '^[0-9]*$'
+                    code: personalInformation.overseasCountryCode.invalid
+                    message:
+                      en: "Please input a valid Country Code."
+                      zh_HK: "請輸入有效國家號碼。"
               - id: overseasAreaCode
+                displayOrder: 20
                 label:
-                  en: "Overseas Area Code"
-                  zh_HK: "海外區號"
+                  en: "Area Code"
+                  zh_HK: "區域代碼"
+                dataType: string
+                controlType: text
+                pattern: '^[0-9]*$'
+                placeholder:
+                  en: "Area Code"
+                  zh_HK: "區域號碼"
+                validations:
+                  - type: pattern
+                    code: personalInformation.overseasAreaCode.invalid
+                    message:
+                      en: "Please input a valid Area Code."
+                      zh_HK: "請輸入有效區域號碼。"
               - id: overseasPhoneNumber
+                displayOrder: 30
                 label:
-                  en: "Overseas Phone Number"
-                  zh_HK: "海外電話號碼"
+                  en: "Phone Number"
+                  zh_HK: "電話號碼"
+                dataType: string
+                controlType: tel
+                maxLength: 17
+                pattern: '^[0-9]*$'
+                placeholder:
+                  en: "Phone Number"
+                  zh_HK: "電話號碼"
+                validations:
+                  - type: pattern
+                    code: personalInformation.overseasPhoneNumber.invalid
+                    message:
+                      en: "Please input a valid Overseas Phone Number."
+                      zh_HK: "請輸入有效海外電話號碼。"
               - id: overseasPhoneExtension
+                displayOrder: 40
                 label:
                   en: "Overseas Phone Extension"
                   zh_HK: "海外電話分機"
-
+                dataType: string
+                controlType: text
+                maxLength: 4
+                pattern: '^[0-9]*$'
+                placeholder:
+                  en: "Ext."
+                  zh_HK: "內線"
           - id: electronicContacts
             title:
-              en: "Electronic Contacts"
-              zh_HK: "電子聯絡"
+              en: "Email Contact"
+              zh_HK: "聯絡電郵"
             fields:
               - id: emailAddress
+                displayOrder: 10
                 label:
                   en: "Email Address"
                   zh_HK: "電郵地址"
-              - id: smsLanguage
-                label:
-                  en: "SMS Language"
-                  zh_HK: "短訊語言"
-                optionSource: smsLanguages
-
+                dataType: string
+                controlType: email
+                maxLength: 120
+                placeholder:
+                  en: "Enter email address"
+                  zh_HK: "請輸入電郵地址"
+                validations:
+                  - type: required
+                    code: personalInformation.email.required
+                    message:
+                      en: "Please provide a valid email address."
+                      zh_HK: "請輸入有效電郵地址。"
+                  - type: email
+                    code: personalInformation.email.invalid
+                    message:
+                      en: "Please provide a valid email address."
+                      zh_HK: "請輸入有效電郵地址。"
           - id: communicationSettings
             title:
               en: "Communication Settings"
               zh_HK: "通訊設定"
             fields:
-              - id: 
-                # placeholder for future small settings
-
+              - id: smsLanguage
+                displayOrder: 10
+                label:
+                  en: "Language Selection of SMS (Optional)"
+                  zh_HK: "短訊語言選擇 (可選)"
+                dataType: string
+                controlType: radio
+                optionSource: smsLanguages
           - id: importantNotes
             title:
               en: "Important Notes"
               zh_HK: "重要事項"
             fields:
               - id: importantNotes
+                displayOrder: 10
                 label:
                   en: "Important Notes"
                   zh_HK: "重要事項"
-
+                dataType: array
+                controlType: noteList
           - id: controlInformation
             title:
               en: "Control Information"
               zh_HK: "控制資料"
             fields:
               - id: applyToAllMemberAccounts
+                displayOrder: 10
                 label:
-                  en: "Apply To All Member Accounts"
-                  zh_HK: "應用於所有成員帳戶"
-
+                  en: "Apply update to all member accounts under the plan"
+                  zh_HK: "將更新套用至計劃下所有成員戶口"
+                dataType: boolean
+                controlType: checkbox
       confirmation:
         message:
           en: "Your personal information has been updated."
           zh_HK: "您的個人資料已更新。"
-        cancelLabel:
-          en: "Cancel"
-          zh_HK: "取消"
-        submitLabel:
-          en: "Submit"
-          zh_HK: "提交"
       validations: []

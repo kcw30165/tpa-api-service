@@ -7,7 +7,10 @@ import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.FieldProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.FormMetadataProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.PageMetadataProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.PageSchemaProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.RuleActionProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.RuleConditionProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.SectionProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.ValidationRuleProperties;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -115,9 +118,9 @@ public class PersonalInformationFieldMapperImpl implements PersonalInformationFi
                 ? formSchema.getDefaultMode()
                 : "view");
         form.put("sections", buildSections(pageSchema, apimData, apimConfig, language));
-        form.put("validationRules", pageSchema != null && pageSchema.getValidations() != null
-                ? pageSchema.getValidations()
-                : List.of());
+        form.put("validationRules", mapValidationRules(
+                pageSchema != null ? pageSchema.getValidations() : null,
+                language));
         form.put("confirmation", buildConfirmation(pageSchema != null ? pageSchema.getConfirmation() : null, language));
         form.put("actions", buildActions(formSchema, language));
 
@@ -132,7 +135,7 @@ public class PersonalInformationFieldMapperImpl implements PersonalInformationFi
             return List.of();
         }
 
-        Map<String, FieldState> fieldStates = buildFieldStates(pageSchema, apimData, apimConfig, language);
+        Map<String, FieldState> fieldStates = buildFieldStates(pageSchema, apimData, apimConfig);
         List<Map<String, Object>> sections = new ArrayList<>();
         int defaultSectionOrder = 10;
 
@@ -155,8 +158,7 @@ public class PersonalInformationFieldMapperImpl implements PersonalInformationFi
 
     private Map<String, FieldState> buildFieldStates(PageSchemaProperties pageSchema,
                                                      Map<String, Object> apimData,
-                                                     Map<String, String> apimConfig,
-                                                     String language) {
+                                                     Map<String, String> apimConfig) {
         Map<String, FieldState> fieldStates = new LinkedHashMap<>();
         Set<String> seenApimItems = new HashSet<>();
 
@@ -217,18 +219,27 @@ public class PersonalInformationFieldMapperImpl implements PersonalInformationFi
             Map<String, Object> field = new LinkedHashMap<>();
             field.put("name", fieldSchema.getId());
             field.put("label", resolveLabel(fieldSchema.getLabel(), language));
+            putIfHasText(field, "dataType", fieldSchema.getDataType());
+            putIfHasText(field, "controlType", fieldSchema.getControlType());
             field.put("value", state.value());
             field.put("originalValue", state.value());
             field.put("readonly", isReadonly(state.configValue()));
             field.put("required", isRequired(state.configValue()));
-            if (hasText(fieldSchema.getOptionSource())) {
-                field.put("optionSource", fieldSchema.getOptionSource());
+            putIfNotNull(field, "minLength", fieldSchema.getMinLength());
+            putIfNotNull(field, "maxLength", fieldSchema.getMaxLength());
+            putIfHasText(field, "pattern", fieldSchema.getPattern());
+            putIfHasText(field, "placeholder", resolveLabel(fieldSchema.getPlaceholder(), language));
+            putIfHasText(field, "optionSource", fieldSchema.getOptionSource());
+            if (fieldSchema.getCopyWhenChecked() != null && !fieldSchema.getCopyWhenChecked().isEmpty()) {
+                field.put("copyWhenChecked", fieldSchema.getCopyWhenChecked());
             }
             field.put("displayOrder", fieldSchema.getDisplayOrder() != null
                     ? fieldSchema.getDisplayOrder()
                     : defaultFieldOrder);
-            if (fieldSchema.getValidations() != null && !fieldSchema.getValidations().isEmpty()) {
-                field.put("validations", fieldSchema.getValidations());
+
+            List<Map<String, Object>> validations = mapValidationRules(fieldSchema.getValidations(), language);
+            if (!validations.isEmpty()) {
+                field.put("validations", validations);
             }
 
             fields.add(field);
@@ -236,6 +247,65 @@ public class PersonalInformationFieldMapperImpl implements PersonalInformationFi
         }
 
         return fields;
+    }
+
+    private List<Map<String, Object>> mapValidationRules(List<ValidationRuleProperties> rules, String language) {
+        if (rules == null || rules.isEmpty()) {
+            return List.of();
+        }
+
+        List<Map<String, Object>> mappedRules = new ArrayList<>();
+        for (ValidationRuleProperties rule : rules) {
+            if (rule == null) {
+                continue;
+            }
+
+            Map<String, Object> mappedRule = new LinkedHashMap<>();
+            putIfHasText(mappedRule, "id", rule.getId());
+            putIfHasText(mappedRule, "type", rule.getType());
+            putIfNotNull(mappedRule, "value", rule.getValue());
+            Map<String, Object> when = mapCondition(rule.getWhen());
+            if (!when.isEmpty()) {
+                mappedRule.put("when", when);
+            }
+            Map<String, Object> then = mapAction(rule.getThen());
+            if (!then.isEmpty()) {
+                mappedRule.put("then", then);
+            }
+            putIfHasText(mappedRule, "severity", rule.getSeverity());
+            putIfHasText(mappedRule, "code", rule.getCode());
+            putIfHasText(mappedRule, "message", resolveLabel(rule.getMessage(), language));
+
+            mappedRules.add(mappedRule);
+        }
+        return mappedRules;
+    }
+
+    private Map<String, Object> mapCondition(RuleConditionProperties condition) {
+        Map<String, Object> mapped = new LinkedHashMap<>();
+        if (condition == null) {
+            return mapped;
+        }
+        putIfHasText(mapped, "operator", condition.getOperator());
+        putIfHasText(mapped, "field", condition.getField());
+        putIfNotNull(mapped, "fields", condition.getFields());
+        putIfNotNull(mapped, "fieldRequired", condition.getFieldRequired());
+        putIfHasText(mapped, "compareWith", condition.getCompareWith());
+        putIfNotNull(mapped, "conditions", condition.getConditions());
+        putIfNotNull(mapped, "groups", condition.getGroups());
+        return mapped;
+    }
+
+    private Map<String, Object> mapAction(RuleActionProperties action) {
+        Map<String, Object> mapped = new LinkedHashMap<>();
+        if (action == null) {
+            return mapped;
+        }
+        putIfHasText(mapped, "operator", action.getOperator());
+        putIfHasText(mapped, "field", action.getField());
+        putIfNotNull(mapped, "fields", action.getFields());
+        putIfNotNull(mapped, "targets", action.getTargets());
+        return mapped;
     }
 
     private Map<String, Object> buildConfirmation(ConfirmationProperties confirmationSchema, String language) {
@@ -303,6 +373,18 @@ public class PersonalInformationFieldMapperImpl implements PersonalInformationFi
             label = labels.values().iterator().next();
         }
         return label != null ? label : "";
+    }
+
+    private void putIfHasText(Map<String, Object> target, String key, String value) {
+        if (hasText(value)) {
+            target.put(key, value);
+        }
+    }
+
+    private void putIfNotNull(Map<String, Object> target, String key, Object value) {
+        if (value != null) {
+            target.put(key, value);
+        }
     }
 
     private void logMissingJavaMapping(String itemId, String configValue) {
