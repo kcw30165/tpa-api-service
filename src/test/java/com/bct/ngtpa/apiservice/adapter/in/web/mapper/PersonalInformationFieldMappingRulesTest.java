@@ -35,6 +35,7 @@ class PersonalInformationFieldMappingRulesTest {
     void maps_apim_config_and_data_to_bff_fields_following_rules() {
         contextRunner.run(context -> {
             var pages = context.getBean(BffPagesProperties.class);
+            var language = "en";
             assertNotNull(pages, "Expected BffPagesProperties to be bound from YAML");
 
             // Simulate APIM config list -> simplified map of item-id -> config-value
@@ -58,12 +59,28 @@ class PersonalInformationFieldMappingRulesTest {
             // Instantiate mapper directly (unit test of mapping algorithm)
             var mapper = new PersonalInformationFieldMapperImpl(sanitizer);
 
-            Map<String, Object> mappedResult = mapper.map(apimData, apimConfig, pages);
+            Map<String, Object> mappedResult = mapper.map(apimData, apimConfig, pages, language);
             assertNotNull(mappedResult, "Expected non-null mapping result");
 
             @SuppressWarnings("unchecked")
-            Map<String, Map<String, Object>> fields = (Map<String, Map<String, Object>>) mappedResult.get("fields");
-            assertNotNull(fields, "Expected 'fields' map in mapping result");
+            Map<String, Object> form = (Map<String, Object>) mappedResult.get("form");
+            assertNotNull(form, "Expected 'form' map in mapping result");
+
+            @SuppressWarnings("unchecked")
+            java.util.List<Map<String, Object>> sections = (java.util.List<Map<String, Object>>) form.get("sections");
+            assertNotNull(sections, "Expected sections in form");
+
+            // Build a convenience map of fieldName -> fieldMap from sections
+            Map<String, Map<String, Object>> fields = new LinkedHashMap<>();
+            for (Map<String, Object> sec : sections) {
+                @SuppressWarnings("unchecked")
+                java.util.List<Map<String, Object>> secFields = (java.util.List<Map<String, Object>>) sec.get("fields");
+                if (secFields == null) continue;
+                for (Map<String, Object> f : secFields) {
+                    String name = (String) f.get("name");
+                    if (name != null) fields.put(name, f);
+                }
+            }
 
             // HIDDEN -> omitted
             assertFalse(fields.containsKey("faxNo"), "HIDDEN fields must be omitted");
@@ -101,8 +118,8 @@ class PersonalInformationFieldMappingRulesTest {
             // Java mapping exists but APIM did not return the APIM item-id -> omitted
             assertFalse(fields.containsKey("hongKongMobilePhone"));
 
-            // Confirmation metadata included
-            assertNotNull(mappedResult.get("confirmation"));
+            // Confirmation metadata included (now under form.confirmation)
+            assertNotNull(form.get("confirmation"));
         });
     }
 

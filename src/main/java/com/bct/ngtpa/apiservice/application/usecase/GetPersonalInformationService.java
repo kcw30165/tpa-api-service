@@ -24,6 +24,7 @@ public class GetPersonalInformationService implements GetPersonalInformationUseC
     @Override
     public Mono<Map<String, Object>> execute(GetPersonalInformationCommand command) {
         String accountRef = command.accountRef();
+        String language = command.language();
 
         return portalAccessContextPort.resolvePortalAccessContext(accountRef)
                 .flatMap(ctx -> {
@@ -35,12 +36,14 @@ public class GetPersonalInformationService implements GetPersonalInformationUseC
                     );
 
                     return apimMemberInfoPort.fetchMemberInfo(apimCmd)
-                            .map(memberInfoResult -> mapToPage(memberInfoResult));
+                            .map(memberInfoResult -> mapToPage(memberInfoResult, language));
                 });
     }
 
-    private Map<String, Object> mapToPage(MemberInfoResult memberInfoResult) {
-        Map<String, Object> payload = memberInfoResult.getPayload();
+    private Map<String, Object> mapToPage(MemberInfoResult memberInfoResult, String language) {
+        Map<String, Object> payload = memberInfoResult != null && memberInfoResult.getPayload() != null
+                ? memberInfoResult.getPayload()
+                : Map.of();
 
         Map<String, String> apimConfig = new LinkedHashMap<>();
         Object cfgObj = payload.get("config");
@@ -53,10 +56,12 @@ public class GetPersonalInformationService implements GetPersonalInformationUseC
         Map<String, Object> apimData = new LinkedHashMap<>();
         Object dataObj = payload.get("data");
         if (dataObj instanceof Map<?, ?> dataMap) {
-            apimData.putAll((Map) dataMap);
+            for (Map.Entry<?, ?> e : dataMap.entrySet()) {
+                apimData.put(String.valueOf(e.getKey()), e.getValue());
+            }
         }
 
-        // Pass the configured BffPagesProperties so mapper can resolve the page schema
-        return mapper.map(apimData, apimConfig, bffPagesProperties);
+        // Pass the configured BffPagesProperties so mapper can resolve the page schema.
+        return mapper.map(apimData, apimConfig, bffPagesProperties, language);
     }
 }

@@ -43,11 +43,12 @@ class GetPersonalInformationUseCaseTest {
     }
 
     private static PersonalInformationFieldMapper mapperStub() {
-        return (apimData, apimConfig, bffPagesProperties) -> {
+        return (apimData, apimConfig, bffPagesProperties, language) -> {
             Map<String, Object> out = new HashMap<>();
             out.put("fields", Map.of("addr1", Map.of("value", "1 Example Street")));
             out.put("sections", Map.of());
             out.put("confirmation", Map.of("enabled", false));
+            out.put("language", "en");
             return out;
         };
     }
