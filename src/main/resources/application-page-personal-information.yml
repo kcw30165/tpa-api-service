@@ -406,4 +406,128 @@ bff-pages:
         message:
           en: "Your personal information has been updated."
           zh_HK: "您的個人資料已更新。"
-      validations: []
+      validations: 
+        - id: address.atLeastOneRequired
+          type: groupRequirement
+          severity: error
+          when:
+            operator: allGroupsEmpty
+            groups:
+              - id: residentialAddress
+                existsWhen:
+                  field: residentialAddressLine1
+                  operator: notBlank
+              - id: mailingAddress
+                existsWhen:
+                  field: mailingAddressLine1
+                  operator: notBlank
+          then:
+            operator: fail
+            targets:
+              - residentialAddressLine1
+              - mailingAddressLine1
+          code: personalInformation.address.atLeastOneRequired
+          message:
+            en: "Please input a residential address or correspondence address."
+            zh_HK: "請輸入居住地址或通訊地址。"
+        - id: residentialAddress.completeWhenStarted
+          type: conditionalRequired
+          severity: error
+          when:
+            operator: notBlank
+            field: residentialAddressLine1
+          then:
+            operator: allRequired
+            fields:
+              - residentialAddressLine1
+              - residentialCountry
+            targets:
+              - residentialAddressLine1
+              - residentialCountry
+          code: personalInformation.residentialAddress.incomplete
+          message:
+            en: "Please input a residential address."
+            zh_HK: "請輸入居住地址。"
+        - id: mailingAddress.completeWhenStarted
+          type: conditionalRequired
+          severity: error
+          when:
+            operator: notBlank
+            field: mailingAddressLine1
+          then:
+            operator: allRequired
+            fields:
+              - mailingAddressLine1
+              - mailingCountry
+            targets:
+              - mailingAddressLine1
+              - mailingCountry
+          code: personalInformation.mailingAddress.incomplete
+          message:
+            en: "Please input a correspondence address."
+            zh_HK: "請輸入通訊地址。"
+        - id: businessPhone.requiredWhenExtensionPresent
+          type: conditionalRequired
+          severity: error
+          when:
+            operator: notBlank
+            field: hongKongBusinessPhoneExtension
+          then:
+            operator: required
+            field: hongKongBusinessPhone
+            targets:
+              - hongKongBusinessPhone
+          code: personalInformation.businessPhone.requiredWhenExtensionPresent
+          message:
+            en: "Please input a valid Hong Kong Business Phone Number."
+            zh_HK: "請輸入有效香港公司電話號碼。"
+        - id: overseasCountryCode.requiredWhenPhonePresent
+          type: conditionalRequired
+          severity: error
+          when:
+            operator: notBlank
+            field: overseasPhoneNumber
+          then:
+            operator: required
+            field: overseasCountryCode
+            targets:
+              - overseasCountryCode
+          code: personalInformation.overseasCountryCode.requiredWhenPhonePresent
+          message:
+            en: "Please input a valid Country Code."
+            zh_HK: "請輸入有效國家號碼。"
+        - id: overseasPhone.requiredWhenCodePresent
+          type: conditionalRequired
+          severity: error
+          when:
+            operator: any
+            conditions:
+              - field: overseasCountryCode
+                operator: notBlank
+              - field: overseasAreaCode
+                operator: notBlank
+          then:
+            operator: required
+            field: overseasPhoneNumber
+            targets:
+              - overseasPhoneNumber
+          code: personalInformation.overseasPhoneNumber.requiredWhenCodePresent
+          message:
+            en: "Please input a valid Overseas Phone Number."
+            zh_HK: "請輸入有效海外電話號碼。"
+        - id: aeoiReminder.whenResidentialCountryChanged
+          type: conditionalWarning
+          severity: warning
+          when:
+            operator: changed
+            field: residentialCountry
+            compareWith: originalValue
+          then:
+            operator: showMessage
+            targets:
+              - residentialCountry
+          code: personalInformation.aeoiReminder
+          message:
+            en: "Please remember to submit your AEOI Self-Certificate by clicking Self Certification for Tax Residency function."
+            zh_HK: "請記得點選『稅務居民證明』功能，以提交您的 AEOI 證明。"
+
