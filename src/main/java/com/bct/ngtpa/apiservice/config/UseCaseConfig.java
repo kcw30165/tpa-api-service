@@ -83,7 +83,8 @@ public class UseCaseConfig {
     public GetPersonalInformationUseCase getPersonalInformationUseCase(
             ApimMemberInfoPort apimMemberInfoPort,
             PortalAccessContextPort portalAccessContextPort,
-            com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationFieldMapper personalInformationFieldMapper) {
-        return new GetPersonalInformationService(apimMemberInfoPort, portalAccessContextPort, personalInformationFieldMapper);
+            com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationFieldMapper personalInformationFieldMapper,
+            com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.BffPagesProperties bffPagesProperties) {
+        return new GetPersonalInformationService(apimMemberInfoPort, portalAccessContextPort, personalInformationFieldMapper, bffPagesProperties);
     }
 }

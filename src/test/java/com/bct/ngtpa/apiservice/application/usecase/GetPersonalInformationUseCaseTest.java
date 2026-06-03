@@ -70,8 +70,8 @@ class GetPersonalInformationUseCaseTest {
             // until the production implementation is added (test will therefore fail as intended).
             Class<?> svcClass = Class.forName("com.bct.ngtpa.apiservice.application.usecase.GetPersonalInformationService");
             // If the class exists later, attempt to instantiate with the conventional constructor
-            var ctor = svcClass.getConstructor(ApimMemberInfoPort.class, PortalAccessContextPort.class, PersonalInformationFieldMapper.class);
-            Object svc = ctor.newInstance(apimPort, portalPort, mapper);
+            var ctor = svcClass.getConstructor(ApimMemberInfoPort.class, PortalAccessContextPort.class, PersonalInformationFieldMapper.class, com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.BffPagesProperties.class);
+            Object svc = ctor.newInstance(apimPort, portalPort, mapper, new com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.BffPagesProperties());
 
             // If created, call the execute method with a command containing accountRef + language
             Class<?> cmdClass = Class.forName("com.bct.ngtpa.apiservice.application.dto.GetPersonalInformationCommand");
@@ -95,8 +95,8 @@ class GetPersonalInformationUseCaseTest {
 
         try {
             Class<?> svcClass = Class.forName("com.bct.ngtpa.apiservice.application.usecase.GetPersonalInformationService");
-            var ctor = svcClass.getConstructor(ApimMemberInfoPort.class, PortalAccessContextPort.class, PersonalInformationFieldMapper.class);
-            Object svc = ctor.newInstance(failingApim, portalPort, mapper);
+            var ctor = svcClass.getConstructor(ApimMemberInfoPort.class, PortalAccessContextPort.class, PersonalInformationFieldMapper.class, com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.BffPagesProperties.class);
+            Object svc = ctor.newInstance(failingApim, portalPort, mapper, new com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.BffPagesProperties());
             Class<?> cmdClass = Class.forName("com.bct.ngtpa.apiservice.application.dto.GetPersonalInformationCommand");
             Object cmd = cmdClass.getConstructor(String.class, String.class).newInstance("acc-ref", "en");
             var executeMethod = svcClass.getMethod("execute", cmdClass);

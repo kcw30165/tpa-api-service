@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.application.usecase;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationFieldMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.BffPagesProperties;
 import com.bct.ngtpa.apiservice.application.dto.GetPersonalInformationCommand;
 import com.bct.ngtpa.apiservice.application.dto.MemberInfoResult;
 import com.bct.ngtpa.apiservice.application.port.in.GetPersonalInformationUseCase;
@@ -18,6 +19,7 @@ public class GetPersonalInformationService implements GetPersonalInformationUseC
     private final ApimMemberInfoPort apimMemberInfoPort;
     private final PortalAccessContextPort portalAccessContextPort;
     private final PersonalInformationFieldMapper mapper;
+    private final BffPagesProperties bffPagesProperties;
 
     @Override
     public Mono<Map<String, Object>> execute(GetPersonalInformationCommand command) {
@@ -54,9 +56,7 @@ public class GetPersonalInformationService implements GetPersonalInformationUseC
             apimData.putAll((Map) dataMap);
         }
 
-        // NOTE: pass null for BffPagesProperties; mapper implementations used in tests
-        // are stubs that do not require a real pages model. Production wiring will
-        // provide a real BffPagesProperties where appropriate.
-        return mapper.map(apimData, apimConfig, null);
+        // Pass the configured BffPagesProperties so mapper can resolve the page schema
+        return mapper.map(apimData, apimConfig, bffPagesProperties);
     }
 }
