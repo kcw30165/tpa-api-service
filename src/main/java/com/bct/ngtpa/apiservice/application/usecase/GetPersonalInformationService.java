@@ -1,11 +1,11 @@
 package com.bct.ngtpa.apiservice.application.usecase;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationFieldMapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.BffPagesProperties;
+import com.bct.ngtpa.apiservice.application.dto.FetchMemberInfoCommand;
 import com.bct.ngtpa.apiservice.application.dto.GetPersonalInformationCommand;
 import com.bct.ngtpa.apiservice.application.dto.MemberInfoResult;
 import com.bct.ngtpa.apiservice.application.port.in.GetPersonalInformationUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimMemberInfoPort;
+import com.bct.ngtpa.apiservice.application.port.out.PersonalInformationPageMapperPort;
 import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
@@ -18,8 +18,7 @@ public class GetPersonalInformationService implements GetPersonalInformationUseC
 
     private final ApimMemberInfoPort apimMemberInfoPort;
     private final PortalAccessContextPort portalAccessContextPort;
-    private final PersonalInformationFieldMapper mapper;
-    private final BffPagesProperties bffPagesProperties;
+    private final PersonalInformationPageMapperPort pageMapperPort;
 
     @Override
     public Mono<Map<String, Object>> execute(GetPersonalInformationCommand command) {
@@ -28,7 +27,7 @@ public class GetPersonalInformationService implements GetPersonalInformationUseC
 
         return portalAccessContextPort.resolvePortalAccessContext(accountRef)
                 .flatMap(ctx -> {
-                    var apimCmd = new com.bct.ngtpa.apiservice.application.dto.FetchMemberInfoCommand(
+                    var apimCmd = new FetchMemberInfoCommand(
                             ctx.account().accountEnv(),
                             ctx.account().policyNo(),
                             ctx.account().certNo(),
@@ -61,7 +60,6 @@ public class GetPersonalInformationService implements GetPersonalInformationUseC
             }
         }
 
-        // Pass the configured BffPagesProperties so mapper can resolve the page schema.
-        return mapper.map(apimData, apimConfig, bffPagesProperties, language);
+        return pageMapperPort.map(apimData, apimConfig, language);
     }
 }

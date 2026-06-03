@@ -1,36 +1,37 @@
 package com.bct.ngtpa.apiservice.application.exception;
 
-import org.junit.jupiter.api.Test;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import org.junit.jupiter.api.Test;
+
 class ApplicationExceptionTest {
 
     @Test
-    void retainsErrorCode() {
-        var exception = new ApplicationException("err.request.invalid", "Diagnostic message");
+    void trimsAndExposesErrorCode() {
+        ApplicationException exception = new ApplicationException(" err.test.code ");
 
-        assertEquals("err.request.invalid", exception.getErrorCode());
+        assertEquals("err.test.code", exception.getErrorCode());
     }
 
     @Test
-    void retainsCause() {
-        var cause = new IllegalStateException("boom");
+    void preservesDiagnosticMessageAndCauseAcrossConstructors() {
+        RuntimeException cause = new RuntimeException("cause");
 
-        var exception = new ApplicationException("err.system.unexpected", "Diagnostic message", cause);
+        ApplicationException withMessage = new ApplicationException("err.test", "diagnostic");
+        ApplicationException withCause = new ApplicationException("err.test", cause);
+        ApplicationException withMessageAndCause = new ApplicationException("err.test", "diagnostic", cause);
 
-        assertSame(cause, exception.getCause());
+        assertEquals("diagnostic", withMessage.getMessage());
+        assertSame(cause, withCause.getCause());
+        assertEquals("diagnostic", withMessageAndCause.getMessage());
+        assertSame(cause, withMessageAndCause.getCause());
     }
 
     @Test
-    void rejectsNullErrorCode() {
-        assertThrows(NullPointerException.class, () -> new ApplicationException(null, "Diagnostic message"));
-    }
-
-    @Test
-    void rejectsBlankErrorCode() {
-        assertThrows(IllegalArgumentException.class, () -> new ApplicationException("   ", "Diagnostic message"));
+    void rejectsNullOrBlankErrorCode() {
+        assertThrows(NullPointerException.class, () -> new ApplicationException(null));
+        assertThrows(IllegalArgumentException.class, () -> new ApplicationException("   "));
     }
 }

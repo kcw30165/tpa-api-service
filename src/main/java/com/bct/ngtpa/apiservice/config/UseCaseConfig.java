@@ -7,20 +7,21 @@ import com.bct.ngtpa.apiservice.application.port.in.GetPersonalInformationUseCas
 import com.bct.ngtpa.apiservice.application.port.in.GetReferenceDataCountriesUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.UpdateNotificationsReadStatusUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimContributionSummaryPort;
+import com.bct.ngtpa.apiservice.application.port.out.ApimMemberInfoPort;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNoticeMessagePort;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNotificationReadStatusPort;
 import com.bct.ngtpa.apiservice.application.port.out.ApimReferenceDataCountriesPort;
-import com.bct.ngtpa.apiservice.application.port.out.ApimMemberInfoPort;
 import com.bct.ngtpa.apiservice.application.port.out.ContributionActionPermissionPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
+import com.bct.ngtpa.apiservice.application.port.out.PersonalInformationPageMapperPort;
 import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.usecase.ExportContributionSummaryService;
 import com.bct.ngtpa.apiservice.application.usecase.GetContributionSummaryService;
 import com.bct.ngtpa.apiservice.application.usecase.GetNotificationsService;
+import com.bct.ngtpa.apiservice.application.usecase.GetPersonalInformationService;
 import com.bct.ngtpa.apiservice.application.usecase.GetReferenceDataCountriesService;
 import com.bct.ngtpa.apiservice.application.usecase.UpdateNotificationsReadStatusService;
-import com.bct.ngtpa.apiservice.application.usecase.GetPersonalInformationService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -83,8 +84,10 @@ public class UseCaseConfig {
     public GetPersonalInformationUseCase getPersonalInformationUseCase(
             ApimMemberInfoPort apimMemberInfoPort,
             PortalAccessContextPort portalAccessContextPort,
-            com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationFieldMapper personalInformationFieldMapper,
-            com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.BffPagesProperties bffPagesProperties) {
-        return new GetPersonalInformationService(apimMemberInfoPort, portalAccessContextPort, personalInformationFieldMapper, bffPagesProperties);
+            PersonalInformationPageMapperPort personalInformationPageMapperPort) {
+        return new GetPersonalInformationService(
+                apimMemberInfoPort,
+                portalAccessContextPort,
+                personalInformationPageMapperPort);
     }
 }
