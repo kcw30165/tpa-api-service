@@ -1,0 +1,98 @@
+bff-pages:
+  common:
+    labels:
+      en: "Common Label"
+      zh_HK: "共同標題"
+  pages:
+    sample-page:
+      metadata:
+        id: sample-page
+        title:
+          en: "Sample Page"
+          zh_HK: "範例頁"
+      form:
+        id: sample-form
+        actions:
+          - name: save
+            label:
+              en: "Save"
+              zh_HK: "儲存"
+        sections:
+          - id: section-1
+            title:
+              en: "Section 1"
+              zh_HK: "段落1"
+            fields:
+              - id: field-a
+                displayOrder: 1
+                label:
+                  en: "Field A"
+                  zh_HK: "欄位A"
+                validations:
+                  - id: v1
+                    when:
+                      operator: notBlank
+                    then:
+                      operator: required
+                    severity: error
+                  - id: v2
+                    when:
+                      operator: blank
+                    then:
+                      operator: showMessage
+                    severity: warning
+              - id: field-b
+                displayOrder: 2
+                label:
+                  en: "Field B"
+                  zh_HK: "欄位B"
+                validations:
+                  - id: v3
+                    when:
+                      operator: changed
+                    then:
+                      operator: fail
+                    severity: info
+          - id: section-2
+            title:
+              en: "Section 2"
+              zh_HK: "段落2"
+            fields:
+              - id: field-c
+                displayOrder: 1
+                label:
+                  en: "Field C"
+                  zh_HK: "欄位C"
+                validations:
+                  - id: v4
+                    when:
+                      operator: all
+                    then:
+                      operator: allRequired
+                    severity: error
+                  - id: v5
+                    when:
+                      operator: any
+                    then:
+                      operator: showMessage
+                    severity: warning
+                  - id: v6
+                    when:
+                      operator: allGroupsEmpty
+                    then:
+                      operator: required
+                    severity: info
+      validations:
+        - id: cross-1
+          when:
+            operator: notBlank
+            fields:
+              - field-a
+              - field-b
+          then:
+            operator: fail
+          severity: error
+      confirmation:
+        message:
+          en: "Are you sure?"
+          zh_HK: "你確定嗎?"
