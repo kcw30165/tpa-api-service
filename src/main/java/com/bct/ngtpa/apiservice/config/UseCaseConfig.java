@@ -3,12 +3,14 @@ package com.bct.ngtpa.apiservice.config;
 import com.bct.ngtpa.apiservice.application.port.in.ExportContributionSummaryUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetContributionSummaryUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetNotificationsUseCase;
+import com.bct.ngtpa.apiservice.application.port.in.GetPersonalInformationUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetReferenceDataCountriesUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.UpdateNotificationsReadStatusUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimContributionSummaryPort;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNoticeMessagePort;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNotificationReadStatusPort;
 import com.bct.ngtpa.apiservice.application.port.out.ApimReferenceDataCountriesPort;
+import com.bct.ngtpa.apiservice.application.port.out.ApimMemberInfoPort;
 import com.bct.ngtpa.apiservice.application.port.out.ContributionActionPermissionPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
 import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
@@ -18,6 +20,7 @@ import com.bct.ngtpa.apiservice.application.usecase.GetContributionSummaryServic
 import com.bct.ngtpa.apiservice.application.usecase.GetNotificationsService;
 import com.bct.ngtpa.apiservice.application.usecase.GetReferenceDataCountriesService;
 import com.bct.ngtpa.apiservice.application.usecase.UpdateNotificationsReadStatusService;
+import com.bct.ngtpa.apiservice.application.usecase.GetPersonalInformationService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -74,5 +77,14 @@ public class UseCaseConfig {
     public GetReferenceDataCountriesUseCase getReferenceDataCountriesUseCase(
             ApimReferenceDataCountriesPort apimReferenceDataCountriesPort) {
         return new GetReferenceDataCountriesService(apimReferenceDataCountriesPort);
+    }
+
+    @Bean
+    public GetPersonalInformationUseCase getPersonalInformationUseCase(
+            ApimMemberInfoPort apimMemberInfoPort,
+            PortalAccessContextPort portalAccessContextPort,
+            com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationFieldMapper personalInformationFieldMapper,
+            com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.BffPagesProperties bffPagesProperties) {
+        return new GetPersonalInformationService(apimMemberInfoPort, portalAccessContextPort, personalInformationFieldMapper, bffPagesProperties);
     }
 }

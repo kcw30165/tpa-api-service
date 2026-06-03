@@ -265,6 +265,29 @@ This repository includes a generic Page Schema Validation DSL bound to the `bff-
 
 To add a page schema, place YAML under `src/main/resources/pageconfig/` or add entries to an existing `bff-pages` YAML. Prefer adding a test fixture under `src/test/resources/pageconfig/` and a focused unit test to verify binding and linting (TDD).
 
+## Personal Information GET
+
+Endpoint: GET /api/v1/personal-information
+
+- Purpose: returns the BFF page schema for the Personal Information UI (fields, sections, confirmation metadata).
+- Headers required for selected-account semantics:
+  - `Account-Ref`: required for selected-account APIs; resolved from Reactor context via `RequestHeaderContextKeys.CONTEXT_KEY`.
+  - `X-Request-Id`: echoed back in responses and propagated to APIM via `ApimRequestIdExchangeFilter`.
+  - `Accept-Language`: used for UI text choice and error-message locale resolution; normalized via `RequestLanguageResolver` (defaults to `en`).
+- APIM dependency: the GET uses an outbound APIM call to TRPGetMemberInfo (`/ws/NGTPA/v1/TRPGetMemberInfo`) implemented by `ApimMemberInfoAdapter` and exposed to the application layer via `ApimMemberInfoPort`.
+- Page YAML and mapping:
+  - Page schema for Personal Information is page-specific and bound using the existing `bff-pages` DSL (place YAML under `src/main/resources/pageconfig/` and add fixtures under `src/test/resources/pageconfig/`).
+  - The application maps APIM `response.data[0].config[]` (list of `{item-id, config-value}`) into BFF field metadata using the `PersonalInformationFieldMapper` implementation.
+  - APIM `config` rules implemented: `HIDDEN` (field omitted), `READONLY` (readonly=true, required=false), `EDITABLE_COM` (readonly=false, required=true), `EDITABLE_OPTION` (readonly=false, required=false).
+  - Unmapped APIM config items or missing expected APIM item-ids are logged as errors via `LoggingSanitizer` and are not emitted to the frontend.
+  - Country values are not converted by the Java mapping (the raw APIM value is emitted; localization and country display values are handled by the page schema/option sources if needed).
+  - The API returns `optionSource` (reference to a front-end option list) from the page schema — it does not return option value lists from the server.
+  - Confirmation metadata is included in the response (driven by the page YAML `confirmation` section).
+
+Notes:
+- The controller follows the same selected-account pattern as `ReferenceDataController`: it resolves `Account-Ref` from the Reactor Context and throws `PortalAccessContextResolutionException` with `ErrorCodes.MEMBER_CONTEXT_INVALID` when missing or blank.
+- The use case is framework-free and wired in `UseCaseConfig` as `GetPersonalInformationService` which resolves the `PortalAccessContext`, calls `ApimMemberInfoPort`, and delegates to `PersonalInformationFieldMapper` to assemble the page payload.
+
 ---
 
 ## Environment Variables
