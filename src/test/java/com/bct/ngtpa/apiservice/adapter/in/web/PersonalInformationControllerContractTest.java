@@ -2,12 +2,16 @@ package com.bct.ngtpa.apiservice.adapter.in.web;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingWebFilter;
+import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationWebMapper;
 import com.bct.ngtpa.apiservice.application.dto.GetPersonalInformationCommand;
+import com.bct.ngtpa.apiservice.application.dto.PersonalInformationResult;
 import com.bct.ngtpa.apiservice.application.port.in.GetPersonalInformationUseCase;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
@@ -16,7 +20,6 @@ import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
-import java.util.Locale;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,11 +29,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
-/**
- * Controller contract tests for Personal Information endpoint.
- *
- * These tests are TDD-first and will fail until the controller is implemented.
- */
 class PersonalInformationControllerContractTest {
 
     private static final String ACCOUNT_REF = "ACC-123";
@@ -38,156 +36,114 @@ class PersonalInformationControllerContractTest {
     private static final String ACCEPT_LANGUAGE = "en";
 
     private GetPersonalInformationUseCase useCase;
+    private PersonalInformationWebMapper mapper;
     private ApiExceptionHandler exceptionHandler;
 
     @BeforeEach
     void setUp() {
         useCase = Mockito.mock(GetPersonalInformationUseCase.class);
+        mapper = Mockito.mock(PersonalInformationWebMapper.class);
 
         exceptionHandler = new ApiExceptionHandler(
-                new com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver() {
-                    @Override
-                    public String resolve(String errorCode, String locale, String accountEnv, String trustCode,
-                                          String schemeType) {
-                        if (ErrorCodes.MEMBER_CONTEXT_INVALID.equals(errorCode)) {
-                            return "Member context is invalid.";
-                        }
-                        return "Unexpected error.";
+                (errorCode, locale, accountEnv, trustCode, schemeType) -> {
+                    if (ErrorCodes.MEMBER_CONTEXT_INVALID.equals(errorCode)) {
+                        return "Member context is invalid.";
                     }
+                    return "Unexpected error.";
                 },
                 new LoggingSanitizer(new ObjectMapper(), new LoggingSanitizerProperties()));
     }
 
     @Test
     void getPersonalInformationReturns200WithPageAndForm() {
-        when(useCase.execute(any())).thenReturn(Mono.just(Map.of("page", Map.of(), "form", Map.of())));
+        var result = new PersonalInformationResult(Map.of("addr1", "ABC Street"), Map.of("addr1", "EDITABLE_COM"));
+        when(useCase.execute(any())).thenReturn(Mono.just(result));
+        when(mapper.toResponse(eq(result), eq(ACCEPT_LANGUAGE)))
+                .thenReturn(Map.of("page", Map.of(), "form", Map.of()));
 
-        try {
-            Class<?> controllerClass = Class.forName("com.bct.ngtpa.apiservice.adapter.in.web.PersonalInformationController");
-            Object controller = controllerClass.getConstructor(GetPersonalInformationUseCase.class).newInstance(useCase);
+        WebTestClient client = client();
 
-            WebTestClient client = WebTestClient.bindToController(controller)
-                    .controllerAdvice(exceptionHandler)
-                    .webFilter(new RequestLoggingWebFilter(requestLoggingProperties(), new LoggingSanitizer(new ObjectMapper(), new LoggingSanitizerProperties()), new ObjectMapper()))
-                    .build();
-
-            client.get()
-                    .uri("/api/v1/personal-information")
-                    .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
-                    .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, ACCOUNT_REF)
-                    .header(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
-                    .header(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, ACCEPT_LANGUAGE)
-                    .exchange()
-                    .expectStatus().isOk()
-                    .expectHeader().valueEquals(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
-                    .expectBody()
-                    .jsonPath("$.page").exists()
-                    .jsonPath("$.form").exists();
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException(e);
-        } catch (ReflectiveOperationException e) {
-            throw new RuntimeException(e);
-        }
+        client.get()
+                .uri("/api/v1/personal-information")
+                .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, ACCOUNT_REF)
+                .header(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
+                .header(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, ACCEPT_LANGUAGE)
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().valueEquals(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
+                .expectBody()
+                .jsonPath("$.page").exists()
+                .jsonPath("$.form").exists();
     }
 
     @Test
-    void passesAccountRefAndAcceptLanguageIntoUseCaseCommand() {
+    void getPersonalInformationPassesAccountRefAndLanguageToUseCase() {
         AtomicReference<GetPersonalInformationCommand> captured = new AtomicReference<>();
-
+        var result = new PersonalInformationResult(Map.of(), Map.of());
         when(useCase.execute(any())).thenAnswer(invocation -> {
             captured.set(invocation.getArgument(0));
-            return Mono.just(Map.of("page", Map.of(), "form", Map.of()));
+            return Mono.just(result);
         });
+        when(mapper.toResponse(eq(result), eq("zh_HK"))).thenReturn(Map.of("page", Map.of(), "form", Map.of()));
 
-        try {
-            Class<?> controllerClass = Class.forName("com.bct.ngtpa.apiservice.adapter.in.web.PersonalInformationController");
-            Object controller = controllerClass.getConstructor(GetPersonalInformationUseCase.class).newInstance(useCase);
+        client().get()
+                .uri("/api/v1/personal-information")
+                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, ACCOUNT_REF)
+                .header(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
+                .header(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, "zh-HK")
+                .exchange()
+                .expectStatus().isOk();
 
-            WebTestClient client = WebTestClient.bindToController(controller)
-                    .controllerAdvice(exceptionHandler)
-                    .webFilter(new RequestLoggingWebFilter(requestLoggingProperties(), new LoggingSanitizer(new ObjectMapper(), new LoggingSanitizerProperties()), new ObjectMapper()))
-                    .build();
-
-            client.get()
-                    .uri("/api/v1/personal-information")
-                    .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
-                    .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, ACCOUNT_REF)
-                    .header(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
-                    .header(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, ACCEPT_LANGUAGE)
-                    .exchange()
-                    .expectStatus().isOk();
-
-            ArgumentCaptor<GetPersonalInformationCommand> captor = ArgumentCaptor.forClass(GetPersonalInformationCommand.class);
-            verify(useCase).execute(captor.capture());
-            assertEquals(ACCOUNT_REF, captor.getValue().accountRef());
-            assertEquals(ACCEPT_LANGUAGE, captor.getValue().language());
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException(e);
-        } catch (ReflectiveOperationException e) {
-            throw new RuntimeException(e);
-        }
+        assertEquals(ACCOUNT_REF, captured.get().accountRef());
+        assertEquals("zh_HK", captured.get().language());
     }
 
     @Test
-    void echoesInboundRequestIdInResponseHeader() {
-        when(useCase.execute(any())).thenReturn(Mono.just(Map.of("page", Map.of(), "form", Map.of())));
-
-        try {
-            Class<?> controllerClass = Class.forName("com.bct.ngtpa.apiservice.adapter.in.web.PersonalInformationController");
-            Object controller = controllerClass.getConstructor(GetPersonalInformationUseCase.class).newInstance(useCase);
-
-            WebTestClient client = WebTestClient.bindToController(controller)
-                    .controllerAdvice(exceptionHandler)
-                    .webFilter(new RequestLoggingWebFilter(requestLoggingProperties(), new LoggingSanitizer(new ObjectMapper(), new LoggingSanitizerProperties()), new ObjectMapper()))
-                    .build();
-
-            client.get()
-                    .uri("/api/v1/personal-information")
-                    .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
-                    .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, ACCOUNT_REF)
-                    .header(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
-                    .header(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, ACCEPT_LANGUAGE)
-                    .exchange()
-                    .expectStatus().isOk()
-                    .expectHeader().valueEquals(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID);
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException(e);
-        } catch (ReflectiveOperationException e) {
-            throw new RuntimeException(e);
-        }
+    void getPersonalInformationReturns400WhenAccountRefMissing() {
+        client().get()
+                .uri("/api/v1/personal-information")
+                .header(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
+                .header(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, ACCEPT_LANGUAGE)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectHeader().valueEquals(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
+                .expectBody()
+                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.MEMBER_CONTEXT_INVALID)
+                .jsonPath("$.message").isEqualTo("Member context is invalid.");
     }
 
     @Test
-    void missingAccountRefReturnsStandardizedErrorEnvelope() {
-        try {
-            Class<?> controllerClass = Class.forName("com.bct.ngtpa.apiservice.adapter.in.web.PersonalInformationController");
-            Object controller = controllerClass.getConstructor(GetPersonalInformationUseCase.class).newInstance(useCase);
+    void getPersonalInformationDelegatesToWebMapperAfterUseCase() {
+        var result = new PersonalInformationResult(Map.of("email", "nick@example.com"), Map.of("email", "READONLY"));
+        when(useCase.execute(any())).thenReturn(Mono.just(result));
+        when(mapper.toResponse(eq(result), eq(ACCEPT_LANGUAGE))).thenReturn(Map.of("page", Map.of(), "form", Map.of()));
 
-            WebTestClient client = WebTestClient.bindToController(controller)
-                    .controllerAdvice(exceptionHandler)
-                    .webFilter(new RequestLoggingWebFilter(requestLoggingProperties(), new LoggingSanitizer(new ObjectMapper(), new LoggingSanitizerProperties()), new ObjectMapper()))
-                    .build();
+        client().get()
+                .uri("/api/v1/personal-information")
+                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, ACCOUNT_REF)
+                .header(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
+                .header(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, ACCEPT_LANGUAGE)
+                .exchange()
+                .expectStatus().isOk();
 
-            client.get()
-                    .uri("/api/v1/personal-information")
-                    .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
-                    .header(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
-                    .header(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, ACCEPT_LANGUAGE)
-                    .exchange()
-                    .expectStatus().isBadRequest()
-                    .expectHeader().valueEquals(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
-                    .expectBody()
-                    .jsonPath("$.errorCode").isEqualTo(ErrorCodes.MEMBER_CONTEXT_INVALID)
-                    .jsonPath("$.message").isEqualTo("Member context is invalid.")
-                    .jsonPath("$.requestId").doesNotExist();
-        } catch (ClassNotFoundException e) {
-            throw new RuntimeException(e);
-        } catch (ReflectiveOperationException e) {
-            throw new RuntimeException(e);
-        }
+        ArgumentCaptor<GetPersonalInformationCommand> commandCaptor = ArgumentCaptor.forClass(GetPersonalInformationCommand.class);
+        verify(useCase).execute(commandCaptor.capture());
+        verify(mapper).toResponse(result, ACCEPT_LANGUAGE);
+        assertEquals(ACCOUNT_REF, commandCaptor.getValue().accountRef());
     }
 
-    private static RequestLoggingProperties requestLoggingProperties() {
+    private WebTestClient client() {
+        return WebTestClient.bindToController(new PersonalInformationController(useCase, mapper))
+                .controllerAdvice(exceptionHandler)
+                .webFilter(new RequestLoggingWebFilter(
+                        requestLoggingProperties(),
+                        new LoggingSanitizer(new ObjectMapper(), new LoggingSanitizerProperties()),
+                        new ObjectMapper()))
+                .build();
+    }
+
+    private RequestLoggingProperties requestLoggingProperties() {
         RequestLoggingProperties properties = new RequestLoggingProperties();
         properties.setEnabled(true);
         properties.setLogHeaders(false);

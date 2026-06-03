@@ -16,6 +16,7 @@ public class FieldProperties {
     private Map<String, String> placeholder;
     private String optionSource;
     private Map<String, Object> copyWhenChecked;
+    private ApimBindingProperties apimBinding;
     private List<ValidationRuleProperties> validations;
 
     public String getId() {
@@ -104,6 +105,14 @@ public class FieldProperties {
 
     public void setCopyWhenChecked(Map<String, Object> copyWhenChecked) {
         this.copyWhenChecked = copyWhenChecked;
+    }
+
+    public ApimBindingProperties getApimBinding() {
+        return apimBinding;
+    }
+
+    public void setApimBinding(ApimBindingProperties apimBinding) {
+        this.apimBinding = apimBinding;
     }
 
     public List<ValidationRuleProperties> getValidations() {
