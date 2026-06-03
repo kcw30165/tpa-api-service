@@ -403,9 +403,43 @@ bff-pages:
                 dataType: boolean
                 controlType: checkbox
       confirmation:
-        message:
-          en: "Your personal information has been updated."
-          zh_HK: "您的個人資料已更新。"
+        enabled: true
+        title:
+          en: "Confirm Information Update"
+          zh_HK: "確認個人資料更改"
+        reviewMessage:
+          en: "Please review the changes you've made to your information before confirming."
+          zh_HK: "請在確認前檢查已更改的個人資料。"
+        beforeLabel:
+          en: "Before Changes"
+          zh_HK: "變更前"
+        afterLabel:
+          en: "After Changes"
+          zh_HK: "變更後"
+        securityVerification:
+          label:
+            en: "Security Verification"
+            zh_HK: "安全認證"
+          instruction:
+            en: "Please enter your password to confirm these changes"
+            zh_HK: "請輸入您的密碼以確認以上變更"
+          passwordField:
+            name: password
+            dataType: string
+            controlType: password
+            required: true
+            minLength: 8
+            maxLength: 16
+            validations:
+              - type: required
+              - type: minLength
+              - type: maxLength
+              - type: noSpaces
+        actions:
+          cancel:
+            enabled: true
+          confirmSubmit:
+            enabled: true          
       validations: 
         - id: address.atLeastOneRequired
           type: groupRequirement
