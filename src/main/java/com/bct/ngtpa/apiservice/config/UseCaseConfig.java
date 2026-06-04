@@ -6,11 +6,13 @@ import com.bct.ngtpa.apiservice.application.port.in.GetNotificationsUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetPersonalInformationUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetReferenceDataCountriesUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.UpdateNotificationsReadStatusUseCase;
+import com.bct.ngtpa.apiservice.application.port.in.UpdatePersonalInformationUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimContributionSummaryPort;
 import com.bct.ngtpa.apiservice.application.port.out.ApimMemberInfoPort;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNoticeMessagePort;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNotificationReadStatusPort;
 import com.bct.ngtpa.apiservice.application.port.out.ApimReferenceDataCountriesPort;
+import com.bct.ngtpa.apiservice.application.port.out.ApimUpdatePersonalInformationPort;
 import com.bct.ngtpa.apiservice.application.port.out.ContributionActionPermissionPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
 import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
@@ -21,14 +23,19 @@ import com.bct.ngtpa.apiservice.application.usecase.GetNotificationsService;
 import com.bct.ngtpa.apiservice.application.usecase.GetPersonalInformationService;
 import com.bct.ngtpa.apiservice.application.usecase.GetReferenceDataCountriesService;
 import com.bct.ngtpa.apiservice.application.usecase.UpdateNotificationsReadStatusService;
+import com.bct.ngtpa.apiservice.application.usecase.UpdatePersonalInformationService;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
  * Spring composition configuration for application-layer use cases.
  *
- * <p>Wires use case implementations as Spring beans without annotating the implementation
- * classes themselves with {@code @Service}, keeping the application layer free of
+ * <p>
+ * Wires use case implementations as Spring beans without annotating the
+ * implementation
+ * classes themselves with {@code @Service}, keeping the application layer free
+ * of
  * Spring Framework dependencies.
  */
 @Configuration
@@ -87,4 +94,12 @@ public class UseCaseConfig {
                 apimMemberInfoPort,
                 portalAccessContextPort);
     }
+
+    @Bean
+    public UpdatePersonalInformationUseCase updatePersonalInformationUseCase(
+            ApimUpdatePersonalInformationPort apimUpdatePersonalInformationPort,
+            PortalAccessContextPort portalAccessContextPort) {
+        return new UpdatePersonalInformationService(apimUpdatePersonalInformationPort, portalAccessContextPort);
+    }
+
 }

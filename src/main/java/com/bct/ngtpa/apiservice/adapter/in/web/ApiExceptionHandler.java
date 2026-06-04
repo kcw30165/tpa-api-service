@@ -4,6 +4,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiErrorResponse;
 import com.bct.ngtpa.apiservice.application.exception.ApplicationException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
+import com.bct.ngtpa.apiservice.application.exception.InvalidPersonalInformationUpdateException;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 // import java.lang.reflect.ReflectiveOperationException;
 import java.util.Locale;
@@ -14,6 +15,7 @@ import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 
 import lombok.extern.slf4j.Slf4j;
+import reactor.core.publisher.Mono;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -71,8 +73,8 @@ public class ApiExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handlePortalAccessContextResolutionException(
             PortalAccessContextResolutionException ex, ServerWebExchange exchange) {
         HttpStatus status = ErrorCodes.MEMBER_CONTEXT_INVALID.equals(ex.getErrorCode())
-            ? HttpStatus.BAD_REQUEST
-            : HttpStatus.INTERNAL_SERVER_ERROR;
+                ? HttpStatus.BAD_REQUEST
+                : HttpStatus.INTERNAL_SERVER_ERROR;
         return handleApplicationException(ex, exchange, status);
     }
 
@@ -87,52 +89,52 @@ public class ApiExceptionHandler {
     public ResponseEntity<ApiErrorResponse> handleWebExchangeBindException(
             WebExchangeBindException ex, ServerWebExchange exchange) {
         return buildErrorResponse(
-            HttpStatus.BAD_REQUEST,
-            ErrorCodes.REQUEST_VALIDATION_FAILED,
-            exchange,
-            ex,
-            firstValidationMessage(ex),
-            false,
-            false);
+                HttpStatus.BAD_REQUEST,
+                ErrorCodes.REQUEST_VALIDATION_FAILED,
+                exchange,
+                ex,
+                firstValidationMessage(ex),
+                false,
+                false);
     }
 
     @ExceptionHandler(ServerWebInputException.class)
     public ResponseEntity<ApiErrorResponse> handleServerWebInputException(
             ServerWebInputException ex, ServerWebExchange exchange) {
         return buildErrorResponse(
-            HttpStatus.BAD_REQUEST,
-            ErrorCodes.REQUEST_BODY_MALFORMED,
-            exchange,
-            ex,
-            firstNonBlank(ex.getReason(), ex.getMessage()),
-            false,
-            false);
+                HttpStatus.BAD_REQUEST,
+                ErrorCodes.REQUEST_BODY_MALFORMED,
+                exchange,
+                ex,
+                firstNonBlank(ex.getReason(), ex.getMessage()),
+                false,
+                false);
     }
 
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ApiErrorResponse> handleAuthenticationException(
             AuthenticationException ex, ServerWebExchange exchange) {
         return buildErrorResponse(
-            HttpStatus.UNAUTHORIZED,
-            ErrorCodes.SECURITY_AUTHENTICATION_REQUIRED,
-            exchange,
-            ex,
-            ex.getMessage(),
-            false,
-            false);
+                HttpStatus.UNAUTHORIZED,
+                ErrorCodes.SECURITY_AUTHENTICATION_REQUIRED,
+                exchange,
+                ex,
+                ex.getMessage(),
+                false,
+                false);
     }
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiErrorResponse> handleAccessDeniedException(
             AccessDeniedException ex, ServerWebExchange exchange) {
         return buildErrorResponse(
-            HttpStatus.FORBIDDEN,
-            ErrorCodes.SECURITY_ACCESS_DENIED,
-            exchange,
-            ex,
-            ex.getMessage(),
-            false,
-            false);
+                HttpStatus.FORBIDDEN,
+                ErrorCodes.SECURITY_ACCESS_DENIED,
+                exchange,
+                ex,
+                ex.getMessage(),
+                false,
+                false);
     }
 
     @ExceptionHandler(Exception.class)
@@ -140,6 +142,20 @@ public class ApiExceptionHandler {
         return buildErrorResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 ErrorCodes.SYSTEM_UNEXPECTED,
+                exchange,
+                ex,
+                ex.getMessage(),
+                true,
+                true);
+    }
+
+    @ExceptionHandler(InvalidPersonalInformationUpdateException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidPersonalInformationUpdate(
+            InvalidPersonalInformationUpdateException ex,
+            ServerWebExchange exchange) {
+        return buildErrorResponse(
+                HttpStatus.BAD_REQUEST,
+                ErrorCodes.PERSONAL_INFORMATION_UPDATE_INVALID,
                 exchange,
                 ex,
                 ex.getMessage(),
@@ -169,7 +185,7 @@ public class ApiExceptionHandler {
         logException(status, errorCode, exchange, exception, diagnosticMessage, logAtError, includeStackTrace);
         String requestId = getRequestId(exchange);
         ResponseEntity.BodyBuilder builder = ResponseEntity.status(status)
-            .contentType(MediaType.APPLICATION_JSON);
+                .contentType(MediaType.APPLICATION_JSON);
         if (requestId != null) {
             builder.header(RequestCorrelation.REQUEST_ID_HEADER, requestId);
         }
@@ -198,7 +214,8 @@ public class ApiExceptionHandler {
         event.put("errorCode", errorCode);
         event.put("exceptionType", exception.getClass().getSimpleName());
 
-        String sanitizedMessage = loggingSanitizer.sanitizeText(firstNonBlank(diagnosticMessage, exception.getMessage()));
+        String sanitizedMessage = loggingSanitizer
+                .sanitizeText(firstNonBlank(diagnosticMessage, exception.getMessage()));
         if (StringUtils.hasText(sanitizedMessage)) {
             event.put("sanitizedMessage", sanitizedMessage);
         }
