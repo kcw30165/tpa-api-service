@@ -12,6 +12,8 @@ import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.RuleActionProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.RuleConditionProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.SectionProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.ValidationRuleProperties;
+import com.bct.ngtpa.apiservice.application.dto.MemberInfoConfigItem;
+import com.bct.ngtpa.apiservice.application.dto.MemberInfoConfigItemType;
 import com.bct.ngtpa.apiservice.application.dto.PersonalInformationResult;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import org.slf4j.Logger;
@@ -46,18 +48,45 @@ public class PersonalInformationWebMapper {
     public Map<String, Object> toResponse(PersonalInformationResult result, String language) {
         Map<String, Object> apimData = result != null ? result.data() : Map.of();
         Map<String, String> apimConfig = result != null ? result.config() : Map.of();
-        return toResponse(apimData, apimConfig, language);
+        Map<String, MemberInfoConfigItem> apimConfigItems = result != null ? result.configItems() : Map.of();
+        return toResponse(apimData, effectiveConfig(apimConfig, apimConfigItems), apimConfigItems, language);
     }
 
     public Map<String, Object> toResponse(
             Map<String, Object> apimData,
             Map<String, String> apimConfig,
             String language) {
+        return toResponse(apimData, apimConfig, Map.of(), language);
+    }
+
+    public Map<String, Object> toResponse(
+            Map<String, Object> apimData,
+            Map<String, String> apimConfig,
+            Map<String, MemberInfoConfigItem> apimConfigItems,
+            String language) {
         PageSchemaProperties pageSchema = resolvePageSchema();
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("page", buildPage(pageSchema, language));
-        response.put("form", buildForm(pageSchema, apimData, apimConfig, language));
+        response.put("form", buildForm(pageSchema, apimData, apimConfig, apimConfigItems, language));
         return response;
+    }
+
+    private Map<String, String> effectiveConfig(
+            Map<String, String> apimConfig,
+            Map<String, MemberInfoConfigItem> apimConfigItems) {
+        if (apimConfig != null && !apimConfig.isEmpty()) {
+            return apimConfig;
+        }
+        if (apimConfigItems == null || apimConfigItems.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, String> derived = new LinkedHashMap<>();
+        for (Map.Entry<String, MemberInfoConfigItem> entry : apimConfigItems.entrySet()) {
+            if (entry.getValue() != null && entry.getValue().configValue() != null) {
+                derived.put(entry.getKey(), entry.getValue().configValue());
+            }
+        }
+        return derived;
     }
 
     private PageSchemaProperties resolvePageSchema() {
@@ -84,6 +113,7 @@ public class PersonalInformationWebMapper {
     private Map<String, Object> buildForm(PageSchemaProperties pageSchema,
                                           Map<String, Object> apimData,
                                           Map<String, String> apimConfig,
+                                          Map<String, MemberInfoConfigItem> apimConfigItems,
                                           String language) {
         Map<String, Object> form = new LinkedHashMap<>();
         FormMetadataProperties formSchema = pageSchema != null ? pageSchema.getForm() : null;
@@ -93,7 +123,7 @@ public class PersonalInformationWebMapper {
         form.put("mode", formSchema != null && hasText(formSchema.getDefaultMode())
                 ? formSchema.getDefaultMode()
                 : "view");
-        form.put("sections", buildSections(pageSchema, apimData, apimConfig, language));
+        form.put("sections", buildSections(pageSchema, apimData, apimConfig, apimConfigItems, language));
         form.put("validationRules", mapValidationRules(
                 pageSchema != null ? pageSchema.getValidations() : null,
                 language));
@@ -105,11 +135,12 @@ public class PersonalInformationWebMapper {
     private List<Map<String, Object>> buildSections(PageSchemaProperties pageSchema,
                                                     Map<String, Object> apimData,
                                                     Map<String, String> apimConfig,
+                                                    Map<String, MemberInfoConfigItem> apimConfigItems,
                                                     String language) {
         if (pageSchema == null || pageSchema.getForm() == null || pageSchema.getForm().getSections() == null) {
             return List.of();
         }
-        Map<String, FieldState> fieldStates = buildFieldStates(pageSchema, apimData, apimConfig);
+        Map<String, FieldState> fieldStates = buildFieldStates(pageSchema, apimData, apimConfig, apimConfigItems);
         List<Map<String, Object>> sections = new ArrayList<>();
         int defaultSectionOrder = 10;
         for (SectionProperties sectionSchema : pageSchema.getForm().getSections()) {
@@ -129,9 +160,10 @@ public class PersonalInformationWebMapper {
 
     private Map<String, FieldState> buildFieldStates(PageSchemaProperties pageSchema,
                                                      Map<String, Object> apimData,
-                                                     Map<String, String> apimConfig) {
+                                                     Map<String, String> apimConfig,
+                                                     Map<String, MemberInfoConfigItem> apimConfigItems) {
         Map<String, FieldState> fieldStates = new LinkedHashMap<>();
-        Map<String, BoundField> fieldsByConfigKey = buildFieldsByConfigKey(pageSchema);
+        Map<String, BoundField> fieldsByConfigItemId = buildFieldsByConfigItemId(pageSchema);
         Set<String> seenApimConfigItems = new HashSet<>();
 
         if (apimConfig != null) {
@@ -140,7 +172,17 @@ public class PersonalInformationWebMapper {
                 String configValue = cfg.getValue();
                 seenApimConfigItems.add(configKey);
 
-                BoundField boundField = fieldsByConfigKey.get(configKey);
+                MemberInfoConfigItem configItem = apimConfigItems != null ? apimConfigItems.get(configKey) : null;
+                MemberInfoConfigItemType itemType = configItem != null ? configItem.itemType() : MemberInfoConfigItemType.UNKNOWN;
+                if (itemType == MemberInfoConfigItemType.UNKNOWN) {
+                    logUnknownConfigItemType(configKey, configValue, configItem);
+                    continue;
+                }
+                if (itemType == MemberInfoConfigItemType.RULE) {
+                    continue;
+                }
+
+                BoundField boundField = fieldsByConfigItemId.get(configKey);
                 if (boundField == null) {
                     logMissingYamlBinding(configKey, configValue);
                     continue;
@@ -148,21 +190,23 @@ public class PersonalInformationWebMapper {
                 if ("HIDDEN".equalsIgnoreCase(configValue)) {
                     continue;
                 }
-                Object value = resolveValue(apimData, boundField.dataKey());
+                Object value = itemType == MemberInfoConfigItemType.DATA
+                        ? resolveValue(apimData, configKey)
+                        : null;
                 fieldStates.put(
                         boundField.field().getId(),
                         new FieldState(configKey, configValue, value, boundField.location()));
             }
         }
 
-        logMissingExpectedApimConfig(fieldsByConfigKey, seenApimConfigItems);
+        logMissingExpectedApimConfig(fieldsByConfigItemId, seenApimConfigItems);
         return fieldStates;
     }
 
-    private Map<String, BoundField> buildFieldsByConfigKey(PageSchemaProperties pageSchema) {
-        Map<String, BoundField> fieldsByConfigKey = new LinkedHashMap<>();
+    private Map<String, BoundField> buildFieldsByConfigItemId(PageSchemaProperties pageSchema) {
+        Map<String, BoundField> fieldsByConfigItemId = new LinkedHashMap<>();
         if (pageSchema == null || pageSchema.getForm() == null || pageSchema.getForm().getSections() == null) {
-            return fieldsByConfigKey;
+            return fieldsByConfigItemId;
         }
         for (SectionProperties section : pageSchema.getForm().getSections()) {
             if (section == null || section.getFields() == null) {
@@ -176,17 +220,16 @@ public class PersonalInformationWebMapper {
                 if (binding == null || !hasText(binding.getConfig())) {
                     continue;
                 }
-                String dataKey = hasText(binding.getData()) ? binding.getData() : binding.getConfig();
                 FieldLocation location = new FieldLocation(section.getId(), field);
-                BoundField previous = fieldsByConfigKey.putIfAbsent(
+                BoundField previous = fieldsByConfigItemId.putIfAbsent(
                         binding.getConfig(),
-                        new BoundField(field, location, dataKey));
+                        new BoundField(field, location));
                 if (previous != null) {
                     logDuplicateYamlBinding(binding.getConfig(), previous.field().getId(), field.getId());
                 }
             }
         }
-        return fieldsByConfigKey;
+        return fieldsByConfigItemId;
     }
 
     private List<Map<String, Object>> buildSectionFields(SectionProperties sectionSchema,
@@ -374,6 +417,16 @@ public class PersonalInformationWebMapper {
         log.error("Missing YAML apimBinding for APIM config item: {}", loggingSanitizer.toSafeString(event));
     }
 
+    private void logUnknownConfigItemType(String configKey, String configValue, MemberInfoConfigItem configItem) {
+        Map<String, Object> event = new LinkedHashMap<>();
+        event.put("item-id", configKey);
+        event.put("function", configItem != null ? configItem.function() : "PersonalInformationWebMapper");
+        event.put("sch-type", configItem != null ? configItem.schType() : "personalInformation");
+        event.put("config-value", configValue);
+        event.put("item-type", configItem != null ? configItem.itemType() : null);
+        log.error("Unknown APIM config item type: {}", loggingSanitizer.toSafeString(event));
+    }
+
     private void logDuplicateYamlBinding(String configKey, String firstFieldId, String duplicateFieldId) {
         Map<String, Object> event = new LinkedHashMap<>();
         event.put("item-id", configKey);
@@ -404,7 +457,7 @@ public class PersonalInformationWebMapper {
     private record FieldLocation(String sectionId, FieldProperties field) {
     }
 
-    private record BoundField(FieldProperties field, FieldLocation location, String dataKey) {
+    private record BoundField(FieldProperties field, FieldLocation location) {
     }
 
     private record FieldState(String itemId, String configValue, Object value, FieldLocation location) {
