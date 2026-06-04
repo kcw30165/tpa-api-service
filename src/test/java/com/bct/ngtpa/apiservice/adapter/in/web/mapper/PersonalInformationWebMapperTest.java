@@ -78,7 +78,20 @@ class PersonalInformationWebMapperTest {
 
         Map<String, Object> response = mapper.toResponse(result, "en");
 
-        assertThat(firstSectionFields(response)).isEmpty();
+        assertThat(sections(response)).isEmpty();
+    }
+
+    @Test
+    void sectionWithNoReturnedFieldsIsOmittedFromFrontendResponse() {
+        PersonalInformationWebMapper mapper = mapper(mock(LoggingSanitizer.class));
+        var result = new PersonalInformationResult(
+                Map.of("addr1", "ABC Street"),
+                Map.of("addr1", "HIDDEN"),
+                Map.of("addr1", item("addr1", MemberInfoConfigItemType.DATA, "HIDDEN")));
+
+        Map<String, Object> response = mapper.toResponse(result, "en");
+
+        assertThat(sections(response)).isEmpty();
     }
 
     @Test
@@ -91,7 +104,7 @@ class PersonalInformationWebMapperTest {
 
         Map<String, Object> response = mapper.toResponse(result, "en");
 
-        assertThat(firstSectionFields(response)).isEmpty();
+        assertThat(sections(response)).isEmpty();
     }
 
     @Test
@@ -105,7 +118,7 @@ class PersonalInformationWebMapperTest {
 
         Map<String, Object> response = mapper.toResponse(result, "en");
 
-        assertThat(firstSectionFields(response)).isEmpty();
+        assertThat(sections(response)).isEmpty();
         verify(sanitizer, atLeastOnce()).toSafeString(org.mockito.ArgumentMatchers.any());
     }
 
@@ -123,10 +136,14 @@ class PersonalInformationWebMapperTest {
     }
 
     private List<?> firstSectionFields(Map<String, Object> response) {
-        Map<String, Object> form = asMap(response.get("form"));
-        List<?> sections = (List<?>) form.get("sections");
+        List<?> sections = sections(response);
         Map<String, Object> addressSection = asMap(sections.get(0));
         return (List<?>) addressSection.get("fields");
+    }
+
+    private List<?> sections(Map<String, Object> response) {
+        Map<String, Object> form = asMap(response.get("form"));
+        return (List<?>) form.get("sections");
     }
 
     private BffPagesProperties pageConfig() {

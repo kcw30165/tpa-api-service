@@ -151,7 +151,12 @@ public class PersonalInformationWebMapper {
             section.put("id", sectionSchema.getId());
             section.put("label", resolveLabel(sectionSchema.getTitle(), language));
             section.put("displayOrder", defaultSectionOrder);
-            section.put("fields", buildSectionFields(sectionSchema, fieldStates, language));
+            List<Map<String, Object>> fields = buildSectionFields(sectionSchema, fieldStates, language);
+            if (fields.isEmpty()) {
+                defaultSectionOrder += 10;
+                continue;
+            }
+            section.put("fields", fields);
             sections.add(section);
             defaultSectionOrder += 10;
         }
