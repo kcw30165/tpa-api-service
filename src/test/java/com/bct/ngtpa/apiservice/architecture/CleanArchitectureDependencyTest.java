@@ -7,14 +7,20 @@ import com.tngtech.archunit.lang.ArchRule;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import com.tngtech.archunit.core.domain.JavaMethod;
+import com.tngtech.archunit.lang.ArchCondition;
+import com.tngtech.archunit.lang.ConditionEvents;
+import com.tngtech.archunit.lang.SimpleConditionEvent;
+import com.tngtech.archunit.core.domain.JavaClass;
 
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 /**
  * ArchUnit tests enforcing Clean Architecture dependency boundaries.
  *
  * <p>
  * Rules are intentionally static so ArchUnit's JUnit 5 runner evaluates them
- * without
- * a Spring context — keeping the tests fast and free of application startup.
+ * without a Spring context — keeping the tests fast and free of application
+ * startup.
  */
 @AnalyzeClasses(packages = "com.bct.ngtpa.apiservice", importOptions = ImportOption.DoNotIncludeTests.class)
 class CleanArchitectureDependencyTest {
@@ -154,7 +160,8 @@ class CleanArchitectureDependencyTest {
 
         // ── Guard: Legacy MemberContext types must not be reintroduced ────────────
         // MemberContext*, MemberContextPort, and TemporaryMemberContext* were replaced
-        // by PortalAccessContext*, PortalAccessContextPort, and TemporaryPortalAccessContext*.
+        // by PortalAccessContext*, PortalAccessContextPort, and
+        // TemporaryPortalAccessContext*.
         // These rules prevent accidental reintroduction.
 
         @ArchTest
@@ -168,4 +175,116 @@ class CleanArchitectureDependencyTest {
                         .that().resideInAPackage("..adapter.out.security..")
                         .should().haveSimpleNameStartingWith("TemporaryMemberContext")
                         .as("TemporaryMemberContext* was replaced by TemporaryPortalAccessContext* and must not be reintroduced");
+
+        @ArchTest
+        static final ArchRule applicationPortsMustNotBePresentationOrMapperPorts = classes()
+                        .that().resideInAPackage("..application.port..")
+                        .should(notHaveSimpleNameMatching(".*(Web|Page|View|Form|Response|Presenter|Mapper).*"))
+                        .as("Application ports must not model web/page/view/form/response/presenter/mapper concerns. "
+                                        + "Presentation mapping belongs in adapter/in/web.");
+
+        // Block application layer from depending on presentation concerns
+        @ArchTest
+        static final ArchRule applicationMustNotDependOnPresentationConcerns = noClasses()
+                        .that().resideInAPackage("..application..")
+                        .should().dependOnClassesThat().resideInAnyPackage(
+                                        "..adapter.in.web..",
+                                        "..adapter.in.web.mapper..",
+                                        "..adapter.in.web.response..",
+                                        "..adapter.in.web.pageconfig..",
+                                        "org.springframework.http..",
+                                        "org.springframework.web..")
+                        .as("Application layer must not depend on web adapters, web mappers, page config, "
+                                        + "web response DTOs, or Spring web response types.");
+
+        // Block use cases/services from returning raw response shapes
+        @ArchTest
+        static final ArchRule applicationUseCaseExecuteMethodsMustNotReturnWebOrGenericResponses = methods()
+                        .that().areDeclaredInClassesThat().resideInAnyPackage(
+                                        "..application.port.in..",
+                                        "..application.usecase..")
+                        .and().haveName("execute")
+                        .should(notReturnWebOrGenericResponseTypes())
+                        .as("Application use case execute methods must return typed application DTO/results, "
+                                        + "not Map/Object/web/page/form/HTTP response shapes.");
+
+        // Stronger optional rule: use case results should be *Result
+        @ArchTest
+        static final ArchRule applicationUseCaseExecuteMethodsShouldReturnResultDtos = methods()
+                        .that().areDeclaredInClassesThat().resideInAnyPackage(
+                                        "..application.port.in..",
+                                        "..application.usecase..")
+                        .and().haveName("execute")
+                        .should(returnTypedResultDto())
+                        .as("Application use case execute methods should return Mono<...Result> or a ...Result DTO. "
+                                        + "Web response shaping belongs in adapter/in/web.");
+
+        // Helper condition for the above rule
+        private static ArchCondition<JavaMethod> returnTypedResultDto() {
+                return new ArchCondition<>("return typed application result DTO") {
+                        @Override
+                        public void check(JavaMethod method, ConditionEvents events) {
+                                String returnTypeName = method.getReturnType().getName();
+
+                                boolean allowed = returnTypeName.contains(".application.dto.")
+                                                && returnTypeName.contains("Result");
+
+                                if (!allowed) {
+                                        events.add(SimpleConditionEvent.violated(
+                                                        method,
+                                                        method.getFullName()
+                                                                        + " returns "
+                                                                        + returnTypeName
+                                                                        + ". Expected a typed application result DTO, normally Mono<...Result>."));
+                                }
+                        }
+                };
+        }
+
+        private static ArchCondition<JavaMethod> notReturnWebOrGenericResponseTypes() {
+                return new ArchCondition<>("not return web or generic response types") {
+                        @Override
+                        public void check(JavaMethod method, ConditionEvents events) {
+                                String returnTypeName = method.getReturnType().getName();
+
+                                boolean invalid = returnTypeName.equals("java.lang.Object")
+                                                || returnTypeName.contains("java.lang.Object")
+                                                || returnTypeName.equals("java.util.Map")
+                                                || returnTypeName.contains("java.util.Map<")
+                                                || returnTypeName.contains("java.util.HashMap")
+                                                || returnTypeName.contains("java.util.LinkedHashMap")
+                                                || returnTypeName.contains("com.fasterxml.jackson.databind.JsonNode")
+                                                || returnTypeName.contains("org.springframework.http.ResponseEntity")
+                                                || returnTypeName.contains(
+                                                                "org.springframework.web.reactive.function.server.ServerResponse")
+                                                || returnTypeName.contains(".adapter.in.web.response.")
+                                                || returnTypeName.contains(".adapter.in.web.pageconfig.")
+                                                || returnTypeName.contains(".adapter.in.web.mapper.");
+
+                                if (invalid) {
+                                        events.add(SimpleConditionEvent.violated(
+                                                        method,
+                                                        method.getFullName()
+                                                                        + " returns "
+                                                                        + returnTypeName
+                                                                        + ". Use a typed application DTO/result and map it to the web response in adapter/in/web."));
+                                }
+                        }
+                };
+        }
+
+        private static ArchCondition<JavaClass> notHaveSimpleNameMatching(String regex) {
+                return new ArchCondition<>("not have simple name matching " + regex) {
+                        @Override
+                        public void check(JavaClass javaClass, ConditionEvents events) {
+                                if (javaClass.getSimpleName().matches(regex)) {
+                                        events.add(SimpleConditionEvent.violated(
+                                                        javaClass,
+                                                        javaClass.getName()
+                                                                        + " has presentation/mapper-style name. "
+                                                                        + "Application ports must not be web/page/view/form/response/presenter/mapper ports."));
+                                }
+                        }
+                };
+        }
 }

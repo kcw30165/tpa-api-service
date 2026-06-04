@@ -13,7 +13,6 @@ import com.bct.ngtpa.apiservice.application.port.out.ApimNotificationReadStatusP
 import com.bct.ngtpa.apiservice.application.port.out.ApimReferenceDataCountriesPort;
 import com.bct.ngtpa.apiservice.application.port.out.ContributionActionPermissionPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
-import com.bct.ngtpa.apiservice.application.port.out.PersonalInformationPageMapperPort;
 import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.usecase.ExportContributionSummaryService;
@@ -83,11 +82,9 @@ public class UseCaseConfig {
     @Bean
     public GetPersonalInformationUseCase getPersonalInformationUseCase(
             ApimMemberInfoPort apimMemberInfoPort,
-            PortalAccessContextPort portalAccessContextPort,
-            PersonalInformationPageMapperPort personalInformationPageMapperPort) {
+            PortalAccessContextPort portalAccessContextPort) {
         return new GetPersonalInformationService(
                 apimMemberInfoPort,
-                portalAccessContextPort,
-                personalInformationPageMapperPort);
+                portalAccessContextPort);
     }
 }

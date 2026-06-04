@@ -3,9 +3,9 @@ package com.bct.ngtpa.apiservice.application.usecase;
 import com.bct.ngtpa.apiservice.application.dto.FetchMemberInfoCommand;
 import com.bct.ngtpa.apiservice.application.dto.GetPersonalInformationCommand;
 import com.bct.ngtpa.apiservice.application.dto.MemberInfoResult;
+import com.bct.ngtpa.apiservice.application.dto.PersonalInformationResult;
 import com.bct.ngtpa.apiservice.application.port.in.GetPersonalInformationUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimMemberInfoPort;
-import com.bct.ngtpa.apiservice.application.port.out.PersonalInformationPageMapperPort;
 import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
@@ -18,13 +18,10 @@ public class GetPersonalInformationService implements GetPersonalInformationUseC
 
     private final ApimMemberInfoPort apimMemberInfoPort;
     private final PortalAccessContextPort portalAccessContextPort;
-    private final PersonalInformationPageMapperPort pageMapperPort;
 
     @Override
-    public Mono<Map<String, Object>> execute(GetPersonalInformationCommand command) {
+    public Mono<PersonalInformationResult> execute(GetPersonalInformationCommand command) {
         String accountRef = command.accountRef();
-        String language = command.language();
-
         return portalAccessContextPort.resolvePortalAccessContext(accountRef)
                 .flatMap(ctx -> {
                     var apimCmd = new FetchMemberInfoCommand(
@@ -33,25 +30,19 @@ public class GetPersonalInformationService implements GetPersonalInformationUseC
                             ctx.account().certNo(),
                             ctx.actor().actorUserId()
                     );
-
                     return apimMemberInfoPort.fetchMemberInfo(apimCmd)
-                            .map(memberInfoResult -> mapToPage(memberInfoResult, language));
+                            .map(this::toResult);
                 });
     }
 
-    private Map<String, Object> mapToPage(MemberInfoResult memberInfoResult, String language) {
+    private PersonalInformationResult toResult(MemberInfoResult memberInfoResult) {
         Map<String, Object> payload = memberInfoResult != null && memberInfoResult.getPayload() != null
                 ? memberInfoResult.getPayload()
                 : Map.of();
+        return new PersonalInformationResult(extractData(payload), extractConfig(payload));
+    }
 
-        Map<String, String> apimConfig = new LinkedHashMap<>();
-        Object cfgObj = payload.get("config");
-        if (cfgObj instanceof Map<?, ?> cfgMap) {
-            for (Map.Entry<?, ?> e : cfgMap.entrySet()) {
-                apimConfig.put(String.valueOf(e.getKey()), String.valueOf(e.getValue()));
-            }
-        }
-
+    private Map<String, Object> extractData(Map<String, Object> payload) {
         Map<String, Object> apimData = new LinkedHashMap<>();
         Object dataObj = payload.get("data");
         if (dataObj instanceof Map<?, ?> dataMap) {
@@ -59,7 +50,17 @@ public class GetPersonalInformationService implements GetPersonalInformationUseC
                 apimData.put(String.valueOf(e.getKey()), e.getValue());
             }
         }
+        return apimData;
+    }
 
-        return pageMapperPort.map(apimData, apimConfig, language);
+    private Map<String, String> extractConfig(Map<String, Object> payload) {
+        Map<String, String> apimConfig = new LinkedHashMap<>();
+        Object cfgObj = payload.get("config");
+        if (cfgObj instanceof Map<?, ?> cfgMap) {
+            for (Map.Entry<?, ?> e : cfgMap.entrySet()) {
+                apimConfig.put(String.valueOf(e.getKey()), String.valueOf(e.getValue()));
+            }
+        }
+        return apimConfig;
     }
 }

@@ -1,9 +1,10 @@
 package com.bct.ngtpa.apiservice.adapter.in.web;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.support.RequestLanguageResolver;
 import com.bct.ngtpa.apiservice.application.dto.GetPersonalInformationCommand;
-import com.bct.ngtpa.apiservice.application.port.in.GetPersonalInformationUseCase;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
+import com.bct.ngtpa.apiservice.application.port.in.GetPersonalInformationUseCase;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
@@ -24,6 +25,7 @@ import java.util.Map;
 public class PersonalInformationController {
 
     private final GetPersonalInformationUseCase getPersonalInformationUseCase;
+    private final PersonalInformationWebMapper personalInformationWebMapper;
 
     @GetMapping(value = "/personal-information", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<Map<String, Object>> getPersonalInformation(
@@ -32,7 +34,8 @@ public class PersonalInformationController {
         return Mono.deferContextual(contextView -> {
             String accountRef = resolveRequiredAccountRef(contextView);
             String language = resolveLanguage(contextView, acceptLanguage);
-            return getPersonalInformationUseCase.execute(new GetPersonalInformationCommand(accountRef, language));
+            return getPersonalInformationUseCase.execute(new GetPersonalInformationCommand(accountRef, language))
+                    .map(result -> personalInformationWebMapper.toResponse(result, language));
         });
     }
 
