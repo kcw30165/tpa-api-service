@@ -24,14 +24,11 @@ import static org.mockito.Mockito.verify;
 class PersonalInformationWebMapperTest {
 
     @Test
-    void mapsDataConfigItemsToBffFieldsUsingApimDataItemId() {
+    void mapsLegacyApimDataAndConfigMapsToBffFieldsUsingYamlBinding() {
         PersonalInformationWebMapper mapper = mapper(mock(LoggingSanitizer.class));
         var result = new PersonalInformationResult(
                 Map.of("addr1", "ABC Street", "email", "nick@example.com"),
-                Map.of("addr1", "EDITABLE_COM", "email", "READONLY"),
-                Map.of(
-                        "addr1", item("addr1", MemberInfoConfigItemType.DATA, "EDITABLE_COM"),
-                        "email", item("email", MemberInfoConfigItemType.DATA, "READONLY")));
+                Map.of("addr1", "EDITABLE_COM", "email", "READONLY"));
 
         Map<String, Object> response = mapper.toResponse(result, "en");
 
@@ -51,42 +48,67 @@ class PersonalInformationWebMapperTest {
     }
 
     @Test
+    void mapsDataConfigItemsToBffFieldsUsingApimDataItemId() {
+        PersonalInformationWebMapper mapper = mapper(mock(LoggingSanitizer.class));
+        var result = new PersonalInformationResult(
+                Map.of("addr1", "ABC Street", "email", "nick@example.com"),
+                Map.of(),
+                Map.of(
+                        "addr1", item("addr1", MemberInfoConfigItemType.DATA, "EDITABLE_COM"),
+                        "email", item("email", MemberInfoConfigItemType.DATA, "READONLY")));
+
+        Map<String, Object> response = mapper.toResponse(result, "en");
+
+        List<?> fields = firstSectionFields(response);
+        Map<String, Object> addressField = asMap(fields.get(0));
+        Map<String, Object> emailField = asMap(fields.get(1));
+
+        assertThat(addressField.get("value")).isEqualTo("ABC Street");
+        assertThat(addressField.get("readonly")).isEqualTo(false);
+        assertThat(addressField.get("required")).isEqualTo(true);
+        assertThat(emailField.get("value")).isEqualTo("nick@example.com");
+        assertThat(emailField.get("readonly")).isEqualTo(true);
+        assertThat(emailField.get("required")).isEqualTo(false);
+    }
+
+    @Test
+    void editableOptionIsEditableButNotRequired() {
+        PersonalInformationWebMapper mapper = mapper(mock(LoggingSanitizer.class));
+        var result = new PersonalInformationResult(
+                Map.of("email", "nick@example.com"),
+                Map.of(),
+                Map.of("email", item("email", MemberInfoConfigItemType.DATA, "EDITABLE_OPTION")));
+
+        Map<String, Object> response = mapper.toResponse(result, "en");
+
+        Map<String, Object> emailField = asMap(firstSectionFields(response).get(0));
+        assertThat(emailField.get("readonly")).isEqualTo(false);
+        assertThat(emailField.get("required")).isEqualTo(false);
+    }
+
+    @Test
     void uiConfigItemAppliesConfigValueButDoesNotPopulateValueFromApimData() {
         PersonalInformationWebMapper mapper = mapper(mock(LoggingSanitizer.class));
         var result = new PersonalInformationResult(
                 Map.of("ui-check-box-apply-all-member", true),
-                Map.of("ui-check-box-apply-all-member", "READONLY"),
+                Map.of(),
                 Map.of("ui-check-box-apply-all-member",
                         item("ui-check-box-apply-all-member", MemberInfoConfigItemType.UI, "READONLY")));
 
         Map<String, Object> response = mapper.toResponse(result, "en");
 
-        List<?> fields = firstSectionFields(response);
-        Map<String, Object> uiField = asMap(fields.get(0));
+        Map<String, Object> uiField = asMap(firstSectionFields(response).get(0));
         assertThat(uiField.get("name")).isEqualTo("applyToAllMemberAccounts");
         assertThat(uiField.get("value")).isNull();
         assertThat(uiField.get("readonly")).isEqualTo(true);
     }
 
     @Test
-    void hiddenConfigItemIsOmittedFromFrontendResponse() {
+    void hiddenConfigItemIsOmittedAndEmptySectionIsOmittedFromFrontendResponse() {
         PersonalInformationWebMapper mapper = mapper(mock(LoggingSanitizer.class));
         var result = new PersonalInformationResult(
                 Map.of("addr1", "ABC Street"),
-                Map.of("addr1", "HIDDEN"),
-                Map.of("addr1", item("addr1", MemberInfoConfigItemType.DATA, "HIDDEN")));
-
-        Map<String, Object> response = mapper.toResponse(result, "en");
-
-        assertThat(sections(response)).isEmpty();
-    }
-
-    @Test
-    void sectionWithNoReturnedFieldsIsOmittedFromFrontendResponse() {
-        PersonalInformationWebMapper mapper = mapper(mock(LoggingSanitizer.class));
-        var result = new PersonalInformationResult(
-                Map.of("addr1", "ABC Street"),
-                Map.of("addr1", "HIDDEN"),
+                Map.of(),
                 Map.of("addr1", item("addr1", MemberInfoConfigItemType.DATA, "HIDDEN")));
 
         Map<String, Object> response = mapper.toResponse(result, "en");
@@ -99,7 +121,7 @@ class PersonalInformationWebMapperTest {
         PersonalInformationWebMapper mapper = mapper(mock(LoggingSanitizer.class));
         var result = new PersonalInformationResult(
                 Map.of("addr1", "ABC Street"),
-                Map.of("addr1", "EDITABLE_COM"),
+                Map.of(),
                 Map.of("addr1", item("addr1", MemberInfoConfigItemType.RULE, "EDITABLE_COM")));
 
         Map<String, Object> response = mapper.toResponse(result, "en");
@@ -113,7 +135,7 @@ class PersonalInformationWebMapperTest {
         PersonalInformationWebMapper mapper = mapper(sanitizer);
         var result = new PersonalInformationResult(
                 Map.of("addr1", "ABC Street"),
-                Map.of("addr1", "EDITABLE_COM"),
+                Map.of(),
                 Map.of("addr1", item("addr1", MemberInfoConfigItemType.UNKNOWN, "EDITABLE_COM")));
 
         Map<String, Object> response = mapper.toResponse(result, "en");
@@ -137,8 +159,8 @@ class PersonalInformationWebMapperTest {
 
     private List<?> firstSectionFields(Map<String, Object> response) {
         List<?> sections = sections(response);
-        Map<String, Object> addressSection = asMap(sections.get(0));
-        return (List<?>) addressSection.get("fields");
+        Map<String, Object> section = asMap(sections.get(0));
+        return (List<?>) section.get("fields");
     }
 
     private List<?> sections(Map<String, Object> response) {

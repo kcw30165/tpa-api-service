@@ -407,6 +407,7 @@ bff-pages:
             dataType: string
             controlType: email
             maxLength: 120
+            patter: ^[^\s@]+@[^\s@]+\.[^\s@]+$
             placeholder:
               en: Enter email address
               zh_HK: 請輸入電郵地址
