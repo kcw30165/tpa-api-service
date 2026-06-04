@@ -120,7 +120,7 @@ reference-date:
 
 temporary-portal-access-context:
   profiles:
-    ACC-123:
+    ACC-1:
       actor-user-id: C402400A
       actor-user-type: MEMBER
       actor-user-role: SELF
@@ -132,31 +132,18 @@ temporary-portal-access-context:
       trust-code: JPM
       scheme-type: OE
       term-status: 
-      term-completion-date: 
-    ACC-456:
+      term-completion-date:  
+    ACC-2:
       actor-user-id: C402400A
       actor-user-type: MEMBER
       actor-user-role: SELF
       member-user-id: C402400A
       member-type: MBR
-      account-env: JP
-      policy-no: 00000000217
-      cert-no: 95
-      trust-code: JPM
-      scheme-type: OE
-      term-status: 
-      term-completion-date: 
-    ACC-789:
-      actor-user-id: C402400A
-      actor-user-type: MEMBER
-      actor-user-role: SELF
-      member-user-id: C402400A
-      member-type: MBR
-      account-env: JP
-      policy-no: 00000000118
+      account-env: DB
+      policy-no: 00000008802
       cert-no: 2
-      trust-code: JPM
-      scheme-type: OE
+      trust-code: 
+      scheme-type: 
       term-status: 
       term-completion-date: 
 
