@@ -9,7 +9,7 @@ import java.util.Map;
 @ConfigurationProperties(prefix = "currency-mapping")
 public class CurrencyMappingProperties extends LinkedHashMap<String, Map<String, String>> {
 
-    public Map<String, String> getLocaleMappings(String locale) {
+    public Map<String, String> getLocaleFormats(String locale) {
         if (!StringUtils.hasText(locale)) {
             return Map.of();
         }

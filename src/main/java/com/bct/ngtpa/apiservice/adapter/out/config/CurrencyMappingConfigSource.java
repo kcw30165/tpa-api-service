@@ -36,7 +36,7 @@ public class CurrencyMappingConfigSource implements ConfigSource {
 
         var language = remainder.substring(0, localeSeparator);
         var mappingKey = remainder.substring(localeSeparator + 1);
-        return Optional.ofNullable(currencyMappingProperties.getLocaleMappings(language).get(mappingKey))
+        return Optional.ofNullable(currencyMappingProperties.getLocaleFormats(language).get(mappingKey))
                 .filter(StringUtils::hasText);
     }
 }

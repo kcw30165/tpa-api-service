@@ -40,10 +40,10 @@ class CurrencyMappingPropertiesBindingTest {
         contextRunner.run(context -> {
             var bound = context.getBean(CurrencyMappingProperties.class);
 
-            assertEquals("HKD", bound.getLocaleMappings("en").get("HKD"));
-            assertEquals("港元", bound.getLocaleMappings("zh_HK").get("HKD"));
-            assertEquals("EUR", bound.getLocaleMappings("en").get("EUR.TB.HKBU"));
-            assertEquals("港幣", bound.getLocaleMappings("zh_HK").get("HKD.OG"));
+            assertEquals("HKD", bound.getLocaleFormats("en").get("HKD"));
+            assertEquals("港元", bound.getLocaleFormats("zh_HK").get("HKD"));
+            assertEquals("EUR", bound.getLocaleFormats("en").get("EUR.TB.HKBU"));
+            assertEquals("港幣", bound.getLocaleFormats("zh_HK").get("HKD.OG"));
         });
     }
 
