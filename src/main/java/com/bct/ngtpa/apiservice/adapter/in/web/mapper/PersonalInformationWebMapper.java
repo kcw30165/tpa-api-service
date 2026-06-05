@@ -65,10 +65,17 @@ public class PersonalInformationWebMapper {
             Map<String, String> apimConfig,
             Map<String, MemberInfoConfigItem> apimConfigItems,
             String language) {
+
         PageSchemaProperties pageSchema = resolvePageSchema();
+
         Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", Boolean.TRUE);
+        response.put("status", "SUCCESS");
         response.put("page", buildPage(pageSchema, language));
         response.put("form", buildForm(pageSchema, apimData, apimConfig, apimConfigItems, language));
+        response.put("messages", List.of());
+        response.put("errors", List.of());
+
         return response;
     }
 
@@ -94,10 +101,10 @@ public class PersonalInformationWebMapper {
     }
 
     private Map<String, Object> buildForm(PageSchemaProperties pageSchema,
-                                          Map<String, Object> apimData,
-                                          Map<String, String> apimConfig,
-                                          Map<String, MemberInfoConfigItem> apimConfigItems,
-                                          String language) {
+            Map<String, Object> apimData,
+            Map<String, String> apimConfig,
+            Map<String, MemberInfoConfigItem> apimConfigItems,
+            String language) {
         Map<String, Object> form = new LinkedHashMap<>();
         FormMetadataProperties formSchema = pageSchema != null ? pageSchema.getForm() : null;
         PageMetadataProperties metadata = pageSchema != null ? pageSchema.getMetadata() : null;
@@ -116,10 +123,10 @@ public class PersonalInformationWebMapper {
     }
 
     private List<Map<String, Object>> buildSections(PageSchemaProperties pageSchema,
-                                                    Map<String, Object> apimData,
-                                                    Map<String, String> apimConfig,
-                                                    Map<String, MemberInfoConfigItem> apimConfigItems,
-                                                    String language) {
+            Map<String, Object> apimData,
+            Map<String, String> apimConfig,
+            Map<String, MemberInfoConfigItem> apimConfigItems,
+            String language) {
         if (pageSchema == null || pageSchema.getForm() == null || pageSchema.getForm().getSections() == null) {
             return List.of();
         }
@@ -147,9 +154,9 @@ public class PersonalInformationWebMapper {
     }
 
     private Map<String, FieldState> buildFieldStates(PageSchemaProperties pageSchema,
-                                                     Map<String, Object> apimData,
-                                                     Map<String, String> apimConfig,
-                                                     Map<String, MemberInfoConfigItem> apimConfigItems) {
+            Map<String, Object> apimData,
+            Map<String, String> apimConfig,
+            Map<String, MemberInfoConfigItem> apimConfigItems) {
         Map<String, FieldState> fieldStates = new LinkedHashMap<>();
         Map<String, BoundField> fieldsByConfigItemId = buildFieldsByConfigItemId(pageSchema);
         Set<String> seenApimConfigItems = new HashSet<>();
@@ -244,8 +251,8 @@ public class PersonalInformationWebMapper {
     }
 
     private List<Map<String, Object>> buildSectionFields(SectionProperties sectionSchema,
-                                                         Map<String, FieldState> fieldStates,
-                                                         String language) {
+            Map<String, FieldState> fieldStates,
+            String language) {
         if (sectionSchema.getFields() == null) {
             return List.of();
         }

@@ -6,7 +6,8 @@ import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequest
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidPersonalInformationUpdateException;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
-// import java.lang.reflect.ReflectiveOperationException;
+
+import java.util.List;
 import java.util.Locale;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
@@ -181,14 +182,21 @@ public class ApiExceptionHandler {
             String diagnosticMessage,
             boolean logAtError,
             boolean includeStackTrace) {
+
         logException(status, errorCode, exchange, exception, diagnosticMessage, logAtError, includeStackTrace);
+
         String requestId = getRequestId(exchange);
+
         ResponseEntity.BodyBuilder builder = ResponseEntity.status(status)
                 .contentType(MediaType.APPLICATION_JSON);
+
         if (requestId != null) {
             builder.header(RequestCorrelation.REQUEST_ID_HEADER, requestId);
         }
-        return builder.body(ApiErrorResponse.of(errorCode, resolvePublicMessage(errorCode, exchange, exception)));
+
+        return builder.body(ApiErrorResponse.of(
+                errorCode,
+                resolvePublicMessage(errorCode, exchange, exception)));
     }
 
     private void logException(
@@ -322,4 +330,5 @@ public class ApiExceptionHandler {
 
     private record ErrorMessageContext(String locale, String accountEnv, String trustCode, String schemeType) {
     }
+
 }

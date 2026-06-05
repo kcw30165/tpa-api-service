@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateResponseMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdatePersonalInformationRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.UpdatePersonalInformationResponse;
@@ -19,13 +20,16 @@ import reactor.core.publisher.Mono;
 public class UpdatePersonalInformationController {
 
     private final UpdatePersonalInformationUseCase updatePersonalInformationUseCase;
-    private final PersonalInformationUpdateWebMapper mapper;
+    private final PersonalInformationUpdateWebMapper requestMapper;
+    private final PersonalInformationUpdateResponseMapper responseMapper;
 
     public UpdatePersonalInformationController(
             UpdatePersonalInformationUseCase updatePersonalInformationUseCase,
-            PersonalInformationUpdateWebMapper mapper) {
+            PersonalInformationUpdateWebMapper requestMapper,
+            PersonalInformationUpdateResponseMapper responseMapper) {
         this.updatePersonalInformationUseCase = updatePersonalInformationUseCase;
-        this.mapper = mapper;
+        this.requestMapper = requestMapper;
+        this.responseMapper = responseMapper;
     }
 
     @PutMapping
@@ -39,9 +43,9 @@ public class UpdatePersonalInformationController {
                         "Account-Ref is required for personal information update."));
             }
             return request
-                    .map(body -> mapper.toCommand(accountRef, body.applyToAllAccounts(), body))
+                    .map(body -> requestMapper.toCommand(accountRef, body.applyToAllAccounts(), body))
                     .flatMap(updatePersonalInformationUseCase::execute)
-                    .map(result -> new UpdatePersonalInformationResponse(result.success()));
+                    .map(responseMapper::toResponse);
         });
     }
 }
