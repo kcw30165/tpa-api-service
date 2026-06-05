@@ -1426,3 +1426,115 @@ The architecture test suite should continue to enforce these constraints:
 - inbound adapters do not depend on outbound adapters;
 - global `config/` remains composition-only;
 - APIM internal subpackages such as DTO, crypto, credential, OAuth, certificate, and client packages do not leak outside the APIM adapter.
+
+
+### Personal Information PUT
+
+Endpoint: `PUT /api/v1/personal-information`
+
+Purpose: updates selected personal-information fields for the account selected by `Account-Ref`.
+
+Required headers:
+- `Account-Ref`: required; resolved from the inbound `RequestHeaderContext` and used to resolve `PortalAccessContext`.
+- `X-Request-Id`: echoed in the BFF response and propagated to APIM.
+- `Accept-Language`: available for normal BFF error localization; it is not propagated to APIM.
+
+Request body:
+
+```json
+{
+  "formVersion": "1.0",
+  "fields": {
+    "residentialAddressLine2": "Tai Po, New Territories",
+    "hongKongMobilePhone": "98765432",
+    "emailAddress": "user@example.com"
+  }
+}
+```
+
+BFF mapping rules:
+- The request `fields` object uses BFF field ids from `application-page-personal-information.yml`.
+- The web adapter maps each submitted BFF field id to `apimBinding.data` from the page YAML.
+- `apimBinding.config` is not used for PUT mapping.
+- Fields that exist in YAML but have no `apimBinding.data` are treated as UI-only. They are omitted from `update-fields` and logged as warnings.
+- Unknown field ids are rejected with a validation error and logged as errors.
+- If, after omitting UI-only fields, no APIM-updatable fields remain, the request is rejected with a validation error.
+- `formVersion` is currently accepted but not validated.
+- The BFF does not perform APIM editability checks for this phase; the service behind APIM is responsible for editability enforcement.
+- The BFF does not process confirmation password fields and does not implement mailing-address copy behaviour; both are frontend concerns for this phase.
+
+Backend validation scope:
+- request body and `fields` shape;
+- known field id;
+- UI-only omission;
+- required submitted fields cannot be null or blank;
+- simple `maxLength`, `pattern`, `dataType`, and email control validation where declared in YAML.
+
+The BFF does not implement the full page-level/cross-field validation DSL for PUT in this phase.
+
+APIM dependency:
+
+```text
+POST /ws/NGTPA/v1/TRPUpdMemberInfo
+```
+
+APIM request body is built from `PortalAccessContext` and mapped update fields:
+
+```json
+{
+  "policy-no": "policy-NO",
+  "cert-no": "CERT-NO",
+  "env": "JP",
+  "user-id": "user-id",
+  "update-fields": {
+    "mobile-number": "91234567",
+    "email": "user@example.com"
+  }
+}
+```
+
+Context mapping:
+- `policy-no` = `PortalAccessContext.account().policyNo()`
+- `cert-no` = `PortalAccessContext.account().certNo()`
+- `env` = `PortalAccessContext.account().accountEnv()`
+- `user-id` = `PortalAccessContext.actor().actorUserId()`
+
+APIM response success condition:
+
+```json
+{
+  "response": {
+    "err-message": "",
+    "data": [
+      { "success": true }
+    ]
+  }
+}
+```
+
+The update is treated as failed when `response.err-message` is non-blank or when `response.data[0].success` is not `true`.
+
+BFF success response:
+
+```json
+{
+  "success": true
+}
+```
+
+Error responses follow the standard BFF error envelope:
+
+```json
+{
+  "errorCode": "err.personal-information.update.invalid",
+  "message": "Invalid personal information update request."
+}
+```
+
+Architecture notes:
+- YAML reverse mapping lives in the inbound web adapter (`adapter/in/web/mapper`) because page/form/field binding is a presentation concern.
+- The application use case receives already mapped APIM update field keys and remains framework-free.
+- The update use case depends only on `PortalAccessContextPort` and `ApimUpdatePersonalInformationPort`.
+- APIM request/response DTOs stay inside `adapter/out/apim/dto`.
+- Only `X-Request-Id` is propagated to APIM.
+- Body logging remains disabled by default and should stay disabled for this endpoint because the payload contains personal data.

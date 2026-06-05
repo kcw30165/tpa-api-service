@@ -153,6 +153,7 @@ bff-pages:
                 zh_HK: 請輸入有效通訊地址。
             - type: blockedAddress
               code: personalInformation.address.poBoxBlocked
+              pattern: PO Box~|~P.O. Box~|~P O Box~|~P.O Box~|~Post Office Box~|~P. O. Box~|~郵政信箱
               message:
                 en: PO Box address will not be accepted, please re-enter your address
                   as our record.
