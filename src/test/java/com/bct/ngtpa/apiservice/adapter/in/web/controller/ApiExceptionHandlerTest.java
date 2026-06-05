@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.adapter.in.web;
+package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -11,6 +11,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiErrorResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.controller.ApiExceptionHandler;
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdateNotificationsReadStatusRequest;
 import com.bct.ngtpa.apiservice.application.exception.ApplicationException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;

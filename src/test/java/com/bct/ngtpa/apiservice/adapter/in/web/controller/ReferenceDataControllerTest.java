@@ -1,8 +1,9 @@
-package com.bct.ngtpa.apiservice.adapter.in.web;
+package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.controller.ReferenceDataController;
 import com.bct.ngtpa.apiservice.application.dto.GetReferenceDataCountriesCommand;
 import com.bct.ngtpa.apiservice.application.dto.ReferenceDataCountriesResult;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;

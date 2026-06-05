@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.adapter.in.web;
+package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.NotificationReadStatusWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.NotificationWebMapper;
@@ -19,6 +19,8 @@ import com.bct.ngtpa.apiservice.domain.model.MessageType;
 import com.bct.ngtpa.apiservice.domain.model.NoticeMessage;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.controller.ApiExceptionHandler;
+import com.bct.ngtpa.apiservice.adapter.in.web.controller.NotificationController;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingWebFilter;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
