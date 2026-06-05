@@ -1,9 +1,14 @@
 package com.bct.ngtpa.apiservice.adapter.in.web;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiErrorResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdateNotificationsReadStatusRequest;
@@ -20,11 +25,13 @@ import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.server.RequestPath;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
 import org.springframework.security.access.AccessDeniedException;
@@ -35,17 +42,21 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.support.WebExchangeBindException;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.ServerWebInputException;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 
 class ApiExceptionHandlerTest {
 
-    private final ApiExceptionHandler handler = new ApiExceptionHandler(testErrorMessageResolver(), testLoggingSanitizer());
+    private final ApiExceptionHandler handler = new ApiExceptionHandler(testErrorMessageResolver(),
+            testLoggingSanitizer());
 
-    // ── Existing body contract tests (body must only have errorCode and message) ──
+    // ── Existing body contract tests (body must only have errorCode and message)
+    // ──
 
     @Test
     void mapsApimExceptionToItsStatusAndErrorCode() {
         ResponseEntity<ApiErrorResponse> response = handler.handleApimException(
-            new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "APIM failure"),
+                new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "APIM failure"),
                 emptyExchange());
 
         assertEquals(HttpStatus.BAD_GATEWAY, response.getStatusCode());
@@ -56,7 +67,7 @@ class ApiExceptionHandlerTest {
     @Test
     void mapsApimInternalServerErrorToItsStatusAndErrorCode() {
         ResponseEntity<ApiErrorResponse> response = handler.handleApimException(
-            new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCodes.SYSTEM_UNEXPECTED, "Crypto failure"),
+                new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCodes.SYSTEM_UNEXPECTED, "Crypto failure"),
                 emptyExchange());
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
@@ -142,43 +153,43 @@ class ApiExceptionHandlerTest {
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals(ErrorCodes.REQUEST_BODY_MALFORMED, response.getBody().errorCode());
         assertEquals("Malformed request body.", response.getBody().message());
-        }
+    }
 
-        @Test
-        void mapsGenericApplicationExceptionToItsOwnErrorCode() {
+    @Test
+    void mapsGenericApplicationExceptionToItsOwnErrorCode() {
         ResponseEntity<ApiErrorResponse> response = handler.handleApplicationException(
-            new ApplicationException(ErrorCodes.REQUEST_INVALID, "internal only"),
-            emptyExchange());
+                new ApplicationException(ErrorCodes.REQUEST_INVALID, "internal only"),
+                emptyExchange());
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals(ErrorCodes.REQUEST_INVALID, response.getBody().errorCode());
         assertEquals("Invalid request.", response.getBody().message());
-        }
+    }
 
-        @Test
-        void mapsAuthenticationExceptionToUnauthorizedBusinessError() {
+    @Test
+    void mapsAuthenticationExceptionToUnauthorizedBusinessError() {
         ResponseEntity<ApiErrorResponse> response = handler.handleAuthenticationException(
-            new BadCredentialsException("raw auth failure"), emptyExchange());
+                new BadCredentialsException("raw auth failure"), emptyExchange());
 
         assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
         assertEquals(ErrorCodes.SECURITY_AUTHENTICATION_REQUIRED, response.getBody().errorCode());
         assertEquals("Authentication is required.", response.getBody().message());
-        }
+    }
 
-        @Test
-        void mapsAccessDeniedExceptionToForbiddenBusinessError() {
+    @Test
+    void mapsAccessDeniedExceptionToForbiddenBusinessError() {
         ResponseEntity<ApiErrorResponse> response = handler.handleAccessDeniedException(
-            new AccessDeniedException("raw access denied"), emptyExchange());
+                new AccessDeniedException("raw access denied"), emptyExchange());
 
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
         assertEquals(ErrorCodes.SECURITY_ACCESS_DENIED, response.getBody().errorCode());
         assertEquals("Access is denied.", response.getBody().message());
-        }
+    }
 
-        @Test
-        void mapsUnknownExceptionToSystemUnexpectedWithSafeMessage() {
+    @Test
+    void mapsUnknownExceptionToSystemUnexpectedWithSafeMessage() {
         ResponseEntity<ApiErrorResponse> response = handler.handleUnexpectedException(
-            new IllegalStateException("raw internal failure"), emptyExchange());
+                new IllegalStateException("raw internal failure"), emptyExchange());
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
         assertEquals(ErrorCodes.SYSTEM_UNEXPECTED, response.getBody().errorCode());
@@ -222,7 +233,7 @@ class ApiExceptionHandlerTest {
         MockServerWebExchange exchange = exchangeWithRequestId("apim-req-id");
 
         ResponseEntity<ApiErrorResponse> response = handler.handleApimException(
-            new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "msg"), exchange);
+                new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "msg"), exchange);
 
         assertEquals("apim-req-id", response.getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
     }
@@ -232,7 +243,7 @@ class ApiExceptionHandlerTest {
         MockServerWebExchange exchange = exchangeWithRequestId("crypto-req-id");
 
         ResponseEntity<ApiErrorResponse> response = handler.handleApimException(
-            new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCodes.SYSTEM_UNEXPECTED, "fail"), exchange);
+                new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCodes.SYSTEM_UNEXPECTED, "fail"), exchange);
 
         assertEquals("crypto-req-id", response.getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
     }
@@ -282,7 +293,7 @@ class ApiExceptionHandlerTest {
     @Test
     void omitsRequestIdHeaderWhenNotInExchangeAttributes() {
         ResponseEntity<ApiErrorResponse> response = handler.handleApimException(
-            new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "msg"), emptyExchange());
+                new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "msg"), emptyExchange());
 
         assertNull(response.getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
     }
@@ -310,32 +321,103 @@ class ApiExceptionHandlerTest {
 
     @Test
     void mappedExceptionsNeverExposeHttpStatusStringsAsErrorCodeAndKeepStandardBodyShape() throws Exception {
-    BindingResult bindingResult = new BeanPropertyBindingResult(new Object(), "request");
-    bindingResult.addError(new FieldError("request", "field", "must not be blank"));
+        BindingResult bindingResult = new BeanPropertyBindingResult(new Object(), "request");
+        bindingResult.addError(new FieldError("request", "field", "must not be blank"));
 
-    List<ResponseEntity<ApiErrorResponse>> responses = new ArrayList<>();
-    responses.add(handler.handleApplicationException(
-        new ApplicationException(ErrorCodes.REQUEST_INVALID, "internal only"), emptyExchange()));
-    responses.add(handler.handleInvalidNotificationRequestException(
-        new InvalidNotificationRequestException("bad"), emptyExchange()));
-    responses.add(handler.handleInvalidContributionRequestException(
-        new InvalidContributionRequestException("bad"), emptyExchange()));
-    responses.add(handler.handlePortalAccessContextResolutionException(
-        new PortalAccessContextResolutionException("missing portal"), emptyExchange()));
-    responses.add(handler.handleApimException(
-        new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "upstream"), emptyExchange()));
-    responses.add(handler.handleWebExchangeBindException(
-        new WebExchangeBindException(methodParameter(), bindingResult), emptyExchange()));
-    responses.add(handler.handleServerWebInputException(
-        new ServerWebInputException("Malformed JSON"), emptyExchange()));
-    responses.add(handler.handleUnexpectedException(new RuntimeException("boom"), emptyExchange()));
+        List<ResponseEntity<ApiErrorResponse>> responses = new ArrayList<>();
+        responses.add(handler.handleApplicationException(
+                new ApplicationException(ErrorCodes.REQUEST_INVALID, "internal only"), emptyExchange()));
+        responses.add(handler.handleInvalidNotificationRequestException(
+                new InvalidNotificationRequestException("bad"), emptyExchange()));
+        responses.add(handler.handleInvalidContributionRequestException(
+                new InvalidContributionRequestException("bad"), emptyExchange()));
+        responses.add(handler.handlePortalAccessContextResolutionException(
+                new PortalAccessContextResolutionException("missing portal"), emptyExchange()));
+        responses.add(handler.handleApimException(
+                new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "upstream"),
+                emptyExchange()));
+        responses.add(handler.handleWebExchangeBindException(
+                new WebExchangeBindException(methodParameter(), bindingResult), emptyExchange()));
+        responses.add(handler.handleServerWebInputException(
+                new ServerWebInputException("Malformed JSON"), emptyExchange()));
+        responses.add(handler.handleUnexpectedException(new RuntimeException("boom"), emptyExchange()));
 
-    for (ResponseEntity<ApiErrorResponse> response : responses) {
-        assertNotNull(response.getBody());
-        assertEquals(2, response.getBody().getClass().getRecordComponents().length);
-        assertTrue(!response.getBody().errorCode().matches("\\d+"),
-            () -> "Expected business error code but got: " + response.getBody().errorCode());
+        for (ResponseEntity<ApiErrorResponse> response : responses) {
+            assertNotNull(response.getBody());
+            assertEquals(2, response.getBody().getClass().getRecordComponents().length);
+            assertTrue(!response.getBody().errorCode().matches("\\d+"),
+                    () -> "Expected business error code but got: " + response.getBody().errorCode());
+        }
     }
+
+        @Test
+    void apimExceptionWithBlankErrorCodeFallsBackToUpstreamFailure() {
+        ApiExceptionHandler handler = handler("public-message", "sanitized", "{}");
+        ApimException ex = mock(ApimException.class);
+        when(ex.getStatusCode()).thenReturn(HttpStatus.BAD_GATEWAY);
+        when(ex.getErrorCode()).thenReturn(" ");
+        when(ex.getMessage()).thenReturn("diagnostic");
+        MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/api/v1/probe").build());
+
+        var response = handler.handleApimException(ex, exchange);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+        assertThat(response.getBody().errorCode()).isEqualTo(ErrorCodes.APIM_UPSTREAM_FAILURE);
+    }
+
+    @Test
+    void privateLogExceptionHandlesMissingMethodBlankSanitizedMessageAndWarnStackTrace() throws Exception {
+        LoggingSanitizer sanitizer = mock(LoggingSanitizer.class);
+        when(sanitizer.sanitizeText(any())).thenReturn(" ");
+        when(sanitizer.toSafeString(any())).thenReturn("{}");
+        ApiExceptionHandler handler = new ApiExceptionHandler(resolver("message"), sanitizer);
+
+        ServerHttpRequest request = mock(ServerHttpRequest.class);
+        when(request.getMethod()).thenReturn(null);
+        RequestPath path = mock(RequestPath.class);
+        when(path.value()).thenReturn("/api/v1/no-method");
+        when(request.getPath()).thenReturn(path);
+        ServerWebExchange exchange = mock(ServerWebExchange.class);
+        when(exchange.getRequest()).thenReturn(request);
+        when(exchange.getAttributes()).thenReturn(new LinkedHashMap<>());
+
+        Method method = ApiExceptionHandler.class.getDeclaredMethod(
+                "logException",
+                org.springframework.http.HttpStatusCode.class,
+                String.class,
+                ServerWebExchange.class,
+                Throwable.class,
+                String.class,
+                boolean.class,
+                boolean.class);
+        method.setAccessible(true);
+
+        method.invoke(handler, HttpStatus.BAD_REQUEST, ErrorCodes.REQUEST_INVALID, exchange,
+                new IllegalArgumentException("boom"), " ", false, true);
+    }
+
+    @Test
+    void privateRequestLocaleReturnsNullForInvalidAcceptLanguageHeader() throws Exception {
+        ApiExceptionHandler handler = handler("message", "sanitized", "{}");
+        MockServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/api/v1/probe")
+                .header(HttpHeaders.ACCEPT_LANGUAGE, "@@@")
+                .build());
+
+        Method method = ApiExceptionHandler.class.getDeclaredMethod("requestLocale", ServerWebExchange.class);
+        method.setAccessible(true);
+
+        assertThat((String) method.invoke(handler, exchange)).isNull();
+    }
+
+    @Test
+    void privateTrimToNullHandlesNullBlankAndValue() throws Exception {
+        ApiExceptionHandler handler = handler("message", "sanitized", "{}");
+        Method method = ApiExceptionHandler.class.getDeclaredMethod("trimToNull", Object.class);
+        method.setAccessible(true);
+
+        assertThat((String) method.invoke(handler, new Object[] { null })).isNull();
+        assertThat((String) method.invoke(handler, "   ")).isNull();
+        assertThat((String) method.invoke(handler, " JP ")).isEqualTo("JP");
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -365,11 +447,12 @@ class ApiExceptionHandlerTest {
             case ErrorCodes.APIM_UPSTREAM_FAILURE,
                     ErrorCodes.APIM_SERVICE_UNAVAILABLE,
                     ErrorCodes.APIM_TIMEOUT,
-                    ErrorCodes.APIM_RESPONSE_INVALID -> "Service is temporarily unavailable. Please try again later.";
+                    ErrorCodes.APIM_RESPONSE_INVALID ->
+                "Service is temporarily unavailable. Please try again later.";
             case ErrorCodes.REQUEST_INVALID -> "Invalid request.";
             case ErrorCodes.REQUEST_VALIDATION_FAILED -> "JP".equals(accountEnv)
-                ? "Invalid request payload for JP."
-                : "Invalid request payload.";
+                    ? "Invalid request payload for JP."
+                    : "Invalid request payload.";
             case ErrorCodes.REQUEST_BODY_MALFORMED -> "Malformed request body.";
             case ErrorCodes.SECURITY_ACCESS_DENIED -> "Access is denied.";
             case ErrorCodes.SECURITY_AUTHENTICATION_REQUIRED -> "Authentication is required.";
@@ -377,8 +460,8 @@ class ApiExceptionHandlerTest {
             case ErrorCodes.NOTIFICATION_REQUEST_INVALID -> "Invalid notification request.";
             case ErrorCodes.MEMBER_CONTEXT_UNAVAILABLE -> "Member context is unavailable.";
             case ErrorCodes.SYSTEM_UNEXPECTED -> "zh_HK".equalsIgnoreCase(locale)
-                ? "對不起，此服務可能暫受阻延，請稍後再嘗試。"
-                : "Sorry, this service might be interrupted. Please try again later.";
+                    ? "對不起，此服務可能暫受阻延，請稍後再嘗試。"
+                    : "Sorry, this service might be interrupted. Please try again later.";
             default -> "Sorry, this service might be interrupted. Please try again later.";
         };
     }
@@ -395,5 +478,18 @@ class ApiExceptionHandlerTest {
                 "memberId",
                 "userId"));
         return new LoggingSanitizer(new ObjectMapper(), properties);
+    }
+    
+    private static ApiExceptionHandler handler(String publicMessage, String sanitizedMessage, String safeString) {
+        LoggingSanitizer sanitizer = mock(LoggingSanitizer.class);
+        when(sanitizer.sanitizeText(any())).thenReturn(sanitizedMessage);
+        when(sanitizer.toSafeString(any())).thenReturn(safeString);
+        return new ApiExceptionHandler(resolver(publicMessage), sanitizer);
+    }
+
+    private static ErrorMessageResolver resolver(String message) {
+        ErrorMessageResolver resolver = mock(ErrorMessageResolver.class);
+        when(resolver.resolve(anyString(), any(), any(), any(), any())).thenReturn(message);
+        return resolver;
     }
 }
