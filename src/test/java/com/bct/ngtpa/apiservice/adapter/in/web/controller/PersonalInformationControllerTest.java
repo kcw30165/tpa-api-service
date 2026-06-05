@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.adapter.in.web;
+package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;

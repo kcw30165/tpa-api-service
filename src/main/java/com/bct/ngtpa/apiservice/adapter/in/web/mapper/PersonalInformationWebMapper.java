@@ -16,8 +16,9 @@ import com.bct.ngtpa.apiservice.application.dto.MemberInfoConfigItem;
 import com.bct.ngtpa.apiservice.application.dto.MemberInfoConfigItemType;
 import com.bct.ngtpa.apiservice.application.dto.PersonalInformationResult;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -28,9 +29,9 @@ import java.util.Map;
 import java.util.Set;
 
 @Component
+@Slf4j
 public class PersonalInformationWebMapper {
 
-    private static final Logger log = LoggerFactory.getLogger(PersonalInformationWebMapper.class);
     private static final String PAGE_KEY = "personalInformation";
     private static final String DEFAULT_LANGUAGE = "en";
     private static final String ZH_HK_LANGUAGE = "zh_HK";

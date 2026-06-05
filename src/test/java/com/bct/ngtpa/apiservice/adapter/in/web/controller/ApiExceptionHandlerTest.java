@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.adapter.in.web;
+package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;

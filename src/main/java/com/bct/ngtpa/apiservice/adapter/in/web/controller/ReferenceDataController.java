@@ -1,10 +1,10 @@
-package com.bct.ngtpa.apiservice.adapter.in.web;
+package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.support.RequestLanguageResolver;
-import com.bct.ngtpa.apiservice.application.dto.GetPersonalInformationCommand;
+import com.bct.ngtpa.apiservice.application.dto.GetReferenceDataCountriesCommand;
+import com.bct.ngtpa.apiservice.application.dto.ReferenceDataCountriesResult;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
-import com.bct.ngtpa.apiservice.application.port.in.GetPersonalInformationUseCase;
+import com.bct.ngtpa.apiservice.application.port.in.GetReferenceDataCountriesUseCase;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
@@ -17,25 +17,20 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 import reactor.util.context.ContextView;
 
-import java.util.Map;
-
 @RestController
-@RequestMapping("/api/v1")
+@RequestMapping("/api/v1/reference-data")
 @RequiredArgsConstructor
-public class PersonalInformationController {
+public class ReferenceDataController {
 
-    private final GetPersonalInformationUseCase getPersonalInformationUseCase;
-    private final PersonalInformationWebMapper personalInformationWebMapper;
+    private final GetReferenceDataCountriesUseCase getReferenceDataCountriesUseCase;
 
-    @GetMapping(value = "/personal-information", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<Map<String, Object>> getPersonalInformation(
+    @GetMapping(value = "/countries", produces = MediaType.APPLICATION_JSON_VALUE)
+    public Mono<ReferenceDataCountriesResult> getCountries(
             @RequestHeader(value = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false) String acceptLanguage) {
-
         return Mono.deferContextual(contextView -> {
             String accountRef = resolveRequiredAccountRef(contextView);
             String language = resolveLanguage(contextView, acceptLanguage);
-            return getPersonalInformationUseCase.execute(new GetPersonalInformationCommand(accountRef, language))
-                    .map(result -> personalInformationWebMapper.toResponse(result, language));
+            return getReferenceDataCountriesUseCase.execute(new GetReferenceDataCountriesCommand(accountRef, language));
         });
     }
 

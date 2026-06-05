@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.adapter.in.web;
+package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.NotificationReadStatusWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.NotificationWebMapper;
