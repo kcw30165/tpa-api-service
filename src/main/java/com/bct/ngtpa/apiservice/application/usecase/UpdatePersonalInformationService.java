@@ -31,6 +31,7 @@ public class UpdatePersonalInformationService implements UpdatePersonalInformati
                         context.account().certNo(),
                         context.actor().actorUserId(),
                         context.actor().actorUserType(),
+                        command.applyToAllAccounts(),
                         command.updateFields())));
     }
 }

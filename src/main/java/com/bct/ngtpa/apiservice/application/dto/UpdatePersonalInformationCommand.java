@@ -5,6 +5,7 @@ import java.util.Map;
 
 public record UpdatePersonalInformationCommand(
         String accountRef,
+        Boolean applyToAllAccounts,
         Map<String, Object> updateFields) {
 
     public UpdatePersonalInformationCommand {

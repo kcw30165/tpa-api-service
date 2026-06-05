@@ -39,7 +39,7 @@ public class UpdatePersonalInformationController {
                         "Account-Ref is required for personal information update."));
             }
             return request
-                    .map(body -> mapper.toCommand(accountRef, body))
+                    .map(body -> mapper.toCommand(accountRef, body.applyToAllAccounts(), body))
                     .flatMap(updatePersonalInformationUseCase::execute)
                     .map(result -> new UpdatePersonalInformationResponse(result.success()));
         });

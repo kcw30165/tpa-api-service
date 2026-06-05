@@ -24,7 +24,7 @@ public class PersonalInformationUpdateWebMapper {
         this.properties = Objects.requireNonNull(properties);
     }
 
-    public UpdatePersonalInformationCommand toCommand(String accountRef, UpdatePersonalInformationRequest request) {
+    public UpdatePersonalInformationCommand toCommand(String accountRef, Boolean applyToAllAccounts, UpdatePersonalInformationRequest request) {
         if (request == null || request.fields() == null || request.fields().isEmpty()) {
             throw new InvalidPersonalInformationUpdateException("No personal information fields were submitted.");
         }
@@ -53,7 +53,7 @@ public class PersonalInformationUpdateWebMapper {
         if (mapped.isEmpty()) {
             throw new InvalidPersonalInformationUpdateException("No updatable personal information fields were submitted.");
         }
-        return new UpdatePersonalInformationCommand(accountRef, mapped);
+        return new UpdatePersonalInformationCommand(accountRef, applyToAllAccounts, mapped);
     }
 
     private Map<String, FieldProperties> fieldsById() {

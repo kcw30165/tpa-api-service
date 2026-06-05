@@ -9,6 +9,7 @@ public record UpdateMemberInfoCommand(
         String certNo,
         String userId,
         String userRole,
+        Boolean applyToAllAccounts,
         Map<String, Object> updateFields) {
 
     public UpdateMemberInfoCommand {

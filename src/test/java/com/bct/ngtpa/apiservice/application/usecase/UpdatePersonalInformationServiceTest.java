@@ -46,7 +46,7 @@ class UpdatePersonalInformationServiceTest {
         updateFields.put("mobile-number", "98765432");
 
         var result = new UpdatePersonalInformationService(apimPort, portalPort)
-                .execute(new UpdatePersonalInformationCommand("ACC-123", updateFields))
+                .execute(new UpdatePersonalInformationCommand("ACC-123", true, updateFields))
                 .block();
 
         assertEquals(expectedResult, result);

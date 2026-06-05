@@ -68,6 +68,7 @@ public class ApimUpdatePersonalInformationAdapter implements ApimUpdatePersonalI
                                 .accountEnv(command.accountEnv())
                                 .userId(command.userId())
                                 .userRole(command.userRole())
+                                .applyToAllAccounts(command.applyToAllAccounts())
                                 .updateFields(command.updateFields())
                                 .build();
         }

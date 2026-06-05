@@ -30,6 +30,9 @@ public class UpdateMemberInfoApimRequest {
     @JsonProperty("user-role")
     private String userRole;
 
+    @JsonProperty("apply-all")
+    private Boolean applyToAllAccounts;
+
     @JsonProperty("update-fields")
     private Map<String, Object> updateFields;
 }

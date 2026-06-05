@@ -25,6 +25,8 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import org.springframework.http.HttpStatus;
+
 class ApimUpdatePersonalInformationAdapterTest {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -83,7 +85,8 @@ class ApimUpdatePersonalInformationAdapterTest {
 
     @Test
     void treatsFalseSuccessAsBadGateway() {
-        ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(null, null, null, new ApimProperties());
+        ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(null, null, null,
+                new ApimProperties());
 
         ApimException ex = assertThrows(ApimException.class,
                 () -> ReflectionTestUtils.invokeMethod(adapter, "toResult", responseEnvelope(List.of(
@@ -95,18 +98,44 @@ class ApimUpdatePersonalInformationAdapterTest {
 
     @Test
     void treatsMissingDataAsBadGateway() {
-        ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(null, null, null, new ApimProperties());
+        ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(null, null, null,
+                new ApimProperties());
 
         ApimException ex = assertThrows(ApimException.class,
                 () -> ReflectionTestUtils.invokeMethod(adapter, "toResult", responseEnvelope(List.of())));
 
-        assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, ex.getErrorCode());
-        assertEquals("APIM personal information update was not successful.", ex.getMessage());
+        assertEquals("APIM personal information update response data is missing.", ex.getMessage());
+    }
+
+    @Test
+    void treatsUnsuccessfulDataItemAsBadGateway() {
+        ApimProperties properties = new ApimProperties();
+        properties.getEncryption().setEnabled(true);
+        FixedEnvelopePayloadCryptoService payloadCryptoService = new FixedEnvelopePayloadCryptoService(
+                responseEnvelope(List.of(
+                        UpdateMemberInfoApimDataItem.builder().success(false).build())));
+        FixedCertificateService certificateService = new FixedCertificateService(new TestPublicKey("bct-public"));
+        CapturingApimWebClientFacade facade = new CapturingApimWebClientFacade("ignored");
+        ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(
+                facade,
+                certificateService,
+                payloadCryptoService,
+                properties);
+        var exception = assertThrows(
+                ApimException.class,
+                () -> adapter.updateMemberInfo(command()).block());
+
+        assertEquals(HttpStatus.BAD_GATEWAY, exception.getStatusCode());
+        assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, exception.getErrorCode());
+        assertEquals(
+                "APIM personal information update was not successful.",
+                exception.getMessage());
     }
 
     @Test
     void throwsWhenPayloadMissing() {
-        ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(null, null, null, new ApimProperties());
+        ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(null, null, null,
+                new ApimProperties());
 
         ApimException ex = assertThrows(ApimException.class,
                 () -> ReflectionTestUtils.invokeMethod(adapter, "toResult", (Object) null));
@@ -119,8 +148,9 @@ class ApimUpdatePersonalInformationAdapterTest {
     void usesCertificateFlowWhenEncryptionEnabled() {
         ApimProperties properties = new ApimProperties();
         properties.getEncryption().setEnabled(true);
-        FixedEnvelopePayloadCryptoService payloadCryptoService = new FixedEnvelopePayloadCryptoService(responseEnvelope(List.of(
-                UpdateMemberInfoApimDataItem.builder().success(true).build())));
+        FixedEnvelopePayloadCryptoService payloadCryptoService = new FixedEnvelopePayloadCryptoService(
+                responseEnvelope(List.of(
+                        UpdateMemberInfoApimDataItem.builder().success(true).build())));
         FixedCertificateService certificateService = new FixedCertificateService(new TestPublicKey("bct-public"));
         CapturingApimWebClientFacade facade = new CapturingApimWebClientFacade("ignored");
         ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(
@@ -156,7 +186,7 @@ class ApimUpdatePersonalInformationAdapterTest {
         Map<String, Object> updateFields = new LinkedHashMap<>();
         updateFields.put("mobile-number", "98765432");
         updateFields.put("email", "user@example.com");
-        return new UpdateMemberInfoCommand("JP", "POL-001", "CERT-001", "actor-user", "actor-type", updateFields);
+        return new UpdateMemberInfoCommand("JP", "POL-001", "CERT-001", "actor-user", "actor-type", true, updateFields);
     }
 
     private static ApimProperties disabledEncryptionProperties() {
@@ -206,7 +236,8 @@ class ApimUpdatePersonalInformationAdapterTest {
         }
 
         @Override
-        public <T> ApimResponseEnvelope<T> decryptResponseEnvelope(String apiName, String responseJson, Class<T> dataClass,
+        public <T> ApimResponseEnvelope<T> decryptResponseEnvelope(String apiName, String responseJson,
+                Class<T> dataClass,
                 PublicKey publicKey) {
             try {
                 var root = OBJECT_MAPPER.readTree(responseJson);
@@ -249,7 +280,8 @@ class ApimUpdatePersonalInformationAdapterTest {
 
         @Override
         @SuppressWarnings("unchecked")
-        public <T> ApimResponseEnvelope<T> decryptResponseEnvelope(String apiName, String responseJson, Class<T> dataClass,
+        public <T> ApimResponseEnvelope<T> decryptResponseEnvelope(String apiName, String responseJson,
+                Class<T> dataClass,
                 PublicKey publicKey) {
             this.lastPublicKey = publicKey;
             return (ApimResponseEnvelope<T>) envelope;
@@ -279,7 +311,8 @@ class ApimUpdatePersonalInformationAdapterTest {
 
         @Override
         public Mono<PublicKey> getBctPublicKey() {
-            return Mono.error(new AssertionError("Certificate lookup should not be called when encryption is disabled."));
+            return Mono
+                    .error(new AssertionError("Certificate lookup should not be called when encryption is disabled."));
         }
     }
 

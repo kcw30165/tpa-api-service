@@ -27,7 +27,7 @@ class PersonalInformationUpdateWebMapperTest {
         fields.put("residentialAddressLine2", "Tai Po, New Territories");
         fields.put("hongKongMobilePhone", "98765432");
 
-        var command = mapper.toCommand("ACC-123", new UpdatePersonalInformationRequest("1.0", fields));
+        var command = mapper.toCommand("ACC-123", true, new UpdatePersonalInformationRequest("1.0", true, fields));
 
         assertEquals("ACC-123", command.accountRef());
         assertEquals(Map.of(
@@ -38,14 +38,14 @@ class PersonalInformationUpdateWebMapperTest {
     @Test
     void rejectsUnknownFieldIds() {
         var ex = assertThrows(InvalidPersonalInformationUpdateException.class,
-                () -> mapper.toCommand("ACC-123", new UpdatePersonalInformationRequest("1.0", Map.of("unknown", "x"))));
+                () -> mapper.toCommand("ACC-123", true, new UpdatePersonalInformationRequest("1.0", true, Map.of("unknown", "x"))));
         assertEquals("Unknown personal information field: unknown", ex.getMessage());
     }
 
     @Test
     void omitsUiOnlyFieldWithOnlyConfigButRejectsWhenNothingRemains() {
         var ex = assertThrows(InvalidPersonalInformationUpdateException.class,
-                () -> mapper.toCommand("ACC-123", new UpdatePersonalInformationRequest("1.0",
+                () -> mapper.toCommand("ACC-123", true, new UpdatePersonalInformationRequest("1.0",true, 
                         Map.of("applyToAllMemberAccounts", true))));
         assertEquals("No updatable personal information fields were submitted.", ex.getMessage());
     }
@@ -53,7 +53,7 @@ class PersonalInformationUpdateWebMapperTest {
     @Test
     void rejectsBlankRequiredSubmittedField() {
         var ex = assertThrows(InvalidPersonalInformationUpdateException.class,
-                () -> mapper.toCommand("ACC-123", new UpdatePersonalInformationRequest("1.0",
+                () -> mapper.toCommand("ACC-123", true, new UpdatePersonalInformationRequest("1.0", true,
                         Map.of("emailAddress", "   "))));
         assertEquals("Personal information field is required: emailAddress", ex.getMessage());
     }
@@ -61,7 +61,7 @@ class PersonalInformationUpdateWebMapperTest {
     @Test
     void rejectsMaxLengthViolation() {
         var ex = assertThrows(InvalidPersonalInformationUpdateException.class,
-                () -> mapper.toCommand("ACC-123", new UpdatePersonalInformationRequest("1.0",
+                () -> mapper.toCommand("ACC-123", true, new UpdatePersonalInformationRequest("1.0", true,
                         Map.of("residentialAddressLine2", "x".repeat(41)))));
         assertEquals("Personal information field exceeds maxLength: residentialAddressLine2", ex.getMessage());
     }
