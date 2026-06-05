@@ -21,17 +21,24 @@ import reactor.core.publisher.Mono;
 class UpdatePersonalInformationServiceTest {
 
     @Test
-    void resolvesPortalContextAndCallsApimUpdateWithActorUserIdAndMappedFields() {
+    void resolvesPortalContextAndCallsApimUpdateWithActorUserIdUserTypeAndMappedFields() {
         AtomicReference<String> capturedAccountRef = new AtomicReference<>();
         AtomicReference<UpdateMemberInfoCommand> capturedCommand = new AtomicReference<>();
+
+        var expectedResult = new UpdatePersonalInformationResult(
+                true,
+                "990000001",
+                "2026-06-05",
+                "13:44:01");
 
         PortalAccessContextPort portalPort = accountRef -> {
             capturedAccountRef.set(accountRef);
             return Mono.just(context());
         };
+
         ApimUpdatePersonalInformationPort apimPort = command -> {
             capturedCommand.set(command);
-            return Mono.just(new UpdatePersonalInformationResult(true));
+            return Mono.just(expectedResult);
         };
 
         var updateFields = new LinkedHashMap<String, Object>();
@@ -42,12 +49,15 @@ class UpdatePersonalInformationServiceTest {
                 .execute(new UpdatePersonalInformationCommand("ACC-123", updateFields))
                 .block();
 
-        assertEquals(new UpdatePersonalInformationResult(true), result);
+        assertEquals(expectedResult, result);
         assertEquals("ACC-123", capturedAccountRef.get());
+
         assertEquals("JP", capturedCommand.get().accountEnv());
         assertEquals("POL-001", capturedCommand.get().policyNo());
         assertEquals("CERT-001", capturedCommand.get().certNo());
         assertEquals("actor-user", capturedCommand.get().userId());
+        assertEquals("MEMBER", capturedCommand.get().userRole());
+
         assertEquals(updateFields, capturedCommand.get().updateFields());
     }
 
@@ -55,6 +65,14 @@ class UpdatePersonalInformationServiceTest {
         return new PortalAccessContext(
                 new ActorContext("actor-user", "MEMBER", "SELF"),
                 new MemberOwnerContext("owner-user", "MBR"),
-                new AccountContext("ACC-123", "JP", "POL-001", "CERT-001", "JPM", "OE", TermStatus.BLANK, null));
+                new AccountContext(
+                        "ACC-123",
+                        "JP",
+                        "POL-001",
+                        "CERT-001",
+                        "JPM",
+                        "OE",
+                        TermStatus.BLANK,
+                        null));
     }
 }

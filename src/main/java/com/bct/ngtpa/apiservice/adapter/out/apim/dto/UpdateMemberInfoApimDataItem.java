@@ -16,4 +16,14 @@ public class UpdateMemberInfoApimDataItem {
 
     @JsonProperty("success")
     private boolean success;
+    
+    @JsonProperty("ref-no")
+    private String refNo;
+
+    @JsonProperty("submit-date")
+    private String submitDate;
+
+    @JsonProperty("submit-time")
+    private String submitTime;
+
 }
