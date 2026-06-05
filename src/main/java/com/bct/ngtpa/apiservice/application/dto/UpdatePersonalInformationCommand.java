@@ -2,7 +2,6 @@ package com.bct.ngtpa.apiservice.application.dto;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Objects;
 
 public record UpdatePersonalInformationCommand(
         String accountRef,

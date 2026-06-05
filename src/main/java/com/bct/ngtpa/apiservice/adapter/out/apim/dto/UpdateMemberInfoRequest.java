@@ -8,5 +8,6 @@ public record UpdateMemberInfoRequest(
         @JsonProperty("cert-no") String certNo,
         @JsonProperty("env") String env,
         @JsonProperty("user-id") String userId,
+        @JsonProperty("user-role") String userRole,
         @JsonProperty("update-fields") Map<String, Object> updateFields) {
 }

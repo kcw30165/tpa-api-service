@@ -8,6 +8,7 @@ public record UpdateMemberInfoCommand(
         String policyNo,
         String certNo,
         String userId,
+        String userRole,
         Map<String, Object> updateFields) {
 
     public UpdateMemberInfoCommand {

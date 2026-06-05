@@ -27,6 +27,9 @@ public class UpdateMemberInfoApimRequest {
     @JsonProperty("user-id")
     private String userId;
 
+    @JsonProperty("user-role")
+    private String userRole;
+
     @JsonProperty("update-fields")
     private Map<String, Object> updateFields;
 }

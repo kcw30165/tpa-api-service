@@ -156,7 +156,7 @@ class ApimUpdatePersonalInformationAdapterTest {
         Map<String, Object> updateFields = new LinkedHashMap<>();
         updateFields.put("mobile-number", "98765432");
         updateFields.put("email", "user@example.com");
-        return new UpdateMemberInfoCommand("JP", "POL-001", "CERT-001", "actor-user", updateFields);
+        return new UpdateMemberInfoCommand("JP", "POL-001", "CERT-001", "actor-user", "actor-type", updateFields);
     }
 
     private static ApimProperties disabledEncryptionProperties() {

@@ -64,6 +64,7 @@ public class ApimUpdatePersonalInformationAdapter implements ApimUpdatePersonalI
                 .certNo(command.certNo())
                 .accountEnv(command.accountEnv())
                 .userId(command.userId())
+                .userRole(command.userRole())
                 .updateFields(command.updateFields())
                 .build();
     }

@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
 import com.bct.ngtpa.apiservice.application.port.in.UpdatePersonalInformationUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimUpdatePersonalInformationPort;
 import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
+
 import java.util.Objects;
 import reactor.core.publisher.Mono;
 
@@ -29,6 +30,7 @@ public class UpdatePersonalInformationService implements UpdatePersonalInformati
                         context.account().policyNo(),
                         context.account().certNo(),
                         context.actor().actorUserId(),
+                        context.actor().actorUserType(),
                         command.updateFields())));
     }
 }
