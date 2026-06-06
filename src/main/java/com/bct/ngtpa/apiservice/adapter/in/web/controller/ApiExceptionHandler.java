@@ -7,7 +7,6 @@ import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequest
 import com.bct.ngtpa.apiservice.application.exception.InvalidPersonalInformationUpdateException;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 
-import java.util.List;
 import java.util.Locale;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;

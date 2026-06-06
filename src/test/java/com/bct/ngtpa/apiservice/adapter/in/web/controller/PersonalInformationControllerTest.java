@@ -10,6 +10,8 @@ import static org.mockito.Mockito.when;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.FormPageResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.FormSchemaResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.PageResponse;
 import com.bct.ngtpa.apiservice.application.dto.GetPersonalInformationCommand;
 import com.bct.ngtpa.apiservice.application.dto.PersonalInformationResult;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
@@ -33,11 +35,9 @@ class PersonalInformationControllerTest {
             return Mono.just(result);
         };
         PersonalInformationWebMapper mapper = mock(PersonalInformationWebMapper.class);
-        when(mapper.toResponse(eq(result), eq("zh_HK"))).thenReturn(Map.of(
-                "page", Map.of("id", "personalInformationPage", "title", "個人資料", "lang", "zh_HK"),
-                "form", Map.of("id", "personalInformationForm")));
+        when(mapper.toFormPageResponse(eq(result), eq("zh_HK"))).thenReturn(response("zh_HK", "個人資料"));
 
-        FormPageResponse<Map<String, Object>> response = new PersonalInformationController(useCase, mapper)
+        FormPageResponse<FormSchemaResponse> response = new PersonalInformationController(useCase, mapper)
                 .getPersonalInformation("en")
                 .contextWrite(ctx -> ctx.put(RequestHeaderContextKeys.CONTEXT_KEY,
                         new RequestHeaderContext("ACC-123", "req-1", "zh-HK")))
@@ -48,7 +48,7 @@ class PersonalInformationControllerTest {
         assertEquals("personalInformationPage", response.page().id());
         assertEquals("個人資料", response.page().title());
         assertEquals("zh_HK", response.page().lang());
-        assertEquals("personalInformationForm", response.form().get("id"));
+        assertEquals("personalInformationForm", response.form().id());
         assertTrue(response.messages().isEmpty());
         assertTrue(response.errors().isEmpty());
         assertEquals("ACC-123", captured.get().accountRef());
@@ -64,9 +64,7 @@ class PersonalInformationControllerTest {
             return Mono.just(result);
         };
         PersonalInformationWebMapper mapper = mock(PersonalInformationWebMapper.class);
-        when(mapper.toResponse(eq(result), eq("en"))).thenReturn(Map.of(
-                "page", Map.of("id", "personalInformationPage", "title", "Personal Information", "lang", "en"),
-                "form", Map.of()));
+        when(mapper.toFormPageResponse(eq(result), eq("en"))).thenReturn(response("en", "Personal Information"));
 
         new PersonalInformationController(useCase, mapper)
                 .getPersonalInformation("zh-HK")
@@ -91,5 +89,11 @@ class PersonalInformationControllerTest {
                         .block());
 
         assertEquals(ErrorCodes.MEMBER_CONTEXT_INVALID, ex.getErrorCode());
+    }
+
+    private FormPageResponse<FormSchemaResponse> response(String language, String title) {
+        return FormPageResponse.success(
+                new PageResponse("personalInformationPage", title, language),
+                new FormSchemaResponse("personalInformationForm", "1.0", "view", null, null, null, null));
     }
 }
