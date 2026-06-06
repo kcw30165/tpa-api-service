@@ -58,7 +58,9 @@ class PersonalInformationControllerContractTest {
         var result = new PersonalInformationResult(Map.of("addr1", "ABC Street"), Map.of("addr1", "EDITABLE_COM"));
         when(useCase.execute(any())).thenReturn(Mono.just(result));
         when(mapper.toResponse(eq(result), eq(ACCEPT_LANGUAGE)))
-                .thenReturn(Map.of("page", Map.of(), "form", Map.of()));
+                .thenReturn(Map.of(
+                        "page", Map.of("id", "personalInformationPage", "title", "Personal Information", "lang", ACCEPT_LANGUAGE),
+                        "form", Map.of("id", "personalInformationForm")));
 
         WebTestClient client = client();
 
@@ -72,8 +74,14 @@ class PersonalInformationControllerContractTest {
                 .expectStatus().isOk()
                 .expectHeader().valueEquals(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
                 .expectBody()
-                .jsonPath("$.page").exists()
-                .jsonPath("$.form").exists();
+                .jsonPath("$.success").isEqualTo(true)
+                .jsonPath("$.status").isEqualTo("SUCCESS")
+                .jsonPath("$.page.id").isEqualTo("personalInformationPage")
+                .jsonPath("$.page.title").isEqualTo("Personal Information")
+                .jsonPath("$.page.lang").isEqualTo(ACCEPT_LANGUAGE)
+                .jsonPath("$.form.id").isEqualTo("personalInformationForm")
+                .jsonPath("$.messages").isArray()
+                .jsonPath("$.errors").isArray();
     }
 
     @Test
@@ -84,7 +92,9 @@ class PersonalInformationControllerContractTest {
             captured.set(invocation.getArgument(0));
             return Mono.just(result);
         });
-        when(mapper.toResponse(eq(result), eq("zh_HK"))).thenReturn(Map.of("page", Map.of(), "form", Map.of()));
+        when(mapper.toResponse(eq(result), eq("zh_HK"))).thenReturn(Map.of(
+                "page", Map.of("id", "personalInformationPage", "title", "個人資料", "lang", "zh_HK"),
+                "form", Map.of("id", "personalInformationForm")));
 
         client().get()
                 .uri("/api/v1/personal-information")
@@ -116,7 +126,9 @@ class PersonalInformationControllerContractTest {
     void getPersonalInformationDelegatesToWebMapperAfterUseCase() {
         var result = new PersonalInformationResult(Map.of("email", "nick@example.com"), Map.of("email", "READONLY"));
         when(useCase.execute(any())).thenReturn(Mono.just(result));
-        when(mapper.toResponse(eq(result), eq(ACCEPT_LANGUAGE))).thenReturn(Map.of("page", Map.of(), "form", Map.of()));
+        when(mapper.toResponse(eq(result), eq(ACCEPT_LANGUAGE))).thenReturn(Map.of(
+                "page", Map.of("id", "personalInformationPage", "title", "Personal Information", "lang", ACCEPT_LANGUAGE),
+                "form", Map.of("id", "personalInformationForm")));
 
         client().get()
                 .uri("/api/v1/personal-information")

@@ -358,9 +358,26 @@ public class PersonalInformationWebMapper {
         if (confirmationSchema == null) {
             return confirmation;
         }
-        if (confirmationSchema.getMessage() != null && !confirmationSchema.getMessage().isEmpty()) {
-            confirmation.put("message", resolveLabel(confirmationSchema.getMessage(), language));
+
+        putIfNotNull(confirmation, "enabled", confirmationSchema.getEnabled());
+        putIfHasText(confirmation, "title", resolveLabel(confirmationSchema.getTitle(), language));
+        putIfHasText(confirmation, "reviewMessage", resolveLabel(confirmationSchema.getReviewMessage(), language));
+        putIfHasText(confirmation, "beforeLabel", resolveLabel(confirmationSchema.getBeforeLabel(), language));
+        putIfHasText(confirmation, "afterLabel", resolveLabel(confirmationSchema.getAfterLabel(), language));
+
+        if (confirmationSchema.getSecurityVerification() != null
+                && !confirmationSchema.getSecurityVerification().isEmpty()) {
+            confirmation.put("securityVerification", confirmationSchema.getSecurityVerification());
         }
+
+        if (confirmationSchema.getActions() != null
+                && !confirmationSchema.getActions().isEmpty()) {
+            confirmation.put("actions", confirmationSchema.getActions());
+        }
+
+        // Backward compatibility for old config shape
+        putIfHasText(confirmation, "message", resolveLabel(confirmationSchema.getMessage(), language));
+
         return confirmation;
     }
 
