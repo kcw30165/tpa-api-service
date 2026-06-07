@@ -37,7 +37,6 @@ import java.util.Set;
 
 @Component
 @Slf4j
-
 public class PersonalInformationWebMapper {
 
     private static final String PAGE_KEY = "personalInformation";

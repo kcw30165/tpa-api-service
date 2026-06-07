@@ -3,7 +3,8 @@ package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateResponseMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdatePersonalInformationRequest;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.UpdatePersonalInformationResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.application.port.in.UpdatePersonalInformationUseCase;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
@@ -33,7 +34,8 @@ public class UpdatePersonalInformationController {
     }
 
     @PutMapping
-    public Mono<UpdatePersonalInformationResponse> update(@RequestBody Mono<UpdatePersonalInformationRequest> request) {
+    public Mono<MutationResponse<PersonalInformationUpdateResultResponse>> update(
+            @RequestBody Mono<UpdatePersonalInformationRequest> request) {
         return Mono.deferContextual(contextView -> {
             RequestHeaderContext headerContext = contextView.getOrDefault(RequestHeaderContextKeys.CONTEXT_KEY, null);
             String accountRef = headerContext == null ? null : headerContext.accountRef();
