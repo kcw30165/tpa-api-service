@@ -37,4 +37,12 @@ public record ApiError(
     public static ApiError system(String code, String message, String source) {
         return new ApiError("SYSTEM", code, message, List.of(), "ERROR", source);
     }
+
+    public static ApiError downstreamBusiness(String code, String message, List<String> targets, String source) {
+        return new ApiError("DOWNSTREAM_BUSINESS", code, message, targets, "ERROR", source);
+    }
+
+    public static ApiError downstreamSystem(String code, String message, String source) {
+        return new ApiError("DOWNSTREAM_SYSTEM", code, message, List.of(), "ERROR", source);
+    }
 }
