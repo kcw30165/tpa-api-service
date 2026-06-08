@@ -7,6 +7,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateMemberInfoApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateMemberInfoApimRequest;
 import com.bct.ngtpa.apiservice.application.dto.UpdateMemberInfoCommand;
+import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationError;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
@@ -21,11 +22,11 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import org.springframework.http.HttpStatus;
 
 class ApimUpdatePersonalInformationAdapterTest {
 
@@ -62,7 +63,7 @@ class ApimUpdatePersonalInformationAdapterTest {
     }
 
     @Test
-    void surfacesApimTopLevelErrorMessageAsBadGateway() {
+    void surfacesApimTopLevelErrorMessageAsResultFailure() {
         CapturingApimWebClientFacade facade = new CapturingApimWebClientFacade("""
                 {
                   "response": {
@@ -77,38 +78,50 @@ class ApimUpdatePersonalInformationAdapterTest {
                 new PassThroughApimPayloadCryptoService(),
                 disabledEncryptionProperties());
 
-        ApimException ex = assertThrows(ApimException.class, () -> adapter.updateMemberInfo(command()).block());
+        // Act: Execute the method (assuming it returns UpdatePersonalInformationResult)
+        UpdatePersonalInformationResult result = adapter.updateMemberInfo(command()).block();
 
-        assertEquals("APIM update failed", ex.getMessage());
-        assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, ex.getErrorCode());
+        // Assert: Check that success is false and the error details match
+        assertNotNull(result);
+        assertFalse(result.success());
+        assertEquals(1, result.errors().size());
+
+        UpdatePersonalInformationError error = result.errors().getFirst();
+        assertEquals("DOWNSTREAM_REJECTED", error.type());
+        assertEquals("APIM update failed", error.code());
     }
 
     @Test
-    void treatsFalseSuccessAsBadGateway() {
+    void treatsFalseSuccessAsDownstreamRejectedResult() {
         ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(null, null, null,
                 new ApimProperties());
 
-        ApimException ex = assertThrows(ApimException.class,
-                () -> ReflectionTestUtils.invokeMethod(adapter, "toResult", responseEnvelope(List.of(
-                        UpdateMemberInfoApimDataItem.builder().success(false).build()))));
+        UpdatePersonalInformationResult result = ReflectionTestUtils.invokeMethod(adapter, "toResult",
+                responseEnvelope(List.of(
+                        UpdateMemberInfoApimDataItem.builder().success(false).build())));
 
-        assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, ex.getErrorCode());
-        assertEquals("APIM personal information update was not successful.", ex.getMessage());
+        assertNotNull(result);
+        assertFalse(result.success());
+        assertEquals("DOWNSTREAM_REJECTED", result.errors().getFirst().type());
+        assertEquals("APIM personal information update was not successful.", result.errors().getFirst().code());
     }
 
     @Test
-    void treatsMissingDataAsBadGateway() {
+    void treatsMissingDataAsDownstreamErrorResult() {
         ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(null, null, null,
                 new ApimProperties());
 
-        ApimException ex = assertThrows(ApimException.class,
-                () -> ReflectionTestUtils.invokeMethod(adapter, "toResult", responseEnvelope(List.of())));
+        UpdatePersonalInformationResult result = ReflectionTestUtils.invokeMethod(adapter, "toResult",
+                responseEnvelope(List.of()));
 
-        assertEquals("APIM personal information update response data is missing.", ex.getMessage());
+        assertNotNull(result);
+        assertFalse(result.success());
+        assertEquals("DOWNSTREAM_ERROR", result.errors().getFirst().type());
+        assertEquals("APIM personal information update response data is missing.", result.errors().getFirst().code());
     }
 
     @Test
-    void treatsUnsuccessfulDataItemAsBadGateway() {
+    void treatsUnsuccessfulDataItemAsDownstreamRejectedResultIntegration() {
         ApimProperties properties = new ApimProperties();
         properties.getEncryption().setEnabled(true);
         FixedEnvelopePayloadCryptoService payloadCryptoService = new FixedEnvelopePayloadCryptoService(
@@ -121,27 +134,25 @@ class ApimUpdatePersonalInformationAdapterTest {
                 certificateService,
                 payloadCryptoService,
                 properties);
-        var exception = assertThrows(
-                ApimException.class,
-                () -> adapter.updateMemberInfo(command()).block());
 
-        assertEquals(HttpStatus.BAD_GATEWAY, exception.getStatusCode());
-        assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, exception.getErrorCode());
-        assertEquals(
-                "APIM personal information update was not successful.",
-                exception.getMessage());
+        UpdatePersonalInformationResult result = adapter.updateMemberInfo(command()).block();
+
+        assertNotNull(result);
+        assertFalse(result.success());
+        assertEquals("DOWNSTREAM_REJECTED", result.errors().getFirst().type());
     }
 
     @Test
-    void throwsWhenPayloadMissing() {
+    void throwsWhenPayloadMissingAsDownstreamErrorResult() {
         ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(null, null, null,
                 new ApimProperties());
 
-        ApimException ex = assertThrows(ApimException.class,
-                () -> ReflectionTestUtils.invokeMethod(adapter, "toResult", (Object) null));
+        UpdatePersonalInformationResult result = ReflectionTestUtils.invokeMethod(adapter, "toResult", (Object) null);
 
-        assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, ex.getErrorCode());
-        assertEquals("APIM response payload is missing.", ex.getMessage());
+        assertNotNull(result);
+        assertFalse(result.success());
+        assertEquals("DOWNSTREAM_ERROR", result.errors().getFirst().type());
+        assertEquals("APIM response payload is missing.", result.errors().getFirst().code());
     }
 
     @Test

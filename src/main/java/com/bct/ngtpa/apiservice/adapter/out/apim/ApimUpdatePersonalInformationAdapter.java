@@ -6,12 +6,16 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateMemberInfoApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateMemberInfoApimRequest;
 import com.bct.ngtpa.apiservice.application.dto.UpdateMemberInfoCommand;
+import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationError;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
 import com.bct.ngtpa.apiservice.application.port.out.ApimUpdatePersonalInformationPort;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
 import lombok.RequiredArgsConstructor;
+
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
@@ -79,35 +83,59 @@ public class ApimUpdatePersonalInformationAdapter implements ApimUpdatePersonalI
                 var payload = response != null ? response.getResponse() : null;
 
                 if (payload == null) {
-                        throw new ApimException(
-                                        HttpStatus.BAD_GATEWAY,
-                                        ErrorCodes.APIM_RESPONSE_INVALID,
-                                        "APIM response payload is missing.");
+                        return new UpdatePersonalInformationResult(
+                                        false,
+                                        null,
+                                        null,
+                                        null,
+                                        List.of(
+                                                        new UpdatePersonalInformationError(
+                                                                        "DOWNSTREAM_ERROR",
+                                                                        List.of("APIM response payload is missing."),
+                                                                        "APIM response payload is missing.")));
                 }
 
                 if (StringUtils.hasText(payload.getErrMessage())) {
-                        throw new ApimException(
-                                        HttpStatus.BAD_GATEWAY,
-                                        ErrorCodes.APIM_RESPONSE_INVALID,
-                                        payload.getErrMessage());
+                        return new UpdatePersonalInformationResult(
+                                        false,
+                                        null,
+                                        null,
+                                        null,
+                                        List.of(
+                                                        new UpdatePersonalInformationError(
+                                                                        "DOWNSTREAM_REJECTED",
+                                                                        List.of(payload.getErrMessage()),
+                                                                        payload.getErrMessage())));
                 }
 
                 var dataItems = payload.getData();
 
                 if (CollectionUtils.isEmpty(dataItems) || dataItems.getFirst() == null) {
-                        throw new ApimException(
-                                        HttpStatus.BAD_GATEWAY,
-                                        ErrorCodes.APIM_RESPONSE_INVALID,
-                                        "APIM personal information update response data is missing.");
+                        return new UpdatePersonalInformationResult(
+                                        false,
+                                        null,
+                                        null,
+                                        null,
+                                        List.of(
+                                                        new UpdatePersonalInformationError(
+                                                                        "DOWNSTREAM_ERROR",
+                                                                        List.of("APIM personal information update response data is missing."),
+                                                                        "APIM personal information update response data is missing.")));
                 }
 
                 var firstItem = dataItems.getFirst();
 
                 if (!firstItem.isSuccess()) {
-                        throw new ApimException(
-                                        HttpStatus.BAD_GATEWAY,
-                                        ErrorCodes.APIM_RESPONSE_INVALID,
-                                        "APIM personal information update was not successful.");
+                        return new UpdatePersonalInformationResult(
+                                        false,
+                                        null,
+                                        null,
+                                        null,
+                                        List.of(
+                                                        new UpdatePersonalInformationError(
+                                                                        "DOWNSTREAM_REJECTED",
+                                                                        List.of("APIM personal information update was not successful."),
+                                                                        "APIM personal information update was not successful.")));
                 }
 
                 return new UpdatePersonalInformationResult(

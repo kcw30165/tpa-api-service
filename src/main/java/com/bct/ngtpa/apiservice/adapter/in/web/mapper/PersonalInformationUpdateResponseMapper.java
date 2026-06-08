@@ -4,6 +4,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiMessage;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
+import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationError;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
 import java.util.List;
 import org.springframework.stereotype.Component;
@@ -20,7 +21,8 @@ public class PersonalInformationUpdateResponseMapper {
         this.errorMapper = errorMapper;
     }
 
-    public MutationResponse<PersonalInformationUpdateResultResponse> toResponse(UpdatePersonalInformationResult result) {
+    public MutationResponse<PersonalInformationUpdateResultResponse> toResponse(
+            UpdatePersonalInformationResult result) {
         if (result != null && result.success()) {
             return MutationResponse.success(
                     ApiStatus.UPDATED,
@@ -30,9 +32,21 @@ public class PersonalInformationUpdateResponseMapper {
                             result.submitTime()),
                     List.of(ApiMessage.success(SUCCESS_CODE, SUCCESS_MESSAGE, "PAGE")));
         }
+        List<UpdatePersonalInformationError> errors = result == null ? List.of() : result.errors();
+
+        // Map the internal error type string directly to the definitive ApiStatus enum
+        ApiStatus status = errors.stream()
+                .map(UpdatePersonalInformationError::type)
+                .findFirst()
+                .map(type -> switch (type) {
+                    case "DOWNSTREAM_ERROR" -> ApiStatus.DOWNSTREAM_ERROR;
+                    case "DOWNSTREAM_REJECTED" -> ApiStatus.DOWNSTREAM_REJECTED;
+                    default -> ApiStatus.VALIDATION_FAILED; // Fallback for local Java validation
+                })
+                .orElse(ApiStatus.SYSTEM_ERROR);
 
         return MutationResponse.failure(
-                ApiStatus.VALIDATION_FAILED,
-                errorMapper.toApiErrors(result == null ? List.of() : result.errors()));
+                status,
+                errorMapper.toApiErrors(errors));
     }
 }
