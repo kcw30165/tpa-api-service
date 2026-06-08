@@ -48,7 +48,6 @@ public class ContributionController {
         public Mono<ContributionListResponse> getContributionSummary(
                         @RequestParam(value = "fromDate", required = true) String fromDate,
                         @RequestParam(value = "toDate", required = true) String toDate,
-                        @RequestParam(value = "lang", required = false) String lang,
                         @RequestHeader(value = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false) String acceptLanguage,
                         @RequestParam(value = "page", required = false) Integer page,
                         @RequestParam(value = "pageSize", required = false) Integer pageSize) {
@@ -57,7 +56,7 @@ public class ContributionController {
                 int resolvedPageSize = pageSize != null ? pageSize : DEFAULT_PAGE_SIZE;
 
                 return Mono.deferContextual(contextView -> {
-                        String resolvedLang = resolveLanguage(contextView, acceptLanguage, lang);
+                        String resolvedLang = resolveLanguage(contextView, acceptLanguage);
                         String accountRef = resolveRequiredAccountRef(contextView);
                         return getContributionSummaryUseCase
                                         .execute(new GetContributionSummaryCommand(
@@ -76,10 +75,9 @@ public class ContributionController {
 
         @GetMapping(value = "/contributions/export", produces = EXCEL_MEDIA_TYPE)
         public Mono<ResponseEntity<byte[]>> exportContributionSummary(
-                        @RequestParam(value = "lang", required = false) String lang,
                         @RequestHeader(value = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false) String acceptLanguage) {
                 return Mono.deferContextual(contextView -> {
-                        String resolvedLang = resolveLanguage(contextView, acceptLanguage, lang);
+                        String resolvedLang = resolveLanguage(contextView, acceptLanguage);
                         String accountRef = resolveRequiredAccountRef(contextView);
                         return exportContributionSummaryUseCase.execute(new ExportContributionSummaryCommand(accountRef))
                                         .map(contributionSortingSupport::sort)
@@ -94,11 +92,11 @@ public class ContributionController {
                 });
         }
 
-        private String resolveLanguage(ContextView contextView, String acceptLanguage, String fallbackLang) {
+        private String resolveLanguage(ContextView contextView, String acceptLanguage) {
                 RequestHeaderContext requestHeaderContext = contextView.getOrDefault(
                                 RequestHeaderContextKeys.CONTEXT_KEY,
                                 null);
-                return RequestLanguageResolver.resolve(requestHeaderContext, acceptLanguage, fallbackLang);
+                return RequestLanguageResolver.resolve(requestHeaderContext, acceptLanguage, null);
         }
 
         private String resolveRequiredAccountRef(ContextView contextView) {
