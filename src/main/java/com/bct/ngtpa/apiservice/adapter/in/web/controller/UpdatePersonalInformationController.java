@@ -1,8 +1,10 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateResponseMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdatePersonalInformationRequest;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.UpdatePersonalInformationResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.application.port.in.UpdatePersonalInformationUseCase;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
@@ -19,17 +21,21 @@ import reactor.core.publisher.Mono;
 public class UpdatePersonalInformationController {
 
     private final UpdatePersonalInformationUseCase updatePersonalInformationUseCase;
-    private final PersonalInformationUpdateWebMapper mapper;
+    private final PersonalInformationUpdateWebMapper requestMapper;
+    private final PersonalInformationUpdateResponseMapper responseMapper;
 
     public UpdatePersonalInformationController(
             UpdatePersonalInformationUseCase updatePersonalInformationUseCase,
-            PersonalInformationUpdateWebMapper mapper) {
+            PersonalInformationUpdateWebMapper requestMapper,
+            PersonalInformationUpdateResponseMapper responseMapper) {
         this.updatePersonalInformationUseCase = updatePersonalInformationUseCase;
-        this.mapper = mapper;
+        this.requestMapper = requestMapper;
+        this.responseMapper = responseMapper;
     }
 
     @PutMapping
-    public Mono<UpdatePersonalInformationResponse> update(@RequestBody Mono<UpdatePersonalInformationRequest> request) {
+    public Mono<MutationResponse<PersonalInformationUpdateResultResponse>> update(
+            @RequestBody Mono<UpdatePersonalInformationRequest> request) {
         return Mono.deferContextual(contextView -> {
             RequestHeaderContext headerContext = contextView.getOrDefault(RequestHeaderContextKeys.CONTEXT_KEY, null);
             String accountRef = headerContext == null ? null : headerContext.accountRef();
@@ -39,9 +45,9 @@ public class UpdatePersonalInformationController {
                         "Account-Ref is required for personal information update."));
             }
             return request
-                    .map(body -> mapper.toCommand(accountRef, body.applyToAllAccounts(), body))
+                    .map(body -> requestMapper.toCommand(accountRef, body.applyToAllAccounts(), body))
                     .flatMap(updatePersonalInformationUseCase::execute)
-                    .map(result -> new UpdatePersonalInformationResponse(result.success()));
+                    .map(responseMapper::toResponse);
         });
     }
 }

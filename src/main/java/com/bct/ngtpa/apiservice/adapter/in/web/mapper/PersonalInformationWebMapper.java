@@ -3,22 +3,29 @@ package com.bct.ngtpa.apiservice.adapter.in.web.mapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.ActionProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.ApimBindingProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.BffPagesProperties;
-import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.ConfirmationProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.FieldProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.FormMetadataProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.PageMetadataProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.PageSchemaProperties;
-import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.RuleActionProperties;
-import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.RuleConditionProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.SectionProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.ValidationRuleProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.FieldResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.FormPageResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.FormSchemaResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.PageResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.SectionResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ValidationRuleResponse;
 import com.bct.ngtpa.apiservice.application.dto.MemberInfoConfigItem;
 import com.bct.ngtpa.apiservice.application.dto.MemberInfoConfigItemType;
 import com.bct.ngtpa.apiservice.application.dto.PersonalInformationResult;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -38,26 +45,64 @@ public class PersonalInformationWebMapper {
 
     private final LoggingSanitizer loggingSanitizer;
     private final BffPagesProperties bffPagesProperties;
-
+    private final YamlResponseMapper yamlResponseMapper;
+    private final ObjectMapper responseObjectMapper = new ObjectMapper();
+    
+    @Autowired
     public PersonalInformationWebMapper(
             LoggingSanitizer loggingSanitizer,
-            BffPagesProperties bffPagesProperties) {
+            BffPagesProperties bffPagesProperties,
+            YamlResponseMapper yamlResponseMapper) {
         this.loggingSanitizer = loggingSanitizer;
         this.bffPagesProperties = bffPagesProperties;
+        this.yamlResponseMapper = yamlResponseMapper;
     }
 
-    public Map<String, Object> toResponse(PersonalInformationResult result, String language) {
+    PersonalInformationWebMapper(
+            LoggingSanitizer loggingSanitizer,
+            BffPagesProperties bffPagesProperties) {
+        this(loggingSanitizer, bffPagesProperties, new YamlResponseMapper(new ObjectMapper()));
+    }
+
+    public FormPageResponse<FormSchemaResponse> toFormPageResponse(PersonalInformationResult result, String language) {
         Map<String, Object> apimData = result != null ? result.data() : Map.of();
         Map<String, String> apimConfig = result != null ? result.config() : Map.of();
         Map<String, MemberInfoConfigItem> apimConfigItems = result != null ? result.configItems() : Map.of();
-        return toResponse(apimData, apimConfig, apimConfigItems, language);
+        return toFormPageResponse(apimData, apimConfig, apimConfigItems, language);
+    }
+
+    public FormPageResponse<FormSchemaResponse> toFormPageResponse(
+            Map<String, Object> apimData,
+            Map<String, String> apimConfig,
+            String language) {
+        return toFormPageResponse(apimData, apimConfig, Map.of(), language);
+    }
+
+    public FormPageResponse<FormSchemaResponse> toFormPageResponse(
+            Map<String, Object> apimData,
+            Map<String, String> apimConfig,
+            Map<String, MemberInfoConfigItem> apimConfigItems,
+            String language) {
+
+        PageSchemaProperties pageSchema = resolvePageSchema();
+        return FormPageResponse.success(
+                buildPage(pageSchema, language),
+                buildForm(pageSchema, apimData, apimConfig, apimConfigItems, language));
+    }
+
+    /**
+     * Backward-compatible map view for existing mapper tests and callers that have not yet moved
+     * to FormPageResponse<FormSchemaResponse>.
+     */
+    public Map<String, Object> toResponse(PersonalInformationResult result, String language) {
+        return toMap(toFormPageResponse(result, language));
     }
 
     public Map<String, Object> toResponse(
             Map<String, Object> apimData,
             Map<String, String> apimConfig,
             String language) {
-        return toResponse(apimData, apimConfig, Map.of(), language);
+        return toMap(toFormPageResponse(apimData, apimConfig, language));
     }
 
     public Map<String, Object> toResponse(
@@ -65,11 +110,12 @@ public class PersonalInformationWebMapper {
             Map<String, String> apimConfig,
             Map<String, MemberInfoConfigItem> apimConfigItems,
             String language) {
-        PageSchemaProperties pageSchema = resolvePageSchema();
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("page", buildPage(pageSchema, language));
-        response.put("form", buildForm(pageSchema, apimData, apimConfig, apimConfigItems, language));
-        return response;
+        return toMap(toFormPageResponse(apimData, apimConfig, apimConfigItems, language));
+    }
+
+    private Map<String, Object> toMap(FormPageResponse<FormSchemaResponse> response) {
+        return responseObjectMapper.convertValue(response, new TypeReference<>() {
+        });
     }
 
     private PageSchemaProperties resolvePageSchema() {
@@ -84,72 +130,65 @@ public class PersonalInformationWebMapper {
         return pageSchema;
     }
 
-    private Map<String, Object> buildPage(PageSchemaProperties pageSchema, String language) {
-        Map<String, Object> page = new LinkedHashMap<>();
+    private PageResponse buildPage(PageSchemaProperties pageSchema, String language) {
         PageMetadataProperties metadata = pageSchema != null ? pageSchema.getMetadata() : null;
-        page.put("id", metadata != null ? metadata.getId() : null);
-        page.put("title", resolveLabel(metadata != null ? metadata.getTitle() : null, language));
-        page.put("lang", language);
-        return page;
+        return new PageResponse(
+                metadata != null ? metadata.getId() : null,
+                resolveLabel(metadata != null ? metadata.getTitle() : null, language),
+                language);
     }
 
-    private Map<String, Object> buildForm(PageSchemaProperties pageSchema,
-                                          Map<String, Object> apimData,
-                                          Map<String, String> apimConfig,
-                                          Map<String, MemberInfoConfigItem> apimConfigItems,
-                                          String language) {
-        Map<String, Object> form = new LinkedHashMap<>();
+    private FormSchemaResponse buildForm(PageSchemaProperties pageSchema,
+            Map<String, Object> apimData,
+            Map<String, String> apimConfig,
+            Map<String, MemberInfoConfigItem> apimConfigItems,
+            String language) {
         FormMetadataProperties formSchema = pageSchema != null ? pageSchema.getForm() : null;
         PageMetadataProperties metadata = pageSchema != null ? pageSchema.getMetadata() : null;
-        form.put("id", formSchema != null ? formSchema.getId() : null);
-        form.put("version", metadata != null ? metadata.getVersion() : null);
-        form.put("mode", formSchema != null && hasText(formSchema.getDefaultMode())
-                ? formSchema.getDefaultMode()
-                : "view");
-        form.put("sections", buildSections(pageSchema, apimData, apimConfig, apimConfigItems, language));
-        form.put("validationRules", mapValidationRules(
-                pageSchema != null ? pageSchema.getValidations() : null,
-                language));
-        form.put("confirmation", buildConfirmation(pageSchema != null ? pageSchema.getConfirmation() : null, language));
-        form.put("actions", buildActions(formSchema, language));
-        return form;
+        return new FormSchemaResponse(
+                formSchema != null ? formSchema.getId() : null,
+                metadata != null ? metadata.getVersion() : null,
+                formSchema != null && hasText(formSchema.getDefaultMode()) ? formSchema.getDefaultMode() : "view",
+                buildSections(pageSchema, apimData, apimConfig, apimConfigItems, language),
+                mapValidationRules(pageSchema != null ? pageSchema.getValidations() : null, language),
+                yamlResponseMapper.toResponseMap(pageSchema != null ? pageSchema.getConfirmation() : null, language),
+                buildActions(formSchema, language));
     }
 
-    private List<Map<String, Object>> buildSections(PageSchemaProperties pageSchema,
-                                                    Map<String, Object> apimData,
-                                                    Map<String, String> apimConfig,
-                                                    Map<String, MemberInfoConfigItem> apimConfigItems,
-                                                    String language) {
+    private List<SectionResponse> buildSections(PageSchemaProperties pageSchema,
+            Map<String, Object> apimData,
+            Map<String, String> apimConfig,
+            Map<String, MemberInfoConfigItem> apimConfigItems,
+            String language) {
         if (pageSchema == null || pageSchema.getForm() == null || pageSchema.getForm().getSections() == null) {
             return List.of();
         }
         Map<String, FieldState> fieldStates = buildFieldStates(pageSchema, apimData, apimConfig, apimConfigItems);
-        List<Map<String, Object>> sections = new ArrayList<>();
+        List<SectionResponse> sections = new ArrayList<>();
         int defaultSectionOrder = 10;
         for (SectionProperties sectionSchema : pageSchema.getForm().getSections()) {
             if (sectionSchema == null || !hasText(sectionSchema.getId())) {
                 continue;
             }
-            Map<String, Object> section = new LinkedHashMap<>();
-            section.put("id", sectionSchema.getId());
-            section.put("label", resolveLabel(sectionSchema.getTitle(), language));
-            section.put("displayOrder", defaultSectionOrder);
-            List<Map<String, Object>> fields = buildSectionFields(sectionSchema, fieldStates, language);
+            List<FieldResponse> fields = buildSectionFields(sectionSchema, fieldStates, language);
             if (fields.isEmpty()) {
                 defaultSectionOrder += 10;
                 continue;
             }
-            section.put("fields", fields);
-            sections.add(section);
+            sections.add(new SectionResponse(
+                    sectionSchema.getId(),
+                    resolveLabel(sectionSchema.getTitle(), language),
+                    defaultSectionOrder,
+                    fields));
             defaultSectionOrder += 10;
         }
         return sections;
     }
 
     private Map<String, FieldState> buildFieldStates(PageSchemaProperties pageSchema,
-                                                     Map<String, Object> apimData,
-                                                     Map<String, String> apimConfig,
-                                                     Map<String, MemberInfoConfigItem> apimConfigItems) {
+            Map<String, Object> apimData,
+            Map<String, String> apimConfig,
+            Map<String, MemberInfoConfigItem> apimConfigItems) {
         Map<String, FieldState> fieldStates = new LinkedHashMap<>();
         Map<String, BoundField> fieldsByConfigItemId = buildFieldsByConfigItemId(pageSchema);
         Set<String> seenApimConfigItems = new HashSet<>();
@@ -243,13 +282,13 @@ public class PersonalInformationWebMapper {
         return fieldsByConfigItemId;
     }
 
-    private List<Map<String, Object>> buildSectionFields(SectionProperties sectionSchema,
-                                                         Map<String, FieldState> fieldStates,
-                                                         String language) {
+    private List<FieldResponse> buildSectionFields(SectionProperties sectionSchema,
+            Map<String, FieldState> fieldStates,
+            String language) {
         if (sectionSchema.getFields() == null) {
             return List.of();
         }
-        List<Map<String, Object>> fields = new ArrayList<>();
+        List<FieldResponse> fields = new ArrayList<>();
         int defaultFieldOrder = 10;
         for (FieldProperties fieldSchema : sectionSchema.getFields()) {
             if (fieldSchema == null || !hasText(fieldSchema.getId())) {
@@ -260,101 +299,36 @@ public class PersonalInformationWebMapper {
                 defaultFieldOrder += 10;
                 continue;
             }
-            Map<String, Object> field = new LinkedHashMap<>();
-            field.put("name", fieldSchema.getId());
-            field.put("label", resolveLabel(fieldSchema.getLabel(), language));
-            putIfHasText(field, "dataType", fieldSchema.getDataType());
-            putIfHasText(field, "controlType", fieldSchema.getControlType());
-            field.put("value", state.value());
-            field.put("originalValue", state.value());
-            field.put("readonly", isReadonly(state.configValue()));
-            field.put("required", isRequired(state.configValue()));
-            putIfNotNull(field, "minLength", fieldSchema.getMinLength());
-            putIfNotNull(field, "maxLength", fieldSchema.getMaxLength());
-            putIfHasText(field, "pattern", fieldSchema.getPattern());
-            putIfHasText(field, "placeholder", resolveLabel(fieldSchema.getPlaceholder(), language));
-            putIfHasText(field, "optionSource", fieldSchema.getOptionSource());
-            if (fieldSchema.getCopyWhenChecked() != null && !fieldSchema.getCopyWhenChecked().isEmpty()) {
-                field.put("copyWhenChecked", fieldSchema.getCopyWhenChecked());
-            }
-            field.put("displayOrder", fieldSchema.getDisplayOrder() != null
-                    ? fieldSchema.getDisplayOrder()
-                    : defaultFieldOrder);
-            List<Map<String, Object>> validations = mapValidationRules(fieldSchema.getValidations(), language);
-            if (!validations.isEmpty()) {
-                field.put("validations", validations);
-            }
-            fields.add(field);
+            List<ValidationRuleResponse> validations = mapValidationRules(fieldSchema.getValidations(), language);
+            fields.add(new FieldResponse(
+                    fieldSchema.getId(),
+                    resolveLabel(fieldSchema.getLabel(), language),
+                    hasText(fieldSchema.getDataType()) ? fieldSchema.getDataType() : null,
+                    hasText(fieldSchema.getControlType()) ? fieldSchema.getControlType() : null,
+                    state.value(),
+                    state.value(),
+                    isReadonly(state.configValue()),
+                    isRequired(state.configValue()),
+                    fieldSchema.getMinLength(),
+                    fieldSchema.getMaxLength(),
+                    hasText(fieldSchema.getPattern()) ? fieldSchema.getPattern() : null,
+                    hasText(resolveLabel(fieldSchema.getPlaceholder(), language))
+                            ? resolveLabel(fieldSchema.getPlaceholder(), language)
+                            : null,
+                    hasText(fieldSchema.getOptionSource()) ? fieldSchema.getOptionSource() : null,
+                    fieldSchema.getCopyWhenChecked(),
+                    fieldSchema.getDisplayOrder() != null ? fieldSchema.getDisplayOrder() : defaultFieldOrder,
+                    validations));
             defaultFieldOrder += 10;
         }
         return fields;
     }
 
-    private List<Map<String, Object>> mapValidationRules(List<ValidationRuleProperties> rules, String language) {
-        if (rules == null || rules.isEmpty()) {
-            return List.of();
-        }
-        List<Map<String, Object>> mappedRules = new ArrayList<>();
-        for (ValidationRuleProperties rule : rules) {
-            if (rule == null) {
-                continue;
-            }
-            Map<String, Object> mappedRule = new LinkedHashMap<>();
-            putIfHasText(mappedRule, "id", rule.getId());
-            putIfHasText(mappedRule, "type", rule.getType());
-            putIfNotNull(mappedRule, "value", rule.getValue());
-            Map<String, Object> when = mapCondition(rule.getWhen());
-            if (!when.isEmpty()) {
-                mappedRule.put("when", when);
-            }
-            Map<String, Object> then = mapAction(rule.getThen());
-            if (!then.isEmpty()) {
-                mappedRule.put("then", then);
-            }
-            putIfHasText(mappedRule, "severity", rule.getSeverity());
-            putIfHasText(mappedRule, "code", rule.getCode());
-            putIfHasText(mappedRule, "message", resolveLabel(rule.getMessage(), language));
-            mappedRules.add(mappedRule);
-        }
-        return mappedRules;
-    }
-
-    private Map<String, Object> mapCondition(RuleConditionProperties condition) {
-        Map<String, Object> mapped = new LinkedHashMap<>();
-        if (condition == null) {
-            return mapped;
-        }
-        putIfHasText(mapped, "operator", condition.getOperator());
-        putIfHasText(mapped, "field", condition.getField());
-        putIfNotNull(mapped, "fields", condition.getFields());
-        putIfNotNull(mapped, "fieldRequired", condition.getFieldRequired());
-        putIfHasText(mapped, "compareWith", condition.getCompareWith());
-        putIfNotNull(mapped, "conditions", condition.getConditions());
-        putIfNotNull(mapped, "groups", condition.getGroups());
-        return mapped;
-    }
-
-    private Map<String, Object> mapAction(RuleActionProperties action) {
-        Map<String, Object> mapped = new LinkedHashMap<>();
-        if (action == null) {
-            return mapped;
-        }
-        putIfHasText(mapped, "operator", action.getOperator());
-        putIfHasText(mapped, "field", action.getField());
-        putIfNotNull(mapped, "fields", action.getFields());
-        putIfNotNull(mapped, "targets", action.getTargets());
-        return mapped;
-    }
-
-    private Map<String, Object> buildConfirmation(ConfirmationProperties confirmationSchema, String language) {
-        Map<String, Object> confirmation = new LinkedHashMap<>();
-        if (confirmationSchema == null) {
-            return confirmation;
-        }
-        if (confirmationSchema.getMessage() != null && !confirmationSchema.getMessage().isEmpty()) {
-            confirmation.put("message", resolveLabel(confirmationSchema.getMessage(), language));
-        }
-        return confirmation;
+    private List<ValidationRuleResponse> mapValidationRules(List<ValidationRuleProperties> rules, String language) {
+        return yamlResponseMapper.toResponseList(rules, language).stream()
+                .map(ValidationRuleResponse::from)
+                .filter(java.util.Objects::nonNull)
+                .toList();
     }
 
     private Map<String, Object> buildActions(FormMetadataProperties formSchema, String language) {

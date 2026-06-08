@@ -129,8 +129,7 @@ bff-pages:
                 residentialAddressLine3: mailingAddressLine3
                 residentialCountry: mailingCountry
             apimBinding:
-              # data: ui-check-box-of-same-as-residential-address
-              config: ui-check-box-of-same-as-residential-address
+              config: check-box-of-same-as-residential-address
           - id: mailingAddressLine1
             displayOrder: 60
             label:
@@ -455,8 +454,7 @@ bff-pages:
             dataType: array
             controlType: noteList
             apimBinding:
-              # data: ui-important-notes-section
-              config: ui-important-notes-section
+              config: important-notes-section
         - id: controlInformation
           title:
             en: Control Information
@@ -470,8 +468,7 @@ bff-pages:
             dataType: boolean
             controlType: checkbox
             apimBinding:
-              # data: ui-check-box-apply-all-member
-              config: ui-check-box-apply-all-member
+              config: check-box-apply-all-member
       confirmation:
         enabled: true
         title:
