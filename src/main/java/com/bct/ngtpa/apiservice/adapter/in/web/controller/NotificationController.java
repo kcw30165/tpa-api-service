@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.NotificationReadStatusWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.NotificationWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdateNotificationsReadStatusRequest;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.NotificationListResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.UpdateNotificationsReadStatusResponse;
 import com.bct.ngtpa.apiservice.application.dto.GetNotificationsCommand;
@@ -61,7 +62,7 @@ public class NotificationController {
             value = "/notifications",
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<UpdateNotificationsReadStatusResponse> updateNotificationsReadStatus(
+    public Mono<MutationResponse<UpdateNotificationsReadStatusResponse>> updateNotificationsReadStatus(
             @Valid @RequestBody UpdateNotificationsReadStatusRequest request) {
         return Mono.deferContextual(contextView -> updateNotificationsReadStatusUseCase
                 .execute(new UpdateNotificationsReadStatusCommand(

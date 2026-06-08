@@ -237,10 +237,16 @@ class NotificationControllerTest {
                                 .exchange()
                                 .expectStatus().isOk()
                                 .expectBody()
-                                .jsonPath("$.notifications[0].msgCode").isEqualTo("msgCode1")
-                                .jsonPath("$.notifications[0].isRead").isEqualTo(true)
-                                .jsonPath("$.notifications[1].msgCode").isEqualTo("msgCode2")
-                                .jsonPath("$.notifications[1].isRead").isEqualTo(false);
+                                .jsonPath("$.success").isEqualTo(true)
+                                .jsonPath("$.status").isEqualTo("UPDATED")
+                                .jsonPath("$.messages").isArray()
+                                .jsonPath("$.messages.length()").isEqualTo(0)
+                                .jsonPath("$.errors").isArray()
+                                .jsonPath("$.errors.length()").isEqualTo(0)
+                                .jsonPath("$.result.notifications[0].msgCode").isEqualTo("msgCode1")
+                                .jsonPath("$.result.notifications[0].isRead").isEqualTo(true)
+                                .jsonPath("$.result.notifications[1].msgCode").isEqualTo("msgCode2")
+                                .jsonPath("$.result.notifications[1].isRead").isEqualTo(false);
 
                 assertEquals(List.of("msgCode1", "msgCode2"), captured.get().notificationIds());
         }
