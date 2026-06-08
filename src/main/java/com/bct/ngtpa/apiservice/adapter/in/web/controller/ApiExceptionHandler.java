@@ -1,6 +1,10 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiErrorResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.exception.ApplicationException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
@@ -17,6 +21,7 @@ import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
@@ -45,15 +50,28 @@ public class ApiExceptionHandler {
     }
 
     @ExceptionHandler(ApimException.class)
-    public ResponseEntity<ApiErrorResponse> handleApimException(ApimException ex, ServerWebExchange exchange) {
-        return buildErrorResponse(
-                ex.getStatusCode(),
-                resolveApimErrorCode(ex),
-                exchange,
-                ex,
-                ex.getMessage(),
-                true,
-                false);
+    public ResponseEntity<ApiResponse> handleApimException(ApimException ex, ServerWebExchange exchange) {
+
+        // Create the error payload using your standardized internal error schema
+        ApiError errorDetail = new ApiError(
+                "DOWNSTREAM_BUSINESS",
+                ex.getErrorCode(), // Dynamically captures ErrorCodes.SYSTEM_UNEXPECTED or APIM_RESPONSE_INVALID
+                ex.getMessage(), // Captures the explicit validation/crypto message
+                List.of(),
+                "error",
+                "SERVER");
+
+        // Map your top-level status property
+        ApiStatus apiStatus = ApiStatus.DOWNSTREAM_REJECTED;
+
+        // Build the failure response utilizing MutationResponse
+        ApiResponse errorResponse = MutationResponse.failure(apiStatus, List.of(errorDetail));
+
+        // DYNAMIC CHANGE: Use ex.getStatus() instead of hardcoded
+        // HttpStatus.BAD_REQUEST
+        return ResponseEntity
+                .status(HttpStatus.BAD_GATEWAY)
+                .body(errorResponse);
     }
 
     @ExceptionHandler(InvalidNotificationRequestException.class)
@@ -69,12 +87,16 @@ public class ApiExceptionHandler {
     }
 
     @ExceptionHandler(PortalAccessContextResolutionException.class)
-    public ResponseEntity<ApiErrorResponse> handlePortalAccessContextResolutionException(
+    public ResponseEntity<ApiResponse> handlePortalAccessContextResolutionException(
             PortalAccessContextResolutionException ex, ServerWebExchange exchange) {
-        HttpStatus status = ErrorCodes.MEMBER_CONTEXT_INVALID.equals(ex.getErrorCode())
-                ? HttpStatus.BAD_REQUEST
-                : HttpStatus.INTERNAL_SERVER_ERROR;
-        return handleApplicationException(ex, exchange, status);
+        ApiError errorDetail = new ApiError("BUSINESS", ex.getErrorCode(), ex.getMessage(), List.of(), "error",
+                "SERVER");
+
+        // Returns the interface but instantiates the concrete MutationResponse
+        // structure
+        ApiResponse errorResponse = MutationResponse.failure(ApiStatus.BUSINESS_REJECTED, List.of(errorDetail));
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }
 
     @ExceptionHandler(ApplicationException.class)
