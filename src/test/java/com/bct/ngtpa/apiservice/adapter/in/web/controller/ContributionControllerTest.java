@@ -236,7 +236,7 @@ class ContributionControllerTest {
         }
 
         @Test
-        void fallsBackToLangQueryWhenAcceptLanguageIsMissingForContributionJson() {
+        void ignoresLangQueryWhenAcceptLanguageIsMissingForContributionJson() {
                 GetContributionSummaryUseCase getUseCase = command -> Mono.just(localizedSampleResult());
 
                 filteredWebClient(getUseCase, unusedExportUseCase())
@@ -249,9 +249,10 @@ class ContributionControllerTest {
                                 .exchange()
                                 .expectStatus().isOk()
                                 .expectBody()
-                                .jsonPath("$.items[0].currency.text").isEqualTo("港元")
-                                .jsonPath("$.items[0].breakdown.rows[1].label").isEqualTo("公司")
-                                .jsonPath("$.items[0].breakdown.rows[2].label").isEqualTo("員工");
+                                .jsonPath("$.items[0].currency.text").isEqualTo("HKD")
+                                .jsonPath("$.items[0].breakdown.rows[0].label").isEqualTo("Total Contributions")
+                                .jsonPath("$.items[0].breakdown.rows[1].label").isEqualTo("Company")
+                                .jsonPath("$.items[0].breakdown.rows[2].label").isEqualTo("Member");
         }
 
         @Test
@@ -475,7 +476,7 @@ class ContributionControllerTest {
         }
 
         @Test
-        void fallsBackToLangQueryWhenAcceptLanguageIsMissingForContributionExportWorkbook() {
+        void ignoresLangQueryWhenAcceptLanguageIsMissingForContributionExportWorkbook() {
                 ExportContributionSummaryUseCase exportUseCase = command -> Mono.just(localizedSampleResult());
 
                 filteredWebClient(unusedGetUseCase(), exportUseCase)
@@ -488,9 +489,9 @@ class ContributionControllerTest {
                                 .expectBody()
                                 .consumeWith(result -> assertWorkbookLanguage(
                                                 result.getResponseBody(),
-                                                "供款總額",
-                                                "公司",
-                                                "員工"));
+                                                "Total Contributions",
+                                                "Company",
+                                                "Member"));
         }
 
         @Test

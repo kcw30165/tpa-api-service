@@ -24,8 +24,9 @@ class RequestLanguageResolverTest {
     }
 
     @Test
-    void fallbackLanguageIsNormalizedWhenAcceptLanguageMissing() {
-        assertThat(RequestLanguageResolver.resolve(null, " ", "zh-HK")).isEqualTo("zh_HK");
+    void missingAcceptLanguageDefaultsToEnglishAndIgnoresFallbackLanguage() {
+        assertThat(RequestLanguageResolver.resolve(null, " ", "zh-HK")).isEqualTo("en");
+        assertThat(RequestLanguageResolver.resolve(null, null, "zh_HK")).isEqualTo("en");
         assertThat(RequestLanguageResolver.resolve(null, null, "fr-FR")).isEqualTo("en");
         assertThat(RequestLanguageResolver.resolve(null, null, null)).isEqualTo("en");
     }
