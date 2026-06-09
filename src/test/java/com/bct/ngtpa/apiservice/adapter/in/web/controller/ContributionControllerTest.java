@@ -38,6 +38,7 @@ import reactor.core.publisher.Mono;
 
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -124,28 +125,29 @@ class ContributionControllerTest {
                 assertEquals(VALID_ACCOUNT_REF, captured.get().accountRef());
         }
 
-        // @Test
-        // void missingAccountRefReturnsMemberContextInvalidForContributionSummary() {
-        // GetContributionSummaryUseCase getUseCase = command -> Mono.error(new
-        // ApplicationException(
-        // ErrorCodes.MEMBER_CONTEXT_INVALID,
-        // "accountRef must be present"));
-
-        // filteredWebClient(getUseCase, unusedExportUseCase())
-        // .get()
-        // .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions")
-        // .queryParam("fromDate", "01/03/2026")
-        // .queryParam("toDate", "31/03/2026")
-        // .build())
-        // .exchange()
-        // .expectStatus().isBadRequest()
-        // .expectHeader().valueMatches("X-Request-Id",
-        // "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
-        // .expectBody()
-        // .jsonPath("$.errorCode").isEqualTo(ErrorCodes.MEMBER_CONTEXT_INVALID)
-        // .jsonPath("$.message").isEqualTo("Member context is invalid.")
-        // .jsonPath("$.requestId").doesNotExist();
-        // }
+        @Test
+        void missingAccountRefReturnsGenericBaseErrorForContributionSummary() {
+                webClientWithoutDefaultAccountRef(unusedGetUseCase(), unusedExportUseCase())
+                                .get()
+                                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions")
+                                                .queryParam("fromDate", "01/03/2026")
+                                                .queryParam("toDate", "31/03/2026")
+                                                .build())
+                                .exchange()
+                                .expectStatus().isBadRequest()
+                                .expectHeader().exists("X-Request-Id")
+                                .expectBody()
+                                .jsonPath("$.success").isEqualTo(false)
+                                .jsonPath("$.messages").isArray()
+                                .jsonPath("$.errors").isArray()
+                                .jsonPath("$.errorCode").doesNotExist()
+                                .jsonPath("$.requestId").doesNotExist()
+                                .consumeWith(result -> {
+                                        String body = new String(result.getResponseBody(), StandardCharsets.UTF_8);
+                                        assertTrue(body.contains(ErrorCodes.MEMBER_CONTEXT_INVALID));
+                                        assertTrue(!body.contains("\"requestId\""));
+                                });
+        }
 
         @Test
         void usesDefaultPageAndPageSizeWhenNotProvided() {
@@ -396,25 +398,26 @@ class ContributionControllerTest {
                 assertEquals(VALID_ACCOUNT_REF, captured.get());
         }
 
-        // @Test
-        // void missingAccountRefReturnsMemberContextInvalidForContributionExport() {
-        // ExportContributionSummaryUseCase exportUseCase = command -> Mono.error(new
-        // ApplicationException(
-        // ErrorCodes.MEMBER_CONTEXT_INVALID,
-        // "accountRef must be present"));
-
-        // webClientWithoutDefaultAccountRef(unusedGetUseCase(), exportUseCase)
-        // .get()
-        // .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions/export").build())
-        // .exchange()
-        // .expectStatus().isBadRequest()
-        // .expectHeader().valueMatches("X-Request-Id",
-        // "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
-        // .expectBody()
-        // .jsonPath("$.errorCode").isEqualTo(ErrorCodes.MEMBER_CONTEXT_INVALID)
-        // .jsonPath("$.message").isEqualTo("Member context is invalid.")
-        // .jsonPath("$.requestId").doesNotExist();
-        // }
+        @Test
+        void missingAccountRefReturnsGenericBaseErrorForContributionExport() {
+                webClientWithoutDefaultAccountRef(unusedGetUseCase(), unusedExportUseCase())
+                                .get()
+                                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions/export").build())
+                                .exchange()
+                                .expectStatus().isBadRequest()
+                                .expectHeader().exists("X-Request-Id")
+                                .expectBody()
+                                .jsonPath("$.success").isEqualTo(false)
+                                .jsonPath("$.messages").isArray()
+                                .jsonPath("$.errors").isArray()
+                                .jsonPath("$.errorCode").doesNotExist()
+                                .jsonPath("$.requestId").doesNotExist()
+                                .consumeWith(result -> {
+                                        String body = new String(result.getResponseBody(), StandardCharsets.UTF_8);
+                                        assertTrue(body.contains(ErrorCodes.MEMBER_CONTEXT_INVALID));
+                                        assertTrue(!body.contains("\"requestId\""));
+                                });
+        }
 
         // @Test
         // void exportErrorsStillReturnStandardJsonEnvelopeWhenAcceptOnlyAllowsXlsx() {
