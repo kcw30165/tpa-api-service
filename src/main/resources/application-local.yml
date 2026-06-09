@@ -127,8 +127,8 @@ temporary-portal-access-context:
       member-user-id: C402400A
       member-type: MBR
       account-env: JP
-      policy-no: 00000000217
-      cert-no: 95
+      policy-no: "00000000217"
+      cert-no: "95"
       trust-code: JPM
       scheme-type: OE
       term-status: 
@@ -140,8 +140,8 @@ temporary-portal-access-context:
       member-user-id: C402400A
       member-type: MBR
       account-env: DB
-      policy-no: 00000008802
-      cert-no: 2
+      policy-no: "00000008802"
+      cert-no: "2"
       trust-code: 
       scheme-type: 
       term-status: 
