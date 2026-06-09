@@ -22,7 +22,11 @@ class NotificationReadStatusWebMapperTest {
 
         var response = mapper.toResponse(result);
 
-        assertEquals("code-01", response.notifications().getFirst().msgCode());
+        assertEquals("code-01", response.result().notifications().getFirst().msgCode());
+        assertTrue(response.success());
+        assertEquals(com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus.UPDATED, response.status());
+        assertTrue(response.messages().isEmpty());
+        assertTrue(response.errors().isEmpty());
     }
 
     @Test
@@ -32,7 +36,7 @@ class NotificationReadStatusWebMapperTest {
 
         var response = mapper.toResponse(result);
 
-        assertTrue(response.notifications().getFirst().isRead());
+        assertTrue(response.result().notifications().getFirst().isRead());
     }
 
     @Test
@@ -42,7 +46,7 @@ class NotificationReadStatusWebMapperTest {
 
         var response = mapper.toResponse(result);
 
-        assertFalse(response.notifications().getFirst().isRead());
+        assertFalse(response.result().notifications().getFirst().isRead());
     }
 
     @Test
@@ -53,10 +57,10 @@ class NotificationReadStatusWebMapperTest {
 
         var response = mapper.toResponse(result);
 
-        assertEquals(2, response.notifications().size());
-        assertEquals("code-01", response.notifications().get(0).msgCode());
-        assertTrue(response.notifications().get(0).isRead());
-        assertEquals("code-02", response.notifications().get(1).msgCode());
-        assertFalse(response.notifications().get(1).isRead());
+        assertEquals(2, response.result().notifications().size());
+        assertEquals("code-01", response.result().notifications().get(0).msgCode());
+        assertTrue(response.result().notifications().get(0).isRead());
+        assertEquals("code-02", response.result().notifications().get(1).msgCode());
+        assertFalse(response.result().notifications().get(1).isRead());
     }
 }

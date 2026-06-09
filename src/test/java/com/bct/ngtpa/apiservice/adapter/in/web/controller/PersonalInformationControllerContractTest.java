@@ -21,6 +21,7 @@ import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
@@ -82,7 +83,9 @@ class PersonalInformationControllerContractTest {
                 .jsonPath("$.form.version").isEqualTo("1.0")
                 .jsonPath("$.form.mode").isEqualTo("view")
                 .jsonPath("$.messages").isArray()
-                .jsonPath("$.errors").isArray();
+                .jsonPath("$.errors").isArray()
+                .jsonPath("$.requestId").doesNotExist()
+                .consumeWith(r -> assertBodyDoesNotContainRequestId(r.getResponseBody()));
     }
 
     @Test
@@ -107,19 +110,24 @@ class PersonalInformationControllerContractTest {
         assertEquals("zh_HK", captured.get().language());
     }
 
-    // @Test
-    // void getPersonalInformationReturns400WhenAccountRefMissing() {
-    //     client().get()
-    //             .uri("/api/v1/personal-information")
-    //             .header(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
-    //             .header(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, ACCEPT_LANGUAGE)
-    //             .exchange()
-    //             .expectStatus().isBadRequest()
-    //             .expectHeader().valueEquals(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
-    //             .expectBody()
-    //             .jsonPath("$.errorCode").isEqualTo(ErrorCodes.MEMBER_CONTEXT_INVALID)
-    //             .jsonPath("$.message").isEqualTo("Member context is invalid.");
-    // }
+    @Test
+    void getPersonalInformationReturnsGenericBaseErrorWhenAccountRefMissing() {
+        client().get()
+                .uri("/api/v1/personal-information")
+                .header(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
+                .header(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, ACCEPT_LANGUAGE)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectHeader().valueEquals(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
+                .expectBody()
+                .jsonPath("$.success").isEqualTo(false)
+                .jsonPath("$.messages").isArray()
+                .jsonPath("$.errors").isArray()
+                .jsonPath("$.errors[0].code").isEqualTo(ErrorCodes.MEMBER_CONTEXT_INVALID)
+                .jsonPath("$.errorCode").doesNotExist()
+                .jsonPath("$.requestId").doesNotExist()
+                .consumeWith(result -> assertBodyDoesNotContainRequestId(result.getResponseBody()));
+    }
 
     @Test
     void getPersonalInformationDelegatesToWebMapperAfterUseCase() {
@@ -139,6 +147,13 @@ class PersonalInformationControllerContractTest {
         verify(useCase).execute(commandCaptor.capture());
         verify(mapper).toFormPageResponse(result, ACCEPT_LANGUAGE);
         assertEquals(ACCOUNT_REF, commandCaptor.getValue().accountRef());
+    }
+
+    private static void assertBodyDoesNotContainRequestId(byte[] responseBody) {
+        String body = new String(responseBody, StandardCharsets.UTF_8);
+        org.junit.jupiter.api.Assertions.assertFalse(
+                body.contains("\"requestId\""),
+                "X-Request-Id must stay in response headers and must not be serialized in response body");
     }
 
     private WebTestClient client() {

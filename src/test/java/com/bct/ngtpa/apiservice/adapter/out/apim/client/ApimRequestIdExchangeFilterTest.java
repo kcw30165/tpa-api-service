@@ -122,4 +122,27 @@ class ApimRequestIdExchangeFilterTest {
         assertEquals(List.of("req-123"), captured.get().headers().get(RequestCorrelation.REQUEST_ID_HEADER));
         assertNull(captured.get().headers().get(RequestHeaderContextKeys.ACCOUNT_REF_HEADER));
     }
+    @Test
+    void propagatesOnlyXRequestIdWhenHeaderContextContainsAccountRefAndAcceptLanguage() {
+        ExchangeFilterFunction exchangeFilter = filter.filter();
+        ClientRequest request = ClientRequest
+                .create(HttpMethod.POST, URI.create("https://api.example.test/ws/NGTPA/v1/TRPGetCountryList"))
+                .build();
+        AtomicReference<ClientRequest> captured = new AtomicReference<>();
+
+        exchangeFilter.filter(request, req -> {
+            captured.set(req);
+            return Mono.just(ClientResponse.create(HttpStatus.OK).build());
+        })
+        .contextWrite(ctx -> ctx
+                .put(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, "req-123")
+                .put(RequestHeaderContextKeys.CONTEXT_KEY, new RequestHeaderContext("ACC-123", "req-123", "zh-HK")))
+        .block();
+
+        assertNotNull(captured.get());
+        assertEquals(List.of("req-123"), captured.get().headers().get(RequestCorrelation.REQUEST_ID_HEADER));
+        assertNull(captured.get().headers().get(RequestHeaderContextKeys.ACCOUNT_REF_HEADER));
+        assertNull(captured.get().headers().get(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER));
+    }
+
 }

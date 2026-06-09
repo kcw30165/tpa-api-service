@@ -21,7 +21,7 @@ public final class RequestLanguageResolver {
             return normalize(rawAcceptLanguage);
         }
 
-        return normalize(fallbackLang);
+        return DEFAULT_LANGUAGE;
     }
 
     public static boolean isZhHk(String language) {
