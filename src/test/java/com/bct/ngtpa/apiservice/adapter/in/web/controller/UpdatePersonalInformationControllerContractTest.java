@@ -16,6 +16,7 @@ import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -49,7 +50,15 @@ class UpdatePersonalInformationControllerContractTest {
                 .jsonPath("$.errors").isArray()
                 .jsonPath("$.errors[0].code").isEqualTo(ErrorCodes.MEMBER_CONTEXT_INVALID)
                 .jsonPath("$.errorCode").doesNotExist()
-                .jsonPath("$.requestId").doesNotExist();
+                .jsonPath("$.requestId").doesNotExist()
+                .consumeWith(result -> assertBodyDoesNotContainRequestId(result.getResponseBody()));
+    }
+
+    private static void assertBodyDoesNotContainRequestId(byte[] responseBody) {
+        String body = new String(responseBody, StandardCharsets.UTF_8);
+        org.junit.jupiter.api.Assertions.assertFalse(
+                body.contains("\"requestId\""),
+                "X-Request-Id must stay in response headers and must not be serialized in response body");
     }
 
     private WebTestClient client() {

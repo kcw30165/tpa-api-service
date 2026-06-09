@@ -21,6 +21,7 @@ import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
@@ -82,7 +83,9 @@ class PersonalInformationControllerContractTest {
                 .jsonPath("$.form.version").isEqualTo("1.0")
                 .jsonPath("$.form.mode").isEqualTo("view")
                 .jsonPath("$.messages").isArray()
-                .jsonPath("$.errors").isArray();
+                .jsonPath("$.errors").isArray()
+                .jsonPath("$.requestId").doesNotExist()
+                .consumeWith(r -> assertBodyDoesNotContainRequestId(r.getResponseBody()));
     }
 
     @Test
@@ -122,7 +125,8 @@ class PersonalInformationControllerContractTest {
                 .jsonPath("$.errors").isArray()
                 .jsonPath("$.errors[0].code").isEqualTo(ErrorCodes.MEMBER_CONTEXT_INVALID)
                 .jsonPath("$.errorCode").doesNotExist()
-                .jsonPath("$.requestId").doesNotExist();
+                .jsonPath("$.requestId").doesNotExist()
+                .consumeWith(result -> assertBodyDoesNotContainRequestId(result.getResponseBody()));
     }
 
     @Test
@@ -143,6 +147,13 @@ class PersonalInformationControllerContractTest {
         verify(useCase).execute(commandCaptor.capture());
         verify(mapper).toFormPageResponse(result, ACCEPT_LANGUAGE);
         assertEquals(ACCOUNT_REF, commandCaptor.getValue().accountRef());
+    }
+
+    private static void assertBodyDoesNotContainRequestId(byte[] responseBody) {
+        String body = new String(responseBody, StandardCharsets.UTF_8);
+        org.junit.jupiter.api.Assertions.assertFalse(
+                body.contains("\"requestId\""),
+                "X-Request-Id must stay in response headers and must not be serialized in response body");
     }
 
     private WebTestClient client() {
