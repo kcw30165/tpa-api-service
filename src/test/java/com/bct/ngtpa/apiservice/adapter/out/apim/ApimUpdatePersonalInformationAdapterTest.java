@@ -62,6 +62,61 @@ class ApimUpdatePersonalInformationAdapterTest {
         assertTrue(result.success());
     }
 
+
+
+    @Test
+    void mapsAllApplyAllDataItemsAndMarksSelectedAccountByPolicyCertAndEnv() {
+        CapturingApimWebClientFacade facade = new CapturingApimWebClientFacade("""
+                {
+                  "response": {
+                    "err-message": "",
+                    "data": [
+                      {
+                        "success": true,
+                        "policy-no": "POL-001",
+                        "cert-no": "CERT-002",
+                        "env": "JP",
+                        "ref-no": "260001373",
+                        "submit-date": "2025-12-31",
+                        "submit-time": "15:42:52",
+                        "errors": []
+                      },
+                      {
+                        "success": false,
+                        "policy-no": "POL-001",
+                        "cert-no": "CERT-001",
+                        "env": "JP",
+                        "ref-no": "260001374",
+                        "submit-date": "2025-12-31",
+                        "submit-time": "15:42:52",
+                        "errors": [
+                          { "type": "FIELD", "fields": "email", "code": "REQUIRED" }
+                        ]
+                      }
+                    ]
+                  }
+                }
+                """);
+        ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(
+                facade,
+                new NoopApimCertificateService(),
+                new PassThroughApimPayloadCryptoService(),
+                disabledEncryptionProperties());
+
+        UpdatePersonalInformationResult result = adapter.updateMemberInfo(command()).block();
+
+        assertNotNull(result);
+        assertFalse(result.success());
+        assertEquals("260001374", result.refNo());
+        assertEquals(2, result.accountResults().size());
+        assertTrue(result.accountResults().get(0).success());
+        assertFalse(result.accountResults().get(0).selected());
+        assertFalse(result.accountResults().get(1).success());
+        assertTrue(result.accountResults().get(1).selected());
+        assertEquals(List.of(new UpdatePersonalInformationError("FIELD", List.of("email"), "REQUIRED")),
+                result.errors());
+    }
+
     // @Test
     // void surfacesApimTopLevelErrorMessageAsResultFailure() {
     //     CapturingApimWebClientFacade facade = new CapturingApimWebClientFacade("""

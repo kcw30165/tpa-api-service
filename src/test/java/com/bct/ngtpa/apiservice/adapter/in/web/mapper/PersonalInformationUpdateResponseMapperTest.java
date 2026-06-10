@@ -8,6 +8,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
+import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationAccountResult;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationError;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
 import java.util.List;
@@ -59,4 +60,80 @@ class PersonalInformationUpdateResponseMapperTest {
         assertThat(response.messages()).isEmpty();
         assertThat(response.errors()).containsExactly(apiError);
     }
+
+    @Test
+    void mapsSelectedSuccessAndOtherAccountFailureToPartialSuccessMessageWithoutErrors() {
+        PersonalInformationUpdateErrorMapper errorMapper = mock(PersonalInformationUpdateErrorMapper.class);
+        var failedError = new UpdatePersonalInformationError("FIELD", List.of("email"), "REQUIRED");
+        when(errorMapper.toApiErrors(List.of(failedError)))
+                .thenReturn(List.of(ApiError.field(
+                        "personalInformation.email.required",
+                        "email is required",
+                        List.of("email"),
+                        "SERVER")));
+        PersonalInformationUpdateResponseMapper mapper = new PersonalInformationUpdateResponseMapper(errorMapper);
+
+        MutationResponse<PersonalInformationUpdateResultResponse> response = mapper.toResponse(
+                new UpdatePersonalInformationResult(
+                        true,
+                        "260001373",
+                        "2025-12-31",
+                        "15:42:52",
+                        List.of(),
+                        List.of(
+                                new UpdatePersonalInformationAccountResult(
+                                        true, true, "00000000118", "1", "DB",
+                                        "260001373", "2025-12-31", "15:42:52", List.of()),
+                                new UpdatePersonalInformationAccountResult(
+                                        true, false, "00000000118", "2", "DB",
+                                        "260001373", "2025-12-31", "15:42:52", List.of()),
+                                new UpdatePersonalInformationAccountResult(
+                                        false, false, "00000000118", "3", "DB",
+                                        "260001374", "2025-12-31", "15:42:52", List.of(failedError))))));
+
+        assertThat(response.success()).isTrue();
+        assertThat(response.status()).isEqualTo(ApiStatus.PARTIAL_SUCCESS);
+        assertThat(response.result().refNo()).isEqualTo("260001373");
+        assertThat(response.errors()).isEmpty();
+        assertThat(response.messages()).hasSize(1);
+        assertThat(response.messages().get(0).type()).isEqualTo("WARNING");
+        assertThat(response.messages().get(0).message())
+                .contains("The update was successful for the selected account and policy 00000000118 certificate 2")
+                .contains("but failed for policy 00000000118 certificate 3: email is required");
+    }
+
+    @Test
+    void mapsSelectedAccountFailureToValidationErrorsAndNoMessages() {
+        PersonalInformationUpdateErrorMapper errorMapper = mock(PersonalInformationUpdateErrorMapper.class);
+        var selectedError = new UpdatePersonalInformationError("FIELD", List.of("email"), "REQUIRED");
+        ApiError apiError = ApiError.field(
+                "personalInformation.email.required",
+                "email is required",
+                List.of("email"),
+                "SERVER");
+        when(errorMapper.toApiErrors(List.of(selectedError))).thenReturn(List.of(apiError));
+        PersonalInformationUpdateResponseMapper mapper = new PersonalInformationUpdateResponseMapper(errorMapper);
+
+        MutationResponse<PersonalInformationUpdateResultResponse> response = mapper.toResponse(
+                new UpdatePersonalInformationResult(
+                        false,
+                        "260001374",
+                        "2025-12-31",
+                        "15:42:52",
+                        List.of(selectedError),
+                        List.of(
+                                new UpdatePersonalInformationAccountResult(
+                                        false, true, "00000000118", "3", "DB",
+                                        "260001374", "2025-12-31", "15:42:52", List.of(selectedError)),
+                                new UpdatePersonalInformationAccountResult(
+                                        true, false, "00000000118", "2", "DB",
+                                        "260001373", "2025-12-31", "15:42:52", List.of()))));
+
+        assertThat(response.success()).isFalse();
+        assertThat(response.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
+        assertThat(response.result()).isNull();
+        assertThat(response.messages()).isEmpty();
+        assertThat(response.errors()).containsExactly(apiError);
+    }
+
 }
