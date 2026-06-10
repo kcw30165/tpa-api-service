@@ -89,7 +89,7 @@ class PersonalInformationUpdateResponseMapperTest {
                                         "260001373", "2025-12-31", "15:42:52", List.of()),
                                 new UpdatePersonalInformationAccountResult(
                                         false, false, "00000000118", "3", "DB",
-                                        "260001374", "2025-12-31", "15:42:52", List.of(failedError))))));
+                                        "260001374", "2025-12-31", "15:42:52", List.of(failedError)))));
 
         assertThat(response.success()).isTrue();
         assertThat(response.status()).isEqualTo(ApiStatus.PARTIAL_SUCCESS);

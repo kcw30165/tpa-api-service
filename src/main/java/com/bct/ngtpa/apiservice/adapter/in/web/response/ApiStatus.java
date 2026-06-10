@@ -11,6 +11,7 @@ public enum ApiStatus {
     SUBMITTED,
     NO_CHANGE,
     PENDING_APPROVAL,
+    PARTIAL_SUCCESS,
     // Java-Side Local Failures
     VALIDATION_FAILED, // Java input validation failed (e.g., Spring @Valid, bad formats)
     BUSINESS_REJECTED, // Java local business logic rejected it (e.g., user is locked out locally)
