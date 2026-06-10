@@ -49,16 +49,18 @@ com.bct.ngtpa.apiservice
 │   └── exception/       # DomainException
 ├── application/         # Orchestration — no Spring @Service; wired by UseCaseConfig
 │   ├── port/
-│   │   ├── in/          # GetNotificationsUseCase, UpdateNotificationsReadStatusUseCase, GetContributionSummaryUseCase, ExportContributionSummaryUseCase, GetReferenceDataCountriesUseCase
-│   │   └── out/         # ApimNoticeMessagePort, ApimNotificationReadStatusPort, ApimContributionSummaryPort, ApimReferenceDataCountriesPort, ReferenceDatePort, PortalAccessContextPort, CurrencyDisplayPort
-│   ├── usecase/         # GetNotificationsService, UpdateNotificationsReadStatusService, GetContributionSummaryService, ExportContributionSummaryService, GetReferenceDataCountriesService
-│   ├── dto/             # Notification and contribution summary commands/results; CurrencyDisplay; PortalAccessContext (ActorContext, MemberOwnerContext, AccountContext)
-│   └── exception/       # InvalidContributionRequestException, InvalidNotificationRequestException, PortalAccessContextResolutionException
+│   │   ├── in/          # GetNotificationsUseCase, UpdateNotificationsReadStatusUseCase, GetContributionSummaryUseCase, ExportContributionSummaryUseCase, GetReferenceDataCountriesUseCase, GetPersonalInformationUseCase, UpdatePersonalInformationUseCase
+│   │   └── out/         # ApimNoticeMessagePort, ApimNotificationReadStatusPort, ApimContributionSummaryPort, ApimReferenceDataCountriesPort, ApimMemberInfoPort, ApimUpdatePersonalInformationPort, ReferenceDatePort, PortalAccessContextPort, CurrencyDisplayPort
+│   ├── usecase/         # GetNotificationsService, UpdateNotificationsReadStatusService, GetContributionSummaryService, ExportContributionSummaryService, GetReferenceDataCountriesService, GetPersonalInformationService, UpdatePersonalInformationService
+│   ├── dto/             # Notification, contribution summary, reference data, and personal-information commands/results; CurrencyDisplay; PortalAccessContext (ActorContext, MemberOwnerContext, AccountContext)
+│   └── exception/       # InvalidContributionRequestException, InvalidNotificationRequestException, InvalidPersonalInformationUpdateException, PortalAccessContextResolutionException
 ├── adapter/
 │   ├── in/web/          # Reactive controllers, request/response records
 │   │   ├── NotificationController
 │   │   ├── ContributionController
 │   │   ├── ReferenceDataController
+│   │   ├── PersonalInformationController
+│   │   ├── UpdatePersonalInformationController
 │   │   ├── ContributionSummaryWorkbookExporter
 │   │   ├── ApiExceptionHandler (@RestControllerAdvice)
 │   │   ├── config/      # Web presentation config
@@ -92,6 +94,8 @@ com.bct.ngtpa.apiservice
 │       │   ├── ApimNotificationReadStatusAdapter  # Implements ApimNotificationReadStatusPort
 │       │   ├── ApimContributionSummaryAdapter     # Implements ApimContributionSummaryPort
 │       │   ├── ApimReferenceDataCountriesAdapter  # Implements ApimReferenceDataCountriesPort
+│       │   ├── ApimMemberInfoAdapter              # Implements ApimMemberInfoPort
+│       │   ├── ApimUpdatePersonalInformationAdapter # Implements ApimUpdatePersonalInformationPort
 │       │   ├── ApimCertificateService     # Fetches BCT public key from APIM
 │       │   ├── ApimAppCertificateService  # Loads app RSA keys + X509 cert
 │       │   └── ApimPayloadCryptoService   # AES/CBC + RSA field encryption/decryption
@@ -112,7 +116,7 @@ com.bct.ngtpa.apiservice
 │           ├── TemporaryPortalAccessContextProperties  # Binds temporary-portal-access-context.profiles.*
 │           └── TemporaryPortalAccessContextAdapter     # Implements PortalAccessContextPort
 ├── config/              # Spring composition only — use case @Bean wiring
-│   └── UseCaseConfig    # @Bean definitions for all four application use case implementations
+│   └── UseCaseConfig    # @Bean definitions for application use case implementations
 ├── infrastructure/      # Cross-cutting Spring infrastructure
 │   ├── config/          # Shared config resolver AOP + bean wiring
 │   │   ├── ConfigVariantResolverConfiguration
@@ -160,6 +164,8 @@ Behavior:
   - `GET /api/v1/notifications`
   - `PATCH /api/v1/notifications`
   - `GET /api/v1/reference-data/countries`
+  - `GET /api/v1/personal-information`
+  - `PUT /api/v1/personal-information`
 - Missing or invalid `Account-Ref` on those selected-account APIs returns HTTP `400` with error code `err.member.context.invalid`.
 - `X-Request-Id` behavior is unchanged: the filter reuses a non-blank inbound value, generates a UUID when missing, returns the value in the response header, and keeps propagating it through Reactor Context.
 - Only `X-Request-Id` is propagated to APIM by `ApimRequestIdExchangeFilter`.
@@ -1001,7 +1007,7 @@ GET /api/v1/notifications?env=JP&mbrType=MBR&page=1&size=10&dateFormat=dd/MM/yyy
 
 APIM or crypto failures still use the same error envelope with `5xx` status codes.
 
-### `PATCH /api/v1/notification`
+### `PATCH /api/v1/notifications`
 
 Updates the read status for one or more notifications.
 
@@ -1444,6 +1450,7 @@ Request body:
 ```json
 {
   "formVersion": "1.0",
+  "applyToAllAccounts": false,
   "fields": {
     "residentialAddressLine2": "Tai Po, New Territories",
     "hongKongMobilePhone": "98765432",
@@ -1451,6 +1458,8 @@ Request body:
   }
 }
 ```
+
+`applyToAllAccounts=true` asks APIM to apply the same update to every account owned by the member. The selected account remains the account represented by the inbound `Account-Ref`.
 
 BFF mapping rules:
 - The request `fields` object uses BFF field ids from `application-page-personal-information.yml`.
@@ -1486,6 +1495,7 @@ APIM request body is built from `PortalAccessContext` and mapped update fields:
   "cert-no": "CERT-NO",
   "env": "JP",
   "user-id": "user-id",
+  "apply-all": false,
   "update-fields": {
     "mobile-number": "91234567",
     "email": "user@example.com"
@@ -1499,30 +1509,103 @@ Context mapping:
 - `env` = `PortalAccessContext.account().accountEnv()`
 - `user-id` = `PortalAccessContext.actor().actorUserId()`
 
-APIM response success condition:
+APIM response mapping:
+
+For `applyToAllAccounts=false`, APIM returns one `response.data[]` item. The BFF maps that item to the standard mutation envelope.
+
+For `applyToAllAccounts=true`, APIM may return multiple `response.data[]` items. The BFF identifies the selected account by comparing each APIM item:
+
+- `policy-no` with `PortalAccessContext.account().policyNo()`
+- `cert-no` with `PortalAccessContext.account().certNo()`
+- `env` with `PortalAccessContext.account().accountEnv()`
+
+Non-selected accounts are not mapped back to `Account-Ref`; user-facing status for those accounts is displayed by policy/certificate identifiers only.
+
+APIM multi-account response example:
 
 ```json
 {
   "response": {
     "err-message": "",
     "data": [
-      { "success": true }
+      {
+        "success": true,
+        "policy-no": "00000000118",
+        "cert-no": 2,
+        "env": "DB",
+        "ref-no": "260001373",
+        "submit-date": "2025-12-31",
+        "submit-time": "15:42:52",
+        "errors": []
+      },
+      {
+        "success": false,
+        "policy-no": "00000000118",
+        "cert-no": 3,
+        "env": "DB",
+        "ref-no": "260001374",
+        "submit-date": "2025-12-31",
+        "submit-time": "15:42:52",
+        "errors": [
+          { "type": "FIELD", "fields": "email", "code": "REQUIRED" }
+        ]
+      }
     ]
   }
 }
 ```
 
-The update is treated as failed when `response.err-message` is non-blank or when `response.data[0].success` is not `true`.
+BFF mutation response rules:
 
-BFF success response:
+- Selected account succeeded and all other accounts succeeded: `success=true`, `status=UPDATED`, `errors=[]`.
+- Selected account succeeded but one or more other accounts failed: `success=true`, `status=PARTIAL_SUCCESS`, `errors=[]`, and `messages[]` contains a page-level warning listing other successful accounts and failed accounts with violated rules.
+- Selected account failed: `success=false`, `status=VALIDATION_FAILED`, `result=null`, `messages=[]`, and `errors[]` contains only selected-account rule violations so FE can refocus a target field.
+
+Partial-success response example:
 
 ```json
 {
-  "success": true
+  "success": true,
+  "status": "PARTIAL_SUCCESS",
+  "result": {
+    "refNo": "260001373",
+    "submitDate": "2025-12-31",
+    "submitTime": "15:42:52"
+  },
+  "messages": [
+    {
+      "type": "WARNING",
+      "code": "personalInformation.update.partialSuccess",
+      "message": "The update was successful for the selected account and policy 00000000118 certificate 2, but failed for policy 00000000118 certificate 3: email is required.",
+      "target": "PAGE"
+    }
+  ],
+  "errors": []
 }
 ```
 
-Error responses follow the standard BFF error envelope:
+Selected-account validation failure example:
+
+```json
+{
+  "success": false,
+  "status": "VALIDATION_FAILED",
+  "result": null,
+  "messages": [],
+  "errors": [
+    {
+      "type": "FIELD",
+      "code": "personalInformation.email.required",
+      "message": "This field is required.",
+      "targets": ["emailAddress"],
+      "severity": "ERROR",
+      "source": "SERVER"
+    }
+  ]
+}
+```
+
+Malformed request, missing `Account-Ref`, APIM transport, crypto, and unexpected system failures continue to use the standard BFF error envelope:
 
 ```json
 {
@@ -1536,5 +1619,7 @@ Architecture notes:
 - The application use case receives already mapped APIM update field keys and remains framework-free.
 - The update use case depends only on `PortalAccessContextPort` and `ApimUpdatePersonalInformationPort`.
 - APIM request/response DTOs stay inside `adapter/out/apim/dto`.
+- Multi-item APIM update responses are mapped to application-level per-account outcomes before the web adapter decides the public mutation status.
+- `PARTIAL_SUCCESS` is a BFF mutation status used only when the selected account update succeeded but at least one non-selected account failed.
 - Only `X-Request-Id` is propagated to APIM.
 - Body logging remains disabled by default and should stay disabled for this endpoint because the payload contains personal data.

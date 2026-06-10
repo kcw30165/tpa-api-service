@@ -42,4 +42,4 @@ fix-ssl-maven.bat
 *.txt
 aa.md
 **/*.log
-*.patch
+patches/
