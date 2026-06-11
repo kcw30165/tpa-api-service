@@ -52,11 +52,14 @@ public class ApiExceptionHandler {
     @ExceptionHandler(ApimException.class)
     public ResponseEntity<ApiResponse> handleApimException(ApimException ex, ServerWebExchange exchange) {
 
+        var errorCode = ex.getErrorCode();
+        var publicMessage = resolvePublicMessage(errorCode, exchange, ex);
+
         // Create the error payload using your standardized internal error schema
         ApiError errorDetail = new ApiError(
                 "DOWNSTREAM_BUSINESS",
-                ex.getErrorCode(), // Dynamically captures ErrorCodes.SYSTEM_UNEXPECTED or APIM_RESPONSE_INVALID
-                ex.getMessage(), // Captures the explicit validation/crypto message
+                errorCode,
+                publicMessage,
                 List.of(),
                 "error",
                 "SERVER");
@@ -67,8 +70,6 @@ public class ApiExceptionHandler {
         // Build the failure response utilizing MutationResponse
         ApiResponse errorResponse = MutationResponse.failure(apiStatus, List.of(errorDetail));
 
-        // DYNAMIC CHANGE: Use ex.getStatus() instead of hardcoded
-        // HttpStatus.BAD_REQUEST
         return ResponseEntity
                 .status(HttpStatus.BAD_GATEWAY)
                 .body(errorResponse);

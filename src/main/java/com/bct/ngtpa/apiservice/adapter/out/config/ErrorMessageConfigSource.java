@@ -2,7 +2,6 @@ package com.bct.ngtpa.apiservice.adapter.out.config;
 
 import com.bct.ngtpa.apiservice.shared.config.ConfigCategory;
 import com.bct.ngtpa.apiservice.shared.config.ConfigSource;
-import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -12,12 +11,12 @@ import java.util.Optional;
 @Component
 public class ErrorMessageConfigSource implements ConfigSource {
 
-    private static final String PREFIX = "error-message.";
+    private static final String DEFAULT_LOCALE_KEY = Locale.ENGLISH.toString();
 
-    private final Environment environment;
+    private final ErrorMessageProperties properties;
 
-    public ErrorMessageConfigSource(Environment environment) {
-        this.environment = environment;
+    public ErrorMessageConfigSource(ErrorMessageProperties properties) {
+        this.properties = properties;
     }
 
     @Override
@@ -31,8 +30,14 @@ public class ErrorMessageConfigSource implements ConfigSource {
             return Optional.empty();
         }
 
-        var localeKey = locale == null || locale.toString().isBlank() ? Locale.ENGLISH.toString() : locale.toString();
-        return Optional.ofNullable(environment.getProperty(PREFIX + localeKey + "." + key))
-                .filter(StringUtils::hasText);
+        return properties.find(normalizeLocaleKey(locale), key);
+    }
+
+    private static String normalizeLocaleKey(Locale locale) {
+        if (locale == null || !StringUtils.hasText(locale.toString())) {
+            return DEFAULT_LOCALE_KEY;
+        }
+
+        return locale.toString();
     }
 }
