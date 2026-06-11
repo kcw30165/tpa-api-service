@@ -13,7 +13,6 @@ import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
 import reactor.core.publisher.Mono;
 
 import java.security.PublicKey;
@@ -60,6 +59,61 @@ class ApimUpdatePersonalInformationAdapterTest {
         assertEquals("actor-user", facade.capturedRequest.getUserId());
         assertEquals("98765432", facade.capturedRequest.getUpdateFields().get("mobile-number"));
         assertTrue(result.success());
+    }
+
+
+
+    @Test
+    void mapsAllApplyAllDataItemsAndMarksSelectedAccountByPolicyCertAndEnv() {
+        CapturingApimWebClientFacade facade = new CapturingApimWebClientFacade("""
+                {
+                  "response": {
+                    "err-message": "",
+                    "data": [
+                      {
+                        "success": true,
+                        "policy-no": "POL-001",
+                        "cert-no": "CERT-002",
+                        "env": "JP",
+                        "ref-no": "260001373",
+                        "submit-date": "2025-12-31",
+                        "submit-time": "15:42:52",
+                        "errors": []
+                      },
+                      {
+                        "success": false,
+                        "policy-no": "POL-001",
+                        "cert-no": "CERT-001",
+                        "env": "JP",
+                        "ref-no": "260001374",
+                        "submit-date": "2025-12-31",
+                        "submit-time": "15:42:52",
+                        "errors": [
+                          { "type": "FIELD", "fields": "email", "code": "REQUIRED" }
+                        ]
+                      }
+                    ]
+                  }
+                }
+                """);
+        ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(
+                facade,
+                new NoopApimCertificateService(),
+                new PassThroughApimPayloadCryptoService(),
+                disabledEncryptionProperties());
+
+        UpdatePersonalInformationResult result = adapter.updateMemberInfo(command()).block();
+
+        assertNotNull(result);
+        assertFalse(result.success());
+        assertEquals("260001374", result.refNo());
+        assertEquals(2, result.accountResults().size());
+        assertTrue(result.accountResults().get(0).success());
+        assertFalse(result.accountResults().get(0).selected());
+        assertFalse(result.accountResults().get(1).success());
+        assertTrue(result.accountResults().get(1).selected());
+        assertEquals(List.of(new UpdatePersonalInformationError("FIELD", List.of("email"), "REQUIRED")),
+                result.errors());
     }
 
     // @Test

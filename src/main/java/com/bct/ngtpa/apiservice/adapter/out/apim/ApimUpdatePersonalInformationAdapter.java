@@ -6,6 +6,8 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateMemberInfoApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateMemberInfoApimRequest;
 import com.bct.ngtpa.apiservice.application.dto.UpdateMemberInfoCommand;
+import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationAccountResult;
+import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationError;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
 import com.bct.ngtpa.apiservice.application.port.out.ApimUpdatePersonalInformationPort;
 import com.bct.ngtpa.apiservice.exception.ApimException;
@@ -14,6 +16,7 @@ import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+import java.util.List;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
@@ -38,7 +41,7 @@ public class ApimUpdatePersonalInformationAdapter implements ApimUpdatePersonalI
                         return apimWebClientFacade.post(API_NAME, request)
                                         .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
                                                         API_NAME, body, UpdateMemberInfoApimDataItem.class, null))
-                                        .map(this::toResult)
+                                        .map(response -> toResult(response, command))
                                         .onErrorMap(ApimCryptoException.class,
                                                         ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR,
                                                                         ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(),
@@ -54,7 +57,7 @@ public class ApimUpdatePersonalInformationAdapter implements ApimUpdatePersonalI
                                                         .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
                                                                         API_NAME, body,
                                                                         UpdateMemberInfoApimDataItem.class, publicKey))
-                                                        .map(this::toResult);
+                                                        .map(response -> toResult(response, command));
                                 })
                                 .onErrorMap(ApimCryptoException.class,
                                                 ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR,
@@ -74,7 +77,8 @@ public class ApimUpdatePersonalInformationAdapter implements ApimUpdatePersonalI
         }
 
         private UpdatePersonalInformationResult toResult(
-                        ApimResponseEnvelope<UpdateMemberInfoApimDataItem> response) {
+                        ApimResponseEnvelope<UpdateMemberInfoApimDataItem> response,
+                        UpdateMemberInfoCommand command) {
 
                 var payload = response != null ? response.getResponse() : null;
 
@@ -101,19 +105,74 @@ public class ApimUpdatePersonalInformationAdapter implements ApimUpdatePersonalI
                                         "APIM personal information update response data is missing.");
                 }
 
-                var firstItem = dataItems.getFirst();
-
-                if (!firstItem.isSuccess()) {
-                        throw new ApimException(
-                                        HttpStatus.BAD_GATEWAY,
-                                        ErrorCodes.APIM_RESPONSE_INVALID,
-                                        "APIM personal information update was not successful.");
-                }
+                var selectedItem = selectedDataItem(dataItems, command);
+                var accountResults = dataItems.stream()
+                                .filter(item -> item != null)
+                                .map(item -> toAccountResult(item, isSelected(item, command)))
+                                .toList();
 
                 return new UpdatePersonalInformationResult(
-                                firstItem.isSuccess(),
-                                firstItem.getRefNo(),
-                                firstItem.getSubmitDate(),
-                                firstItem.getSubmitTime());
+                                selectedItem.isSuccess(),
+                                selectedItem.getRefNo(),
+                                selectedItem.getSubmitDate(),
+                                selectedItem.getSubmitTime(),
+                                toErrors(selectedItem),
+                                accountResults);
+        }
+
+        private UpdateMemberInfoApimDataItem selectedDataItem(
+                        List<UpdateMemberInfoApimDataItem> dataItems,
+                        UpdateMemberInfoCommand command) {
+                if (dataItems.size() == 1) {
+                        return dataItems.getFirst();
+                }
+                return dataItems.stream()
+                                .filter(item -> item != null && isSelected(item, command))
+                                .findFirst()
+                                .orElseThrow(() -> new ApimException(
+                                                HttpStatus.BAD_GATEWAY,
+                                                ErrorCodes.APIM_RESPONSE_INVALID,
+                                                "APIM personal information update response does not contain the selected account."));
+        }
+
+        private boolean isSelected(UpdateMemberInfoApimDataItem item, UpdateMemberInfoCommand command) {
+                return same(item.getPolicyNo(), command.policyNo())
+                                && same(item.getCertNo(), command.certNo())
+                                && same(item.getEnv(), command.accountEnv());
+        }
+
+        private boolean same(String first, String second) {
+                return trim(first).equals(trim(second));
+        }
+
+        private String trim(String value) {
+                return value == null ? "" : value.trim();
+        }
+
+        private UpdatePersonalInformationAccountResult toAccountResult(
+                        UpdateMemberInfoApimDataItem item,
+                        boolean selected) {
+                return new UpdatePersonalInformationAccountResult(
+                                item.isSuccess(),
+                                selected,
+                                item.getPolicyNo(),
+                                item.getCertNo(),
+                                item.getEnv(),
+                                item.getRefNo(),
+                                item.getSubmitDate(),
+                                item.getSubmitTime(),
+                                toErrors(item));
+        }
+
+        private List<UpdatePersonalInformationError> toErrors(UpdateMemberInfoApimDataItem item) {
+                if (item == null || item.getErrors() == null || item.getErrors().isEmpty()) {
+                        return List.of();
+                }
+                return item.getErrors().stream()
+                                .map(error -> UpdatePersonalInformationError.fromPipeSeparatedFields(
+                                                error.getType(),
+                                                error.getFields(),
+                                                error.getCode()))
+                                .toList();
         }
 }
