@@ -61,6 +61,34 @@ public class PageDisplayTextResolver {
             return null;
         }
 
+        for (var candidate : candidateKeys(code, accountEnv, trustCode, schemeType, languageKey)) {
+            var value = resolveCodeFirstDisplay(display, candidate, languageKey);
+            if (StringUtils.hasText(value)) {
+                return value;
+            }
+        }
+
+        return resolveLanguageFirstDisplay(display, languageKey, code, accountEnv, trustCode, schemeType);
+    }
+
+    private String resolveCodeFirstDisplay(
+            Map<String, Map<String, String>> display,
+            String candidate,
+            String languageKey) {
+        var localizedDisplay = display.get(candidate);
+        if (localizedDisplay == null || localizedDisplay.isEmpty()) {
+            return null;
+        }
+        return localizedDisplay.get(languageKey);
+    }
+
+    private String resolveLanguageFirstDisplay(
+            Map<String, Map<String, String>> display,
+            String languageKey,
+            String code,
+            String accountEnv,
+            String trustCode,
+            String schemeType) {
         var localizedDisplay = display.get(languageKey);
         if (localizedDisplay == null || localizedDisplay.isEmpty()) {
             return null;
