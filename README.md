@@ -103,9 +103,9 @@ com.bct.ngtpa.apiservice
 │       │   ├── CurrencyMappingProperties              # Binds currency-mapping.* YAML
 │       │   ├── DisplayFormatConfigSource              # Reads display-format.* values behind ConfigSource
 │       │   ├── CurrencyMappingConfigSource            # Reads currency-mapping.* values behind ConfigSource
-│       │   ├── DefaultConfigVariantResolver           # Global variant resolver for display/currency config lookups
-│       │   ├── DisplayFormatKeyCandidateStrategy      # Builds display-format candidate keys + en fallback
-│       │   ├── CurrencyMappingKeyCandidateStrategy    # Builds currency-mapping candidate keys + en fallback
+│       │   ├── DefaultConfigVariantResolver           # Global variant resolver for config-backed display/message lookups
+│       │   ├── DisplayFormatKeyCandidateStrategy      # Legacy display-format candidate strategy; to be replaced by DefaultConfigKeyCandidateStrategy
+│       │   ├── CurrencyMappingKeyCandidateStrategy    # Legacy currency candidate strategy; to be replaced by DefaultConfigKeyCandidateStrategy
 │       │   └── ConfigBackedCurrencyDisplayAdapter     # Implements CurrencyDisplayPort
 │       ├── configserver/    # ConfigMap/Config-Server-backed adapters
 │       │   ├── ReferenceDateProperties                # Binds reference-date.* YAML
@@ -1153,17 +1153,72 @@ Accept-Language: zh-HK
 
 Range validation failures and pagination validation failures use the same standardized envelope with the same business error code and a resolver-backed safe message.
 
+#### Config-backed Value Lookup Convention
+
+Config-backed display values and user-facing messages use one global candidate ordering convention. Each lookup starts from a logical `code` and appends context suffixes derived from `accountEnv`, `trustCode`, and `schemeType`. Locale selects the language bucket; locale is not appended to the key itself.
+
+Given `code`, `accountEnv`, `trustCode`, `schemeType`, and `locale`, the resolver tries keys in this order:
+
+1. `code.accountEnv.trustCode.schemeType`
+2. `code.accountEnv.trustCode`
+3. `code.accountEnv.schemeType`
+4. `code.trustCode.schemeType`
+5. `code.accountEnv`
+6. `code.trustCode`
+7. `code.schemeType`
+8. `code`
+
+Blank dimensions are skipped, compound candidates are emitted only when all participating dimensions are present, duplicates are removed while preserving order, and malformed keys are never emitted. Requested locale candidates are tried first; if no match is found and the requested locale is not English, the same candidate sequence is retried under `en`.
+
+Standard config-backed adapters and resolvers should use `DefaultConfigVariantResolver` with `DefaultConfigKeyCandidateStrategy` unless a feature has an explicitly documented exception to this global lookup order. Domain-specific classes may keep their own `ConfigSource` and business fallback behaviour, but they should not define custom candidate ordering for standard config-backed lookups.
+
+Example flat-key shapes for the target convention:
+
+```yaml
+date-display-format:
+  en:
+    date: dd/MM/yyyy
+    date.JP: MM/dd/yyyy
+  zh_HK:
+    date: dd/MM/yyyy
+
+amount-display-format:
+  en:
+    amount: "#,##0.00"
+    amount.JP: "#,##0.000"
+  zh_HK:
+    amount: "#,##0.00"
+    amount.JP: "#,##0.000"
+
+currency-mapping:
+  en:
+    AUD: AUD
+    EUR: EUR
+    EUR.TB.HKBU: EUR
+  zh_HK:
+    AUD: 澳元
+    EUR: 歐羅
+    EUR.TB.HKBU: 歐元
+
+error-message:
+  en:
+    "err.request.invalid": "Invalid request."
+    "err.request.invalid.JP": "Your request is invalid."
+  zh_HK:
+    "err.request.invalid": "請求無效。"
+```
+
 ### Display Format Configuration
 
-Amount display formatting for the contribution JSON response is driven by `display-format.amount`. Date formatting is driven by `display-format.date`. Both now resolve through the same global config variant resolver instead of per-adapter key-building logic.
+Amount display formatting for the contribution JSON response is currently driven by `display-format.amount`. Date formatting is currently driven by `display-format.date`. Both resolve through the shared config variant resolver. The target convention is to split these into flat-key `date-display-format` and `amount-display-format` groups so date, amount, currency, and error-message all use the same `code.variant` lookup model.
 
 #### Global config variant resolver
 
 The shared resolver accepts a config category, a code, and a lookup context (`env`, `trustCode`, `schemeType`, locale). It generates suffix candidates in this exact order, skipping blank dimensions, removing duplicates, and never emitting malformed keys:
 
 1. `env.trustCode.schemeType`
-2. `env.schemeType`
-3. `env.trustCode`
+2. `env.trustCode`
+3. `env.schemeType`
 4. `trustCode.schemeType`
 5. `env`
 6. `trustCode`
@@ -1223,8 +1278,8 @@ display-format:
 **Fallback order** (tried in sequence until a pattern is found):
 
 1. `display-format.amount.<lang>.<env>.<trustCode>.<schemeType>`
-2. `display-format.amount.<lang>.<env>.<schemeType>`
-3. `display-format.amount.<lang>.<env>.<trustCode>`
+2. `display-format.amount.<lang>.<env>.<trustCode>`
+3. `display-format.amount.<lang>.<env>.<schemeType>`
 4. `display-format.amount.<lang>.<trustCode>.<schemeType>`
 5. `display-format.amount.<lang>.<env>`
 6. `display-format.amount.<lang>.<trustCode>`
@@ -1263,8 +1318,8 @@ display-format:
 **Fallback order** (tried in sequence until a pattern is found):
 
 1. `display-format.date.<lang>.<env>.<trustCode>.<schemeType>`
-2. `display-format.date.<lang>.<env>.<schemeType>`
-3. `display-format.date.<lang>.<env>.<trustCode>`
+2. `display-format.date.<lang>.<env>.<trustCode>`
+3. `display-format.date.<lang>.<env>.<schemeType>`
 4. `display-format.date.<lang>.<trustCode>.<schemeType>`
 5. `display-format.date.<lang>.<env>`
 6. `display-format.date.<lang>.<trustCode>`
@@ -1294,8 +1349,8 @@ currency-mapping:
 **Lookup order** (tried in sequence until a value is found):
 
 1. `currency-mapping.<lang>.<code>.<env>.<trustCode>.<schemeType>`
-2. `currency-mapping.<lang>.<code>.<env>.<schemeType>`
-3. `currency-mapping.<lang>.<code>.<env>.<trustCode>`
+2. `currency-mapping.<lang>.<code>.<env>.<trustCode>`
+3. `currency-mapping.<lang>.<code>.<env>.<schemeType>`
 4. `currency-mapping.<lang>.<code>.<trustCode>.<schemeType>`
 5. `currency-mapping.<lang>.<code>.<env>`
 6. `currency-mapping.<lang>.<code>.<trustCode>`
