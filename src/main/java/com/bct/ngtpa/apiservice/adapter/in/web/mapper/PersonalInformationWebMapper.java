@@ -193,7 +193,7 @@ public class PersonalInformationWebMapper {
             if (sectionSchema == null || !hasText(sectionSchema.getId())) {
                 continue;
             }
-            List<FieldResponse> fields = buildSectionFields(sectionSchema, fieldStates, language);
+            List<FieldResponse> fields = buildSectionFields(pageSchema, sectionSchema, fieldStates, language);
             if (fields.isEmpty()) {
                 defaultSectionOrder += 10;
                 continue;
@@ -305,9 +305,7 @@ public class PersonalInformationWebMapper {
         return fieldsByConfigItemId;
     }
 
-    private List<FieldResponse> buildSectionFields(SectionProperties sectionSchema,
-            Map<String, FieldState> fieldStates,
-            String language) {
+    private List<FieldResponse> buildSectionFields(PageSchemaProperties pageSchema, SectionProperties sectionSchema, Map<String, FieldState> fieldStates, String language) {
         if (sectionSchema.getFields() == null) {
             return List.of();
         }
@@ -325,7 +323,7 @@ public class PersonalInformationWebMapper {
             List<ValidationRuleResponse> validations = mapValidationRules(fieldSchema.getValidations(), language);
             fields.add(new FieldResponse(
                     fieldSchema.getId(),
-                    resolveLabel(fieldSchema.getLabel(), language),
+                    resolvePageDisplayText(pageSchema, fieldSchema.getLabelCode(), fieldSchema.getLabel(), language, accountEnv, trustCode, schemeType),
                     hasText(fieldSchema.getDataType()) ? fieldSchema.getDataType() : null,
                     hasText(fieldSchema.getControlType()) ? fieldSchema.getControlType() : null,
                     state.value(),
@@ -335,8 +333,8 @@ public class PersonalInformationWebMapper {
                     fieldSchema.getMinLength(),
                     fieldSchema.getMaxLength(),
                     hasText(fieldSchema.getPattern()) ? fieldSchema.getPattern() : null,
-                    hasText(resolveLabel(fieldSchema.getPlaceholder(), language))
-                            ? resolveLabel(fieldSchema.getPlaceholder(), language)
+                    hasText(resolvePageDisplayText(pageSchema, fieldSchema.getPlaceholderCode(), fieldSchema.getPlaceholder(), language, accountEnv, trustCode, schemeType))
+                            ? resolvePageDisplayText(pageSchema, fieldSchema.getPlaceholderCode(), fieldSchema.getPlaceholder(), language, accountEnv, trustCode, schemeType)
                             : null,
                     hasText(fieldSchema.getOptionSource()) ? fieldSchema.getOptionSource() : null,
                     fieldSchema.getCopyWhenChecked(),
