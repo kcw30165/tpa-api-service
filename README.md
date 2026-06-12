@@ -1678,3 +1678,28 @@ Architecture notes:
 - `PARTIAL_SUCCESS` is a BFF mutation status used only when the selected account update succeeded but at least one non-selected account failed.
 - Only `X-Request-Id` is propagated to APIM.
 - Body logging remains disabled by default and should stay disabled for this endpoint because the payload contains personal data.
+
+<!-- CONFIG_LOOKUP_STANDARDIZATION_START -->
+
+## Config Lookup Standardization
+
+The config lookup stack is standardized around `LocalizedConfigProperties`, `LocalizedConfigSource`, `DefaultConfigKeyCandidateStrategy`, and `DefaultConfigVariantResolver`.
+
+Active config categories are:
+
+- `DISPLAY_DATE_FORMAT`
+- `DISPLAY_AMOUNT_FORMAT`
+- `CURRENCY_MAPPING`
+- `ERROR_MESSAGE`
+
+Display date/amount config uses canonical keys such as `date.PROD.RM` and `amount.PROD.RM`; wildcard key `*` and legacy variant-only keys are not supported.
+
+See [`docs/config-lookup-standardization.md`](docs/config-lookup-standardization.md) for details.
+
+Run the regression guard with:
+
+```bash
+bash scripts/verify-config-lookup-standardization.sh
+```
+
+<!-- CONFIG_LOOKUP_STANDARDIZATION_END -->

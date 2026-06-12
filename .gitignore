@@ -43,3 +43,4 @@ fix-ssl-maven.bat
 aa.md
 **/*.log
 patches/
+.venv/
