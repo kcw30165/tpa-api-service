@@ -175,7 +175,7 @@ public class PersonalInformationWebMapper {
                 buildSections(pageSchema, apimData, apimConfig, apimConfigItems, language),
                 mapValidationRules(pageSchema != null ? pageSchema.getValidations() : null, language),
                 yamlResponseMapper.toResponseMap(pageSchema != null ? pageSchema.getConfirmation() : null, language),
-                buildActions(formSchema, language));
+                buildActions(pageSchema, formSchema, language));
     }
 
     private List<SectionResponse> buildSections(PageSchemaProperties pageSchema,
@@ -352,7 +352,7 @@ public class PersonalInformationWebMapper {
                 .toList();
     }
 
-    private Map<String, Object> buildActions(FormMetadataProperties formSchema, String language) {
+    private Map<String, Object> buildActions(PageSchemaProperties pageSchema, FormMetadataProperties formSchema, String language) {
         Map<String, Object> actions = new LinkedHashMap<>();
         if (formSchema == null || formSchema.getActions() == null) {
             return actions;
@@ -363,7 +363,7 @@ public class PersonalInformationWebMapper {
             }
             Map<String, Object> action = new LinkedHashMap<>();
             action.put("enabled", Boolean.TRUE);
-            action.put("label", resolveLabel(actionSchema.getLabel(), language));
+            action.put("label", resolvePageDisplayText(pageSchema, actionSchema.getLabelCode(), actionSchema.getLabel(), language, accountEnv, trustCode, schemeType));
             actions.put(actionSchema.getName(), action);
         }
         return actions;

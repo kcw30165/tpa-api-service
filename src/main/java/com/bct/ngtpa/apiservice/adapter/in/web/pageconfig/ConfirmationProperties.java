@@ -4,6 +4,14 @@ import java.util.Map;
 
 public class ConfirmationProperties {
 
+    private String afterLabelCode;
+
+    private String beforeLabelCode;
+
+    private String reviewMessageCode;
+
+    private String titleCode;
+
     private Boolean enabled;
     private Map<String, String> title;
     private Map<String, String> reviewMessage;
@@ -79,5 +87,45 @@ public class ConfirmationProperties {
 
     public void setMessage(Map<String, String> message) {
         this.message = message;
+    }
+
+
+    public String getTitleCode() {
+        return titleCode;
+    }
+
+
+    public void setTitleCode(String titleCode) {
+        this.titleCode = titleCode;
+    }
+
+
+    public String getReviewMessageCode() {
+        return reviewMessageCode;
+    }
+
+
+    public void setReviewMessageCode(String reviewMessageCode) {
+        this.reviewMessageCode = reviewMessageCode;
+    }
+
+
+    public String getBeforeLabelCode() {
+        return beforeLabelCode;
+    }
+
+
+    public void setBeforeLabelCode(String beforeLabelCode) {
+        this.beforeLabelCode = beforeLabelCode;
+    }
+
+
+    public String getAfterLabelCode() {
+        return afterLabelCode;
+    }
+
+
+    public void setAfterLabelCode(String afterLabelCode) {
+        this.afterLabelCode = afterLabelCode;
     }
 }
