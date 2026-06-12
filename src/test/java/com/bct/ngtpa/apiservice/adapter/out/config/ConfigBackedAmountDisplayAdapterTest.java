@@ -145,13 +145,13 @@ class ConfigBackedAmountDisplayAdapterTest {
     }
 
     @Test
-    void resolvePatternUsesEnvSchemeBeforeEnvTrustAndTrustScheme() {
+    void resolvePatternUsesEnvTrustBeforeEnvSchemeAndTrustScheme() {
         var adapter = adapterWith(Map.of("en", Map.of(
                 "PROD.MPF", "#,##0.0",
                 "PROD.RM", "#,##0",
                 "RM.MPF", "0.00",
                 "*", "#,##0.00")));
 
-        assertEquals("#,##0.0", adapter.resolvePattern("en", "PROD", "RM", "MPF"));
+        assertEquals("#,##0", adapter.resolvePattern("en", "PROD", "RM", "MPF"));
     }
 }

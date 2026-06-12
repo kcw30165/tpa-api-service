@@ -148,7 +148,7 @@ class DefaultConfigVariantResolverTest {
                 "EUR",
                 ConfigLookupContext.of("PROD", "TB", "HKBU", Locale.ENGLISH));
 
-        assertEquals("env-scheme", resolver.resolve(request).orElseThrow());
+        assertEquals("env-trust", resolver.resolve(request).orElseThrow());
     }
 
     @Test
