@@ -5,6 +5,12 @@ import java.util.Map;
 
 public class FieldProperties {
 
+    private String placeholderCode;
+
+
+    private String labelCode;
+
+
     private String id;
     private Integer displayOrder;
     private Map<String, String> label;

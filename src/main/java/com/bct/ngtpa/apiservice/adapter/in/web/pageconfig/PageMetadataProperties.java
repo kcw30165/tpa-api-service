@@ -4,6 +4,9 @@ import java.util.Map;
 
 public class PageMetadataProperties {
 
+    private String titleCode;
+
+
     private String id;
     private Map<String, String> title;
     private String version;

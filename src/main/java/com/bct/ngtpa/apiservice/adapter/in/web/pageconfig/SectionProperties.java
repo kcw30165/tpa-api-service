@@ -5,6 +5,9 @@ import java.util.Map;
 
 public class SectionProperties {
 
+    private String titleCode;
+
+
     private String id;
     private Map<String, String> title;
     private List<FieldProperties> fields;

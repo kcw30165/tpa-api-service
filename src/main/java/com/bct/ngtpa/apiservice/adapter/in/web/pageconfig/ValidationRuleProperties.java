@@ -4,6 +4,9 @@ import java.util.Map;
 
 public class ValidationRuleProperties {
 
+    private String messageCode;
+
+
     private String id;
     private String type;
     private Object value;
