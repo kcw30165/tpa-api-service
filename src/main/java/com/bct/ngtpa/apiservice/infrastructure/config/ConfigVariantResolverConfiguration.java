@@ -32,10 +32,18 @@ public class ConfigVariantResolverConfiguration {
     }
 
     @Bean
-    ConfigKeyCandidateStrategy displayFormatKeyCandidateStrategy(
+    ConfigKeyCandidateStrategy displayDateFormatKeyCandidateStrategy(
             ConfigVariantCandidateGenerator configVariantCandidateGenerator) {
         return new DefaultConfigKeyCandidateStrategy(
                 configVariantCandidateGenerator,
-                ConfigCategory.DISPLAY_FORMAT);
+                ConfigCategory.DISPLAY_DATE_FORMAT);
+    }
+
+    @Bean
+    ConfigKeyCandidateStrategy displayAmountFormatKeyCandidateStrategy(
+            ConfigVariantCandidateGenerator configVariantCandidateGenerator) {
+        return new DefaultConfigKeyCandidateStrategy(
+                configVariantCandidateGenerator,
+                ConfigCategory.DISPLAY_AMOUNT_FORMAT);
     }
 }

@@ -30,10 +30,10 @@ public class ConfigBackedDateDisplayAdapter implements DateDisplayPort {
 
     ConfigBackedDateDisplayAdapter(DateFormatProperties dateFormatProperties) {
         this(new DefaultConfigVariantResolver(
-                List.of(new DisplayFormatConfigSource(dateFormatProperties, new AmountFormatProperties())),
+                List.of(new DateFormatConfigSource(dateFormatProperties)),
                 List.of(new DefaultConfigKeyCandidateStrategy(
                         new ConfigVariantCandidateGenerator(),
-                        ConfigCategory.DISPLAY_FORMAT))));
+                        ConfigCategory.DISPLAY_DATE_FORMAT))));
     }
 
     @Override
@@ -47,7 +47,7 @@ public class ConfigBackedDateDisplayAdapter implements DateDisplayPort {
 
     String resolvePattern(String lang, String accountEnv, String trustCode, String schemeType) {
         var request = ConfigLookupRequest.optional(
-                ConfigCategory.DISPLAY_FORMAT,
+                ConfigCategory.DISPLAY_DATE_FORMAT,
                 "date",
                 ConfigLookupContext.of(accountEnv, trustCode, schemeType, lang));
 

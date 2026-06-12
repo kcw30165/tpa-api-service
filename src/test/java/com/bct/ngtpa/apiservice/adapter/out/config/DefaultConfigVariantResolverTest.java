@@ -25,7 +25,7 @@ class DefaultConfigVariantResolverTest {
                 Map.of());
 
         var request = ConfigLookupRequest.optional(
-                ConfigCategory.DISPLAY_FORMAT,
+                ConfigCategory.DISPLAY_DATE_FORMAT,
                 "date",
                 ConfigLookupContext.of("PROD", "RM", "MPF", Locale.ENGLISH));
 
@@ -40,7 +40,7 @@ class DefaultConfigVariantResolverTest {
                 Map.of());
 
         var request = ConfigLookupRequest.optional(
-                ConfigCategory.DISPLAY_FORMAT,
+                ConfigCategory.DISPLAY_DATE_FORMAT,
                 "date",
                 ConfigLookupContext.of("", "RM", "", Locale.ENGLISH));
 
@@ -55,7 +55,7 @@ class DefaultConfigVariantResolverTest {
                 Map.of());
 
         var request = ConfigLookupRequest.optional(
-                ConfigCategory.DISPLAY_FORMAT,
+                ConfigCategory.DISPLAY_AMOUNT_FORMAT,
                 "amount",
                 ConfigLookupContext.of("PROD", "RM", "", Locale.forLanguageTag("zh-HK")));
 
@@ -67,7 +67,7 @@ class DefaultConfigVariantResolverTest {
         var resolver = resolver(Map.of(), Map.of(), Map.of());
 
         var request = ConfigLookupRequest.optional(
-                ConfigCategory.DISPLAY_FORMAT,
+                ConfigCategory.DISPLAY_DATE_FORMAT,
                 "unknown",
                 ConfigLookupContext.of("", "", "", Locale.ENGLISH));
 
@@ -79,7 +79,7 @@ class DefaultConfigVariantResolverTest {
         var resolver = resolver(Map.of(), Map.of(), Map.of());
 
         var request = ConfigLookupRequest.required(
-                ConfigCategory.DISPLAY_FORMAT,
+                ConfigCategory.DISPLAY_DATE_FORMAT,
                 "unknown",
                 ConfigLookupContext.of("", "", "", Locale.ENGLISH));
 
@@ -94,7 +94,7 @@ class DefaultConfigVariantResolverTest {
                 Map.of());
 
         var request = ConfigLookupRequest.optional(
-                ConfigCategory.DISPLAY_FORMAT,
+                ConfigCategory.DISPLAY_DATE_FORMAT,
                 "date",
                 ConfigLookupContext.of("", "JP", "", Locale.ENGLISH));
 
@@ -197,10 +197,12 @@ class DefaultConfigVariantResolverTest {
         var candidateGenerator = new ConfigVariantCandidateGenerator();
         return new DefaultConfigVariantResolver(
                 java.util.List.of(
-                        new DisplayFormatConfigSource(dateProperties, amountProperties),
+                        new DateFormatConfigSource(dateProperties),
+                        new AmountFormatConfigSource(amountProperties),
                         new CurrencyMappingConfigSource(currencyProperties)),
                 java.util.List.of(
-                        new DefaultConfigKeyCandidateStrategy(candidateGenerator, ConfigCategory.DISPLAY_FORMAT),
+                        new DefaultConfigKeyCandidateStrategy(candidateGenerator, ConfigCategory.DISPLAY_DATE_FORMAT),
+                        new DefaultConfigKeyCandidateStrategy(candidateGenerator, ConfigCategory.DISPLAY_AMOUNT_FORMAT),
                         new DefaultConfigKeyCandidateStrategy(candidateGenerator, ConfigCategory.CURRENCY_MAPPING),
                         new DefaultConfigKeyCandidateStrategy(candidateGenerator, ConfigCategory.ERROR_MESSAGE)));
     }

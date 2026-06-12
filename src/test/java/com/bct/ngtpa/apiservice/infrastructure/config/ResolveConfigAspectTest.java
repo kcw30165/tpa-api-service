@@ -24,7 +24,7 @@ class ResolveConfigAspectTest {
         var proxy = proxy(new TestTarget(), resolver);
 
         assertEquals("dd/MM/yyyy", proxy.resolveDate(ConfigLookupContext.of("PROD", "RM", "", Locale.ENGLISH)));
-        assertEquals(ConfigCategory.DISPLAY_FORMAT, resolver.lastRequest.category());
+        assertEquals(ConfigCategory.DISPLAY_DATE_FORMAT, resolver.lastRequest.category());
         assertEquals("date", resolver.lastRequest.code());
     }
 
@@ -70,12 +70,12 @@ class ResolveConfigAspectTest {
 
     static class TestTarget {
 
-        @ResolveConfig(category = ConfigCategory.DISPLAY_FORMAT, code = "date", required = true)
+        @ResolveConfig(category = ConfigCategory.DISPLAY_DATE_FORMAT, code = "date", required = true)
         String resolveDate(ConfigLookupContext context) {
             return null;
         }
 
-        @ResolveConfig(category = ConfigCategory.DISPLAY_FORMAT, code = "date")
+        @ResolveConfig(category = ConfigCategory.DISPLAY_DATE_FORMAT, code = "date")
         String resolveOptionalDate(ConfigLookupContext context) {
             return null;
         }
@@ -109,4 +109,14 @@ class ResolveConfigAspectTest {
             return response;
         }
     }
-}
+}EOF_RESOLVE_CONFIG_ASPECT_TEST
+
+rm -f src/main/java/com/bct/ngtpa/apiservice/adapter/out/config/DisplayFormatConfigSource.java
+rm -f src/main/java/com/bct/ngtpa/apiservice/adapter/out/config/DateDisplayFormatConfigSource.java
+rm -f src/main/java/com/bct/ngtpa/apiservice/adapter/out/config/AmountDisplayFormatConfigSource.java
+rm -f src/main/java/com/bct/ngtpa/apiservice/adapter/out/config/DisplayFormatKeyCandidateStrategy.java
+rm -f src/main/java/com/bct/ngtpa/apiservice/adapter/out/config/CurrencyMappingKeyCandidateStrategy.java
+rm -f src/main/java/com/bct/ngtpa/apiservice/adapter/out/config/ConfiguredErrorMessageResolver.java
+
+echo "008 display category split applied. Review with:"
+echo "git diff -- src/main/java/com/bct/ngtpa/apiservice/shared/config/ConfigCategory.java src/main/java/com/bct/ngtpa/apiservice/adapter/out/config/DateFormatConfigSource.java src/main/java/com/bct/ngtpa/apiservice/adapter/out/config/AmountFormatConfigSource.java src/main/java/com/bct/ngtpa/apiservice/adapter/out/config/DisplayFormatConfigSource.java src/main/java/com/bct/ngtpa/apiservice/adapter/out/config/ConfigBackedAmountDisplayAdapter.java src/main/java/com/bct/ngtpa/apiservice/adapter/out/config/ConfigBackedDateDisplayAdapter.java src/main/java/com/bct/ngtpa/apiservice/infrastructure/config/ConfigVariantResolverConfiguration.java src/test/java/com/bct/ngtpa/apiservice/adapter/out/config/DefaultConfigVariantResolverTest.java src/test/java/com/bct/ngtpa/apiservice/adapter/out/config/ConfigAdapterReflectionBranchProbeTest.java src/test/java/com/bct/ngtpa/apiservice/infrastructure/config/ResolveConfigAspectTest.java src/main/java/com/bct/ngtpa/apiservice/adapter/out/config/DisplayFormatKeyCandidateStrategy.java src/main/java/com/bct/ngtpa/apiservice/adapter/out/config/CurrencyMappingKeyCandidateStrategy.java src/main/java/com/bct/ngtpa/apiservice/adapter/out/config/ConfiguredErrorMessageResolver.java"
