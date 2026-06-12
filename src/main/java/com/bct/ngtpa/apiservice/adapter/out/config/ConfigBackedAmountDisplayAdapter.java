@@ -45,7 +45,7 @@ public class ConfigBackedAmountDisplayAdapter implements AmountDisplayPort {
 
     ConfigBackedAmountDisplayAdapter(LocalizedConfigProperties amountFormatProperties) {
         this(new DefaultConfigVariantResolver(
-                List.of(new AmountFormatConfigSource(amountFormatProperties)),
+                List.of(new LocalizedConfigSource(ConfigCategory.DISPLAY_AMOUNT_FORMAT, amountFormatProperties, "amount")),
                 List.of(new DefaultConfigKeyCandidateStrategy(
                         new ConfigVariantCandidateGenerator(),
                         ConfigCategory.DISPLAY_AMOUNT_FORMAT))));

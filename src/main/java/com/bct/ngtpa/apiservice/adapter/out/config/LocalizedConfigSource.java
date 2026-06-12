@@ -2,29 +2,38 @@ package com.bct.ngtpa.apiservice.adapter.out.config;
 
 import com.bct.ngtpa.apiservice.shared.config.ConfigCategory;
 import com.bct.ngtpa.apiservice.shared.config.ConfigSource;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
-@Component
-@RequiredArgsConstructor
-public class AmountFormatConfigSource implements ConfigSource {
+public class LocalizedConfigSource implements ConfigSource {
 
     private static final String DEFAULT_LANGUAGE = Locale.ENGLISH.toString();
-    private static final String CODE = "amount";
     private static final String WILDCARD_KEY = "*";
 
-    @Qualifier("amountFormatProperties")
+    private final ConfigCategory category;
     private final LocalizedConfigProperties properties;
+    private final String baseCode;
+
+    public LocalizedConfigSource(ConfigCategory category, LocalizedConfigProperties properties) {
+        this(category, properties, null);
+    }
+
+    public LocalizedConfigSource(
+            ConfigCategory category,
+            LocalizedConfigProperties properties,
+            String baseCode) {
+        this.category = Objects.requireNonNull(category, "category must not be null");
+        this.properties = Objects.requireNonNull(properties, "properties must not be null");
+        this.baseCode = normalizeBaseCode(baseCode);
+    }
 
     @Override
     public ConfigCategory category() {
-        return ConfigCategory.DISPLAY_AMOUNT_FORMAT;
+        return category;
     }
 
     @Override
@@ -34,7 +43,7 @@ public class AmountFormatConfigSource implements ConfigSource {
         }
 
         var normalizedKey = key.trim();
-        if (!CODE.equals(normalizedKey) && !normalizedKey.startsWith(CODE + ".")) {
+        if (!supportsKey(normalizedKey)) {
             return Optional.empty();
         }
 
@@ -53,22 +62,30 @@ public class AmountFormatConfigSource implements ConfigSource {
             return Optional.empty();
         }
 
-        return Optional.ofNullable(resolveFormat(formats, key))
+        return Optional.ofNullable(resolveValue(formats, key))
                 .filter(StringUtils::hasText);
     }
 
-    private String resolveFormat(Map<String, String> formats, String key) {
-        var configured = formats.get(key);
+    private String resolveValue(Map<String, String> values, String key) {
+        var configured = values.get(key);
         if (StringUtils.hasText(configured)) {
             return configured;
         }
 
-        if (CODE.equals(key)) {
-            return formats.get(WILDCARD_KEY);
+        if (baseCode == null) {
+            return null;
         }
 
-        var legacyVariantKey = key.substring(CODE.length() + 1);
-        return formats.get(legacyVariantKey);
+        if (baseCode.equals(key)) {
+            return values.get(WILDCARD_KEY);
+        }
+
+        var legacyVariantKey = key.substring(baseCode.length() + 1);
+        return values.get(legacyVariantKey);
+    }
+
+    private boolean supportsKey(String key) {
+        return baseCode == null || baseCode.equals(key) || key.startsWith(baseCode + ".");
     }
 
     private String normalizeLocaleKey(Locale locale) {
@@ -76,5 +93,12 @@ public class AmountFormatConfigSource implements ConfigSource {
             return DEFAULT_LANGUAGE;
         }
         return locale.toString();
+    }
+
+    private String normalizeBaseCode(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        return value.trim();
     }
 }

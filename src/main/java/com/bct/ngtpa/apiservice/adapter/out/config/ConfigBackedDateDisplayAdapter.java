@@ -30,7 +30,7 @@ public class ConfigBackedDateDisplayAdapter implements DateDisplayPort {
 
     ConfigBackedDateDisplayAdapter(LocalizedConfigProperties dateFormatProperties) {
         this(new DefaultConfigVariantResolver(
-                List.of(new DateFormatConfigSource(dateFormatProperties)),
+                List.of(new LocalizedConfigSource(ConfigCategory.DISPLAY_DATE_FORMAT, dateFormatProperties, "date")),
                 List.of(new DefaultConfigKeyCandidateStrategy(
                         new ConfigVariantCandidateGenerator(),
                         ConfigCategory.DISPLAY_DATE_FORMAT))));

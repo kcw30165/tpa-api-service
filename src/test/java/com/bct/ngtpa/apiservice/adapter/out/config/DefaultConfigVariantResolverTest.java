@@ -197,9 +197,9 @@ class DefaultConfigVariantResolverTest {
         var candidateGenerator = new ConfigVariantCandidateGenerator();
         return new DefaultConfigVariantResolver(
                 java.util.List.of(
-                        new DateFormatConfigSource(dateProperties),
-                        new AmountFormatConfigSource(amountProperties),
-                        new CurrencyMappingConfigSource(currencyProperties)),
+                        new LocalizedConfigSource(ConfigCategory.DISPLAY_DATE_FORMAT, dateProperties, "date"),
+                        new LocalizedConfigSource(ConfigCategory.DISPLAY_AMOUNT_FORMAT, amountProperties, "amount"),
+                        new LocalizedConfigSource(ConfigCategory.CURRENCY_MAPPING, currencyProperties)),
                 java.util.List.of(
                         new DefaultConfigKeyCandidateStrategy(candidateGenerator, ConfigCategory.DISPLAY_DATE_FORMAT),
                         new DefaultConfigKeyCandidateStrategy(candidateGenerator, ConfigCategory.DISPLAY_AMOUNT_FORMAT),
