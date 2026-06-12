@@ -28,10 +28,12 @@ public class ConfigBackedDateDisplayAdapter implements DateDisplayPort {
         this.configVariantResolver = configVariantResolver;
     }
 
-    ConfigBackedDateDisplayAdapter(DateFormatProperties dateFormatProperties) {
+    ConfigBackedDateDisplayAdapter(LocalizedConfigProperties dateFormatProperties) {
         this(new DefaultConfigVariantResolver(
-                List.of(new DisplayFormatConfigSource(dateFormatProperties, new AmountFormatProperties())),
-                List.of(new DisplayFormatKeyCandidateStrategy(new ConfigVariantCandidateGenerator()))));
+                List.of(new LocalizedConfigSource(ConfigCategory.DISPLAY_DATE_FORMAT, dateFormatProperties, "date")),
+                List.of(new DefaultConfigKeyCandidateStrategy(
+                        new ConfigVariantCandidateGenerator(),
+                        ConfigCategory.DISPLAY_DATE_FORMAT))));
     }
 
     @Override
@@ -45,10 +47,11 @@ public class ConfigBackedDateDisplayAdapter implements DateDisplayPort {
 
     String resolvePattern(String lang, String accountEnv, String trustCode, String schemeType) {
         var request = ConfigLookupRequest.optional(
-                ConfigCategory.DISPLAY_FORMAT,
+                ConfigCategory.DISPLAY_DATE_FORMAT,
                 "date",
                 ConfigLookupContext.of(accountEnv, trustCode, schemeType, lang));
 
         return configVariantResolver.resolve(request).orElse(FALLBACK_PATTERN);
     }
 }
+

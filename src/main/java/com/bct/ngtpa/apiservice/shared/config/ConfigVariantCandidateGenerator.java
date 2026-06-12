@@ -11,8 +11,8 @@ public class ConfigVariantCandidateGenerator {
         var candidates = new ArrayList<String>();
 
         addJoined(candidates, context.accountEnv(), context.trustCode(), context.schemeType());
-        addJoined(candidates, context.accountEnv(), context.schemeType());
         addJoined(candidates, context.accountEnv(), context.trustCode());
+        addJoined(candidates, context.accountEnv(), context.schemeType());
         addJoined(candidates, context.trustCode(), context.schemeType());
         addSingle(candidates, context.accountEnv());
         addSingle(candidates, context.trustCode());

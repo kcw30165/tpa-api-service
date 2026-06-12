@@ -11,20 +11,20 @@ contribution-summary:
     contribution-period: Contribution Periods供款期
     total-contribution: Total Contributions供款總額
 
-display-format:
-  date:
-    en:
-      "[*]": dd/MM/yyyy
-      JP: MM/dd/yyyy
-    zh_HK:
-      "[*]": dd/MM/yyyy
-  amount:
-    en:
-      "[*]": "#,##0.00"
-      JP: "#,##0.000"
-    zh_HK:
-      "[*]": "#,##0.00"
-      JP: "#,##0.000"
+date-display-format:
+  en:
+    date: dd/MM/yyyy
+    date.JP: MM/dd/yyyy
+  zh_HK:
+    date: dd/MM/yyyy
+
+amount-display-format:
+  en:
+    amount: "#,##0.00"
+    amount.JP: "#,##0.000"
+  zh_HK:
+    amount: "#,##0.00"
+    amount.JP: "#,##0.000"
 
 logging-sanitizer:
   sensitive-tokens:

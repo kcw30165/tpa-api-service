@@ -10,15 +10,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class ConfigBackedAmountDisplayAdapterTest {
 
     private static ConfigBackedAmountDisplayAdapter adapterWith(Map<String, Map<String, String>> data) {
-        var props = new AmountFormatProperties();
+        var props = new LocalizedConfigProperties();
         props.putAll(data);
         return new ConfigBackedAmountDisplayAdapter(props);
     }
 
     private static ConfigBackedAmountDisplayAdapter defaultAdapter() {
         return adapterWith(Map.of(
-                "en", Map.of("*", "#,##0.00", "JP", "#,##0.00"),
-                "zh_HK", Map.of("*", "#,##0.00", "JP", "#,##0.00")));
+                "en", Map.of("amount", "#,##0.00", "amount.JP", "#,##0.000"),
+                "zh_HK", Map.of("amount", "#,##0.00", "amount.JP", "#,##0.000")));
     }
 
     // --- Formatting output tests ---
@@ -62,29 +62,29 @@ class ConfigBackedAmountDisplayAdapterTest {
 
     @Test
     void usesLangAndTrustCodeSpecificPattern() {
-        // JP key overrides wildcard: JP gets "#,##0" (no decimals), wildcard gets "#,##0.00"
-        var adapter = adapterWith(Map.of("en", Map.of("JP", "#,##0", "*", "#,##0.00")));
-        // 1234.4 with pattern "#,##0" rounds down to 1,234; wildcard would give "1,234.40"
+        // JP key overrides base amount: JP gets "#,##0" (no decimals), base amount gets "#,##0.00"
+        var adapter = adapterWith(Map.of("en", Map.of("amount.JP", "#,##0", "amount", "#,##0.00")));
+        // 1234.4 with pattern "#,##0" rounds down to 1,234; base amount would give "1,234.40"
         assertEquals("1,234", adapter.formatAmount(new BigDecimal("1234.4"), "en", "", "JP", ""));
     }
 
     @Test
-    void fallsBackToWildcardWhenTrustCodeNotFound() {
-        var adapter = adapterWith(Map.of("en", Map.of("*", "#,##0.00")));
+    void fallsBackToBaseAmountWhenTrustCodeNotFound() {
+        var adapter = adapterWith(Map.of("en", Map.of("amount", "#,##0.00")));
         assertEquals("1,000.00", adapter.formatAmount(new BigDecimal("1000"), "en", "", "RM", ""));
     }
 
     @Test
-    void usesZhHkWildcardPatternForZhHkLocale() {
+    void usesZhHkBaseAmountPatternForZhHkLocale() {
         var adapter = adapterWith(Map.of(
-                "en", Map.of("*", "#,##0"),
-                "zh_HK", Map.of("*", "#,##0.00")));
+                "en", Map.of("amount", "#,##0"),
+                "zh_HK", Map.of("amount", "#,##0.00")));
         assertEquals("1,234.50", adapter.formatAmount(new BigDecimal("1234.5"), "zh_HK", "", "RM", ""));
     }
 
     @Test
-    void fallsBackToEnglishWildcardForUnknownLanguage() {
-        var adapter = adapterWith(Map.of("en", Map.of("*", "#,##0.00")));
+    void fallsBackToEnglishBaseAmountForUnknownLanguage() {
+        var adapter = adapterWith(Map.of("en", Map.of("amount", "#,##0.00")));
         assertEquals("1,234.50", adapter.formatAmount(new BigDecimal("1234.5"), "fr", "", "", ""));
     }
 
@@ -96,33 +96,33 @@ class ConfigBackedAmountDisplayAdapterTest {
 
     @Test
     void normalizesBlankLangToEnglish() {
-        var adapter = adapterWith(Map.of("en", Map.of("*", "#,##0.00")));
+        var adapter = adapterWith(Map.of("en", Map.of("amount", "#,##0.00")));
         assertEquals("100.00", adapter.formatAmount(new BigDecimal("100"), "", "", "", ""));
         assertEquals("100.00", adapter.formatAmount(new BigDecimal("100"), null, "", "", ""));
     }
 
     @Test
-    void normalizesBlankTrustCodeToWildcardOnly() {
-        var adapter = adapterWith(Map.of("en", Map.of("*", "#,##0.00")));
+    void normalizesBlankTrustCodeToBaseAmountOnly() {
+        var adapter = adapterWith(Map.of("en", Map.of("amount", "#,##0.00")));
         assertEquals("500.00", adapter.formatAmount(new BigDecimal("500"), "en", "", "", ""));
         assertEquals("500.00", adapter.formatAmount(new BigDecimal("500"), "en", "", null, ""));
     }
 
     @Test
     void resolvePatternUsesLangTrustCodeFirst() {
-        var adapter = adapterWith(Map.of("en", Map.of("JP", "#,##0.00", "*", "#,##0")));
+        var adapter = adapterWith(Map.of("en", Map.of("amount.JP", "#,##0.00", "amount", "#,##0")));
         assertEquals("#,##0.00", adapter.resolvePattern("en", "JP"));
     }
 
     @Test
-    void resolvePatternFallsBackToWildcard() {
-        var adapter = adapterWith(Map.of("en", Map.of("*", "#,##0.00")));
+    void resolvePatternFallsBackToBaseAmount() {
+        var adapter = adapterWith(Map.of("en", Map.of("amount", "#,##0.00")));
         assertEquals("#,##0.00", adapter.resolvePattern("en", "OG"));
     }
 
     @Test
-    void resolvePatternFallsBackToEnWildcard() {
-        var adapter = adapterWith(Map.of("en", Map.of("*", "#,##0.00")));
+    void resolvePatternFallsBackToEnBaseAmount() {
+        var adapter = adapterWith(Map.of("en", Map.of("amount", "#,##0.00")));
         assertEquals("#,##0.00", adapter.resolvePattern("zh_HK", "OG"));
     }
 
@@ -135,23 +135,23 @@ class ConfigBackedAmountDisplayAdapterTest {
     @Test
     void resolvePatternUsesEnvTrustSchemeBeforeLessSpecificCandidates() {
         var adapter = adapterWith(Map.of("en", Map.of(
-                "PROD.RM.MPF", "#,##0.000",
-                "PROD.MPF", "#,##0.0",
-                "PROD.RM", "#,##0",
-                "RM.MPF", "0.00",
-                "*", "#,##0.00")));
+                "amount.PROD.RM.MPF", "#,##0.000",
+                "amount.PROD.MPF", "#,##0.0",
+                "amount.PROD.RM", "#,##0",
+                "amount.RM.MPF", "0.00",
+                "amount", "#,##0.00")));
 
         assertEquals("#,##0.000", adapter.resolvePattern("en", "PROD", "RM", "MPF"));
     }
 
     @Test
-    void resolvePatternUsesEnvSchemeBeforeEnvTrustAndTrustScheme() {
+    void resolvePatternUsesEnvTrustBeforeEnvSchemeAndTrustScheme() {
         var adapter = adapterWith(Map.of("en", Map.of(
-                "PROD.MPF", "#,##0.0",
-                "PROD.RM", "#,##0",
-                "RM.MPF", "0.00",
-                "*", "#,##0.00")));
+                "amount.PROD.MPF", "#,##0.0",
+                "amount.PROD.RM", "#,##0",
+                "amount.RM.MPF", "0.00",
+                "amount", "#,##0.00")));
 
-        assertEquals("#,##0.0", adapter.resolvePattern("en", "PROD", "RM", "MPF"));
+        assertEquals("#,##0", adapter.resolvePattern("en", "PROD", "RM", "MPF"));
     }
 }

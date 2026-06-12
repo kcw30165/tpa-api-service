@@ -17,8 +17,8 @@ class ConfigVariantCandidateGeneratorTest {
 
         assertEquals(List.of(
                 "PROD.RM.MPF",
-                "PROD.MPF",
                 "PROD.RM",
+                "PROD.MPF",
                 "RM.MPF",
                 "PROD",
                 "RM",
@@ -80,8 +80,8 @@ class ConfigVariantCandidateGeneratorTest {
 
         assertEquals(List.of(
                 "PROD.RM.MPF",
-                "PROD.MPF",
                 "PROD.RM",
+                "PROD.MPF",
                 "RM.MPF",
                 "PROD",
                 "RM",

@@ -11,28 +11,28 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class ConfigBackedDateDisplayAdapterTest {
 
     private static ConfigBackedDateDisplayAdapter adapterWith(Map<String, Map<String, String>> data) {
-        var props = new DateFormatProperties();
+        var props = new LocalizedConfigProperties();
         props.putAll(data);
         return new ConfigBackedDateDisplayAdapter(props);
     }
 
-    // --- (a) wildcard fallback ---
+    // --- (a) base date fallback ---
 
     @Test
-    void formatsDateUsingWildcardEnPattern() {
-        var adapter = adapterWith(Map.of("en", Map.of("*", "dd/MM/yyyy")));
-        // trustCode=RM has no specific entry; wildcard applies
+    void formatsDateUsingBaseDateEnPattern() {
+        var adapter = adapterWith(Map.of("en", Map.of("date", "dd/MM/yyyy")));
+        // trustCode=RM has no specific entry; base date applies
         var result = adapter.formatDate(LocalDate.of(2026, 3, 1), "en", "", "RM", "");
         assertEquals("01/03/2026", result);
     }
 
     @Test
-    void wildcardFallbackWhenTrustCodeNotInMap() {
+    void baseDateFallbackWhenTrustCodeNotInMap() {
         Map<String, String> enFormats = new LinkedHashMap<>();
-        enFormats.put("*", "dd/MM/yyyy");
-        enFormats.put("JP", "MM/dd/yyyy");
+        enFormats.put("date", "dd/MM/yyyy");
+        enFormats.put("date.JP", "MM/dd/yyyy");
         var adapter = adapterWith(Map.of("en", enFormats));
-        // trustCode=RM not in map → wildcard
+        // trustCode=RM not in map → base date
         var result = adapter.formatDate(LocalDate.of(2026, 3, 1), "en", "", "RM", "");
         assertEquals("01/03/2026", result);
     }
@@ -40,49 +40,49 @@ class ConfigBackedDateDisplayAdapterTest {
     // --- (b) JP override ---
 
     @Test
-    void prefersTrustCodeOverWildcard() {
+    void prefersTrustCodeOverBaseDate() {
         Map<String, String> enFormats = new LinkedHashMap<>();
-        enFormats.put("*", "dd/MM/yyyy");
-        enFormats.put("JP", "MM/dd/yyyy");
+        enFormats.put("date", "dd/MM/yyyy");
+        enFormats.put("date.JP", "MM/dd/yyyy");
         var adapter = adapterWith(Map.of("en", enFormats));
         // trustCode=JP matches the JP key
         var result = adapter.formatDate(LocalDate.of(2026, 3, 1), "en", "", "JP", "");
         assertEquals("03/01/2026", result);
     }
 
-    // --- (c) unknown trustCode falls back to wildcard ---
+    // --- (c) unknown trustCode falls back to base date ---
 
     @Test
-    void fallsBackToWildcardWhenTrustCodeNotFound() {
-        var adapter = adapterWith(Map.of("en", Map.of("*", "dd/MM/yyyy")));
+    void fallsBackToBaseDateWhenTrustCodeNotFound() {
+        var adapter = adapterWith(Map.of("en", Map.of("date", "dd/MM/yyyy")));
         var result = adapter.formatDate(LocalDate.of(2026, 3, 1), "en", "", "UNKNOWN", "");
         assertEquals("01/03/2026", result);
     }
 
-    // --- (d) unknown language falls back to English wildcard ---
+    // --- (d) unknown language falls back to English base date ---
 
     @Test
     void usesEnLocaleAsFallbackWhenLangNotConfigured() {
-        var adapter = adapterWith(Map.of("en", Map.of("*", "dd/MM/yyyy")));
-        // zh_HK not in config → first pass empty → falls back to en wildcard
+        var adapter = adapterWith(Map.of("en", Map.of("date", "dd/MM/yyyy")));
+        // zh_HK not in config → first pass empty → falls back to en base date
         var result = adapter.formatDate(LocalDate.of(2026, 3, 1), "zh_HK", "", "RM", "");
         assertEquals("01/03/2026", result);
     }
 
     @Test
-    void unknownLangFallsBackToEnglishWildcard() {
-        var adapter = adapterWith(Map.of("en", Map.of("*", "dd/MM/yyyy")));
+    void unknownLangFallsBackToEnglishBaseDate() {
+        var adapter = adapterWith(Map.of("en", Map.of("date", "dd/MM/yyyy")));
         var result = adapter.formatDate(LocalDate.of(2026, 3, 1), "UNKNOWN_LANG", "", "RM", "");
         assertEquals("01/03/2026", result);
     }
 
     @Test
-    void zhHkFallsBackToEnWildcardWhenNoMatchInZhHk() {
-        // zh_HK has JP entry but no wildcard; trustCode=RM has no match in zh_HK → en wildcard
+    void zhHkFallsBackToEnBaseDateWhenNoMatchInZhHk() {
+        // zh_HK has JP entry but no base date; trustCode=RM has no match in zh_HK → en base date
         Map<String, String> zhHkFormats = new LinkedHashMap<>();
-        zhHkFormats.put("JP", "MM/dd/yyyy");
+        zhHkFormats.put("date.JP", "MM/dd/yyyy");
         var adapter = adapterWith(Map.of(
-                "en", Map.of("*", "dd/MM/yyyy"),
+                "en", Map.of("date", "dd/MM/yyyy"),
                 "zh_HK", zhHkFormats));
         var result = adapter.formatDate(LocalDate.of(2026, 3, 1), "zh_HK", "", "RM", "");
         assertEquals("01/03/2026", result);
@@ -92,7 +92,7 @@ class ConfigBackedDateDisplayAdapterTest {
 
     @Test
     void returnsEmptyStringForNullDate() {
-        var adapter = adapterWith(Map.of("en", Map.of("*", "dd/MM/yyyy")));
+        var adapter = adapterWith(Map.of("en", Map.of("date", "dd/MM/yyyy")));
         assertEquals("", adapter.formatDate(null, "en", "", "JP", ""));
     }
 
@@ -110,22 +110,22 @@ class ConfigBackedDateDisplayAdapterTest {
     @Test
     void envKeyMatchesWhenTrustCodeIsBlank() {
         Map<String, String> enFormats = new LinkedHashMap<>();
-        enFormats.put("JP", "MM/dd/yyyy");
-        enFormats.put("*", "dd/MM/yyyy");
+        enFormats.put("date.JP", "MM/dd/yyyy");
+        enFormats.put("date", "dd/MM/yyyy");
         var adapter = adapterWith(Map.of("en", enFormats));
-        // env=JP, trustCode blank → candidates = ["JP", "*"]; must match "JP"
+        // env=JP, trustCode blank → candidates = ["JP", "date"]; must match "JP"
         var result = adapter.formatDate(LocalDate.of(2026, 3, 1), "en", "JP", "", "");
         assertEquals("03/01/2026", result);
     }
 
-    // --- zh_HK locale with wildcard ---
+    // --- zh_HK locale with base date ---
 
     @Test
     void formatsWithZhHkLocale() {
         var adapter = adapterWith(Map.of(
-                "en", Map.of("*", "dd/MM/yyyy"),
-                "zh_HK", Map.of("*", "yyyy-MM-dd")));
-        // trustCode=JP has no zh_HK-specific entry; zh_HK wildcard applies
+                "en", Map.of("date", "dd/MM/yyyy"),
+                "zh_HK", Map.of("date", "yyyy-MM-dd")));
+        // trustCode=JP has no zh_HK-specific entry; zh_HK base date applies
         var result = adapter.formatDate(LocalDate.of(2026, 3, 1), "zh_HK", "", "JP", "");
         assertEquals("2026-03-01", result);
     }
@@ -135,10 +135,10 @@ class ConfigBackedDateDisplayAdapterTest {
     @Test
     void compositeKey_envTrustCodeSchemeType_matchesFirst() {
         Map<String, String> enFormats = new LinkedHashMap<>();
-        enFormats.put("PROD.RM.MPF", "yyyy/MM/dd");
-        enFormats.put("RM.MPF", "MM-dd-yyyy");
-        enFormats.put("RM", "dd-MM-yyyy");
-        enFormats.put("*", "dd/MM/yyyy");
+        enFormats.put("date.PROD.RM.MPF", "yyyy/MM/dd");
+        enFormats.put("date.RM.MPF", "MM-dd-yyyy");
+        enFormats.put("date.RM", "dd-MM-yyyy");
+        enFormats.put("date", "dd/MM/yyyy");
         var adapter = adapterWith(Map.of("en", enFormats));
         var result = adapter.formatDate(LocalDate.of(2026, 3, 1), "en", "PROD", "RM", "MPF");
         assertEquals("2026/03/01", result);
@@ -147,10 +147,10 @@ class ConfigBackedDateDisplayAdapterTest {
     @Test
     void compositeKey_envTrustCode_matchesSecond() {
         Map<String, String> enFormats = new LinkedHashMap<>();
-        enFormats.put("PROD.RM", "MM-dd-yyyy");
-        enFormats.put("RM.MPF", "should-not-match");
-        enFormats.put("RM", "dd-MM-yyyy");
-        enFormats.put("*", "dd/MM/yyyy");
+        enFormats.put("date.PROD.RM", "MM-dd-yyyy");
+        enFormats.put("date.RM.MPF", "should-not-match");
+        enFormats.put("date.RM", "dd-MM-yyyy");
+        enFormats.put("date", "dd/MM/yyyy");
         var adapter = adapterWith(Map.of("en", enFormats));
         // PROD.RM.MPF absent → tries PROD.RM (match)
         var result = adapter.formatDate(LocalDate.of(2026, 3, 1), "en", "PROD", "RM", "MPF");
@@ -160,9 +160,9 @@ class ConfigBackedDateDisplayAdapterTest {
     @Test
     void compositeKey_trustCodeSchemeType_matchesThird() {
         Map<String, String> enFormats = new LinkedHashMap<>();
-        enFormats.put("RM.MPF", "MM-dd-yyyy");
-        enFormats.put("RM", "dd-MM-yyyy");
-        enFormats.put("*", "dd/MM/yyyy");
+        enFormats.put("date.RM.MPF", "MM-dd-yyyy");
+        enFormats.put("date.RM", "dd-MM-yyyy");
+        enFormats.put("date", "dd/MM/yyyy");
         var adapter = adapterWith(Map.of("en", enFormats));
         // no env → PROD.RM and PROD.RM.MPF not generated; tries RM.MPF (match)
         var result = adapter.formatDate(LocalDate.of(2026, 3, 1), "en", "", "RM", "MPF");
@@ -172,8 +172,8 @@ class ConfigBackedDateDisplayAdapterTest {
     @Test
     void compositeKey_trustCode_matchesFourth() {
         Map<String, String> enFormats = new LinkedHashMap<>();
-        enFormats.put("RM", "dd-MM-yyyy");
-        enFormats.put("*", "dd/MM/yyyy");
+        enFormats.put("date.RM", "dd-MM-yyyy");
+        enFormats.put("date", "dd/MM/yyyy");
         var adapter = adapterWith(Map.of("en", enFormats));
         // no RM.MPF → falls to RM
         var result = adapter.formatDate(LocalDate.of(2026, 3, 1), "en", "", "RM", "MPF");

@@ -7,7 +7,6 @@ import com.bct.ngtpa.apiservice.shared.config.ConfigResolutionException;
 import com.bct.ngtpa.apiservice.shared.config.ConfigVariantResolver;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
-
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -15,7 +14,7 @@ import java.util.Locale;
 import java.util.Optional;
 
 @Component
-public class ConfiguredErrorMessageResolver implements ErrorMessageResolver {
+public class ConfigBackedErrorMessageResolver implements ErrorMessageResolver {
 
     static final String HARD_CODED_FALLBACK =
             "Sorry, this service might be interrupted. Please try again later.";
@@ -24,7 +23,7 @@ public class ConfiguredErrorMessageResolver implements ErrorMessageResolver {
 
     private final ConfigVariantResolver configVariantResolver;
 
-    public ConfiguredErrorMessageResolver(ConfigVariantResolver configVariantResolver) {
+    public ConfigBackedErrorMessageResolver(ConfigVariantResolver configVariantResolver) {
         this.configVariantResolver = configVariantResolver;
     }
 

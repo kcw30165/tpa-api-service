@@ -26,10 +26,12 @@ public class ConfigBackedCurrencyDisplayAdapter implements CurrencyDisplayPort {
         this.configVariantResolver = configVariantResolver;
     }
 
-    ConfigBackedCurrencyDisplayAdapter(CurrencyMappingProperties currencyMappingProperties) {
+    ConfigBackedCurrencyDisplayAdapter(LocalizedConfigProperties currencyMappingProperties) {
         this(new DefaultConfigVariantResolver(
-                List.of(new CurrencyMappingConfigSource(currencyMappingProperties)),
-                List.of(new CurrencyMappingKeyCandidateStrategy(new ConfigVariantCandidateGenerator()))));
+                List.of(new LocalizedConfigSource(ConfigCategory.CURRENCY_MAPPING, currencyMappingProperties)),
+                List.of(new DefaultConfigKeyCandidateStrategy(
+                        new ConfigVariantCandidateGenerator(),
+                        ConfigCategory.CURRENCY_MAPPING))));
     }
 
     @Override

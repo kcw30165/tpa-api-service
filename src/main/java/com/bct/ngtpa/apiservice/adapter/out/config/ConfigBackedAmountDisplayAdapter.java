@@ -43,10 +43,12 @@ public class ConfigBackedAmountDisplayAdapter implements AmountDisplayPort {
         this.configVariantResolver = configVariantResolver;
     }
 
-    ConfigBackedAmountDisplayAdapter(AmountFormatProperties amountFormatProperties) {
+    ConfigBackedAmountDisplayAdapter(LocalizedConfigProperties amountFormatProperties) {
         this(new DefaultConfigVariantResolver(
-                List.of(new DisplayFormatConfigSource(new DateFormatProperties(), amountFormatProperties)),
-                List.of(new DisplayFormatKeyCandidateStrategy(new ConfigVariantCandidateGenerator()))));
+                List.of(new LocalizedConfigSource(ConfigCategory.DISPLAY_AMOUNT_FORMAT, amountFormatProperties, "amount")),
+                List.of(new DefaultConfigKeyCandidateStrategy(
+                        new ConfigVariantCandidateGenerator(),
+                        ConfigCategory.DISPLAY_AMOUNT_FORMAT))));
     }
 
     @Override
@@ -58,7 +60,7 @@ public class ConfigBackedAmountDisplayAdapter implements AmountDisplayPort {
 
     String resolvePattern(String lang, String accountEnv, String trustCode, String schemeType) {
         var request = ConfigLookupRequest.optional(
-                ConfigCategory.DISPLAY_FORMAT,
+                ConfigCategory.DISPLAY_AMOUNT_FORMAT,
                 "amount",
                 ConfigLookupContext.of(accountEnv, trustCode, schemeType, lang));
 
@@ -76,3 +78,4 @@ public class ConfigBackedAmountDisplayAdapter implements AmountDisplayPort {
         return df.format(value);
     }
 }
+

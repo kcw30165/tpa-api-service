@@ -15,7 +15,7 @@ class ConfigVariantResolverConfigurationTest {
         var generator = new ConfigVariantResolverConfiguration().configVariantCandidateGenerator();
 
         assertNotNull(generator);
-        assertEquals(List.of("JP.JPM.OE", "JP.OE", "JP.JPM", "JPM.OE", "JP", "JPM", "OE"),
+        assertEquals(List.of("JP.JPM.OE", "JP.JPM", "JP.OE", "JPM.OE", "JP", "JPM", "OE"),
                 generator.generate(ConfigLookupContext.of("JP", "JPM", "OE", Locale.ENGLISH)));
     }
 }

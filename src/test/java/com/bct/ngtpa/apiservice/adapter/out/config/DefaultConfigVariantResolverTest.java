@@ -20,12 +20,12 @@ class DefaultConfigVariantResolverTest {
     @Test
     void resolvesDisplayFormatUsingExactEnvTrustSchemeOverride() {
         var resolver = resolver(
-                Map.of("en", Map.of("PROD.RM.MPF", "yyyy/MM/dd")),
+                Map.of("en", Map.of("date.PROD.RM.MPF", "yyyy/MM/dd")),
                 Map.of(),
                 Map.of());
 
         var request = ConfigLookupRequest.optional(
-                ConfigCategory.DISPLAY_FORMAT,
+                ConfigCategory.DISPLAY_DATE_FORMAT,
                 "date",
                 ConfigLookupContext.of("PROD", "RM", "MPF", Locale.ENGLISH));
 
@@ -33,14 +33,14 @@ class DefaultConfigVariantResolverTest {
     }
 
     @Test
-    void resolvesDisplayFormatUsingWildcardFallback() {
+    void resolvesDisplayFormatUsingBaseCodeFallback() {
         var resolver = resolver(
-                Map.of("en", Map.of("*", "dd/MM/yyyy")),
+                Map.of("en", Map.of("date", "dd/MM/yyyy")),
                 Map.of(),
                 Map.of());
 
         var request = ConfigLookupRequest.optional(
-                ConfigCategory.DISPLAY_FORMAT,
+                ConfigCategory.DISPLAY_DATE_FORMAT,
                 "date",
                 ConfigLookupContext.of("", "RM", "", Locale.ENGLISH));
 
@@ -51,11 +51,11 @@ class DefaultConfigVariantResolverTest {
     void resolvesAmountUsingLanguageFallbackToEnglish() {
         var resolver = resolver(
                 Map.of(),
-                Map.of("en", Map.of("PROD.RM", "#,##0")),
+                Map.of("en", Map.of("amount.PROD.RM", "#,##0")),
                 Map.of());
 
         var request = ConfigLookupRequest.optional(
-                ConfigCategory.DISPLAY_FORMAT,
+                ConfigCategory.DISPLAY_AMOUNT_FORMAT,
                 "amount",
                 ConfigLookupContext.of("PROD", "RM", "", Locale.forLanguageTag("zh-HK")));
 
@@ -67,7 +67,7 @@ class DefaultConfigVariantResolverTest {
         var resolver = resolver(Map.of(), Map.of(), Map.of());
 
         var request = ConfigLookupRequest.optional(
-                ConfigCategory.DISPLAY_FORMAT,
+                ConfigCategory.DISPLAY_DATE_FORMAT,
                 "unknown",
                 ConfigLookupContext.of("", "", "", Locale.ENGLISH));
 
@@ -79,7 +79,7 @@ class DefaultConfigVariantResolverTest {
         var resolver = resolver(Map.of(), Map.of(), Map.of());
 
         var request = ConfigLookupRequest.required(
-                ConfigCategory.DISPLAY_FORMAT,
+                ConfigCategory.DISPLAY_DATE_FORMAT,
                 "unknown",
                 ConfigLookupContext.of("", "", "", Locale.ENGLISH));
 
@@ -94,7 +94,7 @@ class DefaultConfigVariantResolverTest {
                 Map.of());
 
         var request = ConfigLookupRequest.optional(
-                ConfigCategory.DISPLAY_FORMAT,
+                ConfigCategory.DISPLAY_DATE_FORMAT,
                 "date",
                 ConfigLookupContext.of("", "JP", "", Locale.ENGLISH));
 
@@ -148,7 +148,7 @@ class DefaultConfigVariantResolverTest {
                 "EUR",
                 ConfigLookupContext.of("PROD", "TB", "HKBU", Locale.ENGLISH));
 
-        assertEquals("env-scheme", resolver.resolve(request).orElseThrow());
+        assertEquals("env-trust", resolver.resolve(request).orElseThrow());
     }
 
     @Test
@@ -185,23 +185,25 @@ class DefaultConfigVariantResolverTest {
             Map<String, Map<String, String>> dateFormats,
             Map<String, Map<String, String>> amountFormats,
             Map<String, Map<String, String>> currencyMappings) {
-        var dateProperties = new DateFormatProperties();
+        var dateProperties = new LocalizedConfigProperties();
         dateProperties.putAll(dateFormats);
 
-        var amountProperties = new AmountFormatProperties();
+        var amountProperties = new LocalizedConfigProperties();
         amountProperties.putAll(amountFormats);
 
-        var currencyProperties = new CurrencyMappingProperties();
+        var currencyProperties = new LocalizedConfigProperties();
         currencyProperties.putAll(currencyMappings);
 
         var candidateGenerator = new ConfigVariantCandidateGenerator();
         return new DefaultConfigVariantResolver(
                 java.util.List.of(
-                        new DisplayFormatConfigSource(dateProperties, amountProperties),
-                        new CurrencyMappingConfigSource(currencyProperties)),
+                        new LocalizedConfigSource(ConfigCategory.DISPLAY_DATE_FORMAT, dateProperties, "date"),
+                        new LocalizedConfigSource(ConfigCategory.DISPLAY_AMOUNT_FORMAT, amountProperties, "amount"),
+                        new LocalizedConfigSource(ConfigCategory.CURRENCY_MAPPING, currencyProperties)),
                 java.util.List.of(
-                        new DisplayFormatKeyCandidateStrategy(candidateGenerator),
-                        new CurrencyMappingKeyCandidateStrategy(candidateGenerator),
-                        new DefaultConfigKeyCandidateStrategy(candidateGenerator)));
+                        new DefaultConfigKeyCandidateStrategy(candidateGenerator, ConfigCategory.DISPLAY_DATE_FORMAT),
+                        new DefaultConfigKeyCandidateStrategy(candidateGenerator, ConfigCategory.DISPLAY_AMOUNT_FORMAT),
+                        new DefaultConfigKeyCandidateStrategy(candidateGenerator, ConfigCategory.CURRENCY_MAPPING),
+                        new DefaultConfigKeyCandidateStrategy(candidateGenerator, ConfigCategory.ERROR_MESSAGE)));
     }
 }

@@ -24,7 +24,7 @@ class ResolveConfigAspectTest {
         var proxy = proxy(new TestTarget(), resolver);
 
         assertEquals("dd/MM/yyyy", proxy.resolveDate(ConfigLookupContext.of("PROD", "RM", "", Locale.ENGLISH)));
-        assertEquals(ConfigCategory.DISPLAY_FORMAT, resolver.lastRequest.category());
+        assertEquals(ConfigCategory.DISPLAY_DATE_FORMAT, resolver.lastRequest.category());
         assertEquals("date", resolver.lastRequest.code());
     }
 
@@ -70,12 +70,12 @@ class ResolveConfigAspectTest {
 
     static class TestTarget {
 
-        @ResolveConfig(category = ConfigCategory.DISPLAY_FORMAT, code = "date", required = true)
+        @ResolveConfig(category = ConfigCategory.DISPLAY_DATE_FORMAT, code = "date", required = true)
         String resolveDate(ConfigLookupContext context) {
             return null;
         }
 
-        @ResolveConfig(category = ConfigCategory.DISPLAY_FORMAT, code = "date")
+        @ResolveConfig(category = ConfigCategory.DISPLAY_DATE_FORMAT, code = "date")
         String resolveOptionalDate(ConfigLookupContext context) {
             return null;
         }
