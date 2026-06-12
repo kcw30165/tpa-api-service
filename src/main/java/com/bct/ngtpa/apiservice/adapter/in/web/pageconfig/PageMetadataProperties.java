@@ -34,4 +34,14 @@ public class PageMetadataProperties {
     public void setVersion(String version) {
         this.version = version;
     }
+
+
+    public String getTitleCode() {
+        return titleCode;
+    }
+
+
+    public void setTitleCode(String titleCode) {
+        this.titleCode = titleCode;
+    }
 }

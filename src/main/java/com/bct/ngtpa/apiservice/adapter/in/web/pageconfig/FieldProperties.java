@@ -128,4 +128,24 @@ public class FieldProperties {
     public void setValidations(List<ValidationRuleProperties> validations) {
         this.validations = validations;
     }
+
+
+    public String getLabelCode() {
+        return labelCode;
+    }
+
+
+    public void setLabelCode(String labelCode) {
+        this.labelCode = labelCode;
+    }
+
+
+    public String getPlaceholderCode() {
+        return placeholderCode;
+    }
+
+
+    public void setPlaceholderCode(String placeholderCode) {
+        this.placeholderCode = placeholderCode;
+    }
 }

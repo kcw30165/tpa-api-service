@@ -79,4 +79,14 @@ public class ValidationRuleProperties {
     public void setMessage(Map<String, String> message) {
         this.message = message;
     }
+
+
+    public String getMessageCode() {
+        return messageCode;
+    }
+
+
+    public void setMessageCode(String messageCode) {
+        this.messageCode = messageCode;
+    }
 }

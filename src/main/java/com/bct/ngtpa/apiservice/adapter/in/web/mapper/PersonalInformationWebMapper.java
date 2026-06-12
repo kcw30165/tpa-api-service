@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.mapper;
 
+import com.bct.ngtpa.apiservice.shared.config.ConfigVariantCandidateGenerator;
+
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.ActionProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.ApimBindingProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.BffPagesProperties;
@@ -42,6 +44,16 @@ public class PersonalInformationWebMapper {
     private static final String PAGE_KEY = "personalInformation";
     private static final String DEFAULT_LANGUAGE = "en";
     private static final String ZH_HK_LANGUAGE = "zh_HK";
+    private final PageDisplayTextResolver pageDisplayTextResolver = new PageDisplayTextResolver(new ConfigVariantCandidateGenerator());
+
+    private static final String DEFAULT_ACCOUNT_ENV = null;
+    private static final String DEFAULT_TRUST_CODE = null;
+    private static final String DEFAULT_SCHEME_TYPE = null;
+
+    private final String accountEnv = DEFAULT_ACCOUNT_ENV;
+    private final String trustCode = DEFAULT_TRUST_CODE;
+    private final String schemeType = DEFAULT_SCHEME_TYPE;
+
 
     private final LoggingSanitizer loggingSanitizer;
     private final BffPagesProperties bffPagesProperties;
@@ -64,7 +76,18 @@ public class PersonalInformationWebMapper {
         this(loggingSanitizer, bffPagesProperties, new YamlResponseMapper(new ObjectMapper()));
     }
 
-    public FormPageResponse<FormSchemaResponse> toFormPageResponse(PersonalInformationResult result, String language) {
+    public FormPageResponse<FormSchemaResponse> toFormPageResponse(
+            PersonalInformationResult result,
+            String language) {
+        return toFormPageResponse(result, language, null, null, null);
+    }
+
+    public FormPageResponse<FormSchemaResponse> toFormPageResponse(
+            PersonalInformationResult result,
+            String language,
+            String accountEnv,
+            String trustCode,
+            String schemeType) {
         Map<String, Object> apimData = result != null ? result.data() : Map.of();
         Map<String, String> apimConfig = result != null ? result.config() : Map.of();
         Map<String, MemberInfoConfigItem> apimConfigItems = result != null ? result.configItems() : Map.of();
@@ -86,7 +109,7 @@ public class PersonalInformationWebMapper {
 
         PageSchemaProperties pageSchema = resolvePageSchema();
         return FormPageResponse.success(
-                buildPage(pageSchema, language),
+                buildPage(pageSchema, language, accountEnv, trustCode, schemeType),
                 buildForm(pageSchema, apimData, apimConfig, apimConfigItems, language));
     }
 
@@ -130,7 +153,7 @@ public class PersonalInformationWebMapper {
         return pageSchema;
     }
 
-    private PageResponse buildPage(PageSchemaProperties pageSchema, String language) {
+    private PageResponse buildPage(PageSchemaProperties pageSchema, String language, String accountEnv, String trustCode, String schemeType) {
         PageMetadataProperties metadata = pageSchema != null ? pageSchema.getMetadata() : null;
         return new PageResponse(
                 metadata != null ? metadata.getId() : null,
@@ -177,7 +200,7 @@ public class PersonalInformationWebMapper {
             }
             sections.add(new SectionResponse(
                     sectionSchema.getId(),
-                    resolveLabel(sectionSchema.getTitle(), language),
+                    resolvePageDisplayText(pageSchema, sectionSchema.getTitleCode(), sectionSchema.getTitle(), language, accountEnv, trustCode, schemeType),
                     defaultSectionOrder,
                     fields));
             defaultSectionOrder += 10;
@@ -363,6 +386,25 @@ public class PersonalInformationWebMapper {
     private boolean isRequired(String configValue) {
         return "EDITABLE_COM".equalsIgnoreCase(configValue);
     }
+
+    private String resolvePageDisplayText(
+            PageSchemaProperties pageSchema,
+            String code,
+            Map<String, String> inlineFallback,
+            String language,
+            String accountEnv,
+            String trustCode,
+            String schemeType) {
+        return pageDisplayTextResolver.resolve(
+                pageSchema == null ? Map.of() : pageSchema.getDisplay(),
+                code,
+                inlineFallback,
+                language,
+                accountEnv,
+                trustCode,
+                schemeType);
+    }
+
 
     private String resolveLabel(Map<String, String> labels, String language) {
         if (labels == null || labels.isEmpty()) {

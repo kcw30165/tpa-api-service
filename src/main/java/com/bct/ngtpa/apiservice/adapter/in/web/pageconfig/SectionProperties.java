@@ -35,4 +35,14 @@ public class SectionProperties {
     public void setFields(List<FieldProperties> fields) {
         this.fields = fields;
     }
+
+
+    public String getTitleCode() {
+        return titleCode;
+    }
+
+
+    public void setTitleCode(String titleCode) {
+        this.titleCode = titleCode;
+    }
 }
