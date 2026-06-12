@@ -5,14 +5,12 @@ import com.bct.ngtpa.apiservice.shared.config.ConfigSource;
 import org.springframework.util.StringUtils;
 
 import java.util.Locale;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
 public class LocalizedConfigSource implements ConfigSource {
 
     private static final String DEFAULT_LANGUAGE = Locale.ENGLISH.toString();
-    private static final String WILDCARD_KEY = "*";
 
     private final ConfigCategory category;
     private final LocalizedConfigProperties properties;
@@ -48,40 +46,17 @@ public class LocalizedConfigSource implements ConfigSource {
         }
 
         var language = normalizeLocaleKey(locale);
-        var resolved = resolveForLanguage(normalizedKey, language);
+        var resolved = find(language, normalizedKey);
         if (resolved.isPresent() || DEFAULT_LANGUAGE.equals(language)) {
             return resolved;
         }
 
-        return resolveForLanguage(normalizedKey, DEFAULT_LANGUAGE);
+        return find(DEFAULT_LANGUAGE, normalizedKey);
     }
 
-    private Optional<String> resolveForLanguage(String key, String language) {
-        var formats = properties.getLocaleFormats(language);
-        if (formats.isEmpty()) {
-            return Optional.empty();
-        }
-
-        return Optional.ofNullable(resolveValue(formats, key))
+    private Optional<String> find(String language, String key) {
+        return Optional.ofNullable(properties.getLocaleFormats(language).get(key))
                 .filter(StringUtils::hasText);
-    }
-
-    private String resolveValue(Map<String, String> values, String key) {
-        var configured = values.get(key);
-        if (StringUtils.hasText(configured)) {
-            return configured;
-        }
-
-        if (baseCode == null) {
-            return null;
-        }
-
-        if (baseCode.equals(key)) {
-            return values.get(WILDCARD_KEY);
-        }
-
-        var legacyVariantKey = key.substring(baseCode.length() + 1);
-        return values.get(legacyVariantKey);
     }
 
     private boolean supportsKey(String key) {

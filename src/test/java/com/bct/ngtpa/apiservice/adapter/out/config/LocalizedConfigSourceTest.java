@@ -89,20 +89,29 @@ class LocalizedConfigSourceTest {
     }
 
     @Test
-    void baseCodeSourceSupportsWildcardFallbackForBaseKey() {
+    void baseCodeSourceResolvesBaseKeyOnlyWhenConfigured() {
         var properties = new LocalizedConfigProperties();
-        properties.put("en", Map.of("*", "dd/MM/yyyy"));
+        properties.put("en", Map.of("date", "dd/MM/yyyy"));
         var source = new LocalizedConfigSource(ConfigCategory.DISPLAY_DATE_FORMAT, properties, "date");
 
         assertThat(source.get("date", Locale.ENGLISH)).contains("dd/MM/yyyy");
     }
 
     @Test
-    void baseCodeSourceSupportsLegacyVariantKeyFallback() {
+    void baseCodeSourceDoesNotSupportWildcardFallback() {
+        var properties = new LocalizedConfigProperties();
+        properties.put("en", Map.of("*", "dd/MM/yyyy"));
+        var source = new LocalizedConfigSource(ConfigCategory.DISPLAY_DATE_FORMAT, properties, "date");
+
+        assertThat(source.get("date", Locale.ENGLISH)).isEmpty();
+    }
+
+    @Test
+    void baseCodeSourceDoesNotSupportLegacyVariantKeyFallback() {
         var properties = new LocalizedConfigProperties();
         properties.put("en", Map.of("PROD.RM", "dd/MM/yyyy"));
         var source = new LocalizedConfigSource(ConfigCategory.DISPLAY_DATE_FORMAT, properties, "date");
 
-        assertThat(source.get("date.PROD.RM", Locale.ENGLISH)).contains("dd/MM/yyyy");
+        assertThat(source.get("date.PROD.RM", Locale.ENGLISH)).isEmpty();
     }
 }
