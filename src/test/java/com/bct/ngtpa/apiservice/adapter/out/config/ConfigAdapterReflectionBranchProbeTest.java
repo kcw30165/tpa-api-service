@@ -28,14 +28,12 @@ class ConfigAdapterReflectionBranchProbeTest {
     void noArgCandidateStrategiesCanExerciseNullRequestBranches() throws Exception {
         int calls = 0;
         calls += exerciseGenerateCandidateKeysIfNoArg("com.bct.ngtpa.apiservice.adapter.out.config.DefaultConfigKeyCandidateStrategy");
-        calls += exerciseGenerateCandidateKeysIfNoArg("com.bct.ngtpa.apiservice.adapter.out.config.CurrencyMappingKeyCandidateStrategy");
-        calls += exerciseGenerateCandidateKeysIfNoArg("com.bct.ngtpa.apiservice.adapter.out.config.DisplayFormatKeyCandidateStrategy");
         assertThat(calls).isGreaterThanOrEqualTo(0);
     }
 
     @Test
-    void configuredErrorMessageResolverNormalizeCodeBranchesAreSafeWhenPresent() throws Exception {
-        Class<?> type = Class.forName("com.bct.ngtpa.apiservice.adapter.out.config.ConfiguredErrorMessageResolver");
+    void configBackedErrorMessageResolverNormalizeCodeBranchesAreSafeWhenPresent() throws Exception {
+        Class<?> type = Class.forName("com.bct.ngtpa.apiservice.adapter.out.config.ConfigBackedErrorMessageResolver");
         Method normalize = findMethod(type, "normalizeCode", 1);
         if (normalize == null) {
             return;
@@ -110,3 +108,4 @@ class ConfigAdapterReflectionBranchProbeTest {
         return 1;
     }
 }
+

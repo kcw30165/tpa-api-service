@@ -200,7 +200,7 @@ class DefaultConfigVariantResolverTest {
                         new DisplayFormatConfigSource(dateProperties, amountProperties),
                         new CurrencyMappingConfigSource(currencyProperties)),
                 java.util.List.of(
-                        new DisplayFormatKeyCandidateStrategy(candidateGenerator),
+                        new DefaultConfigKeyCandidateStrategy(candidateGenerator, ConfigCategory.DISPLAY_FORMAT),
                         new DefaultConfigKeyCandidateStrategy(candidateGenerator, ConfigCategory.CURRENCY_MAPPING),
                         new DefaultConfigKeyCandidateStrategy(candidateGenerator, ConfigCategory.ERROR_MESSAGE)));
     }

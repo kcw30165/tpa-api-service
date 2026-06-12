@@ -46,7 +46,9 @@ public class ConfigBackedAmountDisplayAdapter implements AmountDisplayPort {
     ConfigBackedAmountDisplayAdapter(AmountFormatProperties amountFormatProperties) {
         this(new DefaultConfigVariantResolver(
                 List.of(new DisplayFormatConfigSource(new DateFormatProperties(), amountFormatProperties)),
-                List.of(new DisplayFormatKeyCandidateStrategy(new ConfigVariantCandidateGenerator()))));
+                List.of(new DefaultConfigKeyCandidateStrategy(
+                        new ConfigVariantCandidateGenerator(),
+                        ConfigCategory.DISPLAY_FORMAT))));
     }
 
     @Override
@@ -76,3 +78,4 @@ public class ConfigBackedAmountDisplayAdapter implements AmountDisplayPort {
         return df.format(value);
     }
 }
+

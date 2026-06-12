@@ -30,4 +30,12 @@ public class ConfigVariantResolverConfiguration {
                 configVariantCandidateGenerator,
                 ConfigCategory.CURRENCY_MAPPING);
     }
+
+    @Bean
+    ConfigKeyCandidateStrategy displayFormatKeyCandidateStrategy(
+            ConfigVariantCandidateGenerator configVariantCandidateGenerator) {
+        return new DefaultConfigKeyCandidateStrategy(
+                configVariantCandidateGenerator,
+                ConfigCategory.DISPLAY_FORMAT);
+    }
 }

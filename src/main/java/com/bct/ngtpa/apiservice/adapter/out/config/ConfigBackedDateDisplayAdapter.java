@@ -31,7 +31,9 @@ public class ConfigBackedDateDisplayAdapter implements DateDisplayPort {
     ConfigBackedDateDisplayAdapter(DateFormatProperties dateFormatProperties) {
         this(new DefaultConfigVariantResolver(
                 List.of(new DisplayFormatConfigSource(dateFormatProperties, new AmountFormatProperties())),
-                List.of(new DisplayFormatKeyCandidateStrategy(new ConfigVariantCandidateGenerator()))));
+                List.of(new DefaultConfigKeyCandidateStrategy(
+                        new ConfigVariantCandidateGenerator(),
+                        ConfigCategory.DISPLAY_FORMAT))));
     }
 
     @Override
@@ -52,3 +54,4 @@ public class ConfigBackedDateDisplayAdapter implements DateDisplayPort {
         return configVariantResolver.resolve(request).orElse(FALLBACK_PATTERN);
     }
 }
+
