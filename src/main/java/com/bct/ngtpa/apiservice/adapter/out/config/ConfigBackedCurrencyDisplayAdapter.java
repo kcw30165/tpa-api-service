@@ -29,7 +29,9 @@ public class ConfigBackedCurrencyDisplayAdapter implements CurrencyDisplayPort {
     ConfigBackedCurrencyDisplayAdapter(CurrencyMappingProperties currencyMappingProperties) {
         this(new DefaultConfigVariantResolver(
                 List.of(new CurrencyMappingConfigSource(currencyMappingProperties)),
-                List.of(new CurrencyMappingKeyCandidateStrategy(new ConfigVariantCandidateGenerator()))));
+                List.of(new DefaultConfigKeyCandidateStrategy(
+                        new ConfigVariantCandidateGenerator(),
+                        ConfigCategory.CURRENCY_MAPPING))));
     }
 
     @Override

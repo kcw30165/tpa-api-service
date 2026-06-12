@@ -5,22 +5,31 @@ import com.bct.ngtpa.apiservice.shared.config.ConfigKeyCandidateStrategy;
 import com.bct.ngtpa.apiservice.shared.config.ConfigLookupRequest;
 import com.bct.ngtpa.apiservice.shared.config.ConfigResolutionException;
 import com.bct.ngtpa.apiservice.shared.config.ConfigVariantCandidateGenerator;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
-@Component
-@RequiredArgsConstructor
 public class DefaultConfigKeyCandidateStrategy implements ConfigKeyCandidateStrategy {
 
     private final ConfigVariantCandidateGenerator candidateGenerator;
+    private final ConfigCategory category;
+
+    public DefaultConfigKeyCandidateStrategy(ConfigVariantCandidateGenerator candidateGenerator) {
+        this(candidateGenerator, ConfigCategory.ERROR_MESSAGE);
+    }
+
+    public DefaultConfigKeyCandidateStrategy(
+            ConfigVariantCandidateGenerator candidateGenerator,
+            ConfigCategory category) {
+        this.candidateGenerator = Objects.requireNonNull(candidateGenerator, "candidateGenerator must not be null");
+        this.category = Objects.requireNonNull(category, "category must not be null");
+    }
 
     @Override
     public ConfigCategory category() {
-        return ConfigCategory.ERROR_MESSAGE;
+        return category;
     }
 
     @Override

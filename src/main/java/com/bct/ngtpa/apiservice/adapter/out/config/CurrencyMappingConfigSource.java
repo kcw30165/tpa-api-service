@@ -13,7 +13,7 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class CurrencyMappingConfigSource implements ConfigSource {
 
-    private static final String PREFIX = "currency-mapping.";
+    private static final String DEFAULT_LANGUAGE = Locale.ENGLISH.toString();
 
     private final CurrencyMappingProperties currencyMappingProperties;
 
@@ -24,19 +24,29 @@ public class CurrencyMappingConfigSource implements ConfigSource {
 
     @Override
     public Optional<String> get(String key, Locale locale) {
-        if (!StringUtils.hasText(key) || !key.startsWith(PREFIX)) {
+        if (!StringUtils.hasText(key)) {
             return Optional.empty();
         }
 
-        var remainder = key.substring(PREFIX.length());
-        var localeSeparator = remainder.indexOf('.');
-        if (localeSeparator < 0) {
-            return Optional.empty();
+        var normalizedKey = key.trim();
+        var language = normalizeLocaleKey(locale);
+        var resolved = find(language, normalizedKey);
+        if (resolved.isPresent() || DEFAULT_LANGUAGE.equals(language)) {
+            return resolved;
         }
 
-        var language = remainder.substring(0, localeSeparator);
-        var mappingKey = remainder.substring(localeSeparator + 1);
-        return Optional.ofNullable(currencyMappingProperties.getLocaleFormats(language).get(mappingKey))
+        return find(DEFAULT_LANGUAGE, normalizedKey);
+    }
+
+    private Optional<String> find(String language, String key) {
+        return Optional.ofNullable(currencyMappingProperties.getLocaleFormats(language).get(key))
                 .filter(StringUtils::hasText);
+    }
+
+    private String normalizeLocaleKey(Locale locale) {
+        if (locale == null || !StringUtils.hasText(locale.toString())) {
+            return DEFAULT_LANGUAGE;
+        }
+        return locale.toString();
     }
 }

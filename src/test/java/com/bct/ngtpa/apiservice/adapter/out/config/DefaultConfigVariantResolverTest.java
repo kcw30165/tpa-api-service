@@ -201,7 +201,7 @@ class DefaultConfigVariantResolverTest {
                         new CurrencyMappingConfigSource(currencyProperties)),
                 java.util.List.of(
                         new DisplayFormatKeyCandidateStrategy(candidateGenerator),
-                        new CurrencyMappingKeyCandidateStrategy(candidateGenerator),
-                        new DefaultConfigKeyCandidateStrategy(candidateGenerator)));
+                        new DefaultConfigKeyCandidateStrategy(candidateGenerator, ConfigCategory.CURRENCY_MAPPING),
+                        new DefaultConfigKeyCandidateStrategy(candidateGenerator, ConfigCategory.ERROR_MESSAGE)));
     }
 }
