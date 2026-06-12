@@ -191,9 +191,29 @@ private final LoggingSanitizer loggingSanitizer;
         PageMetadataProperties metadata = pageSchema != null ? pageSchema.getMetadata() : null;
         return new PageResponse(
                 metadata != null ? metadata.getId() : null,
-                resolveLabel(metadata != null ? metadata.getTitle() : null, language),
+                resolvePageTitle(pageSchema, metadata, language, accountEnv, trustCode, schemeType),
                 language);
     }
+    private String resolvePageTitle(
+            PageSchemaProperties pageSchema,
+            PageMetadataProperties metadata,
+            String language,
+            String accountEnv,
+            String trustCode,
+            String schemeType) {
+        if (metadata != null && hasText(metadata.getTitleCode())) {
+            return resolvePageDisplayText(
+                    pageSchema,
+                    metadata.getTitleCode(),
+                    metadata.getTitle(),
+                    language,
+                    accountEnv,
+                    trustCode,
+                    schemeType);
+        }
+        return resolveLabel(metadata != null ? metadata.getTitle() : null, language);
+    }
+
 
     private FormSchemaResponse buildForm(PageSchemaProperties pageSchema,
             Map<String, Object> apimData,
