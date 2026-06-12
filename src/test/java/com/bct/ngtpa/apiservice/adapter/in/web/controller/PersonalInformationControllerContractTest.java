@@ -1,5 +1,11 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
+import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
+
+import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
+
+import com.bct.ngtpa.apiservice.application.dto.AccountContext;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -61,7 +67,7 @@ class PersonalInformationControllerContractTest {
     void getPersonalInformationReturns200WithGenericFormPageResponse() {
         var result = new PersonalInformationResult(Map.of("addr1", "ABC Street"), Map.of("addr1", "EDITABLE_COM"));
         when(useCase.execute(any())).thenReturn(Mono.just(result));
-        when(mapper.toFormPageResponse(eq(result), eq(ACCEPT_LANGUAGE)))
+        when(mapper.toFormPageResponse(eq(result), eq(ACCEPT_LANGUAGE), eq("JP"), eq("JPM"), eq("OE")))
                 .thenReturn(response(ACCEPT_LANGUAGE, "Personal Information"));
 
         client().get()
@@ -96,7 +102,7 @@ class PersonalInformationControllerContractTest {
             captured.set(invocation.getArgument(0));
             return Mono.just(result);
         });
-        when(mapper.toFormPageResponse(eq(result), eq("zh_HK"))).thenReturn(response("zh_HK", "個人資料"));
+        when(mapper.toFormPageResponse(eq(result), eq("zh_HK"), eq("JP"), eq("JPM"), eq("OE"))).thenReturn(response("zh_HK", "個人資料"));
 
         client().get()
                 .uri("/api/v1/personal-information")
@@ -133,7 +139,7 @@ class PersonalInformationControllerContractTest {
     void getPersonalInformationDelegatesToWebMapperAfterUseCase() {
         var result = new PersonalInformationResult(Map.of("email", "nick@example.com"), Map.of("email", "READONLY"));
         when(useCase.execute(any())).thenReturn(Mono.just(result));
-        when(mapper.toFormPageResponse(eq(result), eq(ACCEPT_LANGUAGE))).thenReturn(response(ACCEPT_LANGUAGE, "Personal Information"));
+        when(mapper.toFormPageResponse(eq(result), eq(ACCEPT_LANGUAGE), eq("JP"), eq("JPM"), eq("OE"))).thenReturn(response(ACCEPT_LANGUAGE, "Personal Information"));
 
         client().get()
                 .uri("/api/v1/personal-information")
@@ -145,7 +151,7 @@ class PersonalInformationControllerContractTest {
 
         ArgumentCaptor<GetPersonalInformationCommand> commandCaptor = ArgumentCaptor.forClass(GetPersonalInformationCommand.class);
         verify(useCase).execute(commandCaptor.capture());
-        verify(mapper).toFormPageResponse(result, ACCEPT_LANGUAGE);
+        verify(mapper).toFormPageResponse(result, ACCEPT_LANGUAGE, "JP", "JPM", "OE");
         assertEquals(ACCOUNT_REF, commandCaptor.getValue().accountRef());
     }
 
@@ -157,7 +163,7 @@ class PersonalInformationControllerContractTest {
     }
 
     private WebTestClient client() {
-        return WebTestClient.bindToController(new PersonalInformationController(useCase, mapper))
+        return WebTestClient.bindToController(new PersonalInformationController(useCase, mapper, portalContextPort()))
                 .controllerAdvice(exceptionHandler)
                 .webFilter(new RequestLoggingWebFilter(
                         requestLoggingProperties(),
@@ -178,4 +184,14 @@ class PersonalInformationControllerContractTest {
                 new PageResponse("personalInformationPage", title, language),
                 new FormSchemaResponse("personalInformationForm", "1.0", "view", null, null, null, null));
     }
+    private static PortalAccessContextPort portalContextPort() {
+        AccountContext account = org.mockito.Mockito.mock(AccountContext.class);
+        org.mockito.Mockito.when(account.accountEnv()).thenReturn("JP");
+        org.mockito.Mockito.when(account.trustCode()).thenReturn("JPM");
+        org.mockito.Mockito.when(account.schemeType()).thenReturn("OE");
+        PortalAccessContext context = org.mockito.Mockito.mock(PortalAccessContext.class);
+        org.mockito.Mockito.when(context.account()).thenReturn(account);
+        return accountRef -> Mono.just(context);
+    }
+
 }

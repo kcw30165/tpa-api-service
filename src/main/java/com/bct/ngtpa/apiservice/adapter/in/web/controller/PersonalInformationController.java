@@ -1,5 +1,9 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
+import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
+
+import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
+
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.FormPageResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.FormSchemaResponse;
@@ -27,6 +31,7 @@ public class PersonalInformationController {
 
     private final GetPersonalInformationUseCase getPersonalInformationUseCase;
     private final PersonalInformationWebMapper personalInformationWebMapper;
+    private final PortalAccessContextPort portalAccessContextPort;
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<FormPageResponse<FormSchemaResponse>> getPersonalInformation(
@@ -35,10 +40,28 @@ public class PersonalInformationController {
         return Mono.deferContextual(contextView -> {
             String accountRef = resolveRequiredAccountRef(contextView);
             String language = resolveLanguage(contextView, acceptLanguage);
-            return getPersonalInformationUseCase.execute(new GetPersonalInformationCommand(accountRef, language))
-                    .map(result -> personalInformationWebMapper.toFormPageResponse(result, language));
+            return portalAccessContextPort.resolvePortalAccessContext(accountRef)
+                    .flatMap(portalAccessContext -> getPersonalInformationUseCase.execute(new GetPersonalInformationCommand(accountRef, language))
+                            .map(result -> personalInformationWebMapper.toFormPageResponse(
+                                    result,
+                                    language,
+                                    accountEnv(portalAccessContext),
+                                    trustCode(portalAccessContext),
+                                    schemeType(portalAccessContext))));
         });
     }
+    private String accountEnv(PortalAccessContext context) {
+        return context == null || context.account() == null ? null : context.account().accountEnv();
+    }
+
+    private String trustCode(PortalAccessContext context) {
+        return context == null || context.account() == null ? null : context.account().trustCode();
+    }
+
+    private String schemeType(PortalAccessContext context) {
+        return context == null || context.account() == null ? null : context.account().schemeType();
+    }
+
 
     private String resolveLanguage(ContextView contextView, String acceptLanguage) {
         RequestHeaderContext requestHeaderContext = contextView.getOrDefault(

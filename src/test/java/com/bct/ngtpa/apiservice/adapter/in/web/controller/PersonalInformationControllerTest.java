@@ -1,5 +1,11 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
+import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
+
+import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
+
+import com.bct.ngtpa.apiservice.application.dto.AccountContext;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -35,9 +41,9 @@ class PersonalInformationControllerTest {
             return Mono.just(result);
         };
         PersonalInformationWebMapper mapper = mock(PersonalInformationWebMapper.class);
-        when(mapper.toFormPageResponse(eq(result), eq("zh_HK"))).thenReturn(response("zh_HK", "個人資料"));
+        when(mapper.toFormPageResponse(eq(result), eq("zh_HK"), eq("JP"), eq("JPM"), eq("OE"))).thenReturn(response("zh_HK", "個人資料"));
 
-        FormPageResponse<FormSchemaResponse> response = new PersonalInformationController(useCase, mapper)
+        FormPageResponse<FormSchemaResponse> response = new PersonalInformationController(useCase, mapper, portalContextPort())
                 .getPersonalInformation("en")
                 .contextWrite(ctx -> ctx.put(RequestHeaderContextKeys.CONTEXT_KEY,
                         new RequestHeaderContext("ACC-123", "req-1", "zh-HK")))
@@ -64,9 +70,9 @@ class PersonalInformationControllerTest {
             return Mono.just(result);
         };
         PersonalInformationWebMapper mapper = mock(PersonalInformationWebMapper.class);
-        when(mapper.toFormPageResponse(eq(result), eq("en"))).thenReturn(response("en", "Personal Information"));
+        when(mapper.toFormPageResponse(eq(result), eq("en"), eq("JP"), eq("JPM"), eq("OE"))).thenReturn(response("en", "Personal Information"));
 
-        new PersonalInformationController(useCase, mapper)
+        new PersonalInformationController(useCase, mapper, portalContextPort())
                 .getPersonalInformation("zh-HK")
                 .contextWrite(ctx -> ctx.put(RequestHeaderContextKeys.CONTEXT_KEY,
                         new RequestHeaderContext("ACC-123", "req-1", "en")))
@@ -82,7 +88,7 @@ class PersonalInformationControllerTest {
 
         PortalAccessContextResolutionException ex = assertThrows(
                 PortalAccessContextResolutionException.class,
-                () -> new PersonalInformationController(useCase, mapper)
+                () -> new PersonalInformationController(useCase, mapper, portalContextPort())
                         .getPersonalInformation("en")
                         .contextWrite(ctx -> ctx.put(RequestHeaderContextKeys.CONTEXT_KEY,
                                 new RequestHeaderContext(" ", "req-1", "en")))
@@ -96,4 +102,14 @@ class PersonalInformationControllerTest {
                 new PageResponse("personalInformationPage", title, language),
                 new FormSchemaResponse("personalInformationForm", "1.0", "view", null, null, null, null));
     }
+    private static PortalAccessContextPort portalContextPort() {
+        AccountContext account = org.mockito.Mockito.mock(AccountContext.class);
+        org.mockito.Mockito.when(account.accountEnv()).thenReturn("JP");
+        org.mockito.Mockito.when(account.trustCode()).thenReturn("JPM");
+        org.mockito.Mockito.when(account.schemeType()).thenReturn("OE");
+        PortalAccessContext context = org.mockito.Mockito.mock(PortalAccessContext.class);
+        org.mockito.Mockito.when(context.account()).thenReturn(account);
+        return accountRef -> Mono.just(context);
+    }
+
 }

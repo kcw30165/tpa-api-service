@@ -47,17 +47,7 @@ public class PersonalInformationWebMapper {
     private static final String DEFAULT_LANGUAGE = "en";
     private static final String ZH_HK_LANGUAGE = "zh_HK";
     private final PageDisplayTextResolver pageDisplayTextResolver = new PageDisplayTextResolver(new ConfigVariantCandidateGenerator());
-
-    private static final String DEFAULT_ACCOUNT_ENV = null;
-    private static final String DEFAULT_TRUST_CODE = null;
-    private static final String DEFAULT_SCHEME_TYPE = null;
-
-    private final String accountEnv = DEFAULT_ACCOUNT_ENV;
-    private final String trustCode = DEFAULT_TRUST_CODE;
-    private final String schemeType = DEFAULT_SCHEME_TYPE;
-
-
-    private final LoggingSanitizer loggingSanitizer;
+private final LoggingSanitizer loggingSanitizer;
     private final BffPagesProperties bffPagesProperties;
     private final YamlResponseMapper yamlResponseMapper;
     private final ObjectMapper responseObjectMapper = new ObjectMapper();
@@ -93,26 +83,47 @@ public class PersonalInformationWebMapper {
         Map<String, Object> apimData = result != null ? result.data() : Map.of();
         Map<String, String> apimConfig = result != null ? result.config() : Map.of();
         Map<String, MemberInfoConfigItem> apimConfigItems = result != null ? result.configItems() : Map.of();
-        return toFormPageResponse(apimData, apimConfig, apimConfigItems, language);
+        return toFormPageResponse(apimData, apimConfig, apimConfigItems, language, accountEnv, trustCode, schemeType);
     }
-
     public FormPageResponse<FormSchemaResponse> toFormPageResponse(
             Map<String, Object> apimData,
             Map<String, String> apimConfig,
             String language) {
-        return toFormPageResponse(apimData, apimConfig, Map.of(), language);
+        return toFormPageResponse(apimData, apimConfig, language, null, null, null);
     }
 
+
+    public FormPageResponse<FormSchemaResponse> toFormPageResponse(
+            Map<String, Object> apimData,
+            Map<String, String> apimConfig,
+            String language,
+            String accountEnv,
+            String trustCode,
+            String schemeType) {
+        return toFormPageResponse(apimData, apimConfig, Map.of(), language, accountEnv, trustCode, schemeType);
+    }
     public FormPageResponse<FormSchemaResponse> toFormPageResponse(
             Map<String, Object> apimData,
             Map<String, String> apimConfig,
             Map<String, MemberInfoConfigItem> apimConfigItems,
             String language) {
+        return toFormPageResponse(apimData, apimConfig, apimConfigItems, language, null, null, null);
+    }
+
+
+    public FormPageResponse<FormSchemaResponse> toFormPageResponse(
+            Map<String, Object> apimData,
+            Map<String, String> apimConfig,
+            Map<String, MemberInfoConfigItem> apimConfigItems,
+            String language,
+            String accountEnv,
+            String trustCode,
+            String schemeType) {
 
         PageSchemaProperties pageSchema = resolvePageSchema();
         return FormPageResponse.success(
                 buildPage(pageSchema, language, accountEnv, trustCode, schemeType),
-                buildForm(pageSchema, apimData, apimConfig, apimConfigItems, language));
+                buildForm(pageSchema, apimData, apimConfig, apimConfigItems, language, accountEnv, trustCode, schemeType));
     }
 
     /**
@@ -122,20 +133,41 @@ public class PersonalInformationWebMapper {
     public Map<String, Object> toResponse(PersonalInformationResult result, String language) {
         return toMap(toFormPageResponse(result, language));
     }
-
     public Map<String, Object> toResponse(
             Map<String, Object> apimData,
             Map<String, String> apimConfig,
             String language) {
-        return toMap(toFormPageResponse(apimData, apimConfig, language));
+        return toResponse(apimData, apimConfig, language, null, null, null);
     }
 
+
+    public Map<String, Object> toResponse(
+            Map<String, Object> apimData,
+            Map<String, String> apimConfig,
+            String language,
+            String accountEnv,
+            String trustCode,
+            String schemeType) {
+        return toMap(toFormPageResponse(apimData, apimConfig, language, accountEnv, trustCode, schemeType));
+    }
     public Map<String, Object> toResponse(
             Map<String, Object> apimData,
             Map<String, String> apimConfig,
             Map<String, MemberInfoConfigItem> apimConfigItems,
             String language) {
-        return toMap(toFormPageResponse(apimData, apimConfig, apimConfigItems, language));
+        return toResponse(apimData, apimConfig, apimConfigItems, language, null, null, null);
+    }
+
+
+    public Map<String, Object> toResponse(
+            Map<String, Object> apimData,
+            Map<String, String> apimConfig,
+            Map<String, MemberInfoConfigItem> apimConfigItems,
+            String language,
+            String accountEnv,
+            String trustCode,
+            String schemeType) {
+        return toMap(toFormPageResponse(apimData, apimConfig, apimConfigItems, language, accountEnv, trustCode, schemeType));
     }
 
     private Map<String, Object> toMap(FormPageResponse<FormSchemaResponse> response) {
@@ -167,24 +199,30 @@ public class PersonalInformationWebMapper {
             Map<String, Object> apimData,
             Map<String, String> apimConfig,
             Map<String, MemberInfoConfigItem> apimConfigItems,
-            String language) {
+            String language,
+            String accountEnv,
+            String trustCode,
+            String schemeType) {
         FormMetadataProperties formSchema = pageSchema != null ? pageSchema.getForm() : null;
         PageMetadataProperties metadata = pageSchema != null ? pageSchema.getMetadata() : null;
         return new FormSchemaResponse(
                 formSchema != null ? formSchema.getId() : null,
                 metadata != null ? metadata.getVersion() : null,
                 formSchema != null && hasText(formSchema.getDefaultMode()) ? formSchema.getDefaultMode() : "view",
-                buildSections(pageSchema, apimData, apimConfig, apimConfigItems, language),
-                mapValidationRules(pageSchema, pageSchema != null ? pageSchema.getValidations() : null, language),
+                buildSections(pageSchema, apimData, apimConfig, apimConfigItems, language, accountEnv, trustCode, schemeType),
+                mapValidationRules(pageSchema, pageSchema != null ? pageSchema.getValidations() : null, language, accountEnv, trustCode, schemeType),
                 yamlResponseMapper.toResponseMap(pageSchema != null ? pageSchema.getConfirmation() : null, language),
-                buildActions(pageSchema, formSchema, language));
+                buildActions(pageSchema, formSchema, language, accountEnv, trustCode, schemeType));
     }
 
     private List<SectionResponse> buildSections(PageSchemaProperties pageSchema,
             Map<String, Object> apimData,
             Map<String, String> apimConfig,
             Map<String, MemberInfoConfigItem> apimConfigItems,
-            String language) {
+            String language,
+            String accountEnv,
+            String trustCode,
+            String schemeType) {
         if (pageSchema == null || pageSchema.getForm() == null || pageSchema.getForm().getSections() == null) {
             return List.of();
         }
@@ -195,7 +233,7 @@ public class PersonalInformationWebMapper {
             if (sectionSchema == null || !hasText(sectionSchema.getId())) {
                 continue;
             }
-            List<FieldResponse> fields = buildSectionFields(pageSchema, sectionSchema, fieldStates, language);
+            List<FieldResponse> fields = buildSectionFields(pageSchema, sectionSchema, fieldStates, language, accountEnv, trustCode, schemeType);
             if (fields.isEmpty()) {
                 defaultSectionOrder += 10;
                 continue;
@@ -307,7 +345,7 @@ public class PersonalInformationWebMapper {
         return fieldsByConfigItemId;
     }
 
-    private List<FieldResponse> buildSectionFields(PageSchemaProperties pageSchema, SectionProperties sectionSchema, Map<String, FieldState> fieldStates, String language) {
+    private List<FieldResponse> buildSectionFields(PageSchemaProperties pageSchema, SectionProperties sectionSchema, Map<String, FieldState> fieldStates, String language, String accountEnv, String trustCode, String schemeType) {
         if (sectionSchema.getFields() == null) {
             return List.of();
         }
@@ -322,7 +360,7 @@ public class PersonalInformationWebMapper {
                 defaultFieldOrder += 10;
                 continue;
             }
-            List<ValidationRuleResponse> validations = mapValidationRules(pageSchema, fieldSchema.getValidations(), language);
+            List<ValidationRuleResponse> validations = mapValidationRules(pageSchema, fieldSchema.getValidations(), language, accountEnv, trustCode, schemeType);
             fields.add(new FieldResponse(
                     fieldSchema.getId(),
                     resolvePageDisplayText(pageSchema, fieldSchema.getLabelCode(), fieldSchema.getLabel(), language, accountEnv, trustCode, schemeType),
@@ -347,10 +385,7 @@ public class PersonalInformationWebMapper {
         return fields;
     }
 
-    private List<ValidationRuleResponse> mapValidationRules(
-            PageSchemaProperties pageSchema,
-            List<ValidationRuleProperties> rules,
-            String language) {
+    private List<ValidationRuleResponse> mapValidationRules(PageSchemaProperties pageSchema, List<ValidationRuleProperties> rules, String language, String accountEnv, String trustCode, String schemeType) {
         if (rules == null || rules.isEmpty()) {
             return yamlResponseMapper.toResponseList(rules, language).stream()
                     .map(ValidationRuleResponse::from)
@@ -358,16 +393,13 @@ public class PersonalInformationWebMapper {
                     .toList();
         }
         return rules.stream()
-                .flatMap(rule -> mapValidationRule(pageSchema, rule, language).stream())
+                .flatMap(rule -> mapValidationRule(pageSchema, rule, language, accountEnv, trustCode, schemeType).stream())
                 .map(ValidationRuleResponse::from)
                 .filter(java.util.Objects::nonNull)
                 .toList();
     }
 
-    private List<java.util.Map<String, Object>> mapValidationRule(
-            PageSchemaProperties pageSchema,
-            ValidationRuleProperties rule,
-            String language) {
+    private List<java.util.Map<String, Object>> mapValidationRule(PageSchemaProperties pageSchema, ValidationRuleProperties rule, String language, String accountEnv, String trustCode, String schemeType) {
         if (rule == null) {
             return yamlResponseMapper.toResponseList(Collections.singletonList(rule), language);
         }
@@ -393,7 +425,7 @@ public class PersonalInformationWebMapper {
         }
     }
 
-    private Map<String, Object> buildActions(PageSchemaProperties pageSchema, FormMetadataProperties formSchema, String language) {
+    private Map<String, Object> buildActions(PageSchemaProperties pageSchema, FormMetadataProperties formSchema, String language, String accountEnv, String trustCode, String schemeType) {
         Map<String, Object> actions = new LinkedHashMap<>();
         if (formSchema == null || formSchema.getActions() == null) {
             return actions;
