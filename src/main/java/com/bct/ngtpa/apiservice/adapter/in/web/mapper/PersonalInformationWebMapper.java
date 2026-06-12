@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.mapper;
 
+import java.util.Collections;
+
 import com.bct.ngtpa.apiservice.shared.config.ConfigVariantCandidateGenerator;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.ActionProperties;
@@ -173,7 +175,7 @@ public class PersonalInformationWebMapper {
                 metadata != null ? metadata.getVersion() : null,
                 formSchema != null && hasText(formSchema.getDefaultMode()) ? formSchema.getDefaultMode() : "view",
                 buildSections(pageSchema, apimData, apimConfig, apimConfigItems, language),
-                mapValidationRules(pageSchema != null ? pageSchema.getValidations() : null, language),
+                mapValidationRules(pageSchema, pageSchema != null ? pageSchema.getValidations() : null, language),
                 yamlResponseMapper.toResponseMap(pageSchema != null ? pageSchema.getConfirmation() : null, language),
                 buildActions(pageSchema, formSchema, language));
     }
@@ -320,7 +322,7 @@ public class PersonalInformationWebMapper {
                 defaultFieldOrder += 10;
                 continue;
             }
-            List<ValidationRuleResponse> validations = mapValidationRules(fieldSchema.getValidations(), language);
+            List<ValidationRuleResponse> validations = mapValidationRules(pageSchema, fieldSchema.getValidations(), language);
             fields.add(new FieldResponse(
                     fieldSchema.getId(),
                     resolvePageDisplayText(pageSchema, fieldSchema.getLabelCode(), fieldSchema.getLabel(), language, accountEnv, trustCode, schemeType),
@@ -345,11 +347,50 @@ public class PersonalInformationWebMapper {
         return fields;
     }
 
-    private List<ValidationRuleResponse> mapValidationRules(List<ValidationRuleProperties> rules, String language) {
-        return yamlResponseMapper.toResponseList(rules, language).stream()
+    private List<ValidationRuleResponse> mapValidationRules(
+            PageSchemaProperties pageSchema,
+            List<ValidationRuleProperties> rules,
+            String language) {
+        if (rules == null || rules.isEmpty()) {
+            return yamlResponseMapper.toResponseList(rules, language).stream()
+                    .map(ValidationRuleResponse::from)
+                    .filter(java.util.Objects::nonNull)
+                    .toList();
+        }
+        return rules.stream()
+                .flatMap(rule -> mapValidationRule(pageSchema, rule, language).stream())
                 .map(ValidationRuleResponse::from)
                 .filter(java.util.Objects::nonNull)
                 .toList();
+    }
+
+    private List<java.util.Map<String, Object>> mapValidationRule(
+            PageSchemaProperties pageSchema,
+            ValidationRuleProperties rule,
+            String language) {
+        if (rule == null) {
+            return yamlResponseMapper.toResponseList(Collections.singletonList(rule), language);
+        }
+        java.util.Map<String, String> originalMessage = rule.getMessage();
+        String resolvedMessage = resolvePageDisplayText(
+                pageSchema,
+                rule.getMessageCode(),
+                originalMessage,
+                language,
+                accountEnv,
+                trustCode,
+                schemeType);
+        boolean overrideMessage = resolvedMessage != null && !resolvedMessage.isBlank();
+        try {
+            if (overrideMessage) {
+                rule.setMessage(Collections.singletonMap(language, resolvedMessage));
+            }
+            return yamlResponseMapper.toResponseList(Collections.singletonList(rule), language);
+        } finally {
+            if (overrideMessage) {
+                rule.setMessage(originalMessage);
+            }
+        }
     }
 
     private Map<String, Object> buildActions(PageSchemaProperties pageSchema, FormMetadataProperties formSchema, String language) {
