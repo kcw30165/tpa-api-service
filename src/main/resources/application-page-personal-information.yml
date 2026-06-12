@@ -6,250 +6,250 @@ bff-pages:
         version: '1.0'
         titleCode: personalInformation.page.title
       display:
-        personalInformation.action.cancel.label:
+        '[personalInformation.action.cancel.label]':
           en: Cancel
           zh_HK: 取消
-        personalInformation.action.edit.label:
+        '[personalInformation.action.edit.label]':
           en: Edit Information
           zh_HK: 編輯個人資料
-        personalInformation.action.reset.label:
+        '[personalInformation.action.reset.label]':
           en: Reset
           zh_HK: 重設
-        personalInformation.action.submit.label:
+        '[personalInformation.action.submit.label]':
           en: Submit
           zh_HK: 遞交
-        personalInformation.address.atLeastOneRequired.message:
+        '[personalInformation.address.atLeastOneRequired.message]':
           en: Please input a residential address or correspondence address.
           zh_HK: 請輸入居住地址或通訊地址。
-        personalInformation.address.poBoxBlocked.message:
+        '[personalInformation.address.poBoxBlocked.message]':
           en: PO Box address will not be accepted, please re-enter your address as
             our record.
           zh_HK: 郵政信箱恕不接受，請重新輸入住址，以作資料紀錄。
-        personalInformation.address.poBoxBlocked.message.JP:
+        '[personalInformation.address.poBoxBlocked.message.JP]':
           en: PO Box address will not be accepted for Japan accounts, please re-enter
             your address as our record.
           zh_HK: 日本戶口不接受郵政信箱，請重新輸入住址，以作資料紀錄。
-        personalInformation.aeoiReminder.message:
+        '[personalInformation.aeoiReminder.message]':
           en: Please remember to submit your AEOI Self-Certificate by clicking Self
             Certification for Tax Residency function.
           zh_HK: 請記得點選『稅務居民證明』功能，以提交您的 AEOI 證明。
-        personalInformation.businessPhone.invalid.message:
+        '[personalInformation.businessPhone.invalid.message]':
           en: Please input a valid Hong Kong Business Telephone Number.
           zh_HK: 請輸入有效香港公司電話號碼。
-        personalInformation.businessPhone.requiredWhenExtensionPresent.message:
+        '[personalInformation.businessPhone.requiredWhenExtensionPresent.message]':
           en: Please input a valid Hong Kong Business Phone Number.
           zh_HK: 請輸入有效香港公司電話號碼。
-        personalInformation.businessPhoneExtension.invalid.message:
+        '[personalInformation.businessPhoneExtension.invalid.message]':
           en: Please input a valid Ext.
           zh_HK: 請輸入有效內線。
-        personalInformation.confirmation.afterLabel:
+        '[personalInformation.confirmation.afterLabel]':
           en: After Changes
           zh_HK: 變更後
-        personalInformation.confirmation.beforeLabel:
+        '[personalInformation.confirmation.beforeLabel]':
           en: Before Changes
           zh_HK: 變更前
-        personalInformation.confirmation.reviewMessage:
+        '[personalInformation.confirmation.reviewMessage]':
           en: Please review the changes you've made to your information before confirming.
           zh_HK: 請在確認前檢查已更改的個人資料。
-        personalInformation.confirmation.securityVerification.instruction:
+        '[personalInformation.confirmation.securityVerification.instruction]':
           en: Please enter your password to confirm these changes
           zh_HK: 請輸入您的密碼以確認以上變更
-        personalInformation.confirmation.securityVerification.label:
+        '[personalInformation.confirmation.securityVerification.label]':
           en: Security Verification
           zh_HK: 安全認證
-        personalInformation.confirmation.title:
+        '[personalInformation.confirmation.title]':
           en: Confirm Information Update
           zh_HK: 確認個人資料更改
-        personalInformation.email.invalid.message:
+        '[personalInformation.email.invalid.message]':
           en: Please provide a valid email address.
           zh_HK: 請輸入有效電郵地址。
-        personalInformation.email.required.message:
+        '[personalInformation.email.required.message]':
           en: Please provide a valid email address.
           zh_HK: 請輸入有效電郵地址。
-        personalInformation.faxNo.invalid.message:
+        '[personalInformation.faxNo.invalid.message]':
           en: Please input a valid Fax No.
           zh_HK: 請輸入有效傳真號碼。
-        personalInformation.field.applyToAllMemberAccounts.label:
+        '[personalInformation.field.applyToAllMemberAccounts.label]':
           en: Apply update to all member accounts under the plan
           zh_HK: 將更新套用至計劃下所有成員戶口
-        personalInformation.field.emailAddress.label:
+        '[personalInformation.field.emailAddress.label]':
           en: Email Address
           zh_HK: 電郵地址
-        personalInformation.field.emailAddress.placeholder:
+        '[personalInformation.field.emailAddress.placeholder]':
           en: Enter email address
           zh_HK: 請輸入電郵地址
-        personalInformation.field.faxNo.label:
+        '[personalInformation.field.faxNo.label]':
           en: Fax No.
           zh_HK: 傳真號碼
-        personalInformation.field.faxNo.placeholder:
+        '[personalInformation.field.faxNo.placeholder]':
           en: Enter fax number
           zh_HK: 請輸入傳真號碼
-        personalInformation.field.homeTel.label:
+        '[personalInformation.field.homeTel.label]':
           en: Hong Kong Home Telephone Number
           zh_HK: 香港住所電話號碼
-        personalInformation.field.homeTel.placeholder:
+        '[personalInformation.field.homeTel.placeholder]':
           en: Enter 8-digit home telephone number
           zh_HK: 請輸入8位數字住所電話號碼
-        personalInformation.field.hongKongBusinessPhone.label:
+        '[personalInformation.field.hongKongBusinessPhone.label]':
           en: Hong Kong Business Telephone Number
           zh_HK: 香港公司電話號碼
-        personalInformation.field.hongKongBusinessPhone.placeholder:
+        '[personalInformation.field.hongKongBusinessPhone.placeholder]':
           en: Enter 8-digit phone number
           zh_HK: 請輸入8位數字電話號碼
-        personalInformation.field.hongKongBusinessPhoneExtension.label:
+        '[personalInformation.field.hongKongBusinessPhoneExtension.label]':
           en: Ext.
           zh_HK: 內線
-        personalInformation.field.hongKongBusinessPhoneExtension.placeholder:
+        '[personalInformation.field.hongKongBusinessPhoneExtension.placeholder]':
           en: Ext.
           zh_HK: 內線
-        personalInformation.field.hongKongMobilePhone.label:
+        '[personalInformation.field.hongKongMobilePhone.label]':
           en: Hong Kong Mobile Phone Number
           zh_HK: 香港手提電話號碼
-        personalInformation.field.hongKongMobilePhone.placeholder:
+        '[personalInformation.field.hongKongMobilePhone.placeholder]':
           en: Enter 8-digit mobile number
           zh_HK: 請輸入8位數字手提電話號碼
-        personalInformation.field.importantNotes.label:
+        '[personalInformation.field.importantNotes.label]':
           en: Important Notes
           zh_HK: 重要事項
-        personalInformation.field.mailingAddressLine1.label:
+        '[personalInformation.field.mailingAddressLine1.label]':
           en: Correspondence Address Line 1
           zh_HK: 通訊地址第一行
-        personalInformation.field.mailingAddressLine1.placeholder:
+        '[personalInformation.field.mailingAddressLine1.placeholder]':
           en: Enter correspondence address line 1
           zh_HK: 請輸入通訊地址第一行
-        personalInformation.field.mailingAddressLine2.label:
+        '[personalInformation.field.mailingAddressLine2.label]':
           en: Correspondence Address Line 2
           zh_HK: 通訊地址第二行
-        personalInformation.field.mailingAddressLine2.placeholder:
+        '[personalInformation.field.mailingAddressLine2.placeholder]':
           en: Enter correspondence address line 2
           zh_HK: 請輸入通訊地址第二行
-        personalInformation.field.mailingAddressLine3.label:
+        '[personalInformation.field.mailingAddressLine3.label]':
           en: Correspondence Address Line 3
           zh_HK: 通訊地址第三行
-        personalInformation.field.mailingAddressLine3.placeholder:
+        '[personalInformation.field.mailingAddressLine3.placeholder]':
           en: Enter correspondence address line 3
           zh_HK: 請輸入通訊地址第三行
-        personalInformation.field.mailingAddressSameAsResidential.label:
+        '[personalInformation.field.mailingAddressSameAsResidential.label]':
           en: Same as Residential Address
           zh_HK: 與居住地址相同
-        personalInformation.field.mailingCountry.label:
+        '[personalInformation.field.mailingCountry.label]':
           en: Country
           zh_HK: 國家
-        personalInformation.field.mailingCountry.placeholder:
+        '[personalInformation.field.mailingCountry.placeholder]':
           en: Country
           zh_HK: 國家
-        personalInformation.field.overseasAreaCode.label:
+        '[personalInformation.field.overseasAreaCode.label]':
           en: Area Code
           zh_HK: 區域代碼
-        personalInformation.field.overseasAreaCode.placeholder:
+        '[personalInformation.field.overseasAreaCode.placeholder]':
           en: Area Code
           zh_HK: 區域號碼
-        personalInformation.field.overseasCountryCode.label:
+        '[personalInformation.field.overseasCountryCode.label]':
           en: Country Code
           zh_HK: 國家代碼
-        personalInformation.field.overseasCountryCode.placeholder:
+        '[personalInformation.field.overseasCountryCode.placeholder]':
           en: Country Code
           zh_HK: 國家號碼
-        personalInformation.field.overseasPhoneExtension.label:
+        '[personalInformation.field.overseasPhoneExtension.label]':
           en: Overseas Phone Extension
           zh_HK: 海外電話分機
-        personalInformation.field.overseasPhoneExtension.placeholder:
+        '[personalInformation.field.overseasPhoneExtension.placeholder]':
           en: Ext.
           zh_HK: 內線
-        personalInformation.field.overseasPhoneNumber.label:
+        '[personalInformation.field.overseasPhoneNumber.label]':
           en: Phone Number
           zh_HK: 電話號碼
-        personalInformation.field.overseasPhoneNumber.placeholder:
+        '[personalInformation.field.overseasPhoneNumber.placeholder]':
           en: Phone Number
           zh_HK: 電話號碼
-        personalInformation.field.residentialAddressLine1.label:
+        '[personalInformation.field.residentialAddressLine1.label]':
           en: Residential Address Line 1
           zh_HK: 居住地址第一行
-        personalInformation.field.residentialAddressLine1.placeholder:
+        '[personalInformation.field.residentialAddressLine1.placeholder]':
           en: Enter residential address line 1
           zh_HK: 請輸入居住地址第一行
-        personalInformation.field.residentialAddressLine2.label:
+        '[personalInformation.field.residentialAddressLine2.label]':
           en: Residential Address Line 2
           zh_HK: 居住地址第二行
-        personalInformation.field.residentialAddressLine2.placeholder:
+        '[personalInformation.field.residentialAddressLine2.placeholder]':
           en: Enter residential address line 2
           zh_HK: 請輸入居住地址第二行
-        personalInformation.field.residentialAddressLine3.label:
+        '[personalInformation.field.residentialAddressLine3.label]':
           en: Residential Address Line 3
           zh_HK: 居住地址第三行
-        personalInformation.field.residentialAddressLine3.placeholder:
+        '[personalInformation.field.residentialAddressLine3.placeholder]':
           en: Enter residential address line 3
           zh_HK: 請輸入居住地址第三行
-        personalInformation.field.residentialCountry.label:
+        '[personalInformation.field.residentialCountry.label]':
           en: Country
           zh_HK: 國家
-        personalInformation.field.residentialCountry.placeholder:
+        '[personalInformation.field.residentialCountry.placeholder]':
           en: Country
           zh_HK: 國家
-        personalInformation.field.smsLanguage.label:
+        '[personalInformation.field.smsLanguage.label]':
           en: Language Selection of SMS (Optional)
           zh_HK: 短訊語言選擇 (可選)
-        personalInformation.homeTel.invalid.message:
+        '[personalInformation.homeTel.invalid.message]':
           en: Please input a valid Hong Kong Home Telephone Number.
           zh_HK: 請輸入有效香港住所電話號碼。
-        personalInformation.mailingAddress.incomplete.message:
+        '[personalInformation.mailingAddress.incomplete.message]':
           en: Please input a correspondence address.
           zh_HK: 請輸入通訊地址。
-        personalInformation.mailingAddress.invalid.message:
+        '[personalInformation.mailingAddress.invalid.message]':
           en: Please input a valid correspondence address.
           zh_HK: 請輸入有效通訊地址。
-        personalInformation.mobilePhone.invalid.message:
+        '[personalInformation.mobilePhone.invalid.message]':
           en: Please input a valid Hong Kong Mobile Telephone Number.
           zh_HK: 請輸入有效香港手提電話號碼。
-        personalInformation.overseasAreaCode.invalid.message:
+        '[personalInformation.overseasAreaCode.invalid.message]':
           en: Please input a valid Area Code.
           zh_HK: 請輸入有效區域號碼。
-        personalInformation.overseasCountryCode.invalid.message:
+        '[personalInformation.overseasCountryCode.invalid.message]':
           en: Please input a valid Country Code.
           zh_HK: 請輸入有效國家號碼。
-        personalInformation.overseasCountryCode.requiredWhenPhonePresent.message:
+        '[personalInformation.overseasCountryCode.requiredWhenPhonePresent.message]':
           en: Please input a valid Country Code.
           zh_HK: 請輸入有效國家號碼。
-        personalInformation.overseasPhoneNumber.invalid.message:
+        '[personalInformation.overseasPhoneNumber.invalid.message]':
           en: Please input a valid Overseas Phone Number.
           zh_HK: 請輸入有效海外電話號碼。
-        personalInformation.overseasPhoneNumber.requiredWhenCodePresent.message:
+        '[personalInformation.overseasPhoneNumber.requiredWhenCodePresent.message]':
           en: Please input a valid Overseas Phone Number.
           zh_HK: 請輸入有效海外電話號碼。
-        personalInformation.page.title:
+        '[personalInformation.page.title]':
           en: Personal Information
           zh_HK: 個人資料
-        personalInformation.residentialAddress.incomplete.message:
+        '[personalInformation.residentialAddress.incomplete.message]':
           en: Please input a residential address.
           zh_HK: 請輸入居住地址。
-        personalInformation.residentialAddress.invalid.message:
+        '[personalInformation.residentialAddress.invalid.message]':
           en: Please input a valid residential address.
           zh_HK: 請輸入有效居住地址。
-        personalInformation.residentialAddress.required.message:
+        '[personalInformation.residentialAddress.required.message]':
           en: Please input a residential address.
           zh_HK: 請輸入居住地址。
-        personalInformation.residentialCountry.required.message:
+        '[personalInformation.residentialCountry.required.message]':
           en: Please select a country.
           zh_HK: 請選擇國家。
-        personalInformation.section.addressInformation.title:
+        '[personalInformation.section.addressInformation.title]':
           en: Address Information
           zh_HK: 地址資料
-        personalInformation.section.communicationSettings.title:
+        '[personalInformation.section.communicationSettings.title]':
           en: Communication Settings
           zh_HK: 通訊設定
-        personalInformation.section.controlInformation.title:
+        '[personalInformation.section.controlInformation.title]':
           en: Control Information
           zh_HK: 控制資料
-        personalInformation.section.electronicContacts.title:
+        '[personalInformation.section.electronicContacts.title]':
           en: Email Contact
           zh_HK: 聯絡電郵
-        personalInformation.section.importantNotes.title:
+        '[personalInformation.section.importantNotes.title]':
           en: Important Notes
           zh_HK: 重要事項
-        personalInformation.section.localContactNumber.title:
+        '[personalInformation.section.localContactNumber.title]':
           en: Phone Numbers
           zh_HK: 聯絡電話
-        personalInformation.section.overseasContacts.title:
+        '[personalInformation.section.overseasContacts.title]':
           en: Overseas Contact
           zh_HK: 海外聯絡電話
       form:

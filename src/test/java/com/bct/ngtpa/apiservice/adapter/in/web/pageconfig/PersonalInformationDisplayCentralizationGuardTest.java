@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
@@ -53,7 +54,7 @@ class PersonalInformationDisplayCentralizationGuardTest {
     @Test
     void personalInformationDisplayContainsRequiredCentralEntriesAndStableVariantContract() throws IOException {
         Map<String, Object> page = personalInformationPage(loadYaml());
-        Map<String, Object> display = asMap(page.get("display"));
+        Map<String, Object> display = normalizeDisplayKeys(asMap(page.get("display")));
 
         assertThat(display).containsKeys(
                 "personalInformation.page.title",
@@ -130,6 +131,19 @@ class PersonalInformationDisplayCentralizationGuardTest {
                 violations.add(path + "." + key);
             }
         }
+    }
+
+
+    private static Map<String, Object> normalizeDisplayKeys(Map<String, Object> display) {
+        Map<String, Object> normalized = new LinkedHashMap<>();
+        for (var entry : display.entrySet()) {
+            String key = entry.getKey();
+            if (key != null && key.startsWith("[") && key.endsWith("]")) {
+                key = key.substring(1, key.length() - 1);
+            }
+            normalized.put(key, entry.getValue());
+        }
+        return normalized;
     }
 
     @FunctionalInterface

@@ -16,8 +16,8 @@ class PersonalInformationDisplayVariantYamlTest {
     void poBoxBlockedKeepsStableMessageCodeAndAddsJpDisplayVariant() throws IOException {
         String yaml = Files.readString(PERSONAL_INFORMATION_YAML);
 
-        assertThat(yaml).contains("personalInformation.address.poBoxBlocked.message:");
-        assertThat(yaml).contains("personalInformation.address.poBoxBlocked.message.JP:");
+        assertThat(yaml).contains("'[personalInformation.address.poBoxBlocked.message]':");
+        assertThat(yaml).contains("'[personalInformation.address.poBoxBlocked.message.JP]':");
         assertThat(yaml).contains("code: personalInformation.address.poBoxBlocked");
         assertThat(yaml).contains("messageCode: personalInformation.address.poBoxBlocked.message");
         assertThat(yaml).doesNotContain("messageCode: personalInformation.address.poBoxBlocked.message.JP");
