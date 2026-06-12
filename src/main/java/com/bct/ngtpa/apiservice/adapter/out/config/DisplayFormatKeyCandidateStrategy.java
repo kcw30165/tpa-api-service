@@ -17,11 +17,8 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class DisplayFormatKeyCandidateStrategy implements ConfigKeyCandidateStrategy {
 
-    private static final String PREFIX = "display-format";
-    private static final String DEFAULT_LANGUAGE = "en";
     private static final String DATE_CODE = "date";
     private static final String AMOUNT_CODE = "amount";
-    private static final String WILDCARD_KEY = "*";
 
     private final ConfigVariantCandidateGenerator candidateGenerator;
 
@@ -33,30 +30,15 @@ public class DisplayFormatKeyCandidateStrategy implements ConfigKeyCandidateStra
     @Override
     public List<String> generateCandidateKeys(ConfigLookupRequest request) {
         var code = validateCode(request.code());
-        var candidates = candidateGenerator.generate(request.context());
         var keys = new ArrayList<String>();
 
-        appendLocaleKeys(keys, code, request.context().localeKey(), candidates, true);
-        if (!DEFAULT_LANGUAGE.equals(request.context().localeKey())) {
-            appendLocaleKeys(keys, code, DEFAULT_LANGUAGE, candidates, true);
+        for (var candidate : candidateGenerator.generate(request.context())) {
+            keys.add(code + "." + candidate);
         }
+        keys.add(code);
 
         Set<String> uniqueKeys = new LinkedHashSet<>(keys);
         return List.copyOf(uniqueKeys);
-    }
-
-    private void appendLocaleKeys(
-            List<String> keys,
-            String code,
-            String language,
-            List<String> candidates,
-            boolean includeWildcard) {
-        for (var candidate : candidates) {
-            keys.add(PREFIX + "." + code + "." + language + "." + candidate);
-        }
-        if (includeWildcard) {
-            keys.add(PREFIX + "." + code + "." + language + "." + WILDCARD_KEY);
-        }
     }
 
     private String validateCode(String code) {

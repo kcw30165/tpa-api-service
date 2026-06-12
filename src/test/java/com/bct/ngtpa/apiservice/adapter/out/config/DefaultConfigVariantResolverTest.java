@@ -20,7 +20,7 @@ class DefaultConfigVariantResolverTest {
     @Test
     void resolvesDisplayFormatUsingExactEnvTrustSchemeOverride() {
         var resolver = resolver(
-                Map.of("en", Map.of("PROD.RM.MPF", "yyyy/MM/dd")),
+                Map.of("en", Map.of("date.PROD.RM.MPF", "yyyy/MM/dd")),
                 Map.of(),
                 Map.of());
 
@@ -33,9 +33,9 @@ class DefaultConfigVariantResolverTest {
     }
 
     @Test
-    void resolvesDisplayFormatUsingWildcardFallback() {
+    void resolvesDisplayFormatUsingBaseCodeFallback() {
         var resolver = resolver(
-                Map.of("en", Map.of("*", "dd/MM/yyyy")),
+                Map.of("en", Map.of("date", "dd/MM/yyyy")),
                 Map.of(),
                 Map.of());
 
@@ -51,7 +51,7 @@ class DefaultConfigVariantResolverTest {
     void resolvesAmountUsingLanguageFallbackToEnglish() {
         var resolver = resolver(
                 Map.of(),
-                Map.of("en", Map.of("PROD.RM", "#,##0")),
+                Map.of("en", Map.of("amount.PROD.RM", "#,##0")),
                 Map.of());
 
         var request = ConfigLookupRequest.optional(

@@ -14,7 +14,10 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class DisplayFormatConfigSource implements ConfigSource {
 
-    private static final String PREFIX = "display-format.";
+    private static final String DEFAULT_LANGUAGE = Locale.ENGLISH.toString();
+    private static final String DATE_CODE = "date";
+    private static final String AMOUNT_CODE = "amount";
+    private static final String WILDCARD_KEY = "*";
 
     private final DateFormatProperties dateFormatProperties;
     private final AmountFormatProperties amountFormatProperties;
@@ -26,53 +29,71 @@ public class DisplayFormatConfigSource implements ConfigSource {
 
     @Override
     public Optional<String> get(String key, Locale locale) {
-        if (!StringUtils.hasText(key) || !key.startsWith(PREFIX)) {
+        if (!StringUtils.hasText(key)) {
             return Optional.empty();
         }
 
-        var remainder = key.substring(PREFIX.length());
-        var codeSeparator = remainder.indexOf('.');
-        if (codeSeparator < 0) {
-            return Optional.empty();
-        }
-        var localeSeparator = remainder.indexOf('.', codeSeparator + 1);
-        if (localeSeparator < 0) {
+        var normalizedKey = key.trim();
+        var code = resolveCode(normalizedKey);
+        if (code == null) {
             return Optional.empty();
         }
 
-        var code = remainder.substring(0, codeSeparator);
-        var language = remainder.substring(codeSeparator + 1, localeSeparator);
-        var variantKey = remainder.substring(localeSeparator + 1);
+        var language = normalizeLocaleKey(locale);
+        var resolved = resolveForLanguage(code, normalizedKey, language);
+        if (resolved.isPresent() || DEFAULT_LANGUAGE.equals(language)) {
+            return resolved;
+        }
 
+        return resolveForLanguage(code, normalizedKey, DEFAULT_LANGUAGE);
+    }
+
+    private Optional<String> resolveForLanguage(String code, String key, String language) {
         var formats = resolveLocaleFormats(code, language);
-        return Optional.ofNullable(resolveFormat(formats, code, variantKey))
+        if (formats.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return Optional.ofNullable(resolveFormat(formats, code, key))
                 .filter(StringUtils::hasText);
     }
 
-    private String resolveFormat(Map<String, String> formats, String code, String variantKey) {
-        if (formats.isEmpty() || !StringUtils.hasText(variantKey)) {
-            return null;
+    private String resolveFormat(Map<String, String> formats, String code, String key) {
+        var configured = formats.get(key);
+        if (StringUtils.hasText(configured)) {
+            return configured;
         }
 
-        var normalizedVariantKey = variantKey.trim();
-        if ("*".equals(normalizedVariantKey)) {
-            return firstNonBlank(formats.get(code), formats.get("*"));
+        if (code.equals(key)) {
+            return formats.get(WILDCARD_KEY);
         }
 
-        return firstNonBlank(
-                formats.get(code + "." + normalizedVariantKey),
-                formats.get(normalizedVariantKey));
+        var legacyVariantKey = key.substring(code.length() + 1);
+        return formats.get(legacyVariantKey);
     }
 
-    private String firstNonBlank(String first, String second) {
-        return StringUtils.hasText(first) ? first : second;
+    private String resolveCode(String key) {
+        if (DATE_CODE.equals(key) || key.startsWith(DATE_CODE + ".")) {
+            return DATE_CODE;
+        }
+        if (AMOUNT_CODE.equals(key) || key.startsWith(AMOUNT_CODE + ".")) {
+            return AMOUNT_CODE;
+        }
+        return null;
     }
 
     private Map<String, String> resolveLocaleFormats(String code, String language) {
         return switch (code) {
-            case "date" -> dateFormatProperties.getLocaleFormats(language);
-            case "amount" -> amountFormatProperties.getLocaleFormats(language);
+            case DATE_CODE -> dateFormatProperties.getLocaleFormats(language);
+            case AMOUNT_CODE -> amountFormatProperties.getLocaleFormats(language);
             default -> Map.of();
         };
+    }
+
+    private String normalizeLocaleKey(Locale locale) {
+        if (locale == null || !StringUtils.hasText(locale.toString())) {
+            return DEFAULT_LANGUAGE;
+        }
+        return locale.toString();
     }
 }
