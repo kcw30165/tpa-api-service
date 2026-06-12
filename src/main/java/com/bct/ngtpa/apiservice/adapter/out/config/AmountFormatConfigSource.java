@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.out.config;
 import com.bct.ngtpa.apiservice.shared.config.ConfigCategory;
 import com.bct.ngtpa.apiservice.shared.config.ConfigSource;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -18,7 +19,8 @@ public class AmountFormatConfigSource implements ConfigSource {
     private static final String CODE = "amount";
     private static final String WILDCARD_KEY = "*";
 
-    private final AmountFormatProperties amountFormatProperties;
+    @Qualifier("amountFormatProperties")
+    private final LocalizedConfigProperties properties;
 
     @Override
     public ConfigCategory category() {
@@ -46,7 +48,7 @@ public class AmountFormatConfigSource implements ConfigSource {
     }
 
     private Optional<String> resolveForLanguage(String key, String language) {
-        var formats = amountFormatProperties.getLocaleFormats(language);
+        var formats = properties.getLocaleFormats(language);
         if (formats.isEmpty()) {
             return Optional.empty();
         }

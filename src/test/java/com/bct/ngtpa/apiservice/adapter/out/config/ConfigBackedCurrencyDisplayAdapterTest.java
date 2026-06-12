@@ -1,7 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.out.config;
 
 import com.bct.ngtpa.apiservice.application.dto.CurrencyDisplay;
-import com.bct.ngtpa.apiservice.adapter.out.config.CurrencyMappingProperties;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;
@@ -13,7 +12,7 @@ class ConfigBackedCurrencyDisplayAdapterTest {
 
     private static ConfigBackedCurrencyDisplayAdapter adapterWithMappings(
             Map<String, String> englishMappings) {
-        var properties = new CurrencyMappingProperties();
+        var properties = new LocalizedConfigProperties();
         properties.put("en", englishMappings);
         return new ConfigBackedCurrencyDisplayAdapter(properties);
     }
@@ -21,7 +20,7 @@ class ConfigBackedCurrencyDisplayAdapterTest {
     private static ConfigBackedCurrencyDisplayAdapter adapterWithBothLocales(
             Map<String, String> englishMappings,
             Map<String, String> chineseMappings) {
-        var properties = new CurrencyMappingProperties();
+        var properties = new LocalizedConfigProperties();
         properties.put("en", englishMappings);
         properties.put("zh_HK", chineseMappings);
         return new ConfigBackedCurrencyDisplayAdapter(properties);

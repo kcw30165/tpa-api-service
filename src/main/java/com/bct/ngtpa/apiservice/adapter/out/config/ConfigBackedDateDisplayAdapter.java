@@ -28,7 +28,7 @@ public class ConfigBackedDateDisplayAdapter implements DateDisplayPort {
         this.configVariantResolver = configVariantResolver;
     }
 
-    ConfigBackedDateDisplayAdapter(DateFormatProperties dateFormatProperties) {
+    ConfigBackedDateDisplayAdapter(LocalizedConfigProperties dateFormatProperties) {
         this(new DefaultConfigVariantResolver(
                 List.of(new DateFormatConfigSource(dateFormatProperties)),
                 List.of(new DefaultConfigKeyCandidateStrategy(

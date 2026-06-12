@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class ConfigBackedDateDisplayAdapterTest {
 
     private static ConfigBackedDateDisplayAdapter adapterWith(Map<String, Map<String, String>> data) {
-        var props = new DateFormatProperties();
+        var props = new LocalizedConfigProperties();
         props.putAll(data);
         return new ConfigBackedDateDisplayAdapter(props);
     }

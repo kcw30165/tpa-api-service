@@ -18,9 +18,7 @@ class ConfigAdapterReflectionBranchProbeTest {
     @Test
     void noArgConfigPropertiesCanExerciseNullBlankAndMissingLocaleBranches() throws Exception {
         int calls = 0;
-        calls += exerciseLocaleFormatsIfNoArg("com.bct.ngtpa.apiservice.adapter.out.config.AmountFormatProperties");
-        calls += exerciseLocaleFormatsIfNoArg("com.bct.ngtpa.apiservice.adapter.out.config.DateFormatProperties");
-        calls += exerciseLocaleFormatsIfNoArg("com.bct.ngtpa.apiservice.adapter.out.config.CurrencyMappingProperties");
+        calls += exerciseLocaleFormatsIfNoArg("com.bct.ngtpa.apiservice.adapter.out.config.LocalizedConfigProperties");
         assertThat(calls).isGreaterThanOrEqualTo(0);
     }
 

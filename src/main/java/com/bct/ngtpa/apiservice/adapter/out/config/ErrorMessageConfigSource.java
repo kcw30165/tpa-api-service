@@ -2,6 +2,8 @@ package com.bct.ngtpa.apiservice.adapter.out.config;
 
 import com.bct.ngtpa.apiservice.shared.config.ConfigCategory;
 import com.bct.ngtpa.apiservice.shared.config.ConfigSource;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -9,15 +11,13 @@ import java.util.Locale;
 import java.util.Optional;
 
 @Component
+@RequiredArgsConstructor
 public class ErrorMessageConfigSource implements ConfigSource {
 
-    private static final String DEFAULT_LOCALE_KEY = Locale.ENGLISH.toString();
+    private static final String DEFAULT_LANGUAGE = Locale.ENGLISH.toString();
 
-    private final ErrorMessageProperties properties;
-
-    public ErrorMessageConfigSource(ErrorMessageProperties properties) {
-        this.properties = properties;
-    }
+    @Qualifier("errorMessageProperties")
+    private final LocalizedConfigProperties properties;
 
     @Override
     public ConfigCategory category() {
@@ -30,14 +30,25 @@ public class ErrorMessageConfigSource implements ConfigSource {
             return Optional.empty();
         }
 
-        return properties.find(normalizeLocaleKey(locale), key);
-    }
-
-    private static String normalizeLocaleKey(Locale locale) {
-        if (locale == null || !StringUtils.hasText(locale.toString())) {
-            return DEFAULT_LOCALE_KEY;
+        var normalizedKey = key.trim();
+        var language = normalizeLocaleKey(locale);
+        var resolved = find(language, normalizedKey);
+        if (resolved.isPresent() || DEFAULT_LANGUAGE.equals(language)) {
+            return resolved;
         }
 
+        return find(DEFAULT_LANGUAGE, normalizedKey);
+    }
+
+    private Optional<String> find(String language, String key) {
+        return Optional.ofNullable(properties.getLocaleFormats(language).get(key))
+                .filter(StringUtils::hasText);
+    }
+
+    private String normalizeLocaleKey(Locale locale) {
+        if (locale == null || !StringUtils.hasText(locale.toString())) {
+            return DEFAULT_LANGUAGE;
+        }
         return locale.toString();
     }
 }

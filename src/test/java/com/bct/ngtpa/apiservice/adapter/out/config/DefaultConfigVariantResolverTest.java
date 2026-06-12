@@ -185,13 +185,13 @@ class DefaultConfigVariantResolverTest {
             Map<String, Map<String, String>> dateFormats,
             Map<String, Map<String, String>> amountFormats,
             Map<String, Map<String, String>> currencyMappings) {
-        var dateProperties = new DateFormatProperties();
+        var dateProperties = new LocalizedConfigProperties();
         dateProperties.putAll(dateFormats);
 
-        var amountProperties = new AmountFormatProperties();
+        var amountProperties = new LocalizedConfigProperties();
         amountProperties.putAll(amountFormats);
 
-        var currencyProperties = new CurrencyMappingProperties();
+        var currencyProperties = new LocalizedConfigProperties();
         currencyProperties.putAll(currencyMappings);
 
         var candidateGenerator = new ConfigVariantCandidateGenerator();

@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class ConfigBackedAmountDisplayAdapterTest {
 
     private static ConfigBackedAmountDisplayAdapter adapterWith(Map<String, Map<String, String>> data) {
-        var props = new AmountFormatProperties();
+        var props = new LocalizedConfigProperties();
         props.putAll(data);
         return new ConfigBackedAmountDisplayAdapter(props);
     }

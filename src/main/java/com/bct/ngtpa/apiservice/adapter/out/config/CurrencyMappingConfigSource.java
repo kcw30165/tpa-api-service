@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.out.config;
 import com.bct.ngtpa.apiservice.shared.config.ConfigCategory;
 import com.bct.ngtpa.apiservice.shared.config.ConfigSource;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -15,7 +16,8 @@ public class CurrencyMappingConfigSource implements ConfigSource {
 
     private static final String DEFAULT_LANGUAGE = Locale.ENGLISH.toString();
 
-    private final CurrencyMappingProperties currencyMappingProperties;
+    @Qualifier("currencyMappingProperties")
+    private final LocalizedConfigProperties properties;
 
     @Override
     public ConfigCategory category() {
@@ -39,7 +41,7 @@ public class CurrencyMappingConfigSource implements ConfigSource {
     }
 
     private Optional<String> find(String language, String key) {
-        return Optional.ofNullable(currencyMappingProperties.getLocaleFormats(language).get(key))
+        return Optional.ofNullable(properties.getLocaleFormats(language).get(key))
                 .filter(StringUtils::hasText);
     }
 

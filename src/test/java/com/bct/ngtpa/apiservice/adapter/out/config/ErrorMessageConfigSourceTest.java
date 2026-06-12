@@ -12,14 +12,14 @@ class ErrorMessageConfigSourceTest {
 
     @Test
     void categoryIsErrorMessage() {
-        var source = new ErrorMessageConfigSource(new ErrorMessageProperties());
+        var source = new ErrorMessageConfigSource(new LocalizedConfigProperties());
 
         assertThat(source.category()).isEqualTo(ConfigCategory.ERROR_MESSAGE);
     }
 
     @Test
     void getReturnsConfiguredEnglishMessage() {
-        var properties = new ErrorMessageProperties();
+        var properties = new LocalizedConfigProperties();
         properties.put("en", Map.of("err.request.invalid", "Invalid request."));
         var source = new ErrorMessageConfigSource(properties);
 
@@ -29,7 +29,7 @@ class ErrorMessageConfigSourceTest {
 
     @Test
     void getReturnsConfiguredTraditionalChineseMessage() {
-        var properties = new ErrorMessageProperties();
+        var properties = new LocalizedConfigProperties();
         properties.put("zh_HK", Map.of("err.request.invalid", "請求無效。"));
         var source = new ErrorMessageConfigSource(properties);
 
@@ -39,7 +39,7 @@ class ErrorMessageConfigSourceTest {
 
     @Test
     void getUsesEnglishLocaleWhenLocaleIsNull() {
-        var properties = new ErrorMessageProperties();
+        var properties = new LocalizedConfigProperties();
         properties.put("en", Map.of("err.request.invalid", "Invalid request."));
         var source = new ErrorMessageConfigSource(properties);
 
@@ -49,7 +49,7 @@ class ErrorMessageConfigSourceTest {
 
     @Test
     void getReturnsEmptyForBlankKey() {
-        var properties = new ErrorMessageProperties();
+        var properties = new LocalizedConfigProperties();
         properties.put("en", Map.of("err.request.invalid", "Invalid request."));
         var source = new ErrorMessageConfigSource(properties);
 
@@ -59,7 +59,7 @@ class ErrorMessageConfigSourceTest {
 
     @Test
     void getReturnsEmptyWhenMessageIsNotConfigured() {
-        var properties = new ErrorMessageProperties();
+        var properties = new LocalizedConfigProperties();
         properties.put("en", Map.of("err.request.invalid", "Invalid request."));
         var source = new ErrorMessageConfigSource(properties);
 
