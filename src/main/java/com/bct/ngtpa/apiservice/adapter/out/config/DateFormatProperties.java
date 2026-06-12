@@ -15,16 +15,15 @@ import java.util.Map;
  *
  * <p>Example YAML:
  * <pre>
- * display-format:
- *   date:
- *     en:
- *       "[*]": dd/MM/yyyy
- *       JP: MM/dd/yyyy
- *     zh_HK:
- *       "[*]": dd/MM/yyyy
+ * date-display-format:
+ *   en:
+ *     date: dd/MM/yyyy
+ *     date.JP: MM/dd/yyyy
+ *   zh_HK:
+ *     date: dd/MM/yyyy
  * </pre>
  */
-@ConfigurationProperties(prefix = "display-format.date")
+@ConfigurationProperties(prefix = "date-display-format")
 public class DateFormatProperties extends LinkedHashMap<String, Map<String, String>> {
 
     public Map<String, String> getLocaleFormats(String locale) {

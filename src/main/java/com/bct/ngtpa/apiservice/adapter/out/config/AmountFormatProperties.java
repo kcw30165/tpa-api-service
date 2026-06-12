@@ -13,17 +13,16 @@ import java.util.Map;
  *
  * <p>Example YAML:
  * <pre>
- * display-format:
- *   amount:
- *     en:
- *       "[*]": "#,##0.00"
- *       JP: "#,##0.00"
- *     zh_HK:
- *       "[*]": "#,##0.00"
- *       JP: "#,##0.00"
+ * amount-display-format:
+ *   en:
+ *     amount: "#,##0.00"
+ *     amount.JP: "#,##0.00"
+ *   zh_HK:
+ *     amount: "#,##0.00"
+ *     amount.JP: "#,##0.00"
  * </pre>
  */
-@ConfigurationProperties(prefix = "display-format.amount")
+@ConfigurationProperties(prefix = "amount-display-format")
 public class AmountFormatProperties extends LinkedHashMap<String, Map<String, String>> {
 
     public Map<String, String> getLocaleFormats(String locale) {

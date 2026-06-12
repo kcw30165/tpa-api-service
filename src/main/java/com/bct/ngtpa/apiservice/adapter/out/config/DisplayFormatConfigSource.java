@@ -44,8 +44,28 @@ public class DisplayFormatConfigSource implements ConfigSource {
         var language = remainder.substring(codeSeparator + 1, localeSeparator);
         var variantKey = remainder.substring(localeSeparator + 1);
 
-        return Optional.ofNullable(resolveLocaleFormats(code, language).get(variantKey))
+        var formats = resolveLocaleFormats(code, language);
+        return Optional.ofNullable(resolveFormat(formats, code, variantKey))
                 .filter(StringUtils::hasText);
+    }
+
+    private String resolveFormat(Map<String, String> formats, String code, String variantKey) {
+        if (formats.isEmpty() || !StringUtils.hasText(variantKey)) {
+            return null;
+        }
+
+        var normalizedVariantKey = variantKey.trim();
+        if ("*".equals(normalizedVariantKey)) {
+            return firstNonBlank(formats.get(code), formats.get("*"));
+        }
+
+        return firstNonBlank(
+                formats.get(code + "." + normalizedVariantKey),
+                formats.get(normalizedVariantKey));
+    }
+
+    private String firstNonBlank(String first, String second) {
+        return StringUtils.hasText(first) ? first : second;
     }
 
     private Map<String, String> resolveLocaleFormats(String code, String language) {

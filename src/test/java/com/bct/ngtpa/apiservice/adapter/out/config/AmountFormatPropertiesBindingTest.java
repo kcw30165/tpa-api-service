@@ -18,14 +18,13 @@ class AmountFormatPropertiesBindingTest {
             .withUserConfiguration(TestConfig.class)
             .withInitializer(context -> {
                 var yaml = """
-                        display-format:
-                          amount:
-                            en:
-                              "[*]": "#,##0.00"
-                              JP: "#,##0.00"
-                            zh_HK:
-                              "[*]": "#,##0.00"
-                              JP: "#,##0.00"
+                        amount-display-format:
+                          en:
+                            amount: "#,##0.00"
+                            amount.JP: "#,##0.000"
+                          zh_HK:
+                            amount: "#,##0.00"
+                            amount.JP: "#,##0.000"
                         """;
                 var resource = new ByteArrayResource(yaml.getBytes(StandardCharsets.UTF_8));
                 try {
@@ -37,42 +36,42 @@ class AmountFormatPropertiesBindingTest {
             });
 
     @Test
-    void bindsEnLocaleWildcardPattern() {
+    void bindsEnLocaleBaseAmountPattern() {
         contextRunner.run(context -> {
             var bound = context.getBean(AmountFormatProperties.class);
-            var pattern = bound.getLocaleFormats("en").get("*");
+            var pattern = bound.getLocaleFormats("en").get("amount");
             assertNotNull(pattern);
             assertEquals("#,##0.00", pattern);
         });
     }
 
     @Test
-    void bindsEnLocaleJpPattern() {
+    void bindsEnLocaleJpAmountPattern() {
         contextRunner.run(context -> {
             var bound = context.getBean(AmountFormatProperties.class);
-            var pattern = bound.getLocaleFormats("en").get("JP");
+            var pattern = bound.getLocaleFormats("en").get("amount.JP");
+            assertNotNull(pattern);
+            assertEquals("#,##0.000", pattern);
+        });
+    }
+
+    @Test
+    void bindsZhHkLocaleBaseAmountPattern() {
+        contextRunner.run(context -> {
+            var bound = context.getBean(AmountFormatProperties.class);
+            var pattern = bound.getLocaleFormats("zh_HK").get("amount");
             assertNotNull(pattern);
             assertEquals("#,##0.00", pattern);
         });
     }
 
     @Test
-    void bindsZhHkLocaleWildcardPattern() {
+    void bindsZhHkLocaleJpAmountPattern() {
         contextRunner.run(context -> {
             var bound = context.getBean(AmountFormatProperties.class);
-            var pattern = bound.getLocaleFormats("zh_HK").get("*");
+            var pattern = bound.getLocaleFormats("zh_HK").get("amount.JP");
             assertNotNull(pattern);
-            assertEquals("#,##0.00", pattern);
-        });
-    }
-
-    @Test
-    void bindsZhHkLocaleJpPattern() {
-        contextRunner.run(context -> {
-            var bound = context.getBean(AmountFormatProperties.class);
-            var pattern = bound.getLocaleFormats("zh_HK").get("JP");
-            assertNotNull(pattern);
-            assertEquals("#,##0.00", pattern);
+            assertEquals("#,##0.000", pattern);
         });
     }
 

@@ -18,13 +18,12 @@ class DateFormatPropertiesBindingTest {
             .withUserConfiguration(TestConfig.class)
             .withInitializer(context -> {
                 var yaml = """
-                        display-format:
-                          date:
-                            en:
-                              "[*]": dd/MM/yyyy
-                              JP: MM/dd/yyyy
-                            zh_HK:
-                              "[*]": yyyy-MM-dd
+                        date-display-format:
+                          en:
+                            date: dd/MM/yyyy
+                            date.JP: MM/dd/yyyy
+                          zh_HK:
+                            date: yyyy-MM-dd
                         """;
                 var resource = new ByteArrayResource(yaml.getBytes(StandardCharsets.UTF_8));
                 try {
@@ -41,8 +40,8 @@ class DateFormatPropertiesBindingTest {
             var bound = context.getBean(DateFormatProperties.class);
             var enFormats = bound.getLocaleFormats("en");
             assertNotNull(enFormats);
-            assertEquals("dd/MM/yyyy", enFormats.get("*"));
-            assertEquals("MM/dd/yyyy", enFormats.get("JP"));
+            assertEquals("dd/MM/yyyy", enFormats.get("date"));
+            assertEquals("MM/dd/yyyy", enFormats.get("date.JP"));
         });
     }
 
@@ -50,7 +49,7 @@ class DateFormatPropertiesBindingTest {
     void bindsZhHkLocaleFormats() {
         contextRunner.run(context -> {
             var bound = context.getBean(DateFormatProperties.class);
-            assertEquals("yyyy-MM-dd", bound.getLocaleFormats("zh_HK").get("*"));
+            assertEquals("yyyy-MM-dd", bound.getLocaleFormats("zh_HK").get("date"));
         });
     }
 
