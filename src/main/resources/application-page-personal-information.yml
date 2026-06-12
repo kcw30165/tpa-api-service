@@ -42,6 +42,24 @@ bff-pages:
         personalInformation.businessPhoneExtension.invalid.message:
           en: Please input a valid Ext.
           zh_HK: 請輸入有效內線。
+        personalInformation.confirmation.afterLabel:
+          en: After Changes
+          zh_HK: 變更後
+        personalInformation.confirmation.beforeLabel:
+          en: Before Changes
+          zh_HK: 變更前
+        personalInformation.confirmation.reviewMessage:
+          en: Please review the changes you've made to your information before confirming.
+          zh_HK: 請在確認前檢查已更改的個人資料。
+        personalInformation.confirmation.securityVerification.instruction:
+          en: Please enter your password to confirm these changes
+          zh_HK: 請輸入您的密碼以確認以上變更
+        personalInformation.confirmation.securityVerification.label:
+          en: Security Verification
+          zh_HK: 安全認證
+        personalInformation.confirmation.title:
+          en: Confirm Information Update
+          zh_HK: 確認個人資料更改
         personalInformation.email.invalid.message:
           en: Please provide a valid email address.
           zh_HK: 請輸入有效電郵地址。
@@ -563,25 +581,7 @@ bff-pages:
           titleCode: personalInformation.section.controlInformation.title
       confirmation:
         enabled: true
-        title:
-          en: Confirm Information Update
-          zh_HK: 確認個人資料更改
-        reviewMessage:
-          en: Please review the changes you've made to your information before confirming.
-          zh_HK: 請在確認前檢查已更改的個人資料。
-        beforeLabel:
-          en: Before Changes
-          zh_HK: 變更前
-        afterLabel:
-          en: After Changes
-          zh_HK: 變更後
         securityVerification:
-          label:
-            en: Security Verification
-            zh_HK: 安全認證
-          instruction:
-            en: Please enter your password to confirm these changes
-            zh_HK: 請輸入您的密碼以確認以上變更
           passwordField:
             name: password
             dataType: string
@@ -594,11 +594,17 @@ bff-pages:
             - type: minLength
             - type: maxLength
             - type: noSpaces
+          labelCode: personalInformation.confirmation.securityVerification.label
+          instructionCode: personalInformation.confirmation.securityVerification.instruction
         actions:
           cancel:
             enabled: true
           confirmSubmit:
             enabled: true
+        titleCode: personalInformation.confirmation.title
+        reviewMessageCode: personalInformation.confirmation.reviewMessage
+        beforeLabelCode: personalInformation.confirmation.beforeLabel
+        afterLabelCode: personalInformation.confirmation.afterLabel
       validations:
       - id: address.atLeastOneRequired
         type: groupRequirement

@@ -5,6 +5,7 @@ import java.util.Collections;
 import com.bct.ngtpa.apiservice.shared.config.ConfigVariantCandidateGenerator;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.ActionProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.ConfirmationProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.ApimBindingProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.BffPagesProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.FieldProperties;
@@ -231,9 +232,99 @@ private final LoggingSanitizer loggingSanitizer;
                 formSchema != null && hasText(formSchema.getDefaultMode()) ? formSchema.getDefaultMode() : "view",
                 buildSections(pageSchema, apimData, apimConfig, apimConfigItems, language, accountEnv, trustCode, schemeType),
                 mapValidationRules(pageSchema, pageSchema != null ? pageSchema.getValidations() : null, language, accountEnv, trustCode, schemeType),
-                yamlResponseMapper.toResponseMap(pageSchema != null ? pageSchema.getConfirmation() : null, language),
+                buildConfirmation(pageSchema, language, accountEnv, trustCode, schemeType),
                 buildActions(pageSchema, formSchema, language, accountEnv, trustCode, schemeType));
     }
+    private Map<String, Object> buildConfirmation(
+            PageSchemaProperties pageSchema,
+            String language,
+            String accountEnv,
+            String trustCode,
+            String schemeType) {
+        ConfirmationProperties confirmation = pageSchema != null ? pageSchema.getConfirmation() : null;
+        Map<String, Object> response = new java.util.LinkedHashMap<>(
+                yamlResponseMapper.toResponseMap(confirmation, language));
+        if (confirmation == null) {
+            return response;
+        }
+
+        putResolvedConfirmationText(response, "title", confirmation.getTitleCode(), confirmation.getTitle(), pageSchema, language, accountEnv, trustCode, schemeType);
+        putResolvedConfirmationText(response, "reviewMessage", confirmation.getReviewMessageCode(), confirmation.getReviewMessage(), pageSchema, language, accountEnv, trustCode, schemeType);
+        putResolvedConfirmationText(response, "beforeLabel", confirmation.getBeforeLabelCode(), confirmation.getBeforeLabel(), pageSchema, language, accountEnv, trustCode, schemeType);
+        putResolvedConfirmationText(response, "afterLabel", confirmation.getAfterLabelCode(), confirmation.getAfterLabel(), pageSchema, language, accountEnv, trustCode, schemeType);
+
+        response.remove("titleCode");
+        response.remove("reviewMessageCode");
+        response.remove("beforeLabelCode");
+        response.remove("afterLabelCode");
+
+        putResolvedSecurityVerificationText(response, confirmation.getSecurityVerification(), pageSchema, language, accountEnv, trustCode, schemeType);
+        return response;
+    }
+
+    private void putResolvedConfirmationText(
+            Map<String, Object> response,
+            String responseKey,
+            String code,
+            Map<String, String> inlineFallback,
+            PageSchemaProperties pageSchema,
+            String language,
+            String accountEnv,
+            String trustCode,
+            String schemeType) {
+        String resolved = resolvePageDisplayText(pageSchema, code, inlineFallback, language, accountEnv, trustCode, schemeType);
+        if (hasText(resolved)) {
+            response.put(responseKey, resolved);
+        }
+    }
+
+    private void putResolvedSecurityVerificationText(
+            Map<String, Object> response,
+            Map<String, Object> securityVerification,
+            PageSchemaProperties pageSchema,
+            String language,
+            String accountEnv,
+            String trustCode,
+            String schemeType) {
+        if (securityVerification == null || securityVerification.isEmpty()) {
+            return;
+        }
+
+        Object mapped = response.get("securityVerification");
+        Map<String, Object> securityResponse = new java.util.LinkedHashMap<>();
+        if (mapped instanceof Map<?, ?> mappedSecurity) {
+            for (var entry : mappedSecurity.entrySet()) {
+                if (entry.getKey() instanceof String key) {
+                    securityResponse.put(key, entry.getValue());
+                }
+            }
+        }
+
+        putResolvedConfirmationText(securityResponse, "label", stringValue(securityVerification.get("labelCode")), localizedMap(securityVerification.get("label")), pageSchema, language, accountEnv, trustCode, schemeType);
+        putResolvedConfirmationText(securityResponse, "instruction", stringValue(securityVerification.get("instructionCode")), localizedMap(securityVerification.get("instruction")), pageSchema, language, accountEnv, trustCode, schemeType);
+
+        securityResponse.remove("labelCode");
+        securityResponse.remove("instructionCode");
+        response.put("securityVerification", securityResponse);
+    }
+
+    private Map<String, String> localizedMap(Object value) {
+        if (!(value instanceof Map<?, ?> map)) {
+            return null;
+        }
+        Map<String, String> result = new java.util.LinkedHashMap<>();
+        for (var entry : map.entrySet()) {
+            if (entry.getKey() instanceof String key && entry.getValue() instanceof String text) {
+                result.put(key, text);
+            }
+        }
+        return result;
+    }
+
+    private String stringValue(Object value) {
+        return value instanceof String text ? text : null;
+    }
+
 
     private List<SectionResponse> buildSections(PageSchemaProperties pageSchema,
             Map<String, Object> apimData,
