@@ -25,6 +25,10 @@ bff-pages:
           en: PO Box address will not be accepted, please re-enter your address as
             our record.
           zh_HK: 郵政信箱恕不接受，請重新輸入住址，以作資料紀錄。
+        personalInformation.address.poBoxBlocked.message.JP:
+          en: PO Box address will not be accepted for Japan accounts, please re-enter
+            your address as our record.
+          zh_HK: 日本戶口不接受郵政信箱，請重新輸入住址，以作資料紀錄。
         personalInformation.aeoiReminder.message:
           en: Please remember to submit your AEOI Self-Certificate by clicking Self
             Certification for Tax Residency function.
