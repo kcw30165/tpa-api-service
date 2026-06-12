@@ -13,11 +13,11 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class ConfiguredErrorMessageResolverTest {
+class ConfigBackedErrorMessageResolverTest {
 
     @Test
     void resolveReturnsRequestedLocaleMessage() {
-        var resolver = new ConfiguredErrorMessageResolver(new StubConfigVariantResolver(Map.of(
+        var resolver = new ConfigBackedErrorMessageResolver(new StubConfigVariantResolver(Map.of(
                 key("zh_HK", ErrorCodes.APIM_SERVICE_UNAVAILABLE), "服務暫時不可用。",
                 key("en", ErrorCodes.APIM_SERVICE_UNAVAILABLE), "Service is temporarily unavailable.")));
 
@@ -33,7 +33,7 @@ class ConfiguredErrorMessageResolverTest {
 
     @Test
     void resolveFallsBackToEnglishWhenRequestedLocaleHasNoMessage() {
-        var resolver = new ConfiguredErrorMessageResolver(new StubConfigVariantResolver(Map.of(
+        var resolver = new ConfigBackedErrorMessageResolver(new StubConfigVariantResolver(Map.of(
                 key("en", ErrorCodes.APIM_SERVICE_UNAVAILABLE), "Service is temporarily unavailable.")));
 
         var message = resolver.resolve(
@@ -48,7 +48,7 @@ class ConfiguredErrorMessageResolverTest {
 
     @Test
     void resolveFallsBackToConfiguredSystemUnexpectedWhenRequestedCodeIsMissing() {
-        var resolver = new ConfiguredErrorMessageResolver(new StubConfigVariantResolver(Map.of(
+        var resolver = new ConfigBackedErrorMessageResolver(new StubConfigVariantResolver(Map.of(
                 key("en", ErrorCodes.SYSTEM_UNEXPECTED), "Sorry, this service might be interrupted. Please try again later.")));
 
         var message = resolver.resolve(
@@ -63,7 +63,7 @@ class ConfiguredErrorMessageResolverTest {
 
     @Test
     void resolveFallsBackToConfiguredSystemUnexpectedWhenErrorCodeIsBlank() {
-        var resolver = new ConfiguredErrorMessageResolver(new StubConfigVariantResolver(Map.of(
+        var resolver = new ConfigBackedErrorMessageResolver(new StubConfigVariantResolver(Map.of(
                 key("en", ErrorCodes.SYSTEM_UNEXPECTED), "Configured fallback.")));
 
         var message = resolver.resolve(" ", "zh-HK", "JP", "JPM", "OE");
@@ -73,7 +73,7 @@ class ConfiguredErrorMessageResolverTest {
 
     @Test
     void resolveFallsBackToHardCodedMessageWhenConfigResolverThrows() {
-        var resolver = new ConfiguredErrorMessageResolver(request -> {
+        var resolver = new ConfigBackedErrorMessageResolver(request -> {
             throw new ConfigResolutionException("boom");
         });
 
@@ -84,12 +84,12 @@ class ConfiguredErrorMessageResolverTest {
                 "JPM",
                 "OE");
 
-        assertThat(message).isEqualTo(ConfiguredErrorMessageResolver.HARD_CODED_FALLBACK);
+        assertThat(message).isEqualTo(ConfigBackedErrorMessageResolver.HARD_CODED_FALLBACK);
     }
 
     @Test
     void unsupportedLocaleIsNormalizedToEnglish() {
-        var resolver = new ConfiguredErrorMessageResolver(new StubConfigVariantResolver(Map.of(
+        var resolver = new ConfigBackedErrorMessageResolver(new StubConfigVariantResolver(Map.of(
                 key("en", ErrorCodes.REQUEST_INVALID), "Invalid request.")));
 
         var message = resolver.resolve(ErrorCodes.REQUEST_INVALID, "fr-FR", null, null, null);
@@ -117,3 +117,4 @@ class ConfiguredErrorMessageResolverTest {
         }
     }
 }
+
