@@ -31,50 +31,53 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ApimNoticeMessageAdapterTest {
 
-    private final ApimNoticeMessageAdapter adapter = new ApimNoticeMessageAdapter(
-            null, null, null, new ApimProperties());
+        private final ApimNoticeMessageAdapter adapter = new ApimNoticeMessageAdapter(
+                        null, null, null, new ApimProperties());
 
-    @Test
-    void mapsApimFieldsToDomainModelUsingCategoryAndStatus() {
-        GetMessageBoardMessageItem messageItem = GetMessageBoardMessageItem.builder()
-                .msgCode("SHORT-001")
-                .msgCodeLong("LONG-001")
-                .seq(7)
-                .msgCate("IMP_NOTE")
-                .msgTitle("Should be ignored")
-                .msgContentChi("chi")
-                .msgContentEng("eng")
-                .startDatetime("29/04/2026 14:15:00")
-                .msgStatus("R")
-                .isRead(false)
-                .build();
+        @Test
+        void mapsApimFieldsToDomainModelUsingCategoryAndStatus() {
+                GetMessageBoardMessageItem messageItem = GetMessageBoardMessageItem.builder()
+                                .msgCode("SHORT-001")
+                                .msgCodeLong("LONG-001")
+                                .seq(7)
+                                .msgCate("IMP_NOTE")
+                                .msgTitle("Should be ignored")
+                                .msgContentChi("chi")
+                                .msgContentEng("eng")
+                                .startDatetime("29/04/2026 14:15:00")
+                                .msgStatus("R")
+                                .isRead(false)
+                                .build();
 
-        ApimResponseEnvelope<GetMessageBoardDataItem> response = ApimResponseEnvelope.<GetMessageBoardDataItem>builder()
-                .response(ApimResponseBody.<GetMessageBoardDataItem>builder()
-                        .data(List.of(GetMessageBoardDataItem.builder()
-                                .page(1)
-                                .size(99999)
-                                .message(List.of(messageItem))
-                                .build()))
-                        .build())
-                .build();
+                ApimResponseEnvelope<GetMessageBoardDataItem> response = ApimResponseEnvelope
+                                .<GetMessageBoardDataItem>builder()
+                                .response(ApimResponseBody.<GetMessageBoardDataItem>builder()
+                                                .errMessage("")
+                                                .data(List.of(GetMessageBoardDataItem.builder()
+                                                                .page(1)
+                                                                .size(99999)
+                                                                .message(List.of(messageItem))
+                                                                .build()))
+                                                .build())
+                                .build();
 
-        NotificationListResult result = (NotificationListResult) ReflectionTestUtils.invokeMethod(
-                adapter, "toNotificationListResult", response);
+                NotificationListResult result = (NotificationListResult) ReflectionTestUtils.invokeMethod(
+                                adapter, "toNotificationListResult", response);
 
-        assertEquals(1, result.notifications().size());
-        assertEquals("SHORT-001", result.notifications().getFirst().msgCode());
-        assertEquals("LONG-001", result.notifications().getFirst().msgCodeLong());
-        assertEquals("IMP_NOTE", result.notifications().getFirst().category());
-        assertEquals("IMPORTANT NOTICE", result.notifications().getFirst().msgTitle());
-        assertTrue(result.notifications().getFirst().isRead());
-    }
+                assertEquals(1, result.notifications().size());
+                assertEquals("SHORT-001", result.notifications().getFirst().msgCode());
+                assertEquals("LONG-001", result.notifications().getFirst().msgCodeLong());
+                assertEquals("IMP_NOTE", result.notifications().getFirst().category());
+                assertEquals("IMPORTANT NOTICE", result.notifications().getFirst().msgTitle());
+                assertTrue(result.notifications().getFirst().isRead());
+        }
 
         @Test
         void fetchNotificationsUsesDisabledEncryptionFlow() {
                 ApimProperties properties = new ApimProperties();
                 properties.getEncryption().setEnabled(false);
-                FixedEnvelopePayloadCryptoService payloadCryptoService = new FixedEnvelopePayloadCryptoService(messageEnvelope(messageItem("IMP_NOTE", "R", "29/04/2026 14:15:00")));
+                FixedEnvelopePayloadCryptoService payloadCryptoService = new FixedEnvelopePayloadCryptoService(
+                                messageEnvelope(messageItem("IMP_NOTE", "R", "29/04/2026 14:15:00")));
                 FixedBodyApimWebClientFacade facade = new FixedBodyApimWebClientFacade();
                 ApimNoticeMessageAdapter flowAdapter = new ApimNoticeMessageAdapter(
                                 facade,
@@ -94,10 +97,13 @@ class ApimNoticeMessageAdapterTest {
         void fetchNotificationsUsesCertificateWhenEncryptionEnabled() {
                 ApimProperties properties = new ApimProperties();
                 properties.getEncryption().setEnabled(true);
-                FixedEnvelopePayloadCryptoService payloadCryptoService = new FixedEnvelopePayloadCryptoService(messageEnvelope(messageItem("ACT_REQ", "U", "29/04/2026 14:15:00")));
+                FixedEnvelopePayloadCryptoService payloadCryptoService = new FixedEnvelopePayloadCryptoService(
+                                messageEnvelope(messageItem("ACT_REQ", "U", "29/04/2026 14:15:00")));
                 FixedBodyApimWebClientFacade facade = new FixedBodyApimWebClientFacade();
-                CountingCertificateService certificateService = new CountingCertificateService(new TestPublicKey("bct-public"));
-                ApimNoticeMessageAdapter flowAdapter = new ApimNoticeMessageAdapter(facade, certificateService, payloadCryptoService, properties);
+                CountingCertificateService certificateService = new CountingCertificateService(
+                                new TestPublicKey("bct-public"));
+                ApimNoticeMessageAdapter flowAdapter = new ApimNoticeMessageAdapter(facade, certificateService,
+                                payloadCryptoService, properties);
 
                 NotificationListResult result = flowAdapter.fetchNotifications(command()).block();
 
@@ -107,21 +113,23 @@ class ApimNoticeMessageAdapterTest {
                 assertFalse(result.notifications().getFirst().isRead());
         }
 
-    @Test
-    void cryptoFailureIsMappedToApimException() {
-        ApimProperties properties = new ApimProperties();
-        properties.getEncryption().setEnabled(true);
-        ApimNoticeMessageAdapter flowAdapter = new ApimNoticeMessageAdapter(
-                new FixedBodyApimWebClientFacade(),
-                new FailingCertificateService(),
-                new FixedEnvelopePayloadCryptoService(messageEnvelope(messageItem("IMP_NOTE", "R", "29/04/2026 14:15:00"))),
-                properties);
+        @Test
+        void cryptoFailureIsMappedToApimException() {
+                ApimProperties properties = new ApimProperties();
+                properties.getEncryption().setEnabled(true);
+                ApimNoticeMessageAdapter flowAdapter = new ApimNoticeMessageAdapter(
+                                new FixedBodyApimWebClientFacade(),
+                                new FailingCertificateService(),
+                                new FixedEnvelopePayloadCryptoService(
+                                                messageEnvelope(messageItem("IMP_NOTE", "R", "29/04/2026 14:15:00"))),
+                                properties);
 
-        ApimException ex = assertThrows(ApimException.class, () -> flowAdapter.fetchNotifications(command()).block());
+                ApimException ex = assertThrows(ApimException.class,
+                                () -> flowAdapter.fetchNotifications(command()).block());
 
-        assertEquals(ErrorCodes.SYSTEM_UNEXPECTED, ex.getErrorCode());
-        assertEquals("Certificate crypto error", ex.getMessage());
-    }
+                assertEquals(ErrorCodes.SYSTEM_UNEXPECTED, ex.getErrorCode());
+                assertEquals("Certificate crypto error", ex.getMessage());
+        }
 
         @Test
         void parsesApimDateTimeWithoutSeconds() {
@@ -132,39 +140,45 @@ class ApimNoticeMessageAdapterTest {
                 assertEquals(LocalDateTime.of(2023, 10, 11, 0, 0), parsed);
         }
 
-    @Test
-    void doesNotIncludePageOrSizeInApimRequestPayload() throws Exception {
-        GetNotificationsCommand command = new GetNotificationsCommand(
-                "DEV", "MBR", 1, 99999, "dd/MM/yyyy HH:mm", "Asia/Hong_Kong", "P1", "C1", "U1", "29/04/2026");
+        @Test
+        void doesNotIncludePageOrSizeInApimRequestPayload() throws Exception {
+                GetNotificationsCommand command = new GetNotificationsCommand(
+                                "DEV", "MBR", 1, 99999, "dd/MM/yyyy HH:mm", "Asia/Hong_Kong", "P1", "C1", "U1",
+                                "29/04/2026");
 
-        GetMessageBoardApimRequest request = (GetMessageBoardApimRequest) ReflectionTestUtils.invokeMethod(
-                adapter, "toApimRequest", command);
-        String json = new ObjectMapper().writeValueAsString(request);
+                GetMessageBoardApimRequest request = (GetMessageBoardApimRequest) ReflectionTestUtils.invokeMethod(
+                                adapter, "toApimRequest", command);
+                String json = new ObjectMapper().writeValueAsString(request);
 
-        assertTrue(json.contains("\"env\":\"DEV\""));
-        assertTrue(json.contains("\"mbr-type\":\"MBR\""));
-        assertFalse(json.contains("page"));
-        assertFalse(json.contains("size"));
-    }
+                assertTrue(json.contains("\"env\":\"DEV\""));
+                assertTrue(json.contains("\"mbr-type\":\"MBR\""));
+                assertFalse(json.contains("page"));
+                assertFalse(json.contains("size"));
+        }
 
-    @Test
-    void mapsCommandAccountEnvToApimJsonEnvField() throws Exception {
-        GetNotificationsCommand command = new GetNotificationsCommand(
-                "UAT", "MBR", 1, 99999, "dd/MM/yyyy HH:mm", "Asia/Hong_Kong", "P1", "C1", "U1", "29/04/2026");
+        @Test
+        void mapsCommandAccountEnvToApimJsonEnvField() throws Exception {
+                GetNotificationsCommand command = new GetNotificationsCommand(
+                                "UAT", "MBR", 1, 99999, "dd/MM/yyyy HH:mm", "Asia/Hong_Kong", "P1", "C1", "U1",
+                                "29/04/2026");
 
-        GetMessageBoardApimRequest request = (GetMessageBoardApimRequest) ReflectionTestUtils.invokeMethod(
-                adapter, "toApimRequest", command);
-        String json = new ObjectMapper().writeValueAsString(request);
+                GetMessageBoardApimRequest request = (GetMessageBoardApimRequest) ReflectionTestUtils.invokeMethod(
+                                adapter, "toApimRequest", command);
+                String json = new ObjectMapper().writeValueAsString(request);
 
-        // Java field is accountEnv; external APIM JSON field must still be "env"
-        assertEquals("UAT", request.getAccountEnv());
-        assertTrue(json.contains("\"env\":\"UAT\""));
-    }
+                // Java field is accountEnv; external APIM JSON field must still be "env"
+                assertEquals("UAT", request.getAccountEnv());
+                assertTrue(json.contains("\"env\":\"UAT\""));
+        }
 
         @Test
         void returnsEmptyResultWhenDataIsMissing() {
-                ApimResponseEnvelope<GetMessageBoardDataItem> response = ApimResponseEnvelope.<GetMessageBoardDataItem>builder()
-                                .response(ApimResponseBody.<GetMessageBoardDataItem>builder().data(List.of()).build())
+                ApimResponseEnvelope<GetMessageBoardDataItem> response = ApimResponseEnvelope
+                                .<GetMessageBoardDataItem>builder()
+                                .response(ApimResponseBody.<GetMessageBoardDataItem>builder()
+                                                .errMessage("")
+                                                .data(List.of())
+                                                .build())
                                 .build();
 
                 NotificationListResult result = (NotificationListResult) ReflectionTestUtils.invokeMethod(
@@ -176,28 +190,36 @@ class ApimNoticeMessageAdapterTest {
         @Test
         void throwsWhenPayloadMissingOrTopLevelErrorPresent() {
                 ApimException missingPayload = assertThrows(ApimException.class,
-                                () -> ReflectionTestUtils.invokeMethod(adapter, "toNotificationListResult", new Object[] {null}));
+                                () -> ReflectionTestUtils.invokeMethod(adapter, "toNotificationListResult",
+                                                new Object[] { null }));
 
-                ApimResponseEnvelope<GetMessageBoardDataItem> response = ApimResponseEnvelope.<GetMessageBoardDataItem>builder()
-                                .response(ApimResponseBody.<GetMessageBoardDataItem>builder().errMessage("APIM failed").build())
+                ApimResponseEnvelope<GetMessageBoardDataItem> response = ApimResponseEnvelope
+                                .<GetMessageBoardDataItem>builder()
+                                .response(ApimResponseBody.<GetMessageBoardDataItem>builder().errMessage("APIM failed")
+                                                .build())
                                 .build();
                 ApimException topLevelError = assertThrows(ApimException.class,
                                 () -> ReflectionTestUtils.invokeMethod(adapter, "toNotificationListResult", response));
 
                 assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, missingPayload.getErrorCode());
                 assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, topLevelError.getErrorCode());
-                assertEquals("APIM response payload is missing.", missingPayload.getMessage());
+                assertEquals("APIM response payload is invalid: response is missing.", missingPayload.getMessage());
                 assertEquals("APIM failed", topLevelError.getMessage());
         }
 
         @Test
         void ignoresNullItemsAndTreatsMalformedDatetimeAsNull() {
                 GetMessageBoardMessageItem malformedItem = messageItem("custom-type", "U", "bad-date");
-                ApimResponseEnvelope<GetMessageBoardDataItem> response = ApimResponseEnvelope.<GetMessageBoardDataItem>builder()
+                ApimResponseEnvelope<GetMessageBoardDataItem> response = ApimResponseEnvelope
+                                .<GetMessageBoardDataItem>builder()
                                 .response(ApimResponseBody.<GetMessageBoardDataItem>builder()
-                                .data(new ArrayList<>(List.of(
-                                        GetMessageBoardDataItem.builder().message(null).build(),
-                                        GetMessageBoardDataItem.builder().message(new ArrayList<>(List.of(malformedItem))).build())))
+                                                .errMessage("")
+                                                .data(new ArrayList<>(List.of(
+                                                                GetMessageBoardDataItem.builder().message(null).build(),
+                                                                GetMessageBoardDataItem.builder()
+                                                                                .message(new ArrayList<>(
+                                                                                                List.of(malformedItem)))
+                                                                                .build())))
                                                 .build())
                                 .build();
                 response.getResponse().getData().addFirst(null);
@@ -213,7 +235,8 @@ class ApimNoticeMessageAdapterTest {
         }
 
         private static GetNotificationsCommand command() {
-                return new GetNotificationsCommand("DEV", "MBR", 1, 99999, "dd/MM/yyyy HH:mm", "Asia/Hong_Kong", "P1", "C1", "U1", "29/04/2026");
+                return new GetNotificationsCommand("DEV", "MBR", 1, 99999, "dd/MM/yyyy HH:mm", "Asia/Hong_Kong", "P1",
+                                "C1", "U1", "29/04/2026");
         }
 
         private static GetMessageBoardMessageItem messageItem(String category, String status, String startDatetime) {
@@ -229,10 +252,13 @@ class ApimNoticeMessageAdapterTest {
                                 .build();
         }
 
-        private static ApimResponseEnvelope<GetMessageBoardDataItem> messageEnvelope(GetMessageBoardMessageItem messageItem) {
+        private static ApimResponseEnvelope<GetMessageBoardDataItem> messageEnvelope(
+                        GetMessageBoardMessageItem messageItem) {
                 return ApimResponseEnvelope.<GetMessageBoardDataItem>builder()
                                 .response(ApimResponseBody.<GetMessageBoardDataItem>builder()
-                                                .data(List.of(GetMessageBoardDataItem.builder().message(List.of(messageItem)).build()))
+                                                .errMessage("")
+                                                .data(List.of(GetMessageBoardDataItem.builder()
+                                                                .message(List.of(messageItem)).build()))
                                                 .build())
                                 .build();
         }
@@ -272,7 +298,8 @@ class ApimNoticeMessageAdapterTest {
 
                 @Override
                 @SuppressWarnings("unchecked")
-                public <T> ApimResponseEnvelope<T> decryptResponseEnvelope(String apiName, String responseJson, Class<T> dataClass,
+                public <T> ApimResponseEnvelope<T> decryptResponseEnvelope(String apiName, String responseJson,
+                                Class<T> dataClass,
                                 PublicKey publicKey) {
                         this.lastPublicKey = publicKey;
                         return (ApimResponseEnvelope<T>) envelope;
@@ -302,7 +329,8 @@ class ApimNoticeMessageAdapterTest {
 
                 @Override
                 public Mono<PublicKey> getBctPublicKey() {
-                        return Mono.error(new AssertionError("Certificate lookup should not run when encryption is disabled."));
+                        return Mono.error(new AssertionError(
+                                        "Certificate lookup should not run when encryption is disabled."));
                 }
         }
 

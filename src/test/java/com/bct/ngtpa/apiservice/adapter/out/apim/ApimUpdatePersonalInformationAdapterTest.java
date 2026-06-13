@@ -206,7 +206,7 @@ class ApimUpdatePersonalInformationAdapterTest {
     //     assertNotNull(result);
     //     assertFalse(result.success());
     //     assertEquals("DOWNSTREAM_ERROR", result.errors().getFirst().type());
-    //     assertEquals("APIM response payload is missing.", result.errors().getFirst().code());
+    //     assertEquals("APIM response payload is invalid: response is missing.", result.errors().getFirst().code());
     // }
 
     @Test

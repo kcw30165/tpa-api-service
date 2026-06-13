@@ -180,7 +180,7 @@ class ApimNotificationReadStatusAdapterTest {
             () -> ReflectionTestUtils.invokeMethod(adapter, "toResult", null, MessageStatus.READ));
 
         assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, ex.getErrorCode());
-        assertEquals("APIM response payload is missing.", ex.getMessage());
+        assertEquals("APIM response payload is invalid: response is missing.", ex.getMessage());
         }
 
     private static UpdateNotificationsReadStatusCommand command() {

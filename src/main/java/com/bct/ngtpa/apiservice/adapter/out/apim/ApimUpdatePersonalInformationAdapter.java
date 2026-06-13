@@ -79,24 +79,7 @@ public class ApimUpdatePersonalInformationAdapter implements ApimUpdatePersonalI
         private UpdatePersonalInformationResult toResult(
                         ApimResponseEnvelope<UpdateMemberInfoApimDataItem> response,
                         UpdateMemberInfoCommand command) {
-
-                var payload = response != null ? response.getResponse() : null;
-
-                if (payload == null) {
-                        throw new ApimException(
-                                        HttpStatus.BAD_GATEWAY,
-                                        ErrorCodes.APIM_RESPONSE_INVALID,
-                                        "APIM response payload is missing.");
-                }
-
-                if (StringUtils.hasText(payload.getErrMessage())) {
-                        throw new ApimException(
-                                        HttpStatus.BAD_GATEWAY,
-                                        ErrorCodes.APIM_RESPONSE_INVALID,
-                                        payload.getErrMessage());
-                }
-
-                var dataItems = payload.getData();
+                var dataItems = ApimResponseValidator.requireValidData(response);
 
                 if (CollectionUtils.isEmpty(dataItems) || dataItems.getFirst() == null) {
                         throw new ApimException(
