@@ -64,6 +64,44 @@ class ApimUpdatePersonalInformationAdapterTest {
 
 
 
+
+    @Test
+    void mapsSelectedApimSuccessResultFieldsFromSingleAccountResponse() {
+        CapturingApimWebClientFacade facade = new CapturingApimWebClientFacade("""
+                {
+                  "response": {
+                    "err-message": "",
+                    "data": [
+                      {
+                        "success": true,
+                        "policy-no": "POL-001",
+                        "cert-no": "CERT-001",
+                        "env": "JP",
+                        "ref-no": "260001999",
+                        "submit-date": "2026-06-13",
+                        "submit-time": "18:45:12",
+                        "errors": []
+                      }
+                    ]
+                  }
+                }
+                """);
+        ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(
+                facade,
+                new NoopApimCertificateService(),
+                new PassThroughApimPayloadCryptoService(),
+                disabledEncryptionProperties());
+
+        UpdatePersonalInformationResult result = adapter.updateMemberInfo(command()).block();
+
+        assertNotNull(result);
+        assertTrue(result.success());
+        assertEquals("260001999", result.refNo());
+        assertEquals("2026-06-13", result.submitDate());
+        assertEquals("18:45:12", result.submitTime());
+        assertEquals(List.of(), result.errors());
+    }
+
     @Test
     void mapsAllApplyAllDataItemsAndMarksSelectedAccountByPolicyCertAndEnv() {
         CapturingApimWebClientFacade facade = new CapturingApimWebClientFacade("""

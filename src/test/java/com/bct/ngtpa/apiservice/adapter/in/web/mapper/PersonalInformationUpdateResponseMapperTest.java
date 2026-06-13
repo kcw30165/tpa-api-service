@@ -34,6 +34,27 @@ class PersonalInformationUpdateResponseMapperTest {
         assertThat(response.errors()).isEmpty();
     }
 
+
+    @Test
+    void mapsSuccessfulUpdateResultFieldsIntoEndpointResultOnly() {
+        PersonalInformationUpdateErrorMapper errorMapper = mock(PersonalInformationUpdateErrorMapper.class);
+        PersonalInformationUpdateResponseMapper mapper = new PersonalInformationUpdateResponseMapper(errorMapper);
+
+        MutationResponse<PersonalInformationUpdateResultResponse> response = mapper.toResponse(
+                new UpdatePersonalInformationResult(true, "260001999", "2026-06-13", "18:45:12"));
+
+        assertThat(response.success()).isTrue();
+        assertThat(response.status()).isEqualTo(ApiStatus.UPDATED);
+        assertThat(response.result().refNo()).isEqualTo("260001999");
+        assertThat(response.result().submitDate()).isEqualTo("2026-06-13");
+        assertThat(response.result().submitTime()).isEqualTo("18:45:12");
+        assertThat(response.errors()).isEmpty();
+        assertThat(response.messages()).hasSize(1);
+        assertThat(PersonalInformationUpdateResultResponse.class.getRecordComponents())
+                .extracting(java.lang.reflect.RecordComponent::getName)
+                .containsExactly("refNo", "submitDate", "submitTime");
+    }
+
     @Test
     void mapsApimValidationFailureToMutationValidationFailedResponse() {
         PersonalInformationUpdateErrorMapper errorMapper = mock(PersonalInformationUpdateErrorMapper.class);
