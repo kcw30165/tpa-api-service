@@ -86,6 +86,7 @@ error-message:
     "err.system.unexpected": "Sorry, this service might be interrupted. Please try again later."
     "err.apim.service.unavailable.JP": "Service is temporarily unavailable in JP environment. Please try again later."
     "err.member.context.unavailable.JP.JPM.OE": "Member context is unavailable for this scheme. Please try again later."
+    "err.personal-information.update.request.invalid": "Invalid personal information update request."
   zh_HK:
     "err.request.invalid": "請求無效。"
     "err.request.validation.failed": "請求內容無效。"

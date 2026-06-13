@@ -177,7 +177,7 @@ public class ApiExceptionHandler {
             ServerWebExchange exchange) {
         return buildErrorResponse(
                 HttpStatus.BAD_REQUEST,
-                ErrorCodes.PERSONAL_INFORMATION_UPDATE_INVALID,
+                ErrorCodes.PERSONAL_INFORMATION_UPDATE_REQUEST_INVALID,
                 exchange,
                 ex,
                 ex.getMessage(),

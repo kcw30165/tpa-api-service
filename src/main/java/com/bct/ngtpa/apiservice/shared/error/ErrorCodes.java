@@ -32,7 +32,7 @@ public final class ErrorCodes {
         public static final String NOTIFICATION_REQUEST_INVALID = "err.notification.request.invalid";
 
         public static final String SYSTEM_UNEXPECTED = "err.system.unexpected";
-        public static final String PERSONAL_INFORMATION_UPDATE_INVALID = "err.personal-information.update.invalid";
+        public static final String PERSONAL_INFORMATION_UPDATE_REQUEST_INVALID = "err.personal-information.update.request.invalid";
 
         private ErrorCodes() {
         }
