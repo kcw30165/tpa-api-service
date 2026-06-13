@@ -55,7 +55,7 @@ public class ApimException extends RuntimeException {
             case 503 -> ErrorCodes.APIM_SERVICE_UNAVAILABLE;
             case 504 -> ErrorCodes.APIM_TIMEOUT;
             case 502 -> ErrorCodes.APIM_UPSTREAM_FAILURE;
-            default -> ErrorCodes.SYSTEM_UNEXPECTED;
+            default -> ErrorCodes.APIM_UNEXPECTED;
         };
     }
 }

@@ -127,7 +127,7 @@ class ApimContributionSummaryAdapterTest {
 
         assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, missingPayload.getErrorCode());
         assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, topLevelError.getErrorCode());
-        assertEquals("APIM response payload is missing.", missingPayload.getMessage());
+        assertEquals("APIM response payload is invalid: response is missing.", missingPayload.getMessage());
         assertEquals("APIM failed", topLevelError.getMessage());
     }
 
@@ -138,6 +138,7 @@ class ApimContributionSummaryAdapterTest {
     private static ApimResponseEnvelope<GetContributionSummaryDataItem> sampleEnvelope() {
         return ApimResponseEnvelope.<GetContributionSummaryDataItem>builder()
                 .response(ApimResponseBody.<GetContributionSummaryDataItem>builder()
+                        .errMessage("")
                         .data(List.of(GetContributionSummaryDataItem.builder()
                                 .currency("HKD")
                                 .dispSrc(List.of(

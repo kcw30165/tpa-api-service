@@ -13,7 +13,7 @@ class ApimExceptionTest {
     void normalizesNumericStatusCodeStringToBusinessErrorCode() {
         var exception = new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, "500", "diagnostic");
 
-        assertEquals(ErrorCodes.SYSTEM_UNEXPECTED, exception.getErrorCode());
+        assertEquals(ErrorCodes.APIM_UNEXPECTED, exception.getErrorCode());
     }
 
     @Test

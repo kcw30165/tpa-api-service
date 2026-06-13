@@ -24,6 +24,7 @@ public final class ErrorCodes {
         public static final String APIM_SERVICE_UNAVAILABLE = "err.apim.service.unavailable";
         public static final String APIM_TIMEOUT = "err.apim.timeout";
         public static final String APIM_RESPONSE_INVALID = "err.apim.response.invalid";
+        public static final String APIM_UNEXPECTED = "err.apim.unexpected";
 
         public static final String CONFIG_ERROR_MESSAGE_MISSING = "err.config.error-message.missing";
         public static final String CONFIG_RESOLUTION_FAILED = "err.config.resolution.failed";
