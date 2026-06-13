@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.response;
 
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Blocking validation/business/system error. Validation messages belong here, not in messages[].
@@ -15,7 +16,7 @@ public record ApiError(
 
     public ApiError {
         targets = targets == null ? List.of() : List.copyOf(targets);
-        severity = severity == null || severity.isBlank() ? "ERROR" : severity;
+        severity = severity == null || severity.isBlank() ? "ERROR" : severity.trim().toUpperCase(Locale.ROOT);
     }
 
     public static ApiError field(String code, String message, List<String> targets, String source) {

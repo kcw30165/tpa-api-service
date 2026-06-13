@@ -222,6 +222,30 @@ class ApiExceptionHandlerTest {
                 "REQ-APIM");
     }
 
+
+    @Test
+    void usesAcceptLanguageHeaderAndIgnoresLangQueryParameterWhenResolvingPublicMessages() {
+        java.util.concurrent.atomic.AtomicReference<String> capturedLocale = new java.util.concurrent.atomic.AtomicReference<>();
+        ApiExceptionHandler localHandler = new ApiExceptionHandler(
+                (errorCode, locale, accountEnv, trustCode, schemeType) -> {
+                    capturedLocale.set(locale);
+                    return "message for " + errorCode;
+                },
+                loggingSanitizer());
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/api/v1/notifications?lang=zh-HK")
+                        .header("Accept-Language", "en-US"));
+        exchange.getAttributes().put(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY, "REQ-LANG");
+
+        ResponseEntity<MutationResponse<Void>> response = localHandler.handleUnexpectedException(
+                new IllegalStateException("unexpected"),
+                exchange);
+
+        assertEquals("en-US", capturedLocale.get());
+        assertNotNull(response.getBody());
+        assertEquals("message for " + ErrorCodes.SYSTEM_UNEXPECTED, response.getBody().errors().getFirst().message());
+    }
+
     private static void assertMutationFailure(
             ResponseEntity<MutationResponse<Void>> response,
             HttpStatus expectedHttpStatus,

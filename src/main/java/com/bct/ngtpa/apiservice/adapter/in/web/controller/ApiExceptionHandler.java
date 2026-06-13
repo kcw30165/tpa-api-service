@@ -354,7 +354,7 @@ public class ApiExceptionHandler {
 
     private ErrorMessageContext resolveErrorMessageContext(ServerWebExchange exchange, Throwable exception) {
         return new ErrorMessageContext(
-                firstNonBlank(requestParam(exchange, "lang"), requestLocale(exchange), contextValue(exception, "lang")),
+                firstNonBlank(requestLocale(exchange), contextValue(exception, "lang")),
                 firstNonBlank(requestParam(exchange, "env"), contextValue(exception, "env")),
                 firstNonBlank(requestParam(exchange, "trustCode"), contextValue(exception, "trustCode")),
                 firstNonBlank(requestParam(exchange, "schemeType"), contextValue(exception, "schemeType")));
