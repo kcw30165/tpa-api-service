@@ -22,7 +22,6 @@ import com.bct.ngtpa.apiservice.domain.model.ContributionLabels;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSource;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryReport;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryRow;
-import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
@@ -32,7 +31,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 import org.springframework.aop.aspectj.annotation.AspectJProxyFactory;
-import org.springframework.http.HttpStatus;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
@@ -312,8 +310,20 @@ class ContributionControllerTest {
                                 .exchange()
                                 .expectStatus().isBadRequest()
                                 .expectBody()
-                                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.CONTRIBUTION_REQUEST_INVALID)
-                                .jsonPath("$.message").isEqualTo("Invalid contribution request.");
+                                .jsonPath("$.success").isEqualTo(false)
+                                .jsonPath("$.status").isEqualTo("VALIDATION_FAILED")
+                                .jsonPath("$.result").doesNotExist()
+                                .jsonPath("$.messages").isArray()
+                                .jsonPath("$.messages.length()").isEqualTo(0)
+                                .jsonPath("$.errors").isArray()
+                                .jsonPath("$.errors.length()").isEqualTo(1)
+                                .jsonPath("$.errors[0].type").isEqualTo("FORM")
+                                .jsonPath("$.errors[0].code").isEqualTo(ErrorCodes.CONTRIBUTION_REQUEST_INVALID)
+                                .jsonPath("$.errors[0].message").isEqualTo("Invalid contribution request.")
+                                .jsonPath("$.errors[0].targets").isArray()
+                                .jsonPath("$.errors[0].targets.length()").isEqualTo(0)
+                                .jsonPath("$.errors[0].severity").isEqualTo("ERROR")
+                                .jsonPath("$.errors[0].source").isEqualTo("SERVER");
         }
 
         @Test
@@ -331,8 +341,20 @@ class ContributionControllerTest {
                                 .exchange()
                                 .expectStatus().isBadRequest()
                                 .expectBody()
-                                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.CONTRIBUTION_REQUEST_INVALID)
-                                .jsonPath("$.message").isEqualTo("Invalid contribution request.");
+                                .jsonPath("$.success").isEqualTo(false)
+                                .jsonPath("$.status").isEqualTo("VALIDATION_FAILED")
+                                .jsonPath("$.result").doesNotExist()
+                                .jsonPath("$.messages").isArray()
+                                .jsonPath("$.messages.length()").isEqualTo(0)
+                                .jsonPath("$.errors").isArray()
+                                .jsonPath("$.errors.length()").isEqualTo(1)
+                                .jsonPath("$.errors[0].type").isEqualTo("FORM")
+                                .jsonPath("$.errors[0].code").isEqualTo(ErrorCodes.CONTRIBUTION_REQUEST_INVALID)
+                                .jsonPath("$.errors[0].message").isEqualTo("Invalid contribution request.")
+                                .jsonPath("$.errors[0].targets").isArray()
+                                .jsonPath("$.errors[0].targets.length()").isEqualTo(0)
+                                .jsonPath("$.errors[0].severity").isEqualTo("ERROR")
+                                .jsonPath("$.errors[0].source").isEqualTo("SERVER");
         }
 
         @Test
@@ -351,8 +373,20 @@ class ContributionControllerTest {
                                 .exchange()
                                 .expectStatus().isBadRequest()
                                 .expectBody()
-                                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.CONTRIBUTION_REQUEST_INVALID)
-                                .jsonPath("$.message").isEqualTo("Invalid contribution request.");
+                                .jsonPath("$.success").isEqualTo(false)
+                                .jsonPath("$.status").isEqualTo("VALIDATION_FAILED")
+                                .jsonPath("$.result").doesNotExist()
+                                .jsonPath("$.messages").isArray()
+                                .jsonPath("$.messages.length()").isEqualTo(0)
+                                .jsonPath("$.errors").isArray()
+                                .jsonPath("$.errors.length()").isEqualTo(1)
+                                .jsonPath("$.errors[0].type").isEqualTo("FORM")
+                                .jsonPath("$.errors[0].code").isEqualTo(ErrorCodes.CONTRIBUTION_REQUEST_INVALID)
+                                .jsonPath("$.errors[0].message").isEqualTo("Invalid contribution request.")
+                                .jsonPath("$.errors[0].targets").isArray()
+                                .jsonPath("$.errors[0].targets.length()").isEqualTo(0)
+                                .jsonPath("$.errors[0].severity").isEqualTo("ERROR")
+                                .jsonPath("$.errors[0].source").isEqualTo("SERVER");
         }
 
         @Test
