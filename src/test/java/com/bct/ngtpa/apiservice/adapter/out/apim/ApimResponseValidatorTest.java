@@ -4,8 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody;
-import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import java.util.List;
@@ -16,7 +14,7 @@ class ApimResponseValidatorTest {
     @Test
     void requiresResponsePayload() {
         ApimException exception = assertThrows(ApimException.class,
-                () -> ApimResponseValidator.requireValidData(new ApimResponseEnvelope<>(null)));
+                () -> ApimResponseValidator.requireValidData(ApimEnvelopeFixtures.envelope(null, null)));
 
         assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, exception.getErrorCode());
     }
@@ -24,7 +22,7 @@ class ApimResponseValidatorTest {
     @Test
     void requiresErrMessageField() {
         ApimException exception = assertThrows(ApimException.class,
-                () -> ApimResponseValidator.requireValidData(envelope(null, List.of())));
+                () -> ApimResponseValidator.requireValidData(ApimEnvelopeFixtures.missingErrMessage(List.of())));
 
         assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, exception.getErrorCode());
     }
@@ -33,13 +31,13 @@ class ApimResponseValidatorTest {
     void allowsEmptyDataArrayWhenErrMessageIsExactlyEmptyString() {
         List<String> data = List.of();
 
-        assertSame(data, ApimResponseValidator.requireValidData(envelope("", data)));
+        assertSame(data, ApimResponseValidator.requireValidData(ApimEnvelopeFixtures.success(data)));
     }
 
     @Test
     void requiresDataArrayWhenErrMessageIsExactlyEmptyString() {
         ApimException exception = assertThrows(ApimException.class,
-                () -> ApimResponseValidator.requireValidData(envelope("", null)));
+                () -> ApimResponseValidator.requireValidData(ApimEnvelopeFixtures.missingDataSuccess()));
 
         assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, exception.getErrorCode());
     }
@@ -47,14 +45,11 @@ class ApimResponseValidatorTest {
     @Test
     void nonEmptyErrMessageThrowsAndDoesNotRequireDataArray() {
         ApimException exception = assertThrows(ApimException.class,
-                () -> ApimResponseValidator.requireValidData(envelope("APIM failed", null)));
+                () -> ApimResponseValidator.requireValidData(ApimEnvelopeFixtures.apimError("APIM failed")));
 
         assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, exception.getErrorCode());
         assertEquals("APIM failed", exception.getMessage());
     }
 
-    private static ApimResponseEnvelope<String> envelope(String errMessage, List<String> data) {
-        return new ApimResponseEnvelope<>(new ApimResponseBody<>(errMessage, data));
-    }
 }
 

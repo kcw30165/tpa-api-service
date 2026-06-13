@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 
 import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
-import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetContributionSummaryDataItem;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryDataset;
@@ -27,7 +26,7 @@ class ApimContributionSummaryEnvelopeValidationTest {
     @Test
     void throwsApimResponseInvalidWhenSuccessEnvelopeOmitsDataArray() throws Exception {
         ApimException exception = assertThrows(ApimException.class,
-                () -> invokeToDataset(envelope("", null)));
+                () -> invokeToDataset(ApimEnvelopeFixtures.missingDataSuccess()));
 
         assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, exception.getErrorCode());
     }
@@ -35,14 +34,14 @@ class ApimContributionSummaryEnvelopeValidationTest {
     @Test
     void throwsApimResponseInvalidWhenErrMessageIsMissingEvenIfDataArrayExists() throws Exception {
         ApimException exception = assertThrows(ApimException.class,
-                () -> invokeToDataset(envelope(null, List.of())));
+                () -> invokeToDataset(ApimEnvelopeFixtures.missingErrMessage(List.of())));
 
         assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, exception.getErrorCode());
     }
 
     @Test
     void allowsEmptyDataArrayWhenErrMessageIsExactlyEmptyString() throws Exception {
-        ContributionSummaryDataset dataset = assertDoesNotThrow(() -> invokeToDataset(envelope("", List.of())));
+        ContributionSummaryDataset dataset = assertDoesNotThrow(() -> invokeToDataset(ApimEnvelopeFixtures.noRecords()));
 
         assertEquals(List.of(), dataset.entries());
         assertEquals(List.of(), dataset.sources());
@@ -51,7 +50,7 @@ class ApimContributionSummaryEnvelopeValidationTest {
     @Test
     void nonEmptyErrMessageRemainsApimResponseInvalidAndDoesNotRequireDataArray() throws Exception {
         ApimException exception = assertThrows(ApimException.class,
-                () -> invokeToDataset(envelope("APIM rejected request", null)));
+                () -> invokeToDataset(ApimEnvelopeFixtures.apimError("APIM rejected request")));
 
         assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, exception.getErrorCode());
         assertEquals("APIM rejected request", exception.getMessage());
@@ -77,9 +76,4 @@ class ApimContributionSummaryEnvelopeValidationTest {
         }
     }
 
-    private static ApimResponseEnvelope<GetContributionSummaryDataItem> envelope(
-            String errMessage,
-            List<GetContributionSummaryDataItem> data) {
-        return new ApimResponseEnvelope<>(new ApimResponseBody<>(errMessage, data));
-    }
 }
