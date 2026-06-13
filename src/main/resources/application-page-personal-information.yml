@@ -336,9 +336,6 @@ bff-pages:
             controlType: text
             maxLength: 40
             validations:
-            - type: required
-              code: personalInformation.residentialAddress.required
-              messageCode: personalInformation.residentialAddress.required.message
             - type: minLength
               value: 5
               when:
@@ -348,11 +345,6 @@ bff-pages:
             - type: blockedAddress
               code: personalInformation.address.poBoxBlocked
               messageCode: personalInformation.address.poBoxBlocked.message
-            - id: residentialAddressLine1.required
-              type: required
-              code: personalInformation.residentialAddress.required
-              messageCode: personalInformation.residentialAddress.required.message
-              severity: error
             - id: residentialAddressLine1.minLength
               type: minLength
               value: 5
