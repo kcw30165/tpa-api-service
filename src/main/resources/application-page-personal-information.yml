@@ -351,8 +351,7 @@ bff-pages:
               messageCode: personalInformation.mailingAddress.invalid.message
             - type: blockedAddress
               code: personalInformation.address.poBoxBlocked
-              pattern: PO Box~|~P.O. Box~|~P O Box~|~P.O Box~|~Post Office Box~|~P.
-                O. Box~|~郵政信箱
+              pattern: PO Box~|~P.O. Box~|~P O Box~|~P.O Box~|~Post Office Box~|~P.O. Box~|~郵政信箱
               messageCode: personalInformation.address.poBoxBlocked.message
             apimBinding:
               data: corr-addr1
