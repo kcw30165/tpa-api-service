@@ -22,16 +22,13 @@ bff-pages:
           en: Please input a residential address or correspondence address.
           zh_HK: 請輸入居住地址或通訊地址。
         '[personalInformation.address.poBoxBlocked.message]':
-          en: PO Box address will not be accepted, please re-enter your address as
-            our record.
+          en: PO Box address will not be accepted, please re-enter your address as our record.
           zh_HK: 郵政信箱恕不接受，請重新輸入住址，以作資料紀錄。
         '[personalInformation.address.poBoxBlocked.message.JP]':
-          en: PO Box address will not be accepted for Japan accounts, please re-enter
-            your address as our record.
+          en: PO Box address will not be accepted for Japan accounts, please re-enter your address as our record.
           zh_HK: 日本戶口不接受郵政信箱，請重新輸入住址，以作資料紀錄。
         '[personalInformation.aeoiReminder.message]':
-          en: Please remember to submit your AEOI Self-Certificate by clicking Self
-            Certification for Tax Residency function.
+          en: Please remember to submit your AEOI Self-Certificate by clicking Self Certification for Tax Residency function.
           zh_HK: 請記得點選『稅務居民證明』功能，以提交您的 AEOI 證明。
         '[personalInformation.businessPhone.invalid.message]':
           en: Please input a valid Hong Kong Business Telephone Number.
@@ -252,6 +249,72 @@ bff-pages:
         '[personalInformation.section.overseasContacts.title]':
           en: Overseas Contact
           zh_HK: 海外聯絡電話
+        personalInformation.address.atLeastOneRequired.message:
+          en: Please input a residential address or correspondence address.
+          zh_HK: 請輸入住宅地址或通訊地址。
+        personalInformation.residentialAddress.required.message:
+          en: Please input residential address.
+          zh_HK: 請輸入住宅地址。
+        personalInformation.residentialAddress.invalid.message:
+          en: Please input a valid residential address.
+          zh_HK: 請輸入有效的住宅地址。
+        personalInformation.mailingAddress.required.message:
+          en: Please input correspondence address.
+          zh_HK: 請輸入通訊地址。
+        personalInformation.mailingAddress.invalid.message:
+          en: Please input a valid correspondence address.
+          zh_HK: 請輸入有效的通訊地址。
+        personalInformation.address.poBoxBlocked.message:
+          en: PO Box address will not be accepted. Please contact the hotline for assistance.
+          zh_HK: 不接受郵政信箱地址。請聯絡熱線尋求協助。
+        personalInformation.residentialCountry.required.message:
+          en: Please select the residential country/region.
+          zh_HK: 請選擇住宅地址國家／地區。
+        personalInformation.mailingCountry.required.message:
+          en: Please select the correspondence country/region.
+          zh_HK: 請選擇通訊地址國家／地區。
+        personalInformation.businessPhone.invalid.message:
+          en: Please input a valid Hong Kong business phone number.
+          zh_HK: 請輸入有效的香港辦公電話號碼。
+        personalInformation.businessPhone.requiredWhenExtensionPresent.message:
+          en: Please input the Hong Kong business phone number when an extension is provided.
+          zh_HK: 如已輸入分機號碼，請輸入香港辦公電話號碼。
+        personalInformation.businessPhoneExtension.invalid.message:
+          en: Please input a valid Hong Kong business phone extension.
+          zh_HK: 請輸入有效的香港辦公電話分機號碼。
+        personalInformation.mobilePhone.invalid.message:
+          en: Please input a valid Hong Kong mobile phone number.
+          zh_HK: 請輸入有效的香港流動電話號碼。
+        personalInformation.overseasCountryCode.invalid.message:
+          en: Please input a valid overseas country code.
+          zh_HK: 請輸入有效的海外國家代碼。
+        personalInformation.overseasAreaCode.invalid.message:
+          en: Please input a valid overseas area code.
+          zh_HK: 請輸入有效的海外地區號碼。
+        personalInformation.overseasPhoneNumber.invalid.message:
+          en: Please input a valid overseas phone number.
+          zh_HK: 請輸入有效的海外電話號碼。
+        personalInformation.overseasPhoneNumber.requiredWhenCodePresent.message:
+          en: Please input the overseas phone number when an overseas country or area code is provided.
+          zh_HK: 如已輸入海外國家或地區號碼，請輸入海外電話號碼。
+        personalInformation.overseasCountryCode.requiredWhenPhonePresent.message:
+          en: Please input the overseas country code when an overseas phone number is provided.
+          zh_HK: 如已輸入海外電話號碼，請輸入海外國家代碼。
+        personalInformation.faxNo.invalid.message:
+          en: Please input a valid fax number.
+          zh_HK: 請輸入有效的傳真號碼。
+        personalInformation.email.required.message:
+          en: Please input a valid email address.
+          zh_HK: 請輸入有效的電郵地址。
+        personalInformation.email.invalid.message:
+          en: Please input a valid email address.
+          zh_HK: 請輸入有效的電郵地址。
+        personalInformation.email.tooShort.message:
+          en: Please input a valid email address.
+          zh_HK: 請輸入有效的電郵地址。
+        personalInformation.email.tooShort.message.JP:
+          en: For JP accounts, please input an email address with more than 10 characters.
+          zh_HK: JP帳戶請輸入超過10個字元的電郵地址。
       form:
         id: personalInformationForm
         defaultMode: view
@@ -285,6 +348,23 @@ bff-pages:
             - type: blockedAddress
               code: personalInformation.address.poBoxBlocked
               messageCode: personalInformation.address.poBoxBlocked.message
+            - id: residentialAddressLine1.required
+              type: required
+              code: personalInformation.residentialAddress.required
+              messageCode: personalInformation.residentialAddress.required.message
+              severity: error
+            - id: residentialAddressLine1.minLength
+              type: minLength
+              value: 5
+              code: personalInformation.residentialAddress.invalid
+              messageCode: personalInformation.residentialAddress.invalid.message
+              severity: error
+            - id: residentialAddressLine1.poBoxBlocked
+              type: blockedAddress
+              value: PO Box~|~P.O. Box~|~P O Box~|~P.O Box~|~Post Office Box~|~P.O. Box~|~郵政信箱
+              code: personalInformation.address.poBoxBlocked
+              messageCode: personalInformation.address.poBoxBlocked.message
+              severity: error
             apimBinding:
               data: addr1
               config: addr1
@@ -300,6 +380,13 @@ bff-pages:
               config: addr2
             labelCode: personalInformation.field.residentialAddressLine2.label
             placeholderCode: personalInformation.field.residentialAddressLine2.placeholder
+            validations:
+            - id: residentialAddressLine2.poBoxBlocked
+              type: blockedAddress
+              value: PO Box~|~P.O. Box~|~P O Box~|~P.O Box~|~Post Office Box~|~P.O. Box~|~郵政信箱
+              code: personalInformation.address.poBoxBlocked
+              messageCode: personalInformation.address.poBoxBlocked.message
+              severity: error
           - id: residentialAddressLine3
             displayOrder: 30
             dataType: string
@@ -310,15 +397,19 @@ bff-pages:
               config: addr3
             labelCode: personalInformation.field.residentialAddressLine3.label
             placeholderCode: personalInformation.field.residentialAddressLine3.placeholder
+            validations:
+            - id: residentialAddressLine3.poBoxBlocked
+              type: blockedAddress
+              value: PO Box~|~P.O. Box~|~P O Box~|~P.O Box~|~Post Office Box~|~P.O. Box~|~郵政信箱
+              code: personalInformation.address.poBoxBlocked
+              messageCode: personalInformation.address.poBoxBlocked.message
+              severity: error
           - id: residentialCountry
             displayOrder: 40
             dataType: string
             controlType: select
             optionSource: countries
-            validations:
-            - type: required
-              code: personalInformation.residentialCountry.required
-              messageCode: personalInformation.residentialCountry.required.message
+            validations: []
             apimBinding:
               data: country
               config: country
@@ -353,6 +444,18 @@ bff-pages:
               code: personalInformation.address.poBoxBlocked
               pattern: PO Box~|~P.O. Box~|~P O Box~|~P.O Box~|~Post Office Box~|~P.O. Box~|~郵政信箱
               messageCode: personalInformation.address.poBoxBlocked.message
+            - id: mailingAddressLine1.minLength
+              type: minLength
+              value: 5
+              code: personalInformation.mailingAddress.invalid
+              messageCode: personalInformation.mailingAddress.invalid.message
+              severity: error
+            - id: mailingAddressLine1.poBoxBlocked
+              type: blockedAddress
+              value: PO Box~|~P.O. Box~|~P O Box~|~P.O Box~|~Post Office Box~|~P.O. Box~|~郵政信箱
+              code: personalInformation.address.poBoxBlocked
+              messageCode: personalInformation.address.poBoxBlocked.message
+              severity: error
             apimBinding:
               data: corr-addr1
               config: corr-addr1
@@ -368,6 +471,13 @@ bff-pages:
               config: corr-addr2
             labelCode: personalInformation.field.mailingAddressLine2.label
             placeholderCode: personalInformation.field.mailingAddressLine2.placeholder
+            validations:
+            - id: mailingAddressLine2.poBoxBlocked
+              type: blockedAddress
+              value: PO Box~|~P.O. Box~|~P O Box~|~P.O Box~|~Post Office Box~|~P.O. Box~|~郵政信箱
+              code: personalInformation.address.poBoxBlocked
+              messageCode: personalInformation.address.poBoxBlocked.message
+              severity: error
           - id: mailingAddressLine3
             displayOrder: 80
             dataType: string
@@ -378,6 +488,13 @@ bff-pages:
               config: corr-addr3
             labelCode: personalInformation.field.mailingAddressLine3.label
             placeholderCode: personalInformation.field.mailingAddressLine3.placeholder
+            validations:
+            - id: mailingAddressLine3.poBoxBlocked
+              type: blockedAddress
+              value: PO Box~|~P.O. Box~|~P O Box~|~P.O Box~|~Post Office Box~|~P.O. Box~|~郵政信箱
+              code: personalInformation.address.poBoxBlocked
+              messageCode: personalInformation.address.poBoxBlocked.message
+              severity: error
           - id: mailingCountry
             displayOrder: 90
             dataType: string
@@ -388,6 +505,7 @@ bff-pages:
               config: corr-country
             labelCode: personalInformation.field.mailingCountry.label
             placeholderCode: personalInformation.field.mailingCountry.placeholder
+            validations: []
           titleCode: personalInformation.section.addressInformation.title
         - id: localContactNumber
           fields:
@@ -401,6 +519,12 @@ bff-pages:
             - type: pattern
               code: personalInformation.businessPhone.invalid
               messageCode: personalInformation.businessPhone.invalid.message
+            - id: hongKongBusinessPhone.integer
+              type: pattern
+              value: ^[0-9]*$
+              code: personalInformation.businessPhone.invalid
+              messageCode: personalInformation.businessPhone.invalid.message
+              severity: error
             apimBinding:
               data: business-phone
               config: business-phone
@@ -416,6 +540,12 @@ bff-pages:
             - type: pattern
               code: personalInformation.businessPhoneExtension.invalid
               messageCode: personalInformation.businessPhoneExtension.invalid.message
+            - id: hongKongBusinessPhoneExtension.integer
+              type: pattern
+              value: ^[0-9]*$
+              code: personalInformation.businessPhoneExtension.invalid
+              messageCode: personalInformation.businessPhoneExtension.invalid.message
+              severity: error
             apimBinding:
               data: business-phone-ext
               config: business-phone-ext
@@ -446,6 +576,12 @@ bff-pages:
             - type: pattern
               code: personalInformation.mobilePhone.invalid
               messageCode: personalInformation.mobilePhone.invalid.message
+            - id: hongKongMobilePhone.hkMobile
+              type: pattern
+              value: ^[4-9][0-9]*$
+              code: personalInformation.mobilePhone.invalid
+              messageCode: personalInformation.mobilePhone.invalid.message
+              severity: error
             apimBinding:
               data: mobile-number
               config: mobile-number
@@ -460,6 +596,12 @@ bff-pages:
             - type: pattern
               code: personalInformation.faxNo.invalid
               messageCode: personalInformation.faxNo.invalid.message
+            - id: faxNo.permittedCharacters
+              type: pattern
+              value: ^[0-9+()\-\s]*$
+              code: personalInformation.faxNo.invalid
+              messageCode: personalInformation.faxNo.invalid.message
+              severity: error
             apimBinding:
               data: fax
               config: fax
@@ -479,6 +621,12 @@ bff-pages:
               value: ^[0-9]*$
               code: personalInformation.overseasCountryCode.invalid
               messageCode: personalInformation.overseasCountryCode.invalid.message
+            - id: overseasCountryCode.integer
+              type: pattern
+              value: ^[0-9]*$
+              code: personalInformation.overseasCountryCode.invalid
+              messageCode: personalInformation.overseasCountryCode.invalid.message
+              severity: error
             apimBinding:
               data: other-phone-country
               config: other-phone-country
@@ -493,6 +641,12 @@ bff-pages:
             - type: pattern
               code: personalInformation.overseasAreaCode.invalid
               messageCode: personalInformation.overseasAreaCode.invalid.message
+            - id: overseasAreaCode.integer
+              type: pattern
+              value: ^[0-9]*$
+              code: personalInformation.overseasAreaCode.invalid
+              messageCode: personalInformation.overseasAreaCode.invalid.message
+              severity: error
             apimBinding:
               data: other-phone-area
               config: other-phone-area
@@ -508,6 +662,12 @@ bff-pages:
             - type: pattern
               code: personalInformation.overseasPhoneNumber.invalid
               messageCode: personalInformation.overseasPhoneNumber.invalid.message
+            - id: overseasPhoneNumber.integer
+              type: pattern
+              value: ^[0-9]*$
+              code: personalInformation.overseasPhoneNumber.invalid
+              messageCode: personalInformation.overseasPhoneNumber.invalid.message
+              severity: error
             apimBinding:
               data: other-phone
               config: other-phone
@@ -540,6 +700,25 @@ bff-pages:
             - type: email
               code: personalInformation.email.invalid
               messageCode: personalInformation.email.invalid.message
+            - id: email.required
+              type: required
+              code: personalInformation.email.required
+              messageCode: personalInformation.email.required.message
+              severity: error
+            - id: email.invalid
+              type: email
+              value: 120
+              code: personalInformation.email.invalid
+              messageCode: personalInformation.email.invalid.message
+              severity: error
+            - id: email.minLength
+              type: minLength
+              value: 1
+              valueByVariant:
+                JP: 11
+              code: personalInformation.email.tooShort
+              messageCode: personalInformation.email.tooShort.message
+              severity: error
             apimBinding:
               data: email
               config: email
@@ -611,14 +790,18 @@ bff-pages:
         when:
           operator: allGroupsEmpty
           groups:
-          - id: residentialAddress
-            existsWhen:
-              field: residentialAddressLine1
-              operator: notBlank
-          - id: mailingAddress
-            existsWhen:
-              field: mailingAddressLine1
-              operator: notBlank
+          - name: residentialAddress
+            fields:
+            - residentialAddressLine1
+            - residentialAddressLine2
+            - residentialAddressLine3
+            - residentialCountry
+          - name: mailingAddress
+            fields:
+            - mailingAddressLine1
+            - mailingAddressLine2
+            - mailingAddressLine3
+            - mailingCountry
         then:
           operator: fail
           targets:
@@ -663,10 +846,10 @@ bff-pages:
         severity: error
         when:
           operator: notBlank
-          field: hongKongBusinessPhoneExtension
+          fields:
+          - hongKongBusinessPhoneExtension
         then:
           operator: required
-          field: hongKongBusinessPhone
           targets:
           - hongKongBusinessPhone
         code: personalInformation.businessPhone.requiredWhenExtensionPresent
@@ -714,3 +897,60 @@ bff-pages:
           - residentialCountry
         code: personalInformation.aeoiReminder
         messageCode: personalInformation.aeoiReminder.message
+      - id: residentialCountry.requiredWhenResidentialAddressCaptured
+        type: conditionalRequired
+        when:
+          operator: any
+          fields:
+          - residentialAddressLine1
+          - residentialAddressLine2
+          - residentialAddressLine3
+        then:
+          operator: required
+          targets:
+          - residentialCountry
+        code: personalInformation.residentialCountry.required
+        messageCode: personalInformation.residentialCountry.required.message
+        severity: error
+      - id: mailingCountry.requiredWhenMailingAddressCaptured
+        type: conditionalRequired
+        when:
+          operator: any
+          fields:
+          - mailingAddressLine1
+          - mailingAddressLine2
+          - mailingAddressLine3
+        then:
+          operator: required
+          targets:
+          - mailingCountry
+        code: personalInformation.mailingCountry.required
+        messageCode: personalInformation.mailingCountry.required.message
+        severity: error
+      - id: overseasPhoneNumber.requiredWhenCodePresent
+        type: conditionalRequired
+        when:
+          operator: any
+          fields:
+          - overseasCountryCode
+          - overseasAreaCode
+        then:
+          operator: required
+          targets:
+          - overseasPhoneNumber
+        code: personalInformation.overseasPhoneNumber.requiredWhenCodePresent
+        messageCode: personalInformation.overseasPhoneNumber.requiredWhenCodePresent.message
+        severity: error
+      - id: overseasCountryCode.requiredWhenOverseasPhonePresent
+        type: conditionalRequired
+        when:
+          operator: notBlank
+          fields:
+          - overseasPhoneNumber
+        then:
+          operator: required
+          targets:
+          - overseasCountryCode
+        code: personalInformation.overseasCountryCode.requiredWhenPhonePresent
+        messageCode: personalInformation.overseasCountryCode.requiredWhenPhonePresent.message
+        severity: error
