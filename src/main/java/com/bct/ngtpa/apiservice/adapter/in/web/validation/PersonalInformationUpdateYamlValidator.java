@@ -130,6 +130,7 @@ public class PersonalInformationUpdateYamlValidator {
             case "minLength" -> stringValue(value).length() < intValue(resolveRuleValue(rule, accountEnv, trustCode, schemeType), 0);
             case "maxLength" -> stringValue(value).length() > intValue(resolveRuleValue(rule, accountEnv, trustCode, schemeType), Integer.MAX_VALUE);
             case "pattern" -> !Pattern.compile(stringValue(resolveRuleValue(rule, accountEnv, trustCode, schemeType))).matcher(stringValue(value)).matches();
+            case "email" -> !isValidEmail(stringValue(value), resolveRuleValue(rule, accountEnv, trustCode, schemeType));
             case "blockedAddress" -> isBlockedAddress(stringValue(value), stringValue(resolveRuleValue(rule, accountEnv, trustCode, schemeType)));
             default -> false;
         };
@@ -311,6 +312,32 @@ public class PersonalInformationUpdateYamlValidator {
         if (!isBlank(value) && !candidates.contains(value.trim())) {
             candidates.add(value.trim());
         }
+    }
+
+    private boolean isValidEmail(String value, Object maxLengthValue) {
+        if (isBlank(value)) {
+            return true;
+        }
+        int maxLength = intValue(maxLengthValue, Integer.MAX_VALUE);
+        if (value.length() > maxLength) {
+            return false;
+        }
+        if (value.chars().anyMatch(Character::isWhitespace)) {
+            return false;
+        }
+        int firstAt = value.indexOf('@');
+        if (firstAt <= 0 || firstAt != value.lastIndexOf('@')) {
+            return false;
+        }
+        String localPart = value.substring(0, firstAt);
+        String domainPart = value.substring(firstAt + 1);
+        if (localPart.isBlank() || domainPart.isBlank()) {
+            return false;
+        }
+        if (!domainPart.contains(".")) {
+            return false;
+        }
+        return Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$").matcher(value).matches();
     }
 
     private boolean isBlockedAddress(String value, String configuredValue) {
