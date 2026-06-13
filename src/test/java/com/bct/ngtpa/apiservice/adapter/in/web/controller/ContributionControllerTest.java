@@ -22,6 +22,7 @@ import com.bct.ngtpa.apiservice.domain.model.ContributionLabels;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSource;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryReport;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryRow;
+import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
@@ -31,6 +32,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 import org.springframework.aop.aspectj.annotation.AspectJProxyFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
@@ -567,6 +569,45 @@ class ContributionControllerTest {
                                                 "Total Contributions",
                                                 "Company",
                                                 "Member"));
+        }
+
+
+        @Test
+        void returnsDownstreamErrorEnvelopeWhenApimResponsePayloadIsInvalid() {
+                GetContributionSummaryUseCase getUseCase = command -> Mono.error(
+                                new ApimException(
+                                                HttpStatus.BAD_GATEWAY,
+                                                ErrorCodes.APIM_RESPONSE_INVALID,
+                                                "APIM response payload is invalid: response.data is required when err-message is empty."));
+
+                webClient(getUseCase, unusedExportUseCase())
+                                .get()
+                                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions")
+                                                .queryParam("fromDate", "01/01/2024")
+                                                .queryParam("toDate", "31/03/2026")
+                                                .build())
+                                .header("X-Request-Id", "client-request-uuid")
+                                .header("Accept-Language", "en")
+                                .exchange()
+                                .expectStatus().isEqualTo(HttpStatus.BAD_GATEWAY)
+                                .expectHeader().valueEquals("X-Request-Id", "client-request-uuid")
+                                .expectBody()
+                                .jsonPath("$.success").isEqualTo(false)
+                                .jsonPath("$.status").isEqualTo("DOWNSTREAM_ERROR")
+                                .jsonPath("$.result").doesNotExist()
+                                .jsonPath("$.messages").isArray()
+                                .jsonPath("$.messages.length()").isEqualTo(0)
+                                .jsonPath("$.errors").isArray()
+                                .jsonPath("$.errors.length()").isEqualTo(1)
+                                .jsonPath("$.errors[0].type").isEqualTo("DOWNSTREAM_SYSTEM")
+                                .jsonPath("$.errors[0].code").isEqualTo(ErrorCodes.APIM_RESPONSE_INVALID)
+                                .jsonPath("$.errors[0].message").exists()
+                                .jsonPath("$.errors[0].targets").isArray()
+                                .jsonPath("$.errors[0].targets.length()").isEqualTo(0)
+                                .jsonPath("$.errors[0].severity").isEqualTo("ERROR")
+                                .jsonPath("$.errors[0].source").isEqualTo("SERVER")
+                                .jsonPath("$.errorCode").doesNotExist()
+                                .jsonPath("$.requestId").doesNotExist();
         }
 
         private WebTestClient webClient(
