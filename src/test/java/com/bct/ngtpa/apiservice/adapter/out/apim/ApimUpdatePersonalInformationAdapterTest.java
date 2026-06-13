@@ -5,6 +5,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateMemberInfoApimDataItem;
+import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateMemberInfoApimError;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateMemberInfoApimRequest;
 import com.bct.ngtpa.apiservice.application.dto.UpdateMemberInfoCommand;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationError;
@@ -113,6 +114,112 @@ class ApimUpdatePersonalInformationAdapterTest {
         assertFalse(result.accountResults().get(1).success());
         assertTrue(result.accountResults().get(1).selected());
         assertEquals(List.of(new UpdatePersonalInformationError("FIELD", List.of("email"), "REQUIRED")),
+                result.errors());
+    }
+
+
+    @Test
+    void mapsFieldRequiredValidationErrorFromSelectedApimAccount() {
+        CapturingApimWebClientFacade facade = new CapturingApimWebClientFacade("""
+                {
+                  "response": {
+                    "err-message": "",
+                    "data": [
+                      {
+                        "success": false,
+                        "policy-no": "POL-001",
+                        "cert-no": "CERT-001",
+                        "env": "JP",
+                        "errors": [
+                          { "type": "FIELD", "fields": "email", "code": "REQUIRED" }
+                        ]
+                      }
+                    ]
+                  }
+                }
+                """);
+        ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(
+                facade,
+                new NoopApimCertificateService(),
+                new PassThroughApimPayloadCryptoService(),
+                disabledEncryptionProperties());
+
+        UpdatePersonalInformationResult result = adapter.updateMemberInfo(command()).block();
+
+        assertNotNull(result);
+        assertFalse(result.success());
+        assertEquals(List.of(new UpdatePersonalInformationError("FIELD", List.of("email"), "REQUIRED")),
+                result.errors());
+    }
+
+    @Test
+    void mapsFieldInvalidFormatValidationErrorFromSelectedApimAccount() {
+        CapturingApimWebClientFacade facade = new CapturingApimWebClientFacade("""
+                {
+                  "response": {
+                    "err-message": "",
+                    "data": [
+                      {
+                        "success": false,
+                        "policy-no": "POL-001",
+                        "cert-no": "CERT-001",
+                        "env": "JP",
+                        "errors": [
+                          { "type": "FIELD", "fields": "email", "code": "INVALID_FORMAT" }
+                        ]
+                      }
+                    ]
+                  }
+                }
+                """);
+        ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(
+                facade,
+                new NoopApimCertificateService(),
+                new PassThroughApimPayloadCryptoService(),
+                disabledEncryptionProperties());
+
+        UpdatePersonalInformationResult result = adapter.updateMemberInfo(command()).block();
+
+        assertNotNull(result);
+        assertFalse(result.success());
+        assertEquals(List.of(new UpdatePersonalInformationError("FIELD", List.of("email"), "INVALID_FORMAT")),
+                result.errors());
+    }
+
+    @Test
+    void mapsCrossFieldValidationErrorFromPipeSeparatedApimFields() {
+        CapturingApimWebClientFacade facade = new CapturingApimWebClientFacade("""
+                {
+                  "response": {
+                    "err-message": "",
+                    "data": [
+                      {
+                        "success": false,
+                        "policy-no": "POL-001",
+                        "cert-no": "CERT-001",
+                        "env": "JP",
+                        "errors": [
+                          { "type": "CROSS_FIELD", "fields": "addr1|addr2", "code": "AT_LEAST_ONE_REQUIRED" }
+                        ]
+                      }
+                    ]
+                  }
+                }
+                """);
+        ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(
+                facade,
+                new NoopApimCertificateService(),
+                new PassThroughApimPayloadCryptoService(),
+                disabledEncryptionProperties());
+
+        UpdatePersonalInformationResult result = adapter.updateMemberInfo(command()).block();
+
+        assertNotNull(result);
+        assertFalse(result.success());
+        assertEquals(List.of(new UpdatePersonalInformationError(
+                        "CROSS_FIELD",
+                        List.of("addr1", "addr2"),
+                        "AT_LEAST_ONE_REQUIRED")),
                 result.errors());
     }
 
