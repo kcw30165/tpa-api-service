@@ -172,7 +172,7 @@ class ApimNoticeMessageAdapterTest {
         }
 
         @Test
-        void returnsEmptyResultWhenDataIsMissing() {
+        void returnsEmptyResultWhenDataIsEmpty() {
                 ApimResponseEnvelope<GetMessageBoardDataItem> response = ApimResponseEnvelope
                                 .<GetMessageBoardDataItem>builder()
                                 .response(ApimResponseBody.<GetMessageBoardDataItem>builder()

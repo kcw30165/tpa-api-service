@@ -140,7 +140,7 @@ class ApimNotificationReadStatusAdapterTest {
 	}
 
         @Test
-        void returnsEmptyResultsWhenDataIsMissing() {
+        void returnsEmptyResultsWhenDataIsEmpty() {
         UpdateNotificationsReadStatusResult result = (UpdateNotificationsReadStatusResult) ReflectionTestUtils.invokeMethod(
             new ApimNotificationReadStatusAdapter(null, null, null, new ApimProperties()),
             "toResult",
