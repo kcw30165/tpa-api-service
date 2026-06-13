@@ -90,7 +90,7 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
     }
 
     private NotificationListResult toNotificationListResult(ApimResponseEnvelope<GetMessageBoardDataItem> response) {
-        var dataItems = ApimResponseValidator.requireValidData(response);
+        var dataItems = ApimResponseValidator.requireSuccessData(response);
         if (CollectionUtils.isEmpty(dataItems)) {
             return new NotificationListResult(List.of());
         }

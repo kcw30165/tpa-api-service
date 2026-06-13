@@ -70,7 +70,7 @@ public class ApimMemberInfoAdapter implements ApimMemberInfoPort {
     }
 
     private MemberInfoResult toMemberInfoResult(ApimResponseEnvelope<GetMemberInfoDataItem> response) {
-        var dataItems = ApimResponseValidator.requireValidData(response);
+        var dataItems = ApimResponseValidator.requireSuccessData(response);
         if (CollectionUtils.isEmpty(dataItems)) {
             return new MemberInfoResult(Map.of());
         }

@@ -79,7 +79,7 @@ public class ApimUpdatePersonalInformationAdapter implements ApimUpdatePersonalI
         private UpdatePersonalInformationResult toResult(
                         ApimResponseEnvelope<UpdateMemberInfoApimDataItem> response,
                         UpdateMemberInfoCommand command) {
-                var dataItems = ApimResponseValidator.requireValidData(response);
+                var dataItems = ApimResponseValidator.requireSuccessData(response);
 
                 if (CollectionUtils.isEmpty(dataItems) || dataItems.getFirst() == null) {
                         throw new ApimException(

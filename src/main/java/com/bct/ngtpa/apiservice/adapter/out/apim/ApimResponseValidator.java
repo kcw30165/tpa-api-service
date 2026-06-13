@@ -23,7 +23,7 @@ public final class ApimResponseValidator {
     private ApimResponseValidator() {
     }
 
-    public static <T> List<T> requireValidData(ApimResponseEnvelope<T> envelope) {
+    public static <T> List<T> requireSuccessData(ApimResponseEnvelope<T> envelope) {
         var payload = envelope == null ? null : envelope.getResponse();
         if (payload == null) {
             throw invalid("APIM response payload is invalid: response is missing.");
@@ -40,6 +40,14 @@ public final class ApimResponseValidator {
             throw invalid("APIM response payload is invalid: response.data is required when err-message is empty.");
         }
         return data;
+    }
+
+    /**
+     * @deprecated Use {@link #requireSuccessData(ApimResponseEnvelope)} for clearer APIM success semantics.
+     */
+    @Deprecated(forRemoval = false)
+    public static <T> List<T> requireValidData(ApimResponseEnvelope<T> envelope) {
+        return requireSuccessData(envelope);
     }
 
     private static ApimException invalid(String message) {

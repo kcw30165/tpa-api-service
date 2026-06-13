@@ -77,7 +77,7 @@ public class ApimNotificationReadStatusAdapter implements ApimNotificationReadSt
     private UpdateNotificationsReadStatusResult toResult(
             ApimResponseEnvelope<UpdateNotificationReadStatusApimDataItem> response,
             MessageStatus targetStatus) {
-        var dataItems = ApimResponseValidator.requireValidData(response);
+        var dataItems = ApimResponseValidator.requireSuccessData(response);
         if (CollectionUtils.isEmpty(dataItems)) {
             return new UpdateNotificationsReadStatusResult(List.of());
         }

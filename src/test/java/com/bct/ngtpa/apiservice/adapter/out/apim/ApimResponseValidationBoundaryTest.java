@@ -24,7 +24,7 @@ class ApimResponseValidationBoundaryTest {
         for (String adapter : APIM_ADAPTERS) {
             String source = readApimSource(adapter);
 
-            assertTrue(source.contains("ApimResponseValidator.requireValidData(response)"),
+            assertTrue(source.contains("ApimResponseValidator.requireSuccessData(response)"),
                     adapter + " must use the shared APIM envelope validator");
             assertFalse(source.contains("payload.getErrMessage()"),
                     adapter + " must not perform local err-message validation");

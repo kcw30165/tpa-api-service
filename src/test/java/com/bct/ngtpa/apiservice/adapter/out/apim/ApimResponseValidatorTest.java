@@ -14,7 +14,7 @@ class ApimResponseValidatorTest {
     @Test
     void requiresResponsePayload() {
         ApimException exception = assertThrows(ApimException.class,
-                () -> ApimResponseValidator.requireValidData(ApimEnvelopeFixtures.envelope(null, null)));
+                () -> ApimResponseValidator.requireSuccessData(ApimEnvelopeFixtures.envelope(null, null)));
 
         assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, exception.getErrorCode());
     }
@@ -22,7 +22,7 @@ class ApimResponseValidatorTest {
     @Test
     void requiresErrMessageField() {
         ApimException exception = assertThrows(ApimException.class,
-                () -> ApimResponseValidator.requireValidData(ApimEnvelopeFixtures.missingErrMessage(List.of())));
+                () -> ApimResponseValidator.requireSuccessData(ApimEnvelopeFixtures.missingErrMessage(List.of())));
 
         assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, exception.getErrorCode());
     }
@@ -31,13 +31,13 @@ class ApimResponseValidatorTest {
     void allowsEmptyDataArrayWhenErrMessageIsExactlyEmptyString() {
         List<String> data = List.of();
 
-        assertSame(data, ApimResponseValidator.requireValidData(ApimEnvelopeFixtures.success(data)));
+        assertSame(data, ApimResponseValidator.requireSuccessData(ApimEnvelopeFixtures.success(data)));
     }
 
     @Test
     void requiresDataArrayWhenErrMessageIsExactlyEmptyString() {
         ApimException exception = assertThrows(ApimException.class,
-                () -> ApimResponseValidator.requireValidData(ApimEnvelopeFixtures.missingDataSuccess()));
+                () -> ApimResponseValidator.requireSuccessData(ApimEnvelopeFixtures.missingDataSuccess()));
 
         assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, exception.getErrorCode());
     }
@@ -45,7 +45,7 @@ class ApimResponseValidatorTest {
     @Test
     void nonEmptyErrMessageThrowsAndDoesNotRequireDataArray() {
         ApimException exception = assertThrows(ApimException.class,
-                () -> ApimResponseValidator.requireValidData(ApimEnvelopeFixtures.apimError("APIM failed")));
+                () -> ApimResponseValidator.requireSuccessData(ApimEnvelopeFixtures.apimError("APIM failed")));
 
         assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, exception.getErrorCode());
         assertEquals("APIM failed", exception.getMessage());

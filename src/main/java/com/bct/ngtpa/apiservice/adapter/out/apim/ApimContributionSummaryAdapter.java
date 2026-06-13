@@ -76,7 +76,7 @@ public class ApimContributionSummaryAdapter implements ApimContributionSummaryPo
 
     private ContributionSummaryDataset toContributionSummaryDataset(
             ApimResponseEnvelope<GetContributionSummaryDataItem> response) {
-        List<GetContributionSummaryDataItem> data = ApimResponseValidator.requireValidData(response);
+        List<GetContributionSummaryDataItem> data = ApimResponseValidator.requireSuccessData(response);
         if (data.isEmpty()) {
             return new ContributionSummaryDataset("", List.of(), List.of());
         }

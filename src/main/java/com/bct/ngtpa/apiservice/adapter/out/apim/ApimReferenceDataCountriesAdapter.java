@@ -50,7 +50,7 @@ public class ApimReferenceDataCountriesAdapter implements ApimReferenceDataCount
     }
 
     private List<ReferenceDataCountryItem> toCountryItems(ApimResponseEnvelope<GetCountryListDataItem> response) {
-        var dataItems = ApimResponseValidator.requireValidData(response);
+        var dataItems = ApimResponseValidator.requireSuccessData(response);
         if (dataItems.isEmpty()) {
             return List.of();
         }
