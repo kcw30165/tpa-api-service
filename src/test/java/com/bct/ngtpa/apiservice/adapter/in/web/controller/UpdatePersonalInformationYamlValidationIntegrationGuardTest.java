@@ -53,7 +53,7 @@ class UpdatePersonalInformationYamlValidationIntegrationGuardTest {
                 .as("validation message language must come from RequestHeaderContext / Accept-Language")
                 .contains("context.language()")
                 .doesNotContain("@RequestParam")
-                .doesNotContain("lang");
+                .doesNotContain("String lang");
     }
 
     private String source() throws Exception {
