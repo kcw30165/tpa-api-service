@@ -6,7 +6,7 @@ import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
 import com.bct.ngtpa.apiservice.application.port.in.UpdatePersonalInformationUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimUpdatePersonalInformationPort;
 import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
-
+import java.util.List;
 import java.util.Objects;
 import reactor.core.publisher.Mono;
 
@@ -23,7 +23,7 @@ public class UpdatePersonalInformationService implements UpdatePersonalInformati
     }
 
     @Override
-    public Mono<UpdatePersonalInformationResult> execute(UpdatePersonalInformationCommand command) {
+    public Mono<List<UpdatePersonalInformationResult>> execute(UpdatePersonalInformationCommand command) {
         return portalAccessContextPort.resolvePortalAccessContext(command.accountRef())
                 .flatMap(context -> apimUpdatePersonalInformationPort.updateMemberInfo(new UpdateMemberInfoCommand(
                         context.account().accountEnv(),

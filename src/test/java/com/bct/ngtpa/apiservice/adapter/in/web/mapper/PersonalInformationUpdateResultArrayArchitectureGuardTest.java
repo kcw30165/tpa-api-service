@@ -3,7 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.mapper;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateAccountResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -28,7 +28,7 @@ class PersonalInformationUpdateResultArrayArchitectureGuardTest {
         assertThat(resultType).isInstanceOf(ParameterizedType.class);
         ParameterizedType listType = (ParameterizedType) resultType;
         assertThat(listType.getRawType()).isEqualTo(List.class);
-        assertThat(listType.getActualTypeArguments()[0]).isEqualTo(PersonalInformationUpdateAccountResponse.class);
+        assertThat(listType.getActualTypeArguments()[0]).isEqualTo(PersonalInformationUpdateResultResponse.class);
     }
 
     @Test

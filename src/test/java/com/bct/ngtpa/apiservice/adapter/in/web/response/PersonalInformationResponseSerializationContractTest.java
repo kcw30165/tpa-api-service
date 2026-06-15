@@ -19,10 +19,10 @@ class PersonalInformationResponseSerializationContractTest {
                 "Email is required.",
                 List.of("emailAddress"),
                 "SERVER");
-        MutationResponse<List<PersonalInformationUpdateAccountResponse>> response = MutationResponse.success(
+        MutationResponse<List<PersonalInformationUpdateResultResponse>> response = MutationResponse.success(
                 ApiStatus.PARTIAL_SUCCESS,
                 List.of(
-                        new PersonalInformationUpdateAccountResponse(
+                        new PersonalInformationUpdateResultResponse(
                                 true,
                                 true,
                                 "00000000118",
@@ -32,7 +32,7 @@ class PersonalInformationResponseSerializationContractTest {
                                 "2025-12-31",
                                 "15:42:52",
                                 List.of()),
-                        new PersonalInformationUpdateAccountResponse(
+                        new PersonalInformationUpdateResultResponse(
                                 false,
                                 false,
                                 "00000000118",
@@ -72,10 +72,10 @@ class PersonalInformationResponseSerializationContractTest {
                 "Email is required.",
                 List.of("emailAddress"),
                 "SERVER");
-        MutationResponse<List<PersonalInformationUpdateAccountResponse>> response = MutationResponse.failure(
+        MutationResponse<List<PersonalInformationUpdateResultResponse>> response = MutationResponse.failure(
                 ApiStatus.PARTIAL_SUCCESS,
                 List.of(
-                        new PersonalInformationUpdateAccountResponse(
+                        new PersonalInformationUpdateResultResponse(
                                 false,
                                 true,
                                 "00000000118",
@@ -85,7 +85,7 @@ class PersonalInformationResponseSerializationContractTest {
                                 "2025-12-31",
                                 "15:42:52",
                                 List.of()),
-                        new PersonalInformationUpdateAccountResponse(
+                        new PersonalInformationUpdateResultResponse(
                                 true,
                                 false,
                                 "00000000118",

@@ -93,7 +93,7 @@ class UpdatePersonalInformationResultItemContractTest {
     @Test
     void oldNestedAccountResultDtoIsRemoved() {
         assertThatThrownBy(() -> Class.forName(
-                "com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationAccountResult"))
+                "com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult"))
                 .isInstanceOf(ClassNotFoundException.class);
     }
 }

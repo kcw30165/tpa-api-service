@@ -14,7 +14,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdatePersonalInformation
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateAccountResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationUpdateYamlValidator;
 import com.bct.ngtpa.apiservice.application.port.in.UpdatePersonalInformationUseCase;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
@@ -52,7 +52,7 @@ class UpdatePersonalInformationYamlValidationRuntimeTest {
         when(validator.validate(eq(request), eq("zh-HK"), any(), any(), any()))
                 .thenReturn(List.of(error));
 
-        Mono<MutationResponse<List<PersonalInformationUpdateAccountResponse>>> response = controller.update(Mono.just(request))
+        Mono<MutationResponse<List<PersonalInformationUpdateResultResponse>>> response = controller.update(Mono.just(request))
                 .contextWrite(context -> context.put(
                         RequestHeaderContextKeys.CONTEXT_KEY,
                         new RequestHeaderContext("ACC-001", "REQ-001", "zh-HK")));
@@ -87,7 +87,7 @@ class UpdatePersonalInformationYamlValidationRuntimeTest {
                 false,
                 Map.of("emailAddress", "member@example.test"));
 
-        Mono<MutationResponse<List<PersonalInformationUpdateAccountResponse>>> response = controller.update(Mono.just(request))
+        Mono<MutationResponse<List<PersonalInformationUpdateResultResponse>>> response = controller.update(Mono.just(request))
                 .contextWrite(context -> context.put(
                         RequestHeaderContextKeys.CONTEXT_KEY,
                         new RequestHeaderContext(null, "REQ-001", "en")));

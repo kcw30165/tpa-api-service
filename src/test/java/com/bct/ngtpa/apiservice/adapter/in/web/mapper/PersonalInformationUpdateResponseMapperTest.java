@@ -7,8 +7,8 @@ import static org.mockito.Mockito.when;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateAccountResponse;
-import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationAccountResult;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
+import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationError;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
 import java.util.List;
@@ -21,9 +21,9 @@ class PersonalInformationUpdateResponseMapperTest {
         PersonalInformationUpdateErrorMapper errorMapper = mock(PersonalInformationUpdateErrorMapper.class);
         PersonalInformationUpdateResponseMapper mapper = new PersonalInformationUpdateResponseMapper(errorMapper);
 
-        MutationResponse<List<PersonalInformationUpdateAccountResponse>> response = mapper.toResponse(
+        MutationResponse<List<PersonalInformationUpdateResultResponse>> response = mapper.toResponse(
                 new UpdatePersonalInformationResult(true, "990000001", "2026-06-07", "08:36:51", List.of(),
-                        List.of(new UpdatePersonalInformationAccountResult(
+                        List.of(new UpdatePersonalInformationResult(
                                 true, true, "00000000118", "2", "DB", "990000001", "2026-06-07", "08:36:51", List.of()))));
 
         assertThat(response.success()).isTrue();
@@ -43,7 +43,7 @@ class PersonalInformationUpdateResponseMapperTest {
         when(errorMapper.toApiErrors(List.of(rawError))).thenReturn(List.of(apiError));
         PersonalInformationUpdateResponseMapper mapper = new PersonalInformationUpdateResponseMapper(errorMapper);
 
-        MutationResponse<List<PersonalInformationUpdateAccountResponse>> response = mapper.toResponse(
+        MutationResponse<List<PersonalInformationUpdateResultResponse>> response = mapper.toResponse(
                 new UpdatePersonalInformationResult(false, null, null, null, List.of(rawError), List.of()));
 
         assertThat(response.success()).isFalse();
@@ -61,12 +61,12 @@ class PersonalInformationUpdateResponseMapperTest {
         when(errorMapper.toApiErrors(List.of(failedError))).thenReturn(List.of(apiError));
         PersonalInformationUpdateResponseMapper mapper = new PersonalInformationUpdateResponseMapper(errorMapper);
 
-        MutationResponse<List<PersonalInformationUpdateAccountResponse>> response = mapper.toResponse(
+        MutationResponse<List<PersonalInformationUpdateResultResponse>> response = mapper.toResponse(
                 new UpdatePersonalInformationResult(true, "260001373", "2025-12-31", "15:42:52", List.of(),
                         List.of(
-                                new UpdatePersonalInformationAccountResult(
+                                new UpdatePersonalInformationResult(
                                         true, true, "00000000118", "2", "DB", "260001373", "2025-12-31", "15:42:52", List.of()),
-                                new UpdatePersonalInformationAccountResult(
+                                new UpdatePersonalInformationResult(
                                         false, false, "00000000118", "3", "DB", "260001374", "2025-12-31", "15:42:52", List.of(failedError)))));
 
         assertThat(response.success()).isTrue();
@@ -86,12 +86,12 @@ class PersonalInformationUpdateResponseMapperTest {
         when(errorMapper.toApiErrors(List.of(selectedError))).thenReturn(List.of(apiError));
         PersonalInformationUpdateResponseMapper mapper = new PersonalInformationUpdateResponseMapper(errorMapper);
 
-        MutationResponse<List<PersonalInformationUpdateAccountResponse>> response = mapper.toResponse(
+        MutationResponse<List<PersonalInformationUpdateResultResponse>> response = mapper.toResponse(
                 new UpdatePersonalInformationResult(false, "260001374", "2025-12-31", "15:42:52", List.of(selectedError),
                         List.of(
-                                new UpdatePersonalInformationAccountResult(
+                                new UpdatePersonalInformationResult(
                                         true, false, "00000000118", "2", "DB", "260001373", "2025-12-31", "15:42:52", List.of()),
-                                new UpdatePersonalInformationAccountResult(
+                                new UpdatePersonalInformationResult(
                                         false, true, "00000000118", "3", "DB", "260001374", "2025-12-31", "15:42:52", List.of(selectedError)))));
 
         assertThat(response.success()).isFalse();

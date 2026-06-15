@@ -7,8 +7,8 @@ import static org.mockito.Mockito.when;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateAccountResponse;
-import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationAccountResult;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
+import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationError;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
 import java.util.List;
@@ -35,7 +35,7 @@ class PersonalInformationUpdateResultArrayContractTest {
 
         PersonalInformationUpdateResponseMapper mapper = new PersonalInformationUpdateResponseMapper(errorMapper);
 
-        MutationResponse<List<PersonalInformationUpdateAccountResponse>> response = mapper.toResponse(
+        MutationResponse<List<PersonalInformationUpdateResultResponse>> response = mapper.toResponse(
                 new UpdatePersonalInformationResult(
                         true,
                         "260001373",
@@ -43,10 +43,10 @@ class PersonalInformationUpdateResultArrayContractTest {
                         "15:42:52",
                         List.of(),
                         List.of(
-                                new UpdatePersonalInformationAccountResult(
+                                new UpdatePersonalInformationResult(
                                         true, true, "00000000118", "2", "DB",
                                         "260001373", "2025-12-31", "15:42:52", List.of()),
-                                new UpdatePersonalInformationAccountResult(
+                                new UpdatePersonalInformationResult(
                                         false, false, "00000000118", "3", "DB",
                                         "260001374", "2025-12-31", "15:42:52", failedAccountErrors))));
 
@@ -56,7 +56,7 @@ class PersonalInformationUpdateResultArrayContractTest {
         assertThat(response.messages()).hasSize(1);
         assertThat(response.result()).hasSize(2);
 
-        PersonalInformationUpdateAccountResponse selected = response.result().get(0);
+        PersonalInformationUpdateResultResponse selected = response.result().get(0);
         assertThat(selected.selected()).isTrue();
         assertThat(selected.success()).isTrue();
         assertThat(selected.policyNo()).isEqualTo("00000000118");
@@ -67,7 +67,7 @@ class PersonalInformationUpdateResultArrayContractTest {
         assertThat(selected.submitTime()).isEqualTo("15:42:52");
         assertThat(selected.errors()).isEmpty();
 
-        PersonalInformationUpdateAccountResponse failed = response.result().get(1);
+        PersonalInformationUpdateResultResponse failed = response.result().get(1);
         assertThat(failed.selected()).isFalse();
         assertThat(failed.success()).isFalse();
         assertThat(failed.policyNo()).isEqualTo("00000000118");
@@ -96,7 +96,7 @@ class PersonalInformationUpdateResultArrayContractTest {
 
         PersonalInformationUpdateResponseMapper mapper = new PersonalInformationUpdateResponseMapper(errorMapper);
 
-        MutationResponse<List<PersonalInformationUpdateAccountResponse>> response = mapper.toResponse(
+        MutationResponse<List<PersonalInformationUpdateResultResponse>> response = mapper.toResponse(
                 new UpdatePersonalInformationResult(
                         false,
                         "260001374",
@@ -104,10 +104,10 @@ class PersonalInformationUpdateResultArrayContractTest {
                         "15:42:52",
                         selectedErrors,
                         List.of(
-                                new UpdatePersonalInformationAccountResult(
+                                new UpdatePersonalInformationResult(
                                         true, false, "00000000118", "2", "DB",
                                         "260001373", "2025-12-31", "15:42:52", List.of()),
-                                new UpdatePersonalInformationAccountResult(
+                                new UpdatePersonalInformationResult(
                                         false, true, "00000000118", "3", "DB",
                                         "260001374", "2025-12-31", "15:42:52", selectedErrors))));
 
@@ -117,13 +117,13 @@ class PersonalInformationUpdateResultArrayContractTest {
         assertThat(response.errors()).containsExactlyElementsOf(mappedSelectedErrors);
         assertThat(response.result()).hasSize(2);
 
-        PersonalInformationUpdateAccountResponse succeeded = response.result().get(0);
+        PersonalInformationUpdateResultResponse succeeded = response.result().get(0);
         assertThat(succeeded.selected()).isFalse();
         assertThat(succeeded.success()).isTrue();
         assertThat(succeeded.certNo()).isEqualTo("2");
         assertThat(succeeded.errors()).isEmpty();
 
-        PersonalInformationUpdateAccountResponse selectedFailure = response.result().get(1);
+        PersonalInformationUpdateResultResponse selectedFailure = response.result().get(1);
         assertThat(selectedFailure.selected()).isTrue();
         assertThat(selectedFailure.success()).isFalse();
         assertThat(selectedFailure.certNo()).isEqualTo("3");
