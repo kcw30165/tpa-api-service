@@ -8,7 +8,7 @@ import java.util.List;
 public record UpdatePersonalInformationResponse(
         boolean success,
         String status,
-        PersonalInformationUpdateResultResponse result,
+        List<PersonalInformationUpdateAccountResponse> result,
         List<ApiMessage> messages,
         List<ApiError> errors) {
 
@@ -17,7 +17,7 @@ public record UpdatePersonalInformationResponse(
         errors = errors == null ? List.of() : List.copyOf(errors);
     }
 
-    public static UpdatePersonalInformationResponse updated(PersonalInformationUpdateResultResponse result) {
+    public static UpdatePersonalInformationResponse updated(List<PersonalInformationUpdateAccountResponse> result) {
         return new UpdatePersonalInformationResponse(
                 true,
                 ApiStatus.UPDATED.toString(),

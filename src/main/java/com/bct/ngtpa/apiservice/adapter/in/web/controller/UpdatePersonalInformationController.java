@@ -6,7 +6,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdatePersonalInformation
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateAccountResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationUpdateYamlValidator;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.application.port.in.UpdatePersonalInformationUseCase;
@@ -51,7 +51,7 @@ public class UpdatePersonalInformationController {
     }
 
     @PutMapping
-    public Mono<MutationResponse<PersonalInformationUpdateResultResponse>> update(
+    public Mono<MutationResponse<List<PersonalInformationUpdateAccountResponse>>> update(
             @RequestBody Mono<UpdatePersonalInformationRequest> request) {
         return Mono.deferContextual(contextView -> {
             RequestHeaderContext context = contextView.getOrDefault(RequestHeaderContextKeys.CONTEXT_KEY, null);

@@ -4,7 +4,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiMessage;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateAccountResponse;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationAccountResult;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationError;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
@@ -24,24 +24,52 @@ public class PersonalInformationUpdateResponseMapper {
         this.errorMapper = errorMapper;
     }
 
-    public MutationResponse<PersonalInformationUpdateResultResponse> toResponse(UpdatePersonalInformationResult result) {
+    public MutationResponse<List<PersonalInformationUpdateAccountResponse>> toResponse(UpdatePersonalInformationResult result) {
         if (result != null && result.success()) {
-            var resultResponse = new PersonalInformationUpdateResultResponse(
-                    result.refNo(), result.submitDate(), result.submitTime());
             if (hasOtherAccountFailures(result)) {
                 return MutationResponse.success(
                         ApiStatus.PARTIAL_SUCCESS,
-                        resultResponse,
+                        accountResponses(result),
                         List.of(ApiMessage.warning(PARTIAL_SUCCESS_CODE, partialSuccessMessage(result), "PAGE")));
             }
             return MutationResponse.success(
                     ApiStatus.UPDATED,
-                    resultResponse,
+                    accountResponses(result),
                     List.of(ApiMessage.success(SUCCESS_CODE, SUCCESS_MESSAGE, "PAGE")));
         }
 
         List<UpdatePersonalInformationError> errors = selectedAccountErrors(result);
-        ApiStatus status = errors.stream()
+        List<ApiError> apiErrors = errorMapper.toApiErrors(errors);
+        ApiStatus status = failureStatus(result, errors);
+        if (hasAccountResults(result)) {
+            return MutationResponse.failure(status, accountResponses(result), apiErrors);
+        }
+        return MutationResponse.failure(status, apiErrors);
+    }
+
+    private List<PersonalInformationUpdateAccountResponse> accountResponses(UpdatePersonalInformationResult result) {
+        if (!hasAccountResults(result)) {
+            return List.of();
+        }
+        return result.accountResults().stream()
+                .map(account -> new PersonalInformationUpdateAccountResponse(
+                        account.selected(),
+                        account.success(),
+                        account.policyNo(),
+                        account.certNo(),
+                        account.env(),
+                        account.refNo(),
+                        account.submitDate(),
+                        account.submitTime(),
+                        account.errors().isEmpty() ? List.of() : errorMapper.toApiErrors(account.errors())))
+                .toList();
+    }
+
+    private ApiStatus failureStatus(UpdatePersonalInformationResult result, List<UpdatePersonalInformationError> errors) {
+        if (hasAccountResults(result) && hasAnyAccountSuccess(result) && hasAnyAccountFailure(result)) {
+            return ApiStatus.PARTIAL_SUCCESS;
+        }
+        return errors.stream()
                 .map(UpdatePersonalInformationError::type)
                 .findFirst()
                 .map(type -> switch (type) {
@@ -50,8 +78,18 @@ public class PersonalInformationUpdateResponseMapper {
                     default -> ApiStatus.VALIDATION_FAILED;
                 })
                 .orElse(ApiStatus.SYSTEM_ERROR);
+    }
 
-        return MutationResponse.failure(status, errorMapper.toApiErrors(errors));
+    private boolean hasAccountResults(UpdatePersonalInformationResult result) {
+        return result != null && !result.accountResults().isEmpty();
+    }
+
+    private boolean hasAnyAccountSuccess(UpdatePersonalInformationResult result) {
+        return hasAccountResults(result) && result.accountResults().stream().anyMatch(UpdatePersonalInformationAccountResult::success);
+    }
+
+    private boolean hasAnyAccountFailure(UpdatePersonalInformationResult result) {
+        return hasAccountResults(result) && result.accountResults().stream().anyMatch(account -> !account.success());
     }
 
     private boolean hasOtherAccountFailures(UpdatePersonalInformationResult result) {
@@ -89,10 +127,12 @@ public class PersonalInformationUpdateResponseMapper {
     }
 
     private String failedAccountMessage(UpdatePersonalInformationAccountResult account) {
-        var details = errorMapper.toApiErrors(account.errors()).stream()
-                .map(ApiError::message)
-                .filter(message -> message != null && !message.isBlank())
-                .collect(Collectors.joining("; "));
+        var details = account.errors().isEmpty()
+                ? ""
+                : errorMapper.toApiErrors(account.errors()).stream()
+                        .map(ApiError::message)
+                        .filter(message -> message != null && !message.isBlank())
+                        .collect(Collectors.joining("; "));
         return details.isBlank() ? accountLabel(account) : accountLabel(account) + ": " + details;
     }
 

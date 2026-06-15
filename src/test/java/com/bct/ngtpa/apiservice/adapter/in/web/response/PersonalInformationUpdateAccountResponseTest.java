@@ -6,14 +6,14 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
-
 import org.junit.jupiter.api.Test;
 
-public class PersonalInformationUpdateResultResponseTest {
-        @Test
-    void updatePersonalInformationResponseConstructorAndFactoriesCoverMessagesAndErrorsBranches() {
-        PersonalInformationUpdateResultResponse result = new PersonalInformationUpdateResultResponse(
-                "REF-1", "08/06/2026", "09:17:00");
+public class PersonalInformationUpdateAccountResponseTest {
+    @Test
+    void accountResponseAndLegacyUpdateResponseFactoriesCoverMessagesAndErrorsBranches() {
+        PersonalInformationUpdateAccountResponse account = new PersonalInformationUpdateAccountResponse(
+                true, true, "00000000118", "2", "DB", "REF-1", "08/06/2026", "09:17:00", null);
+        List<PersonalInformationUpdateAccountResponse> result = List.of(account);
         UpdatePersonalInformationResponse defaulted = new UpdatePersonalInformationResponse(true, "UPDATED", result, null, null);
         assertTrue(defaulted.messages().isEmpty());
         assertTrue(defaulted.errors().isEmpty());
