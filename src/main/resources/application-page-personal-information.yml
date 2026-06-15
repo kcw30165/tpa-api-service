@@ -63,6 +63,9 @@ bff-pages:
         "[personalInformation.email.required.message]":
           en: Please provide a valid email address.
           zh_HK: 請輸入有效電郵地址。
+        "[personalInformation.email.tooShort.message]":
+          en: Please input a valid email address.
+          zh_HK: 請輸入有效電郵地址。
         "[personalInformation.email.tooShort.message.JP]":
           en: For JP accounts, please input an email address with more than 10 characters.
           zh_HK: JP帳戶請輸入超過10個字元的電郵地址。
@@ -676,7 +679,7 @@ bff-pages:
                     valueByVariant:
                       JP: 11
                     code: personalInformation.email.tooShort
-                    messageCode: personalInformation.email.required.message
+                    messageCode: personalInformation.email.tooShort.message
                     severity: error
                   - id: emailAddress.maxLength
                     type: maxLength
@@ -827,36 +830,6 @@ bff-pages:
               - hongKongBusinessPhone
           code: personalInformation.businessPhone.requiredWhenExtensionPresent
           messageCode: personalInformation.businessPhone.requiredWhenExtensionPresent.message
-        - id: overseasCountryCode.requiredWhenPhonePresent
-          type: conditionalRequired
-          severity: error
-          when:
-            operator: notBlank
-            field: overseasPhoneNumber
-          then:
-            operator: required
-            field: overseasCountryCode
-            targets:
-              - overseasCountryCode
-          code: personalInformation.overseasCountryCode.requiredWhenPhonePresent
-          messageCode: personalInformation.overseasCountryCode.requiredWhenPhonePresent.message
-        - id: overseasPhone.requiredWhenCodePresent
-          type: conditionalRequired
-          severity: error
-          when:
-            operator: any
-            conditions:
-              - field: overseasCountryCode
-                operator: notBlank
-              - field: overseasAreaCode
-                operator: notBlank
-          then:
-            operator: required
-            field: overseasPhoneNumber
-            targets:
-              - overseasPhoneNumber
-          code: personalInformation.overseasPhoneNumber.requiredWhenCodePresent
-          messageCode: personalInformation.overseasPhoneNumber.requiredWhenCodePresent.message
         - id: aeoiReminder.whenResidentialCountryChanged
           type: conditionalWarning
           severity: warning
