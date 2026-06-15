@@ -10,25 +10,82 @@ import org.springframework.stereotype.Component;
 @Component
 public class TrpUpdMemberInfoResponseMapper {
 
-    public UpdatePersonalInformationResult toResult(TrpUpdMemberInfoResponse response) {
-        TrpUpdMemberInfoData data = firstData(response);
-        if (data == null) {
-            return new UpdatePersonalInformationResult(false, null, null, null, List.of());
+    public List<UpdatePersonalInformationResult> toResults(TrpUpdMemberInfoResponse response) {
+        if (response == null || response.response() == null
+                || response.response().data() == null || response.response().data().isEmpty()) {
+            return List.of();
         }
+        return response.response().data().stream()
+                .filter(data -> data != null)
+                .map(data -> toResult(data, false, null, null, null))
+                .toList();
+    }
+
+    public List<UpdatePersonalInformationResult> toResults(
+            TrpUpdMemberInfoResponse response,
+            String selectedPolicyNo,
+            String selectedCertNo,
+            String selectedEnv) {
+        if (response == null || response.response() == null
+                || response.response().data() == null || response.response().data().isEmpty()) {
+            return List.of();
+        }
+        return response.response().data().stream()
+                .filter(data -> data != null)
+                .map(data -> toResult(
+                        data,
+                        isSelected(data, selectedPolicyNo, selectedCertNo, selectedEnv),
+                        selectedPolicyNo,
+                        selectedCertNo,
+                        selectedEnv))
+                .toList();
+    }
+
+    /**
+     * Compatibility adapter for older unit tests that exercise this legacy mapper directly.
+     * Production update flow maps APIM response.data[] in ApimUpdatePersonalInformationAdapter.
+     */
+    public UpdatePersonalInformationResult toResult(TrpUpdMemberInfoResponse response) {
+        return toResults(response).stream()
+                .findFirst()
+                .orElseGet(() -> new UpdatePersonalInformationResult(
+                        false,
+                        false,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        List.of()));
+    }
+
+    private UpdatePersonalInformationResult toResult(
+            TrpUpdMemberInfoData data,
+            boolean selected,
+            String selectedPolicyNo,
+            String selectedCertNo,
+            String selectedEnv) {
         return new UpdatePersonalInformationResult(
+                selected,
                 Boolean.TRUE.equals(data.success()),
+                selectedPolicyNo,
+                selectedCertNo,
+                selectedEnv,
                 data.refNo(),
                 data.submitDate(),
                 data.submitTime(),
                 toErrors(data));
     }
 
-    private TrpUpdMemberInfoData firstData(TrpUpdMemberInfoResponse response) {
-        if (response == null || response.response() == null
-                || response.response().data() == null || response.response().data().isEmpty()) {
-            return null;
-        }
-        return response.response().data().get(0);
+    private boolean isSelected(
+            TrpUpdMemberInfoData data,
+            String selectedPolicyNo,
+            String selectedCertNo,
+            String selectedEnv) {
+        // TrpUpdMemberInfoData legacy DTO does not expose policy/cert/env fields.
+        // The overload exists for forward compatibility; production selection is handled in ApimUpdatePersonalInformationAdapter.
+        return false;
     }
 
     private List<UpdatePersonalInformationError> toErrors(TrpUpdMemberInfoData data) {

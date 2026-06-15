@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.mapper;
 
 import java.util.Collections;
 
+import com.bct.ngtpa.apiservice.shared.config.ConfigLookupContext;
 import com.bct.ngtpa.apiservice.shared.config.ConfigVariantCandidateGenerator;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.ActionProperties;
@@ -10,11 +11,14 @@ import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.ApimBindingProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.BffPagesProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.FieldProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.FormMetadataProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.OptionProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.OptionSetProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.PageMetadataProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.PageSchemaProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.SectionProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.ValidationRuleProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.FieldResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.FormOptionResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.FormPageResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.FormSchemaResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.PageResponse;
@@ -38,6 +42,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
 import java.util.Set;
 
 @Component
@@ -47,7 +52,8 @@ public class PersonalInformationWebMapper {
     private static final String PAGE_KEY = "personalInformation";
     private static final String DEFAULT_LANGUAGE = "en";
     private static final String ZH_HK_LANGUAGE = "zh_HK";
-    private final PageDisplayTextResolver pageDisplayTextResolver = new PageDisplayTextResolver(new ConfigVariantCandidateGenerator());
+    private final ConfigVariantCandidateGenerator configVariantCandidateGenerator = new ConfigVariantCandidateGenerator();
+    private final PageDisplayTextResolver pageDisplayTextResolver = new PageDisplayTextResolver(configVariantCandidateGenerator);
 private final LoggingSanitizer loggingSanitizer;
     private final BffPagesProperties bffPagesProperties;
     private final YamlResponseMapper yamlResponseMapper;
@@ -231,6 +237,7 @@ private final LoggingSanitizer loggingSanitizer;
                 metadata != null ? metadata.getVersion() : null,
                 formSchema != null && hasText(formSchema.getDefaultMode()) ? formSchema.getDefaultMode() : "view",
                 buildSections(pageSchema, apimData, apimConfig, apimConfigItems, language, accountEnv, trustCode, schemeType),
+                buildOptionSets(pageSchema, formSchema, language, accountEnv, trustCode, schemeType),
                 mapValidationRules(pageSchema, pageSchema != null ? pageSchema.getValidations() : null, language, accountEnv, trustCode, schemeType),
                 buildConfirmation(pageSchema, language, accountEnv, trustCode, schemeType),
                 buildActions(pageSchema, formSchema, language, accountEnv, trustCode, schemeType));
@@ -534,6 +541,89 @@ private final LoggingSanitizer loggingSanitizer;
                 rule.setMessage(originalMessage);
             }
         }
+    }
+
+
+    private Map<String, List<FormOptionResponse>> buildOptionSets(
+            PageSchemaProperties pageSchema,
+            FormMetadataProperties formSchema,
+            String language,
+            String accountEnv,
+            String trustCode,
+            String schemeType) {
+        if (formSchema == null || formSchema.getOptionSets() == null || formSchema.getOptionSets().isEmpty()) {
+            return Map.of();
+        }
+        Map<String, List<FormOptionResponse>> optionSets = new LinkedHashMap<>();
+        for (Map.Entry<String, OptionSetProperties> entry : formSchema.getOptionSets().entrySet()) {
+            String optionSetId = entry.getKey();
+            OptionSetProperties optionSet = entry.getValue();
+            if (!hasText(optionSetId) || optionSet == null || optionSet.getOptions() == null || optionSet.getOptions().isEmpty()) {
+                continue;
+            }
+            String code = hasText(optionSet.getCode()) ? optionSet.getCode() : optionSetId;
+            List<OptionProperties> options = resolveOptionSetOptions(optionSet, code, language, accountEnv, trustCode, schemeType);
+            if (options.isEmpty()) {
+                continue;
+            }
+            optionSets.put(optionSetId, options.stream()
+                    .map(option -> toOptionResponse(pageSchema, option, language, accountEnv, trustCode, schemeType))
+                    .toList());
+        }
+        return optionSets.isEmpty() ? Map.of() : Map.copyOf(optionSets);
+    }
+
+    private List<OptionProperties> resolveOptionSetOptions(
+            OptionSetProperties optionSet,
+            String code,
+            String language,
+            String accountEnv,
+            String trustCode,
+            String schemeType) {
+        for (String candidateKey : optionSetCandidateKeys(code, language, accountEnv, trustCode, schemeType)) {
+            List<OptionProperties> candidateOptions = optionSet.getOptions().get(candidateKey);
+            if (candidateOptions != null && !candidateOptions.isEmpty()) {
+                return candidateOptions;
+            }
+        }
+        return List.of();
+    }
+
+    private List<String> optionSetCandidateKeys(
+            String code,
+            String language,
+            String accountEnv,
+            String trustCode,
+            String schemeType) {
+        var candidates = new java.util.LinkedHashSet<String>();
+        Locale locale = hasText(language)
+                ? Locale.forLanguageTag(language.replace('_', '-'))
+                : Locale.ENGLISH;
+        ConfigLookupContext context = ConfigLookupContext.of(accountEnv, trustCode, schemeType, locale);
+        for (String variant : configVariantCandidateGenerator.generate(context)) {
+            candidates.add(code + "." + variant);
+        }
+        candidates.add(code);
+        return List.copyOf(candidates);
+    }
+
+    private FormOptionResponse toOptionResponse(
+            PageSchemaProperties pageSchema,
+            OptionProperties option,
+            String language,
+            String accountEnv,
+            String trustCode,
+            String schemeType) {
+        String value = option == null || option.getValue() == null ? "" : option.getValue();
+        String text = option == null ? "" : resolvePageDisplayText(
+                pageSchema,
+                option.getLabelCode(),
+                option.getLabel(),
+                language,
+                accountEnv,
+                trustCode,
+                schemeType);
+        return new FormOptionResponse(value, hasText(text) ? text : value);
     }
 
     private Map<String, Object> buildActions(PageSchemaProperties pageSchema, FormMetadataProperties formSchema, String language, String accountEnv, String trustCode, String schemeType) {

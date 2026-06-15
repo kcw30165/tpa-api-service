@@ -21,4 +21,8 @@ public record MutationResponse<T>(
     public static <T> MutationResponse<T> failure(ApiStatus status, List<ApiError> errors) {
         return new MutationResponse<>(false, status, null, List.of(), errors);
     }
+
+    public static <T> MutationResponse<T> failure(ApiStatus status, T result, List<ApiError> errors) {
+        return new MutationResponse<>(false, status, result, List.of(), errors);
+    }
 }

@@ -51,7 +51,7 @@ public class UpdatePersonalInformationController {
     }
 
     @PutMapping
-    public Mono<MutationResponse<PersonalInformationUpdateResultResponse>> update(
+    public Mono<MutationResponse<List<PersonalInformationUpdateResultResponse>>> update(
             @RequestBody Mono<UpdatePersonalInformationRequest> request) {
         return Mono.deferContextual(contextView -> {
             RequestHeaderContext context = contextView.getOrDefault(RequestHeaderContextKeys.CONTEXT_KEY, null);

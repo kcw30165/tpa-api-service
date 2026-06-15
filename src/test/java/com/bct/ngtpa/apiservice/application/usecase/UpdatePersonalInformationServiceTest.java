@@ -13,6 +13,7 @@ import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
 import com.bct.ngtpa.apiservice.application.port.out.ApimUpdatePersonalInformationPort;
 import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
@@ -24,12 +25,16 @@ class UpdatePersonalInformationServiceTest {
     void resolvesPortalContextAndCallsApimUpdateWithActorUserIdUserTypeAndMappedFields() {
         AtomicReference<String> capturedAccountRef = new AtomicReference<>();
         AtomicReference<UpdateMemberInfoCommand> capturedCommand = new AtomicReference<>();
-
-        var expectedResult = new UpdatePersonalInformationResult(
+        List<UpdatePersonalInformationResult> expectedResults = List.of(new UpdatePersonalInformationResult(
                 true,
+                true,
+                "POL-001",
+                "CERT-001",
+                "JP",
                 "990000001",
                 "2026-06-05",
-                "13:44:01");
+                "13:44:01",
+                List.of()));
 
         PortalAccessContextPort portalPort = accountRef -> {
             capturedAccountRef.set(accountRef);
@@ -38,7 +43,7 @@ class UpdatePersonalInformationServiceTest {
 
         ApimUpdatePersonalInformationPort apimPort = command -> {
             capturedCommand.set(command);
-            return Mono.just(expectedResult);
+            return Mono.just(expectedResults);
         };
 
         var updateFields = new LinkedHashMap<String, Object>();
@@ -49,15 +54,13 @@ class UpdatePersonalInformationServiceTest {
                 .execute(new UpdatePersonalInformationCommand("ACC-123", true, updateFields))
                 .block();
 
-        assertEquals(expectedResult, result);
+        assertEquals(expectedResults, result);
         assertEquals("ACC-123", capturedAccountRef.get());
-
         assertEquals("JP", capturedCommand.get().accountEnv());
         assertEquals("POL-001", capturedCommand.get().policyNo());
         assertEquals("CERT-001", capturedCommand.get().certNo());
         assertEquals("actor-user", capturedCommand.get().userId());
         assertEquals("MEMBER", capturedCommand.get().userRole());
-
         assertEquals(updateFields, capturedCommand.get().updateFields());
     }
 

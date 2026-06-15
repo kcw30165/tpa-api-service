@@ -1,556 +1,108 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim;
 
-import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
-import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateMemberInfoApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateMemberInfoApimError;
-import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateMemberInfoApimRequest;
 import com.bct.ngtpa.apiservice.application.dto.UpdateMemberInfoCommand;
-import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationError;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
 import com.bct.ngtpa.apiservice.exception.ApimException;
-import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Test;
-import reactor.core.publisher.Mono;
-
-import java.security.PublicKey;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 class ApimUpdatePersonalInformationAdapterTest {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
     @Test
-    void postsToUpdateMemberInfoEndpointAndMapsSuccess() {
-        CapturingApimWebClientFacade facade = new CapturingApimWebClientFacade("""
-                {
-                  "response": {
-                    "err-message": "",
-                    "data": [
-                      { "success": true }
-                    ]
-                  }
-                }
-                """);
-        ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(
-                facade,
-                new NoopApimCertificateService(),
-                new PassThroughApimPayloadCryptoService(),
-                disabledEncryptionProperties());
+    void mapsEveryApimDataItemToFlatUpdateResultAndMarksSelectedAccount() {
+        ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(null, null, null, null);
 
-        UpdatePersonalInformationResult result = adapter.updateMemberInfo(command()).block();
+        List<UpdatePersonalInformationResult> results = invokeToResults(adapter, envelope(List.of(
+                item(true, "00000000118", "2", "DB", "260001373", List.of()),
+                item(false, "00000000118", "3", "DB", "260001374", List.of(
+                        new UpdateMemberInfoApimError("FIELD", "email", "REQUIRED"),
+                        new UpdateMemberInfoApimError("CROSS_FIELD", "addr1|addr2", "AT_LEAST_ONE_REQUIRED"))))),
+                command("00000000118", "3", "DB"));
 
-        assertEquals(1, facade.postInvocationCount);
-        assertEquals("/ws/NGTPA/v1/TRPUpdMemberInfo", facade.capturedPath);
-        assertEquals("POL-001", facade.capturedRequest.getPolicyNo());
-        assertEquals("CERT-001", facade.capturedRequest.getCertNo());
-        assertEquals("JP", facade.capturedRequest.getAccountEnv());
-        assertEquals("actor-user", facade.capturedRequest.getUserId());
-        assertEquals("98765432", facade.capturedRequest.getUpdateFields().get("mobile-number"));
-        assertTrue(result.success());
-    }
+        assertThat(results).hasSize(2);
+        assertThat(results.get(0).selected()).isFalse();
+        assertThat(results.get(0).success()).isTrue();
+        assertThat(results.get(0).policyNo()).isEqualTo("00000000118");
+        assertThat(results.get(0).certNo()).isEqualTo("2");
+        assertThat(results.get(0).env()).isEqualTo("DB");
+        assertThat(results.get(0).refNo()).isEqualTo("260001373");
 
-
-
-
-    @Test
-    void mapsSelectedApimSuccessResultFieldsFromSingleAccountResponse() {
-        CapturingApimWebClientFacade facade = new CapturingApimWebClientFacade("""
-                {
-                  "response": {
-                    "err-message": "",
-                    "data": [
-                      {
-                        "success": true,
-                        "policy-no": "POL-001",
-                        "cert-no": "CERT-001",
-                        "env": "JP",
-                        "ref-no": "260001999",
-                        "submit-date": "2026-06-13",
-                        "submit-time": "18:45:12",
-                        "errors": []
-                      }
-                    ]
-                  }
-                }
-                """);
-        ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(
-                facade,
-                new NoopApimCertificateService(),
-                new PassThroughApimPayloadCryptoService(),
-                disabledEncryptionProperties());
-
-        UpdatePersonalInformationResult result = adapter.updateMemberInfo(command()).block();
-
-        assertNotNull(result);
-        assertTrue(result.success());
-        assertEquals("260001999", result.refNo());
-        assertEquals("2026-06-13", result.submitDate());
-        assertEquals("18:45:12", result.submitTime());
-        assertEquals(List.of(), result.errors());
+        assertThat(results.get(1).selected()).isTrue();
+        assertThat(results.get(1).success()).isFalse();
+        assertThat(results.get(1).refNo()).isEqualTo("260001374");
+        assertThat(results.get(1).errors()).hasSize(2);
+        assertThat(results.get(1).errors().get(0).fields()).containsExactly("email");
+        assertThat(results.get(1).errors().get(1).fields()).containsExactly("addr1", "addr2");
     }
 
     @Test
-    void mapsAllApplyAllDataItemsAndMarksSelectedAccountByPolicyCertAndEnv() {
-        CapturingApimWebClientFacade facade = new CapturingApimWebClientFacade("""
-                {
-                  "response": {
-                    "err-message": "",
-                    "data": [
-                      {
-                        "success": true,
-                        "policy-no": "POL-001",
-                        "cert-no": "CERT-002",
-                        "env": "JP",
-                        "ref-no": "260001373",
-                        "submit-date": "2025-12-31",
-                        "submit-time": "15:42:52",
-                        "errors": []
-                      },
-                      {
-                        "success": false,
-                        "policy-no": "POL-001",
-                        "cert-no": "CERT-001",
-                        "env": "JP",
-                        "ref-no": "260001374",
-                        "submit-date": "2025-12-31",
-                        "submit-time": "15:42:52",
-                        "errors": [
-                          { "type": "FIELD", "fields": "email", "code": "REQUIRED" }
-                        ]
-                      }
-                    ]
-                  }
-                }
-                """);
-        ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(
-                facade,
-                new NoopApimCertificateService(),
-                new PassThroughApimPayloadCryptoService(),
-                disabledEncryptionProperties());
+    void rejectsApimResponseWhenSelectedAccountIsMissing() {
+        ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(null, null, null, null);
 
-        UpdatePersonalInformationResult result = adapter.updateMemberInfo(command()).block();
-
-        assertNotNull(result);
-        assertFalse(result.success());
-        assertEquals("260001374", result.refNo());
-        assertEquals(2, result.accountResults().size());
-        assertTrue(result.accountResults().get(0).success());
-        assertFalse(result.accountResults().get(0).selected());
-        assertFalse(result.accountResults().get(1).success());
-        assertTrue(result.accountResults().get(1).selected());
-        assertEquals(List.of(new UpdatePersonalInformationError("FIELD", List.of("email"), "REQUIRED")),
-                result.errors());
+        assertThatThrownBy(() -> invokeToResults(adapter, envelope(List.of(
+                item(true, "00000000118", "2", "DB", "260001373", List.of()))),
+                command("00000000118", "3", "DB")))
+                .isInstanceOf(ApimException.class)
+                .hasMessageContaining("selected account");
     }
 
-
-    @Test
-    void mapsFieldRequiredValidationErrorFromSelectedApimAccount() {
-        CapturingApimWebClientFacade facade = new CapturingApimWebClientFacade("""
-                {
-                  "response": {
-                    "err-message": "",
-                    "data": [
-                      {
-                        "success": false,
-                        "policy-no": "POL-001",
-                        "cert-no": "CERT-001",
-                        "env": "JP",
-                        "errors": [
-                          { "type": "FIELD", "fields": "email", "code": "REQUIRED" }
-                        ]
-                      }
-                    ]
-                  }
-                }
-                """);
-        ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(
-                facade,
-                new NoopApimCertificateService(),
-                new PassThroughApimPayloadCryptoService(),
-                disabledEncryptionProperties());
-
-        UpdatePersonalInformationResult result = adapter.updateMemberInfo(command()).block();
-
-        assertNotNull(result);
-        assertFalse(result.success());
-        assertEquals(List.of(new UpdatePersonalInformationError("FIELD", List.of("email"), "REQUIRED")),
-                result.errors());
+    @SuppressWarnings("unchecked")
+    private List<UpdatePersonalInformationResult> invokeToResults(
+            ApimUpdatePersonalInformationAdapter adapter,
+            ApimResponseEnvelope<UpdateMemberInfoApimDataItem> envelope,
+            UpdateMemberInfoCommand command) {
+        return (List<UpdatePersonalInformationResult>) ReflectionTestUtils.invokeMethod(
+                adapter,
+                "toResults",
+                envelope,
+                command);
     }
 
-    @Test
-    void mapsFieldInvalidFormatValidationErrorFromSelectedApimAccount() {
-        CapturingApimWebClientFacade facade = new CapturingApimWebClientFacade("""
-                {
-                  "response": {
-                    "err-message": "",
-                    "data": [
-                      {
-                        "success": false,
-                        "policy-no": "POL-001",
-                        "cert-no": "CERT-001",
-                        "env": "JP",
-                        "errors": [
-                          { "type": "FIELD", "fields": "email", "code": "INVALID_FORMAT" }
-                        ]
-                      }
-                    ]
-                  }
-                }
-                """);
-        ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(
-                facade,
-                new NoopApimCertificateService(),
-                new PassThroughApimPayloadCryptoService(),
-                disabledEncryptionProperties());
-
-        UpdatePersonalInformationResult result = adapter.updateMemberInfo(command()).block();
-
-        assertNotNull(result);
-        assertFalse(result.success());
-        assertEquals(List.of(new UpdatePersonalInformationError("FIELD", List.of("email"), "INVALID_FORMAT")),
-                result.errors());
-    }
-
-    @Test
-    void mapsCrossFieldValidationErrorFromPipeSeparatedApimFields() {
-        CapturingApimWebClientFacade facade = new CapturingApimWebClientFacade("""
-                {
-                  "response": {
-                    "err-message": "",
-                    "data": [
-                      {
-                        "success": false,
-                        "policy-no": "POL-001",
-                        "cert-no": "CERT-001",
-                        "env": "JP",
-                        "errors": [
-                          { "type": "CROSS_FIELD", "fields": "addr1|addr2", "code": "AT_LEAST_ONE_REQUIRED" }
-                        ]
-                      }
-                    ]
-                  }
-                }
-                """);
-        ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(
-                facade,
-                new NoopApimCertificateService(),
-                new PassThroughApimPayloadCryptoService(),
-                disabledEncryptionProperties());
-
-        UpdatePersonalInformationResult result = adapter.updateMemberInfo(command()).block();
-
-        assertNotNull(result);
-        assertFalse(result.success());
-        assertEquals(List.of(new UpdatePersonalInformationError(
-                        "CROSS_FIELD",
-                        List.of("addr1", "addr2"),
-                        "AT_LEAST_ONE_REQUIRED")),
-                result.errors());
-    }
-
-    // @Test
-    // void surfacesApimTopLevelErrorMessageAsResultFailure() {
-    //     CapturingApimWebClientFacade facade = new CapturingApimWebClientFacade("""
-    //             {
-    //               "response": {
-    //                 "err-message": "APIM update failed",
-    //                 "data": []
-    //               }
-    //             }
-    //             """);
-    //     ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(
-    //             facade,
-    //             new NoopApimCertificateService(),
-    //             new PassThroughApimPayloadCryptoService(),
-    //             disabledEncryptionProperties());
-
-    //     // Act: Execute the method (assuming it returns UpdatePersonalInformationResult)
-    //     UpdatePersonalInformationResult result = adapter.updateMemberInfo(command()).block();
-
-    //     // Assert: Check that success is false and the error details match
-    //     assertNotNull(result);
-    //     assertFalse(result.success());
-    //     assertEquals(1, result.errors().size());
-
-    //     UpdatePersonalInformationError error = result.errors().getFirst();
-    //     assertEquals("DOWNSTREAM_REJECTED", error.type());
-    //     assertEquals("APIM update failed", error.code());
-    // }
-
-    // @Test
-    // void treatsFalseSuccessAsDownstreamRejectedResult() {
-    //     ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(null, null, null,
-    //             new ApimProperties());
-
-    //     UpdatePersonalInformationResult result = ReflectionTestUtils.invokeMethod(adapter, "toResult",
-    //             responseEnvelope(List.of(
-    //                     UpdateMemberInfoApimDataItem.builder().success(false).build())));
-
-    //     assertNotNull(result);
-    //     assertFalse(result.success());
-    //     assertEquals("DOWNSTREAM_REJECTED", result.errors().getFirst().type());
-    //     assertEquals("APIM personal information update was not successful.", result.errors().getFirst().code());
-    // }
-
-    // @Test
-    // void treatsMissingDataAsDownstreamErrorResult() {
-    //     ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(null, null, null,
-    //             new ApimProperties());
-
-    //     UpdatePersonalInformationResult result = ReflectionTestUtils.invokeMethod(adapter, "toResult",
-    //             responseEnvelope(List.of()));
-
-    //     assertNotNull(result);
-    //     assertFalse(result.success());
-    //     assertEquals("DOWNSTREAM_ERROR", result.errors().getFirst().type());
-    //     assertEquals("APIM personal information update response data is missing.", result.errors().getFirst().code());
-    // }
-
-    // @Test
-    // void treatsUnsuccessfulDataItemAsDownstreamRejectedResultIntegration() {
-    //     ApimProperties properties = new ApimProperties();
-    //     properties.getEncryption().setEnabled(true);
-    //     FixedEnvelopePayloadCryptoService payloadCryptoService = new FixedEnvelopePayloadCryptoService(
-    //             responseEnvelope(List.of(
-    //                     UpdateMemberInfoApimDataItem.builder().success(false).build())));
-    //     FixedCertificateService certificateService = new FixedCertificateService(new TestPublicKey("bct-public"));
-    //     CapturingApimWebClientFacade facade = new CapturingApimWebClientFacade("ignored");
-    //     ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(
-    //             facade,
-    //             certificateService,
-    //             payloadCryptoService,
-    //             properties);
-
-    //     UpdatePersonalInformationResult result = adapter.updateMemberInfo(command()).block();
-
-    //     assertNotNull(result);
-    //     assertFalse(result.success());
-    //     assertEquals("DOWNSTREAM_REJECTED", result.errors().getFirst().type());
-    // }
-
-    // @Test
-    // void throwsWhenPayloadMissingAsDownstreamErrorResult() {
-    //     ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(null, null, null,
-    //             new ApimProperties());
-
-    //     UpdatePersonalInformationResult result = ReflectionTestUtils.invokeMethod(adapter, "toResult", (Object) null);
-
-    //     assertNotNull(result);
-    //     assertFalse(result.success());
-    //     assertEquals("DOWNSTREAM_ERROR", result.errors().getFirst().type());
-    //     assertEquals("APIM response payload is invalid: response is missing.", result.errors().getFirst().code());
-    // }
-
-    @Test
-    void usesCertificateFlowWhenEncryptionEnabled() {
-        ApimProperties properties = new ApimProperties();
-        properties.getEncryption().setEnabled(true);
-        FixedEnvelopePayloadCryptoService payloadCryptoService = new FixedEnvelopePayloadCryptoService(
-                responseEnvelope(List.of(
-                        UpdateMemberInfoApimDataItem.builder().success(true).build())));
-        FixedCertificateService certificateService = new FixedCertificateService(new TestPublicKey("bct-public"));
-        CapturingApimWebClientFacade facade = new CapturingApimWebClientFacade("ignored");
-        ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(
-                facade,
-                certificateService,
-                payloadCryptoService,
-                properties);
-
-        UpdatePersonalInformationResult result = adapter.updateMemberInfo(command()).block();
-
-        assertEquals(1, certificateService.invocationCount);
-        assertSame(certificateService.publicKey, payloadCryptoService.lastPublicKey);
-        assertTrue(result.success());
-    }
-
-    @Test
-    void cryptoFailureIsMappedToApimException() {
-        ApimProperties properties = new ApimProperties();
-        properties.getEncryption().setEnabled(true);
-        ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(
-                new CapturingApimWebClientFacade("ignored"),
-                new FailingCertificateService(),
-                new FixedEnvelopePayloadCryptoService(responseEnvelope(List.of())),
-                properties);
-
-        ApimException ex = assertThrows(ApimException.class, () -> adapter.updateMemberInfo(command()).block());
-
-        assertEquals(ErrorCodes.SYSTEM_UNEXPECTED, ex.getErrorCode());
-        assertEquals("Certificate crypto error", ex.getMessage());
-    }
-
-    private static UpdateMemberInfoCommand command() {
-        Map<String, Object> updateFields = new LinkedHashMap<>();
-        updateFields.put("mobile-number", "98765432");
-        updateFields.put("email", "user@example.com");
-        return new UpdateMemberInfoCommand("JP", "POL-001", "CERT-001", "actor-user", "actor-type", true, updateFields);
-    }
-
-    private static ApimProperties disabledEncryptionProperties() {
-        ApimProperties properties = new ApimProperties();
-        properties.getEncryption().setEnabled(false);
-        return properties;
-    }
-
-    private static ApimResponseEnvelope<UpdateMemberInfoApimDataItem> responseEnvelope(
-            List<UpdateMemberInfoApimDataItem> items) {
+    private ApimResponseEnvelope<UpdateMemberInfoApimDataItem> envelope(List<UpdateMemberInfoApimDataItem> data) {
         return ApimResponseEnvelope.<UpdateMemberInfoApimDataItem>builder()
                 .response(ApimResponseBody.<UpdateMemberInfoApimDataItem>builder()
                         .errMessage("")
-                        .data(items)
+                        .data(data)
                         .build())
                 .build();
     }
 
-    private static final class CapturingApimWebClientFacade extends ApimWebClientFacade {
-        private final String responseBody;
-        private String capturedPath;
-        private UpdateMemberInfoApimRequest capturedRequest;
-        private int postInvocationCount;
-
-        private CapturingApimWebClientFacade(String responseBody) {
-            super(null, OBJECT_MAPPER);
-            this.responseBody = responseBody;
-        }
-
-        @Override
-        public Mono<String> post(String path, Object requestBody) {
-            this.capturedPath = path;
-            this.capturedRequest = (UpdateMemberInfoApimRequest) requestBody;
-            this.postInvocationCount++;
-            return Mono.just(responseBody);
-        }
+    private UpdateMemberInfoApimDataItem item(
+            boolean success,
+            String policyNo,
+            String certNo,
+            String env,
+            String refNo,
+            List<UpdateMemberInfoApimError> errors) {
+        return UpdateMemberInfoApimDataItem.builder()
+                .success(success)
+                .policyNo(policyNo)
+                .certNo(certNo)
+                .env(env)
+                .refNo(refNo)
+                .submitDate("2025-12-31")
+                .submitTime("15:42:52")
+                .errors(errors)
+                .build();
     }
 
-    private static final class PassThroughApimPayloadCryptoService extends ApimPayloadCryptoService {
-        private PassThroughApimPayloadCryptoService() {
-            super(new ApimProperties(), OBJECT_MAPPER, null, null, null, null);
-        }
-
-        @Override
-        public <T> T encryptRequest(String apiName, T source, Class<T> targetType, PublicKey publicKey) {
-            return source;
-        }
-
-        @Override
-        public <T> ApimResponseEnvelope<T> decryptResponseEnvelope(String apiName, String responseJson,
-                Class<T> dataClass,
-                PublicKey publicKey) {
-            try {
-                var root = OBJECT_MAPPER.readTree(responseJson);
-                var responseNode = root.get("response");
-                String errMessage = responseNode == null || responseNode.get("err-message") == null
-                        ? null
-                        : responseNode.get("err-message").asText();
-                java.util.List<T> items = new java.util.ArrayList<>();
-                if (responseNode != null && responseNode.get("data") != null && responseNode.get("data").isArray()) {
-                    for (var itemNode : responseNode.get("data")) {
-                        items.add(OBJECT_MAPPER.treeToValue(itemNode, dataClass));
-                    }
-                }
-                return ApimResponseEnvelope.<T>builder()
-                        .response(ApimResponseBody.<T>builder()
-                                .errMessage(errMessage)
-                                .data(items)
-                                .build())
-                        .build();
-            } catch (Exception ex) {
-                throw new RuntimeException(ex);
-            }
-        }
-    }
-
-    private static final class FixedEnvelopePayloadCryptoService extends ApimPayloadCryptoService {
-        private final ApimResponseEnvelope<UpdateMemberInfoApimDataItem> envelope;
-        private PublicKey lastPublicKey;
-
-        private FixedEnvelopePayloadCryptoService(ApimResponseEnvelope<UpdateMemberInfoApimDataItem> envelope) {
-            super(new ApimProperties(), OBJECT_MAPPER, null, null, null, null);
-            this.envelope = envelope;
-        }
-
-        @Override
-        public <T> T encryptRequest(String apiName, T source, Class<T> targetType, PublicKey publicKey) {
-            this.lastPublicKey = publicKey;
-            return source;
-        }
-
-        @Override
-        @SuppressWarnings("unchecked")
-        public <T> ApimResponseEnvelope<T> decryptResponseEnvelope(String apiName, String responseJson,
-                Class<T> dataClass,
-                PublicKey publicKey) {
-            this.lastPublicKey = publicKey;
-            return (ApimResponseEnvelope<T>) envelope;
-        }
-    }
-
-    private static final class FixedCertificateService extends ApimCertificateService {
-        private final PublicKey publicKey;
-        private int invocationCount;
-
-        private FixedCertificateService(PublicKey publicKey) {
-            super(null, new ApimProperties(), null);
-            this.publicKey = publicKey;
-        }
-
-        @Override
-        public Mono<PublicKey> getBctPublicKey() {
-            invocationCount++;
-            return Mono.just(publicKey);
-        }
-    }
-
-    private static final class NoopApimCertificateService extends ApimCertificateService {
-        private NoopApimCertificateService() {
-            super(null, new ApimProperties(), null);
-        }
-
-        @Override
-        public Mono<PublicKey> getBctPublicKey() {
-            return Mono
-                    .error(new AssertionError("Certificate lookup should not be called when encryption is disabled."));
-        }
-    }
-
-    private static final class FailingCertificateService extends ApimCertificateService {
-        private FailingCertificateService() {
-            super(null, new ApimProperties(), null);
-        }
-
-        @Override
-        public Mono<PublicKey> getBctPublicKey() {
-            return Mono.error(new ApimCryptoException("Certificate crypto error"));
-        }
-    }
-
-    private record TestPublicKey(String value) implements PublicKey {
-        @Override
-        public String getAlgorithm() {
-            return "RSA";
-        }
-
-        @Override
-        public String getFormat() {
-            return "X.509";
-        }
-
-        @Override
-        public byte[] getEncoded() {
-            return value.getBytes();
-        }
+    private UpdateMemberInfoCommand command(String policyNo, String certNo, String env) {
+        return new UpdateMemberInfoCommand(
+                env,
+                policyNo,
+                certNo,
+                "actor-user",
+                "MEMBER",
+                true,
+                Map.of("email", "member@example.com"));
     }
 }

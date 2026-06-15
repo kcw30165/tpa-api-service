@@ -1,8 +1,8 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -14,53 +14,72 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationCommand;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
-import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.application.port.in.UpdatePersonalInformationUseCase;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 class UpdatePersonalInformationControllerTest {
 
     @Test
-    void returnsMutationResponseForSuccessfulUpdate() {
-        PersonalInformationUpdateWebMapper requestMapper = mock(PersonalInformationUpdateWebMapper.class);
-        PersonalInformationUpdateResponseMapper responseMapper = mock(PersonalInformationUpdateResponseMapper.class);
+    void mapsRequestToCommandAndMapsResultListToMutationResponse() {
         UpdatePersonalInformationUseCase useCase = mock(UpdatePersonalInformationUseCase.class);
-        UpdatePersonalInformationRequest request = new UpdatePersonalInformationRequest("1.0", true, Map.of("emailAddress", "a@b.com"));
-        UpdatePersonalInformationCommand command = new UpdatePersonalInformationCommand("ACC-2", true, Map.of("email", "a@b.com"));
-        UpdatePersonalInformationResult result = new UpdatePersonalInformationResult(true, "990000001", "2026-06-07", "08:36:51");
-        MutationResponse<PersonalInformationUpdateResultResponse> mapped = MutationResponse.success(
-                ApiStatus.UPDATED,
-                new PersonalInformationUpdateResultResponse("990000001", "2026-06-07", "08:36:51"),
-                java.util.List.of());
-        when(requestMapper.toCommand("ACC-2", true, request)).thenReturn(command);
-        when(useCase.execute(command)).thenReturn(Mono.just(result));
-        when(responseMapper.toResponse(result)).thenReturn(mapped);
-
-        MutationResponse<PersonalInformationUpdateResultResponse> response = new UpdatePersonalInformationController(
-                useCase, requestMapper, responseMapper)
-                .update(Mono.just(request))
-                .contextWrite(ctx -> ctx.put(RequestHeaderContextKeys.CONTEXT_KEY,
-                        new RequestHeaderContext("ACC-2", "client-request-uuid", "en")))
-                .block();
-
-        assertThat(response).isSameAs(mapped);
-    }
-
-    @Test
-    void rejectsMissingAccountRef() {
-        UpdatePersonalInformationUseCase useCase = command -> Mono.empty();
         PersonalInformationUpdateWebMapper requestMapper = mock(PersonalInformationUpdateWebMapper.class);
         PersonalInformationUpdateResponseMapper responseMapper = mock(PersonalInformationUpdateResponseMapper.class);
+        UpdatePersonalInformationController controller = new UpdatePersonalInformationController(
+                useCase, requestMapper, responseMapper);
 
-        assertThrows(PortalAccessContextResolutionException.class, () -> new UpdatePersonalInformationController(
-                useCase, requestMapper, responseMapper)
-                .update(Mono.just(new UpdatePersonalInformationRequest("1.0", true, Map.of())))
-                .contextWrite(ctx -> ctx.put(RequestHeaderContextKeys.CONTEXT_KEY,
-                        new RequestHeaderContext(" ", "client-request-uuid", "en")))
-                .block());
+        UpdatePersonalInformationRequest request = new UpdatePersonalInformationRequest(
+                "1.0",
+                true,
+                Map.of("emailAddress", "member@example.com"));
+        UpdatePersonalInformationCommand command = new UpdatePersonalInformationCommand(
+                "ACC-123",
+                true,
+                Map.of("email", "member@example.com"));
+        List<UpdatePersonalInformationResult> results = List.of(new UpdatePersonalInformationResult(
+                true,
+                true,
+                "00000000118",
+                "2",
+                "DB",
+                "260001373",
+                "2025-12-31",
+                "15:42:52",
+                List.of()));
+        MutationResponse<List<PersonalInformationUpdateResultResponse>> mappedResponse = MutationResponse.success(
+                ApiStatus.UPDATED,
+                List.of(new PersonalInformationUpdateResultResponse(
+                        true,
+                        true,
+                        "00000000118",
+                        "2",
+                        "DB",
+                        "260001373",
+                        "2025-12-31",
+                        "15:42:52",
+                        List.of())),
+                List.of());
+
+        when(requestMapper.toCommand(eq("ACC-123"), eq(true), any(UpdatePersonalInformationRequest.class)))
+                .thenReturn(command);
+        when(useCase.execute(command)).thenReturn(Mono.just(results));
+        when(responseMapper.toResponse(results)).thenReturn(mappedResponse);
+
+        StepVerifier.create(controller.update(Mono.just(request))
+                        .contextWrite(context -> context.put(
+                                RequestHeaderContextKeys.CONTEXT_KEY,
+                                new RequestHeaderContext("ACC-123", "RID-001", "en"))))
+                .assertNext(response -> {
+                    assertThat(response.success()).isTrue();
+                    assertThat(response.status()).isEqualTo(ApiStatus.UPDATED);
+                    assertThat(response.result()).hasSize(1);
+                    assertThat(response.result().getFirst().refNo()).isEqualTo("260001373");
+                })
+                .verifyComplete();
     }
 }

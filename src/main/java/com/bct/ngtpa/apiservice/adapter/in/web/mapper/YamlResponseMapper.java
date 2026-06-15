@@ -1,4 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.mapper;
+import java.util.Comparator;
+import java.util.Set;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,7 +36,7 @@ public class YamlResponseMapper {
         for (Map.Entry<?, ?> entry : normalizedMap.entrySet()) {
             result.put(String.valueOf(entry.getKey()), entry.getValue());
         }
-        return result;
+        return normalizeResponseMap(result);
     }
 
     public List<Map<String, Object>> toResponseList(List<?> source, String language) {
@@ -67,11 +69,16 @@ public class YamlResponseMapper {
                     continue;
                 }
                 Object normalizedValue = normalize(entry.getValue(), language);
+                if (("value".equals(key) || "originalValue".equals(key))
+                        && map.containsKey("dataType")) {
+                    result.put(key, normalizeFieldValueByDataType(map.get("dataType"), entry.getValue()));
+                    continue;
+                }
                 if (!isEmptyValue(normalizedValue)) {
                     result.put(key, normalizedValue);
                 }
             }
-            return result;
+            return normalizeResponseMap(result);
         }
         if (value instanceof List<?> list) {
             List<Object> result = new ArrayList<>();
@@ -81,7 +88,7 @@ public class YamlResponseMapper {
                     result.add(normalizedItem);
                 }
             }
-            return result;
+            return normalizeResponseMap(result);
         }
         return value;
     }
@@ -108,7 +115,7 @@ public class YamlResponseMapper {
     }
 
     private boolean shouldSkipKey(String key) {
-        return "apimBinding".equals(key);
+        return isHiddenResponseKey(key);
     }
 
     private boolean isEmptyValue(Object value) {
@@ -126,4 +133,132 @@ public class YamlResponseMapper {
         }
         return false;
     }
+
+
+
+    private List<Object> normalizeResponseMap(List<Object> source) {
+        if (source == null || source.isEmpty()) {
+            return source;
+        }
+        List<Object> normalized = new ArrayList<>();
+        for (Object item : source) {
+            Object normalizedItem = normalizeResponseValue(item);
+            if (normalizedItem != null) {
+                normalized.add(normalizedItem);
+            }
+        }
+        return normalized;
+    }
+
+    private Map<String, Object> normalizeResponseMap(Map<String, Object> source) {
+        if (source == null || source.isEmpty()) {
+            return source;
+        }
+        Map<String, Object> normalized = new LinkedHashMap<>();
+        for (Map.Entry<String, Object> entry : source.entrySet()) {
+            if (isHiddenResponseKey(entry.getKey())) {
+                continue;
+            }
+            Object normalizedValue = normalizeResponseValue(entry.getValue());
+            if (("value".equals(entry.getKey()) || "originalValue".equals(entry.getKey()))
+                    && source.containsKey("dataType")) {
+                normalizedValue = normalizeFieldValueByDataType(source.get("dataType"), entry.getValue());
+                normalized.put(entry.getKey(), normalizedValue);
+                continue;
+            }
+            if (normalizedValue != null) {
+                normalized.put(entry.getKey(), normalizedValue);
+            }
+        }
+        return normalized;
+    }
+
+
+    private Object normalizeFieldValueByDataType(Object dataTypeValue, Object value) {
+        if (dataTypeValue == null) {
+            return normalizeResponseValue(value);
+        }
+        String dataType = dataTypeValue.toString();
+        if ("boolean".equalsIgnoreCase(dataType)) {
+            return normalizeBooleanFieldValue(value);
+        }
+        if ("array".equalsIgnoreCase(dataType)) {
+            return normalizeArrayFieldValue(value);
+        }
+        return normalizeResponseValue(value);
+    }
+
+    private Object normalizeBooleanFieldValue(Object value) {
+        if (value == null) {
+            return false;
+        }
+        if (value instanceof Boolean booleanValue) {
+            return booleanValue;
+        }
+        if (value instanceof String stringValue) {
+            String trimmed = stringValue.trim();
+            if (trimmed.isEmpty()) {
+                return false;
+            }
+            return Boolean.parseBoolean(trimmed);
+        }
+        return value;
+    }
+
+    private Object normalizeArrayFieldValue(Object value) {
+        if (value == null) {
+            return List.of();
+        }
+        if (value instanceof String stringValue && stringValue.trim().isEmpty()) {
+            return List.of();
+        }
+        return normalizeResponseValue(value);
+    }
+
+    private Object normalizeResponseValue(Object value) {
+        if (value instanceof Map<?, ?> rawMap) {
+            Map<String, Object> map = new LinkedHashMap<>();
+            for (Map.Entry<?, ?> entry : rawMap.entrySet()) {
+                if (entry.getKey() != null) {
+                    map.put(entry.getKey().toString(), entry.getValue());
+                }
+            }
+            if (isNumericIndexedMap(map)) {
+                List<Object> values = new ArrayList<>();
+                map.entrySet().stream()
+                        .sorted(Comparator.comparingInt(entry -> Integer.parseInt(entry.getKey())))
+                        .forEach(entry -> values.add(normalizeResponseValue(entry.getValue())));
+                return values;
+            }
+            return normalizeResponseMap(map);
+        }
+        if (value instanceof List<?> list) {
+            List<Object> normalized = new ArrayList<>();
+            for (Object item : list) {
+                Object normalizedItem = normalizeResponseValue(item);
+                if (normalizedItem != null) {
+                    normalized.add(normalizedItem);
+                }
+            }
+            return normalized;
+        }
+        return value;
+    }
+
+    private boolean isNumericIndexedMap(Map<String, Object> map) {
+        if (map == null || map.isEmpty()) {
+            return false;
+        }
+        for (String key : map.keySet()) {
+            if (key == null || !key.matches("\\d+")) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean isHiddenResponseKey(String key) {
+        return Set.of("apimBinding", "messageCode", "labelCode", "placeholderCode").contains(key);
+    }
+
 }

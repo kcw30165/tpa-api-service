@@ -40,7 +40,7 @@ class ApiResponseExceptionHandlingBoundaryTest {
 
         String updatePersonalInformationController = readController("UpdatePersonalInformationController.java");
         assertTrue(updatePersonalInformationController.contains(
-                "Mono<MutationResponse<PersonalInformationUpdateResultResponse>> update"));
+                "Mono<MutationResponse<List<PersonalInformationUpdateResultResponse>>> update"));
     }
 
     @Test
