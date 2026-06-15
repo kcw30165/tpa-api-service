@@ -4,8 +4,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import lombok.Getter;
+import lombok.Setter;
 
 @ConfigurationProperties(prefix = "bff-pages")
+@Getter
+@Setter
 public class BffPagesProperties {
 
     private CommonPageProperties common;

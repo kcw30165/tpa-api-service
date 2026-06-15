@@ -3,582 +3,716 @@ bff-pages:
     personalInformation:
       metadata:
         id: personalInformationPage
-        version: '1.0'
+        version: "1.0"
         titleCode: personalInformation.page.title
       display:
-        '[personalInformation.action.cancel.label]':
+        "[personalInformation.action.cancel.label]":
           en: Cancel
           zh_HK: 取消
-        '[personalInformation.action.edit.label]':
+        "[personalInformation.action.edit.label]":
           en: Edit Information
           zh_HK: 編輯個人資料
-        '[personalInformation.action.reset.label]':
+        "[personalInformation.action.reset.label]":
           en: Reset
           zh_HK: 重設
-        '[personalInformation.action.submit.label]':
+        "[personalInformation.action.submit.label]":
           en: Submit
           zh_HK: 遞交
-        '[personalInformation.address.atLeastOneRequired.message]':
+        "[personalInformation.address.atLeastOneRequired.message]":
           en: Please input a residential address or correspondence address.
           zh_HK: 請輸入居住地址或通訊地址。
-        '[personalInformation.address.poBoxBlocked.message]':
-          en: PO Box address will not be accepted, please re-enter your address as
-            our record.
+        "[personalInformation.address.poBoxBlocked.message]":
+          en: PO Box address will not be accepted, please re-enter your address as our record.
           zh_HK: 郵政信箱恕不接受，請重新輸入住址，以作資料紀錄。
-        '[personalInformation.address.poBoxBlocked.message.JP]':
-          en: PO Box address will not be accepted for Japan accounts, please re-enter
-            your address as our record.
+        "[personalInformation.address.poBoxBlocked.message.JP]":
+          en: PO Box address will not be accepted for Japan accounts, please re-enter your address as our record.
           zh_HK: 日本戶口不接受郵政信箱，請重新輸入住址，以作資料紀錄。
-        '[personalInformation.aeoiReminder.message]':
-          en: Please remember to submit your AEOI Self-Certificate by clicking Self
-            Certification for Tax Residency function.
+        "[personalInformation.aeoiReminder.message]":
+          en: Please remember to submit your AEOI Self-Certificate by clicking Self Certification for Tax Residency function.
           zh_HK: 請記得點選『稅務居民證明』功能，以提交您的 AEOI 證明。
-        '[personalInformation.businessPhone.invalid.message]':
+        "[personalInformation.businessPhone.invalid.message]":
           en: Please input a valid Hong Kong Business Telephone Number.
           zh_HK: 請輸入有效香港公司電話號碼。
-        '[personalInformation.businessPhone.requiredWhenExtensionPresent.message]':
+        "[personalInformation.businessPhone.requiredWhenExtensionPresent.message]":
           en: Please input a valid Hong Kong Business Phone Number.
           zh_HK: 請輸入有效香港公司電話號碼。
-        '[personalInformation.businessPhoneExtension.invalid.message]':
+        "[personalInformation.businessPhoneExtension.invalid.message]":
           en: Please input a valid Ext.
           zh_HK: 請輸入有效內線。
-        '[personalInformation.confirmation.afterLabel]':
+        "[personalInformation.confirmation.afterLabel]":
           en: After Changes
           zh_HK: 變更後
-        '[personalInformation.confirmation.beforeLabel]':
+        "[personalInformation.confirmation.beforeLabel]":
           en: Before Changes
           zh_HK: 變更前
-        '[personalInformation.confirmation.reviewMessage]':
+        "[personalInformation.confirmation.reviewMessage]":
           en: Please review the changes you've made to your information before confirming.
           zh_HK: 請在確認前檢查已更改的個人資料。
-        '[personalInformation.confirmation.securityVerification.instruction]':
+        "[personalInformation.confirmation.securityVerification.instruction]":
           en: Please enter your password to confirm these changes
           zh_HK: 請輸入您的密碼以確認以上變更
-        '[personalInformation.confirmation.securityVerification.label]':
+        "[personalInformation.confirmation.securityVerification.label]":
           en: Security Verification
           zh_HK: 安全認證
-        '[personalInformation.confirmation.title]':
+        "[personalInformation.confirmation.title]":
           en: Confirm Information Update
           zh_HK: 確認個人資料更改
-        '[personalInformation.email.invalid.message]':
+        "[personalInformation.email.invalid.message]":
           en: Please provide a valid email address.
           zh_HK: 請輸入有效電郵地址。
-        '[personalInformation.email.required.message]':
+        "[personalInformation.email.required.message]":
           en: Please provide a valid email address.
           zh_HK: 請輸入有效電郵地址。
-        '[personalInformation.faxNo.invalid.message]':
+        "[personalInformation.faxNo.invalid.message]":
           en: Please input a valid Fax No.
           zh_HK: 請輸入有效傳真號碼。
-        '[personalInformation.field.applyToAllMemberAccounts.label]':
+        "[personalInformation.field.applyToAllMemberAccounts.label]":
           en: Apply update to all member accounts under the plan
           zh_HK: 將更新套用至計劃下所有成員戶口
-        '[personalInformation.field.emailAddress.label]':
+        "[personalInformation.field.emailAddress.label]":
           en: Email Address
           zh_HK: 電郵地址
-        '[personalInformation.field.emailAddress.placeholder]':
+        "[personalInformation.field.emailAddress.placeholder]":
           en: Enter email address
           zh_HK: 請輸入電郵地址
-        '[personalInformation.field.faxNo.label]':
+        "[personalInformation.field.faxNo.label]":
           en: Fax No.
           zh_HK: 傳真號碼
-        '[personalInformation.field.faxNo.placeholder]':
+        "[personalInformation.field.faxNo.placeholder]":
           en: Enter fax number
           zh_HK: 請輸入傳真號碼
-        '[personalInformation.field.homeTel.label]':
+        "[personalInformation.field.homeTel.label]":
           en: Hong Kong Home Telephone Number
           zh_HK: 香港住所電話號碼
-        '[personalInformation.field.homeTel.placeholder]':
+        "[personalInformation.field.homeTel.placeholder]":
           en: Enter 8-digit home telephone number
           zh_HK: 請輸入8位數字住所電話號碼
-        '[personalInformation.field.hongKongBusinessPhone.label]':
+        "[personalInformation.field.hongKongBusinessPhone.label]":
           en: Hong Kong Business Telephone Number
           zh_HK: 香港公司電話號碼
-        '[personalInformation.field.hongKongBusinessPhone.placeholder]':
+        "[personalInformation.field.hongKongBusinessPhone.placeholder]":
           en: Enter 8-digit phone number
           zh_HK: 請輸入8位數字電話號碼
-        '[personalInformation.field.hongKongBusinessPhoneExtension.label]':
+        "[personalInformation.field.hongKongBusinessPhoneExtension.label]":
           en: Ext.
           zh_HK: 內線
-        '[personalInformation.field.hongKongBusinessPhoneExtension.placeholder]':
+        "[personalInformation.field.hongKongBusinessPhoneExtension.placeholder]":
           en: Ext.
           zh_HK: 內線
-        '[personalInformation.field.hongKongMobilePhone.label]':
+        "[personalInformation.field.hongKongMobilePhone.label]":
           en: Hong Kong Mobile Phone Number
           zh_HK: 香港手提電話號碼
-        '[personalInformation.field.hongKongMobilePhone.placeholder]':
+        "[personalInformation.field.hongKongMobilePhone.placeholder]":
           en: Enter 8-digit mobile number
           zh_HK: 請輸入8位數字手提電話號碼
-        '[personalInformation.field.importantNotes.label]':
+        "[personalInformation.field.importantNotes.label]":
           en: Important Notes
           zh_HK: 重要事項
-        '[personalInformation.field.mailingAddressLine1.label]':
+        "[personalInformation.field.mailingAddressLine1.label]":
           en: Correspondence Address Line 1
           zh_HK: 通訊地址第一行
-        '[personalInformation.field.mailingAddressLine1.placeholder]':
+        "[personalInformation.field.mailingAddressLine1.placeholder]":
           en: Enter correspondence address line 1
           zh_HK: 請輸入通訊地址第一行
-        '[personalInformation.field.mailingAddressLine2.label]':
+        "[personalInformation.field.mailingAddressLine2.label]":
           en: Correspondence Address Line 2
           zh_HK: 通訊地址第二行
-        '[personalInformation.field.mailingAddressLine2.placeholder]':
+        "[personalInformation.field.mailingAddressLine2.placeholder]":
           en: Enter correspondence address line 2
           zh_HK: 請輸入通訊地址第二行
-        '[personalInformation.field.mailingAddressLine3.label]':
+        "[personalInformation.field.mailingAddressLine3.label]":
           en: Correspondence Address Line 3
           zh_HK: 通訊地址第三行
-        '[personalInformation.field.mailingAddressLine3.placeholder]':
+        "[personalInformation.field.mailingAddressLine3.placeholder]":
           en: Enter correspondence address line 3
           zh_HK: 請輸入通訊地址第三行
-        '[personalInformation.field.mailingAddressSameAsResidential.label]':
+        "[personalInformation.field.mailingAddressSameAsResidential.label]":
           en: Same as Residential Address
           zh_HK: 與居住地址相同
-        '[personalInformation.field.mailingCountry.label]':
+        "[personalInformation.field.mailingCountry.label]":
           en: Country
           zh_HK: 國家
-        '[personalInformation.field.mailingCountry.placeholder]':
+        "[personalInformation.field.mailingCountry.placeholder]":
           en: Country
           zh_HK: 國家
-        '[personalInformation.field.overseasAreaCode.label]':
+        "[personalInformation.field.overseasAreaCode.label]":
           en: Area Code
           zh_HK: 區域代碼
-        '[personalInformation.field.overseasAreaCode.placeholder]':
+        "[personalInformation.field.overseasAreaCode.placeholder]":
           en: Area Code
           zh_HK: 區域號碼
-        '[personalInformation.field.overseasCountryCode.label]':
+        "[personalInformation.field.overseasCountryCode.label]":
           en: Country Code
           zh_HK: 國家代碼
-        '[personalInformation.field.overseasCountryCode.placeholder]':
+        "[personalInformation.field.overseasCountryCode.placeholder]":
           en: Country Code
           zh_HK: 國家號碼
-        '[personalInformation.field.overseasPhoneExtension.label]':
+        "[personalInformation.field.overseasPhoneExtension.label]":
           en: Overseas Phone Extension
           zh_HK: 海外電話分機
-        '[personalInformation.field.overseasPhoneExtension.placeholder]':
+        "[personalInformation.field.overseasPhoneExtension.placeholder]":
           en: Ext.
           zh_HK: 內線
-        '[personalInformation.field.overseasPhoneNumber.label]':
+        "[personalInformation.field.overseasPhoneNumber.label]":
           en: Phone Number
           zh_HK: 電話號碼
-        '[personalInformation.field.overseasPhoneNumber.placeholder]':
+        "[personalInformation.field.overseasPhoneNumber.placeholder]":
           en: Phone Number
           zh_HK: 電話號碼
-        '[personalInformation.field.residentialAddressLine1.label]':
+        "[personalInformation.field.residentialAddressLine1.label]":
           en: Residential Address Line 1
           zh_HK: 居住地址第一行
-        '[personalInformation.field.residentialAddressLine1.placeholder]':
+        "[personalInformation.field.residentialAddressLine1.placeholder]":
           en: Enter residential address line 1
           zh_HK: 請輸入居住地址第一行
-        '[personalInformation.field.residentialAddressLine2.label]':
+        "[personalInformation.field.residentialAddressLine2.label]":
           en: Residential Address Line 2
           zh_HK: 居住地址第二行
-        '[personalInformation.field.residentialAddressLine2.placeholder]':
+        "[personalInformation.field.residentialAddressLine2.placeholder]":
           en: Enter residential address line 2
           zh_HK: 請輸入居住地址第二行
-        '[personalInformation.field.residentialAddressLine3.label]':
+        "[personalInformation.field.residentialAddressLine3.label]":
           en: Residential Address Line 3
           zh_HK: 居住地址第三行
-        '[personalInformation.field.residentialAddressLine3.placeholder]':
+        "[personalInformation.field.residentialAddressLine3.placeholder]":
           en: Enter residential address line 3
           zh_HK: 請輸入居住地址第三行
-        '[personalInformation.field.residentialCountry.label]':
+        "[personalInformation.field.residentialCountry.label]":
           en: Country
           zh_HK: 國家
-        '[personalInformation.field.residentialCountry.placeholder]':
+        "[personalInformation.field.residentialCountry.placeholder]":
           en: Country
           zh_HK: 國家
-        '[personalInformation.field.smsLanguage.label]':
+        "[personalInformation.field.smsLanguage.label]":
           en: Language Selection of SMS (Optional)
           zh_HK: 短訊語言選擇 (可選)
-        '[personalInformation.homeTel.invalid.message]':
+        "[personalInformation.homeTel.invalid.message]":
           en: Please input a valid Hong Kong Home Telephone Number.
           zh_HK: 請輸入有效香港住所電話號碼。
-        '[personalInformation.mailingAddress.incomplete.message]':
+        "[personalInformation.mailingAddress.incomplete.message]":
           en: Please input a correspondence address.
           zh_HK: 請輸入通訊地址。
-        '[personalInformation.mailingAddress.invalid.message]':
+        "[personalInformation.mailingAddress.invalid.message]":
           en: Please input a valid correspondence address.
           zh_HK: 請輸入有效通訊地址。
-        '[personalInformation.mobilePhone.invalid.message]':
+        "[personalInformation.mobilePhone.invalid.message]":
           en: Please input a valid Hong Kong Mobile Telephone Number.
           zh_HK: 請輸入有效香港手提電話號碼。
-        '[personalInformation.overseasAreaCode.invalid.message]':
+        "[personalInformation.overseasAreaCode.invalid.message]":
           en: Please input a valid Area Code.
           zh_HK: 請輸入有效區域號碼。
-        '[personalInformation.overseasCountryCode.invalid.message]':
+        "[personalInformation.overseasCountryCode.invalid.message]":
           en: Please input a valid Country Code.
           zh_HK: 請輸入有效國家號碼。
-        '[personalInformation.overseasCountryCode.requiredWhenPhonePresent.message]':
+        "[personalInformation.overseasCountryCode.requiredWhenPhonePresent.message]":
           en: Please input a valid Country Code.
           zh_HK: 請輸入有效國家號碼。
-        '[personalInformation.overseasPhoneNumber.invalid.message]':
+        "[personalInformation.overseasPhoneNumber.invalid.message]":
           en: Please input a valid Overseas Phone Number.
           zh_HK: 請輸入有效海外電話號碼。
-        '[personalInformation.overseasPhoneNumber.requiredWhenCodePresent.message]':
+        "[personalInformation.overseasPhoneNumber.requiredWhenCodePresent.message]":
           en: Please input a valid Overseas Phone Number.
           zh_HK: 請輸入有效海外電話號碼。
-        '[personalInformation.page.title]':
+        "[personalInformation.page.title]":
           en: Personal Information
           zh_HK: 個人資料
-        '[personalInformation.residentialAddress.incomplete.message]':
+        "[personalInformation.residentialAddress.incomplete.message]":
           en: Please input a residential address.
           zh_HK: 請輸入居住地址。
-        '[personalInformation.residentialAddress.invalid.message]':
+        "[personalInformation.residentialAddress.invalid.message]":
           en: Please input a valid residential address.
           zh_HK: 請輸入有效居住地址。
-        '[personalInformation.residentialAddress.required.message]':
+        "[personalInformation.residentialAddress.required.message]":
           en: Please input a residential address.
           zh_HK: 請輸入居住地址。
-        '[personalInformation.residentialCountry.required.message]':
+        "[personalInformation.residentialCountry.required.message]":
           en: Please select a country.
           zh_HK: 請選擇國家。
-        '[personalInformation.section.addressInformation.title]':
+        "[personalInformation.section.addressInformation.title]":
           en: Address Information
           zh_HK: 地址資料
-        '[personalInformation.section.communicationSettings.title]':
+        "[personalInformation.section.communicationSettings.title]":
           en: Communication Settings
           zh_HK: 通訊設定
-        '[personalInformation.section.controlInformation.title]':
+        "[personalInformation.section.controlInformation.title]":
           en: Control Information
           zh_HK: 控制資料
-        '[personalInformation.section.electronicContacts.title]':
+        "[personalInformation.section.electronicContacts.title]":
           en: Email Contact
           zh_HK: 聯絡電郵
-        '[personalInformation.section.importantNotes.title]':
+        "[personalInformation.section.importantNotes.title]":
           en: Important Notes
           zh_HK: 重要事項
-        '[personalInformation.section.localContactNumber.title]':
+        "[personalInformation.section.localContactNumber.title]":
           en: Phone Numbers
           zh_HK: 聯絡電話
-        '[personalInformation.section.overseasContacts.title]':
+        "[personalInformation.section.overseasContacts.title]":
           en: Overseas Contact
           zh_HK: 海外聯絡電話
       form:
         id: personalInformationForm
         defaultMode: view
         actions:
-        - name: edit
-          labelCode: personalInformation.action.edit.label
-        - name: submit
-          labelCode: personalInformation.action.submit.label
-        - name: reset
-          labelCode: personalInformation.action.reset.label
-        - name: cancel
-          labelCode: personalInformation.action.cancel.label
+          - name: edit
+            labelCode: personalInformation.action.edit.label
+          - name: submit
+            labelCode: personalInformation.action.submit.label
+          - name: reset
+            labelCode: personalInformation.action.reset.label
+          - name: cancel
+            labelCode: personalInformation.action.cancel.label
         sections:
-        - id: addressInformation
-          fields:
-          - id: residentialAddressLine1
-            displayOrder: 10
-            dataType: string
-            controlType: text
-            maxLength: 40
-            validations:
-            - type: required
-              code: personalInformation.residentialAddress.required
-              messageCode: personalInformation.residentialAddress.required.message
-            - type: minLength
-              value: 5
-              when:
-                fieldRequired: true
-              code: personalInformation.residentialAddress.invalid
-              messageCode: personalInformation.residentialAddress.invalid.message
-            - type: blockedAddress
-              code: personalInformation.address.poBoxBlocked
-              messageCode: personalInformation.address.poBoxBlocked.message
-            apimBinding:
-              data: addr1
-              config: addr1
-            labelCode: personalInformation.field.residentialAddressLine1.label
-            placeholderCode: personalInformation.field.residentialAddressLine1.placeholder
-          - id: residentialAddressLine2
-            displayOrder: 20
-            dataType: string
-            controlType: text
-            maxLength: 40
-            apimBinding:
-              data: addr2
-              config: addr2
-            labelCode: personalInformation.field.residentialAddressLine2.label
-            placeholderCode: personalInformation.field.residentialAddressLine2.placeholder
-          - id: residentialAddressLine3
-            displayOrder: 30
-            dataType: string
-            controlType: text
-            maxLength: 40
-            apimBinding:
-              data: addr3
-              config: addr3
-            labelCode: personalInformation.field.residentialAddressLine3.label
-            placeholderCode: personalInformation.field.residentialAddressLine3.placeholder
-          - id: residentialCountry
-            displayOrder: 40
-            dataType: string
-            controlType: select
-            optionSource: countries
-            validations:
-            - type: required
-              code: personalInformation.residentialCountry.required
-              messageCode: personalInformation.residentialCountry.required.message
-            apimBinding:
-              data: country
-              config: country
-            labelCode: personalInformation.field.residentialCountry.label
-            placeholderCode: personalInformation.field.residentialCountry.placeholder
-          - id: mailingAddressSameAsResidential
-            displayOrder: 50
-            dataType: boolean
-            controlType: checkbox
-            copyWhenChecked:
-              fromTo:
-                residentialAddressLine1: mailingAddressLine1
-                residentialAddressLine2: mailingAddressLine2
-                residentialAddressLine3: mailingAddressLine3
-                residentialCountry: mailingCountry
-            apimBinding:
-              config: check-box-of-same-as-residential-address
-            labelCode: personalInformation.field.mailingAddressSameAsResidential.label
-          - id: mailingAddressLine1
-            displayOrder: 60
-            dataType: string
-            controlType: text
-            maxLength: 40
-            validations:
-            - type: minLength
-              value: 5
-              when:
-                fieldRequired: true
-              code: personalInformation.mailingAddress.invalid
-              messageCode: personalInformation.mailingAddress.invalid.message
-            - type: blockedAddress
-              code: personalInformation.address.poBoxBlocked
-              pattern: PO Box~|~P.O. Box~|~P O Box~|~P.O Box~|~Post Office Box~|~P.
-                O. Box~|~郵政信箱
-              messageCode: personalInformation.address.poBoxBlocked.message
-            apimBinding:
-              data: corr-addr1
-              config: corr-addr1
-            labelCode: personalInformation.field.mailingAddressLine1.label
-            placeholderCode: personalInformation.field.mailingAddressLine1.placeholder
-          - id: mailingAddressLine2
-            displayOrder: 70
-            dataType: string
-            controlType: text
-            maxLength: 40
-            apimBinding:
-              data: corr-addr2
-              config: corr-addr2
-            labelCode: personalInformation.field.mailingAddressLine2.label
-            placeholderCode: personalInformation.field.mailingAddressLine2.placeholder
-          - id: mailingAddressLine3
-            displayOrder: 80
-            dataType: string
-            controlType: text
-            maxLength: 40
-            apimBinding:
-              data: corr-addr3
-              config: corr-addr3
-            labelCode: personalInformation.field.mailingAddressLine3.label
-            placeholderCode: personalInformation.field.mailingAddressLine3.placeholder
-          - id: mailingCountry
-            displayOrder: 90
-            dataType: string
-            controlType: select
-            optionSource: countries
-            apimBinding:
-              data: corr-country
-              config: corr-country
-            labelCode: personalInformation.field.mailingCountry.label
-            placeholderCode: personalInformation.field.mailingCountry.placeholder
-          titleCode: personalInformation.section.addressInformation.title
-        - id: localContactNumber
-          fields:
-          - id: hongKongBusinessPhone
-            displayOrder: 10
-            dataType: string
-            controlType: tel
-            maxLength: 8
-            pattern: ^[0-9]*$
-            validations:
-            - type: pattern
-              code: personalInformation.businessPhone.invalid
-              messageCode: personalInformation.businessPhone.invalid.message
-            apimBinding:
-              data: business-phone
-              config: business-phone
-            labelCode: personalInformation.field.hongKongBusinessPhone.label
-            placeholderCode: personalInformation.field.hongKongBusinessPhone.placeholder
-          - id: hongKongBusinessPhoneExtension
-            displayOrder: 20
-            dataType: string
-            controlType: text
-            maxLength: 4
-            pattern: ^[0-9]*$
-            validations:
-            - type: pattern
-              code: personalInformation.businessPhoneExtension.invalid
-              messageCode: personalInformation.businessPhoneExtension.invalid.message
-            apimBinding:
-              data: business-phone-ext
-              config: business-phone-ext
-            labelCode: personalInformation.field.hongKongBusinessPhoneExtension.label
-            placeholderCode: personalInformation.field.hongKongBusinessPhoneExtension.placeholder
-          - id: homeTel
-            displayOrder: 30
-            dataType: string
-            controlType: tel
-            maxLength: 8
-            pattern: ^[0-9]*$
-            validations:
-            - type: pattern
-              code: personalInformation.homeTel.invalid
-              messageCode: personalInformation.homeTel.invalid.message
-            apimBinding:
-              data: home-phone
-              config: home-phone
-            labelCode: personalInformation.field.homeTel.label
-            placeholderCode: personalInformation.field.homeTel.placeholder
-          - id: hongKongMobilePhone
-            displayOrder: 40
-            dataType: string
-            controlType: tel
-            maxLength: 8
-            pattern: ^[4-9][0-9]{7}$
-            validations:
-            - type: pattern
-              code: personalInformation.mobilePhone.invalid
-              messageCode: personalInformation.mobilePhone.invalid.message
-            apimBinding:
-              data: mobile-number
-              config: mobile-number
-            labelCode: personalInformation.field.hongKongMobilePhone.label
-            placeholderCode: personalInformation.field.hongKongMobilePhone.placeholder
-          - id: faxNo
-            displayOrder: 50
-            dataType: string
-            controlType: text
-            pattern: ^[0-9+\- ]*$
-            validations:
-            - type: pattern
-              code: personalInformation.faxNo.invalid
-              messageCode: personalInformation.faxNo.invalid.message
-            apimBinding:
-              data: fax
-              config: fax
-            labelCode: personalInformation.field.faxNo.label
-            placeholderCode: personalInformation.field.faxNo.placeholder
-          titleCode: personalInformation.section.localContactNumber.title
-        - id: overseasContacts
-          fields:
-          - id: overseasCountryCode
-            displayOrder: 10
-            dataType: string
-            controlType: select
-            optionSource: callingCodes
-            pattern: ^[0-9]*$
-            validations:
-            - type: pattern
-              value: ^[0-9]*$
-              code: personalInformation.overseasCountryCode.invalid
-              messageCode: personalInformation.overseasCountryCode.invalid.message
-            apimBinding:
-              data: other-phone-country
-              config: other-phone-country
-            labelCode: personalInformation.field.overseasCountryCode.label
-            placeholderCode: personalInformation.field.overseasCountryCode.placeholder
-          - id: overseasAreaCode
-            displayOrder: 20
-            dataType: string
-            controlType: text
-            pattern: ^[0-9]*$
-            validations:
-            - type: pattern
-              code: personalInformation.overseasAreaCode.invalid
-              messageCode: personalInformation.overseasAreaCode.invalid.message
-            apimBinding:
-              data: other-phone-area
-              config: other-phone-area
-            labelCode: personalInformation.field.overseasAreaCode.label
-            placeholderCode: personalInformation.field.overseasAreaCode.placeholder
-          - id: overseasPhoneNumber
-            displayOrder: 30
-            dataType: string
-            controlType: tel
-            maxLength: 17
-            pattern: ^[0-9]*$
-            validations:
-            - type: pattern
-              code: personalInformation.overseasPhoneNumber.invalid
-              messageCode: personalInformation.overseasPhoneNumber.invalid.message
-            apimBinding:
-              data: other-phone
-              config: other-phone
-            labelCode: personalInformation.field.overseasPhoneNumber.label
-            placeholderCode: personalInformation.field.overseasPhoneNumber.placeholder
-          - id: overseasPhoneExtension
-            displayOrder: 40
-            dataType: string
-            controlType: text
-            maxLength: 4
-            pattern: ^[0-9]*$
-            apimBinding:
-              data: other-phone-ext
-              config: other-phone-ext
-            labelCode: personalInformation.field.overseasPhoneExtension.label
-            placeholderCode: personalInformation.field.overseasPhoneExtension.placeholder
-          titleCode: personalInformation.section.overseasContacts.title
-        - id: electronicContacts
-          fields:
-          - id: emailAddress
-            displayOrder: 10
-            dataType: string
-            controlType: email
-            maxLength: 120
-            patter: ^[^\s@]+@[^\s@]+\.[^\s@]+$
-            validations:
-            - type: required
-              code: personalInformation.email.required
-              messageCode: personalInformation.email.required.message
-            - type: email
-              code: personalInformation.email.invalid
-              messageCode: personalInformation.email.invalid.message
-            apimBinding:
-              data: email
-              config: email
-            labelCode: personalInformation.field.emailAddress.label
-            placeholderCode: personalInformation.field.emailAddress.placeholder
-          titleCode: personalInformation.section.electronicContacts.title
-        - id: communicationSettings
-          fields:
-          - id: smsLanguage
-            displayOrder: 10
-            dataType: string
-            controlType: radio
-            optionSource: smsLanguages
-            apimBinding:
-              data: sms-language
-              config: sms-language
-            labelCode: personalInformation.field.smsLanguage.label
-          titleCode: personalInformation.section.communicationSettings.title
-        - id: importantNotes
-          fields:
+          - id: addressInformation
+            fields:
+              - id: residentialAddressLine1
+                displayOrder: 10
+                dataType: string
+                controlType: text
+                validations:
+                  - id: residentialAddressLine1.minLength
+                    type: minLength
+                    value: 5
+                    code: personalInformation.residentialAddress.invalid
+                    messageCode: personalInformation.residentialAddress.invalid.message
+                    severity: error
+                  - id: residentialAddressLine1.poBoxBlocked
+                    type: blockedAddress
+                    value: PO Box~|~P.O. Box~|~P O Box~|~P.O Box~|~Post Office Box~|~P.O. Box~|~郵政信箱
+                    code: personalInformation.address.poBoxBlocked
+                    messageCode: personalInformation.address.poBoxBlocked.message
+                    severity: error
+                  - id: residentialAddressLine1.maxLength
+                    type: maxLength
+                    value: 40
+                    code: personalInformation.residentialAddress.invalid
+                    messageCode: personalInformation.residentialAddress.invalid.message
+                    severity: error
+                apimBinding:
+                  data: addr1
+                  config: addr1
+                labelCode: personalInformation.field.residentialAddressLine1.label
+                placeholderCode: personalInformation.field.residentialAddressLine1.placeholder
+              - id: residentialAddressLine2
+                displayOrder: 20
+                dataType: string
+                controlType: text
+                apimBinding:
+                  data: addr2
+                  config: addr2
+                labelCode: personalInformation.field.residentialAddressLine2.label
+                placeholderCode: personalInformation.field.residentialAddressLine2.placeholder
+                validations:
+                  - id: residentialAddressLine2.poBoxBlocked
+                    type: blockedAddress
+                    value: PO Box~|~P.O. Box~|~P O Box~|~P.O Box~|~Post Office Box~|~P.O. Box~|~郵政信箱
+                    code: personalInformation.address.poBoxBlocked
+                    messageCode: personalInformation.address.poBoxBlocked.message
+                    severity: error
+                  - id: residentialAddressLine2.maxLength
+                    type: maxLength
+                    value: 40
+                    code: personalInformation.residentialAddress.invalid
+                    messageCode: personalInformation.residentialAddress.invalid.message
+                    severity: error
+              - id: residentialAddressLine3
+                displayOrder: 30
+                dataType: string
+                controlType: text
+                apimBinding:
+                  data: addr3
+                  config: addr3
+                labelCode: personalInformation.field.residentialAddressLine3.label
+                placeholderCode: personalInformation.field.residentialAddressLine3.placeholder
+                validations:
+                  - id: residentialAddressLine3.poBoxBlocked
+                    type: blockedAddress
+                    value: PO Box~|~P.O. Box~|~P O Box~|~P.O Box~|~Post Office Box~|~P.O. Box~|~郵政信箱
+                    code: personalInformation.address.poBoxBlocked
+                    messageCode: personalInformation.address.poBoxBlocked.message
+                    severity: error
+                  - id: residentialAddressLine3.maxLength
+                    type: maxLength
+                    value: 40
+                    code: personalInformation.residentialAddress.invalid
+                    messageCode: personalInformation.residentialAddress.invalid.message
+                    severity: error
+              - id: residentialCountry
+                displayOrder: 40
+                dataType: string
+                controlType: select
+                optionSource: countries
+                validations: []
+                apimBinding:
+                  data: country
+                  config: country
+                labelCode: personalInformation.field.residentialCountry.label
+                placeholderCode: personalInformation.field.residentialCountry.placeholder
+              - id: mailingAddressSameAsResidential
+                displayOrder: 50
+                dataType: boolean
+                controlType: checkbox
+                copyWhenChecked:
+                  fromTo:
+                    residentialAddressLine1: mailingAddressLine1
+                    residentialAddressLine2: mailingAddressLine2
+                    residentialAddressLine3: mailingAddressLine3
+                    residentialCountry: mailingCountry
+                apimBinding:
+                  config: check-box-of-same-as-residential-address
+                labelCode: personalInformation.field.mailingAddressSameAsResidential.label
+              - id: mailingAddressLine1
+                displayOrder: 60
+                dataType: string
+                controlType: text
+                validations:
+                  - id: mailingAddressLine1.minLength
+                    type: minLength
+                    value: 5
+                    code: personalInformation.mailingAddress.invalid
+                    messageCode: personalInformation.mailingAddress.invalid.message
+                    severity: error
+                  - id: mailingAddressLine1.poBoxBlocked
+                    type: blockedAddress
+                    value: PO Box~|~P.O. Box~|~P O Box~|~P.O Box~|~Post Office Box~|~P.O. Box~|~郵政信箱
+                    code: personalInformation.address.poBoxBlocked
+                    messageCode: personalInformation.address.poBoxBlocked.message
+                    severity: error
+                  - id: mailingAddressLine1.maxLength
+                    type: maxLength
+                    value: 40
+                    code: personalInformation.mailingAddress.invalid
+                    messageCode: personalInformation.mailingAddress.invalid.message
+                    severity: error
+                apimBinding:
+                  data: corr-addr1
+                  config: corr-addr1
+                labelCode: personalInformation.field.mailingAddressLine1.label
+                placeholderCode: personalInformation.field.mailingAddressLine1.placeholder
+              - id: mailingAddressLine2
+                displayOrder: 70
+                dataType: string
+                controlType: text
+                apimBinding:
+                  data: corr-addr2
+                  config: corr-addr2
+                labelCode: personalInformation.field.mailingAddressLine2.label
+                placeholderCode: personalInformation.field.mailingAddressLine2.placeholder
+                validations:
+                  - id: mailingAddressLine2.poBoxBlocked
+                    type: blockedAddress
+                    value: PO Box~|~P.O. Box~|~P O Box~|~P.O Box~|~Post Office Box~|~P.O. Box~|~郵政信箱
+                    code: personalInformation.address.poBoxBlocked
+                    messageCode: personalInformation.address.poBoxBlocked.message
+                    severity: error
+                  - id: mailingAddressLine2.maxLength
+                    type: maxLength
+                    value: 40
+                    code: personalInformation.mailingAddress.invalid
+                    messageCode: personalInformation.mailingAddress.invalid.message
+                    severity: error
+              - id: mailingAddressLine3
+                displayOrder: 80
+                dataType: string
+                controlType: text
+                apimBinding:
+                  data: corr-addr3
+                  config: corr-addr3
+                labelCode: personalInformation.field.mailingAddressLine3.label
+                placeholderCode: personalInformation.field.mailingAddressLine3.placeholder
+                validations:
+                  - id: mailingAddressLine3.poBoxBlocked
+                    type: blockedAddress
+                    value: PO Box~|~P.O. Box~|~P O Box~|~P.O Box~|~Post Office Box~|~P.O. Box~|~郵政信箱
+                    code: personalInformation.address.poBoxBlocked
+                    messageCode: personalInformation.address.poBoxBlocked.message
+                    severity: error
+                  - id: mailingAddressLine3.maxLength
+                    type: maxLength
+                    value: 40
+                    code: personalInformation.mailingAddress.invalid
+                    messageCode: personalInformation.mailingAddress.invalid.message
+                    severity: error
+              - id: mailingCountry
+                displayOrder: 90
+                dataType: string
+                controlType: select
+                optionSource: countries
+                apimBinding:
+                  data: corr-country
+                  config: corr-country
+                labelCode: personalInformation.field.mailingCountry.label
+                placeholderCode: personalInformation.field.mailingCountry.placeholder
+                validations: []
+            titleCode: personalInformation.section.addressInformation.title
+          - id: localContactNumber
+            fields:
+              - id: hongKongBusinessPhone
+                displayOrder: 10
+                dataType: string
+                controlType: tel
+                validations:
+                  - id: hongKongBusinessPhone.integer
+                    type: pattern
+                    value: ^[0-9]*$
+                    code: personalInformation.businessPhone.invalid
+                    messageCode: personalInformation.businessPhone.invalid.message
+                    severity: error
+                  - id: hongKongBusinessPhone.minLength
+                    type: minLength
+                    value: 8
+                    code: personalInformation.businessPhone.invalid
+                    messageCode: personalInformation.businessPhone.invalid.message
+                    severity: error
+                  - id: hongKongBusinessPhone.maxLength
+                    type: maxLength
+                    value: 8
+                    code: personalInformation.businessPhone.invalid
+                    messageCode: personalInformation.businessPhone.invalid.message
+                    severity: error
+                apimBinding:
+                  data: business-phone
+                  config: business-phone
+                labelCode: personalInformation.field.hongKongBusinessPhone.label
+                placeholderCode: personalInformation.field.hongKongBusinessPhone.placeholder
+              - id: hongKongBusinessPhoneExtension
+                displayOrder: 20
+                dataType: string
+                controlType: text
+                validations:
+                  - id: hongKongBusinessPhoneExtension.integer
+                    type: pattern
+                    value: ^[0-9]*$
+                    code: personalInformation.businessPhoneExtension.invalid
+                    messageCode: personalInformation.businessPhoneExtension.invalid.message
+                    severity: error
+                  - id: hongKongBusinessPhoneExtension.maxLength
+                    type: maxLength
+                    value: 4
+                    code: personalInformation.businessPhoneExtension.invalid
+                    messageCode: personalInformation.businessPhoneExtension.invalid.message
+                    severity: error
+                apimBinding:
+                  data: business-phone-ext
+                  config: business-phone-ext
+                labelCode: personalInformation.field.hongKongBusinessPhoneExtension.label
+                placeholderCode: personalInformation.field.hongKongBusinessPhoneExtension.placeholder
+              - id: homeTel
+                displayOrder: 30
+                dataType: string
+                controlType: tel
+                validations:
+                  - id: homeTel.integer
+                    type: pattern
+                    value: ^[0-9]*$
+                    code: personalInformation.homeTel.invalid
+                    messageCode: personalInformation.homeTel.invalid.message
+                    severity: error
+                  - id: homeTel.minLength
+                    type: minLength
+                    value: 8
+                    code: personalInformation.homeTel.invalid
+                    messageCode: personalInformation.homeTel.invalid.message
+                    severity: error
+                  - id: homeTel.maxLength
+                    type: maxLength
+                    value: 8
+                    code: personalInformation.homeTel.invalid
+                    messageCode: personalInformation.homeTel.invalid.message
+                    severity: error
+                apimBinding:
+                  data: home-phone
+                  config: home-phone
+                labelCode: personalInformation.field.homeTel.label
+                placeholderCode: personalInformation.field.homeTel.placeholder
+              - id: hongKongMobilePhone
+                displayOrder: 40
+                dataType: string
+                controlType: tel
+                validations:
+                  - id: hongKongMobilePhone.hkMobile
+                    type: pattern
+                    value: ^[4-9][0-9]*$
+                    code: personalInformation.mobilePhone.invalid
+                    messageCode: personalInformation.mobilePhone.invalid.message
+                    severity: error
+                  - id: hongKongMobilePhone.minLength
+                    type: minLength
+                    value: 8
+                    code: personalInformation.mobilePhone.invalid
+                    messageCode: personalInformation.mobilePhone.invalid.message
+                    severity: error
+                  - id: hongKongMobilePhone.maxLength
+                    type: maxLength
+                    value: 8
+                    code: personalInformation.mobilePhone.invalid
+                    messageCode: personalInformation.mobilePhone.invalid.message
+                    severity: error
+                apimBinding:
+                  data: mobile-number
+                  config: mobile-number
+                labelCode: personalInformation.field.hongKongMobilePhone.label
+                placeholderCode: personalInformation.field.hongKongMobilePhone.placeholder
+              - id: faxNo
+                displayOrder: 50
+                dataType: string
+                controlType: text
+                validations:
+                  - id: faxNo.permittedCharacters
+                    type: pattern
+                    value: ^[0-9+()\-\s]*$
+                    code: personalInformation.faxNo.invalid
+                    messageCode: personalInformation.faxNo.invalid.message
+                    severity: error
+                apimBinding:
+                  data: fax
+                  config: fax
+                labelCode: personalInformation.field.faxNo.label
+                placeholderCode: personalInformation.field.faxNo.placeholder
+            titleCode: personalInformation.section.localContactNumber.title
+          - id: overseasContacts
+            fields:
+              - id: overseasCountryCode
+                displayOrder: 10
+                dataType: string
+                controlType: select
+                optionSource: callingCodes
+                validations:
+                  - id: overseasCountryCode.integer
+                    type: pattern
+                    value: ^[0-9]*$
+                    code: personalInformation.overseasCountryCode.invalid
+                    messageCode: personalInformation.overseasCountryCode.invalid.message
+                    severity: error
+                apimBinding:
+                  data: other-phone-country
+                  config: other-phone-country
+                labelCode: personalInformation.field.overseasCountryCode.label
+                placeholderCode: personalInformation.field.overseasCountryCode.placeholder
+              - id: overseasAreaCode
+                displayOrder: 20
+                dataType: string
+                controlType: text
+                validations:
+                  - id: overseasAreaCode.integer
+                    type: pattern
+                    value: ^[0-9]*$
+                    code: personalInformation.overseasAreaCode.invalid
+                    messageCode: personalInformation.overseasAreaCode.invalid.message
+                    severity: error
+                apimBinding:
+                  data: other-phone-area
+                  config: other-phone-area
+                labelCode: personalInformation.field.overseasAreaCode.label
+                placeholderCode: personalInformation.field.overseasAreaCode.placeholder
+              - id: overseasPhoneNumber
+                displayOrder: 30
+                dataType: string
+                controlType: tel
+                validations:
+                  - id: overseasPhoneNumber.integer
+                    type: pattern
+                    value: ^[0-9]*$
+                    code: personalInformation.overseasPhoneNumber.invalid
+                    messageCode: personalInformation.overseasPhoneNumber.invalid.message
+                    severity: error
+                  - id: overseasPhoneNumber.maxLength
+                    type: maxLength
+                    value: 17
+                    code: personalInformation.overseasPhoneNumber.invalid
+                    messageCode: personalInformation.overseasPhoneNumber.invalid.message
+                    severity: error
+                apimBinding:
+                  data: other-phone
+                  config: other-phone
+                labelCode: personalInformation.field.overseasPhoneNumber.label
+                placeholderCode: personalInformation.field.overseasPhoneNumber.placeholder
+              - id: overseasPhoneExtension
+                displayOrder: 40
+                dataType: string
+                controlType: text
+                apimBinding:
+                  data: other-phone-ext
+                  config: other-phone-ext
+                labelCode: personalInformation.field.overseasPhoneExtension.label
+                placeholderCode: personalInformation.field.overseasPhoneExtension.placeholder
+                validations:
+                  - id: overseasPhoneExtension.maxLength
+                    type: maxLength
+                    value: 4
+                    code: personalInformation.overseasPhoneExtension.invalid
+                    messageCode: personalInformation.overseasPhoneExtension.invalid.message
+                    severity: error
+            titleCode: personalInformation.section.overseasContacts.title
+          - id: electronicContacts
+            fields:
+              - id: emailAddress
+                displayOrder: 10
+                dataType: string
+                controlType: email
+                validations:
+                  - id: email.required
+                    type: required
+                    code: personalInformation.email.required
+                    messageCode: personalInformation.email.required.message
+                    severity: error
+                  - id: email.invalid
+                    type: email
+                    value: 120
+                    code: personalInformation.email.invalid
+                    messageCode: personalInformation.email.invalid.message
+                    severity: error
+                  - id: email.minLength
+                    type: minLength
+                    value: 5
+                    valueByVariant:
+                      JP: 11
+                    code: personalInformation.email.tooShort
+                    messageCode: personalInformation.email.tooShort.message
+                    severity: error
+                  - id: emailAddress.maxLength
+                    type: maxLength
+                    value: 120
+                    code: personalInformation.email.invalid
+                    messageCode: personalInformation.email.invalid.message
+                    severity: error
+                apimBinding:
+                  data: email
+                  config: email
+                labelCode: personalInformation.field.emailAddress.label
+                placeholderCode: personalInformation.field.emailAddress.placeholder
+            titleCode: personalInformation.section.electronicContacts.title
+          - id: communicationSettings
+            fields:
+              - id: smsLanguage
+                displayOrder: 10
+                dataType: string
+                controlType: radio
+                optionSource: smsLanguages
+                apimBinding:
+                  data: sms-language
+                  config: sms-language
+                labelCode: personalInformation.field.smsLanguage.label
+            titleCode: personalInformation.section.communicationSettings.title
           - id: importantNotes
-            displayOrder: 10
-            dataType: array
-            controlType: noteList
-            apimBinding:
-              config: important-notes-section
-            labelCode: personalInformation.field.importantNotes.label
-          titleCode: personalInformation.section.importantNotes.title
-        - id: controlInformation
-          fields:
-          - id: applyToAllMemberAccounts
-            displayOrder: 10
-            dataType: boolean
-            controlType: checkbox
-            apimBinding:
-              config: check-box-apply-all-member
-            labelCode: personalInformation.field.applyToAllMemberAccounts.label
-          titleCode: personalInformation.section.controlInformation.title
+            fields:
+              - id: importantNotes
+                displayOrder: 10
+                dataType: array
+                controlType: noteList
+                apimBinding:
+                  config: important-notes-section
+                labelCode: personalInformation.field.importantNotes.label
+            titleCode: personalInformation.section.importantNotes.title
+          - id: controlInformation
+            fields:
+              - id: applyToAllMemberAccounts
+                displayOrder: 10
+                dataType: boolean
+                controlType: checkbox
+                apimBinding:
+                  config: check-box-apply-all-member
+                labelCode: personalInformation.field.applyToAllMemberAccounts.label
+            titleCode: personalInformation.section.controlInformation.title
       confirmation:
         enabled: true
         securityVerification:
@@ -587,13 +721,21 @@ bff-pages:
             dataType: string
             controlType: password
             required: true
-            minLength: 8
-            maxLength: 16
             validations:
-            - type: required
-            - type: minLength
-            - type: maxLength
-            - type: noSpaces
+              - id: password.required
+                type: required
+                severity: error
+              - id: password.minLength
+                type: minLength
+                value: 8
+                severity: error
+              - id: password.maxLength
+                type: maxLength
+                value: 16
+                severity: error
+              - id: password.noSpaces
+                type: noSpaces
+                severity: error
           labelCode: personalInformation.confirmation.securityVerification.label
           instructionCode: personalInformation.confirmation.securityVerification.instruction
         actions:
@@ -606,112 +748,173 @@ bff-pages:
         beforeLabelCode: personalInformation.confirmation.beforeLabel
         afterLabelCode: personalInformation.confirmation.afterLabel
       validations:
-      - id: address.atLeastOneRequired
-        type: groupRequirement
-        severity: error
-        when:
-          operator: allGroupsEmpty
-          groups:
-          - id: residentialAddress
-            existsWhen:
-              field: residentialAddressLine1
-              operator: notBlank
-          - id: mailingAddress
-            existsWhen:
-              field: mailingAddressLine1
-              operator: notBlank
-        then:
-          operator: fail
-          targets:
-          - residentialAddressLine1
-          - mailingAddressLine1
-        code: personalInformation.address.atLeastOneRequired
-        messageCode: personalInformation.address.atLeastOneRequired.message
-      - id: residentialAddress.completeWhenStarted
-        type: conditionalRequired
-        severity: error
-        when:
-          operator: notBlank
-          field: residentialAddressLine1
-        then:
-          operator: allRequired
-          fields:
-          - residentialAddressLine1
-          - residentialCountry
-          targets:
-          - residentialAddressLine1
-          - residentialCountry
-        code: personalInformation.residentialAddress.incomplete
-        messageCode: personalInformation.residentialAddress.incomplete.message
-      - id: mailingAddress.completeWhenStarted
-        type: conditionalRequired
-        severity: error
-        when:
-          operator: notBlank
-          field: mailingAddressLine1
-        then:
-          operator: allRequired
-          fields:
-          - mailingAddressLine1
-          - mailingCountry
-          targets:
-          - mailingAddressLine1
-          - mailingCountry
-        code: personalInformation.mailingAddress.incomplete
-        messageCode: personalInformation.mailingAddress.incomplete.message
-      - id: businessPhone.requiredWhenExtensionPresent
-        type: conditionalRequired
-        severity: error
-        when:
-          operator: notBlank
-          field: hongKongBusinessPhoneExtension
-        then:
-          operator: required
-          field: hongKongBusinessPhone
-          targets:
-          - hongKongBusinessPhone
-        code: personalInformation.businessPhone.requiredWhenExtensionPresent
-        messageCode: personalInformation.businessPhone.requiredWhenExtensionPresent.message
-      - id: overseasCountryCode.requiredWhenPhonePresent
-        type: conditionalRequired
-        severity: error
-        when:
-          operator: notBlank
-          field: overseasPhoneNumber
-        then:
-          operator: required
-          field: overseasCountryCode
-          targets:
-          - overseasCountryCode
-        code: personalInformation.overseasCountryCode.requiredWhenPhonePresent
-        messageCode: personalInformation.overseasCountryCode.requiredWhenPhonePresent.message
-      - id: overseasPhone.requiredWhenCodePresent
-        type: conditionalRequired
-        severity: error
-        when:
-          operator: any
-          conditions:
-          - field: overseasCountryCode
+        - id: address.atLeastOneRequired
+          type: groupRequirement
+          severity: error
+          when:
+            operator: allGroupsEmpty
+            groups:
+              - name: residentialAddress
+                fields:
+                  - residentialAddressLine1
+                  - residentialAddressLine2
+                  - residentialAddressLine3
+                  - residentialCountry
+              - name: mailingAddress
+                fields:
+                  - mailingAddressLine1
+                  - mailingAddressLine2
+                  - mailingAddressLine3
+                  - mailingCountry
+          then:
+            operator: fail
+            targets:
+              - residentialAddressLine1
+              - mailingAddressLine1
+          code: personalInformation.address.atLeastOneRequired
+          messageCode: personalInformation.address.atLeastOneRequired.message
+        - id: residentialAddress.completeWhenStarted
+          type: conditionalRequired
+          severity: error
+          when:
             operator: notBlank
-          - field: overseasAreaCode
+            field: residentialAddressLine1
+          then:
+            operator: allRequired
+            fields:
+              - residentialAddressLine1
+              - residentialCountry
+            targets:
+              - residentialAddressLine1
+              - residentialCountry
+          code: personalInformation.residentialAddress.incomplete
+          messageCode: personalInformation.residentialAddress.incomplete.message
+        - id: mailingAddress.completeWhenStarted
+          type: conditionalRequired
+          severity: error
+          when:
             operator: notBlank
-        then:
-          operator: required
-          field: overseasPhoneNumber
-          targets:
-          - overseasPhoneNumber
-        code: personalInformation.overseasPhoneNumber.requiredWhenCodePresent
-        messageCode: personalInformation.overseasPhoneNumber.requiredWhenCodePresent.message
-      - id: aeoiReminder.whenResidentialCountryChanged
-        type: conditionalWarning
-        severity: warning
-        when:
-          operator: changed
-          field: residentialCountry
-          compareWith: originalValue
-        then:
-          operator: showMessage
-          targets:
-          - residentialCountry
-        code: personalInformation.aeoiReminder
-        messageCode: personalInformation.aeoiReminder.message
+            field: mailingAddressLine1
+          then:
+            operator: allRequired
+            fields:
+              - mailingAddressLine1
+              - mailingCountry
+            targets:
+              - mailingAddressLine1
+              - mailingCountry
+          code: personalInformation.mailingAddress.incomplete
+          messageCode: personalInformation.mailingAddress.incomplete.message
+        - id: businessPhone.requiredWhenExtensionPresent
+          type: conditionalRequired
+          severity: error
+          when:
+            operator: notBlank
+            fields:
+              - hongKongBusinessPhoneExtension
+          then:
+            operator: required
+            targets:
+              - hongKongBusinessPhone
+          code: personalInformation.businessPhone.requiredWhenExtensionPresent
+          messageCode: personalInformation.businessPhone.requiredWhenExtensionPresent.message
+        - id: overseasCountryCode.requiredWhenPhonePresent
+          type: conditionalRequired
+          severity: error
+          when:
+            operator: notBlank
+            field: overseasPhoneNumber
+          then:
+            operator: required
+            field: overseasCountryCode
+            targets:
+              - overseasCountryCode
+          code: personalInformation.overseasCountryCode.requiredWhenPhonePresent
+          messageCode: personalInformation.overseasCountryCode.requiredWhenPhonePresent.message
+        - id: overseasPhone.requiredWhenCodePresent
+          type: conditionalRequired
+          severity: error
+          when:
+            operator: any
+            conditions:
+              - field: overseasCountryCode
+                operator: notBlank
+              - field: overseasAreaCode
+                operator: notBlank
+          then:
+            operator: required
+            field: overseasPhoneNumber
+            targets:
+              - overseasPhoneNumber
+          code: personalInformation.overseasPhoneNumber.requiredWhenCodePresent
+          messageCode: personalInformation.overseasPhoneNumber.requiredWhenCodePresent.message
+        - id: aeoiReminder.whenResidentialCountryChanged
+          type: conditionalWarning
+          severity: warning
+          when:
+            operator: changed
+            field: residentialCountry
+            compareWith: originalValue
+          then:
+            operator: showMessage
+            targets:
+              - residentialCountry
+          code: personalInformation.aeoiReminder
+          messageCode: personalInformation.aeoiReminder.message
+        - id: residentialCountry.requiredWhenResidentialAddressCaptured
+          type: conditionalRequired
+          when:
+            operator: any
+            fields:
+              - residentialAddressLine1
+              - residentialAddressLine2
+              - residentialAddressLine3
+          then:
+            operator: required
+            targets:
+              - residentialCountry
+          code: personalInformation.residentialCountry.required
+          messageCode: personalInformation.residentialCountry.required.message
+          severity: error
+        - id: mailingCountry.requiredWhenMailingAddressCaptured
+          type: conditionalRequired
+          when:
+            operator: any
+            fields:
+              - mailingAddressLine1
+              - mailingAddressLine2
+              - mailingAddressLine3
+          then:
+            operator: required
+            targets:
+              - mailingCountry
+          code: personalInformation.mailingCountry.required
+          messageCode: personalInformation.mailingCountry.required.message
+          severity: error
+        - id: overseasPhoneNumber.requiredWhenCodePresent
+          type: conditionalRequired
+          when:
+            operator: any
+            fields:
+              - overseasCountryCode
+              - overseasAreaCode
+          then:
+            operator: required
+            targets:
+              - overseasPhoneNumber
+          code: personalInformation.overseasPhoneNumber.requiredWhenCodePresent
+          messageCode: personalInformation.overseasPhoneNumber.requiredWhenCodePresent.message
+          severity: error
+        - id: overseasCountryCode.requiredWhenOverseasPhonePresent
+          type: conditionalRequired
+          when:
+            operator: notBlank
+            fields:
+              - overseasPhoneNumber
+          then:
+            operator: required
+            targets:
+              - overseasCountryCode
+          code: personalInformation.overseasCountryCode.requiredWhenPhonePresent
+          messageCode: personalInformation.overseasCountryCode.requiredWhenPhonePresent.message
+          severity: error

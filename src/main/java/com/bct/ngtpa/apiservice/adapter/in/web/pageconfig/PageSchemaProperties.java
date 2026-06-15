@@ -6,6 +6,11 @@ import java.util.LinkedHashMap;
 
 import java.util.List;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class PageSchemaProperties {
 
     private Map<String, Map<String, String>> display = new LinkedHashMap<>();
@@ -15,44 +20,6 @@ public class PageSchemaProperties {
     private FormMetadataProperties form;
     private List<ValidationRuleProperties> validations;
     private ConfirmationProperties confirmation;
-
-    public PageMetadataProperties getMetadata() {
-        return metadata;
-    }
-
-    public void setMetadata(PageMetadataProperties metadata) {
-        this.metadata = metadata;
-    }
-
-    public FormMetadataProperties getForm() {
-        return form;
-    }
-
-    public void setForm(FormMetadataProperties form) {
-        this.form = form;
-    }
-
-    public List<ValidationRuleProperties> getValidations() {
-        return validations;
-    }
-
-    public void setValidations(List<ValidationRuleProperties> validations) {
-        this.validations = validations;
-    }
-
-    public ConfirmationProperties getConfirmation() {
-        return confirmation;
-    }
-
-    public void setConfirmation(ConfirmationProperties confirmation) {
-        this.confirmation = confirmation;
-    }
-
-
-    public Map<String, Map<String, String>> getDisplay() {
-        return display;
-    }
-
 
     public void setDisplay(Map<String, Map<String, String>> display) {
         this.display = display == null ? new LinkedHashMap<>() : display;
