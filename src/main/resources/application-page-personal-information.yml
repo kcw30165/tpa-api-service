@@ -506,11 +506,7 @@ bff-pages:
             dataType: string
             controlType: tel
             maxLength: 8
-            pattern: ^[0-9]*$
             validations:
-            - type: pattern
-              code: personalInformation.businessPhone.invalid
-              messageCode: personalInformation.businessPhone.invalid.message
             - id: hongKongBusinessPhone.integer
               type: pattern
               value: ^[0-9]*$
@@ -527,11 +523,7 @@ bff-pages:
             dataType: string
             controlType: text
             maxLength: 4
-            pattern: ^[0-9]*$
             validations:
-            - type: pattern
-              code: personalInformation.businessPhoneExtension.invalid
-              messageCode: personalInformation.businessPhoneExtension.invalid.message
             - id: hongKongBusinessPhoneExtension.integer
               type: pattern
               value: ^[0-9]*$
@@ -548,11 +540,13 @@ bff-pages:
             dataType: string
             controlType: tel
             maxLength: 8
-            pattern: ^[0-9]*$
             validations:
-            - type: pattern
+            - id: homeTel.integer
+              type: pattern
+              value: ^[0-9]*$
               code: personalInformation.homeTel.invalid
               messageCode: personalInformation.homeTel.invalid.message
+              severity: error
             apimBinding:
               data: home-phone
               config: home-phone
@@ -563,11 +557,7 @@ bff-pages:
             dataType: string
             controlType: tel
             maxLength: 8
-            pattern: ^[4-9][0-9]{7}$
             validations:
-            - type: pattern
-              code: personalInformation.mobilePhone.invalid
-              messageCode: personalInformation.mobilePhone.invalid.message
             - id: hongKongMobilePhone.hkMobile
               type: pattern
               value: ^[4-9][0-9]*$
@@ -583,11 +573,7 @@ bff-pages:
             displayOrder: 50
             dataType: string
             controlType: text
-            pattern: ^[0-9+\- ]*$
             validations:
-            - type: pattern
-              code: personalInformation.faxNo.invalid
-              messageCode: personalInformation.faxNo.invalid.message
             - id: faxNo.permittedCharacters
               type: pattern
               value: ^[0-9+()\-\s]*$
@@ -607,7 +593,6 @@ bff-pages:
             dataType: string
             controlType: select
             optionSource: callingCodes
-            pattern: ^[0-9]*$
             validations:
             - type: pattern
               value: ^[0-9]*$
@@ -628,11 +613,7 @@ bff-pages:
             displayOrder: 20
             dataType: string
             controlType: text
-            pattern: ^[0-9]*$
             validations:
-            - type: pattern
-              code: personalInformation.overseasAreaCode.invalid
-              messageCode: personalInformation.overseasAreaCode.invalid.message
             - id: overseasAreaCode.integer
               type: pattern
               value: ^[0-9]*$
@@ -649,11 +630,7 @@ bff-pages:
             dataType: string
             controlType: tel
             maxLength: 17
-            pattern: ^[0-9]*$
             validations:
-            - type: pattern
-              code: personalInformation.overseasPhoneNumber.invalid
-              messageCode: personalInformation.overseasPhoneNumber.invalid.message
             - id: overseasPhoneNumber.integer
               type: pattern
               value: ^[0-9]*$
@@ -670,7 +647,6 @@ bff-pages:
             dataType: string
             controlType: text
             maxLength: 4
-            pattern: ^[0-9]*$
             apimBinding:
               data: other-phone-ext
               config: other-phone-ext

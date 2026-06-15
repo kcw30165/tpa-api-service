@@ -175,15 +175,23 @@ public class PersonalInformationUpdateYamlValidator {
                     && fields(condition).stream().allMatch(field -> !isBlankValue(submittedFields.get(field)));
             case "notBlank" -> fields(condition).stream().anyMatch(field -> !isBlankValue(submittedFields.get(field)));
             case "blank" -> fields(condition).stream().allMatch(field -> isBlankValue(submittedFields.get(field)));
-            case "allGroupsEmpty" -> groups(condition).stream().allMatch(group -> groupIsEmpty(group, submittedFields));
+            case "allGroupsEmpty" -> allGroupsEmpty(condition, submittedFields);
             default -> false;
         };
     }
 
+    private boolean allGroupsEmpty(RuleConditionProperties condition, Map<String, Object> submittedFields) {
+        List<Map<String, Object>> configuredGroups = groups(condition);
+        if (configuredGroups.isEmpty()) {
+            return false;
+        }
+        return configuredGroups.stream().allMatch(group -> groupIsEmpty(group, submittedFields));
+    }
+
     private boolean groupIsEmpty(Map<String, Object> group, Map<String, Object> submittedFields) {
         Object rawFields = group == null ? null : group.get("fields");
-        if (!(rawFields instanceof List<?> fieldRefs)) {
-            return true;
+        if (!(rawFields instanceof List<?> fieldRefs) || fieldRefs.isEmpty()) {
+            return false;
         }
         for (Object fieldRef : fieldRefs) {
             if (fieldRef != null && !isBlankValue(submittedFields.get(fieldRef.toString()))) {

@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.pageconfig;
 import java.util.Map;
+
+
 public class ValidationRuleProperties {
     private String messageCode;
     private String id;

@@ -54,6 +54,71 @@ class PersonalInformationUpdateYamlValidatorAddressTest {
                 });
     }
 
+
+    @Test
+    void allGroupsEmptyWithMalformedGroupFieldsIsFailSafe() throws Exception {
+        PageSchemaProperties page = properties().getPages().get("personalInformation");
+        ValidationRuleProperties brokenGroupRule = page.getValidations().stream()
+                .filter(rule -> "address.atLeastOneRequired".equals(rule.getId()))
+                .findFirst()
+                .orElseThrow();
+        brokenGroupRule.getWhen().setGroups(List.of(Map.of("name", "residentialAddress", "fields", "residentialAddressLine1")));
+
+        BffPagesProperties properties = new BffPagesProperties();
+        properties.setPages(Map.of("personalInformation", page));
+        PersonalInformationUpdateYamlValidator validator = new PersonalInformationUpdateYamlValidator(
+                properties,
+                new PageDisplayTextResolver(new ConfigVariantCandidateGenerator()),
+                new ConfigVariantCandidateGenerator());
+
+        List<ApiError> errors = validator.validate(
+                new UpdatePersonalInformationRequest("1.0", false, Map.of(
+                        "residentialAddressLine1", "Flat 15B, Block 2, Garden Villa Estate",
+                        "residentialAddressLine2", "Tai Po, New Territories",
+                        "residentialAddressLine3", "HK",
+                        "residentialCountry", "HK")),
+                "en",
+                null,
+                null,
+                null);
+
+        assertThat(errors)
+                .extracting(ApiError::code)
+                .doesNotContain("personalInformation.address.atLeastOneRequired");
+    }
+
+    @Test
+    void allGroupsEmptyWithoutConfiguredGroupsIsFailSafe() throws Exception {
+        PageSchemaProperties page = properties().getPages().get("personalInformation");
+        ValidationRuleProperties brokenGroupRule = page.getValidations().stream()
+                .filter(rule -> "address.atLeastOneRequired".equals(rule.getId()))
+                .findFirst()
+                .orElseThrow();
+        brokenGroupRule.getWhen().setGroups(List.of());
+
+        BffPagesProperties properties = new BffPagesProperties();
+        properties.setPages(Map.of("personalInformation", page));
+        PersonalInformationUpdateYamlValidator validator = new PersonalInformationUpdateYamlValidator(
+                properties,
+                new PageDisplayTextResolver(new ConfigVariantCandidateGenerator()),
+                new ConfigVariantCandidateGenerator());
+
+        List<ApiError> errors = validator.validate(
+                new UpdatePersonalInformationRequest("1.0", false, Map.of(
+                        "residentialAddressLine1", "Flat 15B, Block 2, Garden Villa Estate",
+                        "residentialAddressLine2", "Tai Po, New Territories",
+                        "residentialAddressLine3", "HK",
+                        "residentialCountry", "HK")),
+                "en",
+                null,
+                null,
+                null);
+
+        assertThat(errors)
+                .extracting(ApiError::code)
+                .doesNotContain("personalInformation.address.atLeastOneRequired");
+    }
+
     @Test
     void mailingOnlyAddressWithCountryPassesAddressRequirement() throws Exception {
         List<ApiError> errors = validate(Map.of(
