@@ -192,6 +192,12 @@ bff-pages:
         "[personalInformation.field.smsLanguage.label]":
           en: Language Selection of SMS (Optional)
           zh_HK: 短訊語言選擇 (可選)
+        "[personalInformation.option.smsLanguage.en]":
+          en: English
+          zh_HK: 英文
+        "[personalInformation.option.smsLanguage.zh_HK]":
+          en: Traditional Chinese
+          zh_HK: 繁體中文
         "[personalInformation.homeTel.invalid.message]":
           en: Please input a valid Hong Kong Home Telephone Number.
           zh_HK: 請輸入有效香港住所電話號碼。
@@ -264,6 +270,15 @@ bff-pages:
       form:
         id: personalInformationForm
         defaultMode: view
+        optionSets:
+          smsLanguages:
+            code: smsLanguages
+            options:
+              smsLanguages:
+                - value: en
+                  labelCode: personalInformation.option.smsLanguage.en
+                - value: zh_HK
+                  labelCode: personalInformation.option.smsLanguage.zh_HK
         actions:
           - name: edit
             labelCode: personalInformation.action.edit.label
