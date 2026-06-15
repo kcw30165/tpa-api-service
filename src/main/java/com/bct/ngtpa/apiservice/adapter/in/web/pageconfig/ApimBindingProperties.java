@@ -1,23 +1,12 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.pageconfig;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class ApimBindingProperties {
 
     private String data;
     private String config;
-
-    public String getData() {
-        return data;
-    }
-
-    public void setData(String data) {
-        this.data = data;
-    }
-
-    public String getConfig() {
-        return config;
-    }
-
-    public void setConfig(String config) {
-        this.config = config;
-    }
 }
