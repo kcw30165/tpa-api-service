@@ -4,6 +4,9 @@ import java.util.Map;
 
 public class PageMetadataProperties {
 
+    private String titleCode;
+
+
     private String id;
     private Map<String, String> title;
     private String version;
@@ -30,5 +33,15 @@ public class PageMetadataProperties {
 
     public void setVersion(String version) {
         this.version = version;
+    }
+
+
+    public String getTitleCode() {
+        return titleCode;
+    }
+
+
+    public void setTitleCode(String titleCode) {
+        this.titleCode = titleCode;
     }
 }

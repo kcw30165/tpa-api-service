@@ -1,6 +1,11 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.mapper;
 
+import java.util.Collections;
+
+import com.bct.ngtpa.apiservice.shared.config.ConfigVariantCandidateGenerator;
+
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.ActionProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.ConfirmationProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.ApimBindingProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.BffPagesProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.FieldProperties;
@@ -42,8 +47,8 @@ public class PersonalInformationWebMapper {
     private static final String PAGE_KEY = "personalInformation";
     private static final String DEFAULT_LANGUAGE = "en";
     private static final String ZH_HK_LANGUAGE = "zh_HK";
-
-    private final LoggingSanitizer loggingSanitizer;
+    private final PageDisplayTextResolver pageDisplayTextResolver = new PageDisplayTextResolver(new ConfigVariantCandidateGenerator());
+private final LoggingSanitizer loggingSanitizer;
     private final BffPagesProperties bffPagesProperties;
     private final YamlResponseMapper yamlResponseMapper;
     private final ObjectMapper responseObjectMapper = new ObjectMapper();
@@ -64,30 +69,62 @@ public class PersonalInformationWebMapper {
         this(loggingSanitizer, bffPagesProperties, new YamlResponseMapper(new ObjectMapper()));
     }
 
-    public FormPageResponse<FormSchemaResponse> toFormPageResponse(PersonalInformationResult result, String language) {
+    public FormPageResponse<FormSchemaResponse> toFormPageResponse(
+            PersonalInformationResult result,
+            String language) {
+        return toFormPageResponse(result, language, null, null, null);
+    }
+
+    public FormPageResponse<FormSchemaResponse> toFormPageResponse(
+            PersonalInformationResult result,
+            String language,
+            String accountEnv,
+            String trustCode,
+            String schemeType) {
         Map<String, Object> apimData = result != null ? result.data() : Map.of();
         Map<String, String> apimConfig = result != null ? result.config() : Map.of();
         Map<String, MemberInfoConfigItem> apimConfigItems = result != null ? result.configItems() : Map.of();
-        return toFormPageResponse(apimData, apimConfig, apimConfigItems, language);
+        return toFormPageResponse(apimData, apimConfig, apimConfigItems, language, accountEnv, trustCode, schemeType);
     }
-
     public FormPageResponse<FormSchemaResponse> toFormPageResponse(
             Map<String, Object> apimData,
             Map<String, String> apimConfig,
             String language) {
-        return toFormPageResponse(apimData, apimConfig, Map.of(), language);
+        return toFormPageResponse(apimData, apimConfig, language, null, null, null);
     }
 
+
+    public FormPageResponse<FormSchemaResponse> toFormPageResponse(
+            Map<String, Object> apimData,
+            Map<String, String> apimConfig,
+            String language,
+            String accountEnv,
+            String trustCode,
+            String schemeType) {
+        return toFormPageResponse(apimData, apimConfig, Map.of(), language, accountEnv, trustCode, schemeType);
+    }
     public FormPageResponse<FormSchemaResponse> toFormPageResponse(
             Map<String, Object> apimData,
             Map<String, String> apimConfig,
             Map<String, MemberInfoConfigItem> apimConfigItems,
             String language) {
+        return toFormPageResponse(apimData, apimConfig, apimConfigItems, language, null, null, null);
+    }
+
+
+    public FormPageResponse<FormSchemaResponse> toFormPageResponse(
+            Map<String, Object> apimData,
+            Map<String, String> apimConfig,
+            Map<String, MemberInfoConfigItem> apimConfigItems,
+            String language,
+            String accountEnv,
+            String trustCode,
+            String schemeType) {
 
         PageSchemaProperties pageSchema = resolvePageSchema();
         return FormPageResponse.success(
-                buildPage(pageSchema, language),
-                buildForm(pageSchema, apimData, apimConfig, apimConfigItems, language));
+                buildPage(pageSchema, language, accountEnv, trustCode, schemeType),
+                buildForm(pageSchema, apimData, apimConfig, apimConfigItems, language, accountEnv, trustCode, schemeType));
     }
 
     /**
@@ -97,20 +134,41 @@ public class PersonalInformationWebMapper {
     public Map<String, Object> toResponse(PersonalInformationResult result, String language) {
         return toMap(toFormPageResponse(result, language));
     }
-
     public Map<String, Object> toResponse(
             Map<String, Object> apimData,
             Map<String, String> apimConfig,
             String language) {
-        return toMap(toFormPageResponse(apimData, apimConfig, language));
+        return toResponse(apimData, apimConfig, language, null, null, null);
     }
 
+
+    public Map<String, Object> toResponse(
+            Map<String, Object> apimData,
+            Map<String, String> apimConfig,
+            String language,
+            String accountEnv,
+            String trustCode,
+            String schemeType) {
+        return toMap(toFormPageResponse(apimData, apimConfig, language, accountEnv, trustCode, schemeType));
+    }
     public Map<String, Object> toResponse(
             Map<String, Object> apimData,
             Map<String, String> apimConfig,
             Map<String, MemberInfoConfigItem> apimConfigItems,
             String language) {
-        return toMap(toFormPageResponse(apimData, apimConfig, apimConfigItems, language));
+        return toResponse(apimData, apimConfig, apimConfigItems, language, null, null, null);
+    }
+
+
+    public Map<String, Object> toResponse(
+            Map<String, Object> apimData,
+            Map<String, String> apimConfig,
+            Map<String, MemberInfoConfigItem> apimConfigItems,
+            String language,
+            String accountEnv,
+            String trustCode,
+            String schemeType) {
+        return toMap(toFormPageResponse(apimData, apimConfig, apimConfigItems, language, accountEnv, trustCode, schemeType));
     }
 
     private Map<String, Object> toMap(FormPageResponse<FormSchemaResponse> response) {
@@ -130,36 +188,152 @@ public class PersonalInformationWebMapper {
         return pageSchema;
     }
 
-    private PageResponse buildPage(PageSchemaProperties pageSchema, String language) {
+    private PageResponse buildPage(PageSchemaProperties pageSchema, String language, String accountEnv, String trustCode, String schemeType) {
         PageMetadataProperties metadata = pageSchema != null ? pageSchema.getMetadata() : null;
         return new PageResponse(
                 metadata != null ? metadata.getId() : null,
-                resolveLabel(metadata != null ? metadata.getTitle() : null, language),
+                resolvePageTitle(pageSchema, metadata, language, accountEnv, trustCode, schemeType),
                 language);
     }
+    private String resolvePageTitle(
+            PageSchemaProperties pageSchema,
+            PageMetadataProperties metadata,
+            String language,
+            String accountEnv,
+            String trustCode,
+            String schemeType) {
+        if (metadata != null && hasText(metadata.getTitleCode())) {
+            return resolvePageDisplayText(
+                    pageSchema,
+                    metadata.getTitleCode(),
+                    metadata.getTitle(),
+                    language,
+                    accountEnv,
+                    trustCode,
+                    schemeType);
+        }
+        return resolveLabel(metadata != null ? metadata.getTitle() : null, language);
+    }
+
 
     private FormSchemaResponse buildForm(PageSchemaProperties pageSchema,
             Map<String, Object> apimData,
             Map<String, String> apimConfig,
             Map<String, MemberInfoConfigItem> apimConfigItems,
-            String language) {
+            String language,
+            String accountEnv,
+            String trustCode,
+            String schemeType) {
         FormMetadataProperties formSchema = pageSchema != null ? pageSchema.getForm() : null;
         PageMetadataProperties metadata = pageSchema != null ? pageSchema.getMetadata() : null;
         return new FormSchemaResponse(
                 formSchema != null ? formSchema.getId() : null,
                 metadata != null ? metadata.getVersion() : null,
                 formSchema != null && hasText(formSchema.getDefaultMode()) ? formSchema.getDefaultMode() : "view",
-                buildSections(pageSchema, apimData, apimConfig, apimConfigItems, language),
-                mapValidationRules(pageSchema != null ? pageSchema.getValidations() : null, language),
-                yamlResponseMapper.toResponseMap(pageSchema != null ? pageSchema.getConfirmation() : null, language),
-                buildActions(formSchema, language));
+                buildSections(pageSchema, apimData, apimConfig, apimConfigItems, language, accountEnv, trustCode, schemeType),
+                mapValidationRules(pageSchema, pageSchema != null ? pageSchema.getValidations() : null, language, accountEnv, trustCode, schemeType),
+                buildConfirmation(pageSchema, language, accountEnv, trustCode, schemeType),
+                buildActions(pageSchema, formSchema, language, accountEnv, trustCode, schemeType));
     }
+    private Map<String, Object> buildConfirmation(
+            PageSchemaProperties pageSchema,
+            String language,
+            String accountEnv,
+            String trustCode,
+            String schemeType) {
+        ConfirmationProperties confirmation = pageSchema != null ? pageSchema.getConfirmation() : null;
+        Map<String, Object> response = new java.util.LinkedHashMap<>(
+                yamlResponseMapper.toResponseMap(confirmation, language));
+        if (confirmation == null) {
+            return response;
+        }
+
+        putResolvedConfirmationText(response, "title", confirmation.getTitleCode(), confirmation.getTitle(), pageSchema, language, accountEnv, trustCode, schemeType);
+        putResolvedConfirmationText(response, "reviewMessage", confirmation.getReviewMessageCode(), confirmation.getReviewMessage(), pageSchema, language, accountEnv, trustCode, schemeType);
+        putResolvedConfirmationText(response, "beforeLabel", confirmation.getBeforeLabelCode(), confirmation.getBeforeLabel(), pageSchema, language, accountEnv, trustCode, schemeType);
+        putResolvedConfirmationText(response, "afterLabel", confirmation.getAfterLabelCode(), confirmation.getAfterLabel(), pageSchema, language, accountEnv, trustCode, schemeType);
+
+        response.remove("titleCode");
+        response.remove("reviewMessageCode");
+        response.remove("beforeLabelCode");
+        response.remove("afterLabelCode");
+
+        putResolvedSecurityVerificationText(response, confirmation.getSecurityVerification(), pageSchema, language, accountEnv, trustCode, schemeType);
+        return response;
+    }
+
+    private void putResolvedConfirmationText(
+            Map<String, Object> response,
+            String responseKey,
+            String code,
+            Map<String, String> inlineFallback,
+            PageSchemaProperties pageSchema,
+            String language,
+            String accountEnv,
+            String trustCode,
+            String schemeType) {
+        String resolved = resolvePageDisplayText(pageSchema, code, inlineFallback, language, accountEnv, trustCode, schemeType);
+        if (hasText(resolved)) {
+            response.put(responseKey, resolved);
+        }
+    }
+
+    private void putResolvedSecurityVerificationText(
+            Map<String, Object> response,
+            Map<String, Object> securityVerification,
+            PageSchemaProperties pageSchema,
+            String language,
+            String accountEnv,
+            String trustCode,
+            String schemeType) {
+        if (securityVerification == null || securityVerification.isEmpty()) {
+            return;
+        }
+
+        Object mapped = response.get("securityVerification");
+        Map<String, Object> securityResponse = new java.util.LinkedHashMap<>();
+        if (mapped instanceof Map<?, ?> mappedSecurity) {
+            for (var entry : mappedSecurity.entrySet()) {
+                if (entry.getKey() instanceof String key) {
+                    securityResponse.put(key, entry.getValue());
+                }
+            }
+        }
+
+        putResolvedConfirmationText(securityResponse, "label", stringValue(securityVerification.get("labelCode")), localizedMap(securityVerification.get("label")), pageSchema, language, accountEnv, trustCode, schemeType);
+        putResolvedConfirmationText(securityResponse, "instruction", stringValue(securityVerification.get("instructionCode")), localizedMap(securityVerification.get("instruction")), pageSchema, language, accountEnv, trustCode, schemeType);
+
+        securityResponse.remove("labelCode");
+        securityResponse.remove("instructionCode");
+        response.put("securityVerification", securityResponse);
+    }
+
+    private Map<String, String> localizedMap(Object value) {
+        if (!(value instanceof Map<?, ?> map)) {
+            return null;
+        }
+        Map<String, String> result = new java.util.LinkedHashMap<>();
+        for (var entry : map.entrySet()) {
+            if (entry.getKey() instanceof String key && entry.getValue() instanceof String text) {
+                result.put(key, text);
+            }
+        }
+        return result;
+    }
+
+    private String stringValue(Object value) {
+        return value instanceof String text ? text : null;
+    }
+
 
     private List<SectionResponse> buildSections(PageSchemaProperties pageSchema,
             Map<String, Object> apimData,
             Map<String, String> apimConfig,
             Map<String, MemberInfoConfigItem> apimConfigItems,
-            String language) {
+            String language,
+            String accountEnv,
+            String trustCode,
+            String schemeType) {
         if (pageSchema == null || pageSchema.getForm() == null || pageSchema.getForm().getSections() == null) {
             return List.of();
         }
@@ -170,14 +344,14 @@ public class PersonalInformationWebMapper {
             if (sectionSchema == null || !hasText(sectionSchema.getId())) {
                 continue;
             }
-            List<FieldResponse> fields = buildSectionFields(sectionSchema, fieldStates, language);
+            List<FieldResponse> fields = buildSectionFields(pageSchema, sectionSchema, fieldStates, language, accountEnv, trustCode, schemeType);
             if (fields.isEmpty()) {
                 defaultSectionOrder += 10;
                 continue;
             }
             sections.add(new SectionResponse(
                     sectionSchema.getId(),
-                    resolveLabel(sectionSchema.getTitle(), language),
+                    resolvePageDisplayText(pageSchema, sectionSchema.getTitleCode(), sectionSchema.getTitle(), language, accountEnv, trustCode, schemeType),
                     defaultSectionOrder,
                     fields));
             defaultSectionOrder += 10;
@@ -282,9 +456,7 @@ public class PersonalInformationWebMapper {
         return fieldsByConfigItemId;
     }
 
-    private List<FieldResponse> buildSectionFields(SectionProperties sectionSchema,
-            Map<String, FieldState> fieldStates,
-            String language) {
+    private List<FieldResponse> buildSectionFields(PageSchemaProperties pageSchema, SectionProperties sectionSchema, Map<String, FieldState> fieldStates, String language, String accountEnv, String trustCode, String schemeType) {
         if (sectionSchema.getFields() == null) {
             return List.of();
         }
@@ -299,10 +471,10 @@ public class PersonalInformationWebMapper {
                 defaultFieldOrder += 10;
                 continue;
             }
-            List<ValidationRuleResponse> validations = mapValidationRules(fieldSchema.getValidations(), language);
+            List<ValidationRuleResponse> validations = mapValidationRules(pageSchema, fieldSchema.getValidations(), language, accountEnv, trustCode, schemeType);
             fields.add(new FieldResponse(
                     fieldSchema.getId(),
-                    resolveLabel(fieldSchema.getLabel(), language),
+                    resolvePageDisplayText(pageSchema, fieldSchema.getLabelCode(), fieldSchema.getLabel(), language, accountEnv, trustCode, schemeType),
                     hasText(fieldSchema.getDataType()) ? fieldSchema.getDataType() : null,
                     hasText(fieldSchema.getControlType()) ? fieldSchema.getControlType() : null,
                     state.value(),
@@ -312,8 +484,8 @@ public class PersonalInformationWebMapper {
                     fieldSchema.getMinLength(),
                     fieldSchema.getMaxLength(),
                     hasText(fieldSchema.getPattern()) ? fieldSchema.getPattern() : null,
-                    hasText(resolveLabel(fieldSchema.getPlaceholder(), language))
-                            ? resolveLabel(fieldSchema.getPlaceholder(), language)
+                    hasText(resolvePageDisplayText(pageSchema, fieldSchema.getPlaceholderCode(), fieldSchema.getPlaceholder(), language, accountEnv, trustCode, schemeType))
+                            ? resolvePageDisplayText(pageSchema, fieldSchema.getPlaceholderCode(), fieldSchema.getPlaceholder(), language, accountEnv, trustCode, schemeType)
                             : null,
                     hasText(fieldSchema.getOptionSource()) ? fieldSchema.getOptionSource() : null,
                     fieldSchema.getCopyWhenChecked(),
@@ -324,14 +496,47 @@ public class PersonalInformationWebMapper {
         return fields;
     }
 
-    private List<ValidationRuleResponse> mapValidationRules(List<ValidationRuleProperties> rules, String language) {
-        return yamlResponseMapper.toResponseList(rules, language).stream()
+    private List<ValidationRuleResponse> mapValidationRules(PageSchemaProperties pageSchema, List<ValidationRuleProperties> rules, String language, String accountEnv, String trustCode, String schemeType) {
+        if (rules == null || rules.isEmpty()) {
+            return yamlResponseMapper.toResponseList(rules, language).stream()
+                    .map(ValidationRuleResponse::from)
+                    .filter(java.util.Objects::nonNull)
+                    .toList();
+        }
+        return rules.stream()
+                .flatMap(rule -> mapValidationRule(pageSchema, rule, language, accountEnv, trustCode, schemeType).stream())
                 .map(ValidationRuleResponse::from)
                 .filter(java.util.Objects::nonNull)
                 .toList();
     }
 
-    private Map<String, Object> buildActions(FormMetadataProperties formSchema, String language) {
+    private List<java.util.Map<String, Object>> mapValidationRule(PageSchemaProperties pageSchema, ValidationRuleProperties rule, String language, String accountEnv, String trustCode, String schemeType) {
+        if (rule == null) {
+            return yamlResponseMapper.toResponseList(Collections.singletonList(rule), language);
+        }
+        java.util.Map<String, String> originalMessage = rule.getMessage();
+        String resolvedMessage = resolvePageDisplayText(
+                pageSchema,
+                rule.getMessageCode(),
+                originalMessage,
+                language,
+                accountEnv,
+                trustCode,
+                schemeType);
+        boolean overrideMessage = resolvedMessage != null && !resolvedMessage.isBlank();
+        try {
+            if (overrideMessage) {
+                rule.setMessage(Collections.singletonMap(language, resolvedMessage));
+            }
+            return yamlResponseMapper.toResponseList(Collections.singletonList(rule), language);
+        } finally {
+            if (overrideMessage) {
+                rule.setMessage(originalMessage);
+            }
+        }
+    }
+
+    private Map<String, Object> buildActions(PageSchemaProperties pageSchema, FormMetadataProperties formSchema, String language, String accountEnv, String trustCode, String schemeType) {
         Map<String, Object> actions = new LinkedHashMap<>();
         if (formSchema == null || formSchema.getActions() == null) {
             return actions;
@@ -342,7 +547,7 @@ public class PersonalInformationWebMapper {
             }
             Map<String, Object> action = new LinkedHashMap<>();
             action.put("enabled", Boolean.TRUE);
-            action.put("label", resolveLabel(actionSchema.getLabel(), language));
+            action.put("label", resolvePageDisplayText(pageSchema, actionSchema.getLabelCode(), actionSchema.getLabel(), language, accountEnv, trustCode, schemeType));
             actions.put(actionSchema.getName(), action);
         }
         return actions;
@@ -363,6 +568,25 @@ public class PersonalInformationWebMapper {
     private boolean isRequired(String configValue) {
         return "EDITABLE_COM".equalsIgnoreCase(configValue);
     }
+
+    private String resolvePageDisplayText(
+            PageSchemaProperties pageSchema,
+            String code,
+            Map<String, String> inlineFallback,
+            String language,
+            String accountEnv,
+            String trustCode,
+            String schemeType) {
+        return pageDisplayTextResolver.resolve(
+                pageSchema == null ? Map.of() : pageSchema.getDisplay(),
+                code,
+                inlineFallback,
+                language,
+                accountEnv,
+                trustCode,
+                schemeType);
+    }
+
 
     private String resolveLabel(Map<String, String> labels, String language) {
         if (labels == null || labels.isEmpty()) {

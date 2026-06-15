@@ -4,6 +4,9 @@ import java.util.Map;
 
 public class ActionProperties {
 
+    private String labelCode;
+
+
     private String name;
     private Map<String, String> label;
 
@@ -21,5 +24,15 @@ public class ActionProperties {
 
     public void setLabel(Map<String, String> label) {
         this.label = label;
+    }
+
+
+    public String getLabelCode() {
+        return labelCode;
+    }
+
+
+    public void setLabelCode(String labelCode) {
+        this.labelCode = labelCode;
     }
 }

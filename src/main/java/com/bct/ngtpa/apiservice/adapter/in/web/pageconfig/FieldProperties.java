@@ -5,6 +5,12 @@ import java.util.Map;
 
 public class FieldProperties {
 
+    private String placeholderCode;
+
+
+    private String labelCode;
+
+
     private String id;
     private Integer displayOrder;
     private Map<String, String> label;
@@ -121,5 +127,25 @@ public class FieldProperties {
 
     public void setValidations(List<ValidationRuleProperties> validations) {
         this.validations = validations;
+    }
+
+
+    public String getLabelCode() {
+        return labelCode;
+    }
+
+
+    public void setLabelCode(String labelCode) {
+        this.labelCode = labelCode;
+    }
+
+
+    public String getPlaceholderCode() {
+        return placeholderCode;
+    }
+
+
+    public void setPlaceholderCode(String placeholderCode) {
+        this.placeholderCode = placeholderCode;
     }
 }

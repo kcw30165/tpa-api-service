@@ -4,6 +4,9 @@ import java.util.Map;
 
 public class ValidationRuleProperties {
 
+    private String messageCode;
+
+
     private String id;
     private String type;
     private Object value;
@@ -75,5 +78,15 @@ public class ValidationRuleProperties {
 
     public void setMessage(Map<String, String> message) {
         this.message = message;
+    }
+
+
+    public String getMessageCode() {
+        return messageCode;
+    }
+
+
+    public void setMessageCode(String messageCode) {
+        this.messageCode = messageCode;
     }
 }
