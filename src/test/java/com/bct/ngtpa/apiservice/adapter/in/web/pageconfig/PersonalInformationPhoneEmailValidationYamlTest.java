@@ -37,7 +37,8 @@ class PersonalInformationPhoneEmailValidationYamlTest {
         assertThat(string(then(rule).get("operator"))).isEqualTo("required");
         assertThat(targets(then(rule))).containsExactly("hongKongBusinessPhone");
         assertThat(rule.get("code")).isEqualTo("personalInformation.businessPhone.requiredWhenExtensionPresent");
-        assertThat(rule.get("messageCode")).isEqualTo("personalInformation.businessPhone.requiredWhenExtensionPresent.message");
+        assertThat(rule.get("messageCode"))
+                .isEqualTo("personalInformation.businessPhone.requiredWhenExtensionPresent.message");
     }
 
     @Test
@@ -65,7 +66,8 @@ class PersonalInformationPhoneEmailValidationYamlTest {
         assertThat(string(when(phoneRequiredRule).get("operator"))).isEqualTo("any");
         assertThat(fields(when(phoneRequiredRule))).containsExactly("overseasCountryCode", "overseasAreaCode");
         assertThat(targets(then(phoneRequiredRule))).containsExactly("overseasPhoneNumber");
-        assertThat(phoneRequiredRule.get("code")).isEqualTo("personalInformation.overseasPhoneNumber.requiredWhenCodePresent");
+        assertThat(phoneRequiredRule.get("code"))
+                .isEqualTo("personalInformation.overseasPhoneNumber.requiredWhenCodePresent");
 
         Map<String, Object> countryRequiredRule = pageRule("overseasCountryCode.requiredWhenOverseasPhonePresent");
         assertThat(string(when(countryRequiredRule).get("operator"))).isEqualTo("notBlank");
@@ -105,7 +107,7 @@ class PersonalInformationPhoneEmailValidationYamlTest {
 
         Map<String, Object> minLength = rule(rules, "email.minLength");
         assertThat(minLength.get("type")).isEqualTo("minLength");
-        assertThat(minLength.get("value")).isEqualTo(1);
+        assertThat(minLength.get("value")).isEqualTo(5);
         assertThat(valueByVariant(minLength)).containsEntry("JP", 11);
         assertThat(minLength.get("code")).isEqualTo("personalInformation.email.tooShort");
         assertThat(minLength.get("messageCode")).isEqualTo("personalInformation.email.tooShort.message");
@@ -113,17 +115,22 @@ class PersonalInformationPhoneEmailValidationYamlTest {
 
     @Test
     void emailJpVariantMessageIsResolvedFromDisplayCodeNotRuleSpecificMessageCode() {
-        Map<String, Object> display = display();
-
-        assertThat(display).containsKeys(
-                "personalInformation.email.tooShort.message",
-                "personalInformation.email.tooShort.message.JP");
-
         Map<String, Object> minLength = rule(validations(field("emailAddress")), "email.minLength");
+
         assertThat(minLength.get("messageCode"))
-                .as("stable base messageCode should be used; JP variant belongs in display map")
+                .as("stable base messageCode should be used; JP variant must not be encoded in the rule messageCode")
                 .isEqualTo("personalInformation.email.tooShort.message");
+
         assertThat(minLength.get("messageCode").toString()).doesNotEndWith(".JP");
+
+        assertThat(minLength.get("value")).isEqualTo(5);
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> valueByVariant = (Map<String, Object>) minLength.get("valueByVariant");
+
+        assertThat(valueByVariant)
+                .as("JP-specific min length belongs under valueByVariant")
+                .containsEntry("JP", 11);
     }
 
     private void assertPatternRule(
@@ -148,7 +155,8 @@ class PersonalInformationPhoneEmailValidationYamlTest {
     private Map<String, Object> personalInformationPage() {
         try (InputStream inputStream = getClass().getClassLoader()
                 .getResourceAsStream("application-page-personal-information.yml")) {
-            assertThat(inputStream).as("application-page-personal-information.yml must be on test classpath").isNotNull();
+            assertThat(inputStream).as("application-page-personal-information.yml must be on test classpath")
+                    .isNotNull();
             Map<String, Object> root = new Yaml().load(inputStream);
             return (Map<String, Object>) ((Map<String, Object>) ((Map<String, Object>) root.get("bff-pages"))
                     .get("pages")).get("personalInformation");

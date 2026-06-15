@@ -4,11 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import org.junit.jupiter.api.Test;
 
 class PersonalInformationFieldPresenceValidationSemanticsGuardTest {
 
-    private static final Path VALIDATOR = Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/validation/PersonalInformationUpdateYamlValidator.java");
+    private static final Path VALIDATOR = Path.of(
+            "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/validation/PersonalInformationUpdateYamlValidator.java");
     private static final Path YAML = Path.of("src/main/resources/application-page-personal-information.yml");
 
     @Test
@@ -41,13 +45,22 @@ class PersonalInformationFieldPresenceValidationSemanticsGuardTest {
     }
 
     private String fieldBlock(String yaml, String fieldId) {
-        int start = yaml.indexOf("          - id: " + fieldId + "\n");
+        Matcher fieldStart = Pattern.compile("(?m)^([ \\t]*)-\\s+id:\\s+" + Pattern.quote(fieldId) + "\\s*$")
+                .matcher(yaml);
+        int start = fieldStart.find() ? fieldStart.start() : -1;
         assertThat(start).as(fieldId + " field start").isGreaterThanOrEqualTo(0);
-        int nextField = yaml.indexOf("\n          - id:", start + 1);
-        int nextSectionTitle = yaml.indexOf("\n          titleCode:", start + 1);
+        String fieldIndent = fieldStart.group(1);
+        Matcher nextFieldMatcher = Pattern.compile("(?m)^" + Pattern.quote(fieldIndent) + "-\\s+id:").matcher(yaml);
+        int nextField = nextFieldMatcher.find(fieldStart.end()) ? nextFieldMatcher.start() : -1;
+        String sectionIndent = fieldIndent.length() >= 2 ? fieldIndent.substring(0, fieldIndent.length() - 2) : "";
+        Matcher nextSectionTitleMatcher = Pattern.compile("(?m)^" + Pattern.quote(sectionIndent) + "titleCode:")
+                .matcher(yaml);
+        int nextSectionTitle = nextSectionTitleMatcher.find(fieldStart.end()) ? nextSectionTitleMatcher.start() : -1;
         int end = yaml.length();
-        if (nextField >= 0) end = Math.min(end, nextField);
-        if (nextSectionTitle >= 0) end = Math.min(end, nextSectionTitle);
+        if (nextField >= 0)
+            end = Math.min(end, nextField);
+        if (nextSectionTitle >= 0)
+            end = Math.min(end, nextSectionTitle);
         return yaml.substring(start, end);
     }
 }

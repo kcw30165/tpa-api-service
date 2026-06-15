@@ -15,13 +15,13 @@ class PersonalInformationConfirmationDisplayYamlTest {
     @Test
     void confirmationDisplayTextIsCentralizedAndReferencedByCodes() throws IOException {
         String yaml = Files.readString(PERSONAL_INFORMATION_YAML);
-
-        assertThat(yaml).contains("'[personalInformation.confirmation.title]':");
-        assertThat(yaml).contains("'[personalInformation.confirmation.reviewMessage]':");
-        assertThat(yaml).contains("'[personalInformation.confirmation.beforeLabel]':");
-        assertThat(yaml).contains("'[personalInformation.confirmation.afterLabel]':");
-        assertThat(yaml).contains("'[personalInformation.confirmation.securityVerification.label]':");
-        assertThat(yaml).contains("'[personalInformation.confirmation.securityVerification.instruction]':");
+        assertThat(yaml).containsPattern("['\"]\\[personalInformation.confirmation.title\\]['\"]:");
+        assertThat(yaml).containsPattern("['\"]\\[personalInformation.confirmation.title\\]['\"]:");
+        assertThat(yaml).containsPattern("['\"]\\[personalInformation.confirmation.reviewMessage\\]['\"]:");
+        assertThat(yaml).containsPattern("['\"]\\[personalInformation.confirmation.beforeLabel\\]['\"]:");
+        assertThat(yaml).containsPattern("['\"]\\[personalInformation.confirmation.afterLabel\\]['\"]:");
+        assertThat(yaml).containsPattern("['\"]\\[personalInformation.confirmation.securityVerification.label\\]['\"]:");
+        assertThat(yaml).containsPattern("['\"]\\[personalInformation.confirmation.securityVerification.instruction\\]['\"]:");
 
         assertThat(yaml).contains("titleCode: personalInformation.confirmation.title");
         assertThat(yaml).contains("reviewMessageCode: personalInformation.confirmation.reviewMessage");
