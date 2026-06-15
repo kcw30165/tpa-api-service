@@ -312,8 +312,20 @@ class ContributionControllerTest {
                                 .exchange()
                                 .expectStatus().isBadRequest()
                                 .expectBody()
-                                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.CONTRIBUTION_REQUEST_INVALID)
-                                .jsonPath("$.message").isEqualTo("Invalid contribution request.");
+                                .jsonPath("$.success").isEqualTo(false)
+                                .jsonPath("$.status").isEqualTo("VALIDATION_FAILED")
+                                .jsonPath("$.result").doesNotExist()
+                                .jsonPath("$.messages").isArray()
+                                .jsonPath("$.messages.length()").isEqualTo(0)
+                                .jsonPath("$.errors").isArray()
+                                .jsonPath("$.errors.length()").isEqualTo(1)
+                                .jsonPath("$.errors[0].type").isEqualTo("FORM")
+                                .jsonPath("$.errors[0].code").isEqualTo(ErrorCodes.CONTRIBUTION_REQUEST_INVALID)
+                                .jsonPath("$.errors[0].message").isEqualTo("Invalid contribution request.")
+                                .jsonPath("$.errors[0].targets").isArray()
+                                .jsonPath("$.errors[0].targets.length()").isEqualTo(0)
+                                .jsonPath("$.errors[0].severity").isEqualTo("ERROR")
+                                .jsonPath("$.errors[0].source").isEqualTo("SERVER");
         }
 
         @Test
@@ -331,8 +343,20 @@ class ContributionControllerTest {
                                 .exchange()
                                 .expectStatus().isBadRequest()
                                 .expectBody()
-                                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.CONTRIBUTION_REQUEST_INVALID)
-                                .jsonPath("$.message").isEqualTo("Invalid contribution request.");
+                                .jsonPath("$.success").isEqualTo(false)
+                                .jsonPath("$.status").isEqualTo("VALIDATION_FAILED")
+                                .jsonPath("$.result").doesNotExist()
+                                .jsonPath("$.messages").isArray()
+                                .jsonPath("$.messages.length()").isEqualTo(0)
+                                .jsonPath("$.errors").isArray()
+                                .jsonPath("$.errors.length()").isEqualTo(1)
+                                .jsonPath("$.errors[0].type").isEqualTo("FORM")
+                                .jsonPath("$.errors[0].code").isEqualTo(ErrorCodes.CONTRIBUTION_REQUEST_INVALID)
+                                .jsonPath("$.errors[0].message").isEqualTo("Invalid contribution request.")
+                                .jsonPath("$.errors[0].targets").isArray()
+                                .jsonPath("$.errors[0].targets.length()").isEqualTo(0)
+                                .jsonPath("$.errors[0].severity").isEqualTo("ERROR")
+                                .jsonPath("$.errors[0].source").isEqualTo("SERVER");
         }
 
         @Test
@@ -351,8 +375,20 @@ class ContributionControllerTest {
                                 .exchange()
                                 .expectStatus().isBadRequest()
                                 .expectBody()
-                                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.CONTRIBUTION_REQUEST_INVALID)
-                                .jsonPath("$.message").isEqualTo("Invalid contribution request.");
+                                .jsonPath("$.success").isEqualTo(false)
+                                .jsonPath("$.status").isEqualTo("VALIDATION_FAILED")
+                                .jsonPath("$.result").doesNotExist()
+                                .jsonPath("$.messages").isArray()
+                                .jsonPath("$.messages.length()").isEqualTo(0)
+                                .jsonPath("$.errors").isArray()
+                                .jsonPath("$.errors.length()").isEqualTo(1)
+                                .jsonPath("$.errors[0].type").isEqualTo("FORM")
+                                .jsonPath("$.errors[0].code").isEqualTo(ErrorCodes.CONTRIBUTION_REQUEST_INVALID)
+                                .jsonPath("$.errors[0].message").isEqualTo("Invalid contribution request.")
+                                .jsonPath("$.errors[0].targets").isArray()
+                                .jsonPath("$.errors[0].targets.length()").isEqualTo(0)
+                                .jsonPath("$.errors[0].severity").isEqualTo("ERROR")
+                                .jsonPath("$.errors[0].source").isEqualTo("SERVER");
         }
 
         @Test
@@ -533,6 +569,45 @@ class ContributionControllerTest {
                                                 "Total Contributions",
                                                 "Company",
                                                 "Member"));
+        }
+
+
+        @Test
+        void returnsDownstreamErrorEnvelopeWhenApimResponsePayloadIsInvalid() {
+                GetContributionSummaryUseCase getUseCase = command -> Mono.error(
+                                new ApimException(
+                                                HttpStatus.BAD_GATEWAY,
+                                                ErrorCodes.APIM_RESPONSE_INVALID,
+                                                "APIM response payload is invalid: response.data is required when err-message is empty."));
+
+                webClient(getUseCase, unusedExportUseCase())
+                                .get()
+                                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions")
+                                                .queryParam("fromDate", "01/01/2024")
+                                                .queryParam("toDate", "31/03/2026")
+                                                .build())
+                                .header("X-Request-Id", "client-request-uuid")
+                                .header("Accept-Language", "en")
+                                .exchange()
+                                .expectStatus().isEqualTo(HttpStatus.BAD_GATEWAY)
+                                .expectHeader().valueEquals("X-Request-Id", "client-request-uuid")
+                                .expectBody()
+                                .jsonPath("$.success").isEqualTo(false)
+                                .jsonPath("$.status").isEqualTo("DOWNSTREAM_ERROR")
+                                .jsonPath("$.result").doesNotExist()
+                                .jsonPath("$.messages").isArray()
+                                .jsonPath("$.messages.length()").isEqualTo(0)
+                                .jsonPath("$.errors").isArray()
+                                .jsonPath("$.errors.length()").isEqualTo(1)
+                                .jsonPath("$.errors[0].type").isEqualTo("DOWNSTREAM_SYSTEM")
+                                .jsonPath("$.errors[0].code").isEqualTo(ErrorCodes.APIM_RESPONSE_INVALID)
+                                .jsonPath("$.errors[0].message").exists()
+                                .jsonPath("$.errors[0].targets").isArray()
+                                .jsonPath("$.errors[0].targets.length()").isEqualTo(0)
+                                .jsonPath("$.errors[0].severity").isEqualTo("ERROR")
+                                .jsonPath("$.errors[0].source").isEqualTo("SERVER")
+                                .jsonPath("$.errorCode").doesNotExist()
+                                .jsonPath("$.requestId").doesNotExist();
         }
 
         private WebTestClient webClient(

@@ -47,6 +47,29 @@ class PersonalInformationUpdateErrorMapperTest {
         assertThat(errors.get(0).targets()).containsExactly("residentialAddressLine1", "residentialAddressLine2");
     }
 
+
+    @Test
+    void mapsApimValidationFailuresWithErrorSeverityAndServerSource() {
+        PersonalInformationUpdateErrorMapper mapper = new PersonalInformationUpdateErrorMapper(properties());
+
+        List<ApiError> errors = mapper.toApiErrors(List.of(
+                new UpdatePersonalInformationError("FIELD", List.of("email"), "INVALID_FORMAT"),
+                new UpdatePersonalInformationError(
+                        "CROSS_FIELD",
+                        List.of("addr1", "addr2"),
+                        "AT_LEAST_ONE_REQUIRED")));
+
+        assertThat(errors).hasSize(2);
+        assertThat(errors.get(0).type()).isEqualTo("FIELD");
+        assertThat(errors.get(0).severity()).isEqualTo("ERROR");
+        assertThat(errors.get(0).source()).isEqualTo("SERVER");
+        assertThat(errors.get(0).targets()).containsExactly("emailAddress");
+        assertThat(errors.get(1).type()).isEqualTo("CROSS_FIELD");
+        assertThat(errors.get(1).severity()).isEqualTo("ERROR");
+        assertThat(errors.get(1).source()).isEqualTo("SERVER");
+        assertThat(errors.get(1).targets()).containsExactly("residentialAddressLine1", "residentialAddressLine2");
+    }
+
     private BffPagesProperties properties() {
         FieldProperties email = field("emailAddress", "email", validations(
                 validation("required", "personalInformation.email.required", "Please provide a valid email address."),

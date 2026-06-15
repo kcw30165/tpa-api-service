@@ -120,7 +120,7 @@ class ApimReferenceDataCountriesAdapterTest {
                 () -> ReflectionTestUtils.invokeMethod(adapter, "toCountryItems", topLevelErrorEnvelope));
 
         assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, missingPayload.getErrorCode());
-        assertEquals("APIM response payload is missing.", missingPayload.getMessage());
+        assertEquals("APIM response payload is invalid: response is missing.", missingPayload.getMessage());
 
         assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, topLevelError.getErrorCode());
         assertEquals("APIM failed", topLevelError.getMessage());
@@ -129,6 +129,7 @@ class ApimReferenceDataCountriesAdapterTest {
     private static ApimResponseEnvelope<GetCountryListDataItem> sampleEnvelope() {
         return ApimResponseEnvelope.<GetCountryListDataItem>builder()
                 .response(ApimResponseBody.<GetCountryListDataItem>builder()
+                        .errMessage("")
                         .data(List.of(
                                 GetCountryListDataItem.builder()
                                         .countryCode("HKG")

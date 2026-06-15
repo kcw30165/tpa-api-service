@@ -61,7 +61,7 @@ public class NotificationController {
     @PatchMapping(
             value = "/notifications",
             consumes = MediaType.APPLICATION_JSON_VALUE,
-            produces = MediaType.APPLICATION_JSON_VALUE)
+            produces = MediaType.APPLICATION_JSON_VALUE)    
     public Mono<MutationResponse<UpdateNotificationsReadStatusResponse>> updateNotificationsReadStatus(
             @Valid @RequestBody UpdateNotificationsReadStatusRequest request) {
         return Mono.deferContextual(contextView -> updateNotificationsReadStatusUseCase

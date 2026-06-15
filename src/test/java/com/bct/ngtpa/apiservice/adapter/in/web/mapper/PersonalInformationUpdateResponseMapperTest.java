@@ -34,6 +34,27 @@ class PersonalInformationUpdateResponseMapperTest {
         assertThat(response.errors()).isEmpty();
     }
 
+
+    @Test
+    void mapsSuccessfulUpdateResultFieldsIntoEndpointResultOnly() {
+        PersonalInformationUpdateErrorMapper errorMapper = mock(PersonalInformationUpdateErrorMapper.class);
+        PersonalInformationUpdateResponseMapper mapper = new PersonalInformationUpdateResponseMapper(errorMapper);
+
+        MutationResponse<PersonalInformationUpdateResultResponse> response = mapper.toResponse(
+                new UpdatePersonalInformationResult(true, "260001999", "2026-06-13", "18:45:12"));
+
+        assertThat(response.success()).isTrue();
+        assertThat(response.status()).isEqualTo(ApiStatus.UPDATED);
+        assertThat(response.result().refNo()).isEqualTo("260001999");
+        assertThat(response.result().submitDate()).isEqualTo("2026-06-13");
+        assertThat(response.result().submitTime()).isEqualTo("18:45:12");
+        assertThat(response.errors()).isEmpty();
+        assertThat(response.messages()).hasSize(1);
+        assertThat(PersonalInformationUpdateResultResponse.class.getRecordComponents())
+                .extracting(java.lang.reflect.RecordComponent::getName)
+                .containsExactly("refNo", "submitDate", "submitTime");
+    }
+
     @Test
     void mapsApimValidationFailureToMutationValidationFailedResponse() {
         PersonalInformationUpdateErrorMapper errorMapper = mock(PersonalInformationUpdateErrorMapper.class);
@@ -59,6 +80,44 @@ class PersonalInformationUpdateResponseMapperTest {
         assertThat(response.result()).isNull();
         assertThat(response.messages()).isEmpty();
         assertThat(response.errors()).containsExactly(apiError);
+    }
+
+
+    @Test
+    void mapsMultipleApimValidationFailuresToBlockingMutationErrors() {
+        PersonalInformationUpdateErrorMapper errorMapper = mock(PersonalInformationUpdateErrorMapper.class);
+        var requiredEmail = new UpdatePersonalInformationError("FIELD", List.of("email"), "REQUIRED");
+        var addressRequired = new UpdatePersonalInformationError(
+                "CROSS_FIELD",
+                List.of("addr1", "addr2"),
+                "AT_LEAST_ONE_REQUIRED");
+        var apiErrors = List.of(
+                ApiError.field(
+                        "personalInformation.email.required",
+                        "Please provide a valid email address.",
+                        List.of("emailAddress"),
+                        "SERVER"),
+                ApiError.crossField(
+                        "personalInformation.address.atLeastOneRequired",
+                        "Please provide at least one address line.",
+                        List.of("residentialAddressLine1", "residentialAddressLine2"),
+                        "SERVER"));
+        when(errorMapper.toApiErrors(List.of(requiredEmail, addressRequired))).thenReturn(apiErrors);
+        PersonalInformationUpdateResponseMapper mapper = new PersonalInformationUpdateResponseMapper(errorMapper);
+
+        MutationResponse<PersonalInformationUpdateResultResponse> response = mapper.toResponse(
+                new UpdatePersonalInformationResult(
+                        false,
+                        null,
+                        null,
+                        null,
+                        List.of(requiredEmail, addressRequired)));
+
+        assertThat(response.success()).isFalse();
+        assertThat(response.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
+        assertThat(response.result()).isNull();
+        assertThat(response.messages()).isEmpty();
+        assertThat(response.errors()).containsExactlyElementsOf(apiErrors);
     }
 
     @Test

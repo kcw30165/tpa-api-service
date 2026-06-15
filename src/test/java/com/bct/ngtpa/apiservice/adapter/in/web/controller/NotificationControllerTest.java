@@ -19,8 +19,6 @@ import com.bct.ngtpa.apiservice.domain.model.MessageType;
 import com.bct.ngtpa.apiservice.domain.model.NoticeMessage;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
-import com.bct.ngtpa.apiservice.adapter.in.web.controller.ApiExceptionHandler;
-import com.bct.ngtpa.apiservice.adapter.in.web.controller.NotificationController;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingWebFilter;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
@@ -185,12 +183,24 @@ class NotificationControllerTest {
                                 .exchange()
                                 .expectStatus().isBadRequest()
                                 .expectBody()
-                                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.NOTIFICATION_REQUEST_INVALID)
-                                .jsonPath("$.message").isEqualTo("Invalid notification request.");
+                                .jsonPath("$.success").isEqualTo(false)
+                                .jsonPath("$.status").isEqualTo("VALIDATION_FAILED")
+                                .jsonPath("$.result").doesNotExist()
+                                .jsonPath("$.messages").isArray()
+                                .jsonPath("$.messages.length()").isEqualTo(0)
+                                .jsonPath("$.errors").isArray()
+                                .jsonPath("$.errors.length()").isEqualTo(1)
+                                .jsonPath("$.errors[0].type").isEqualTo("FORM")
+                                .jsonPath("$.errors[0].code").isEqualTo(ErrorCodes.NOTIFICATION_REQUEST_INVALID)
+                                .jsonPath("$.errors[0].message").isEqualTo("Invalid notification request.")
+                                .jsonPath("$.errors[0].targets").isArray()
+                                .jsonPath("$.errors[0].targets.length()").isEqualTo(0)
+                                .jsonPath("$.errors[0].severity").isEqualTo("ERROR")
+                                .jsonPath("$.errors[0].source").isEqualTo("SERVER");
         }
 
         @Test
-        void errorResponsesIncludeGeneratedRequestIdHeaderAndKeepBodyHeaderOnly() throws Exception {
+        void errorResponsesIncludeGeneratedRequestIdHeaderAndMutationFailureEnvelope() throws Exception {
                 GetNotificationsUseCase useCase = command -> Mono.error(
                                 new InvalidNotificationRequestException("Invalid timezone: Mars/Olympus"));
 
@@ -204,13 +214,25 @@ class NotificationControllerTest {
                                 .expectHeader().valueMatches("X-Request-Id",
                                                 "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
                                 .expectBody()
-                                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.NOTIFICATION_REQUEST_INVALID)
-                                .jsonPath("$.message").isEqualTo("Invalid notification request.")
+                                .jsonPath("$.success").isEqualTo(false)
+                                .jsonPath("$.status").isEqualTo("VALIDATION_FAILED")
+                                .jsonPath("$.result").doesNotExist()
+                                .jsonPath("$.messages").isArray()
+                                .jsonPath("$.messages.length()").isEqualTo(0)
+                                .jsonPath("$.errors").isArray()
+                                .jsonPath("$.errors.length()").isEqualTo(1)
+                                .jsonPath("$.errors[0].type").isEqualTo("FORM")
+                                .jsonPath("$.errors[0].code").isEqualTo(ErrorCodes.NOTIFICATION_REQUEST_INVALID)
+                                .jsonPath("$.errors[0].message").isEqualTo("Invalid notification request.")
+                                .jsonPath("$.errors[0].targets").isArray()
+                                .jsonPath("$.errors[0].targets.length()").isEqualTo(0)
+                                .jsonPath("$.errors[0].severity").isEqualTo("ERROR")
+                                .jsonPath("$.errors[0].source").isEqualTo("SERVER")
                                 .jsonPath("$.requestId").doesNotExist()
                                 .consumeWith(result -> {
                                         try {
                                                 var body = new ObjectMapper().readTree(result.getResponseBody());
-                                                assertEquals(2, body.size());
+                                                assertEquals(5, body.size());
                                         } catch (Exception exception) {
                                                 throw new AssertionError(exception);
                                         }
@@ -346,8 +368,21 @@ class NotificationControllerTest {
                                 .exchange()
                                 .expectStatus().isBadRequest()
                                 .expectBody()
-                                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.REQUEST_VALIDATION_FAILED)
-                                .jsonPath("$.message").isEqualTo("Invalid request payload.");
+                                .jsonPath("$.success").isEqualTo(false)
+                                .jsonPath("$.status").isEqualTo("VALIDATION_FAILED")
+                                .jsonPath("$.result").doesNotExist()
+                                .jsonPath("$.messages").isArray()
+                                .jsonPath("$.messages.length()").isEqualTo(0)
+                                .jsonPath("$.errors").isArray()
+                                .jsonPath("$.errors.length()").isEqualTo(1)
+                                .jsonPath("$.errors[0].type").isEqualTo("FIELD")
+                                .jsonPath("$.errors[0].code").isEqualTo(ErrorCodes.REQUEST_VALIDATION_FAILED)
+                                .jsonPath("$.errors[0].message").isEqualTo("Invalid request payload.")
+                                .jsonPath("$.errors[0].targets[0]")
+                                .value(value -> assertEquals("notificationId",
+                                                String.valueOf(value).replace("[0]", "")))
+                                .jsonPath("$.errors[0].severity").isEqualTo("ERROR")
+                                .jsonPath("$.errors[0].source").isEqualTo("SERVER");
         }
 
         private WebTestClient webClient(

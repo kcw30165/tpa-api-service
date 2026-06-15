@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 class GenericResponseTest {
 
     @Test
-    void apiErrorConstructorDefaultsTargetsAndSeverityAndPreservesCustomSeverity() {
+    void apiErrorConstructorDefaultsTargetsAndNormalizesSeverity() {
         ApiError defaulted = new ApiError("FIELD", "code", "message", null, null, "SERVER");
         assertEquals(List.of(), defaulted.targets());
         assertEquals("ERROR", defaulted.severity());
@@ -23,7 +23,10 @@ class GenericResponseTest {
         assertEquals(List.of("emailAddress"), blankSeverity.targets());
         assertEquals("ERROR", blankSeverity.severity());
 
-        ApiError warning = new ApiError("FIELD", "code", "message", List.of("emailAddress"), "WARNING", "SERVER");
+        ApiError lowerSeverity = new ApiError("FIELD", "code", "message", List.of("emailAddress"), " error ", "SERVER");
+        assertEquals("ERROR", lowerSeverity.severity());
+
+        ApiError warning = new ApiError("FIELD", "code", "message", List.of("emailAddress"), "warning", "SERVER");
         assertEquals("WARNING", warning.severity());
     }
 

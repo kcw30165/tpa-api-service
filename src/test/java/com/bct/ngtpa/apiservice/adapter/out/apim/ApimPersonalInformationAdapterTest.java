@@ -36,6 +36,7 @@ class ApimPersonalInformationAdapterTest {
 
         ApimResponseEnvelope<GetMemberInfoDataItem> envelope = ApimResponseEnvelope.<GetMemberInfoDataItem>builder()
                 .response(com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody.<GetMemberInfoDataItem>builder()
+                        .errMessage("")
                         .data(List.of(dataItem))
                         .build())
                 .build();
@@ -71,6 +72,7 @@ class ApimPersonalInformationAdapterTest {
 
         ApimResponseEnvelope<GetMemberInfoDataItem> envelope = ApimResponseEnvelope.<GetMemberInfoDataItem>builder()
                 .response(com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody.<GetMemberInfoDataItem>builder()
+                        .errMessage("")
                         .data(List.of(dataItem))
                         .build())
                 .build();

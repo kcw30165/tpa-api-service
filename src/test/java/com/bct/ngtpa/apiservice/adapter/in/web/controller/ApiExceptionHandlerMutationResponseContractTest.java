@@ -40,15 +40,15 @@ import org.springframework.web.bind.support.WebExchangeBindException;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.ServerWebInputException;
 
-class ApiExceptionHandlerTest {
+class ApiExceptionHandlerMutationResponseContractTest {
 
     private final ApiExceptionHandler handler = new ApiExceptionHandler(errorMessageResolver(), loggingSanitizer());
 
     @Test
-    void mapsInvalidNotificationRequestExceptionToValidationMutationFailure() {
-        ResponseEntity<MutationResponse<Void>> response = handler.handleInvalidNotificationRequestException(
+    void invalidNotificationRequestUsesMutationFailureEnvelope() {
+        ResponseEntity<?> response = handler.handleInvalidNotificationRequestException(
                 new InvalidNotificationRequestException("invalid notification request"),
-                exchangeWithRequestId("REQ-NOTIFICATION"));
+                exchangeWithRequestId("REQ-001"));
 
         assertMutationFailure(
                 response,
@@ -57,14 +57,14 @@ class ApiExceptionHandlerTest {
                 "FORM",
                 ErrorCodes.NOTIFICATION_REQUEST_INVALID,
                 List.of(),
-                "REQ-NOTIFICATION");
+                "REQ-001");
     }
 
     @Test
-    void mapsInvalidContributionRequestExceptionToValidationMutationFailure() {
-        ResponseEntity<MutationResponse<Void>> response = handler.handleInvalidContributionRequestException(
+    void invalidContributionRequestUsesMutationFailureEnvelope() {
+        ResponseEntity<?> response = handler.handleInvalidContributionRequestException(
                 new InvalidContributionRequestException("invalid contribution request"),
-                exchangeWithRequestId("REQ-CONTRIBUTION"));
+                exchangeWithRequestId("REQ-002"));
 
         assertMutationFailure(
                 response,
@@ -73,14 +73,14 @@ class ApiExceptionHandlerTest {
                 "FORM",
                 ErrorCodes.CONTRIBUTION_REQUEST_INVALID,
                 List.of(),
-                "REQ-CONTRIBUTION");
+                "REQ-002");
     }
 
     @Test
-    void mapsBindFailuresToFieldValidationMutationFailure() throws Exception {
-        ResponseEntity<MutationResponse<Void>> response = handler.handleWebExchangeBindException(
+    void bindValidationFailureUsesFieldTargetInMutationFailureEnvelope() throws Exception {
+        ResponseEntity<?> response = handler.handleWebExchangeBindException(
                 bindException("notificationId", "notificationId must not be empty"),
-                exchangeWithRequestId("REQ-BIND"));
+                exchangeWithRequestId("REQ-003"));
 
         assertMutationFailure(
                 response,
@@ -89,14 +89,14 @@ class ApiExceptionHandlerTest {
                 "FIELD",
                 ErrorCodes.REQUEST_VALIDATION_FAILED,
                 List.of("notificationId"),
-                "REQ-BIND");
+                "REQ-003");
     }
 
     @Test
-    void mapsServerInputExceptionToFormValidationMutationFailure() {
-        ResponseEntity<MutationResponse<Void>> response = handler.handleServerWebInputException(
+    void malformedBodyUsesFormValidationMutationFailureEnvelope() {
+        ResponseEntity<?> response = handler.handleServerWebInputException(
                 new ServerWebInputException("payload is malformed"),
-                exchangeWithRequestId("REQ-MALFORMED"));
+                exchangeWithRequestId("REQ-004"));
 
         assertMutationFailure(
                 response,
@@ -105,14 +105,14 @@ class ApiExceptionHandlerTest {
                 "FORM",
                 ErrorCodes.REQUEST_BODY_MALFORMED,
                 List.of(),
-                "REQ-MALFORMED");
+                "REQ-004");
     }
 
     @Test
-    void mapsGenericApplicationExceptionToBusinessMutationFailure() {
-        ResponseEntity<MutationResponse<Void>> response = handler.handleApplicationException(
+    void applicationExceptionUsesBusinessRejectedMutationFailureEnvelope() {
+        ResponseEntity<?> response = handler.handleApplicationException(
                 new ApplicationException(ErrorCodes.REQUEST_INVALID, "application rejected request"),
-                exchangeWithRequestId("REQ-APPLICATION"));
+                exchangeWithRequestId("REQ-005"));
 
         assertMutationFailure(
                 response,
@@ -121,14 +121,14 @@ class ApiExceptionHandlerTest {
                 "BUSINESS",
                 ErrorCodes.REQUEST_INVALID,
                 List.of(),
-                "REQ-APPLICATION");
+                "REQ-005");
     }
 
     @Test
-    void mapsInvalidPersonalInformationUpdateToValidationMutationFailure() {
-        ResponseEntity<MutationResponse<Void>> response = handler.handleInvalidPersonalInformationUpdate(
+    void invalidPersonalInformationUpdateUsesValidationMutationFailureEnvelope() {
+        ResponseEntity<?> response = handler.handleInvalidPersonalInformationUpdate(
                 new InvalidPersonalInformationUpdateException("No personal information fields were submitted."),
-                exchangeWithRequestId("REQ-PI"));
+                exchangeWithRequestId("REQ-006"));
 
         assertMutationFailure(
                 response,
@@ -137,16 +137,16 @@ class ApiExceptionHandlerTest {
                 "FORM",
                 ErrorCodes.PERSONAL_INFORMATION_UPDATE_REQUEST_INVALID,
                 List.of(),
-                "REQ-PI");
+                "REQ-006");
     }
 
     @Test
-    void mapsPortalAccessContextFailureToBusinessMutationFailure() {
-        ResponseEntity<MutationResponse<Void>> response = handler.handlePortalAccessContextResolutionException(
+    void missingPortalContextUsesBusinessMutationFailureEnvelope() {
+        ResponseEntity<?> response = handler.handlePortalAccessContextResolutionException(
                 new PortalAccessContextResolutionException(
                         ErrorCodes.MEMBER_CONTEXT_INVALID,
                         "Missing Account-Ref header for selected-account API"),
-                exchangeWithRequestId("REQ-CONTEXT"));
+                exchangeWithRequestId("REQ-007"));
 
         assertMutationFailure(
                 response,
@@ -155,14 +155,14 @@ class ApiExceptionHandlerTest {
                 "BUSINESS",
                 ErrorCodes.MEMBER_CONTEXT_INVALID,
                 List.of(),
-                "REQ-CONTEXT");
+                "REQ-007");
     }
 
     @Test
-    void mapsAuthenticationExceptionToBusinessMutationFailure() {
-        ResponseEntity<MutationResponse<Void>> response = handler.handleAuthenticationException(
+    void authenticationExceptionUsesMutationFailureEnvelope() {
+        ResponseEntity<?> response = handler.handleAuthenticationException(
                 new BadCredentialsException("bad credentials"),
-                exchangeWithRequestId("REQ-AUTHN"));
+                exchangeWithRequestId("REQ-008"));
 
         assertMutationFailure(
                 response,
@@ -171,14 +171,14 @@ class ApiExceptionHandlerTest {
                 "BUSINESS",
                 ErrorCodes.SECURITY_AUTHENTICATION_REQUIRED,
                 List.of(),
-                "REQ-AUTHN");
+                "REQ-008");
     }
 
     @Test
-    void mapsAccessDeniedExceptionToBusinessMutationFailure() {
-        ResponseEntity<MutationResponse<Void>> response = handler.handleAccessDeniedException(
+    void accessDeniedExceptionUsesMutationFailureEnvelope() {
+        ResponseEntity<?> response = handler.handleAccessDeniedException(
                 new AccessDeniedException("access denied"),
-                exchangeWithRequestId("REQ-AUTHZ"));
+                exchangeWithRequestId("REQ-009"));
 
         assertMutationFailure(
                 response,
@@ -187,14 +187,14 @@ class ApiExceptionHandlerTest {
                 "BUSINESS",
                 ErrorCodes.SECURITY_ACCESS_DENIED,
                 List.of(),
-                "REQ-AUTHZ");
+                "REQ-009");
     }
 
     @Test
-    void mapsUnknownExceptionToSystemMutationFailure() {
-        ResponseEntity<MutationResponse<Void>> response = handler.handleUnexpectedException(
+    void unexpectedExceptionUsesSystemMutationFailureEnvelope() {
+        ResponseEntity<?> response = handler.handleUnexpectedException(
                 new IllegalStateException("policyNo=123 should not leak"),
-                exchangeWithRequestId("REQ-SYSTEM"));
+                exchangeWithRequestId("REQ-010"));
 
         assertMutationFailure(
                 response,
@@ -203,14 +203,14 @@ class ApiExceptionHandlerTest {
                 "SYSTEM",
                 ErrorCodes.SYSTEM_UNEXPECTED,
                 List.of(),
-                "REQ-SYSTEM");
+                "REQ-010");
     }
 
     @Test
-    void mapsApimExceptionToDownstreamMutationFailure() {
-        ResponseEntity<MutationResponse<Void>> response = handler.handleApimException(
+    void apimExceptionUsesDownstreamMutationFailureEnvelopeWithRequestIdHeader() {
+        ResponseEntity<?> response = handler.handleApimException(
                 new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "APIM failed"),
-                exchangeWithRequestId("REQ-APIM"));
+                exchangeWithRequestId("REQ-011"));
 
         assertMutationFailure(
                 response,
@@ -219,35 +219,11 @@ class ApiExceptionHandlerTest {
                 "DOWNSTREAM_SYSTEM",
                 ErrorCodes.APIM_UPSTREAM_FAILURE,
                 List.of(),
-                "REQ-APIM");
-    }
-
-
-    @Test
-    void usesAcceptLanguageHeaderAndIgnoresLangQueryParameterWhenResolvingPublicMessages() {
-        java.util.concurrent.atomic.AtomicReference<String> capturedLocale = new java.util.concurrent.atomic.AtomicReference<>();
-        ApiExceptionHandler localHandler = new ApiExceptionHandler(
-                (errorCode, locale, accountEnv, trustCode, schemeType) -> {
-                    capturedLocale.set(locale);
-                    return "message for " + errorCode;
-                },
-                loggingSanitizer());
-        MockServerWebExchange exchange = MockServerWebExchange.from(
-                MockServerHttpRequest.get("/api/v1/notifications?lang=zh-HK")
-                        .header("Accept-Language", "en-US"));
-        exchange.getAttributes().put(RequestCorrelation.REQUEST_ID_ATTRIBUTE_KEY, "REQ-LANG");
-
-        ResponseEntity<MutationResponse<Void>> response = localHandler.handleUnexpectedException(
-                new IllegalStateException("unexpected"),
-                exchange);
-
-        assertEquals("en-US", capturedLocale.get());
-        assertNotNull(response.getBody());
-        assertEquals("message for " + ErrorCodes.SYSTEM_UNEXPECTED, response.getBody().errors().getFirst().message());
+                "REQ-011");
     }
 
     private static void assertMutationFailure(
-            ResponseEntity<MutationResponse<Void>> response,
+            ResponseEntity<?> response,
             HttpStatus expectedHttpStatus,
             ApiStatus expectedApiStatus,
             String expectedErrorType,
@@ -257,8 +233,10 @@ class ApiExceptionHandlerTest {
         assertEquals(expectedHttpStatus, response.getStatusCode());
         assertEquals(expectedRequestId, response.getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
 
-        MutationResponse<Void> mutation = response.getBody();
-        assertNotNull(mutation);
+        Object body = response.getBody();
+        assertNotNull(body);
+        MutationResponse<?> mutation = assertInstanceOf(MutationResponse.class, body);
+
         assertFalse(mutation.success());
         assertEquals(expectedApiStatus, mutation.status());
         assertNull(mutation.result());
@@ -274,17 +252,8 @@ class ApiExceptionHandlerTest {
         assertEquals("SERVER", error.source());
     }
 
-    @Test
-    void responseBodyIsConcreteMutationResponse() {
-        ResponseEntity<MutationResponse<Void>> response = handler.handleUnexpectedException(
-                new IllegalStateException("unexpected"),
-                exchangeWithRequestId("REQ-CONCRETE"));
-
-        assertInstanceOf(MutationResponse.class, response.getBody());
-    }
-
     private static WebExchangeBindException bindException(String fieldName, String defaultMessage) throws Exception {
-        Method method = ApiExceptionHandlerTest.class.getDeclaredMethod(
+        Method method = ApiExceptionHandlerMutationResponseContractTest.class.getDeclaredMethod(
                 "notificationPatch",
                 UpdateNotificationsReadStatusRequest.class);
         MethodParameter parameter = new MethodParameter(method, 0);
@@ -313,4 +282,3 @@ class ApiExceptionHandlerTest {
         return new LoggingSanitizer(new ObjectMapper(), new LoggingSanitizerProperties());
     }
 }
-

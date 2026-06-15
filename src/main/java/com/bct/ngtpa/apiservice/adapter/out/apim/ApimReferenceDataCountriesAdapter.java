@@ -50,20 +50,12 @@ public class ApimReferenceDataCountriesAdapter implements ApimReferenceDataCount
     }
 
     private List<ReferenceDataCountryItem> toCountryItems(ApimResponseEnvelope<GetCountryListDataItem> response) {
-        var payload = response != null ? response.getResponse() : null;
-        if (payload == null) {
-            throw new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID,
-                    "APIM response payload is missing.");
-        }
-        if (StringUtils.hasText(payload.getErrMessage())) {
-            throw new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID,
-                    payload.getErrMessage());
-        }
-        if (CollectionUtils.isEmpty(payload.getData())) {
+        var dataItems = ApimResponseValidator.requireSuccessData(response);
+        if (dataItems.isEmpty()) {
             return List.of();
         }
 
-        return payload.getData().stream()
+        return dataItems.stream()
                 .filter(Objects::nonNull)
                 .map(item -> new ReferenceDataCountryItem(
                         item.getCountryCode(),

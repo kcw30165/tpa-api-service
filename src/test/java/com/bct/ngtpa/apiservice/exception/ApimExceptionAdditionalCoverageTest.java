@@ -18,7 +18,7 @@ class ApimExceptionAdditionalCoverageTest {
                 new ApimException(HttpStatus.SERVICE_UNAVAILABLE, "unavailable").getErrorCode());
         assertEquals(ErrorCodes.APIM_TIMEOUT,
                 new ApimException(HttpStatus.GATEWAY_TIMEOUT, "timeout").getErrorCode());
-        assertEquals(ErrorCodes.SYSTEM_UNEXPECTED,
+        assertEquals(ErrorCodes.APIM_UNEXPECTED,
                 new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, "internal").getErrorCode());
     }
 

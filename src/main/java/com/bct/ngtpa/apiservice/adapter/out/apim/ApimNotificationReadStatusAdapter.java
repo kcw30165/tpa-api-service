@@ -77,17 +77,7 @@ public class ApimNotificationReadStatusAdapter implements ApimNotificationReadSt
     private UpdateNotificationsReadStatusResult toResult(
             ApimResponseEnvelope<UpdateNotificationReadStatusApimDataItem> response,
             MessageStatus targetStatus) {
-        var payload = response != null ? response.getResponse() : null;
-        if (payload == null) {
-            throw new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID,
-                    "APIM response payload is missing.");
-        }
-        if (StringUtils.hasText(payload.getErrMessage())) {
-            throw new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID,
-                    payload.getErrMessage());
-        }
-
-        var dataItems = payload.getData();
+        var dataItems = ApimResponseValidator.requireSuccessData(response);
         if (CollectionUtils.isEmpty(dataItems)) {
             return new UpdateNotificationsReadStatusResult(List.of());
         }

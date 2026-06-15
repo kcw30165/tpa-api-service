@@ -18,7 +18,6 @@ import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
-import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 
@@ -77,27 +76,19 @@ public class ApimContributionSummaryAdapter implements ApimContributionSummaryPo
 
     private ContributionSummaryDataset toContributionSummaryDataset(
             ApimResponseEnvelope<GetContributionSummaryDataItem> response) {
-        var payload = response != null ? response.getResponse() : null;
-        if (payload == null) {
-                        throw new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID,
-                                        "APIM response payload is missing.");
-        }
-        if (StringUtils.hasText(payload.getErrMessage())) {
-                        throw new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID,
-                                        payload.getErrMessage());
-        }
-        if (CollectionUtils.isEmpty(payload.getData())) {
+        List<GetContributionSummaryDataItem> data = ApimResponseValidator.requireSuccessData(response);
+        if (data.isEmpty()) {
             return new ContributionSummaryDataset("", List.of(), List.of());
         }
 
         Map<String, ContributionSource> sources = new LinkedHashMap<>();
-        String currency = payload.getData().stream()
+        String currency = data.stream()
                 .filter(Objects::nonNull)
                 .map(GetContributionSummaryDataItem::getCurrency)
                 .filter(StringUtils::hasText)
                 .findFirst()
                 .orElse("");
-        List<ContributionEntry> entries = payload.getData().stream()
+        List<ContributionEntry> entries = data.stream()
                 .filter(Objects::nonNull)
                 .flatMap(item -> {
                     var dispSources = item.getDispSrc() == null
