@@ -63,6 +63,9 @@ bff-pages:
         "[personalInformation.email.required.message]":
           en: Please provide a valid email address.
           zh_HK: 請輸入有效電郵地址。
+        "[personalInformation.email.tooShort.message.JP]":
+          en: For JP accounts, please input an email address with more than 10 characters.
+          zh_HK: JP帳戶請輸入超過10個字元的電郵地址。
         "[personalInformation.faxNo.invalid.message]":
           en: Please input a valid Fax No.
           zh_HK: 請輸入有效傳真號碼。
@@ -195,6 +198,9 @@ bff-pages:
         "[personalInformation.mailingAddress.invalid.message]":
           en: Please input a valid correspondence address.
           zh_HK: 請輸入有效通訊地址。
+        "[personalInformation.mailingCountry.required.message]":
+          en: Please select the correspondence country/region.
+          zh_HK: 請選擇通訊地址國家／地區。
         "[personalInformation.mobilePhone.invalid.message]":
           en: Please input a valid Hong Kong Mobile Telephone Number.
           zh_HK: 請輸入有效香港手提電話號碼。
@@ -213,6 +219,9 @@ bff-pages:
         "[personalInformation.overseasPhoneNumber.requiredWhenCodePresent.message]":
           en: Please input a valid Overseas Phone Number.
           zh_HK: 請輸入有效海外電話號碼。
+        "[personalInformation.overseasPhoneExtension.invalid.message]":
+          en: Please input a valid Overseas Phone Extension.
+          zh_HK: 請輸入有效海外電話分機。
         "[personalInformation.page.title]":
           en: Personal Information
           zh_HK: 個人資料
@@ -667,7 +676,7 @@ bff-pages:
                     valueByVariant:
                       JP: 11
                     code: personalInformation.email.tooShort
-                    messageCode: personalInformation.email.tooShort.message
+                    messageCode: personalInformation.email.required.message
                     severity: error
                   - id: emailAddress.maxLength
                     type: maxLength
