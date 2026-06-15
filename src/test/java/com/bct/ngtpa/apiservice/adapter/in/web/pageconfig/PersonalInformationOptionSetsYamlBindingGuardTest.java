@@ -72,12 +72,12 @@ class PersonalInformationOptionSetsYamlBindingGuardTest {
             PageSchemaProperties page = properties.getPages().get("personalInformation");
 
             assertThat(page.getDisplay()).containsKeys(
-                    "[personalInformation.option.smsLanguage.en]",
-                    "[personalInformation.option.smsLanguage.zh_HK]");
-            assertThat(page.getDisplay().get("[personalInformation.option.smsLanguage.en]"))
+                    "personalInformation.option.smsLanguage.en",
+                    "personalInformation.option.smsLanguage.zh_HK");
+            assertThat(page.getDisplay().get("personalInformation.option.smsLanguage.en"))
                     .containsEntry("en", "English")
                     .containsEntry("zh_HK", "英文");
-            assertThat(page.getDisplay().get("[personalInformation.option.smsLanguage.zh_HK]"))
+            assertThat(page.getDisplay().get("personalInformation.option.smsLanguage.zh_HK"))
                     .containsEntry("en", "Traditional Chinese")
                     .containsEntry("zh_HK", "繁體中文");
         });
