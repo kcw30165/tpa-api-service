@@ -315,6 +315,9 @@ bff-pages:
         personalInformation.email.tooShort.message.JP:
           en: For JP accounts, please input an email address with more than 10 characters.
           zh_HK: JP帳戶請輸入超過10個字元的電郵地址。
+        personalInformation.overseasPhoneExtension.invalid.message:
+          en: Please input a valid overseas phone extension.
+          zh_HK: 請輸入有效的海外電話分機。
       form:
         id: personalInformationForm
         defaultMode: view
@@ -334,17 +337,7 @@ bff-pages:
             displayOrder: 10
             dataType: string
             controlType: text
-            maxLength: 40
             validations:
-            - type: minLength
-              value: 5
-              when:
-                fieldRequired: true
-              code: personalInformation.residentialAddress.invalid
-              messageCode: personalInformation.residentialAddress.invalid.message
-            - type: blockedAddress
-              code: personalInformation.address.poBoxBlocked
-              messageCode: personalInformation.address.poBoxBlocked.message
             - id: residentialAddressLine1.minLength
               type: minLength
               value: 5
@@ -357,6 +350,12 @@ bff-pages:
               code: personalInformation.address.poBoxBlocked
               messageCode: personalInformation.address.poBoxBlocked.message
               severity: error
+            - id: residentialAddressLine1.maxLength
+              type: maxLength
+              value: 40
+              code: personalInformation.residentialAddress.invalid
+              messageCode: personalInformation.residentialAddress.invalid.message
+              severity: error
             apimBinding:
               data: addr1
               config: addr1
@@ -366,7 +365,6 @@ bff-pages:
             displayOrder: 20
             dataType: string
             controlType: text
-            maxLength: 40
             apimBinding:
               data: addr2
               config: addr2
@@ -379,11 +377,16 @@ bff-pages:
               code: personalInformation.address.poBoxBlocked
               messageCode: personalInformation.address.poBoxBlocked.message
               severity: error
+            - id: residentialAddressLine2.maxLength
+              type: maxLength
+              value: 40
+              code: personalInformation.residentialAddress.invalid
+              messageCode: personalInformation.residentialAddress.invalid.message
+              severity: error
           - id: residentialAddressLine3
             displayOrder: 30
             dataType: string
             controlType: text
-            maxLength: 40
             apimBinding:
               data: addr3
               config: addr3
@@ -395,6 +398,12 @@ bff-pages:
               value: PO Box~|~P.O. Box~|~P O Box~|~P.O Box~|~Post Office Box~|~P.O. Box~|~郵政信箱
               code: personalInformation.address.poBoxBlocked
               messageCode: personalInformation.address.poBoxBlocked.message
+              severity: error
+            - id: residentialAddressLine3.maxLength
+              type: maxLength
+              value: 40
+              code: personalInformation.residentialAddress.invalid
+              messageCode: personalInformation.residentialAddress.invalid.message
               severity: error
           - id: residentialCountry
             displayOrder: 40
@@ -424,18 +433,7 @@ bff-pages:
             displayOrder: 60
             dataType: string
             controlType: text
-            maxLength: 40
             validations:
-            - type: minLength
-              value: 5
-              when:
-                fieldRequired: true
-              code: personalInformation.mailingAddress.invalid
-              messageCode: personalInformation.mailingAddress.invalid.message
-            - type: blockedAddress
-              code: personalInformation.address.poBoxBlocked
-              pattern: PO Box~|~P.O. Box~|~P O Box~|~P.O Box~|~Post Office Box~|~P.O. Box~|~郵政信箱
-              messageCode: personalInformation.address.poBoxBlocked.message
             - id: mailingAddressLine1.minLength
               type: minLength
               value: 5
@@ -448,6 +446,12 @@ bff-pages:
               code: personalInformation.address.poBoxBlocked
               messageCode: personalInformation.address.poBoxBlocked.message
               severity: error
+            - id: mailingAddressLine1.maxLength
+              type: maxLength
+              value: 40
+              code: personalInformation.mailingAddress.invalid
+              messageCode: personalInformation.mailingAddress.invalid.message
+              severity: error
             apimBinding:
               data: corr-addr1
               config: corr-addr1
@@ -457,7 +461,6 @@ bff-pages:
             displayOrder: 70
             dataType: string
             controlType: text
-            maxLength: 40
             apimBinding:
               data: corr-addr2
               config: corr-addr2
@@ -470,11 +473,16 @@ bff-pages:
               code: personalInformation.address.poBoxBlocked
               messageCode: personalInformation.address.poBoxBlocked.message
               severity: error
+            - id: mailingAddressLine2.maxLength
+              type: maxLength
+              value: 40
+              code: personalInformation.mailingAddress.invalid
+              messageCode: personalInformation.mailingAddress.invalid.message
+              severity: error
           - id: mailingAddressLine3
             displayOrder: 80
             dataType: string
             controlType: text
-            maxLength: 40
             apimBinding:
               data: corr-addr3
               config: corr-addr3
@@ -486,6 +494,12 @@ bff-pages:
               value: PO Box~|~P.O. Box~|~P O Box~|~P.O Box~|~Post Office Box~|~P.O. Box~|~郵政信箱
               code: personalInformation.address.poBoxBlocked
               messageCode: personalInformation.address.poBoxBlocked.message
+              severity: error
+            - id: mailingAddressLine3.maxLength
+              type: maxLength
+              value: 40
+              code: personalInformation.mailingAddress.invalid
+              messageCode: personalInformation.mailingAddress.invalid.message
               severity: error
           - id: mailingCountry
             displayOrder: 90
@@ -505,11 +519,22 @@ bff-pages:
             displayOrder: 10
             dataType: string
             controlType: tel
-            maxLength: 8
             validations:
             - id: hongKongBusinessPhone.integer
               type: pattern
               value: ^[0-9]*$
+              code: personalInformation.businessPhone.invalid
+              messageCode: personalInformation.businessPhone.invalid.message
+              severity: error
+            - id: hongKongBusinessPhone.minLength
+              type: minLength
+              value: 8
+              code: personalInformation.businessPhone.invalid
+              messageCode: personalInformation.businessPhone.invalid.message
+              severity: error
+            - id: hongKongBusinessPhone.maxLength
+              type: maxLength
+              value: 8
               code: personalInformation.businessPhone.invalid
               messageCode: personalInformation.businessPhone.invalid.message
               severity: error
@@ -522,11 +547,16 @@ bff-pages:
             displayOrder: 20
             dataType: string
             controlType: text
-            maxLength: 4
             validations:
             - id: hongKongBusinessPhoneExtension.integer
               type: pattern
               value: ^[0-9]*$
+              code: personalInformation.businessPhoneExtension.invalid
+              messageCode: personalInformation.businessPhoneExtension.invalid.message
+              severity: error
+            - id: hongKongBusinessPhoneExtension.maxLength
+              type: maxLength
+              value: 4
               code: personalInformation.businessPhoneExtension.invalid
               messageCode: personalInformation.businessPhoneExtension.invalid.message
               severity: error
@@ -539,11 +569,22 @@ bff-pages:
             displayOrder: 30
             dataType: string
             controlType: tel
-            maxLength: 8
             validations:
             - id: homeTel.integer
               type: pattern
               value: ^[0-9]*$
+              code: personalInformation.homeTel.invalid
+              messageCode: personalInformation.homeTel.invalid.message
+              severity: error
+            - id: homeTel.minLength
+              type: minLength
+              value: 8
+              code: personalInformation.homeTel.invalid
+              messageCode: personalInformation.homeTel.invalid.message
+              severity: error
+            - id: homeTel.maxLength
+              type: maxLength
+              value: 8
               code: personalInformation.homeTel.invalid
               messageCode: personalInformation.homeTel.invalid.message
               severity: error
@@ -556,11 +597,22 @@ bff-pages:
             displayOrder: 40
             dataType: string
             controlType: tel
-            maxLength: 8
             validations:
             - id: hongKongMobilePhone.hkMobile
               type: pattern
               value: ^[4-9][0-9]*$
+              code: personalInformation.mobilePhone.invalid
+              messageCode: personalInformation.mobilePhone.invalid.message
+              severity: error
+            - id: hongKongMobilePhone.minLength
+              type: minLength
+              value: 8
+              code: personalInformation.mobilePhone.invalid
+              messageCode: personalInformation.mobilePhone.invalid.message
+              severity: error
+            - id: hongKongMobilePhone.maxLength
+              type: maxLength
+              value: 8
               code: personalInformation.mobilePhone.invalid
               messageCode: personalInformation.mobilePhone.invalid.message
               severity: error
@@ -594,10 +646,6 @@ bff-pages:
             controlType: select
             optionSource: callingCodes
             validations:
-            - type: pattern
-              value: ^[0-9]*$
-              code: personalInformation.overseasCountryCode.invalid
-              messageCode: personalInformation.overseasCountryCode.invalid.message
             - id: overseasCountryCode.integer
               type: pattern
               value: ^[0-9]*$
@@ -629,11 +677,16 @@ bff-pages:
             displayOrder: 30
             dataType: string
             controlType: tel
-            maxLength: 17
             validations:
             - id: overseasPhoneNumber.integer
               type: pattern
               value: ^[0-9]*$
+              code: personalInformation.overseasPhoneNumber.invalid
+              messageCode: personalInformation.overseasPhoneNumber.invalid.message
+              severity: error
+            - id: overseasPhoneNumber.maxLength
+              type: maxLength
+              value: 17
               code: personalInformation.overseasPhoneNumber.invalid
               messageCode: personalInformation.overseasPhoneNumber.invalid.message
               severity: error
@@ -646,12 +699,18 @@ bff-pages:
             displayOrder: 40
             dataType: string
             controlType: text
-            maxLength: 4
             apimBinding:
               data: other-phone-ext
               config: other-phone-ext
             labelCode: personalInformation.field.overseasPhoneExtension.label
             placeholderCode: personalInformation.field.overseasPhoneExtension.placeholder
+            validations:
+            - id: overseasPhoneExtension.maxLength
+              type: maxLength
+              value: 4
+              code: personalInformation.overseasPhoneExtension.invalid
+              messageCode: personalInformation.overseasPhoneExtension.invalid.message
+              severity: error
           titleCode: personalInformation.section.overseasContacts.title
         - id: electronicContacts
           fields:
@@ -659,15 +718,7 @@ bff-pages:
             displayOrder: 10
             dataType: string
             controlType: email
-            maxLength: 120
-            patter: ^[^\s@]+@[^\s@]+\.[^\s@]+$
             validations:
-            - type: required
-              code: personalInformation.email.required
-              messageCode: personalInformation.email.required.message
-            - type: email
-              code: personalInformation.email.invalid
-              messageCode: personalInformation.email.invalid.message
             - id: email.required
               type: required
               code: personalInformation.email.required
@@ -681,11 +732,17 @@ bff-pages:
               severity: error
             - id: email.minLength
               type: minLength
-              value: 1
+              value: 5
               valueByVariant:
                 JP: 11
               code: personalInformation.email.tooShort
               messageCode: personalInformation.email.tooShort.message
+              severity: error
+            - id: emailAddress.maxLength
+              type: maxLength
+              value: 120
+              code: personalInformation.email.invalid
+              messageCode: personalInformation.email.invalid.message
               severity: error
             apimBinding:
               data: email
@@ -733,13 +790,21 @@ bff-pages:
             dataType: string
             controlType: password
             required: true
-            minLength: 8
-            maxLength: 16
             validations:
-            - type: required
-            - type: minLength
-            - type: maxLength
-            - type: noSpaces
+            - id: password.required
+              type: required
+              severity: error
+            - id: password.minLength
+              type: minLength
+              value: 8
+              severity: error
+            - id: password.maxLength
+              type: maxLength
+              value: 16
+              severity: error
+            - id: password.noSpaces
+              type: noSpaces
+              severity: error
           labelCode: personalInformation.confirmation.securityVerification.label
           instructionCode: personalInformation.confirmation.securityVerification.instruction
         actions:

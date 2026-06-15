@@ -67,9 +67,10 @@ public class PersonalInformationUpdateYamlValidator {
             if (field == null || isBlank(field.getId()) || field.getValidations() == null) {
                 continue;
             }
+            boolean fieldSubmitted = submittedFields.containsKey(field.getId());
             Object value = submittedFields.get(field.getId());
             for (ValidationRuleProperties rule : field.getValidations()) {
-                validateFieldRule(errors, page, field.getId(), value, rule, language, accountEnv, trustCode, schemeType);
+                validateFieldRule(errors, page, field.getId(), fieldSubmitted, value, rule, language, accountEnv, trustCode, schemeType);
             }
         }
 
@@ -112,6 +113,7 @@ public class PersonalInformationUpdateYamlValidator {
             List<ApiError> errors,
             PageSchemaProperties page,
             String fieldId,
+            boolean fieldSubmitted,
             Object value,
             ValidationRuleProperties rule,
             String language,
@@ -122,7 +124,7 @@ public class PersonalInformationUpdateYamlValidator {
             return;
         }
         String type = rule.getType();
-        if (!"required".equals(type) && isBlankValue(value)) {
+        if (!"required".equals(type) && !fieldSubmitted) {
             return;
         }
         boolean failed = switch (type) {
