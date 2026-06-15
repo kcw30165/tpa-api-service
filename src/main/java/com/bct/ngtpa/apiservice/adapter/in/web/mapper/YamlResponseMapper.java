@@ -69,6 +69,11 @@ public class YamlResponseMapper {
                     continue;
                 }
                 Object normalizedValue = normalize(entry.getValue(), language);
+                if (("value".equals(key) || "originalValue".equals(key))
+                        && map.containsKey("dataType")) {
+                    result.put(key, normalizeFieldValueByDataType(map.get("dataType"), entry.getValue()));
+                    continue;
+                }
                 if (!isEmptyValue(normalizedValue)) {
                     result.put(key, normalizedValue);
                 }
@@ -155,11 +160,59 @@ public class YamlResponseMapper {
                 continue;
             }
             Object normalizedValue = normalizeResponseValue(entry.getValue());
+            if (("value".equals(entry.getKey()) || "originalValue".equals(entry.getKey()))
+                    && source.containsKey("dataType")) {
+                normalizedValue = normalizeFieldValueByDataType(source.get("dataType"), entry.getValue());
+                normalized.put(entry.getKey(), normalizedValue);
+                continue;
+            }
             if (normalizedValue != null) {
                 normalized.put(entry.getKey(), normalizedValue);
             }
         }
         return normalized;
+    }
+
+
+    private Object normalizeFieldValueByDataType(Object dataTypeValue, Object value) {
+        if (dataTypeValue == null) {
+            return normalizeResponseValue(value);
+        }
+        String dataType = dataTypeValue.toString();
+        if ("boolean".equalsIgnoreCase(dataType)) {
+            return normalizeBooleanFieldValue(value);
+        }
+        if ("array".equalsIgnoreCase(dataType)) {
+            return normalizeArrayFieldValue(value);
+        }
+        return normalizeResponseValue(value);
+    }
+
+    private Object normalizeBooleanFieldValue(Object value) {
+        if (value == null) {
+            return false;
+        }
+        if (value instanceof Boolean booleanValue) {
+            return booleanValue;
+        }
+        if (value instanceof String stringValue) {
+            String trimmed = stringValue.trim();
+            if (trimmed.isEmpty()) {
+                return false;
+            }
+            return Boolean.parseBoolean(trimmed);
+        }
+        return value;
+    }
+
+    private Object normalizeArrayFieldValue(Object value) {
+        if (value == null) {
+            return List.of();
+        }
+        if (value instanceof String stringValue && stringValue.trim().isEmpty()) {
+            return List.of();
+        }
+        return normalizeResponseValue(value);
     }
 
     private Object normalizeResponseValue(Object value) {
