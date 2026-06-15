@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
-import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.nio.file.Files;
@@ -15,9 +14,9 @@ import org.junit.jupiter.api.Test;
 class PersonalInformationUpdateResultArrayArchitectureGuardTest {
 
     @Test
-    void updateResponseMapperReturnsMutationResponseOfAccountResponseList() throws Exception {
+    void updateResponseMapperReturnsMutationResponseOfResultResponseList() throws Exception {
         Type returnType = PersonalInformationUpdateResponseMapper.class
-                .getMethod("toResponse", UpdatePersonalInformationResult.class)
+                .getMethod("toResponse", List.class)
                 .getGenericReturnType();
 
         assertThat(returnType).isInstanceOf(ParameterizedType.class);
@@ -32,20 +31,17 @@ class PersonalInformationUpdateResultArrayArchitectureGuardTest {
     }
 
     @Test
-    void removedWrapperResultDtoIsNotReintroducedInMainSources() throws Exception {
+    void redundantAccountDtosAreNotReintroducedInMainSources() throws Exception {
         Path sourceRoot = Path.of("src/main/java");
-
         List<Path> offenders;
         try (var stream = Files.walk(sourceRoot)) {
             offenders = stream
                     .filter(path -> path.toString().endsWith(".java"))
-                    .filter(path -> contains(path, "PersonalInformationUpdateResultResponse"))
+                    .filter(path -> contains(path, "PersonalInformationUpdateAccountResponse")
+                            || contains(path, "UpdatePersonalInformationAccountResult"))
                     .toList();
         }
-
-        assertThat(offenders)
-                .as("Personal information update result must remain the account array itself; do not reintroduce the wrapper DTO")
-                .isEmpty();
+        assertThat(offenders).isEmpty();
     }
 
     private boolean contains(Path path, String needle) {

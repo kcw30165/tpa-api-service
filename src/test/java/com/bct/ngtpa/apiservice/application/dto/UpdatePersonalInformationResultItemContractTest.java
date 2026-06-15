@@ -3,6 +3,8 @@ package com.bct.ngtpa.apiservice.application.dto;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -91,9 +93,10 @@ class UpdatePersonalInformationResultItemContractTest {
     }
 
     @Test
-    void oldNestedAccountResultDtoIsRemoved() {
-        assertThatThrownBy(() -> Class.forName(
-                "com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult"))
-                .isInstanceOf(ClassNotFoundException.class);
+    void oldNestedAccountResultDtoSourceIsRemoved() {
+        assertThat(Path.of("src/main/java/com/bct/ngtpa/apiservice/application/dto/UpdatePersonalInformationAccountResult.java"))
+                .doesNotExist();
+        assertThat(Files.exists(Path.of("src/main/java/com/bct/ngtpa/apiservice/application/dto/UpdatePersonalInformationResult.java")))
+                .isTrue();
     }
 }
