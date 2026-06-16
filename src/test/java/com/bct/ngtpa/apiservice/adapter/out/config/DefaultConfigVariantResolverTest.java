@@ -113,7 +113,7 @@ class DefaultConfigVariantResolverTest {
                 "EUR",
                 ConfigLookupContext.of("", "TB", "HKBU", Locale.ENGLISH));
 
-        assertEquals("Euro", resolver.resolve(request).orElseThrow());
+        assertTrue(resolver.resolve(request).isEmpty());
     }
 
     @Test

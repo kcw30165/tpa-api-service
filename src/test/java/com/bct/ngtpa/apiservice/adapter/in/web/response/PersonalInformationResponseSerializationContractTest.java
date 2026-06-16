@@ -131,8 +131,8 @@ class PersonalInformationResponseSerializationContractTest {
         assertThat(json.path("optionSets").path("smsLanguages").isArray()).isTrue();
         assertThat(json.path("optionSets").path("smsLanguages")).hasSize(2);
         assertThat(json.path("optionSets").path("smsLanguages").get(0).path("value").asText()).isEqualTo("en");
-        assertThat(json.path("optionSets").path("smsLanguages").get(0).path("text").asText()).isEqualTo("English");
+        assertThat(json.path("optionSets").path("smsLanguages").get(0).path("label").asText()).isEqualTo("English");
         assertThat(json.path("optionSets").path("smsLanguages").get(1).path("value").asText()).isEqualTo("zh_HK");
-        assertThat(json.path("optionSets").path("smsLanguages").get(1).path("text").asText()).isEqualTo("Traditional Chinese");
+        assertThat(json.path("optionSets").path("smsLanguages").get(1).path("label").asText()).isEqualTo("Traditional Chinese");
     }
 }

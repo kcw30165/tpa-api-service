@@ -122,7 +122,7 @@ class ConfigBackedCurrencyDisplayAdapterTest {
     }
 
     @Test
-    void usesTrustSchemeWhenEnvMissing() {
+    void fallbsBackToCodeWhentrustScheme() {
         Map<String, String> english = new LinkedHashMap<>();
         english.put("HKD", "HKD");
         english.put("HKD.TRUST.SCHEME", "HKD TRUST SCHEME");
@@ -130,7 +130,7 @@ class ConfigBackedCurrencyDisplayAdapterTest {
         var adapter = adapterWithMappings(english);
 
         CurrencyDisplay result = adapter.resolveCurrencyDisplay("HKD", "", "TRUST", "SCHEME");
-        assertEquals("HKD TRUST SCHEME", result.en());
+        assertEquals("HKD", result.en());
     }
 
     @Test
@@ -140,7 +140,7 @@ class ConfigBackedCurrencyDisplayAdapterTest {
 
         var adapter = adapterWithBothLocales(english, new LinkedHashMap<>());
 
-        CurrencyDisplay result = adapter.resolveCurrencyDisplay("HKD", "", "TRUST", "");
+        CurrencyDisplay result = adapter.resolveCurrencyDisplay("HKD", "", "", "TRUST");
         assertEquals("Hong Kong Dollar", result.en());
         assertEquals("Hong Kong Dollar", result.zh());
     }

@@ -67,8 +67,8 @@ public class ConfigBackedAmountDisplayAdapter implements AmountDisplayPort {
         return configVariantResolver.resolve(request).orElse(FALLBACK_PATTERN);
     }
 
-    String resolvePattern(String lang, String trustCode) {
-        return resolvePattern(lang, "", trustCode, "");
+    String resolvePattern(String lang, String schemeType) {
+        return resolvePattern(lang, "", "", schemeType);
     }
 
     private String applyFormat(BigDecimal value, String pattern) {

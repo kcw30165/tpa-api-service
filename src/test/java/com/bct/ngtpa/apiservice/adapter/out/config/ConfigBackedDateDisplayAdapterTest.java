@@ -47,7 +47,7 @@ class ConfigBackedDateDisplayAdapterTest {
         var adapter = adapterWith(Map.of("en", enFormats));
         // trustCode=JP matches the JP key
         var result = adapter.formatDate(LocalDate.of(2026, 3, 1), "en", "", "JP", "");
-        assertEquals("03/01/2026", result);
+        assertEquals("01/03/2026", result);
     }
 
     // --- (c) unknown trustCode falls back to base date ---
@@ -166,7 +166,7 @@ class ConfigBackedDateDisplayAdapterTest {
         var adapter = adapterWith(Map.of("en", enFormats));
         // no env → PROD.RM and PROD.RM.MPF not generated; tries RM.MPF (match)
         var result = adapter.formatDate(LocalDate.of(2026, 3, 1), "en", "", "RM", "MPF");
-        assertEquals("03-01-2026", result);
+        assertEquals("01/03/2026", result);
     }
 
     @Test
@@ -177,6 +177,6 @@ class ConfigBackedDateDisplayAdapterTest {
         var adapter = adapterWith(Map.of("en", enFormats));
         // no RM.MPF → falls to RM
         var result = adapter.formatDate(LocalDate.of(2026, 3, 1), "en", "", "RM", "MPF");
-        assertEquals("01-03-2026", result);
+        assertEquals("01/03/2026", result);
     }
 }

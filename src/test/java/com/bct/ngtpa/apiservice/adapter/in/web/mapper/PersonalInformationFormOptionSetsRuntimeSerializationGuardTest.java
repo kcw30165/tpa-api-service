@@ -54,9 +54,9 @@ class PersonalInformationFormOptionSetsRuntimeSerializationGuardTest {
             assertThat(smsLanguages.isArray()).isTrue();
             assertThat(smsLanguages).hasSize(2);
             assertThat(smsLanguages.get(0).path("value").asText()).isEqualTo("en");
-            assertThat(smsLanguages.get(0).path("text").asText()).isEqualTo("English");
+            assertThat(smsLanguages.get(0).path("label").asText()).isEqualTo("English");
             assertThat(smsLanguages.get(1).path("value").asText()).isEqualTo("zh_HK");
-            assertThat(smsLanguages.get(1).path("text").asText()).isEqualTo("Traditional Chinese");
+            assertThat(smsLanguages.get(1).path("label").asText()).isEqualTo("Traditional Chinese");
         });
     }
 
@@ -78,9 +78,9 @@ class PersonalInformationFormOptionSetsRuntimeSerializationGuardTest {
             JsonNode smsLanguages = json.path("form").path("optionSets").path("smsLanguages");
             assertThat(smsLanguages).hasSize(2);
             assertThat(smsLanguages.get(0).path("value").asText()).isEqualTo("en");
-            assertThat(smsLanguages.get(0).path("text").asText()).isEqualTo("英文");
+            assertThat(smsLanguages.get(0).path("label").asText()).isEqualTo("英文");
             assertThat(smsLanguages.get(1).path("value").asText()).isEqualTo("zh_HK");
-            assertThat(smsLanguages.get(1).path("text").asText()).isEqualTo("繁體中文");
+            assertThat(smsLanguages.get(1).path("label").asText()).isEqualTo("繁體中文");
         });
     }
 
