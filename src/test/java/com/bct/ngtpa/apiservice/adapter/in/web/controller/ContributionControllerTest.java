@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextProvider;
+import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionWebDisplayConfigProvider;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.ContributionSummaryWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.sort.ApplySortsAspect;
@@ -99,7 +101,7 @@ class ContributionControllerTest {
                 assertEquals(99999, captured.get().pageSize());
         }
 
-                        @Test
+        @Test
         void usesDefaultPageAndPageSizeWhenNotProvided() {
                 AtomicReference<GetContributionSummaryCommand> captured = new AtomicReference<>();
                 GetContributionSummaryUseCase getUseCase = command -> {
@@ -361,7 +363,7 @@ class ContributionControllerTest {
                                                 && result.getResponseBody().length > 0));
         }
 
-                        // @Test
+        // @Test
         // void exportErrorsStillReturnStandardJsonEnvelopeWhenAcceptOnlyAllowsXlsx() {
         // ExportContributionSummaryUseCase exportUseCase = command -> Mono.error(
         // new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE,
@@ -477,7 +479,6 @@ class ContributionControllerTest {
                                                 "Member"));
         }
 
-
         @Test
         void returnsDownstreamErrorEnvelopeWhenApimResponsePayloadIsInvalid() {
                 GetContributionSummaryUseCase getUseCase = command -> Mono.error(
@@ -550,8 +551,10 @@ class ContributionControllerTest {
                                 mapper,
                                 sortingSupport))
                                 .webFilter(requestHeaderContextWebFilter())
-                                .controllerAdvice(new ApiExceptionHandler(testErrorMessageResolver(),
-                                                testLoggingSanitizer()))
+                                .controllerAdvice(new ApiExceptionHandler(
+                                                testErrorMessageResolver(),
+                                                testLoggingSanitizer(),
+                                                currentPortalAccessContextProvider()))
                                 .build();
                 if (withDefaultAccountRef) {
                         return client.mutate()
@@ -790,4 +793,19 @@ class ContributionControllerTest {
                         throw new AssertionError("Expected a readable contribution workbook.", ex);
                 }
         }
+
+        private static CurrentPortalAccessContextProvider currentPortalAccessContextProvider() {
+                return new CurrentPortalAccessContextProvider() {
+                        @Override
+                        public Mono<PortalAccessContext> current() {
+                                return Mono.empty();
+                        }
+
+                        @Override
+                        public Mono<PortalAccessContext> currentOrEmpty() {
+                                return Mono.empty();
+                        }
+                };
+        }
+
 }

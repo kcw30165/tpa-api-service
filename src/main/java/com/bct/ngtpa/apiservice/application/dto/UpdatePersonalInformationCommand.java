@@ -11,10 +11,4 @@ public record UpdatePersonalInformationCommand(
         updateFields = updateFields == null ? Map.of() : Map.copyOf(new LinkedHashMap<>(updateFields));
     }
 
-    public UpdatePersonalInformationCommand(
-            String ignoredLegacySelectedAccount,
-            Boolean applyToAllAccounts,
-            Map<String, Object> updateFields) {
-        this(applyToAllAccounts, updateFields);
-    }
 }

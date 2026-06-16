@@ -27,7 +27,6 @@ class UseCaseConfigCoverageTest {
         ApimReferenceDataCountriesPort countriesPort = mock(ApimReferenceDataCountriesPort.class);
         ApimMemberInfoPort memberInfoPort = mock(ApimMemberInfoPort.class);
         CurrencyDisplayPort currencyDisplayPort = mock(CurrencyDisplayPort.class);
-        PortalAccessContextPort portalContextPort = mock(PortalAccessContextPort.class);
         CurrentPortalAccessContextProvider currentPortalAccessContextProvider = mock(CurrentPortalAccessContextProvider.class);
         ReferenceDatePort referenceDatePort = mock(ReferenceDatePort.class);
         ContributionActionPermissionPort actionPermissionPort = mock(ContributionActionPermissionPort.class);
@@ -46,6 +45,6 @@ class UseCaseConfigCoverageTest {
                 referenceDatePort,
                 currentPortalAccessContextProvider));
         assertNotNull(config.getReferenceDataCountriesUseCase(countriesPort));
-        assertNotNull(config.getPersonalInformationUseCase(memberInfoPort, portalContextPort));
+        assertNotNull(config.getPersonalInformationUseCase(memberInfoPort, currentPortalAccessContextProvider));
     }
 }

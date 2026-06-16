@@ -58,13 +58,6 @@ public class PersonalInformationUpdateWebMapper {
         return new UpdatePersonalInformationCommand(applyToAllAccounts, mapped);
     }
 
-    public UpdatePersonalInformationCommand toCommand(
-            String ignoredLegacySelectedAccount,
-            Boolean applyToAllAccounts,
-            UpdatePersonalInformationRequest request) {
-        return toCommand(applyToAllAccounts, request);
-    }
-
     private Map<String, FieldProperties> fieldsById() {
         var page = properties.getPages().get(PAGE_KEY);
         if (page == null || page.getForm() == null || page.getForm().getSections() == null) {

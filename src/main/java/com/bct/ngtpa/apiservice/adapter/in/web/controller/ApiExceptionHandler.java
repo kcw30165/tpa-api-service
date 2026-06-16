@@ -44,12 +44,7 @@ public class ApiExceptionHandler {
     private final ErrorMessageResolver errorMessageResolver;
     private final LoggingSanitizer loggingSanitizer;
     private final CurrentPortalAccessContextProvider currentPortalAccessContextProvider;
-
-    public ApiExceptionHandler(ErrorMessageResolver errorMessageResolver, LoggingSanitizer loggingSanitizer) {
-        this(errorMessageResolver, loggingSanitizer, null);
-    }
-
-    @Autowired
+@Autowired
     public ApiExceptionHandler(
             ErrorMessageResolver errorMessageResolver,
             LoggingSanitizer loggingSanitizer,
@@ -380,10 +375,7 @@ public class ApiExceptionHandler {
         if (attribute instanceof PortalAccessContext portalAccessContext) {
             return portalAccessContext;
         }
-        if (currentPortalAccessContextProvider == null) {
-            return null;
-        }
-        try {
+try {
             var contextMono = currentPortalAccessContextProvider.currentOrEmpty();
             return contextMono == null ? null : contextMono.block();
         } catch (RuntimeException exception) {

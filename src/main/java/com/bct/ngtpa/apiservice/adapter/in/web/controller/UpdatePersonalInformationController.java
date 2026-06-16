@@ -9,14 +9,9 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.support.RequestLanguageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationUpdateYamlValidator;
-import com.bct.ngtpa.apiservice.application.dto.AccountContext;
-import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
-import com.bct.ngtpa.apiservice.application.dto.TermStatus;
-import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.application.port.in.UpdatePersonalInformationUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextProvider;
-import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import java.util.List;
@@ -53,26 +48,11 @@ public class UpdatePersonalInformationController {
         this.currentPortalAccessContextProvider = currentPortalAccessContextProvider;
     }
 
-    public UpdatePersonalInformationController(
-            UpdatePersonalInformationUseCase updatePersonalInformationUseCase,
-            PersonalInformationUpdateWebMapper requestMapper,
-            PersonalInformationUpdateResponseMapper responseMapper,
-            PersonalInformationUpdateYamlValidator validator) {
-        this(updatePersonalInformationUseCase, requestMapper, responseMapper, validator, null);
-    }
-
-    public UpdatePersonalInformationController(
-            UpdatePersonalInformationUseCase updatePersonalInformationUseCase,
-            PersonalInformationUpdateWebMapper requestMapper,
-            PersonalInformationUpdateResponseMapper responseMapper) {
-        this(updatePersonalInformationUseCase, requestMapper, responseMapper, null, null);
-    }
-
     @PutMapping
     public Mono<MutationResponse<List<PersonalInformationUpdateResultResponse>>> update(
             @RequestBody Mono<UpdatePersonalInformationRequest> request,
             @RequestHeader(value = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false) String acceptLanguage) {
-        return Mono.deferContextual(contextView -> currentPortalAccessContext(contextView)
+        return Mono.deferContextual(contextView -> currentPortalAccessContextProvider.current()
                 .flatMap(portalAccessContext -> request.flatMap(body -> {
                     String resolvedLocale = resolveLanguage(contextView, acceptLanguage);
                     List<ApiError> errors = validator == null
@@ -82,41 +62,10 @@ public class UpdatePersonalInformationController {
                     if (!errors.isEmpty()) {
                         return Mono.just(MutationResponse.failure(ApiStatus.VALIDATION_FAILED, errors));
                     }
-                    if (currentPortalAccessContextProvider == null) {
-                        RequestHeaderContext headersContext = contextView.getOrDefault(
-                                RequestHeaderContextKeys.CONTEXT_KEY,
-                                null);
-                        return Mono.just(requestMapper.toCommand(
-                                        headersContext == null ? null : headersContext.accountRef(),
-                                        body.applyToAllAccounts(),
-                                        body))
-                                .flatMap(command -> updatePersonalInformationUseCase.execute(command))
-                                .map(responseMapper::toResponse);
-                    }
                     return Mono.just(requestMapper.toCommand(body.applyToAllAccounts(), body))
                             .flatMap(command -> updatePersonalInformationUseCase.execute(command))
                             .map(responseMapper::toResponse);
                 })));
-    }
-
-    public Mono<MutationResponse<List<PersonalInformationUpdateResultResponse>>> update(
-            Mono<UpdatePersonalInformationRequest> request) {
-        return update(request, null);
-    }
-
-    private Mono<PortalAccessContext> currentPortalAccessContext(ContextView contextView) {
-        if (currentPortalAccessContextProvider != null) {
-            return currentPortalAccessContextProvider.current();
-        }
-        RequestHeaderContext headersContext = contextView.getOrDefault(RequestHeaderContextKeys.CONTEXT_KEY, null);
-        if (headersContext == null || headersContext.accountRef() == null || headersContext.accountRef().isBlank()) {
-            return Mono.error(new PortalAccessContextResolutionException(
-                    ErrorCodes.MEMBER_CONTEXT_INVALID,
-                    "Account-Ref is required for personal information update."));
-        }
-        return Mono.just(new PortalAccessContext(
-                new ActorContext(null, null),
-                new AccountContext(headersContext.accountRef(), null, null, null, null, null, TermStatus.BLANK, null)));
     }
 
     private String resolveLanguage(ContextView contextView, String acceptLanguage) {

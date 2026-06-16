@@ -96,34 +96,4 @@ public class UseCaseConfig {
                 apimMemberInfoPort,
                 currentPortalAccessContextProvider);
     }
-
-    @Bean
-    public UpdatePersonalInformationUseCase updatePersonalInformationUseCase(
-            ApimUpdatePersonalInformationPort apimUpdatePersonalInformationPort,
-            CurrentPortalAccessContextProvider currentPortalAccessContextProvider) {
-        return new UpdatePersonalInformationService(
-                apimUpdatePersonalInformationPort, currentPortalAccessContextProvider);
-    }
-
-    // Backward-compatible overload for focused coverage tests using the old
-    // two-argument shape.
-    GetPersonalInformationUseCase getPersonalInformationUseCase(
-            ApimMemberInfoPort apimMemberInfoPort,
-            Object ignoredLegacyContextDependency) {
-        return new GetPersonalInformationService(apimMemberInfoPort, new LegacyPersonalInformationProviderConfig());
-    }
-
-    private static final class LegacyPersonalInformationProviderConfig implements CurrentPortalAccessContextProvider {
-        @Override
-        public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.application.dto.PortalAccessContext> current() {
-            return reactor.core.publisher.Mono.error(
-                    new IllegalStateException("No current PortalAccessContext in coverage overload."));
-        }
-
-        @Override
-        public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.application.dto.PortalAccessContext> currentOrEmpty() {
-            return current();
-        }
-    }
-
 }

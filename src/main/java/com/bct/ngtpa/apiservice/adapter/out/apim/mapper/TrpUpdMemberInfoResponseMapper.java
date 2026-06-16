@@ -40,11 +40,6 @@ public class TrpUpdMemberInfoResponseMapper {
                         selectedEnv))
                 .toList();
     }
-
-    /**
-     * Compatibility adapter for older unit tests that exercise this legacy mapper directly.
-     * Production update flow maps APIM response.data[] in ApimUpdatePersonalInformationAdapter.
-     */
     public UpdatePersonalInformationResult toResult(TrpUpdMemberInfoResponse response) {
         return toResults(response).stream()
                 .findFirst()

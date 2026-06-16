@@ -8,7 +8,11 @@ import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingWebFilter;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateResponseMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdatePersonalInformationRequest;
+import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationUpdateYamlValidator;
+import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
+import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.application.port.in.UpdatePersonalInformationUseCase;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextProvider;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
@@ -65,19 +69,27 @@ class UpdatePersonalInformationControllerContractTest {
         UpdatePersonalInformationUseCase useCase = command -> Mono.empty();
         PersonalInformationUpdateWebMapper requestMapper = mock(PersonalInformationUpdateWebMapper.class);
         PersonalInformationUpdateResponseMapper responseMapper = mock(PersonalInformationUpdateResponseMapper.class);
+        PersonalInformationUpdateYamlValidator validator = mock(PersonalInformationUpdateYamlValidator.class);
+        CurrentPortalAccessContextProvider provider = missingPortalAccessContextProvider();
 
         return WebTestClient.bindToController(new UpdatePersonalInformationController(
                         useCase,
                         requestMapper,
-                        responseMapper))
+                        responseMapper,
+                        validator,
+                        provider))
                 .webFilter(requestHeaderContextWebFilter())
-                .controllerAdvice(new ApiExceptionHandler(testErrorMessageResolver(), testLoggingSanitizer()))
+                .controllerAdvice(new ApiExceptionHandler(
+                        testErrorMessageResolver(),
+                        testLoggingSanitizer(),
+                        provider))
                 .build();
     }
 
     private RequestHeaderContextWebFilter requestHeaderContextWebFilter() {
         return new RequestHeaderContextWebFilter(
-                new RequestLoggingWebFilter(new RequestLoggingProperties(), testLoggingSanitizer(), new ObjectMapper()));
+                new RequestLoggingWebFilter(new RequestLoggingProperties(), testLoggingSanitizer(),
+                        new ObjectMapper()));
     }
 
     private static ErrorMessageResolver testErrorMessageResolver() {
@@ -93,5 +105,21 @@ class UpdatePersonalInformationControllerContractTest {
         LoggingSanitizerProperties properties = new LoggingSanitizerProperties();
         properties.setSensitiveTokens(List.of("policyNo", "certNo", "userId", "apiKey", "token"));
         return new LoggingSanitizer(new ObjectMapper(), properties);
+    }
+
+    private static CurrentPortalAccessContextProvider missingPortalAccessContextProvider() {
+        return new CurrentPortalAccessContextProvider() {
+            @Override
+            public Mono<PortalAccessContext> current() {
+                return Mono.error(new PortalAccessContextResolutionException(
+                        ErrorCodes.MEMBER_CONTEXT_INVALID,
+                        "PortalAccessContext is not available in the current request context."));
+            }
+
+            @Override
+            public Mono<PortalAccessContext> currentOrEmpty() {
+                return Mono.empty();
+            }
+        };
     }
 }

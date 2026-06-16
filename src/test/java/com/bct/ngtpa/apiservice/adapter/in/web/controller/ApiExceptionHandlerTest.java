@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
+import reactor.core.publisher.Mono;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextProvider;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -45,7 +47,11 @@ import org.springframework.web.server.ServerWebInputException;
 
 class ApiExceptionHandlerTest {
 
-    private final ApiExceptionHandler handler = new ApiExceptionHandler(errorMessageResolver(), loggingSanitizer());
+    private final ApiExceptionHandler handler = new ApiExceptionHandler(
+                errorMessageResolver(),
+                loggingSanitizer(),
+                currentPortalAccessContextProvider()
+        );
 
     @Test
     void mapsInvalidNotificationRequestExceptionToValidationMutationFailure() {
@@ -234,7 +240,9 @@ class ApiExceptionHandlerTest {
                     capturedLocale.set(locale);
                     return "message for " + errorCode;
                 },
-                loggingSanitizer());
+                loggingSanitizer(),
+                currentPortalAccessContextProvider()
+        );
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/api/v1/notifications?lang=zh-HK")
                         .header("Accept-Language", "en-US"));
@@ -259,7 +267,9 @@ class ApiExceptionHandlerTest {
                     assertEquals("CTX-SCHEME", schemeType);
                     return "contextual message";
                 },
-                loggingSanitizer());
+                loggingSanitizer(),
+                currentPortalAccessContextProvider()
+        );
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/api/v1/test")
                         .queryParam("env", "QUERY-ENV")
@@ -354,5 +364,19 @@ class ApiExceptionHandlerTest {
     private static LoggingSanitizer loggingSanitizer() {
         return new LoggingSanitizer(new ObjectMapper(), new LoggingSanitizerProperties());
     }
+    private static CurrentPortalAccessContextProvider currentPortalAccessContextProvider() {
+        return new CurrentPortalAccessContextProvider() {
+            @Override
+            public Mono<PortalAccessContext> current() {
+                return Mono.empty();
+            }
+
+            @Override
+            public Mono<PortalAccessContext> currentOrEmpty() {
+                return Mono.empty();
+            }
+        };
+    }
+
 }
 
