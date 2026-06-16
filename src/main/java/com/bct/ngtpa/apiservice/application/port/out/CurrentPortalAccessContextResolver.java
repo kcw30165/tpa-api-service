@@ -10,7 +10,7 @@ import reactor.core.publisher.Mono;
  * The PortalAccessContext is resolved earlier by PortalAccessContextWebFilter via
  * PortalAccessContextPort, then stored in Reactor Context for downstream code.</p>
  */
-public interface CurrentPortalAccessContextProvider {
+public interface CurrentPortalAccessContextResolver {
 
     /**
      * Returns the current request PortalAccessContext, or fails when the current

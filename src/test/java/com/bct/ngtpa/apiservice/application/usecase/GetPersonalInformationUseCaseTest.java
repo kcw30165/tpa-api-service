@@ -11,7 +11,7 @@ import com.bct.ngtpa.apiservice.application.dto.MemberInfoResult;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.port.out.ApimMemberInfoPort;
-import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextProvider;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
@@ -53,8 +53,8 @@ class GetPersonalInformationUseCaseTest {
         assertTrue(result.config().isEmpty());
     }
 
-    private static CurrentPortalAccessContextProvider resolver(PortalAccessContext context) {
-        return new CurrentPortalAccessContextProvider() {
+    private static CurrentPortalAccessContextResolver resolver(PortalAccessContext context) {
+        return new CurrentPortalAccessContextResolver() {
             @Override
             public Mono<PortalAccessContext> current() {
                 return Mono.just(context);

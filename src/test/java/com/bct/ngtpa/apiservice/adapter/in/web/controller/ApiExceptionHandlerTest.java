@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import reactor.core.publisher.Mono;
-import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextProvider;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -50,7 +50,7 @@ class ApiExceptionHandlerTest {
     private final ApiExceptionHandler handler = new ApiExceptionHandler(
                 errorMessageResolver(),
                 loggingSanitizer(),
-                currentPortalAccessContextProvider()
+                currentPortalAccessContextResolver()
         );
 
     @Test
@@ -241,7 +241,7 @@ class ApiExceptionHandlerTest {
                     return "message for " + errorCode;
                 },
                 loggingSanitizer(),
-                currentPortalAccessContextProvider()
+                currentPortalAccessContextResolver()
         );
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/api/v1/notifications?lang=zh-HK")
@@ -268,7 +268,7 @@ class ApiExceptionHandlerTest {
                     return "contextual message";
                 },
                 loggingSanitizer(),
-                currentPortalAccessContextProvider()
+                currentPortalAccessContextResolver()
         );
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/api/v1/test")
@@ -364,8 +364,8 @@ class ApiExceptionHandlerTest {
     private static LoggingSanitizer loggingSanitizer() {
         return new LoggingSanitizer(new ObjectMapper(), new LoggingSanitizerProperties());
     }
-    private static CurrentPortalAccessContextProvider currentPortalAccessContextProvider() {
-        return new CurrentPortalAccessContextProvider() {
+    private static CurrentPortalAccessContextResolver currentPortalAccessContextResolver() {
+        return new CurrentPortalAccessContextResolver() {
             @Override
             public Mono<PortalAccessContext> current() {
                 return Mono.empty();

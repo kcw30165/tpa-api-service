@@ -11,7 +11,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.support.RequestLanguageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationUpdateYamlValidator;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.port.in.UpdatePersonalInformationUseCase;
-import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextProvider;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import java.util.List;
@@ -32,7 +32,7 @@ public class UpdatePersonalInformationController {
     private final PersonalInformationUpdateWebMapper requestMapper;
     private final PersonalInformationUpdateResponseMapper responseMapper;
     private final PersonalInformationUpdateYamlValidator validator;
-    private final CurrentPortalAccessContextProvider currentPortalAccessContextProvider;
+    private final CurrentPortalAccessContextResolver currentPortalAccessContextResolver;
 
     @Autowired
     public UpdatePersonalInformationController(
@@ -40,19 +40,19 @@ public class UpdatePersonalInformationController {
             PersonalInformationUpdateWebMapper requestMapper,
             PersonalInformationUpdateResponseMapper responseMapper,
             PersonalInformationUpdateYamlValidator validator,
-            CurrentPortalAccessContextProvider currentPortalAccessContextProvider) {
+            CurrentPortalAccessContextResolver currentPortalAccessContextResolver) {
         this.updatePersonalInformationUseCase = updatePersonalInformationUseCase;
         this.requestMapper = requestMapper;
         this.responseMapper = responseMapper;
         this.validator = validator;
-        this.currentPortalAccessContextProvider = currentPortalAccessContextProvider;
+        this.currentPortalAccessContextResolver = currentPortalAccessContextResolver;
     }
 
     @PutMapping
     public Mono<MutationResponse<List<PersonalInformationUpdateResultResponse>>> update(
             @RequestBody Mono<UpdatePersonalInformationRequest> request,
             @RequestHeader(value = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false) String acceptLanguage) {
-        return Mono.deferContextual(contextView -> currentPortalAccessContextProvider.current()
+        return Mono.deferContextual(contextView -> currentPortalAccessContextResolver.current()
                 .flatMap(portalAccessContext -> request.flatMap(body -> {
                     String resolvedLocale = resolveLanguage(contextView, acceptLanguage);
                     List<ApiError> errors = validator == null

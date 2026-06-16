@@ -15,8 +15,7 @@ import com.bct.ngtpa.apiservice.application.port.out.ApimReferenceDataCountriesP
 import com.bct.ngtpa.apiservice.application.port.out.ApimUpdatePersonalInformationPort;
 import com.bct.ngtpa.apiservice.application.port.out.ContributionActionPermissionPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
-import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
-import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextProvider;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.usecase.ExportContributionSummaryService;
 import com.bct.ngtpa.apiservice.application.usecase.GetContributionSummaryService;
@@ -45,19 +44,19 @@ public class UseCaseConfig {
     @Bean
     public GetNotificationsUseCase getNotificationsUseCase(
             ApimNoticeMessagePort apimNoticeMessagePort,
-            CurrentPortalAccessContextProvider currentPortalAccessContextProvider,
+            CurrentPortalAccessContextResolver currentPortalAccessContextResolver,
             ReferenceDatePort referenceDatePort) {
         return new GetNotificationsService(
-                apimNoticeMessagePort, currentPortalAccessContextProvider, referenceDatePort);
+                apimNoticeMessagePort, currentPortalAccessContextResolver, referenceDatePort);
     }
 
     @Bean
     public UpdateNotificationsReadStatusUseCase updateNotificationsReadStatusUseCase(
             ApimNotificationReadStatusPort apimNotificationReadStatusPort,
-            CurrentPortalAccessContextProvider currentPortalAccessContextProvider,
+            CurrentPortalAccessContextResolver currentPortalAccessContextResolver,
             ReferenceDatePort referenceDatePort) {
         return new UpdateNotificationsReadStatusService(
-                apimNotificationReadStatusPort, currentPortalAccessContextProvider, referenceDatePort);
+                apimNotificationReadStatusPort, currentPortalAccessContextResolver, referenceDatePort);
     }
 
     @Bean
@@ -65,10 +64,10 @@ public class UseCaseConfig {
             ApimContributionSummaryPort apimContributionSummaryPort,
             CurrencyDisplayPort currencyDisplayPort,
             ReferenceDatePort referenceDatePort,
-            CurrentPortalAccessContextProvider currentPortalAccessContextProvider,
+            CurrentPortalAccessContextResolver currentPortalAccessContextResolver,
             ContributionActionPermissionPort contributionActionPermissionPort) {
         return new GetContributionSummaryService(
-                apimContributionSummaryPort, currencyDisplayPort, referenceDatePort, currentPortalAccessContextProvider,
+                apimContributionSummaryPort, currencyDisplayPort, referenceDatePort, currentPortalAccessContextResolver,
                 contributionActionPermissionPort);
     }
 
@@ -77,9 +76,9 @@ public class UseCaseConfig {
             ApimContributionSummaryPort apimContributionSummaryPort,
             CurrencyDisplayPort currencyDisplayPort,
             ReferenceDatePort referenceDatePort,
-            CurrentPortalAccessContextProvider currentPortalAccessContextProvider) {
+            CurrentPortalAccessContextResolver currentPortalAccessContextResolver) {
         return new ExportContributionSummaryService(
-                apimContributionSummaryPort, currencyDisplayPort, referenceDatePort, currentPortalAccessContextProvider);
+                apimContributionSummaryPort, currencyDisplayPort, referenceDatePort, currentPortalAccessContextResolver);
     }
 
     @Bean
@@ -91,9 +90,18 @@ public class UseCaseConfig {
     @Bean
     public GetPersonalInformationUseCase getPersonalInformationUseCase(
             ApimMemberInfoPort apimMemberInfoPort,
-            CurrentPortalAccessContextProvider currentPortalAccessContextProvider) {
+            CurrentPortalAccessContextResolver currentPortalAccessContextResolver) {
         return new GetPersonalInformationService(
                 apimMemberInfoPort,
-                currentPortalAccessContextProvider);
+                currentPortalAccessContextResolver);
+    }
+
+    @Bean
+    public UpdatePersonalInformationUseCase updatePersonalInformationUseCase(
+            ApimUpdatePersonalInformationPort apimUpdatePersonalInformationPort,
+            CurrentPortalAccessContextResolver currentPortalAccessContextResolver) {
+        return new UpdatePersonalInformationService(
+                apimUpdatePersonalInformationPort,
+                currentPortalAccessContextResolver);
     }
 }

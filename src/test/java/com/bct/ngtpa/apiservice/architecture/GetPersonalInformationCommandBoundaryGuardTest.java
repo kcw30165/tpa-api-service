@@ -44,9 +44,9 @@ class GetPersonalInformationCommandBoundaryGuardTest {
                 "GetPersonalInformationService must not read accountRef from command");
         assertFalse(source.contains("PortalAccessContextPort"),
                 "GetPersonalInformationService should not resolve PortalAccessContext by Account-Ref port");
-        assertTrue(source.contains("CurrentPortalAccessContextProvider"),
+        assertTrue(source.contains("CurrentPortalAccessContextResolver"),
                 "GetPersonalInformationService should depend on current request context resolver");
-        assertTrue(source.contains("currentPortalAccessContextProvider.current()"),
+        assertTrue(source.contains("currentPortalAccessContextResolver.current()"),
                 "GetPersonalInformationService should use current request PortalAccessContext");
     }
 }

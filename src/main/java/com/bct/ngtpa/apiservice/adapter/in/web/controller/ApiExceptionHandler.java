@@ -9,7 +9,7 @@ import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequest
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidPersonalInformationUpdateException;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
-import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextProvider;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
@@ -43,15 +43,15 @@ public class ApiExceptionHandler {
 
     private final ErrorMessageResolver errorMessageResolver;
     private final LoggingSanitizer loggingSanitizer;
-    private final CurrentPortalAccessContextProvider currentPortalAccessContextProvider;
+    private final CurrentPortalAccessContextResolver currentPortalAccessContextResolver;
 @Autowired
     public ApiExceptionHandler(
             ErrorMessageResolver errorMessageResolver,
             LoggingSanitizer loggingSanitizer,
-            CurrentPortalAccessContextProvider currentPortalAccessContextProvider) {
+            CurrentPortalAccessContextResolver currentPortalAccessContextResolver) {
         this.errorMessageResolver = errorMessageResolver;
         this.loggingSanitizer = loggingSanitizer;
-        this.currentPortalAccessContextProvider = currentPortalAccessContextProvider;
+        this.currentPortalAccessContextResolver = currentPortalAccessContextResolver;
     }
 
     @ExceptionHandler(ApimException.class)
@@ -376,7 +376,7 @@ public class ApiExceptionHandler {
             return portalAccessContext;
         }
 try {
-            var contextMono = currentPortalAccessContextProvider.currentOrEmpty();
+            var contextMono = currentPortalAccessContextResolver.currentOrEmpty();
             return contextMono == null ? null : contextMono.block();
         } catch (RuntimeException exception) {
             log.warn("Unable to read current PortalAccessContext for API error message context: {}",

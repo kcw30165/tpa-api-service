@@ -59,7 +59,7 @@ class PortalAccessContextResponsibilityBoundaryGuardTest {
         }
 
         assertTrue(offenders.isEmpty(),
-                "Use cases should use CurrentPortalAccessContextProvider, not PortalAccessContextPort. Offenders: " + offenders);
+                "Use cases should use CurrentPortalAccessContextResolver, not PortalAccessContextPort. Offenders: " + offenders);
     }
 
     @Test
@@ -83,10 +83,10 @@ class PortalAccessContextResponsibilityBoundaryGuardTest {
         String serviceSource = Files.readString(service);
 
         assertFalse(controllerSource.contains("PortalAccessContextPort"));
-        assertFalse(controllerSource.contains("CurrentPortalAccessContextProvider"));
+        assertFalse(controllerSource.contains("CurrentPortalAccessContextResolver"));
         assertFalse(controllerSource.contains("resolveRequiredAccountRef"));
         assertFalse(serviceSource.contains("PortalAccessContextPort"));
-        assertFalse(serviceSource.contains("CurrentPortalAccessContextProvider"));
+        assertFalse(serviceSource.contains("CurrentPortalAccessContextResolver"));
         assertFalse(serviceSource.contains("requireAccountRef"));
         assertTrue(serviceSource.contains("fetchCountryList()"),
                 "Country list should remain the global APIM lookup boundary");
@@ -106,9 +106,9 @@ class PortalAccessContextResponsibilityBoundaryGuardTest {
     private void assertUsesCurrentProvider(String fileName) throws IOException {
         Path path = Path.of("src/main/java/com/bct/ngtpa/apiservice/application/usecase").resolve(fileName);
         String source = Files.readString(path);
-        assertTrue(source.contains("CurrentPortalAccessContextProvider"),
-                fileName + " should depend on CurrentPortalAccessContextProvider");
-        assertTrue(source.contains("currentPortalAccessContextProvider.current()"),
+        assertTrue(source.contains("CurrentPortalAccessContextResolver"),
+                fileName + " should depend on CurrentPortalAccessContextResolver");
+        assertTrue(source.contains("currentPortalAccessContextResolver.current()"),
                 fileName + " should read the current request context through current()");
         assertFalse(source.contains("PortalAccessContextPort"),
                 fileName + " must not depend on the external resolution port");

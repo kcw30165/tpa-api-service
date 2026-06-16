@@ -5,7 +5,7 @@ import com.bct.ngtpa.apiservice.application.dto.NotificationDateOptions;
 import com.bct.ngtpa.apiservice.application.dto.NotificationListResult;
 import com.bct.ngtpa.apiservice.application.port.in.GetNotificationsUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNoticeMessagePort;
-import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextProvider;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -20,7 +20,7 @@ public class GetNotificationsService implements GetNotificationsUseCase {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final ApimNoticeMessagePort apimNoticeMessagePort;
-    private final CurrentPortalAccessContextProvider currentPortalAccessContextProvider;
+    private final CurrentPortalAccessContextResolver currentPortalAccessContextResolver;
     private final ReferenceDatePort referenceDatePort;
 
     @Override
@@ -28,7 +28,7 @@ public class GetNotificationsService implements GetNotificationsUseCase {
         var dateOptions = NotificationDateOptions.resolve(command.dateFormat(), command.timezone());
         LocalDateTime now = dateOptions.now();
 
-        return currentPortalAccessContextProvider.current()
+        return currentPortalAccessContextResolver.current()
                 .zipWith(referenceDatePort.resolveReferenceDate())
                 .flatMap(tuple -> {
                     var ctx = tuple.getT1();

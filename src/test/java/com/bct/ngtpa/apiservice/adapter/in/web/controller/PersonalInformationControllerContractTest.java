@@ -21,7 +21,7 @@ import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.application.port.in.GetPersonalInformationUseCase;
-import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextProvider;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
@@ -115,8 +115,8 @@ class PersonalInformationControllerContractTest {
                 new FormSchemaResponse("personalInformationForm", "1.0", "view", null, null, null, null));
     }
 
-    private static CurrentPortalAccessContextProvider resolver(PortalAccessContext context) {
-        return new CurrentPortalAccessContextProvider() {
+    private static CurrentPortalAccessContextResolver resolver(PortalAccessContext context) {
+        return new CurrentPortalAccessContextResolver() {
             @Override
             public Mono<PortalAccessContext> current() {
                 return Mono.just(context);

@@ -12,7 +12,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationUpd
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.application.port.in.UpdatePersonalInformationUseCase;
-import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextProvider;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
@@ -70,7 +70,7 @@ class UpdatePersonalInformationControllerContractTest {
         PersonalInformationUpdateWebMapper requestMapper = mock(PersonalInformationUpdateWebMapper.class);
         PersonalInformationUpdateResponseMapper responseMapper = mock(PersonalInformationUpdateResponseMapper.class);
         PersonalInformationUpdateYamlValidator validator = mock(PersonalInformationUpdateYamlValidator.class);
-        CurrentPortalAccessContextProvider provider = missingPortalAccessContextProvider();
+        CurrentPortalAccessContextResolver provider = missingPortalAccessContextProvider();
 
         return WebTestClient.bindToController(new UpdatePersonalInformationController(
                         useCase,
@@ -107,8 +107,8 @@ class UpdatePersonalInformationControllerContractTest {
         return new LoggingSanitizer(new ObjectMapper(), properties);
     }
 
-    private static CurrentPortalAccessContextProvider missingPortalAccessContextProvider() {
-        return new CurrentPortalAccessContextProvider() {
+    private static CurrentPortalAccessContextResolver missingPortalAccessContextProvider() {
+        return new CurrentPortalAccessContextResolver() {
             @Override
             public Mono<PortalAccessContext> current() {
                 return Mono.error(new PortalAccessContextResolutionException(

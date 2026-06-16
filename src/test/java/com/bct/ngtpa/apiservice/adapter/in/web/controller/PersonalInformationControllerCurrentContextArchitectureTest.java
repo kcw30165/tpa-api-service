@@ -13,14 +13,14 @@ class PersonalInformationControllerCurrentContextArchitectureTest {
             "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/PersonalInformationController.java");
 
     @Test
-    void controllerUsesCurrentCurrentPortalAccessContextProviderInsteadOfPortalAccessContextPort() throws Exception {
+    void controllerUsesCurrentCurrentPortalAccessContextResolverInsteadOfPortalAccessContextPort() throws Exception {
         String source = Files.readString(SOURCE);
 
         assertFalse(source.contains("PortalAccessContextPort"),
                 "PersonalInformationController must not directly resolve account context from PortalAccessContextPort");
-        assertTrue(source.contains("CurrentPortalAccessContextProvider"),
+        assertTrue(source.contains("CurrentPortalAccessContextResolver"),
                 "PersonalInformationController should depend on the current request context resolver");
-        assertTrue(source.contains("currentPortalAccessContextProvider.current()"),
+        assertTrue(source.contains("currentPortalAccessContextResolver.current()"),
                 "PersonalInformationController should read the already-populated per-request PortalAccessContext");
     }
 

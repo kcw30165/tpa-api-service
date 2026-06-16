@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import reactor.core.publisher.Mono;
-import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextProvider;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -49,7 +49,7 @@ class ApiExceptionHandlerLoggingTest {
         handler = new ApiExceptionHandler(
                 testErrorMessageResolver(),
                 testLoggingSanitizer(),
-                currentPortalAccessContextProvider()
+                currentPortalAccessContextResolver()
         );
     }
 
@@ -172,8 +172,8 @@ class ApiExceptionHandlerLoggingTest {
                 "userId"));
         return new LoggingSanitizer(OBJECT_MAPPER, properties);
     }
-    private static CurrentPortalAccessContextProvider currentPortalAccessContextProvider() {
-        return new CurrentPortalAccessContextProvider() {
+    private static CurrentPortalAccessContextResolver currentPortalAccessContextResolver() {
+        return new CurrentPortalAccessContextResolver() {
             @Override
             public Mono<PortalAccessContext> current() {
                 return Mono.empty();

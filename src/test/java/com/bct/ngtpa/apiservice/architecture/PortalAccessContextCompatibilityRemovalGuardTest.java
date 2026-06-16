@@ -17,7 +17,7 @@ class PortalAccessContextCompatibilityRemovalGuardTest {
                 "ignoredLegacyContextDependency",
                 "new AccountContext(headersContext.accountRef()",
                 "new AccountContext(requestHeaderContext.accountRef()",
-                "currentPortalAccessContextProvider == null",
+                "currentPortalAccessContextResolver == null",
                 "Account-Ref is required for personal information update.",
                 "toCommand(String ignoredLegacySelectedAccount",
                 "command.accountRef()");

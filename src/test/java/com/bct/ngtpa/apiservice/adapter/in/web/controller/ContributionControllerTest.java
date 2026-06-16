@@ -1,6 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
-import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextProvider;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionWebDisplayConfigProvider;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.ContributionSummaryWebMapper;
@@ -554,7 +554,7 @@ class ContributionControllerTest {
                                 .controllerAdvice(new ApiExceptionHandler(
                                                 testErrorMessageResolver(),
                                                 testLoggingSanitizer(),
-                                                currentPortalAccessContextProvider()))
+                                                currentPortalAccessContextResolver()))
                                 .build();
                 if (withDefaultAccountRef) {
                         return client.mutate()
@@ -794,8 +794,8 @@ class ContributionControllerTest {
                 }
         }
 
-        private static CurrentPortalAccessContextProvider currentPortalAccessContextProvider() {
-                return new CurrentPortalAccessContextProvider() {
+        private static CurrentPortalAccessContextResolver currentPortalAccessContextResolver() {
+                return new CurrentPortalAccessContextResolver() {
                         @Override
                         public Mono<PortalAccessContext> current() {
                                 return Mono.empty();

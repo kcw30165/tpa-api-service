@@ -9,7 +9,7 @@ import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.port.out.ApimContributionSummaryPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
-import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextProvider;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryDataset;
 import org.junit.jupiter.api.Test;
@@ -35,8 +35,8 @@ class ExportContributionSummaryServiceTest {
                     TermStatus.BLANK,
                     null));
 
-    private static CurrentPortalAccessContextProvider currentPortalAccessContextProvider() {
-        return new CurrentPortalAccessContextProvider() {
+    private static CurrentPortalAccessContextResolver currentPortalAccessContextResolver() {
+        return new CurrentPortalAccessContextResolver() {
             @Override
             public Mono<PortalAccessContext> current() {
                 return Mono.just(CONTRIBUTIONS_CONTEXT);
@@ -61,7 +61,7 @@ class ExportContributionSummaryServiceTest {
         ReferenceDatePort referenceDatePort = () -> Mono.just(LocalDate.of(2026, 3, 31));
 
         var service = new ExportContributionSummaryService(port, recordingPort, referenceDatePort,
-                currentPortalAccessContextProvider());
+                currentPortalAccessContextResolver());
         var result = service.execute(new ExportContributionSummaryCommand()).block();
 
         assertEquals("31/03/2023", captured.get().coverFrom());
@@ -94,7 +94,7 @@ class ExportContributionSummaryServiceTest {
                 },
                 currencyDisplayPort,
                 () -> Mono.just(LocalDate.of(2026, 3, 31)),
-                currentPortalAccessContextProvider());
+                currentPortalAccessContextResolver());
 
         service.execute(new ExportContributionSummaryCommand()).block();
 

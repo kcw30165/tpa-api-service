@@ -9,7 +9,7 @@ import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusCommand;
 import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusResult;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNotificationReadStatusPort;
-import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextProvider;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
 import java.time.LocalDate;
@@ -43,8 +43,8 @@ class UpdateNotificationsReadStatusServiceTest {
         assertEquals(MessageStatus.READ, captured.get().targetStatus());
     }
 
-    private static CurrentPortalAccessContextProvider provider(PortalAccessContext context) {
-        return new CurrentPortalAccessContextProvider() {
+    private static CurrentPortalAccessContextResolver provider(PortalAccessContext context) {
+        return new CurrentPortalAccessContextResolver() {
             @Override
             public Mono<PortalAccessContext> current() {
                 return Mono.just(context);

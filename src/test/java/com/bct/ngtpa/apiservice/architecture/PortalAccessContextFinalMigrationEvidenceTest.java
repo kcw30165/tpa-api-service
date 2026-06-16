@@ -46,7 +46,7 @@ class PortalAccessContextFinalMigrationEvidenceTest {
         }
 
         assertTrue(offenders.isEmpty(),
-                "Application use cases should use CurrentPortalAccessContextProvider, not PortalAccessContextPort. "
+                "Application use cases should use CurrentPortalAccessContextResolver, not PortalAccessContextPort. "
                         + "Offenders: " + offenders);
     }
 
@@ -56,9 +56,9 @@ class PortalAccessContextFinalMigrationEvidenceTest {
             Path path = USECASE_PACKAGE.resolve(service);
             String source = Files.readString(path);
 
-            assertTrue(source.contains("CurrentPortalAccessContextProvider"),
-                    service + " should depend on CurrentPortalAccessContextProvider");
-            assertTrue(source.contains("currentPortalAccessContextProvider.current()"),
+            assertTrue(source.contains("CurrentPortalAccessContextResolver"),
+                    service + " should depend on CurrentPortalAccessContextResolver");
+            assertTrue(source.contains("currentPortalAccessContextResolver.current()"),
                     service + " should read the current request PortalAccessContext");
             assertFalse(source.contains("resolvePortalAccessContext"),
                     service + " must not perform external context resolution");
@@ -101,9 +101,9 @@ class PortalAccessContextFinalMigrationEvidenceTest {
         String controllerSource = Files.readString(controller);
         String serviceSource = Files.readString(service);
 
-        assertFalse(controllerSource.contains("CurrentPortalAccessContextProvider"));
+        assertFalse(controllerSource.contains("CurrentPortalAccessContextResolver"));
         assertFalse(controllerSource.contains("PortalAccessContextPort"));
-        assertFalse(serviceSource.contains("CurrentPortalAccessContextProvider"));
+        assertFalse(serviceSource.contains("CurrentPortalAccessContextResolver"));
         assertFalse(serviceSource.contains("PortalAccessContextPort"));
         assertTrue(serviceSource.contains("fetchCountryList()"));
     }

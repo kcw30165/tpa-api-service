@@ -37,10 +37,10 @@ class NotificationCurrentContextBoundaryGuardTest {
         String updateService = Files.readString(Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/application/usecase/UpdateNotificationsReadStatusService.java"));
 
-        assertTrue(getService.contains("CurrentPortalAccessContextProvider"));
-        assertTrue(updateService.contains("CurrentPortalAccessContextProvider"));
-        assertTrue(getService.contains("currentPortalAccessContextProvider.current()"));
-        assertTrue(updateService.contains("currentPortalAccessContextProvider.current()"));
+        assertTrue(getService.contains("CurrentPortalAccessContextResolver"));
+        assertTrue(updateService.contains("CurrentPortalAccessContextResolver"));
+        assertTrue(getService.contains("currentPortalAccessContextResolver.current()"));
+        assertTrue(updateService.contains("currentPortalAccessContextResolver.current()"));
         assertFalse(getService.contains("PortalAccessContextPort"));
         assertFalse(updateService.contains("PortalAccessContextPort"));
         assertFalse(getService.contains("resolvePortalAccessContext"));

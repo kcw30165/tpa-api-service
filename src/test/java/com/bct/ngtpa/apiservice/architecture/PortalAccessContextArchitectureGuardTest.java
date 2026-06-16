@@ -52,9 +52,9 @@ class PortalAccessContextArchitectureGuardTest {
                 "PersonalInformationController must not directly call PortalAccessContextPort");
         assertFalse(source.contains("resolveRequiredAccountRef(ContextView"),
                 "PersonalInformationController must not manually resolve Account-Ref from RequestHeaderContext");
-        assertTrue(source.contains("CurrentPortalAccessContextProvider"),
+        assertTrue(source.contains("CurrentPortalAccessContextResolver"),
                 "PersonalInformationController should use the current request context resolver");
-        assertTrue(source.contains("currentPortalAccessContextProvider.current()"),
+        assertTrue(source.contains("currentPortalAccessContextResolver.current()"),
                 "PersonalInformationController should use the already-populated current PortalAccessContext");
         assertTrue(source.contains("requireAccountRef(portalAccessContext)"),
                 "PersonalInformationController should validate accountRef from PortalAccessContext.account()");

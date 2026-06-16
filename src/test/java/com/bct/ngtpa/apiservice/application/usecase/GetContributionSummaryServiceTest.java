@@ -12,7 +12,7 @@ import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequest
 import com.bct.ngtpa.apiservice.application.port.out.ApimContributionSummaryPort;
 import com.bct.ngtpa.apiservice.application.port.out.ContributionActionPermissionPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
-import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextProvider;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.domain.model.ContributionEntry;
 import com.bct.ngtpa.apiservice.domain.model.ContributionLabels;
@@ -48,8 +48,8 @@ class GetContributionSummaryServiceTest {
                     TermStatus.BLANK,
                     null));
 
-    private static CurrentPortalAccessContextProvider currentPortalAccessContextProvider() {
-        return new CurrentPortalAccessContextProvider() {
+    private static CurrentPortalAccessContextResolver currentPortalAccessContextResolver() {
+        return new CurrentPortalAccessContextResolver() {
             @Override
             public Mono<PortalAccessContext> current() {
                 return Mono.just(CONTRIBUTIONS_CONTEXT);
@@ -73,7 +73,7 @@ class GetContributionSummaryServiceTest {
     private GetContributionSummaryService serviceWith(ApimContributionSummaryPort apimPort,
             CurrencyDisplayPort currencyPort) {
         return new GetContributionSummaryService(
-                apimPort, currencyPort, referenceDatePort(), currentPortalAccessContextProvider(),
+                apimPort, currencyPort, referenceDatePort(), currentPortalAccessContextResolver(),
                 actionPermissionPort());
     }
 

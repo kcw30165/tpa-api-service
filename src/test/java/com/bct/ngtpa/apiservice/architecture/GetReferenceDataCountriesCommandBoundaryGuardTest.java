@@ -30,7 +30,7 @@ class GetReferenceDataCountriesCommandBoundaryGuardTest {
         assertFalse(source.contains("new GetReferenceDataCountriesCommand(accountRef"));
         assertFalse(source.contains("resolveRequiredAccountRef"));
         assertFalse(source.contains("PortalAccessContextPort"));
-        assertFalse(source.contains("CurrentPortalAccessContextProvider"));
+        assertFalse(source.contains("CurrentPortalAccessContextResolver"));
     }
 
     @Test
@@ -38,8 +38,8 @@ class GetReferenceDataCountriesCommandBoundaryGuardTest {
         String source = Files.readString(SERVICE);
         assertTrue(source.contains("fetchCountryList()"));
         assertFalse(source.contains("PortalAccessContextPort"));
-        assertFalse(source.contains("CurrentPortalAccessContextProvider"));
-        assertFalse(source.contains("currentPortalAccessContextProvider"));
+        assertFalse(source.contains("CurrentPortalAccessContextResolver"));
+        assertFalse(source.contains("currentPortalAccessContextResolver"));
         assertFalse(source.contains("requireAccountRef"));
     }
 }

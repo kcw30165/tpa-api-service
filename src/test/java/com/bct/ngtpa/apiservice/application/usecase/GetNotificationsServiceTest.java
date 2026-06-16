@@ -9,7 +9,7 @@ import com.bct.ngtpa.apiservice.application.dto.NotificationListResult;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNoticeMessagePort;
-import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextProvider;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import java.time.LocalDate;
 import java.util.List;
@@ -41,8 +41,8 @@ class GetNotificationsServiceTest {
         assertEquals(20, captured.get().size());
     }
 
-    private static CurrentPortalAccessContextProvider provider(PortalAccessContext context) {
-        return new CurrentPortalAccessContextProvider() {
+    private static CurrentPortalAccessContextResolver provider(PortalAccessContext context) {
+        return new CurrentPortalAccessContextResolver() {
             @Override
             public Mono<PortalAccessContext> current() {
                 return Mono.just(context);

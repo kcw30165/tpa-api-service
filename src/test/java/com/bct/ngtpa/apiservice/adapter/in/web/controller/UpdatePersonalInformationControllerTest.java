@@ -1,6 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
-import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextProvider;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
@@ -43,7 +43,7 @@ class UpdatePersonalInformationControllerTest {
                                 requestMapper,
                                 responseMapper,
                                 validator,
-                                currentPortalAccessContextProvider());
+                                currentPortalAccessContextResolver());
 
                 UpdatePersonalInformationRequest request = new UpdatePersonalInformationRequest(
                                 "1.0",
@@ -96,8 +96,8 @@ class UpdatePersonalInformationControllerTest {
                                 .verifyComplete();
         }
 
-        private static CurrentPortalAccessContextProvider currentPortalAccessContextProvider() {
-                return new CurrentPortalAccessContextProvider() {
+        private static CurrentPortalAccessContextResolver currentPortalAccessContextResolver() {
+                return new CurrentPortalAccessContextResolver() {
                         @Override
                         public Mono<PortalAccessContext> current() {
                                 return Mono.just(portalAccessContext());

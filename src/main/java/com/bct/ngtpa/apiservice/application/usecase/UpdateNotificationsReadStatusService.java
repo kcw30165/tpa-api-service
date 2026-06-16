@@ -4,7 +4,7 @@ import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusCom
 import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusResult;
 import com.bct.ngtpa.apiservice.application.port.in.UpdateNotificationsReadStatusUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNotificationReadStatusPort;
-import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextProvider;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
 import java.time.format.DateTimeFormatter;
@@ -17,12 +17,12 @@ public class UpdateNotificationsReadStatusService implements UpdateNotifications
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final ApimNotificationReadStatusPort apimNotificationReadStatusPort;
-    private final CurrentPortalAccessContextProvider currentPortalAccessContextProvider;
+    private final CurrentPortalAccessContextResolver currentPortalAccessContextResolver;
     private final ReferenceDatePort referenceDatePort;
 
     @Override
     public Mono<UpdateNotificationsReadStatusResult> execute(UpdateNotificationsReadStatusCommand command) {
-        return currentPortalAccessContextProvider.current()
+        return currentPortalAccessContextResolver.current()
                 .zipWith(referenceDatePort.resolveReferenceDate())
                 .flatMap(tuple -> {
                     var ctx = tuple.getT1();
