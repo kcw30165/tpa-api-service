@@ -4,13 +4,12 @@ import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusCom
 import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusResult;
 import com.bct.ngtpa.apiservice.application.port.in.UpdateNotificationsReadStatusUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNotificationReadStatusPort;
-import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextProvider;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
+import java.time.format.DateTimeFormatter;
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
-
-import java.time.format.DateTimeFormatter;
 
 @RequiredArgsConstructor
 public class UpdateNotificationsReadStatusService implements UpdateNotificationsReadStatusUseCase {
@@ -18,12 +17,12 @@ public class UpdateNotificationsReadStatusService implements UpdateNotifications
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final ApimNotificationReadStatusPort apimNotificationReadStatusPort;
-    private final PortalAccessContextPort portalAccessContextPort;
+    private final CurrentPortalAccessContextProvider currentPortalAccessContextProvider;
     private final ReferenceDatePort referenceDatePort;
 
     @Override
     public Mono<UpdateNotificationsReadStatusResult> execute(UpdateNotificationsReadStatusCommand command) {
-        return portalAccessContextPort.resolvePortalAccessContext(resolveAccountRef(command.accountRef(), "notifications"))
+        return currentPortalAccessContextProvider.current()
                 .zipWith(referenceDatePort.resolveReferenceDate())
                 .flatMap(tuple -> {
                     var ctx = tuple.getT1();
@@ -37,13 +36,8 @@ public class UpdateNotificationsReadStatusService implements UpdateNotifications
                             ctx.account().certNo(),
                             ctx.actor().actorUserId(),
                             referenceDate.format(DATE_FORMATTER),
-                            MessageStatus.READ,
-                            null);
+                            MessageStatus.READ);
                     return apimNotificationReadStatusPort.updateReadStatus(enrichedCommand);
                 });
-    }
-
-    private String resolveAccountRef(String accountRef, String fallbackAccountRef) {
-        return accountRef != null ? accountRef : fallbackAccountRef;
     }
 }

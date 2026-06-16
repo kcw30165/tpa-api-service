@@ -10,6 +10,7 @@ import com.bct.ngtpa.apiservice.application.port.out.ApimNotificationReadStatusP
 import com.bct.ngtpa.apiservice.application.port.out.ApimReferenceDataCountriesPort;
 import com.bct.ngtpa.apiservice.application.port.out.ContributionActionPermissionPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextProvider;
 import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import org.junit.jupiter.api.Test;
@@ -27,11 +28,12 @@ class UseCaseConfigCoverageTest {
         ApimMemberInfoPort memberInfoPort = mock(ApimMemberInfoPort.class);
         CurrencyDisplayPort currencyDisplayPort = mock(CurrencyDisplayPort.class);
         PortalAccessContextPort portalContextPort = mock(PortalAccessContextPort.class);
+        CurrentPortalAccessContextProvider currentPortalAccessContextProvider = mock(CurrentPortalAccessContextProvider.class);
         ReferenceDatePort referenceDatePort = mock(ReferenceDatePort.class);
         ContributionActionPermissionPort actionPermissionPort = mock(ContributionActionPermissionPort.class);
 
-        assertNotNull(config.getNotificationsUseCase(noticePort, portalContextPort, referenceDatePort));
-        assertNotNull(config.updateNotificationsReadStatusUseCase(readStatusPort, portalContextPort, referenceDatePort));
+        assertNotNull(config.getNotificationsUseCase(noticePort, currentPortalAccessContextProvider, referenceDatePort));
+        assertNotNull(config.updateNotificationsReadStatusUseCase(readStatusPort, currentPortalAccessContextProvider, referenceDatePort));
         assertNotNull(config.getContributionSummaryUseCase(
                 contributionPort,
                 currencyDisplayPort,

@@ -45,18 +45,19 @@ public class UseCaseConfig {
     @Bean
     public GetNotificationsUseCase getNotificationsUseCase(
             ApimNoticeMessagePort apimNoticeMessagePort,
-            PortalAccessContextPort portalAccessContextPort,
+            CurrentPortalAccessContextProvider currentPortalAccessContextProvider,
             ReferenceDatePort referenceDatePort) {
-        return new GetNotificationsService(apimNoticeMessagePort, portalAccessContextPort, referenceDatePort);
+        return new GetNotificationsService(
+                apimNoticeMessagePort, currentPortalAccessContextProvider, referenceDatePort);
     }
 
     @Bean
     public UpdateNotificationsReadStatusUseCase updateNotificationsReadStatusUseCase(
             ApimNotificationReadStatusPort apimNotificationReadStatusPort,
-            PortalAccessContextPort portalAccessContextPort,
+            CurrentPortalAccessContextProvider currentPortalAccessContextProvider,
             ReferenceDatePort referenceDatePort) {
         return new UpdateNotificationsReadStatusService(
-                apimNotificationReadStatusPort, portalAccessContextPort, referenceDatePort);
+                apimNotificationReadStatusPort, currentPortalAccessContextProvider, referenceDatePort);
     }
 
     @Bean
