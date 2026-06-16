@@ -65,13 +65,13 @@ class ConfigBackedAmountDisplayAdapterTest {
         // JP key overrides base amount: JP gets "#,##0" (no decimals), base amount gets "#,##0.00"
         var adapter = adapterWith(Map.of("en", Map.of("amount.JP", "#,##0", "amount", "#,##0.00")));
         // 1234.4 with pattern "#,##0" rounds down to 1,234; base amount would give "1,234.40"
-        assertEquals("1,234", adapter.formatAmount(new BigDecimal("1234.4"), "en", "", "JP", ""));
+        assertEquals("1,234", adapter.formatAmount(new BigDecimal("1234.4"), "en", "", "", "JP"));
     }
 
     @Test
     void fallsBackToBaseAmountWhenTrustCodeNotFound() {
         var adapter = adapterWith(Map.of("en", Map.of("amount", "#,##0.00")));
-        assertEquals("1,000.00", adapter.formatAmount(new BigDecimal("1000"), "en", "", "RM", ""));
+        assertEquals("1,000.00", adapter.formatAmount(new BigDecimal("1000"), "en", "", "", "RM"));
     }
 
     @Test

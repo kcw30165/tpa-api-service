@@ -44,7 +44,7 @@ class PersonalInformationFormOptionSetsContractTest {
 
         assertThat(response.form().optionSets()).containsOnlyKeys("smsLanguages");
         assertThat(response.form().optionSets().get("smsLanguages"))
-                .extracting(option -> option.value() + ":" + option.text())
+                .extracting(option -> option.value() + ":" + option.label())
                 .containsExactly("en:English", "zh_HK:Traditional Chinese");
     }
 
@@ -64,7 +64,7 @@ class PersonalInformationFormOptionSetsContractTest {
 
         assertThat(response.form().optionSets()).containsOnlyKeys("smsLanguages");
         assertThat(response.form().optionSets().get("smsLanguages"))
-                .extracting(option -> option.value() + ":" + option.text())
+                .extracting(option -> option.value() + ":" + option.label())
                 .containsExactly("en:DB英文", "zh_HK:DB繁體中文");
     }
 

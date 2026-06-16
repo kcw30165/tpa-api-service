@@ -13,9 +13,9 @@ public class ConfigVariantCandidateGenerator {
         addJoined(candidates, context.accountEnv(), context.trustCode(), context.schemeType());
         addJoined(candidates, context.accountEnv(), context.trustCode());
         addJoined(candidates, context.accountEnv(), context.schemeType());
-        addJoined(candidates, context.trustCode(), context.schemeType());
+        // addJoined(candidates, context.trustCode(), context.schemeType());
         addSingle(candidates, context.accountEnv());
-        addSingle(candidates, context.trustCode());
+        // addSingle(candidates, context.trustCode());
         addSingle(candidates, context.schemeType());
 
         Set<String> uniqueCandidates = new LinkedHashSet<>(candidates);

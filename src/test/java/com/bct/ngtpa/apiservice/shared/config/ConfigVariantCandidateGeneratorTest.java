@@ -19,9 +19,7 @@ class ConfigVariantCandidateGeneratorTest {
                 "PROD.RM.MPF",
                 "PROD.RM",
                 "PROD.MPF",
-                "RM.MPF",
                 "PROD",
-                "RM",
                 "MPF"), generator.generate(context));
     }
 
@@ -29,14 +27,14 @@ class ConfigVariantCandidateGeneratorTest {
     void skipsMissingSchemeType() {
         var context = ConfigLookupContext.of("PROD", "RM", "   ", Locale.ENGLISH);
 
-        assertEquals(List.of("PROD.RM", "PROD", "RM"), generator.generate(context));
+        assertEquals(List.of("PROD.RM", "PROD"), generator.generate(context));
     }
 
     @Test
     void skipsMissingAccountEnv() {
         var context = ConfigLookupContext.of("  ", "RM", "MPF", Locale.ENGLISH);
 
-        assertEquals(List.of("RM.MPF", "RM", "MPF"), generator.generate(context));
+        assertEquals(List.of("MPF"), generator.generate(context));
     }
 
     @Test
@@ -50,7 +48,7 @@ class ConfigVariantCandidateGeneratorTest {
     void returnsSingleTrustCodeWhenOnlyTrustCodeIsPresent() {
         var context = ConfigLookupContext.of(null, "RM", null, Locale.ENGLISH);
 
-        assertEquals(List.of("RM"), generator.generate(context));
+        assertEquals(List.of(), generator.generate(context));
     }
 
     @Test
@@ -82,9 +80,7 @@ class ConfigVariantCandidateGeneratorTest {
                 "PROD.RM.MPF",
                 "PROD.RM",
                 "PROD.MPF",
-                "RM.MPF",
                 "PROD",
-                "RM",
                 "MPF"), generator.generate(context));
     }
 
