@@ -3,21 +3,26 @@ package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
+import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.exception.ApplicationException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidPersonalInformationUpdateException;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
+import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
+import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
+import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
@@ -39,10 +44,20 @@ public class ApiExceptionHandler {
 
     private final ErrorMessageResolver errorMessageResolver;
     private final LoggingSanitizer loggingSanitizer;
+    private final PortalAccessContextPort portalAccessContextPort;
 
     public ApiExceptionHandler(ErrorMessageResolver errorMessageResolver, LoggingSanitizer loggingSanitizer) {
+        this(errorMessageResolver, loggingSanitizer, null);
+    }
+
+    @Autowired
+    public ApiExceptionHandler(
+            ErrorMessageResolver errorMessageResolver,
+            LoggingSanitizer loggingSanitizer,
+            PortalAccessContextPort portalAccessContextPort) {
         this.errorMessageResolver = errorMessageResolver;
         this.loggingSanitizer = loggingSanitizer;
+        this.portalAccessContextPort = portalAccessContextPort;
     }
 
     @ExceptionHandler(ApimException.class)
@@ -353,19 +368,55 @@ public class ApiExceptionHandler {
     }
 
     private ErrorMessageContext resolveErrorMessageContext(ServerWebExchange exchange, Throwable exception) {
+        PortalAccessContext portalAccessContext = resolvePortalAccessContext(exchange);
         return new ErrorMessageContext(
                 firstNonBlank(requestLocale(exchange), contextValue(exception, "lang")),
-                firstNonBlank(requestParam(exchange, "env"), contextValue(exception, "env")),
-                firstNonBlank(requestParam(exchange, "trustCode"), contextValue(exception, "trustCode")),
-                firstNonBlank(requestParam(exchange, "schemeType"), contextValue(exception, "schemeType")));
+                accountEnv(portalAccessContext),
+                trustCode(portalAccessContext),
+                schemeType(portalAccessContext));
+    }
+
+    private PortalAccessContext resolvePortalAccessContext(ServerWebExchange exchange) {
+        if (portalAccessContextPort == null) {
+            return null;
+        }
+        String accountRef = resolveAccountRef(exchange);
+        if (!StringUtils.hasText(accountRef)) {
+            return null;
+        }
+        try {
+            var contextMono = portalAccessContextPort.resolvePortalAccessContext(accountRef);
+            return contextMono == null ? null : contextMono.block();
+        } catch (RuntimeException exception) {
+            log.warn("Unable to resolve PortalAccessContext for API error message context: {}",
+                    loggingSanitizer.toSafeString(exception.getMessage()));
+            return null;
+        }
+    }
+
+    private String resolveAccountRef(ServerWebExchange exchange) {
+        RequestHeaderContext context = (RequestHeaderContext) exchange.getAttributes()
+                .get(RequestHeaderContextKeys.ATTRIBUTE_KEY);
+        if (context != null && StringUtils.hasText(context.accountRef())) {
+            return context.accountRef();
+        }
+        return trimToNull(exchange.getRequest().getHeaders().getFirst(RequestHeaderContextKeys.ACCOUNT_REF_HEADER));
+    }
+
+    private String accountEnv(PortalAccessContext context) {
+        return context == null || context.account() == null ? null : trimToNull(context.account().accountEnv());
+    }
+
+    private String trustCode(PortalAccessContext context) {
+        return context == null || context.account() == null ? null : trimToNull(context.account().trustCode());
+    }
+
+    private String schemeType(PortalAccessContext context) {
+        return context == null || context.account() == null ? null : trimToNull(context.account().schemeType());
     }
 
     private String resolveApimErrorCode(ApimException ex) {
         return StringUtils.hasText(ex.getErrorCode()) ? ex.getErrorCode() : ErrorCodes.APIM_UPSTREAM_FAILURE;
-    }
-
-    private String requestParam(ServerWebExchange exchange, String name) {
-        return trimToNull(exchange.getRequest().getQueryParams().getFirst(name));
     }
 
     private String requestLocale(ServerWebExchange exchange) {

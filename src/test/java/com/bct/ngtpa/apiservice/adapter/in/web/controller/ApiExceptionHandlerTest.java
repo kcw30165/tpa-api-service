@@ -11,6 +11,8 @@ import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdateNotificationsReadSt
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
+import com.bct.ngtpa.apiservice.application.dto.AccountContext;
+import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.exception.ApplicationException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
@@ -39,6 +41,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.support.WebExchangeBindException;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.ServerWebInputException;
+import reactor.core.publisher.Mono;
 
 class ApiExceptionHandlerTest {
 
@@ -244,6 +247,48 @@ class ApiExceptionHandlerTest {
         assertEquals("en-US", capturedLocale.get());
         assertNotNull(response.getBody());
         assertEquals("message for " + ErrorCodes.SYSTEM_UNEXPECTED, response.getBody().errors().getFirst().message());
+    }
+
+    @Test
+    void resolvesAccountDimensionsFromPortalAccessContextAndIgnoresLegacyQueryParameters() {
+        ApiExceptionHandler localHandler = new ApiExceptionHandler(
+                (errorCode, locale, accountEnv, trustCode, schemeType) -> {
+                    assertEquals("zh-HK", locale);
+                    assertEquals("CTX-ENV", accountEnv);
+                    assertEquals("CTX-TRUST", trustCode);
+                    assertEquals("CTX-SCHEME", schemeType);
+                    return "contextual message";
+                },
+                loggingSanitizer(),
+                accountRef -> {
+                    assertEquals("ACC-CTX", accountRef);
+                    return Mono.just(new PortalAccessContext(
+                            null,
+                            null,
+                            new AccountContext(
+                                    accountRef,
+                                    "CTX-ENV",
+                                    "POL-001",
+                                    "CERT-001",
+                                    "CTX-TRUST",
+                                    "CTX-SCHEME",
+                                    null,
+                                    null)));
+                });
+        MockServerWebExchange exchange = MockServerWebExchange.from(
+                MockServerHttpRequest.get("/api/v1/test")
+                        .queryParam("env", "QUERY-ENV")
+                        .queryParam("trustCode", "QUERY-TRUST")
+                        .queryParam("schemeType", "QUERY-SCHEME")
+                        .header("Accept-Language", "zh-HK")
+                        .header("Account-Ref", "ACC-CTX"));
+
+        ResponseEntity<MutationResponse<Void>> response = localHandler.handleUnexpectedException(
+                new IllegalStateException("unexpected"),
+                exchange);
+
+        assertNotNull(response.getBody());
+        assertEquals("contextual message", response.getBody().errors().getFirst().message());
     }
 
     private static void assertMutationFailure(
