@@ -66,7 +66,7 @@ class UpdatePersonalInformationServiceTest {
 
     private static PortalAccessContext context() {
         return new PortalAccessContext(
-                new ActorContext("actor-user", "MEMBER", "SELF"),
+                new ActorContext("actor-user", "MEMBER"),
                 new MemberOwnerContext("owner-user", "MBR"),
                 new AccountContext(
                         "ACC-123",

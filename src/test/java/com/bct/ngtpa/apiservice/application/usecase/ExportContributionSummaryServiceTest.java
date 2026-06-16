@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class ExportContributionSummaryServiceTest {
 
     private static final PortalAccessContext CONTRIBUTIONS_CONTEXT = new PortalAccessContext(
-            new ActorContext("userId_for_contributions", "MEMBER", "SELF"),
+            new ActorContext("userId_for_contributions", "SELF"),
             new MemberOwnerContext("userId_for_contributions", "MBR"),
             new AccountContext(
                     "contributions",

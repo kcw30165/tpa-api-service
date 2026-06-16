@@ -45,7 +45,6 @@ public class TemporaryPortalAccessContextAdapter implements PortalAccessContextP
         return Mono.just(new PortalAccessContext(
                 new ActorContext(
                         profile.getActorUserId(),
-                        profile.getActorUserType(),
                         profile.getActorUserRole()),
                 new MemberOwnerContext(
                         profile.getMemberUserId(),

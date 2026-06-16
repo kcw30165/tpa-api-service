@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class UpdateNotificationsReadStatusServiceTest {
 
     private static final PortalAccessContext NOTIFICATIONS_CONTEXT = new PortalAccessContext(
-            new ActorContext("userId_for_notifications", "MEMBER", "SELF"),
+            new ActorContext("userId_for_notifications", "SELF"),
             new MemberOwnerContext("userId_for_notifications", "MBR"),
             new AccountContext(
                     "notifications",

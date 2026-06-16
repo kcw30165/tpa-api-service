@@ -11,10 +11,10 @@ class PortalAccessContextTest {
 
     @Test
     void actorContextPreservesSuppliedValues() {
-        var actor = new ActorContext("user-01", "STAFF", "RM");
+        var actor = new ActorContext("user-01", "RM");
 
         assertEquals("user-01", actor.actorUserId());
-        assertEquals("STAFF", actor.actorUserType());
+        // assertEquals("STAFF", actor.actorUserType());
         assertEquals("RM", actor.actorUserRole());
     }
 
@@ -44,7 +44,7 @@ class PortalAccessContextTest {
 
     @Test
     void portalAccessContextComposesAllThreeComponents() {
-        var actor       = new ActorContext("u1", "STAFF", "RM");
+        var actor       = new ActorContext("u1", "RM");
         var memberOwner = new MemberOwnerContext("m1", "MBR");
         var account     = new AccountContext(
             "ref", "JP", "pol", "cert", "trust", "scheme",
@@ -60,14 +60,14 @@ class PortalAccessContextTest {
     @Test
     void portalAccessContextRecordEquality() {
         var a = new PortalAccessContext(
-                new ActorContext("u1", "STAFF", "RM"),
+                new ActorContext("u1", "RM"),
                 new MemberOwnerContext("m1", "MBR"),
             new AccountContext(
                 "ref", "JP", "pol", "cert", "trust", "scheme",
                 TermStatus.O, LocalDate.of(2026, 5, 1)));
 
         var b = new PortalAccessContext(
-                new ActorContext("u1", "STAFF", "RM"),
+                new ActorContext("u1", "RM"),
                 new MemberOwnerContext("m1", "MBR"),
             new AccountContext(
                 "ref", "JP", "pol", "cert", "trust", "scheme",

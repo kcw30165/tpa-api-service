@@ -31,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 class GetNotificationsServiceTest {
 
     private static final PortalAccessContext NOTIFICATIONS_CONTEXT = new PortalAccessContext(
-            new ActorContext("userId_for_notifications", "STAFF", "RM"),
+            new ActorContext("userId_for_notifications", "RM"),
             new MemberOwnerContext("member-notif", "MBR"),
             new AccountContext(
                     "notifications",

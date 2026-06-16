@@ -38,7 +38,7 @@ class GetContributionSummaryServiceTest {
     private static final LocalDate REFERENCE_DATE = LocalDate.of(2026, 3, 31);
 
     private static final PortalAccessContext CONTRIBUTIONS_CONTEXT = new PortalAccessContext(
-            new ActorContext("userId_for_contributions", "MEMBER", "SELF"),
+            new ActorContext("userId_for_contributions", "SELF"),
             new MemberOwnerContext("userId_for_contributions", "MBR"),
             new AccountContext(
                     "contributions",

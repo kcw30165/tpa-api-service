@@ -265,7 +265,7 @@ class GetPersonalInformationServiceTest {
 
         private static PortalAccessContext context(String accountRef) {
                 return new PortalAccessContext(
-                                new ActorContext("user-1", "MEMBER", "SELF"),
+                                new ActorContext("user-1", "SELF"),
                                 new MemberOwnerContext("user-1", "MBR"),
                                 new AccountContext(accountRef, "JP", "policy-1", "cert-1", "JPM", "OE",
                                                 TermStatus.BLANK, null));
