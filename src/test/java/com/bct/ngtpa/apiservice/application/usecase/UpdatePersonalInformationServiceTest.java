@@ -10,10 +10,10 @@ import com.bct.ngtpa.apiservice.application.dto.UpdateMemberInfoCommand;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationCommand;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
 import com.bct.ngtpa.apiservice.application.port.out.ApimUpdatePersonalInformationPort;
-import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextProvider;
+
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
@@ -22,7 +22,6 @@ class UpdatePersonalInformationServiceTest {
 
     @Test
     void resolvesPortalContextAndCallsApimUpdateWithActorUserIdUserTypeAndMappedFields() {
-        AtomicReference<String> capturedAccountRef = new AtomicReference<>();
         AtomicReference<UpdateMemberInfoCommand> capturedCommand = new AtomicReference<>();
         List<UpdatePersonalInformationResult> expectedResults = List.of(new UpdatePersonalInformationResult(
                 true,
@@ -35,11 +34,6 @@ class UpdatePersonalInformationServiceTest {
                 "13:44:01",
                 List.of()));
 
-        PortalAccessContextPort portalPort = accountRef -> {
-            capturedAccountRef.set(accountRef);
-            return Mono.just(context());
-        };
-
         ApimUpdatePersonalInformationPort apimPort = command -> {
             capturedCommand.set(command);
             return Mono.just(expectedResults);
@@ -49,12 +43,11 @@ class UpdatePersonalInformationServiceTest {
         updateFields.put("addr2", "Tai Po, New Territories");
         updateFields.put("mobile-number", "98765432");
 
-        var result = new UpdatePersonalInformationService(apimPort, portalPort)
+        var result = new UpdatePersonalInformationService(apimPort, provider(context()))
                 .execute(new UpdatePersonalInformationCommand("ACC-123", true, updateFields))
                 .block();
 
         assertEquals(expectedResults, result);
-        assertEquals("ACC-123", capturedAccountRef.get());
         assertEquals("JP", capturedCommand.get().accountEnv());
         assertEquals("POL-001", capturedCommand.get().policyNo());
         assertEquals("CERT-001", capturedCommand.get().certNo());
@@ -75,5 +68,18 @@ class UpdatePersonalInformationServiceTest {
                         "OE",
                         TermStatus.BLANK,
                         null));
+    }
+        private static CurrentPortalAccessContextProvider provider(PortalAccessContext context) {
+        return new CurrentPortalAccessContextProvider() {
+            @Override
+            public Mono<PortalAccessContext> current() {
+                return Mono.just(context);
+            }
+
+            @Override
+            public Mono<PortalAccessContext> currentOrEmpty() {
+                return Mono.just(context);
+            }
+        };
     }
 }

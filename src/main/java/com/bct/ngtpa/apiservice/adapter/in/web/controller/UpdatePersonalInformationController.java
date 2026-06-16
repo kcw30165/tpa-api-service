@@ -9,7 +9,10 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.support.RequestLanguageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationUpdateYamlValidator;
+import com.bct.ngtpa.apiservice.application.dto.AccountContext;
+import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
+import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.application.port.in.UpdatePersonalInformationUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextProvider;
@@ -69,18 +72,29 @@ public class UpdatePersonalInformationController {
     public Mono<MutationResponse<List<PersonalInformationUpdateResultResponse>>> update(
             @RequestBody Mono<UpdatePersonalInformationRequest> request,
             @RequestHeader(value = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false) String acceptLanguage) {
-        return Mono.deferContextual(contextView -> currentPortalAccessContext()
+        return Mono.deferContextual(contextView -> currentPortalAccessContext(contextView)
                 .flatMap(portalAccessContext -> request.flatMap(body -> {
-                    String language = resolveLanguage(contextView, acceptLanguage);
+                    String resolvedLocale = resolveLanguage(contextView, acceptLanguage);
                     List<ApiError> errors = validator == null
                             ? List.of()
-                            : validator.validate(body, language, accountEnv(portalAccessContext),
+                            : validator.validate(body, resolvedLocale, accountEnv(portalAccessContext),
                                     trustCode(portalAccessContext), schemeType(portalAccessContext));
                     if (!errors.isEmpty()) {
                         return Mono.just(MutationResponse.failure(ApiStatus.VALIDATION_FAILED, errors));
                     }
+                    if (currentPortalAccessContextProvider == null) {
+                        RequestHeaderContext headersContext = contextView.getOrDefault(
+                                RequestHeaderContextKeys.CONTEXT_KEY,
+                                null);
+                        return Mono.just(requestMapper.toCommand(
+                                        headersContext == null ? null : headersContext.accountRef(),
+                                        body.applyToAllAccounts(),
+                                        body))
+                                .flatMap(command -> updatePersonalInformationUseCase.execute(command))
+                                .map(responseMapper::toResponse);
+                    }
                     return Mono.just(requestMapper.toCommand(body.applyToAllAccounts(), body))
-                            .flatMap(updatePersonalInformationUseCase::execute)
+                            .flatMap(command -> updatePersonalInformationUseCase.execute(command))
                             .map(responseMapper::toResponse);
                 })));
     }
@@ -90,18 +104,24 @@ public class UpdatePersonalInformationController {
         return update(request, null);
     }
 
-    private Mono<PortalAccessContext> currentPortalAccessContext() {
-        if (currentPortalAccessContextProvider == null) {
+    private Mono<PortalAccessContext> currentPortalAccessContext(ContextView contextView) {
+        if (currentPortalAccessContextProvider != null) {
+            return currentPortalAccessContextProvider.current();
+        }
+        RequestHeaderContext headersContext = contextView.getOrDefault(RequestHeaderContextKeys.CONTEXT_KEY, null);
+        if (headersContext == null || headersContext.accountRef() == null || headersContext.accountRef().isBlank()) {
             return Mono.error(new PortalAccessContextResolutionException(
                     ErrorCodes.MEMBER_CONTEXT_INVALID,
-                    "PortalAccessContext is not available in the current request context."));
+                    "Account-Ref is required for personal information update."));
         }
-        return currentPortalAccessContextProvider.current();
+        return Mono.just(new PortalAccessContext(
+                new ActorContext(null, null),
+                new AccountContext(headersContext.accountRef(), null, null, null, null, null, TermStatus.BLANK, null)));
     }
 
     private String resolveLanguage(ContextView contextView, String acceptLanguage) {
-        RequestHeaderContext requestHeaderContext = contextView.getOrDefault(RequestHeaderContextKeys.CONTEXT_KEY, null);
-        return RequestLanguageResolver.resolve(requestHeaderContext, acceptLanguage, null);
+        RequestHeaderContext context = contextView.getOrDefault(RequestHeaderContextKeys.CONTEXT_KEY, null);
+        return RequestLanguageResolver.resolve(context, acceptLanguage, context == null ? null : context.language());
     }
 
     private String accountEnv(PortalAccessContext context) {

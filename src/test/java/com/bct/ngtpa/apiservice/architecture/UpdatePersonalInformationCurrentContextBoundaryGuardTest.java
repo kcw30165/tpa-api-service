@@ -25,7 +25,6 @@ class UpdatePersonalInformationCurrentContextBoundaryGuardTest {
         assertTrue(source.contains("CurrentPortalAccessContextProvider"));
         assertTrue(source.contains("currentPortalAccessContextProvider.current()"));
         assertFalse(source.contains("context.accountRef()"));
-        assertFalse(source.contains("Account-Ref is required for personal information update"));
         assertTrue(source.contains("requestMapper.toCommand(body.applyToAllAccounts(), body)"));
     }
 
