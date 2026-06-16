@@ -9,14 +9,13 @@ import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequest
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidPersonalInformationUpdateException;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
-import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
+import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
+import com.bct.ngtpa.apiservice.shared.web.PortalAccessContextKeys;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
-import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
-import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -44,7 +43,7 @@ public class ApiExceptionHandler {
 
     private final ErrorMessageResolver errorMessageResolver;
     private final LoggingSanitizer loggingSanitizer;
-    private final PortalAccessContextPort portalAccessContextPort;
+    private final PortalAccessContextResolver portalAccessContextResolver;
 
     public ApiExceptionHandler(ErrorMessageResolver errorMessageResolver, LoggingSanitizer loggingSanitizer) {
         this(errorMessageResolver, loggingSanitizer, null);
@@ -54,10 +53,10 @@ public class ApiExceptionHandler {
     public ApiExceptionHandler(
             ErrorMessageResolver errorMessageResolver,
             LoggingSanitizer loggingSanitizer,
-            PortalAccessContextPort portalAccessContextPort) {
+            PortalAccessContextResolver portalAccessContextResolver) {
         this.errorMessageResolver = errorMessageResolver;
         this.loggingSanitizer = loggingSanitizer;
-        this.portalAccessContextPort = portalAccessContextPort;
+        this.portalAccessContextResolver = portalAccessContextResolver;
     }
 
     @ExceptionHandler(ApimException.class)
@@ -377,30 +376,21 @@ public class ApiExceptionHandler {
     }
 
     private PortalAccessContext resolvePortalAccessContext(ServerWebExchange exchange) {
-        if (portalAccessContextPort == null) {
-            return null;
+        Object attribute = exchange.getAttributes().get(PortalAccessContextKeys.ATTRIBUTE_KEY);
+        if (attribute instanceof PortalAccessContext portalAccessContext) {
+            return portalAccessContext;
         }
-        String accountRef = resolveAccountRef(exchange);
-        if (!StringUtils.hasText(accountRef)) {
+        if (portalAccessContextResolver == null) {
             return null;
         }
         try {
-            var contextMono = portalAccessContextPort.resolvePortalAccessContext(accountRef);
+            var contextMono = portalAccessContextResolver.currentOrEmpty();
             return contextMono == null ? null : contextMono.block();
         } catch (RuntimeException exception) {
-            log.warn("Unable to resolve PortalAccessContext for API error message context: {}",
+            log.warn("Unable to read current PortalAccessContext for API error message context: {}",
                     loggingSanitizer.toSafeString(exception.getMessage()));
             return null;
         }
-    }
-
-    private String resolveAccountRef(ServerWebExchange exchange) {
-        RequestHeaderContext context = (RequestHeaderContext) exchange.getAttributes()
-                .get(RequestHeaderContextKeys.ATTRIBUTE_KEY);
-        if (context != null && StringUtils.hasText(context.accountRef())) {
-            return context.accountRef();
-        }
-        return trimToNull(exchange.getRequest().getHeaders().getFirst(RequestHeaderContextKeys.ACCOUNT_REF_HEADER));
     }
 
     private String accountEnv(PortalAccessContext context) {
