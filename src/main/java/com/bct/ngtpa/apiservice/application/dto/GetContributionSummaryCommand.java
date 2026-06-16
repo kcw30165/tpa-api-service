@@ -5,15 +5,6 @@ public record GetContributionSummaryCommand(
         String toDate,
         String lang,
         int page,
-        int pageSize,
-        String accountRef
+        int pageSize
 ) {
-    public GetContributionSummaryCommand(
-            String fromDate,
-            String toDate,
-            String lang,
-            int page,
-            int pageSize) {
-        this(fromDate, toDate, lang, page, pageSize, null);
-    }
 }

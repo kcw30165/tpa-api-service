@@ -65,10 +65,10 @@ public class UseCaseConfig {
             ApimContributionSummaryPort apimContributionSummaryPort,
             CurrencyDisplayPort currencyDisplayPort,
             ReferenceDatePort referenceDatePort,
-            PortalAccessContextPort portalAccessContextPort,
+            CurrentPortalAccessContextProvider currentPortalAccessContextProvider,
             ContributionActionPermissionPort contributionActionPermissionPort) {
         return new GetContributionSummaryService(
-                apimContributionSummaryPort, currencyDisplayPort, referenceDatePort, portalAccessContextPort,
+                apimContributionSummaryPort, currencyDisplayPort, referenceDatePort, currentPortalAccessContextProvider,
                 contributionActionPermissionPort);
     }
 
@@ -77,9 +77,9 @@ public class UseCaseConfig {
             ApimContributionSummaryPort apimContributionSummaryPort,
             CurrencyDisplayPort currencyDisplayPort,
             ReferenceDatePort referenceDatePort,
-            PortalAccessContextPort portalAccessContextPort) {
+            CurrentPortalAccessContextProvider currentPortalAccessContextProvider) {
         return new ExportContributionSummaryService(
-                apimContributionSummaryPort, currencyDisplayPort, referenceDatePort, portalAccessContextPort);
+                apimContributionSummaryPort, currencyDisplayPort, referenceDatePort, currentPortalAccessContextProvider);
     }
 
     @Bean

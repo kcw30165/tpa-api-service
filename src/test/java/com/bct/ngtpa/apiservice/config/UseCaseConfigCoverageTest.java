@@ -38,13 +38,13 @@ class UseCaseConfigCoverageTest {
                 contributionPort,
                 currencyDisplayPort,
                 referenceDatePort,
-                portalContextPort,
+                currentPortalAccessContextProvider,
                 actionPermissionPort));
         assertNotNull(config.exportContributionSummaryUseCase(
                 contributionPort,
                 currencyDisplayPort,
                 referenceDatePort,
-                portalContextPort));
+                currentPortalAccessContextProvider));
         assertNotNull(config.getReferenceDataCountriesUseCase(countriesPort));
         assertNotNull(config.getPersonalInformationUseCase(memberInfoPort, portalContextPort));
     }

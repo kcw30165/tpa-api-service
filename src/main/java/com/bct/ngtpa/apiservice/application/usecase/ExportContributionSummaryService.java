@@ -5,7 +5,7 @@ import com.bct.ngtpa.apiservice.application.dto.ExportContributionSummaryCommand
 import com.bct.ngtpa.apiservice.application.port.in.ExportContributionSummaryUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimContributionSummaryPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
-import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextProvider;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryReportBuilder;
 import lombok.RequiredArgsConstructor;
@@ -17,13 +17,12 @@ public class ExportContributionSummaryService implements ExportContributionSumma
         private final ApimContributionSummaryPort apimContributionSummaryPort;
         private final CurrencyDisplayPort currencyDisplayPort;
         private final ReferenceDatePort referenceDatePort;
-        private final PortalAccessContextPort portalAccessContextPort;
+        private final CurrentPortalAccessContextProvider currentPortalAccessContextProvider;
 
         @Override
         public Mono<ContributionSummaryReportResult> execute(ExportContributionSummaryCommand command) {
                 return referenceDatePort.resolveReferenceDate()
-                                .flatMap(refDate -> portalAccessContextPort
-                                                .resolvePortalAccessContext(resolveAccountRef(command.accountRef(), "contributions"))
+                                .flatMap(refDate -> currentPortalAccessContextProvider.current()
                                                 .map(ctx -> ContributionSummarySupport.newFetchCommand(
                                                                 ContributionSummarySupport
                                                                                 .formatDate(refDate.minusMonths(36)),
@@ -43,9 +42,5 @@ public class ExportContributionSummaryService implements ExportContributionSumma
                                                                 fetchCommand.trustCode(),
                                                                 fetchCommand.schemeType(),
                                                                 fetchCommand.accountEnv())));
-        }
-
-        private String resolveAccountRef(String accountRef, String fallbackAccountRef) {
-                return accountRef != null ? accountRef : fallbackAccountRef;
         }
 }

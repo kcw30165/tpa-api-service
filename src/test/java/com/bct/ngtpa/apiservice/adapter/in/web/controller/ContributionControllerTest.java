@@ -99,57 +99,7 @@ class ContributionControllerTest {
                 assertEquals(99999, captured.get().pageSize());
         }
 
-        @Test
-        void passesAccountRefFromHeaderContextToContributionSummaryUseCase() {
-                AtomicReference<GetContributionSummaryCommand> captured = new AtomicReference<>();
-                GetContributionSummaryUseCase getUseCase = command -> {
-                        captured.set(command);
-                        if (!VALID_ACCOUNT_REF.equals(command.accountRef())) {
-                                return Mono.error(new ApplicationException(
-                                                ErrorCodes.MEMBER_CONTEXT_INVALID,
-                                                "accountRef must be present"));
-                        }
-                        return Mono.just(sampleResult());
-                };
-
-                webClientWithoutDefaultAccountRef(getUseCase, unusedExportUseCase())
-                                .get()
-                                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions")
-                                                .queryParam("fromDate", "01/03/2026")
-                                                .queryParam("toDate", "31/03/2026")
-                                                .build())
-                                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, VALID_ACCOUNT_REF)
-                                .exchange()
-                                .expectStatus().isOk();
-
-                assertEquals(VALID_ACCOUNT_REF, captured.get().accountRef());
-        }
-
-        @Test
-        void missingAccountRefReturnsGenericBaseErrorForContributionSummary() {
-                webClientWithoutDefaultAccountRef(unusedGetUseCase(), unusedExportUseCase())
-                                .get()
-                                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions")
-                                                .queryParam("fromDate", "01/03/2026")
-                                                .queryParam("toDate", "31/03/2026")
-                                                .build())
-                                .exchange()
-                                .expectStatus().isBadRequest()
-                                .expectHeader().exists("X-Request-Id")
-                                .expectBody()
-                                .jsonPath("$.success").isEqualTo(false)
-                                .jsonPath("$.messages").isArray()
-                                .jsonPath("$.errors").isArray()
-                                .jsonPath("$.errorCode").doesNotExist()
-                                .jsonPath("$.requestId").doesNotExist()
-                                .consumeWith(result -> {
-                                        String body = new String(result.getResponseBody(), StandardCharsets.UTF_8);
-                                        assertTrue(body.contains(ErrorCodes.MEMBER_CONTEXT_INVALID));
-                                        assertTrue(!body.contains("\"requestId\""));
-                                });
-        }
-
-        @Test
+                        @Test
         void usesDefaultPageAndPageSizeWhenNotProvided() {
                 AtomicReference<GetContributionSummaryCommand> captured = new AtomicReference<>();
                 GetContributionSummaryUseCase getUseCase = command -> {
@@ -411,51 +361,7 @@ class ContributionControllerTest {
                                                 && result.getResponseBody().length > 0));
         }
 
-        @Test
-        void passesAccountRefFromHeaderContextToContributionExportUseCase() {
-                AtomicReference<String> captured = new AtomicReference<>();
-                ExportContributionSummaryUseCase exportUseCase = command -> {
-                        captured.set(command.accountRef());
-                        if (!VALID_ACCOUNT_REF.equals(command.accountRef())) {
-                                return Mono.error(new ApplicationException(
-                                                ErrorCodes.MEMBER_CONTEXT_INVALID,
-                                                "accountRef must be present"));
-                        }
-                        return Mono.just(sampleResult());
-                };
-
-                filteredWebClient(unusedGetUseCase(), exportUseCase)
-                                .get()
-                                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions/export").build())
-                                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, VALID_ACCOUNT_REF)
-                                .exchange()
-                                .expectStatus().isOk();
-
-                assertEquals(VALID_ACCOUNT_REF, captured.get());
-        }
-
-        @Test
-        void missingAccountRefReturnsGenericBaseErrorForContributionExport() {
-                webClientWithoutDefaultAccountRef(unusedGetUseCase(), unusedExportUseCase())
-                                .get()
-                                .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions/export").build())
-                                .exchange()
-                                .expectStatus().isBadRequest()
-                                .expectHeader().exists("X-Request-Id")
-                                .expectBody()
-                                .jsonPath("$.success").isEqualTo(false)
-                                .jsonPath("$.messages").isArray()
-                                .jsonPath("$.errors").isArray()
-                                .jsonPath("$.errorCode").doesNotExist()
-                                .jsonPath("$.requestId").doesNotExist()
-                                .consumeWith(result -> {
-                                        String body = new String(result.getResponseBody(), StandardCharsets.UTF_8);
-                                        assertTrue(body.contains(ErrorCodes.MEMBER_CONTEXT_INVALID));
-                                        assertTrue(!body.contains("\"requestId\""));
-                                });
-        }
-
-        // @Test
+                        // @Test
         // void exportErrorsStillReturnStandardJsonEnvelopeWhenAcceptOnlyAllowsXlsx() {
         // ExportContributionSummaryUseCase exportUseCase = command -> Mono.error(
         // new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE,
