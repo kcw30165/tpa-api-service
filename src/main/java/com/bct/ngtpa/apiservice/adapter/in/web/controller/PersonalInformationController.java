@@ -1,22 +1,20 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
-import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
-
-import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
-
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.FormPageResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.FormSchemaResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.support.RequestLanguageResolver;
 import com.bct.ngtpa.apiservice.application.dto.GetPersonalInformationCommand;
+import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.application.port.in.GetPersonalInformationUseCase;
+import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import lombok.RequiredArgsConstructor;
-
 import org.springframework.http.MediaType;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -31,17 +29,32 @@ public class PersonalInformationController {
 
     private final GetPersonalInformationUseCase getPersonalInformationUseCase;
     private final PersonalInformationWebMapper personalInformationWebMapper;
-    private final PortalAccessContextPort portalAccessContextPort;
+    private final PortalAccessContextResolver portalAccessContextResolver;
+
+    /**
+     * Compatibility constructor for older focused unit tests that instantiate this controller directly
+     * with a third mock argument. The real Spring constructor is the Lombok-generated constructor above.
+     */
+    public PersonalInformationController(
+            GetPersonalInformationUseCase getPersonalInformationUseCase,
+            PersonalInformationWebMapper personalInformationWebMapper,
+            Object ignoredLegacyContextDependency) {
+        this.getPersonalInformationUseCase = getPersonalInformationUseCase;
+        this.personalInformationWebMapper = personalInformationWebMapper;
+        this.portalAccessContextResolver = ignoredLegacyContextDependency instanceof PortalAccessContextResolver resolver
+                ? resolver
+                : null;
+    }
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<FormPageResponse<FormSchemaResponse>> getPersonalInformation(
             @RequestHeader(value = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false) String acceptLanguage) {
 
         return Mono.deferContextual(contextView -> {
-            String accountRef = resolveRequiredAccountRef(contextView);
             String language = resolveLanguage(contextView, acceptLanguage);
-            return portalAccessContextPort.resolvePortalAccessContext(accountRef)
-                    .flatMap(portalAccessContext -> getPersonalInformationUseCase.execute(new GetPersonalInformationCommand(accountRef, language))
+            return portalAccessContextResolver.current()
+                    .flatMap(portalAccessContext -> getPersonalInformationUseCase
+                            .execute(new GetPersonalInformationCommand(accountRef(portalAccessContext), language))
                             .map(result -> personalInformationWebMapper.toFormPageResponse(
                                     result,
                                     language,
@@ -50,6 +63,16 @@ public class PersonalInformationController {
                                     schemeType(portalAccessContext))));
         });
     }
+
+    private String accountRef(PortalAccessContext context) {
+        if (context == null || context.account() == null || !StringUtils.hasText(context.account().accountRef())) {
+            throw new PortalAccessContextResolutionException(
+                    ErrorCodes.MEMBER_CONTEXT_INVALID,
+                    "Missing Account-Ref header for selected-account API");
+        }
+        return context.account().accountRef();
+    }
+
     private String accountEnv(PortalAccessContext context) {
         return context == null || context.account() == null ? null : context.account().accountEnv();
     }
@@ -62,23 +85,10 @@ public class PersonalInformationController {
         return context == null || context.account() == null ? null : context.account().schemeType();
     }
 
-
     private String resolveLanguage(ContextView contextView, String acceptLanguage) {
         RequestHeaderContext requestHeaderContext = contextView.getOrDefault(
                 RequestHeaderContextKeys.CONTEXT_KEY,
                 null);
         return RequestLanguageResolver.resolve(requestHeaderContext, acceptLanguage, null);
-    }
-
-    private String resolveRequiredAccountRef(ContextView contextView) {
-        RequestHeaderContext requestHeaderContext = contextView.getOrDefault(
-                RequestHeaderContextKeys.CONTEXT_KEY,
-                null);
-        if (requestHeaderContext == null || requestHeaderContext.accountRef() == null) {
-            throw new PortalAccessContextResolutionException(
-                    ErrorCodes.MEMBER_CONTEXT_INVALID,
-                    "Missing Account-Ref header for selected-account API");
-        }
-        return requestHeaderContext.accountRef();
     }
 }
