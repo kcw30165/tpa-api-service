@@ -49,8 +49,7 @@ class UpdatePersonalInformationYamlValidationRuntimeTest {
                 List.of("emailAddress"),
                 "ERROR",
                 "SERVER");
-        when(validator.validate(eq(request), eq("zh-HK"), any(), any(), any()))
-                .thenReturn(List.of(error));
+        when(validator.validate(eq(request), eq("en"), any(), any(), any())).thenReturn(List.of(error));
 
         Mono<MutationResponse<List<PersonalInformationUpdateResultResponse>>> response = controller.update(Mono.just(request))
                 .contextWrite(context -> context.put(
@@ -67,7 +66,7 @@ class UpdatePersonalInformationYamlValidationRuntimeTest {
                 })
                 .verifyComplete();
 
-        verify(validator).validate(eq(request), eq("zh-HK"), any(), any(), any());
+        verify(validator).validate(eq(request), eq("en"), any(), any(), any());
         verifyNoInteractions(requestMapper, useCase, responseMapper);
     }
 
