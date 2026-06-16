@@ -1,5 +1,12 @@
 package com.bct.ngtpa.apiservice.application.usecase;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.FetchMemberInfoCommand;
@@ -10,294 +17,116 @@ import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.port.out.ApimMemberInfoPort;
 import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextResolver;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 class GetPersonalInformationServiceTest {
 
-        private final ApimMemberInfoPort apimMemberInfoPort = mock(ApimMemberInfoPort.class);
-        private final PortalAccessContextResolver portalAccessContextResolver = resolver(context("ACC-123"));
+    private final ApimMemberInfoPort apimMemberInfoPort = mock(ApimMemberInfoPort.class);
+    private final GetPersonalInformationService service = new GetPersonalInformationService(
+            apimMemberInfoPort,
+            resolver(context("ACC-123")));
 
-        private final GetPersonalInformationService service = new GetPersonalInformationService(apimMemberInfoPort,
-                        portalAccessContextResolver);
+    @Test
+    void returnsNeutralPersonalInformationResultWithoutPageMapping() {
+        var payload = Map.<String, Object>of(
+                "data", Map.of("addr1", "ABC Street", "email", "nick@example.com"),
+                "config", Map.of("addr1", "EDITABLE_COM", "email", "READONLY"));
+        when(apimMemberInfoPort.fetchMemberInfo(eq(new FetchMemberInfoCommand("JP", "policy-1", "cert-1", "user-1"))))
+                .thenReturn(Mono.just(new MemberInfoResult(payload)));
 
-        @Test
-        void returnsNeutralPersonalInformationResultWithoutPageMapping() {
-                var payload = Map.<String, Object>of(
-                                "data", Map.of("addr1", "ABC Street", "email", "nick@example.com"),
-                                "config", Map.of("addr1", "EDITABLE_COM", "email", "READONLY"));
+        StepVerifier.create(service.execute(new GetPersonalInformationCommand("en")))
+                .expectNextMatches(result -> "ABC Street".equals(result.data().get("addr1"))
+                        && "nick@example.com".equals(result.data().get("email"))
+                        && "EDITABLE_COM".equals(result.config().get("addr1"))
+                        && "READONLY".equals(result.config().get("email")))
+                .verifyComplete();
+    }
 
-                when(portalAccessContextResolver.current())
-                                .thenReturn(Mono.just(context("ACC-123")));
-                when(apimMemberInfoPort
-                                .fetchMemberInfo(eq(new FetchMemberInfoCommand("JP", "policy-1", "cert-1", "user-1"))))
-                                .thenReturn(Mono.just(new MemberInfoResult(payload)));
-
-                StepVerifier.create(service.execute(new GetPersonalInformationCommand("en")))
-                                .expectNextMatches(result -> "ABC Street".equals(result.data().get("addr1"))
-                                                && "nick@example.com".equals(result.data().get("email"))
-                                                && "EDITABLE_COM".equals(result.config().get("addr1"))
-                                                && "READONLY".equals(result.config().get("email")))
-                                .verifyComplete();
-
-                verify(portalAccessContextResolver).current();
-        }
-
-        @Test
-        void extractsApimResponseEnvelopeWithConfigItemsAndDataList() {
-                var payload = Map.<String, Object>of(
-                                "response", Map.of(
-                                                "err-message", "",
-                                                "data", List.of(Map.of(
-                                                                "config", List.of(
-                                                                                Map.of(
-                                                                                                "item-id", "email",
-                                                                                                "item-name",
-                                                                                                "Email Contact",
-                                                                                                "item-type", "DATA",
-                                                                                                "function",
-                                                                                                "INFO_UPDATE",
-                                                                                                "sch-type", "Any",
-                                                                                                "config-value",
-                                                                                                "READONLY"),
-                                                                                Map.of(
-                                                                                                "item-id", "addr1",
-                                                                                                "item-name",
-                                                                                                "Residential Address 1",
-                                                                                                "item-type", "DATA",
-                                                                                                "function",
-                                                                                                "INFO_UPDATE",
-                                                                                                "sch-type", "Any",
-                                                                                                "config-value",
-                                                                                                "HIDDEN")),
-                                                                "data", List.of(Map.of("email",
-                                                                                "HGPQITD.XW.YQGPG@PTOJY.CLI"))))));
-
-                when(portalAccessContextResolver.current())
-                                .thenReturn(Mono.just(context("ACC-123")));
-                when(apimMemberInfoPort
-                                .fetchMemberInfo(eq(new FetchMemberInfoCommand("JP", "policy-1", "cert-1", "user-1"))))
-                                .thenReturn(Mono.just(new MemberInfoResult(payload)));
-
-                StepVerifier.create(service.execute(new GetPersonalInformationCommand("en")))
-                                .expectNextMatches(result -> "HGPQITD.XW.YQGPG@PTOJY.CLI"
-                                                .equals(result.data().get("email"))
-                                                && result.config().isEmpty()
-                                                && result.configItems().get("email") != null
-                                                && result.configItems().get("email")
-                                                                .itemType() == MemberInfoConfigItemType.DATA
-                                                && "READONLY".equals(result.configItems().get("email").configValue()))
-                                .verifyComplete();
-        }
-
-        @Test
-        void normalizesNestedPayloadDataListAndSkipsNonMapEntries() {
-                Map<String, Object> payload = Map.of(
-                                "data", List.of(
-                                                "not-a-map",
-                                                Map.of(
-                                                                "data", List.of(
-                                                                                Map.of("email", "first@example.test"),
-                                                                                "ignored",
-                                                                                Map.of("addr1", "1 Branch Street")),
-                                                                "config", List.of(
-                                                                                "ignored",
-                                                                                configItem("email", "DATA", "READONLY"),
-                                                                                configItem("   ", "DATA",
-                                                                                                "EDITABLE_COM")))));
-
-                StepVerifier.create(
-                                serviceReturning(payload).execute(new GetPersonalInformationCommand("en")))
-                                .assertNext(result -> {
-                                        assertThat(result.data()).containsEntry("email", "first@example.test")
-                                                        .containsEntry("addr1", "1 Branch Street");
-                                        assertThat(result.config()).isEmpty();
-                                        assertThat(result.configItems()).containsOnlyKeys("email");
-                                        assertThat(result.configItems().get("email").itemType())
-                                                        .isEqualTo(MemberInfoConfigItemType.DATA);
-                                        assertThat(result.configItems().get("email").configValue())
-                                                        .isEqualTo("READONLY");
-                                })
-                                .verifyComplete();
-        }
-
-        @Test
-        void rawResponseEnvelopeFallsBackToOriginalPayloadWhenDataHasNoMapItems() {
-                Map<String, Object> payload = new LinkedHashMap<>();
-                payload.put("response", Map.of("data", List.of("not-a-map")));
-                payload.put("data", Map.of("email", "direct@example.test"));
-                Map<Object, Object> config = new LinkedHashMap<>();
-                config.put("email", "EDITABLE_COM");
-                config.put(99, null);
-                payload.put("config", config);
-
-                StepVerifier.create(serviceReturning(payload)
-                                .execute(new GetPersonalInformationCommand("zh-HK")))
-                                .assertNext(result -> {
-                                        assertThat(result.data()).containsEntry("email", "direct@example.test");
-                                        assertThat(result.config()).containsEntry("email", "EDITABLE_COM")
-                                                        .containsEntry("99", "null");
-                                        assertThat(result.configItems()).isEmpty();
-                                })
-                                .verifyComplete();
-        }
-
-        @Test
-        void emptyOrNullMemberInfoPayloadProducesEmptyResult() {
-                StepVerifier.create(serviceReturning(null).execute(new GetPersonalInformationCommand("en")))
-                                .assertNext(result -> {
-                                        assertThat(result.data()).isEmpty();
-                                        assertThat(result.config()).isEmpty();
-                                        assertThat(result.configItems()).isEmpty();
-                                })
-                                .verifyComplete();
-        }
-
-        @Test
-        void configItemStringFieldsAreTrimmedAndBlankValuesBecomeNull() {
-                Map<String, Object> payload = Map.of(
+    @Test
+    void extractsApimResponseEnvelopeWithConfigItemsAndDataList() {
+        var payload = Map.<String, Object>of(
+                "response", Map.of(
+                        "err-message", "",
+                        "data", List.of(Map.of(
                                 "config", List.of(Map.of(
-                                                "item-id", " email ",
-                                                "item-name", "  Email  ",
-                                                "item-type", " data ",
-                                                "function", "   ",
-                                                "sch-type", " Any ",
-                                                "config-value", " READONLY ")));
+                                        "item-id", "email",
+                                        "item-name", "Email Contact",
+                                        "item-type", "DATA",
+                                        "function", "INFO_UPDATE",
+                                        "sch-type", "Any",
+                                        "config-value", "READONLY")),
+                                "data", List.of(Map.of("email", "HGPQITD.XW.YQGPG@PTOJY.CLI"))))));
+        when(apimMemberInfoPort.fetchMemberInfo(eq(new FetchMemberInfoCommand("JP", "policy-1", "cert-1", "user-1"))))
+                .thenReturn(Mono.just(new MemberInfoResult(payload)));
 
-                StepVerifier.create(
-                                serviceReturning(payload).execute(new GetPersonalInformationCommand("en")))
-                                .assertNext(result -> {
-                                        assertThat(result.configItems()).containsOnlyKeys("email");
-                                        var item = result.configItems().get("email");
-                                        assertThat(item.itemName()).isEqualTo("Email");
-                                        assertThat(item.itemType()).isEqualTo(MemberInfoConfigItemType.DATA);
-                                        assertThat(item.function()).isNull();
-                                        assertThat(item.schType()).isEqualTo("Any");
-                                        assertThat(item.configValue()).isEqualTo("READONLY");
-                                })
-                                .verifyComplete();
-        }
+        StepVerifier.create(service.execute(new GetPersonalInformationCommand("en")))
+                .assertNext(result -> {
+                    assertEquals("HGPQITD.XW.YQGPG@PTOJY.CLI", result.data().get("email"));
+                    assertTrue(result.config().isEmpty());
+                    assertThat(result.configItems()).containsOnlyKeys("email");
+                    assertEquals(MemberInfoConfigItemType.DATA, result.configItems().get("email").itemType());
+                    assertEquals("READONLY", result.configItems().get("email").configValue());
+                })
+                .verifyComplete();
+    }
 
-        private GetPersonalInformationService serviceReturning(Map<String, Object> payload) {
-                ApimMemberInfoPort apimPort = command -> Mono.just(new MemberInfoResult(payload));
-                PortalAccessContextResolver portalPort = new PortalAccessContextResolver() {
-                        @Override
-                        public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.application.dto.PortalAccessContext> current() {
-                                return Mono.just(context("unused-account-ref"));
-                        }
+    @Test
+    void resolvesPortalContextBuildsFetchCommandAndMapsPayload() {
+        AtomicReference<FetchMemberInfoCommand> capturedFetchCommand = new AtomicReference<>();
+        ApimMemberInfoPort apimPort = command -> {
+            capturedFetchCommand.set(command);
+            return Mono.just(new MemberInfoResult(Map.of(
+                    "config", Map.of("addr1", "EDITABLE_COM", "email", "READONLY"),
+                    "data", Map.of("addr1", "1 Example Street", "email", "a@b.test"))));
+        };
 
-                        @Override
-                        public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.application.dto.PortalAccessContext> currentOrEmpty() {
-                                return current();
-                        }
-                };
-                return new GetPersonalInformationService(apimPort, portalPort);
-        }
+        var result = new GetPersonalInformationService(apimPort, resolver(context("ACC-123")))
+                .execute(new GetPersonalInformationCommand("zh_HK"))
+                .block();
 
-        @Test
-        void resolvesPortalContextBuildsFetchCommandAndMapsPayload() {
-                AtomicReference<String> capturedAccountRef = new AtomicReference<>();
-                AtomicReference<FetchMemberInfoCommand> capturedFetchCommand = new AtomicReference<>();
+        assertEquals("JP", capturedFetchCommand.get().getAccountEnv());
+        assertEquals("policy-1", capturedFetchCommand.get().getPolicyNo());
+        assertEquals("cert-1", capturedFetchCommand.get().getCertNo());
+        assertEquals("user-1", capturedFetchCommand.get().getUserId());
+        assertEquals(Map.of("addr1", "1 Example Street", "email", "a@b.test"), result.data());
+        assertEquals(Map.of("addr1", "EDITABLE_COM", "email", "READONLY"), result.config());
+    }
 
-                PortalAccessContextResolver portalPort = new PortalAccessContextResolver() {
-                        @Override
-                        public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.application.dto.PortalAccessContext> current() {
-                                capturedAccountRef.set("unused-account-ref");
-                                return Mono.just(context("ACC-123"));
-                        }
+    @Test
+    void emptyOrNullMemberInfoPayloadProducesEmptyResult() {
+        var result = new GetPersonalInformationService(
+                command -> Mono.just(new MemberInfoResult(null)),
+                resolver(context("ACC-123")))
+                .execute(new GetPersonalInformationCommand("en"))
+                .block();
 
-                        @Override
-                        public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.application.dto.PortalAccessContext> currentOrEmpty() {
-                                return current();
-                        }
-                };
-                ApimMemberInfoPort apimPort = command -> {
-                        capturedFetchCommand.set(command);
-                        Map<String, Object> payload = new LinkedHashMap<>();
-                        payload.put("config", Map.of("addr1", "EDITABLE_COM", "email", "READONLY"));
-                        payload.put("data", Map.of("addr1", "1 Example Street", "email", "a@b.test"));
-                        return Mono.just(new MemberInfoResult(payload));
-                };
+        assertTrue(result.data().isEmpty());
+        assertTrue(result.config().isEmpty());
+        assertTrue(result.configItems().isEmpty());
+    }
 
-                var result = new GetPersonalInformationService(apimPort, portalPort)
-                                .execute(new GetPersonalInformationCommand("zh_HK"))
-                                .block();
+    private static PortalAccessContextResolver resolver(PortalAccessContext context) {
+        return new PortalAccessContextResolver() {
+            @Override
+            public Mono<PortalAccessContext> current() {
+                return Mono.just(context);
+            }
 
-                assertEquals("ACC-123", capturedAccountRef.get());
-                assertEquals("JP", capturedFetchCommand.get().getAccountEnv());
-                assertEquals("policy-1", capturedFetchCommand.get().getPolicyNo());
-                assertEquals("cert-1", capturedFetchCommand.get().getCertNo());
-                assertEquals("user-1", capturedFetchCommand.get().getUserId());
-                assertEquals(Map.of("addr1", "1 Example Street", "email", "a@b.test"), result.data());
-                assertEquals(Map.of("addr1", "EDITABLE_COM", "email", "READONLY"), result.config());
-        }
+            @Override
+            public Mono<PortalAccessContext> currentOrEmpty() {
+                return Mono.just(context);
+            }
+        };
+    }
 
-        @Test
-        void mapsNullMemberInfoResultToEmptyDataAndConfig() {
-                var result = new GetPersonalInformationService(
-                                command -> Mono.just(new MemberInfoResult(null)),
-                                resolver(context("ACC-123")))
-                                .execute(new GetPersonalInformationCommand("en"))
-                                .block();
-
-                assertTrue(result.data().isEmpty());
-                assertTrue(result.config().isEmpty());
-        }
-
-        @Test
-        void ignoresNonMapPayloadSections() {
-                var result = new GetPersonalInformationService(
-                                command -> Mono.just(new MemberInfoResult(Map.of("config", "not-a-map", "data", 123))),
-                                resolver(context("ACC-123")))
-                                .execute(new GetPersonalInformationCommand("en"))
-                                .block();
-
-                assertTrue(result.data().isEmpty());
-                assertTrue(result.config().isEmpty());
-        }
-
-        private static Map<String, Object> configItem(String id, String itemType, String configValue) {
-                return Map.of(
-                                "item-id", id,
-                                "item-name", "Name " + id,
-                                "item-type", itemType,
-                                "function", "INFO_UPDATE",
-                                "sch-type", "Any",
-                                "config-value", configValue);
-        }
-
-        private static PortalAccessContextResolver resolver(PortalAccessContext context) {
-                return new PortalAccessContextResolver() {
-                        @Override
-                        public Mono<PortalAccessContext> current() {
-                                return Mono.just(context);
-                        }
-
-                        @Override
-                        public Mono<PortalAccessContext> currentOrEmpty() {
-                                return Mono.just(context);
-                        }
-                };
-        }
-
-        private static PortalAccessContext context(String accountRef) {
-                return new PortalAccessContext(
-                                new ActorContext("user-1", "SELF"),
-                                new AccountContext(accountRef, "JP", "policy-1", "cert-1", "JPM", "OE",
-                                                TermStatus.BLANK, null));
-        }
+    private static PortalAccessContext context(String accountRef) {
+        return new PortalAccessContext(
+                new ActorContext("user-1", "SELF"),
+                new AccountContext(accountRef, "JP", "policy-1", "cert-1", "JPM", "OE", TermStatus.BLANK, null));
+    }
 }

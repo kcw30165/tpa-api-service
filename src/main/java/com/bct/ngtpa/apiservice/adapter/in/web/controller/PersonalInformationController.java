@@ -12,7 +12,7 @@ import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextResolver
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,47 +24,43 @@ import reactor.util.context.ContextView;
 
 @RestController
 @RequestMapping("/api/v1/personal-information")
-@RequiredArgsConstructor
 public class PersonalInformationController {
 
     private final GetPersonalInformationUseCase getPersonalInformationUseCase;
     private final PersonalInformationWebMapper personalInformationWebMapper;
     private final PortalAccessContextResolver portalAccessContextResolver;
 
-    /**
-     * Compatibility constructor for older focused unit tests that instantiate this controller directly
-     * with a third mock argument. The real Spring constructor is the Lombok-generated constructor above.
-     */
+    @Autowired
     public PersonalInformationController(
             GetPersonalInformationUseCase getPersonalInformationUseCase,
             PersonalInformationWebMapper personalInformationWebMapper,
-            Object ignoredLegacyContextDependency) {
+            PortalAccessContextResolver portalAccessContextResolver) {
         this.getPersonalInformationUseCase = getPersonalInformationUseCase;
         this.personalInformationWebMapper = personalInformationWebMapper;
-        this.portalAccessContextResolver = ignoredLegacyContextDependency instanceof PortalAccessContextResolver resolver
-                ? resolver
-                : null;
+        this.portalAccessContextResolver = portalAccessContextResolver;
     }
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<FormPageResponse<FormSchemaResponse>> getPersonalInformation(
             @RequestHeader(value = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false) String acceptLanguage) {
-
         return Mono.deferContextual(contextView -> {
             String language = resolveLanguage(contextView, acceptLanguage);
             return portalAccessContextResolver.current()
-                    .flatMap(portalAccessContext -> getPersonalInformationUseCase
-                            .execute(new GetPersonalInformationCommand(language))
-                            .map(result -> personalInformationWebMapper.toFormPageResponse(
-                                    result,
-                                    language,
-                                    accountEnv(portalAccessContext),
-                                    trustCode(portalAccessContext),
-                                    schemeType(portalAccessContext))));
+                    .flatMap(portalAccessContext -> {
+                        requireAccountRef(portalAccessContext);
+                        return getPersonalInformationUseCase
+                                .execute(new GetPersonalInformationCommand(language))
+                                .map(result -> personalInformationWebMapper.toFormPageResponse(
+                                        result,
+                                        language,
+                                        accountEnv(portalAccessContext),
+                                        trustCode(portalAccessContext),
+                                        schemeType(portalAccessContext)));
+                    });
         });
     }
 
-    private String accountRef(PortalAccessContext context) {
+    private String requireAccountRef(PortalAccessContext context) {
         if (context == null || context.account() == null || !StringUtils.hasText(context.account().accountRef())) {
             throw new PortalAccessContextResolutionException(
                     ErrorCodes.MEMBER_CONTEXT_INVALID,

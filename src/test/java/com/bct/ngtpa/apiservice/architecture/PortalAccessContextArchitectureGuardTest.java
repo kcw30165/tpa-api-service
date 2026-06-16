@@ -56,8 +56,12 @@ class PortalAccessContextArchitectureGuardTest {
                 "PersonalInformationController should use the current request context resolver");
         assertTrue(source.contains("portalAccessContextResolver.current()"),
                 "PersonalInformationController should use the already-populated current PortalAccessContext");
-        assertTrue(source.contains("new GetPersonalInformationCommand(accountRef(portalAccessContext), language)"),
-                "PersonalInformationController should source accountRef from PortalAccessContext.account()");
+        assertTrue(source.contains("requireAccountRef(portalAccessContext)"),
+                "PersonalInformationController should validate accountRef from PortalAccessContext.account()");
+        assertTrue(source.contains("new GetPersonalInformationCommand(language)"),
+                "PersonalInformationController should keep GET command language-only");
+        assertFalse(source.contains("new GetPersonalInformationCommand(accountRef"),
+                "PersonalInformationController must not pass accountRef into GET command");
     }
 
     @Test

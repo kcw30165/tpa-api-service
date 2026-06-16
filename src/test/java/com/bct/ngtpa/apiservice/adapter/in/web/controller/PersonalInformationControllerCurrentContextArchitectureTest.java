@@ -30,8 +30,8 @@ class PersonalInformationControllerCurrentContextArchitectureTest {
 
         assertFalse(source.contains("resolveRequiredAccountRef(ContextView"),
                 "PersonalInformationController should not manually resolve Account-Ref from RequestHeaderContext");
-        assertTrue(source.contains("new GetPersonalInformationCommand(accountRef(portalAccessContext), language)"),
-                "Get command should use accountRef from PortalAccessContext.account()");
+        assertTrue(source.contains("new GetPersonalInformationCommand(language)"),
+                "Get command should not use accountRef");
         assertTrue(source.contains("accountEnv(portalAccessContext)"),
                 "Mapper accountEnv should come from current PortalAccessContext");
         assertTrue(source.contains("trustCode(portalAccessContext)"),

@@ -21,7 +21,7 @@ class PersonalInformationDisplayResolutionGuardTest {
         String controller = Files.readString(CONTROLLER_SOURCE);
 
         assertTrue(controller.contains("import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextResolver;"));
-        assertTrue(controller.contains("private final PortalAccessContextResolver portalAccessContextPort;"));
+        assertTrue(controller.contains("private final PortalAccessContextResolver portalAccessContextResolver;"));
         assertTrue(controller.contains("portalAccessContextResolver.current()"));
         assertTrue(controller.contains("accountEnv(portalAccessContext)"));
         assertTrue(controller.contains("trustCode(portalAccessContext)"));

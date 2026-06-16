@@ -103,23 +103,25 @@ public class UseCaseConfig {
         return new UpdatePersonalInformationService(apimUpdatePersonalInformationPort, portalAccessContextPort);
     }
 
-
-
-    // Backward-compatible overload for focused coverage tests using the old two-argument shape.
+    // Backward-compatible overload for focused coverage tests using the old
+    // two-argument shape.
     GetPersonalInformationUseCase getPersonalInformationUseCase(
             ApimMemberInfoPort apimMemberInfoPort,
             Object ignoredLegacyContextDependency) {
-        return new GetPersonalInformationService(apimMemberInfoPort, new PortalAccessContextResolver() {
-            @Override
-            public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.application.dto.PortalAccessContext> current() {
-                return reactor.core.publisher.Mono.error(new IllegalStateException("No current PortalAccessContext in coverage overload."));
-            }
+        return new GetPersonalInformationService(apimMemberInfoPort, new LegacyPersonalInformationResolverConfig());
+    }
 
-            @Override
-            public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.application.dto.PortalAccessContext> currentOrEmpty() {
-                return current();
-            }
-        });
+    private static final class LegacyPersonalInformationResolverConfig implements PortalAccessContextResolver {
+        @Override
+        public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.application.dto.PortalAccessContext> current() {
+            return reactor.core.publisher.Mono.error(
+                    new IllegalStateException("No current PortalAccessContext in coverage overload."));
+        }
+
+        @Override
+        public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.application.dto.PortalAccessContext> currentOrEmpty() {
+            return current();
+        }
     }
 
 }
