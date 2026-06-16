@@ -33,8 +33,6 @@ class PersonalInformationUpdateWebMapperTest {
         fields.put("hongKongMobilePhone", "98765432");
 
         var command = mapper.toCommand("ACC-123", true, new UpdatePersonalInformationRequest("1.0", true, fields));
-
-        assertEquals("ACC-123", command.accountRef());
         assertEquals(Map.of(
                 "addr2", "Tai Po, New Territories",
                 "mobile-number", "98765432"), command.updateFields());

@@ -100,8 +100,9 @@ public class UseCaseConfig {
     @Bean
     public UpdatePersonalInformationUseCase updatePersonalInformationUseCase(
             ApimUpdatePersonalInformationPort apimUpdatePersonalInformationPort,
-            PortalAccessContextPort portalAccessContextPort) {
-        return new UpdatePersonalInformationService(apimUpdatePersonalInformationPort, portalAccessContextPort);
+            CurrentPortalAccessContextProvider currentPortalAccessContextProvider) {
+        return new UpdatePersonalInformationService(
+                apimUpdatePersonalInformationPort, currentPortalAccessContextProvider);
     }
 
     // Backward-compatible overload for focused coverage tests using the old
