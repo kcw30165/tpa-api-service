@@ -20,9 +20,9 @@ class PersonalInformationDisplayResolutionGuardTest {
     void controllerResolvesPortalContextAndPassesAccountDimensionsToMapper() throws IOException {
         String controller = Files.readString(CONTROLLER_SOURCE);
 
-        assertTrue(controller.contains("import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextResolver;"));
-        assertTrue(controller.contains("private final PortalAccessContextResolver portalAccessContextResolver;"));
-        assertTrue(controller.contains("portalAccessContextResolver.current()"));
+        assertTrue(controller.contains("import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextProvider;"));
+        assertTrue(controller.contains("private final CurrentPortalAccessContextProvider currentPortalAccessContextProvider;"));
+        assertTrue(controller.contains("currentPortalAccessContextProvider.current()"));
         assertTrue(controller.contains("accountEnv(portalAccessContext)"));
         assertTrue(controller.contains("trustCode(portalAccessContext)"));
         assertTrue(controller.contains("schemeType(portalAccessContext)"));

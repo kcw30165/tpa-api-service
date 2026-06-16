@@ -9,7 +9,7 @@ import com.bct.ngtpa.apiservice.application.dto.PersonalInformationResult;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.port.in.GetPersonalInformationUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimMemberInfoPort;
-import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextResolver;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextProvider;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,11 +20,11 @@ import reactor.core.publisher.Mono;
 public class GetPersonalInformationService implements GetPersonalInformationUseCase {
 
     private final ApimMemberInfoPort apimMemberInfoPort;
-    private final PortalAccessContextResolver portalAccessContextResolver;
+    private final CurrentPortalAccessContextProvider currentPortalAccessContextProvider;
 
     @Override
     public Mono<PersonalInformationResult> execute(GetPersonalInformationCommand command) {
-        return portalAccessContextResolver.current()
+        return currentPortalAccessContextProvider.current()
                 .flatMap(portalAccessContext -> apimMemberInfoPort
                         .fetchMemberInfo(toFetchMemberInfoCommand(portalAccessContext))
                         .map(this::toResult));

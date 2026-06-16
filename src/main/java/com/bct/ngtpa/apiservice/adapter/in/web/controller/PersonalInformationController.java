@@ -8,7 +8,7 @@ import com.bct.ngtpa.apiservice.application.dto.GetPersonalInformationCommand;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.application.port.in.GetPersonalInformationUseCase;
-import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextResolver;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextProvider;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
@@ -28,16 +28,16 @@ public class PersonalInformationController {
 
     private final GetPersonalInformationUseCase getPersonalInformationUseCase;
     private final PersonalInformationWebMapper personalInformationWebMapper;
-    private final PortalAccessContextResolver portalAccessContextResolver;
+    private final CurrentPortalAccessContextProvider currentPortalAccessContextProvider;
 
     @Autowired
     public PersonalInformationController(
             GetPersonalInformationUseCase getPersonalInformationUseCase,
             PersonalInformationWebMapper personalInformationWebMapper,
-            PortalAccessContextResolver portalAccessContextResolver) {
+            CurrentPortalAccessContextProvider currentPortalAccessContextProvider) {
         this.getPersonalInformationUseCase = getPersonalInformationUseCase;
         this.personalInformationWebMapper = personalInformationWebMapper;
-        this.portalAccessContextResolver = portalAccessContextResolver;
+        this.currentPortalAccessContextProvider = currentPortalAccessContextProvider;
     }
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
@@ -45,7 +45,7 @@ public class PersonalInformationController {
             @RequestHeader(value = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false) String acceptLanguage) {
         return Mono.deferContextual(contextView -> {
             String language = resolveLanguage(contextView, acceptLanguage);
-            return portalAccessContextResolver.current()
+            return currentPortalAccessContextProvider.current()
                     .flatMap(portalAccessContext -> {
                         requireAccountRef(portalAccessContext);
                         return getPersonalInformationUseCase

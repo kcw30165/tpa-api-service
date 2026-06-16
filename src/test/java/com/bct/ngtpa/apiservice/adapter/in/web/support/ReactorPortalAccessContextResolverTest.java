@@ -14,9 +14,9 @@ import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-class ReactorPortalAccessContextResolverTest {
+class ReactorCurrentPortalAccessContextProviderTest {
 
-    private final ReactorPortalAccessContextResolver resolver = new ReactorPortalAccessContextResolver();
+    private final ReactorCurrentPortalAccessContextProvider resolver = new ReactorCurrentPortalAccessContextProvider();
 
     @Test
     void currentReturnsPortalAccessContextFromReactorContext() {

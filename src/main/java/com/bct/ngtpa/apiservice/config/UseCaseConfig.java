@@ -16,7 +16,7 @@ import com.bct.ngtpa.apiservice.application.port.out.ApimUpdatePersonalInformati
 import com.bct.ngtpa.apiservice.application.port.out.ContributionActionPermissionPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
 import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
-import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextResolver;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextProvider;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.usecase.ExportContributionSummaryService;
 import com.bct.ngtpa.apiservice.application.usecase.GetContributionSummaryService;
@@ -90,10 +90,10 @@ public class UseCaseConfig {
     @Bean
     public GetPersonalInformationUseCase getPersonalInformationUseCase(
             ApimMemberInfoPort apimMemberInfoPort,
-            PortalAccessContextResolver portalAccessContextResolver) {
+            CurrentPortalAccessContextProvider currentPortalAccessContextProvider) {
         return new GetPersonalInformationService(
                 apimMemberInfoPort,
-                portalAccessContextResolver);
+                currentPortalAccessContextProvider);
     }
 
     @Bean
@@ -108,10 +108,10 @@ public class UseCaseConfig {
     GetPersonalInformationUseCase getPersonalInformationUseCase(
             ApimMemberInfoPort apimMemberInfoPort,
             Object ignoredLegacyContextDependency) {
-        return new GetPersonalInformationService(apimMemberInfoPort, new LegacyPersonalInformationResolverConfig());
+        return new GetPersonalInformationService(apimMemberInfoPort, new LegacyPersonalInformationProviderConfig());
     }
 
-    private static final class LegacyPersonalInformationResolverConfig implements PortalAccessContextResolver {
+    private static final class LegacyPersonalInformationProviderConfig implements CurrentPortalAccessContextProvider {
         @Override
         public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.application.dto.PortalAccessContext> current() {
             return reactor.core.publisher.Mono.error(
