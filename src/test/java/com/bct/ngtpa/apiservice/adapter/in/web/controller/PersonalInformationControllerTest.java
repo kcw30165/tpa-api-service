@@ -1,6 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
-import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
+import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextResolver;
 
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 
@@ -41,9 +41,11 @@ class PersonalInformationControllerTest {
             return Mono.just(result);
         };
         PersonalInformationWebMapper mapper = mock(PersonalInformationWebMapper.class);
-        when(mapper.toFormPageResponse(eq(result), eq("zh_HK"), eq("JP"), eq("JPM"), eq("OE"))).thenReturn(response("zh_HK", "個人資料"));
+        when(mapper.toFormPageResponse(eq(result), eq("zh_HK"), eq("JP"), eq("JPM"), eq("OE")))
+                .thenReturn(response("zh_HK", "個人資料"));
 
-        FormPageResponse<FormSchemaResponse> response = new PersonalInformationController(useCase, mapper, portalContextPort())
+        FormPageResponse<FormSchemaResponse> response = new PersonalInformationController(useCase, mapper,
+                portalContextResolver("ACC-123"))
                 .getPersonalInformation("en")
                 .contextWrite(ctx -> ctx.put(RequestHeaderContextKeys.CONTEXT_KEY,
                         new RequestHeaderContext("ACC-123", "req-1", "zh-HK")))
@@ -57,7 +59,6 @@ class PersonalInformationControllerTest {
         assertEquals("personalInformationForm", response.form().id());
         assertTrue(response.messages().isEmpty());
         assertTrue(response.errors().isEmpty());
-        assertEquals("ACC-123", captured.get().accountRef());
         assertEquals("zh_HK", captured.get().language());
     }
 
@@ -70,9 +71,10 @@ class PersonalInformationControllerTest {
             return Mono.just(result);
         };
         PersonalInformationWebMapper mapper = mock(PersonalInformationWebMapper.class);
-        when(mapper.toFormPageResponse(eq(result), eq("en"), eq("JP"), eq("JPM"), eq("OE"))).thenReturn(response("en", "Personal Information"));
+        when(mapper.toFormPageResponse(eq(result), eq("en"), eq("JP"), eq("JPM"), eq("OE")))
+                .thenReturn(response("en", "Personal Information"));
 
-        new PersonalInformationController(useCase, mapper, portalContextPort())
+        new PersonalInformationController(useCase, mapper, portalContextResolver("ACC-123"))
                 .getPersonalInformation("zh-HK")
                 .contextWrite(ctx -> ctx.put(RequestHeaderContextKeys.CONTEXT_KEY,
                         new RequestHeaderContext("ACC-123", "req-1", "en")))
@@ -88,7 +90,7 @@ class PersonalInformationControllerTest {
 
         PortalAccessContextResolutionException ex = assertThrows(
                 PortalAccessContextResolutionException.class,
-                () -> new PersonalInformationController(useCase, mapper, portalContextPort())
+                () -> new PersonalInformationController(useCase, mapper, portalContextResolver(" "))
                         .getPersonalInformation("en")
                         .contextWrite(ctx -> ctx.put(RequestHeaderContextKeys.CONTEXT_KEY,
                                 new RequestHeaderContext(" ", "req-1", "en")))
@@ -102,14 +104,28 @@ class PersonalInformationControllerTest {
                 new PageResponse("personalInformationPage", title, language),
                 new FormSchemaResponse("personalInformationForm", "1.0", "view", null, null, null, null));
     }
-    private static PortalAccessContextPort portalContextPort() {
+
+    private static PortalAccessContextResolver portalContextResolver(String accountRef) {
         AccountContext account = org.mockito.Mockito.mock(AccountContext.class);
+        org.mockito.Mockito.when(account.accountRef()).thenReturn(accountRef);
         org.mockito.Mockito.when(account.accountEnv()).thenReturn("JP");
         org.mockito.Mockito.when(account.trustCode()).thenReturn("JPM");
         org.mockito.Mockito.when(account.schemeType()).thenReturn("OE");
+
         PortalAccessContext context = org.mockito.Mockito.mock(PortalAccessContext.class);
         org.mockito.Mockito.when(context.account()).thenReturn(account);
-        return accountRef -> Mono.just(context);
+
+        return new PortalAccessContextResolver() {
+            @Override
+            public Mono<PortalAccessContext> current() {
+                return Mono.just(context);
+            }
+
+            @Override
+            public Mono<PortalAccessContext> currentOrEmpty() {
+                return Mono.just(context);
+            }
+        };
     }
 
 }

@@ -6,36 +6,36 @@ import com.bct.ngtpa.apiservice.application.dto.MemberInfoConfigItem;
 import com.bct.ngtpa.apiservice.application.dto.MemberInfoConfigItemType;
 import com.bct.ngtpa.apiservice.application.dto.MemberInfoResult;
 import com.bct.ngtpa.apiservice.application.dto.PersonalInformationResult;
+import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.port.in.GetPersonalInformationUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimMemberInfoPort;
-import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
-import lombok.RequiredArgsConstructor;
-import reactor.core.publisher.Mono;
-
+import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextResolver;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import reactor.core.publisher.Mono;
 
 @RequiredArgsConstructor
 public class GetPersonalInformationService implements GetPersonalInformationUseCase {
 
     private final ApimMemberInfoPort apimMemberInfoPort;
-    private final PortalAccessContextPort portalAccessContextPort;
+    private final PortalAccessContextResolver portalAccessContextResolver;
 
     @Override
     public Mono<PersonalInformationResult> execute(GetPersonalInformationCommand command) {
-        String accountRef = command.accountRef();
-        return portalAccessContextPort.resolvePortalAccessContext(accountRef)
-                .flatMap(ctx -> {
-                    var apimCmd = new FetchMemberInfoCommand(
-                            ctx.account().accountEnv(),
-                            ctx.account().policyNo(),
-                            ctx.account().certNo(),
-                            ctx.actor().actorUserId()
-                    );
-                    return apimMemberInfoPort.fetchMemberInfo(apimCmd)
-                            .map(this::toResult);
-                });
+        return portalAccessContextResolver.current()
+                .flatMap(portalAccessContext -> apimMemberInfoPort
+                        .fetchMemberInfo(toFetchMemberInfoCommand(portalAccessContext))
+                        .map(this::toResult));
+    }
+
+    private FetchMemberInfoCommand toFetchMemberInfoCommand(PortalAccessContext portalAccessContext) {
+        return new FetchMemberInfoCommand(
+                portalAccessContext.account().accountEnv(),
+                portalAccessContext.account().policyNo(),
+                portalAccessContext.account().certNo(),
+                portalAccessContext.actor().actorUserId());
     }
 
     private PersonalInformationResult toResult(MemberInfoResult memberInfoResult) {
@@ -57,12 +57,10 @@ public class GetPersonalInformationService implements GetPersonalInformationUseC
                 return firstResponseData;
             }
         }
-
         Map<String, Object> firstData = firstMap(payload.get("data"));
         if (!firstData.isEmpty() && (firstData.containsKey("config") || firstData.containsKey("data"))) {
             return firstData;
         }
-
         return payload;
     }
 

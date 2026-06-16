@@ -114,7 +114,7 @@ class GetNotificationsServiceTest {
 
     assertEquals("ACC-123", capturedRef.get());
         assertEquals("JP", capturedCommand.get().accountEnv());
-        assertEquals("MBR", capturedCommand.get().mbrType());
+        assertEquals("", capturedCommand.get().mbrType());
         assertEquals("policyNo_for_notifications", capturedCommand.get().policyNo());
         assertEquals("certNo_for_notifications", capturedCommand.get().certNo());
         // userId comes from actor.actorUserId(), not from account

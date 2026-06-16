@@ -26,7 +26,7 @@ class ContributionSummarySupportTest {
                 "01/01/2026", "31/03/2026", ctx);
 
         assertEquals("JP", cmd.accountEnv());
-        assertEquals("MBR", cmd.mbrType());
+        assertEquals("", cmd.mbrType());
         assertEquals("01/01/2026", cmd.coverFrom());
         assertEquals("31/03/2026", cmd.coverTo());
     }

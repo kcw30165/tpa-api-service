@@ -9,7 +9,7 @@ import com.bct.ngtpa.apiservice.application.dto.MemberInfoResult;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.port.out.ApimMemberInfoPort;
-import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
+import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextResolver;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -30,10 +30,10 @@ import static org.mockito.Mockito.when;
 class GetPersonalInformationServiceTest {
 
         private final ApimMemberInfoPort apimMemberInfoPort = mock(ApimMemberInfoPort.class);
-        private final PortalAccessContextPort portalAccessContextPort = mock(PortalAccessContextPort.class);
-        private final GetPersonalInformationService service = new GetPersonalInformationService(
-                        apimMemberInfoPort,
-                        portalAccessContextPort);
+        private final PortalAccessContextResolver portalAccessContextResolver = resolver(context("ACC-123"));
+
+        private final GetPersonalInformationService service = new GetPersonalInformationService(apimMemberInfoPort,
+                        portalAccessContextResolver);
 
         @Test
         void returnsNeutralPersonalInformationResultWithoutPageMapping() {
@@ -41,20 +41,20 @@ class GetPersonalInformationServiceTest {
                                 "data", Map.of("addr1", "ABC Street", "email", "nick@example.com"),
                                 "config", Map.of("addr1", "EDITABLE_COM", "email", "READONLY"));
 
-                when(portalAccessContextPort.resolvePortalAccessContext("ACC-123"))
+                when(portalAccessContextResolver.current())
                                 .thenReturn(Mono.just(context("ACC-123")));
                 when(apimMemberInfoPort
                                 .fetchMemberInfo(eq(new FetchMemberInfoCommand("JP", "policy-1", "cert-1", "user-1"))))
                                 .thenReturn(Mono.just(new MemberInfoResult(payload)));
 
-                StepVerifier.create(service.execute(new GetPersonalInformationCommand("ACC-123", "en")))
+                StepVerifier.create(service.execute(new GetPersonalInformationCommand("en")))
                                 .expectNextMatches(result -> "ABC Street".equals(result.data().get("addr1"))
                                                 && "nick@example.com".equals(result.data().get("email"))
                                                 && "EDITABLE_COM".equals(result.config().get("addr1"))
                                                 && "READONLY".equals(result.config().get("email")))
                                 .verifyComplete();
 
-                verify(portalAccessContextPort).resolvePortalAccessContext("ACC-123");
+                verify(portalAccessContextResolver).current();
         }
 
         @Test
@@ -87,13 +87,13 @@ class GetPersonalInformationServiceTest {
                                                                 "data", List.of(Map.of("email",
                                                                                 "HGPQITD.XW.YQGPG@PTOJY.CLI"))))));
 
-                when(portalAccessContextPort.resolvePortalAccessContext("ACC-123"))
+                when(portalAccessContextResolver.current())
                                 .thenReturn(Mono.just(context("ACC-123")));
                 when(apimMemberInfoPort
                                 .fetchMemberInfo(eq(new FetchMemberInfoCommand("JP", "policy-1", "cert-1", "user-1"))))
                                 .thenReturn(Mono.just(new MemberInfoResult(payload)));
 
-                StepVerifier.create(service.execute(new GetPersonalInformationCommand("ACC-123", "en")))
+                StepVerifier.create(service.execute(new GetPersonalInformationCommand("en")))
                                 .expectNextMatches(result -> "HGPQITD.XW.YQGPG@PTOJY.CLI"
                                                 .equals(result.data().get("email"))
                                                 && result.config().isEmpty()
@@ -121,7 +121,7 @@ class GetPersonalInformationServiceTest {
                                                                                                 "EDITABLE_COM")))));
 
                 StepVerifier.create(
-                                serviceReturning(payload).execute(new GetPersonalInformationCommand("ACC-123", "en")))
+                                serviceReturning(payload).execute(new GetPersonalInformationCommand("en")))
                                 .assertNext(result -> {
                                         assertThat(result.data()).containsEntry("email", "first@example.test")
                                                         .containsEntry("addr1", "1 Branch Street");
@@ -146,7 +146,7 @@ class GetPersonalInformationServiceTest {
                 payload.put("config", config);
 
                 StepVerifier.create(serviceReturning(payload)
-                                .execute(new GetPersonalInformationCommand("ACC-123", "zh-HK")))
+                                .execute(new GetPersonalInformationCommand("zh-HK")))
                                 .assertNext(result -> {
                                         assertThat(result.data()).containsEntry("email", "direct@example.test");
                                         assertThat(result.config()).containsEntry("email", "EDITABLE_COM")
@@ -158,7 +158,7 @@ class GetPersonalInformationServiceTest {
 
         @Test
         void emptyOrNullMemberInfoPayloadProducesEmptyResult() {
-                StepVerifier.create(serviceReturning(null).execute(new GetPersonalInformationCommand("ACC-123", "en")))
+                StepVerifier.create(serviceReturning(null).execute(new GetPersonalInformationCommand("en")))
                                 .assertNext(result -> {
                                         assertThat(result.data()).isEmpty();
                                         assertThat(result.config()).isEmpty();
@@ -179,7 +179,7 @@ class GetPersonalInformationServiceTest {
                                                 "config-value", " READONLY ")));
 
                 StepVerifier.create(
-                                serviceReturning(payload).execute(new GetPersonalInformationCommand("ACC-123", "en")))
+                                serviceReturning(payload).execute(new GetPersonalInformationCommand("en")))
                                 .assertNext(result -> {
                                         assertThat(result.configItems()).containsOnlyKeys("email");
                                         var item = result.configItems().get("email");
@@ -194,7 +194,17 @@ class GetPersonalInformationServiceTest {
 
         private GetPersonalInformationService serviceReturning(Map<String, Object> payload) {
                 ApimMemberInfoPort apimPort = command -> Mono.just(new MemberInfoResult(payload));
-                PortalAccessContextPort portalPort = accountRef -> Mono.just(context(accountRef));
+                PortalAccessContextResolver portalPort = new PortalAccessContextResolver() {
+                        @Override
+                        public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.application.dto.PortalAccessContext> current() {
+                                return Mono.just(context("unused-account-ref"));
+                        }
+
+                        @Override
+                        public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.application.dto.PortalAccessContext> currentOrEmpty() {
+                                return current();
+                        }
+                };
                 return new GetPersonalInformationService(apimPort, portalPort);
         }
 
@@ -203,9 +213,17 @@ class GetPersonalInformationServiceTest {
                 AtomicReference<String> capturedAccountRef = new AtomicReference<>();
                 AtomicReference<FetchMemberInfoCommand> capturedFetchCommand = new AtomicReference<>();
 
-                PortalAccessContextPort portalPort = accountRef -> {
-                        capturedAccountRef.set(accountRef);
-                        return Mono.just(context("ACC-123"));
+                PortalAccessContextResolver portalPort = new PortalAccessContextResolver() {
+                        @Override
+                        public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.application.dto.PortalAccessContext> current() {
+                                capturedAccountRef.set("unused-account-ref");
+                                return Mono.just(context("ACC-123"));
+                        }
+
+                        @Override
+                        public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.application.dto.PortalAccessContext> currentOrEmpty() {
+                                return current();
+                        }
                 };
                 ApimMemberInfoPort apimPort = command -> {
                         capturedFetchCommand.set(command);
@@ -216,7 +234,7 @@ class GetPersonalInformationServiceTest {
                 };
 
                 var result = new GetPersonalInformationService(apimPort, portalPort)
-                                .execute(new GetPersonalInformationCommand("ACC-123", "zh_HK"))
+                                .execute(new GetPersonalInformationCommand("zh_HK"))
                                 .block();
 
                 assertEquals("ACC-123", capturedAccountRef.get());
@@ -232,8 +250,8 @@ class GetPersonalInformationServiceTest {
         void mapsNullMemberInfoResultToEmptyDataAndConfig() {
                 var result = new GetPersonalInformationService(
                                 command -> Mono.just(new MemberInfoResult(null)),
-                                accountRef -> Mono.just(context("ACC-123")))
-                                .execute(new GetPersonalInformationCommand("ACC-123", "en"))
+                                resolver(context("ACC-123")))
+                                .execute(new GetPersonalInformationCommand("en"))
                                 .block();
 
                 assertTrue(result.data().isEmpty());
@@ -244,8 +262,8 @@ class GetPersonalInformationServiceTest {
         void ignoresNonMapPayloadSections() {
                 var result = new GetPersonalInformationService(
                                 command -> Mono.just(new MemberInfoResult(Map.of("config", "not-a-map", "data", 123))),
-                                accountRef -> Mono.just(context("ACC-123")))
-                                .execute(new GetPersonalInformationCommand("ACC-123", "en"))
+                                resolver(context("ACC-123")))
+                                .execute(new GetPersonalInformationCommand("en"))
                                 .block();
 
                 assertTrue(result.data().isEmpty());
@@ -260,6 +278,20 @@ class GetPersonalInformationServiceTest {
                                 "function", "INFO_UPDATE",
                                 "sch-type", "Any",
                                 "config-value", configValue);
+        }
+
+        private static PortalAccessContextResolver resolver(PortalAccessContext context) {
+                return new PortalAccessContextResolver() {
+                        @Override
+                        public Mono<PortalAccessContext> current() {
+                                return Mono.just(context);
+                        }
+
+                        @Override
+                        public Mono<PortalAccessContext> currentOrEmpty() {
+                                return Mono.just(context);
+                        }
+                };
         }
 
         private static PortalAccessContext context(String accountRef) {

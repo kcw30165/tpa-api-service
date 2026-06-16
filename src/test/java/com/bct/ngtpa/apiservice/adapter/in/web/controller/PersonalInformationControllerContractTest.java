@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
+import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextResolver;
 
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 
@@ -102,7 +103,8 @@ class PersonalInformationControllerContractTest {
             captured.set(invocation.getArgument(0));
             return Mono.just(result);
         });
-        when(mapper.toFormPageResponse(eq(result), eq("zh_HK"), eq("JP"), eq("JPM"), eq("OE"))).thenReturn(response("zh_HK", "個人資料"));
+        when(mapper.toFormPageResponse(eq(result), eq("zh_HK"), eq("JP"), eq("JPM"), eq("OE")))
+                .thenReturn(response("zh_HK", "個人資料"));
 
         client().get()
                 .uri("/api/v1/personal-information")
@@ -112,7 +114,6 @@ class PersonalInformationControllerContractTest {
                 .exchange()
                 .expectStatus().isOk();
 
-        assertEquals(ACCOUNT_REF, captured.get().accountRef());
         assertEquals("zh_HK", captured.get().language());
     }
 
@@ -139,7 +140,8 @@ class PersonalInformationControllerContractTest {
     void getPersonalInformationDelegatesToWebMapperAfterUseCase() {
         var result = new PersonalInformationResult(Map.of("email", "nick@example.com"), Map.of("email", "READONLY"));
         when(useCase.execute(any())).thenReturn(Mono.just(result));
-        when(mapper.toFormPageResponse(eq(result), eq(ACCEPT_LANGUAGE), eq("JP"), eq("JPM"), eq("OE"))).thenReturn(response(ACCEPT_LANGUAGE, "Personal Information"));
+        when(mapper.toFormPageResponse(eq(result), eq(ACCEPT_LANGUAGE), eq("JP"), eq("JPM"), eq("OE")))
+                .thenReturn(response(ACCEPT_LANGUAGE, "Personal Information"));
 
         client().get()
                 .uri("/api/v1/personal-information")
@@ -149,10 +151,10 @@ class PersonalInformationControllerContractTest {
                 .exchange()
                 .expectStatus().isOk();
 
-        ArgumentCaptor<GetPersonalInformationCommand> commandCaptor = ArgumentCaptor.forClass(GetPersonalInformationCommand.class);
+        ArgumentCaptor<GetPersonalInformationCommand> commandCaptor = ArgumentCaptor
+                .forClass(GetPersonalInformationCommand.class);
         verify(useCase).execute(commandCaptor.capture());
         verify(mapper).toFormPageResponse(result, ACCEPT_LANGUAGE, "JP", "JPM", "OE");
-        assertEquals(ACCOUNT_REF, commandCaptor.getValue().accountRef());
     }
 
     private static void assertBodyDoesNotContainRequestId(byte[] responseBody) {
@@ -184,6 +186,21 @@ class PersonalInformationControllerContractTest {
                 new PageResponse("personalInformationPage", title, language),
                 new FormSchemaResponse("personalInformationForm", "1.0", "view", null, null, null, null));
     }
+
+    private static PortalAccessContextResolver resolver(PortalAccessContext context) {
+        return new PortalAccessContextResolver() {
+            @Override
+            public Mono<PortalAccessContext> current() {
+                return Mono.just(context);
+            }
+
+            @Override
+            public Mono<PortalAccessContext> currentOrEmpty() {
+                return Mono.just(context);
+            }
+        };
+    }
+
     private static PortalAccessContextPort portalContextPort() {
         AccountContext account = org.mockito.Mockito.mock(AccountContext.class);
         org.mockito.Mockito.when(account.accountEnv()).thenReturn("JP");

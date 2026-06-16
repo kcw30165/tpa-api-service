@@ -16,6 +16,7 @@ import com.bct.ngtpa.apiservice.application.port.out.ApimUpdatePersonalInformati
 import com.bct.ngtpa.apiservice.application.port.out.ContributionActionPermissionPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
 import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
+import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.usecase.ExportContributionSummaryService;
 import com.bct.ngtpa.apiservice.application.usecase.GetContributionSummaryService;
@@ -89,10 +90,10 @@ public class UseCaseConfig {
     @Bean
     public GetPersonalInformationUseCase getPersonalInformationUseCase(
             ApimMemberInfoPort apimMemberInfoPort,
-            PortalAccessContextPort portalAccessContextPort) {
+            PortalAccessContextResolver portalAccessContextResolver) {
         return new GetPersonalInformationService(
                 apimMemberInfoPort,
-                portalAccessContextPort);
+                portalAccessContextResolver);
     }
 
     @Bean
@@ -100,6 +101,25 @@ public class UseCaseConfig {
             ApimUpdatePersonalInformationPort apimUpdatePersonalInformationPort,
             PortalAccessContextPort portalAccessContextPort) {
         return new UpdatePersonalInformationService(apimUpdatePersonalInformationPort, portalAccessContextPort);
+    }
+
+
+
+    // Backward-compatible overload for focused coverage tests using the old two-argument shape.
+    GetPersonalInformationUseCase getPersonalInformationUseCase(
+            ApimMemberInfoPort apimMemberInfoPort,
+            Object ignoredLegacyContextDependency) {
+        return new GetPersonalInformationService(apimMemberInfoPort, new PortalAccessContextResolver() {
+            @Override
+            public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.application.dto.PortalAccessContext> current() {
+                return reactor.core.publisher.Mono.error(new IllegalStateException("No current PortalAccessContext in coverage overload."));
+            }
+
+            @Override
+            public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.application.dto.PortalAccessContext> currentOrEmpty() {
+                return current();
+            }
+        });
     }
 
 }

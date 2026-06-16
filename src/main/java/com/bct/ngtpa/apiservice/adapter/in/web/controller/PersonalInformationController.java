@@ -54,7 +54,7 @@ public class PersonalInformationController {
             String language = resolveLanguage(contextView, acceptLanguage);
             return portalAccessContextResolver.current()
                     .flatMap(portalAccessContext -> getPersonalInformationUseCase
-                            .execute(new GetPersonalInformationCommand(accountRef(portalAccessContext), language))
+                            .execute(new GetPersonalInformationCommand(language))
                             .map(result -> personalInformationWebMapper.toFormPageResponse(
                                     result,
                                     language,
