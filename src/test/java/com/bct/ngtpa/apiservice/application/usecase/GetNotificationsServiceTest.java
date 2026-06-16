@@ -3,7 +3,6 @@ package com.bct.ngtpa.apiservice.application.usecase;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.GetNotificationsCommand;
-import com.bct.ngtpa.apiservice.application.dto.MemberOwnerContext;
 import com.bct.ngtpa.apiservice.application.dto.NotificationDateOptions;
 import com.bct.ngtpa.apiservice.application.dto.NotificationListResult;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
@@ -32,7 +31,6 @@ class GetNotificationsServiceTest {
 
     private static final PortalAccessContext NOTIFICATIONS_CONTEXT = new PortalAccessContext(
             new ActorContext("userId_for_notifications", "RM"),
-            new MemberOwnerContext("member-notif", "MBR"),
             new AccountContext(
                     "notifications",
                     "JP",

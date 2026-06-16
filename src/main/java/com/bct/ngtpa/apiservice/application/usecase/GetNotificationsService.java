@@ -38,7 +38,7 @@ public class GetNotificationsService implements GetNotificationsUseCase {
 
                                         var enriched = new GetNotificationsCommand(
                                                         ctx.account().accountEnv(),
-                                                        ctx.memberOwner().memberType(),
+                                                        "",
                                                         command.page(),
                                                         command.size(),
                                                         command.dateFormat(),

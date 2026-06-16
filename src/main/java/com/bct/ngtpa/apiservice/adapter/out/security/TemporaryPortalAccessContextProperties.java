@@ -53,8 +53,6 @@ public class TemporaryPortalAccessContextProperties {
         private String actorUserId = "";
         private String actorUserType = "";
         private String actorUserRole = "";
-        private String memberUserId = "";
-        private String memberType = "";
         private String accountEnv = "";
         private String policyNo = "";
         private String certNo = "";

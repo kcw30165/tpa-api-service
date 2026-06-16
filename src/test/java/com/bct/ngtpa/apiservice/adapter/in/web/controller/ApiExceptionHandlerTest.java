@@ -270,9 +270,7 @@ class ApiExceptionHandlerTest {
         exchange.getAttributes().put(
                 PortalAccessContextKeys.ATTRIBUTE_KEY,
                 new PortalAccessContext(
-                        null,
-                        null,
-                        new AccountContext(
+                        null, new AccountContext(
                                 "ACC-CTX",
                                 "CTX-ENV",
                                 "POL-001",

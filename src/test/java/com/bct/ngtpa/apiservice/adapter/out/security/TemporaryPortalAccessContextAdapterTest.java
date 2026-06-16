@@ -49,8 +49,6 @@ class TemporaryPortalAccessContextAdapterTest {
                     assertEquals("actorUserId_for_notifications", ctx.actor().actorUserId());
                     // assertEquals("MEMBER", ctx.actor().actorUserType());
                     assertEquals("SELF", ctx.actor().actorUserRole());
-                    assertEquals("memberUserId_for_notifications", ctx.memberOwner().memberUserId());
-                    assertEquals("MBR", ctx.memberOwner().memberType());
                     assertEquals("JP", ctx.account().accountEnv());
                     assertEquals("policyNo_for_notifications", ctx.account().policyNo());
                     assertEquals("certNo_for_notifications", ctx.account().certNo());
@@ -72,8 +70,6 @@ class TemporaryPortalAccessContextAdapterTest {
                     assertEquals("actorUserId_for_contributions", ctx.actor().actorUserId());
                     // assertEquals("MEMBER", ctx.actor().actorUserType());
                     assertEquals("SELF", ctx.actor().actorUserRole());
-                    assertEquals("memberUserId_for_contributions", ctx.memberOwner().memberUserId());
-                    assertEquals("MBR", ctx.memberOwner().memberType());
                     assertEquals("JP", ctx.account().accountEnv());
                     assertEquals("policyNo_for_contributions", ctx.account().policyNo());
                     assertEquals("certNo_for_contributions", ctx.account().certNo());
@@ -92,8 +88,6 @@ class TemporaryPortalAccessContextAdapterTest {
         accountRefProfile.setActorUserId("actorUserId_for_acc_123");
         accountRefProfile.setActorUserType("MEMBER");
         accountRefProfile.setActorUserRole("SELF");
-        accountRefProfile.setMemberUserId("memberUserId_for_acc_123");
-        accountRefProfile.setMemberType("MBR");
         accountRefProfile.setAccountEnv("JP");
         accountRefProfile.setPolicyNo("policyNo_for_acc_123");
         accountRefProfile.setCertNo("certNo_for_acc_123");
@@ -110,7 +104,6 @@ class TemporaryPortalAccessContextAdapterTest {
         StepVerifier.create(adapter.resolvePortalAccessContext("ACC-123"))
                 .assertNext(ctx -> {
                     assertEquals("actorUserId_for_acc_123", ctx.actor().actorUserId());
-                    assertEquals("memberUserId_for_acc_123", ctx.memberOwner().memberUserId());
                     assertEquals("policyNo_for_acc_123", ctx.account().policyNo());
                     assertEquals("ACC-123", ctx.account().accountRef());
                 })
@@ -237,8 +230,6 @@ class TemporaryPortalAccessContextAdapterTest {
                 .assertNext(ctx -> {
                     // assertEquals("", ctx.actor().actorUserType());
                     assertEquals("", ctx.actor().actorUserRole());
-                    assertEquals("", ctx.memberOwner().memberUserId());
-                    assertEquals("", ctx.memberOwner().memberType());
                     assertEquals("", ctx.account().accountEnv());
                     assertEquals("", ctx.account().certNo());
                     assertEquals("", ctx.account().trustCode());
@@ -258,8 +249,6 @@ class TemporaryPortalAccessContextAdapterTest {
         notifProfile.setActorUserId("actorUserId_for_notifications");
         notifProfile.setActorUserType("MEMBER");
         notifProfile.setActorUserRole("SELF");
-        notifProfile.setMemberUserId("memberUserId_for_notifications");
-        notifProfile.setMemberType("MBR");
         notifProfile.setAccountEnv("JP");
         notifProfile.setPolicyNo("policyNo_for_notifications");
         notifProfile.setCertNo("certNo_for_notifications");
@@ -272,8 +261,6 @@ class TemporaryPortalAccessContextAdapterTest {
         contribProfile.setActorUserId("actorUserId_for_contributions");
         contribProfile.setActorUserType("MEMBER");
         contribProfile.setActorUserRole("SELF");
-        contribProfile.setMemberUserId("memberUserId_for_contributions");
-        contribProfile.setMemberType("MBR");
         contribProfile.setAccountEnv("JP");
         contribProfile.setPolicyNo("policyNo_for_contributions");
         contribProfile.setCertNo("certNo_for_contributions");
@@ -314,8 +301,6 @@ class TemporaryPortalAccessContextAdapterTest {
         profile.setActorUserId("actorUserId");
         profile.setActorUserType("MEMBER");
         profile.setActorUserRole("SELF");
-        profile.setMemberUserId("memberUserId");
-        profile.setMemberType("MBR");
         profile.setAccountEnv(accountEnv);
         profile.setPolicyNo("policyNo_secret");
         profile.setCertNo("certNo_secret");
@@ -334,8 +319,6 @@ class TemporaryPortalAccessContextAdapterTest {
                 .assertNext(ctx -> {
                     assertEquals("actorUserId_for_session", ctx.actor().actorUserId());
                     assertEquals("MEMBER", ctx.actor().actorUserRole());
-                    assertEquals("", ctx.memberOwner().memberUserId());
-                    assertEquals("", ctx.memberOwner().memberType());
                     assertEquals("ACC-1", ctx.account().accountRef());
                     assertEquals("JP", ctx.account().accountEnv());
                     assertEquals("00000000217", ctx.account().policyNo());

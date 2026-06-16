@@ -6,7 +6,6 @@ import com.bct.ngtpa.apiservice.application.dto.ContributionActions;
 import com.bct.ngtpa.apiservice.application.dto.CurrencyDisplay;
 import com.bct.ngtpa.apiservice.application.dto.FetchContributionSummaryCommand;
 import com.bct.ngtpa.apiservice.application.dto.GetContributionSummaryCommand;
-import com.bct.ngtpa.apiservice.application.dto.MemberOwnerContext;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
@@ -39,7 +38,6 @@ class GetContributionSummaryServiceTest {
 
     private static final PortalAccessContext CONTRIBUTIONS_CONTEXT = new PortalAccessContext(
             new ActorContext("userId_for_contributions", "SELF"),
-            new MemberOwnerContext("userId_for_contributions", "MBR"),
             new AccountContext(
                     "contributions",
                     "JP",

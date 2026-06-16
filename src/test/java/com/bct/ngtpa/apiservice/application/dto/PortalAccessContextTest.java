@@ -18,13 +18,6 @@ class PortalAccessContextTest {
         assertEquals("RM", actor.actorUserRole());
     }
 
-    @Test
-    void memberOwnerContextPreservesSuppliedValues() {
-        var memberOwner = new MemberOwnerContext("member-99", "MBR");
-
-        assertEquals("member-99", memberOwner.memberUserId());
-        assertEquals("MBR", memberOwner.memberType());
-    }
 
     @Test
     void accountContextPreservesSuppliedValues() {
@@ -45,15 +38,13 @@ class PortalAccessContextTest {
     @Test
     void portalAccessContextComposesAllThreeComponents() {
         var actor       = new ActorContext("u1", "RM");
-        var memberOwner = new MemberOwnerContext("m1", "MBR");
         var account     = new AccountContext(
             "ref", "JP", "pol", "cert", "trust", "scheme",
             TermStatus.S, LocalDate.of(2026, 4, 1));
 
-        var ctx = new PortalAccessContext(actor, memberOwner, account);
+        var ctx = new PortalAccessContext(actor, account);
 
         assertSame(actor,       ctx.actor());
-        assertSame(memberOwner, ctx.memberOwner());
         assertSame(account,     ctx.account());
     }
 
@@ -61,14 +52,12 @@ class PortalAccessContextTest {
     void portalAccessContextRecordEquality() {
         var a = new PortalAccessContext(
                 new ActorContext("u1", "RM"),
-                new MemberOwnerContext("m1", "MBR"),
             new AccountContext(
                 "ref", "JP", "pol", "cert", "trust", "scheme",
                 TermStatus.O, LocalDate.of(2026, 5, 1)));
 
         var b = new PortalAccessContext(
                 new ActorContext("u1", "RM"),
-                new MemberOwnerContext("m1", "MBR"),
             new AccountContext(
                 "ref", "JP", "pol", "cert", "trust", "scheme",
                 TermStatus.O, LocalDate.of(2026, 5, 1)));

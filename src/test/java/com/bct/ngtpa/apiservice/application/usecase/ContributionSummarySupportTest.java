@@ -2,7 +2,6 @@ package com.bct.ngtpa.apiservice.application.usecase;
 
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
-import com.bct.ngtpa.apiservice.application.dto.MemberOwnerContext;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
@@ -49,7 +48,6 @@ class ContributionSummarySupportTest {
         // that userId is sourced from actor, not from account or memberOwner
         var ctx = new PortalAccessContext(
                 new ActorContext("actor_user_id", "SELF"),
-                new MemberOwnerContext("owner_user_id", "MBR"),
                 new AccountContext("contributions", "JP",
                 "policyNo", "certNo", "trust", "scheme", TermStatus.BLANK, null));
 
@@ -107,7 +105,6 @@ class ContributionSummarySupportTest {
             String policyNo, String certNo, String actorUserId, String trustCode, String schemeType) {
         return new PortalAccessContext(
                 new ActorContext(actorUserId, "SELF"),
-                new MemberOwnerContext(actorUserId, "MBR"),
             new AccountContext(
                 "contributions", "JP", policyNo, certNo, trustCode, schemeType,
                 TermStatus.BLANK, null));

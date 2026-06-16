@@ -2,7 +2,6 @@ package com.bct.ngtpa.apiservice.adapter.out.security;
 
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
-import com.bct.ngtpa.apiservice.application.dto.MemberOwnerContext;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
@@ -65,7 +64,6 @@ public class TemporaryPortalAccessContextAdapter implements PortalAccessContextP
         TermStatus termStatus = mapTermStatus(account.getTermStatus(), accountRef, account.getAccountEnv());
         return Mono.just(new PortalAccessContext(
                 new ActorContext(actor.getActorUserId(), actor.getActorUserRole()),
-                new MemberOwnerContext("", ""),
                 new AccountContext(
                         accountRef,
                         account.getAccountEnv(),
@@ -94,7 +92,6 @@ public class TemporaryPortalAccessContextAdapter implements PortalAccessContextP
         TermStatus termStatus = mapTermStatus(profile.getTermStatus(), accountRef, profile.getAccountEnv());
         return Mono.just(new PortalAccessContext(
                 new ActorContext(profile.getActorUserId(), profile.getActorUserRole()),
-                new MemberOwnerContext(profile.getMemberUserId(), profile.getMemberType()),
                 new AccountContext(
                         accountRef,
                         profile.getAccountEnv(),

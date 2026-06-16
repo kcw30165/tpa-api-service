@@ -2,7 +2,6 @@ package com.bct.ngtpa.apiservice.application.usecase;
 
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
-import com.bct.ngtpa.apiservice.application.dto.MemberOwnerContext;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusCommand;
@@ -26,7 +25,6 @@ class UpdateNotificationsReadStatusServiceTest {
 
     private static final PortalAccessContext NOTIFICATIONS_CONTEXT = new PortalAccessContext(
             new ActorContext("userId_for_notifications", "SELF"),
-            new MemberOwnerContext("userId_for_notifications", "MBR"),
             new AccountContext(
                     "notifications",
                     "JP",
@@ -89,7 +87,6 @@ class UpdateNotificationsReadStatusServiceTest {
 
     // NOTE: Actor/MemberOwner authorization check is deferred.
     // When auth-server integration is complete, an additional test should verify:
-    //   - execute() succeeds when ctx.actor().actorUserId().equals(ctx.memberOwner().memberUserId())
     //   - execute() signals an error (e.g. UnauthorizedException) when they differ
     // This rule is not enforced here because the current transitional adapter
     // always populates actor and memberOwner from the same config profile,

@@ -6,7 +6,6 @@ import com.bct.ngtpa.apiservice.application.dto.FetchMemberInfoCommand;
 import com.bct.ngtpa.apiservice.application.dto.GetPersonalInformationCommand;
 import com.bct.ngtpa.apiservice.application.dto.MemberInfoConfigItemType;
 import com.bct.ngtpa.apiservice.application.dto.MemberInfoResult;
-import com.bct.ngtpa.apiservice.application.dto.MemberOwnerContext;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.port.out.ApimMemberInfoPort;
@@ -266,7 +265,6 @@ class GetPersonalInformationServiceTest {
         private static PortalAccessContext context(String accountRef) {
                 return new PortalAccessContext(
                                 new ActorContext("user-1", "SELF"),
-                                new MemberOwnerContext("user-1", "MBR"),
                                 new AccountContext(accountRef, "JP", "policy-1", "cert-1", "JPM", "OE",
                                                 TermStatus.BLANK, null));
         }

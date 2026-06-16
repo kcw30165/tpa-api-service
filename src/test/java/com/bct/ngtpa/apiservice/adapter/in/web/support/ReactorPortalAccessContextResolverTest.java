@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
-import com.bct.ngtpa.apiservice.application.dto.MemberOwnerContext;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
@@ -86,7 +85,6 @@ class ReactorPortalAccessContextResolverTest {
             String schemeType) {
         return new PortalAccessContext(
                 new ActorContext("actor-001", "MEMBER"),
-                new MemberOwnerContext("", ""),
                 new AccountContext(
                         accountRef,
                         accountEnv,

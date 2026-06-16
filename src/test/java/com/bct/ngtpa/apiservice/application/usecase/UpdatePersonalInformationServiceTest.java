@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
-import com.bct.ngtpa.apiservice.application.dto.MemberOwnerContext;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.dto.UpdateMemberInfoCommand;
@@ -67,7 +66,6 @@ class UpdatePersonalInformationServiceTest {
     private static PortalAccessContext context() {
         return new PortalAccessContext(
                 new ActorContext("actor-user", "MEMBER"),
-                new MemberOwnerContext("owner-user", "MBR"),
                 new AccountContext(
                         "ACC-123",
                         "JP",
