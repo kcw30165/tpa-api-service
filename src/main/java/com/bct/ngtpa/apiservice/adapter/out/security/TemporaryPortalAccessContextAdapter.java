@@ -11,30 +11,80 @@ import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
 @Slf4j
 public class TemporaryPortalAccessContextAdapter implements PortalAccessContextPort {
 
-        private static final String SOURCE_NAME = "temporary-portal-access-context";
-        private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final String SOURCE_NAME = "temporary-portal-access-context";
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final TemporaryPortalAccessContextProperties properties;
 
     @Override
     public Mono<PortalAccessContext> resolvePortalAccessContext(String accountRef) {
-        if (accountRef == null || accountRef.isBlank()) {
+        if (!StringUtils.hasText(accountRef)) {
             return Mono.error(new PortalAccessContextResolutionException(
                     ErrorCodes.MEMBER_CONTEXT_INVALID,
                     "No temporary portal access context profile configured for accountRef: "
                             + (accountRef == null ? "null" : accountRef)));
         }
 
+        if (properties.getSessions() != null && !properties.getSessions().isEmpty()) {
+            return resolveFromSessionShape(accountRef.trim());
+        }
+        return resolveFromLegacyProfileShape(accountRef.trim());
+    }
+
+    private Mono<PortalAccessContext> resolveFromSessionShape(String accountRef) {
+        String sessionId = resolveDefaultSessionId(properties.getSessions());
+        TemporaryPortalAccessContextProperties.SessionProfile session = properties.getSessions().get(sessionId);
+        if (session == null) {
+            return Mono.error(new PortalAccessContextResolutionException(
+                    ErrorCodes.MEMBER_CONTEXT_INVALID,
+                    "No temporary portal access context session configured for sessionId: " + sessionId));
+        }
+        TemporaryPortalAccessContextProperties.AccountProfile account = session.getAccounts().get(accountRef);
+        if (account == null) {
+            return Mono.error(new PortalAccessContextResolutionException(
+                    ErrorCodes.MEMBER_CONTEXT_INVALID,
+                    "No temporary portal access context account configured for accountRef: "
+                            + accountRef + " in session: " + sessionId));
+        }
+        var actor = session.getActor() == null
+                ? new TemporaryPortalAccessContextProperties.SessionActor()
+                : session.getActor();
+        TermStatus termStatus = mapTermStatus(account.getTermStatus(), accountRef, account.getAccountEnv());
+        return Mono.just(new PortalAccessContext(
+                new ActorContext(actor.getActorUserId(), actor.getActorUserRole()),
+                new MemberOwnerContext("", ""),
+                new AccountContext(
+                        accountRef,
+                        account.getAccountEnv(),
+                        account.getPolicyNo(),
+                        account.getCertNo(),
+                        account.getTrustCode(),
+                        account.getSchemeType(),
+                        termStatus,
+                        parseTermCompletionDate(account.getTermCompletionDate(), accountRef))));
+    }
+
+    private String resolveDefaultSessionId(Map<String, TemporaryPortalAccessContextProperties.SessionProfile> sessions) {
+        if (StringUtils.hasText(properties.getDefaultSessionId())) {
+            return properties.getDefaultSessionId().trim();
+        }
+        return sessions.keySet().stream().findFirst().orElse("");
+    }
+
+    private Mono<PortalAccessContext> resolveFromLegacyProfileShape(String accountRef) {
         var profile = properties.getProfiles().get(accountRef);
         if (profile == null) {
             return Mono.error(new PortalAccessContextResolutionException(
@@ -43,12 +93,8 @@ public class TemporaryPortalAccessContextAdapter implements PortalAccessContextP
         }
         TermStatus termStatus = mapTermStatus(profile.getTermStatus(), accountRef, profile.getAccountEnv());
         return Mono.just(new PortalAccessContext(
-                new ActorContext(
-                        profile.getActorUserId(),
-                        profile.getActorUserRole()),
-                new MemberOwnerContext(
-                        profile.getMemberUserId(),
-                        profile.getMemberType()),
+                new ActorContext(profile.getActorUserId(), profile.getActorUserRole()),
+                new MemberOwnerContext(profile.getMemberUserId(), profile.getMemberType()),
                 new AccountContext(
                         accountRef,
                         profile.getAccountEnv(),
@@ -56,38 +102,29 @@ public class TemporaryPortalAccessContextAdapter implements PortalAccessContextP
                         profile.getCertNo(),
                         profile.getTrustCode(),
                         profile.getSchemeType(),
-                                                termStatus,
-                                                parseTermCompletionDate(profile.getTermCompletionDate()))));
+                        termStatus,
+                        parseTermCompletionDate(profile.getTermCompletionDate(), accountRef))));
     }
 
-        private TermStatus mapTermStatus(String rawTermStatus, String accountRef, String accountEnv) {
-                TermStatus termStatus = TermStatus.fromCode(rawTermStatus);
-                if (termStatus == TermStatus.UNKNOWN && rawTermStatus != null && !rawTermStatus.isBlank()) {
-                        log.warn(
-                                        "event=portal_access_context_term_status_unknown source={} accountRef={} accountEnv={} rawTermStatus={}",
-                                        SOURCE_NAME,
-                                        sanitizeForLog(accountRef),
-                                        sanitizeForLog(accountEnv),
-                                        sanitizeForLog(rawTermStatus));
-                }
-                return termStatus;
+    private TermStatus mapTermStatus(String rawCode, String accountRef, String accountEnv) {
+        TermStatus status = TermStatus.fromCode(rawCode);
+        if (status == TermStatus.UNKNOWN) {
+            log.warn("Unknown temporary portal access context termStatus. source={}, accountRef={}, accountEnv={}, rawTermStatus={}",
+                    SOURCE_NAME, accountRef, accountEnv, rawCode);
         }
+        return status;
+    }
 
-        private LocalDate parseTermCompletionDate(String rawTermCompletionDate) {
-                if (rawTermCompletionDate == null || rawTermCompletionDate.isBlank()) {
-                        return null;
-                }
-                return LocalDate.parse(rawTermCompletionDate.trim(), DATE_FORMATTER);
+    private LocalDate parseTermCompletionDate(String rawDate, String accountRef) {
+        if (!StringUtils.hasText(rawDate)) {
+            return null;
         }
-
-        private String sanitizeForLog(String value) {
-                if (value == null) {
-                        return "";
-                }
-                return value
-                                .replace('\r', ' ')
-                                .replace('\n', ' ')
-                                .replace('\t', ' ')
-                                .trim();
+        try {
+            return LocalDate.parse(rawDate.trim(), DATE_FORMATTER);
+        } catch (DateTimeParseException exception) {
+            log.warn("Invalid temporary portal access context termCompletionDate. source={}, accountRef={}, rawTermCompletionDate={}",
+                    SOURCE_NAME, accountRef, rawDate);
+            return null;
         }
+    }
 }

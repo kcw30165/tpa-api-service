@@ -130,4 +130,63 @@ class TemporaryPortalAccessContextPropertiesBindingTest {
                 .orElseThrow(() -> new IllegalStateException(
                         "Failed to bind TemporaryPortalAccessContextProperties"));
     }
+
+    @Test
+    void bindsSessionShapedTemporaryPortalAccessContext() {
+        var props = Map.ofEntries(
+                Map.entry("temporary-portal-access-context.default-session-id", "SESSION-001"),
+                Map.entry("temporary-portal-access-context.sessions.SESSION-001.actor.actor-user-id", "actor-session-001"),
+                Map.entry("temporary-portal-access-context.sessions.SESSION-001.actor.actor-user-role", "MEMBER"),
+                Map.entry("temporary-portal-access-context.sessions.SESSION-001.accounts.ACC-1.account-env", "JP"),
+                Map.entry("temporary-portal-access-context.sessions.SESSION-001.accounts.ACC-1.policy-no", "00000000217"),
+                Map.entry("temporary-portal-access-context.sessions.SESSION-001.accounts.ACC-1.cert-no", "95"),
+                Map.entry("temporary-portal-access-context.sessions.SESSION-001.accounts.ACC-1.trust-code", "JPM"),
+                Map.entry("temporary-portal-access-context.sessions.SESSION-001.accounts.ACC-1.scheme-type", "OE"),
+                Map.entry("temporary-portal-access-context.sessions.SESSION-001.accounts.ACC-1.term-status", "O"),
+                Map.entry("temporary-portal-access-context.sessions.SESSION-001.accounts.ACC-1.term-completion-date", "31/03/2026"),
+                Map.entry("temporary-portal-access-context.sessions.SESSION-001.accounts.ACC-2.account-env", "DB"),
+                Map.entry("temporary-portal-access-context.sessions.SESSION-001.accounts.ACC-2.policy-no", "00000008802"),
+                Map.entry("temporary-portal-access-context.sessions.SESSION-001.accounts.ACC-2.cert-no", "2")
+        );
+
+        var bound = bind(props);
+        var session = bound.getSessions().get("SESSION-001");
+
+        assertEquals("SESSION-001", bound.getDefaultSessionId());
+        assertNotNull(session, "SESSION-001 must be bound");
+        assertEquals("actor-session-001", session.getActor().getActorUserId());
+        assertEquals("MEMBER", session.getActor().getActorUserRole());
+        assertEquals(2, session.getAccounts().size());
+        assertEquals("JP", session.getAccounts().get("ACC-1").getAccountEnv());
+        assertEquals("00000000217", session.getAccounts().get("ACC-1").getPolicyNo());
+        assertEquals("95", session.getAccounts().get("ACC-1").getCertNo());
+        assertEquals("JPM", session.getAccounts().get("ACC-1").getTrustCode());
+        assertEquals("OE", session.getAccounts().get("ACC-1").getSchemeType());
+        assertEquals("O", session.getAccounts().get("ACC-1").getTermStatus());
+        assertEquals("31/03/2026", session.getAccounts().get("ACC-1").getTermCompletionDate());
+        assertEquals("DB", session.getAccounts().get("ACC-2").getAccountEnv());
+    }
+
+    @Test
+    void sessionAccountOptionalFieldsDefaultToEmptyString() {
+        var props = Map.of(
+                "temporary-portal-access-context.sessions.SESSION-001.actor.actor-user-id", "actor",
+                "temporary-portal-access-context.sessions.SESSION-001.accounts.ACC-1.policy-no", "policyNo"
+        );
+
+        var bound = bind(props);
+        var account = bound.getSessions().get("SESSION-001").getAccounts().get("ACC-1");
+
+        assertNotNull(account);
+        assertEquals("", bound.getDefaultSessionId());
+        assertEquals("", bound.getSessions().get("SESSION-001").getActor().getActorUserRole());
+        assertEquals("", account.getAccountEnv());
+        assertEquals("policyNo", account.getPolicyNo());
+        assertEquals("", account.getCertNo());
+        assertEquals("", account.getTrustCode());
+        assertEquals("", account.getSchemeType());
+        assertEquals("", account.getTermStatus());
+        assertEquals("", account.getTermCompletionDate());
+    }
+
 }

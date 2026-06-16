@@ -119,31 +119,31 @@ reference-date:
   # override-zone-id: Asia/Hong_Kong
 
 temporary-portal-access-context:
-  profiles:
-    ACC-1:
-      actor-user-id: C402400A
-      actor-user-role: MEMBER
-      member-user-id: C402400A
-      member-type: MBR
-      account-env: JP
-      policy-no: "00000000217"
-      cert-no: "95"
-      trust-code: JPM
-      scheme-type: OE
-      term-status: 
-      term-completion-date:  
-    ACC-2:
-      actor-user-id: C402400A
-      actor-user-role: MEMBER
-      member-user-id: C402400A
-      member-type: MBR
-      account-env: DB
-      policy-no: "00000008802"
-      cert-no: "2"
-      trust-code: 
-      scheme-type: 
-      term-status: 
-      term-completion-date: 
+  # Temporary Redis-session simulation until login/session management is implemented.
+  # Future request resolution will use HttpOnly session-id cookie + Account-Ref header.
+  default-session-id: DEMO-SESSION-001
+  sessions:
+    DEMO-SESSION-001:
+      actor:
+        actor-user-id: C402400A
+        actor-user-role: MEMBER
+      accounts:
+        ACC-1:
+          account-env: JP
+          policy-no: "00000000217"
+          cert-no: "95"
+          trust-code: JPM
+          scheme-type: OE
+          term-status:
+          term-completion-date:
+        ACC-2:
+          account-env: DB
+          policy-no: "00000008802"
+          cert-no: "2"
+          trust-code:
+          scheme-type:
+          term-status:
+          term-completion-date:
 
 request-logging:
   body-logging:

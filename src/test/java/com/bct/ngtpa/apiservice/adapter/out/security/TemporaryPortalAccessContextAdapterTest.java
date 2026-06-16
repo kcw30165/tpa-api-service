@@ -325,4 +325,89 @@ class TemporaryPortalAccessContextAdapterTest {
         profile.setTermCompletionDate(termCompletionDate);
         return profile;
     }
+
+    @Test
+    void resolvesSelectedAccountFromDefaultSessionShape() {
+        var adapter = adapterWithSessionShape();
+
+        StepVerifier.create(adapter.resolvePortalAccessContext("ACC-1"))
+                .assertNext(ctx -> {
+                    assertEquals("actorUserId_for_session", ctx.actor().actorUserId());
+                    assertEquals("MEMBER", ctx.actor().actorUserRole());
+                    assertEquals("", ctx.memberOwner().memberUserId());
+                    assertEquals("", ctx.memberOwner().memberType());
+                    assertEquals("ACC-1", ctx.account().accountRef());
+                    assertEquals("JP", ctx.account().accountEnv());
+                    assertEquals("00000000217", ctx.account().policyNo());
+                    assertEquals("95", ctx.account().certNo());
+                    assertEquals("JPM", ctx.account().trustCode());
+                    assertEquals("OE", ctx.account().schemeType());
+                    assertEquals(TermStatus.O, ctx.account().termStatus());
+                    assertEquals(LocalDate.of(2026, 3, 31), ctx.account().termCompletionDate());
+                })
+                .verifyComplete();
+    }
+
+    @Test
+    void sameSessionResolvesDifferentAccountRefsWithoutSelectedAccountState() {
+        var adapter = adapterWithSessionShape();
+
+        StepVerifier.create(adapter.resolvePortalAccessContext("ACC-2"))
+                .assertNext(ctx -> {
+                    assertEquals("actorUserId_for_session", ctx.actor().actorUserId());
+                    assertEquals("ACC-2", ctx.account().accountRef());
+                    assertEquals("DB", ctx.account().accountEnv());
+                    assertEquals("00000008802", ctx.account().policyNo());
+                    assertEquals("2", ctx.account().certNo());
+                    assertEquals("", ctx.account().trustCode());
+                    assertEquals("", ctx.account().schemeType());
+                })
+                .verifyComplete();
+    }
+
+    @Test
+    void sessionShapeUnknownAccountRefFailsWithClearException() {
+        var adapter = adapterWithSessionShape();
+
+        StepVerifier.create(adapter.resolvePortalAccessContext("ACC-404"))
+                .expectErrorSatisfies(ex -> {
+                    assertInstanceOf(PortalAccessContextResolutionException.class, ex);
+                    assertEquals("No temporary portal access context account configured for accountRef: ACC-404 in session: SESSION-001",
+                            ex.getMessage());
+                })
+                .verify();
+    }
+
+    private static TemporaryPortalAccessContextAdapter adapterWithSessionShape() {
+        var actor = new TemporaryPortalAccessContextProperties.SessionActor();
+        actor.setActorUserId("actorUserId_for_session");
+        actor.setActorUserRole("MEMBER");
+
+        var acc1 = new TemporaryPortalAccessContextProperties.AccountProfile();
+        acc1.setAccountEnv("JP");
+        acc1.setPolicyNo("00000000217");
+        acc1.setCertNo("95");
+        acc1.setTrustCode("JPM");
+        acc1.setSchemeType("OE");
+        acc1.setTermStatus("O");
+        acc1.setTermCompletionDate("31/03/2026");
+
+        var acc2 = new TemporaryPortalAccessContextProperties.AccountProfile();
+        acc2.setAccountEnv("DB");
+        acc2.setPolicyNo("00000008802");
+        acc2.setCertNo("2");
+
+        var session = new TemporaryPortalAccessContextProperties.SessionProfile();
+        session.setActor(actor);
+        var accounts = new LinkedHashMap<String, TemporaryPortalAccessContextProperties.AccountProfile>();
+        accounts.put("ACC-1", acc1);
+        accounts.put("ACC-2", acc2);
+        session.setAccounts(accounts);
+
+        var properties = new TemporaryPortalAccessContextProperties();
+        properties.setDefaultSessionId("SESSION-001");
+        properties.setSessions(Map.of("SESSION-001", session));
+        return new TemporaryPortalAccessContextAdapter(properties);
+    }
+
 }
