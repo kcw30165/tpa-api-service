@@ -1,13 +1,11 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.bct.ngtpa.apiservice.application.dto.GetReferenceDataCountriesCommand;
 import com.bct.ngtpa.apiservice.application.dto.ReferenceDataCountriesResult;
-import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
+import com.bct.ngtpa.apiservice.application.dto.ReferenceDataOption;
 import com.bct.ngtpa.apiservice.application.port.in.GetReferenceDataCountriesUseCase;
-import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import java.util.List;
@@ -18,33 +16,42 @@ import reactor.core.publisher.Mono;
 class ReferenceDataControllerTest {
 
     @Test
-    void resolvesAccountRefAndNormalizedLanguage() {
+    void passesLanguageOnlyCommandToUseCase() {
         AtomicReference<GetReferenceDataCountriesCommand> captured = new AtomicReference<>();
-        ReferenceDataCountriesResult expected = new ReferenceDataCountriesResult(List.of(), List.of());
         GetReferenceDataCountriesUseCase useCase = command -> {
             captured.set(command);
-            return Mono.just(expected);
+            return Mono.just(result());
         };
 
-        ReferenceDataCountriesResult actual = new ReferenceDataController(useCase)
+        var result = new ReferenceDataController(useCase)
                 .getCountries("en")
                 .contextWrite(ctx -> ctx.put(RequestHeaderContextKeys.CONTEXT_KEY,
-                        new RequestHeaderContext("ACC-789", "req-1", "zh-HK")))
+                        new RequestHeaderContext("ACC-123", "req-1", "zh-HK")))
                 .block();
 
-        assertEquals(expected, actual);
-        assertEquals("ACC-789", captured.get().accountRef());
         assertEquals("zh_HK", captured.get().language());
+        assertEquals("HK", result.countries().get(0).value());
     }
 
     @Test
-    void rejectsMissingRequestHeaderContext() {
-        GetReferenceDataCountriesUseCase useCase = command -> Mono.just(new ReferenceDataCountriesResult(List.of(), List.of()));
+    void doesNotRequireAccountRefWhenCountryListIsGlobal() {
+        AtomicReference<GetReferenceDataCountriesCommand> captured = new AtomicReference<>();
+        GetReferenceDataCountriesUseCase useCase = command -> {
+            captured.set(command);
+            return Mono.just(result());
+        };
 
-        PortalAccessContextResolutionException ex = assertThrows(
-                PortalAccessContextResolutionException.class,
-                () -> new ReferenceDataController(useCase).getCountries("en").block());
+        var result = new ReferenceDataController(useCase)
+                .getCountries("en")
+                .block();
 
-        assertEquals(ErrorCodes.MEMBER_CONTEXT_INVALID, ex.getErrorCode());
+        assertEquals("en", captured.get().language());
+        assertEquals("+852", result.callingCodes().get(0).value());
+    }
+
+    private ReferenceDataCountriesResult result() {
+        return new ReferenceDataCountriesResult(
+                List.of(new ReferenceDataOption("HK", "Hong Kong")),
+                List.of(new ReferenceDataOption("+852", "Hong Kong")));
     }
 }
