@@ -119,7 +119,8 @@ public class RequestLoggingWebFilter implements WebFilter {
         return new RequestHeaderContext(
                 request.getHeaders().getFirst(RequestHeaderContextKeys.ACCOUNT_REF_HEADER),
                 requestId,
-                request.getHeaders().getFirst(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER));
+                request.getHeaders().getFirst(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER),
+                request.getHeaders().getFirst(RequestHeaderContextKeys.SESSION_ID_HEADER));
     }
 
     private Mono<Void> processWithRequestBodyLogging(

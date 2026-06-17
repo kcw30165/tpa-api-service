@@ -156,6 +156,7 @@ temporary-portal-access-context:
       actor:
         actor-user-id: "5226523"
         actor-user-role: MEMBER
+      accounts:
         ACC-3:
           account-env: DB
           policy-no: "00000008802"
@@ -168,6 +169,7 @@ temporary-portal-access-context:
       actor:
         actor-user-id: "3002798"
         actor-user-role: MEMBER
+      accounts:
         ACC-4:
           account-env: DB
           policy-no: "00000008802"
