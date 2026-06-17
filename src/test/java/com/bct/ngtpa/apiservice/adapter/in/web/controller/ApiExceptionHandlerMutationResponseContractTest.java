@@ -1,5 +1,8 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
+import reactor.core.publisher.Mono;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
+import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -42,7 +45,11 @@ import org.springframework.web.server.ServerWebInputException;
 
 class ApiExceptionHandlerMutationResponseContractTest {
 
-    private final ApiExceptionHandler handler = new ApiExceptionHandler(errorMessageResolver(), loggingSanitizer());
+    private final ApiExceptionHandler handler = new ApiExceptionHandler(
+                errorMessageResolver(),
+                loggingSanitizer(),
+                currentPortalAccessContextResolver()
+        );
 
     @Test
     void invalidNotificationRequestUsesMutationFailureEnvelope() {
@@ -281,4 +288,18 @@ class ApiExceptionHandlerMutationResponseContractTest {
     private static LoggingSanitizer loggingSanitizer() {
         return new LoggingSanitizer(new ObjectMapper(), new LoggingSanitizerProperties());
     }
+    private static CurrentPortalAccessContextResolver currentPortalAccessContextResolver() {
+        return new CurrentPortalAccessContextResolver() {
+            @Override
+            public Mono<PortalAccessContext> current() {
+                return Mono.empty();
+            }
+
+            @Override
+            public Mono<PortalAccessContext> currentOrEmpty() {
+                return Mono.empty();
+            }
+        };
+    }
+
 }

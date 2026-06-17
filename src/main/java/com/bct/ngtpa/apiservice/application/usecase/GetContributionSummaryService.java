@@ -6,7 +6,7 @@ import com.bct.ngtpa.apiservice.application.port.in.GetContributionSummaryUseCas
 import com.bct.ngtpa.apiservice.application.port.out.ApimContributionSummaryPort;
 import com.bct.ngtpa.apiservice.application.port.out.ContributionActionPermissionPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
-import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryReportBuilder;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +18,7 @@ public class GetContributionSummaryService implements GetContributionSummaryUseC
         private final ApimContributionSummaryPort apimContributionSummaryPort;
         private final CurrencyDisplayPort currencyDisplayPort;
         private final ReferenceDatePort referenceDatePort;
-        private final PortalAccessContextPort portalAccessContextPort;
+        private final CurrentPortalAccessContextResolver currentPortalAccessContextResolver;
         private final ContributionActionPermissionPort contributionActionPermissionPort;
 
         @Override
@@ -33,8 +33,7 @@ public class GetContributionSummaryService implements GetContributionSummaryUseC
                                 .flatMap(refDate -> {
                                         ContributionSummarySupport.validateDateRangeWithinReferenceWindow(fromDate,
                                                         toDate, refDate);
-                                        return portalAccessContextPort
-                                                        .resolvePortalAccessContext(resolveAccountRef(command.accountRef(), "contributions"))
+                                        return currentPortalAccessContextResolver.current()
                                                         .map(ctx -> ContributionSummarySupport
                                                                         .newFetchCommand(
                                                                                         ContributionSummarySupport
@@ -58,9 +57,5 @@ public class GetContributionSummaryService implements GetContributionSummaryUseC
                                                                 fetchCommand.trustCode(),
                                                                 fetchCommand.schemeType(),
                                                                 fetchCommand.accountEnv())));
-        }
-
-        private String resolveAccountRef(String accountRef, String fallbackAccountRef) {
-                return accountRef != null ? accountRef : fallbackAccountRef;
         }
 }

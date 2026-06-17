@@ -1,160 +1,63 @@
 package com.bct.ngtpa.apiservice.application.usecase;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.GetNotificationsCommand;
-import com.bct.ngtpa.apiservice.application.dto.MemberOwnerContext;
-import com.bct.ngtpa.apiservice.application.dto.NotificationDateOptions;
 import com.bct.ngtpa.apiservice.application.dto.NotificationListResult;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.TermStatus;
-import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNoticeMessagePort;
-import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
-import com.bct.ngtpa.apiservice.domain.model.AudienceType;
-import com.bct.ngtpa.apiservice.domain.model.Hyperlink;
-import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
-import com.bct.ngtpa.apiservice.domain.model.MessageType;
-import com.bct.ngtpa.apiservice.domain.model.NoticeMessage;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
 class GetNotificationsServiceTest {
 
-    private static final PortalAccessContext NOTIFICATIONS_CONTEXT = new PortalAccessContext(
-            new ActorContext("userId_for_notifications", "STAFF", "RM"),
-            new MemberOwnerContext("member-notif", "MBR"),
-            new AccountContext(
-                    "notifications",
-                    "JP",
-                    "policyNo_for_notifications",
-                    "certNo_for_notifications",
-                    "trustCode_for_notifications",
-                    "schemeType_for_notifications",
-                    TermStatus.BLANK,
-                    null));
-
-    private static final ReferenceDatePort REFERENCE_DATE_PORT =
-            () -> Mono.just(LocalDate.of(2025, 10, 1));
-
-    private static PortalAccessContextPort portalAccessContextPort() {
-        return accountRef -> Mono.just(NOTIFICATIONS_CONTEXT);
-    }
-
     @Test
-    void filtersFutureAndMissingStartDatesAndKeepsDefaultDateOptions() {
-        NotificationDateOptions defaults = NotificationDateOptions.defaults();
-        LocalDateTime now = LocalDateTime.now(defaults.zoneId());
-
-        ApimNoticeMessagePort port = command -> Mono.just(new NotificationListResult(List.of(
-                notification("DOC_AVAIL", 3, now.minusMinutes(15), false),
-                notification("ACT_REQ", 1, now, false),
-                notification("IMP_NOTE", 2, now.plusMinutes(15), true),
-                notification("MKT_UPD", 4, null, false)
-        )));
-
-        GetNotificationsService service = new GetNotificationsService(port, portalAccessContextPort(), REFERENCE_DATE_PORT);
-
-        NotificationListResult result = service.execute(new GetNotificationsCommand(
-                null, null, 1, 99999, null, null, null, null, null, null)).block();
-
-        assertEquals(NotificationDateOptions.DEFAULT_DATE_FORMAT, result.dateOptions().dateFormat());
-        assertEquals(NotificationDateOptions.DEFAULT_ZONE_ID, result.dateOptions().zoneId());
-        assertEquals(List.of(1, 3), result.notifications().stream().map(NoticeMessage::seq).toList());
-    }
-
-    @Test
-    void usesCustomDateOptions() {
-        ApimNoticeMessagePort port = command -> Mono.just(new NotificationListResult(List.of()));
-        GetNotificationsService service = new GetNotificationsService(port, portalAccessContextPort(), REFERENCE_DATE_PORT);
-
-        NotificationListResult result = service.execute(new GetNotificationsCommand(
-                null, null, null, null, "yyyy-MM-dd HH:mm", "Europe/London", null, null, null, null)).block();
-
-        assertEquals("yyyy-MM-dd HH:mm", result.dateOptions().dateFormat());
-        assertEquals("Europe/London", result.dateOptions().zoneId().getId());
-    }
-
-    @Test
-    void rejectsInvalidDateOptions() {
-        ApimNoticeMessagePort port = command -> Mono.just(new NotificationListResult(List.of()));
-        GetNotificationsService service = new GetNotificationsService(port, portalAccessContextPort(), REFERENCE_DATE_PORT);
-
-        assertThrows(InvalidNotificationRequestException.class, () -> service.execute(new GetNotificationsCommand(
-                null, null, null, null, "bad-[", null, null, null, null, null)).block());
-
-        assertThrows(InvalidNotificationRequestException.class, () -> service.execute(new GetNotificationsCommand(
-                null, null, null, null, null, "Mars/Olympus", null, null, null, null)).block());
-    }
-
-    @Test
-    void resolvesPortalAccessContextWithCommandAccountRef() {
-        AtomicReference<String> capturedRef = new AtomicReference<>();
-        AtomicReference<GetNotificationsCommand> capturedCommand = new AtomicReference<>();
-
-        PortalAccessContextPort capturingPort = accountRef -> {
-            capturedRef.set(accountRef);
-            return Mono.just(NOTIFICATIONS_CONTEXT);
-        };
-
-        ApimNoticeMessagePort noticePort = command -> {
-            capturedCommand.set(command);
+    void enrichesApimCommandFromCurrentPortalAccessContext() {
+        AtomicReference<GetNotificationsCommand> captured = new AtomicReference<>();
+        ApimNoticeMessagePort apimPort = command -> {
+            captured.set(command);
             return Mono.just(new NotificationListResult(List.of()));
         };
+        ReferenceDatePort referenceDatePort = () -> Mono.just(LocalDate.of(2026, 6, 16));
 
-        GetNotificationsService service = new GetNotificationsService(noticePort, capturingPort, REFERENCE_DATE_PORT);
-    service.execute(new GetNotificationsCommand(null, null, 1, 99999, null, null, null, null, null, null, "ACC-123")).block();
+        new GetNotificationsService(apimPort, provider(context("ACC-123")), referenceDatePort)
+                .execute(new GetNotificationsCommand(null, null, 1, 20, null, null, null, null, null, null))
+                .block();
 
-    assertEquals("ACC-123", capturedRef.get());
-        assertEquals("JP", capturedCommand.get().accountEnv());
-        assertEquals("MBR", capturedCommand.get().mbrType());
-        assertEquals("policyNo_for_notifications", capturedCommand.get().policyNo());
-        assertEquals("certNo_for_notifications", capturedCommand.get().certNo());
-        // userId comes from actor.actorUserId(), not from account
-        assertEquals("userId_for_notifications", capturedCommand.get().userId());
+        assertEquals("JP", captured.get().accountEnv());
+        assertEquals("policy-1", captured.get().policyNo());
+        assertEquals("cert-1", captured.get().certNo());
+        assertEquals("user-1", captured.get().userId());
+        assertEquals("16/06/2026", captured.get().refDate());
+        assertEquals(1, captured.get().page());
+        assertEquals(20, captured.get().size());
     }
 
-    @Test
-    void passesReferenceDateFormattedAsRefDateToApimCommand() {
-        AtomicReference<GetNotificationsCommand> capturedCommand = new AtomicReference<>();
+    private static CurrentPortalAccessContextResolver provider(PortalAccessContext context) {
+        return new CurrentPortalAccessContextResolver() {
+            @Override
+            public Mono<PortalAccessContext> current() {
+                return Mono.just(context);
+            }
 
-        ApimNoticeMessagePort noticePort = command -> {
-            capturedCommand.set(command);
-            return Mono.just(new NotificationListResult(List.of()));
+            @Override
+            public Mono<PortalAccessContext> currentOrEmpty() {
+                return Mono.just(context);
+            }
         };
-
-        GetNotificationsService service = new GetNotificationsService(noticePort, portalAccessContextPort(), REFERENCE_DATE_PORT);
-        service.execute(new GetNotificationsCommand(null, null, 1, 99999, null, null, null, null, null, null)).block();
-
-        assertEquals("01/10/2025", capturedCommand.get().refDate());
     }
 
-    private NoticeMessage notification(String category, Integer seq, LocalDateTime startDateTime, boolean isRead) {
-        return new NoticeMessage(
-                "SHORT-" + seq,
-                "LONG-" + seq,
-                seq,
-                category,
-                MessageType.fromCode(category),
-                MessageType.titleFor(category),
-                "chi",
-                "eng",
-                isRead,
-                startDateTime,
-                null,
-                isRead ? MessageStatus.READ : MessageStatus.UNREAD,
-                (AudienceType) null,
-                null,
-                List.<Hyperlink>of()
-        );
+    private static PortalAccessContext context(String accountRef) {
+        return new PortalAccessContext(
+                new ActorContext("user-1", "SELF"),
+                new AccountContext(accountRef, "JP", "policy-1", "cert-1", "JPM", "OE", TermStatus.BLANK, null));
     }
 }

@@ -1,19 +1,17 @@
 package com.bct.ngtpa.apiservice.application.usecase;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.FetchMemberInfoCommand;
 import com.bct.ngtpa.apiservice.application.dto.GetPersonalInformationCommand;
 import com.bct.ngtpa.apiservice.application.dto.MemberInfoResult;
-import com.bct.ngtpa.apiservice.application.dto.MemberOwnerContext;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.port.out.ApimMemberInfoPort;
-import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
-import java.util.HashMap;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
@@ -21,52 +19,57 @@ import reactor.core.publisher.Mono;
 
 class GetPersonalInformationUseCaseTest {
 
-    private static final PortalAccessContext SAMPLE_CONTEXT = new PortalAccessContext(
-            new ActorContext("actor-user", "STAFF", "RM"),
-            new MemberOwnerContext("member-123", "MBR"),
-            new AccountContext("acc-ref", "JP", "policy-111", "cert-222", "trustX", "schemeA", TermStatus.BLANK, null)
-    );
-
     @Test
     void resolvesPortalContextAndCallsApimAndReturnsNeutralResult() {
-        AtomicReference<String> capturedAccountRef = new AtomicReference<>();
-        AtomicReference<FetchMemberInfoCommand> capturedFetchCommand = new AtomicReference<>();
-
-        PortalAccessContextPort portalPort = accountRef -> {
-            capturedAccountRef.set(accountRef);
-            return Mono.just(SAMPLE_CONTEXT);
-        };
+        AtomicReference<FetchMemberInfoCommand> captured = new AtomicReference<>();
         ApimMemberInfoPort apimPort = command -> {
-            capturedFetchCommand.set(command);
-            Map<String, Object> payload = new HashMap<>();
-            payload.put("config", Map.of("addr1", "EDITABLE_COM"));
-            payload.put("data", Map.of("addr1", "1 Example Street"));
-            return Mono.just(new MemberInfoResult(payload));
+            captured.set(command);
+            return Mono.just(new MemberInfoResult(Map.of(
+                    "data", Map.of("email", "a@b.test"),
+                    "config", Map.of("email", "READONLY"))));
         };
 
-        var result = new GetPersonalInformationService(apimPort, portalPort)
-                .execute(new GetPersonalInformationCommand("acc-ref", "en"))
+        var result = new GetPersonalInformationService(apimPort, resolver(context("acc-ref")))
+                .execute(new GetPersonalInformationCommand("en"))
                 .block();
 
-        assertEquals("acc-ref", capturedAccountRef.get());
-        assertEquals("JP", capturedFetchCommand.get().getAccountEnv());
-        assertEquals("policy-111", capturedFetchCommand.get().getPolicyNo());
-        assertEquals("cert-222", capturedFetchCommand.get().getCertNo());
-        assertEquals("actor-user", capturedFetchCommand.get().getUserId());
-        assertEquals(Map.of("addr1", "1 Example Street"), result.data());
-        assertEquals(Map.of("addr1", "EDITABLE_COM"), result.config());
+        assertEquals("JP", captured.get().getAccountEnv());
+        assertEquals("policy-1", captured.get().getPolicyNo());
+        assertEquals("cert-1", captured.get().getCertNo());
+        assertEquals("user-1", captured.get().getUserId());
+        assertEquals("a@b.test", result.data().get("email"));
+        assertEquals("READONLY", result.config().get("email"));
     }
 
     @Test
-    void propagatesApimExceptions() {
-        ApimMemberInfoPort failingApim = command -> Mono.error(new IllegalStateException("apim-failure"));
-        PortalAccessContextPort portalPort = accountRef -> Mono.just(SAMPLE_CONTEXT);
+    void nullPayloadReturnsEmptyResult() {
+        var result = new GetPersonalInformationService(
+                command -> Mono.just(new MemberInfoResult(null)),
+                resolver(context("acc-ref")))
+                .execute(new GetPersonalInformationCommand("en"))
+                .block();
 
-        IllegalStateException ex = assertThrows(IllegalStateException.class, () ->
-                new GetPersonalInformationService(failingApim, portalPort)
-                        .execute(new GetPersonalInformationCommand("acc-ref", "en"))
-                        .block());
+        assertTrue(result.data().isEmpty());
+        assertTrue(result.config().isEmpty());
+    }
 
-        assertEquals("apim-failure", ex.getMessage());
+    private static CurrentPortalAccessContextResolver resolver(PortalAccessContext context) {
+        return new CurrentPortalAccessContextResolver() {
+            @Override
+            public Mono<PortalAccessContext> current() {
+                return Mono.just(context);
+            }
+
+            @Override
+            public Mono<PortalAccessContext> currentOrEmpty() {
+                return Mono.just(context);
+            }
+        };
+    }
+
+    private static PortalAccessContext context(String accountRef) {
+        return new PortalAccessContext(
+                new ActorContext("user-1", "SELF"),
+                new AccountContext(accountRef, "JP", "policy-1", "cert-1", "JPM", "OE", TermStatus.BLANK, null));
     }
 }

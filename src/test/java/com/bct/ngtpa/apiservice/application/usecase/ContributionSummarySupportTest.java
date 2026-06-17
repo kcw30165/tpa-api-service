@@ -2,7 +2,6 @@ package com.bct.ngtpa.apiservice.application.usecase;
 
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
-import com.bct.ngtpa.apiservice.application.dto.MemberOwnerContext;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
@@ -27,7 +26,7 @@ class ContributionSummarySupportTest {
                 "01/01/2026", "31/03/2026", ctx);
 
         assertEquals("JP", cmd.accountEnv());
-        assertEquals("MBR", cmd.mbrType());
+        assertEquals("", cmd.mbrType());
         assertEquals("01/01/2026", cmd.coverFrom());
         assertEquals("31/03/2026", cmd.coverTo());
     }
@@ -48,8 +47,7 @@ class ContributionSummarySupportTest {
         // actorUserId and memberOwner userId are intentionally different to assert
         // that userId is sourced from actor, not from account or memberOwner
         var ctx = new PortalAccessContext(
-                new ActorContext("actor_user_id", "MEMBER", "SELF"),
-                new MemberOwnerContext("owner_user_id", "MBR"),
+                new ActorContext("actor_user_id", "SELF"),
                 new AccountContext("contributions", "JP",
                 "policyNo", "certNo", "trust", "scheme", TermStatus.BLANK, null));
 
@@ -106,8 +104,7 @@ class ContributionSummarySupportTest {
     private static PortalAccessContext contextWith(
             String policyNo, String certNo, String actorUserId, String trustCode, String schemeType) {
         return new PortalAccessContext(
-                new ActorContext(actorUserId, "MEMBER", "SELF"),
-                new MemberOwnerContext(actorUserId, "MBR"),
+                new ActorContext(actorUserId, "SELF"),
             new AccountContext(
                 "contributions", "JP", policyNo, certNo, trustCode, schemeType,
                 TermStatus.BLANK, null));

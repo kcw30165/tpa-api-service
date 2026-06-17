@@ -5,66 +5,56 @@ import com.bct.ngtpa.apiservice.application.dto.NotificationDateOptions;
 import com.bct.ngtpa.apiservice.application.dto.NotificationListResult;
 import com.bct.ngtpa.apiservice.application.port.in.GetNotificationsUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNoticeMessagePort;
-import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
-import lombok.RequiredArgsConstructor;
-import reactor.core.publisher.Mono;
-
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.Optional;
+import lombok.RequiredArgsConstructor;
+import reactor.core.publisher.Mono;
 
 @RequiredArgsConstructor
 public class GetNotificationsService implements GetNotificationsUseCase {
 
-        private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-        private final ApimNoticeMessagePort apimNoticeMessagePort;
-        private final PortalAccessContextPort portalAccessContextPort;
-        private final ReferenceDatePort referenceDatePort;
+    private final ApimNoticeMessagePort apimNoticeMessagePort;
+    private final CurrentPortalAccessContextResolver currentPortalAccessContextResolver;
+    private final ReferenceDatePort referenceDatePort;
 
-        @Override
-        public Mono<NotificationListResult> execute(GetNotificationsCommand command) {
-                var dateOptions = NotificationDateOptions.resolve(command.dateFormat(), command.timezone());
-                LocalDateTime now = dateOptions.now();
+    @Override
+    public Mono<NotificationListResult> execute(GetNotificationsCommand command) {
+        var dateOptions = NotificationDateOptions.resolve(command.dateFormat(), command.timezone());
+        LocalDateTime now = dateOptions.now();
 
-                return portalAccessContextPort.resolvePortalAccessContext(
-                                resolveAccountRef(command.accountRef(), "notifications"))
-                                .zipWith(referenceDatePort.resolveReferenceDate())
-                                .flatMap(tuple -> {
-                                        var ctx = tuple.getT1();
-                                        var referenceDate = tuple.getT2();
+        return currentPortalAccessContextResolver.current()
+                .zipWith(referenceDatePort.resolveReferenceDate())
+                .flatMap(tuple -> {
+                    var ctx = tuple.getT1();
+                    var referenceDate = tuple.getT2();
 
-                                        var enriched = new GetNotificationsCommand(
-                                                        ctx.account().accountEnv(),
-                                                        ctx.memberOwner().memberType(),
-                                                        command.page(),
-                                                        command.size(),
-                                                        command.dateFormat(),
-                                                        command.timezone(),
-                                                        ctx.account().policyNo(),
-                                                        ctx.account().certNo(),
-                                                        ctx.actor().actorUserId(),
-                                                        referenceDate.format(DATE_FORMATTER),
-                                                        null);
+                    var enriched = new GetNotificationsCommand(
+                            ctx.account().accountEnv(),
+                            "",
+                            command.page(),
+                            command.size(),
+                            command.dateFormat(),
+                            command.timezone(),
+                            ctx.account().policyNo(),
+                            ctx.account().certNo(),
+                            ctx.actor().actorUserId(),
+                            referenceDate.format(DATE_FORMATTER));
 
-                                        return apimNoticeMessagePort.fetchNotifications(enriched)
-                                                        .map(result -> {
-                                                                var visible = result.notifications().stream()
-                                                                                .filter(message -> message
-                                                                                                .isVisible(now))
-                                                                                .sorted(Comparator.comparingInt(
-                                                                                                m -> Optional.ofNullable(
-                                                                                                                m.seq())
-                                                                                                                .orElse(Integer.MAX_VALUE)))
-                                                                                .toList();
-                                                                return new NotificationListResult(visible, dateOptions);
-                                                        });
-                                });
-        }
-
-        private String resolveAccountRef(String accountRef, String fallbackAccountRef) {
-                return accountRef != null ? accountRef : fallbackAccountRef;
-        }
+                    return apimNoticeMessagePort.fetchNotifications(enriched)
+                            .map(result -> {
+                                var visible = result.notifications().stream()
+                                        .filter(message -> message.isVisible(now))
+                                        .sorted(Comparator.comparingInt(
+                                                m -> Optional.ofNullable(m.seq()).orElse(Integer.MAX_VALUE)))
+                                        .toList();
+                                return new NotificationListResult(visible, dateOptions);
+                            });
+                });
+    }
 }

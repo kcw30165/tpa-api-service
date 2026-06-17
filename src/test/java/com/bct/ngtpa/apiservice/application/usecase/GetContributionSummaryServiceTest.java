@@ -6,14 +6,13 @@ import com.bct.ngtpa.apiservice.application.dto.ContributionActions;
 import com.bct.ngtpa.apiservice.application.dto.CurrencyDisplay;
 import com.bct.ngtpa.apiservice.application.dto.FetchContributionSummaryCommand;
 import com.bct.ngtpa.apiservice.application.dto.GetContributionSummaryCommand;
-import com.bct.ngtpa.apiservice.application.dto.MemberOwnerContext;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import com.bct.ngtpa.apiservice.application.port.out.ApimContributionSummaryPort;
 import com.bct.ngtpa.apiservice.application.port.out.ContributionActionPermissionPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
-import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.domain.model.ContributionEntry;
 import com.bct.ngtpa.apiservice.domain.model.ContributionLabels;
@@ -38,8 +37,7 @@ class GetContributionSummaryServiceTest {
     private static final LocalDate REFERENCE_DATE = LocalDate.of(2026, 3, 31);
 
     private static final PortalAccessContext CONTRIBUTIONS_CONTEXT = new PortalAccessContext(
-            new ActorContext("userId_for_contributions", "MEMBER", "SELF"),
-            new MemberOwnerContext("userId_for_contributions", "MBR"),
+            new ActorContext("userId_for_contributions", "SELF"),
             new AccountContext(
                     "contributions",
                     "JP",
@@ -50,8 +48,18 @@ class GetContributionSummaryServiceTest {
                     TermStatus.BLANK,
                     null));
 
-    private static PortalAccessContextPort portalAccessContextPort() {
-        return accountRef -> Mono.just(CONTRIBUTIONS_CONTEXT);
+    private static CurrentPortalAccessContextResolver currentPortalAccessContextResolver() {
+        return new CurrentPortalAccessContextResolver() {
+            @Override
+            public Mono<PortalAccessContext> current() {
+                return Mono.just(CONTRIBUTIONS_CONTEXT);
+            }
+
+            @Override
+            public Mono<PortalAccessContext> currentOrEmpty() {
+                return Mono.just(CONTRIBUTIONS_CONTEXT);
+            }
+        };
     }
 
     private static ReferenceDatePort referenceDatePort() {
@@ -63,9 +71,10 @@ class GetContributionSummaryServiceTest {
     }
 
     private GetContributionSummaryService serviceWith(ApimContributionSummaryPort apimPort,
-                                                       CurrencyDisplayPort currencyPort) {
+            CurrencyDisplayPort currencyPort) {
         return new GetContributionSummaryService(
-                apimPort, currencyPort, referenceDatePort(), portalAccessContextPort(), actionPermissionPort());
+                apimPort, currencyPort, referenceDatePort(), currentPortalAccessContextResolver(),
+                actionPermissionPort());
     }
 
     @Test
@@ -105,30 +114,6 @@ class GetContributionSummaryServiceTest {
     }
 
     @Test
-    void resolvesPortalAccessContextWithCommandAccountRef() {
-        AtomicReference<String> capturedRef = new AtomicReference<>();
-        PortalAccessContextPort capturingPort = accountRef -> {
-            capturedRef.set(accountRef);
-            return Mono.just(CONTRIBUTIONS_CONTEXT);
-        };
-
-        CurrencyDisplayPort currencyDisplayPort = (code, accountEnv, trustCode, schemeType) ->
-                new CurrencyDisplay(code, code);
-
-        var service = new GetContributionSummaryService(
-                command -> Mono.just(sampleDataset()),
-                currencyDisplayPort,
-                referenceDatePort(),
-                capturingPort,
-                actionPermissionPort());
-
-        service.execute(new GetContributionSummaryCommand(
-        "01/01/2026", "31/03/2026", "en", 1, 99999, "ACC-123")).block();
-
-    assertEquals("ACC-123", capturedRef.get());
-    }
-
-    @Test
     void rejectsFromDateBeforeReferenceWindow() {
         AtomicInteger apimCalls = new AtomicInteger();
         var service = serviceWith(command -> {
@@ -140,7 +125,8 @@ class GetContributionSummaryServiceTest {
                 () -> service.execute(new GetContributionSummaryCommand(
                         "30/03/2023", "31/03/2026", "en", 1, 99999)).block());
 
-        assertEquals("fromDate and toDate must be within the range from ref-date minus 36 months to ref-date", ex.getMessage());
+        assertEquals("fromDate and toDate must be within the range from ref-date minus 36 months to ref-date",
+                ex.getMessage());
         assertEquals(0, apimCalls.get());
     }
 
@@ -156,7 +142,8 @@ class GetContributionSummaryServiceTest {
                 () -> service.execute(new GetContributionSummaryCommand(
                         "01/01/2026", "01/04/2026", "en", 1, 99999)).block());
 
-        assertEquals("fromDate and toDate must be within the range from ref-date minus 36 months to ref-date", ex.getMessage());
+        assertEquals("fromDate and toDate must be within the range from ref-date minus 36 months to ref-date",
+                ex.getMessage());
         assertEquals(0, apimCalls.get());
     }
 
@@ -199,19 +186,23 @@ class GetContributionSummaryServiceTest {
         assertEquals("fromDate must be provided in dd/MM/yyyy format", assertThrows(
                 InvalidContributionRequestException.class,
                 () -> service.execute(new GetContributionSummaryCommand(
-                        null, "05/05/2026", "en", 1, 99999)).block()).getMessage());
+                        null, "05/05/2026", "en", 1, 99999)).block())
+                .getMessage());
         assertEquals("toDate must be provided in dd/MM/yyyy format", assertThrows(
                 InvalidContributionRequestException.class,
                 () -> service.execute(new GetContributionSummaryCommand(
-                        "05/04/2026", null, "en", 1, 99999)).block()).getMessage());
+                        "05/04/2026", null, "en", 1, 99999)).block())
+                .getMessage());
         assertEquals("fromDate must be provided in dd/MM/yyyy format", assertThrows(
                 InvalidContributionRequestException.class,
                 () -> service.execute(new GetContributionSummaryCommand(
-                        "2026-04-05", "05/05/2026", "en", 1, 99999)).block()).getMessage());
+                        "2026-04-05", "05/05/2026", "en", 1, 99999)).block())
+                .getMessage());
         assertEquals("toDate must be provided in dd/MM/yyyy format", assertThrows(
                 InvalidContributionRequestException.class,
                 () -> service.execute(new GetContributionSummaryCommand(
-                        "05/04/2026", "2026-05-05", "en", 1, 99999)).block()).getMessage());
+                        "05/04/2026", "2026-05-05", "en", 1, 99999)).block())
+                .getMessage());
     }
 
     @Test
@@ -245,8 +236,10 @@ class GetContributionSummaryServiceTest {
                         new ContributionSource("EE", new ContributionLabels("Member", ""), 20),
                         new ContributionSource("ER", new ContributionLabels("Company", ""), 10)),
                 List.of(
-                        new ContributionEntry("ER", "05/04/2026", "31/03/2026", "01/03/2026", new BigDecimal("17791.75")),
-                        new ContributionEntry("EE", "05/04/2026", "31/03/2026", "01/03/2026", new BigDecimal("7116.7"))));
+                        new ContributionEntry("ER", "05/04/2026", "31/03/2026", "01/03/2026",
+                                new BigDecimal("17791.75")),
+                        new ContributionEntry("EE", "05/04/2026", "31/03/2026", "01/03/2026",
+                                new BigDecimal("7116.7"))));
     }
 
     private static final class RecordingCurrencyDisplayPort implements CurrencyDisplayPort {
@@ -257,7 +250,8 @@ class GetContributionSummaryServiceTest {
         String capturedSchemeType;
 
         @Override
-        public CurrencyDisplay resolveCurrencyDisplay(String code, String accountEnv, String trustCode, String schemeType) {
+        public CurrencyDisplay resolveCurrencyDisplay(String code, String accountEnv, String trustCode,
+                String schemeType) {
             this.capturedCode = code;
             this.capturedAccountEnv = accountEnv;
             this.capturedTrustCode = trustCode;
@@ -266,5 +260,3 @@ class GetContributionSummaryServiceTest {
         }
     }
 }
-
-

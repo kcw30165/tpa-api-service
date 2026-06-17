@@ -61,7 +61,7 @@ final class ContributionSummarySupport {
             PortalAccessContext context) {
         return new FetchContributionSummaryCommand(
                 context.account().accountEnv(),
-                context.memberOwner().memberType(),
+                "",
                 coverFrom,
                 coverTo,
                 context.account().policyNo(),

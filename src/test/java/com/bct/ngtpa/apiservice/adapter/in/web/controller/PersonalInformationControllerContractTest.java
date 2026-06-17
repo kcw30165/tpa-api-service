@@ -1,182 +1,112 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
-import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
-
-import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
-
-import com.bct.ngtpa.apiservice.application.dto.AccountContext;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.ArgumentMatchers.any;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
-import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingWebFilter;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.FormPageResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.FormSchemaResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.PageResponse;
+import com.bct.ngtpa.apiservice.application.dto.AccountContext;
+import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.GetPersonalInformationCommand;
 import com.bct.ngtpa.apiservice.application.dto.PersonalInformationResult;
+import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
+import com.bct.ngtpa.apiservice.application.dto.TermStatus;
+import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.application.port.in.GetPersonalInformationUseCase;
-import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
-import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
-import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
+import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mockito;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
 class PersonalInformationControllerContractTest {
 
-    private static final String ACCOUNT_REF = "ACC-123";
-    private static final String REQUEST_ID = "client-request-uuid";
-    private static final String ACCEPT_LANGUAGE = "en";
-
-    private GetPersonalInformationUseCase useCase;
-    private PersonalInformationWebMapper mapper;
-    private ApiExceptionHandler exceptionHandler;
-
-    @BeforeEach
-    void setUp() {
-        useCase = Mockito.mock(GetPersonalInformationUseCase.class);
-        mapper = Mockito.mock(PersonalInformationWebMapper.class);
-
-        exceptionHandler = new ApiExceptionHandler(
-                (errorCode, locale, accountEnv, trustCode, schemeType) -> {
-                    if (ErrorCodes.MEMBER_CONTEXT_INVALID.equals(errorCode)) {
-                        return "Member context is invalid.";
-                    }
-                    return "Unexpected error.";
-                },
-                new LoggingSanitizer(new ObjectMapper(), new LoggingSanitizerProperties()));
-    }
-
     @Test
     void getPersonalInformationReturns200WithGenericFormPageResponse() {
-        var result = new PersonalInformationResult(Map.of("addr1", "ABC Street"), Map.of("addr1", "EDITABLE_COM"));
-        when(useCase.execute(any())).thenReturn(Mono.just(result));
-        when(mapper.toFormPageResponse(eq(result), eq(ACCEPT_LANGUAGE), eq("JP"), eq("JPM"), eq("OE")))
-                .thenReturn(response(ACCEPT_LANGUAGE, "Personal Information"));
+        var result = new PersonalInformationResult(Map.of(), Map.of());
+        GetPersonalInformationUseCase useCase = command -> Mono.just(result);
+        PersonalInformationWebMapper mapper = mock(PersonalInformationWebMapper.class);
+        when(mapper.toFormPageResponse(eq(result), eq("en"), eq("JP"), eq("JPM"), eq("OE")))
+                .thenReturn(response("en", "Personal Information"));
 
-        client().get()
-                .uri("/api/v1/personal-information")
-                .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
-                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, ACCOUNT_REF)
-                .header(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
-                .header(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, ACCEPT_LANGUAGE)
-                .exchange()
-                .expectStatus().isOk()
-                .expectHeader().valueEquals(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
-                .expectBody()
-                .jsonPath("$.success").isEqualTo(true)
-                .jsonPath("$.status").isEqualTo("SUCCESS")
-                .jsonPath("$.page.id").isEqualTo("personalInformationPage")
-                .jsonPath("$.page.title").isEqualTo("Personal Information")
-                .jsonPath("$.page.lang").isEqualTo(ACCEPT_LANGUAGE)
-                .jsonPath("$.form.id").isEqualTo("personalInformationForm")
-                .jsonPath("$.form.version").isEqualTo("1.0")
-                .jsonPath("$.form.mode").isEqualTo("view")
-                .jsonPath("$.messages").isArray()
-                .jsonPath("$.errors").isArray()
-                .jsonPath("$.requestId").doesNotExist()
-                .consumeWith(r -> assertBodyDoesNotContainRequestId(r.getResponseBody()));
+        var body = new PersonalInformationController(useCase, mapper, resolver(context("ACC-123")))
+                .getPersonalInformation("en")
+                .contextWrite(ctx -> ctx.put(RequestHeaderContextKeys.CONTEXT_KEY,
+                        new RequestHeaderContext("ACC-123", "req-1", "en")))
+                .block();
+
+        assertEquals(true, body.success());
+        assertEquals(ApiStatus.SUCCESS, body.status());
+        assertEquals("personalInformationPage", body.page().id());
+        assertEquals("personalInformationForm", body.form().id());
+        assertTrue(body.errors().isEmpty());
     }
 
     @Test
-    void getPersonalInformationPassesAccountRefAndLanguageToUseCase() {
+    void getPersonalInformationPassesLanguageOnlyToUseCase() {
         AtomicReference<GetPersonalInformationCommand> captured = new AtomicReference<>();
         var result = new PersonalInformationResult(Map.of(), Map.of());
-        when(useCase.execute(any())).thenAnswer(invocation -> {
-            captured.set(invocation.getArgument(0));
+        GetPersonalInformationUseCase useCase = command -> {
+            captured.set(command);
             return Mono.just(result);
-        });
-        when(mapper.toFormPageResponse(eq(result), eq("zh_HK"), eq("JP"), eq("JPM"), eq("OE"))).thenReturn(response("zh_HK", "個人資料"));
+        };
+        PersonalInformationWebMapper mapper = mock(PersonalInformationWebMapper.class);
+        when(mapper.toFormPageResponse(eq(result), eq("zh_HK"), eq("JP"), eq("JPM"), eq("OE")))
+                .thenReturn(response("zh_HK", "個人資料"));
 
-        client().get()
-                .uri("/api/v1/personal-information")
-                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, ACCOUNT_REF)
-                .header(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
-                .header(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, "zh-HK")
-                .exchange()
-                .expectStatus().isOk();
+        new PersonalInformationController(useCase, mapper, resolver(context("ACC-123")))
+                .getPersonalInformation("en")
+                .contextWrite(ctx -> ctx.put(RequestHeaderContextKeys.CONTEXT_KEY,
+                        new RequestHeaderContext("ACC-123", "req-1", "zh-HK")))
+                .block();
 
-        assertEquals(ACCOUNT_REF, captured.get().accountRef());
         assertEquals("zh_HK", captured.get().language());
     }
 
     @Test
     void getPersonalInformationReturnsGenericBaseErrorWhenAccountRefMissing() {
-        client().get()
-                .uri("/api/v1/personal-information")
-                .header(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
-                .header(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, ACCEPT_LANGUAGE)
-                .exchange()
-                .expectStatus().isBadRequest()
-                .expectHeader().valueEquals(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
-                .expectBody()
-                .jsonPath("$.success").isEqualTo(false)
-                .jsonPath("$.messages").isArray()
-                .jsonPath("$.errors").isArray()
-                .jsonPath("$.errors[0].code").isEqualTo(ErrorCodes.MEMBER_CONTEXT_INVALID)
-                .jsonPath("$.errorCode").doesNotExist()
-                .jsonPath("$.requestId").doesNotExist()
-                .consumeWith(result -> assertBodyDoesNotContainRequestId(result.getResponseBody()));
+        GetPersonalInformationUseCase useCase = command -> Mono.just(new PersonalInformationResult(Map.of(), Map.of()));
+        PersonalInformationWebMapper mapper = mock(PersonalInformationWebMapper.class);
+
+        PortalAccessContextResolutionException ex = assertThrows(
+                PortalAccessContextResolutionException.class,
+                () -> new PersonalInformationController(useCase, mapper, resolver(context(" ")))
+                        .getPersonalInformation("en")
+                        .contextWrite(ctx -> ctx.put(RequestHeaderContextKeys.CONTEXT_KEY,
+                                new RequestHeaderContext(" ", "req-1", "en")))
+                        .block());
+
+        assertEquals(ErrorCodes.MEMBER_CONTEXT_INVALID, ex.getErrorCode());
     }
 
     @Test
     void getPersonalInformationDelegatesToWebMapperAfterUseCase() {
-        var result = new PersonalInformationResult(Map.of("email", "nick@example.com"), Map.of("email", "READONLY"));
-        when(useCase.execute(any())).thenReturn(Mono.just(result));
-        when(mapper.toFormPageResponse(eq(result), eq(ACCEPT_LANGUAGE), eq("JP"), eq("JPM"), eq("OE"))).thenReturn(response(ACCEPT_LANGUAGE, "Personal Information"));
+        var result = new PersonalInformationResult(Map.of("email", "a@b.test"), Map.of("email", "READONLY"));
+        GetPersonalInformationUseCase useCase = command -> Mono.just(result);
+        PersonalInformationWebMapper mapper = mock(PersonalInformationWebMapper.class);
+        var expected = response("en", "Personal Information");
+        when(mapper.toFormPageResponse(eq(result), eq("en"), eq("JP"), eq("JPM"), eq("OE")))
+                .thenReturn(expected);
 
-        client().get()
-                .uri("/api/v1/personal-information")
-                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, ACCOUNT_REF)
-                .header(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
-                .header(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, ACCEPT_LANGUAGE)
-                .exchange()
-                .expectStatus().isOk();
+        var actual = new PersonalInformationController(useCase, mapper, resolver(context("ACC-123")))
+                .getPersonalInformation("en")
+                .contextWrite(ctx -> ctx.put(RequestHeaderContextKeys.CONTEXT_KEY,
+                        new RequestHeaderContext("ACC-123", "req-1", "en")))
+                .block();
 
-        ArgumentCaptor<GetPersonalInformationCommand> commandCaptor = ArgumentCaptor.forClass(GetPersonalInformationCommand.class);
-        verify(useCase).execute(commandCaptor.capture());
-        verify(mapper).toFormPageResponse(result, ACCEPT_LANGUAGE, "JP", "JPM", "OE");
-        assertEquals(ACCOUNT_REF, commandCaptor.getValue().accountRef());
-    }
-
-    private static void assertBodyDoesNotContainRequestId(byte[] responseBody) {
-        String body = new String(responseBody, StandardCharsets.UTF_8);
-        org.junit.jupiter.api.Assertions.assertFalse(
-                body.contains("\"requestId\""),
-                "X-Request-Id must stay in response headers and must not be serialized in response body");
-    }
-
-    private WebTestClient client() {
-        return WebTestClient.bindToController(new PersonalInformationController(useCase, mapper, portalContextPort()))
-                .controllerAdvice(exceptionHandler)
-                .webFilter(new RequestLoggingWebFilter(
-                        requestLoggingProperties(),
-                        new LoggingSanitizer(new ObjectMapper(), new LoggingSanitizerProperties()),
-                        new ObjectMapper()))
-                .build();
-    }
-
-    private RequestLoggingProperties requestLoggingProperties() {
-        RequestLoggingProperties properties = new RequestLoggingProperties();
-        properties.setEnabled(true);
-        properties.setLogHeaders(false);
-        return properties;
+        assertEquals(expected, actual);
+        verify(mapper).toFormPageResponse(result, "en", "JP", "JPM", "OE");
     }
 
     private FormPageResponse<FormSchemaResponse> response(String language, String title) {
@@ -184,14 +114,24 @@ class PersonalInformationControllerContractTest {
                 new PageResponse("personalInformationPage", title, language),
                 new FormSchemaResponse("personalInformationForm", "1.0", "view", null, null, null, null));
     }
-    private static PortalAccessContextPort portalContextPort() {
-        AccountContext account = org.mockito.Mockito.mock(AccountContext.class);
-        org.mockito.Mockito.when(account.accountEnv()).thenReturn("JP");
-        org.mockito.Mockito.when(account.trustCode()).thenReturn("JPM");
-        org.mockito.Mockito.when(account.schemeType()).thenReturn("OE");
-        PortalAccessContext context = org.mockito.Mockito.mock(PortalAccessContext.class);
-        org.mockito.Mockito.when(context.account()).thenReturn(account);
-        return accountRef -> Mono.just(context);
+
+    private static CurrentPortalAccessContextResolver resolver(PortalAccessContext context) {
+        return new CurrentPortalAccessContextResolver() {
+            @Override
+            public Mono<PortalAccessContext> current() {
+                return Mono.just(context);
+            }
+
+            @Override
+            public Mono<PortalAccessContext> currentOrEmpty() {
+                return Mono.just(context);
+            }
+        };
     }
 
+    private static PortalAccessContext context(String accountRef) {
+        return new PortalAccessContext(
+                new ActorContext("user-1", "SELF"),
+                new AccountContext(accountRef, "JP", "policy-1", "cert-1", "JPM", "OE", TermStatus.BLANK, null));
+    }
 }

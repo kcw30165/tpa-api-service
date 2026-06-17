@@ -1,5 +1,10 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
+import com.bct.ngtpa.apiservice.application.dto.TermStatus;
+import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
+import com.bct.ngtpa.apiservice.application.dto.ActorContext;
+import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -37,7 +42,9 @@ class UpdatePersonalInformationYamlValidationRuntimeTest {
                 useCase,
                 requestMapper,
                 responseMapper,
-                validator);
+                validator,
+                currentPortalAccessContextResolver()
+        );
         UpdatePersonalInformationRequest request = new UpdatePersonalInformationRequest(
                 "1.0",
                 false,
@@ -49,10 +56,9 @@ class UpdatePersonalInformationYamlValidationRuntimeTest {
                 List.of("emailAddress"),
                 "ERROR",
                 "SERVER");
-        when(validator.validate(eq(request), eq("zh-HK"), any(), any(), any()))
-                .thenReturn(List.of(error));
+        when(validator.validate(eq(request), eq("en"), any(), any(), any())).thenReturn(List.of(error));
 
-        Mono<MutationResponse<List<PersonalInformationUpdateResultResponse>>> response = controller.update(Mono.just(request))
+        Mono<MutationResponse<List<PersonalInformationUpdateResultResponse>>> response = controller.update(Mono.just(request), null)
                 .contextWrite(context -> context.put(
                         RequestHeaderContextKeys.CONTEXT_KEY,
                         new RequestHeaderContext("ACC-001", "REQ-001", "zh-HK")));
@@ -67,36 +73,29 @@ class UpdatePersonalInformationYamlValidationRuntimeTest {
                 })
                 .verifyComplete();
 
-        verify(validator).validate(eq(request), eq("zh-HK"), any(), any(), any());
+        verify(validator).validate(eq(request), eq("en"), any(), any(), any());
         verifyNoInteractions(requestMapper, useCase, responseMapper);
     }
 
-    @Test
-    void missingAccountRefStillFailsBeforeYamlValidation() {
-        UpdatePersonalInformationUseCase useCase = mock(UpdatePersonalInformationUseCase.class);
-        PersonalInformationUpdateWebMapper requestMapper = mock(PersonalInformationUpdateWebMapper.class);
-        PersonalInformationUpdateResponseMapper responseMapper = mock(PersonalInformationUpdateResponseMapper.class);
-        PersonalInformationUpdateYamlValidator validator = mock(PersonalInformationUpdateYamlValidator.class);
-        UpdatePersonalInformationController controller = new UpdatePersonalInformationController(
-                useCase,
-                requestMapper,
-                responseMapper,
-                validator);
-        UpdatePersonalInformationRequest request = new UpdatePersonalInformationRequest(
-                "1.0",
-                false,
-                Map.of("emailAddress", "member@example.test"));
+    private static CurrentPortalAccessContextResolver currentPortalAccessContextResolver() {
+        return new CurrentPortalAccessContextResolver() {
+            @Override
+            public Mono<PortalAccessContext> current() {
+                return Mono.just(portalAccessContext());
+            }
 
-        Mono<MutationResponse<List<PersonalInformationUpdateResultResponse>>> response = controller.update(Mono.just(request))
-                .contextWrite(context -> context.put(
-                        RequestHeaderContextKeys.CONTEXT_KEY,
-                        new RequestHeaderContext(null, "REQ-001", "en")));
-
-        StepVerifier.create(response)
-                .expectErrorMatches(error -> error.getMessage().contains(
-                        "Account-Ref is required for personal information update."))
-                .verify();
-
-        verifyNoInteractions(validator, requestMapper, useCase, responseMapper);
+            @Override
+            public Mono<PortalAccessContext> currentOrEmpty() {
+                return Mono.just(portalAccessContext());
+            }
+        };
     }
+
+    private static PortalAccessContext portalAccessContext() {
+        return new PortalAccessContext(
+                new ActorContext("userId_for_update", "MEMBER"),
+                new AccountContext("ACC-123", "accountEnv_for_update", "policyNo_for_update", "certNo_for_update",
+                        "trustCode_for_update", "schemeType_for_update", TermStatus.BLANK, null));
+    }
+
 }

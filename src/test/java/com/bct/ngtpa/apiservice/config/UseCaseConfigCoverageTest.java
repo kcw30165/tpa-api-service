@@ -10,6 +10,7 @@ import com.bct.ngtpa.apiservice.application.port.out.ApimNotificationReadStatusP
 import com.bct.ngtpa.apiservice.application.port.out.ApimReferenceDataCountriesPort;
 import com.bct.ngtpa.apiservice.application.port.out.ContributionActionPermissionPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import org.junit.jupiter.api.Test;
@@ -26,24 +27,24 @@ class UseCaseConfigCoverageTest {
         ApimReferenceDataCountriesPort countriesPort = mock(ApimReferenceDataCountriesPort.class);
         ApimMemberInfoPort memberInfoPort = mock(ApimMemberInfoPort.class);
         CurrencyDisplayPort currencyDisplayPort = mock(CurrencyDisplayPort.class);
-        PortalAccessContextPort portalContextPort = mock(PortalAccessContextPort.class);
+        CurrentPortalAccessContextResolver currentPortalAccessContextResolver = mock(CurrentPortalAccessContextResolver.class);
         ReferenceDatePort referenceDatePort = mock(ReferenceDatePort.class);
         ContributionActionPermissionPort actionPermissionPort = mock(ContributionActionPermissionPort.class);
 
-        assertNotNull(config.getNotificationsUseCase(noticePort, portalContextPort, referenceDatePort));
-        assertNotNull(config.updateNotificationsReadStatusUseCase(readStatusPort, portalContextPort, referenceDatePort));
+        assertNotNull(config.getNotificationsUseCase(noticePort, currentPortalAccessContextResolver, referenceDatePort));
+        assertNotNull(config.updateNotificationsReadStatusUseCase(readStatusPort, currentPortalAccessContextResolver, referenceDatePort));
         assertNotNull(config.getContributionSummaryUseCase(
                 contributionPort,
                 currencyDisplayPort,
                 referenceDatePort,
-                portalContextPort,
+                currentPortalAccessContextResolver,
                 actionPermissionPort));
         assertNotNull(config.exportContributionSummaryUseCase(
                 contributionPort,
                 currencyDisplayPort,
                 referenceDatePort,
-                portalContextPort));
+                currentPortalAccessContextResolver));
         assertNotNull(config.getReferenceDataCountriesUseCase(countriesPort));
-        assertNotNull(config.getPersonalInformationUseCase(memberInfoPort, portalContextPort));
+        assertNotNull(config.getPersonalInformationUseCase(memberInfoPort, currentPortalAccessContextResolver));
     }
 }

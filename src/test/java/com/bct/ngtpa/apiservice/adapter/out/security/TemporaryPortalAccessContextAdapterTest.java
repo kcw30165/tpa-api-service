@@ -47,10 +47,8 @@ class TemporaryPortalAccessContextAdapterTest {
         StepVerifier.create(adapter.resolvePortalAccessContext("notifications"))
                 .assertNext(ctx -> {
                     assertEquals("actorUserId_for_notifications", ctx.actor().actorUserId());
-                    assertEquals("MEMBER", ctx.actor().actorUserType());
+                    // assertEquals("MEMBER", ctx.actor().actorUserType());
                     assertEquals("SELF", ctx.actor().actorUserRole());
-                    assertEquals("memberUserId_for_notifications", ctx.memberOwner().memberUserId());
-                    assertEquals("MBR", ctx.memberOwner().memberType());
                     assertEquals("JP", ctx.account().accountEnv());
                     assertEquals("policyNo_for_notifications", ctx.account().policyNo());
                     assertEquals("certNo_for_notifications", ctx.account().certNo());
@@ -70,10 +68,8 @@ class TemporaryPortalAccessContextAdapterTest {
         StepVerifier.create(adapter.resolvePortalAccessContext("contributions"))
                 .assertNext(ctx -> {
                     assertEquals("actorUserId_for_contributions", ctx.actor().actorUserId());
-                    assertEquals("MEMBER", ctx.actor().actorUserType());
+                    // assertEquals("MEMBER", ctx.actor().actorUserType());
                     assertEquals("SELF", ctx.actor().actorUserRole());
-                    assertEquals("memberUserId_for_contributions", ctx.memberOwner().memberUserId());
-                    assertEquals("MBR", ctx.memberOwner().memberType());
                     assertEquals("JP", ctx.account().accountEnv());
                     assertEquals("policyNo_for_contributions", ctx.account().policyNo());
                     assertEquals("certNo_for_contributions", ctx.account().certNo());
@@ -92,8 +88,6 @@ class TemporaryPortalAccessContextAdapterTest {
         accountRefProfile.setActorUserId("actorUserId_for_acc_123");
         accountRefProfile.setActorUserType("MEMBER");
         accountRefProfile.setActorUserRole("SELF");
-        accountRefProfile.setMemberUserId("memberUserId_for_acc_123");
-        accountRefProfile.setMemberType("MBR");
         accountRefProfile.setAccountEnv("JP");
         accountRefProfile.setPolicyNo("policyNo_for_acc_123");
         accountRefProfile.setCertNo("certNo_for_acc_123");
@@ -110,7 +104,6 @@ class TemporaryPortalAccessContextAdapterTest {
         StepVerifier.create(adapter.resolvePortalAccessContext("ACC-123"))
                 .assertNext(ctx -> {
                     assertEquals("actorUserId_for_acc_123", ctx.actor().actorUserId());
-                    assertEquals("memberUserId_for_acc_123", ctx.memberOwner().memberUserId());
                     assertEquals("policyNo_for_acc_123", ctx.account().policyNo());
                     assertEquals("ACC-123", ctx.account().accountRef());
                 })
@@ -235,10 +228,8 @@ class TemporaryPortalAccessContextAdapterTest {
 
         StepVerifier.create(adapter.resolvePortalAccessContext("notifications"))
                 .assertNext(ctx -> {
-                    assertEquals("", ctx.actor().actorUserType());
+                    // assertEquals("", ctx.actor().actorUserType());
                     assertEquals("", ctx.actor().actorUserRole());
-                    assertEquals("", ctx.memberOwner().memberUserId());
-                    assertEquals("", ctx.memberOwner().memberType());
                     assertEquals("", ctx.account().accountEnv());
                     assertEquals("", ctx.account().certNo());
                     assertEquals("", ctx.account().trustCode());
@@ -258,8 +249,6 @@ class TemporaryPortalAccessContextAdapterTest {
         notifProfile.setActorUserId("actorUserId_for_notifications");
         notifProfile.setActorUserType("MEMBER");
         notifProfile.setActorUserRole("SELF");
-        notifProfile.setMemberUserId("memberUserId_for_notifications");
-        notifProfile.setMemberType("MBR");
         notifProfile.setAccountEnv("JP");
         notifProfile.setPolicyNo("policyNo_for_notifications");
         notifProfile.setCertNo("certNo_for_notifications");
@@ -272,8 +261,6 @@ class TemporaryPortalAccessContextAdapterTest {
         contribProfile.setActorUserId("actorUserId_for_contributions");
         contribProfile.setActorUserType("MEMBER");
         contribProfile.setActorUserRole("SELF");
-        contribProfile.setMemberUserId("memberUserId_for_contributions");
-        contribProfile.setMemberType("MBR");
         contribProfile.setAccountEnv("JP");
         contribProfile.setPolicyNo("policyNo_for_contributions");
         contribProfile.setCertNo("certNo_for_contributions");
@@ -314,8 +301,6 @@ class TemporaryPortalAccessContextAdapterTest {
         profile.setActorUserId("actorUserId");
         profile.setActorUserType("MEMBER");
         profile.setActorUserRole("SELF");
-        profile.setMemberUserId("memberUserId");
-        profile.setMemberType("MBR");
         profile.setAccountEnv(accountEnv);
         profile.setPolicyNo("policyNo_secret");
         profile.setCertNo("certNo_secret");
@@ -325,4 +310,87 @@ class TemporaryPortalAccessContextAdapterTest {
         profile.setTermCompletionDate(termCompletionDate);
         return profile;
     }
+
+    @Test
+    void resolvesSelectedAccountFromDefaultSessionShape() {
+        var adapter = adapterWithSessionShape();
+
+        StepVerifier.create(adapter.resolvePortalAccessContext("ACC-1"))
+                .assertNext(ctx -> {
+                    assertEquals("actorUserId_for_session", ctx.actor().actorUserId());
+                    assertEquals("MEMBER", ctx.actor().actorUserRole());
+                    assertEquals("ACC-1", ctx.account().accountRef());
+                    assertEquals("JP", ctx.account().accountEnv());
+                    assertEquals("00000000217", ctx.account().policyNo());
+                    assertEquals("95", ctx.account().certNo());
+                    assertEquals("JPM", ctx.account().trustCode());
+                    assertEquals("OE", ctx.account().schemeType());
+                    assertEquals(TermStatus.O, ctx.account().termStatus());
+                    assertEquals(LocalDate.of(2026, 3, 31), ctx.account().termCompletionDate());
+                })
+                .verifyComplete();
+    }
+
+    @Test
+    void sameSessionResolvesDifferentAccountRefsWithoutSelectedAccountState() {
+        var adapter = adapterWithSessionShape();
+
+        StepVerifier.create(adapter.resolvePortalAccessContext("ACC-2"))
+                .assertNext(ctx -> {
+                    assertEquals("actorUserId_for_session", ctx.actor().actorUserId());
+                    assertEquals("ACC-2", ctx.account().accountRef());
+                    assertEquals("DB", ctx.account().accountEnv());
+                    assertEquals("00000008802", ctx.account().policyNo());
+                    assertEquals("2", ctx.account().certNo());
+                    assertEquals("", ctx.account().trustCode());
+                    assertEquals("", ctx.account().schemeType());
+                })
+                .verifyComplete();
+    }
+
+    @Test
+    void sessionShapeUnknownAccountRefFailsWithClearException() {
+        var adapter = adapterWithSessionShape();
+
+        StepVerifier.create(adapter.resolvePortalAccessContext("ACC-404"))
+                .expectErrorSatisfies(ex -> {
+                    assertInstanceOf(PortalAccessContextResolutionException.class, ex);
+                    assertEquals("No temporary portal access context account configured for accountRef: ACC-404 in session: SESSION-001",
+                            ex.getMessage());
+                })
+                .verify();
+    }
+
+    private static TemporaryPortalAccessContextAdapter adapterWithSessionShape() {
+        var actor = new TemporaryPortalAccessContextProperties.SessionActor();
+        actor.setActorUserId("actorUserId_for_session");
+        actor.setActorUserRole("MEMBER");
+
+        var acc1 = new TemporaryPortalAccessContextProperties.AccountProfile();
+        acc1.setAccountEnv("JP");
+        acc1.setPolicyNo("00000000217");
+        acc1.setCertNo("95");
+        acc1.setTrustCode("JPM");
+        acc1.setSchemeType("OE");
+        acc1.setTermStatus("O");
+        acc1.setTermCompletionDate("31/03/2026");
+
+        var acc2 = new TemporaryPortalAccessContextProperties.AccountProfile();
+        acc2.setAccountEnv("DB");
+        acc2.setPolicyNo("00000008802");
+        acc2.setCertNo("2");
+
+        var session = new TemporaryPortalAccessContextProperties.SessionProfile();
+        session.setActor(actor);
+        var accounts = new LinkedHashMap<String, TemporaryPortalAccessContextProperties.AccountProfile>();
+        accounts.put("ACC-1", acc1);
+        accounts.put("ACC-2", acc2);
+        session.setAccounts(accounts);
+
+        var properties = new TemporaryPortalAccessContextProperties();
+        properties.setDefaultSessionId("SESSION-001");
+        properties.setSessions(Map.of("SESSION-001", session));
+        return new TemporaryPortalAccessContextAdapter(properties);
+    }
+
 }

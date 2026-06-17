@@ -11,20 +11,13 @@ class PortalAccessContextTest {
 
     @Test
     void actorContextPreservesSuppliedValues() {
-        var actor = new ActorContext("user-01", "STAFF", "RM");
+        var actor = new ActorContext("user-01", "RM");
 
         assertEquals("user-01", actor.actorUserId());
-        assertEquals("STAFF", actor.actorUserType());
+        // assertEquals("STAFF", actor.actorUserType());
         assertEquals("RM", actor.actorUserRole());
     }
 
-    @Test
-    void memberOwnerContextPreservesSuppliedValues() {
-        var memberOwner = new MemberOwnerContext("member-99", "MBR");
-
-        assertEquals("member-99", memberOwner.memberUserId());
-        assertEquals("MBR", memberOwner.memberType());
-    }
 
     @Test
     void accountContextPreservesSuppliedValues() {
@@ -44,31 +37,27 @@ class PortalAccessContextTest {
 
     @Test
     void portalAccessContextComposesAllThreeComponents() {
-        var actor       = new ActorContext("u1", "STAFF", "RM");
-        var memberOwner = new MemberOwnerContext("m1", "MBR");
+        var actor       = new ActorContext("u1", "RM");
         var account     = new AccountContext(
             "ref", "JP", "pol", "cert", "trust", "scheme",
             TermStatus.S, LocalDate.of(2026, 4, 1));
 
-        var ctx = new PortalAccessContext(actor, memberOwner, account);
+        var ctx = new PortalAccessContext(actor, account);
 
         assertSame(actor,       ctx.actor());
-        assertSame(memberOwner, ctx.memberOwner());
         assertSame(account,     ctx.account());
     }
 
     @Test
     void portalAccessContextRecordEquality() {
         var a = new PortalAccessContext(
-                new ActorContext("u1", "STAFF", "RM"),
-                new MemberOwnerContext("m1", "MBR"),
+                new ActorContext("u1", "RM"),
             new AccountContext(
                 "ref", "JP", "pol", "cert", "trust", "scheme",
                 TermStatus.O, LocalDate.of(2026, 5, 1)));
 
         var b = new PortalAccessContext(
-                new ActorContext("u1", "STAFF", "RM"),
-                new MemberOwnerContext("m1", "MBR"),
+                new ActorContext("u1", "RM"),
             new AccountContext(
                 "ref", "JP", "pol", "cert", "trust", "scheme",
                 TermStatus.O, LocalDate.of(2026, 5, 1)));
