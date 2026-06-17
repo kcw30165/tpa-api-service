@@ -152,6 +152,30 @@ temporary-portal-access-context:
           scheme-type:
           term-status:
           term-completion-date:
+    DEMO-SESSION-002:
+      actor:
+        actor-user-id: "5226523"
+        actor-user-role: MEMBER
+        ACC-3:
+          account-env: DB
+          policy-no: "00000008802"
+          cert-no: "301"
+          trust-code: 
+          scheme-type: 
+          term-status: 
+          term-completion-date: 
+    DEMO-SESSION-003:
+      actor:
+        actor-user-id: "3002798"
+        actor-user-role: MEMBER
+        ACC-4:
+          account-env: DB
+          policy-no: "00000008802"
+          cert-no: "1499"
+          trust-code: 
+          scheme-type: 
+          term-status: 
+          term-completion-date: 
 
 request-logging:
   body-logging:

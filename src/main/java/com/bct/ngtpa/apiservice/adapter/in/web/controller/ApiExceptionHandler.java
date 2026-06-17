@@ -45,7 +45,8 @@ public class ApiExceptionHandler {
     private final ErrorMessageResolver errorMessageResolver;
     private final LoggingSanitizer loggingSanitizer;
     private final CurrentPortalAccessContextResolver currentPortalAccessContextResolver;
-@Autowired
+
+    @Autowired
     public ApiExceptionHandler(
             ErrorMessageResolver errorMessageResolver,
             LoggingSanitizer loggingSanitizer,
@@ -108,7 +109,8 @@ public class ApiExceptionHandler {
     public ResponseEntity<MutationResponse<Void>> handleApplicationException(
             ApplicationException ex,
             ServerWebExchange exchange) {
-        return handleApplicationException(ex, exchange, HttpStatus.BAD_REQUEST, ApiStatus.BUSINESS_REJECTED, "BUSINESS");
+        return handleApplicationException(ex, exchange, HttpStatus.BAD_REQUEST, ApiStatus.BUSINESS_REJECTED,
+                "BUSINESS");
     }
 
     @ExceptionHandler(WebExchangeBindException.class)
@@ -400,7 +402,7 @@ public class ApiExceptionHandler {
         if (attribute instanceof PortalAccessContext portalAccessContext) {
             return portalAccessContext;
         }
-try {
+        try {
             var contextMono = currentPortalAccessContextResolver.currentOrEmpty();
             return contextMono == null ? null : contextMono.block();
         } catch (RuntimeException exception) {
@@ -488,4 +490,3 @@ try {
     private record ErrorMessageContext(String locale, String accountEnv, String trustCode, String schemeType) {
     }
 }
-
