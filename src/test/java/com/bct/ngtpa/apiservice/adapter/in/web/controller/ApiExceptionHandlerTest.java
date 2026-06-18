@@ -21,6 +21,7 @@ import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequest
 import com.bct.ngtpa.apiservice.application.exception.InvalidPersonalInformationUpdateException;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.exception.ApimException;
+import com.bct.ngtpa.apiservice.exception.CacheException;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
@@ -326,6 +327,33 @@ class ApiExceptionHandlerTest {
         assertEquals("SERVER", error.source());
     }
 
+
+    @Test
+    void mapsCacheExceptionToDownstreamMutationFailure() {
+        ResponseEntity<MutationResponse<Void>> response = handler.handleCacheException(
+                new CacheException("Cache get operation failed",
+                        new RuntimeException("redis://default:SECRET@redis.prod:6379 auth failure")),
+                exchangeWithRequestId("REQ-CACHE"));
+
+        assertMutationFailure(
+                response,
+                HttpStatus.SERVICE_UNAVAILABLE,
+                ApiStatus.DOWNSTREAM_ERROR,
+                "FORM",
+                ErrorCodes.CACHE_UNEXPECTED,
+                List.of(),
+                "REQ-CACHE");
+    }
+
+    @Test
+    void omitsRequestIdHeaderWhenNotInExchangeAttributes() {
+        ResponseEntity<MutationResponse<Void>> response = handler.handleApimException(
+                new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "APIM failed"),
+                emptyExchange());
+
+        assertNull(response.getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
+    }
+
     @Test
     void responseBodyIsConcreteMutationResponse() {
         ResponseEntity<MutationResponse<Void>> response = handler.handleUnexpectedException(
@@ -349,6 +377,11 @@ class ApiExceptionHandlerTest {
     @SuppressWarnings("unused")
     private void notificationPatch(@RequestBody UpdateNotificationsReadStatusRequest request) {
         // Method signature used only to construct MethodParameter for WebExchangeBindException.
+    }
+
+
+    private static ServerWebExchange emptyExchange() {
+        return MockServerWebExchange.from(MockServerHttpRequest.get("/test"));
     }
 
     private static ServerWebExchange exchangeWithRequestId(String requestId) {

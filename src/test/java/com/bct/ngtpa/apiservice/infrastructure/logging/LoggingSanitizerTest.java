@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.infrastructure.logging;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -280,6 +281,42 @@ class LoggingSanitizerTest {
         assertEquals("value", m.get(""));
     }
 
+
+    // ── Redis-specific sensitive field coverage ───────────────────────────────
+
+    @Test
+    void sanitizerMasksRedisSentinelPasswordViaPasswordToken() {
+        // "sentinelPassword" normalized → "sentinelpassword" → contains "password" → masked
+        Object result = sanitizer.sanitizeValue(Map.of("sentinelPassword", "sentinel-secret"));
+
+        Map<?, ?> m = assertInstanceOf(Map.class, result);
+        assertEquals("***", m.get("sentinelPassword"));
+    }
+
+    @Test
+    void sanitizerMasksRedisPasswordFieldViaPasswordToken() {
+        // "redis-password" normalized → "redispassword" → contains "password" → masked
+        Object result = sanitizer.sanitizeValue(Map.of("redis-password", "redis-secret"));
+
+        Map<?, ?> m = assertInstanceOf(Map.class, result);
+        assertEquals("***", m.get("redis-password"));
+    }
+
+    @Test
+    void sanitizerMasksRedisPasswordInPlainTextAssignment() {
+        // Pattern "password=value" in plain log text is masked
+        String sanitized = sanitizer.sanitizeText("redis-cache.password=letmein123");
+
+        assertFalse(sanitized.contains("letmein123"), "Redis password must be masked in text");
+    }
+
+    @Test
+    void sanitizerMasksSentinelPasswordInPlainTextAssignment() {
+        // Pattern "sentinelPassword=value" in plain log text is masked
+        String sanitized = sanitizer.sanitizeText("sentinelPassword=sentinel-secret-42");
+
+        assertFalse(sanitized.contains("sentinel-secret-42"), "Sentinel password must be masked in text");
+    }
 
     enum TestEnum { ACTIVE, INACTIVE }
 

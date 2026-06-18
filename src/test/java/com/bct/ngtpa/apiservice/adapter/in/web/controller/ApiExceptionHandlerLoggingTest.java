@@ -5,6 +5,7 @@ import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextR
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import ch.qos.logback.classic.Level;
@@ -14,6 +15,7 @@ import ch.qos.logback.core.read.ListAppender;
 
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.exception.ApimException;
+import com.bct.ngtpa.apiservice.exception.CacheException;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
@@ -131,6 +133,24 @@ class ApiExceptionHandlerLoggingTest {
         assertEquals(ErrorCodes.SYSTEM_UNEXPECTED, payload.get("errorCode").asText());
         assertEquals("apiKey=*** exploded", payload.get("sanitizedMessage").asText());
         assertNotNull(event.getThrowableProxy());
+    }
+
+    // ── CacheException ───────────────────────────────────────────────────────────────
+
+    @Test
+    void logsCacheExceptionAtErrorWithoutStackTrace() throws Exception {
+        handler.handleCacheException(
+                new CacheException("Cache get operation failed",
+                        new RuntimeException("redis://default:SECRET@redis.prod:6379 auth failure")),
+                exchangeWithRequestId("cache-req-id"));
+
+        ILoggingEvent event = singleEvent();
+        assertEquals(Level.ERROR, event.getLevel());
+        JsonNode payload = parse(event);
+        assertEquals("CacheException", payload.get("exceptionType").asText());
+        assertEquals("Cache get operation failed", payload.get("sanitizedMessage").asText());
+        assertNull(event.getThrowableProxy(),
+                "Stack trace must not be logged for CacheException to prevent raw Redis error leakage");
     }
 
     private ILoggingEvent singleEvent() {

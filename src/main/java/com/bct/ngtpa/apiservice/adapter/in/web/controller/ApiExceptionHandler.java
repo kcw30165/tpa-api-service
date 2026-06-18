@@ -11,6 +11,7 @@ import com.bct.ngtpa.apiservice.application.exception.InvalidPersonalInformation
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.exception.ApimException;
+import com.bct.ngtpa.apiservice.exception.CacheException;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
@@ -224,6 +225,30 @@ public class ApiExceptionHandler {
                 false);
     }
 
+    @ExceptionHandler(CacheException.class)
+    public ResponseEntity<MutationResponse<Void>> handleCacheException(
+            CacheException ex, ServerWebExchange exchange) {
+        // Log at ERROR without stack trace: the cause contains raw Redis connection details
+        // (addresses, passwords, cert paths) that must not appear in application logs.
+        
+        String errorCode = ErrorCodes.CACHE_UNEXPECTED;
+        ApiError error = ApiError.form(
+                errorCode,
+                resolvePublicMessage(errorCode, exchange, ex),
+                List.of(),
+                SOURCE_SERVER);
+        return buildMutationErrorResponse(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                ApiStatus.DOWNSTREAM_ERROR,
+                List.of(error),
+                exchange,
+                ex,
+                ex.getMessage(),
+                true,
+                false);
+    }
+
+    // Helper methods
     private ResponseEntity<MutationResponse<Void>> handleApplicationException(
             ApplicationException ex,
             ServerWebExchange exchange,
