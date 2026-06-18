@@ -52,7 +52,7 @@ public class RefreshReferenceDateService implements RefreshReferenceDateUseCase 
                 true,
                 true))
             .onErrorResume(CacheException.class, ex -> {
-                log.warn("reference-date refresh: Redis update failed; returning partial success");
+                log.warn("reference-date refresh: Redis update failed; returning partial success", ex);
                 return Mono.just(new RefreshReferenceDateResult(
                     accountEnv,
                     formattedReferenceDate,

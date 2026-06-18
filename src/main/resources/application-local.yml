@@ -119,6 +119,12 @@ currency-mapping:
 reference-date:
   override-date: 30/06/2026
   override-zone-id: Asia/Hong_Kong
+  refresh:
+    config-service:
+      application: ngtpa-api-service
+      profile: local
+      label: reference-date
+
 
 temporary-portal-access-context:
   # Temporary Redis-session simulation until login/session management is implemented.

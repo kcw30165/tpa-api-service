@@ -143,4 +143,3 @@ logging:
   level:
     org.springframework.security: INFO
     com.bct.ngtpa: INFO
-
