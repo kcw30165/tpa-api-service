@@ -68,7 +68,8 @@ public class OrchestratedReferenceDateAdapter implements ReferenceDatePort {
     }
 
     @Override
-    public Mono<LocalDate> resolveReferenceDate(String accountEnv) {
+    public Mono<LocalDate> resolveReferenceDate() {
+        var accountEnv = properties.getAccountEnv();
         // ── Step 1: Override-date short-circuit (non-production envs only) ─────
         if (!isProductionLike(accountEnv) && hasText(properties.getOverrideDate())) {
             return Mono.fromCallable(() -> resolveOverrideDate(
