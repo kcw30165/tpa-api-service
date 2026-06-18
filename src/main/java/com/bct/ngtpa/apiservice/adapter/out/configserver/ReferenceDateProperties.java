@@ -9,6 +9,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @Setter
 public class ReferenceDateProperties {
 
+    private String accountEnv = "";
     private String overrideDate = "";
     private String overrideZoneId = "";
 }

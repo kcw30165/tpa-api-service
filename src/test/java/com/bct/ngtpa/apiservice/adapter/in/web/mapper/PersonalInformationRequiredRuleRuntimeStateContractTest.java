@@ -73,7 +73,7 @@ class PersonalInformationRequiredRuleRuntimeStateContractTest {
 
     @Test
     void requiredRuntimeStateContractIsDocumented() throws Exception {
-        Path contract = Path.of("docs/personal-information-get-validation-response-quality-contract.md");
+        Path contract = Path.of("docs/others/personal-information-get-validation-response-quality-contract.md");
         assertThat(contract).exists();
         String document = Files.readString(contract);
 

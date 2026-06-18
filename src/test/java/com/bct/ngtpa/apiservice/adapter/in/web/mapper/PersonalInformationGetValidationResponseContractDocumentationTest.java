@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 
 class PersonalInformationGetValidationResponseContractDocumentationTest {
 
-    private static final Path CONTRACT = Path.of("docs/personal-information-get-validation-response-contract.md");
+    private static final Path CONTRACT = Path.of("docs/others/personal-information-get-validation-response-contract.md");
 
     @Test
     void contractDocumentationCapturesFeValidationResponseRules() throws Exception {

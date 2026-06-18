@@ -23,7 +23,7 @@ public class GetContributionSummaryService implements GetContributionSummaryUseC
 
         @Override
         public Mono<ContributionSummaryReportResult> execute(GetContributionSummaryCommand command) {
-                
+
                 ContributionSummarySupport.validatePagination(command.page(), command.pageSize());
 
                 var fromDate = ContributionSummarySupport.parseRequiredDate(command.fromDate(), "fromDate");
@@ -40,22 +40,22 @@ public class GetContributionSummaryService implements GetContributionSummaryUseC
                                                                                                         .formatDate(fromDate),
                                                                                         ContributionSummarySupport
                                                                                                         .formatDate(toDate),
-                                                                                        ctx);
-                                                        return apimContributionSummaryPort
-                                                                        .fetchContributionSummary(fetchCommand)
-                                                                        .map(ContributionSummaryReportBuilder::build)
-                                                                        .map(report -> new ContributionSummaryReportResult(
-                                                                                        report,
-                                                                                        currencyDisplayPort.resolveCurrencyDisplay(
-                                                                                                        report.currency(),
-                                                                                                        fetchCommand.accountEnv(),
-                                                                                                        fetchCommand.trustCode(),
-                                                                                                        fetchCommand.schemeType()),
-                                                                                        contributionActionPermissionPort
-                                                                                                        .resolveContributionActions(),
-                                                                                        fetchCommand.trustCode(),
-                                                                                        fetchCommand.schemeType(),
-                                                                                        fetchCommand.accountEnv()));
-                                                }));
+                                                                                        ctx));
+                                })
+                                .flatMap(fetchCommand -> apimContributionSummaryPort
+                                                .fetchContributionSummary(fetchCommand)
+                                                .map(ContributionSummaryReportBuilder::build)
+                                                .map(report -> new ContributionSummaryReportResult(
+                                                                report,
+                                                                currencyDisplayPort.resolveCurrencyDisplay(
+                                                                                report.currency(),
+                                                                                fetchCommand.accountEnv(),
+                                                                                fetchCommand.trustCode(),
+                                                                                fetchCommand.schemeType()),
+                                                                contributionActionPermissionPort
+                                                                                .resolveContributionActions(),
+                                                                fetchCommand.trustCode(),
+                                                                fetchCommand.schemeType(),
+                                                                fetchCommand.accountEnv())));
         }
 }

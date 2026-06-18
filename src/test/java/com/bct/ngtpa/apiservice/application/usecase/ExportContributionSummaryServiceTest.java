@@ -58,7 +58,7 @@ class ExportContributionSummaryServiceTest {
         };
 
         var recordingPort = new RecordingCurrencyDisplayPort();
-        ReferenceDatePort referenceDatePort = accountEnv -> Mono.just(LocalDate.of(2026, 3, 31));
+        ReferenceDatePort referenceDatePort = () -> Mono.just(LocalDate.of(2026, 3, 31));
 
         var service = new ExportContributionSummaryService(port, recordingPort, referenceDatePort,
                 currentPortalAccessContextResolver());

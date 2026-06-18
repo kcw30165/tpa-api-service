@@ -63,7 +63,7 @@ class GetContributionSummaryServiceTest {
     }
 
     private static ReferenceDatePort referenceDatePort() {
-        return accountEnv -> Mono.just(REFERENCE_DATE);
+        return () -> Mono.just(REFERENCE_DATE);
     }
 
     private static ContributionActionPermissionPort actionPermissionPort() {
