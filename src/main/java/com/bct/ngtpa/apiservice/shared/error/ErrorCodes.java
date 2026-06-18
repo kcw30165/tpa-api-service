@@ -17,6 +17,8 @@ public final class ErrorCodes {
         public static final String SECURITY_ACCESS_DENIED = "err.security.access.denied";
         public static final String SECURITY_AUTHENTICATION_REQUIRED = "err.security.authentication.required";
 
+        public static final String CACHE_UNEXPECTED = "err.cache.unexpected";
+
         public static final String MEMBER_CONTEXT_UNAVAILABLE = "err.member.context.unavailable";
         public static final String MEMBER_CONTEXT_INVALID = "err.member.context.invalid";
 
