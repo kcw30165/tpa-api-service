@@ -58,18 +58,21 @@ class OrchestratedReferenceDateAdapterTest {
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private OrchestratedReferenceDateAdapter adapter(String overrideDate, String overrideZoneId) {
+
+    private OrchestratedReferenceDateAdapter adapter(String accountEnv, String overrideDate, String overrideZoneId) {
         var configServicePort = mock(ConfigServicePort.class);
         when(configServicePort.listConfigs(any())).thenReturn(Mono.just(List.of()));
-        return adapter(overrideDate, overrideZoneId, Optional.empty(), configServicePort);
+        return adapter(accountEnv, overrideDate, overrideZoneId, Optional.empty(), configServicePort);
     }
 
     private OrchestratedReferenceDateAdapter adapter(
+            String accountEnv,
             String overrideDate,
             String overrideZoneId,
             Optional<CachePort> cachePort,
             ConfigServicePort configServicePort) {
         var props = new ReferenceDateProperties();
+        props.setAccountEnv(accountEnv);
         props.setOverrideDate(overrideDate);
         props.setOverrideZoneId(overrideZoneId);
         return new OrchestratedReferenceDateAdapter(props, cachePort, "ngtpa", configServicePort, FIXED_CLOCK);
@@ -81,10 +84,9 @@ class OrchestratedReferenceDateAdapterTest {
     void overrideDateAndZoneIdConfigured_nonProdEnv_returnsOverrideDate() {
         var cachePort = mock(CachePort.class);
         var configServicePort = mock(ConfigServicePort.class);
-        var adapter = adapter("25/12/2025", "Asia/Hong_Kong",
+        var adapter = adapter("JP", "25/12/2025", "Asia/Hong_Kong",
                 Optional.of(cachePort), configServicePort);
-
-        StepVerifier.create(adapter.resolveReferenceDate("JP"))
+        StepVerifier.create(adapter.resolveReferenceDate())
                 .assertNext(date -> assertThat(date).isEqualTo(LocalDate.of(2025, 12, 25)))
                 .verifyComplete();
 
@@ -94,9 +96,8 @@ class OrchestratedReferenceDateAdapterTest {
     @Test
     void overrideDateAndZoneIdConfigured_productionEnv_returnsSystemDateIgnoringOverride() {
         // Even if override-date is fully configured, PROD env must never use it.
-        var adapter = adapter("25/12/2025", "Asia/Hong_Kong");
-
-        StepVerifier.create(adapter.resolveReferenceDate("PROD"))
+        var adapter = adapter("PROD", "25/12/2025", "Asia/Hong_Kong");
+        StepVerifier.create(adapter.resolveReferenceDate())
                 .assertNext(date -> assertThat(date).isEqualTo(FIXED_DATE))
                 .verifyComplete();
     }
@@ -105,18 +106,16 @@ class OrchestratedReferenceDateAdapterTest {
     @ValueSource(strings = {"PROD", "PRD", "PRODUCTION", "DR",
                              "prod", "pRoD", "dr", "production"})
     void productionLikeEnvVariants_alwaysReturnSystemDate(String accountEnv) {
-        var adapter = adapter("25/12/2025", "Asia/Hong_Kong");
-
-        StepVerifier.create(adapter.resolveReferenceDate(accountEnv))
+        var adapter = adapter(accountEnv, "25/12/2025", "Asia/Hong_Kong");
+        StepVerifier.create(adapter.resolveReferenceDate())
                 .assertNext(date -> assertThat(date).isEqualTo(FIXED_DATE))
                 .verifyComplete();
     }
 
     @Test
     void noOverrideDateConfigured_nonProdEnv_returnsSystemDate() {
-        var adapter = adapter("", "");
-
-        StepVerifier.create(adapter.resolveReferenceDate("JP"))
+        var adapter = adapter("JP", "", "");
+        StepVerifier.create(adapter.resolveReferenceDate())
                 .assertNext(date -> assertThat(date).isEqualTo(FIXED_DATE))
                 .verifyComplete();
     }
@@ -129,6 +128,7 @@ class OrchestratedReferenceDateAdapterTest {
         var lateUtcClock = Clock.fixed(
                 LocalDate.of(2026, 3, 15).atTime(23, 30).atZone(UTC).toInstant(), UTC);
         var props = new ReferenceDateProperties();
+        props.setAccountEnv("JP");
         props.setOverrideDate("");
         props.setOverrideZoneId("Asia/Hong_Kong");
         var configServicePort = mock(ConfigServicePort.class);
@@ -136,16 +136,15 @@ class OrchestratedReferenceDateAdapterTest {
         var adapter = new OrchestratedReferenceDateAdapter(
                 props, Optional.empty(), "ngtpa", configServicePort, lateUtcClock);
 
-        StepVerifier.create(adapter.resolveReferenceDate("JP"))
+        StepVerifier.create(adapter.resolveReferenceDate())
                 .assertNext(date -> assertThat(date).isEqualTo(LocalDate.of(2026, 3, 16)))
                 .verifyComplete();
     }
 
     @Test
     void systemDate_noOverrideZoneId_usesClockZone() {
-        var adapter = adapter("", "");
-
-        StepVerifier.create(adapter.resolveReferenceDate("JP"))
+        var adapter = adapter("JP", "", "");
+        StepVerifier.create(adapter.resolveReferenceDate())
                 .assertNext(date -> assertThat(date).isEqualTo(FIXED_DATE))
                 .verifyComplete();
     }
@@ -155,9 +154,8 @@ class OrchestratedReferenceDateAdapterTest {
         // For production-like envs the override-date is ignored, but override-zone-id
         // is still honoured for the system-date zone.
         // FIXED_CLOCK = 2026-03-15 00:00 UTC. Asia/Tokyo (UTC+9) = 2026-03-15 09:00 → still 2026-03-15.
-        var adapter = adapter("25/12/2025", "Asia/Tokyo");
-
-        StepVerifier.create(adapter.resolveReferenceDate("PROD"))
+        var adapter = adapter("PROD", "25/12/2025", "Asia/Tokyo");
+        StepVerifier.create(adapter.resolveReferenceDate())
                 .assertNext(date -> assertThat(date).isEqualTo(FIXED_DATE))
                 .verifyComplete();
     }
@@ -166,18 +164,16 @@ class OrchestratedReferenceDateAdapterTest {
 
     @Test
     void nullAccountEnv_treatedAsProductionLike_returnsSystemDate() {
-        var adapter = adapter("25/12/2025", "Asia/Hong_Kong");
-
-        StepVerifier.create(adapter.resolveReferenceDate(null))
+        var adapter = adapter(null, "25/12/2025", "Asia/Hong_Kong");
+        StepVerifier.create(adapter.resolveReferenceDate())
                 .assertNext(date -> assertThat(date).isEqualTo(FIXED_DATE))
                 .verifyComplete();
     }
 
     @Test
     void blankAccountEnv_treatedAsProductionLike_returnsSystemDate() {
-        var adapter = adapter("25/12/2025", "Asia/Hong_Kong");
-
-        StepVerifier.create(adapter.resolveReferenceDate("  "))
+        var adapter = adapter("  ", "25/12/2025", "Asia/Hong_Kong");
+        StepVerifier.create(adapter.resolveReferenceDate())
                 .assertNext(date -> assertThat(date).isEqualTo(FIXED_DATE))
                 .verifyComplete();
     }
@@ -186,9 +182,8 @@ class OrchestratedReferenceDateAdapterTest {
 
     @Test
     void overrideDateWithoutZoneId_nonProdEnv_signalsInvalidContributionRequestException() {
-        var adapter = adapter("25/12/2025", "");
-
-        StepVerifier.create(adapter.resolveReferenceDate("JP"))
+        var adapter = adapter("JP", "25/12/2025", "");
+        StepVerifier.create(adapter.resolveReferenceDate())
                 .expectErrorSatisfies(ex -> {
                     assertThat(ex).isInstanceOf(InvalidContributionRequestException.class);
                     assertThat(ex.getMessage())
@@ -199,9 +194,8 @@ class OrchestratedReferenceDateAdapterTest {
 
     @Test
     void overrideDateWithInvalidZoneId_nonProdEnv_signalsInvalidContributionRequestException() {
-        var adapter = adapter("25/12/2025", "NotAZone/Invalid");
-
-        StepVerifier.create(adapter.resolveReferenceDate("sit"))
+        var adapter = adapter("sit", "25/12/2025", "NotAZone/Invalid");
+        StepVerifier.create(adapter.resolveReferenceDate())
                 .expectErrorSatisfies(ex -> {
                     assertThat(ex).isInstanceOf(InvalidContributionRequestException.class);
                     assertThat(ex.getMessage()).isEqualTo("reference-date.override-zone-id is invalid");
@@ -211,9 +205,8 @@ class OrchestratedReferenceDateAdapterTest {
 
     @Test
     void overrideDateWithInvalidFormat_nonProdEnv_signalsInvalidContributionRequestException() {
-        var adapter = adapter("2025-12-25", "Asia/Hong_Kong");
-
-        StepVerifier.create(adapter.resolveReferenceDate("uat"))
+        var adapter = adapter("uat", "2025-12-25", "Asia/Hong_Kong");
+        StepVerifier.create(adapter.resolveReferenceDate())
                 .expectErrorSatisfies(ex -> {
                     assertThat(ex).isInstanceOf(InvalidContributionRequestException.class);
                     assertThat(ex.getMessage())
@@ -223,10 +216,8 @@ class OrchestratedReferenceDateAdapterTest {
     }
 
     // ── Redis read-path helper ────────────────────────────────────────────────
-
     /**
      * Builds an adapter with a specific Redis key prefix for Redis read-path tests.
-     * This helper uses the updated constructor signature that includes {@code keyPrefix}.
      */
     private OrchestratedReferenceDateAdapter adapterWithRedis(
             String overrideDate,
@@ -234,7 +225,18 @@ class OrchestratedReferenceDateAdapterTest {
             String keyPrefix,
             Optional<CachePort> cachePort,
             ConfigServicePort configServicePort) {
+        return adapterWithRedis("JP", overrideDate, overrideZoneId, keyPrefix, cachePort, configServicePort);
+    }
+
+    private OrchestratedReferenceDateAdapter adapterWithRedis(
+            String accountEnv,
+            String overrideDate,
+            String overrideZoneId,
+            String keyPrefix,
+            Optional<CachePort> cachePort,
+            ConfigServicePort configServicePort) {
         var props = new ReferenceDateProperties();
+        props.setAccountEnv(accountEnv);
         props.setOverrideDate(overrideDate);
         props.setOverrideZoneId(overrideZoneId);
         return new OrchestratedReferenceDateAdapter(
@@ -252,7 +254,7 @@ class OrchestratedReferenceDateAdapterTest {
 
         StepVerifier.create(adapterWithRedis("" , "", "ngtpa",
                 Optional.of(cachePort), configServicePort)
-                .resolveReferenceDate("JP"))
+                .resolveReferenceDate())
                 .assertNext(date -> assertThat(date).isEqualTo(LocalDate.of(2025, 12, 25)))
                 .verifyComplete();
 
@@ -266,9 +268,7 @@ class OrchestratedReferenceDateAdapterTest {
         when(cachePort.get("myprefix:reference-date:HK"))
                 .thenReturn(Mono.just(Optional.of("01/06/2026")));
 
-        StepVerifier.create(adapterWithRedis("", "", "myprefix",
-                Optional.of(cachePort), mock(ConfigServicePort.class))
-                .resolveReferenceDate("HK"))
+        StepVerifier.create(adapterWithRedis("HK", "", "", "myprefix", Optional.of(cachePort), mock(ConfigServicePort.class)).resolveReferenceDate())
                 .assertNext(date -> assertThat(date).isEqualTo(LocalDate.of(2026, 6, 1)))
                 .verifyComplete();
 
@@ -286,7 +286,7 @@ class OrchestratedReferenceDateAdapterTest {
 
         StepVerifier.create(adapterWithRedis("", "", "ngtpa",
                 Optional.of(cachePort), configServicePort)
-                .resolveReferenceDate("JP"))
+                .resolveReferenceDate())
                 .assertNext(date -> assertThat(date).isEqualTo(FIXED_DATE))
                 .verifyComplete();
 
@@ -304,7 +304,7 @@ class OrchestratedReferenceDateAdapterTest {
 
         StepVerifier.create(adapterWithRedis("", "", "ngtpa",
                 Optional.empty(), configServicePort)
-                .resolveReferenceDate("JP"))
+                .resolveReferenceDate())
                 .assertNext(date -> assertThat(date).isEqualTo(FIXED_DATE))
                 .verifyComplete();
 
@@ -330,7 +330,7 @@ class OrchestratedReferenceDateAdapterTest {
         try {
             StepVerifier.create(adapterWithRedis("", "", "ngtpa",
                     Optional.of(cachePort), configServicePort)
-                    .resolveReferenceDate("JP"))
+                    .resolveReferenceDate())
                     .assertNext(date -> assertThat(date).isEqualTo(FIXED_DATE))
                     .verifyComplete();
 
@@ -364,7 +364,7 @@ class OrchestratedReferenceDateAdapterTest {
         try {
             StepVerifier.create(adapterWithRedis("", "", "ngtpa",
                     Optional.of(cachePort), configServicePort)
-                    .resolveReferenceDate("JP"))
+                    .resolveReferenceDate())
                     .assertNext(date -> assertThat(date).isEqualTo(FIXED_DATE))
                     .verifyComplete();
 
@@ -381,7 +381,6 @@ class OrchestratedReferenceDateAdapterTest {
     }
 
     // ── Config Service read-path helper ────────────────────────────────────────
-
     /**
      * Builds an adapter configured for Config Service read-path tests.
      * Sets {@code cacheTtlSeconds} on {@link ReferenceDateProperties} to control
@@ -391,7 +390,16 @@ class OrchestratedReferenceDateAdapterTest {
             Optional<CachePort> cachePort,
             long cacheTtlSeconds,
             ConfigServicePort configServicePort) {
+        return adapterForConfigService("JP", cachePort, cacheTtlSeconds, configServicePort);
+    }
+
+    private OrchestratedReferenceDateAdapter adapterForConfigService(
+            String accountEnv,
+            Optional<CachePort> cachePort,
+            long cacheTtlSeconds,
+            ConfigServicePort configServicePort) {
         var props = new ReferenceDateProperties();
+        props.setAccountEnv(accountEnv);
         props.setCacheTtlSeconds(cacheTtlSeconds);
         return new OrchestratedReferenceDateAdapter(
                 props, cachePort, "ngtpa", configServicePort, FIXED_CLOCK);
@@ -406,7 +414,7 @@ class OrchestratedReferenceDateAdapterTest {
                 new ConfigEntry(null, null, null, "reference-date.JP", "25/12/2025"))));
 
         StepVerifier.create(adapterForConfigService(Optional.empty(), 0, configServicePort)
-                .resolveReferenceDate("JP"))
+                .resolveReferenceDate())
                 .assertNext(date -> assertThat(date).isEqualTo(LocalDate.of(2025, 12, 25)))
                 .verifyComplete();
     }
@@ -418,8 +426,7 @@ class OrchestratedReferenceDateAdapterTest {
                 .thenReturn(Mono.just(List.of(
                         new ConfigEntry(null, null, null, "reference-date.HK", "01/06/2026"))));
 
-        StepVerifier.create(adapterForConfigService(Optional.empty(), 0, configServicePort)
-                .resolveReferenceDate("HK"))
+        StepVerifier.create(adapterForConfigService("HK", Optional.empty(), 0, configServicePort).resolveReferenceDate())
                 .assertNext(date -> assertThat(date).isEqualTo(LocalDate.of(2026, 6, 1)))
                 .verifyComplete();
 
@@ -438,7 +445,7 @@ class OrchestratedReferenceDateAdapterTest {
         when(cachePort.set(any(), any(), any())).thenReturn(Mono.empty());
 
         StepVerifier.create(adapterForConfigService(Optional.of(cachePort), 86400, configServicePort)
-                .resolveReferenceDate("JP"))
+                .resolveReferenceDate())
                 .assertNext(date -> assertThat(date).isEqualTo(LocalDate.of(2025, 12, 25)))
                 .verifyComplete();
 
@@ -458,11 +465,12 @@ class OrchestratedReferenceDateAdapterTest {
         when(cachePort.set(any(), any(), any())).thenReturn(Mono.empty());
 
         var props = new ReferenceDateProperties();
+        props.setAccountEnv("HK");
         props.setCacheTtlSeconds(3600);
         var adapter = new OrchestratedReferenceDateAdapter(
                 props, Optional.of(cachePort), "mypfx", configServicePort, FIXED_CLOCK);
 
-        StepVerifier.create(adapter.resolveReferenceDate("HK"))
+        StepVerifier.create(adapter.resolveReferenceDate())
                 .assertNext(date -> assertThat(date).isEqualTo(LocalDate.of(2026, 3, 15)))
                 .verifyComplete();
 
@@ -481,7 +489,7 @@ class OrchestratedReferenceDateAdapterTest {
                 new ConfigEntry(null, null, null, "reference-date.JP", "25/12/2025"))));
 
         StepVerifier.create(adapterForConfigService(Optional.of(cachePort), 0, configServicePort)
-                .resolveReferenceDate("JP"))
+                .resolveReferenceDate())
                 .assertNext(date -> assertThat(date).isEqualTo(LocalDate.of(2025, 12, 25)))
                 .verifyComplete();
 
@@ -495,7 +503,7 @@ class OrchestratedReferenceDateAdapterTest {
                 new ConfigEntry(null, null, null, "reference-date.JP", "25/12/2025"))));
 
         StepVerifier.create(adapterForConfigService(Optional.empty(), 86400, configServicePort)
-                .resolveReferenceDate("JP"))
+                .resolveReferenceDate())
                 .assertNext(date -> assertThat(date).isEqualTo(LocalDate.of(2025, 12, 25)))
                 .verifyComplete();
     }
@@ -517,7 +525,7 @@ class OrchestratedReferenceDateAdapterTest {
         logger.addAppender(appender);
         try {
             StepVerifier.create(adapterForConfigService(Optional.of(cachePort), 86400, configServicePort)
-                    .resolveReferenceDate("JP"))
+                    .resolveReferenceDate())
                     .assertNext(date -> assertThat(date).isEqualTo(LocalDate.of(2025, 12, 25)))
                     .verifyComplete();
 
@@ -540,7 +548,7 @@ class OrchestratedReferenceDateAdapterTest {
         when(configServicePort.listConfigs(any())).thenReturn(Mono.just(List.of()));
 
         StepVerifier.create(adapterForConfigService(Optional.empty(), 0, configServicePort)
-                .resolveReferenceDate("JP"))
+                .resolveReferenceDate())
                 .assertNext(date -> assertThat(date).isEqualTo(FIXED_DATE))
                 .verifyComplete();
     }
@@ -557,7 +565,7 @@ class OrchestratedReferenceDateAdapterTest {
         logger.addAppender(appender);
         try {
             StepVerifier.create(adapterForConfigService(Optional.empty(), 0, configServicePort)
-                    .resolveReferenceDate("JP"))
+                    .resolveReferenceDate())
                     .assertNext(date -> assertThat(date).isEqualTo(FIXED_DATE))
                     .verifyComplete();
 
@@ -584,7 +592,7 @@ class OrchestratedReferenceDateAdapterTest {
         logger.addAppender(appender);
         try {
             StepVerifier.create(adapterForConfigService(Optional.empty(), 0, configServicePort)
-                    .resolveReferenceDate("JP"))
+                    .resolveReferenceDate())
                     .assertNext(date -> assertThat(date).isEqualTo(FIXED_DATE))
                     .verifyComplete();
 
@@ -611,8 +619,7 @@ class OrchestratedReferenceDateAdapterTest {
         appender.start();
         logger.addAppender(appender);
         try {
-            StepVerifier.create(adapterForConfigService(Optional.empty(), 0, configServicePort)
-                    .resolveReferenceDate("HK"))
+            StepVerifier.create(adapterForConfigService("HK", Optional.empty(), 0, configServicePort).resolveReferenceDate())
                     .assertNext(date -> assertThat(date).isEqualTo(FIXED_DATE))
                     .verifyComplete();
 
@@ -641,7 +648,7 @@ class OrchestratedReferenceDateAdapterTest {
         logger.addAppender(appender);
         try {
             StepVerifier.create(adapterForConfigService(Optional.empty(), 0, configServicePort)
-                    .resolveReferenceDate("JP"))
+                    .resolveReferenceDate())
                     .assertNext(date -> assertThat(date).isEqualTo(FIXED_DATE))
                     .verifyComplete();
 
@@ -667,7 +674,7 @@ class OrchestratedReferenceDateAdapterTest {
         logger.addAppender(appender);
         try {
             StepVerifier.create(adapterForConfigService(Optional.empty(), 0, configServicePort)
-                    .resolveReferenceDate("JP"))
+                    .resolveReferenceDate())
                     .assertNext(date -> assertThat(date).isEqualTo(FIXED_DATE))
                     .verifyComplete();
 
