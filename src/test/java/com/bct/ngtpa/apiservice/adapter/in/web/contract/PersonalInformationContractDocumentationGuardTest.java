@@ -10,7 +10,7 @@ class PersonalInformationContractDocumentationGuardTest {
 
     @Test
     void documentationCapturesUpdateResultArrayAndOptionSetsContracts() throws Exception {
-        Path document = Path.of("docs/personal-information-result-array-and-optionsets-contract.md");
+        Path document = Path.of("docs/others/personal-information-result-array-and-optionsets-contract.md");
         String content = Files.readString(document);
 
         assertThat(content).contains("PUT `/api/v1/personal-information`");

@@ -114,9 +114,8 @@ currency-mapping:
     INR.OG: INR
 
 reference-date:
-  account-env: mp
-  # override-date: 30/06/2026
-  # override-zone-id: Asia/Hong_Kong
+  override-date: 30/06/2026
+  override-zone-id: Asia/Hong_Kong
 
 temporary-portal-access-context:
   # Temporary Redis-session simulation until login/session management is implemented.
@@ -170,3 +169,7 @@ error-message:
     "err.contribution.request.invalid.JPM.OE": "Invalid contribution request for JPM OE."
     "err.contribution.request.invalid.JPM": "Invalid contribution request for JPM."
     "err.contribution.request.invalid.OE": "Invalid contribution request for OE."
+
+config-service:
+  base-url: "https://ngtpa-config-service.bcthk.info"
+  timeout-milliseconds: 3000

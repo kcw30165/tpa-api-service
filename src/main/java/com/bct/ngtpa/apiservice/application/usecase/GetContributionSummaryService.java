@@ -23,7 +23,7 @@ public class GetContributionSummaryService implements GetContributionSummaryUseC
 
         @Override
         public Mono<ContributionSummaryReportResult> execute(GetContributionSummaryCommand command) {
-                
+
                 ContributionSummarySupport.validatePagination(command.page(), command.pageSize());
 
                 var fromDate = ContributionSummarySupport.parseRequiredDate(command.fromDate(), "fromDate");

@@ -18,7 +18,6 @@ class ReferenceDatePropertiesBindingTest {
             .withInitializer(context -> {
                 var yaml = """
                         reference-date:
-                          account-env: sit
                           override-date: 31/03/2026
                           override-zone-id: Asia/Hong_Kong
                         """;
@@ -32,30 +31,11 @@ class ReferenceDatePropertiesBindingTest {
             });
 
     @Test
-    void bindsAccountEnvFromYaml() {
-        contextRunner.run(context -> {
-            var props = context.getBean(ReferenceDateProperties.class);
-            assertEquals("sit", props.getAccountEnv());
-        });
-    }
-
-    @Test
     void bindsOverrideDateAndZoneId() {
         contextRunner.run(context -> {
             var props = context.getBean(ReferenceDateProperties.class);
             assertEquals("31/03/2026", props.getOverrideDate());
             assertEquals("Asia/Hong_Kong", props.getOverrideZoneId());
-        });
-    }
-
-    @Test
-    void accountEnvDefaultsToEmptyString() {
-        var emptyRunner = new ApplicationContextRunner()
-                .withUserConfiguration(TestConfig.class);
-
-        emptyRunner.run(context -> {
-            var props = context.getBean(ReferenceDateProperties.class);
-            assertEquals("", props.getAccountEnv());
         });
     }
 

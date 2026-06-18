@@ -25,9 +25,14 @@ api:
     require-authentication: ${API_SECURITY_REQUIRE_AUTHENTICATION:true}
 
 reference-date:
-  account-env: ${REFERENCE_DATE_ACCOUNT_ENV:}
   override-date: ${REFERENCE_DATE_OVERRIDE_DATE:}
   override-zone-id: ${REFERENCE_DATE_OVERRIDE_ZONE_ID:}
+
+config-service:
+  base-url: ${CONFIG_SERVICE_BASE_URL:}
+  timeout-milliseconds: ${CONFIG_SERVICE_TIMEOUT_MILLISECONDS:10000}
+  username: ${CONFIG_SERVICE_USERNAME:}
+  password: ${CONFIG_SERVICE_PASSWORD:}
 
 apim:
   base-url: ${APIM_BASE_URL:${APIM_BASEURL:}}
