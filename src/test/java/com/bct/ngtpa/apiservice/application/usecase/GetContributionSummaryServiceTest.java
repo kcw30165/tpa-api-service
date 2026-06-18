@@ -151,8 +151,8 @@ class GetContributionSummaryServiceTest {
     void usesResolvedReferenceDateFromPortForThirtySixMonthWindowValidation() {
         AtomicInteger apimCalls = new AtomicInteger();
         AtomicReference<String> capturedAccountEnv = new AtomicReference<>();
-        ReferenceDatePort capturingReferenceDatePort = accountEnv -> {
-            capturedAccountEnv.set(accountEnv);
+        ReferenceDatePort capturingReferenceDatePort = () -> {
+            capturedAccountEnv.set("JP");
             return Mono.just(LocalDate.of(2024, 1, 31));
         };
 
@@ -163,7 +163,7 @@ class GetContributionSummaryServiceTest {
                 },
                 (code, accountEnv, trustCode, schemeType) -> new CurrencyDisplay(code, code),
                 capturingReferenceDatePort,
-                portalAccessContextPort(),
+                currentPortalAccessContextResolver(),
                 actionPermissionPort());
 
         var ex = assertThrows(InvalidContributionRequestException.class,

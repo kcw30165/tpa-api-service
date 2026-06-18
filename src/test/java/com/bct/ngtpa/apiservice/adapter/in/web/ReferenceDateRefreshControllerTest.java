@@ -1,8 +1,11 @@
 package com.bct.ngtpa.apiservice.adapter.in.web;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.controller.ApiExceptionHandler;
+import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.RefreshReferenceDateCommand;
 import com.bct.ngtpa.apiservice.application.dto.RefreshReferenceDateResult;
 import com.bct.ngtpa.apiservice.application.port.in.RefreshReferenceDateUseCase;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
@@ -24,8 +27,8 @@ class ReferenceDateRefreshControllerTest {
 
     @Test
     void validEndpointPathAcceptsRefreshRequest() {
-        RefreshReferenceDateUseCase useCase = command ->
-                Mono.just(new RefreshReferenceDateResult("JP", "31/12/2025", true, true));
+        RefreshReferenceDateUseCase useCase = command -> Mono
+                .just(new RefreshReferenceDateResult("JP", "31/12/2025", true, true));
 
         webClient(useCase)
                 .post()
@@ -51,7 +54,7 @@ class ReferenceDateRefreshControllerTest {
 
         webClient(useCase)
                 .post()
-            .uri(REFRESH_PATH)
+                .uri(REFRESH_PATH)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(Map.of("accountEnv", "JP"))
                 .exchange()
@@ -67,12 +70,12 @@ class ReferenceDateRefreshControllerTest {
 
     @Test
     void redisPartialFailureStillReturnsSuccess() {
-        RefreshReferenceDateUseCase useCase = command ->
-                Mono.just(new RefreshReferenceDateResult("JP", "31/12/2025", true, false));
+        RefreshReferenceDateUseCase useCase = command -> Mono
+                .just(new RefreshReferenceDateResult("JP", "31/12/2025", true, false));
 
         webClient(useCase)
                 .post()
-            .uri(REFRESH_PATH)
+                .uri(REFRESH_PATH)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(Map.of("accountEnv", "JP"))
                 .exchange()
@@ -88,7 +91,7 @@ class ReferenceDateRefreshControllerTest {
     void missingAccountEnvReturnsStandardizedValidationError() {
         webClient(unusedUseCase())
                 .post()
-            .uri(REFRESH_PATH)
+                .uri(REFRESH_PATH)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(Map.of())
                 .exchange()
@@ -102,7 +105,7 @@ class ReferenceDateRefreshControllerTest {
     void blankAccountEnvReturnsStandardizedValidationError() {
         webClient(unusedUseCase())
                 .post()
-            .uri(REFRESH_PATH)
+                .uri(REFRESH_PATH)
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(Map.of("accountEnv", "  "))
                 .exchange()
@@ -114,8 +117,25 @@ class ReferenceDateRefreshControllerTest {
 
     private WebTestClient webClient(RefreshReferenceDateUseCase useCase) {
         return WebTestClient.bindToController(new ReferenceDateRefreshController(useCase))
-                .controllerAdvice(new ApiExceptionHandler(testErrorMessageResolver(), testLoggingSanitizer()))
+                .controllerAdvice(new ApiExceptionHandler(
+                        testErrorMessageResolver(),
+                        testLoggingSanitizer(),
+                        emptyCurrentPortalAccessContextResolver()))
                 .build();
+    }
+
+    private static CurrentPortalAccessContextResolver emptyCurrentPortalAccessContextResolver() {
+        return new CurrentPortalAccessContextResolver() {
+            @Override
+            public Mono<PortalAccessContext> current() {
+                return Mono.empty();
+            }
+
+            @Override
+            public Mono<PortalAccessContext> currentOrEmpty() {
+                return Mono.empty();
+            }
+        };
     }
 
     private RefreshReferenceDateUseCase unusedUseCase() {

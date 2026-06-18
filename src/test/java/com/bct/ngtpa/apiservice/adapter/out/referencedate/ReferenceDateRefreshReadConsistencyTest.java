@@ -68,7 +68,7 @@ class ReferenceDateRefreshReadConsistencyTest {
                 configServicePort(stores, new AtomicReference<>()));
 
         StepVerifier.create(refreshService.execute(new RefreshReferenceDateCommand(accountEnv))
-                        .then(reader.resolveReferenceDate(accountEnv)))
+                        .then(reader.resolveReferenceDate()))
                 .assertNext(date -> assertThat(date).isEqualTo(refreshedDate))
                 .verifyComplete();
 
@@ -113,7 +113,7 @@ class ReferenceDateRefreshReadConsistencyTest {
                 configServicePort(stores, configQuery));
 
         StepVerifier.create(refreshService.execute(new RefreshReferenceDateCommand(accountEnv))
-                        .then(reader.resolveReferenceDate(accountEnv)))
+                        .then(reader.resolveReferenceDate()))
                 .assertNext(date -> assertThat(date).isEqualTo(refreshedDate))
                 .verifyComplete();
 

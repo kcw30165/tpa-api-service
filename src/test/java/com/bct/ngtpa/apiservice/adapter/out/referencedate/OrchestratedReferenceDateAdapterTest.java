@@ -305,7 +305,7 @@ class OrchestratedReferenceDateAdapterTest {
 
         StepVerifier.create(adapterWithRedis("", "", "ngtpa",
                 Optional.of(cachePort), configServicePort)
-                .resolveReferenceDate("JP"))
+                .resolveReferenceDate())
                 .assertNext(date -> assertThat(date).isEqualTo(LocalDate.of(2026, 6, 1)))
                 .verifyComplete();
 
@@ -339,7 +339,7 @@ class OrchestratedReferenceDateAdapterTest {
 
         StepVerifier.create(adapterWithRedis("", "", "ngtpa",
                 Optional.empty(), configServicePort)
-                .resolveReferenceDate("JP"))
+                .resolveReferenceDate())
                 .assertNext(date -> assertThat(date).isEqualTo(LocalDate.of(2025, 12, 25)))
                 .verifyComplete();
 
@@ -399,7 +399,7 @@ class OrchestratedReferenceDateAdapterTest {
         try {
             StepVerifier.create(adapterWithRedis("", "", "ngtpa",
                     Optional.of(cachePort), configServicePort)
-                    .resolveReferenceDate("JP"))
+                    .resolveReferenceDate())
                     .assertNext(date -> assertThat(date).isEqualTo(LocalDate.of(2026, 6, 1)))
                     .verifyComplete();
 
@@ -466,7 +466,7 @@ class OrchestratedReferenceDateAdapterTest {
         try {
             StepVerifier.create(adapterWithRedis("", "", "ngtpa",
                     Optional.of(cachePort), configServicePort)
-                    .resolveReferenceDate("JP"))
+                    .resolveReferenceDate())
                     .assertNext(date -> assertThat(date).isEqualTo(LocalDate.of(2026, 6, 1)))
                     .verifyComplete();
 
