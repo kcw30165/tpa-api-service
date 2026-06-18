@@ -7,6 +7,8 @@ import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
+import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -27,43 +29,53 @@ public class TemporaryPortalAccessContextAdapter implements PortalAccessContextP
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final TemporaryPortalAccessContextProperties properties;
-
     @Override
     public Mono<PortalAccessContext> resolvePortalAccessContext(String accountRef) {
-        if (!StringUtils.hasText(accountRef)) {
-            return Mono.error(new PortalAccessContextResolutionException(
-                    ErrorCodes.MEMBER_CONTEXT_INVALID,
-                    "No temporary portal access context profile configured for accountRef: "
-                            + (accountRef == null ? "null" : accountRef)));
-        }
-
-        if (properties.getSessions() != null && !properties.getSessions().isEmpty()) {
-            return resolveFromSessionShape(accountRef.trim());
-        }
-        return resolveFromLegacyProfileShape(accountRef.trim());
+        return resolvePortalAccessContext(accountRef, null);
     }
 
-    private Mono<PortalAccessContext> resolveFromSessionShape(String accountRef) {
-        String sessionId = resolveDefaultSessionId(properties.getSessions());
-        TemporaryPortalAccessContextProperties.SessionProfile session = properties.getSessions().get(sessionId);
+    @Override
+    public Mono<PortalAccessContext> resolvePortalAccessContext(String accountRef, String sessionId) {
+        if (!StringUtils.hasText(accountRef)) {
+            return Mono.<PortalAccessContext>error(new PortalAccessContextResolutionException(
+                    ErrorCodes.MEMBER_CONTEXT_INVALID,
+                    "Account-Ref is required to resolve portal access context."));
+        }
+        String normalizedAccountRef = accountRef.trim();
+        if (properties.getSessions() != null && !properties.getSessions().isEmpty()) {
+            return resolveFromSessionShape(normalizedAccountRef, sessionId);
+        }
+        return resolveFromLegacyProfileShape(normalizedAccountRef);
+    }
+    private Mono<PortalAccessContext> resolveFromSessionShape(String accountRef, String requestedSessionId) {
+        Map<String, TemporaryPortalAccessContextProperties.SessionProfile> sessions = properties.getSessions();
+        String sessionId = resolveHeaderSessionId(requestedSessionId);
+        if (!StringUtils.hasText(sessionId)) {
+            return Mono.<PortalAccessContext>error(new PortalAccessContextResolutionException(
+                    ErrorCodes.MEMBER_CONTEXT_INVALID,
+                    "Session id header " + RequestHeaderContextKeys.SESSION_ID_HEADER
+                            + " is required to resolve temporary portal access context."));
+        }
+        TemporaryPortalAccessContextProperties.SessionProfile session = sessions.get(sessionId);
         if (session == null) {
-            return Mono.error(new PortalAccessContextResolutionException(
+            return Mono.<PortalAccessContext>error(new PortalAccessContextResolutionException(
                     ErrorCodes.MEMBER_CONTEXT_INVALID,
                     "No temporary portal access context session configured for sessionId: " + sessionId));
         }
-        TemporaryPortalAccessContextProperties.AccountProfile account = session.getAccounts().get(accountRef);
+        Map<String, TemporaryPortalAccessContextProperties.AccountProfile> accounts = session.getAccounts();
+        TemporaryPortalAccessContextProperties.AccountProfile account = accounts == null ? null : accounts.get(accountRef);
         if (account == null) {
-            return Mono.error(new PortalAccessContextResolutionException(
+            return Mono.<PortalAccessContext>error(new PortalAccessContextResolutionException(
                     ErrorCodes.MEMBER_CONTEXT_INVALID,
                     "No temporary portal access context account configured for accountRef: "
                             + accountRef + " in session: " + sessionId));
         }
-        var actor = session.getActor() == null
-                ? new TemporaryPortalAccessContextProperties.SessionActor()
-                : session.getActor();
+        TemporaryPortalAccessContextProperties.SessionActor actor = session.getActor();
         TermStatus termStatus = mapTermStatus(account.getTermStatus(), accountRef, account.getAccountEnv());
         return Mono.just(new PortalAccessContext(
-                new ActorContext(actor.getActorUserId(), actor.getActorUserRole()),
+                new ActorContext(
+                        actor == null ? null : actor.getActorUserId(),
+                        actor == null ? null : actor.getActorUserRole()),
                 new AccountContext(
                         accountRef,
                         account.getAccountEnv(),
@@ -74,18 +86,13 @@ public class TemporaryPortalAccessContextAdapter implements PortalAccessContextP
                         termStatus,
                         parseTermCompletionDate(account.getTermCompletionDate(), accountRef))));
     }
-
-    private String resolveDefaultSessionId(Map<String, TemporaryPortalAccessContextProperties.SessionProfile> sessions) {
-        if (StringUtils.hasText(properties.getDefaultSessionId())) {
-            return properties.getDefaultSessionId().trim();
-        }
-        return sessions.keySet().stream().findFirst().orElse("");
+    private String resolveHeaderSessionId(String sessionId) {
+        return StringUtils.hasText(sessionId) ? sessionId.trim() : null;
     }
-
     private Mono<PortalAccessContext> resolveFromLegacyProfileShape(String accountRef) {
         var profile = properties.getProfiles().get(accountRef);
         if (profile == null) {
-            return Mono.error(new PortalAccessContextResolutionException(
+            return Mono.<PortalAccessContext>error(new PortalAccessContextResolutionException(
                     ErrorCodes.MEMBER_CONTEXT_INVALID,
                     "No temporary portal access context profile configured for accountRef: " + accountRef));
         }

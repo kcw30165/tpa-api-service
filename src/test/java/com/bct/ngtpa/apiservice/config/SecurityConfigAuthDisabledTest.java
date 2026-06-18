@@ -15,6 +15,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
@@ -36,6 +38,8 @@ import reactor.core.publisher.Mono;
     })
 @AutoConfigureWebTestClient
 class SecurityConfigAuthDisabledTest {
+
+    private static final String REFRESH_PATH = "/api/v1/internal/reference-date/refresh";
 
     @Autowired
     private WebTestClient webTestClient;
@@ -60,6 +64,16 @@ class SecurityConfigAuthDisabledTest {
         webTestClient.get().uri("/api/v1/contributions").exchange().expectStatus().isOk();
     }
 
+    @Test
+    void unauthenticatedInternalReferenceDateRefreshIsAllowedWhenAuthDisabled() {
+        webTestClient.post()
+                .uri(REFRESH_PATH)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{}")
+                .exchange()
+                .expectStatus().isOk();
+    }
+
     @RestController
     @RequestMapping(path = "/api/v1/notifications", produces = MediaType.APPLICATION_JSON_VALUE)
     static class StubNotificationsController {
@@ -77,13 +91,21 @@ class SecurityConfigAuthDisabledTest {
         Mono<String> get() { return Mono.just("{}"); }
     }
 
+    @RestController
+    @RequestMapping(path = "/api/v1/internal/reference-date", produces = MediaType.APPLICATION_JSON_VALUE)
+    static class StubInternalReferenceDateController {
+        @PostMapping(path = "/refresh", consumes = MediaType.APPLICATION_JSON_VALUE)
+        Mono<String> refresh(@RequestBody String body) { return Mono.just("{}"); }
+    }
+
     @SpringBootConfiguration
     @EnableAutoConfiguration
     @EnableConfigurationProperties(CorsProperties.class)
     @Import({
         SecurityConfig.class,
         StubNotificationsController.class,
-        StubContributionsController.class
+        StubContributionsController.class,
+        StubInternalReferenceDateController.class
     })
     static class TestApplication {
     }

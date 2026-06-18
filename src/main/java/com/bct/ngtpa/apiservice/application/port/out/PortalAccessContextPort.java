@@ -26,4 +26,8 @@ public interface PortalAccessContextPort {
      *         or signals an error if context cannot be resolved
      */
     Mono<PortalAccessContext> resolvePortalAccessContext(String accountRef);
+
+    default Mono<PortalAccessContext> resolvePortalAccessContext(String accountRef, String sessionId) {
+        return resolvePortalAccessContext(accountRef);
+    }
 }

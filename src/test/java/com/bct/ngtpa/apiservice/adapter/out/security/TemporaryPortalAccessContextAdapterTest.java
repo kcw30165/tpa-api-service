@@ -209,7 +209,7 @@ class TemporaryPortalAccessContextAdapterTest {
                 .expectErrorSatisfies(ex -> {
                     assertInstanceOf(PortalAccessContextResolutionException.class, ex);
                     assertEquals(
-                            "No temporary portal access context profile configured for accountRef: ",
+                            "Account-Ref is required to resolve portal access context.",
                             ex.getMessage());
                 })
                 .verify();
@@ -315,7 +315,7 @@ class TemporaryPortalAccessContextAdapterTest {
     void resolvesSelectedAccountFromDefaultSessionShape() {
         var adapter = adapterWithSessionShape();
 
-        StepVerifier.create(adapter.resolvePortalAccessContext("ACC-1"))
+        StepVerifier.create(adapter.resolvePortalAccessContext("ACC-1", "SESSION-001"))
                 .assertNext(ctx -> {
                     assertEquals("actorUserId_for_session", ctx.actor().actorUserId());
                     assertEquals("MEMBER", ctx.actor().actorUserRole());
@@ -335,7 +335,7 @@ class TemporaryPortalAccessContextAdapterTest {
     void sameSessionResolvesDifferentAccountRefsWithoutSelectedAccountState() {
         var adapter = adapterWithSessionShape();
 
-        StepVerifier.create(adapter.resolvePortalAccessContext("ACC-2"))
+        StepVerifier.create(adapter.resolvePortalAccessContext("ACC-2", "SESSION-001"))
                 .assertNext(ctx -> {
                     assertEquals("actorUserId_for_session", ctx.actor().actorUserId());
                     assertEquals("ACC-2", ctx.account().accountRef());
@@ -352,7 +352,7 @@ class TemporaryPortalAccessContextAdapterTest {
     void sessionShapeUnknownAccountRefFailsWithClearException() {
         var adapter = adapterWithSessionShape();
 
-        StepVerifier.create(adapter.resolvePortalAccessContext("ACC-404"))
+        StepVerifier.create(adapter.resolvePortalAccessContext("ACC-404", "SESSION-001"))
                 .expectErrorSatisfies(ex -> {
                     assertInstanceOf(PortalAccessContextResolutionException.class, ex);
                     assertEquals("No temporary portal access context account configured for accountRef: ACC-404 in session: SESSION-001",

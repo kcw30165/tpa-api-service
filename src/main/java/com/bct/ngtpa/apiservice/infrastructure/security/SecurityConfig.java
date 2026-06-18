@@ -49,6 +49,8 @@ public class SecurityConfig {
             http.authorizeExchange(auth -> auth
                 // Allow CORS preflight without authentication so browsers can negotiate origins.
                 .pathMatchers(HttpMethod.OPTIONS, "/api/**").permitAll()
+                // Internal operational endpoints remain authenticated unless auth is explicitly delegated externally.
+                .pathMatchers("/api/v1/internal/**").authenticated()
                 // All other requests — including all business API endpoints — require authentication.
                 .anyExchange().authenticated());
         } else {

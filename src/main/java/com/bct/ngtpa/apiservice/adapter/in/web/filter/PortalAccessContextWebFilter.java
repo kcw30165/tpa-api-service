@@ -38,7 +38,7 @@ public class PortalAccessContextWebFilter implements WebFilter {
         if (!StringUtils.hasText(accountRef)) {
             return chain.filter(exchange);
         }
-        return portalAccessContextPort.resolvePortalAccessContext(accountRef)
+        return portalAccessContextPort.resolvePortalAccessContext(accountRef, resolveSessionId(exchange))
                 .flatMap(portalAccessContext -> continueWithPortalAccessContext(
                         exchange,
                         chain,
@@ -62,4 +62,13 @@ public class PortalAccessContextWebFilter implements WebFilter {
         }
         return exchange.getRequest().getHeaders().getFirst(RequestHeaderContextKeys.ACCOUNT_REF_HEADER);
     }
+    private String resolveSessionId(ServerWebExchange exchange) {
+        RequestHeaderContext requestHeaderContext = (RequestHeaderContext) exchange.getAttributes()
+                .get(RequestHeaderContextKeys.ATTRIBUTE_KEY);
+        if (requestHeaderContext != null && StringUtils.hasText(requestHeaderContext.sessionId())) {
+            return requestHeaderContext.sessionId();
+        }
+        return exchange.getRequest().getHeaders().getFirst(RequestHeaderContextKeys.SESSION_ID_HEADER);
+    }
+
 }
