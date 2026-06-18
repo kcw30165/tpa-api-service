@@ -32,8 +32,7 @@ class ReferenceDateRefreshReadConsistencyTest {
 
     private static final String REDIS_KEY_PREFIX = "ngtpa";
     private static final ZoneId UTC = ZoneId.of("UTC");
-    private static final Clock FIXED_CLOCK =
-            Clock.fixed(LocalDate.of(2026, 3, 15).atStartOfDay(UTC).toInstant(), UTC);
+    private static final Clock FIXED_CLOCK = Clock.fixed(LocalDate.of(2026, 3, 15).atStartOfDay(UTC).toInstant(), UTC);
 
     @Test
     void refreshThenRead_redisHit_usesSameRedisKeyAndReturnsSameLocalDateWithoutTransformingAccountEnv() {
@@ -63,12 +62,13 @@ class ReferenceDateRefreshReadConsistencyTest {
                 });
 
         var reader = referenceDateReader(
+                accountEnv,
                 stores,
                 Optional.of(cachePort(stores, redisReadKey)),
                 configServicePort(stores, new AtomicReference<>()));
 
         StepVerifier.create(refreshService.execute(new RefreshReferenceDateCommand(accountEnv))
-                        .then(reader.resolveReferenceDate()))
+                .then(reader.resolveReferenceDate()))
                 .assertNext(date -> assertThat(date).isEqualTo(refreshedDate))
                 .verifyComplete();
 
@@ -108,12 +108,13 @@ class ReferenceDateRefreshReadConsistencyTest {
                 });
 
         var reader = referenceDateReader(
+                accountEnv,
                 stores,
                 Optional.empty(),
                 configServicePort(stores, configQuery));
 
         StepVerifier.create(refreshService.execute(new RefreshReferenceDateCommand(accountEnv))
-                        .then(reader.resolveReferenceDate()))
+                .then(reader.resolveReferenceDate()))
                 .assertNext(date -> assertThat(date).isEqualTo(refreshedDate))
                 .verifyComplete();
 
@@ -132,12 +133,15 @@ class ReferenceDateRefreshReadConsistencyTest {
     }
 
     private OrchestratedReferenceDateAdapter referenceDateReader(
+            String accountEnv,
             SharedReferenceDateStores stores,
             Optional<CachePort> cachePort,
             ConfigServicePort configServicePort) {
         var properties = new ReferenceDateProperties();
+        properties.setAccountEnv(accountEnv);
         properties.setCacheTtlSeconds(3600);
-        return new OrchestratedReferenceDateAdapter(properties, cachePort, REDIS_KEY_PREFIX, configServicePort, FIXED_CLOCK);
+        return new OrchestratedReferenceDateAdapter(properties, cachePort, REDIS_KEY_PREFIX, configServicePort,
+                FIXED_CLOCK);
     }
 
     private CachePort cachePort(SharedReferenceDateStores stores, AtomicReference<String> lastGetKey) {
@@ -161,7 +165,8 @@ class ReferenceDateRefreshReadConsistencyTest {
         };
     }
 
-    private ConfigServicePort configServicePort(SharedReferenceDateStores stores, AtomicReference<ConfigQuery> lastQuery) {
+    private ConfigServicePort configServicePort(SharedReferenceDateStores stores,
+            AtomicReference<ConfigQuery> lastQuery) {
         return new ConfigServicePort() {
             @Override
             public Mono<List<ConfigEntry>> listConfigs(ConfigQuery query) {
@@ -174,7 +179,8 @@ class ReferenceDateRefreshReadConsistencyTest {
             }
 
             @Override
-            public Mono<ConfigEntry> upsertConfig(com.bct.ngtpa.apiservice.application.dto.ConfigUpsertCommand command) {
+            public Mono<ConfigEntry> upsertConfig(
+                    com.bct.ngtpa.apiservice.application.dto.ConfigUpsertCommand command) {
                 throw new UnsupportedOperationException("Not used in this test");
             }
 

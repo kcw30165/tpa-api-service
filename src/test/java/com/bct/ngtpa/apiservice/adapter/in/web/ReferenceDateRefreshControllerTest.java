@@ -97,8 +97,10 @@ class ReferenceDateRefreshControllerTest {
                 .exchange()
                 .expectStatus().isBadRequest()
                 .expectBody()
-                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.REQUEST_VALIDATION_FAILED)
-                .jsonPath("$.message").isEqualTo("Invalid request payload.");
+                .jsonPath("$.success").isEqualTo(false)
+                .jsonPath("$.status").isEqualTo("VALIDATION_FAILED")
+                .jsonPath("$.errors[0].code").isEqualTo(ErrorCodes.REQUEST_VALIDATION_FAILED)
+                .jsonPath("$.errors[0].message").isEqualTo("Invalid request payload.");
     }
 
     @Test
@@ -111,8 +113,10 @@ class ReferenceDateRefreshControllerTest {
                 .exchange()
                 .expectStatus().isBadRequest()
                 .expectBody()
-                .jsonPath("$.errorCode").isEqualTo(ErrorCodes.REQUEST_VALIDATION_FAILED)
-                .jsonPath("$.message").isEqualTo("Invalid request payload.");
+                .jsonPath("$.success").isEqualTo(false)
+                .jsonPath("$.status").isEqualTo("VALIDATION_FAILED")
+                .jsonPath("$.errors[0].code").isEqualTo(ErrorCodes.REQUEST_VALIDATION_FAILED)
+                .jsonPath("$.errors[0].message").isEqualTo("Invalid request payload.");
     }
 
     private WebTestClient webClient(RefreshReferenceDateUseCase useCase) {
