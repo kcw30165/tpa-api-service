@@ -69,7 +69,7 @@ class ConfigServiceWebClientAdapterTest {
                 .baseUrl(props.getBaseUrl())
                 .exchangeFunction(ef)
                 .build();
-        return new ConfigServiceWebClientAdapter(webClient, props);
+        return new ConfigServiceWebClientAdapter(webClient);
     }
 
     private static ClientResponse okJson(String body) {

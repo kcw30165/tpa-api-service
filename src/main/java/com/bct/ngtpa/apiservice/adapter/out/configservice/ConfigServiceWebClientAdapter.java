@@ -26,7 +26,7 @@ public class ConfigServiceWebClientAdapter implements ConfigServicePort {
     private static final String CONFIGS_PATH = "/api/configs";
 
     private final WebClient configServiceWebClient;
-    private final ConfigServiceProperties configServiceProperties;
+    // private final ConfigServiceProperties configServiceProperties;
 
     @Override
     public Mono<List<ConfigEntry>> listConfigs(ConfigQuery query) {
