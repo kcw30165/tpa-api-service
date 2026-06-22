@@ -4,10 +4,8 @@ import com.bct.ngtpa.apiservice.adapter.out.configserver.ReferenceDateProperties
 import com.bct.ngtpa.apiservice.adapter.out.referencedate.NonpReferenceDateAdapter;
 import com.bct.ngtpa.apiservice.application.port.out.ApimReferenceDateRefreshPort;
 import com.bct.ngtpa.apiservice.application.port.out.CachePort;
-import com.bct.ngtpa.apiservice.application.port.out.ConfigServicePort;
-import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDateCacheUpdatePort;
-import com.bct.ngtpa.apiservice.application.port.out.ReferenceDateConfigPort;
+import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.mock.env.MockEnvironment;
@@ -29,9 +27,7 @@ class ReferenceDateAdapterConfigTest {
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withUserConfiguration(ReferenceDateAdapterConfig.class)
             .withBean(ReferenceDateProperties.class, ReferenceDateProperties::new)
-            .withBean(ConfigServicePort.class, () -> mock(ConfigServicePort.class))
             .withBean(ApimReferenceDateRefreshPort.class, () -> mock(ApimReferenceDateRefreshPort.class))
-            .withBean(ReferenceDateConfigPort.class, () -> mock(ReferenceDateConfigPort.class))
             .withBean(ReferenceDateCacheUpdatePort.class, () -> mock(ReferenceDateCacheUpdatePort.class))
             .withBean(MockEnvironment.class, MockEnvironment::new)
             .withBean(org.springframework.core.env.Environment.class, MockEnvironment::new);
@@ -40,17 +36,13 @@ class ReferenceDateAdapterConfigTest {
     void referenceDatePort_redisDisabled_createsNonpReferenceDateAdapter() {
         var config = new ReferenceDateAdapterConfig();
         var props = new ReferenceDateProperties();
-        var configServicePort = mock(ConfigServicePort.class);
         var apimPort = mock(ApimReferenceDateRefreshPort.class);
-        var configPort = mock(ReferenceDateConfigPort.class);
         var cacheUpdatePort = mock(ReferenceDateCacheUpdatePort.class);
 
         ReferenceDatePort bean = config.referenceDatePort(
                 props,
                 Optional.empty(),
-                configServicePort,
                 apimPort,
-                configPort,
                 cacheUpdatePort,
                 new MockEnvironment(),
                 "ngtpa");
@@ -62,18 +54,14 @@ class ReferenceDateAdapterConfigTest {
     void referenceDatePort_redisEnabled_createsNonpReferenceDateAdapter() {
         var config = new ReferenceDateAdapterConfig();
         var props = new ReferenceDateProperties();
-        var configServicePort = mock(ConfigServicePort.class);
         var apimPort = mock(ApimReferenceDateRefreshPort.class);
-        var configPort = mock(ReferenceDateConfigPort.class);
         var cacheUpdatePort = mock(ReferenceDateCacheUpdatePort.class);
         var cachePort = mock(CachePort.class);
 
         ReferenceDatePort bean = config.referenceDatePort(
                 props,
                 Optional.of(cachePort),
-                configServicePort,
                 apimPort,
-                configPort,
                 cacheUpdatePort,
                 new MockEnvironment(),
                 "ngtpa");
@@ -85,17 +73,13 @@ class ReferenceDateAdapterConfigTest {
     void referenceDatePort_customKeyPrefix_propagatedToAdapter() {
         var config = new ReferenceDateAdapterConfig();
         var props = new ReferenceDateProperties();
-        var configServicePort = mock(ConfigServicePort.class);
         var apimPort = mock(ApimReferenceDateRefreshPort.class);
-        var configPort = mock(ReferenceDateConfigPort.class);
         var cacheUpdatePort = mock(ReferenceDateCacheUpdatePort.class);
 
         ReferenceDatePort bean = config.referenceDatePort(
                 props,
                 Optional.empty(),
-                configServicePort,
                 apimPort,
-                configPort,
                 cacheUpdatePort,
                 new MockEnvironment(),
                 "custom-pfx");

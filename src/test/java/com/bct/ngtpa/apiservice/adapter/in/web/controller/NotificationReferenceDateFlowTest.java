@@ -6,18 +6,14 @@ import com.bct.ngtpa.apiservice.adapter.out.configserver.ReferenceDateProperties
 import com.bct.ngtpa.apiservice.adapter.out.referencedate.NonpReferenceDateAdapter;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
-import com.bct.ngtpa.apiservice.application.dto.ConfigEntry;
-import com.bct.ngtpa.apiservice.application.dto.ConfigQuery;
 import com.bct.ngtpa.apiservice.application.dto.GetNotificationsCommand;
 import com.bct.ngtpa.apiservice.application.dto.NotificationListResult;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNoticeMessagePort;
 import com.bct.ngtpa.apiservice.application.port.out.ApimReferenceDateRefreshPort;
 import com.bct.ngtpa.apiservice.application.port.out.CachePort;
-import com.bct.ngtpa.apiservice.application.port.out.ConfigServicePort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDateCacheUpdatePort;
-import com.bct.ngtpa.apiservice.application.port.out.ReferenceDateConfigPort;
 import com.bct.ngtpa.apiservice.application.usecase.GetNotificationsService;
 import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
 import com.bct.ngtpa.apiservice.domain.model.MessageType;
@@ -43,9 +39,7 @@ class NotificationReferenceDateFlowTest {
     @Test
     void notificationsEndpoint_succeedsThroughControllerUseCaseAndNonpReferenceDateAdapter_apimFallbackPath() {
         var redisRead = new AtomicBoolean(false);
-        var configRead = new AtomicBoolean(false);
         var apimRead = new AtomicBoolean(false);
-        var configUpdated = new AtomicBoolean(false);
         var redisUpdated = new AtomicBoolean(false);
         var noticeCommand = new AtomicReference<GetNotificationsCommand>();
 
@@ -67,34 +61,9 @@ class NotificationReferenceDateFlowTest {
             }
         };
 
-        ConfigServicePort configServicePort = new ConfigServicePort() {
-            @Override
-            public Mono<List<ConfigEntry>> listConfigs(ConfigQuery query) {
-                configRead.set(true);
-                return Mono.just(List.of());
-            }
-
-            @Override
-            public Mono<ConfigEntry> upsertConfig(com.bct.ngtpa.apiservice.application.dto.ConfigUpsertCommand command) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public Mono<Void> deleteConfig(String application, String profile, String label, String configKey) {
-                throw new UnsupportedOperationException();
-            }
-        };
-
         ApimReferenceDateRefreshPort referenceDateApimPort = accountEnv -> {
             apimRead.set(true);
             return Mono.just(LocalDate.of(2026, 6, 30));
-        };
-
-        ReferenceDateConfigPort referenceDateConfigPort = command -> {
-            configUpdated.set(true);
-            assertThat(command.configKey()).isEqualTo("reference-date.JP");
-            assertThat(command.configValue()).isEqualTo("30/06/2026");
-            return Mono.empty();
         };
 
         ReferenceDateCacheUpdatePort referenceDateCacheUpdatePort = command -> {
@@ -114,9 +83,7 @@ class NotificationReferenceDateFlowTest {
                 properties,
                 Optional.of(cachePort),
                 "ngtpa",
-                configServicePort,
                 referenceDateApimPort,
-                referenceDateConfigPort,
                 referenceDateCacheUpdatePort,
                 environment,
                 Clock.fixed(LocalDate.of(2026, 6, 21).atStartOfDay(ZoneId.of("UTC")).toInstant(), ZoneId.of("UTC")));
@@ -177,9 +144,7 @@ class NotificationReferenceDateFlowTest {
                 .jsonPath("$.notifications[0].msgCode").isEqualTo("MSG-1-LONG");
 
         assertThat(redisRead.get()).isTrue();
-        assertThat(configRead.get()).isTrue();
         assertThat(apimRead.get()).isTrue();
-        assertThat(configUpdated.get()).isTrue();
         assertThat(redisUpdated.get()).isTrue();
         assertThat(noticeCommand.get().refDate()).isEqualTo("30/06/2026");
     }

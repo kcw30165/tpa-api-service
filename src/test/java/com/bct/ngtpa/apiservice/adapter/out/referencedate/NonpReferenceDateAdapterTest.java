@@ -5,14 +5,10 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.adapter.out.configserver.ReferenceDateProperties;
-import com.bct.ngtpa.apiservice.application.dto.ConfigEntry;
 import com.bct.ngtpa.apiservice.application.dto.ReferenceDateCacheUpdateCommand;
-import com.bct.ngtpa.apiservice.application.dto.ReferenceDateConfigUpsertCommand;
 import com.bct.ngtpa.apiservice.application.port.out.ApimReferenceDateRefreshPort;
 import com.bct.ngtpa.apiservice.application.port.out.CachePort;
-import com.bct.ngtpa.apiservice.application.port.out.ConfigServicePort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDateCacheUpdatePort;
-import com.bct.ngtpa.apiservice.application.port.out.ReferenceDateConfigPort;
 import com.bct.ngtpa.apiservice.exception.CacheException;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
@@ -24,9 +20,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -46,106 +40,110 @@ class NonpReferenceDateAdapterTest {
             UTC);
 
     @Test
-    void prodDeploymentEnv_returnsHongKongSystemDateWithoutCallingRedisConfigServiceOrApim() {
+    void prodDeploymentEnv_returnsHongKongSystemDateWithoutCallingRedisOrApim() {
         var cachePort = mock(CachePort.class);
-        var configServicePort = mock(ConfigServicePort.class);
         var apimPort = mock(ApimReferenceDateRefreshPort.class);
-        var configPort = mock(ReferenceDateConfigPort.class);
         var cacheUpdatePort = mock(ReferenceDateCacheUpdatePort.class);
 
-        var adapter = adapter("JP", "PROD", Optional.of(cachePort), configServicePort, apimPort, configPort,
-                cacheUpdatePort);
+        var adapter = adapter("JP", "PROD", Optional.of(cachePort), apimPort, cacheUpdatePort);
 
         StepVerifier.create(adapter.resolveReferenceDate())
                 .expectNext(LocalDate.of(2026, 6, 22))
                 .verifyComplete();
 
-        verifyNoInteractions(cachePort, configServicePort, apimPort, configPort, cacheUpdatePort);
+        verifyNoInteractions(cachePort, apimPort, cacheUpdatePort);
     }
 
     @Test
-    void drDeploymentEnv_returnsHongKongSystemDateWithoutCallingRedisConfigServiceOrApim() {
+    void drDeploymentEnv_returnsHongKongSystemDateWithoutCallingRedisOrApim() {
         var cachePort = mock(CachePort.class);
-        var configServicePort = mock(ConfigServicePort.class);
         var apimPort = mock(ApimReferenceDateRefreshPort.class);
-        var configPort = mock(ReferenceDateConfigPort.class);
         var cacheUpdatePort = mock(ReferenceDateCacheUpdatePort.class);
 
-        var adapter = adapter("JP", "DR", Optional.of(cachePort), configServicePort, apimPort, configPort,
-                cacheUpdatePort);
+        var adapter = adapter("JP", "DR", Optional.of(cachePort), apimPort, cacheUpdatePort);
 
         StepVerifier.create(adapter.resolveReferenceDate())
                 .expectNext(LocalDate.of(2026, 6, 22))
                 .verifyComplete();
 
-        verifyNoInteractions(cachePort, configServicePort, apimPort, configPort, cacheUpdatePort);
+        verifyNoInteractions(cachePort, apimPort, cacheUpdatePort);
     }
 
     @Test
-    void redisValidDate_returnsRedisValueWithoutCallingConfigServiceOrApim() {
+    void redisValidDate_returnsRedisValueWithoutCallingApimOrWritingRedis() {
         var cachePort = mock(CachePort.class);
-        var configServicePort = mock(ConfigServicePort.class);
         var apimPort = mock(ApimReferenceDateRefreshPort.class);
-        var configPort = mock(ReferenceDateConfigPort.class);
         var cacheUpdatePort = mock(ReferenceDateCacheUpdatePort.class);
 
         when(cachePort.get("ngtpa:reference-date:JP")).thenReturn(Mono.just(Optional.of("22/06/2026")));
 
-        var adapter = adapter("JP", "SIT", Optional.of(cachePort), configServicePort, apimPort, configPort,
-                cacheUpdatePort);
+        var adapter = adapter("JP", "SIT", Optional.of(cachePort), apimPort, cacheUpdatePort);
 
         StepVerifier.create(adapter.resolveReferenceDate())
                 .expectNext(LocalDate.of(2026, 6, 22))
                 .verifyComplete();
 
         verify(cachePort).get("ngtpa:reference-date:JP");
-        verifyNoInteractions(configServicePort, apimPort, configPort, cacheUpdatePort);
+        verifyNoInteractions(apimPort, cacheUpdatePort);
     }
 
     @Test
-    void redisMissAndConfigMiss_apimValid_updatesConfigThenRedisAndReturnsApimDate() {
+    void redisMiss_apimValid_updatesRedisAndReturnsApimDate() {
         var cachePort = mock(CachePort.class);
-        var configServicePort = mock(ConfigServicePort.class);
         var apimPort = mock(ApimReferenceDateRefreshPort.class);
-        var configPort = mock(ReferenceDateConfigPort.class);
         var cacheUpdatePort = mock(ReferenceDateCacheUpdatePort.class);
 
         when(cachePort.get("ngtpa:reference-date:JP")).thenReturn(Mono.just(Optional.empty()));
-        when(configServicePort.listConfigs(any())).thenReturn(Mono.just(List.of()));
         when(apimPort.fetchReferenceDate("JP")).thenReturn(Mono.just(LocalDate.of(2026, 6, 30)));
-        when(configPort.upsertReferenceDate(new ReferenceDateConfigUpsertCommand("reference-date.JP", "30/06/2026")))
-                .thenReturn(Mono.empty());
         when(cacheUpdatePort
                 .updateReferenceDate(new ReferenceDateCacheUpdateCommand("ngtpa:reference-date:JP", "30/06/2026")))
                 .thenReturn(Mono.empty());
 
-        var adapter = adapter("JP", "SIT", Optional.of(cachePort), configServicePort, apimPort, configPort,
-                cacheUpdatePort);
+        var adapter = adapter("JP", "SIT", Optional.of(cachePort), apimPort, cacheUpdatePort);
 
         StepVerifier.create(adapter.resolveReferenceDate())
                 .expectNext(LocalDate.of(2026, 6, 30))
                 .verifyComplete();
 
         verify(cachePort).get("ngtpa:reference-date:JP");
-        verify(configServicePort).listConfigs(any());
         verify(apimPort).fetchReferenceDate("JP");
-        verify(configPort).upsertReferenceDate(new ReferenceDateConfigUpsertCommand("reference-date.JP", "30/06/2026"));
         verify(cacheUpdatePort)
                 .updateReferenceDate(new ReferenceDateCacheUpdateCommand("ngtpa:reference-date:JP", "30/06/2026"));
     }
 
     @Test
-    void redisInvalidDate_logsWarningAndFallsBackToConfigService() {
+    void redisBlankValue_fallsBackToApim() {
         var cachePort = mock(CachePort.class);
-        var configServicePort = mock(ConfigServicePort.class);
         var apimPort = mock(ApimReferenceDateRefreshPort.class);
-        var configPort = mock(ReferenceDateConfigPort.class);
+        var cacheUpdatePort = mock(ReferenceDateCacheUpdatePort.class);
+
+        when(cachePort.get("ngtpa:reference-date:JP")).thenReturn(Mono.just(Optional.of("   ")));
+        when(apimPort.fetchReferenceDate("JP")).thenReturn(Mono.just(LocalDate.of(2026, 6, 22)));
+        when(cacheUpdatePort
+                .updateReferenceDate(new ReferenceDateCacheUpdateCommand("ngtpa:reference-date:JP", "22/06/2026")))
+                .thenReturn(Mono.empty());
+
+        var adapter = adapter("JP", "SIT", Optional.of(cachePort), apimPort, cacheUpdatePort);
+
+        StepVerifier.create(adapter.resolveReferenceDate())
+                .expectNext(LocalDate.of(2026, 6, 22))
+                .verifyComplete();
+
+        verify(apimPort).fetchReferenceDate("JP");
+        verify(cacheUpdatePort)
+                .updateReferenceDate(new ReferenceDateCacheUpdateCommand("ngtpa:reference-date:JP", "22/06/2026"));
+    }
+
+    @Test
+    void redisInvalidDate_logsSanitizedWarningAndFallsBackToApim() {
+        var cachePort = mock(CachePort.class);
+        var apimPort = mock(ApimReferenceDateRefreshPort.class);
         var cacheUpdatePort = mock(ReferenceDateCacheUpdatePort.class);
 
         when(cachePort.get("ngtpa:reference-date:JP")).thenReturn(Mono.just(Optional.of("2026-06-22")));
-        when(configServicePort.listConfigs(any())).thenReturn(Mono.just(List.of(
-                new ConfigEntry(null, null, null, "reference-date.JP", "22/06/2026"))));
-        when(cachePort.set(eq("ngtpa:reference-date:JP"), eq("22/06/2026"), eq(Duration.ofSeconds(3600))))
+        when(apimPort.fetchReferenceDate("JP")).thenReturn(Mono.just(LocalDate.of(2026, 6, 22)));
+        when(cacheUpdatePort
+                .updateReferenceDate(new ReferenceDateCacheUpdateCommand("ngtpa:reference-date:JP", "22/06/2026")))
                 .thenReturn(Mono.empty());
 
         var logger = (Logger) LoggerFactory.getLogger(NonpReferenceDateAdapter.class);
@@ -153,15 +151,13 @@ class NonpReferenceDateAdapterTest {
         appender.start();
         logger.addAppender(appender);
         try {
-            var adapter = adapter("JP", "SIT", Optional.of(cachePort), configServicePort, apimPort, configPort,
-                    cacheUpdatePort);
+            var adapter = adapter("JP", "SIT", Optional.of(cachePort), apimPort, cacheUpdatePort);
 
             StepVerifier.create(adapter.resolveReferenceDate())
                     .expectNext(LocalDate.of(2026, 6, 22))
                     .verifyComplete();
 
-            verify(configServicePort).listConfigs(any());
-            verify(apimPort, never()).fetchReferenceDate(any());
+            verify(apimPort).fetchReferenceDate("JP");
             assertThat(appender.list)
                     .anyMatch(event -> event.getLevel() == Level.WARN
                             && event.getFormattedMessage().contains("reference-date")
@@ -173,35 +169,30 @@ class NonpReferenceDateAdapterTest {
     }
 
     @Test
-    void configServiceValid_redisWriteFails_logsWarningAndStillReturnsConfigServiceDate() {
+    void redisReadError_logsSanitizedWarningAndFallsBackToApim() {
         var cachePort = mock(CachePort.class);
-        var configServicePort = mock(ConfigServicePort.class);
         var apimPort = mock(ApimReferenceDateRefreshPort.class);
-        var configPort = mock(ReferenceDateConfigPort.class);
         var cacheUpdatePort = mock(ReferenceDateCacheUpdatePort.class);
 
-        when(cachePort.get("ngtpa:reference-date:JP")).thenReturn(Mono.just(Optional.empty()));
-        when(cachePort.set(eq("ngtpa:reference-date:JP"), eq("29/02/2024"), eq(Duration.ofSeconds(3600))))
-                .thenReturn(Mono.error(new CacheException("Cache set operation failed",
-                        new RuntimeException("redis://secret-host:6379"))));
-        when(configServicePort.listConfigs(any())).thenReturn(Mono.just(List.of(
-                new ConfigEntry(null, null, null, "reference-date.JP", "29/02/2024"))));
+        when(cachePort.get("ngtpa:reference-date:JP")).thenReturn(Mono.error(new CacheException(
+                "Cache get operation failed",
+                new RuntimeException("redis://secret-host:6379"))));
+        when(apimPort.fetchReferenceDate("JP")).thenReturn(Mono.just(LocalDate.of(2026, 7, 1)));
+        when(cacheUpdatePort
+                .updateReferenceDate(new ReferenceDateCacheUpdateCommand("ngtpa:reference-date:JP", "01/07/2026")))
+                .thenReturn(Mono.empty());
 
         var logger = (Logger) LoggerFactory.getLogger(NonpReferenceDateAdapter.class);
         var appender = new ListAppender<ILoggingEvent>();
         appender.start();
         logger.addAppender(appender);
         try {
-            var adapter = adapter("JP", "SIT", Optional.of(cachePort), configServicePort, apimPort, configPort,
-                    cacheUpdatePort);
+            var adapter = adapter("JP", "SIT", Optional.of(cachePort), apimPort, cacheUpdatePort);
 
             StepVerifier.create(adapter.resolveReferenceDate())
-                    .expectNext(LocalDate.of(2024, 2, 29))
+                    .expectNext(LocalDate.of(2026, 7, 1))
                     .verifyComplete();
 
-            verify(cachePort).set("ngtpa:reference-date:JP", "29/02/2024", Duration.ofSeconds(3600));
-            verifyNoInteractions(cacheUpdatePort);
-            verify(apimPort, never()).fetchReferenceDate(any());
             assertThat(appender.list)
                     .anyMatch(event -> event.getLevel() == Level.WARN
                             && event.getFormattedMessage().contains("reference-date")
@@ -214,58 +205,96 @@ class NonpReferenceDateAdapterTest {
     }
 
     @Test
-    void apimConfigWriteFailure_returnsApimDateAndSkipsRedisUpdate() {
+    void apimEmpty_fallsBackToHongKongSystemDateWithoutWrites() {
         var cachePort = mock(CachePort.class);
-        var configServicePort = mock(ConfigServicePort.class);
         var apimPort = mock(ApimReferenceDateRefreshPort.class);
-        var configPort = mock(ReferenceDateConfigPort.class);
         var cacheUpdatePort = mock(ReferenceDateCacheUpdatePort.class);
 
         when(cachePort.get("ngtpa:reference-date:JP")).thenReturn(Mono.just(Optional.empty()));
-        when(configServicePort.listConfigs(any())).thenReturn(Mono.just(List.of()));
-        when(apimPort.fetchReferenceDate("JP")).thenReturn(Mono.just(LocalDate.of(2026, 7, 1)));
-        when(configPort.upsertReferenceDate(new ReferenceDateConfigUpsertCommand("reference-date.JP", "01/07/2026")))
-                .thenReturn(Mono.error(new RuntimeException("config upsert failed with secret URL")));
-
-        var adapter = adapter("JP", "SIT", Optional.of(cachePort), configServicePort, apimPort, configPort,
-                cacheUpdatePort);
-
-        StepVerifier.create(adapter.resolveReferenceDate())
-                .expectNext(LocalDate.of(2026, 7, 1))
-                .verifyComplete();
-
-        verify(cacheUpdatePort, never()).updateReferenceDate(any());
-    }
-
-    @Test
-    void allSourcesUnavailable_fallsBackToHongKongSystemDateWithoutWrites() {
-        var cachePort = mock(CachePort.class);
-        var configServicePort = mock(ConfigServicePort.class);
-        var apimPort = mock(ApimReferenceDateRefreshPort.class);
-        var configPort = mock(ReferenceDateConfigPort.class);
-        var cacheUpdatePort = mock(ReferenceDateCacheUpdatePort.class);
-
-        when(cachePort.get("ngtpa:reference-date:JP")).thenReturn(Mono.just(Optional.empty()));
-        when(configServicePort.listConfigs(any())).thenReturn(Mono.just(List.of()));
         when(apimPort.fetchReferenceDate("JP")).thenReturn(Mono.empty());
 
-        var adapter = adapter("JP", "SIT", Optional.of(cachePort), configServicePort, apimPort, configPort,
-                cacheUpdatePort);
+        var adapter = adapter("JP", "SIT", Optional.of(cachePort), apimPort, cacheUpdatePort);
 
         StepVerifier.create(adapter.resolveReferenceDate())
                 .expectNext(LocalDate.of(2026, 6, 22))
                 .verifyComplete();
 
-        verifyNoInteractions(configPort, cacheUpdatePort);
+        verifyNoInteractions(cacheUpdatePort);
+    }
+
+    @Test
+    void apimReadError_logsSanitizedWarningAndFallsBackToHongKongSystemDateWithoutWrites() {
+        var cachePort = mock(CachePort.class);
+        var apimPort = mock(ApimReferenceDateRefreshPort.class);
+        var cacheUpdatePort = mock(ReferenceDateCacheUpdatePort.class);
+
+        when(cachePort.get("ngtpa:reference-date:JP")).thenReturn(Mono.just(Optional.empty()));
+        when(apimPort.fetchReferenceDate("JP"))
+                .thenReturn(Mono.error(new RuntimeException("apim error with token secret-token-value")));
+
+        var logger = (Logger) LoggerFactory.getLogger(NonpReferenceDateAdapter.class);
+        var appender = new ListAppender<ILoggingEvent>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            var adapter = adapter("JP", "SIT", Optional.of(cachePort), apimPort, cacheUpdatePort);
+
+            StepVerifier.create(adapter.resolveReferenceDate())
+                    .expectNext(LocalDate.of(2026, 6, 22))
+                    .verifyComplete();
+
+            verifyNoInteractions(cacheUpdatePort);
+            assertThat(appender.list)
+                    .anyMatch(event -> event.getLevel() == Level.WARN
+                            && event.getFormattedMessage().contains("reference-date")
+                            && !event.getFormattedMessage().contains("secret-token-value"));
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
+    }
+
+    @Test
+    void redisUpdateFailureAfterApimSuccess_logsSanitizedWarningAndReturnsApimDate() {
+        var cachePort = mock(CachePort.class);
+        var apimPort = mock(ApimReferenceDateRefreshPort.class);
+        var cacheUpdatePort = mock(ReferenceDateCacheUpdatePort.class);
+
+        when(cachePort.get("ngtpa:reference-date:JP")).thenReturn(Mono.just(Optional.empty()));
+        when(apimPort.fetchReferenceDate("JP")).thenReturn(Mono.just(LocalDate.of(2026, 7, 1)));
+        when(cacheUpdatePort
+                .updateReferenceDate(new ReferenceDateCacheUpdateCommand("ngtpa:reference-date:JP", "01/07/2026")))
+                .thenReturn(Mono.error(new CacheException(
+                        "Cache set operation failed",
+                        new RuntimeException("redis://secret-host:6379"))));
+
+        var logger = (Logger) LoggerFactory.getLogger(NonpReferenceDateAdapter.class);
+        var appender = new ListAppender<ILoggingEvent>();
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            var adapter = adapter("JP", "SIT", Optional.of(cachePort), apimPort, cacheUpdatePort);
+
+            StepVerifier.create(adapter.resolveReferenceDate())
+                    .expectNext(LocalDate.of(2026, 7, 1))
+                    .verifyComplete();
+
+            assertThat(appender.list)
+                    .anyMatch(event -> event.getLevel() == Level.WARN
+                            && event.getFormattedMessage().contains("reference-date")
+                            && !event.getFormattedMessage().contains("secret-host")
+                            && !event.getFormattedMessage().contains("6379"));
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
     }
 
     private NonpReferenceDateAdapter adapter(
             String accountEnv,
             String deploymentEnv,
             Optional<CachePort> cachePort,
-            ConfigServicePort configServicePort,
             ApimReferenceDateRefreshPort apimPort,
-            ReferenceDateConfigPort configPort,
             ReferenceDateCacheUpdatePort cacheUpdatePort) {
         var properties = new ReferenceDateProperties();
         properties.setAccountEnv(accountEnv);
@@ -276,9 +305,7 @@ class NonpReferenceDateAdapterTest {
                 properties,
                 cachePort,
                 "ngtpa",
-                configServicePort,
                 apimPort,
-                configPort,
                 cacheUpdatePort,
                 environment,
                 FIXED_CLOCK);

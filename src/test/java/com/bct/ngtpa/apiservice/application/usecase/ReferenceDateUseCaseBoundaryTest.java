@@ -24,6 +24,20 @@ class ReferenceDateUseCaseBoundaryTest {
         assertUsesReferenceDatePortOnlyForReferenceDateResolution(ExportContributionSummaryService.class);
     }
 
+    @Test
+    void refreshReferenceDateServiceDependsOnApimAndRedisPortsButNotConfigServicePorts() {
+        Field[] fields = RefreshReferenceDateService.class.getDeclaredFields();
+
+        assertTrue(Arrays.stream(fields).anyMatch(field -> field.getType().equals(ApimReferenceDateRefreshPort.class)),
+                "RefreshReferenceDateService should depend on ApimReferenceDateRefreshPort");
+        assertTrue(Arrays.stream(fields).anyMatch(field -> field.getType().equals(ReferenceDateCacheUpdatePort.class)),
+                "RefreshReferenceDateService should depend on ReferenceDateCacheUpdatePort");
+        assertFalse(Arrays.stream(fields).anyMatch(field -> field.getType().equals(ConfigServicePort.class)),
+                "RefreshReferenceDateService must not depend on ConfigServicePort directly");
+        assertFalse(Arrays.stream(fields).anyMatch(field -> field.getType().equals(ReferenceDateConfigPort.class)),
+                "RefreshReferenceDateService must not depend on ReferenceDateConfigPort directly");
+    }
+
     private void assertUsesReferenceDatePortOnlyForReferenceDateResolution(Class<?> useCaseClass) {
         Field[] fields = useCaseClass.getDeclaredFields();
 
