@@ -127,13 +127,15 @@ class SecurityConfigAuthTest {
     }
 
     @SpringBootConfiguration
-    @EnableAutoConfiguration
+    @EnableAutoConfiguration(excludeName = {
+            "org.springframework.boot.micrometer.metrics.autoconfigure.ssl.SslMetricsAutoConfiguration"
+    })
     @EnableConfigurationProperties(CorsProperties.class)
     @Import({
-        SecurityConfig.class,
-        StubNotificationsController.class,
-        StubContributionsController.class,
-        StubInternalReferenceDateController.class
+            SecurityConfig.class,
+            StubNotificationsController.class,
+            StubContributionsController.class,
+            StubInternalReferenceDateController.class
     })
     static class TestApplication {
     }

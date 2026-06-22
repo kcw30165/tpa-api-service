@@ -29,7 +29,7 @@ class ReferenceDateRefreshControllerTest {
     @Test
     void validEndpointPathAcceptsRefreshRequest() {
         RefreshReferenceDateUseCase useCase = command -> Mono
-                .just(new RefreshReferenceDateResult("JP", "31/12/2025", true, true));
+            .just(new RefreshReferenceDateResult("JP", "31/12/2025", true));
 
         webClient(useCase)
                 .post()
@@ -41,7 +41,7 @@ class ReferenceDateRefreshControllerTest {
                 .expectBody()
                 .jsonPath("$.accountEnv").isEqualTo("JP")
                 .jsonPath("$.refDate").isEqualTo("31/12/2025")
-                .jsonPath("$.configServiceUpdated").isEqualTo(true)
+                .jsonPath("$.configServiceUpdated").doesNotExist()
                 .jsonPath("$.redisUpdated").isEqualTo(true);
     }
 
@@ -50,7 +50,7 @@ class ReferenceDateRefreshControllerTest {
         AtomicReference<RefreshReferenceDateCommand> captured = new AtomicReference<>();
         RefreshReferenceDateUseCase useCase = command -> {
             captured.set(command);
-            return Mono.just(new RefreshReferenceDateResult("JP", "31/12/2025", true, true));
+            return Mono.just(new RefreshReferenceDateResult("JP", "31/12/2025", true));
         };
 
         webClient(useCase)
@@ -63,7 +63,7 @@ class ReferenceDateRefreshControllerTest {
                 .expectBody()
                 .jsonPath("$.accountEnv").isEqualTo("JP")
                 .jsonPath("$.refDate").isEqualTo("31/12/2025")
-                .jsonPath("$.configServiceUpdated").isEqualTo(true)
+                .jsonPath("$.configServiceUpdated").doesNotExist()
                 .jsonPath("$.redisUpdated").isEqualTo(true);
 
         assertEquals(new RefreshReferenceDateCommand("JP"), captured.get());
@@ -72,7 +72,7 @@ class ReferenceDateRefreshControllerTest {
     @Test
     void redisPartialFailureStillReturnsSuccess() {
         RefreshReferenceDateUseCase useCase = command -> Mono
-                .just(new RefreshReferenceDateResult("JP", "31/12/2025", true, false));
+                .just(new RefreshReferenceDateResult("JP", "31/12/2025", false));
 
         webClient(useCase)
                 .post()
@@ -84,7 +84,7 @@ class ReferenceDateRefreshControllerTest {
                 .expectBody()
                 .jsonPath("$.accountEnv").isEqualTo("JP")
                 .jsonPath("$.refDate").isEqualTo("31/12/2025")
-                .jsonPath("$.configServiceUpdated").isEqualTo(true)
+                .jsonPath("$.configServiceUpdated").doesNotExist()
                 .jsonPath("$.redisUpdated").isEqualTo(false);
     }
 
@@ -144,7 +144,7 @@ class ReferenceDateRefreshControllerTest {
     }
 
     private RefreshReferenceDateUseCase unusedUseCase() {
-        return command -> Mono.just(new RefreshReferenceDateResult("JP", "31/12/2025", true, true));
+        return command -> Mono.just(new RefreshReferenceDateResult("JP", "31/12/2025", true));
     }
 
     private static ErrorMessageResolver testErrorMessageResolver() {

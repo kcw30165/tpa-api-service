@@ -12,6 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -24,18 +25,19 @@ import reactor.core.publisher.Mono;
 /**
  * Verifies the K8s / external-auth-layer deployment scenario.
  *
- * <p>When {@code api.security.require-authentication=false} (set via env var
- * {@code API_SECURITY_REQUIRE_AUTHENTICATION=false} in a K8s ConfigMap or Deployment),
- * in-process auth is disabled and all traffic is trusted at the network boundary.
- * The actual auth enforcement is expected to be handled by an ingress controller or API gateway.
+ * <p>
+ * When {@code api.security.require-authentication=false} (set via env var
+ * {@code API_SECURITY_REQUIRE_AUTHENTICATION=false} in a K8s ConfigMap or
+ * Deployment),
+ * in-process auth is disabled and all traffic is trusted at the network
+ * boundary.
+ * The actual auth enforcement is expected to be handled by an ingress
+ * controller or API gateway.
  */
-@SpringBootTest(
-    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-    classes = SecurityConfigAuthDisabledTest.TestApplication.class,
-    properties = {
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = SecurityConfigAuthDisabledTest.TestApplication.class, properties = {
         "cors.allowed-origins[0]=http://localhost:4200",
         "api.security.require-authentication=false"
-    })
+})
 @AutoConfigureWebTestClient
 class SecurityConfigAuthDisabledTest {
 
@@ -78,34 +80,44 @@ class SecurityConfigAuthDisabledTest {
     @RequestMapping(path = "/api/v1/notifications", produces = MediaType.APPLICATION_JSON_VALUE)
     static class StubNotificationsController {
         @GetMapping
-        Mono<String> get() { return Mono.just("[]"); }
+        Mono<String> get() {
+            return Mono.just("[]");
+        }
 
         @PatchMapping
-        Mono<String> patch() { return Mono.just("{}"); }
+        Mono<String> patch() {
+            return Mono.just("{}");
+        }
     }
 
     @RestController
     @RequestMapping(path = "/api/v1/contributions", produces = MediaType.APPLICATION_JSON_VALUE)
     static class StubContributionsController {
         @GetMapping
-        Mono<String> get() { return Mono.just("{}"); }
+        Mono<String> get() {
+            return Mono.just("{}");
+        }
     }
 
     @RestController
     @RequestMapping(path = "/api/v1/internal/reference-date", produces = MediaType.APPLICATION_JSON_VALUE)
     static class StubInternalReferenceDateController {
         @PostMapping(path = "/refresh", consumes = MediaType.APPLICATION_JSON_VALUE)
-        Mono<String> refresh(@RequestBody String body) { return Mono.just("{}"); }
+        Mono<String> refresh(@RequestBody String body) {
+            return Mono.just("{}");
+        }
     }
 
     @SpringBootConfiguration
-    @EnableAutoConfiguration
+    @EnableAutoConfiguration(excludeName = {
+            "org.springframework.boot.micrometer.metrics.autoconfigure.ssl.SslMetricsAutoConfiguration"
+    })
     @EnableConfigurationProperties(CorsProperties.class)
     @Import({
-        SecurityConfig.class,
-        StubNotificationsController.class,
-        StubContributionsController.class,
-        StubInternalReferenceDateController.class
+            SecurityConfig.class,
+            StubNotificationsController.class,
+            StubContributionsController.class,
+            StubInternalReferenceDateController.class
     })
     static class TestApplication {
     }

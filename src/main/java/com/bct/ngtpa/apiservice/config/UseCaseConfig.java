@@ -19,7 +19,6 @@ import com.bct.ngtpa.apiservice.application.port.out.ContributionActionPermissio
 import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDateCacheUpdatePort;
-import com.bct.ngtpa.apiservice.application.port.out.ReferenceDateConfigPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.usecase.ExportContributionSummaryService;
 import com.bct.ngtpa.apiservice.application.usecase.GetContributionSummaryService;
@@ -114,12 +113,10 @@ public class UseCaseConfig {
     @Bean
     public RefreshReferenceDateUseCase refreshReferenceDateUseCase(
             ApimReferenceDateRefreshPort apimReferenceDateRefreshPort,
-            ReferenceDateConfigPort referenceDateConfigPort,
             ReferenceDateCacheUpdatePort referenceDateCacheUpdatePort,
             @Value("${redis-cache.key-prefix:ngtpa}") String redisKeyPrefix) {
         return new RefreshReferenceDateService(
                 apimReferenceDateRefreshPort,
-                referenceDateConfigPort,
                 referenceDateCacheUpdatePort,
                 redisKeyPrefix);
     }
