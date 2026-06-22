@@ -9,6 +9,7 @@ import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDateCacheUpdatePort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDateConfigPort;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.mock.env.MockEnvironment;
 
 import java.util.Optional;
@@ -24,6 +25,16 @@ import static org.mockito.Mockito.mock;
  * Redis-disabled scenarios. No Spring context is required.
  */
 class ReferenceDateAdapterConfigTest {
+
+    private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
+            .withUserConfiguration(ReferenceDateAdapterConfig.class)
+            .withBean(ReferenceDateProperties.class, ReferenceDateProperties::new)
+            .withBean(ConfigServicePort.class, () -> mock(ConfigServicePort.class))
+            .withBean(ApimReferenceDateRefreshPort.class, () -> mock(ApimReferenceDateRefreshPort.class))
+            .withBean(ReferenceDateConfigPort.class, () -> mock(ReferenceDateConfigPort.class))
+            .withBean(ReferenceDateCacheUpdatePort.class, () -> mock(ReferenceDateCacheUpdatePort.class))
+            .withBean(MockEnvironment.class, MockEnvironment::new)
+            .withBean(org.springframework.core.env.Environment.class, MockEnvironment::new);
 
     @Test
     void referenceDatePort_redisDisabled_createsNonpReferenceDateAdapter() {
@@ -90,5 +101,13 @@ class ReferenceDateAdapterConfigTest {
                 "custom-pfx");
 
         assertThat(bean).isInstanceOf(NonpReferenceDateAdapter.class);
+    }
+
+    @Test
+    void springContext_registersSingleReferenceDatePortBean() {
+        contextRunner.run(context -> {
+            assertThat(context).hasSingleBean(ReferenceDatePort.class);
+            assertThat(context.getBean(ReferenceDatePort.class)).isInstanceOf(NonpReferenceDateAdapter.class);
+        });
     }
 }
