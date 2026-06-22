@@ -109,15 +109,15 @@ com.bct.ngtpa.apiservice
 │       │   ├── CurrencyMappingKeyCandidateStrategy    # Legacy currency candidate strategy; to be replaced by DefaultConfigKeyCandidateStrategy
 │       │   └── ConfigBackedCurrencyDisplayAdapter     # Implements CurrencyDisplayPort
 │       ├── configserver/    # ConfigMap / Spring Cloud Config Server YAML-backed adapters (legacy)
-│       │   ├── ReferenceDateProperties                # Binds reference-date.* YAML (override-date, override-zone-id, cache-ttl-seconds, refresh.*)
-│       │   ├── ConfigBackedReferenceDateAdapter       # Retained for reference; superseded by OrchestratedReferenceDateAdapter
+│       │   ├── ReferenceDateProperties                # Binds reference-date.* YAML (legacy override fields, cache-ttl-seconds, refresh.*)
+│       │   ├── ConfigBackedReferenceDateAdapter       # Retained for reference; not the active ReferenceDatePort bean
 │       │   └── ReferenceDateResolver                  # Shared production-like / override resolution (used by legacy adapter only)
-│       ├── referencedate/   # Orchestrated ReferenceDate — active ReferenceDatePort bean
-│       │   ├── OrchestratedReferenceDateAdapter       # Source chain: override-date → Redis → Config Service → system date
+│       ├── referencedate/   # Active ReferenceDate outbound adapter
+│       │   ├── NonpReferenceDateAdapter               # PROD/DR => HK system date; nonp => Redis → Config Service → APIM → HK system date
 │       │   ├── ReferenceDateConfigServiceAdapter      # Implements ReferenceDateConfigPort via ConfigServicePort
 │       │   ├── ReferenceDateRedisCacheAdapter         # Implements ReferenceDateCacheUpdatePort via CachePort
 │       │   └── config/
-│       │       └── ReferenceDateAdapterConfig         # @Bean referenceDatePort (wires orchestrator: keyPrefix, optional CachePort, TTL)
+│       │       └── ReferenceDateAdapterConfig         # @Bean referenceDatePort (wires active read adapter and refresh-style write ports)
 │       ├── configservice/   # Config Service REST API outbound adapter
 │       │   ├── config/
 │       │   │   └── ConfigServiceProperties            # Binds config-service.* YAML (base-url, timeout-milliseconds)
@@ -488,32 +488,39 @@ Blank or missing `term-status` maps to `TermStatus.BLANK` without warning. Unsup
 
 The reference date is resolved through the `ReferenceDatePort` outbound port for **all** flows that require it: contribution summary validation, contribution export, and notification flows (`GetNotificationsService`, `UpdateNotificationsReadStatusService`). Neither notification service contains a hardcoded date constant.
 
-The active implementation is `OrchestratedReferenceDateAdapter` (under `adapter/out/referencedate`), registered by `ReferenceDateAdapterConfig`. Application services depend only on `ReferenceDatePort`; they do not import Redis, Config Service, or Spring types.
+The active implementation is `NonpReferenceDateAdapter` (under `adapter/out/referencedate`), registered by `ReferenceDateAdapterConfig`. Application services depend only on `ReferenceDatePort`; they do not import Redis, Config Service, APIM, or Spring types.
 
 ### Source chain
 
 ```
-1. reference-date.override-date (non-production only, requires override-zone-id pair)
-2. Redis cache  — key: ${redis-cache.key-prefix}:reference-date:<accountEnv>  (e.g. ngtpa:reference-date:JP)
-3. Config Service — key: reference-date.<accountEnv>  (e.g. reference-date.JP)
-4. System date  — using override-zone-id if configured, otherwise JVM default zone
+PROD / DR deployment env
+1. Hong Kong system date only
+
+non-production-like deployment env
+1. Redis cache  — key: ${redis-cache.key-prefix}:reference-date:<accountEnv>  (e.g. ngtpa:reference-date:JP)
+2. Config Service — key: reference-date.<accountEnv>  (e.g. reference-date.JP)
+3. APIM — fetched through the existing refresh-style APIM reference-date port using the same `accountEnv`
+4. Hong Kong system date
 ```
 
 ### Fallback rules
 
 | Scenario | Behaviour |
 |---|---|
+| PROD / DR deployment env | Return `LocalDate.now(Asia/Hong_Kong)`; do not call Redis, Config Service, or APIM |
 | Redis disabled | Skip Redis; read Config Service |
 | Redis miss | Read Config Service |
 | Redis read error | Log sanitised WARN (no connection details); read Config Service |
 | Config Service hit | Parse `dd/MM/yyyy` value; populate Redis if Redis is enabled and TTL > 0; return date |
-| Config Service miss | Fall back to system date (no warning) |
-| Config Service error / timeout | Log sanitised WARN (includes `accountEnv`, no exception message); fall back to system date |
+| Config Service miss / blank | Fall through to APIM |
+| Config Service error / timeout | Log sanitised WARN (includes `accountEnv`, no exception message); fall through to APIM |
 | Redis populate error after Config Service hit | Log sanitised WARN; still return Config Service value |
+| APIM hit | Upsert Config Service, then update Redis using the existing refresh-style write ordering; return date even when a write partially fails |
+| APIM miss / error | Log sanitised WARN; fall back to Hong Kong system date |
 
 ### Production-like environments
 
-Environments with `accountEnv` matching `PROD`, `PRD`, `PRODUCTION`, or `DR` (case-insensitive) never use `override-date`. They proceed directly to the Redis → Config Service → system date chain.
+Production-like behavior is determined from the runtime deployment environment (active Spring profile), not from `accountEnv`. `accountEnv` selects the reference-date keys and the APIM `env` request value; it does not decide whether production-like fallback is active.
 
 ### Date format
 
@@ -527,8 +534,6 @@ The APIM write-back flow (updating the Config Service entry from APIM data) is *
 
 ```yaml
 reference-date:
-  override-date: ${REFERENCE_DATE_OVERRIDE_DATE:}           # non-production override date (dd/MM/yyyy)
-  override-zone-id: ${REFERENCE_DATE_OVERRIDE_ZONE_ID:}     # must be paired with override-date
   cache-ttl-seconds: ${REFERENCE_DATE_CACHE_TTL_SECONDS:0}  # 0 = skip Redis write after Config Service hit
   refresh:
     cache-ttl-seconds: ${REFERENCE_DATE_REFRESH_CACHE_TTL_SECONDS:86400}
@@ -537,6 +542,8 @@ reference-date:
       profile: ${REFERENCE_DATE_REFRESH_CONFIG_SERVICE_PROFILE:}
       label: ${REFERENCE_DATE_REFRESH_CONFIG_SERVICE_LABEL:}
 ```
+
+`reference-date.override-date` and `reference-date.override-zone-id` remain only for the legacy config-backed adapter path; the active `NonpReferenceDateAdapter` does not consult them.
 
 ---
 
@@ -1059,7 +1066,7 @@ currency-mapping:
     HKD.TB.HKBU: 港元
 ```
 
-`reference-date.account-env` is the current configured business/account environment used for reference-date lookup. Production-like safety is based on the runtime deployment environment, not on `accountEnv`; the current `ConfigBackedReferenceDateAdapter` derives that deployment signal from the active Spring profile. For production-like deployment values (`PROD`, `PRD`, `PRODUCTION`, `DR`, blank, and null), all use cases that require `ref-date` — contribution summary validation, contribution export, and notification flows — always use the app server timezone and current date. For non-production-like deployment values, `reference-date.override-date` and `reference-date.override-zone-id` may be provided as a pair; when both are absent the app falls back to the server clock, and when only one is present resolver-time validation fails. Today `accountEnv` comes from Spring externalized configuration / ConfigMap through `ConfigBackedReferenceDateAdapter`; in the future, after `Account-Ref` resolution, the request-specific source can become `PortalAccessContext.account().accountEnv()`. `deploymentEnv` is not part of `PortalAccessContext`.
+`reference-date.account-env` is the business/account environment used for reference-date cache keys, Config Service keys, and the APIM `env` request on the reference-date flow. Production-like safety is based on the runtime deployment environment, not on `accountEnv`; the active `NonpReferenceDateAdapter` derives that deployment signal from the active Spring profile. For production-like deployment values, reference-date resolution returns the current Hong Kong date without calling Redis, Config Service, or APIM. For non-production-like deployment values, the active read path is Redis -> Config Service -> APIM -> Hong Kong system date. The legacy override-date pair is no longer part of the active read path. `deploymentEnv` is not part of `PortalAccessContext`.
 
 These values drive the synthetic total detail row in the JSON response, the first three column headers in the XLSX export, the locale-specific currency display returned in contribution summary JSON, and the effective contribution reference date. Currency, date, and amount lookups now run through the global config variant resolver, which evaluates `env`, `trustCode`, and `schemeType` suffix combinations in a fixed order and then falls back to English when the requested language has no match.
 
@@ -1093,7 +1100,7 @@ Manually refreshes the reference date for a single `accountEnv`.
 **Behavior:**
 
 - This is an internal operational endpoint and is authenticated when `api.security.require-authentication=true`.
-- Final read path: `override-date -> Redis -> Config Service -> system date`.
+- Final read path: `PROD/DR => Hong Kong system date only; nonp => Redis -> Config Service -> APIM -> Hong Kong system date`.
 - Final refresh/write path: `APIM -> Config Service -> Redis`.
 - Scope is one `accountEnv` per request. Scheduler-driven refresh and all-accountEnv refresh are out of scope.
 - The APIM fetch uses `POST /ws/NGTPA/v1/TRPGetWebSysDate` with request body `{ "env": "<accountEnv>" }`.
@@ -1306,7 +1313,7 @@ Accept-Language: zh-HK
 - `cover-from` is taken from `fromDate`; `cover-to` is taken from `toDate`.
 - `fromDate` and `toDate` must both be within `[ref-date - 36 months, ref-date]`, inclusive.
 - `ref-date` is resolved from `PortalAccessContext.account().accountEnv()` via `ReferenceDatePort`, not from a deployment-scoped config property or the request query parameter `env`.
-- `accountEnv` controls whether the paired non-production override (`reference-date.override-date` / `reference-date.override-zone-id`) may be used.
+- `accountEnv` selects the reference-date cache/config/APIM keying only; production-like behavior is decided by runtime deployment env.
 - `page` and `pageSize` must both be greater than 0; HTTP 400 is returned otherwise. No real backend pagination is performed yet — all data is returned from APIM and the pagination fields reflect the full dataset.
 - Effective contribution language is resolved in the web adapter with this priority: `Accept-Language` header, then `lang` query parameter, then `en`.
 - Contribution language normalization is `en`, `en-US`, `en_HK` -> `en`; `zh-HK`, `zh_HK`, `zh` -> `zh_HK`; blank, missing, and unknown values -> `en`.
@@ -1605,7 +1612,7 @@ Accept-Language: zh-HK
 **Behavior:**
 
 - The BFF resolves `ref-date` through `ReferenceDatePort`.
-- `ReferenceDatePort` receives `accountEnv` from `PortalAccessContext.account().accountEnv()`, resolved at request time before the reference-date lookup, to decide whether non-production override rules apply. This is not the request query parameter `env`.
+- `ReferenceDatePort` receives `accountEnv` from `PortalAccessContext.account().accountEnv()` to key Redis, Config Service, and APIM lookup/update operations. Production-like behavior is decided separately from runtime deployment env, not from request query parameter `env`.
 - `cover-from` is computed as `ref-date.minusMonths(36)`; `cover-to` is the resolved `ref-date`.
 - Actor identity, member ownership, and account routing fields (`actor-user-id`, `policy-no`, `cert-no`, `trustCode`, `schemeType`, etc.) are resolved from externalized `temporary-portal-access-context.profiles.contributions.*` configuration until Auth Server integration is implemented.
 - Effective contribution language is resolved in the web adapter with this priority: `Accept-Language` header, then `lang` query parameter, then `en`.
