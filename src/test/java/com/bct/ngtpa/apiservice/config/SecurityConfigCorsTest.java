@@ -23,10 +23,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
-@SpringBootTest(
-    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-    classes = SecurityConfigCorsTest.TestApplication.class,
-    properties = "cors.allowed-origins[0]=http://localhost:4200")
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = SecurityConfigCorsTest.TestApplication.class, properties = "cors.allowed-origins[0]=http://localhost:4200")
 @AutoConfigureWebTestClient
 class SecurityConfigCorsTest {
 
@@ -46,11 +43,11 @@ class SecurityConfigCorsTest {
                 .expectBody()
                 .consumeWith(result -> {
                     assertTrue(result.getResponseHeaders().getFirst(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS)
-                        .contains(HttpMethod.GET.name()));
+                            .contains(HttpMethod.GET.name()));
                     assertTrue(result.getResponseHeaders().getFirst(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS)
-                        .contains("Authorization"));
+                            .contains("Authorization"));
                     assertTrue(result.getResponseHeaders().getFirst(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS)
-                        .contains("Content-Type"));
+                            .contains("Content-Type"));
                 });
     }
 
@@ -65,7 +62,7 @@ class SecurityConfigCorsTest {
                 .expectStatus().isForbidden()
                 .expectBody()
                 .consumeWith(result -> assertNull(
-                    result.getResponseHeaders().getFirst(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN)));
+                        result.getResponseHeaders().getFirst(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN)));
     }
 
     @RestController
@@ -79,7 +76,9 @@ class SecurityConfigCorsTest {
     }
 
     @SpringBootConfiguration
-    @EnableAutoConfiguration
+    @EnableAutoConfiguration(excludeName = {
+            "org.springframework.boot.micrometer.metrics.autoconfigure.ssl.SslMetricsAutoConfiguration"
+    })
     @EnableConfigurationProperties(CorsProperties.class)
     @Import({ SecurityConfig.class, SecuredProbeController.class })
     static class TestApplication {
