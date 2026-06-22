@@ -11,6 +11,16 @@ spring:
   cloud:
     config:
       enabled: ${SPRING_CLOUD_CONFIG_ENABLED:false}
+  ssl:
+    bundle:
+      pem:
+        redis-mtls:
+          truststore:
+            certificate: file:/etc/redis-tls/ca.crt
+          keystore:
+            certificate: file:/etc/redis-tls/tls.crt
+            private-key: file:/etc/redis-tls/tls.key
+
 
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:}
