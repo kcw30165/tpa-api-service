@@ -26,7 +26,6 @@ public class ReferenceDateRefreshController {
                 .map(result -> new RefreshReferenceDateResponse(
                         result.accountEnv(),
                         result.refDate(),
-                        result.configServiceUpdated(),
                         result.redisUpdated()));
     }
 }
