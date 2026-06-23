@@ -2,9 +2,6 @@ api:
   security:
     require-authentication: false
 
-redis-cache:
-  enabled: false
-
 contribution-summary:
   total-label:
     en: Total Contributions

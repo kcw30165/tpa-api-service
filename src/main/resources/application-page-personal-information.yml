@@ -398,12 +398,6 @@ bff-pages:
                     code: personalInformation.mailingAddress.invalid
                     messageCode: personalInformation.mailingAddress.invalid.message
                     severity: error
-                  - id: mailingAddressLine1.poBoxBlocked
-                    type: blockedAddress
-                    value: PO Box~|~P.O. Box~|~P O Box~|~P.O Box~|~Post Office Box~|~P.O. Box~|~郵政信箱
-                    code: personalInformation.address.poBoxBlocked
-                    messageCode: personalInformation.address.poBoxBlocked.message
-                    severity: error
                   - id: mailingAddressLine1.maxLength
                     type: maxLength
                     value: 40
@@ -425,12 +419,6 @@ bff-pages:
                 labelCode: personalInformation.field.mailingAddressLine2.label
                 placeholderCode: personalInformation.field.mailingAddressLine2.placeholder
                 validations:
-                  - id: mailingAddressLine2.poBoxBlocked
-                    type: blockedAddress
-                    value: PO Box~|~P.O. Box~|~P O Box~|~P.O Box~|~Post Office Box~|~P.O. Box~|~郵政信箱
-                    code: personalInformation.address.poBoxBlocked
-                    messageCode: personalInformation.address.poBoxBlocked.message
-                    severity: error
                   - id: mailingAddressLine2.maxLength
                     type: maxLength
                     value: 40
@@ -447,12 +435,6 @@ bff-pages:
                 labelCode: personalInformation.field.mailingAddressLine3.label
                 placeholderCode: personalInformation.field.mailingAddressLine3.placeholder
                 validations:
-                  - id: mailingAddressLine3.poBoxBlocked
-                    type: blockedAddress
-                    value: PO Box~|~P.O. Box~|~P O Box~|~P.O Box~|~Post Office Box~|~P.O. Box~|~郵政信箱
-                    code: personalInformation.address.poBoxBlocked
-                    messageCode: personalInformation.address.poBoxBlocked.message
-                    severity: error
                   - id: mailingAddressLine3.maxLength
                     type: maxLength
                     value: 40

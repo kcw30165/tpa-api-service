@@ -82,6 +82,7 @@ public class RedisAdapterConfig {
             RedisCacheKeyFactory redisCacheKeyFactory) {
         return new RedisCacheAdminAdapter(reactiveRedisTemplate, redisCacheKeyFactory);
     }
+    
     // ── Internal configuration builders ──────────────────────────────────────
 
     private RedisSentinelConfiguration buildSentinelConfig() {
