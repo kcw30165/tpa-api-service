@@ -32,7 +32,7 @@ public class UpdateNotificationsReadStatusService implements UpdateNotifications
 
                                 var enrichedCommand = new UpdateNotificationsReadStatusCommand(
                                         ctx.account().accountEnv(),
-                                        "",
+                                        ctx.actor().actorUserRole(),
                                         command.notificationIds(),
                                         ctx.account().policyNo(),
                                         ctx.account().certNo(),
