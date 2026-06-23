@@ -12,49 +12,52 @@ import reactor.core.publisher.Mono;
 
 @RequiredArgsConstructor
 public class RedisCacheAdminAdapter implements CacheAdminPort {
-    private final ReactiveRedisTemplate<String, String> redisTemplate;
-    private final RedisCacheKeyFactory redisCacheKeyFactory;
+        private final ReactiveRedisTemplate<String, String> redisTemplate;
+        private final RedisCacheKeyFactory redisCacheKeyFactory;
 
-    @Override
-    public Flux<CacheEntry> findAllByCapability(String capability) {
-        String normalizedCapability = normalizeCapability(capability);
-        String keyPrefix = redisCacheKeyFactory.capabilityPrefix(normalizedCapability) + ':';
-        ScanOptions scanOptions = ScanOptions.scanOptions()
-                .match(redisCacheKeyFactory.patternForCapability(normalizedCapability))
-                .build();
+        @Override
+        public Flux<CacheEntry> findAllByCapability(String capability) {
+                return Flux.defer(() -> {
+                        String normalizedCapability = normalizeCapability(capability);
+                        String keyPrefix = redisCacheKeyFactory.capabilityPrefix(normalizedCapability) + ':';
+                        ScanOptions scanOptions = ScanOptions.scanOptions()
+                                        .match(redisCacheKeyFactory.patternForCapability(normalizedCapability))
+                                        .build();
 
-        return redisTemplate.scan(scanOptions)
-                .filter(key -> key != null && key.startsWith(keyPrefix) && key.length() > keyPrefix.length())
-                .flatMap(key -> redisTemplate.opsForValue()
-                        .get(key)
-                        .map(value -> new CacheEntry(
-                                key,
-                                normalizedCapability,
-                                key.substring(keyPrefix.length()),
-                                value)))
-                .onErrorMap(throwable -> throwable instanceof CacheException
-                        ? throwable
-                        : new CacheException("Cache admin scan operation failed", throwable));
-    }
-
-    @Override
-    public Mono<Long> evictAllByCapability(String capability) {
-        String normalizedCapability = normalizeCapability(capability);
-        return findAllByCapability(normalizedCapability)
-                .map(CacheEntry::key)
-                .collectList()
-                .flatMap(keys -> keys.isEmpty()
-                        ? Mono.just(0L)
-                        : redisTemplate.delete(Flux.fromIterable(keys)))
-                .onErrorMap(throwable -> throwable instanceof CacheException
-                        ? throwable
-                        : new CacheException("Cache admin evict operation failed", throwable));
-    }
-
-    private String normalizeCapability(String capability) {
-        if (!StringUtils.hasText(capability)) {
-            throw new IllegalArgumentException("Cache capability must not be blank");
+                        return redisTemplate.scan(scanOptions)
+                                        .filter(key -> key != null && key.startsWith(keyPrefix)
+                                                        && key.length() > keyPrefix.length())
+                                        .flatMap(key -> redisTemplate.opsForValue()
+                                                        .get(key)
+                                                        .map(value -> new CacheEntry(
+                                                                        key,
+                                                                        normalizedCapability,
+                                                                        key.substring(keyPrefix.length()),
+                                                                        value)));
+                }).onErrorMap(throwable -> !(throwable instanceof IllegalArgumentException)
+                                && !(throwable instanceof CacheException),
+                                throwable -> new CacheException("Cache admin scan operation failed", throwable));
         }
-        return capability.trim();
-    }
+
+        @Override
+        public Mono<Long> evictAllByCapability(String capability) {
+                return Mono.defer(() -> {
+                        String normalizedCapability = normalizeCapability(capability);
+                        return findAllByCapability(normalizedCapability)
+                                        .map(CacheEntry::key)
+                                        .collectList()
+                                        .flatMap(keys -> keys.isEmpty()
+                                                        ? Mono.just(0L)
+                                                        : redisTemplate.delete(Flux.fromIterable(keys)));
+                }).onErrorMap(throwable -> !(throwable instanceof IllegalArgumentException)
+                                && !(throwable instanceof CacheException),
+                                throwable -> new CacheException("Cache admin evict operation failed", throwable));
+        }
+
+        private String normalizeCapability(String capability) {
+                if (!StringUtils.hasText(capability)) {
+                        throw new IllegalArgumentException("Cache capability must not be blank");
+                }
+                return capability.trim();
+        }
 }
