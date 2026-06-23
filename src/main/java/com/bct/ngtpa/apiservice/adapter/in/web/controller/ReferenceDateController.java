@@ -16,7 +16,7 @@ import reactor.core.publisher.Mono;
 @RestController
 @RequestMapping("/api/v1/internal/reference-date")
 @RequiredArgsConstructor
-public class ReferenceDateRefreshController {
+public class ReferenceDateController {
 
     private final RefreshReferenceDateUseCase refreshReferenceDateUseCase;
 

@@ -1,7 +1,5 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.controller.ApiExceptionHandler;
-import com.bct.ngtpa.apiservice.adapter.in.web.controller.ReferenceDateRefreshController;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.RefreshReferenceDateCommand;
 import com.bct.ngtpa.apiservice.application.dto.RefreshReferenceDateResult;
@@ -121,7 +119,7 @@ class ReferenceDateRefreshControllerTest {
     }
 
     private WebTestClient webClient(RefreshReferenceDateUseCase useCase) {
-        return WebTestClient.bindToController(new ReferenceDateRefreshController(useCase))
+        return WebTestClient.bindToController(new ReferenceDateController(useCase))
                 .controllerAdvice(new ApiExceptionHandler(
                         testErrorMessageResolver(),
                         testLoggingSanitizer(),
