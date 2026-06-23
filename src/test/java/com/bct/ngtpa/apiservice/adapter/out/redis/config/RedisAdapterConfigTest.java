@@ -153,7 +153,7 @@ class RedisAdapterConfigTest {
         RedisAdapterConfig config = new RedisAdapterConfig(props, mock(SslBundles.class));
         var factory = config.redisCacheKeyFactory();
 
-        assertEquals("testapp:capability:part", factory.buildKey("capability", "part"));
+        assertEquals("testapp:capability:part", factory.key("capability", "part"));
     }
 
     // ── Cache adapter bean ────────────────────────────────────────────────────

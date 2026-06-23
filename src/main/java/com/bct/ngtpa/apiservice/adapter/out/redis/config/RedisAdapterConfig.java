@@ -1,8 +1,10 @@
 package com.bct.ngtpa.apiservice.adapter.out.redis.config;
 
 import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
+import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheAdminAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.RedisStringCacheAdapter;
 import com.bct.ngtpa.apiservice.application.port.out.CachePort;
+import com.bct.ngtpa.apiservice.application.port.out.CacheAdminPort;
 import io.lettuce.core.ClientOptions;
 import io.lettuce.core.SslOptions;
 import io.lettuce.core.TimeoutOptions;
@@ -74,6 +76,12 @@ public class RedisAdapterConfig {
         return new RedisStringCacheAdapter(reactiveRedisTemplate);
     }
 
+    @Bean
+    public CacheAdminPort redisCacheAdminAdapter(
+            ReactiveRedisTemplate<String, String> reactiveRedisTemplate,
+            RedisCacheKeyFactory redisCacheKeyFactory) {
+        return new RedisCacheAdminAdapter(reactiveRedisTemplate, redisCacheKeyFactory);
+    }
     // ── Internal configuration builders ──────────────────────────────────────
 
     private RedisSentinelConfiguration buildSentinelConfig() {
