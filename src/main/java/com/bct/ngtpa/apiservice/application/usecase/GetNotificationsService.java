@@ -38,8 +38,8 @@ public class GetNotificationsService implements GetNotificationsUseCase {
                                         return referenceDatePort.resolveReferenceDate(accountEnv)
                                                         .flatMap(referenceDate -> {
                                                                 var enriched = new GetNotificationsCommand(
-                                                                                accountEnv,
-                                                                                "",
+                                                                                account.accountEnv(),
+                                                                                actor.actorUserRole(),
                                                                                 command.page(),
                                                                                 command.size(),
                                                                                 command.dateFormat(),

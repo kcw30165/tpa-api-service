@@ -1,5 +1,3 @@
-package com.bct.ngtpa.apiservice.adapter.out.redis;
-
 /**
  * Deterministic Redis key factory for the NGT PA BFF.
  *
@@ -23,53 +21,46 @@ package com.bct.ngtpa.apiservice.adapter.out.redis;
  *       enforcement is the caller's responsibility.</li>
  * </ul>
  */
-public final class RedisCacheKeyFactory {
 
-    private final String prefix;
+package com.bct.ngtpa.apiservice.adapter.out.redis;
 
-    /**
-     * @param prefix the application-level key prefix (e.g. {@code "ngtpa"}).
-     *               Must not be blank.
-     * @throws IllegalArgumentException if prefix is null or blank.
-     */
-    public RedisCacheKeyFactory(String prefix) {
-        if (prefix == null || prefix.isBlank()) {
-            throw new IllegalArgumentException(
-                    "Redis key prefix must not be blank");
+import org.springframework.util.StringUtils;
+
+public class RedisCacheKeyFactory {
+    private final String keyPrefix;
+
+    public RedisCacheKeyFactory(String keyPrefix) {
+        if (!StringUtils.hasText(keyPrefix)) {
+            throw new IllegalArgumentException("Redis key prefix must not be blank");
         }
-        this.prefix = prefix;
+        this.keyPrefix = keyPrefix.trim();
     }
 
-    /**
-     * Builds a Redis cache key from the given capability and optional parts.
-     *
-     * @param capability the functional area (e.g. {@code "reference-date"}).
-     *                   Must not be blank.
-     * @param parts      zero or more opaque key segments joined by {@code :}.
-     *                   Each part must not be null or blank.
-     * @return the composed key string.
-     * @throws IllegalArgumentException if capability or any part is null or blank.
-     */
-    public String buildKey(String capability, String... parts) {
-        if (capability == null || capability.isBlank()) {
-            throw new IllegalArgumentException(
-                    "Redis key capability must not be blank");
-        }
-        if (parts != null) {
-            for (int i = 0; i < parts.length; i++) {
-                if (parts[i] == null || parts[i].isBlank()) {
-                    throw new IllegalArgumentException(
-                            "Redis key part at index " + i + " must not be blank");
-                }
-            }
-        }
-
-        var sb = new StringBuilder(prefix).append(':').append(capability);
+    public String key(String capability, String... parts) {
+        StringBuilder builder = new StringBuilder(capabilityPrefix(capability));
         if (parts != null) {
             for (String part : parts) {
-                sb.append(':').append(part);
+                if (!StringUtils.hasText(part)) {
+                    throw new IllegalArgumentException("Redis key part must not be blank");
+                }
+                builder.append(':').append(part.trim());
             }
         }
-        return sb.toString();
+        return builder.toString();
+    }
+
+    public String capabilityPrefix(String capability) {
+        return keyPrefix + ':' + normalizeCapability(capability);
+    }
+
+    public String patternForCapability(String capability) {
+        return capabilityPrefix(capability) + ":*";
+    }
+
+    private String normalizeCapability(String capability) {
+        if (!StringUtils.hasText(capability)) {
+            throw new IllegalArgumentException("Redis key capability must not be blank");
+        }
+        return capability.trim();
     }
 }

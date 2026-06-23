@@ -11,25 +11,25 @@ class RedisCacheKeyFactoryTest {
     @Test
     void capabilityOnlyKeyFollowsPrefixColonCapabilityFormat() {
         var factory = new RedisCacheKeyFactory("ngtpa");
-        assertEquals("ngtpa:reference-date", factory.buildKey("reference-date"));
+        assertEquals("ngtpa:reference-date", factory.key("reference-date"));
     }
 
     @Test
     void singlePartKeyFollowsPrefixColonCapabilityColonPartFormat() {
         var factory = new RedisCacheKeyFactory("ngtpa");
-        assertEquals("ngtpa:reference-date:JP", factory.buildKey("reference-date", "JP"));
+        assertEquals("ngtpa:reference-date:JP", factory.key("reference-date", "JP"));
     }
 
     @Test
     void multiplePartsAreJoinedByColonSeparator() {
         var factory = new RedisCacheKeyFactory("ngtpa");
-        assertEquals("ngtpa:cache:JP:2026-05", factory.buildKey("cache", "JP", "2026-05"));
+        assertEquals("ngtpa:cache:JP:2026-05", factory.key("cache", "JP", "2026-05"));
     }
 
     @Test
     void prefixIsIncludedAtStartOfKey() {
         var factory = new RedisCacheKeyFactory("myapp");
-        String key = factory.buildKey("capability", "part");
+        String key = factory.key("capability", "part");
         assertTrue(key.startsWith("myapp:"), "Key must start with configured prefix");
     }
 
@@ -55,19 +55,19 @@ class RedisCacheKeyFactoryTest {
     @Test
     void blankCapabilityThrowsIllegalArgumentException() {
         var factory = new RedisCacheKeyFactory("ngtpa");
-        assertThrows(IllegalArgumentException.class, () -> factory.buildKey(""));
+        assertThrows(IllegalArgumentException.class, () -> factory.key(""));
     }
 
     @Test
     void whitespaceCapabilityThrowsIllegalArgumentException() {
         var factory = new RedisCacheKeyFactory("ngtpa");
-        assertThrows(IllegalArgumentException.class, () -> factory.buildKey("  "));
+        assertThrows(IllegalArgumentException.class, () -> factory.key("  "));
     }
 
     @Test
     void nullCapabilityThrowsIllegalArgumentException() {
         var factory = new RedisCacheKeyFactory("ngtpa");
-        assertThrows(IllegalArgumentException.class, () -> factory.buildKey(null));
+        assertThrows(IllegalArgumentException.class, () -> factory.key(null));
     }
 
     // ── Part validation ───────────────────────────────────────────────────────
@@ -76,35 +76,35 @@ class RedisCacheKeyFactoryTest {
     void blankFirstPartThrowsIllegalArgumentException() {
         var factory = new RedisCacheKeyFactory("ngtpa");
         assertThrows(IllegalArgumentException.class,
-                () -> factory.buildKey("reference-date", ""));
+                () -> factory.key("reference-date", ""));
     }
 
     @Test
     void whitespaceFirstPartThrowsIllegalArgumentException() {
         var factory = new RedisCacheKeyFactory("ngtpa");
         assertThrows(IllegalArgumentException.class,
-                () -> factory.buildKey("reference-date", "  "));
+                () -> factory.key("reference-date", "  "));
     }
 
     @Test
     void nullFirstPartThrowsIllegalArgumentException() {
         var factory = new RedisCacheKeyFactory("ngtpa");
         assertThrows(IllegalArgumentException.class,
-                () -> factory.buildKey("reference-date", (String) null));
+                () -> factory.key("reference-date", (String) null));
     }
 
     @Test
     void blankSecondPartThrowsIllegalArgumentException() {
         var factory = new RedisCacheKeyFactory("ngtpa");
         assertThrows(IllegalArgumentException.class,
-                () -> factory.buildKey("reference-date", "JP", ""));
+                () -> factory.key("reference-date", "JP", ""));
     }
 
     @Test
     void nullSecondPartThrowsIllegalArgumentException() {
         var factory = new RedisCacheKeyFactory("ngtpa");
         assertThrows(IllegalArgumentException.class,
-                () -> factory.buildKey("reference-date", "JP", null));
+                () -> factory.key("reference-date", "JP", null));
     }
 
     // ── Determinism ───────────────────────────────────────────────────────────
@@ -112,16 +112,16 @@ class RedisCacheKeyFactoryTest {
     @Test
     void sameInputsAlwaysProduceSameKey() {
         var factory = new RedisCacheKeyFactory("ngtpa");
-        assertEquals(factory.buildKey("reference-date", "JP"),
-                factory.buildKey("reference-date", "JP"));
+        assertEquals(factory.key("reference-date", "JP"),
+                factory.key("reference-date", "JP"));
     }
 
     @Test
     void differentPrefixesProduceDifferentKeysForSameCapabilityAndPart() {
         var factory1 = new RedisCacheKeyFactory("app1");
         var factory2 = new RedisCacheKeyFactory("app2");
-        assertNotEquals(factory1.buildKey("reference-date", "JP"),
-                factory2.buildKey("reference-date", "JP"));
+        assertNotEquals(factory1.key("reference-date", "JP"),
+                factory2.key("reference-date", "JP"));
     }
 
     // ── Key safety policy ─────────────────────────────────────────────────────
@@ -135,7 +135,7 @@ class RedisCacheKeyFactoryTest {
         //
         // A correct example: accountEnv code is a non-PII environment tag.
         var factory = new RedisCacheKeyFactory("ngtpa");
-        String key = factory.buildKey("reference-date", "JP");
+        String key = factory.key("reference-date", "JP");
 
         assertEquals("ngtpa:reference-date:JP", key);
         assertFalse(key.contains("policy"), "Key must not embed a policy number");
