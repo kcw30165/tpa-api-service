@@ -3,6 +3,8 @@ package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.RefreshReferenceDateCommand;
 import com.bct.ngtpa.apiservice.application.dto.RefreshReferenceDateResult;
+import com.bct.ngtpa.apiservice.application.dto.GetAllReferenceDatesResult;
+import com.bct.ngtpa.apiservice.application.dto.CleanUpAllReferenceDatesResult;
 import com.bct.ngtpa.apiservice.application.port.in.RefreshReferenceDateUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
@@ -119,7 +121,10 @@ class ReferenceDateRefreshControllerTest {
     }
 
     private WebTestClient webClient(RefreshReferenceDateUseCase useCase) {
-        return WebTestClient.bindToController(new ReferenceDateController(useCase))
+        return WebTestClient.bindToController(new ReferenceDateController(
+                        useCase,
+                        () -> Mono.just(new GetAllReferenceDatesResult(java.util.List.of())),
+                        () -> Mono.just(new CleanUpAllReferenceDatesResult(0L))))
                 .controllerAdvice(new ApiExceptionHandler(
                         testErrorMessageResolver(),
                         testLoggingSanitizer(),
