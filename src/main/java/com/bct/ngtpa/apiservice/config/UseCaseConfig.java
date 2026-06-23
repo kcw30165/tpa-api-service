@@ -4,6 +4,8 @@ import com.bct.ngtpa.apiservice.application.port.in.ExportContributionSummaryUse
 import com.bct.ngtpa.apiservice.application.port.in.GetContributionSummaryUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetNotificationsUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.RefreshReferenceDateUseCase;
+import com.bct.ngtpa.apiservice.application.port.in.CleanUpAllReferenceDatesUseCase;
+import com.bct.ngtpa.apiservice.application.port.in.GetAllReferenceDatesUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetPersonalInformationUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetReferenceDataCountriesUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.UpdateNotificationsReadStatusUseCase;
@@ -19,11 +21,14 @@ import com.bct.ngtpa.apiservice.application.port.out.ContributionActionPermissio
 import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDateCacheUpdatePort;
+import com.bct.ngtpa.apiservice.application.port.out.CacheAdminPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.application.usecase.ExportContributionSummaryService;
 import com.bct.ngtpa.apiservice.application.usecase.GetContributionSummaryService;
 import com.bct.ngtpa.apiservice.application.usecase.GetNotificationsService;
 import com.bct.ngtpa.apiservice.application.usecase.RefreshReferenceDateService;
+import com.bct.ngtpa.apiservice.application.usecase.CleanUpAllReferenceDatesService;
+import com.bct.ngtpa.apiservice.application.usecase.GetAllReferenceDatesService;
 import com.bct.ngtpa.apiservice.application.usecase.GetPersonalInformationService;
 import com.bct.ngtpa.apiservice.application.usecase.GetReferenceDataCountriesService;
 import com.bct.ngtpa.apiservice.application.usecase.UpdateNotificationsReadStatusService;
@@ -119,5 +124,15 @@ public class UseCaseConfig {
                 apimReferenceDateRefreshPort,
                 referenceDateCacheUpdatePort,
                 redisKeyPrefix);
+    }
+
+    @Bean
+    public GetAllReferenceDatesUseCase getAllReferenceDatesUseCase(CacheAdminPort cacheAdminPort) {
+        return new GetAllReferenceDatesService(cacheAdminPort);
+    }
+
+    @Bean
+    public CleanUpAllReferenceDatesUseCase cleanUpAllReferenceDatesUseCase(CacheAdminPort cacheAdminPort) {
+        return new CleanUpAllReferenceDatesService(cacheAdminPort);
     }
 }
