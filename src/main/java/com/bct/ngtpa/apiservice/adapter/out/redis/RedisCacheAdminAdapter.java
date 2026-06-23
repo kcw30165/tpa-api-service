@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.out.redis;
 
+import com.bct.ngtpa.apiservice.application.dto.CacheCapability;
 import com.bct.ngtpa.apiservice.application.dto.CacheEntry;
 import com.bct.ngtpa.apiservice.application.port.out.CacheAdminPort;
 import com.bct.ngtpa.apiservice.exception.CacheException;
@@ -16,12 +17,13 @@ public class RedisCacheAdminAdapter implements CacheAdminPort {
         private final RedisCacheKeyFactory redisCacheKeyFactory;
 
         @Override
-        public Flux<CacheEntry> findAllByCapability(String capability) {
+        public Flux<CacheEntry> findAllByCapability(CacheCapability capability) {
                 return Flux.defer(() -> {
-                        String normalizedCapability = normalizeCapability(capability);
-                        String keyPrefix = redisCacheKeyFactory.capabilityPrefix(normalizedCapability) + ':';
+                        CacheCapability resolvedCapability = requireCapability(capability);
+                        String capabilityKeyPart = resolvedCapability.keyPart();
+                        String keyPrefix = redisCacheKeyFactory.capabilityPrefix(capabilityKeyPart) + ':';
                         ScanOptions scanOptions = ScanOptions.scanOptions()
-                                        .match(redisCacheKeyFactory.patternForCapability(normalizedCapability))
+                                        .match(redisCacheKeyFactory.patternForCapability(capabilityKeyPart))
                                         .build();
 
                         return redisTemplate.scan(scanOptions)
@@ -31,7 +33,7 @@ public class RedisCacheAdminAdapter implements CacheAdminPort {
                                                         .get(key)
                                                         .map(value -> new CacheEntry(
                                                                         key,
-                                                                        normalizedCapability,
+                                                                        capabilityKeyPart,
                                                                         key.substring(keyPrefix.length()),
                                                                         value)));
                 }).onErrorMap(throwable -> !(throwable instanceof IllegalArgumentException)
@@ -40,10 +42,10 @@ public class RedisCacheAdminAdapter implements CacheAdminPort {
         }
 
         @Override
-        public Mono<Long> evictAllByCapability(String capability) {
+        public Mono<Long> evictAllByCapability(CacheCapability capability) {
                 return Mono.defer(() -> {
-                        String normalizedCapability = normalizeCapability(capability);
-                        return findAllByCapability(normalizedCapability)
+                        CacheCapability resolvedCapability = requireCapability(capability);
+                        return findAllByCapability(capability)
                                         .map(CacheEntry::key)
                                         .collectList()
                                         .flatMap(keys -> keys.isEmpty()
@@ -54,10 +56,10 @@ public class RedisCacheAdminAdapter implements CacheAdminPort {
                                 throwable -> new CacheException("Cache admin evict operation failed", throwable));
         }
 
-        private String normalizeCapability(String capability) {
-                if (!StringUtils.hasText(capability)) {
-                        throw new IllegalArgumentException("Cache capability must not be blank");
+        private CacheCapability requireCapability(CacheCapability capability) {
+                if (capability == null) {
+                        throw new IllegalArgumentException("Cache capability must not be null");
                 }
-                return capability.trim();
+                return capability;
         }
 }

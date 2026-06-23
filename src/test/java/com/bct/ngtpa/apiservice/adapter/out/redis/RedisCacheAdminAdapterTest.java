@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.bct.ngtpa.apiservice.application.dto.CacheCapability;
 import com.bct.ngtpa.apiservice.exception.CacheException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,7 +40,7 @@ class RedisCacheAdminAdapterTest {
         when(valueOps.get("ngtpa:reference-date:JP")).thenReturn(Mono.just("31/12/2025"));
         when(valueOps.get("ngtpa:reference-date:HK")).thenReturn(Mono.just("01/01/2026"));
 
-        StepVerifier.create(adapter.findAllByCapability("reference-date"))
+        StepVerifier.create(adapter.findAllByCapability(CacheCapability.REFERENCE_DATE))
                 .assertNext(entry -> {
                     assertThat(entry.key()).isEqualTo("ngtpa:reference-date:JP");
                     assertThat(entry.capability()).isEqualTo("reference-date");
@@ -59,7 +60,7 @@ class RedisCacheAdminAdapterTest {
                 .thenReturn(Flux.just("ngtpa:reference-date:", "ngtpa:reference-date:JP"));
         when(valueOps.get("ngtpa:reference-date:JP")).thenReturn(Mono.just("31/12/2025"));
 
-        StepVerifier.create(adapter.findAllByCapability("reference-date"))
+        StepVerifier.create(adapter.findAllByCapability(CacheCapability.REFERENCE_DATE))
                 .assertNext(entry -> assertThat(entry.qualifier()).isEqualTo("JP"))
                 .verifyComplete();
 
@@ -74,7 +75,7 @@ class RedisCacheAdminAdapterTest {
         when(valueOps.get("ngtpa:reference-date:HK")).thenReturn(Mono.just("01/01/2026"));
         when(redisTemplate.delete(any(Publisher.class))).thenReturn(Mono.just(2L));
 
-        StepVerifier.create(adapter.evictAllByCapability("reference-date"))
+        StepVerifier.create(adapter.evictAllByCapability(CacheCapability.REFERENCE_DATE))
                 .expectNext(2L)
                 .verifyComplete();
 
@@ -85,7 +86,7 @@ class RedisCacheAdminAdapterTest {
     void evictAllByCapabilityReturnsZeroWhenNoKeysExist() {
         when(redisTemplate.scan(any(ScanOptions.class))).thenReturn(Flux.empty());
 
-        StepVerifier.create(adapter.evictAllByCapability("reference-date"))
+        StepVerifier.create(adapter.evictAllByCapability(CacheCapability.REFERENCE_DATE))
                 .expectNext(0L)
                 .verifyComplete();
 
@@ -93,8 +94,8 @@ class RedisCacheAdminAdapterTest {
     }
 
     @Test
-    void rejectsBlankCapabilityBeforeRedisCall() {
-        StepVerifier.create(adapter.findAllByCapability(" "))
+    void rejectsNullCapabilityBeforeRedisCall() {
+        StepVerifier.create(adapter.findAllByCapability(null))
                 .expectError(IllegalArgumentException.class)
                 .verify();
 
@@ -106,7 +107,7 @@ class RedisCacheAdminAdapterTest {
         when(redisTemplate.scan(any(ScanOptions.class)))
                 .thenReturn(Flux.error(new RuntimeException("redis:6379 password=secret")));
 
-        StepVerifier.create(adapter.findAllByCapability("reference-date"))
+        StepVerifier.create(adapter.findAllByCapability(CacheCapability.REFERENCE_DATE))
                 .expectErrorSatisfies(error -> {
                     assertThat(error).isInstanceOf(CacheException.class);
                     assertThat(error.getMessage()).doesNotContain("secret");
