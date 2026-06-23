@@ -1,6 +1,5 @@
 # NGTPA API Service
 
-
 > **Document ownership:** This README is the source of truth for the current implemented service behaviour, local setup, configuration, API contracts, logging behaviour, and developer/operator guidance.  
 > `architecture_plan.md` is retained as the architecture baseline and decision-history document; it should not duplicate every implementation detail.
 
@@ -40,7 +39,6 @@ The project uses the SLF4J API with Logback as the runtime implementation:
 - **Bridging**: `log4j-to-slf4j` and `jul-to-slf4j` bridge Log4j and java.util.logging to SLF4J → Logback.
 - **Configuration**: Use `logging.level.*` in `src/main/resources/application.yml` for simple overrides. For advanced configuration add `logback-spring.xml` or `logback.xml` to `src/main/resources`.
 
-
 Clean Architecture / Hexagonal (Ports & Adapters):
 
 ```
@@ -50,10 +48,10 @@ com.bct.ngtpa.apiservice
 │   └── exception/       # DomainException
 ├── application/         # Orchestration — no Spring @Service; wired by UseCaseConfig
 │   ├── port/
-│   │   ├── in/          # GetNotificationsUseCase, UpdateNotificationsReadStatusUseCase, GetContributionSummaryUseCase, ExportContributionSummaryUseCase, RefreshReferenceDateUseCase, GetReferenceDataCountriesUseCase, GetPersonalInformationUseCase, UpdatePersonalInformationUseCase
-│   │   └── out/         # ApimNoticeMessagePort, ApimNotificationReadStatusPort, ApimContributionSummaryPort, ApimReferenceDataCountriesPort, ReferenceDatePort, ApimReferenceDateRefreshPort, ReferenceDateCacheUpdatePort, ApimMemberInfoPort, ApimUpdatePersonalInformationPort, PortalAccessContextPort, CurrencyDisplayPort
-│   ├── usecase/         # GetNotificationsService, UpdateNotificationsReadStatusService, GetContributionSummaryService, ExportContributionSummaryService, RefreshReferenceDateService, GetReferenceDataCountriesService, GetPersonalInformationService, UpdatePersonalInformationService
-│   ├── dto/             # Notification, contribution summary, reference data, and personal-information commands/results; CurrencyDisplay; PortalAccessContext (ActorContext, MemberOwnerContext, AccountContext)
+│   │   ├── in/          # GetNotificationsUseCase, UpdateNotificationsReadStatusUseCase, GetContributionSummaryUseCase, ExportContributionSummaryUseCase, RefreshReferenceDateUseCase, GetAllReferenceDatesUseCase, CleanUpAllReferenceDatesUseCase, GetReferenceDataCountriesUseCase, GetPersonalInformationUseCase, UpdatePersonalInformationUseCase
+│   │   └── out/         # ApimNoticeMessagePort, ApimNotificationReadStatusPort, ApimContributionSummaryPort, ApimReferenceDataCountriesPort, ReferenceDatePort, ApimReferenceDateRefreshPort, ReferenceDateCacheUpdatePort, CachePort, CacheAdminPort, ApimMemberInfoPort, ApimUpdatePersonalInformationPort, PortalAccessContextPort, CurrencyDisplayPort
+│   ├── usecase/         # GetNotificationsService, UpdateNotificationsReadStatusService, GetContributionSummaryService, ExportContributionSummaryService, RefreshReferenceDateService, GetAllReferenceDatesService, CleanUpAllReferenceDatesService, GetReferenceDataCountriesService, GetPersonalInformationService, UpdatePersonalInformationService
+│   ├── dto/             # Notification, contribution summary, reference data, reference-date cache admin, and personal-information commands/results; CurrencyDisplay; CacheCapability; CacheEntry; PortalAccessContext (ActorContext, MemberOwnerContext, AccountContext)
 │   └── exception/       # InvalidContributionRequestException, InvalidNotificationRequestException, InvalidPersonalInformationUpdateException, PortalAccessContextResolutionException
 ├── adapter/
 │   ├── in/web/          # Reactive controllers, request/response records
@@ -73,7 +71,7 @@ com.bct.ngtpa.apiservice
 │   │   │   ├── RequestHeaderContextWebFilter     # Thin test wrapper over the live global filter path
 │   │   │   └── RequestLoggingProperties          # Binds request-logging.* YAML
 │   │   ├── request/     # UpdateNotificationsReadStatusRequest, RefreshReferenceDateRequest
-│   │   └── response/    # Notification, contribution summary, and refresh response records
+│   │   └── response/    # Notification, contribution summary, reference-date refresh/cache-admin, and mutation response records
 │   └── out/
 │       ├── apim/            # APIM integration
 │       │   ├── config/                        # APIM-specific configuration
@@ -129,9 +127,10 @@ com.bct.ngtpa.apiservice
 │       ├── redis/           # Redis outbound cache adapter
 │       │   ├── config/
 │       │   │   ├── RedisCacheProperties               # Binds redis-cache.* YAML (Sentinel, SSL, pool)
-│       │   │   └── RedisAdapterConfig                 # @Bean LettuceConnectionFactory, ReactiveRedisTemplate, RedisCacheKeyFactory, CachePort
-│       │   ├── RedisCacheKeyFactory                   # Deterministic key builder: <prefix>:<capability>[:<part>...]
-│       │   └── RedisStringCacheAdapter                # Implements CachePort via ReactiveRedisTemplate<String,String>
+│       │   │   └── RedisAdapterConfig                 # @Bean LettuceConnectionFactory, ReactiveRedisTemplate, RedisCacheKeyFactory, CachePort, CacheAdminPort
+│       │   ├── RedisCacheKeyFactory                   # Deterministic key builder: \<prefix\>:\<capability\>\[:\<part\>...\]; capability scan pattern builder
+│       │   ├── RedisStringCacheAdapter                # Implements CachePort via ReactiveRedisTemplate\<String,String\>
+│       │   └── RedisCacheAdminAdapter                 # Implements CacheAdminPort using capability-scoped SCAN/delete
 │       └── security/        # Non-APIM security concerns
 │           ├── TemporaryPortalAccessContextProperties  # Binds temporary-portal-access-context.profiles.*
 │           └── TemporaryPortalAccessContextAdapter     # Implements PortalAccessContextPort
@@ -313,6 +312,7 @@ Endpoint: GET /api/v1/personal-information
   - Confirmation metadata is included in the response (driven by the page YAML `confirmation` section).
 
 Notes:
+
 - The controller follows the same selected-account pattern as `ReferenceDataController`: it resolves `Account-Ref` from the Reactor Context and throws `PortalAccessContextResolutionException` with `ErrorCodes.MEMBER_CONTEXT_INVALID` when missing or blank.
 - The use case is framework-free and wired in `UseCaseConfig` as `GetPersonalInformationService` which resolves the `PortalAccessContext`, calls `ApimMemberInfoPort`, and delegates to `PersonalInformationFieldMapper` to assemble the page payload.
 
@@ -423,7 +423,6 @@ The context model is structured into three separate dimensions:
 - **Actor** (`actorUserId`, `actorUserType`, `actorUserRole`) — identifies who is acting (the logged-in user)
 - **Member owner** (`memberUserId`, `memberType`) — identifies the member whose data is being accessed
 - **Account** (`accountEnv`, `policyNo`, `certNo`, `trustCode`, `schemeType`, `termStatus`, `termCompletionDate`) — routing fields and term metadata for the target APIM account
-
 
 The property class `TemporaryPortalAccessContextProperties` binds `temporary-portal-access-context.profiles.*`. The outbound adapter `TemporaryPortalAccessContextAdapter` (under `adapter/out/security`) implements `PortalAccessContextPort`, resolves the correct profile by account reference key (for example `ACC-123`), retains transitional support for legacy feature-key entries when callers still pass `notifications` or `contributions`, converts raw `term-status` into the framework-free `TermStatus` enum, and parses `term-completion-date` as `dd/MM/yyyy` when present.
 
@@ -554,6 +553,7 @@ The `ConfigServiceWebClientAdapter` (under `adapter/out/configservice`) provides
 | `DELETE` | `/api/configs/{application}/{profile}/{label}/{configKey}` | `ConfigServicePort.deleteConfig(String, String, String, String)` |
 
 **Architecture boundaries:**
+
 - Application code depends only on `ConfigServicePort`, `ConfigEntry`, `ConfigQuery`, and `ConfigUpsertCommand` — all framework-free records in `application/port/out/` and `application/dto/`.
 - HTTP request/response DTOs (`ConfigServiceRequest`, `ConfigServiceResponse`) are adapter-private to `adapter/out/configservice/dto/` and are enforced by an ArchUnit rule (`configServiceDtoTypesDoNotLeakOutsideAdapter`).
 - `ConfigServiceException` maps all Config Service HTTP errors to a safe exception; it does not expose raw Config Service response bodies.
@@ -578,11 +578,14 @@ The `RedisStringCacheAdapter` (under `adapter/out/redis/`) provides an outbound 
 
 ### Architecture boundaries
 
-- Application code depends only on `CachePort` (in `application/port/out/`) — framework-free (`Mono`, `Optional`, `Duration`).
-- All Redis types (`ReactiveRedisTemplate`, Lettuce, Sentinel configuration) are confined to `adapter/out/redis/` and enforced by ArchUnit.
-- `RedisCacheKeyFactory` enforces key format and key safety: raw PII (policy numbers, certificate numbers, user IDs, tokens) must **never** appear as key parts.
-- `CacheException` maps all Redis errors to a safe exception; sensitive details (passwords, certificate paths, Sentinel addresses) are never included in the exception message. The raw cause is accessible via `getCause()` for diagnostic purposes only.
-- `CacheException` is handled by `ApiExceptionHandler` and returns `503 Service Unavailable` with error code `SYSTEM_UNEXPECTED`. No stack trace is logged.
+- Application code depends only on CachePort and CacheAdminPort (in application/port/out/) — framework-free reactive contracts.
+- CachePort remains limited to single-key get/set/evict operations.
+- CacheAdminPort is capability-scoped and accepts CacheCapability values; it must not expose raw Redis pattern deletion to application use cases.
+- All Redis types (ReactiveRedisTemplate, Lettuce, Sentinel configuration, ScanOptions) are confined to adapter/out/redis/ and enforced by ArchUnit.
+- RedisCacheKeyFactory enforces key format and key safety: raw PII (policy numbers, certificate numbers, user IDs, tokens) must **never** appear as key parts. It also centralizes capability scan pattern construction.
+- RedisCacheAdminAdapter implements capability-scoped scan/delete using RedisCacheKeyFactory; for reference dates it targets ${redis-cache.key-prefix}:reference-date:* only.
+- CacheException maps all Redis errors to a safe exception; sensitive details (passwords, certificate paths, Sentinel addresses) are never included in the exception message. The raw cause is accessible via getCause() for diagnostic purposes only.
+- CacheException is handled by ApiExceptionHandler and returns 503 Service Unavailable with error code SYSTEM\_UNEXPECTED. No stack trace is logged.
 
 ### Key format
 
@@ -650,7 +653,7 @@ redis-cache:
 
 ### Disabled mode
 
-When `REDIS_CACHE_ENABLED=false`, the entire `RedisAdapterConfig` is skipped (via `@ConditionalOnProperty`). No `LettuceConnectionFactory`, `ReactiveRedisTemplate`, or `CachePort` bean is registered. Any use case that injects `CachePort` will fail to start — this is intentional to prevent silent cache-bypass in production.
+When `REDIS_CACHE_ENABLED=false`, the entire `RedisAdapterConfig` is skipped (via `@ConditionalOnProperty`). No `LettuceConnectionFactory`, `ReactiveRedisTemplate`, `CachePort` or `CacheAdminPort` bean is registered. Any use case that injects `CachePort` or `CacheAdminPort` will fail to start — this is intentional to prevent silent cache-bypass in production.
 
 **Scope of this task:** This task adds the outbound cache capability only. Redis-first `ReferenceDate` strategy, cache warm-up, TTL policy, and Config Service fallback orchestration are addressed in later tasks.
 
@@ -689,9 +692,11 @@ Notes:
 Global execution logging is implemented as a cross-cutting concern in `infrastructure/logging`.
 
 - Application use case execution is logged automatically via a **package-pattern pointcut** in `ExecutionLoggingAspect`:
+
   ```
   execution(* com.bct.ngtpa.apiservice.application.usecase..*Service.execute(..))
   ```
+
   No `@LogExecution` annotation is needed on use case classes — this keeps the application layer free of Spring/framework dependencies.
 - Use `@LogExecution` (from `com.bct.ngtpa.apiservice.shared.logging`) on **controller, adapter, and facade methods** that represent entry or orchestration points outside the application layer.
 - Annotated synchronous methods log start, success, error, and elapsed time.
@@ -723,6 +728,7 @@ Every inbound HTTP request is assigned a correlation identifier managed by `Requ
 | Error responses | `X-Request-Id` is in the response **header only** — never in the response body |
 
 Error response body remains:
+
 ```json
 {
   "errorCode": "...",
@@ -878,14 +884,13 @@ request-logging:
 ```
 
 Effective rules:
+
 - `shouldLogRequestBody = request-logging.body-logging.enabled AND endpoint.log-request-body`
 - `shouldLogResponseBody = request-logging.body-logging.enabled AND endpoint.log-response-body`
 - No endpoint match → no body logging.
 - Binary response bodies (Excel, PDF, octet-stream) are never logged regardless of configuration.
 
 > **Security warning:** Body logging may expose PII or sensitive business data. Keep `body-logging.enabled=false` in all production and production-like environments. Only enable on specific endpoints in lower non-production environments for debugging.
-
-
 
 ---
 
@@ -1066,7 +1071,6 @@ currency-mapping:
 
 These values drive the synthetic total detail row in the JSON response, the first three column headers in the XLSX export, the locale-specific currency display returned in contribution summary JSON, and the effective contribution reference date. Currency, date, and amount lookups now run through the global config variant resolver, which evaluates `env`, `trustCode`, and `schemeType` suffix combinations in a fixed order and then falls back to English when the requested language has no match.
 
-
 ---
 
 ## API Endpoints
@@ -1104,6 +1108,52 @@ Manually refreshes the reference date for a single `accountEnv`.
 - Java does not send `X-Datadomain` for this APIM operation.
 - The refreshed date is read from `response.data[0].sys-date`, then written to Redis key `${redis-cache.key-prefix}:reference-date:<accountEnv>`.
 
+### GET /api/v1/internal/reference-date/all
+  
+Returns all Redis reference-date entries created under the reference-date cache namespace.
+**Success response:**{
+  "success": true,
+  "status": "SUCCESS",
+  "result": {
+    "referenceDates": [
+      { "accountEnv": "HK", "refDate": "01/01/2026" },
+      { "accountEnv": "JP", "refDate": "31/12/2025" }
+    ]
+  },
+  "messages": [],
+  "errors": []
+}
+**Behavior:**
+
+- This is an internal operational endpoint and is authenticated when api.security.require-authentication=true.
+- Scope is ${redis-cache.key-prefix}:reference-date:* only.
+- Output is sorted by accountEnv for deterministic API responses and tests.
+- The endpoint uses the generic MutationResponse envelope.
+
+### DELETE /api/v1/internal/reference-date/all
+  
+Deletes all Redis reference-date entries created under the reference-date cache namespace.
+**Success response:**{
+  "success": true,
+  "status": "UPDATED",
+  "result": { "deletedCount": 2 },
+  "messages": [],
+  "errors": []
+}
+**No matching keys response:**{
+  "success": true,
+  "status": "UPDATED",
+  "result": { "deletedCount": 0 },
+  "messages": [],
+  "errors": []
+}
+**Behavior:**
+
+- This is an internal operational endpoint and is authenticated when api.security.require-authentication=true.
+- Scope is ${redis-cache.key-prefix}:reference-date:* only.
+- No matching keys is a successful no-op with deletedCount=0.
+- The endpoint uses the generic MutationResponse envelope.
+
 ## APIM Certificate, OAuth Token, and Credential Profile Caching
 
 APIM credentials are represented as credential profiles. Today a single default profile is supported for backward compatibility but multiple profiles are supported for future mapping by trust.
@@ -1117,7 +1167,6 @@ APIM credentials are represented as credential profiles. Today a single default 
 - **API key:** The API key header is taken from the resolved credential profile. The header name is configurable via `apim.apiKeyHeaderName`.
 - **Retry behavior:** For recoverable failures the APIM adapter will evict and refresh only the affected token or certificate for the selected profile, and retry the original APIM request once. Retries are limited to avoid infinite loops.
 - **Security:** Secrets (client_secret, api_key, tokens, certificate bodies) must be provided via environment variables and are never logged.
-
 
 ### `GET /api/v1/reference-data/countries`
 
@@ -1208,6 +1257,7 @@ GET /api/v1/notifications?env=JP&mbrType=MBR&page=1&size=10&dateFormat=dd/MM/yyy
 - `isRead` is derived from APIM `msg-status`.
 
 **Response:**
+
 ```json
 {
   "notifications": [
@@ -1226,6 +1276,7 @@ GET /api/v1/notifications?env=JP&mbrType=MBR&page=1&size=10&dateFormat=dd/MM/yyy
 ```
 
 **Error response:**
+
 ```json
 {
   "errorCode": "err.notification.request.invalid",
@@ -1257,6 +1308,7 @@ Updates the read status for one or more notifications.
 - Actor identity, member ownership, and account routing fields (`actor-user-id`, `policy-no`, `cert-no`, etc.) are resolved from externalized `temporary-portal-access-context.profiles.notifications.*` configuration (see **Temporary Portal Access Context Configuration** below) until Auth Server integration is implemented. `ref-date` remains temporarily hardcoded.
 
 **Response:**
+
 ```json
 {
   "notifications": [
@@ -1273,6 +1325,7 @@ Updates the read status for one or more notifications.
 ```
 
 **Error response:**
+
 ```json
 {
   "errorCode": "err.request.validation.failed",
@@ -1390,10 +1443,10 @@ Given `code`, `accountEnv`, `trustCode`, `schemeType`, and `locale`, the resolve
 2. `code.accountEnv.trustCode`
 3. `code.accountEnv.schemeType`
 <!-- 4. `code.trustCode.schemeType` -->
-4. `code.accountEnv`
+1. `code.accountEnv`
 <!-- 6. `code.trustCode` -->
-5. `code.schemeType`
-6. `code`
+1. `code.schemeType`
+2. `code`
 
 Blank dimensions are skipped, compound candidates are emitted only when all participating dimensions are present, duplicates are removed while preserving order, and malformed keys are never emitted. Requested locale candidates are tried first; if no match is found and the requested locale is not English, the same candidate sequence is retried under `en`.
 
@@ -1641,7 +1694,6 @@ Error message localization by `Accept-Language` is deferred, and notification re
 | Gap Analysis | `docs/brd/analysis/gap_analysis.md` |
 | Architecture Plan | `docs/brd/analysis/architecture_plan.md` |
 
-
 ## Architecture and Implementation Conventions
 
 This section contains the current implementation conventions that were previously mixed into `architecture_plan.md`. Keep these details here because they describe how the repository currently works and how developers should extend it.
@@ -1713,7 +1765,6 @@ The architecture test suite should continue to enforce these constraints:
 - global `config/` remains composition-only;
 - APIM internal subpackages such as DTO, crypto, credential, OAuth, certificate, and client packages do not leak outside the APIM adapter.
 
-
 ### Personal Information PUT
 
 Endpoint: `PUT /api/v1/personal-information`
@@ -1721,6 +1772,7 @@ Endpoint: `PUT /api/v1/personal-information`
 Purpose: updates selected personal-information fields for the account selected by `Account-Ref`.
 
 Required headers:
+
 - `Account-Ref`: required; resolved from the inbound `RequestHeaderContext` and used to resolve `PortalAccessContext`.
 - `X-Request-Id`: echoed in the BFF response and propagated to APIM.
 - `Accept-Language`: available for normal BFF error localization; it is not propagated to APIM.
@@ -1742,6 +1794,7 @@ Request body:
 `applyToAllAccounts=true` asks APIM to apply the same update to every account owned by the member. The selected account remains the account represented by the inbound `Account-Ref`.
 
 BFF mapping rules:
+
 - The request `fields` object uses BFF field ids from `application-page-personal-information.yml`.
 - The web adapter maps each submitted BFF field id to `apimBinding.data` from the page YAML.
 - `apimBinding.config` is not used for PUT mapping.
@@ -1753,6 +1806,7 @@ BFF mapping rules:
 - The BFF does not process confirmation password fields and does not implement mailing-address copy behaviour; both are frontend concerns for this phase.
 
 Backend validation scope:
+
 - request body and `fields` shape;
 - known field id;
 - UI-only omission;
@@ -1784,6 +1838,7 @@ APIM request body is built from `PortalAccessContext` and mapped update fields:
 ```
 
 Context mapping:
+
 - `policy-no` = `PortalAccessContext.account().policyNo()`
 - `cert-no` = `PortalAccessContext.account().certNo()`
 - `env` = `PortalAccessContext.account().accountEnv()`
@@ -1895,6 +1950,7 @@ Malformed request, missing `Account-Ref`, APIM transport, crypto, and unexpected
 ```
 
 Architecture notes:
+
 - YAML reverse mapping lives in the inbound web adapter (`adapter/in/web/mapper`) because page/form/field binding is a presentation concern.
 - The application use case receives already mapped APIM update field keys and remains framework-free.
 - The update use case depends only on `PortalAccessContextPort` and `ApimUpdatePersonalInformationPort`.
