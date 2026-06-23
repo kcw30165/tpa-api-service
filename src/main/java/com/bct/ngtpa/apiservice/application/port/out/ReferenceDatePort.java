@@ -6,5 +6,5 @@ import java.time.LocalDate;
 
 public interface ReferenceDatePort {
 
-    Mono<LocalDate> resolveReferenceDate();
+    Mono<LocalDate> resolveReferenceDate(String accountEnv);
 }

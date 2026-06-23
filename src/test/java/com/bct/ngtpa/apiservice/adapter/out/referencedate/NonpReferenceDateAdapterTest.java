@@ -47,7 +47,7 @@ class NonpReferenceDateAdapterTest {
 
         var adapter = adapter("JP", "PROD", Optional.of(cachePort), apimPort, cacheUpdatePort);
 
-        StepVerifier.create(adapter.resolveReferenceDate())
+        StepVerifier.create(adapter.resolveReferenceDate("JP"))
                 .expectNext(LocalDate.of(2026, 6, 22))
                 .verifyComplete();
 
@@ -62,7 +62,7 @@ class NonpReferenceDateAdapterTest {
 
         var adapter = adapter("JP", "DR", Optional.of(cachePort), apimPort, cacheUpdatePort);
 
-        StepVerifier.create(adapter.resolveReferenceDate())
+        StepVerifier.create(adapter.resolveReferenceDate("JP"))
                 .expectNext(LocalDate.of(2026, 6, 22))
                 .verifyComplete();
 
@@ -79,7 +79,7 @@ class NonpReferenceDateAdapterTest {
 
         var adapter = adapter("JP", "SIT", Optional.of(cachePort), apimPort, cacheUpdatePort);
 
-        StepVerifier.create(adapter.resolveReferenceDate())
+        StepVerifier.create(adapter.resolveReferenceDate("JP"))
                 .expectNext(LocalDate.of(2026, 6, 22))
                 .verifyComplete();
 
@@ -101,7 +101,7 @@ class NonpReferenceDateAdapterTest {
 
         var adapter = adapter("JP", "SIT", Optional.of(cachePort), apimPort, cacheUpdatePort);
 
-        StepVerifier.create(adapter.resolveReferenceDate())
+        StepVerifier.create(adapter.resolveReferenceDate("JP"))
                 .expectNext(LocalDate.of(2026, 6, 30))
                 .verifyComplete();
 
@@ -125,7 +125,7 @@ class NonpReferenceDateAdapterTest {
 
         var adapter = adapter("JP", "SIT", Optional.of(cachePort), apimPort, cacheUpdatePort);
 
-        StepVerifier.create(adapter.resolveReferenceDate())
+        StepVerifier.create(adapter.resolveReferenceDate("JP"))
                 .expectNext(LocalDate.of(2026, 6, 22))
                 .verifyComplete();
 
@@ -153,7 +153,7 @@ class NonpReferenceDateAdapterTest {
         try {
             var adapter = adapter("JP", "SIT", Optional.of(cachePort), apimPort, cacheUpdatePort);
 
-            StepVerifier.create(adapter.resolveReferenceDate())
+            StepVerifier.create(adapter.resolveReferenceDate("JP"))
                     .expectNext(LocalDate.of(2026, 6, 22))
                     .verifyComplete();
 
@@ -189,7 +189,7 @@ class NonpReferenceDateAdapterTest {
         try {
             var adapter = adapter("JP", "SIT", Optional.of(cachePort), apimPort, cacheUpdatePort);
 
-            StepVerifier.create(adapter.resolveReferenceDate())
+            StepVerifier.create(adapter.resolveReferenceDate("JP"))
                     .expectNext(LocalDate.of(2026, 7, 1))
                     .verifyComplete();
 
@@ -215,7 +215,7 @@ class NonpReferenceDateAdapterTest {
 
         var adapter = adapter("JP", "SIT", Optional.of(cachePort), apimPort, cacheUpdatePort);
 
-        StepVerifier.create(adapter.resolveReferenceDate())
+        StepVerifier.create(adapter.resolveReferenceDate("JP"))
                 .expectNext(LocalDate.of(2026, 6, 22))
                 .verifyComplete();
 
@@ -239,7 +239,7 @@ class NonpReferenceDateAdapterTest {
         try {
             var adapter = adapter("JP", "SIT", Optional.of(cachePort), apimPort, cacheUpdatePort);
 
-            StepVerifier.create(adapter.resolveReferenceDate())
+            StepVerifier.create(adapter.resolveReferenceDate("JP"))
                     .expectNext(LocalDate.of(2026, 6, 22))
                     .verifyComplete();
 
@@ -275,7 +275,7 @@ class NonpReferenceDateAdapterTest {
         try {
             var adapter = adapter("JP", "SIT", Optional.of(cachePort), apimPort, cacheUpdatePort);
 
-            StepVerifier.create(adapter.resolveReferenceDate())
+            StepVerifier.create(adapter.resolveReferenceDate("JP"))
                     .expectNext(LocalDate.of(2026, 7, 1))
                     .verifyComplete();
 

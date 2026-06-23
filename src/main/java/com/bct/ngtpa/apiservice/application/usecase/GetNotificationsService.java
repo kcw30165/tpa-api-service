@@ -17,46 +17,57 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class GetNotificationsService implements GetNotificationsUseCase {
 
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    private final ApimNoticeMessagePort apimNoticeMessagePort;
-    private final CurrentPortalAccessContextResolver currentPortalAccessContextResolver;
-    private final ReferenceDatePort referenceDatePort;
+        private final ApimNoticeMessagePort apimNoticeMessagePort;
+        private final CurrentPortalAccessContextResolver currentPortalAccessContextResolver;
+        private final ReferenceDatePort referenceDatePort;
 
-    @Override
-    public Mono<NotificationListResult> execute(GetNotificationsCommand command) {
-        var dateOptions = NotificationDateOptions.resolve(command.dateFormat(), command.timezone());
-        LocalDateTime now = dateOptions.now();
+        @Override
+        public Mono<NotificationListResult> execute(GetNotificationsCommand command) {
+                var dateOptions = NotificationDateOptions.resolve(command.dateFormat(), command.timezone());
+                LocalDateTime now = dateOptions.now();
 
-        return currentPortalAccessContextResolver.current()
-                .zipWith(referenceDatePort.resolveReferenceDate())
-                .flatMap(tuple -> {
-                    var ctx = tuple.getT1();
-                    var referenceDate = tuple.getT2();
+                return currentPortalAccessContextResolver.current()
+                                .flatMap(ctx -> {
+                                        var account = ctx.account();
+                                        var actor = ctx.actor();
 
-                    var enriched = new GetNotificationsCommand(
-                            ctx.account().accountEnv(),
-                            "",
-                            command.page(),
-                            command.size(),
-                            command.dateFormat(),
-                            command.timezone(),
-                            ctx.account().policyNo(),
-                            ctx.account().certNo(),
-                            ctx.actor().actorUserId(),
-                            referenceDate.format(DATE_FORMATTER));
+                                        String accountEnv = account.accountEnv();
 
-                                        return apimNoticeMessagePort.fetchNotifications(enriched)
-                                                        .map(result -> {
-                                                                var visible = result.notifications().stream()
-                                                                                .filter(message -> message
-                                                                                                .isVisible(now))
-                                                                                .sorted(Comparator.comparingInt(
-                                                                                                m -> Optional.ofNullable(
-                                                                                                                m.seq())
-                                                                                                                .orElse(Integer.MAX_VALUE)))
-                                                                                .toList();
-                                                                return new NotificationListResult(visible, dateOptions);
+                                        return referenceDatePort.resolveReferenceDate(accountEnv)
+                                                        .flatMap(referenceDate -> {
+                                                                var enriched = new GetNotificationsCommand(
+                                                                                accountEnv,
+                                                                                "",
+                                                                                command.page(),
+                                                                                command.size(),
+                                                                                command.dateFormat(),
+                                                                                command.timezone(),
+                                                                                account.policyNo(),
+                                                                                account.certNo(),
+                                                                                actor.actorUserId(),
+                                                                                referenceDate.format(DATE_FORMATTER));
+
+                                                                return apimNoticeMessagePort
+                                                                                .fetchNotifications(enriched)
+                                                                                .map(result -> {
+                                                                                        var visible = result
+                                                                                                        .notifications()
+                                                                                                        .stream()
+                                                                                                        .filter(message -> message
+                                                                                                                        .isVisible(now))
+                                                                                                        .sorted(Comparator
+                                                                                                                        .comparingInt(
+                                                                                                                                        m -> Optional.ofNullable(
+                                                                                                                                                        m.seq())
+                                                                                                                                                        .orElse(Integer.MAX_VALUE)))
+                                                                                                        .toList();
+
+                                                                                        return new NotificationListResult(
+                                                                                                        visible,
+                                                                                                        dateOptions);
+                                                                                });
                                                         });
                                 });
         }

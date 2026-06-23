@@ -21,26 +21,41 @@ public class ExportContributionSummaryService implements ExportContributionSumma
 
         @Override
         public Mono<ContributionSummaryReportResult> execute(ExportContributionSummaryCommand command) {
-                return referenceDatePort.resolveReferenceDate()
-                                .flatMap(refDate -> currentPortalAccessContextResolver.current()
-                                                .map(ctx -> ContributionSummarySupport.newFetchCommand(
-                                                                ContributionSummarySupport
-                                                                                .formatDate(refDate.minusMonths(36)),
-                                                                ContributionSummarySupport.formatDate(refDate),
-                                                                ctx)))
-                                .flatMap(fetchCommand -> apimContributionSummaryPort
-                                                .fetchContributionSummary(fetchCommand)
-                                                .map(ContributionSummaryReportBuilder::build)
-                                                .map(report -> new ContributionSummaryReportResult(
-                                                                report,
-                                                                currencyDisplayPort.resolveCurrencyDisplay(
-                                                                                report.currency(),
-                                                                                fetchCommand.accountEnv(),
-                                                                                fetchCommand.trustCode(),
-                                                                                fetchCommand.schemeType()),
-                                                                null,
-                                                                fetchCommand.trustCode(),
-                                                                fetchCommand.schemeType(),
-                                                                fetchCommand.accountEnv())));
+                return currentPortalAccessContextResolver.current()
+                                .flatMap(ctx -> {
+                                        var account = ctx.account();
+                                        var actor = ctx.actor();
+
+                                        String accountEnv = account.accountEnv();
+
+                                        return referenceDatePort.resolveReferenceDate(accountEnv)
+                                                        .flatMap(refDate -> {
+                                                                var fetchCommand = ContributionSummarySupport
+                                                                                .newFetchCommand(
+                                                                                                ContributionSummarySupport
+                                                                                                                .formatDate(refDate
+                                                                                                                                .minusMonths(36)),
+                                                                                                ContributionSummarySupport
+                                                                                                                .formatDate(refDate),
+                                                                                                ctx);
+
+                                                                return apimContributionSummaryPort
+                                                                                .fetchContributionSummary(fetchCommand)
+                                                                                .map(ContributionSummaryReportBuilder::build)
+                                                                                .map(report -> new ContributionSummaryReportResult(
+                                                                                                report,
+                                                                                                currencyDisplayPort
+                                                                                                                .resolveCurrencyDisplay(
+                                                                                                                                report.currency(),
+                                                                                                                                fetchCommand.accountEnv(),
+                                                                                                                                fetchCommand.trustCode(),
+                                                                                                                                fetchCommand.schemeType()),
+                                                                                                null,
+                                                                                                fetchCommand.trustCode(),
+                                                                                                fetchCommand.schemeType(),
+                                                                                                fetchCommand.accountEnv()));
+                                                        });
+                                });
+
         }
 }
