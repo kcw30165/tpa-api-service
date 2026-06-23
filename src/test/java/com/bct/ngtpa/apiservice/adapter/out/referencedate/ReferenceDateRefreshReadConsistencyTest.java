@@ -66,7 +66,7 @@ class ReferenceDateRefreshReadConsistencyTest {
                 });
 
         StepVerifier.create(refreshService.execute(new RefreshReferenceDateCommand(accountEnv))
-                .then(reader.resolveReferenceDate()))
+                .then(reader.resolveReferenceDate(accountEnv)))
                 .assertNext(date -> assertThat(date).isEqualTo(refreshedDate))
                 .verifyComplete();
 
@@ -99,7 +99,7 @@ class ReferenceDateRefreshReadConsistencyTest {
                     return Mono.empty();
                 });
 
-        StepVerifier.create(reader.resolveReferenceDate().then(reader.resolveReferenceDate()))
+        StepVerifier.create(reader.resolveReferenceDate(accountEnv).then(reader.resolveReferenceDate(accountEnv)))
                 .expectNext(refreshedDate)
                 .verifyComplete();
 

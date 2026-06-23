@@ -7,6 +7,8 @@ import com.bct.ngtpa.apiservice.application.port.in.RefreshReferenceDateUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ApimReferenceDateRefreshPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDateCacheUpdatePort;
 import com.bct.ngtpa.apiservice.exception.CacheException;
+import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
@@ -25,6 +27,7 @@ public class RefreshReferenceDateService implements RefreshReferenceDateUseCase 
     private final String redisKeyPrefix;
 
     @Override
+    // @LogExecution(value = "refreshReferenceDateService.execute", logArgs = true)
     public Mono<RefreshReferenceDateResult> execute(RefreshReferenceDateCommand command) {
         return apimReferenceDateRefreshPort.fetchReferenceDate(command.accountEnv())
                 .flatMap(referenceDate -> updateRedis(command.accountEnv(), referenceDate.format(DATE_FORMATTER)));

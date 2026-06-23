@@ -58,7 +58,7 @@ class ExportContributionSummaryServiceTest {
         };
 
         var recordingPort = new RecordingCurrencyDisplayPort();
-        ReferenceDatePort referenceDatePort = () -> Mono.just(LocalDate.of(2026, 3, 31));
+        ReferenceDatePort referenceDatePort = accountEnv -> Mono.just(LocalDate.of(2026, 3, 31));
 
         var service = new ExportContributionSummaryService(port, recordingPort, referenceDatePort,
                 currentPortalAccessContextResolver());
@@ -93,7 +93,7 @@ class ExportContributionSummaryServiceTest {
                     return Mono.just(new ContributionSummaryDataset("HKD", List.of(), List.of()));
                 },
                 currencyDisplayPort,
-                () -> Mono.just(LocalDate.of(2026, 3, 31)),
+                accountEnv -> Mono.just(LocalDate.of(2026, 3, 31)),
                 currentPortalAccessContextResolver());
 
         service.execute(new ExportContributionSummaryCommand()).block();

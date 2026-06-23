@@ -4,7 +4,7 @@ api:
 
 redis-cache:
   enabled: false
-    
+
 contribution-summary:
   total-label:
     en: Total Contributions
@@ -51,7 +51,7 @@ logging:
   level:
     org.springframework.security: DEBUG
     com.bct.ngtpa: DEBUG
-    
+
 currency-mapping:
   zh_HK:
     AUD: 澳元
@@ -116,24 +116,12 @@ currency-mapping:
     NZD.OG: NZD
     INR.OG: INR
 
-reference-date:
-  override-date: 30/06/2026
-  override-zone-id: Asia/Hong_Kong
-  refresh:
-    config-service:
-      application: ngtpa-api-service
-      profile: local
-      label: reference-date
-
-
 temporary-portal-access-context:
-  # Temporary Redis-session simulation until login/session management is implemented.
-  # Future request resolution will use HttpOnly session-id cookie + Account-Ref header.
   default-session-id: DEMO-SESSION-001
   sessions:
     DEMO-SESSION-001:
       actor:
-        actor-user-id: C402400A
+        actor-user-id: 3002798
         actor-user-role: MEMBER
       accounts:
         ACC-1:
@@ -191,7 +179,7 @@ request-logging:
       - method: GET
         path-pattern: /api/v1/notifications
         log-request-body: false
-        log-response-body: true  
+        log-response-body: true
 
 error-message:
   en:
@@ -200,7 +188,7 @@ error-message:
     "err.contribution.request.invalid.JP": "Invalid contribution request for JP."
     "err.contribution.request.invalid.JP.JPM": "Invalid contribution request for JP JPM."
     "err.contribution.request.invalid.JP.JPM.OE": "Invalid contribution request for JP JPM OE."
-    "err.contribution.request.invalid.JP.OE": "Invalid contribution request for JP OE."    
+    "err.contribution.request.invalid.JP.OE": "Invalid contribution request for JP OE."
     "err.contribution.request.invalid.JPM.OE": "Invalid contribution request for JPM OE."
     "err.contribution.request.invalid.JPM": "Invalid contribution request for JPM."
     "err.contribution.request.invalid.OE": "Invalid contribution request for OE."

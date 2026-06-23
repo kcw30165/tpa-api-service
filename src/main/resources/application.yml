@@ -35,15 +35,9 @@ api:
     require-authentication: ${API_SECURITY_REQUIRE_AUTHENTICATION:true}
 
 reference-date:
-  override-date: ${REFERENCE_DATE_OVERRIDE_DATE:}
-  override-zone-id: ${REFERENCE_DATE_OVERRIDE_ZONE_ID:}
   cache-ttl-seconds: ${REFERENCE_DATE_CACHE_TTL_SECONDS:0}
   refresh:
     cache-ttl-seconds: ${REFERENCE_DATE_REFRESH_CACHE_TTL_SECONDS:86400}
-    config-service:
-      application: ${REFERENCE_DATE_REFRESH_CONFIG_SERVICE_APPLICATION:}
-      profile: ${REFERENCE_DATE_REFRESH_CONFIG_SERVICE_PROFILE:}
-      label: ${REFERENCE_DATE_REFRESH_CONFIG_SERVICE_LABEL:}
 
 config-service:
   base-url: ${CONFIG_SERVICE_BASE_URL:}

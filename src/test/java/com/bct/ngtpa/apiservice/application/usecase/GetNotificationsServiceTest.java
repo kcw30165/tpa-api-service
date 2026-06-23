@@ -26,7 +26,7 @@ class GetNotificationsServiceTest {
             captured.set(command);
             return Mono.just(new NotificationListResult(List.of()));
         };
-        ReferenceDatePort referenceDatePort = () -> Mono.just(LocalDate.of(2026, 6, 16));
+        ReferenceDatePort referenceDatePort = accountEnv -> Mono.just(LocalDate.of(2026, 6, 16));
 
         new GetNotificationsService(apimPort, provider(context("ACC-123")), referenceDatePort)
                 .execute(new GetNotificationsCommand(null, null, 1, 20, null, null, null, null, null, null))

@@ -63,7 +63,7 @@ class GetContributionSummaryServiceTest {
     }
 
     private static ReferenceDatePort referenceDatePort() {
-        return () -> Mono.just(REFERENCE_DATE);
+        return accountEnv -> Mono.just(REFERENCE_DATE);
     }
 
     private static ContributionActionPermissionPort actionPermissionPort() {
@@ -151,8 +151,8 @@ class GetContributionSummaryServiceTest {
     void usesResolvedReferenceDateFromPortForThirtySixMonthWindowValidation() {
         AtomicInteger apimCalls = new AtomicInteger();
         AtomicReference<String> capturedAccountEnv = new AtomicReference<>();
-        ReferenceDatePort capturingReferenceDatePort = () -> {
-            capturedAccountEnv.set("JP");
+        ReferenceDatePort capturingReferenceDatePort = accountEnv -> {
+            capturedAccountEnv.set(accountEnv);
             return Mono.just(LocalDate.of(2024, 1, 31));
         };
 

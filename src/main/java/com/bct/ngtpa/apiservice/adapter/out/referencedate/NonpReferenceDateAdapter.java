@@ -51,12 +51,11 @@ public class NonpReferenceDateAdapter implements ReferenceDatePort {
     }
 
     @Override
-    public Mono<LocalDate> resolveReferenceDate() {
+    public Mono<LocalDate> resolveReferenceDate(String accountEnv) {
         if (isProductionLikeDeploymentEnv(currentDeploymentEnv())) {
             return Mono.fromSupplier(this::resolveHongKongSystemDate);
         }
 
-        String accountEnv = properties.getAccountEnv();
         return readFromRedis(accountEnv)
                 .switchIfEmpty(Mono.defer(() -> readFromApim(accountEnv)))
                 .switchIfEmpty(Mono.fromSupplier(this::resolveHongKongSystemDate));

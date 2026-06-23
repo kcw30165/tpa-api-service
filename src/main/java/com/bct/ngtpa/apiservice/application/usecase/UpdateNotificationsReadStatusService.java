@@ -23,21 +23,25 @@ public class UpdateNotificationsReadStatusService implements UpdateNotifications
     @Override
     public Mono<UpdateNotificationsReadStatusResult> execute(UpdateNotificationsReadStatusCommand command) {
         return currentPortalAccessContextResolver.current()
-                .zipWith(referenceDatePort.resolveReferenceDate())
-                .flatMap(tuple -> {
-                    var ctx = tuple.getT1();
-                    var referenceDate = tuple.getT2();
+                .flatMap(ctx -> {
+                    var account = ctx.account();
 
-                    var enrichedCommand = new UpdateNotificationsReadStatusCommand(
-                            ctx.account().accountEnv(),
-                            "",
-                            command.notificationIds(),
-                            ctx.account().policyNo(),
-                            ctx.account().certNo(),
-                            ctx.actor().actorUserId(),
-                            referenceDate.format(DATE_FORMATTER),
-                            MessageStatus.READ);
-                    return apimNotificationReadStatusPort.updateReadStatus(enrichedCommand);
+                    String accountEnv = account.accountEnv();
+                    return referenceDatePort.resolveReferenceDate(accountEnv)
+                            .flatMap(refDate -> {
+
+                                var enrichedCommand = new UpdateNotificationsReadStatusCommand(
+                                        ctx.account().accountEnv(),
+                                        "",
+                                        command.notificationIds(),
+                                        ctx.account().policyNo(),
+                                        ctx.account().certNo(),
+                                        ctx.actor().actorUserId(),
+                                        refDate.format(DATE_FORMATTER),
+                                        MessageStatus.READ);
+                                return apimNotificationReadStatusPort.updateReadStatus(enrichedCommand);
+                            });
+
                 });
     }
 }
