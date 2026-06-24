@@ -44,3 +44,4 @@ aa.md
 **/*.log
 patches/
 .venv/
+.local/
