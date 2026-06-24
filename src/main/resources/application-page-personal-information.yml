@@ -392,12 +392,12 @@ bff-pages:
                 dataType: string
                 controlType: text
                 validations:
-                  - id: mailingAddressLine1.minLength
-                    type: minLength
-                    value: 5
-                    code: personalInformation.mailingAddress.invalid
-                    messageCode: personalInformation.mailingAddress.invalid.message
-                    severity: error
+                  # - id: mailingAddressLine1.minLength
+                  #   type: minLength
+                  #   value: 5
+                  #   code: personalInformation.mailingAddress.invalid
+                  #   messageCode: personalInformation.mailingAddress.invalid.message
+                  #   severity: error
                   - id: mailingAddressLine1.maxLength
                     type: maxLength
                     value: 40
@@ -419,6 +419,12 @@ bff-pages:
                 labelCode: personalInformation.field.mailingAddressLine2.label
                 placeholderCode: personalInformation.field.mailingAddressLine2.placeholder
                 validations:
+                  # - id: mailingAddressLine2.minLength
+                  #   type: minLength
+                  #   value: 5
+                  #   code: personalInformation.mailingAddress.invalid
+                  #   messageCode: personalInformation.mailingAddress.invalid.message
+                  #   severity: error
                   - id: mailingAddressLine2.maxLength
                     type: maxLength
                     value: 40

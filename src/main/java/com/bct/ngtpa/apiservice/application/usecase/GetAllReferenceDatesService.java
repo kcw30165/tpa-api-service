@@ -7,7 +7,6 @@ import com.bct.ngtpa.apiservice.application.port.in.GetAllReferenceDatesUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.CacheAdminPort;
 import java.util.Comparator;
 import lombok.RequiredArgsConstructor;
-import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 
 @RequiredArgsConstructor
@@ -17,7 +16,7 @@ public class GetAllReferenceDatesService implements GetAllReferenceDatesUseCase 
     @Override
     public Mono<GetAllReferenceDatesResult> execute() {
         return cacheAdminPort.findAllByCapability(CacheCapability.REFERENCE_DATE)
-                .filter(entry -> StringUtils.hasText(entry.qualifier()))
+                .filter(entry -> entry.qualifier() != null && !entry.qualifier().isBlank())
                 .map(entry -> new ReferenceDateEntryResult(entry.qualifier(), entry.value()))
                 .sort(Comparator.comparing(ReferenceDateEntryResult::accountEnv))
                 .collectList()
