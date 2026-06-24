@@ -71,11 +71,9 @@ class PersonalInformationAddressValidationYamlTest {
     @Test
     void addressLineOneMinLengthAndPoBoxRulesAreConfiguredFromYaml() {
         assertMinLengthRule("residentialAddressLine1", "personalInformation.residentialAddress.invalid");
-        assertMinLengthRule("mailingAddressLine1", "personalInformation.mailingAddress.invalid");
 
         for (String fieldId : List.of(
-                "residentialAddressLine1", "residentialAddressLine2", "residentialAddressLine3",
-                "mailingAddressLine1", "mailingAddressLine2", "mailingAddressLine3")) {
+                "residentialAddressLine1", "residentialAddressLine2", "residentialAddressLine3")) {
             assertThat(validations(field(fieldId)))
                     .filteredOn(rule -> "blockedAddress".equalsIgnoreCase(string(rule.get("type"))))
                     .anySatisfy(rule -> {

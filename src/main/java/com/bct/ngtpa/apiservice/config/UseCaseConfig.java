@@ -33,6 +33,7 @@ import com.bct.ngtpa.apiservice.application.usecase.GetPersonalInformationServic
 import com.bct.ngtpa.apiservice.application.usecase.GetReferenceDataCountriesService;
 import com.bct.ngtpa.apiservice.application.usecase.UpdateNotificationsReadStatusService;
 import org.springframework.beans.factory.annotation.Value;
+
 import com.bct.ngtpa.apiservice.application.usecase.UpdatePersonalInformationService;
 
 import org.springframework.context.annotation.Bean;
@@ -51,88 +52,90 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class UseCaseConfig {
 
-    @Bean
-    public GetNotificationsUseCase getNotificationsUseCase(
-            ApimNoticeMessagePort apimNoticeMessagePort,
-            CurrentPortalAccessContextResolver currentPortalAccessContextResolver,
-            ReferenceDatePort referenceDatePort) {
-        return new GetNotificationsService(
-                apimNoticeMessagePort, currentPortalAccessContextResolver, referenceDatePort);
-    }
+        @Bean
+        public GetNotificationsUseCase getNotificationsUseCase(
+                        ApimNoticeMessagePort apimNoticeMessagePort,
+                        CurrentPortalAccessContextResolver currentPortalAccessContextResolver,
+                        ReferenceDatePort referenceDatePort) {
+                return new GetNotificationsService(
+                                apimNoticeMessagePort, currentPortalAccessContextResolver, referenceDatePort);
+        }
 
-    @Bean
-    public UpdateNotificationsReadStatusUseCase updateNotificationsReadStatusUseCase(
-            ApimNotificationReadStatusPort apimNotificationReadStatusPort,
-            CurrentPortalAccessContextResolver currentPortalAccessContextResolver,
-            ReferenceDatePort referenceDatePort) {
-        return new UpdateNotificationsReadStatusService(
-                apimNotificationReadStatusPort, currentPortalAccessContextResolver, referenceDatePort);
-    }
+        @Bean
+        public UpdateNotificationsReadStatusUseCase updateNotificationsReadStatusUseCase(
+                        ApimNotificationReadStatusPort apimNotificationReadStatusPort,
+                        CurrentPortalAccessContextResolver currentPortalAccessContextResolver,
+                        ReferenceDatePort referenceDatePort) {
+                return new UpdateNotificationsReadStatusService(
+                                apimNotificationReadStatusPort, currentPortalAccessContextResolver, referenceDatePort);
+        }
 
-    @Bean
-    public GetContributionSummaryUseCase getContributionSummaryUseCase(
-            ApimContributionSummaryPort apimContributionSummaryPort,
-            CurrencyDisplayPort currencyDisplayPort,
-            ReferenceDatePort referenceDatePort,
-            CurrentPortalAccessContextResolver currentPortalAccessContextResolver,
-            ContributionActionPermissionPort contributionActionPermissionPort) {
-        return new GetContributionSummaryService(
-                apimContributionSummaryPort, currencyDisplayPort, referenceDatePort, currentPortalAccessContextResolver,
-                contributionActionPermissionPort);
-    }
+        @Bean
+        public GetContributionSummaryUseCase getContributionSummaryUseCase(
+                        ApimContributionSummaryPort apimContributionSummaryPort,
+                        CurrencyDisplayPort currencyDisplayPort,
+                        ReferenceDatePort referenceDatePort,
+                        CurrentPortalAccessContextResolver currentPortalAccessContextResolver,
+                        ContributionActionPermissionPort contributionActionPermissionPort) {
+                return new GetContributionSummaryService(
+                                apimContributionSummaryPort, currencyDisplayPort, referenceDatePort,
+                                currentPortalAccessContextResolver,
+                                contributionActionPermissionPort);
+        }
 
-    @Bean
-    public ExportContributionSummaryUseCase exportContributionSummaryUseCase(
-            ApimContributionSummaryPort apimContributionSummaryPort,
-            CurrencyDisplayPort currencyDisplayPort,
-            ReferenceDatePort referenceDatePort,
-            CurrentPortalAccessContextResolver currentPortalAccessContextResolver) {
-        return new ExportContributionSummaryService(
-                apimContributionSummaryPort, currencyDisplayPort, referenceDatePort, currentPortalAccessContextResolver);
-    }
+        @Bean
+        public ExportContributionSummaryUseCase exportContributionSummaryUseCase(
+                        ApimContributionSummaryPort apimContributionSummaryPort,
+                        CurrencyDisplayPort currencyDisplayPort,
+                        ReferenceDatePort referenceDatePort,
+                        CurrentPortalAccessContextResolver currentPortalAccessContextResolver) {
+                return new ExportContributionSummaryService(
+                                apimContributionSummaryPort, currencyDisplayPort, referenceDatePort,
+                                currentPortalAccessContextResolver);
+        }
 
-    @Bean
-    public GetReferenceDataCountriesUseCase getReferenceDataCountriesUseCase(
-            ApimReferenceDataCountriesPort apimReferenceDataCountriesPort) {
-        return new GetReferenceDataCountriesService(apimReferenceDataCountriesPort);
-    }
+        @Bean
+        public GetReferenceDataCountriesUseCase getReferenceDataCountriesUseCase(
+                        ApimReferenceDataCountriesPort apimReferenceDataCountriesPort) {
+                return new GetReferenceDataCountriesService(apimReferenceDataCountriesPort);
+        }
 
-    @Bean
-    public GetPersonalInformationUseCase getPersonalInformationUseCase(
-            ApimMemberInfoPort apimMemberInfoPort,
-            CurrentPortalAccessContextResolver currentPortalAccessContextResolver) {
-        return new GetPersonalInformationService(
-                apimMemberInfoPort,
-                currentPortalAccessContextResolver);
-    }
+        @Bean
+        public GetPersonalInformationUseCase getPersonalInformationUseCase(
+                        ApimMemberInfoPort apimMemberInfoPort,
+                        CurrentPortalAccessContextResolver currentPortalAccessContextResolver) {
+                return new GetPersonalInformationService(
+                                apimMemberInfoPort,
+                                currentPortalAccessContextResolver);
+        }
 
-    @Bean
-    public UpdatePersonalInformationUseCase updatePersonalInformationUseCase(
-            ApimUpdatePersonalInformationPort apimUpdatePersonalInformationPort,
-            CurrentPortalAccessContextResolver currentPortalAccessContextResolver) {
-        return new UpdatePersonalInformationService(
-                apimUpdatePersonalInformationPort,
-                currentPortalAccessContextResolver);
-    }
+        @Bean
+        public UpdatePersonalInformationUseCase updatePersonalInformationUseCase(
+                        ApimUpdatePersonalInformationPort apimUpdatePersonalInformationPort,
+                        CurrentPortalAccessContextResolver currentPortalAccessContextResolver) {
+                return new UpdatePersonalInformationService(
+                                apimUpdatePersonalInformationPort,
+                                currentPortalAccessContextResolver);
+        }
 
-    @Bean
-    public RefreshReferenceDateUseCase refreshReferenceDateUseCase(
-            ApimReferenceDateRefreshPort apimReferenceDateRefreshPort,
-            ReferenceDateCacheUpdatePort referenceDateCacheUpdatePort,
-            @Value("${redis-cache.key-prefix:ngtpa}") String redisKeyPrefix) {
-        return new RefreshReferenceDateService(
-                apimReferenceDateRefreshPort,
-                referenceDateCacheUpdatePort,
-                redisKeyPrefix);
-    }
+        @Bean
+        public RefreshReferenceDateUseCase refreshReferenceDateUseCase(
+                        ApimReferenceDateRefreshPort apimReferenceDateRefreshPort,
+                        ReferenceDateCacheUpdatePort referenceDateCacheUpdatePort,
+                        @Value("${redis-cache.key-prefix:ngtpa}") String redisKeyPrefix) {
+                return new RefreshReferenceDateService(
+                                apimReferenceDateRefreshPort,
+                                referenceDateCacheUpdatePort,
+                                redisKeyPrefix);
+        }
 
-    @Bean
-    public GetAllReferenceDatesUseCase getAllReferenceDatesUseCase(CacheAdminPort cacheAdminPort) {
-        return new GetAllReferenceDatesService(cacheAdminPort);
-    }
+        @Bean
+        public GetAllReferenceDatesUseCase getAllReferenceDatesUseCase(CacheAdminPort cacheAdminPort) {
+                return new GetAllReferenceDatesService(cacheAdminPort);
+        }
 
-    @Bean
-    public CleanUpAllReferenceDatesUseCase cleanUpAllReferenceDatesUseCase(CacheAdminPort cacheAdminPort) {
-        return new CleanUpAllReferenceDatesService(cacheAdminPort);
-    }
+        @Bean
+        public CleanUpAllReferenceDatesUseCase cleanUpAllReferenceDatesUseCase(CacheAdminPort cacheAdminPort) {
+                return new CleanUpAllReferenceDatesService(cacheAdminPort);
+        }
 }
