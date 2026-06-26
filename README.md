@@ -1071,6 +1071,22 @@ currency-mapping:
 
 These values drive the synthetic total detail row in the JSON response, the first three column headers in the XLSX export, the locale-specific currency display returned in contribution summary JSON, and the effective contribution reference date. Currency, date, and amount lookups now run through the global config variant resolver, which evaluates `env`, `trustCode`, and `schemeType` suffix combinations in a fixed order and then falls back to English when the requested language has no match.
 
+## Auth Workflow Registration Configuration
+
+`auth-workflows.registration` is foundation-only configuration for future registration workflow slices. P0.1 adds only property-binding defaults in `src/main/resources/application.yml`; it does not add registration endpoints, OTP delivery, Redis auth state, APIM registration adapters, or captcha execution.
+
+Current local defaults in `src/main/resources/application.yml`:
+
+```yaml
+auth-workflows:
+  registration:
+    pre-start-challenge:
+      enabled: false
+      type: CAPTCHA
+```
+
+`pre-start-challenge.enabled=false` means the future captcha gate is disabled until the later P5 confirmation slice enables and implements it.
+
 ---
 
 ## API Endpoints

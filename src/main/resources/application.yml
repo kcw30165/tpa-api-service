@@ -45,6 +45,53 @@ config-service:
   username: ${CONFIG_SERVICE_USERNAME:}
   password: ${CONFIG_SERVICE_PASSWORD:}
 
+auth-workflows:
+  registration:
+    pre-start-challenge:
+      enabled: false
+      type: CAPTCHA
+    captcha:
+      length: 7
+      alphabet: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+      case-sensitive: true
+      ttl-seconds: 300
+      max-attempts: 5
+    otp:
+      length: 6
+      numeric-only: true
+      ttl-seconds: 300
+      resend-cooldown-seconds: 60
+      max-verify-attempts: 5
+      max-resend-attempts: 5
+      invalidate-previous-on-resend: true
+      reset-verify-attempts-on-resend: false
+      sms-template: "Your BCT verification code is {code}. It is valid for {ttlMinutes} minutes."
+      email:
+        subject: "BCT verification code"
+        body: "Your verification code is {code}. It is valid for {ttlMinutes} minutes."
+    username:
+      min-length: 4
+      max-length: 128
+      no-spaces: true
+      case-insensitive: true
+      required-digit: true
+      required-special: true
+      allowed-special-chars: "!@#$%^&*()_-"
+    password:
+      min-length: 8
+      max-length: 16
+      no-spaces: true
+      not-same-as-username-ignore-case: true
+      required-categories: 3
+      special-chars: "!@#$%^&*()_-"
+    identity-type-mapping:
+      GPN: UB
+      GPFS: TL
+      STAFF_NO: MG_MC_DB
+      HKID: OI_OS_TB_OU_JP_HS_JM
+      PASSPORT: OI_OS_TB_OU_JP_HS_JM
+      OTHER_NATIONAL_ID: OI_OS_TB_OU_JP_HS_JM
+
 apim:
   base-url: ${APIM_BASE_URL:${APIM_BASEURL:}}
   timeout-milliseconds: ${APIM_TIMEOUT_MILLISECONDS:${APIM_TIMEOUTMILLISECONDS:10000}}
