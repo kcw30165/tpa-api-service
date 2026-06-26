@@ -6,8 +6,10 @@ public record ReplaceOtpChallengeResult(
         String previousOtpChallengeId,
         String newOtpChallengeId,
         String rawCode,
+        OtpReplacementOutcome outcome,
         Instant expiresAt,
         int expiresInSeconds,
         int resendCooldownSeconds,
-        int remainingResendAttempts) {
+        int remainingResendAttempts,
+        Integer retryAfterSeconds) {
 }

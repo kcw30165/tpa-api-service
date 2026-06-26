@@ -4,5 +4,9 @@ import java.time.Instant;
 
 public record ReplaceOtpChallengeCommand(
         String currentOtpChallengeId,
+        int length,
+        boolean numericOnly,
+        int ttlSeconds,
+        int resendCooldownSeconds,
         Instant now) {
 }
