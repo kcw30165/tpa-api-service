@@ -1075,6 +1075,8 @@ These values drive the synthetic total detail row in the JSON response, the firs
 
 `auth-workflows.registration` is foundation-only configuration for future registration workflow slices. P0.1 adds only property-binding defaults in `src/main/resources/application.yml`; it does not add registration endpoints, OTP delivery, Redis auth state, APIM registration adapters, or captcha execution.
 
+P0.2 adds `AuthWorkflowPolicyPort` as the application-facing direct lookup boundary for registration policy. No variant lookup is implemented for `auth-workflows`, and `identity-type-mapping` remains Java-side APIM request enrichment only. P0.2 still does not add registration endpoints.
+
 Current local defaults in `src/main/resources/application.yml`:
 
 ```yaml
