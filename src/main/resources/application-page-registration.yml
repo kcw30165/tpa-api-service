@@ -1,0 +1,205 @@
+bff-pages:
+  pages:
+    registration-start:
+      metadata:
+        id: registrationStartPage
+        title:
+          en: Registration
+          zh_HK: 註冊
+      form:
+        id: registrationStartForm
+        actions:
+          - name: submitRegistrationStart
+            label:
+              en: Continue
+              zh_HK: 繼續
+        sections:
+          - id: identityVerification
+            title:
+              en: Identity Verification
+              zh_HK: 身份驗證
+            fields:
+              - id: identityType
+                displayOrder: 1
+                controlType: select
+                label:
+                  en: Identity Type
+                  zh_HK: 身份證明文件類型
+              - id: identityValue
+                displayOrder: 2
+                controlType: text
+                label:
+                  en: Identity Number
+                  zh_HK: 身份證明文件號碼
+              - id: dateOfBirth
+                displayOrder: 3
+                controlType: date
+                label:
+                  en: Date of Birth
+                  zh_HK: 出生日期
+              - id: hongKongMobilePhone
+                displayOrder: 4
+                controlType: text
+                label:
+                  en: Hong Kong Mobile Phone Number
+                  zh_HK: 香港手提電話號碼
+              - id: emailAddress
+                displayOrder: 5
+                controlType: email
+                label:
+                  en: Email Address
+                  zh_HK: 電郵地址
+              - id: captchaAnswer
+                displayOrder: 6
+                controlType: text
+                label:
+                  en: Verification Code
+                  zh_HK: 驗證碼
+
+    registration-otp-verification:
+      metadata:
+        id: registrationOtpVerificationPage
+        title:
+          en: OTP Verification
+          zh_HK: 驗證碼確認
+      form:
+        id: registrationOtpVerificationForm
+        actions:
+          - name: verifyOtp
+            label:
+              en: Verify OTP
+              zh_HK: 確認驗證碼
+          - name: resendOtp
+            label:
+              en: Resend OTP
+              zh_HK: 重新發送驗證碼
+          - name: cancelRegistration
+            label:
+              en: Cancel Registration
+              zh_HK: 取消註冊
+        sections:
+          - id: otpVerification
+            title:
+              en: One-Time Password
+              zh_HK: 一次性驗證碼
+            fields:
+              - id: otpCode
+                displayOrder: 1
+                controlType: text
+                label:
+                  en: OTP Code
+                  zh_HK: 驗證碼
+
+    registration-trust-selection:
+      metadata:
+        id: registrationTrustSelectionPage
+        title:
+          en: Select Your ORSO Scheme for Registration
+          zh_HK: 選擇用作註冊的公積金計劃
+      form:
+        id: registrationTrustSelectionForm
+
+    registration-username-check:
+      metadata:
+        id: registrationUsernameCheckPage
+        title:
+          en: Create Username
+          zh_HK: 建立用戶名稱
+      form:
+        id: registrationUsernameCheckForm
+        actions:
+          - name: checkUsername
+            label:
+              en: Check Username
+              zh_HK: 檢查用戶名稱
+          - name: cancelRegistration
+            label:
+              en: Cancel Registration
+              zh_HK: 取消註冊
+        sections:
+          - id: usernameSetup
+            title:
+              en: Username
+              zh_HK: 用戶名稱
+            fields:
+              - id: username
+                displayOrder: 1
+                controlType: text
+                label:
+                  en: Username
+                  zh_HK: 用戶名稱
+
+    registration-password-setup:
+      metadata:
+        id: registrationPasswordSetupPage
+        title:
+          en: Set Password
+          zh_HK: 設定密碼
+      form:
+        id: registrationPasswordSetupForm
+        actions:
+          - name: completeRegistration
+            label:
+              en: Complete Registration
+              zh_HK: 完成註冊
+          - name: cancelRegistration
+            label:
+              en: Cancel Registration
+              zh_HK: 取消註冊
+        sections:
+          - id: passwordSetup
+            title:
+              en: Password
+              zh_HK: 密碼
+            fields:
+              - id: password
+                displayOrder: 1
+                controlType: password
+                label:
+                  en: Password
+                  zh_HK: 密碼
+              - id: confirmPassword
+                displayOrder: 2
+                controlType: password
+                label:
+                  en: Confirm Password
+                  zh_HK: 確認密碼
+
+    registration-success:
+      metadata:
+        id: registrationSuccessPage
+      variants:
+        noRemainingTrusts:
+          title:
+            en: Successful Registration
+            zh_HK: 註冊成功
+          body:
+            en: Welcome to BCT! Your account is ready. You may now begin your experience. Please return to the login page to sign in to your account.
+            zh_HK: 歡迎加入 BCT！您的帳戶已準備就緒。您現在可以開始您的體驗。請返回登入頁面登入您的帳戶。
+          actions:
+            - id: returnToLogin
+              type: PRIMARY
+              label:
+                en: Return to Login
+                zh_HK: 返回登入頁面
+              nextStep: RETURN_TO_LOGIN
+        hasRemainingTrusts:
+          title:
+            en: Successful Registration
+            zh_HK: 註冊成功
+          body:
+            en: Welcome to BCT! Your account is ready. You can continue to register profile for unregistered ORSO schemes or return to the login page to sign in to your account.
+            zh_HK: 歡迎加入 BCT！您的帳戶已準備就緒。您可以繼續為尚未註冊的公積金計劃建立資料，或返回登入頁面登入您的帳戶。
+          actions:
+            - id: continueRegistration
+              type: PRIMARY
+              label:
+                en: Continue Registration for ORSO Schemes
+                zh_HK: 繼續為其他公積金計劃註冊
+              nextStep: SELECT_TRUST
+            - id: returnToLogin
+              type: SECONDARY
+              label:
+                en: Return to Login
+                zh_HK: 返回登入頁面
+              nextStep: RETURN_TO_LOGIN

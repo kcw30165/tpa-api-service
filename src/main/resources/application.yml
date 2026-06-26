@@ -6,6 +6,7 @@ spring:
     import:
       - optional:file:./.env[.properties]
       - optional:classpath:application-page-personal-information.yml
+      - optional:classpath:application-page-registration.yml
   application:
     name: ngtpa-api-server
   cloud:
