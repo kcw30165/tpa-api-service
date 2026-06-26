@@ -37,7 +37,7 @@ bff-pages:
                 label:
                   en: Date of Birth
                   zh_HK: 出生日期
-              - id: hongKongMobilePhone
+              - id: mobileNumber
                 displayOrder: 4
                 controlType: text
                 label:
