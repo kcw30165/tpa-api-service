@@ -1443,10 +1443,10 @@ Given `code`, `accountEnv`, `trustCode`, `schemeType`, and `locale`, the resolve
 2. `code.accountEnv.trustCode`
 3. `code.accountEnv.schemeType`
 <!-- 4. `code.trustCode.schemeType` -->
-1. `code.accountEnv`
+4. `code.accountEnv`
 <!-- 6. `code.trustCode` -->
-1. `code.schemeType`
-2. `code`
+5. `code.schemeType`
+6. `code`
 
 Blank dimensions are skipped, compound candidates are emitted only when all participating dimensions are present, duplicates are removed while preserving order, and malformed keys are never emitted. Requested locale candidates are tried first; if no match is found and the requested locale is not English, the same candidate sequence is retried under `en`.
 
