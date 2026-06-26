@@ -27,6 +27,7 @@ public class PageSchemaLinter {
             String pageKey = e.getKey();
             PageSchemaProperties page = e.getValue();
             if (page == null) continue;
+            validatePageVariants(result, pageKey, page);
             Set<String> fieldIds = new HashSet<>();
             if (page.getForm() != null && page.getForm().getSections() != null) {
                 for (SectionProperties s : page.getForm().getSections()) {
@@ -54,6 +55,60 @@ public class PageSchemaLinter {
             }
         }
         return result;
+    }
+
+    private static void validatePageVariants(LintResult result, String pageKey, PageSchemaProperties page) {
+        Map<String, PageVariantProperties> variants = page.getVariants();
+        if (variants == null || variants.isEmpty()) {
+            return;
+        }
+        for (Map.Entry<String, PageVariantProperties> entry : variants.entrySet()) {
+            String variantKey = entry.getKey();
+            PageVariantProperties variant = entry.getValue();
+            if (variantKey == null || variantKey.isBlank()) {
+                result.addError(pageKey + ": page variant has blank key");
+            }
+            if (variant == null) {
+                result.addError(pageKey + ": page variant " + variantKey + " is null");
+                continue;
+            }
+            if (isBlankLocalizedMap(variant.getTitle())) {
+                result.addError(pageKey + ": page variant " + variantKey + " requires title");
+            }
+            if (isBlankLocalizedMap(variant.getBody())) {
+                result.addError(pageKey + ": page variant " + variantKey + " requires body");
+            }
+            if (variant.getActions() == null || variant.getActions().isEmpty()) {
+                result.addError(pageKey + ": page variant " + variantKey + " requires actions");
+                continue;
+            }
+            for (ActionProperties action : variant.getActions()) {
+                validateVariantAction(result, pageKey, variantKey, action);
+            }
+        }
+    }
+
+    private static void validateVariantAction(
+            LintResult result,
+            String pageKey,
+            String variantKey,
+            ActionProperties action) {
+        if (action == null) {
+            result.addError(pageKey + ": page variant " + variantKey + " contains null action");
+            return;
+        }
+        if (isBlank(action.getId()) && isBlank(action.getName())) {
+            result.addError(pageKey + ": page variant " + variantKey + " action requires id or name");
+        }
+        if (isBlank(action.getType())) {
+            result.addError(pageKey + ": page variant " + variantKey + " action requires type");
+        }
+        if (isBlank(action.getNextStep())) {
+            result.addError(pageKey + ": page variant " + variantKey + " action requires nextStep");
+        }
+        if (isBlank(action.getLabelCode()) && isBlankLocalizedMap(action.getLabel())) {
+            result.addError(pageKey + ": page variant " + variantKey + " action requires label");
+        }
     }
     private static void validateRule(LintResult result, String pageKey, Set<String> fieldIds, ValidationRuleProperties v) {
         if (v == null) {
@@ -191,6 +246,14 @@ public class PageSchemaLinter {
     private static boolean isBlank(Object value) {
         return value == null || value.toString().isBlank();
     }
+
+    private static boolean isBlankLocalizedMap(Map<String, String> value) {
+        if (value == null || value.isEmpty()) {
+            return true;
+        }
+        return value.values().stream().allMatch(PageSchemaLinter::isBlank);
+    }
+
     private static boolean isInteger(Object value) {
         if (value instanceof Number) {
             return true;

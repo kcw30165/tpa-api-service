@@ -1071,6 +1071,47 @@ currency-mapping:
 
 These values drive the synthetic total detail row in the JSON response, the first three column headers in the XLSX export, the locale-specific currency display returned in contribution summary JSON, and the effective contribution reference date. Currency, date, and amount lookups now run through the global config variant resolver, which evaluates `env`, `trustCode`, and `schemeType` suffix combinations in a fixed order and then falls back to English when the requested language has no match.
 
+## Auth Workflow Registration Configuration
+
+`auth-workflows.registration` is foundation-only configuration for future registration workflow slices. P0.1 adds only property-binding defaults in `src/main/resources/application.yml`; it does not add registration endpoints, OTP delivery, Redis auth state, APIM registration adapters, or captcha execution.
+
+P0.2 adds `AuthWorkflowPolicyPort` as the application-facing direct lookup boundary for registration policy. No variant lookup is implemented for `auth-workflows`, and `identity-type-mapping` remains Java-side APIM request enrichment only. P0.2 still does not add registration endpoints.
+
+P0.3 adds registration page schemas under `bff-pages`, including true page-level `variants` for `registration-success`.
+
+P0.4 adds a web/pageconfig mapper for `registration-success` variants. The later registration-complete flow may select only the variant; localized success-page title, body, and actions remain presentation mapping in the web layer.
+
+Implemented in P0:
+
+- `auth-workflows.registration` policy binding
+- direct registration auth workflow policy lookup
+- Java-side identity type search-scope mapping
+- registration page schemas under `bff-pages`
+- page-level variants for `registration-success`
+- web/pageconfig mapper for registration success-page variants
+
+Not implemented in P0:
+
+- registration endpoints
+- OTP challenge lifecycle
+- registration Redis session/idempotency state
+- APIM registration verification/completion adapters
+- message delivery
+- rate limiting
+- captcha endpoints/gate
+
+Current local defaults in `src/main/resources/application.yml`:
+
+```yaml
+auth-workflows:
+  registration:
+    pre-start-challenge:
+      enabled: false
+      type: CAPTCHA
+```
+
+`pre-start-challenge.enabled=false` means the future captcha gate is disabled until the later P5 confirmation slice enables and implements it.
+
 ---
 
 ## API Endpoints
@@ -1443,10 +1484,10 @@ Given `code`, `accountEnv`, `trustCode`, `schemeType`, and `locale`, the resolve
 2. `code.accountEnv.trustCode`
 3. `code.accountEnv.schemeType`
 <!-- 4. `code.trustCode.schemeType` -->
-1. `code.accountEnv`
+4. `code.accountEnv`
 <!-- 6. `code.trustCode` -->
-1. `code.schemeType`
-2. `code`
+5. `code.schemeType`
+6. `code`
 
 Blank dimensions are skipped, compound candidates are emitted only when all participating dimensions are present, duplicates are removed while preserving order, and malformed keys are never emitted. Requested locale candidates are tried first; if no match is found and the requested locale is not English, the same candidate sequence is retried under `en`.
 

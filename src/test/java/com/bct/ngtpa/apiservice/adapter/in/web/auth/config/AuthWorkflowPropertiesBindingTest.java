@@ -1,0 +1,117 @@
+package com.bct.ngtpa.apiservice.adapter.in.web.auth.config;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.env.YamlPropertySourceLoader;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.ClassPathResource;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+class AuthWorkflowPropertiesBindingTest {
+
+    private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
+            .withUserConfiguration(TestConfig.class)
+            .withInitializer(context -> {
+                var resource = new ClassPathResource("application.yml");
+                try {
+                    var propertySources = new YamlPropertySourceLoader().load("applicationConfig", resource);
+                    propertySources.forEach(source -> context.getEnvironment().getPropertySources().addLast(source));
+                } catch (java.io.IOException ex) {
+                    throw new IllegalStateException("Failed to load YAML", ex);
+                }
+            });
+
+    @Test
+    void bindsRegistrationDefaultsFromApplicationYaml() {
+        contextRunner.run(context -> {
+            var properties = context.getBean(AuthWorkflowProperties.class);
+            assertNotNull(properties);
+            assertNotNull(properties.getRegistration());
+
+            var registration = properties.getRegistration();
+            assertNotNull(registration.getPreStartChallenge());
+            assertFalse(registration.getPreStartChallenge().isEnabled());
+            assertEquals(AuthWorkflowProperties.PreStartChallengeType.CAPTCHA,
+                    registration.getPreStartChallenge().getType());
+
+            assertNotNull(registration.getCaptcha());
+            assertEquals(7, registration.getCaptcha().getLength());
+            assertEquals("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
+                    registration.getCaptcha().getAlphabet());
+            assertTrue(registration.getCaptcha().isCaseSensitive());
+            assertEquals(300, registration.getCaptcha().getTtlSeconds());
+            assertEquals(5, registration.getCaptcha().getMaxAttempts());
+
+            assertNotNull(registration.getOtp());
+            assertEquals(6, registration.getOtp().getLength());
+            assertTrue(registration.getOtp().isNumericOnly());
+            assertEquals(300, registration.getOtp().getTtlSeconds());
+            assertEquals(60, registration.getOtp().getResendCooldownSeconds());
+            assertEquals(5, registration.getOtp().getMaxVerifyAttempts());
+            assertEquals(5, registration.getOtp().getMaxResendAttempts());
+            assertTrue(registration.getOtp().isInvalidatePreviousOnResend());
+            assertFalse(registration.getOtp().isResetVerifyAttemptsOnResend());
+            assertEquals("Your BCT verification code is {code}. It is valid for {ttlMinutes} minutes.",
+                    registration.getOtp().getSmsTemplate());
+            assertNotNull(registration.getOtp().getEmail());
+            assertEquals("BCT verification code", registration.getOtp().getEmail().getSubject());
+            assertEquals("Your verification code is {code}. It is valid for {ttlMinutes} minutes.",
+                    registration.getOtp().getEmail().getBody());
+
+            assertNotNull(registration.getUsername());
+            assertEquals(4, registration.getUsername().getMinLength());
+            assertEquals(128, registration.getUsername().getMaxLength());
+            assertTrue(registration.getUsername().isNoSpaces());
+            assertTrue(registration.getUsername().isCaseInsensitive());
+            assertTrue(registration.getUsername().isRequiredDigit());
+            assertTrue(registration.getUsername().isRequiredSpecial());
+            assertEquals("!@#$%^&*()_-", registration.getUsername().getAllowedSpecialChars());
+
+            assertNotNull(registration.getPassword());
+            assertEquals(8, registration.getPassword().getMinLength());
+            assertEquals(16, registration.getPassword().getMaxLength());
+            assertTrue(registration.getPassword().isNoSpaces());
+            assertTrue(registration.getPassword().isNotSameAsUsernameIgnoreCase());
+            assertEquals(3, registration.getPassword().getRequiredCategories());
+            assertEquals("!@#$%^&*()_-", registration.getPassword().getSpecialChars());
+        });
+    }
+
+    @Test
+    void bindsIdentityTypeMappingExactly() {
+        contextRunner.run(context -> {
+            var mapping = context.getBean(AuthWorkflowProperties.class)
+                    .getRegistration()
+                    .getIdentityTypeMapping();
+
+            assertEquals(6, mapping.size());
+            assertEquals("UB", mapping.get("GPN"));
+            assertEquals("TL", mapping.get("GPFS"));
+            assertEquals("MG_MC_DB", mapping.get("STAFF_NO"));
+            assertEquals("OI_OS_TB_OU_JP_HS_JM", mapping.get("HKID"));
+            assertEquals("OI_OS_TB_OU_JP_HS_JM", mapping.get("PASSPORT"));
+            assertEquals("OI_OS_TB_OU_JP_HS_JM", mapping.get("OTHER_NATIONAL_ID"));
+        });
+    }
+
+    @Test
+    void missingRegistrationDoesNotCreateImplicitDefaults() {
+        new ApplicationContextRunner()
+                .withUserConfiguration(TestConfig.class)
+                .run(context -> {
+                    var properties = context.getBean(AuthWorkflowProperties.class);
+                    assertNull(properties.getRegistration());
+                });
+    }
+
+    @Configuration(proxyBeanMethods = false)
+    @EnableConfigurationProperties(AuthWorkflowProperties.class)
+    static class TestConfig {
+    }
+}

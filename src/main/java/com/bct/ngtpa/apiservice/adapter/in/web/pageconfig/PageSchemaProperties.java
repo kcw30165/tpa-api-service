@@ -14,6 +14,7 @@ import lombok.Setter;
 public class PageSchemaProperties {
 
     private Map<String, Map<String, String>> display = new LinkedHashMap<>();
+    private Map<String, PageVariantProperties> variants = new LinkedHashMap<>();
 
 
     private PageMetadataProperties metadata;
@@ -23,5 +24,9 @@ public class PageSchemaProperties {
 
     public void setDisplay(Map<String, Map<String, String>> display) {
         this.display = display == null ? new LinkedHashMap<>() : display;
+    }
+
+    public void setVariants(Map<String, PageVariantProperties> variants) {
+        this.variants = variants == null ? new LinkedHashMap<>() : variants;
     }
 }
