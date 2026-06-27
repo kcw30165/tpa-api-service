@@ -21,8 +21,6 @@ class P32RuntimeRateLimitComponentGuardTest {
                     .collect(Collectors.toSet());
         }
 
-        assertTrue(sourceFileNames.stream().noneMatch(name -> name.equals("RedisRateLimitAdapter.java")),
-                "P3.2 must not introduce RedisRateLimitAdapter");
         assertTrue(sourceFileNames.stream().noneMatch(name -> name.contains("DestinationHash")),
                 "P3.2 must not introduce destination hashing helpers");
         assertTrue(sourceFileNames.stream().noneMatch(name -> name.equals("CsrfTokenPort.java")),

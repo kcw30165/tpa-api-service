@@ -3,7 +3,9 @@ package com.bct.ngtpa.apiservice.adapter.out.redis.config;
 import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
 import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheAdminAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.RedisStringCacheAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRateLimitAdapter;
 import com.bct.ngtpa.apiservice.application.port.out.CachePort;
+import com.bct.ngtpa.apiservice.application.port.out.RateLimitPort;
 import com.bct.ngtpa.apiservice.application.port.out.CacheAdminPort;
 import io.lettuce.core.ClientOptions;
 import io.lettuce.core.SslOptions;
@@ -82,6 +84,14 @@ public class RedisAdapterConfig {
             RedisCacheKeyFactory redisCacheKeyFactory) {
         return new RedisCacheAdminAdapter(reactiveRedisTemplate, redisCacheKeyFactory);
     }
+
+    @Bean
+    public RateLimitPort redisRateLimitAdapter(
+            ReactiveRedisTemplate<String, String> reactiveRedisTemplate,
+            RedisCacheKeyFactory redisCacheKeyFactory) {
+        return new RedisRateLimitAdapter(reactiveRedisTemplate, redisCacheKeyFactory);
+    }
+
     
     // ── Internal configuration builders ──────────────────────────────────────
 
