@@ -206,3 +206,11 @@ logging:
   level:
     org.springframework.security: INFO
     com.bct.ngtpa: INFO
+
+email:
+  enabled: ${EMAIL_ENABLED:true}
+  smtp:
+    host: ${SMTP_HOST:}
+    port: ${SMTP_PORT:25}
+    from: ${SMTP_FROM:}
+    timeout-millis: ${SMTP_TIMEOUT_MILLIS:5000}
