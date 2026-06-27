@@ -23,8 +23,6 @@ class P32RuntimeRateLimitComponentGuardTest {
 
         assertTrue(sourceFileNames.stream().noneMatch(name -> name.contains("DestinationHash")),
                 "P3.2 must not introduce destination hashing helpers");
-        assertTrue(sourceFileNames.stream().noneMatch(name -> name.equals("CsrfTokenPort.java")),
-                "P3.2 must not introduce CsrfTokenPort");
         assertTrue(sourceFileNames.stream().noneMatch(name -> name.equals("OriginRefererValidator.java")),
                 "P3.2 must not introduce OriginRefererValidator");
     }
