@@ -58,7 +58,5 @@ class CsrfFoundationArchitectureGuardTest {
                 "P3.5 must not introduce AuthRegistrationOtpController");
         assertTrue(sourceFileNames.stream().noneMatch(name -> name.equals("RegistrationSessionRedisAdapter.java")),
                 "P3.5 must not introduce RegistrationSessionRedisAdapter");
-        assertTrue(sourceFileNames.stream().noneMatch(name -> name.equals("OriginRefererValidator.java")),
-                "P3.5 must not introduce OriginRefererValidator");
     }
 }

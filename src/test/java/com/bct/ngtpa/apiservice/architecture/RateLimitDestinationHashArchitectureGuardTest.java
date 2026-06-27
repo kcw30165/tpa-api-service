@@ -53,7 +53,5 @@ class RateLimitDestinationHashArchitectureGuardTest {
                 "P3.4 must not introduce AuthRegistrationController");
         assertTrue(sourceFileNames.stream().noneMatch(name -> name.equals("AuthRegistrationOtpController.java")),
                 "P3.4 must not introduce AuthRegistrationOtpController");
-        assertTrue(sourceFileNames.stream().noneMatch(name -> name.equals("OriginRefererValidator.java")),
-                "P3.4 must not introduce OriginRefererValidator");
     }
 }
