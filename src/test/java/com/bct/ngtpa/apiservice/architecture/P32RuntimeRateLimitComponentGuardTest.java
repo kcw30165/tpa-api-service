@@ -9,10 +9,10 @@ import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class P31RuntimeRateLimitComponentGuardTest {
+class P32RuntimeRateLimitComponentGuardTest {
 
     @Test
-    void p3_1DoesNotIntroduceRuntimeRateLimitComponents() throws Exception {
+    void p3_2DoesNotIntroduceRuntimeRateLimitComponents() throws Exception {
         Set<String> sourceFileNames;
         try (var paths = Files.walk(Path.of("src/main/java"))) {
             sourceFileNames = paths
@@ -21,13 +21,13 @@ class P31RuntimeRateLimitComponentGuardTest {
                     .collect(Collectors.toSet());
         }
 
-        assertTrue(sourceFileNames.stream().noneMatch(name -> name.equals("RateLimitPort.java")),
-                "P3.1 must not introduce RateLimitPort");
         assertTrue(sourceFileNames.stream().noneMatch(name -> name.equals("RedisRateLimitAdapter.java")),
-                "P3.1 must not introduce RedisRateLimitAdapter");
+                "P3.2 must not introduce RedisRateLimitAdapter");
         assertTrue(sourceFileNames.stream().noneMatch(name -> name.contains("DestinationHash")),
-                "P3.1 must not introduce destination hashing helpers");
+                "P3.2 must not introduce destination hashing helpers");
         assertTrue(sourceFileNames.stream().noneMatch(name -> name.equals("CsrfTokenPort.java")),
-                "P3.1 must not introduce CsrfTokenPort");
+                "P3.2 must not introduce CsrfTokenPort");
+        assertTrue(sourceFileNames.stream().noneMatch(name -> name.equals("OriginRefererValidator.java")),
+                "P3.2 must not introduce OriginRefererValidator");
     }
 }
