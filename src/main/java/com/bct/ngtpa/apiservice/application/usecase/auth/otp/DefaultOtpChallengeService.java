@@ -52,7 +52,36 @@ public class DefaultOtpChallengeService implements OtpChallengePort {
 
     @Override
     public Mono<CreateOtpChallengeResult> createChallenge(CreateOtpChallengeCommand command) {
-        return Mono.error(new UnsupportedOperationException("OTP challenge creation is not implemented in P1.4"));
+        return Mono.defer(() -> {
+            validateCreateCommand(command);
+            requireCreateDependencies();
+            Instant now = command.now() != null ? command.now() : Instant.now(clock);
+            String otpChallengeId = otpChallengeIdGenerator.generate();
+            String rawCode = otpCodeGenerator.generate(command.length(), command.numericOnly());
+            String codeHash = otpCodeHasher.hash(rawCode);
+            Instant expiresAt = now.plusSeconds(command.ttlSeconds());
+
+            OtpChallenge challenge = new OtpChallenge(
+                    otpChallengeId,
+                    command.scenario(),
+                    command.workflowRef(),
+                    command.channel(),
+                    command.destinationHash(),
+                    codeHash,
+                    OtpStatus.CREATED,
+                    0,
+                    command.maxVerifyAttempts(),
+                    0,
+                    command.maxResendAttempts(),
+                    now,
+                    expiresAt,
+                    now,
+                    null,
+                    null);
+
+            return otpChallengeStatePort.save(challenge)
+                    .thenReturn(new CreateOtpChallengeResult(otpChallengeId, rawCode, expiresAt, command.ttlSeconds()));
+        });
     }
 
     @Override
@@ -80,7 +109,39 @@ public class DefaultOtpChallengeService implements OtpChallengePort {
 
     @Override
     public Mono<Void> invalidateChallenge(InvalidateOtpChallengeCommand command) {
-        return Mono.error(new UnsupportedOperationException("OTP challenge invalidation is not implemented in P1.4"));
+        return Mono.defer(() -> {
+            validateInvalidateCommand(command);
+            Instant now = command.now() != null ? command.now() : Instant.now(clock);
+
+            return otpChallengeStatePort.findById(command.otpChallengeId())
+                    .flatMap(optionalChallenge -> invalidateLoadedChallenge(optionalChallenge, now));
+        });
+    }
+
+    private Mono<Void> invalidateLoadedChallenge(Optional<OtpChallenge> optionalChallenge, Instant now) {
+        if (optionalChallenge.isEmpty()) {
+            return Mono.empty();
+        }
+
+        OtpChallenge challenge = optionalChallenge.orElseThrow();
+        if (challenge.status() == OtpStatus.INVALIDATED
+                || challenge.status() == OtpStatus.EXPIRED
+                || challenge.status() == OtpStatus.LOCKED
+                || challenge.status() == OtpStatus.CONSUMED) {
+            return Mono.empty();
+        }
+
+        if (challenge.status() == OtpStatus.CREATED || challenge.status() == OtpStatus.VERIFIED) {
+            OtpChallenge invalidatedChallenge = copyChallenge(
+                    challenge,
+                    OtpStatus.INVALIDATED,
+                    challenge.failedAttemptCount(),
+                    now,
+                    challenge.verifiedAt());
+            return otpChallengeStatePort.update(invalidatedChallenge);
+        }
+
+        return Mono.empty();
     }
 
     private Mono<VerifyOtpChallengeResult> verifyLoadedChallenge(
@@ -143,12 +204,12 @@ public class DefaultOtpChallengeService implements OtpChallengePort {
                         locked ? 0 : remainingAttempts(challenge.maxVerifyAttempts(), updatedFailedAttemptCount)));
     }
 
-            private Mono<ReplaceOtpChallengeResult> replaceLoadedChallenge(
-                ReplaceOtpChallengeCommand command,
-                Instant now,
-                Optional<OtpChallenge> optionalChallenge) {
-            if (optionalChallenge.isEmpty()) {
-                return Mono.just(replacementResult(
+    private Mono<ReplaceOtpChallengeResult> replaceLoadedChallenge(
+            ReplaceOtpChallengeCommand command,
+            Instant now,
+            Optional<OtpChallenge> optionalChallenge) {
+        if (optionalChallenge.isEmpty()) {
+            return Mono.just(replacementResult(
                     command.currentOtpChallengeId(),
                     null,
                     null,
@@ -158,11 +219,11 @@ public class DefaultOtpChallengeService implements OtpChallengePort {
                     command.resendCooldownSeconds(),
                     0,
                     null));
-            }
+        }
 
-            OtpChallenge challenge = optionalChallenge.orElseThrow();
-            if (challenge.status() == OtpStatus.VERIFIED || challenge.status() == OtpStatus.CONSUMED) {
-                return Mono.just(replacementResult(
+        OtpChallenge challenge = optionalChallenge.orElseThrow();
+        if (challenge.status() == OtpStatus.VERIFIED || challenge.status() == OtpStatus.CONSUMED) {
+            return Mono.just(replacementResult(
                     challenge.otpChallengeId(),
                     null,
                     null,
@@ -172,9 +233,9 @@ public class DefaultOtpChallengeService implements OtpChallengePort {
                     command.resendCooldownSeconds(),
                     remainingResendAttempts(challenge.maxResendAttempts(), challenge.resendAttemptCount()),
                     null));
-            }
-            if (challenge.status() == OtpStatus.LOCKED) {
-                return Mono.just(replacementResult(
+        }
+        if (challenge.status() == OtpStatus.LOCKED) {
+            return Mono.just(replacementResult(
                     challenge.otpChallengeId(),
                     null,
                     null,
@@ -184,9 +245,9 @@ public class DefaultOtpChallengeService implements OtpChallengePort {
                     command.resendCooldownSeconds(),
                     remainingResendAttempts(challenge.maxResendAttempts(), challenge.resendAttemptCount()),
                     null));
-            }
-            if (challenge.status() == OtpStatus.INVALIDATED) {
-                return Mono.just(replacementResult(
+        }
+        if (challenge.status() == OtpStatus.INVALIDATED) {
+            return Mono.just(replacementResult(
                     challenge.otpChallengeId(),
                     null,
                     null,
@@ -196,22 +257,22 @@ public class DefaultOtpChallengeService implements OtpChallengePort {
                     command.resendCooldownSeconds(),
                     remainingResendAttempts(challenge.maxResendAttempts(), challenge.resendAttemptCount()),
                     null));
-            }
-            if (challenge.status() == OtpStatus.EXPIRED || !challenge.expiresAt().isAfter(now)) {
-                if (challenge.status() == OtpStatus.EXPIRED) {
+        }
+        if (challenge.status() == OtpStatus.EXPIRED || !challenge.expiresAt().isAfter(now)) {
+            if (challenge.status() == OtpStatus.EXPIRED) {
                 return Mono.just(replacementResult(
-                    challenge.otpChallengeId(),
-                    null,
-                    null,
-                    OtpReplacementOutcome.EXPIRED,
-                    null,
-                    0,
-                    command.resendCooldownSeconds(),
-                    remainingResendAttempts(challenge.maxResendAttempts(), challenge.resendAttemptCount()),
-                    null));
-                }
+                        challenge.otpChallengeId(),
+                        null,
+                        null,
+                        OtpReplacementOutcome.EXPIRED,
+                        null,
+                        0,
+                        command.resendCooldownSeconds(),
+                        remainingResendAttempts(challenge.maxResendAttempts(), challenge.resendAttemptCount()),
+                        null));
+            }
 
-                OtpChallenge expiredChallenge = copyChallenge(
+            OtpChallenge expiredChallenge = copyChallenge(
                     challenge,
                     challenge.otpChallengeId(),
                     challenge.codeHash(),
@@ -223,20 +284,20 @@ public class DefaultOtpChallengeService implements OtpChallengePort {
                     challenge.lastSentAt(),
                     challenge.invalidatedAt(),
                     challenge.verifiedAt());
-                return otpChallengeStatePort.update(expiredChallenge)
+            return otpChallengeStatePort.update(expiredChallenge)
                     .thenReturn(replacementResult(
-                        challenge.otpChallengeId(),
-                        null,
-                        null,
-                        OtpReplacementOutcome.EXPIRED,
-                        null,
-                        0,
-                        command.resendCooldownSeconds(),
-                        remainingResendAttempts(challenge.maxResendAttempts(), challenge.resendAttemptCount()),
-                        null));
-            }
-            if (challenge.status() != OtpStatus.CREATED) {
-                return Mono.just(replacementResult(
+                            challenge.otpChallengeId(),
+                            null,
+                            null,
+                            OtpReplacementOutcome.EXPIRED,
+                            null,
+                            0,
+                            command.resendCooldownSeconds(),
+                            remainingResendAttempts(challenge.maxResendAttempts(), challenge.resendAttemptCount()),
+                            null));
+        }
+        if (challenge.status() != OtpStatus.CREATED) {
+            return Mono.just(replacementResult(
                     challenge.otpChallengeId(),
                     null,
                     null,
@@ -246,11 +307,12 @@ public class DefaultOtpChallengeService implements OtpChallengePort {
                     command.resendCooldownSeconds(),
                     remainingResendAttempts(challenge.maxResendAttempts(), challenge.resendAttemptCount()),
                     null));
-            }
+        }
 
-            Integer retryAfterSeconds = cooldownRetryAfterSeconds(challenge.lastSentAt(), command.resendCooldownSeconds(), now);
-            if (retryAfterSeconds != null) {
-                return Mono.just(replacementResult(
+        Integer retryAfterSeconds = cooldownRetryAfterSeconds(challenge.lastSentAt(), command.resendCooldownSeconds(),
+                now);
+        if (retryAfterSeconds != null) {
+            return Mono.just(replacementResult(
                     challenge.otpChallengeId(),
                     null,
                     null,
@@ -260,9 +322,9 @@ public class DefaultOtpChallengeService implements OtpChallengePort {
                     command.resendCooldownSeconds(),
                     remainingResendAttempts(challenge.maxResendAttempts(), challenge.resendAttemptCount()),
                     retryAfterSeconds));
-            }
-            if (challenge.resendAttemptCount() >= challenge.maxResendAttempts()) {
-                return Mono.just(replacementResult(
+        }
+        if (challenge.resendAttemptCount() >= challenge.maxResendAttempts()) {
+            return Mono.just(replacementResult(
                     challenge.otpChallengeId(),
                     null,
                     null,
@@ -272,15 +334,15 @@ public class DefaultOtpChallengeService implements OtpChallengePort {
                     command.resendCooldownSeconds(),
                     0,
                     null));
-            }
+        }
 
-            String rawCode = otpCodeGenerator.generate(command.length(), command.numericOnly());
-            String newChallengeId = otpChallengeIdGenerator.generate();
-            String newCodeHash = otpCodeHasher.hash(rawCode);
-            int updatedResendAttemptCount = challenge.resendAttemptCount() + 1;
-            Instant expiresAt = now.plusSeconds(command.ttlSeconds());
+        String rawCode = otpCodeGenerator.generate(command.length(), command.numericOnly());
+        String newChallengeId = otpChallengeIdGenerator.generate();
+        String newCodeHash = otpCodeHasher.hash(rawCode);
+        int updatedResendAttemptCount = challenge.resendAttemptCount() + 1;
+        Instant expiresAt = now.plusSeconds(command.ttlSeconds());
 
-            OtpChallenge invalidatedChallenge = copyChallenge(
+        OtpChallenge invalidatedChallenge = copyChallenge(
                 challenge,
                 challenge.otpChallengeId(),
                 challenge.codeHash(),
@@ -292,7 +354,7 @@ public class DefaultOtpChallengeService implements OtpChallengePort {
                 challenge.lastSentAt(),
                 now,
                 challenge.verifiedAt());
-            OtpChallenge replacementChallenge = copyChallenge(
+        OtpChallenge replacementChallenge = copyChallenge(
                 challenge,
                 newChallengeId,
                 newCodeHash,
@@ -305,21 +367,22 @@ public class DefaultOtpChallengeService implements OtpChallengePort {
                 null,
                 null);
 
-            return otpChallengeStatePort.update(invalidatedChallenge)
+        return otpChallengeStatePort.update(invalidatedChallenge)
                 .then(otpChallengeStatePort.save(replacementChallenge))
                 .thenReturn(replacementResult(
-                    challenge.otpChallengeId(),
-                    replacementChallenge.otpChallengeId(),
-                    rawCode,
-                    OtpReplacementOutcome.REPLACED,
-                    replacementChallenge.expiresAt(),
-                    command.ttlSeconds(),
-                    command.resendCooldownSeconds(),
-                    remainingResendAttempts(challenge.maxResendAttempts(), updatedResendAttemptCount),
-                    null));
-            }
+                        challenge.otpChallengeId(),
+                        replacementChallenge.otpChallengeId(),
+                        rawCode,
+                        OtpReplacementOutcome.REPLACED,
+                        replacementChallenge.expiresAt(),
+                        command.ttlSeconds(),
+                        command.resendCooldownSeconds(),
+                        remainingResendAttempts(challenge.maxResendAttempts(), updatedResendAttemptCount),
+                        null));
+    }
 
-    private VerifyOtpChallengeResult result(String otpChallengeId, OtpVerificationOutcome outcome, int remainingAttempts) {
+    private VerifyOtpChallengeResult result(String otpChallengeId, OtpVerificationOutcome outcome,
+            int remainingAttempts) {
         return new VerifyOtpChallengeResult(otpChallengeId, outcome, remainingAttempts, null);
     }
 
@@ -366,6 +429,36 @@ public class DefaultOtpChallengeService implements OtpChallengePort {
         return Math.toIntExact(Math.max(1L, Duration.between(now, availableAt).getSeconds()));
     }
 
+    private void validateCreateCommand(CreateOtpChallengeCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("Create OTP challenge command must not be null");
+        }
+        if (command.scenario() == null) {
+            throw new IllegalArgumentException("OTP scenario must not be null");
+        }
+        if (command.workflowRef() == null || command.workflowRef().isBlank()) {
+            throw new IllegalArgumentException("OTP workflow reference must not be blank");
+        }
+        if (command.channel() == null) {
+            throw new IllegalArgumentException("OTP channel must not be null");
+        }
+        if (command.destinationHash() == null || command.destinationHash().isBlank()) {
+            throw new IllegalArgumentException("OTP destination hash must not be blank");
+        }
+        if (command.length() <= 0) {
+            throw new IllegalArgumentException("OTP length must be greater than zero");
+        }
+        if (command.ttlSeconds() <= 0) {
+            throw new IllegalArgumentException("OTP TTL seconds must be greater than zero");
+        }
+        if (command.maxVerifyAttempts() <= 0) {
+            throw new IllegalArgumentException("OTP max verify attempts must be greater than zero");
+        }
+        if (command.maxResendAttempts() < 0) {
+            throw new IllegalArgumentException("OTP max resend attempts must not be negative");
+        }
+    }
+
     private OtpChallenge copyChallenge(
             OtpChallenge challenge,
             OtpStatus status,
@@ -373,20 +466,20 @@ public class DefaultOtpChallengeService implements OtpChallengePort {
             Instant invalidatedAt,
             Instant verifiedAt) {
         return copyChallenge(
-            challenge,
-            challenge.otpChallengeId(),
-            challenge.codeHash(),
-            status,
-            failedAttemptCount,
-            challenge.resendAttemptCount(),
-            challenge.createdAt(),
-            challenge.expiresAt(),
-            challenge.lastSentAt(),
-            invalidatedAt,
-            verifiedAt);
-        }
+                challenge,
+                challenge.otpChallengeId(),
+                challenge.codeHash(),
+                status,
+                failedAttemptCount,
+                challenge.resendAttemptCount(),
+                challenge.createdAt(),
+                challenge.expiresAt(),
+                challenge.lastSentAt(),
+                invalidatedAt,
+                verifiedAt);
+    }
 
-        private OtpChallenge copyChallenge(
+    private OtpChallenge copyChallenge(
             OtpChallenge challenge,
             String otpChallengeId,
             String codeHash,
@@ -444,6 +537,21 @@ public class DefaultOtpChallengeService implements OtpChallengePort {
         }
         if (command.resendCooldownSeconds() < 0) {
             throw new IllegalArgumentException("OTP resend cooldown seconds must not be negative");
+        }
+    }
+
+    private void validateInvalidateCommand(InvalidateOtpChallengeCommand command) {
+        if (command == null) {
+            throw new IllegalArgumentException("Invalidate OTP challenge command must not be null");
+        }
+        if (command.otpChallengeId() == null || command.otpChallengeId().isBlank()) {
+            throw new IllegalArgumentException("OTP challenge ID must not be blank");
+        }
+    }
+
+    private void requireCreateDependencies() {
+        if (otpCodeGenerator == null || otpChallengeIdGenerator == null) {
+            throw new IllegalStateException("OTP creation dependencies are not configured");
         }
     }
 
