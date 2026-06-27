@@ -24,17 +24,23 @@ public class RedisRateLimitAdapter implements RateLimitPort {
             + "return { current, ttl }\n";
 
     @SuppressWarnings("rawtypes")
-    private static final RedisScript<List> INCREMENT_AND_TTL_SCRIPT = RedisScript.of(INCREMENT_AND_TTL_SCRIPT_TEXT, List.class);
+    private static final RedisScript<List> INCREMENT_AND_TTL_SCRIPT =
+            RedisScript.of(INCREMENT_AND_TTL_SCRIPT_TEXT, List.class);
 
     private final ReactiveRedisTemplate<String, String> redisTemplate;
     private final RedisCacheKeyFactory keyFactory;
     private final Clock clock;
 
-    public RedisRateLimitAdapter(ReactiveRedisTemplate<String, String> redisTemplate, RedisCacheKeyFactory keyFactory) {
+    public RedisRateLimitAdapter(
+            ReactiveRedisTemplate<String, String> redisTemplate,
+            RedisCacheKeyFactory keyFactory) {
         this(redisTemplate, keyFactory, Clock.systemUTC());
     }
 
-    public RedisRateLimitAdapter(ReactiveRedisTemplate<String, String> redisTemplate, RedisCacheKeyFactory keyFactory, Clock clock) {
+    public RedisRateLimitAdapter(
+            ReactiveRedisTemplate<String, String> redisTemplate,
+            RedisCacheKeyFactory keyFactory,
+            Clock clock) {
         this.redisTemplate = Objects.requireNonNull(redisTemplate, "redisTemplate must not be null");
         this.keyFactory = Objects.requireNonNull(keyFactory, "keyFactory must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
@@ -47,11 +53,16 @@ public class RedisRateLimitAdapter implements RateLimitPort {
         } catch (RuntimeException exception) {
             return Mono.error(exception);
         }
+
         if (!command.enabled()) {
             return Mono.just(RateLimitResult.disabled(command.bucket()));
         }
+
         String redisKey = redisKey(command);
-        return redisTemplate.execute(INCREMENT_AND_TTL_SCRIPT, List.of(redisKey), List.of(String.valueOf(command.windowSeconds())))
+        return redisTemplate.execute(
+                        INCREMENT_AND_TTL_SCRIPT,
+                        List.of(redisKey),
+                        List.of(String.valueOf(command.windowSeconds())))
                 .next()
                 .switchIfEmpty(Mono.error(new CacheException("Redis rate-limit operation failed")))
                 .map(result -> toRateLimitResult(command, result))
@@ -87,15 +98,24 @@ public class RedisRateLimitAdapter implements RateLimitPort {
         if (scriptResult == null || scriptResult.size() < 2) {
             throw new CacheException("Redis rate-limit operation failed");
         }
+
         long count = toLong(scriptResult.get(0));
         long ttlSeconds = toLong(scriptResult.get(1));
         if (count <= command.maxAttempts()) {
             int remaining = Math.max(0, command.maxAttempts() - Math.toIntExact(count));
-            return RateLimitResult.allowed(command.bucket(), command.maxAttempts(), remaining,
+            return RateLimitResult.allowed(
+                    command.bucket(),
+                    command.maxAttempts(),
+                    remaining,
                     ttlSeconds > 0 ? now().plusSeconds(ttlSeconds) : null);
         }
+
         int retryAfterSeconds = ttlSeconds > 0 ? Math.toIntExact(ttlSeconds) : command.windowSeconds();
-        return RateLimitResult.blocked(command.bucket(), command.maxAttempts(), retryAfterSeconds, now().plusSeconds(retryAfterSeconds));
+        return RateLimitResult.blocked(
+                command.bucket(),
+                command.maxAttempts(),
+                retryAfterSeconds,
+                now().plusSeconds(retryAfterSeconds));
     }
 
     private long toLong(Object value) {

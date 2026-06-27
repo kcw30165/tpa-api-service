@@ -216,8 +216,9 @@ When APIM request DTOs still require a JSON field named `env`, that remains an a
 
 ### Dependency Rule
 
-```
+```text
 adapter/in/web          →  application  →  domain
+```
 
 ### SMS Sender Adapter
 
@@ -241,6 +242,7 @@ sms:
 The adapter maps `SmsMessage` to the `/sms/ext/sendSingleSMS.do` provider payload.
 
 Security:
+
 - SMS password is never logged.
 - Full phone number is never logged.
 - SMS content is never logged.
@@ -255,7 +257,6 @@ adapter/out/referencedate →  application  →  domain
 adapter/out/security    →  application  →  domain
 config                  →  application use case @Bean wiring only (UseCaseConfig)
 infrastructure          →  Spring/framework infrastructure only (no application/domain imports)
-```
 
 ---
 
@@ -2087,6 +2088,7 @@ bash scripts/verify-config-lookup-standardization.sh
 The service includes an internal generic message delivery foundation behind `MessageDeliveryPort`.
 
 Implemented in P2:
+
 - generic `MessageDeliveryCommand` / `MessageDeliveryResult`
 - framework-free `MessageDeliveryService` dispatching for SMS and email
 - SMS sender port and `/sms/ext/sendSingleSMS.do` adapter
@@ -2096,6 +2098,7 @@ Implemented in P2:
 - passive `MessageDeliveryTask` DTO for a future task handoff boundary; no queueing, persistence, retry, worker, or broker behavior is implemented
 
 Template rendering:
+
 - supports simple `{variable}` replacement only
 - does not load YAML templates
 - does not perform TTL conversion
@@ -2103,6 +2106,7 @@ Template rendering:
 - callers/templates own unit text
 
 Security:
+
 - raw OTP values are never logged
 - SMS content and email body are never logged
 - full phone numbers and full email addresses are never logged
@@ -2133,6 +2137,7 @@ email:
 ```
 
 Not implemented in P2:
+
 - registration endpoints
 - OTP resend/verify endpoints
 - registration session `activeOtpChallengeId`
@@ -2141,3 +2146,62 @@ Not implemented in P2:
 - captcha
 - message queue persistence/worker
 - Spring Mail or Jakarta Mail SMTP dependency
+
+### Abuse Prevention and Hardening Foundation
+
+P3 adds internal abuse-prevention and security-hardening foundations for the future registration workflow.
+
+Implemented in P3:
+
+- registration rate-limit policy configuration under `auth-workflows.registration.rate-limit`
+- framework-free `RateLimitPort` and rate-limit decision model
+- Redis-backed rate-limit counters using key shape `{prefix}:auth:rate:{bucket}:{opaqueBucketId}`
+- destination hashing helper for EMAIL and MOBILE bucket ids
+- framework-free CSRF token generation / hashing / validation model
+- Origin/Referer exact-origin validation foundation
+- CORS hardening tests for credentialed cross-site requests
+- sanitized security/audit event foundation
+
+Security rules:
+
+- raw mobile numbers and email addresses must never be used in Redis rate-limit keys
+- destination-based rate limits use opaque hashed bucket ids
+- raw CSRF tokens and token hashes must not be logged
+- `reg_sid` cookie values must not be logged
+- OTP values, passwords, SMS content, email bodies, Authorization headers, Cookie headers, full mobile numbers, and full email addresses must not be logged
+- wildcard origins must not be used with credentialed registration flows
+
+Rate-limit configuration example:
+
+```yaml
+auth-workflows:
+  registration:
+    rate-limit:
+      registration-start:
+        by-ip:
+          enabled: true
+          max-attempts: 10
+          window-seconds: 600
+      otp-send:
+        by-destination-hash:
+          enabled: true
+          max-attempts: 3
+          window-seconds: 600
+      otp-verify:
+        by-registration-session:
+          enabled: true
+          max-attempts: 5
+          window-seconds: 300
+```
+
+Not implemented in P3:
+
+- registration endpoints
+- OTP resend/verify endpoints
+- registration session Redis state
+- `reg_sid` cookie handling
+- runtime CSRF enforcement on endpoints
+- runtime Origin/Referer enforcement on endpoints
+- runtime rate-limit enforcement on endpoints
+- APIM registration adapters
+- captcha
