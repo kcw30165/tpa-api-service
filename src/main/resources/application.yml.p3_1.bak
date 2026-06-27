@@ -1,0 +1,216 @@
+server:
+  port: ${SERVER_PORT:8888}
+
+spring:
+  config:
+    import:
+      - optional:file:./.env[.properties]
+      - optional:classpath:application-page-personal-information.yml
+      - optional:classpath:application-page-registration.yml
+  application:
+    name: ngtpa-api-server
+  cloud:
+    config:
+      enabled: ${SPRING_CLOUD_CONFIG_ENABLED:false}
+  ssl:
+    bundle:
+      pem:
+        redis-mtls:
+          truststore:
+            certificate: file:/etc/redis-tls/ca.crt
+          keystore:
+            certificate: file:/etc/redis-tls/tls.crt
+            private-key: file:/etc/redis-tls/tls.key
+
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:}
+  allowed-headers: ${CORS_ALLOWED_HEADERS:Account-Ref,Accept-Language,X-Request-Id,Content-Type,Authorization}
+  allowed-methods: ${CORS_ALLOWED_METHODS:GET,POST,PUT,PATCH}
+
+# Set to false when authentication is enforced externally (K8s ingress / API gateway).
+# Override via env var: API_SECURITY_REQUIRE_AUTHENTICATION=false
+# Default is true so local dev and CI always require auth unless explicitly opted out.
+api:
+  security:
+    require-authentication: ${API_SECURITY_REQUIRE_AUTHENTICATION:true}
+
+reference-date:
+  cache-ttl-seconds: ${REFERENCE_DATE_CACHE_TTL_SECONDS:0}
+  refresh:
+    cache-ttl-seconds: ${REFERENCE_DATE_REFRESH_CACHE_TTL_SECONDS:86400}
+
+config-service:
+  base-url: ${CONFIG_SERVICE_BASE_URL:}
+  timeout-milliseconds: ${CONFIG_SERVICE_TIMEOUT_MILLISECONDS:10000}
+  username: ${CONFIG_SERVICE_USERNAME:}
+  password: ${CONFIG_SERVICE_PASSWORD:}
+
+sms:
+  enabled: ${SMS_ENABLED:true}
+  base-url: ${SMS_BASE_URL:}
+  send-single-path: ${SMS_SEND_SINGLE_PATH:/sms/ext/sendSingleSMS.do}
+  username: ${SMS_USERNAME:}
+  password: ${SMS_PASSWORD:}
+  send-id: ${SMS_SEND_ID:}
+  class-code: ${SMS_CLASS_CODE:}
+  default-country: ${SMS_DEFAULT_COUNTRY:HK}
+  timeout-millis: ${SMS_TIMEOUT_MILLIS:5000}
+
+auth-workflows:
+  registration:
+    pre-start-challenge:
+      enabled: false
+      type: CAPTCHA
+    captcha:
+      length: 7
+      alphabet: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+      case-sensitive: true
+      ttl-seconds: 300
+      max-attempts: 5
+    otp:
+      length: 6
+      numeric-only: true
+      ttl-seconds: 300
+      resend-cooldown-seconds: 60
+      max-verify-attempts: 5
+      max-resend-attempts: 5
+      invalidate-previous-on-resend: true
+      reset-verify-attempts-on-resend: false
+      sms-template: "Your BCT verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
+      email-template:
+        subject: "BCT verification code"
+        body: "Your verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
+    username:
+      min-length: 4
+      max-length: 128
+      no-spaces: true
+      case-insensitive: true
+      required-digit: true
+      required-special: true
+      allowed-special-chars: "!@#$%^&*()_-"
+    password:
+      min-length: 8
+      max-length: 16
+      no-spaces: true
+      not-same-as-username-ignore-case: true
+      required-categories: 3
+      special-chars: "!@#$%^&*()_-"
+    identity-type-mapping:
+      GPN: UB
+      GPFS: TL
+      STAFF_NO: MG_MC_DB
+      HKID: OI_OS_TB_OU_JP_HS_JM
+      PASSPORT: OI_OS_TB_OU_JP_HS_JM
+      OTHER_NATIONAL_ID: OI_OS_TB_OU_JP_HS_JM
+
+apim:
+  base-url: ${APIM_BASE_URL:${APIM_BASEURL:}}
+  timeout-milliseconds: ${APIM_TIMEOUT_MILLISECONDS:${APIM_TIMEOUTMILLISECONDS:10000}}
+  oauth:
+    registration-id: ${APIM_CLIENT_REGISTRATION_ID:apim-client}
+    client-id: ${APIM_CLIENT_ID:local-dev}
+    client-secret: ${APIM_CLIENT_SECRET:local-dev}
+    client-authentication-method: ${APIM_CLIENT_AUTH_METHOD:client_secret_basic}
+    token-uri: ${APIM_TOKEN_URI:http://localhost/token}
+    scope: ${APIM_CLIENT_SCOPE:}
+  encryption:
+    enabled: ${APIM_ENCRYPTION_ENABLED:true}
+    certificate-path: ${APIM_CERTIFICATE_PATH:/api/wssupport/v1/encryption/certificate}
+    api-key: ${APIM_API_KEY:}
+    private-key-pem: ${APIM_PRIVATE_KEY_PEM:}
+    public-key-pem: ${APIM_PUBLIC_KEY_PEM:}
+    request-fields:
+      - policy-no
+      - cert-no
+      - user-id
+
+request-logging:
+  enabled: true
+  log-headers: false
+  header-allowlist:
+    - User-Agent
+    - Accept
+    - Content-Type
+  body-logging:
+    # Body logging is DISABLED by default. Request/response bodies may contain PII
+    # or sensitive business data. Enable only in local or lower environments.
+    # Never enable broadly in production or production-like environments.
+    # To enable locally, override in application-local.yml for specific endpoints only.
+    enabled: false
+    default-max-body-size-bytes: 4096
+    endpoints: []
+
+error-message:
+  en:
+    "err.request.invalid": "Invalid request."
+    "err.request.validation.failed": "Invalid request payload."
+    "err.request.body.malformed": "Malformed request body."
+    "err.security.access.denied": "Access is denied."
+    "err.security.authentication.required": "Authentication is required."
+    "err.member.context.unavailable": "Member context is unavailable."
+    "err.member.context.invalid": "Member context is invalid."
+    "err.apim.upstream.failure": "Service is temporarily unavailable. Please try again later."
+    "err.apim.service.unavailable": "Service is temporarily unavailable. Please try again later."
+    "err.apim.timeout": "Service is temporarily unavailable. Please try again later."
+    "err.apim.response.invalid": "Service is temporarily unavailable. Please try again later."
+    "err.config.error-message.missing": "Error message configuration is missing."
+    "err.config.resolution.failed": "Configuration resolution failed."
+    "err.contribution.request.invalid": "Invalid contribution request."
+    "err.notification.request.invalid": "Invalid notification request."
+    "err.system.unexpected": "Sorry, this service might be interrupted. Please try again later."
+    "err.apim.service.unavailable.JP": "Service is temporarily unavailable in JP environment. Please try again later."
+    "err.member.context.unavailable.JP.JPM.OE": "Member context is unavailable for this scheme. Please try again later."
+    "err.personal-information.update.request.invalid": "Invalid personal information update request."
+  zh_HK:
+    "err.request.invalid": "請求無效。"
+    "err.request.validation.failed": "請求內容無效。"
+    "err.request.body.malformed": "請求內容格式錯誤。"
+    "err.security.access.denied": "存取被拒。"
+    "err.security.authentication.required": "需要身份驗證。"
+    "err.member.context.unavailable": "成員資料暫時未能提供。"
+    "err.member.context.invalid": "成員資料無效。"
+    "err.apim.upstream.failure": "對不起，此服務可能暫受阻延，請稍後再嘗試。"
+    "err.apim.service.unavailable": "對不起，此服務可能暫受阻延，請稍後再嘗試。"
+    "err.apim.timeout": "對不起，此服務可能暫受阻延，請稍後再嘗試。"
+    "err.apim.response.invalid": "對不起，此服務可能暫受阻延，請稍後再嘗試。"
+    "err.config.error-message.missing": "錯誤訊息設定不存在。"
+    "err.config.resolution.failed": "設定解析失敗。"
+    "err.contribution.request.invalid": "供款請求無效。"
+    "err.notification.request.invalid": "通知請求無效。"
+    "err.system.unexpected": "對不起，此服務可能暫受阻延，請稍後再嘗試。"
+    "err.apim.service.unavailable.JP": "JP服務暫時未能提供，請稍後再嘗試。"
+    "err.member.context.unavailable.JP.JPM.OE": "此計劃的成員資料暫時未能提供，請稍後再嘗試。"
+
+redis-cache:
+  enabled: ${REDIS_CACHE_ENABLED:true}
+  key-prefix: ${REDIS_KEY_PREFIX:ngtpa}
+  password: ${REDIS_PASSWORD:}
+  timeout-milliseconds: ${REDIS_TIMEOUT_MILLISECONDS:1000}
+  sentinel:
+    master: ${REDIS_SENTINEL_MASTER:ngtpaMaster}
+    nodes: ${REDIS_SENTINEL_NODES:}
+    password: ${REDIS_SENTINEL_PASSWORD:${REDIS_PASSWORD:}}
+  ssl:
+    enabled: ${REDIS_SSL_ENABLED:true}
+    bundle: ${REDIS_SSL_BUNDLE:redis-mtls}
+  lettuce:
+    pool:
+      max-active: ${REDIS_POOL_MAX_ACTIVE:20}
+      max-idle: ${REDIS_POOL_MAX_IDLE:10}
+      min-idle: ${REDIS_POOL_MIN_IDLE:0}
+      max-wait-milliseconds: ${REDIS_POOL_MAX_WAIT_MILLISECONDS:3000}
+    shutdown-timeout-milliseconds: ${REDIS_SHUTDOWN_TIMEOUT_MILLISECONDS:5000}
+
+logging:
+  level:
+    org.springframework.security: INFO
+    com.bct.ngtpa: INFO
+
+email:
+  enabled: ${EMAIL_ENABLED:true}
+  smtp:
+    host: ${SMTP_HOST:}
+    port: ${SMTP_PORT:25}
+    from: ${SMTP_FROM:}
+    timeout-millis: ${SMTP_TIMEOUT_MILLIS:5000}

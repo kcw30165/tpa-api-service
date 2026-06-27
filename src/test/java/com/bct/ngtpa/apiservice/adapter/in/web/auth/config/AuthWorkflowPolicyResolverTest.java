@@ -10,10 +10,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AuthWorkflowPolicyResolverTest {
@@ -106,6 +109,41 @@ class AuthWorkflowPolicyResolverTest {
             assertEquals(Optional.empty(), port.resolveIdentityTypeSearchScope("   "));
             assertEquals(Optional.empty(), port.resolveIdentityTypeSearchScope("UNKNOWN"));
         });
+    }
+
+
+    @Test
+    void authWorkflowPolicyExposesRegistrationRateLimitPolicy() {
+        contextRunner.run(context -> {
+            var rateLimit = context.getBean(AuthWorkflowPolicyPort.class)
+                    .registrationPolicy()
+                    .rateLimit();
+
+            assertNotNull(rateLimit);
+            assertTrue(rateLimit.registrationStartByIp().enabled());
+            assertEquals(10, rateLimit.registrationStartByIp().maxAttempts());
+            assertEquals(600, rateLimit.registrationStartByIp().windowSeconds());
+
+            assertTrue(rateLimit.otpSendByDestinationHash().enabled());
+            assertEquals(3, rateLimit.otpSendByDestinationHash().maxAttempts());
+            assertEquals(600, rateLimit.otpSendByDestinationHash().windowSeconds());
+
+            assertTrue(rateLimit.otpVerifyByRegistrationSession().enabled());
+            assertEquals(5, rateLimit.otpVerifyByRegistrationSession().maxAttempts());
+            assertEquals(300, rateLimit.otpVerifyByRegistrationSession().windowSeconds());
+        });
+    }
+
+    @Test
+    void rateLimitPolicyIsDirectConfigOnly() throws Exception {
+        String adapter = Files.readString(Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/config/ConfigBackedAuthWorkflowPolicyAdapter.java"));
+
+        assertFalse(adapter.contains("ConfigVariantCandidateGenerator"));
+        assertFalse(adapter.contains("DefaultConfigVariantResolver"));
+        assertFalse(adapter.contains("accountEnv"));
+        assertFalse(adapter.contains("trustCode"));
+        assertFalse(adapter.contains("schemeType"));
     }
 
     @Configuration(proxyBeanMethods = false)
