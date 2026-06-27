@@ -58,7 +58,7 @@ public class AuthWorkflowProperties {
         private boolean invalidatePreviousOnResend;
         private boolean resetVerifyAttemptsOnResend;
         private String smsTemplate;
-        private final OtpEmail email = new OtpEmail();
+        private final OtpEmail emailTemplate = new OtpEmail();
     }
 
     @Getter

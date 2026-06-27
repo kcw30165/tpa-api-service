@@ -57,12 +57,12 @@ class AuthWorkflowPropertiesBindingTest {
             assertEquals(5, registration.getOtp().getMaxResendAttempts());
             assertTrue(registration.getOtp().isInvalidatePreviousOnResend());
             assertFalse(registration.getOtp().isResetVerifyAttemptsOnResend());
-            assertEquals("Your BCT verification code is {code}. It is valid for {ttlMinutes} minutes.",
+            assertEquals("Your BCT verification code is {code}. It is valid for {ttlValue} {ttlUnit}.",
                     registration.getOtp().getSmsTemplate());
-            assertNotNull(registration.getOtp().getEmail());
-            assertEquals("BCT verification code", registration.getOtp().getEmail().getSubject());
-            assertEquals("Your verification code is {code}. It is valid for {ttlMinutes} minutes.",
-                    registration.getOtp().getEmail().getBody());
+            assertNotNull(registration.getOtp().getEmailTemplate());
+            assertEquals("BCT verification code", registration.getOtp().getEmailTemplate().getSubject());
+            assertEquals("Your verification code is {code}. It is valid for {ttlValue} {ttlUnit}.",
+                    registration.getOtp().getEmailTemplate().getBody());
 
             assertNotNull(registration.getUsername());
             assertEquals(4, registration.getUsername().getMinLength());

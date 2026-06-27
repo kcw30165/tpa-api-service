@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.application.dto.message;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public record MessageDeliveryCommand(
@@ -15,6 +17,8 @@ public record MessageDeliveryCommand(
         String correlationId) {
 
     public MessageDeliveryCommand {
-        templateVariables = templateVariables == null ? Map.of() : Map.copyOf(templateVariables);
+        templateVariables = templateVariables == null
+                ? Map.of()
+                : Collections.unmodifiableMap(new LinkedHashMap<>(templateVariables));
     }
 }

@@ -11,6 +11,9 @@ import com.bct.ngtpa.apiservice.application.dto.message.SmsMessage;
 import com.bct.ngtpa.apiservice.application.port.out.EmailSenderPort;
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
 import com.bct.ngtpa.apiservice.application.port.out.SmsSenderPort;
+import com.bct.ngtpa.apiservice.application.service.message.DefaultMessageTemplateRenderer;
+import com.bct.ngtpa.apiservice.application.service.message.MessageTemplateRenderCommand;
+import com.bct.ngtpa.apiservice.application.service.message.MessageTemplateRenderer;
 import reactor.core.publisher.Mono;
 
 public class MessageDeliveryService implements MessageDeliveryPort {
@@ -20,10 +23,19 @@ public class MessageDeliveryService implements MessageDeliveryPort {
 
     private final SmsSenderPort smsSenderPort;
     private final EmailSenderPort emailSenderPort;
+    private final MessageTemplateRenderer messageTemplateRenderer;
 
     public MessageDeliveryService(SmsSenderPort smsSenderPort, EmailSenderPort emailSenderPort) {
+        this(smsSenderPort, emailSenderPort, new DefaultMessageTemplateRenderer());
+    }
+
+    public MessageDeliveryService(
+            SmsSenderPort smsSenderPort,
+            EmailSenderPort emailSenderPort,
+            MessageTemplateRenderer messageTemplateRenderer) {
         this.smsSenderPort = smsSenderPort;
         this.emailSenderPort = emailSenderPort;
+        this.messageTemplateRenderer = messageTemplateRenderer;
     }
 
     @Override
@@ -67,7 +79,7 @@ public class MessageDeliveryService implements MessageDeliveryPort {
     private SmsMessage toSmsMessage(MessageDeliveryCommand command) {
         return new SmsMessage(
                 command.recipient(),
-                command.body(),
+                render(command.body(), command),
                 null,
                 command.correlationId());
     }
@@ -75,10 +87,15 @@ public class MessageDeliveryService implements MessageDeliveryPort {
     private EmailMessage toEmailMessage(MessageDeliveryCommand command) {
         return new EmailMessage(
                 command.recipient(),
-                command.subject(),
-                command.body(),
+                render(command.subject(), command),
+                render(command.body(), command),
                 null,
                 command.correlationId());
+    }
+
+    private String render(String template, MessageDeliveryCommand command) {
+        return messageTemplateRenderer.render(new MessageTemplateRenderCommand(template, command.templateVariables()))
+                .renderedText();
     }
 
     private MessageDeliveryResult toDeliveryResult(MessageDeliveryChannel channel, SenderResult result) {
