@@ -60,7 +60,7 @@ public class SmsSenderAdapter implements SmsSenderPort {
                             "SMS outbound request failed path={} phoneMasked={} contentLogged=false error={}"
                             , smsProperties.getSendSinglePath(),
                             phoneMasked,
-                            error.toString());
+                            error.getClass().getSimpleName());
                     return Mono.just(new SenderResult(
                             SenderStatus.FAILED,
                             null,
