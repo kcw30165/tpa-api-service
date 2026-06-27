@@ -46,6 +46,17 @@ config-service:
   username: ${CONFIG_SERVICE_USERNAME:}
   password: ${CONFIG_SERVICE_PASSWORD:}
 
+sms:
+  enabled: ${SMS_ENABLED:true}
+  base-url: ${SMS_BASE_URL:}
+  send-single-path: ${SMS_SEND_SINGLE_PATH:/sms/ext/sendSingleSMS.do}
+  username: ${SMS_USERNAME:}
+  password: ${SMS_PASSWORD:}
+  send-id: ${SMS_SEND_ID:}
+  class-code: ${SMS_CLASS_CODE:}
+  default-country: ${SMS_DEFAULT_COUNTRY:HK}
+  timeout-millis: ${SMS_TIMEOUT_MILLIS:5000}
+
 auth-workflows:
   registration:
     pre-start-challenge:

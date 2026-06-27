@@ -218,6 +218,35 @@ When APIM request DTOs still require a JSON field named `env`, that remains an a
 
 ```
 adapter/in/web          →  application  →  domain
+
+### SMS Sender Adapter
+
+P2.5 adds the outbound SMS sender adapter behind `SmsSenderPort`.
+
+Configuration root:
+
+```yaml
+sms:
+  enabled: ${SMS_ENABLED:true}
+  base-url: ${SMS_BASE_URL:}
+  send-single-path: ${SMS_SEND_SINGLE_PATH:/sms/ext/sendSingleSMS.do}
+  username: ${SMS_USERNAME:}
+  password: ${SMS_PASSWORD:}
+  send-id: ${SMS_SEND_ID:}
+  class-code: ${SMS_CLASS_CODE:}
+  default-country: ${SMS_DEFAULT_COUNTRY:HK}
+  timeout-millis: ${SMS_TIMEOUT_MILLIS:5000}
+```
+
+The adapter maps `SmsMessage` to the `/sms/ext/sendSingleSMS.do` provider payload.
+
+Security:
+- SMS password is never logged.
+- Full phone number is never logged.
+- SMS content is never logged.
+- Raw OTP values are never logged.
+
+This phase does not implement registration endpoints or SMTP email sending.
 adapter/out/apim        →  application  →  domain
 adapter/out/config      →  application  →  domain
 adapter/out/configserver →  application  →  domain
