@@ -671,8 +671,8 @@ bff-pages:
                     messageCode: personalInformation.email.required.message
                     severity: error
                   - id: email.invalid
-                    type: email
-                    value: 120
+                    type: pattern
+                    value: ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$
                     code: personalInformation.email.invalid
                     messageCode: personalInformation.email.invalid.message
                     severity: error
