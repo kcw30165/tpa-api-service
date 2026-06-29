@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.bct.ngtpa.apiservice.application.dto.session.SessionCookieSameSite;
 import com.bct.ngtpa.apiservice.infrastructure.security.CorsProperties;
-import java.lang.reflect.Field;
 import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 
@@ -39,17 +38,20 @@ class XsrfCookiePolicyMapperTest {
 
     @Test
     void xsrfCookiePolicyMapperDoesNotCreateCorsConfig() {
-        assertThat(Arrays.stream(XsrfCookiePolicyMapper.class.getDeclaredFields()).map(Field::getType))
-                .doesNotContain(CorsProperties.class);
+        assertThat(Arrays.stream(XsrfCookiePolicyMapper.class.getDeclaredFields()))
+                .noneMatch(field -> field.getType().equals(CorsProperties.class));
         assertThat(Arrays.stream(XsrfCookiePolicyMapper.class.getDeclaredConstructors()))
                 .allMatch(constructor -> constructor.getParameterCount() == 0);
     }
 
     @Test
     void mapsSameSiteCaseInsensitively() {
-        assertThat(mapper.map(csrfProperties(true, "none")).cookiePolicy().sameSite()).isEqualTo(SessionCookieSameSite.NONE);
-        assertThat(mapper.map(csrfProperties(true, "Lax")).cookiePolicy().sameSite()).isEqualTo(SessionCookieSameSite.LAX);
-        assertThat(mapper.map(csrfProperties(true, "STRICT")).cookiePolicy().sameSite()).isEqualTo(SessionCookieSameSite.STRICT);
+        assertThat(mapper.map(csrfProperties(true, "none")).cookiePolicy().sameSite())
+                .isEqualTo(SessionCookieSameSite.NONE);
+        assertThat(mapper.map(csrfProperties(true, "Lax")).cookiePolicy().sameSite())
+                .isEqualTo(SessionCookieSameSite.LAX);
+        assertThat(mapper.map(csrfProperties(true, "STRICT")).cookiePolicy().sameSite())
+                .isEqualTo(SessionCookieSameSite.STRICT);
     }
 
     private static AuthFlowSessionProperties.Csrf csrfProperties(boolean secure, String sameSite) {

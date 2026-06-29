@@ -2205,3 +2205,37 @@ Not implemented in P3:
 - runtime rate-limit enforcement on endpoints
 - APIM registration adapters
 - captcha
+
+### Session Management Foundation
+P4A adds reusable session-management foundation components for future AuthFlowSession and AuthenticatedSession support.
+
+Implemented in P4A:
+- `auth-flow-session` configuration binding
+- configurable session id policy (`prefix`, `entropyBytes`)
+- secure opaque session id generation
+- session TTL policy and expiry calculation
+- generic cookie policy model
+- generic cookie set/clear instruction model
+- WebFlux cookie adapter for applying cookie instructions
+- XSRF token transport policy and cookie instruction support
+
+Important cookie policies:
+- `auth_flow_sid` is HttpOnly, Secure, SameSite=None, Path=/api/v1/auth
+- `XSRF-TOKEN` is Secure, SameSite=None, Path=/api/v1/auth, and intentionally not HttpOnly so Angular can read it and send `X-XSRF-TOKEN`
+
+CORS:
+- existing `CorsProperties` remains the single source of truth for allowed origins and credentialed CORS behavior
+- `auth-flow-session` does not duplicate CORS allowed-origin configuration
+
+Not implemented in P4A:
+- AuthFlowSession domain model
+- AuthFlowSession Redis persistence
+- AuthFlowSession lifecycle service
+- CSRF token binding to AuthFlowSession
+- registration endpoints
+- OTP endpoints
+- APIM registration adapters
+- captcha
+
+This section documents foundation components only. It does not document session management as active registration runtime behavior.
+
