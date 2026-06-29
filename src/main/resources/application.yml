@@ -58,6 +58,9 @@ sms:
   timeout-millis: ${SMS_TIMEOUT_MILLIS:5000}
 
 auth-flow-session:
+  session-id:
+    prefix: afs
+    entropy-bytes: 16
   cookie:
     name: auth_flow_sid
     path: /api/v1/auth

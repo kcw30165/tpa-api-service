@@ -9,11 +9,19 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @Setter
 public class AuthFlowSessionProperties {
 
+    private final SessionId sessionId = new SessionId();
     private final Cookie cookie = new Cookie();
     private final Csrf csrf = new Csrf();
     private final OriginValidation originValidation = new OriginValidation();
     private final Concurrency concurrency = new Concurrency();
     private final Scenarios scenarios = new Scenarios();
+
+    @Getter
+    @Setter
+    public static class SessionId {
+        private String prefix = "afs";
+        private int entropyBytes = 16;
+    }
 
     @Getter
     @Setter
