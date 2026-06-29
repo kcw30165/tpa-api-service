@@ -57,6 +57,44 @@ sms:
   default-country: ${SMS_DEFAULT_COUNTRY:HK}
   timeout-millis: ${SMS_TIMEOUT_MILLIS:5000}
 
+auth-flow-session:
+  cookie:
+    name: auth_flow_sid
+    path: /api/v1/auth
+    max-age-seconds: 1800
+    http-only: true
+    secure: true
+    same-site: None
+  csrf:
+    cookie-name: XSRF-TOKEN
+    header-name: X-XSRF-TOKEN
+    cookie-path: /api/v1/auth
+    max-age-seconds: 1800
+    secure: true
+    same-site: None
+  origin-validation:
+    enabled: true
+  concurrency:
+    mode: SINGLE_ACTIVE_FLOW
+    on-new-flow: REPLACE_EXISTING
+  scenarios:
+    registration:
+      enabled: true
+      required: true
+      ttl-seconds: 1800
+    login:
+      enabled: true
+      required: true
+      ttl-seconds: 900
+    forgot-password:
+      enabled: true
+      required: true
+      ttl-seconds: 1800
+    username-recovery:
+      enabled: true
+      required: false
+      ttl-seconds: 900
+
 auth-workflows:
   registration:
     pre-start-challenge:
