@@ -47,8 +47,8 @@ public class ConfigBackedAuthWorkflowPolicyAdapter implements AuthWorkflowPolicy
                         registration.getOtp().isResetVerifyAttemptsOnResend(),
                         registration.getOtp().getSmsTemplate(),
                         new OtpEmailPolicy(
-                                registration.getOtp().getEmail().getSubject(),
-                                registration.getOtp().getEmail().getBody())),
+                                registration.getOtp().getEmailTemplate().getSubject(),
+                                registration.getOtp().getEmailTemplate().getBody())),
                 new UsernamePolicy(
                         registration.getUsername().getMinLength(),
                         registration.getUsername().getMaxLength(),

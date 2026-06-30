@@ -46,6 +46,17 @@ config-service:
   username: ${CONFIG_SERVICE_USERNAME:}
   password: ${CONFIG_SERVICE_PASSWORD:}
 
+sms:
+  enabled: ${SMS_ENABLED:true}
+  base-url: ${SMS_BASE_URL:}
+  send-single-path: ${SMS_SEND_SINGLE_PATH:/sms/ext/sendSingleSMS.do}
+  username: ${SMS_USERNAME:}
+  password: ${SMS_PASSWORD:}
+  send-id: ${SMS_SEND_ID:}
+  class-code: ${SMS_CLASS_CODE:}
+  default-country: ${SMS_DEFAULT_COUNTRY:HK}
+  timeout-millis: ${SMS_TIMEOUT_MILLIS:5000}
+
 auth-workflows:
   registration:
     pre-start-challenge:
@@ -66,10 +77,10 @@ auth-workflows:
       max-resend-attempts: 5
       invalidate-previous-on-resend: true
       reset-verify-attempts-on-resend: false
-      sms-template: "Your BCT verification code is {code}. It is valid for {ttlMinutes} minutes."
-      email:
+      sms-template: "Your BCT verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
+      email-template:
         subject: "BCT verification code"
-        body: "Your verification code is {code}. It is valid for {ttlMinutes} minutes."
+        body: "Your verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
     username:
       min-length: 4
       max-length: 128
@@ -195,3 +206,11 @@ logging:
   level:
     org.springframework.security: INFO
     com.bct.ngtpa: INFO
+
+email:
+  enabled: ${EMAIL_ENABLED:true}
+  smtp:
+    host: ${SMTP_HOST:}
+    port: ${SMTP_PORT:25}
+    from: ${SMTP_FROM:}
+    timeout-millis: ${SMTP_TIMEOUT_MILLIS:5000}

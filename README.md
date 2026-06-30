@@ -218,6 +218,35 @@ When APIM request DTOs still require a JSON field named `env`, that remains an a
 
 ```
 adapter/in/web          →  application  →  domain
+
+### SMS Sender Adapter
+
+P2.5 adds the outbound SMS sender adapter behind `SmsSenderPort`.
+
+Configuration root:
+
+```yaml
+sms:
+  enabled: ${SMS_ENABLED:true}
+  base-url: ${SMS_BASE_URL:}
+  send-single-path: ${SMS_SEND_SINGLE_PATH:/sms/ext/sendSingleSMS.do}
+  username: ${SMS_USERNAME:}
+  password: ${SMS_PASSWORD:}
+  send-id: ${SMS_SEND_ID:}
+  class-code: ${SMS_CLASS_CODE:}
+  default-country: ${SMS_DEFAULT_COUNTRY:HK}
+  timeout-millis: ${SMS_TIMEOUT_MILLIS:5000}
+```
+
+The adapter maps `SmsMessage` to the `/sms/ext/sendSingleSMS.do` provider payload.
+
+Security:
+- SMS password is never logged.
+- Full phone number is never logged.
+- SMS content is never logged.
+- Raw OTP values are never logged.
+
+This phase does not implement registration endpoints or SMTP email sending.
 adapter/out/apim        →  application  →  domain
 adapter/out/config      →  application  →  domain
 adapter/out/configserver →  application  →  domain
@@ -2052,3 +2081,63 @@ bash scripts/verify-config-lookup-standardization.sh
 ```
 
 <!-- CONFIG_LOOKUP_STANDARDIZATION_END -->
+
+### Message Delivery Foundation
+
+The service includes an internal generic message delivery foundation behind `MessageDeliveryPort`.
+
+Implemented in P2:
+- generic `MessageDeliveryCommand` / `MessageDeliveryResult`
+- framework-free `MessageDeliveryService` dispatching for SMS and email
+- SMS sender port and `/sms/ext/sendSingleSMS.do` adapter
+- email sender port and SMTP adapter boundary using an adapter-local SMTP abstraction
+- generic placeholder rendering
+- safe masking/logging guards for SMS/email delivery
+- passive `MessageDeliveryTask` DTO for a future task handoff boundary; no queueing, persistence, retry, worker, or broker behavior is implemented
+
+Template rendering:
+- supports simple `{variable}` replacement only
+- does not load YAML templates
+- does not perform TTL conversion
+- does not append, pluralize, or translate units
+- callers/templates own unit text
+
+Security:
+- raw OTP values are never logged
+- SMS content and email body are never logged
+- full phone numbers and full email addresses are never logged
+- SMS password and provider credentials are never logged
+- SMTP/provider credentials are never logged
+
+Configuration roots:
+
+```yaml
+sms:
+  enabled: true
+  base-url: ${SMS_BASE_URL:}
+  send-single-path: ${SMS_SEND_SINGLE_PATH:/sms/ext/sendSingleSMS.do}
+  username: ${SMS_USERNAME:}
+  password: ${SMS_PASSWORD:}
+  send-id: ${SMS_SEND_ID:}
+  class-code: ${SMS_CLASS_CODE:}
+  default-country: ${SMS_DEFAULT_COUNTRY:HK}
+  timeout-millis: ${SMS_TIMEOUT_MILLIS:5000}
+
+email:
+  enabled: true
+  smtp:
+    host: ${SMTP_HOST:}
+    port: ${SMTP_PORT:25}
+    from: ${SMTP_FROM:}
+    timeout-millis: ${SMTP_TIMEOUT_MILLIS:5000}
+```
+
+Not implemented in P2:
+- registration endpoints
+- OTP resend/verify endpoints
+- registration session `activeOtpChallengeId`
+- APIM registration adapters
+- rate limiting
+- captcha
+- message queue persistence/worker
+- Spring Mail or Jakarta Mail SMTP dependency
