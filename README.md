@@ -254,6 +254,35 @@ export JAVA_HOME="C:/Java/OpenJDK/jdk-21" && export M2_HOME="/d/Tools/apache-mav
 
 ## Running Locally
 
+### OTP Challenge Foundation
+
+The registration foundation includes an internal OTP challenge capability behind `OtpChallengePort`.
+
+Implemented foundation behaviour:
+
+- OTP challenge creation
+- OTP code generation
+- OTP code hashing
+- Redis persistence of OTP challenge state under `{prefix}:auth:otp:{otpChallengeId}`
+- OTP verification
+- failed-attempt tracking and lock after max attempts
+- OTP replacement model for resend
+- explicit invalidation
+
+Security rules:
+
+- raw OTP values are never persisted;
+- Redis stores only `codeHash`;
+- OTP Redis keys use opaque challenge ids only;
+- OTP endpoints and message delivery are not implemented in this phase.
+
+Not implemented yet:
+
+- SMS/email/message delivery;
+- registration session `activeOtpChallengeId`;
+- registration OTP endpoints;
+- registration start/complete flows.
+
 ### Via VS Code Debugger (recommended)
 
 Open **Run & Debug** → select **"Debug NgtpaApiServerApplication"** → press F5.
@@ -1483,9 +1512,7 @@ Given `code`, `accountEnv`, `trustCode`, `schemeType`, and `locale`, the resolve
 1. `code.accountEnv.trustCode.schemeType`
 2. `code.accountEnv.trustCode`
 3. `code.accountEnv.schemeType`
-<!-- 4. `code.trustCode.schemeType` -->
 4. `code.accountEnv`
-<!-- 6. `code.trustCode` -->
 5. `code.schemeType`
 6. `code`
 
