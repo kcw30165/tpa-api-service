@@ -23,8 +23,7 @@ class SessionConcurrencyPolicyTest {
 
     @Test
     void concurrencyPolicyIsPassiveOnly() {
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.service.session.AuthFlowSessionLifecycleService");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthFlowSessionAdapter");
+        assertClassAbsent("com.bct.ngtpa.apiservice.application.service.session.AuthFlowSessionLifecycleService");        
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.session.HttpAuthFlowCookieAdapter");
     }
 

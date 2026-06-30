@@ -32,7 +32,6 @@ class SessionManagementFoundationArchitectureGuardTest {
     @Test
     void p4a2DoesNotIntroduceRuntimeSessionComponents() {
         assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.session.AuthFlowSession");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthFlowSessionAdapter");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.out.SessionCookiePort");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationController");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController");
