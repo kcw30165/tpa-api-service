@@ -153,8 +153,7 @@ class AuthFlowSessionPropertiesBindingTest {
     }
 
     @Test
-    void authFlowSessionConfigDoesNotCreateRuntimeSessionComponents() {
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort");
+    void authFlowSessionConfigDoesNotCreateRuntimeSessionAdaptersOrEndpoints() {
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthFlowSessionAdapter");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.session.HttpAuthFlowCookieAdapter");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationController");
@@ -197,7 +196,7 @@ class AuthFlowSessionPropertiesBindingTest {
     }
 
     @Configuration(proxyBeanMethods = false)
-    @EnableConfigurationProperties({AuthFlowSessionProperties.class, CorsProperties.class})
+    @EnableConfigurationProperties({ AuthFlowSessionProperties.class, CorsProperties.class })
     static class TestConfig {
     }
 }
