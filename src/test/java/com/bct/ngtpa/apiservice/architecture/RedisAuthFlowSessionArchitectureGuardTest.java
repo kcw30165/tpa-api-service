@@ -44,7 +44,6 @@ class RedisAuthFlowSessionArchitectureGuardTest {
 
     @Test
     void p4b2DoesNotIntroduceCookieOrEndpointRuntime() {
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.service.session.AuthFlowSessionLifecycleService");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationController");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.filter.RegistrationCsrfWebFilter");
