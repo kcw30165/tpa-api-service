@@ -110,6 +110,35 @@ class AuthWorkflowPropertiesBindingTest {
                 });
     }
 
+
+    @Test
+    void authWorkflowPropertiesBindsRegistrationRateLimitPolicy() {
+        contextRunner.run(context -> {
+            var rateLimit = context.getBean(AuthWorkflowProperties.class)
+                    .getRegistration()
+                    .getRateLimit();
+
+            assertNotNull(rateLimit);
+            assertNotNull(rateLimit.getRegistrationStart());
+            assertNotNull(rateLimit.getRegistrationStart().getByIp());
+            assertTrue(rateLimit.getRegistrationStart().getByIp().isEnabled());
+            assertEquals(10, rateLimit.getRegistrationStart().getByIp().getMaxAttempts());
+            assertEquals(600, rateLimit.getRegistrationStart().getByIp().getWindowSeconds());
+
+            assertNotNull(rateLimit.getOtpSend());
+            assertNotNull(rateLimit.getOtpSend().getByDestinationHash());
+            assertTrue(rateLimit.getOtpSend().getByDestinationHash().isEnabled());
+            assertEquals(3, rateLimit.getOtpSend().getByDestinationHash().getMaxAttempts());
+            assertEquals(600, rateLimit.getOtpSend().getByDestinationHash().getWindowSeconds());
+
+            assertNotNull(rateLimit.getOtpVerify());
+            assertNotNull(rateLimit.getOtpVerify().getByRegistrationSession());
+            assertTrue(rateLimit.getOtpVerify().getByRegistrationSession().isEnabled());
+            assertEquals(5, rateLimit.getOtpVerify().getByRegistrationSession().getMaxAttempts());
+            assertEquals(300, rateLimit.getOtpVerify().getByRegistrationSession().getWindowSeconds());
+        });
+    }
+
     @Configuration(proxyBeanMethods = false)
     @EnableConfigurationProperties(AuthWorkflowProperties.class)
     static class TestConfig {

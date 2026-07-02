@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.out.redis.config;
 import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
 import com.bct.ngtpa.apiservice.adapter.out.redis.RedisStringCacheAdapter;
 import com.bct.ngtpa.apiservice.application.port.out.CachePort;
+import com.bct.ngtpa.apiservice.application.port.out.RateLimitPort;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.ssl.SslBundles;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
@@ -177,4 +178,18 @@ class RedisAdapterConfigTest {
         SslBundles sslBundles = mock(SslBundles.class);
         return new RedisAdapterConfig(props, sslBundles);
     }
+
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void redisRateLimitAdapterBeanIsNotNull() {
+        var config = configWithSslDisabled();
+        ReactiveRedisTemplate<String, String> template = mock(ReactiveRedisTemplate.class);
+        RedisCacheKeyFactory keyFactory = new RedisCacheKeyFactory("ngtpa");
+
+        RateLimitPort port = config.redisRateLimitAdapter(template, keyFactory);
+
+        assertNotNull(port);
+    }
+
 }

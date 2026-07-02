@@ -5,5 +5,6 @@ public record RegistrationAuthWorkflowPolicy(
         CaptchaPolicy captcha,
         OtpPolicy otp,
         UsernamePolicy username,
-        PasswordPolicy password) {
+        PasswordPolicy password,
+        RegistrationRateLimitPolicy rateLimit) {
 }

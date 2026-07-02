@@ -96,6 +96,22 @@ auth-workflows:
       not-same-as-username-ignore-case: true
       required-categories: 3
       special-chars: "!@#$%^&*()_-"
+    rate-limit:
+      registration-start:
+        by-ip:
+          enabled: true
+          max-attempts: 10
+          window-seconds: 600
+      otp-send:
+        by-destination-hash:
+          enabled: true
+          max-attempts: 3
+          window-seconds: 600
+      otp-verify:
+        by-registration-session:
+          enabled: true
+          max-attempts: 5
+          window-seconds: 300
     identity-type-mapping:
       GPN: UB
       GPFS: TL

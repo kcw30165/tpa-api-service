@@ -22,6 +22,7 @@ public class AuthWorkflowProperties {
         private final Otp otp = new Otp();
         private final Username username = new Username();
         private final Password password = new Password();
+        private final RateLimit rateLimit = new RateLimit();
         private Map<String, String> identityTypeMapping = new LinkedHashMap<>();
     }
 
@@ -89,5 +90,39 @@ public class AuthWorkflowProperties {
         private boolean notSameAsUsernameIgnoreCase;
         private int requiredCategories;
         private String specialChars;
+    }
+
+    @Getter
+    @Setter
+    public static class RateLimit {
+        private final RegistrationStartRateLimit registrationStart = new RegistrationStartRateLimit();
+        private final OtpSendRateLimit otpSend = new OtpSendRateLimit();
+        private final OtpVerifyRateLimit otpVerify = new OtpVerifyRateLimit();
+    }
+
+    @Getter
+    @Setter
+    public static class RegistrationStartRateLimit {
+        private final RateLimitRule byIp = new RateLimitRule();
+    }
+
+    @Getter
+    @Setter
+    public static class OtpSendRateLimit {
+        private final RateLimitRule byDestinationHash = new RateLimitRule();
+    }
+
+    @Getter
+    @Setter
+    public static class OtpVerifyRateLimit {
+        private final RateLimitRule byRegistrationSession = new RateLimitRule();
+    }
+
+    @Getter
+    @Setter
+    public static class RateLimitRule {
+        private boolean enabled;
+        private int maxAttempts;
+        private int windowSeconds;
     }
 }
