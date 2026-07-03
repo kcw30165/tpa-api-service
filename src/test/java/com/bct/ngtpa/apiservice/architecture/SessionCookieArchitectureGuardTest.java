@@ -48,8 +48,6 @@ class SessionCookieArchitectureGuardTest {
     @Test
     void p4a3DoesNotIntroduceAuthFlowSessionRuntime() {
         assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.session.AuthFlowSession");
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthFlowSessionAdapter");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.service.session.AuthFlowSessionLifecycleService");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationController");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController");

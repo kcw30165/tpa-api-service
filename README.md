@@ -2239,3 +2239,50 @@ Not implemented in P4A:
 
 This section documents foundation components only. It does not document session management as active registration runtime behavior.
 
+### AuthFlowSession Foundation
+P4B adds the framework-free AuthFlowSession foundation for temporary pre-auth workflow session.
+
+AuthFlowSession supports these scenarios:
+- REGISTRATION
+- LOGIN
+- FORGOT_PASSWORD
+- USERNAME_RECOVERY
+
+AuthFlowSession statuses:
+- STARTED
+- OTP_SENT
+- OTP_VERIFIED
+- USERNAME_VERIFIED
+- COMPLETING
+- COMPLETED
+- CANCELLED
+- EXPIRED
+
+AuthFlowSession is not an authenticated portal session, is not proof of login, and must never grant portal access.
+
+Implemented in P4B:
+- AuthFlowSession domain model and port contract
+- Redis persistence using `{prefix}:auth:flow-session:{authFlowSessionId}`
+- CSRF binding that stores only `csrfTokenHash`
+- lifecycle service for create/load/status/destination/OTP/usernameCheck/complete/cancel/delete
+- first concurrency policy: SINGLE_ACTIVE_FLOW + REPLACE_EXISTING
+- package-info placeholder boundary for future AuthenticatedSession only
+
+Important boundaries:
+- `AuthFlowSessionId` is the server-side opaque identifier
+- `auth_flow_sid` is the cookie name that later transports `AuthFlowSessionId.value()`
+- Redis adapter does not know or write cookies
+- raw CSRF tokens, cookie values, OTP codes, password values, raw mobile/email, and session ids must not be logged
+
+Not implemented in P4B:
+- registration endpoints
+- OTP resend/verify endpoints
+- cookie reading or writing composition; P4B does not read or write cookies at runtime
+- CSRF web filter/controller enforcement
+- Origin/Referer endpoint enforcement
+- AuthenticatedSession runtime implementation
+- APIM registration adapters
+- captcha
+
+Do not claim registration/start or OTP endpoints are implemented.
+
