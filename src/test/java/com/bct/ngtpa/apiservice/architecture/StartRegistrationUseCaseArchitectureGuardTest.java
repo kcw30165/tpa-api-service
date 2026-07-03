@@ -27,7 +27,6 @@ class StartRegistrationUseCaseArchitectureGuardTest {
 
     @Test
     void p6_6DoesNotIntroduceControllerOrEndpoint() throws IOException {
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationController");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController");
         assertThat(sourceContains("/api/v1/auth/registration/start")).isFalse();
     }

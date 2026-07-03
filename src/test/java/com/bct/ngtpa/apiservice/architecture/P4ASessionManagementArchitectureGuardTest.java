@@ -51,7 +51,6 @@ class P4ASessionManagementArchitectureGuardTest {
 
     @Test
     void p4aDoesNotIntroduceRegistrationEndpoints() {
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationController");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController");
     }

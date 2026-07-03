@@ -35,6 +35,8 @@ public final class RegistrationWorkflowErrorKeys {
     public static final WorkflowErrorKey REGISTRATION_MOBILE_INVALID = new WorkflowErrorKey("registration.mobile.invalid");
     public static final WorkflowErrorKey REGISTRATION_CAPTCHA_INVALID = new WorkflowErrorKey("registration.captcha.invalid");
 
+    public static final WorkflowErrorKey WORKFLOW_IDEMPOTENCY_MISSING = new WorkflowErrorKey("workflow.idempotency.missing");
+
     private RegistrationWorkflowErrorKeys() {
     }
 }

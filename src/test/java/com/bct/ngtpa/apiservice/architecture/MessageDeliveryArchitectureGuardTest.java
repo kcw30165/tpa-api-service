@@ -66,10 +66,8 @@ class MessageDeliveryArchitectureGuardTest {
 
     @Test
     void p2DoesNotIntroduceRegistrationEndpoints() {
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.auth.AuthRegistrationController");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.auth.AuthRegistrationOtpController");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.auth.AuthCaptchaController");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationController");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController");
     }

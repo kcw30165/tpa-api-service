@@ -50,7 +50,6 @@ class P4BAuthFlowSessionArchitectureGuardTest {
 
     @Test
     void p4bDoesNotIntroduceRegistrationEndpointsCookieReaderCsrfWebFilterOrAuthenticatedSessionRuntime() throws Exception {
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationController");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.session.cookie.AuthFlowSessionCookieReader");

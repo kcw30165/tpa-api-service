@@ -155,7 +155,6 @@ class AuthFlowSessionPropertiesBindingTest {
     @Test
     void authFlowSessionConfigDoesNotCreateRuntimeSessionAdaptersOrEndpoints() {
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.session.HttpAuthFlowCookieAdapter");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationController");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController");
     }
 

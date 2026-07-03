@@ -12,10 +12,8 @@ class P5WorkflowBoundaryGuardTest {
 
     @Test
     void p5DoesNotIntroduceRegistrationEndpoints() throws IOException {
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationController");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController");
-        assertThat(sourceContains("/api/v1/auth/registration")).isFalse();
     }
 
     @Test

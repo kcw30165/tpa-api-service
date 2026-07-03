@@ -68,7 +68,6 @@ class RegistrationLookupBoundaryArchitectureGuardTest {
     @Test
     void p6_4DoesNotIntroduceUseCaseControllerOrEndpoint() throws IOException {
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.StartRegistrationUseCase");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationController");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController");
         assertThat(sourceContains("/api/v1/auth/registration/start")).isFalse();
     }

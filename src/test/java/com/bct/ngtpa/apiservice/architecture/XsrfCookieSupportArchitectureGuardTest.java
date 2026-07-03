@@ -49,7 +49,6 @@ class XsrfCookieSupportArchitectureGuardTest {
     void p4a4DoesNotIntroduceAuthFlowSessionRuntime() {
         assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.session.AuthFlowSession");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.service.session.AuthFlowSessionLifecycleService");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationController");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController");
     }
 

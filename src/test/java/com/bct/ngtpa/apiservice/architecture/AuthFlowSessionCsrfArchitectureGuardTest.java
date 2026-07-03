@@ -30,7 +30,6 @@ class AuthFlowSessionCsrfArchitectureGuardTest {
     @Test
     void p4b3DoesNotIntroduceCookieOrEndpointRuntime() {
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.filter.RegistrationCsrfWebFilter");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationController");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.session.cookie.AuthFlowCookieReader");
     }

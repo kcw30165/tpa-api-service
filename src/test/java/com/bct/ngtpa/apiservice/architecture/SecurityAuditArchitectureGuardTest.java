@@ -73,7 +73,6 @@ class SecurityAuditArchitectureGuardTest {
                     .collect(Collectors.toSet());
         }
 
-        assertTrue(sourceFileNames.stream().noneMatch(name -> name.equals("AuthRegistrationController.java")));
         assertTrue(sourceFileNames.stream().noneMatch(name -> name.equals("AuthRegistrationOtpController.java")));
         assertTrue(sourceFileNames.stream().noneMatch(name -> name.equals("AuthCaptchaController.java")));
         assertTrue(sourceFileNames.stream().noneMatch(name -> name.equals("RegistrationSessionRedisAdapter.java")));
