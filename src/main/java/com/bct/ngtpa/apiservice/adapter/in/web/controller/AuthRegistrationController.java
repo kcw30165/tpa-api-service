@@ -4,7 +4,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlow
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.*;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationStartWebMapper;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResultStatus;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationUseCase;
+import com.bct.ngtpa.apiservice.application.port.in.StartRegistrationUseCase;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;

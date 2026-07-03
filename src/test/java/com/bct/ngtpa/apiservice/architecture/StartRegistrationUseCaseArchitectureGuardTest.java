@@ -3,7 +3,7 @@ package com.bct.ngtpa.apiservice.architecture;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationUseCase;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationService;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition;
 import java.io.IOException;
@@ -22,7 +22,7 @@ class StartRegistrationUseCaseArchitectureGuardTest {
                         "org.springframework..", "org.springframework.http..", "org.springframework.web..",
                         "jakarta.servlet..", "io.lettuce..", "org.springframework.data.redis..")
                 .check(classes);
-        assertThat(StartRegistrationUseCase.class).isNotNull();
+        assertThat(StartRegistrationService.class).isNotNull();
     }
 
     @Test

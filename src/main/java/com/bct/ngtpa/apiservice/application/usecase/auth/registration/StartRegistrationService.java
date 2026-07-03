@@ -5,6 +5,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.registration.*;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErrorKeys;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
+import com.bct.ngtpa.apiservice.application.port.in.StartRegistrationUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationLookupPort;
 import com.bct.ngtpa.apiservice.application.service.auth.idempotency.RegistrationRequestHashGenerator;
@@ -16,7 +17,7 @@ import java.util.Map;
 import java.util.Objects;
 import reactor.core.publisher.Mono;
 
-public class StartRegistrationUseCase {
+public class StartRegistrationService implements StartRegistrationUseCase {
     private final RegistrationStartValidator validator;
     private final RegistrationRequestHashGenerator requestHashGenerator;
     private final RegistrationIdempotencyPort idempotencyPort;
@@ -27,7 +28,7 @@ public class StartRegistrationUseCase {
     private final RegistrationMessageGateway messageGateway;
     private final Clock clock;
 
-    public StartRegistrationUseCase(RegistrationStartValidator validator, RegistrationRequestHashGenerator requestHashGenerator,
+    public StartRegistrationService(RegistrationStartValidator validator, RegistrationRequestHashGenerator requestHashGenerator,
             RegistrationIdempotencyPort idempotencyPort, RegistrationLookupPort lookupPort, RegistrationSessionGateway sessionGateway,
             RegistrationCsrfGateway csrfGateway, RegistrationOtpGateway otpGateway, RegistrationMessageGateway messageGateway, Clock clock) {
         this.validator = Objects.requireNonNull(validator);

@@ -26,7 +26,7 @@ class StartRegistrationUseCaseTest {
     private final FakeCsrfGateway csrf = new FakeCsrfGateway();
     private final FakeOtpGateway otp = new FakeOtpGateway();
     private final FakeMessageGateway message = new FakeMessageGateway();
-    private final StartRegistrationUseCase useCase = new StartRegistrationUseCase(
+    private final StartRegistrationService useCase = new StartRegistrationService(
             new RegistrationStartValidator(), hashGenerator, idempotency, lookup, session, csrf, otp, message,
             Clock.fixed(Instant.parse("2026-07-03T00:00:00Z"), ZoneOffset.UTC));
 
