@@ -100,8 +100,8 @@ class PersonalInformationPhoneEmailValidationYamlTest {
         assertThat(required.get("messageCode")).isEqualTo("personalInformation.email.required.message");
 
         Map<String, Object> email = rule(rules, "email.invalid");
-        assertThat(email.get("type")).isEqualTo("email");
-        assertThat(email.get("value")).isEqualTo(120);
+        assertThat(email.get("type")).isEqualTo("pattern");
+        assertThat(email.get("value")).isEqualTo("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
         assertThat(email.get("code")).isEqualTo("personalInformation.email.invalid");
         assertThat(email.get("messageCode")).isEqualTo("personalInformation.email.invalid.message");
 
