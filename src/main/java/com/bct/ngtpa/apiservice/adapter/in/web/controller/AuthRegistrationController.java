@@ -15,11 +15,30 @@ public class AuthRegistrationController {
     private final StartRegistrationUseCase useCase;
     private final RegistrationStartWebMapper mapper;
     private final AuthFlowCookieWriter cookieWriter;
-    public AuthRegistrationController(StartRegistrationUseCase useCase, RegistrationStartWebMapper mapper, AuthFlowCookieWriter cookieWriter) { this.useCase = useCase; this.mapper = mapper; this.cookieWriter = cookieWriter; }
+
+    public AuthRegistrationController(StartRegistrationUseCase useCase, RegistrationStartWebMapper mapper,
+            AuthFlowCookieWriter cookieWriter) {
+        this.useCase = useCase;
+        this.mapper = mapper;
+        this.cookieWriter = cookieWriter;
+    }
+
     @PostMapping("/start")
-    public Mono<SimpleMutationResponse<RegistrationStartResponse>> startRegistration(@RequestBody RegistrationStartRequest request, @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey, @RequestHeader(name = "X-Request-Id", required = false) String requestId, @RequestHeader(name = "Accept-Language", required = false) String acceptLanguage, @CookieValue(name = "auth_flow_sid", required = false) String authFlowSessionIdCookie,
+    public Mono<SimpleMutationResponse<RegistrationStartResponse>> startRegistration(
+            @RequestBody RegistrationStartRequest request,
+            @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
+            @RequestHeader(name = "X-Request-Id", required = false) String requestId,
+            @RequestHeader(name = "Accept-Language", required = false) String acceptLanguage,
+            @CookieValue(name = "auth_flow_sid", required = false) String authFlowSessionIdCookie,
             ServerHttpResponse response) {
-        if (idempotencyKey == null || idempotencyKey.isBlank()) return Mono.just(mapper.missingIdempotencyKeyResponse(acceptLanguage));
-        return useCase.start(mapper.toCommand(request, idempotencyKey, requestId, acceptLanguage, authFlowSessionIdCookie)).map(result -> { if (result.status() == StartRegistrationResultStatus.STARTED) cookieWriter.writeAuthFlowCookie(response, result.authFlowSessionId()); return mapper.toMutationResponse(result, acceptLanguage); });
+        if (idempotencyKey == null || idempotencyKey.isBlank())
+            return Mono.just(mapper.missingIdempotencyKeyResponse(acceptLanguage));
+        return useCase
+                .start(mapper.toCommand(request, idempotencyKey, requestId, acceptLanguage, authFlowSessionIdCookie))
+                .map(result -> {
+                    if (result.status() == StartRegistrationResultStatus.STARTED)
+                        cookieWriter.writeAuthFlowCookie(response, result.authFlowSessionId());
+                    return mapper.toMutationResponse(result, acceptLanguage);
+                });
     }
 }

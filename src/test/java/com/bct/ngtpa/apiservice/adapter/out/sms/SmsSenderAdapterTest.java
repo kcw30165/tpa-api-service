@@ -191,6 +191,7 @@ class SmsSenderAdapterTest {
     }
 
     
+    
     private JsonNode readJson(String body) {
         try {
             if (body != null && body.startsWith("--")) {
@@ -204,15 +205,16 @@ class SmsSenderAdapterTest {
 
     private JsonNode readMultipartFormData(String body) {
         ObjectNode node = objectMapper.createObjectNode();
+        String normalized = body.replace("\r\n", "\n");
+        String[] parts = normalized.split("\n--");
 
-        String[] parts = body.split("\\r?\\n--");
         for (String part : parts) {
-            int nameIndex = part.indexOf("name=\\\"");
+            int nameIndex = part.indexOf("name=\"");
             if (nameIndex < 0) {
                 continue;
             }
 
-            int nameStart = nameIndex + "name=\\\"".length();
+            int nameStart = nameIndex + "name=\"".length();
             int nameEnd = part.indexOf('"', nameStart);
             if (nameEnd < 0) {
                 continue;
@@ -220,25 +222,27 @@ class SmsSenderAdapterTest {
 
             String name = part.substring(nameStart, nameEnd);
 
-            int valueStart = part.indexOf("\\r\\n\\r\\n", nameEnd);
-            int separatorLength = 4;
-
-            if (valueStart < 0) {
-                valueStart = part.indexOf("\\n\\n", nameEnd);
-                separatorLength = 2;
-            }
-
+            int valueStart = part.indexOf("\n\n", nameEnd);
             if (valueStart < 0) {
                 continue;
             }
 
-            String value = part.substring(valueStart + separatorLength)
-                    .replaceAll("\\r?\\n$", "")
-                    .replaceAll("--$", "");
+            String value = part.substring(valueStart + 2);
+
+            if (value.endsWith("\n")) {
+                value = value.substring(0, value.length() - 1);
+            }
+            if (value.endsWith("--")) {
+                value = value.substring(0, value.length() - 2);
+            }
+            if (value.endsWith("\n")) {
+                value = value.substring(0, value.length() - 1);
+            }
 
             node.put(name, value);
         }
 
         return node;
     }
+
 }

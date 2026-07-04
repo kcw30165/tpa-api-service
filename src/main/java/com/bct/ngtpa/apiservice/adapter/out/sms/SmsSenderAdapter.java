@@ -152,10 +152,11 @@ public class SmsSenderAdapter implements SmsSenderPort {
         if (error == null) {
             return "";
         }
-        return error.getMessage()
-                .replace('\n', ' ')
-                .replace('\r', ' ')
-                .replaceAll("\\d{4,}", "****");
+        return "provider error redacted";
+        // return error.getMessage()
+        //         .replace('\n', ' ')
+        //         .replace('\r', ' ')
+        //         .replaceAll("\\d{4,}", "****");
     }
 
     private String resolveCountry(String country) {
@@ -215,6 +216,7 @@ public class SmsSenderAdapter implements SmsSenderPort {
         if (body == null || body.isBlank()) {
             return "";
         }
+        // return "provider error redacted";
         return body
                 .replace('\n', ' ')
                 .replace('\r', ' ')

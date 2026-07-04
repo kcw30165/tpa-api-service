@@ -104,8 +104,9 @@ public class SmtpEmailSenderAdapter implements EmailSenderPort {
         if (error == null) {
             return "";
         }
-        return error.getMessage()
-                .replace('\n', ' ')
-                .replace('\r', ' ');
+        return "provider error redacted";
+        // return error.getMessage()
+        //         .replace('\n', ' ')
+        //         .replace('\r', ' ');
     }
 }
