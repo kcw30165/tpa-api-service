@@ -8,6 +8,9 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErr
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationLookupPort;
+import org.mockito.Mockito;
+import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.service.auth.idempotency.RegistrationRequestHashGenerator;
 import com.bct.ngtpa.apiservice.application.service.auth.registration.RegistrationStartValidator;
 import java.time.*;
@@ -26,8 +29,12 @@ class StartRegistrationUseCaseTest {
     private final FakeCsrfGateway csrf = new FakeCsrfGateway();
     private final FakeOtpGateway otp = new FakeOtpGateway();
     private final FakeMessageGateway message = new FakeMessageGateway();
+    private final AuthFlowSessionPort authFlowSessionPort = Mockito.mock(AuthFlowSessionPort.class);
+    private final OtpChallengeStatePort otpChallengeStatePort = Mockito.mock(OtpChallengeStatePort.class);
     private final StartRegistrationService useCase = new StartRegistrationService(
             new RegistrationStartValidator(), hashGenerator, idempotency, lookup, session, csrf, otp, message,
+            authFlowSessionPort,
+            otpChallengeStatePort,
             Clock.fixed(Instant.parse("2026-07-03T00:00:00Z"), ZoneOffset.UTC));
 
     @Test
@@ -51,7 +58,7 @@ class StartRegistrationUseCaseTest {
 
     @Test
     void validationFailureDoesNotCallApimOrCreateSession() {
-        var invalid = new StartRegistrationCommand(new RegistrationIdempotencyKey("idem_abc123"), "BAD", "x", "31/02/1980", null, null, null, "en", "corr", Duration.ofMinutes(5));
+        var invalid = new StartRegistrationCommand(new RegistrationIdempotencyKey("idem_abc123"), "BAD", "x", "31/02/1980", null, null, null, null, "en", "corr", Duration.ofMinutes(5));
 
         StepVerifier.create(useCase.start(invalid))
                 .assertNext(result -> {
@@ -174,7 +181,7 @@ class StartRegistrationUseCaseTest {
     void memberNotFoundErrMessageReturnsVerificationFailedCodeWithoutApplicationMessageForChinese() {
         lookup.result = new RegistrationLookupResult(RegistrationLookupStatus.NOT_FOUND_OR_NOT_ELIGIBLE, List.of(), "err.tpa.member.not.found");
         var base = command();
-        var zhCommand = new StartRegistrationCommand(base.idempotencyKey(), base.identityType(), base.identityValue(), base.dateOfBirth(), base.email(), base.mobile(), base.captchaChallengeId(), "zh-HK", base.correlationId(), base.idempotencyTtl());
+        var zhCommand = new StartRegistrationCommand(base.idempotencyKey(), base.identityType(), base.identityValue(), base.dateOfBirth(), base.email(), base.mobile(), base.captchaChallengeId(), base.authFlowSessionId(), "zh-HK", base.correlationId(), base.idempotencyTtl());
 
         StepVerifier.create(useCase.start(zhCommand))
                 .assertNext(result -> assertThat(result.errors())
@@ -196,7 +203,7 @@ class StartRegistrationUseCaseTest {
     }
 
     private static StartRegistrationCommand command() {
-        return new StartRegistrationCommand(new RegistrationIdempotencyKey("idem_abc123"), "GPFS", "1234567890", "31/01/1980", "member@example.com", null, "cap_secret", "en", "corr-secret", Duration.ofMinutes(5));
+        return new StartRegistrationCommand(new RegistrationIdempotencyKey("idem_abc123"), "GPFS", "1234567890", "31/01/1980", "member@example.com", null, "cap_secret", null, "en", "corr-secret", Duration.ofMinutes(5));
     }
 
     private static final class RecordingHashGenerator implements RegistrationRequestHashGenerator {
