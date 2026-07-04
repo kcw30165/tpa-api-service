@@ -122,12 +122,12 @@ class StartRegistrationUseCaseTest {
     }
 
     @Test
-    void lookupBusinessRejectedMapsToDownstreamBusinessError() {
+    void lookupBusinessRejectedMapsToVerificationFailedError() {
         lookup.result = new RegistrationLookupResult(RegistrationLookupStatus.UPSTREAM_BUSINESS_REJECTED, List.of(), "err.tpa.other");
 
         StepVerifier.create(useCase.start(command()))
                 .assertNext(result -> assertThat(result.errors())
-                        .anySatisfy(error -> assertThat(error.errorKey()).isEqualTo(RegistrationWorkflowErrorKeys.WORKFLOW_DOWNSTREAM_UNAVAILABLE)))
+                        .anySatisfy(error -> assertThat(error.errorKey()).isEqualTo(RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED)))
                 .verifyComplete();
         assertThat(session.createdAfterLookup).isFalse();
     }
@@ -152,6 +152,47 @@ class StartRegistrationUseCaseTest {
         assertThat(hashGenerator.action).isEqualTo(RegistrationIdempotencyAction.REGISTRATION_START);
         assertThat(hashGenerator.parts).containsExactly("GPFS", "1234567890", "31/01/1980", "email", "member@example.com", "cap_secret");
         assertThat(hashGenerator.parts).doesNotContain("corr-secret", "en");
+    }
+
+
+    @Test
+    void memberNotFoundErrMessageReturnsVerificationFailedCodeWithoutApplicationMessage() {
+        lookup.result = new RegistrationLookupResult(RegistrationLookupStatus.NOT_FOUND_OR_NOT_ELIGIBLE, List.of(), "err.tpa.member.not.found");
+
+        StepVerifier.create(useCase.start(command()))
+                .assertNext(result -> {
+                    assertThat(result.status()).isEqualTo(StartRegistrationResultStatus.VERIFICATION_FAILED);
+                    assertThat(result.errors()).anySatisfy(error -> {
+                        assertThat(error.errorKey()).isEqualTo(RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED);
+                        assertThat(error.message()).isNull();
+                    });
+                })
+                .verifyComplete();
+    }
+
+    @Test
+    void memberNotFoundErrMessageReturnsVerificationFailedCodeWithoutApplicationMessageForChinese() {
+        lookup.result = new RegistrationLookupResult(RegistrationLookupStatus.NOT_FOUND_OR_NOT_ELIGIBLE, List.of(), "err.tpa.member.not.found");
+        var base = command();
+        var zhCommand = new StartRegistrationCommand(base.idempotencyKey(), base.identityType(), base.identityValue(), base.dateOfBirth(), base.email(), base.mobile(), base.captchaChallengeId(), "zh-HK", base.correlationId(), base.idempotencyTtl());
+
+        StepVerifier.create(useCase.start(zhCommand))
+                .assertNext(result -> assertThat(result.errors())
+                        .anySatisfy(error -> assertThat(error.message()).isNull()))
+                .verifyComplete();
+    }
+
+    @Test
+    void otherApimBusinessErrorReturnsVerificationFailedCodeWithoutLocalizedMemberNotFoundText() {
+        lookup.result = new RegistrationLookupResult(RegistrationLookupStatus.UPSTREAM_BUSINESS_REJECTED, List.of(), "err.tpa.other");
+
+        StepVerifier.create(useCase.start(command()))
+                .assertNext(result -> assertThat(result.errors())
+                        .anySatisfy(error -> {
+                            assertThat(error.errorKey()).isEqualTo(RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED);
+                            assertThat(error.message()).isNull();
+                        }))
+                .verifyComplete();
     }
 
     private static StartRegistrationCommand command() {

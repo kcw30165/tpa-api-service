@@ -7,10 +7,13 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.Registra
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErrorKeys;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationCommand;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationError;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResultStatus;
 import java.time.Duration;
+import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -41,4 +44,56 @@ class RegistrationStartWebMapperTest {
         assertThat(response.csrfToken()).isEqualTo("csrf_secret");
         assertThat(response.toString()).doesNotContain("csrf_secret", "afs_secret", "authFlowSessionId", "otpChallengeId", "otpCode");
     }
+
+    @Test
+    void mapperIncludesLocalizedErrorMessage() {
+        var result = new StartRegistrationResult(
+                StartRegistrationResultStatus.VERIFICATION_FAILED,
+                WorkflowNextStep.NONE,
+                null,
+                0,
+                0,
+                0,
+                null,
+                null,
+                List.of(),
+                List.of(new StartRegistrationError(RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED, "identityValue", "We are unable to verify your details. Please review and try again.")),
+                RegistrationIdempotencyStartOutcome.STARTED,
+                null);
+
+        var response = mapper.toMutationResponse(result);
+
+        assertThat(response.errors()).singleElement().satisfies(error -> {
+            assertThat(error.code()).isEqualTo("registration.start.verificationFailed");
+            assertThat(error.message()).isEqualTo("We are unable to verify your details. Please review and try again.");
+        });
+    }
+
+
+    @Test
+    void mapperResolvesRegistrationErrorMessageThroughResolver() {
+        ErrorMessageResolver resolver = (code, locale, accountEnv, trustCode, schemeType) -> "resolved-message";
+        var localMapper = new RegistrationStartWebMapper(Duration.ofMinutes(5), resolver);
+        var result = new StartRegistrationResult(
+                StartRegistrationResultStatus.VERIFICATION_FAILED,
+                WorkflowNextStep.NONE,
+                null,
+                0,
+                0,
+                0,
+                null,
+                null,
+                List.of(),
+                List.of(new StartRegistrationError(RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED, "identityValue")),
+                RegistrationIdempotencyStartOutcome.STARTED,
+                null);
+
+        var response = localMapper.toMutationResponse(result, "zh-HK");
+
+        assertThat(response.errors()).singleElement().satisfies(error -> {
+            assertThat(error.code()).isEqualTo("registration.start.verificationFailed");
+            assertThat(error.message()).isEqualTo("resolved-message");
+        });
+    }
+
 }

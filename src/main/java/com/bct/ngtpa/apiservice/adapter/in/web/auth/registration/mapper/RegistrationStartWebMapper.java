@@ -5,11 +5,14 @@ import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIde
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErrorKeys;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.*;
 import java.time.Duration;
+import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import java.util.List;
 
 public class RegistrationStartWebMapper {
     private final Duration defaultIdempotencyTtl;
-    public RegistrationStartWebMapper(Duration defaultIdempotencyTtl) { this.defaultIdempotencyTtl = defaultIdempotencyTtl; }
+    private final ErrorMessageResolver errorMessageResolver;
+    public RegistrationStartWebMapper(Duration defaultIdempotencyTtl) { this(defaultIdempotencyTtl, null); }
+    public RegistrationStartWebMapper(Duration defaultIdempotencyTtl, ErrorMessageResolver errorMessageResolver) { this.defaultIdempotencyTtl = defaultIdempotencyTtl; this.errorMessageResolver = errorMessageResolver; }
     public StartRegistrationCommand toCommand(RegistrationStartRequest request, String idempotencyKey, String correlationId, String acceptLanguage) {
         return new StartRegistrationCommand(new RegistrationIdempotencyKey(idempotencyKey), request.identityType(), request.identityValue(), request.dateOfBirth(), request.email(), request.mobile(), request.captchaChallengeId(), acceptLanguage, correlationId, defaultIdempotencyTtl);
     }
@@ -19,9 +22,31 @@ public class RegistrationStartWebMapper {
     }
     public SimpleMutationResponse<RegistrationStartResponse> toMutationResponse(StartRegistrationResult result) {
         boolean success = result.status() == StartRegistrationResultStatus.STARTED || result.status() == StartRegistrationResultStatus.DUPLICATE_IN_PROGRESS || result.status() == StartRegistrationResultStatus.COMPLETED_REPLAY;
-        return new SimpleMutationResponse<>(success, success ? "SUCCESS" : "VALIDATION_FAILED", toResponse(result), result.messages(), result.errors().stream().map(error -> new SimpleWebError(error.errorKey().value(), error.target())).toList());
+        return new SimpleMutationResponse<>(success, success ? "SUCCESS" : "VALIDATION_FAILED", toResponse(result), result.messages(), result.errors().stream().map(error -> toWebError(error, null)).toList());
     }
     public SimpleMutationResponse<RegistrationStartResponse> missingIdempotencyKeyResponse() {
         return new SimpleMutationResponse<>(false, "VALIDATION_FAILED", null, List.of(), List.of(new SimpleWebError(RegistrationWorkflowErrorKeys.WORKFLOW_IDEMPOTENCY_MISSING.value(), "Idempotency-Key")));
     }
+    public SimpleMutationResponse<RegistrationStartResponse> toMutationResponse(StartRegistrationResult result, String acceptLanguage) {
+        boolean success = result.status() == StartRegistrationResultStatus.STARTED || result.status() == StartRegistrationResultStatus.DUPLICATE_IN_PROGRESS || result.status() == StartRegistrationResultStatus.COMPLETED_REPLAY;
+        return new SimpleMutationResponse<>(success, success ? "SUCCESS" : "VALIDATION_FAILED", toResponse(result), result.messages(), result.errors().stream().map(error -> toWebError(error, acceptLanguage)).toList());
+    }
+
+    public SimpleMutationResponse<RegistrationStartResponse> missingIdempotencyKeyResponse(String acceptLanguage) {
+        var code = RegistrationWorkflowErrorKeys.WORKFLOW_IDEMPOTENCY_MISSING.value();
+        return new SimpleMutationResponse<>(false, "VALIDATION_FAILED", null, List.of(), List.of(new SimpleWebError(code, "Idempotency-Key", resolveMessage(code, acceptLanguage))));
+    }
+
+    private SimpleWebError toWebError(StartRegistrationError error, String acceptLanguage) {
+        String code = error.errorKey().value();
+        return new SimpleWebError(code, error.target(), error.message() != null ? error.message() : resolveMessage(code, acceptLanguage));
+    }
+
+    private String resolveMessage(String code, String acceptLanguage) {
+        if (errorMessageResolver == null || code == null || code.isBlank()) {
+            return null;
+        }
+        return errorMessageResolver.resolve(code, acceptLanguage, null, null, null);
+    }
+
 }

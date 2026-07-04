@@ -76,12 +76,24 @@ public class StartRegistrationService implements StartRegistrationUseCase {
 
     private Mono<StartRegistrationResult> handleLookup(StartRegistrationCommand command, RegistrationRequestHash hash, RegistrationStartCommand validated, RegistrationLookupResult lookup) {
         if (lookup.status() == RegistrationLookupStatus.NOT_FOUND_OR_NOT_ELIGIBLE) {
-            return markFailed(command, hash, "registration.verification.failed")
-                    .thenReturn(result(StartRegistrationResultStatus.VERIFICATION_FAILED, WorkflowNextStep.NONE, RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED, "identityValue", RegistrationIdempotencyStartOutcome.STARTED));
+            var verificationFailure = result(
+                    StartRegistrationResultStatus.VERIFICATION_FAILED,
+                    WorkflowNextStep.NONE,
+                    RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED,
+                    "identityValue",
+                    RegistrationIdempotencyStartOutcome.STARTED,
+                    null);
+            return markFailed(command, hash, "registration.verification.failed").thenReturn(verificationFailure);
         }
         if (lookup.status() == RegistrationLookupStatus.UPSTREAM_BUSINESS_REJECTED) {
-            return markFailed(command, hash, "registration.lookup.businessRejected")
-                    .thenReturn(result(StartRegistrationResultStatus.VERIFICATION_FAILED, WorkflowNextStep.NONE, RegistrationWorkflowErrorKeys.WORKFLOW_DOWNSTREAM_UNAVAILABLE, "identityValue", RegistrationIdempotencyStartOutcome.STARTED));
+            var verificationFailure = result(
+                    StartRegistrationResultStatus.VERIFICATION_FAILED,
+                    WorkflowNextStep.NONE,
+                    RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED,
+                    "identityValue",
+                    RegistrationIdempotencyStartOutcome.STARTED,
+                    null);
+            return markFailed(command, hash, "registration.lookup.businessRejected").thenReturn(verificationFailure);
         }
         return sessionGateway.createRegistrationSession(validated.maskedDestination(), validated.contactType())
                 .flatMap(sessionId -> csrfGateway.bindCsrfToken(sessionId)
@@ -97,6 +109,7 @@ public class StartRegistrationService implements StartRegistrationUseCase {
                                             return markCompleted(command, hash, started).thenReturn(started);
                                         }))));
     }
+
 
     private RegistrationRequestHash requestHash(StartRegistrationCommand command) {
         String email = command.email() == null ? "" : command.email().trim().toLowerCase(Locale.ROOT);
@@ -117,7 +130,11 @@ public class StartRegistrationService implements StartRegistrationUseCase {
     }
 
     private StartRegistrationResult result(StartRegistrationResultStatus status, WorkflowNextStep nextStep, WorkflowErrorKey key, String target, RegistrationIdempotencyStartOutcome outcome) {
-        return new StartRegistrationResult(status, nextStep, null, 0, 0, 0, null, null, List.of(), List.of(new StartRegistrationError(key, target)), outcome, null);
+        return result(status, nextStep, key, target, outcome, null);
+    }
+
+    private StartRegistrationResult result(StartRegistrationResultStatus status, WorkflowNextStep nextStep, WorkflowErrorKey key, String target, RegistrationIdempotencyStartOutcome outcome, String message) {
+        return new StartRegistrationResult(status, nextStep, null, 0, 0, 0, null, null, List.of(), List.of(new StartRegistrationError(key, target, message)), outcome, null);
     }
 
     private static String normalize(String value) { return value == null ? "" : value.trim(); }
