@@ -26,10 +26,19 @@ public class RegistrationStartWebMapper {
     }
 
     public StartRegistrationCommand toCommand(RegistrationStartRequest request, String idempotencyKey,
-            String correlationId, String acceptLanguage) {
+            String correlationId, String acceptLanguage, String authFlowSessionId) {
         return new StartRegistrationCommand(new RegistrationIdempotencyKey(idempotencyKey), request.identityType(),
                 request.identityValue(), request.dateOfBirth(), request.email(), request.mobile(),
-                request.captchaChallengeId(), acceptLanguage, correlationId, defaultIdempotencyTtl);
+                request.captchaChallengeId(), authFlowSessionId, acceptLanguage, correlationId, defaultIdempotencyTtl);
+    }
+
+    
+    public StartRegistrationCommand toCommand(
+            RegistrationStartRequest request,
+            String idempotencyKey,
+            String correlationId,
+            String acceptLanguage) {
+        return toCommand(request, idempotencyKey, correlationId, acceptLanguage, null);
     }
 
     public RegistrationStartResponse toResponse(StartRegistrationResult result) {

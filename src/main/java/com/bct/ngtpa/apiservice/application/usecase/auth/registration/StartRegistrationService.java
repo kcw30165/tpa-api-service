@@ -1,5 +1,15 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.registration;
 
+
+
+
+
+
+import java.time.Instant;
+import java.time.Duration;
+import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.*;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErrorKeys;
@@ -27,11 +37,17 @@ public class StartRegistrationService implements StartRegistrationUseCase {
     private final RegistrationCsrfGateway csrfGateway;
     private final RegistrationOtpGateway otpGateway;
     private final RegistrationMessageGateway messageGateway;
+    private final AuthFlowSessionPort authFlowSessionPort;
+    private final OtpChallengeStatePort otpChallengeStatePort;
     private final Clock clock;
 
     public StartRegistrationService(RegistrationStartValidator validator, RegistrationRequestHashGenerator requestHashGenerator,
             RegistrationIdempotencyPort idempotencyPort, RegistrationLookupPort lookupPort, RegistrationSessionGateway sessionGateway,
-            RegistrationCsrfGateway csrfGateway, RegistrationOtpGateway otpGateway, RegistrationMessageGateway messageGateway, Clock clock) {
+            RegistrationCsrfGateway csrfGateway, RegistrationOtpGateway otpGateway, RegistrationMessageGateway messageGateway, AuthFlowSessionPort authFlowSessionPort,
+            OtpChallengeStatePort otpChallengeStatePort,
+            Clock clock) {
+        this.authFlowSessionPort = authFlowSessionPort;
+        this.otpChallengeStatePort = otpChallengeStatePort;
         this.validator = Objects.requireNonNull(validator);
         this.requestHashGenerator = Objects.requireNonNull(requestHashGenerator);
         this.idempotencyPort = Objects.requireNonNull(idempotencyPort);
@@ -55,7 +71,7 @@ public class StartRegistrationService implements StartRegistrationUseCase {
         return switch (start.outcome()) {
             case STARTED -> continueAfterIdempotency(command, hash);
             case DUPLICATE_IN_PROGRESS -> Mono.just(result(StartRegistrationResultStatus.DUPLICATE_IN_PROGRESS, WorkflowNextStep.WAIT, RegistrationWorkflowErrorKeys.WORKFLOW_IDEMPOTENCY_DUPLICATE_IN_PROGRESS, "Idempotency-Key", start.outcome()));
-            case COMPLETED_REPLAY -> Mono.just(replayCompletedRegistrationStart(start));
+            case COMPLETED_REPLAY -> replayCompletedRegistrationStartFromCurrentState(command, start);
             case KEY_REUSED_WITH_DIFFERENT_REQUEST -> Mono.just(result(StartRegistrationResultStatus.IDEMPOTENCY_KEY_REUSED, WorkflowNextStep.NONE, RegistrationWorkflowErrorKeys.WORKFLOW_IDEMPOTENCY_KEY_REUSED, "Idempotency-Key", start.outcome()));
             case FAILED_EXISTING -> Mono.just(result(StartRegistrationResultStatus.SYSTEM_FAILED, WorkflowNextStep.NONE, RegistrationWorkflowErrorKeys.WORKFLOW_SYSTEM_UNAVAILABLE, "PAGE", start.outcome()));
         };
@@ -286,6 +302,154 @@ public class StartRegistrationService implements StartRegistrationUseCase {
     }
 
     private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+
+
+    private Mono<StartRegistrationResult> replayCompletedRegistrationStartFromCurrentState(
+            StartRegistrationCommand command,
+            RegistrationIdempotencyStartResult idempotencyResult) {
+        String authFlowSessionId = command.authFlowSessionId();
+        if (!hasTextReplay(authFlowSessionId)) {
+            return Mono.just(replayUnavailable(idempotencyResult));
+        }
+
+        return authFlowSessionPort.load(new AuthFlowSessionId(authFlowSessionId))
+                .flatMap(optionalSession -> {
+                    if (optionalSession == null || optionalSession.isEmpty()) {
+                        return Mono.just(replayUnavailable(idempotencyResult));
+                    }
+
+                    Object session = optionalSession.get();
+                    String otpChallengeId = invokeString(session, "activeOtpChallengeId");
+                    String maskedDestination = resolveMaskedDestination(session);
+
+                    if (!hasTextReplay(otpChallengeId)) {
+                        return Mono.just(replayUnavailable(idempotencyResult));
+                    }
+
+                    return otpChallengeStatePort.findById(otpChallengeId)
+                            .flatMap(optionalChallenge -> {
+                                if (optionalChallenge == null || optionalChallenge.isEmpty()) {
+                                    return Mono.just(replayUnavailable(idempotencyResult));
+                                }
+
+                                Object challenge = optionalChallenge.get();
+                                Instant now = clock.instant();
+
+                                int expiresInSeconds = secondsUntil(now, invokeInstant(challenge, "expiresAt"));
+                                int resendCooldownSeconds = secondsUntil(
+                                        now,
+                                        plusSeconds(
+                                                invokeInstant(challenge, "lastSentAt"),
+                                                registrationOtpResendCooldownSeconds()));
+                                int remainingResendAttempts = Math.max(
+                                        0,
+                                        invokeInt(challenge, "maxResendAttempts")
+                                                - invokeInt(challenge, "resendAttemptCount"));
+
+                                return csrfGateway.bindCsrfToken(authFlowSessionId)
+                                        .map(csrfToken -> new StartRegistrationResult(
+                                                StartRegistrationResultStatus.COMPLETED_REPLAY,
+                                                WorkflowNextStep.VERIFY_OTP,
+                                                maskedDestination,
+                                                expiresInSeconds,
+                                                resendCooldownSeconds,
+                                                remainingResendAttempts,
+                                                csrfToken,
+                                                authFlowSessionId,
+                                                List.of(),
+                                                List.of(),
+                                                idempotencyResult.outcome(),
+                                                idempotencyResult.record() == null
+                                                        ? null
+                                                        : idempotencyResult.record().responseSnapshot()));
+                            });
+                });
+    }
+
+    private StartRegistrationResult replayUnavailable(RegistrationIdempotencyStartResult idempotencyResult) {
+        return new StartRegistrationResult(
+                StartRegistrationResultStatus.COMPLETED_REPLAY,
+                WorkflowNextStep.NONE,
+                null,
+                0,
+                0,
+                0,
+                null,
+                null,
+                List.of(),
+                List.of(),
+                idempotencyResult == null
+                        ? RegistrationIdempotencyStartOutcome.COMPLETED_REPLAY
+                        : idempotencyResult.outcome(),
+                idempotencyResult == null || idempotencyResult.record() == null
+                        ? null
+                        : idempotencyResult.record().responseSnapshot());
+    }
+
+    private int registrationOtpResendCooldownSeconds() {
+        return 60;
+    }
+
+    private int secondsUntil(Instant now, Instant target) {
+        if (now == null || target == null) {
+            return 0;
+        }
+        return Math.max(0, (int) Duration.between(now, target).toSeconds());
+    }
+
+    private Instant plusSeconds(Instant source, int seconds) {
+        return source == null ? null : source.plusSeconds(Math.max(0, seconds));
+    }
+
+    private String resolveMaskedDestination(Object session) {
+        Object data = invokeObject(session, "data");
+        String fromData = invokeString(data, "maskedDestination");
+        if (hasTextReplay(fromData)) {
+            return fromData;
+        }
+        return invokeString(session, "maskedDestination");
+    }
+
+    private Object invokeObject(Object target, String methodName) {
+        if (target == null || methodName == null) {
+            return null;
+        }
+        try {
+            return target.getClass().getMethod(methodName).invoke(target);
+        } catch (ReflectiveOperationException ignored) {
+            return null;
+        }
+    }
+
+    private String invokeString(Object target, String methodName) {
+        Object value = invokeObject(target, methodName);
+        return value == null ? null : String.valueOf(value);
+    }
+
+    private Instant invokeInstant(Object target, String methodName) {
+        Object value = invokeObject(target, methodName);
+        return value instanceof Instant instant ? instant : null;
+    }
+
+    private int invokeInt(Object target, String methodName) {
+        Object value = invokeObject(target, methodName);
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        if (value == null) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(String.valueOf(value));
+        } catch (NumberFormatException ignored) {
+            return 0;
+        }
+    }
+
+    private boolean hasTextReplay(String value) {
         return value != null && !value.isBlank();
     }
 

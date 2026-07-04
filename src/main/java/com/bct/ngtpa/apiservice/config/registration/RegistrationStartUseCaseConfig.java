@@ -1,5 +1,9 @@
 package com.bct.ngtpa.apiservice.config.registration;
 
+
+
+import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyAction;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationRequestHash;
 import com.bct.ngtpa.apiservice.application.port.in.StartRegistrationUseCase;
@@ -67,6 +71,8 @@ public class RegistrationStartUseCaseConfig {
             RegistrationCsrfGateway registrationCsrfGateway,
             RegistrationOtpGateway registrationOtpGateway,
             RegistrationMessageGateway registrationMessageGateway,
+            AuthFlowSessionPort authFlowSessionPort,
+            OtpChallengeStatePort otpChallengeStatePort,
             Clock clock) {
         return new StartRegistrationService(
                 registrationStartValidator,
@@ -77,6 +83,9 @@ public class RegistrationStartUseCaseConfig {
                 registrationCsrfGateway,
                 registrationOtpGateway,
                 registrationMessageGateway,
-                clock);
+                authFlowSessionPort,
+                otpChallengeStatePort,
+                clock
+        );
     }
 }

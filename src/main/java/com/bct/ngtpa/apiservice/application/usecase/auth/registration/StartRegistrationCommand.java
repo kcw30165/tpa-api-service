@@ -12,6 +12,7 @@ public record StartRegistrationCommand(
         String email,
         String mobile,
         String captchaChallengeId,
+        String authFlowSessionId,
         String acceptLanguage,
         String correlationId,
         Duration idempotencyTtl) {
@@ -23,4 +24,19 @@ public record StartRegistrationCommand(
     @Override public String toString() {
         return "StartRegistrationCommand[idempotencyKey=<redacted>, identityType=" + identityType + ", identityValue=<redacted>, dateOfBirth=<redacted>, email=<redacted>, mobile=<redacted>, captchaChallengeId=<redacted>, acceptLanguage=<redacted>, correlationId=<redacted>, idempotencyTtl=" + idempotencyTtl + "]";
     }
+
+    public StartRegistrationCommand(
+            RegistrationIdempotencyKey idempotencyKey,
+            String identityType,
+            String identityValue,
+            String dateOfBirth,
+            String email,
+            String mobile,
+            String captchaChallengeId,
+            String acceptLanguage,
+            String correlationId,
+            Duration idempotencyTtl) {
+        this(idempotencyKey, identityType, identityValue, dateOfBirth, email, mobile, captchaChallengeId, null, acceptLanguage, correlationId, idempotencyTtl);
+    }
+
 }
