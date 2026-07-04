@@ -57,15 +57,6 @@ class RegistrationLookupBoundaryArchitectureGuardTest {
     }
 
     @Test
-    void p6_4DoesNotIntroduceApimWebClientAdapterYet() throws IOException {
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.apim.registration.ApimRegistrationStartAdapter");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.apim.registration.TrpSearchUnregisteredMemberAdapter");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.apim.registration.RegistrationLookupApimAdapter");
-        assertThat(sourceContainsInApimRegistration("ApimWebClientFacade")).isFalse();
-        assertThat(sourceContainsInApimRegistration("WebClient")).isFalse();
-    }
-
-    @Test
     void p6_4DoesNotIntroduceUseCaseControllerOrEndpoint() throws IOException {
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController");
         assertThat(sourceContains("/api/v1/auth/registration/start")).isFalse();

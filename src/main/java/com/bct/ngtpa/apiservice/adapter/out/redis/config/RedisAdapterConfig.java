@@ -4,8 +4,12 @@ import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
 import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheAdminAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.RedisStringCacheAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRateLimitAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRegistrationIdempotencyAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRegistrationIdempotencyJsonMapper;
+import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRegistrationIdempotencyKeyFactory;
 import com.bct.ngtpa.apiservice.application.port.out.CachePort;
 import com.bct.ngtpa.apiservice.application.port.out.RateLimitPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.CacheAdminPort;
 import io.lettuce.core.ClientOptions;
 import io.lettuce.core.SslOptions;
@@ -23,8 +27,10 @@ import org.springframework.data.redis.connection.RedisSentinelConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.util.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.time.Duration;
 import java.util.HashSet;
@@ -93,6 +99,27 @@ public class RedisAdapterConfig {
     }
 
     
+    @Bean
+    public RedisRegistrationIdempotencyKeyFactory redisRegistrationIdempotencyKeyFactory(
+            @Value("${redis-cache.key-prefix:ngtpa}") String keyPrefix) {
+        return new RedisRegistrationIdempotencyKeyFactory(keyPrefix);
+    }
+
+    @Bean
+    public RedisRegistrationIdempotencyJsonMapper redisRegistrationIdempotencyJsonMapper() {
+        return new RedisRegistrationIdempotencyJsonMapper();
+    }
+
+    @Bean
+    public RegistrationIdempotencyPort registrationIdempotencyPort(
+            RedisRegistrationIdempotencyKeyFactory keyFactory,
+            RedisRegistrationIdempotencyJsonMapper jsonMapper,
+            ReactiveStringRedisTemplate reactiveStringRedisTemplate) {
+        return new RedisRegistrationIdempotencyAdapter(
+                keyFactory,
+                jsonMapper,
+                reactiveStringRedisTemplate);
+    }
     // ── Internal configuration builders ──────────────────────────────────────
 
     private RedisSentinelConfiguration buildSentinelConfig() {
