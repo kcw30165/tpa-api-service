@@ -90,7 +90,7 @@ public class SmsSenderAdapter implements SmsSenderPort {
                                 return new SenderResult(
                                         SenderStatus.FAILED,
                                         null,
-                                        "SMS_REQUEST_ERROR",
+                                        "SMS_HTTP_" + response.statusCode().value(),
                                         SMS_PROVIDER_FAILURE_MESSAGE);
                             });
                 })
@@ -149,7 +149,7 @@ public class SmsSenderAdapter implements SmsSenderPort {
     }
 
     private String safeErrorMessage(Throwable error) {
-        if (error == null || error.getMessage() == null || error.getMessage().isBlank()) {
+        if (error == null) {
             return "";
         }
         return error.getMessage()

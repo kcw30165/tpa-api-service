@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.out.sms;
 
+
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import static org.assertj.core.api.Assertions.assertThat;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
@@ -188,11 +190,55 @@ class SmsSenderAdapterTest {
         return properties;
     }
 
+    
     private JsonNode readJson(String body) {
         try {
+            if (body != null && body.startsWith("--")) {
+                return readMultipartFormData(body);
+            }
             return objectMapper.readTree(body);
-        } catch (Exception ex) {
-            throw new AssertionError("Failed to parse JSON body", ex);
+        } catch (Exception exception) {
+            throw new AssertionError("Failed to parse request body", exception);
         }
+    }
+
+    private JsonNode readMultipartFormData(String body) {
+        ObjectNode node = objectMapper.createObjectNode();
+
+        String[] parts = body.split("\\r?\\n--");
+        for (String part : parts) {
+            int nameIndex = part.indexOf("name=\\\"");
+            if (nameIndex < 0) {
+                continue;
+            }
+
+            int nameStart = nameIndex + "name=\\\"".length();
+            int nameEnd = part.indexOf('"', nameStart);
+            if (nameEnd < 0) {
+                continue;
+            }
+
+            String name = part.substring(nameStart, nameEnd);
+
+            int valueStart = part.indexOf("\\r\\n\\r\\n", nameEnd);
+            int separatorLength = 4;
+
+            if (valueStart < 0) {
+                valueStart = part.indexOf("\\n\\n", nameEnd);
+                separatorLength = 2;
+            }
+
+            if (valueStart < 0) {
+                continue;
+            }
+
+            String value = part.substring(valueStart + separatorLength)
+                    .replaceAll("\\r?\\n$", "")
+                    .replaceAll("--$", "");
+
+            node.put(name, value);
+        }
+
+        return node;
     }
 }

@@ -101,7 +101,7 @@ public class SmtpEmailSenderAdapter implements EmailSenderPort {
     }
 
     private String safeErrorMessage(Throwable error) {
-        if (error == null || error.getMessage() == null || error.getMessage().isBlank()) {
+        if (error == null) {
             return "";
         }
         return error.getMessage()
