@@ -11,6 +11,14 @@ import com.bct.ngtpa.apiservice.application.port.out.CachePort;
 import com.bct.ngtpa.apiservice.application.port.out.RateLimitPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.CacheAdminPort;
+import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
+import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthFlowSessionAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthFlowSessionJsonMapper;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
+import com.bct.ngtpa.apiservice.application.port.out.CachePort;
+
+import java.time.Clock;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import io.lettuce.core.ClientOptions;
 import io.lettuce.core.SslOptions;
 import io.lettuce.core.TimeoutOptions;
@@ -40,14 +48,19 @@ import java.util.stream.Collectors;
 /**
  * Spring configuration for the Redis outbound adapter.
  *
- * <p>Provides a {@link LettuceConnectionFactory} wired to Redis Sentinel and an
- * optional mTLS SSL bundle, plus a {@link ReactiveRedisTemplate} with plain-string
+ * <p>
+ * Provides a {@link LettuceConnectionFactory} wired to Redis Sentinel and an
+ * optional mTLS SSL bundle, plus a {@link ReactiveRedisTemplate} with
+ * plain-string
  * (UTF-8) serializers for both keys and values. All connection details are
- * externalized through {@link RedisCacheProperties} and its environment-variable
+ * externalized through {@link RedisCacheProperties} and its
+ * environment-variable
  * placeholders; no connection details are hardcoded here.
  *
- * <p>This configuration is active by default ({@code redis-cache.enabled=true}).
- * Set {@code REDIS_CACHE_ENABLED=false} to disable it (e.g. in local-dev without
+ * <p>
+ * This configuration is active by default ({@code redis-cache.enabled=true}).
+ * Set {@code REDIS_CACHE_ENABLED=false} to disable it (e.g. in local-dev
+ * without
  * a Sentinel instance, or in test contexts that do not require a live Redis).
  */
 @Configuration(proxyBeanMethods = false)
@@ -98,7 +111,6 @@ public class RedisAdapterConfig {
         return new RedisRateLimitAdapter(reactiveRedisTemplate, redisCacheKeyFactory);
     }
 
-    
     @Bean
     public RedisRegistrationIdempotencyKeyFactory redisRegistrationIdempotencyKeyFactory(
             @Value("${redis-cache.key-prefix:ngtpa}") String keyPrefix) {
@@ -120,6 +132,24 @@ public class RedisAdapterConfig {
                 jsonMapper,
                 reactiveStringRedisTemplate);
     }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public RedisAuthFlowSessionJsonMapper redisAuthFlowSessionJsonMapper() {
+        return new RedisAuthFlowSessionJsonMapper();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(AuthFlowSessionPort.class)
+    public AuthFlowSessionPort authFlowSessionPort(
+            CachePort cachePort,
+            RedisCacheKeyFactory redisCacheKeyFactory,
+            RedisAuthFlowSessionJsonMapper redisAuthFlowSessionJsonMapper) {
+        return new RedisAuthFlowSessionAdapter(
+                cachePort,
+                redisCacheKeyFactory,
+                redisAuthFlowSessionJsonMapper);
+    }
     // ── Internal configuration builders ──────────────────────────────────────
 
     private RedisSentinelConfiguration buildSentinelConfig() {
@@ -129,8 +159,7 @@ public class RedisAdapterConfig {
                 .filter(StringUtils::hasText)
                 .collect(Collectors.toCollection(HashSet::new));
 
-        RedisSentinelConfiguration config =
-                new RedisSentinelConfiguration(sentinel.getMaster(), nodes);
+        RedisSentinelConfiguration config = new RedisSentinelConfiguration(sentinel.getMaster(), nodes);
 
         if (StringUtils.hasText(properties.getPassword())) {
             config.setPassword(RedisPassword.of(properties.getPassword()));

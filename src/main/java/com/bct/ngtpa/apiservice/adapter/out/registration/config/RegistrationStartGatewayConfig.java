@@ -6,6 +6,12 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.registration.Registrati
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationOtpCreationResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationOtpGateway;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationSessionGateway;
+import com.bct.ngtpa.apiservice.adapter.out.registration.RegistrationAuthFlowCsrfGatewayAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.registration.RegistrationAuthFlowSessionGatewayAdapter;
+import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionCsrfService;
+import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionLifecycleService;
+import org.springframework.beans.factory.annotation.Value;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.time.Clock;
@@ -25,14 +31,28 @@ public class RegistrationStartGatewayConfig {
 
     @Bean
     @ConditionalOnMissingBean
-    public RegistrationSessionGateway registrationSessionGateway(ApplicationContext applicationContext) {
-        return new ReflectiveRegistrationSessionGateway(applicationContext);
+    public RegistrationSessionGateway registrationSessionGateway(
+            AuthFlowSessionLifecycleService lifecycleService,
+            @Value("${auth-flow-session.scenarios.registration.ttl-seconds:1800}") int registrationTtlSeconds,
+            @Value("${auth-flow-session.session-id.prefix:afs}") String sessionIdPrefix,
+            @Value("${auth-flow-session.session-id.entropy-bytes:16}") int sessionIdEntropyBytes) {
+        return new RegistrationAuthFlowSessionGatewayAdapter(
+                lifecycleService,
+                registrationTtlSeconds,
+                sessionIdPrefix,
+                sessionIdEntropyBytes);
     }
 
     @Bean
     @ConditionalOnMissingBean
-    public RegistrationCsrfGateway registrationCsrfGateway(ApplicationContext applicationContext, Clock clock) {
-        return new ReflectiveRegistrationCsrfGateway(applicationContext, clock);
+    public RegistrationCsrfGateway registrationCsrfGateway(
+            AuthFlowSessionCsrfService csrfService,
+            Clock clock,
+            @Value("${auth-flow-session.csrf.max-age-seconds:1800}") int csrfTtlSeconds) {
+        return new RegistrationAuthFlowCsrfGatewayAdapter(
+                csrfService,
+                clock,
+                csrfTtlSeconds);
     }
 
     @Bean
@@ -45,101 +65,6 @@ public class RegistrationStartGatewayConfig {
     @ConditionalOnMissingBean
     public RegistrationMessageGateway registrationMessageGateway(ApplicationContext applicationContext) {
         return new ReflectiveRegistrationMessageGateway(applicationContext);
-    }
-
-    private static final class ReflectiveRegistrationSessionGateway implements RegistrationSessionGateway {
-        private final ApplicationContext applicationContext;
-
-        private ReflectiveRegistrationSessionGateway(ApplicationContext applicationContext) {
-            this.applicationContext = applicationContext;
-        }
-
-        @Override
-        public Mono<String> createRegistrationSession(String maskedDestination, RegistrationContactType contactType) {
-            Object service = firstBean("com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionLifecycleService");
-            if (service == null) {
-                return Mono.error(new IllegalStateException("AuthFlowSessionLifecycleService bean is not available for registration/start"));
-            }
-            Object command = tryCreateStartCommand(maskedDestination, contactType);
-            if (command == null) {
-                return Mono.error(new IllegalStateException("Unable to create StartAuthFlowSessionCommand for registration/start"));
-            }
-            return invokeMono(service, "start", command)
-                    .map(RegistrationStartGatewayConfig::extractSessionIdValue);
-        }
-
-        @Override
-        public Mono<Void> updateOtpChallenge(String authFlowSessionId, String activeOtpChallengeId,
-                RegistrationContactType contactType, String maskedDestination) {
-            Object service = firstBean("com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionLifecycleService");
-            if (service == null) {
-                return Mono.error(new IllegalStateException("AuthFlowSessionLifecycleService bean is not available for registration/start OTP update"));
-            }
-            Object command = tryCreateCommand(
-                    "com.bct.ngtpa.apiservice.application.usecase.session.authflow.UpdateAuthFlowOtpCommand",
-                    authFlowSessionId,
-                    activeOtpChallengeId,
-                    null);
-            if (command == null) {
-                return Mono.error(new IllegalStateException("Unable to create UpdateAuthFlowOtpCommand for registration/start"));
-            }
-            return invokeMono(service, "updateActiveOtpChallenge", command).then();
-        }
-
-        private Object tryCreateStartCommand(String maskedDestination, RegistrationContactType contactType) {
-            Map<String, Object> data = new LinkedHashMap<>();
-            data.put("contactType", contactType == null ? null : contactType.name());
-            data.put("maskedDestination", maskedDestination);
-            Object sessionData = tryCreateCommand("com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionData", data);
-            if (sessionData == null) {
-                sessionData = data;
-            }
-            return tryCreateCommand(
-                    "com.bct.ngtpa.apiservice.application.usecase.session.authflow.StartAuthFlowSessionCommand",
-                    "REGISTRATION",
-                    "OTP_SENT",
-                    null,
-                    "afs",
-                    16,
-                    sessionData,
-                    null,
-                    null,
-                    null);
-        }
-
-        private Object firstBean(String className) {
-            return RegistrationStartGatewayConfig.firstBean(applicationContext, className);
-        }
-    }
-
-    private static final class ReflectiveRegistrationCsrfGateway implements RegistrationCsrfGateway {
-        private final ApplicationContext applicationContext;
-        private final Clock clock;
-
-        private ReflectiveRegistrationCsrfGateway(ApplicationContext applicationContext, Clock clock) {
-            this.applicationContext = applicationContext;
-            this.clock = clock;
-        }
-
-        @Override
-        public Mono<String> bindCsrfToken(String authFlowSessionId) {
-            Object service = firstBean(applicationContext,
-                    "com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionCsrfService");
-            if (service == null) {
-                return Mono.error(new IllegalStateException("AuthFlowSessionCsrfService bean is not available for registration/start"));
-            }
-            Object command = tryCreateCommand(
-                    "com.bct.ngtpa.apiservice.application.usecase.session.authflow.CreateAuthFlowSessionCsrfCommand",
-                    authFlowSessionId,
-                    Instant.now(clock),
-                    1800,
-                    null);
-            if (command == null) {
-                return Mono.error(new IllegalStateException("Unable to create CreateAuthFlowSessionCsrfCommand for registration/start"));
-            }
-            return invokeMono(service, "createForSession", command)
-                    .map(RegistrationStartGatewayConfig::extractCsrfTokenValue);
-        }
     }
 
     private static final class ReflectiveRegistrationOtpGateway implements RegistrationOtpGateway {
@@ -157,7 +82,8 @@ public class RegistrationStartGatewayConfig {
                     "com.bct.ngtpa.apiservice.application.usecase.auth.otp.OtpChallengeService",
                     "com.bct.ngtpa.apiservice.application.service.auth.otp.OtpChallengeService");
             if (service == null) {
-                return Mono.error(new IllegalStateException("OtpChallengeService bean is not available for registration/start"));
+                return Mono.error(
+                        new IllegalStateException("OtpChallengeService bean is not available for registration/start"));
             }
             String challengeId = "otp_" + UUID.randomUUID().toString().replace("-", "");
             String otpCode = "000000";
@@ -174,7 +100,8 @@ public class RegistrationStartGatewayConfig {
                     5,
                     Instant.now(clock));
             if (command == null) {
-                return Mono.error(new IllegalStateException("Unable to create CreateOtpChallengeCommand for registration/start"));
+                return Mono.error(
+                        new IllegalStateException("Unable to create CreateOtpChallengeCommand for registration/start"));
             }
             return invokeMono(service, "createChallenge", command)
                     .map(result -> new RegistrationOtpCreationResult(
@@ -194,12 +121,14 @@ public class RegistrationStartGatewayConfig {
         }
 
         @Override
-        public Mono<Boolean> deliverRegistrationOtp(RegistrationContactType contactType, String recipient, String otpCode,
+        public Mono<Boolean> deliverRegistrationOtp(RegistrationContactType contactType, String recipient,
+                String otpCode,
                 int ttlSeconds, String acceptLanguage, String correlationId) {
             Object port = firstBean(applicationContext,
                     "com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort");
             if (port == null) {
-                return Mono.error(new IllegalStateException("MessageDeliveryPort bean is not available for registration/start"));
+                return Mono.error(
+                        new IllegalStateException("MessageDeliveryPort bean is not available for registration/start"));
             }
             Map<String, Object> variables = new LinkedHashMap<>();
             variables.put("code", otpCode);
@@ -218,7 +147,8 @@ public class RegistrationStartGatewayConfig {
                     acceptLanguage,
                     correlationId);
             if (command == null) {
-                return Mono.error(new IllegalStateException("Unable to create MessageDeliveryCommand for registration/start"));
+                return Mono.error(
+                        new IllegalStateException("Unable to create MessageDeliveryCommand for registration/start"));
             }
             return invokeMono(port, "deliver", command)
                     .map(result -> firstBoolean(result, true, "accepted", "success", "delivered"));
@@ -253,7 +183,8 @@ public class RegistrationStartGatewayConfig {
                     return Mono.just((T) result);
                 }
             }
-            return Mono.error(new IllegalStateException("No compatible method " + methodName + " found on " + target.getClass().getName()));
+            return Mono.error(new IllegalStateException(
+                    "No compatible method " + methodName + " found on " + target.getClass().getName()));
         } catch (ReflectiveOperationException exception) {
             return Mono.error(exception);
         }
@@ -271,7 +202,8 @@ public class RegistrationStartGatewayConfig {
                 boolean compatible = true;
                 for (int i = 0; i < values.length; i++) {
                     converted[i] = convert(values[i], parameterTypes[i]);
-                    if (values[i] != null && converted[i] == null && !parameterTypes[i].isAssignableFrom(values[i].getClass())) {
+                    if (values[i] != null && converted[i] == null
+                            && !parameterTypes[i].isAssignableFrom(values[i].getClass())) {
                         compatible = false;
                         break;
                     }
@@ -288,7 +220,7 @@ public class RegistrationStartGatewayConfig {
         return null;
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings({ "unchecked", "rawtypes" })
     private static Object convert(Object value, Class<?> targetType) {
         if (value == null) {
             return null;
@@ -349,11 +281,11 @@ public class RegistrationStartGatewayConfig {
     }
 
     private static String firstText(Object target, String a, String b, String c, String fallback) {
-        return firstText(target, new String[] {a, b, c}, fallback);
+        return firstText(target, new String[] { a, b, c }, fallback);
     }
 
     private static String firstText(Object target, String a, String b, String fallback) {
-        return firstText(target, new String[] {a, b}, fallback);
+        return firstText(target, new String[] { a, b }, fallback);
     }
 
     private static String firstText(Object target, String[] accessors, String fallback) {

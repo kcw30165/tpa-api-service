@@ -52,24 +52,6 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
         this.resultMapper = new TrpSearchUnregisteredMemberApimResultMapper();
     }
 
-    /**
-     * Backwards-compatible constructor for already-generated unit tests only.
-     * Spring uses the @Autowired constructor above, so no ApimRegistrationLookupTransport bean is required.
-     */
-    // @Deprecated(forRemoval = true)
-    // ApimRegistrationLookupAdapter(
-    //         ApimRegistrationLookupTransport legacyTestTransport,
-    //         TrpSearchUnregisteredMemberApimMapper requestMapper,
-    //         TrpSearchUnregisteredMemberApimResultMapper resultMapper) {
-    //     this.apimWebClientFacade = null;
-    //     this.apimCertificateService = null;
-    //     this.apimPayloadCryptoService = null;
-    //     this.apimProperties = null;
-    //     this.legacyTestTransport = Objects.requireNonNull(legacyTestTransport, "legacyTestTransport must not be null");
-    //     this.requestMapper = Objects.requireNonNull(requestMapper, "requestMapper must not be null");
-    //     this.resultMapper = Objects.requireNonNull(resultMapper, "resultMapper must not be null");
-    // }
-
     @Override
     @LogExecution(value = "apim.searchUnregisteredMember", logArgs = false)
     public Mono<RegistrationLookupResult> searchUnregisteredMember(RegistrationLookupCommand command) {
