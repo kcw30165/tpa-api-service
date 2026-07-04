@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.out.registration.config;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
+import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationCsrfGateway;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationMessageGateway;
@@ -10,6 +11,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.registration.Registrati
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationSessionGateway;
 import com.bct.ngtpa.apiservice.adapter.out.registration.RegistrationAuthFlowCsrfGatewayAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.registration.RegistrationAuthFlowSessionGatewayAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.registration.RegistrationMessageDeliveryGatewayAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.registration.RegistrationOtpChallengeGatewayAdapter;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionCsrfService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionLifecycleService;
@@ -72,85 +74,12 @@ public class RegistrationStartGatewayConfig {
 
     @Bean
     @ConditionalOnMissingBean
-    public RegistrationMessageGateway registrationMessageGateway(ApplicationContext applicationContext) {
-        return new ReflectiveRegistrationMessageGateway(applicationContext);
-    }
-
-    private static final class ReflectiveRegistrationMessageGateway implements RegistrationMessageGateway {
-        private final ApplicationContext applicationContext;
-
-        private ReflectiveRegistrationMessageGateway(ApplicationContext applicationContext) {
-            this.applicationContext = applicationContext;
-        }
-
-        @Override
-        public Mono<Boolean> deliverRegistrationOtp(RegistrationContactType contactType, String recipient,
-                String otpCode,
-                int ttlSeconds, String acceptLanguage, String correlationId) {
-            Object port = firstBean(applicationContext,
-                    "com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort");
-            if (port == null) {
-                return Mono.error(
-                        new IllegalStateException("MessageDeliveryPort bean is not available for registration/start"));
-            }
-            Map<String, Object> variables = new LinkedHashMap<>();
-            variables.put("code", otpCode);
-            variables.put("ttlValue", String.valueOf(Math.max(1, ttlSeconds / 60)));
-            variables.put("ttlUnit", "minutes");
-            Object command = tryCreateCommand(
-                    "com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryCommand",
-                    "REGISTRATION_OTP",
-                    "REGISTRATION",
-                    contactType == null ? null : contactType.name(),
-                    recipient,
-                    "BCT verification code",
-                    "Your verification code is {code}. It is valid for {ttlValue} {ttlUnit}.",
-                    "registration-otp",
-                    variables,
-                    acceptLanguage,
-                    correlationId);
-            if (command == null) {
-                return Mono.error(
-                        new IllegalStateException("Unable to create MessageDeliveryCommand for registration/start"));
-            }
-            return invokeMono(port, "deliver", command)
-                    .map(result -> firstBoolean(result, true, "accepted", "success", "delivered"));
-        }
-    }
-
-    private static Object firstBean(ApplicationContext context, String... classNames) {
-        for (String className : classNames) {
-            try {
-                Class<?> type = Class.forName(className);
-                String[] names = context.getBeanNamesForType(type);
-                if (names.length > 0) {
-                    return context.getBean(names[0]);
-                }
-            } catch (ClassNotFoundException ignored) {
-                // Optional integration point not present in this branch.
-            }
-        }
-        return null;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <T> Mono<T> invokeMono(Object target, String methodName, Object command) {
-        try {
-            for (Method method : target.getClass().getMethods()) {
-                if (method.getName().equals(methodName) && method.getParameterCount() == 1
-                        && method.getParameterTypes()[0].isAssignableFrom(command.getClass())) {
-                    Object result = method.invoke(target, command);
-                    if (result instanceof Mono<?> mono) {
-                        return (Mono<T>) mono;
-                    }
-                    return Mono.just((T) result);
-                }
-            }
-            return Mono.error(new IllegalStateException(
-                    "No compatible method " + methodName + " found on " + target.getClass().getName()));
-        } catch (ReflectiveOperationException exception) {
-            return Mono.error(exception);
-        }
+    public RegistrationMessageGateway registrationMessageGateway(
+            MessageDeliveryPort messageDeliveryPort,
+            AuthWorkflowPolicyPort authWorkflowPolicyPort) {
+        return new RegistrationMessageDeliveryGatewayAdapter(
+                messageDeliveryPort,
+                authWorkflowPolicyPort);
     }
 
     private static Object tryCreateCommand(String className, Object... values) {
