@@ -8,12 +8,15 @@ import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRegistrationIdempote
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRegistrationIdempotencyJsonMapper;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRegistrationIdempotencyKeyFactory;
 import com.bct.ngtpa.apiservice.application.port.out.CachePort;
+import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
 import com.bct.ngtpa.apiservice.application.port.out.RateLimitPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.CacheAdminPort;
 import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthFlowSessionAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthFlowSessionJsonMapper;
+import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisOtpChallengeJsonMapper;
+import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisOtpChallengeStateAdapter;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.CachePort;
 
@@ -149,6 +152,24 @@ public class RedisAdapterConfig {
                 cachePort,
                 redisCacheKeyFactory,
                 redisAuthFlowSessionJsonMapper);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public RedisOtpChallengeJsonMapper redisOtpChallengeJsonMapper() {
+        return new RedisOtpChallengeJsonMapper();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(OtpChallengeStatePort.class)
+    public OtpChallengeStatePort otpChallengeStatePort(
+            CachePort cachePort,
+            RedisCacheKeyFactory redisCacheKeyFactory,
+            RedisOtpChallengeJsonMapper redisOtpChallengeJsonMapper) {
+        return new RedisOtpChallengeStateAdapter(
+                cachePort,
+                redisCacheKeyFactory,
+                redisOtpChallengeJsonMapper);
     }
     // ── Internal configuration builders ──────────────────────────────────────
 

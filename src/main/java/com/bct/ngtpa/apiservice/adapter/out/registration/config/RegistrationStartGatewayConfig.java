@@ -1,6 +1,8 @@
 package com.bct.ngtpa.apiservice.adapter.out.registration.config;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
+import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
+import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationCsrfGateway;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationMessageGateway;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationOtpCreationResult;
@@ -8,6 +10,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.registration.Registrati
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationSessionGateway;
 import com.bct.ngtpa.apiservice.adapter.out.registration.RegistrationAuthFlowCsrfGatewayAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.registration.RegistrationAuthFlowSessionGatewayAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.registration.RegistrationOtpChallengeGatewayAdapter;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionCsrfService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionLifecycleService;
 import org.springframework.beans.factory.annotation.Value;
@@ -57,60 +60,20 @@ public class RegistrationStartGatewayConfig {
 
     @Bean
     @ConditionalOnMissingBean
-    public RegistrationOtpGateway registrationOtpGateway(ApplicationContext applicationContext, Clock clock) {
-        return new ReflectiveRegistrationOtpGateway(applicationContext, clock);
+    public RegistrationOtpGateway registrationOtpGateway(
+            OtpChallengePort otpChallengePort,
+            AuthWorkflowPolicyPort authWorkflowPolicyPort,
+            Clock clock) {
+        return new RegistrationOtpChallengeGatewayAdapter(
+                otpChallengePort,
+                authWorkflowPolicyPort,
+                clock);
     }
 
     @Bean
     @ConditionalOnMissingBean
     public RegistrationMessageGateway registrationMessageGateway(ApplicationContext applicationContext) {
         return new ReflectiveRegistrationMessageGateway(applicationContext);
-    }
-
-    private static final class ReflectiveRegistrationOtpGateway implements RegistrationOtpGateway {
-        private final ApplicationContext applicationContext;
-        private final Clock clock;
-
-        private ReflectiveRegistrationOtpGateway(ApplicationContext applicationContext, Clock clock) {
-            this.applicationContext = applicationContext;
-            this.clock = clock;
-        }
-
-        @Override
-        public Mono<RegistrationOtpCreationResult> createOtp(RegistrationContactType contactType, String destination) {
-            Object service = firstBean(applicationContext,
-                    "com.bct.ngtpa.apiservice.application.usecase.auth.otp.OtpChallengeService",
-                    "com.bct.ngtpa.apiservice.application.service.auth.otp.OtpChallengeService");
-            if (service == null) {
-                return Mono.error(
-                        new IllegalStateException("OtpChallengeService bean is not available for registration/start"));
-            }
-            String challengeId = "otp_" + UUID.randomUUID().toString().replace("-", "");
-            String otpCode = "000000";
-            Object command = tryCreateCommand(
-                    "com.bct.ngtpa.apiservice.application.dto.auth.otp.CreateOtpChallengeCommand",
-                    "REGISTRATION",
-                    challengeId,
-                    contactType == null ? null : contactType.name(),
-                    destination == null ? "" : Integer.toHexString(destination.hashCode()),
-                    6,
-                    true,
-                    300,
-                    5,
-                    5,
-                    Instant.now(clock));
-            if (command == null) {
-                return Mono.error(
-                        new IllegalStateException("Unable to create CreateOtpChallengeCommand for registration/start"));
-            }
-            return invokeMono(service, "createChallenge", command)
-                    .map(result -> new RegistrationOtpCreationResult(
-                            firstText(result, "otpChallengeId", "challengeId", "id", challengeId),
-                            firstText(result, "otpCode", "code", otpCode),
-                            firstInt(result, 300, "expiresInSeconds", "ttlSeconds"),
-                            firstInt(result, 60, "resendCooldownSeconds"),
-                            firstInt(result, 5, "remainingResendAttempts", "maxResendAttempts")));
-        }
     }
 
     private static final class ReflectiveRegistrationMessageGateway implements RegistrationMessageGateway {
