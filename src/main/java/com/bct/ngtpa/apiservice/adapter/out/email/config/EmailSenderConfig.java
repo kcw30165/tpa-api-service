@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.out.email.config;
 
 import com.bct.ngtpa.apiservice.adapter.out.email.SmtpClient;
+import com.bct.ngtpa.apiservice.adapter.out.email.PlainSocketSmtpClient;
 import com.bct.ngtpa.apiservice.adapter.out.email.SmtpEmailSenderAdapter;
 import com.bct.ngtpa.apiservice.application.port.out.EmailSenderPort;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -18,7 +19,7 @@ public class EmailSenderConfig {
     @Bean
     @ConditionalOnMissingBean
     public SmtpClient smtpClient() {
-        return command -> Mono.error(new IllegalStateException("SMTP client implementation is not configured"));
+        return new PlainSocketSmtpClient();
     }
 
     @Bean
