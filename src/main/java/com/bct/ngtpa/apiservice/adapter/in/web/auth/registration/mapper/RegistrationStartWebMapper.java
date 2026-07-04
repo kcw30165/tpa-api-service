@@ -34,7 +34,8 @@ public class RegistrationStartWebMapper {
 
     public RegistrationStartResponse toResponse(StartRegistrationResult result) {
         if (result == null || result.status() != StartRegistrationResultStatus.STARTED
-                && result.status() != StartRegistrationResultStatus.DUPLICATE_IN_PROGRESS)
+                && result.status() != StartRegistrationResultStatus.DUPLICATE_IN_PROGRESS
+                && result.status() != StartRegistrationResultStatus.COMPLETED_REPLAY)
             return null;
         return new RegistrationStartResponse(result.nextStep(), result.maskedDestination(),
                 result.otpExpiresInSeconds() > 0 ? result.otpExpiresInSeconds() : null,

@@ -14,6 +14,7 @@ import java.time.Clock;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.Objects;
 import reactor.core.publisher.Mono;
 
@@ -54,7 +55,7 @@ public class StartRegistrationService implements StartRegistrationUseCase {
         return switch (start.outcome()) {
             case STARTED -> continueAfterIdempotency(command, hash);
             case DUPLICATE_IN_PROGRESS -> Mono.just(result(StartRegistrationResultStatus.DUPLICATE_IN_PROGRESS, WorkflowNextStep.WAIT, RegistrationWorkflowErrorKeys.WORKFLOW_IDEMPOTENCY_DUPLICATE_IN_PROGRESS, "Idempotency-Key", start.outcome()));
-            case COMPLETED_REPLAY -> Mono.just(new StartRegistrationResult(StartRegistrationResultStatus.COMPLETED_REPLAY, WorkflowNextStep.NONE, null, 0, 0, 0, null, null, List.of(), List.of(), start.outcome(), start.record().responseSnapshot()));
+            case COMPLETED_REPLAY -> Mono.just(replayCompletedRegistrationStart(start));
             case KEY_REUSED_WITH_DIFFERENT_REQUEST -> Mono.just(result(StartRegistrationResultStatus.IDEMPOTENCY_KEY_REUSED, WorkflowNextStep.NONE, RegistrationWorkflowErrorKeys.WORKFLOW_IDEMPOTENCY_KEY_REUSED, "Idempotency-Key", start.outcome()));
             case FAILED_EXISTING -> Mono.just(result(StartRegistrationResultStatus.SYSTEM_FAILED, WorkflowNextStep.NONE, RegistrationWorkflowErrorKeys.WORKFLOW_SYSTEM_UNAVAILABLE, "PAGE", start.outcome()));
         };
@@ -138,4 +139,154 @@ public class StartRegistrationService implements StartRegistrationUseCase {
     }
 
     private static String normalize(String value) { return value == null ? "" : value.trim(); }
+
+
+    private StartRegistrationResult replayCompletedRegistrationStart(RegistrationIdempotencyStartResult idempotencyResult) {
+        var snapshot = idempotencyResult == null || idempotencyResult.record() == null
+                ? null
+                : idempotencyResult.record().responseSnapshot();
+        if (snapshot == null || !hasText(snapshot.serializedBody())) {
+            return emptyCompletedReplay(idempotencyResult, snapshot);
+        }
+        String body = snapshot.serializedBody();
+        return new StartRegistrationResult(
+                StartRegistrationResultStatus.COMPLETED_REPLAY,
+                parseNextStep(body),
+                jsonString(body, "maskedDestination"),
+                jsonInt(body, "expiresInSeconds"),
+                jsonInt(body, "resendCooldownSeconds"),
+                jsonInt(body, "remainingResendAttempts"),
+                jsonString(body, "csrfToken"),
+                null,
+                List.of(),
+                List.of(),
+                idempotencyResult == null ? RegistrationIdempotencyStartOutcome.COMPLETED_REPLAY : idempotencyResult.outcome(),
+                snapshot);
+    }
+
+    private StartRegistrationResult emptyCompletedReplay(
+            RegistrationIdempotencyStartResult idempotencyResult,
+            RegistrationIdempotencyResponseSnapshot snapshot) {
+        return new StartRegistrationResult(
+                StartRegistrationResultStatus.COMPLETED_REPLAY,
+                WorkflowNextStep.NONE,
+                null,
+                0,
+                0,
+                0,
+                null,
+                null,
+                List.of(),
+                List.of(),
+                idempotencyResult == null ? RegistrationIdempotencyStartOutcome.COMPLETED_REPLAY : idempotencyResult.outcome(),
+                snapshot);
+    }
+
+    private RegistrationIdempotencyResponseSnapshot snapshotFor(StartRegistrationResult result) {
+        return new RegistrationIdempotencyResponseSnapshot("200", replayBody(result), Map.of());
+    }
+
+    private String replayBody(StartRegistrationResult result) {
+        return "{"
+                + jsonField("nextStep", result.nextStep() == null ? WorkflowNextStep.NONE.name() : result.nextStep().name())
+                + "," + jsonField("maskedDestination", result.maskedDestination())
+                + "," + jsonNumberField("expiresInSeconds", result.otpExpiresInSeconds())
+                + "," + jsonNumberField("resendCooldownSeconds", result.resendCooldownSeconds())
+                + "," + jsonNumberField("remainingResendAttempts", result.remainingResendAttempts())
+                + "," + jsonField("csrfToken", result.csrfToken())
+                + "}";
+    }
+
+    private String jsonField(String name, String value) {
+        return "\"" + name + "\":" + (value == null ? "null" : "\"" + jsonEscape(value) + "\"");
+    }
+
+    private String jsonNumberField(String name, int value) {
+        return "\"" + name + "\":" + value;
+    }
+
+    private String jsonEscape(String value) {
+        return value
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\r", "\\r")
+                .replace("\n", "\\n");
+    }
+
+    private WorkflowNextStep parseNextStep(String body) {
+        String raw = jsonString(body, "nextStep");
+        if (!hasText(raw)) {
+            return WorkflowNextStep.NONE;
+        }
+        try {
+            return WorkflowNextStep.valueOf(raw);
+        } catch (IllegalArgumentException ignored) {
+            return WorkflowNextStep.NONE;
+        }
+    }
+
+    private String jsonString(String body, String field) {
+        if (!hasText(body) || !hasText(field)) {
+            return null;
+        }
+        var matcher = Pattern.compile("\\\"" + Pattern.quote(field) + "\\\"\\s*:\\s*(null|\\\"((?:\\\\.|[^\\\"])*)\\\")")
+                .matcher(body);
+        if (!matcher.find() || "null".equals(matcher.group(1))) {
+            return null;
+        }
+        return jsonUnescape(matcher.group(2));
+    }
+
+    private int jsonInt(String body, String field) {
+        if (!hasText(body) || !hasText(field)) {
+            return 0;
+        }
+        var matcher = Pattern.compile("\\\"" + Pattern.quote(field) + "\\\"\\s*:\\s*(-?\\d+)")
+                .matcher(body);
+        if (!matcher.find()) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(matcher.group(1));
+        } catch (NumberFormatException ignored) {
+            return 0;
+        }
+    }
+
+    private String jsonUnescape(String value) {
+        if (value == null) {
+            return null;
+        }
+        StringBuilder result = new StringBuilder();
+        boolean escaping = false;
+        for (int index = 0; index < value.length(); index++) {
+            char ch = value.charAt(index);
+            if (!escaping) {
+                if (ch == '\\') {
+                    escaping = true;
+                } else {
+                    result.append(ch);
+                }
+                continue;
+            }
+            switch (ch) {
+                case 'r' -> result.append('\r');
+                case 'n' -> result.append('\n');
+                case 't' -> result.append('\t');
+                case '\\' -> result.append('\\');
+                case '"' -> result.append('"');
+                default -> result.append(ch);
+            }
+            escaping = false;
+        }
+        if (escaping) {
+            result.append('\\');
+        }
+        return result.toString();
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
 }
