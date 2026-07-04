@@ -54,7 +54,7 @@ sms:
   password: ${SMS_PASSWORD:}
   send-id: ${SMS_SEND_ID:}
   class-code: ${SMS_CLASS_CODE:}
-  default-country: ${SMS_DEFAULT_COUNTRY:HK}
+  default-country: ${SMS_DEFAULT_COUNTRY:852}
   timeout-millis: ${SMS_TIMEOUT_MILLIS:5000}
 
 auth-flow-session:

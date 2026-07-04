@@ -45,7 +45,7 @@ public class SmtpEmailSenderAdapter implements EmailSenderPort {
 
         log.info(
                 "Email outbound request hostConfigured={} port={} recipientMasked={} bodyLogged=false",
-                StringUtils.hasText(smtp().getHost()),
+                smtp().getHost(),
                 smtp().getPort(),
                 recipientMasked);
 
@@ -53,11 +53,14 @@ public class SmtpEmailSenderAdapter implements EmailSenderPort {
                 .thenReturn(new SenderResult(SenderStatus.ACCEPTED, null, null, null))
                 .onErrorResume(error -> {
                     log.warn(
-                            "Email outbound request failed hostConfigured={} port={} recipientMasked={} bodyLogged=false errorType={}",
+                            "Email outbound request failed hostConfigured={} port={} fromConfigured={} recipientMasked={} subjectConfigured={} bodyLogged=false errorType={} errorMessage={}",
                             StringUtils.hasText(smtp().getHost()),
                             smtp().getPort(),
+                            StringUtils.hasText(resolveFrom(message.from())),
                             recipientMasked,
-                            error.getClass().getSimpleName());
+                            StringUtils.hasText(message.subject()),
+                            error.getClass().getSimpleName(),
+                            safeErrorMessage(error));
                     return Mono.just(new SenderResult(
                             SenderStatus.FAILED,
                             null,
@@ -83,15 +86,26 @@ public class SmtpEmailSenderAdapter implements EmailSenderPort {
 
     private SenderResult validateConfiguration() {
         if (!StringUtils.hasText(smtp().getHost())) {
-            return new SenderResult(SenderStatus.FAILED, null, "EMAIL_CONFIG_HOST_MISSING", EMAIL_CONFIGURATION_FAILURE_MESSAGE);
+            return new SenderResult(SenderStatus.FAILED, null, "EMAIL_CONFIG_HOST_MISSING",
+                    EMAIL_CONFIGURATION_FAILURE_MESSAGE);
         }
         if (!StringUtils.hasText(smtp().getFrom())) {
-            return new SenderResult(SenderStatus.FAILED, null, "EMAIL_CONFIG_FROM_MISSING", EMAIL_CONFIGURATION_FAILURE_MESSAGE);
+            return new SenderResult(SenderStatus.FAILED, null, "EMAIL_CONFIG_FROM_MISSING",
+                    EMAIL_CONFIGURATION_FAILURE_MESSAGE);
         }
         return null;
     }
 
     private EmailProperties.Smtp smtp() {
         return emailProperties.getSmtp();
+    }
+
+    private String safeErrorMessage(Throwable error) {
+        if (error == null || error.getMessage() == null || error.getMessage().isBlank()) {
+            return "";
+        }
+        return error.getMessage()
+                .replace('\n', ' ')
+                .replace('\r', ' ');
     }
 }

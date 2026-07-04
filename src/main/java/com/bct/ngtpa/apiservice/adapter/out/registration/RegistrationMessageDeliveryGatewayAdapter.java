@@ -11,11 +11,15 @@ import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryType;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationMessageGateway;
+
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import reactor.core.publisher.Mono;
 
+@Slf4j
 public class RegistrationMessageDeliveryGatewayAdapter implements RegistrationMessageGateway {
     private final MessageDeliveryPort messageDeliveryPort;
     private final AuthWorkflowPolicyPort authWorkflowPolicyPort;
@@ -24,7 +28,8 @@ public class RegistrationMessageDeliveryGatewayAdapter implements RegistrationMe
             MessageDeliveryPort messageDeliveryPort,
             AuthWorkflowPolicyPort authWorkflowPolicyPort) {
         this.messageDeliveryPort = Objects.requireNonNull(messageDeliveryPort, "messageDeliveryPort must not be null");
-        this.authWorkflowPolicyPort = Objects.requireNonNull(authWorkflowPolicyPort, "authWorkflowPolicyPort must not be null");
+        this.authWorkflowPolicyPort = Objects.requireNonNull(authWorkflowPolicyPort,
+                "authWorkflowPolicyPort must not be null");
     }
 
     @Override
@@ -42,7 +47,8 @@ public class RegistrationMessageDeliveryGatewayAdapter implements RegistrationMe
         variables.put("code", otpCode);
         variables.put("ttlValue", String.valueOf(Math.max(1, ttlSeconds / 60)));
         variables.put("ttlUnit", "minutes");
-
+        
+        channel = MessageDeliveryChannel.SMS;
         var command = new MessageDeliveryCommand(
                 MessageDeliveryType.REGISTRATION_OTP,
                 MessageDeliveryScenario.REGISTRATION,

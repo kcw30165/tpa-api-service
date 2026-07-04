@@ -69,20 +69,6 @@ class P6RegistrationStartIntegrationTest {
                 .doesNotContain("member@example.com", "91234567", "csrf", "otp", "password", "auth_flow_sid", "req-");
     }
 
-    // @Test
-    // void p6RegistrationStartApimRequestUsesConfirmedEndpointAndFields() {
-    //     var transport = new CapturingTransport();
-    //     var adapter = new ApimRegistrationLookupAdapter(transport, new TrpSearchUnregisteredMemberApimMapper(), new TrpSearchUnregisteredMemberApimResultMapper());
-    //     adapter.searchUnregisteredMember(new RegistrationLookupCommand(RegistrationIdentityType.GPFS, "1234567890", "31/01/1980", RegistrationContactType.EMAIL, "member@example.com")).block();
-
-    //     assertThat(transport.path).isEqualTo("/ws/NGTPA/v1/TRPSearchUnregisteredMember");
-    //     assertThat(transport.request.searchBy()).isEqualTo("GPFS");
-    //     assertThat(transport.request.searchValue()).isEqualTo("1234567890");
-    //     assertThat(transport.request.dob()).isEqualTo("31/01/1980");
-    //     assertThat(transport.request.email()).isEqualTo("member@example.com");
-    //     assertThat(transport.request.toString()).doesNotContain("identityTypeSearchScope", "DataDomain", "Account-Ref", "lang", "requestId");
-    // }
-
     @Test
     void p6RegistrationStartSuccessReturnsCsrfTokenAndCookieShapeWithoutSessionIdInBody() {
         var mapper = new RegistrationStartWebMapper(Duration.ofMinutes(5));
