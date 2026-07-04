@@ -22,7 +22,8 @@ class RegistrationStartWebMapperTest {
 
     @Test
     void registrationStartMapsRequestToUseCaseCommand() {
-        var request = new RegistrationStartRequest("GPFS", "1234567890", "31/01/1980", "member@example.com", null, "cap_secret");
+        var request = new RegistrationStartRequest("GPFS", "1234567890", "31/01/1980", "member@example.com", null,
+                "cap_secret");
         StartRegistrationCommand command = mapper.toCommand(request, "idem_abc123", "req-123", "en-HK");
 
         assertThat(command.idempotencyKey()).isEqualTo(new RegistrationIdempotencyKey("idem_abc123"));
@@ -33,16 +34,20 @@ class RegistrationStartWebMapperTest {
         assertThat(command.mobile()).isNull();
         assertThat(command.acceptLanguage()).isEqualTo("en-HK");
         assertThat(command.correlationId()).isEqualTo("req-123");
-        assertThat(command.toString()).doesNotContain("1234567890", "member@example.com", "cap_secret", "req-123", "idem_abc123");
+        assertThat(command.toString()).doesNotContain("1234567890", "member@example.com", "cap_secret", "req-123",
+                "idem_abc123");
     }
 
     @Test
     void responseToStringDoesNotExposeCsrfTokenOrSessionId() {
-        var result = new StartRegistrationResult(StartRegistrationResultStatus.STARTED, WorkflowNextStep.VERIFY_OTP, "m****r@example.com", 300, 60, 5, "csrf_secret", "afs_secret", List.of(), List.of(), RegistrationIdempotencyStartOutcome.STARTED, null);
+        var result = new StartRegistrationResult(StartRegistrationResultStatus.STARTED, WorkflowNextStep.VERIFY_OTP,
+                "m****r@example.com", 300, 60, 5, "csrf_secret", "afs_secret", List.of(), List.of(),
+                RegistrationIdempotencyStartOutcome.STARTED, null);
         var response = mapper.toResponse(result);
 
         assertThat(response.csrfToken()).isEqualTo("csrf_secret");
-        assertThat(response.toString()).doesNotContain("csrf_secret", "afs_secret", "authFlowSessionId", "otpChallengeId", "otpCode");
+        assertThat(response.toString()).doesNotContain("csrf_secret", "afs_secret", "authFlowSessionId",
+                "otpChallengeId", "otpCode");
     }
 
     @Test
@@ -57,7 +62,8 @@ class RegistrationStartWebMapperTest {
                 null,
                 null,
                 List.of(),
-                List.of(new StartRegistrationError(RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED, "identityValue", "We are unable to verify your details. Please review and try again.")),
+                List.of(new StartRegistrationError(RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED,
+                        "identityValue", "We are unable to verify your details. Please review and try again.")),
                 RegistrationIdempotencyStartOutcome.STARTED,
                 null);
 
@@ -68,7 +74,6 @@ class RegistrationStartWebMapperTest {
             assertThat(error.message()).isEqualTo("We are unable to verify your details. Please review and try again.");
         });
     }
-
 
     @Test
     void mapperResolvesRegistrationErrorMessageThroughResolver() {
@@ -84,7 +89,8 @@ class RegistrationStartWebMapperTest {
                 null,
                 null,
                 List.of(),
-                List.of(new StartRegistrationError(RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED, "identityValue")),
+                List.of(new StartRegistrationError(RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED,
+                        "identityValue")),
                 RegistrationIdempotencyStartOutcome.STARTED,
                 null);
 
@@ -94,6 +100,58 @@ class RegistrationStartWebMapperTest {
             assertThat(error.code()).isEqualTo("registration.start.verificationFailed");
             assertThat(error.message()).isEqualTo("resolved-message");
         });
+    }
+
+    @Test
+    void messageDeliveryFailureMapsToDownstreamErrorStatus() {
+        var result = new StartRegistrationResult(
+                StartRegistrationResultStatus.MESSAGE_DELIVERY_FAILED,
+                WorkflowNextStep.NONE,
+                null,
+                0,
+                0,
+                0,
+                null,
+                null,
+                List.of(),
+                List.of(new StartRegistrationError(
+                        RegistrationWorkflowErrorKeys.REGISTRATION_MESSAGE_DELIVERY_FAILED,
+                        "email")),
+                RegistrationIdempotencyStartOutcome.STARTED,
+                null);
+
+        var response = mapper.toMutationResponse(result, "en");
+
+        assertThat(response.success()).isFalse();
+        assertThat(response.status()).isEqualTo("DOWNSTREAM_ERROR");
+        assertThat(response.result()).isNull();
+        assertThat(response.errors()).singleElement()
+                .satisfies(error -> assertThat(error.code()).isEqualTo("registration.messageDelivery.failed"));
+    }
+
+    @Test
+    void systemFailureMapsToSystemErrorStatus() {
+        var result = new StartRegistrationResult(
+                StartRegistrationResultStatus.SYSTEM_FAILED,
+                WorkflowNextStep.NONE,
+                null,
+                0,
+                0,
+                0,
+                null,
+                null,
+                List.of(),
+                List.of(new StartRegistrationError(
+                        RegistrationWorkflowErrorKeys.WORKFLOW_SYSTEM_UNAVAILABLE,
+                        "PAGE")),
+                RegistrationIdempotencyStartOutcome.STARTED,
+                null);
+
+        var response = mapper.toMutationResponse(result, "en");
+
+        assertThat(response.success()).isFalse();
+        assertThat(response.status()).isEqualTo("SYSTEM_ERROR");
+        assertThat(response.result()).isNull();
     }
 
 }
