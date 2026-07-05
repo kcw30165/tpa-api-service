@@ -16,4 +16,9 @@ public interface RegistrationSessionGateway {
             RegistrationAuthFlowContext registrationContext) {
         return createRegistrationSession(maskedDestination, contactType);
     }
+
+
+    default Mono<Void> markOtpVerified(String authFlowSessionId) {
+        return Mono.empty();
+    }
 }

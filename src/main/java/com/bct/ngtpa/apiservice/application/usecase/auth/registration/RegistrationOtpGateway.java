@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.registration;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.RegistrationOtpVerificationResult;
 import reactor.core.publisher.Mono;
 
 public interface RegistrationOtpGateway {
@@ -12,5 +13,10 @@ public interface RegistrationOtpGateway {
             RegistrationContactType contactType,
             String destination) {
         return createOtp(contactType, destination);
+    }
+
+
+    default Mono<RegistrationOtpVerificationResult> verifyOtp(String activeOtpChallengeId, String submittedOtpCode) {
+        return Mono.just(RegistrationOtpVerificationResult.invalid(null));
     }
 }
