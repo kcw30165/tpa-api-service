@@ -5,4 +5,12 @@ import reactor.core.publisher.Mono;
 
 public interface RegistrationOtpGateway {
     Mono<RegistrationOtpCreationResult> createOtp(RegistrationContactType contactType, String destination);
+
+
+    default Mono<RegistrationOtpCreationResult> resendOtp(
+            String activeOtpChallengeId,
+            RegistrationContactType contactType,
+            String destination) {
+        return createOtp(contactType, destination);
+    }
 }
