@@ -2,14 +2,9 @@ package com.bct.ngtpa.apiservice.auth.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationStartWebMapper;
-import com.bct.ngtpa.apiservice.adapter.out.apim.registration.ApimRegistrationLookupEnvelope;
-import com.bct.ngtpa.apiservice.adapter.out.apim.registration.ApimRegistrationLookupTransport;
-import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchUnregisteredMemberApimDataItem;
-import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchUnregisteredMemberApimRequest;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRegistrationIdempotencyKeyFactory;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyAction;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
@@ -20,20 +15,8 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.server.ServerHttpResponse;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import reactor.core.publisher.Mono;
 
 class P6RegistrationStartIntegrationTest {
-
-    // @Test
-    // void p6RegistrationStartEndpointExistsAndRequiresIdempotencyKey() throws Exception {
-    //     assertThat(AuthRegistrationController.class.getAnnotation(RequestMapping.class).value()).containsExactly("/api/v1/auth/registration");
-    //     var method = AuthRegistrationController.class.getDeclaredMethod("startRegistration", RegistrationStartRequest.class, String.class, String.class, String.class, String.class,
-    //             ServerHttpResponse.class);
-    //     assertThat(method.getAnnotation(PostMapping.class).value()).containsExactly("/start");
-    // }
 
     @Test
     void p6RegistrationStartRequestShapeExcludesInternalFields() {
@@ -85,21 +68,11 @@ class P6RegistrationStartIntegrationTest {
         var cookie = AuthFlowCookieWriter.defaultWriter().createAuthFlowCookie("afs_abc");
 
         assertThat(response.result().nextStep()).isEqualTo(WorkflowNextStep.VERIFY_OTP);
-        assertThat(response.result().csrfToken()).isEqualTo("csrf_abc");
+        assertThat(response.result().data().csrfToken()).isEqualTo("csrf_abc");
         assertThat(response.toString()).doesNotContain("afs_abc", "authFlowSessionId", "otpChallengeId", "otpCode", "policyNo", "certNo");
         assertThat(cookie.getName()).isEqualTo("auth_flow_sid");
         assertThat(cookie.isHttpOnly()).isTrue();
         assertThat(cookie.isSecure()).isTrue();
         assertThat(cookie.getSameSite()).isEqualTo("None");
-    }
-
-    private static final class CapturingTransport implements ApimRegistrationLookupTransport {
-        String path;
-        TrpSearchUnregisteredMemberApimRequest request;
-        @Override public Mono<ApimRegistrationLookupEnvelope> postSearchUnregisteredMember(String path, TrpSearchUnregisteredMemberApimRequest request) {
-            this.path = path;
-            this.request = request;
-            return Mono.just(ApimRegistrationLookupEnvelope.success(List.of(new TrpSearchUnregisteredMemberApimDataItem("apim@example.com", "49998888", "00000008802", "2", "OI", "JPM"))));
-        }
     }
 }

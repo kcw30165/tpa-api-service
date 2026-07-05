@@ -1,38 +1,73 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.*;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartRequest;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErrorKeys;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.*;
-import java.time.Duration;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResult;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResultPayload;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResultStatus;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationCommand;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationError;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResult;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResultStatus;
 import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
-
-import lombok.extern.slf4j.Slf4j;
-
+import java.time.Duration;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class RegistrationStartWebMapper {
+    private static final String SOURCE_SERVER = "SERVER";
+    private static final String TARGET_PAGE = "PAGE";
+
     private final Duration defaultIdempotencyTtl;
     private final ErrorMessageResolver errorMessageResolver;
+    private final WorkflowMutationResponseMapper workflowMutationResponseMapper;
 
     public RegistrationStartWebMapper(Duration defaultIdempotencyTtl) {
         this(defaultIdempotencyTtl, null);
     }
 
     public RegistrationStartWebMapper(Duration defaultIdempotencyTtl, ErrorMessageResolver errorMessageResolver) {
+        this(defaultIdempotencyTtl, errorMessageResolver, new WorkflowMutationResponseMapper());
+    }
+
+    RegistrationStartWebMapper(
+            Duration defaultIdempotencyTtl,
+            ErrorMessageResolver errorMessageResolver,
+            WorkflowMutationResponseMapper workflowMutationResponseMapper) {
         this.defaultIdempotencyTtl = defaultIdempotencyTtl;
         this.errorMessageResolver = errorMessageResolver;
+        this.workflowMutationResponseMapper = workflowMutationResponseMapper;
     }
 
-    public StartRegistrationCommand toCommand(RegistrationStartRequest request, String idempotencyKey,
-            String correlationId, String acceptLanguage, String authFlowSessionId) {
-        return new StartRegistrationCommand(new RegistrationIdempotencyKey(idempotencyKey), request.identityType(),
-                request.identityValue(), request.dateOfBirth(), request.email(), request.mobile(),
-                request.captchaChallengeId(), authFlowSessionId, acceptLanguage, correlationId, defaultIdempotencyTtl);
+    public StartRegistrationCommand toCommand(
+            RegistrationStartRequest request,
+            String idempotencyKey,
+            String correlationId,
+            String acceptLanguage,
+            String authFlowSessionId) {
+        return new StartRegistrationCommand(
+                new RegistrationIdempotencyKey(idempotencyKey),
+                request.identityType(),
+                request.identityValue(),
+                request.dateOfBirth(),
+                request.email(),
+                request.mobile(),
+                request.captchaChallengeId(),
+                authFlowSessionId,
+                acceptLanguage,
+                correlationId,
+                defaultIdempotencyTtl);
     }
 
-    
     public StartRegistrationCommand toCommand(
             RegistrationStartRequest request,
             String idempotencyKey,
@@ -42,55 +77,130 @@ public class RegistrationStartWebMapper {
     }
 
     public RegistrationStartResponse toResponse(StartRegistrationResult result) {
-        if (result == null || result.status() != StartRegistrationResultStatus.STARTED
-                && result.status() != StartRegistrationResultStatus.DUPLICATE_IN_PROGRESS
-                && result.status() != StartRegistrationResultStatus.COMPLETED_REPLAY)
+        if (result == null || !isSuccess(result.status())) {
             return null;
-        return new RegistrationStartResponse(result.nextStep(), result.maskedDestination(),
+        }
+        return new RegistrationStartResponse(
+                result.nextStep(),
+                result.maskedDestination(),
                 result.otpExpiresInSeconds() > 0 ? result.otpExpiresInSeconds() : null,
                 result.resendCooldownSeconds() > 0 ? result.resendCooldownSeconds() : null,
-                result.remainingResendAttempts() > 0 ? result.remainingResendAttempts() : null, result.csrfToken());
+                result.remainingResendAttempts() > 0 ? result.remainingResendAttempts() : null,
+                result.csrfToken());
     }
 
-    public SimpleMutationResponse<RegistrationStartResponse> toMutationResponse(StartRegistrationResult result) {
-        boolean success = result.status() == StartRegistrationResultStatus.STARTED
-                || result.status() == StartRegistrationResultStatus.DUPLICATE_IN_PROGRESS
-                || result.status() == StartRegistrationResultStatus.COMPLETED_REPLAY;
-        return new SimpleMutationResponse<>(success, success ? "SUCCESS" : "VALIDATION_FAILED", toResponse(result),
-                result.messages(), result.errors().stream().map(error -> toWebError(error, null)).toList());
-    }
-
-    public SimpleMutationResponse<RegistrationStartResponse> missingIdempotencyKeyResponse() {
-        return new SimpleMutationResponse<>(false, "VALIDATION_FAILED", null, List.of(),
-                List.of(new SimpleWebError(RegistrationWorkflowErrorKeys.WORKFLOW_IDEMPOTENCY_MISSING.value(),
-                        "Idempotency-Key")));
-    }
-
-    public SimpleMutationResponse<RegistrationStartResponse> toMutationResponse(StartRegistrationResult result,
+    public MutationResponse<WorkflowResultPayload<RegistrationStartResponse>> toMutationResponse(
+            StartRegistrationResult result,
             String acceptLanguage) {
-        boolean success = isSuccess(result.status());
         logFatalIfNeeded(result);
+        return workflowMutationResponseMapper.toMutationResponse(toWorkflowResult(result, acceptLanguage));
+    }
 
-        return new SimpleMutationResponse<>(
-                success,
-                toApiStatus(result.status()),
-                success ? toResponse(result) : null,
-                result.messages(),
+    public MutationResponse<WorkflowResultPayload<RegistrationStartResponse>> toMutationResponse(StartRegistrationResult result) {
+        return toMutationResponse(result, null);
+    }
+
+    public MutationResponse<WorkflowResultPayload<RegistrationStartResponse>> missingIdempotencyKeyResponse(
+            String acceptLanguage) {
+        var code = RegistrationWorkflowErrorKeys.WORKFLOW_IDEMPOTENCY_MISSING.value();
+        var error = new WorkflowErrorDescriptor(
+                WorkflowErrorType.FIELD,
+                code,
+                resolveMessage(code, acceptLanguage),
+                List.of("Idempotency-Key"),
+                WorkflowErrorSeverity.ERROR,
+                SOURCE_SERVER);
+        return workflowMutationResponseMapper.toMutationResponse(new WorkflowResult<RegistrationStartResponse>(
+                WorkflowResultStatus.VALIDATION_FAILED,
+                WorkflowNextStep.NONE,
+                null,
+                null,
+                List.of(),
+                List.of(error)));
+    }
+
+    public MutationResponse<WorkflowResultPayload<RegistrationStartResponse>> missingIdempotencyKeyResponse() {
+        return missingIdempotencyKeyResponse(null);
+    }
+
+    WorkflowResult<RegistrationStartResponse> toWorkflowResult(StartRegistrationResult result, String acceptLanguage) {
+        if (result == null) {
+            return new WorkflowResult<>(
+                    WorkflowResultStatus.SYSTEM_FAILED,
+                    WorkflowNextStep.NONE,
+                    null,
+                    null,
+                    List.of(),
+                    List.of(new WorkflowErrorDescriptor(
+                            WorkflowErrorType.SYSTEM,
+                            "workflow.system.unavailable",
+                            resolveMessage("workflow.system.unavailable", acceptLanguage),
+                            List.of(),
+                            WorkflowErrorSeverity.ERROR,
+                            SOURCE_SERVER)));
+        }
+
+        WorkflowResultStatus workflowStatus = toWorkflowStatus(result.status());
+        RegistrationStartResponse response = isSuccess(result.status()) ? toResponse(result) : null;
+        return new WorkflowResult<>(
+                workflowStatus,
+                result.nextStep(),
+                response,
+                null,
+                List.of(),
                 result.errors().stream()
-                        .map(error -> toWebError(error, acceptLanguage))
+                        .map(error -> toWorkflowError(error, result.status(), acceptLanguage))
                         .toList());
     }
 
-    public SimpleMutationResponse<RegistrationStartResponse> missingIdempotencyKeyResponse(String acceptLanguage) {
-        var code = RegistrationWorkflowErrorKeys.WORKFLOW_IDEMPOTENCY_MISSING.value();
-        return new SimpleMutationResponse<>(false, "VALIDATION_FAILED", null, List.of(),
-                List.of(new SimpleWebError(code, "Idempotency-Key", resolveMessage(code, acceptLanguage))));
+    private WorkflowErrorDescriptor toWorkflowError(
+            StartRegistrationError error,
+            StartRegistrationResultStatus status,
+            String acceptLanguage) {
+        String code = error.errorKey().value();
+        String target = normalizeTarget(error.target());
+        return new WorkflowErrorDescriptor(
+                toWorkflowErrorType(status, target),
+                code,
+                error.message() != null ? error.message() : resolveMessage(code, acceptLanguage),
+                target == null ? List.of() : List.of(target),
+                WorkflowErrorSeverity.ERROR,
+                SOURCE_SERVER);
     }
 
-    private SimpleWebError toWebError(StartRegistrationError error, String acceptLanguage) {
-        String code = error.errorKey().value();
-        return new SimpleWebError(code, error.target(),
-                error.message() != null ? error.message() : resolveMessage(code, acceptLanguage));
+    private WorkflowErrorType toWorkflowErrorType(StartRegistrationResultStatus status, String target) {
+        if (target != null && !TARGET_PAGE.equalsIgnoreCase(target)) {
+            return WorkflowErrorType.FIELD;
+        }
+        return switch (status) {
+            case MESSAGE_DELIVERY_FAILED -> WorkflowErrorType.DOWNSTREAM_SYSTEM;
+            case SYSTEM_FAILED -> WorkflowErrorType.SYSTEM;
+            case VERIFICATION_FAILED, IDEMPOTENCY_KEY_REUSED -> WorkflowErrorType.BUSINESS;
+            default -> WorkflowErrorType.FORM;
+        };
+    }
+
+    private WorkflowResultStatus toWorkflowStatus(StartRegistrationResultStatus status) {
+        return switch (status) {
+            case STARTED, COMPLETED_REPLAY -> WorkflowResultStatus.SUCCESS;
+            case DUPLICATE_IN_PROGRESS -> WorkflowResultStatus.WAITING;
+            case VALIDATION_FAILED -> WorkflowResultStatus.VALIDATION_FAILED;
+            case VERIFICATION_FAILED, IDEMPOTENCY_KEY_REUSED -> WorkflowResultStatus.BUSINESS_FAILED;
+            case MESSAGE_DELIVERY_FAILED, SYSTEM_FAILED -> WorkflowResultStatus.SYSTEM_FAILED;
+        };
+    }
+
+    private boolean isSuccess(StartRegistrationResultStatus status) {
+        return status == StartRegistrationResultStatus.STARTED
+                || status == StartRegistrationResultStatus.DUPLICATE_IN_PROGRESS
+                || status == StartRegistrationResultStatus.COMPLETED_REPLAY;
+    }
+
+    private String normalizeTarget(String target) {
+        if (target == null || target.isBlank()) {
+            return TARGET_PAGE;
+        }
+        return target.trim();
     }
 
     private String resolveMessage(String code, String acceptLanguage) {
@@ -100,38 +210,14 @@ public class RegistrationStartWebMapper {
         return errorMessageResolver.resolve(code, acceptLanguage, null, null, null);
     }
 
-    private boolean isSuccess(StartRegistrationResultStatus status) {
-        return status == StartRegistrationResultStatus.STARTED
-                || status == StartRegistrationResultStatus.DUPLICATE_IN_PROGRESS
-                || status == StartRegistrationResultStatus.COMPLETED_REPLAY;
-    }
-
-    private String toApiStatus(StartRegistrationResultStatus status) {
-        if (isSuccess(status)) {
-            return "SUCCESS";
-        }
-
-        if (status == StartRegistrationResultStatus.MESSAGE_DELIVERY_FAILED) {
-            return "DOWNSTREAM_ERROR";
-        }
-
-        if (status == StartRegistrationResultStatus.SYSTEM_FAILED) {
-            return "SYSTEM_ERROR";
-        }
-
-        return "VALIDATION_FAILED";
-    }
-
     private void logFatalIfNeeded(StartRegistrationResult result) {
         if (result == null || result.status() == null) {
             return;
         }
-
         if (result.status() != StartRegistrationResultStatus.MESSAGE_DELIVERY_FAILED
                 && result.status() != StartRegistrationResultStatus.SYSTEM_FAILED) {
             return;
         }
-
         log.error(
                 "event=registration.start.failure severity=FATAL status={} errorCodes={}",
                 result.status(),

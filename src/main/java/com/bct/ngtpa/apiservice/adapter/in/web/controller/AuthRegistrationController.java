@@ -1,7 +1,10 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.*;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartRequest;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResultPayload;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationStartWebMapper;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResultStatus;
 import com.bct.ngtpa.apiservice.application.port.in.StartRegistrationUseCase;
@@ -24,7 +27,7 @@ public class AuthRegistrationController {
     }
 
     @PostMapping("/start")
-    public Mono<SimpleMutationResponse<RegistrationStartResponse>> startRegistration(
+    public Mono<MutationResponse<WorkflowResultPayload<RegistrationStartResponse>>> startRegistration(
             @RequestBody RegistrationStartRequest request,
             @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
             @RequestHeader(name = "X-Request-Id", required = false) String requestId,
