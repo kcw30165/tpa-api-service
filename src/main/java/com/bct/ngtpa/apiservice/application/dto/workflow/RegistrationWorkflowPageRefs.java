@@ -8,7 +8,6 @@ package com.bct.ngtpa.apiservice.application.dto.workflow;
  * web mappers do not contain scattered page-id literals.</p>
  */
 public final class RegistrationWorkflowPageRefs {
-    // public static final String REGISTRATION_OTP_VERIFICATION_PAGE_ID = "registration-otp-verification";
 
     private RegistrationWorkflowPageRefs() {
     }

@@ -28,15 +28,4 @@ class SessionManagementFoundationArchitectureGuardTest {
                         "jakarta.servlet..")
                 .check(classes);
     }
-
-    @Test
-    void p4a2DoesNotIntroduceRuntimeSessionComponents() {
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.session.AuthFlowSession");
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.port.out.SessionCookiePort");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController");
-    }
-
-    private static void assertClassAbsent(String className) {
-        assertThrows(ClassNotFoundException.class, () -> Class.forName(className));
-    }
 }

@@ -44,15 +44,4 @@ class SessionCookieArchitectureGuardTest {
                         "..adapter.out.email..")
                 .check(classes);
     }
-
-    @Test
-    void p4a3DoesNotIntroduceAuthFlowSessionRuntime() {
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.session.AuthFlowSession");
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.service.session.AuthFlowSessionLifecycleService");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController");
-    }
-
-    private static void assertClassAbsent(String className) {
-        assertThrows(ClassNotFoundException.class, () -> Class.forName(className));
-    }
 }

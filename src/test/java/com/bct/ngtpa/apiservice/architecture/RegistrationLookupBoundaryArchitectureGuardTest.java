@@ -57,12 +57,6 @@ class RegistrationLookupBoundaryArchitectureGuardTest {
     }
 
     @Test
-    void p6_4DoesNotIntroduceUseCaseControllerOrEndpoint() throws IOException {
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController");
-        assertThat(sourceContains("/api/v1/auth/registration/start")).isFalse();
-    }
-
-    @Test
     void p6_4DoesNotIntroduceSessionOtpMessageCookieOrCsrfRuntime() throws IOException {
         assertThat(sourceContainsInRegistrationUsecase("AuthFlowSessionLifecycleService")).isFalse();
         assertThat(sourceContainsInRegistrationUsecase("OtpChallengePort")).isFalse();

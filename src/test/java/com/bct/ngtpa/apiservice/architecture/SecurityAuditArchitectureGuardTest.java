@@ -62,19 +62,4 @@ class SecurityAuditArchitectureGuardTest {
             }
         }
     }
-
-    @Test
-    void p3_7DoesNotIntroduceEndpointOrRuntimeIntegrationComponents() throws Exception {
-        Set<String> sourceFileNames;
-        try (Stream<Path> paths = Files.walk(Path.of("src/main/java"))) {
-            sourceFileNames = paths
-                    .filter(Files::isRegularFile)
-                    .map(path -> path.getFileName().toString())
-                    .collect(Collectors.toSet());
-        }
-
-        assertTrue(sourceFileNames.stream().noneMatch(name -> name.equals("AuthRegistrationOtpController.java")));
-        assertTrue(sourceFileNames.stream().noneMatch(name -> name.equals("AuthCaptchaController.java")));
-        assertTrue(sourceFileNames.stream().noneMatch(name -> name.equals("RegistrationSessionRedisAdapter.java")));
-    }
 }

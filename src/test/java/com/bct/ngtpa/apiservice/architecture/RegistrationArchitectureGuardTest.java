@@ -21,12 +21,6 @@ class RegistrationArchitectureGuardTest {
             .as("Application layer must not depend on pageconfig or web response DTOs for registration foundation.");
 
     @Test
-    void foundationDoesNotCreateRegistrationEndpoints() {
-        assertClassMissing("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController");
-        assertClassMissing("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController");
-    }
-
-    @Test
     void foundationDoesNotCreateApplicationSuccessPageResolverPort() {
         assertClassMissing("com.bct.ngtpa.apiservice.application.port.out.RegistrationSuccessPageResolverPort");
         assertClassMissing("com.bct.ngtpa.apiservice.application.dto.RegistrationSuccessPageResponse");

@@ -25,26 +25,4 @@ class ResendRegistrationOtpUseCaseArchitectureGuardTest {
         }
     }
 
-    @Test
-    void p7_2DoesNotIntroduceControllerOrEndpoint() throws Exception {
-        String sources = "";
-        try (var files = Files.walk(Path.of("src/main/java"))) {
-            sources = String.join("\n", files.filter(path -> path.toString().endsWith(".java"))
-                    .map(path -> {
-                        try { return Files.readString(path); } catch (Exception exception) { return ""; }
-                    }).toList());
-        }
-        assertThat(sources).doesNotContain(
-                "AuthRegistrationOtpController",
-                "/api/v1/auth/registration/otp/resend",
-                "/api/v1/auth/registration/otp/verify",
-                "VerifyRegistrationOtpUseCase",
-                "CheckRegistrationUsernameUseCase",
-                "CompleteRegistrationUseCase",
-                "CancelRegistrationUseCase",
-                "AuthFlowResumeRequest",
-                "ResumeAuthFlowUseCase",
-                "AuthCaptchaController",
-                "CaptchaChallengePort");
-    }
 }

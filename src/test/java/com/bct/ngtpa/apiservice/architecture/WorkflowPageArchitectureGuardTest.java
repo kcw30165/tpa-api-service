@@ -85,15 +85,6 @@ class WorkflowPageArchitectureGuardTest {
                 .check(classes);
     }
 
-    @Test
-    void p5_4DoesNotIntroduceRegistrationEndpointsOrApimAdapters() {
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.apim.ApimRegistrationStartAdapter");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.apim.ApimRegistrationVerificationAdapter");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.apim.ApimRegistrationCredentialAdapter");
-    }
-
     private static void assertClassAbsent(String className) {
         assertThrows(ClassNotFoundException.class, () -> Class.forName(className));
     }

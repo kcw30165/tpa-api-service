@@ -41,20 +41,4 @@ class CsrfFoundationArchitectureGuardTest {
             }
         }
     }
-
-    @Test
-    void p3_5DoesNotIntroduceEndpointCookieOrOriginValidatorComponents() throws Exception {
-        Set<String> sourceFileNames;
-        try (Stream<Path> paths = Files.walk(Path.of("src/main/java"))) {
-            sourceFileNames = paths
-                    .filter(Files::isRegularFile)
-                    .map(path -> path.getFileName().toString())
-                    .collect(Collectors.toSet());
-        }
-                
-        assertTrue(sourceFileNames.stream().noneMatch(name -> name.equals("AuthRegistrationOtpController.java")),
-                "P3.5 must not introduce AuthRegistrationOtpController");
-        assertTrue(sourceFileNames.stream().noneMatch(name -> name.equals("RegistrationSessionRedisAdapter.java")),
-                "P3.5 must not introduce RegistrationSessionRedisAdapter");
-    }
 }

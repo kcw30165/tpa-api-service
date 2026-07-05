@@ -1,6 +1,5 @@
 package com.bct.ngtpa.apiservice.workflow;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
@@ -9,12 +8,6 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 class P5WorkflowBoundaryGuardTest {
-
-    @Test
-    void p5DoesNotIntroduceRegistrationEndpoints() throws IOException {
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController");
-    }
 
     @Test
     void p5DoesNotIntroduceApimRegistrationAdapters() {

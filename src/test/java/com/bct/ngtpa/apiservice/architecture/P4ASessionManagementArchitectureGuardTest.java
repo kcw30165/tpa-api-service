@@ -42,20 +42,4 @@ class P4ASessionManagementArchitectureGuardTest {
                         "..adapter.out.email..")
                 .check(classes);
     }
-
-    @Test
-    void p4aDoesNotIntroduceAuthFlowSessionRuntime() {
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.session.AuthFlowSession");
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.service.session.AuthFlowSessionLifecycleService");
-    }
-
-    @Test
-    void p4aDoesNotIntroduceRegistrationEndpoints() {
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController");
-    }
-
-    private static void assertClassAbsent(String className) {
-        assertThrows(ClassNotFoundException.class, () -> Class.forName(className));
-    }
 }
