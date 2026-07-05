@@ -127,6 +127,19 @@ class RegistrationStartWorkflowResponseMapperTest {
                 .doesNotContain("nextStep");
     }
 
+
+    @Test
+    void workflowDataDoesNotDuplicateNextStepAndUsesCentralizedOtpPageRef() {
+        var response = mapper.toMutationResponse(started(), "en");
+
+        assertThat(response.result().nextStep()).isEqualTo(WorkflowNextStep.VERIFY_OTP);
+        assertThat(response.result().data().getClass().getRecordComponents())
+                .extracting(java.lang.reflect.RecordComponent::getName)
+                .doesNotContain("nextStep");
+        assertThat(response.result().pageRef().pageId()).isEqualTo("registration-otp-verification");
+        assertThat(response.result().pageRef().variant()).isNull();
+    }
+
     private static StartRegistrationResult started() {
         return new StartRegistrationResult(
                 StartRegistrationResultStatus.STARTED,

@@ -1,11 +1,9 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto;
 
 /**
- * Endpoint-specific workflow data for registration/start.
- *
- * <p>WorkflowResultPayload already carries nextStep at result.nextStep, so this
- * DTO intentionally excludes nextStep to avoid duplicated nextStep fields in
- * the JSON response.</p>
+ * Registration-start endpoint data carried inside WorkflowResultPayload.data.
+ * WorkflowResultPayload already carries nextStep, so this DTO intentionally
+ * does not expose a nextStep property.
  */
 public record RegistrationStartWorkflowDataResponse(
         String maskedDestination,

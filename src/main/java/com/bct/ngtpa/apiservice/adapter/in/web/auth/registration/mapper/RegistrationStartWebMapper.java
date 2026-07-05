@@ -8,6 +8,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErrorKeys;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowPageRefs;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType;
@@ -91,7 +92,6 @@ public class RegistrationStartWebMapper {
                 result.csrfToken());
     }
 
-
     public RegistrationStartWorkflowDataResponse toWorkflowData(StartRegistrationResult result) {
         if (result == null || !isSuccess(result.status())) {
             return null;
@@ -120,7 +120,8 @@ public class RegistrationStartWebMapper {
         return response;
     }
 
-    public MutationResponse<WorkflowResultPayload<RegistrationStartWorkflowDataResponse>> toMutationResponse(StartRegistrationResult result) {
+    public MutationResponse<WorkflowResultPayload<RegistrationStartWorkflowDataResponse>> toMutationResponse(
+            StartRegistrationResult result) {
         return toMutationResponse(result, null);
     }
 
@@ -134,20 +135,22 @@ public class RegistrationStartWebMapper {
                 List.of("Idempotency-Key"),
                 WorkflowErrorSeverity.ERROR,
                 SOURCE_SERVER);
-        return workflowMutationResponseMapper.toMutationResponse(new WorkflowResult<RegistrationStartWorkflowDataResponse>(
-                WorkflowResultStatus.VALIDATION_FAILED,
-                WorkflowNextStep.NONE,
-                null,
-                null,
-                List.of(),
-                List.of(error)));
+        return workflowMutationResponseMapper
+                .toMutationResponse(new WorkflowResult<RegistrationStartWorkflowDataResponse>(
+                        WorkflowResultStatus.VALIDATION_FAILED,
+                        WorkflowNextStep.NONE,
+                        null,
+                        null,
+                        List.of(),
+                        List.of(error)));
     }
 
     public MutationResponse<WorkflowResultPayload<RegistrationStartWorkflowDataResponse>> missingIdempotencyKeyResponse() {
         return missingIdempotencyKeyResponse(null);
     }
 
-    WorkflowResult<RegistrationStartWorkflowDataResponse> toWorkflowResult(StartRegistrationResult result, String acceptLanguage) {
+    WorkflowResult<RegistrationStartWorkflowDataResponse> toWorkflowResult(StartRegistrationResult result,
+            String acceptLanguage) {
         if (result == null) {
             return new WorkflowResult<>(
                     WorkflowResultStatus.SYSTEM_FAILED,
@@ -170,7 +173,7 @@ public class RegistrationStartWebMapper {
                 workflowStatus,
                 result.nextStep(),
                 response,
-                null,
+                RegistrationWorkflowPageRefs.forNextStep(result.nextStep()),
                 List.of(),
                 result.errors().stream()
                         .map(error -> toWorkflowError(error, result.status(), acceptLanguage))

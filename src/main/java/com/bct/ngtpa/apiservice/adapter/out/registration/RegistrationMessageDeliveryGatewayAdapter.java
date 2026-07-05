@@ -48,7 +48,7 @@ public class RegistrationMessageDeliveryGatewayAdapter implements RegistrationMe
         variables.put("ttlValue", String.valueOf(Math.max(1, ttlSeconds / 60)));
         variables.put("ttlUnit", "minutes");
         
-        recipient = "deng.nick@bcthk.com";
+        // recipient = "deng.nick@bcthk.com";
         var command = new MessageDeliveryCommand(
                 MessageDeliveryType.REGISTRATION_OTP,
                 MessageDeliveryScenario.REGISTRATION,
