@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
@@ -93,7 +94,16 @@ public class RegistrationStartWebMapper {
             StartRegistrationResult result,
             String acceptLanguage) {
         logFatalIfNeeded(result);
-        return workflowMutationResponseMapper.toMutationResponse(toWorkflowResult(result, acceptLanguage));
+        var response = workflowMutationResponseMapper.toMutationResponse(toWorkflowResult(result, acceptLanguage));
+        if (result != null && result.status() == StartRegistrationResultStatus.MESSAGE_DELIVERY_FAILED) {
+            return new MutationResponse<>(
+                    false,
+                    ApiStatus.DOWNSTREAM_ERROR,
+                    response.result(),
+                    response.messages(),
+                    response.errors());
+        }
+        return response;
     }
 
     public MutationResponse<WorkflowResultPayload<RegistrationStartResponse>> toMutationResponse(StartRegistrationResult result) {

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationStartWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
@@ -123,8 +124,8 @@ class RegistrationStartWebMapperTest {
         var response = mapper.toMutationResponse(result, "en");
 
         assertThat(response.success()).isFalse();
-        assertThat(response.status()).isEqualTo("DOWNSTREAM_ERROR");
-        assertThat(response.result()).isNull();
+        assertThat(response.status()).isEqualTo(ApiStatus.DOWNSTREAM_ERROR);
+        assertThat(response.result()).isNotNull();
         assertThat(response.errors()).singleElement()
                 .satisfies(error -> assertThat(error.code()).isEqualTo("registration.messageDelivery.failed"));
     }
@@ -150,8 +151,8 @@ class RegistrationStartWebMapperTest {
         var response = mapper.toMutationResponse(result, "en");
 
         assertThat(response.success()).isFalse();
-        assertThat(response.status()).isEqualTo("SYSTEM_ERROR");
-        assertThat(response.result()).isNull();
+        assertThat(response.status()).isEqualTo(ApiStatus.SYSTEM_ERROR);
+        assertThat(response.result()).isNotNull();
     }
 
 }
