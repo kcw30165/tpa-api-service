@@ -2351,3 +2351,52 @@ Not implemented in P6:
 - captcha endpoints/runtime
 - auth-flow resume
 
+### Registration OTP Resend and Verify
+
+P7 adds protected OTP endpoints for the registration auth flow:
+
+- `POST /api/v1/auth/registration/otp/resend`
+- `POST /api/v1/auth/registration/otp/verify`
+
+Both endpoints require:
+
+- `auth_flow_sid`
+- `X-XSRF-TOKEN`
+- `Idempotency-Key`
+
+OTP resend:
+
+- uses the server-side `AuthFlowSession` and encrypted registration context
+- replaces the active OTP challenge
+- sends a new registration OTP to the original FE-submitted contact
+- returns `nextStep = VERIFY_OTP`
+- returns masked destination and OTP expiry/cooldown metadata
+
+OTP verify:
+
+- verifies the submitted OTP against the server-side `activeOtpChallengeId`
+- marks the `AuthFlowSession` as `OTP_VERIFIED`
+- reuses the existing `RegistrationLookupPort` / `TRPSearchUnregisteredMember` integration to fetch current unregistered trusts
+- returns `nextStep = USERNAME_CHECK` for one trust
+- returns `nextStep = SELECT_TRUST` for multiple trusts
+- returns only safe trust selector fields
+
+P7 responses do not include:
+
+- `AuthFlowSessionId`
+- `auth_flow_sid` cookie value
+- `csrfToken` or `csrfTokenHash`
+- OTP challenge id
+- OTP code
+- raw email/mobile/contact values
+- encrypted registration context
+- APIM email/mobile or raw APIM payload
+
+Not implemented in P7:
+
+- username/check
+- registration/complete
+- registration/cancel
+- captcha endpoints/runtime
+- auth-flow resume
+
