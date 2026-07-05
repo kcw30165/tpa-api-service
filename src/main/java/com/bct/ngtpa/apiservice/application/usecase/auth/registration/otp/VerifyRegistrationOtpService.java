@@ -73,10 +73,11 @@ public class VerifyRegistrationOtpService implements VerifyRegistrationOtpUseCas
                 .flatMap(otp -> switch (otp.status()) {
                     case VERIFIED -> sessionGateway.markOtpVerified(command.authFlowSessionId().value())
                             .then(lookupTrusts(command, protectedContext, hash));
-                    case INVALID -> markFailed(command, hash).then(Mono.just(failure(VerifyRegistrationOtpResultStatus.OTP_INVALID, WorkflowNextStep.VERIFY_OTP, RegistrationOtpVerifyErrorKeys.REGISTRATION_OTP_INVALID, otp.remainingVerifyAttempts(), RegistrationIdempotencyStartOutcome.STARTED)));
+                    case CREATED -> markFailed(command, hash).then(Mono.just(failure(VerifyRegistrationOtpResultStatus.OTP_INVALID, WorkflowNextStep.VERIFY_OTP, RegistrationOtpVerifyErrorKeys.REGISTRATION_OTP_INVALID, otp.remainingVerifyAttempts(), RegistrationIdempotencyStartOutcome.STARTED)));
+                    case CONSUMED -> markFailed(command, hash).then(Mono.just(failure(VerifyRegistrationOtpResultStatus.OTP_INVALID, WorkflowNextStep.VERIFY_OTP, RegistrationOtpVerifyErrorKeys.REGISTRATION_OTP_INVALID, otp.remainingVerifyAttempts(), RegistrationIdempotencyStartOutcome.STARTED)));
+                    case INVALIDATED -> markFailed(command, hash).then(Mono.just(failure(VerifyRegistrationOtpResultStatus.OTP_INVALID, WorkflowNextStep.VERIFY_OTP, RegistrationOtpVerifyErrorKeys.REGISTRATION_OTP_INVALID, otp.remainingVerifyAttempts(), RegistrationIdempotencyStartOutcome.STARTED)));
                     case EXPIRED -> markFailed(command, hash).then(Mono.just(failure(VerifyRegistrationOtpResultStatus.OTP_EXPIRED, WorkflowNextStep.VERIFY_OTP, RegistrationOtpVerifyErrorKeys.REGISTRATION_OTP_EXPIRED, null, RegistrationIdempotencyStartOutcome.STARTED)));
                     case LOCKED -> markFailed(command, hash).then(Mono.just(failure(VerifyRegistrationOtpResultStatus.OTP_LOCKED, WorkflowNextStep.VERIFY_OTP, RegistrationOtpVerifyErrorKeys.REGISTRATION_OTP_MAX_ATTEMPTS_REACHED, 0, RegistrationIdempotencyStartOutcome.STARTED)));
-                    case ALREADY_VERIFIED -> markFailed(command, hash).then(Mono.just(failure(VerifyRegistrationOtpResultStatus.OTP_ALREADY_VERIFIED, WorkflowNextStep.VERIFY_OTP, RegistrationOtpVerifyErrorKeys.REGISTRATION_OTP_ALREADY_VERIFIED, null, RegistrationIdempotencyStartOutcome.STARTED)));
                 });
     }
 

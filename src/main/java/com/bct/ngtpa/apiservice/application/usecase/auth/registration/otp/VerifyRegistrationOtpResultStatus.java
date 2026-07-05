@@ -11,7 +11,6 @@ public enum VerifyRegistrationOtpResultStatus {
     OTP_INVALID,
     OTP_EXPIRED,
     OTP_LOCKED,
-    OTP_ALREADY_VERIFIED,
     TRUST_LOOKUP_FAILED,
     NO_ELIGIBLE_TRUSTS,
     SYSTEM_FAILED
