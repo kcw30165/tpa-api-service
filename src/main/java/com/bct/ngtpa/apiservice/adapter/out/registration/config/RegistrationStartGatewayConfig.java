@@ -1,12 +1,11 @@
 package com.bct.ngtpa.apiservice.adapter.out.registration.config;
 
-import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationAuthFlowContextProtectorPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationCsrfGateway;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationMessageGateway;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationOtpCreationResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationOtpGateway;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationSessionGateway;
 import com.bct.ngtpa.apiservice.adapter.out.registration.RegistrationAuthFlowCsrfGatewayAdapter;
@@ -20,16 +19,9 @@ import org.springframework.beans.factory.annotation.Value;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.time.Clock;
-import java.time.Instant;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import reactor.core.publisher.Mono;
 
 @Configuration
 public class RegistrationStartGatewayConfig {
@@ -40,12 +32,14 @@ public class RegistrationStartGatewayConfig {
             AuthFlowSessionLifecycleService lifecycleService,
             @Value("${auth-flow-session.scenarios.registration.ttl-seconds:1800}") int registrationTtlSeconds,
             @Value("${auth-flow-session.session-id.prefix:afs}") String sessionIdPrefix,
-            @Value("${auth-flow-session.session-id.entropy-bytes:16}") int sessionIdEntropyBytes) {
+            @Value("${auth-flow-session.session-id.entropy-bytes:16}") int sessionIdEntropyBytes,
+            RegistrationAuthFlowContextProtectorPort registrationAuthFlowContextProtector) {
         return new RegistrationAuthFlowSessionGatewayAdapter(
                 lifecycleService,
                 registrationTtlSeconds,
                 sessionIdPrefix,
-                sessionIdEntropyBytes);
+                sessionIdEntropyBytes,
+                registrationAuthFlowContextProtector);
     }
 
     @Bean
