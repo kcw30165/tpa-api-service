@@ -2,7 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartWorkflowDataResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
@@ -28,7 +28,7 @@ class RegistrationStartWorkflowResponseMapperTest {
         assertThat(response.status()).isEqualTo(ApiStatus.SUCCESS);
         assertThat(response.result()).isInstanceOf(WorkflowResultPayload.class);
         assertThat(response.result().nextStep()).isEqualTo(WorkflowNextStep.VERIFY_OTP);
-        assertThat(response.result().data()).isInstanceOf(RegistrationStartResponse.class);
+        assertThat(response.result().data()).isInstanceOf(RegistrationStartWorkflowDataResponse.class);
         assertThat(response.result().data().maskedDestination()).isEqualTo("m****r@example.com");
         assertThat(response.result().data().csrfToken()).isEqualTo("csrf_token_safe");
         assertThat(response.errors()).isEmpty();
@@ -114,6 +114,17 @@ class RegistrationStartWorkflowResponseMapperTest {
 
         assertThat(response.result().data().csrfToken()).isEqualTo("csrf_token_safe");
         assertThat(response.result().data().toString()).doesNotContain("csrf_token_safe");
+    }
+
+
+    @Test
+    void workflowDataDoesNotDuplicateNextStep() {
+        var response = mapper.toMutationResponse(started(), "en");
+
+        assertThat(response.result().nextStep()).isEqualTo(WorkflowNextStep.VERIFY_OTP);
+        assertThat(response.result().data().getClass().getRecordComponents())
+                .extracting(java.lang.reflect.RecordComponent::getName)
+                .doesNotContain("nextStep");
     }
 
     private static StartRegistrationResult started() {

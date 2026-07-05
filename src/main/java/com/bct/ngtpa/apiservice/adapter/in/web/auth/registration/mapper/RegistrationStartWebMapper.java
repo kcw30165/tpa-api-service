@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartWorkflowDataResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper;
@@ -90,7 +91,20 @@ public class RegistrationStartWebMapper {
                 result.csrfToken());
     }
 
-    public MutationResponse<WorkflowResultPayload<RegistrationStartResponse>> toMutationResponse(
+
+    public RegistrationStartWorkflowDataResponse toWorkflowData(StartRegistrationResult result) {
+        if (result == null || !isSuccess(result.status())) {
+            return null;
+        }
+        return new RegistrationStartWorkflowDataResponse(
+                result.maskedDestination(),
+                result.otpExpiresInSeconds() > 0 ? result.otpExpiresInSeconds() : null,
+                result.resendCooldownSeconds() > 0 ? result.resendCooldownSeconds() : null,
+                result.remainingResendAttempts() > 0 ? result.remainingResendAttempts() : null,
+                result.csrfToken());
+    }
+
+    public MutationResponse<WorkflowResultPayload<RegistrationStartWorkflowDataResponse>> toMutationResponse(
             StartRegistrationResult result,
             String acceptLanguage) {
         logFatalIfNeeded(result);
@@ -106,11 +120,11 @@ public class RegistrationStartWebMapper {
         return response;
     }
 
-    public MutationResponse<WorkflowResultPayload<RegistrationStartResponse>> toMutationResponse(StartRegistrationResult result) {
+    public MutationResponse<WorkflowResultPayload<RegistrationStartWorkflowDataResponse>> toMutationResponse(StartRegistrationResult result) {
         return toMutationResponse(result, null);
     }
 
-    public MutationResponse<WorkflowResultPayload<RegistrationStartResponse>> missingIdempotencyKeyResponse(
+    public MutationResponse<WorkflowResultPayload<RegistrationStartWorkflowDataResponse>> missingIdempotencyKeyResponse(
             String acceptLanguage) {
         var code = RegistrationWorkflowErrorKeys.WORKFLOW_IDEMPOTENCY_MISSING.value();
         var error = new WorkflowErrorDescriptor(
@@ -120,7 +134,7 @@ public class RegistrationStartWebMapper {
                 List.of("Idempotency-Key"),
                 WorkflowErrorSeverity.ERROR,
                 SOURCE_SERVER);
-        return workflowMutationResponseMapper.toMutationResponse(new WorkflowResult<RegistrationStartResponse>(
+        return workflowMutationResponseMapper.toMutationResponse(new WorkflowResult<RegistrationStartWorkflowDataResponse>(
                 WorkflowResultStatus.VALIDATION_FAILED,
                 WorkflowNextStep.NONE,
                 null,
@@ -129,11 +143,11 @@ public class RegistrationStartWebMapper {
                 List.of(error)));
     }
 
-    public MutationResponse<WorkflowResultPayload<RegistrationStartResponse>> missingIdempotencyKeyResponse() {
+    public MutationResponse<WorkflowResultPayload<RegistrationStartWorkflowDataResponse>> missingIdempotencyKeyResponse() {
         return missingIdempotencyKeyResponse(null);
     }
 
-    WorkflowResult<RegistrationStartResponse> toWorkflowResult(StartRegistrationResult result, String acceptLanguage) {
+    WorkflowResult<RegistrationStartWorkflowDataResponse> toWorkflowResult(StartRegistrationResult result, String acceptLanguage) {
         if (result == null) {
             return new WorkflowResult<>(
                     WorkflowResultStatus.SYSTEM_FAILED,
@@ -151,7 +165,7 @@ public class RegistrationStartWebMapper {
         }
 
         WorkflowResultStatus workflowStatus = toWorkflowStatus(result.status());
-        RegistrationStartResponse response = isSuccess(result.status()) ? toResponse(result) : null;
+        RegistrationStartWorkflowDataResponse response = isSuccess(result.status()) ? toWorkflowData(result) : null;
         return new WorkflowResult<>(
                 workflowStatus,
                 result.nextStep(),
