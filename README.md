@@ -2400,3 +2400,17 @@ Not implemented in P7:
 - captcha endpoints/runtime
 - auth-flow resume
 
+### Local Registration Context Protection Secret
+
+When running the application with the `local` profile, the registration auth-flow encrypted context protector requires a local development secret. This repository provides a local-only value in:
+
+```text
+src/main/resources/application-local.properties
+```
+
+For production and shared environments, do not use the local value. Provide a secure 32-byte-minimum secret through environment-specific configuration or a secret manager. The current detected prefix is:
+
+```properties
+auth-workflows.registration.context-protection.secret=<secure-32-byte-minimum-secret>
+```
+
