@@ -2316,3 +2316,38 @@ Not implemented in P5:
 
 Do not claim any registration endpoint is implemented in P5.
 
+### Registration Start
+
+P6 adds the registration-start endpoint:
+
+`POST /api/v1/auth/registration/start`
+
+The endpoint:
+- requires `Idempotency-Key`
+- validates identity type, identity value, date of birth, and exactly one of email/mobile
+- calls APIM `/ws/NGTPA/v1/TRPSearchUnregisteredMember`
+- creates an AuthFlowSession only after APIM verification succeeds
+- creates and binds a CSRF token to the AuthFlowSession
+- creates an OTP challenge
+- stores activeOtpChallengeId server-side only
+- sends the OTP using the FE-submitted email/mobile
+- sets `auth_flow_sid` as HttpOnly, Secure, SameSite=None
+- returns `nextStep = VERIFY_OTP`
+- returns `csrfToken` in the response body for current cross-site FE/BFF scope
+
+The response does not include:
+- AuthFlowSessionId
+- `auth_flow_sid` value
+- OTP challenge id
+- OTP code
+- APIM account data
+- policy number or certificate number
+
+Not implemented in P6:
+- OTP resend/verify endpoints
+- username/check endpoint
+- complete endpoint
+- cancel endpoint
+- captcha endpoints/runtime
+- auth-flow resume
+

@@ -30,6 +30,13 @@ public final class RegistrationWorkflowErrorKeys {
     public static final String APIM_MEMBER_NOT_FOUND = "err.tpa.member.not.found";
     public static final WorkflowErrorKey P6_MEMBER_NOT_FOUND_TARGET_KEY = REGISTRATION_START_VERIFICATION_FAILED;
 
+
+    public static final WorkflowErrorKey REGISTRATION_EMAIL_INVALID = new WorkflowErrorKey("registration.email.invalid");
+    public static final WorkflowErrorKey REGISTRATION_MOBILE_INVALID = new WorkflowErrorKey("registration.mobile.invalid");
+    public static final WorkflowErrorKey REGISTRATION_CAPTCHA_INVALID = new WorkflowErrorKey("registration.captcha.invalid");
+
+    public static final WorkflowErrorKey WORKFLOW_IDEMPOTENCY_MISSING = new WorkflowErrorKey("workflow.idempotency.missing");
+
     private RegistrationWorkflowErrorKeys() {
     }
 }

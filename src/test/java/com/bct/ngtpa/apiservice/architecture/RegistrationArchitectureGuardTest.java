@@ -22,7 +22,6 @@ class RegistrationArchitectureGuardTest {
 
     @Test
     void foundationDoesNotCreateRegistrationEndpoints() {
-        assertClassMissing("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationController");
         assertClassMissing("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController");
         assertClassMissing("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController");
     }

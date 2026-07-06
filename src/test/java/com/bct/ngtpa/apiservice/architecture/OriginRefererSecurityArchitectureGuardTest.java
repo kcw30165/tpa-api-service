@@ -24,8 +24,6 @@ class OriginRefererSecurityArchitectureGuardTest {
                     .collect(Collectors.toSet());
         }
 
-        assertTrue(sourceFileNames.stream().noneMatch(name -> name.equals("AuthRegistrationController.java")),
-                "P3.6 must not introduce AuthRegistrationController");
         assertTrue(sourceFileNames.stream().noneMatch(name -> name.equals("AuthRegistrationOtpController.java")),
                 "P3.6 must not introduce AuthRegistrationOtpController");
         assertTrue(sourceFileNames.stream().noneMatch(name -> name.equals("AuthCaptchaController.java")),

@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.out.sms;
 
+
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import static org.assertj.core.api.Assertions.assertThat;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
@@ -188,11 +190,59 @@ class SmsSenderAdapterTest {
         return properties;
     }
 
+    
+    
     private JsonNode readJson(String body) {
         try {
+            if (body != null && body.startsWith("--")) {
+                return readMultipartFormData(body);
+            }
             return objectMapper.readTree(body);
-        } catch (Exception ex) {
-            throw new AssertionError("Failed to parse JSON body", ex);
+        } catch (Exception exception) {
+            throw new AssertionError("Failed to parse request body", exception);
         }
     }
+
+    private JsonNode readMultipartFormData(String body) {
+        ObjectNode node = objectMapper.createObjectNode();
+        String normalized = body.replace("\r\n", "\n");
+        String[] parts = normalized.split("\n--");
+
+        for (String part : parts) {
+            int nameIndex = part.indexOf("name=\"");
+            if (nameIndex < 0) {
+                continue;
+            }
+
+            int nameStart = nameIndex + "name=\"".length();
+            int nameEnd = part.indexOf('"', nameStart);
+            if (nameEnd < 0) {
+                continue;
+            }
+
+            String name = part.substring(nameStart, nameEnd);
+
+            int valueStart = part.indexOf("\n\n", nameEnd);
+            if (valueStart < 0) {
+                continue;
+            }
+
+            String value = part.substring(valueStart + 2);
+
+            if (value.endsWith("\n")) {
+                value = value.substring(0, value.length() - 1);
+            }
+            if (value.endsWith("--")) {
+                value = value.substring(0, value.length() - 2);
+            }
+            if (value.endsWith("\n")) {
+                value = value.substring(0, value.length() - 1);
+            }
+
+            node.put(name, value);
+        }
+
+        return node;
+    }
+
 }

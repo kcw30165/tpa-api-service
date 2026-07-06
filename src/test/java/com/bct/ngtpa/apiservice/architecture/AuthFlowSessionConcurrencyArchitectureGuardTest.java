@@ -30,7 +30,6 @@ class AuthFlowSessionConcurrencyArchitectureGuardTest {
     @Test
     void p4b5DoesNotIntroduceCookieHeaderEndpointOrAuthenticatedSessionRuntime() {
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.filter.RegistrationCsrfWebFilter");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationController");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.session.cookie.AuthFlowCookieReader");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.session.AuthenticatedSession");

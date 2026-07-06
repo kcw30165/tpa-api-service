@@ -78,7 +78,6 @@ class P3SecurityArchitectureGuardTest {
                     .collect(Collectors.toSet());
         }
 
-        assertTrue(fileNames.stream().noneMatch(name -> name.equals("AuthRegistrationController.java")));
         assertTrue(fileNames.stream().noneMatch(name -> name.equals("AuthRegistrationOtpController.java")));
         assertTrue(fileNames.stream().noneMatch(name -> name.equals("AuthCaptchaController.java")));
         assertTrue(fileNames.stream().noneMatch(name -> name.equals("ApimRegistrationVerificationAdapter.java")));
