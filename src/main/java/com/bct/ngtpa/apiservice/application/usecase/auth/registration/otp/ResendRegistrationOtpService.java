@@ -145,12 +145,29 @@ public class ResendRegistrationOtpService implements ResendRegistrationOtpUseCas
                                     null);
                             return markCompleted(command, hash, result).then(Mono.just(result));
                         }))
+                .onErrorResume(RegistrationOtpResendRejectedException.class, rejection -> markFailed(command, hash)
+                        .then(Mono.just(failure(
+                                rejection.status(),
+                                WorkflowNextStep.VERIFY_OTP,
+                                resendErrorCode(rejection.status()),
+                                RegistrationIdempotencyStartOutcome.STARTED))))
                 .onErrorResume(error -> markFailed(command, hash)
                         .then(Mono.just(failure(
                                 ResendRegistrationOtpResultStatus.SYSTEM_FAILED,
                                 WorkflowNextStep.VERIFY_OTP,
                                 RegistrationOtpResendErrorKeys.REGISTRATION_OTP_RESEND_FAILED,
                                 RegistrationIdempotencyStartOutcome.STARTED))));
+    }
+
+
+
+    private String resendErrorCode(ResendRegistrationOtpResultStatus status) {
+        return switch (status) {
+            case COOLDOWN_ACTIVE -> RegistrationOtpResendErrorKeys.REGISTRATION_OTP_COOLDOWN_ACTIVE;
+            case MAX_RESEND_ATTEMPTS_REACHED -> RegistrationOtpResendErrorKeys.REGISTRATION_OTP_MAX_ATTEMPTS_REACHED;
+            case INVALID_AUTH_FLOW -> RegistrationOtpResendErrorKeys.REGISTRATION_AUTH_FLOW_INVALID;
+            default -> RegistrationOtpResendErrorKeys.REGISTRATION_OTP_RESEND_FAILED;
+        };
     }
 
     private Mono<RegistrationIdempotencyRecord> markCompleted(
