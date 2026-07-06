@@ -3,10 +3,12 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationOtpResendWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationOtpVerifyWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.in.ResendRegistrationOtpUseCase;
+import com.bct.ngtpa.apiservice.application.port.in.VerifyRegistrationOtpUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Method;
@@ -24,13 +26,13 @@ class AuthRegistrationOtpResendControllerTest {
                 "resendOtp", String.class, String.class, String.class, String.class, String.class, String.class, String.class);
         PostMapping mapping = method.getAnnotation(PostMapping.class);
         assertThat(mapping).isNotNull();
-        assertThat(mapping.path()).contains("/api/v1/auth/registration/otp/resend");
+        assertThat(mapping.path()).contains("/resend");
     }
 
     @Test
     void otpResendRequiresAuthFlowCookie() throws Exception {
         var useCase = new RecordingUseCase();
-        var controller = new AuthRegistrationOtpController(useCase, new RegistrationOtpResendWebMapper(null));
+        var controller = resendController(useCase);
         String json = objectMapper.writeValueAsString(controller.resendOtp(null, "csrf", "idem", "req", "en", null, null).block());
         assertThat(json).contains("registration.authFlow.invalid");
         assertThat(useCase.called).isFalse();
@@ -39,7 +41,7 @@ class AuthRegistrationOtpResendControllerTest {
     @Test
     void otpResendRequiresXsrfTokenHeader() throws Exception {
         var useCase = new RecordingUseCase();
-        var controller = new AuthRegistrationOtpController(useCase, new RegistrationOtpResendWebMapper(null));
+        var controller = resendController(useCase);
         String json = objectMapper.writeValueAsString(controller.resendOtp("afs", null, "idem", "req", "en", null, null).block());
         assertThat(json).contains("registration.csrf.invalid");
         assertThat(useCase.called).isFalse();
@@ -48,7 +50,7 @@ class AuthRegistrationOtpResendControllerTest {
     @Test
     void otpResendRequiresIdempotencyKeyAndDoesNotUseRequestIdAsFallback() throws Exception {
         var useCase = new RecordingUseCase();
-        var controller = new AuthRegistrationOtpController(useCase, new RegistrationOtpResendWebMapper(null));
+        var controller = resendController(useCase);
         String json = objectMapper.writeValueAsString(controller.resendOtp("afs", "csrf", null, "req", "en", null, null).block());
         assertThat(json).contains("workflow.idempotency.missing");
         assertThat(useCase.called).isFalse();
@@ -57,7 +59,7 @@ class AuthRegistrationOtpResendControllerTest {
     @Test
     void otpResendMapsHeadersAndCookieToUseCaseCommand() {
         var useCase = new RecordingUseCase();
-        var controller = new AuthRegistrationOtpController(useCase, new RegistrationOtpResendWebMapper(null));
+        var controller = resendController(useCase);
 
         controller.resendOtp("afs_abc", "csrf_abc", "idem_abc", "req_abc", "zh-HK", "https://portal.example", "https://portal.example/page").block();
 
@@ -73,7 +75,7 @@ class AuthRegistrationOtpResendControllerTest {
 
     @Test
     void otpResendSuccessDoesNotSetCookieValueInBody() throws Exception {
-        var controller = new AuthRegistrationOtpController(new RecordingUseCase(), new RegistrationOtpResendWebMapper(null));
+        var controller = resendController(new RecordingUseCase());
         String json = objectMapper.writeValueAsString(controller.resendOtp("afs_abc", "csrf_abc", "idem_abc", "req_abc", "en", null, null).block());
         assertThat(json).contains("VERIFY_OTP", "registration-otp-verification");
         assertThat(json).doesNotContain("afs_abc", "csrf_abc", "idem_abc", "otpChallengeId", "activeOtpChallengeId", "123456");
@@ -99,4 +101,12 @@ class AuthRegistrationOtpResendControllerTest {
                     null));
         }
     }
+
+    private static AuthRegistrationOtpController resendController(ResendRegistrationOtpUseCase resendUseCase) {
+    return new AuthRegistrationOtpController(
+            resendUseCase,
+            new RegistrationOtpResendWebMapper(null),
+            command -> Mono.error(new AssertionError("verify use case must not be called")),
+            new RegistrationOtpVerifyWebMapper(null));
+}
 }

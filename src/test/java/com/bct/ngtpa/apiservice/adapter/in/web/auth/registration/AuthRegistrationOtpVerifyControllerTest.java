@@ -3,8 +3,9 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationOtpVerifyRequest;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationOtpResendWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationOtpVerifyWebMapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpVerifyController;
+import com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.in.VerifyRegistrationOtpUseCase;
@@ -22,16 +23,18 @@ class AuthRegistrationOtpVerifyControllerTest {
 
     @Test
     void otpVerifyEndpointExists() throws Exception {
-        Method method = AuthRegistrationOtpVerifyController.class.getDeclaredMethod(
-                "verifyOtp", RegistrationOtpVerifyRequest.class, String.class, String.class, String.class, String.class, String.class, String.class, String.class);
+        Method method = AuthRegistrationOtpController.class.getDeclaredMethod(
+                "verifyOtp", RegistrationOtpVerifyRequest.class, String.class, String.class, String.class, String.class,
+                String.class, String.class, String.class);
         PostMapping mapping = method.getAnnotation(PostMapping.class);
         assertThat(mapping).isNotNull();
-        assertThat(mapping.path()).contains("/api/v1/auth/registration/otp/verify");
+        assertThat(mapping.path()).contains("/verify");
     }
 
     @Test
     void requestDtoExcludesInternalFieldsAndRedactsCode() {
-        var fields = List.of(RegistrationOtpVerifyRequest.class.getRecordComponents()).stream().map(component -> component.getName()).toList();
+        var fields = List.of(RegistrationOtpVerifyRequest.class.getRecordComponents()).stream()
+                .map(component -> component.getName()).toList();
         assertThat(fields).containsExactly("code");
         assertThat(new RegistrationOtpVerifyRequest("123456").toString()).doesNotContain("123456");
     }
@@ -39,8 +42,12 @@ class AuthRegistrationOtpVerifyControllerTest {
     @Test
     void otpVerifyRequiresAuthFlowCookie() throws Exception {
         var useCase = new RecordingUseCase();
-        var controller = new AuthRegistrationOtpVerifyController(useCase, new RegistrationOtpVerifyWebMapper(null));
-        String json = objectMapper.writeValueAsString(controller.verifyOtp(new RegistrationOtpVerifyRequest("123456"), null, "csrf", "idem", "req", "en", null, null).block());
+
+        var controller = otpController(useCase);
+
+        String json = objectMapper.writeValueAsString(controller
+                .verifyOtp(new RegistrationOtpVerifyRequest("123456"), null, "csrf", "idem", "req", "en", null, null)
+                .block());
         assertThat(json).contains("registration.authFlow.invalid");
         assertThat(useCase.called).isFalse();
     }
@@ -48,8 +55,12 @@ class AuthRegistrationOtpVerifyControllerTest {
     @Test
     void otpVerifyRequiresXsrfTokenHeader() throws Exception {
         var useCase = new RecordingUseCase();
-        var controller = new AuthRegistrationOtpVerifyController(useCase, new RegistrationOtpVerifyWebMapper(null));
-        String json = objectMapper.writeValueAsString(controller.verifyOtp(new RegistrationOtpVerifyRequest("123456"), "afs", null, "idem", "req", "en", null, null).block());
+
+        var controller = otpController(useCase);
+
+        String json = objectMapper.writeValueAsString(controller
+                .verifyOtp(new RegistrationOtpVerifyRequest("123456"), "afs", null, "idem", "req", "en", null, null)
+                .block());
         assertThat(json).contains("registration.csrf.invalid");
         assertThat(useCase.called).isFalse();
     }
@@ -57,8 +68,12 @@ class AuthRegistrationOtpVerifyControllerTest {
     @Test
     void otpVerifyRequiresIdempotencyKeyAndDoesNotUseRequestIdAsFallback() throws Exception {
         var useCase = new RecordingUseCase();
-        var controller = new AuthRegistrationOtpVerifyController(useCase, new RegistrationOtpVerifyWebMapper(null));
-        String json = objectMapper.writeValueAsString(controller.verifyOtp(new RegistrationOtpVerifyRequest("123456"), "afs", "csrf", null, "req", "en", null, null).block());
+
+        var controller = otpController(useCase);
+
+        String json = objectMapper.writeValueAsString(controller
+                .verifyOtp(new RegistrationOtpVerifyRequest("123456"), "afs", "csrf", null, "req", "en", null, null)
+                .block());
         assertThat(json).contains("workflow.idempotency.missing");
         assertThat(useCase.called).isFalse();
     }
@@ -66,8 +81,12 @@ class AuthRegistrationOtpVerifyControllerTest {
     @Test
     void otpVerifyRequiresCode() throws Exception {
         var useCase = new RecordingUseCase();
-        var controller = new AuthRegistrationOtpVerifyController(useCase, new RegistrationOtpVerifyWebMapper(null));
-        String json = objectMapper.writeValueAsString(controller.verifyOtp(new RegistrationOtpVerifyRequest(" "), "afs", "csrf", "idem", "req", "en", null, null).block());
+
+        var controller = otpController(useCase);
+
+        String json = objectMapper.writeValueAsString(controller
+                .verifyOtp(new RegistrationOtpVerifyRequest(" "), "afs", "csrf", "idem", "req", "en", null, null)
+                .block());
         assertThat(json).contains("registration.otp.invalid");
         assertThat(useCase.called).isFalse();
     }
@@ -75,9 +94,11 @@ class AuthRegistrationOtpVerifyControllerTest {
     @Test
     void otpVerifyMapsHeadersCookieAndBodyToUseCaseCommand() {
         var useCase = new RecordingUseCase();
-        var controller = new AuthRegistrationOtpVerifyController(useCase, new RegistrationOtpVerifyWebMapper(null));
 
-        controller.verifyOtp(new RegistrationOtpVerifyRequest("123456"), "afs_abc", "csrf_abc", "idem_abc", "req_abc", "zh-HK", "https://portal.example", "https://portal.example/page").block();
+        var controller = otpController(useCase);
+
+        controller.verifyOtp(new RegistrationOtpVerifyRequest("123456"), "afs_abc", "csrf_abc", "idem_abc", "req_abc",
+                "zh-HK", "https://portal.example", "https://portal.example/page").block();
 
         assertThat(useCase.called).isTrue();
         assertThat(useCase.command.authFlowSessionId().value()).isEqualTo("afs_abc");
@@ -90,15 +111,20 @@ class AuthRegistrationOtpVerifyControllerTest {
 
     @Test
     void otpVerifySuccessDoesNotReturnSecrets() throws Exception {
-        var controller = new AuthRegistrationOtpVerifyController(new RecordingUseCase(), new RegistrationOtpVerifyWebMapper(null));
-        String json = objectMapper.writeValueAsString(controller.verifyOtp(new RegistrationOtpVerifyRequest("123456"), "afs_abc", "csrf_abc", "idem_abc", "req_abc", "en", null, null).block());
+
+        var controller = otpController(new RecordingUseCase());
+
+        String json = objectMapper.writeValueAsString(controller.verifyOtp(new RegistrationOtpVerifyRequest("123456"),
+                "afs_abc", "csrf_abc", "idem_abc", "req_abc", "en", null, null).block());
         assertThat(json).contains("USERNAME_CHECK", "registration-username-check", "unregisteredTrusts");
-        assertThat(json).doesNotContain("afs_abc", "csrf_abc", "idem_abc", "123456", "otpChallengeId", "activeOtpChallengeId", "member@example.com", "3024102", "04/04/1982");
+        assertThat(json).doesNotContain("afs_abc", "csrf_abc", "idem_abc", "123456", "otpChallengeId",
+                "activeOtpChallengeId", "member@example.com", "3024102", "04/04/1982");
     }
 
     private static final class RecordingUseCase implements VerifyRegistrationOtpUseCase {
         boolean called;
         VerifyRegistrationOtpCommand command;
+
         @Override
         public Mono<VerifyRegistrationOtpResult> verify(VerifyRegistrationOtpCommand command) {
             called = true;
@@ -113,5 +139,13 @@ class AuthRegistrationOtpVerifyControllerTest {
                     RegistrationIdempotencyStartOutcome.STARTED,
                     null));
         }
+    }
+
+    private static AuthRegistrationOtpController otpController(VerifyRegistrationOtpUseCase verifyUseCase) {
+        return new AuthRegistrationOtpController(
+                command -> Mono.error(new AssertionError("resend use case must not be called")),
+                new RegistrationOtpResendWebMapper(null),
+                verifyUseCase,
+                new RegistrationOtpVerifyWebMapper(null));
     }
 }
