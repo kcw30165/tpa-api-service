@@ -3,6 +3,8 @@ import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.Regist
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContextAttributeNames;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowEncryptedContext;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationAuthFlowContextProtectorPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationSessionPort;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -12,7 +14,6 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenari
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionData;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationSessionGateway;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionLifecycleService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.StartAuthFlowSessionCommand;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.UpdateAuthFlowOtpCommand;
@@ -20,14 +21,14 @@ import java.lang.reflect.Method;
 import java.util.Objects;
 import reactor.core.publisher.Mono;
 
-public class RegistrationAuthFlowSessionGatewayAdapter implements RegistrationSessionGateway {
+public class RegistrationAuthFlowSessionAdapter implements RegistrationSessionPort {
     private final RegistrationAuthFlowContextProtectorPort contextProtector;
     private final AuthFlowSessionLifecycleService lifecycleService;
     private final int registrationTtlSeconds;
     private final String sessionIdPrefix;
     private final int sessionIdEntropyBytes;
 
-    public RegistrationAuthFlowSessionGatewayAdapter(
+    public RegistrationAuthFlowSessionAdapter(
             AuthFlowSessionLifecycleService lifecycleService,
             int registrationTtlSeconds,
             String sessionIdPrefix,
@@ -63,7 +64,7 @@ public class RegistrationAuthFlowSessionGatewayAdapter implements RegistrationSe
 
         return lifecycleService
                 .start(command)
-                .map(RegistrationAuthFlowSessionGatewayAdapter::extractSessionIdValue);
+                .map(RegistrationAuthFlowSessionAdapter::extractSessionIdValue);
     }
 
     @Override

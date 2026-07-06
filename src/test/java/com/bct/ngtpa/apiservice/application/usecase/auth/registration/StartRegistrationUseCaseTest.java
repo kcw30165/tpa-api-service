@@ -8,8 +8,13 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErr
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationLookupPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationMessagePort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationOtpPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationSessionPort;
+
 import org.mockito.Mockito;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationCsrPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.service.auth.idempotency.RegistrationRequestHashGenerator;
 import com.bct.ngtpa.apiservice.application.service.auth.registration.RegistrationStartValidator;
@@ -233,12 +238,12 @@ class StartRegistrationUseCaseTest {
         RegistrationLookupResult result = new RegistrationLookupResult(RegistrationLookupStatus.ELIGIBLE, List.of(new RegistrationLookupAccount("apim@example.com", "49998888", "00000008802", "2", "OI", "JPM")), null);
         @Override public Mono<RegistrationLookupResult> searchUnregisteredMember(RegistrationLookupCommand command) { called = true; return Mono.just(result); }
     }
-    private static final class FakeSessionGateway implements RegistrationSessionGateway {
+    private static final class FakeSessionGateway implements RegistrationSessionPort {
         boolean createdAfterLookup; String updatedOtpChallengeId;
         @Override public Mono<String> createRegistrationSession(String maskedDestination, RegistrationContactType contactType) { createdAfterLookup = true; return Mono.just("afs_session_for_cookie"); }
         @Override public Mono<Void> updateOtpChallenge(String sid, String otpId, RegistrationContactType type, String maskedDestination) { updatedOtpChallengeId = otpId; return Mono.empty(); }
     }
-    private static final class FakeCsrfGateway implements RegistrationCsrfGateway { @Override public Mono<String> bindCsrfToken(String sid) { return Mono.just("csrf_token_safe"); } }
-    private static final class FakeOtpGateway implements RegistrationOtpGateway { boolean created; String destination; @Override public Mono<RegistrationOtpCreationResult> createOtp(RegistrationContactType type, String dest) { created = true; destination = dest; return Mono.just(new RegistrationOtpCreationResult("otp_challenge_internal", "123456", 300, 60, 3)); } }
-    private static final class FakeMessageGateway implements RegistrationMessageGateway { boolean accepted = true; boolean delivered; String recipient; @Override public Mono<Boolean> deliverRegistrationOtp(RegistrationContactType type, String recipient, String otpCode, int ttl, String lang, String corr) { delivered = true; this.recipient = recipient; return Mono.just(accepted); } }
+    private static final class FakeCsrfGateway implements RegistrationCsrPort { @Override public Mono<String> bindCsrfToken(String sid) { return Mono.just("csrf_token_safe"); } }
+    private static final class FakeOtpGateway implements RegistrationOtpPort { boolean created; String destination; @Override public Mono<RegistrationOtpCreationResult> createOtp(RegistrationContactType type, String dest) { created = true; destination = dest; return Mono.just(new RegistrationOtpCreationResult("otp_challenge_internal", "123456", 300, 60, 3)); } }
+    private static final class FakeMessageGateway implements RegistrationMessagePort { boolean accepted = true; boolean delivered; String recipient; @Override public Mono<Boolean> deliverRegistrationOtp(RegistrationContactType type, String recipient, String otpCode, int ttl, String lang, String corr) { delivered = true; this.recipient = recipient; return Mono.just(accepted); } }
 }

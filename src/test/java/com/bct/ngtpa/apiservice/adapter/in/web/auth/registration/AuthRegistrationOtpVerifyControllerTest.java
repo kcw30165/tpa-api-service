@@ -7,6 +7,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.Registra
 import com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpVerifyController;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
+import com.bct.ngtpa.apiservice.application.port.in.VerifyRegistrationOtpUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Method;

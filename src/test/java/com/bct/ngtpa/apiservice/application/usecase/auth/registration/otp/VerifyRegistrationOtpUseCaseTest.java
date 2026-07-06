@@ -7,8 +7,11 @@ import com.bct.ngtpa.apiservice.application.dto.auth.registration.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
+import com.bct.ngtpa.apiservice.application.port.in.VerifyRegistrationOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationLookupPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationOtpPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationSessionPort;
 import com.bct.ngtpa.apiservice.application.service.auth.idempotency.RegistrationRequestHashGenerator;
 import com.bct.ngtpa.apiservice.application.service.auth.registration.context.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.*;
@@ -172,7 +175,7 @@ class VerifyRegistrationOtpUseCaseTest {
         return new VerifyRegistrationOtpCommand(new AuthFlowSessionId("afs_secret"), "csrf_secret", otpCode, null, null, new RegistrationIdempotencyKey("idem_secret"), "en", "corr", Duration.ofMinutes(5));
     }
 
-    private static final class FakeProtectedContextService implements RegistrationProtectedAuthFlowContextService {
+    private static final class FakeProtectedContextService implements RegistrationProtectedAuthFlowContextLoader {
         RegistrationProtectedAuthFlowContextResult result = RegistrationProtectedAuthFlowContextResult.valid(
                 "otp_old", "m****r@example.com", new RegistrationAuthFlowContext(RegistrationIdentityType.PASSPORT, "3024102", "04/04/1982", RegistrationContactType.EMAIL, "member@example.com"));
         @Override public Mono<RegistrationProtectedAuthFlowContextResult> load(RegistrationProtectedAuthFlowContextCommand command) { return Mono.just(result); }
@@ -193,13 +196,13 @@ class VerifyRegistrationOtpUseCaseTest {
         private static RegistrationIdempotencyRecord record(RegistrationIdempotencyResponseSnapshot s, RegistrationIdempotencyStatus st) { return new RegistrationIdempotencyRecord(RegistrationIdempotencyAction.OTP_VERIFY, new RegistrationIdempotencyKey("idem_secret"), new RegistrationRequestHash(HASH), st, s, Instant.parse("2026-07-05T00:00:00Z"), Instant.parse("2026-07-05T00:00:00Z"), Instant.parse("2026-07-05T00:05:00Z")); }
     }
 
-    private static final class FakeOtpGateway implements RegistrationOtpGateway {
+    private static final class FakeOtpGateway implements RegistrationOtpPort {
         boolean called; String activeOtpChallengeId; RegistrationOtpVerificationResult result = RegistrationOtpVerificationResult.verified();
         @Override public Mono<RegistrationOtpCreationResult> createOtp(RegistrationContactType type, String destination) { throw new UnsupportedOperationException(); }
         @Override public Mono<RegistrationOtpVerificationResult> verifyOtp(String activeOtpChallengeId, String submittedOtpCode) { called = true; this.activeOtpChallengeId = activeOtpChallengeId; return Mono.just(result); }
     }
 
-    private static final class FakeSessionGateway implements RegistrationSessionGateway {
+    private static final class FakeSessionGateway implements RegistrationSessionPort {
         boolean markedOtpVerified;
         @Override public Mono<String> createRegistrationSession(String maskedDestination, RegistrationContactType contactType) { return Mono.just("afs_secret"); }
         @Override public Mono<Void> updateOtpChallenge(String sid, String otpId, RegistrationContactType type, String maskedDestination) { return Mono.empty(); }

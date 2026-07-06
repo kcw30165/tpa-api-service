@@ -4,8 +4,9 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.Registratio
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationOtpVerifyWebMapper;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
+import com.bct.ngtpa.apiservice.application.port.in.VerifyRegistrationOtpUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.VerifyRegistrationOtpCommand;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.VerifyRegistrationOtpUseCase;
+
 import java.time.Duration;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.CookieValue;

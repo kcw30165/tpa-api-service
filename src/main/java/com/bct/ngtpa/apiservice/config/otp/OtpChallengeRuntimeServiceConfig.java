@@ -2,7 +2,7 @@ package com.bct.ngtpa.apiservice.config.otp;
 
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
-import com.bct.ngtpa.apiservice.application.usecase.auth.otp.DefaultOtpChallengeService;
+import com.bct.ngtpa.apiservice.application.usecase.auth.otp.DefaultOtpChallengeAdapter;
 import com.bct.ngtpa.apiservice.application.service.auth.otp.OtpChallengeIdGenerator;
 import com.bct.ngtpa.apiservice.application.service.auth.otp.OtpCodeGenerator;
 import com.bct.ngtpa.apiservice.application.service.auth.otp.OtpCodeHasher;
@@ -43,7 +43,7 @@ public class OtpChallengeRuntimeServiceConfig {
             OtpCodeHasher otpCodeHasher,
             OtpChallengeIdGenerator otpChallengeIdGenerator,
             Clock clock) {
-        return new DefaultOtpChallengeService(
+        return new DefaultOtpChallengeAdapter(
                 otpChallengeStatePort,
                 otpCodeGenerator,
                 otpCodeHasher,

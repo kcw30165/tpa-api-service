@@ -4,11 +4,13 @@ import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.workflow.*;
+import com.bct.ngtpa.apiservice.application.port.in.VerifyRegistrationOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationLookupPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationOtpPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationSessionPort;
 import com.bct.ngtpa.apiservice.application.service.auth.idempotency.RegistrationRequestHashGenerator;
 import com.bct.ngtpa.apiservice.application.service.auth.registration.context.*;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.*;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -21,15 +23,15 @@ import reactor.core.publisher.Mono;
 
 public class VerifyRegistrationOtpService implements VerifyRegistrationOtpUseCase {
     private static final String SOURCE_SERVER = "SERVER";
-    private final RegistrationProtectedAuthFlowContextService protectedContextService;
+    private final RegistrationProtectedAuthFlowContextLoader protectedContextService;
     private final RegistrationRequestHashGenerator requestHashGenerator;
     private final RegistrationIdempotencyPort idempotencyPort;
-    private final RegistrationOtpGateway otpGateway;
-    private final RegistrationSessionGateway sessionGateway;
+    private final RegistrationOtpPort otpGateway;
+    private final RegistrationSessionPort sessionGateway;
     private final RegistrationLookupPort registrationLookupPort;
     private final Clock clock;
 
-    public VerifyRegistrationOtpService(RegistrationProtectedAuthFlowContextService protectedContextService, RegistrationRequestHashGenerator requestHashGenerator, RegistrationIdempotencyPort idempotencyPort, RegistrationOtpGateway otpGateway, RegistrationSessionGateway sessionGateway, RegistrationLookupPort registrationLookupPort, Clock clock) {
+    public VerifyRegistrationOtpService(RegistrationProtectedAuthFlowContextLoader protectedContextService, RegistrationRequestHashGenerator requestHashGenerator, RegistrationIdempotencyPort idempotencyPort, RegistrationOtpPort otpGateway, RegistrationSessionPort sessionGateway, RegistrationLookupPort registrationLookupPort, Clock clock) {
         this.protectedContextService = Objects.requireNonNull(protectedContextService);
         this.requestHashGenerator = Objects.requireNonNull(requestHashGenerator);
         this.idempotencyPort = Objects.requireNonNull(idempotencyPort);

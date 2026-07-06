@@ -3,8 +3,9 @@ package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationOtpResendWebMapper;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
+import com.bct.ngtpa.apiservice.application.port.in.ResendRegistrationOtpUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.ResendRegistrationOtpCommand;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.ResendRegistrationOtpUseCase;
+
 import java.time.Duration;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.CookieValue;

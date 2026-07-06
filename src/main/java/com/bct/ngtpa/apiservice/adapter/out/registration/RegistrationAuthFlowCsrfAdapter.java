@@ -1,22 +1,21 @@
 package com.bct.ngtpa.apiservice.adapter.out.registration;
 
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationCsrfGateway;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationCsrPort;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionCsrfService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CreateAuthFlowSessionCsrfCommand;
-import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CancelAuthFlowSessionCommand;
 import java.lang.reflect.Method;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Objects;
 import reactor.core.publisher.Mono;
 
-public class RegistrationAuthFlowCsrfGatewayAdapter implements RegistrationCsrfGateway {
+public class RegistrationAuthFlowCsrfAdapter implements RegistrationCsrPort {
     private final AuthFlowSessionCsrfService csrfService;
     private final Clock clock;
     private final int csrfTtlSeconds;
 
-    public RegistrationAuthFlowCsrfGatewayAdapter(
+    public RegistrationAuthFlowCsrfAdapter(
             AuthFlowSessionCsrfService csrfService,
             Clock clock,
             int csrfTtlSeconds) {
@@ -35,7 +34,7 @@ public class RegistrationAuthFlowCsrfGatewayAdapter implements RegistrationCsrfG
 
         return csrfService
                 .createForSession(command)
-                .map(RegistrationAuthFlowCsrfGatewayAdapter::extractTokenValue);
+                .map(RegistrationAuthFlowCsrfAdapter::extractTokenValue);
     }
 
     private static String extractTokenValue(Object result) {

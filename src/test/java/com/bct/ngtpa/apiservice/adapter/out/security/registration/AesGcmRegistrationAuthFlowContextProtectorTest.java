@@ -10,8 +10,8 @@ import org.junit.jupiter.api.Test;
 
 class AesGcmRegistrationAuthFlowContextProtectorTest {
 
-    private final AesGcmRegistrationAuthFlowContextProtector protector =
-            new AesGcmRegistrationAuthFlowContextProtector("v1", "0123456789abcdef0123456789abcdef");
+    private final AesGcmRegistrationAuthFlowContextProtectorAdapter protector =
+            new AesGcmRegistrationAuthFlowContextProtectorAdapter("v1", "0123456789abcdef0123456789abcdef");
 
     @Test
     void contextProtectorRoundTripsContext() {
@@ -48,7 +48,7 @@ class AesGcmRegistrationAuthFlowContextProtectorTest {
 
     @Test
     void contextProtectorFailsFastWhenSecretMissingOrInvalid() {
-        assertThatThrownBy(() -> new AesGcmRegistrationAuthFlowContextProtector("v1", "short"))
+        assertThatThrownBy(() -> new AesGcmRegistrationAuthFlowContextProtectorAdapter("v1", "short"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("registration context protection secret");
     }

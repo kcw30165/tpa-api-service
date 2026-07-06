@@ -33,7 +33,7 @@ class RegistrationArchitectureGuardTest {
         assertClassMissing("com.bct.ngtpa.apiservice.adapter.out.redis.RegistrationIdempotencyRedisAdapter");
         assertClassMissing("com.bct.ngtpa.apiservice.adapter.out.apim.ApimRegistrationVerificationAdapter");
         assertClassMissing("com.bct.ngtpa.apiservice.adapter.out.apim.ApimRegistrationCredentialAdapter");
-        assertClassMissing("com.bct.ngtpa.apiservice.application.service.MessageDeliveryService");
+        assertClassMissing("com.bct.ngtpa.apiservice.application.service.MessageDeliveryAdapter");
         assertClassMissing("com.bct.ngtpa.apiservice.adapter.out.message.SmsSenderAdapter");
         assertClassMissing("com.bct.ngtpa.apiservice.adapter.out.message.EmailSenderAdapter");
         assertClassMissing("com.bct.ngtpa.apiservice.adapter.out.redis.CaptchaChallengeRedisAdapter");

@@ -2090,7 +2090,7 @@ The service includes an internal generic message delivery foundation behind `Mes
 Implemented in P2:
 
 - generic `MessageDeliveryCommand` / `MessageDeliveryResult`
-- framework-free `MessageDeliveryService` dispatching for SMS and email
+- framework-free `MessageDeliveryAdapter` dispatching for SMS and email
 - SMS sender port and `/sms/ext/sendSingleSMS.do` adapter
 - email sender port and SMTP adapter boundary using an adapter-local SMTP abstraction
 - generic placeholder rendering

@@ -4,7 +4,11 @@ import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.workflow.*;
+import com.bct.ngtpa.apiservice.application.port.in.ResendRegistrationOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationIdempotencyPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationMessagePort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationOtpPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationSessionPort;
 import com.bct.ngtpa.apiservice.application.service.auth.idempotency.RegistrationRequestHashGenerator;
 import com.bct.ngtpa.apiservice.application.service.auth.registration.context.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.*;
@@ -17,21 +21,21 @@ import reactor.core.publisher.Mono;
 public class ResendRegistrationOtpService implements ResendRegistrationOtpUseCase {
     private static final String SOURCE_SERVER = "SERVER";
 
-    private final RegistrationProtectedAuthFlowContextService protectedContextService;
+    private final RegistrationProtectedAuthFlowContextLoader protectedContextService;
     private final RegistrationRequestHashGenerator requestHashGenerator;
     private final RegistrationIdempotencyPort idempotencyPort;
-    private final RegistrationOtpGateway otpGateway;
-    private final RegistrationSessionGateway sessionGateway;
-    private final RegistrationMessageGateway messageGateway;
+    private final RegistrationOtpPort otpGateway;
+    private final RegistrationSessionPort sessionGateway;
+    private final RegistrationMessagePort messageGateway;
     private final Clock clock;
 
     public ResendRegistrationOtpService(
-            RegistrationProtectedAuthFlowContextService protectedContextService,
+            RegistrationProtectedAuthFlowContextLoader protectedContextService,
             RegistrationRequestHashGenerator requestHashGenerator,
             RegistrationIdempotencyPort idempotencyPort,
-            RegistrationOtpGateway otpGateway,
-            RegistrationSessionGateway sessionGateway,
-            RegistrationMessageGateway messageGateway,
+            RegistrationOtpPort otpGateway,
+            RegistrationSessionPort sessionGateway,
+            RegistrationMessagePort messageGateway,
             Clock clock) {
         this.protectedContextService = Objects.requireNonNull(protectedContextService);
         this.requestHashGenerator = Objects.requireNonNull(requestHashGenerator);

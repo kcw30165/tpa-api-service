@@ -14,7 +14,7 @@ import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-public class AesGcmRegistrationAuthFlowContextProtector implements RegistrationAuthFlowContextProtectorPort {
+public class AesGcmRegistrationAuthFlowContextProtectorAdapter implements RegistrationAuthFlowContextProtectorPort {
     private static final String TRANSFORMATION = "AES/GCM/NoPadding";
     private static final String KEY_ALGORITHM = "AES";
     private static final int IV_BYTES = 12;
@@ -26,11 +26,11 @@ public class AesGcmRegistrationAuthFlowContextProtector implements RegistrationA
     private final ObjectMapper objectMapper;
     private final SecureRandom secureRandom;
 
-    public AesGcmRegistrationAuthFlowContextProtector(String keyVersion, String secret) {
+    public AesGcmRegistrationAuthFlowContextProtectorAdapter(String keyVersion, String secret) {
         this(keyVersion, secret, new ObjectMapper(), new SecureRandom());
     }
 
-    AesGcmRegistrationAuthFlowContextProtector(
+    AesGcmRegistrationAuthFlowContextProtectorAdapter(
             String keyVersion,
             String secret,
             ObjectMapper objectMapper,

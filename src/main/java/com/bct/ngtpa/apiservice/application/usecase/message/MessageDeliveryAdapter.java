@@ -16,7 +16,7 @@ import com.bct.ngtpa.apiservice.application.service.message.MessageTemplateRende
 import com.bct.ngtpa.apiservice.application.service.message.MessageTemplateRenderer;
 import reactor.core.publisher.Mono;
 
-public class MessageDeliveryService implements MessageDeliveryPort {
+public class MessageDeliveryAdapter implements MessageDeliveryPort {
 
     private static final String SENDER_RESULT_MISSING = "SENDER_RESULT_MISSING";
     private static final String SENDER_RESULT_MISSING_MESSAGE = "Sender returned no result";
@@ -25,11 +25,11 @@ public class MessageDeliveryService implements MessageDeliveryPort {
     private final EmailSenderPort emailSenderPort;
     private final MessageTemplateRenderer messageTemplateRenderer;
 
-    public MessageDeliveryService(SmsSenderPort smsSenderPort, EmailSenderPort emailSenderPort) {
+    public MessageDeliveryAdapter(SmsSenderPort smsSenderPort, EmailSenderPort emailSenderPort) {
         this(smsSenderPort, emailSenderPort, new DefaultMessageTemplateRenderer());
     }
 
-    public MessageDeliveryService(
+    public MessageDeliveryAdapter(
             SmsSenderPort smsSenderPort,
             EmailSenderPort emailSenderPort,
             MessageTemplateRenderer messageTemplateRenderer) {

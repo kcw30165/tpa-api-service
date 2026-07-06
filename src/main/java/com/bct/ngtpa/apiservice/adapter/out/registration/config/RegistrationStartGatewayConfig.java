@@ -1,17 +1,17 @@
 package com.bct.ngtpa.apiservice.adapter.out.registration.config;
 
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationAuthFlowContextProtectorPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationCsrPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationMessagePort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationOtpPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationCsrfGateway;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationMessageGateway;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationOtpGateway;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationSessionGateway;
-import com.bct.ngtpa.apiservice.adapter.out.registration.RegistrationAuthFlowCsrfGatewayAdapter;
-import com.bct.ngtpa.apiservice.adapter.out.registration.RegistrationAuthFlowSessionGatewayAdapter;
-import com.bct.ngtpa.apiservice.adapter.out.registration.RegistrationMessageDeliveryGatewayAdapter;
-import com.bct.ngtpa.apiservice.adapter.out.registration.RegistrationOtpChallengeGatewayAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.registration.RegistrationAuthFlowCsrfAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.registration.RegistrationAuthFlowSessionAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.registration.RegistrationMessageDeliveryAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.registration.RegistrationOtpChallengeAdapter;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionCsrfService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionLifecycleService;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,13 +28,13 @@ public class RegistrationStartGatewayConfig {
 
     @Bean
     @ConditionalOnMissingBean
-    public RegistrationSessionGateway registrationSessionGateway(
+    public RegistrationSessionPort registrationSessionGateway(
             AuthFlowSessionLifecycleService lifecycleService,
             @Value("${auth-flow-session.scenarios.registration.ttl-seconds:1800}") int registrationTtlSeconds,
             @Value("${auth-flow-session.session-id.prefix:afs}") String sessionIdPrefix,
             @Value("${auth-flow-session.session-id.entropy-bytes:16}") int sessionIdEntropyBytes,
             RegistrationAuthFlowContextProtectorPort registrationAuthFlowContextProtector) {
-        return new RegistrationAuthFlowSessionGatewayAdapter(
+        return new RegistrationAuthFlowSessionAdapter(
                 lifecycleService,
                 registrationTtlSeconds,
                 sessionIdPrefix,
@@ -44,11 +44,11 @@ public class RegistrationStartGatewayConfig {
 
     @Bean
     @ConditionalOnMissingBean
-    public RegistrationCsrfGateway registrationCsrfGateway(
+    public RegistrationCsrPort registrationCsrfGateway(
             AuthFlowSessionCsrfService csrfService,
             Clock clock,
             @Value("${auth-flow-session.csrf.max-age-seconds:1800}") int csrfTtlSeconds) {
-        return new RegistrationAuthFlowCsrfGatewayAdapter(
+        return new RegistrationAuthFlowCsrfAdapter(
                 csrfService,
                 clock,
                 csrfTtlSeconds);
@@ -56,11 +56,11 @@ public class RegistrationStartGatewayConfig {
 
     @Bean
     @ConditionalOnMissingBean
-    public RegistrationOtpGateway registrationOtpGateway(
+    public RegistrationOtpPort registrationOtpGateway(
             OtpChallengePort otpChallengePort,
             AuthWorkflowPolicyPort authWorkflowPolicyPort,
             Clock clock) {
-        return new RegistrationOtpChallengeGatewayAdapter(
+        return new RegistrationOtpChallengeAdapter(
                 otpChallengePort,
                 authWorkflowPolicyPort,
                 clock);
@@ -68,10 +68,10 @@ public class RegistrationStartGatewayConfig {
 
     @Bean
     @ConditionalOnMissingBean
-    public RegistrationMessageGateway registrationMessageGateway(
+    public RegistrationMessagePort registrationMessageGateway(
             MessageDeliveryPort messageDeliveryPort,
             AuthWorkflowPolicyPort authWorkflowPolicyPort) {
-        return new RegistrationMessageDeliveryGatewayAdapter(
+        return new RegistrationMessageDeliveryAdapter(
                 messageDeliveryPort,
                 authWorkflowPolicyPort);
     }

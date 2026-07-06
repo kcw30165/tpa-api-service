@@ -2,14 +2,15 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationOtpResendWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper;
+import com.bct.ngtpa.apiservice.application.port.in.ResendRegistrationOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationIdempotencyPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationMessagePort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationOtpPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationSessionPort;
 import com.bct.ngtpa.apiservice.application.service.auth.idempotency.RegistrationRequestHashGenerator;
-import com.bct.ngtpa.apiservice.application.service.auth.registration.context.RegistrationProtectedAuthFlowContextService;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationMessageGateway;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationOtpGateway;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationSessionGateway;
+import com.bct.ngtpa.apiservice.application.service.auth.registration.context.RegistrationProtectedAuthFlowContextLoader;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.ResendRegistrationOtpService;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.ResendRegistrationOtpUseCase;
+
 import java.time.Clock;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
@@ -28,12 +29,12 @@ public class RegistrationOtpResendWebConfig {
     @Bean
     @ConditionalOnMissingBean(ResendRegistrationOtpUseCase.class)
     public ResendRegistrationOtpUseCase resendRegistrationOtpUseCase(
-            RegistrationProtectedAuthFlowContextService protectedContextService,
+            RegistrationProtectedAuthFlowContextLoader protectedContextService,
             RegistrationRequestHashGenerator requestHashGenerator,
             RegistrationIdempotencyPort registrationIdempotencyPort,
-            RegistrationOtpGateway registrationOtpGateway,
-            RegistrationSessionGateway registrationSessionGateway,
-            RegistrationMessageGateway registrationMessageGateway,
+            RegistrationOtpPort registrationOtpGateway,
+            RegistrationSessionPort registrationSessionGateway,
+            RegistrationMessagePort registrationMessageGateway,
             Clock clock) {
         return new ResendRegistrationOtpService(
                 protectedContextService,

@@ -8,8 +8,9 @@ import com.bct.ngtpa.apiservice.application.dto.auth.otp.OtpScenario;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationOtpPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationOtpCreationResult;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationOtpGateway;
+
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -20,12 +21,12 @@ import java.util.Objects;
 import java.util.Locale;
 import reactor.core.publisher.Mono;
 
-public class RegistrationOtpChallengeGatewayAdapter implements RegistrationOtpGateway {
+public class RegistrationOtpChallengeAdapter implements RegistrationOtpPort {
     private final OtpChallengePort otpChallengePort;
     private final AuthWorkflowPolicyPort authWorkflowPolicyPort;
     private final Clock clock;
 
-    public RegistrationOtpChallengeGatewayAdapter(
+    public RegistrationOtpChallengeAdapter(
             OtpChallengePort otpChallengePort,
             AuthWorkflowPolicyPort authWorkflowPolicyPort,
             Clock clock) {

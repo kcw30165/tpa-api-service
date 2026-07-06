@@ -7,7 +7,11 @@ import com.bct.ngtpa.apiservice.application.dto.auth.registration.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
+import com.bct.ngtpa.apiservice.application.port.in.ResendRegistrationOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationIdempotencyPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationMessagePort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationOtpPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationSessionPort;
 import com.bct.ngtpa.apiservice.application.service.auth.idempotency.RegistrationRequestHashGenerator;
 import com.bct.ngtpa.apiservice.application.service.auth.registration.context.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.*;
@@ -162,7 +166,7 @@ class ResendRegistrationOtpUseCaseTest {
                 Duration.ofMinutes(5));
     }
 
-    private static final class FakeProtectedContextService implements RegistrationProtectedAuthFlowContextService {
+    private static final class FakeProtectedContextService implements RegistrationProtectedAuthFlowContextLoader {
         RegistrationProtectedAuthFlowContextResult result = RegistrationProtectedAuthFlowContextResult.valid(
                 "otp_old",
                 "m****r@example.com",
@@ -224,7 +228,7 @@ class ResendRegistrationOtpUseCaseTest {
         }
     }
 
-    private static final class FakeOtpGateway implements RegistrationOtpGateway {
+    private static final class FakeOtpGateway implements RegistrationOtpPort {
         boolean called;
         String activeOtpChallengeId;
         @Override public Mono<RegistrationOtpCreationResult> createOtp(RegistrationContactType type, String destination) { throw new UnsupportedOperationException(); }
@@ -235,7 +239,7 @@ class ResendRegistrationOtpUseCaseTest {
         }
     }
 
-    private static final class FakeSessionGateway implements RegistrationSessionGateway {
+    private static final class FakeSessionGateway implements RegistrationSessionPort {
         String updatedOtpChallengeId;
         @Override public Mono<String> createRegistrationSession(String maskedDestination, RegistrationContactType contactType) { return Mono.just("afs_secret"); }
         @Override public Mono<Void> updateOtpChallenge(String sid, String otpId, RegistrationContactType type, String maskedDestination) {
@@ -244,7 +248,7 @@ class ResendRegistrationOtpUseCaseTest {
         }
     }
 
-    private static final class FakeMessageGateway implements RegistrationMessageGateway {
+    private static final class FakeMessageGateway implements RegistrationMessagePort {
         boolean accepted = true;
         boolean delivered;
         String recipient;

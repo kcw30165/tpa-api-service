@@ -33,7 +33,7 @@ class MessageDeliveryFoundationIntegrationTest {
         AtomicInteger smsCalls = new AtomicInteger();
         AtomicInteger emailCalls = new AtomicInteger();
         AtomicReference<SmsMessage> capturedSms = new AtomicReference<>();
-        MessageDeliveryService service = new MessageDeliveryService(
+        MessageDeliveryAdapter service = new MessageDeliveryAdapter(
                 message -> {
                     smsCalls.incrementAndGet();
                     capturedSms.set(message);
@@ -69,7 +69,7 @@ class MessageDeliveryFoundationIntegrationTest {
         AtomicInteger smsCalls = new AtomicInteger();
         AtomicInteger emailCalls = new AtomicInteger();
         AtomicReference<EmailMessage> capturedEmail = new AtomicReference<>();
-        MessageDeliveryService service = new MessageDeliveryService(
+        MessageDeliveryAdapter service = new MessageDeliveryAdapter(
                 message -> {
                     smsCalls.incrementAndGet();
                     return Mono.just(new SenderResult(SenderStatus.ACCEPTED, null, null, null));
@@ -108,7 +108,7 @@ class MessageDeliveryFoundationIntegrationTest {
                 null,
                 "PROVIDER_DOWN",
                 "provider unavailable"));
-        MessageDeliveryService service = new MessageDeliveryService(
+        MessageDeliveryAdapter service = new MessageDeliveryAdapter(
                 message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, null, null, null)),
                 failingEmailSender);
 
@@ -140,12 +140,12 @@ class MessageDeliveryFoundationIntegrationTest {
                 "OtpCodeGenerator",
                 "OtpCodeHasher");
 
-        for (Constructor<?> constructor : MessageDeliveryService.class.getDeclaredConstructors()) {
+        for (Constructor<?> constructor : MessageDeliveryAdapter.class.getDeclaredConstructors()) {
             for (Class<?> parameterType : constructor.getParameterTypes()) {
                 assertThat(forbiddenNames).doesNotContain(parameterType.getSimpleName());
             }
         }
-        for (Field field : MessageDeliveryService.class.getDeclaredFields()) {
+        for (Field field : MessageDeliveryAdapter.class.getDeclaredFields()) {
             assertThat(forbiddenNames).doesNotContain(field.getType().getSimpleName());
         }
     }
