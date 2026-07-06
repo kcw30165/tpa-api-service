@@ -17,6 +17,7 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionLifecycleService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.StartAuthFlowSessionCommand;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.UpdateAuthFlowOtpCommand;
+import com.bct.ngtpa.apiservice.application.usecase.session.authflow.UpdateAuthFlowStatusCommand;
 import java.lang.reflect.Method;
 import java.util.Objects;
 import reactor.core.publisher.Mono;
@@ -81,6 +82,17 @@ public class RegistrationAuthFlowSessionAdapter implements RegistrationSessionPo
         return lifecycleService.updateActiveOtpChallenge(command).then();
     }
 
+
+
+    @Override
+    public Mono<Void> markOtpVerified(String authFlowSessionId) {
+        var command = new UpdateAuthFlowStatusCommand(
+                new AuthFlowSessionId(authFlowSessionId),
+                AuthFlowStatus.OTP_VERIFIED,
+                null);
+        return lifecycleService.updateStatus(command).then();
+    }
+
     private static String extractSessionIdValue(Object result) {
         Object sessionCandidate = firstValue(result, "authFlowSessionId", "sessionId", "session", "id");
         if (sessionCandidate == null) {
@@ -141,13 +153,29 @@ public class RegistrationAuthFlowSessionAdapter implements RegistrationSessionPo
         return createRegistrationSession(maskedDestination, contactType, attributes);
     }
 
-
     private Mono<String> createRegistrationSession(
             String maskedDestination,
             RegistrationContactType contactType,
             Map<String, String> attributes) {
-        // TODO adapter-specific wiring: insert attributes into AuthFlowSessionData when creating session.
-        // This fallback preserves behavior but does not store encrypted context; tests will catch it if not wired.
-        return createRegistrationSession(maskedDestination, contactType);
+        var data = new AuthFlowSessionData(
+                contactType == null ? null : contactType.name(),
+                maskedDestination,
+                null,
+                attributes == null ? Map.of() : Map.copyOf(attributes));
+
+        var command = new StartAuthFlowSessionCommand(
+                AuthFlowScenario.REGISTRATION,
+                AuthFlowStatus.OTP_SENT,
+                new SessionTtlPolicy(true, true, registrationTtlSeconds),
+                sessionIdPrefix,
+                sessionIdEntropyBytes,
+                data,
+                null,
+                null,
+                null);
+
+        return lifecycleService
+                .start(command)
+                .map(RegistrationAuthFlowSessionAdapter::extractSessionIdValue);
     }
 }
