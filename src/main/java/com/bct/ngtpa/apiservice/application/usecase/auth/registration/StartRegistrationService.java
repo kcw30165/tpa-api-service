@@ -8,6 +8,7 @@ import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.*;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErrorKeys;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
@@ -111,7 +112,13 @@ public class StartRegistrationService implements StartRegistrationUseCase {
                     null);
             return markFailed(command, hash, "registration.lookup.businessRejected").thenReturn(verificationFailure);
         }
-        return sessionGateway.createRegistrationSession(validated.maskedDestination(), validated.contactType())
+        RegistrationAuthFlowContext registrationContext = new RegistrationAuthFlowContext(
+                validated.identityType(),
+                validated.identityValue(),
+                validated.dateOfBirth(),
+                validated.contactType(),
+                validated.contactValue());
+        return sessionGateway.createRegistrationSession(validated.maskedDestination(), validated.contactType(), registrationContext)
                 .flatMap(sessionId -> csrfGateway.bindCsrfToken(sessionId)
                         .flatMap(csrfToken -> otpGateway.createOtp(validated.contactType(), validated.contactValue())
                                 .flatMap(otp -> sessionGateway.updateOtpChallenge(sessionId, otp.activeOtpChallengeId(), validated.contactType(), validated.maskedDestination())

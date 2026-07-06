@@ -20,6 +20,8 @@ import java.util.HexFormat;
 import java.util.Objects;
 import java.util.Locale;
 import reactor.core.publisher.Mono;
+import com.bct.ngtpa.apiservice.application.dto.auth.otp.VerifyOtpChallengeCommand;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.RegistrationOtpVerificationResult;
 
 public class RegistrationOtpChallengeAdapter implements RegistrationOtpPort {
     private final OtpChallengePort otpChallengePort;
@@ -62,6 +64,23 @@ public class RegistrationOtpChallengeAdapter implements RegistrationOtpPort {
                         result.expiresInSeconds(),
                         policy.resendCooldownSeconds(),
                         policy.maxResendAttempts()));
+    }
+
+
+
+    @Override
+    public Mono<RegistrationOtpVerificationResult> verifyOtp(String activeOtpChallengeId, String submittedOtpCode) {
+        return otpChallengePort.verifyChallenge(new VerifyOtpChallengeCommand(
+                        activeOtpChallengeId,
+                        submittedOtpCode,
+                        Instant.now(clock)))
+                .map(result -> switch (result.outcome()) {
+                    case VALID -> RegistrationOtpVerificationResult.verified();
+                    case EXPIRED -> RegistrationOtpVerificationResult.expired();
+                    case LOCKED -> RegistrationOtpVerificationResult.locked();
+                    case INVALID, INVALIDATED, NOT_FOUND, ALREADY_VERIFIED ->
+                            RegistrationOtpVerificationResult.invalid(result.remainingAttempts());
+                });
     }
 
     private OtpPolicy otpPolicy() {
