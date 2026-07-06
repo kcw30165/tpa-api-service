@@ -38,7 +38,7 @@ public class RegistrationOtpVerifyWebMapper {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", success);
         response.put("status", apiStatus(result.status()));
-        response.put("result", success ? payloadMap(result) : null);
+        response.put("result", success || exposeOtpFailurePayload(result.status()) ? payloadMap(result) : null);
         response.put("messages", result.messages());
         response.put("errors", success ? List.of() : errorMaps(result));
         return response;
@@ -53,15 +53,24 @@ public class RegistrationOtpVerifyWebMapper {
     }
 
     private RegistrationOtpVerifyResponse data(VerifyRegistrationOtpResult result) {
-        if (result.status() != VerifyRegistrationOtpResultStatus.VERIFIED) {
-            return null;
+        if (result.status() == VerifyRegistrationOtpResultStatus.VERIFIED) {
+            return new RegistrationOtpVerifyResponse(
+                    result.unregisteredTrusts().stream()
+                            .map(trust -> new RegistrationUnregisteredTrustResponse(
+                                    trust.accountEnv(), trust.policyNo(), trust.certNo(), trust.trustCode()))
+                            .toList(),
+                    null);
         }
-        return new RegistrationOtpVerifyResponse(
-                result.unregisteredTrusts().stream()
-                        .map(trust -> new RegistrationUnregisteredTrustResponse(
-                                trust.accountEnv(), trust.policyNo(), trust.certNo(), trust.trustCode()))
-                        .toList(),
-                null);
+        if (exposeOtpFailurePayload(result.status())) {
+            return new RegistrationOtpVerifyResponse(List.of(), result.remainingVerifyAttempts());
+        }
+        return null;
+    }
+
+    private boolean exposeOtpFailurePayload(VerifyRegistrationOtpResultStatus status) {
+        return status == VerifyRegistrationOtpResultStatus.OTP_INVALID
+                || status == VerifyRegistrationOtpResultStatus.OTP_EXPIRED
+                || status == VerifyRegistrationOtpResultStatus.OTP_LOCKED;
     }
 
     private Map<String, Object> pageRef(WorkflowNextStep nextStep) {

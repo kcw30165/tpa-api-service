@@ -83,4 +83,23 @@ class RegistrationOtpVerifyWebMapperTest {
         String json = objectMapper.writeValueAsString(response);
         assertThat(json).contains("\"success\":true", "\"nextStep\":\"WAIT\"");
     }
+
+    @Test
+    void invalidOtpMapsRemainingAttemptsToVerifyOtpPayload() throws Exception {
+        Object response = mapper.toMutationResponse(new VerifyRegistrationOtpResult(
+                VerifyRegistrationOtpResultStatus.OTP_INVALID,
+                WorkflowNextStep.VERIFY_OTP,
+                List.of(),
+                2,
+                List.of(),
+                List.of(),
+                RegistrationIdempotencyStartOutcome.STARTED,
+                null));
+
+        String json = objectMapper.writeValueAsString(response);
+        assertThat(json).contains("\"success\":false", "registration.otp.invalid");
+        assertThat(json).contains("\"nextStep\":\"VERIFY_OTP\"", "registration-otp-verification", "\"remainingVerifyAttempts\":2");
+        assertThat(json).doesNotContain("otpChallengeId", "activeOtpChallengeId", "123456", "member@example.com");
+    }
+
 }
