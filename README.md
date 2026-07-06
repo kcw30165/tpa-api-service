@@ -2286,3 +2286,33 @@ Not implemented in P4B:
 
 Do not claim registration/start or OTP endpoints are implemented.
 
+### Lightweight Workflow Foundation
+P5 adds lightweight workflow helper models for future multi-step flows.
+
+Implemented in P5:
+- framework-free workflow vocabulary (`WorkflowScenario`, `WorkflowStep`, `WorkflowNextStep`, `WorkflowPageRef`)
+- workflow result helpers that map to the existing `MutationResponse` contract
+- workflow message/error key conventions
+- failure classification metadata for ERROR vs FATAL logging policy
+- workflow page selection helpers for bff-pages integration
+- stable transition/severity helpers
+
+Design rules:
+- workflow helpers are not a workflow engine
+- workflow helpers do not implement a graph DSL
+- workflow helpers do not store workflow runtime state in a database
+- user-facing text must come from YAML/config or bff-pages, not hardcoded Java
+- runtime page responses must resolve to one language only
+- failures are represented by response errors, idempotency state, and audit/security events, not by generic FAILED / UNKNOWN / ERROR workflow statuses
+
+Not implemented in P5:
+- registration/start endpoint
+- OTP resend/verify endpoints
+- username/check or complete endpoints
+- APIM registration adapters
+- auth-flow resume
+- captcha
+- fund-switching business logic
+
+Do not claim any registration endpoint is implemented in P5.
+
