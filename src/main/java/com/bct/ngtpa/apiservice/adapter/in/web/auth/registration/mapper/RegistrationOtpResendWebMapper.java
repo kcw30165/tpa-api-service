@@ -13,6 +13,8 @@ import java.lang.reflect.Method;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResult;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResultStatus;
 
 public class RegistrationOtpResendWebMapper {
     private static final String SUCCESS = "SUCCESS";
@@ -29,14 +31,31 @@ public class RegistrationOtpResendWebMapper {
     }
 
     public Object toMutationResponse(ResendRegistrationOtpResult result) {
-        Object workflowResult = tryBuildWorkflowResult(result);
-        if (workflowResult != null && workflowMutationResponseMapper != null) {
-            Object mapped = tryMapWithWorkflowMapper(workflowResult);
-            if (mapped != null) {
-                return mapped;
-            }
+        if (workflowMutationResponseMapper != null) {
+            return workflowMutationResponseMapper.toMutationResponse(toWorkflowResult(result));
         }
         return fallbackResponse(result);
+    }
+
+
+    private WorkflowResult<RegistrationOtpResendResponse> toWorkflowResult(ResendRegistrationOtpResult result) {
+        return new WorkflowResult<>(
+                workflowStatus(result.status()),
+                result.nextStep(),
+                data(result),
+                RegistrationWorkflowPageRefs.forNextStep(result.nextStep()),
+                result.messages(),
+                result.errors());
+    }
+
+    private WorkflowResultStatus workflowStatus(ResendRegistrationOtpResultStatus status) {
+        return switch (status) {
+            case RESENT, COMPLETED_REPLAY -> WorkflowResultStatus.SUCCESS;
+            case DUPLICATE_IN_PROGRESS -> WorkflowResultStatus.WAITING;
+            case COOLDOWN_ACTIVE, MAX_RESEND_ATTEMPTS_REACHED -> WorkflowResultStatus.BUSINESS_FAILED;
+            case MESSAGE_DELIVERY_FAILED, SYSTEM_FAILED -> WorkflowResultStatus.SYSTEM_FAILED;
+            default -> WorkflowResultStatus.VALIDATION_FAILED;
+        };
     }
 
     public Object missingAuthFlowCookieResponse() {
@@ -151,7 +170,7 @@ public class RegistrationOtpResendWebMapper {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", success);
         response.put("status", apiStatus(result.status()));
-        response.put("result", success ? payloadMap(result) : null);
+        response.put("result", success || exposeResendFailurePayload(result.status()) ? payloadMap(result) : null);
         response.put("messages", result.messages());
         response.put("errors", success ? List.of() : errorMaps(result));
         return response;
@@ -170,14 +189,21 @@ public class RegistrationOtpResendWebMapper {
 
     private RegistrationOtpResendResponse data(ResendRegistrationOtpResult result) {
         if (result.status() != ResendRegistrationOtpResultStatus.RESENT
-                && result.status() != ResendRegistrationOtpResultStatus.COMPLETED_REPLAY) {
+                && result.status() != ResendRegistrationOtpResultStatus.COMPLETED_REPLAY
+                && !exposeResendFailurePayload(result.status())) {
             return null;
         }
         return new RegistrationOtpResendResponse(
                 result.maskedDestination(),
-                result.expiresInSeconds(),
-                result.resendCooldownSeconds(),
-                result.remainingResendAttempts());
+                result.expiresInSeconds() > 0 ? result.expiresInSeconds() : null,
+                result.resendCooldownSeconds() > 0 ? result.resendCooldownSeconds() : null,
+                result.remainingResendAttempts(),
+                result.retryAfterSeconds());
+    }
+
+    private boolean exposeResendFailurePayload(ResendRegistrationOtpResultStatus status) {
+        return status == ResendRegistrationOtpResultStatus.COOLDOWN_ACTIVE
+                || status == ResendRegistrationOtpResultStatus.MAX_RESEND_ATTEMPTS_REACHED;
     }
 
     private String apiStatus(ResendRegistrationOtpResultStatus status) {

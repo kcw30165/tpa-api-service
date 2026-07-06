@@ -150,7 +150,9 @@ public class ResendRegistrationOtpService implements ResendRegistrationOtpUseCas
                                 rejection.status(),
                                 WorkflowNextStep.VERIFY_OTP,
                                 resendErrorCode(rejection.status()),
-                                RegistrationIdempotencyStartOutcome.STARTED))))
+                                RegistrationIdempotencyStartOutcome.STARTED,
+                                rejection.retryAfterSeconds(),
+                                rejection.remainingResendAttempts()))))
                 .onErrorResume(error -> markFailed(command, hash)
                         .then(Mono.just(failure(
                                 ResendRegistrationOtpResultStatus.SYSTEM_FAILED,
@@ -247,13 +249,24 @@ public class ResendRegistrationOtpService implements ResendRegistrationOtpUseCas
             WorkflowNextStep nextStep,
             String code,
             RegistrationIdempotencyStartOutcome outcome) {
+        return failure(status, nextStep, code, outcome, null, null);
+    }
+
+    private ResendRegistrationOtpResult failure(
+            ResendRegistrationOtpResultStatus status,
+            WorkflowNextStep nextStep,
+            String code,
+            RegistrationIdempotencyStartOutcome outcome,
+            Integer retryAfterSeconds,
+            Integer remainingResendAttempts) {
         return new ResendRegistrationOtpResult(
                 status,
                 nextStep,
                 null,
                 0,
                 0,
-                0,
+                remainingResendAttempts == null ? 0 : remainingResendAttempts,
+                retryAfterSeconds,
                 List.of(),
                 List.of(new WorkflowErrorDescriptor(
                         WorkflowErrorType.FORM,
