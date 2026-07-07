@@ -34,12 +34,11 @@ class RegistrationIdempotencyArchitectureGuardTest {
     }
 
     @Test
-    void p6_1DoesNotIntroduceAuthFlowResumeOrCaptcha() {
+    void p6_1DoesNotIntroduceAuthFlowResume() {
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.request.AuthFlowResumeRequest");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.ResumeAuthFlowUseCase");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.out.AuthFlowResumePort");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowResumeService");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController");
     }
 
     private static void assertClassAbsent(String className) {

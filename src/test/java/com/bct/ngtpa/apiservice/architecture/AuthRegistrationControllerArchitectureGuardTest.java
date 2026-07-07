@@ -21,14 +21,10 @@ class AuthRegistrationControllerArchitectureGuardTest {
     }
 
     @Test
-    void p6_7DoesNotIntroduceAuthFlowResumeOrCaptchaEndpoints() throws IOException {
+    void p6_7DoesNotIntroduceAuthFlowResumeEndpoints() throws IOException {
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.request.AuthFlowResumeRequest");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.ResumeAuthFlowUseCase");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController");
         assertThat(sourceContains("/api/v1/auth/flow/resume")).isFalse();
-        assertThat(sourceContains("/api/v1/auth/captcha/challenge")).isFalse();
-        assertThat(sourceContains("/api/v1/auth/captcha/verify")).isFalse();
-        assertThat(sourceContains("/api/v1/auth/captcha/refresh")).isFalse();
     }
 
     @Test

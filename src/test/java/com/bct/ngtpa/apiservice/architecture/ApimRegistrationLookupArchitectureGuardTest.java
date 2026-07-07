@@ -72,12 +72,11 @@ class ApimRegistrationLookupArchitectureGuardTest {
     }
 
     @Test
-    void p6_5DoesNotIntroduceAuthFlowResumeOrCaptchaRuntime() throws IOException {
+    void p6_5DoesNotIntroduceAuthFlowResumeRuntime() throws IOException {
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.request.AuthFlowResumeRequest");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.ResumeAuthFlowUseCase");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.out.AuthFlowResumePort");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowResumeService");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController");
         assertThat(sourceContains("/api/v1/auth/flow/resume")).isFalse();
     }
 

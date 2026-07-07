@@ -33,21 +33,18 @@ class CaptchaUseCaseArchitectureGuardTest {
     }
 
     @Test
-    void p8_4DoesNotIntroduceControllerOrEndpoints() throws Exception {
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController");
-        assertThat(sourceContains("/api/v1/auth/captcha/challenge")).isFalse();
-        assertThat(sourceContains("/api/v1/auth/captcha/verify")).isFalse();
-        assertThat(sourceContains("/api/v1/auth/captcha/refresh")).isFalse();
+    void p8_5ExposesCaptchaControllerEndpointsOnlyAtWebBoundary() throws Exception {
+        assertClassPresent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController");
     }
 
     @Test
-    void p8_4DoesNotIntroduceRegistrationStartGateYet() throws Exception {
+    void p8_5DoesNotIntroduceRegistrationStartGateYet() throws Exception {
         String source = Files.readString(Path.of("src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/StartRegistrationService.java"));
         assertThat(source).doesNotContain("CaptchaChallengePort", "ConsumeCaptchaChallenge", "VerifyCaptchaChallenge");
     }
 
     @Test
-    void p8_4DoesNotIntroduceFutureRegistrationEndpoints() throws Exception {
+    void p8_5DoesNotIntroduceFutureRegistrationEndpointsOrResume() throws Exception {
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.CheckRegistrationUsernameUseCase");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.CompleteRegistrationUseCase");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.CancelRegistrationUseCase");
@@ -65,6 +62,10 @@ class CaptchaUseCaseArchitectureGuardTest {
         } catch (ClassNotFoundException expected) {
             assertThat(expected).isNotNull();
         }
+    }
+
+    private static void assertClassPresent(String className) throws Exception {
+        assertThat(Class.forName(className)).isNotNull();
     }
 
     private static boolean sourceContains(String text) throws Exception {

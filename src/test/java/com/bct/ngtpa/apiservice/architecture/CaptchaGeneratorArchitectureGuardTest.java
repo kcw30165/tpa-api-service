@@ -42,12 +42,9 @@ class CaptchaGeneratorArchitectureGuardTest {
     }
 
     @Test
-    void captchaGeneratorDoesNotIntroduceControllerRedisAdapterOrEndpoints() throws Exception {
+    void captchaGeneratorDoesNotIntroduceRedisAdapterAndAllowsWebEndpoints() throws Exception {
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.redis.CaptchaChallengeRedisAdapter");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController");
-        assertThat(sourceContains("/api/v1/auth/captcha/challenge")).isFalse();
-        assertThat(sourceContains("/api/v1/auth/captcha/verify")).isFalse();
-        assertThat(sourceContains("/api/v1/auth/captcha/refresh")).isFalse();
+        assertClassPresent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController");
     }
 
     @Test
@@ -75,6 +72,10 @@ class CaptchaGeneratorArchitectureGuardTest {
         } catch (ClassNotFoundException expected) {
             assertThat(expected).isNotNull();
         }
+    }
+
+    private static void assertClassPresent(String className) throws Exception {
+        assertThat(Class.forName(className)).isNotNull();
     }
 
     private static boolean sourceContains(String text) throws Exception {

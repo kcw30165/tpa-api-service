@@ -12,6 +12,8 @@ import com.bct.ngtpa.apiservice.application.port.out.CaptchaChallengePort;
 import com.bct.ngtpa.apiservice.application.port.out.CaptchaImageGeneratorPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.captcha.CaptchaChallengeIdGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.captcha.SecureCaptchaChallengeIdGenerator;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -37,5 +39,14 @@ class CaptchaChallengeUseCaseConfigTest {
                     assertThat(context.getBean(CaptchaChallengeIdGenerator.class))
                             .isInstanceOf(SecureCaptchaChallengeIdGenerator.class);
                 });
+    }
+
+    @Test
+    void captchaUseCaseBeansUseExistingPolicyPort() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/com/bct/ngtpa/apiservice/config/captcha/CaptchaChallengeUseCaseConfig.java"));
+
+        assertThat(source)
+                .contains("AuthWorkflowPolicyPort")
+                .doesNotContain("AuthWorkflowProperties");
     }
 }
