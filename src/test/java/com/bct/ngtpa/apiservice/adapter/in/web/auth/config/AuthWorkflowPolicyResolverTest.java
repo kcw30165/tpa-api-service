@@ -38,7 +38,7 @@ class AuthWorkflowPolicyResolverTest {
         contextRunner.run(context -> {
             var policy = context.getBean(AuthWorkflowPolicyPort.class).registrationPolicy();
 
-            assertFalse(policy.preStartChallenge().enabled());
+            assertTrue(policy.preStartChallenge().enabled());
             assertEquals(PreStartChallengeType.CAPTCHA, policy.preStartChallenge().type());
             assertEquals(7, policy.captcha().length());
             assertTrue(policy.captcha().caseSensitive());

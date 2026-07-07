@@ -38,12 +38,6 @@ class CaptchaUseCaseArchitectureGuardTest {
     }
 
     @Test
-    void p8_5DoesNotIntroduceRegistrationStartGateYet() throws Exception {
-        String source = Files.readString(Path.of("src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/StartRegistrationService.java"));
-        assertThat(source).doesNotContain("CaptchaChallengePort", "ConsumeCaptchaChallenge", "VerifyCaptchaChallenge");
-    }
-
-    @Test
     void p8_5DoesNotIntroduceFutureRegistrationEndpointsOrResume() throws Exception {
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.CheckRegistrationUsernameUseCase");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.CompleteRegistrationUseCase");

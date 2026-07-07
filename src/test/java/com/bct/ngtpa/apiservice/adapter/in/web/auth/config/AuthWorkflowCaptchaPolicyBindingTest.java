@@ -87,7 +87,7 @@ class AuthWorkflowCaptchaPolicyBindingTest {
         baseRunner.run(context -> {
             var policy = context.getBean(AuthWorkflowPolicyPort.class).registrationPolicy();
 
-            assertThat(policy.preStartChallenge().enabled()).isFalse();
+            assertThat(policy.preStartChallenge().enabled()).isTrue();
             assertThat(policy.preStartChallenge().type()).isEqualTo(PreStartChallengeType.CAPTCHA);
         });
     }

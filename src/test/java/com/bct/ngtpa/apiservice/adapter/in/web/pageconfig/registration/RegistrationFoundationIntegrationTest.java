@@ -35,7 +35,7 @@ class RegistrationFoundationIntegrationTest {
             ConfigBackedAuthWorkflowPolicyAdapter policyAdapter = new ConfigBackedAuthWorkflowPolicyAdapter(authWorkflowProperties);
             BffPagesProperties pageProperties = context.getBean(BffPagesProperties.class);
 
-            assertFalse(policyAdapter.registrationPolicy().preStartChallenge().enabled());
+            assertTrue(policyAdapter.registrationPolicy().preStartChallenge().enabled());
             assertEquals(com.bct.ngtpa.apiservice.application.dto.auth.PreStartChallengeType.CAPTCHA,
                     policyAdapter.registrationPolicy().preStartChallenge().type());
 

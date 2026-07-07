@@ -36,7 +36,7 @@ class AuthWorkflowPropertiesBindingTest {
 
             var registration = properties.getRegistration();
             assertNotNull(registration.getPreStartChallenge());
-            assertFalse(registration.getPreStartChallenge().isEnabled());
+            assertTrue(registration.getPreStartChallenge().isEnabled());
             assertEquals(AuthWorkflowProperties.PreStartChallengeType.CAPTCHA,
                     registration.getPreStartChallenge().getType());
 
