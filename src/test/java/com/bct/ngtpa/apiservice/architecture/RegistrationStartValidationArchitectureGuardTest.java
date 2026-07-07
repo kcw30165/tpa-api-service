@@ -43,7 +43,6 @@ class RegistrationStartValidationArchitectureGuardTest {
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.out.AuthFlowResumePort");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowResumeService");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController");
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.port.out.CaptchaChallengePort");
         assertThat(sourceContains("/api/v1/auth/flow/resume")).isFalse();
     }
 

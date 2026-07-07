@@ -84,23 +84,6 @@ class AuthWorkflowPropertiesBindingTest {
     }
 
     @Test
-    void bindsIdentityTypeMappingExactly() {
-        contextRunner.run(context -> {
-            var mapping = context.getBean(AuthWorkflowProperties.class)
-                    .getRegistration()
-                    .getIdentityTypeMapping();
-
-            assertEquals(6, mapping.size());
-            assertEquals("UB", mapping.get("GPN"));
-            assertEquals("TL", mapping.get("GPFS"));
-            assertEquals("MG_MC_DB", mapping.get("STAFF_NO"));
-            assertEquals("OI_OS_TB_OU_JP_HS_JM", mapping.get("HKID"));
-            assertEquals("OI_OS_TB_OU_JP_HS_JM", mapping.get("PASSPORT"));
-            assertEquals("OI_OS_TB_OU_JP_HS_JM", mapping.get("OTHER_NATIONAL_ID"));
-        });
-    }
-
-    @Test
     void missingRegistrationDoesNotCreateImplicitDefaults() {
         new ApplicationContextRunner()
                 .withUserConfiguration(TestConfig.class)

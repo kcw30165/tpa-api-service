@@ -37,7 +37,6 @@ class AuthRegistrationOtpVerifyControllerArchitectureGuardTest {
                 "/api/v1/auth/captcha/challenge",
                 "AuthFlowResumeRequest",
                 "ResumeAuthFlowUseCase",
-                "AuthCaptchaController",
-                "CaptchaChallengePort");
+            "AuthCaptchaController");
     }
 }

@@ -29,7 +29,6 @@ class StartRegistrationUseCaseArchitectureGuardTest {
     void p6_6DoesNotIntroduceAuthFlowResumeCaptchaOrLaterRegistrationUseCases() throws IOException {
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.request.AuthFlowResumeRequest");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.ResumeAuthFlowUseCase");
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.port.out.CaptchaChallengePort");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.CheckRegistrationUsernameUseCase");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.CompleteRegistrationUseCase");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.CancelRegistrationUseCase");

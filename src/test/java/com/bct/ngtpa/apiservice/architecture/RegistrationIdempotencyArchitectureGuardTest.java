@@ -40,7 +40,6 @@ class RegistrationIdempotencyArchitectureGuardTest {
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.out.AuthFlowResumePort");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowResumeService");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController");
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.port.out.CaptchaChallengePort");
     }
 
     private static void assertClassAbsent(String className) {

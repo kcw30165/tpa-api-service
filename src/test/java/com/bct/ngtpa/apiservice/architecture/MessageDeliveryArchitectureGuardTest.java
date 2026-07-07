@@ -74,7 +74,6 @@ class MessageDeliveryArchitectureGuardTest {
 
     @Test
     void p2DoesNotIntroduceCaptchaImplementation() {
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.port.out.CaptchaChallengePort");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.redis.CaptchaChallengeRedisAdapter");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.auth.AuthCaptchaController");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController");

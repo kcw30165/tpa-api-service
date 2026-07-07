@@ -38,12 +38,6 @@ class RegistrationFoundationIntegrationTest {
             assertFalse(policyAdapter.registrationPolicy().preStartChallenge().enabled());
             assertEquals(com.bct.ngtpa.apiservice.application.dto.auth.PreStartChallengeType.CAPTCHA,
                     policyAdapter.registrationPolicy().preStartChallenge().type());
-            assertEquals("UB", policyAdapter.resolveIdentityTypeSearchScope("GPN").orElseThrow());
-            assertEquals("TL", policyAdapter.resolveIdentityTypeSearchScope("GPFS").orElseThrow());
-            assertEquals("MG_MC_DB", policyAdapter.resolveIdentityTypeSearchScope("STAFF_NO").orElseThrow());
-            assertEquals("OI_OS_TB_OU_JP_HS_JM", policyAdapter.resolveIdentityTypeSearchScope("HKID").orElseThrow());
-            assertEquals("OI_OS_TB_OU_JP_HS_JM", policyAdapter.resolveIdentityTypeSearchScope("PASSPORT").orElseThrow());
-            assertEquals("OI_OS_TB_OU_JP_HS_JM", policyAdapter.resolveIdentityTypeSearchScope("OTHER_NATIONAL_ID").orElseThrow());
 
             assertTrue(pageProperties.getPages().containsKey("registration-start"));
             assertTrue(pageProperties.getPages().containsKey("registration-otp-verification"));

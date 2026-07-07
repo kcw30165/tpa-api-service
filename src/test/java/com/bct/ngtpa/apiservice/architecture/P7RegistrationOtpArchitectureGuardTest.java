@@ -61,7 +61,6 @@ class P7RegistrationOtpArchitectureGuardTest {
                 "CancelRegistrationUseCase",
                 "AuthFlowResumeRequest",
                 "ResumeAuthFlowUseCase",
-                "AuthCaptchaController",
-                "CaptchaChallengePort");
+                "AuthCaptchaController");
     }
 }

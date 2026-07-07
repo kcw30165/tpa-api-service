@@ -34,6 +34,12 @@ public final class RegistrationWorkflowErrorKeys {
     public static final WorkflowErrorKey REGISTRATION_EMAIL_INVALID = new WorkflowErrorKey("registration.email.invalid");
     public static final WorkflowErrorKey REGISTRATION_MOBILE_INVALID = new WorkflowErrorKey("registration.mobile.invalid");
     public static final WorkflowErrorKey REGISTRATION_CAPTCHA_INVALID = new WorkflowErrorKey("registration.captcha.invalid");
+    public static final WorkflowErrorKey REGISTRATION_CAPTCHA_EXPIRED = new WorkflowErrorKey("registration.captcha.expired");
+    public static final WorkflowErrorKey REGISTRATION_CAPTCHA_LOCKED = new WorkflowErrorKey("registration.captcha.locked");
+    public static final WorkflowErrorKey REGISTRATION_CAPTCHA_NOT_FOUND = new WorkflowErrorKey("registration.captcha.notFound");
+    public static final WorkflowErrorKey REGISTRATION_CAPTCHA_CONSUMED = new WorkflowErrorKey("registration.captcha.consumed");
+    public static final WorkflowErrorKey REGISTRATION_CAPTCHA_REFRESH_FAILED = new WorkflowErrorKey("registration.captcha.refreshFailed");
+    public static final WorkflowErrorKey REGISTRATION_CAPTCHA_REQUIRED = new WorkflowErrorKey("registration.captcha.required");
 
     public static final WorkflowErrorKey WORKFLOW_IDEMPOTENCY_MISSING = new WorkflowErrorKey("workflow.idempotency.missing");
 
