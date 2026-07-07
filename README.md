@@ -2374,6 +2374,35 @@ OTP resend:
 
 OTP verify:
 
+### Captcha
+
+P8 adds Captcha support for registration pre-start validation.
+
+Captcha endpoints:
+
+- `POST /api/v1/auth/captcha/challenge`
+- `POST /api/v1/auth/captcha/verify`
+- `POST /api/v1/auth/captcha/refresh`
+
+Captcha endpoints:
+
+- do not require `auth_flow_sid`
+- do not require `X-XSRF-TOKEN`
+- do not require `Idempotency-Key`
+- do not require `Account-Ref`
+- use the standard MutationResponse envelope
+- no nextStep/pageRef
+
+Captcha policy is configured under:
+
+`auth-workflows.registration.captcha`
+
+Captcha answers are hashed in Redis. Plaintext answers are not persisted.
+
+When `auth-workflows.registration.pre-start-challenge.enabled=true` and type is `CAPTCHA`, `registration/start` requires `captchaChallengeId` and consumes a verified Captcha before calling APIM or creating an AuthFlowSession.
+
+P8 does not implement username/check, registration/complete, registration/cancel, or auth-flow resume.
+
 - verifies the submitted OTP against the server-side `activeOtpChallengeId`
 - marks the `AuthFlowSession` as `OTP_VERIFIED`
 - reuses the existing `RegistrationLookupPort` / `TRPSearchUnregisteredMember` integration to fetch current unregistered trusts

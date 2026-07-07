@@ -3,6 +3,8 @@ package com.bct.ngtpa.apiservice.config.registration;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationCsrPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
+import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
+import com.bct.ngtpa.apiservice.application.port.out.CaptchaChallengePort;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyAction;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationRequestHash;
 import com.bct.ngtpa.apiservice.application.port.in.StartRegistrationUseCase;
@@ -11,6 +13,7 @@ import com.bct.ngtpa.apiservice.application.port.out.RegistrationLookupPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationMessagePort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationOtpPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationSessionPort;
+import com.bct.ngtpa.apiservice.application.service.auth.captcha.RegistrationCaptchaGateService;
 import com.bct.ngtpa.apiservice.application.service.auth.idempotency.RegistrationRequestHashGenerator;
 import com.bct.ngtpa.apiservice.application.service.auth.registration.RegistrationStartValidator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationService;
@@ -59,6 +62,14 @@ public class RegistrationStartUseCaseConfig {
     }
 
     @Bean
+    @ConditionalOnMissingBean
+    public RegistrationCaptchaGateService registrationCaptchaGateService(
+            CaptchaChallengePort captchaChallengePort,
+            Clock clock) {
+        return new RegistrationCaptchaGateService(captchaChallengePort, clock);
+    }
+
+    @Bean
     @ConditionalOnMissingBean(StartRegistrationUseCase.class)
     public StartRegistrationUseCase startRegistrationUseCase(
             RegistrationStartValidator registrationStartValidator,
@@ -71,6 +82,8 @@ public class RegistrationStartUseCaseConfig {
             RegistrationMessagePort registrationMessageGateway,
             AuthFlowSessionPort authFlowSessionPort,
             OtpChallengeStatePort otpChallengeStatePort,
+            AuthWorkflowPolicyPort authWorkflowPolicyPort,
+            RegistrationCaptchaGateService registrationCaptchaGateService,
             Clock clock) {
         return new StartRegistrationService(
                 registrationStartValidator,
@@ -83,6 +96,8 @@ public class RegistrationStartUseCaseConfig {
                 registrationMessageGateway,
                 authFlowSessionPort,
                 otpChallengeStatePort,
+                authWorkflowPolicyPort,
+                registrationCaptchaGateService,
                 clock
         );
     }

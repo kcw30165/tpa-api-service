@@ -2,9 +2,13 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.registration;
 
 import java.time.Instant;
 import java.time.Duration;
+import com.bct.ngtpa.apiservice.application.dto.auth.PreStartChallengeType;
+import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaChallengeId;
+import com.bct.ngtpa.apiservice.application.dto.auth.captcha.ConsumeCaptchaChallengeCommand;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationCsrPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
+import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.*;
@@ -18,6 +22,7 @@ import com.bct.ngtpa.apiservice.application.port.out.RegistrationLookupPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationMessagePort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationOtpPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationSessionPort;
+import com.bct.ngtpa.apiservice.application.service.auth.captcha.RegistrationCaptchaGateService;
 import com.bct.ngtpa.apiservice.application.service.auth.idempotency.RegistrationRequestHashGenerator;
 import com.bct.ngtpa.apiservice.application.service.auth.registration.RegistrationStartValidator;
 import java.time.Clock;
@@ -39,6 +44,8 @@ public class StartRegistrationService implements StartRegistrationUseCase {
     private final RegistrationMessagePort messageGateway;
     private final AuthFlowSessionPort authFlowSessionPort;
     private final OtpChallengeStatePort otpChallengeStatePort;
+    private final AuthWorkflowPolicyPort authWorkflowPolicyPort;
+    private final RegistrationCaptchaGateService registrationCaptchaGateService;
     private final Clock clock;
 
     public StartRegistrationService(RegistrationStartValidator validator, RegistrationRequestHashGenerator requestHashGenerator,
@@ -46,8 +53,32 @@ public class StartRegistrationService implements StartRegistrationUseCase {
             RegistrationCsrPort csrfGateway, RegistrationOtpPort otpGateway, RegistrationMessagePort messageGateway, AuthFlowSessionPort authFlowSessionPort,
             OtpChallengeStatePort otpChallengeStatePort,
             Clock clock) {
+        this(validator,
+                requestHashGenerator,
+                idempotencyPort,
+                lookupPort,
+                sessionGateway,
+                csrfGateway,
+                otpGateway,
+                messageGateway,
+                authFlowSessionPort,
+                otpChallengeStatePort,
+                null,
+                null,
+                clock);
+    }
+
+    public StartRegistrationService(RegistrationStartValidator validator, RegistrationRequestHashGenerator requestHashGenerator,
+            RegistrationIdempotencyPort idempotencyPort, RegistrationLookupPort lookupPort, RegistrationSessionPort sessionGateway,
+            RegistrationCsrPort csrfGateway, RegistrationOtpPort otpGateway, RegistrationMessagePort messageGateway, AuthFlowSessionPort authFlowSessionPort,
+            OtpChallengeStatePort otpChallengeStatePort,
+            AuthWorkflowPolicyPort authWorkflowPolicyPort,
+            RegistrationCaptchaGateService registrationCaptchaGateService,
+            Clock clock) {
         this.authFlowSessionPort = authFlowSessionPort;
         this.otpChallengeStatePort = otpChallengeStatePort;
+        this.authWorkflowPolicyPort = authWorkflowPolicyPort;
+        this.registrationCaptchaGateService = registrationCaptchaGateService;
         this.validator = Objects.requireNonNull(validator);
         this.requestHashGenerator = Objects.requireNonNull(requestHashGenerator);
         this.idempotencyPort = Objects.requireNonNull(idempotencyPort);
@@ -85,10 +116,88 @@ public class StartRegistrationService implements StartRegistrationUseCase {
             return markFailed(command, hash, "registration.validation.failed").thenReturn(invalid);
         }
         RegistrationStartCommand validated = validation.command();
+        if (isCaptchaGateEnabled()) {
+            return consumeRegistrationCaptcha(command, hash, validated)
+                    .switchIfEmpty(Mono.defer(() -> continueAfterCaptcha(command, hash, validated)))
+                    .onErrorResume(error -> gateSystemFailure(command, hash));
+        }
+        return continueAfterCaptcha(command, hash, validated);
+    }
+
+    private Mono<StartRegistrationResult> continueAfterCaptcha(
+            StartRegistrationCommand command,
+            RegistrationRequestHash hash,
+            RegistrationStartCommand validated) {
         var lookupCommand = new RegistrationLookupCommand(validated.identityType(), validated.identityValue(), validated.dateOfBirth(), validated.contactType(), validated.contactValue());
         return lookupPort.searchUnregisteredMember(lookupCommand)
                 .flatMap(lookup -> handleLookup(command, hash, validated, lookup))
                 .onErrorResume(error -> markFailed(command, hash, "registration.lookup.failed").then(Mono.error(error)));
+    }
+
+    private Mono<StartRegistrationResult> consumeRegistrationCaptcha(
+            StartRegistrationCommand command,
+            RegistrationRequestHash hash,
+            RegistrationStartCommand validated) {
+        String captchaChallengeId = validated.captchaChallengeId();
+        if (!hasText(captchaChallengeId)) {
+            return captchaFailure(command, hash, RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_REQUIRED);
+        }
+        CaptchaChallengeId challengeId;
+        try {
+            challengeId = new CaptchaChallengeId(captchaChallengeId);
+        } catch (RuntimeException exception) {
+            return captchaFailure(command, hash, RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_INVALID);
+        }
+        if (registrationCaptchaGateService == null) {
+            return gateSystemFailure(command, hash);
+        }
+        return registrationCaptchaGateService.consume(new ConsumeCaptchaChallengeCommand(challengeId, clock.instant()))
+                .flatMap(result -> switch (result.outcome()) {
+                    case CONSUMED -> Mono.empty();
+                    case NOT_FOUND -> captchaFailure(command, hash, RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_NOT_FOUND);
+                    case NOT_VERIFIED -> captchaFailure(command, hash, RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_INVALID);
+                    case EXPIRED -> captchaFailure(command, hash, RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_EXPIRED);
+                    case LOCKED -> captchaFailure(command, hash, RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_LOCKED);
+                    case ALREADY_CONSUMED -> captchaFailure(command, hash, RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_CONSUMED);
+                    case REFRESHED -> captchaFailure(command, hash, RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_REFRESH_FAILED);
+                });
+    }
+
+    private Mono<StartRegistrationResult> captchaFailure(
+            StartRegistrationCommand command,
+            RegistrationRequestHash hash,
+            WorkflowErrorKey errorKey) {
+        return markFailed(command, hash, errorKey.value())
+                .thenReturn(result(
+                        StartRegistrationResultStatus.VALIDATION_FAILED,
+                        WorkflowNextStep.NONE,
+                        errorKey,
+                        "captchaChallengeId",
+                        RegistrationIdempotencyStartOutcome.STARTED));
+    }
+
+    private Mono<StartRegistrationResult> gateSystemFailure(
+            StartRegistrationCommand command,
+            RegistrationRequestHash hash) {
+        return markFailed(command, hash, RegistrationWorkflowErrorKeys.WORKFLOW_SYSTEM_UNAVAILABLE.value())
+                .thenReturn(result(
+                        StartRegistrationResultStatus.SYSTEM_FAILED,
+                        WorkflowNextStep.NONE,
+                        RegistrationWorkflowErrorKeys.WORKFLOW_SYSTEM_UNAVAILABLE,
+                        "PAGE",
+                        RegistrationIdempotencyStartOutcome.STARTED));
+    }
+
+    private boolean isCaptchaGateEnabled() {
+        if (authWorkflowPolicyPort == null) {
+            return false;
+        }
+        var registrationPolicy = authWorkflowPolicyPort.registrationPolicy();
+        if (registrationPolicy == null || registrationPolicy.preStartChallenge() == null) {
+            return false;
+        }
+        return registrationPolicy.preStartChallenge().enabled()
+                && registrationPolicy.preStartChallenge().type() == PreStartChallengeType.CAPTCHA;
     }
 
     private Mono<StartRegistrationResult> handleLookup(StartRegistrationCommand command, RegistrationRequestHash hash, RegistrationStartCommand validated, RegistrationLookupResult lookup) {
