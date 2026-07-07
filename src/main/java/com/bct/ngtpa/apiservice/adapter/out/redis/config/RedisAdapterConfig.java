@@ -3,10 +3,13 @@ package com.bct.ngtpa.apiservice.adapter.out.redis.config;
 import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
 import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheAdminAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.RedisStringCacheAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisCaptchaChallengeAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisCaptchaChallengeJsonMapper;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRateLimitAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRegistrationIdempotencyAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRegistrationIdempotencyJsonMapper;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRegistrationIdempotencyKeyFactory;
+import com.bct.ngtpa.apiservice.application.port.out.CaptchaChallengePort;
 import com.bct.ngtpa.apiservice.application.port.out.CachePort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
 import com.bct.ngtpa.apiservice.application.port.out.RateLimitPort;
@@ -170,6 +173,24 @@ public class RedisAdapterConfig {
                 cachePort,
                 redisCacheKeyFactory,
                 redisOtpChallengeJsonMapper);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public RedisCaptchaChallengeJsonMapper redisCaptchaChallengeJsonMapper() {
+        return new RedisCaptchaChallengeJsonMapper();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(CaptchaChallengePort.class)
+    public CaptchaChallengePort captchaChallengePort(
+            ReactiveRedisTemplate<String, String> reactiveRedisTemplate,
+            RedisCacheKeyFactory redisCacheKeyFactory,
+            RedisCaptchaChallengeJsonMapper redisCaptchaChallengeJsonMapper) {
+        return new RedisCaptchaChallengeAdapter(
+                redisCacheKeyFactory,
+                redisCaptchaChallengeJsonMapper,
+                reactiveRedisTemplate);
     }
     // ── Internal configuration builders ──────────────────────────────────────
 

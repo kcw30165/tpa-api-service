@@ -2,7 +2,10 @@ package com.bct.ngtpa.apiservice.adapter.out.redis.config;
 
 import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
 import com.bct.ngtpa.apiservice.adapter.out.redis.RedisStringCacheAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisCaptchaChallengeAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisCaptchaChallengeJsonMapper;
 import com.bct.ngtpa.apiservice.application.port.out.CachePort;
+import com.bct.ngtpa.apiservice.application.port.out.CaptchaChallengePort;
 import com.bct.ngtpa.apiservice.application.port.out.RateLimitPort;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.ssl.SslBundles;
@@ -168,6 +171,25 @@ class RedisAdapterConfigTest {
         CachePort adapter = config.redisStringCacheAdapter(template);
 
         assertInstanceOf(RedisStringCacheAdapter.class, adapter);
+    }
+
+    @Test
+    void redisCaptchaChallengeJsonMapperBeanIsNotNull() {
+        var config = configWithSslDisabled();
+
+        assertInstanceOf(RedisCaptchaChallengeJsonMapper.class, config.redisCaptchaChallengeJsonMapper());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void captchaChallengePortBeanIsNotNull() {
+        var config = configWithSslDisabled();
+        ReactiveRedisTemplate<String, String> template = mock(ReactiveRedisTemplate.class);
+        RedisCacheKeyFactory keyFactory = new RedisCacheKeyFactory("ngtpa");
+
+        CaptchaChallengePort port = config.captchaChallengePort(template, keyFactory, new RedisCaptchaChallengeJsonMapper());
+
+        assertInstanceOf(RedisCaptchaChallengeAdapter.class, port);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
