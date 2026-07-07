@@ -21,7 +21,7 @@ class AuthRegistrationOtpVerifyControllerArchitectureGuardTest {
     }
 
     @Test
-    void p7_5DoesNotIntroduceUsernameCompleteCancelCaptchaOrResume() throws Exception {
+    void p7_5DoesNotIntroduceUsernameCompleteCancelOrResume() throws Exception {
         String sources;
         try (var files = Files.walk(Path.of("src/main/java"))) {
             sources = String.join("\n", files.filter(path -> path.toString().endsWith(".java"))
@@ -34,10 +34,7 @@ class AuthRegistrationOtpVerifyControllerArchitectureGuardTest {
                 "/api/v1/auth/registration/complete",
                 "/api/v1/auth/registration/cancel",
                 "/api/v1/auth/flow/resume",
-                "/api/v1/auth/captcha/challenge",
                 "AuthFlowResumeRequest",
-                "ResumeAuthFlowUseCase",
-                "AuthCaptchaController",
-                "CaptchaChallengePort");
+            "ResumeAuthFlowUseCase");
     }
 }

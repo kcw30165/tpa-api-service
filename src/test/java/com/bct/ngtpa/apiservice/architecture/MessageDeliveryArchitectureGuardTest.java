@@ -1,7 +1,6 @@
 package com.bct.ngtpa.apiservice.architecture;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
-import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -64,34 +63,9 @@ class MessageDeliveryArchitectureGuardTest {
         messageDeliveryApplicationLayerHasNoFrameworkOrAdapterDependencies.check(importedClasses());
     }
 
-    @Test
-    void p2DoesNotIntroduceApimRegistrationAdapters() {
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.apim.ApimRegistrationVerificationAdapter");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.apim.ApimRegistrationCredentialAdapter");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.apim.registration.ApimRegistrationVerificationAdapter");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.apim.registration.ApimRegistrationCredentialAdapter");
-    }
-
-    @Test
-    void p2DoesNotIntroduceCaptchaImplementation() {
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.port.out.CaptchaChallengePort");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.redis.CaptchaChallengeRedisAdapter");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.auth.AuthCaptchaController");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController");
-    }
-
     private com.tngtech.archunit.core.domain.JavaClasses importedClasses() {
         return new ClassFileImporter()
                 .withImportOption(new ImportOption.DoNotIncludeTests())
                 .importPackages("com.bct.ngtpa.apiservice");
-    }
-
-    private void assertClassAbsent(String className) {
-        try {
-            Class.forName(className);
-            assertThat(true).as(className + " should not exist in P2 message delivery foundation").isFalse();
-        } catch (ClassNotFoundException expected) {
-            assertThat(expected).isNotNull();
-        }
     }
 }

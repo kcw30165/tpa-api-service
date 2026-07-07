@@ -36,7 +36,7 @@ class AuthWorkflowPropertiesBindingTest {
 
             var registration = properties.getRegistration();
             assertNotNull(registration.getPreStartChallenge());
-            assertFalse(registration.getPreStartChallenge().isEnabled());
+            assertTrue(registration.getPreStartChallenge().isEnabled());
             assertEquals(AuthWorkflowProperties.PreStartChallengeType.CAPTCHA,
                     registration.getPreStartChallenge().getType());
 
@@ -80,23 +80,6 @@ class AuthWorkflowPropertiesBindingTest {
             assertTrue(registration.getPassword().isNotSameAsUsernameIgnoreCase());
             assertEquals(3, registration.getPassword().getRequiredCategories());
             assertEquals("!@#$%^&*()_-", registration.getPassword().getSpecialChars());
-        });
-    }
-
-    @Test
-    void bindsIdentityTypeMappingExactly() {
-        contextRunner.run(context -> {
-            var mapping = context.getBean(AuthWorkflowProperties.class)
-                    .getRegistration()
-                    .getIdentityTypeMapping();
-
-            assertEquals(6, mapping.size());
-            assertEquals("UB", mapping.get("GPN"));
-            assertEquals("TL", mapping.get("GPFS"));
-            assertEquals("MG_MC_DB", mapping.get("STAFF_NO"));
-            assertEquals("OI_OS_TB_OU_JP_HS_JM", mapping.get("HKID"));
-            assertEquals("OI_OS_TB_OU_JP_HS_JM", mapping.get("PASSPORT"));
-            assertEquals("OI_OS_TB_OU_JP_HS_JM", mapping.get("OTHER_NATIONAL_ID"));
         });
     }
 

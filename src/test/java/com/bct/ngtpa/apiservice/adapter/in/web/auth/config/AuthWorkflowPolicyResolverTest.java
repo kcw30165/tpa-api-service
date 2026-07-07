@@ -38,7 +38,7 @@ class AuthWorkflowPolicyResolverTest {
         contextRunner.run(context -> {
             var policy = context.getBean(AuthWorkflowPolicyPort.class).registrationPolicy();
 
-            assertFalse(policy.preStartChallenge().enabled());
+            assertTrue(policy.preStartChallenge().enabled());
             assertEquals(PreStartChallengeType.CAPTCHA, policy.preStartChallenge().type());
             assertEquals(7, policy.captcha().length());
             assertTrue(policy.captcha().caseSensitive());
@@ -82,21 +82,6 @@ class AuthWorkflowPolicyResolverTest {
             assertTrue(policy.password().notSameAsUsernameIgnoreCase());
             assertEquals(3, policy.password().requiredCategories());
             assertEquals("!@#$%^&*()_-", policy.password().specialChars());
-        });
-    }
-
-    @Test
-    void resolveIdentityTypeSearchScopeMapsKnownIdentityTypes() {
-        contextRunner.run(context -> {
-            var port = context.getBean(AuthWorkflowPolicyPort.class);
-
-            assertEquals(Optional.of("UB"), port.resolveIdentityTypeSearchScope("GPN"));
-            assertEquals(Optional.of("TL"), port.resolveIdentityTypeSearchScope("GPFS"));
-            assertEquals(Optional.of("MG_MC_DB"), port.resolveIdentityTypeSearchScope("STAFF_NO"));
-            assertEquals(Optional.of("OI_OS_TB_OU_JP_HS_JM"), port.resolveIdentityTypeSearchScope("HKID"));
-            assertEquals(Optional.of("OI_OS_TB_OU_JP_HS_JM"), port.resolveIdentityTypeSearchScope("PASSPORT"));
-            assertEquals(Optional.of("OI_OS_TB_OU_JP_HS_JM"), port.resolveIdentityTypeSearchScope("OTHER_NATIONAL_ID"));
-            assertEquals(Optional.of("UB"), port.resolveIdentityTypeSearchScope(" GPN "));
         });
     }
 

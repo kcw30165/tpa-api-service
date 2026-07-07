@@ -101,7 +101,7 @@ auth-flow-session:
 auth-workflows:
   registration:
     pre-start-challenge:
-      enabled: false
+      enabled: true
       type: CAPTCHA
     captcha:
       length: 7

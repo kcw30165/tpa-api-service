@@ -53,15 +53,10 @@ class P7RegistrationOtpArchitectureGuardTest {
                 "/api/v1/auth/registration/complete",
                 "/api/v1/auth/registration/cancel",
                 "/api/v1/auth/flow/resume",
-                "/api/v1/auth/captcha/challenge",
-                "/api/v1/auth/captcha/verify",
-                "/api/v1/auth/captcha/refresh",
                 "CheckRegistrationUsernameUseCase",
                 "CompleteRegistrationUseCase",
                 "CancelRegistrationUseCase",
                 "AuthFlowResumeRequest",
-                "ResumeAuthFlowUseCase",
-                "AuthCaptchaController",
-                "CaptchaChallengePort");
+            "ResumeAuthFlowUseCase");
     }
 }
