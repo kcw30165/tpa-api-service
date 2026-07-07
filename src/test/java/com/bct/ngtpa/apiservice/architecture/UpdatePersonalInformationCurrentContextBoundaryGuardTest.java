@@ -21,7 +21,7 @@ class UpdatePersonalInformationCurrentContextBoundaryGuardTest {
     @Test
     void updateControllerUsesCurrentContextAndDoesNotReadAccountRefFromHeaderContext() throws Exception {
         String source = Files.readString(Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/UpdatePersonalInformationController.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/PersonalInformationController.java"));
         assertTrue(source.contains("CurrentPortalAccessContextResolver"));
         assertTrue(source.contains("currentPortalAccessContextResolver.current()"));
         assertFalse(source.contains("context.accountRef()"));

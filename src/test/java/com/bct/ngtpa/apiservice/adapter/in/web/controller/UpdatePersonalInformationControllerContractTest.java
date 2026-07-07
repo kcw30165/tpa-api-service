@@ -7,10 +7,12 @@ import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingWebFilter;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateResponseMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdatePersonalInformationRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationUpdateYamlValidator;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
+import com.bct.ngtpa.apiservice.application.port.in.GetPersonalInformationUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.UpdatePersonalInformationUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
@@ -72,7 +74,7 @@ class UpdatePersonalInformationControllerContractTest {
         PersonalInformationUpdateYamlValidator validator = mock(PersonalInformationUpdateYamlValidator.class);
         CurrentPortalAccessContextResolver provider = missingPortalAccessContextProvider();
 
-        return WebTestClient.bindToController(new UpdatePersonalInformationController(
+        return WebTestClient.bindToController(controller(
                         useCase,
                         requestMapper,
                         responseMapper,
@@ -121,5 +123,25 @@ class UpdatePersonalInformationControllerContractTest {
                 return Mono.empty();
             }
         };
+    }
+    
+    private static PersonalInformationController controller(
+            UpdatePersonalInformationUseCase useCase,
+            PersonalInformationUpdateWebMapper requestMapper,
+            PersonalInformationUpdateResponseMapper responseMapper,
+            PersonalInformationUpdateYamlValidator validator,
+            CurrentPortalAccessContextResolver resolver) {
+
+        GetPersonalInformationUseCase getUseCase = mock(GetPersonalInformationUseCase.class);
+        PersonalInformationWebMapper getRequestMapper = mock(PersonalInformationWebMapper.class);
+        
+        return new PersonalInformationController(
+                getUseCase,
+                getRequestMapper,
+                resolver,
+                useCase,
+                requestMapper,
+                responseMapper,
+                validator);
     }
 }

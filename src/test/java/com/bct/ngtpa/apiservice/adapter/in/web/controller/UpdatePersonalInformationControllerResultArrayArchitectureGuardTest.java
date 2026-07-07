@@ -15,7 +15,7 @@ class UpdatePersonalInformationControllerResultArrayArchitectureGuardTest {
 
     @Test
     void updateEndpointReturnsMonoOfMutationResponseOfAccountResponseList() {
-        Type returnType = Arrays.stream(UpdatePersonalInformationController.class.getDeclaredMethods())
+        Type returnType = Arrays.stream(PersonalInformationController.class.getDeclaredMethods())
                 .filter(method -> "update".equals(method.getName()))
                 .findFirst()
                 .orElseThrow()

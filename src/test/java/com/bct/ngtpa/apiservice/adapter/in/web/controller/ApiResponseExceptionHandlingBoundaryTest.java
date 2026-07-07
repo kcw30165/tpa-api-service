@@ -24,7 +24,6 @@ class ApiResponseExceptionHandlingBoundaryTest {
     void controllersKeepConcreteResponseTypesInsteadOfExposingApiResponseDirectly() throws IOException {
         assertControllerDoesNotExposeApiResponseDirectly("NotificationController.java");
         assertControllerDoesNotExposeApiResponseDirectly("PersonalInformationController.java");
-        assertControllerDoesNotExposeApiResponseDirectly("UpdatePersonalInformationController.java");
         assertControllerDoesNotExposeApiResponseDirectly("ContributionController.java");
     }
 
@@ -37,10 +36,6 @@ class ApiResponseExceptionHandlingBoundaryTest {
         String personalInformationController = readController("PersonalInformationController.java");
         assertTrue(personalInformationController.contains(
                 "Mono<FormPageResponse<FormSchemaResponse>> getPersonalInformation"));
-
-        String updatePersonalInformationController = readController("UpdatePersonalInformationController.java");
-        assertTrue(updatePersonalInformationController.contains(
-                "Mono<MutationResponse<List<PersonalInformationUpdateResultResponse>>> update"));
     }
 
     @Test
