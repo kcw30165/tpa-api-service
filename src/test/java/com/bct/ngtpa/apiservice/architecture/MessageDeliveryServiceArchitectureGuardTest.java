@@ -14,7 +14,7 @@ class MessageDeliveryServiceArchitectureGuardTest {
 
     @ArchTest
     static final ArchRule messageDeliveryServiceDoesNotDependOnOtpRedisWebApimOrMail = noClasses()
-            .that().haveFullyQualifiedName("com.bct.ngtpa.apiservice.application.usecase.message.MessageDeliveryService")
+            .that().haveFullyQualifiedName("com.bct.ngtpa.apiservice.application.usecase.message.MessageDeliveryAdapter")
             .should().dependOnClassesThat().resideInAnyPackage(
                     "com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort",
                     "com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort",

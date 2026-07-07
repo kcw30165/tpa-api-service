@@ -1,4 +1,12 @@
 package com.bct.ngtpa.apiservice.adapter.out.registration;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContextAttributeNames;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowEncryptedContext;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationAuthFlowContextProtectorPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationSessionPort;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionTtlPolicy;
@@ -6,26 +14,28 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenari
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionData;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationSessionGateway;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionLifecycleService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.StartAuthFlowSessionCommand;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.UpdateAuthFlowOtpCommand;
+import com.bct.ngtpa.apiservice.application.usecase.session.authflow.UpdateAuthFlowStatusCommand;
 import java.lang.reflect.Method;
-import java.util.Map;
 import java.util.Objects;
 import reactor.core.publisher.Mono;
 
-public class RegistrationAuthFlowSessionGatewayAdapter implements RegistrationSessionGateway {
+public class RegistrationAuthFlowSessionAdapter implements RegistrationSessionPort {
+    private final RegistrationAuthFlowContextProtectorPort contextProtector;
     private final AuthFlowSessionLifecycleService lifecycleService;
     private final int registrationTtlSeconds;
     private final String sessionIdPrefix;
     private final int sessionIdEntropyBytes;
 
-    public RegistrationAuthFlowSessionGatewayAdapter(
+    public RegistrationAuthFlowSessionAdapter(
             AuthFlowSessionLifecycleService lifecycleService,
             int registrationTtlSeconds,
             String sessionIdPrefix,
-            int sessionIdEntropyBytes) {
+            int sessionIdEntropyBytes,
+            RegistrationAuthFlowContextProtectorPort contextProtector) {
+        this.contextProtector = contextProtector;
         this.lifecycleService = Objects.requireNonNull(lifecycleService, "lifecycleService must not be null");
         this.registrationTtlSeconds = registrationTtlSeconds > 0 ? registrationTtlSeconds : 1800;
         this.sessionIdPrefix = sessionIdPrefix == null || sessionIdPrefix.isBlank() ? "afs" : sessionIdPrefix;
@@ -55,7 +65,7 @@ public class RegistrationAuthFlowSessionGatewayAdapter implements RegistrationSe
 
         return lifecycleService
                 .start(command)
-                .map(RegistrationAuthFlowSessionGatewayAdapter::extractSessionIdValue);
+                .map(RegistrationAuthFlowSessionAdapter::extractSessionIdValue);
     }
 
     @Override
@@ -70,6 +80,17 @@ public class RegistrationAuthFlowSessionGatewayAdapter implements RegistrationSe
                 null);
 
         return lifecycleService.updateActiveOtpChallenge(command).then();
+    }
+
+
+
+    @Override
+    public Mono<Void> markOtpVerified(String authFlowSessionId) {
+        var command = new UpdateAuthFlowStatusCommand(
+                new AuthFlowSessionId(authFlowSessionId),
+                AuthFlowStatus.OTP_VERIFIED,
+                null);
+        return lifecycleService.updateStatus(command).then();
     }
 
     private static String extractSessionIdValue(Object result) {
@@ -116,5 +137,45 @@ public class RegistrationAuthFlowSessionGatewayAdapter implements RegistrationSe
         }
 
         return null;
+    }
+
+
+    @Override
+    public Mono<String> createRegistrationSession(
+            String maskedDestination,
+            RegistrationContactType contactType,
+            RegistrationAuthFlowContext registrationContext) {
+        RegistrationAuthFlowEncryptedContext encrypted = contextProtector.protect(registrationContext);
+        Map<String, String> attributes = new HashMap<>();
+        attributes.put(RegistrationAuthFlowContextAttributeNames.CONTEXT_CIPHERTEXT, encrypted.ciphertext());
+        attributes.put(RegistrationAuthFlowContextAttributeNames.CONTEXT_KEY_VERSION, encrypted.keyVersion());
+        attributes.put(RegistrationAuthFlowContextAttributeNames.CONTEXT_ALGORITHM, encrypted.algorithm());
+        return createRegistrationSession(maskedDestination, contactType, attributes);
+    }
+
+    private Mono<String> createRegistrationSession(
+            String maskedDestination,
+            RegistrationContactType contactType,
+            Map<String, String> attributes) {
+        var data = new AuthFlowSessionData(
+                contactType == null ? null : contactType.name(),
+                maskedDestination,
+                null,
+                attributes == null ? Map.of() : Map.copyOf(attributes));
+
+        var command = new StartAuthFlowSessionCommand(
+                AuthFlowScenario.REGISTRATION,
+                AuthFlowStatus.OTP_SENT,
+                new SessionTtlPolicy(true, true, registrationTtlSeconds),
+                sessionIdPrefix,
+                sessionIdEntropyBytes,
+                data,
+                null,
+                null,
+                null);
+
+        return lifecycleService
+                .start(command)
+                .map(RegistrationAuthFlowSessionAdapter::extractSessionIdValue);
     }
 }

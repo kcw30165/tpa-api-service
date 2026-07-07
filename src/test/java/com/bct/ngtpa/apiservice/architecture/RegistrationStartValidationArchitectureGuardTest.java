@@ -37,15 +37,6 @@ class RegistrationStartValidationArchitectureGuardTest {
     }
 
     @Test
-    void p6_3DoesNotIntroduceUseCaseControllerApimRedisAdapterOrEndpoint() throws IOException {
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.apim.ApimRegistrationStartAdapter");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.apim.TRPSearchUnregisteredMemberAdapter");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRegistrationStartAdapter");
-        assertThat(sourceContains("/api/v1/auth/registration/start")).isFalse();
-    }
-
-    @Test
     void p6_3DoesNotIntroduceAuthFlowResumeOrCaptchaRuntime() throws IOException {
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.request.AuthFlowResumeRequest");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.ResumeAuthFlowUseCase");

@@ -153,13 +153,6 @@ auth-workflows:
           enabled: true
           max-attempts: 5
           window-seconds: 300
-    identity-type-mapping:
-      GPN: UB
-      GPFS: TL
-      STAFF_NO: MG_MC_DB
-      HKID: OI_OS_TB_OU_JP_HS_JM
-      PASSPORT: OI_OS_TB_OU_JP_HS_JM
-      OTHER_NATIONAL_ID: OI_OS_TB_OU_JP_HS_JM
 
 apim:
   base-url: ${APIM_BASE_URL:${APIM_BASEURL:}}

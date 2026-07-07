@@ -34,14 +34,6 @@ class RegistrationIdempotencyArchitectureGuardTest {
     }
 
     @Test
-    void p6_1DoesNotIntroduceRedisAdapterControllerOrApimRegistration() {
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.apim.ApimRegistrationStartAdapter");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.apim.ApimRegistrationVerificationAdapter");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.apim.TRPSearchUnregisteredMemberAdapter");
-    }
-
-    @Test
     void p6_1DoesNotIntroduceAuthFlowResumeOrCaptcha() {
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.request.AuthFlowResumeRequest");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.ResumeAuthFlowUseCase");

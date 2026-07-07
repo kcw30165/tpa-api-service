@@ -10,7 +10,7 @@ import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryStatus;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryType;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationMessageGateway;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationMessagePort;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -20,11 +20,11 @@ import java.util.Objects;
 import reactor.core.publisher.Mono;
 
 @Slf4j
-public class RegistrationMessageDeliveryGatewayAdapter implements RegistrationMessageGateway {
+public class RegistrationMessageDeliveryAdapter implements RegistrationMessagePort {
     private final MessageDeliveryPort messageDeliveryPort;
     private final AuthWorkflowPolicyPort authWorkflowPolicyPort;
 
-    public RegistrationMessageDeliveryGatewayAdapter(
+    public RegistrationMessageDeliveryAdapter(
             MessageDeliveryPort messageDeliveryPort,
             AuthWorkflowPolicyPort authWorkflowPolicyPort) {
         this.messageDeliveryPort = Objects.requireNonNull(messageDeliveryPort, "messageDeliveryPort must not be null");

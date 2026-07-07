@@ -4,9 +4,6 @@ import com.bct.ngtpa.apiservice.application.port.in.ExportContributionSummaryUse
 import com.bct.ngtpa.apiservice.application.port.in.GetContributionSummaryUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetNotificationsUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.RefreshReferenceDateUseCase;
-import com.bct.ngtpa.apiservice.application.port.in.StartRegistrationUseCase;
-import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyAction;
-import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationRequestHash;
 import com.bct.ngtpa.apiservice.application.port.in.CleanUpAllReferenceDatesUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetAllReferenceDatesUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetPersonalInformationUseCase;
@@ -26,10 +23,6 @@ import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextR
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDateCacheUpdatePort;
 import com.bct.ngtpa.apiservice.application.port.out.CacheAdminPort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
-import com.bct.ngtpa.apiservice.application.port.out.RegistrationIdempotencyPort;
-import com.bct.ngtpa.apiservice.application.port.out.RegistrationLookupPort;
-import com.bct.ngtpa.apiservice.application.service.auth.idempotency.RegistrationRequestHashGenerator;
-import com.bct.ngtpa.apiservice.application.service.auth.registration.RegistrationStartValidator;
 import com.bct.ngtpa.apiservice.application.usecase.ExportContributionSummaryService;
 import com.bct.ngtpa.apiservice.application.usecase.GetContributionSummaryService;
 import com.bct.ngtpa.apiservice.application.usecase.GetNotificationsService;
@@ -40,22 +33,9 @@ import com.bct.ngtpa.apiservice.application.usecase.GetPersonalInformationServic
 import com.bct.ngtpa.apiservice.application.usecase.GetReferenceDataCountriesService;
 import com.bct.ngtpa.apiservice.application.usecase.UpdateNotificationsReadStatusService;
 import org.springframework.beans.factory.annotation.Value;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
-import java.util.List;
 import com.bct.ngtpa.apiservice.application.usecase.UpdatePersonalInformationService;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationCsrfGateway;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationMessageGateway;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationOtpGateway;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationSessionGateway;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationService;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
-import java.time.Clock;
 
 /**
  * Spring composition configuration for application-layer use cases.

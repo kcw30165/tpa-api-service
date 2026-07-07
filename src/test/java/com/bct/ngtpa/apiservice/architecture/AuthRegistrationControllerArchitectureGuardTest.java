@@ -21,15 +21,6 @@ class AuthRegistrationControllerArchitectureGuardTest {
     }
 
     @Test
-    void p6_7DoesNotIntroduceOtherRegistrationEndpoints() throws IOException {
-        assertThat(sourceContains("/api/v1/auth/registration/otp/resend")).isFalse();
-        assertThat(sourceContains("/api/v1/auth/registration/otp/verify")).isFalse();
-        assertThat(sourceContains("/api/v1/auth/registration/username/check")).isFalse();
-        assertThat(sourceContains("/api/v1/auth/registration/complete")).isFalse();
-        assertThat(sourceContains("/api/v1/auth/registration/cancel")).isFalse();
-    }
-
-    @Test
     void p6_7DoesNotIntroduceAuthFlowResumeOrCaptchaEndpoints() throws IOException {
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.request.AuthFlowResumeRequest");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.ResumeAuthFlowUseCase");

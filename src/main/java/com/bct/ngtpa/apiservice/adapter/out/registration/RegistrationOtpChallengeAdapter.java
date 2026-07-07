@@ -8,8 +8,9 @@ import com.bct.ngtpa.apiservice.application.dto.auth.otp.OtpScenario;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationOtpPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationOtpCreationResult;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationOtpGateway;
+
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -19,13 +20,19 @@ import java.util.HexFormat;
 import java.util.Objects;
 import java.util.Locale;
 import reactor.core.publisher.Mono;
+import com.bct.ngtpa.apiservice.application.dto.auth.otp.VerifyOtpChallengeCommand;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.RegistrationOtpVerificationResult;
+import com.bct.ngtpa.apiservice.application.dto.auth.otp.OtpReplacementOutcome;
+import com.bct.ngtpa.apiservice.application.dto.auth.otp.ReplaceOtpChallengeCommand;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.RegistrationOtpResendRejectedException;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.ResendRegistrationOtpResultStatus;
 
-public class RegistrationOtpChallengeGatewayAdapter implements RegistrationOtpGateway {
+public class RegistrationOtpChallengeAdapter implements RegistrationOtpPort {
     private final OtpChallengePort otpChallengePort;
     private final AuthWorkflowPolicyPort authWorkflowPolicyPort;
     private final Clock clock;
 
-    public RegistrationOtpChallengeGatewayAdapter(
+    public RegistrationOtpChallengeAdapter(
             OtpChallengePort otpChallengePort,
             AuthWorkflowPolicyPort authWorkflowPolicyPort,
             Clock clock) {
@@ -61,6 +68,61 @@ public class RegistrationOtpChallengeGatewayAdapter implements RegistrationOtpGa
                         result.expiresInSeconds(),
                         policy.resendCooldownSeconds(),
                         policy.maxResendAttempts()));
+    }
+
+
+
+
+
+    @Override
+    public Mono<RegistrationOtpCreationResult> resendOtp(
+            String activeOtpChallengeId,
+            RegistrationContactType contactType,
+            String destination) {
+        OtpPolicy policy = otpPolicy();
+        return otpChallengePort.replaceChallenge(new ReplaceOtpChallengeCommand(
+                        activeOtpChallengeId,
+                        policy.length(),
+                        policy.numericOnly(),
+                        policy.ttlSeconds(),
+                        policy.resendCooldownSeconds(),
+                        Instant.now(clock)))
+                .flatMap(result -> switch (result.outcome()) {
+                    case REPLACED -> Mono.just(new RegistrationOtpCreationResult(
+                            result.newOtpChallengeId(),
+                            result.rawCode(),
+                            result.expiresInSeconds(),
+                            result.resendCooldownSeconds(),
+                            result.remainingResendAttempts()));
+                    case COOLDOWN_ACTIVE -> Mono.error(new RegistrationOtpResendRejectedException(
+                            ResendRegistrationOtpResultStatus.COOLDOWN_ACTIVE,
+                            result.retryAfterSeconds(),
+                            result.remainingResendAttempts()));
+                    case MAX_RESEND_EXCEEDED -> Mono.error(new RegistrationOtpResendRejectedException(
+                            ResendRegistrationOtpResultStatus.MAX_RESEND_ATTEMPTS_REACHED,
+                            result.retryAfterSeconds(),
+                            result.remainingResendAttempts()));
+                    case EXPIRED, LOCKED, INVALIDATED, ALREADY_VERIFIED, NOT_FOUND, NOT_REPLACEABLE ->
+                            Mono.error(new RegistrationOtpResendRejectedException(
+                                    ResendRegistrationOtpResultStatus.INVALID_AUTH_FLOW,
+                                    result.retryAfterSeconds(),
+                                    result.remainingResendAttempts()));
+                });
+    }
+
+    @Override
+    public Mono<RegistrationOtpVerificationResult> verifyOtp(String activeOtpChallengeId, String submittedOtpCode) {
+        return otpChallengePort.verifyChallenge(new VerifyOtpChallengeCommand(
+                        activeOtpChallengeId,
+                        submittedOtpCode,
+                        Instant.now(clock)))
+                .map(result -> switch (result.outcome()) {
+                    case VALID -> RegistrationOtpVerificationResult.verified();
+                    case EXPIRED -> RegistrationOtpVerificationResult.expired();
+                    case LOCKED -> RegistrationOtpVerificationResult.locked();
+                    case INVALID, INVALIDATED, NOT_FOUND, ALREADY_VERIFIED ->
+                            RegistrationOtpVerificationResult.invalid(result.remainingAttempts());
+                });
     }
 
     private OtpPolicy otpPolicy() {

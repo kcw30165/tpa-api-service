@@ -22,7 +22,7 @@ import java.time.Instant;
 import java.util.Optional;
 import reactor.core.publisher.Mono;
 
-public class DefaultOtpChallengeService implements OtpChallengePort {
+public class DefaultOtpChallengeAdapter implements OtpChallengePort {
 
     private final OtpChallengeStatePort otpChallengeStatePort;
     private final OtpCodeGenerator otpCodeGenerator;
@@ -30,14 +30,14 @@ public class DefaultOtpChallengeService implements OtpChallengePort {
     private final OtpChallengeIdGenerator otpChallengeIdGenerator;
     private final Clock clock;
 
-    public DefaultOtpChallengeService(
+    public DefaultOtpChallengeAdapter(
             OtpChallengeStatePort otpChallengeStatePort,
             OtpCodeHasher otpCodeHasher,
             Clock clock) {
         this(otpChallengeStatePort, null, otpCodeHasher, null, clock);
     }
 
-    public DefaultOtpChallengeService(
+    public DefaultOtpChallengeAdapter(
             OtpChallengeStatePort otpChallengeStatePort,
             OtpCodeGenerator otpCodeGenerator,
             OtpCodeHasher otpCodeHasher,

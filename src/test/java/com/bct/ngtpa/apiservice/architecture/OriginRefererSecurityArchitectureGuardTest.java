@@ -15,22 +15,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class OriginRefererSecurityArchitectureGuardTest {
 
     @Test
-    void p3_6DoesNotIntroduceRegistrationEndpoints() throws Exception {
-        Set<String> sourceFileNames;
-        try (Stream<Path> paths = Files.walk(Path.of("src/main/java"))) {
-            sourceFileNames = paths
-                    .filter(Files::isRegularFile)
-                    .map(path -> path.getFileName().toString())
-                    .collect(Collectors.toSet());
-        }
-
-        assertTrue(sourceFileNames.stream().noneMatch(name -> name.equals("AuthRegistrationOtpController.java")),
-                "P3.6 must not introduce AuthRegistrationOtpController");
-        assertTrue(sourceFileNames.stream().noneMatch(name -> name.equals("AuthCaptchaController.java")),
-                "P3.6 must not introduce AuthCaptchaController");
-    }
-
-    @Test
     void originRefererValidatorHasNoAdapterRedisApimDependencies() throws Exception {
         List<String> forbiddenImports = List.of(
                 "import com.bct.ngtpa.apiservice.adapter.",

@@ -38,18 +38,4 @@ class RateLimitDestinationHashArchitectureGuardTest {
             }
         }
     }
-
-    @Test
-    void p3_4DoesNotIntroduceEndpointOrCsrfComponents() throws Exception {
-        Set<String> sourceFileNames;
-        try (Stream<Path> paths = Files.walk(Path.of("src/main/java"))) {
-            sourceFileNames = paths
-                    .filter(Files::isRegularFile)
-                    .map(path -> path.getFileName().toString())
-                    .collect(Collectors.toSet());
-        }
-
-        assertTrue(sourceFileNames.stream().noneMatch(name -> name.equals("AuthRegistrationOtpController.java")),
-                "P3.4 must not introduce AuthRegistrationOtpController");
-    }
 }

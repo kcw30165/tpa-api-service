@@ -26,7 +26,7 @@ class MessageDeliveryServiceTemplateRenderingTest {
     void dispatchesSmsWithRenderedBody() {
         FakeSmsSenderPort smsSenderPort = new FakeSmsSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, "sms-123", null, null)));
         FakeEmailSenderPort emailSenderPort = new FakeEmailSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, "email-123", null, null)));
-        MessageDeliveryService service = new MessageDeliveryService(smsSenderPort, emailSenderPort);
+        MessageDeliveryAdapter service = new MessageDeliveryAdapter(smsSenderPort, emailSenderPort);
 
         StepVerifier.create(service.deliver(smsCommand("Hello {name}", Map.of("name", "Member"))))
                 .assertNext(result -> assertThat(result.status()).isEqualTo(MessageDeliveryStatus.ACCEPTED))
@@ -43,7 +43,7 @@ class MessageDeliveryServiceTemplateRenderingTest {
     void dispatchesEmailWithRenderedSubjectAndBody() {
         FakeSmsSenderPort smsSenderPort = new FakeSmsSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, "sms-123", null, null)));
         FakeEmailSenderPort emailSenderPort = new FakeEmailSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, "email-123", null, null)));
-        MessageDeliveryService service = new MessageDeliveryService(smsSenderPort, emailSenderPort);
+        MessageDeliveryAdapter service = new MessageDeliveryAdapter(smsSenderPort, emailSenderPort);
 
         StepVerifier.create(service.deliver(emailCommand(
                         "Notice {refNo}",
@@ -64,7 +64,7 @@ class MessageDeliveryServiceTemplateRenderingTest {
     void doesNotDispatchWhenTemplateVariableMissing() {
         FakeSmsSenderPort smsSenderPort = new FakeSmsSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, "sms-123", null, null)));
         FakeEmailSenderPort emailSenderPort = new FakeEmailSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, "email-123", null, null)));
-        MessageDeliveryService service = new MessageDeliveryService(smsSenderPort, emailSenderPort);
+        MessageDeliveryAdapter service = new MessageDeliveryAdapter(smsSenderPort, emailSenderPort);
 
         StepVerifier.create(service.deliver(smsCommand("Hello {name}", Map.of())))
                 .expectErrorSatisfies(error -> {
@@ -81,7 +81,7 @@ class MessageDeliveryServiceTemplateRenderingTest {
     void templateRenderingFailureDoesNotExposeBodyOrRecipient() {
         FakeSmsSenderPort smsSenderPort = new FakeSmsSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, "sms-123", null, null)));
         FakeEmailSenderPort emailSenderPort = new FakeEmailSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, "email-123", null, null)));
-        MessageDeliveryService service = new MessageDeliveryService(smsSenderPort, emailSenderPort);
+        MessageDeliveryAdapter service = new MessageDeliveryAdapter(smsSenderPort, emailSenderPort);
 
         StepVerifier.create(service.deliver(smsCommand("Reference {code}", Map.of())))
                 .expectErrorSatisfies(error -> {

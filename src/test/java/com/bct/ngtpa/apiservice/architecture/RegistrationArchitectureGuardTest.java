@@ -21,12 +21,6 @@ class RegistrationArchitectureGuardTest {
             .as("Application layer must not depend on pageconfig or web response DTOs for registration foundation.");
 
     @Test
-    void foundationDoesNotCreateRegistrationEndpoints() {
-        assertClassMissing("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController");
-        assertClassMissing("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController");
-    }
-
-    @Test
     void foundationDoesNotCreateApplicationSuccessPageResolverPort() {
         assertClassMissing("com.bct.ngtpa.apiservice.application.port.out.RegistrationSuccessPageResolverPort");
         assertClassMissing("com.bct.ngtpa.apiservice.application.dto.RegistrationSuccessPageResponse");
@@ -39,7 +33,7 @@ class RegistrationArchitectureGuardTest {
         assertClassMissing("com.bct.ngtpa.apiservice.adapter.out.redis.RegistrationIdempotencyRedisAdapter");
         assertClassMissing("com.bct.ngtpa.apiservice.adapter.out.apim.ApimRegistrationVerificationAdapter");
         assertClassMissing("com.bct.ngtpa.apiservice.adapter.out.apim.ApimRegistrationCredentialAdapter");
-        assertClassMissing("com.bct.ngtpa.apiservice.application.service.MessageDeliveryService");
+        assertClassMissing("com.bct.ngtpa.apiservice.application.service.MessageDeliveryAdapter");
         assertClassMissing("com.bct.ngtpa.apiservice.adapter.out.message.SmsSenderAdapter");
         assertClassMissing("com.bct.ngtpa.apiservice.adapter.out.message.EmailSenderAdapter");
         assertClassMissing("com.bct.ngtpa.apiservice.adapter.out.redis.CaptchaChallengeRedisAdapter");

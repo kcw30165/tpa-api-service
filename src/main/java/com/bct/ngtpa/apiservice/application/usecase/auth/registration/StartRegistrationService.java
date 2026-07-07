@@ -1,23 +1,23 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.registration;
 
-
-
-
-
-
 import java.time.Instant;
 import java.time.Duration;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationCsrPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.*;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErrorKeys;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.in.StartRegistrationUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationLookupPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationMessagePort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationOtpPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationSessionPort;
 import com.bct.ngtpa.apiservice.application.service.auth.idempotency.RegistrationRequestHashGenerator;
 import com.bct.ngtpa.apiservice.application.service.auth.registration.RegistrationStartValidator;
 import java.time.Clock;
@@ -33,17 +33,17 @@ public class StartRegistrationService implements StartRegistrationUseCase {
     private final RegistrationRequestHashGenerator requestHashGenerator;
     private final RegistrationIdempotencyPort idempotencyPort;
     private final RegistrationLookupPort lookupPort;
-    private final RegistrationSessionGateway sessionGateway;
-    private final RegistrationCsrfGateway csrfGateway;
-    private final RegistrationOtpGateway otpGateway;
-    private final RegistrationMessageGateway messageGateway;
+    private final RegistrationSessionPort sessionGateway;
+    private final RegistrationCsrPort csrfGateway;
+    private final RegistrationOtpPort otpGateway;
+    private final RegistrationMessagePort messageGateway;
     private final AuthFlowSessionPort authFlowSessionPort;
     private final OtpChallengeStatePort otpChallengeStatePort;
     private final Clock clock;
 
     public StartRegistrationService(RegistrationStartValidator validator, RegistrationRequestHashGenerator requestHashGenerator,
-            RegistrationIdempotencyPort idempotencyPort, RegistrationLookupPort lookupPort, RegistrationSessionGateway sessionGateway,
-            RegistrationCsrfGateway csrfGateway, RegistrationOtpGateway otpGateway, RegistrationMessageGateway messageGateway, AuthFlowSessionPort authFlowSessionPort,
+            RegistrationIdempotencyPort idempotencyPort, RegistrationLookupPort lookupPort, RegistrationSessionPort sessionGateway,
+            RegistrationCsrPort csrfGateway, RegistrationOtpPort otpGateway, RegistrationMessagePort messageGateway, AuthFlowSessionPort authFlowSessionPort,
             OtpChallengeStatePort otpChallengeStatePort,
             Clock clock) {
         this.authFlowSessionPort = authFlowSessionPort;
@@ -112,7 +112,13 @@ public class StartRegistrationService implements StartRegistrationUseCase {
                     null);
             return markFailed(command, hash, "registration.lookup.businessRejected").thenReturn(verificationFailure);
         }
-        return sessionGateway.createRegistrationSession(validated.maskedDestination(), validated.contactType())
+        RegistrationAuthFlowContext registrationContext = new RegistrationAuthFlowContext(
+                validated.identityType(),
+                validated.identityValue(),
+                validated.dateOfBirth(),
+                validated.contactType(),
+                validated.contactValue());
+        return sessionGateway.createRegistrationSession(validated.maskedDestination(), validated.contactType(), registrationContext)
                 .flatMap(sessionId -> csrfGateway.bindCsrfToken(sessionId)
                         .flatMap(csrfToken -> otpGateway.createOtp(validated.contactType(), validated.contactValue())
                                 .flatMap(otp -> sessionGateway.updateOtpChallenge(sessionId, otp.activeOtpChallengeId(), validated.contactType(), validated.maskedDestination())

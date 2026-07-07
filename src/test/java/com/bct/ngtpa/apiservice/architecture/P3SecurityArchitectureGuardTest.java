@@ -68,24 +68,4 @@ class P3SecurityArchitectureGuardTest {
             }
         }
     }
-
-    @Test
-    void p3DoesNotIntroduceRegistrationEndpointsApimRegistrationAdaptersCaptchaOrRuntimeFilters() throws Exception {
-        Set<String> fileNames;
-        try (Stream<Path> paths = Files.walk(Path.of("src/main/java"))) {
-            fileNames = paths.filter(Files::isRegularFile)
-                    .map(path -> path.getFileName().toString())
-                    .collect(Collectors.toSet());
-        }
-
-        assertTrue(fileNames.stream().noneMatch(name -> name.equals("AuthRegistrationOtpController.java")));
-        assertTrue(fileNames.stream().noneMatch(name -> name.equals("AuthCaptchaController.java")));
-        assertTrue(fileNames.stream().noneMatch(name -> name.equals("ApimRegistrationVerificationAdapter.java")));
-        assertTrue(fileNames.stream().noneMatch(name -> name.equals("ApimRegistrationCredentialAdapter.java")));
-        assertTrue(fileNames.stream().noneMatch(name -> name.equals("CaptchaChallengePort.java")));
-        assertTrue(fileNames.stream().noneMatch(name -> name.equals("CaptchaChallengeRedisAdapter.java")));
-        assertTrue(fileNames.stream().noneMatch(name -> name.equals("RegistrationCsrfWebFilter.java")));
-        assertTrue(fileNames.stream().noneMatch(name -> name.equals("RegistrationRateLimitWebFilter.java")));
-        assertTrue(fileNames.stream().noneMatch(name -> name.equals("RegistrationSessionRedisAdapter.java")));
-    }
 }

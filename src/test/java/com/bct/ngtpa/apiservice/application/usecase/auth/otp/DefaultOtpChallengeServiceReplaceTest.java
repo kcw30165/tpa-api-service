@@ -227,11 +227,11 @@ class DefaultOtpChallengeServiceReplaceTest {
         assertThat(codeGenerator.invocationCount).isZero();
     }
 
-    private DefaultOtpChallengeService service(
+    private DefaultOtpChallengeAdapter service(
             FakeOtpChallengeStatePort statePort,
             FakeOtpCodeGenerator codeGenerator,
             FakeOtpChallengeIdGenerator otpChallengeIdGenerator) {
-        return new DefaultOtpChallengeService(
+        return new DefaultOtpChallengeAdapter(
                 statePort,
                 codeGenerator,
                 new Sha256OtpCodeHasher(),

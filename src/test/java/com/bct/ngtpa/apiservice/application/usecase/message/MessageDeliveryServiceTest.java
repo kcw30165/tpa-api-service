@@ -31,7 +31,7 @@ class MessageDeliveryServiceTest {
     void dispatchesSmsCommandToSmsSender() {
         FakeSmsSenderPort smsSenderPort = new FakeSmsSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, "sms-123", null, null)));
         FakeEmailSenderPort emailSenderPort = new FakeEmailSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, "email-123", null, null)));
-        MessageDeliveryService service = new MessageDeliveryService(smsSenderPort, emailSenderPort);
+        MessageDeliveryAdapter service = new MessageDeliveryAdapter(smsSenderPort, emailSenderPort);
 
         StepVerifier.create(service.deliver(smsCommand(null)))
                 .assertNext(result -> assertThat(result).isEqualTo(new MessageDeliveryResult(
@@ -55,7 +55,7 @@ class MessageDeliveryServiceTest {
     void dispatchesEmailCommandToEmailSender() {
         FakeSmsSenderPort smsSenderPort = new FakeSmsSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, "sms-123", null, null)));
         FakeEmailSenderPort emailSenderPort = new FakeEmailSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, "email-123", null, null)));
-        MessageDeliveryService service = new MessageDeliveryService(smsSenderPort, emailSenderPort);
+        MessageDeliveryAdapter service = new MessageDeliveryAdapter(smsSenderPort, emailSenderPort);
 
         StepVerifier.create(service.deliver(emailCommand("BCT verification code")))
                 .assertNext(result -> assertThat(result).isEqualTo(new MessageDeliveryResult(
@@ -78,7 +78,7 @@ class MessageDeliveryServiceTest {
 
     @Test
     void mapsAcceptedSmsSenderResultToMessageDeliveryResult() {
-        MessageDeliveryService service = new MessageDeliveryService(
+        MessageDeliveryAdapter service = new MessageDeliveryAdapter(
                 new FakeSmsSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, "sms-123", null, null))),
                 new FakeEmailSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, "email-123", null, null))));
 
@@ -93,7 +93,7 @@ class MessageDeliveryServiceTest {
 
     @Test
     void mapsFailedEmailSenderResultToMessageDeliveryResult() {
-        MessageDeliveryService service = new MessageDeliveryService(
+        MessageDeliveryAdapter service = new MessageDeliveryAdapter(
                 new FakeSmsSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, "sms-123", null, null))),
                 new FakeEmailSenderPort(message -> Mono.just(new SenderResult(SenderStatus.FAILED, null, "SMTP_DOWN", "SMTP server unavailable"))));
 
@@ -109,7 +109,7 @@ class MessageDeliveryServiceTest {
 
     @Test
     void rejectsNullCommand() {
-        MessageDeliveryService service = new MessageDeliveryService(
+        MessageDeliveryAdapter service = new MessageDeliveryAdapter(
                 new FakeSmsSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, null, null, null))),
                 new FakeEmailSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, null, null, null))));
 
@@ -124,7 +124,7 @@ class MessageDeliveryServiceTest {
     @ParameterizedTest
     @MethodSource("invalidCommands")
     void rejectsMissingRequiredCommandFields(MessageDeliveryCommand command, String expectedMessage) {
-        MessageDeliveryService service = new MessageDeliveryService(
+        MessageDeliveryAdapter service = new MessageDeliveryAdapter(
                 new FakeSmsSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, null, null, null))),
                 new FakeEmailSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, null, null, null))));
 
@@ -138,7 +138,7 @@ class MessageDeliveryServiceTest {
 
     @Test
     void rejectsEmailWithoutSubject() {
-        MessageDeliveryService service = new MessageDeliveryService(
+        MessageDeliveryAdapter service = new MessageDeliveryAdapter(
                 new FakeSmsSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, null, null, null))),
                 new FakeEmailSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, null, null, null))));
 
@@ -152,7 +152,7 @@ class MessageDeliveryServiceTest {
 
     @Test
     void allowsSmsWithoutSubject() {
-        MessageDeliveryService service = new MessageDeliveryService(
+        MessageDeliveryAdapter service = new MessageDeliveryAdapter(
                 new FakeSmsSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, "sms-123", null, null))),
                 new FakeEmailSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, "email-123", null, null))));
 
@@ -164,7 +164,7 @@ class MessageDeliveryServiceTest {
     @Test
     void senderErrorIsPropagatedSafely() {
         RuntimeException failure = new RuntimeException("downstream failed");
-        MessageDeliveryService service = new MessageDeliveryService(
+        MessageDeliveryAdapter service = new MessageDeliveryAdapter(
                 new FakeSmsSenderPort(message -> Mono.error(failure)),
                 new FakeEmailSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, "email-123", null, null))));
 

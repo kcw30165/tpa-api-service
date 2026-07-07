@@ -175,8 +175,8 @@ class DefaultOtpChallengeServiceVerifyTest {
         assertThat(statePort.lastUpdated.codeHash()).isNotEqualTo("123456");
     }
 
-    private DefaultOtpChallengeService service(FakeOtpChallengeStatePort statePort) {
-        return new DefaultOtpChallengeService(
+    private DefaultOtpChallengeAdapter service(FakeOtpChallengeStatePort statePort) {
+        return new DefaultOtpChallengeAdapter(
                 statePort,
                 new Sha256OtpCodeHasher(),
                 Clock.fixed(FIXED_NOW, ZoneOffset.UTC));

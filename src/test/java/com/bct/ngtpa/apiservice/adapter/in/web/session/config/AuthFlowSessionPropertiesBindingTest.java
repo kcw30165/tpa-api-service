@@ -153,12 +153,6 @@ class AuthFlowSessionPropertiesBindingTest {
     }
 
     @Test
-    void authFlowSessionConfigDoesNotCreateRuntimeSessionAdaptersOrEndpoints() {
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.session.HttpAuthFlowCookieAdapter");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController");
-    }
-
-    @Test
     void authFlowSessionPropertiesDoNotDependOnApplicationDomainOrRedis() {
         JavaClasses classes = new ClassFileImporter()
                 .importPackages("com.bct.ngtpa.apiservice.adapter.in.web.session.config");

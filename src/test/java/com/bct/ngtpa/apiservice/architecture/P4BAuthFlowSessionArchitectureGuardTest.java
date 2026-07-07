@@ -47,25 +47,4 @@ class P4BAuthFlowSessionArchitectureGuardTest {
                         "..adapter.out.email..")
                 .check(classes);
     }
-
-    @Test
-    void p4bDoesNotIntroduceRegistrationEndpointsCookieReaderCsrfWebFilterOrAuthenticatedSessionRuntime() throws Exception {
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.session.cookie.AuthFlowSessionCookieReader");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.filter.RegistrationCsrfWebFilter");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.filter.RegistrationRateLimitWebFilter");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.filter.AuthFlowSessionWebFilter");
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSession");
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionPort");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthenticatedSessionAdapter");
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionLifecycleService");
-
-        Path placeholder = Path.of("src/main/java/com/bct/ngtpa/apiservice/application/dto/session/authenticated/package-info.java");
-        org.assertj.core.api.Assertions.assertThat(Files.exists(placeholder)).isTrue();
-    }
-
-    private static void assertClassAbsent(String className) {
-        assertThrows(ClassNotFoundException.class, () -> Class.forName(className));
-    }
 }

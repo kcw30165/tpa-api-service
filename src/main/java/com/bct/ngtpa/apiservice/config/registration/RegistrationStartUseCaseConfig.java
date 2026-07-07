@@ -1,20 +1,18 @@
 package com.bct.ngtpa.apiservice.config.registration;
 
-
-
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationCsrPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyAction;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationRequestHash;
 import com.bct.ngtpa.apiservice.application.port.in.StartRegistrationUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationLookupPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationMessagePort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationOtpPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationSessionPort;
 import com.bct.ngtpa.apiservice.application.service.auth.idempotency.RegistrationRequestHashGenerator;
 import com.bct.ngtpa.apiservice.application.service.auth.registration.RegistrationStartValidator;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationCsrfGateway;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationMessageGateway;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationOtpGateway;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationSessionGateway;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationService;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -67,10 +65,10 @@ public class RegistrationStartUseCaseConfig {
             RegistrationRequestHashGenerator requestHashGenerator,
             RegistrationIdempotencyPort registrationIdempotencyPort,
             RegistrationLookupPort registrationLookupPort,
-            RegistrationSessionGateway registrationSessionGateway,
-            RegistrationCsrfGateway registrationCsrfGateway,
-            RegistrationOtpGateway registrationOtpGateway,
-            RegistrationMessageGateway registrationMessageGateway,
+            RegistrationSessionPort registrationSessionGateway,
+            RegistrationCsrPort registrationCsrfGateway,
+            RegistrationOtpPort registrationOtpGateway,
+            RegistrationMessagePort registrationMessageGateway,
             AuthFlowSessionPort authFlowSessionPort,
             OtpChallengeStatePort otpChallengeStatePort,
             Clock clock) {

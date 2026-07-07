@@ -102,9 +102,9 @@ class DefaultOtpChallengeServiceCreateInvalidateTest {
 
     @Test
     void createChallengeDoesNotCallMessageDelivery() {
-        assertThat(DefaultOtpChallengeService.class.getDeclaredFields())
+        assertThat(DefaultOtpChallengeAdapter.class.getDeclaredFields())
                 .allMatch(field -> !field.getType().getSimpleName().contains("MessageDelivery"));
-        assertThat(DefaultOtpChallengeService.class.getDeclaredConstructors())
+        assertThat(DefaultOtpChallengeAdapter.class.getDeclaredConstructors())
                 .allSatisfy(constructor -> assertThat(parameterTypeNames(constructor))
                         .noneMatch(name -> name.contains("MessageDelivery")));
     }
@@ -193,8 +193,8 @@ class DefaultOtpChallengeServiceCreateInvalidateTest {
         return names;
     }
 
-    private DefaultOtpChallengeService service(FakeOtpChallengeStatePort statePort) {
-        return new DefaultOtpChallengeService(
+    private DefaultOtpChallengeAdapter service(FakeOtpChallengeStatePort statePort) {
+        return new DefaultOtpChallengeAdapter(
                 statePort,
                 new FakeOtpCodeGenerator("123456"),
                 new Sha256OtpCodeHasher(),
