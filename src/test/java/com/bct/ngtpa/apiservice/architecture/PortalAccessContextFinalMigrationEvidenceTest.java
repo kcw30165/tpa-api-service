@@ -132,7 +132,6 @@ class PortalAccessContextFinalMigrationEvidenceTest {
     private List<String> selectedAccountControllers() {
         return List.of(
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/PersonalInformationController.java",
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/UpdatePersonalInformationController.java",
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/NotificationController.java",
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/ContributionController.java");
     }

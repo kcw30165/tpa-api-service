@@ -7,11 +7,14 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateResponseMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.FormPageResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.FormSchemaResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.PageResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationUpdateYamlValidator;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.GetPersonalInformationCommand;
@@ -20,6 +23,7 @@ import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.application.port.in.GetPersonalInformationUseCase;
+import com.bct.ngtpa.apiservice.application.port.in.UpdatePersonalInformationUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
@@ -43,7 +47,7 @@ class PersonalInformationControllerTest {
         when(mapper.toFormPageResponse(eq(result), eq("zh_HK"), eq("JP"), eq("JPM"), eq("OE")))
                 .thenReturn(response("zh_HK", "個人資料"));
 
-        FormPageResponse<FormSchemaResponse> response = new PersonalInformationController(useCase, mapper, resolver(context("ACC-123")))
+        FormPageResponse<FormSchemaResponse> response = controller(useCase, mapper, resolver(context("ACC-123")))
                 .getPersonalInformation("en")
                 .contextWrite(ctx -> ctx.put(RequestHeaderContextKeys.CONTEXT_KEY,
                         new RequestHeaderContext("ACC-123", "req-1", "zh-HK")))
@@ -72,7 +76,7 @@ class PersonalInformationControllerTest {
         when(mapper.toFormPageResponse(eq(result), eq("en"), eq("JP"), eq("JPM"), eq("OE")))
                 .thenReturn(response("en", "Personal Information"));
 
-        new PersonalInformationController(useCase, mapper, resolver(context("ACC-123")))
+        controller(useCase, mapper, resolver(context("ACC-123")))
                 .getPersonalInformation("zh-HK")
                 .contextWrite(ctx -> ctx.put(RequestHeaderContextKeys.CONTEXT_KEY,
                         new RequestHeaderContext("ACC-123", "req-1", "en")))
@@ -88,7 +92,7 @@ class PersonalInformationControllerTest {
 
         PortalAccessContextResolutionException ex = assertThrows(
                 PortalAccessContextResolutionException.class,
-                () -> new PersonalInformationController(useCase, mapper, resolver(context(" ")))
+                () -> controller(useCase, mapper, resolver(context(" ")))
                         .getPersonalInformation("en")
                         .contextWrite(ctx -> ctx.put(RequestHeaderContextKeys.CONTEXT_KEY,
                                 new RequestHeaderContext(" ", "req-1", "en")))
@@ -121,5 +125,25 @@ class PersonalInformationControllerTest {
         return new PortalAccessContext(
                 new ActorContext("user-1", "SELF"),
                 new AccountContext(accountRef, "JP", "policy-1", "cert-1", "JPM", "OE", TermStatus.BLANK, null));
+    }
+
+    private static PersonalInformationController controller(
+            GetPersonalInformationUseCase useCase,
+            PersonalInformationWebMapper mapper,
+            CurrentPortalAccessContextResolver resolver) {
+
+        UpdatePersonalInformationUseCase updateUseCase = mock(UpdatePersonalInformationUseCase.class);
+        PersonalInformationUpdateWebMapper requestMapper = mock(PersonalInformationUpdateWebMapper.class);
+        PersonalInformationUpdateResponseMapper responseMapper = mock(PersonalInformationUpdateResponseMapper.class);
+        PersonalInformationUpdateYamlValidator validator = mock(PersonalInformationUpdateYamlValidator.class);
+
+        return new PersonalInformationController(
+                useCase,
+                mapper,
+                resolver,
+                updateUseCase,
+                requestMapper,
+                responseMapper,
+                validator);
     }
 }

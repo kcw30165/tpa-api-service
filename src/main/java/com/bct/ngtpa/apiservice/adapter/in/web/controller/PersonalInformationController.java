@@ -1,21 +1,35 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateResponseMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdatePersonalInformationRequest;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.FormPageResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.FormSchemaResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdateResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.support.RequestLanguageResolver;
+import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationUpdateYamlValidator;
 import com.bct.ngtpa.apiservice.application.dto.GetPersonalInformationCommand;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
 import com.bct.ngtpa.apiservice.application.port.in.GetPersonalInformationUseCase;
+import com.bct.ngtpa.apiservice.application.port.in.UpdatePersonalInformationUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
-import org.springframework.beans.factory.annotation.Autowired;
+
+import lombok.RequiredArgsConstructor;
+import java.util.List;
+
 import org.springframework.http.MediaType;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -24,21 +38,17 @@ import reactor.util.context.ContextView;
 
 @RestController
 @RequestMapping("/api/v1/personal-information")
+@RequiredArgsConstructor
 public class PersonalInformationController {
 
     private final GetPersonalInformationUseCase getPersonalInformationUseCase;
     private final PersonalInformationWebMapper personalInformationWebMapper;
     private final CurrentPortalAccessContextResolver currentPortalAccessContextResolver;
 
-    @Autowired
-    public PersonalInformationController(
-            GetPersonalInformationUseCase getPersonalInformationUseCase,
-            PersonalInformationWebMapper personalInformationWebMapper,
-            CurrentPortalAccessContextResolver currentPortalAccessContextResolver) {
-        this.getPersonalInformationUseCase = getPersonalInformationUseCase;
-        this.personalInformationWebMapper = personalInformationWebMapper;
-        this.currentPortalAccessContextResolver = currentPortalAccessContextResolver;
-    }
+    private final UpdatePersonalInformationUseCase updatePersonalInformationUseCase;
+    private final PersonalInformationUpdateWebMapper requestMapper;
+    private final PersonalInformationUpdateResponseMapper responseMapper;
+    private final PersonalInformationUpdateYamlValidator validator;
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<FormPageResponse<FormSchemaResponse>> getPersonalInformation(
@@ -58,6 +68,26 @@ public class PersonalInformationController {
                                         schemeType(portalAccessContext)));
                     });
         });
+    }
+
+    @PutMapping
+    public Mono<MutationResponse<List<PersonalInformationUpdateResultResponse>>> update(
+            @RequestBody Mono<UpdatePersonalInformationRequest> request,
+            @RequestHeader(value = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false) String acceptLanguage) {
+        return Mono.deferContextual(contextView -> currentPortalAccessContextResolver.current()
+                .flatMap(portalAccessContext -> request.flatMap(body -> {
+                    String resolvedLocale = resolveLanguage(contextView, acceptLanguage);
+                    List<ApiError> errors = validator == null
+                            ? List.of()
+                            : validator.validate(body, resolvedLocale, accountEnv(portalAccessContext),
+                                    trustCode(portalAccessContext), schemeType(portalAccessContext));
+                    if (!errors.isEmpty()) {
+                        return Mono.just(MutationResponse.failure(ApiStatus.VALIDATION_FAILED, errors));
+                    }
+                    return Mono.just(requestMapper.toCommand(body.applyToAllAccounts(), body))
+                            .flatMap(command -> updatePersonalInformationUseCase.execute(command))
+                            .map(responseMapper::toResponse);
+                })));
     }
 
     private String requireAccountRef(PortalAccessContext context) {

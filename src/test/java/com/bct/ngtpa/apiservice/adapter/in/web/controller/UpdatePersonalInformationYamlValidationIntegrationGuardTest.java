@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 class UpdatePersonalInformationYamlValidationIntegrationGuardTest {
 
     private static final Path CONTROLLER = Path.of(
-            "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/UpdatePersonalInformationController.java");
+            "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/PersonalInformationController.java");
 
     @Test
     void controllerInjectsGenericYamlValidatorForPreApimValidation() throws Exception {
@@ -19,7 +19,6 @@ class UpdatePersonalInformationYamlValidationIntegrationGuardTest {
                 .as("PUT personal-information must inject the generic YAML validator before APIM/use-case execution")
                 .contains("PersonalInformationUpdateYamlValidator")
                 .contains("private final PersonalInformationUpdateYamlValidator")
-                .contains("this.validator")
                 .contains("validator.validate");
     }
 

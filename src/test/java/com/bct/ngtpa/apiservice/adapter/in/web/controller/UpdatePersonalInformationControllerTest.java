@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateResponseMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdatePersonalInformationRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
@@ -20,6 +21,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.PersonalInformationUpdat
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationUpdateYamlValidator;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationCommand;
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
+import com.bct.ngtpa.apiservice.application.port.in.GetPersonalInformationUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.UpdatePersonalInformationUseCase;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
@@ -38,7 +40,7 @@ class UpdatePersonalInformationControllerTest {
                 PersonalInformationUpdateYamlValidator validator = mock(PersonalInformationUpdateYamlValidator.class);
                 PersonalInformationUpdateResponseMapper responseMapper = mock(
                                 PersonalInformationUpdateResponseMapper.class);
-                UpdatePersonalInformationController controller = new UpdatePersonalInformationController(
+                var controller = pIController(
                                 useCase,
                                 requestMapper,
                                 responseMapper,
@@ -119,4 +121,23 @@ class UpdatePersonalInformationControllerTest {
                                                 null));
         }
 
+        private static PersonalInformationController pIController(
+                        UpdatePersonalInformationUseCase useCase,
+                        PersonalInformationUpdateWebMapper requestMapper,
+                        PersonalInformationUpdateResponseMapper responseMapper,
+                        PersonalInformationUpdateYamlValidator validator,
+                        CurrentPortalAccessContextResolver resolver) {
+
+                GetPersonalInformationUseCase getUseCase = mock(GetPersonalInformationUseCase.class);
+                PersonalInformationWebMapper getRequestMapper = mock(PersonalInformationWebMapper.class);
+
+                return new PersonalInformationController(
+                                getUseCase,
+                                getRequestMapper,
+                                resolver,
+                                useCase,
+                                requestMapper,
+                                responseMapper,
+                                validator);
+        }
 }
