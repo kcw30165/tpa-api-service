@@ -1,6 +1,22 @@
 bff-pages:
   pages:
     registration-start:
+      downstreamErrorClassification:
+        source: APIM_TAS
+        endpoint: TRPSearchUnregisteredMember
+        mappings:
+          err.tpa.member.not.found:
+            eventType: DOWNSTREAM_REJECTION
+            logLevel: ERROR
+            responseCode: registration.start.verificationFailed
+            target: PAGE
+            idempotencyCacheable: false
+        fallback:
+          eventType: DOWNSTREAM_REJECTION
+          logLevel: ERROR
+          responseCode: downstream.generic.businessRejected
+          target: PAGE
+          idempotencyCacheable: false
       metadata:
         id: registrationStartPage
         title:
@@ -57,6 +73,15 @@ bff-pages:
                   zh_HK: 驗證碼
 
     registration-otp-verification:
+      downstreamErrorClassification:
+        source: APIM_TAS
+        endpoint: TRPSearchUnregisteredMember
+        fallback:
+          eventType: DOWNSTREAM_REJECTION
+          logLevel: ERROR
+          responseCode: downstream.generic.businessRejected
+          target: PAGE
+          idempotencyCacheable: false
       metadata:
         id: registrationOtpVerificationPage
         title:
@@ -100,6 +125,23 @@ bff-pages:
         id: registrationTrustSelectionForm
 
     registration-username-check:
+      downstreamErrorClassification:
+        source: APIM_TAS
+        endpoint: TRPChkCustId
+        mappings:
+          err.tpa.username.taken:
+            eventType: DOWNSTREAM_REJECTION
+            logLevel: ERROR
+            responseCode: registration.username.isregistered
+            target: PAGE
+            idempotencyCacheable: true
+            cacheTtlSeconds: 60
+        fallback:
+          eventType: DOWNSTREAM_REJECTION
+          logLevel: ERROR
+          responseCode: downstream.generic.businessRejected
+          target: PAGE
+          idempotencyCacheable: false
       metadata:
         id: registrationUsernameCheckPage
         title:
@@ -130,6 +172,23 @@ bff-pages:
                   zh_HK: 用戶名稱
 
     registration-password-setup:
+      downstreamErrorClassification:
+        source: APIM_TAS
+        endpoint: TRPRegMember
+        mappings:
+          err.tpa.username.taken:
+            eventType: DOWNSTREAM_REJECTION
+            logLevel: ERROR
+            responseCode: registration.username.isregistered
+            target: PAGE
+            idempotencyCacheable: true
+            cacheTtlSeconds: 60
+        fallback:
+          eventType: DOWNSTREAM_REJECTION
+          logLevel: ERROR
+          responseCode: registration.complete.failed
+          target: PAGE
+          idempotencyCacheable: false
       metadata:
         id: registrationPasswordSetupPage
         title:
