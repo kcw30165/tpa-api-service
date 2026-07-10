@@ -32,8 +32,6 @@ class ApimRegistrationUsernameAvailabilityAdapterTest {
                 .verifyComplete();
 
         assertThat(capturedPath.get()).isEqualTo(EXPECTED_PATH);
-        assertThat(capturedRequest.get().trustCode()).isEqualTo("TL");
-        assertThat(capturedRequest.get().accountEnv()).isEqualTo("ENV1");
         assertThat(capturedRequest.get().customerId()).isEqualTo("abc1@");
     }
 

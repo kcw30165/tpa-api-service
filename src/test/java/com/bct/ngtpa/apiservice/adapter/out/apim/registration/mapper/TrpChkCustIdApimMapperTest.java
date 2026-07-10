@@ -19,8 +19,6 @@ class TrpChkCustIdApimMapperTest {
 
         var request = new TrpChkCustIdApimMapper().toApimRequest(command);
 
-        assertThat(request.trustCode()).isEqualTo("TL");
-        assertThat(request.accountEnv()).isEqualTo("ENV1");
         assertThat(request.customerId()).isEqualTo("abc1@");
         assertThat(request.getClass().getName()).startsWith("com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.");
         assertThat(request.getClass().getName()).doesNotContain("adapter.in.web");

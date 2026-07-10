@@ -12,7 +12,15 @@ public record TrpChkCustIdApimEnvelope(
     }
 
     public static TrpChkCustIdApimEnvelope success() {
-        return new TrpChkCustIdApimEnvelope("", List.of(new TrpChkCustIdApimDataItem(Boolean.TRUE)));
+        return available("<redacted>");
+    }
+
+    public static TrpChkCustIdApimEnvelope available(String customerId) {
+        return new TrpChkCustIdApimEnvelope("", List.of(new TrpChkCustIdApimDataItem(customerId, Boolean.FALSE)));
+    }
+
+    public static TrpChkCustIdApimEnvelope exists(String customerId) {
+        return new TrpChkCustIdApimEnvelope("", List.of(new TrpChkCustIdApimDataItem(customerId, Boolean.TRUE)));
     }
 
     public static TrpChkCustIdApimEnvelope businessRejected(String errMessage) {

@@ -9,8 +9,6 @@ public class TrpChkCustIdApimMapper {
         Objects.requireNonNull(command, "command must not be null");
         Objects.requireNonNull(command.selectedTrust(), "selectedTrust must not be null");
         return new TrpChkCustIdApimRequest(
-                command.selectedTrust().trustCode(),
-                command.selectedTrust().accountEnv(),
                 command.username());
     }
 }
