@@ -1254,6 +1254,86 @@ Deletes all Redis reference-date entries created under the reference-date cache 
 - No matching keys is a successful no-op with deletedCount=0.
 - The endpoint uses the generic MutationResponse envelope.
 
+#### POST /api/v1/auth/registration/username/check
+  
+Checks whether a proposed registration username is available for the selected trust and advances the protected registration auth flow to password setup when available.  
+
+Required inputs:
+- Cookie: `auth_flow_sid`
+- Header: `X-XSRF-TOKEN`
+- Header: `X-Request-Id` optional but propagated through the use-case command as `correlationId`
+- Header: `Accept-Language` optional; user-facing messages remain resolver/config driven
+- Header: `Origin` and `Referer` optional at the controller boundary and passed to the use case
+- Body: selectedTrust + username  
+
+Request:
+```json
+{
+  "selectedTrust": {
+    "trustCode": "TL",
+    "accountEnv": "ENV1"
+  },
+  "username": "abc1@"
+}
+```
+  
+Success response:
+```json
+{
+  "success": true,
+  "status": "SUCCESS",
+  "result": {
+    "nextStep": "PASSWORD_SETUP"
+  },
+  "messages": [],
+  "errors": []
+}
+```
+  
+Validation failure response example:
+```json
+{
+  "success": false,
+  "status": "VALIDATION_FAILED",
+  "result": {
+    "nextStep": "USERNAME_CHECK"
+  },
+  "messages": [],
+  "errors": [
+    {
+      "code": "registration.username.incorrect",
+      "target": "PAGE"
+    }
+  ]
+}
+```
+  
+Downstream business rejection response example:
+```json
+{
+  "success": false,
+  "status": "DOWNSTREAM_REJECTION",
+  "result": {
+    "nextStep": "USERNAME_CHECK"
+  },
+  "messages": [],
+  "errors": [
+    {
+      "code": "registration.username.isregistered",
+      "target": "PAGE"
+    }
+  ]
+}
+```
+  
+Behavior and boundaries:
+- the controller is thin: it checks missing `auth_flow_sid`, missing `X-XSRF-TOKEN`, and missing body, then delegates to `CheckRegistrationUsernameUseCase` through `RegistrationUsernameCheckWebMapper`;
+- the controller does not call APIM/TAS, Redis, session ports, idempotency ports, or downstream classifiers directly;
+- username/check is not action-idempotent and does not require `Idempotency-Key`; if the header is present it is ignored by this endpoint;
+- selectedTrust contains only `trustCode` and `accountEnv`; `policyNo` and `certNo` are not accepted or returned;
+- APIM/TAS business rejection mapping is already classified by the P9.3 use case and P9.0 DSL before web mapping;
+- technical downstream failures map to `DOWNSTREAM_ERROR` and do not use page/business fallback codes.
+
 ## APIM Certificate, OAuth Token, and Credential Profile Caching
 
 APIM credentials are represented as credential profiles. Today a single default profile is supported for backward compatibility but multiple profiles are supported for future mapping by trust.
@@ -2207,9 +2287,11 @@ Not implemented in P3:
 - captcha
 
 ### Session Management Foundation
+
 P4A adds reusable session-management foundation components for future AuthFlowSession and AuthenticatedSession support.
 
 Implemented in P4A:
+
 - `auth-flow-session` configuration binding
 - configurable session id policy (`prefix`, `entropyBytes`)
 - secure opaque session id generation
@@ -2220,14 +2302,17 @@ Implemented in P4A:
 - XSRF token transport policy and cookie instruction support
 
 Important cookie policies:
+
 - `auth_flow_sid` is HttpOnly, Secure, SameSite=None, Path=/api/v1/auth
 - `XSRF-TOKEN` is Secure, SameSite=None, Path=/api/v1/auth, and intentionally not HttpOnly so Angular can read it and send `X-XSRF-TOKEN`
 
 CORS:
+
 - existing `CorsProperties` remains the single source of truth for allowed origins and credentialed CORS behavior
 - `auth-flow-session` does not duplicate CORS allowed-origin configuration
 
 Not implemented in P4A:
+
 - AuthFlowSession domain model
 - AuthFlowSession Redis persistence
 - AuthFlowSession lifecycle service
@@ -2240,18 +2325,22 @@ Not implemented in P4A:
 This section documents foundation components only. It does not document session management as active registration runtime behavior.
 
 ### AuthFlowSession Foundation
+
 P4B adds the framework-free AuthFlowSession foundation for temporary pre-auth workflow session.
 
 AuthFlowSession supports these scenarios:
+
 - REGISTRATION
 - LOGIN
 - FORGOT_PASSWORD
 - USERNAME_RECOVERY
 
 AuthFlowSession statuses:
+
 - STARTED
 - OTP_SENT
 - OTP_VERIFIED
+- TRUST_SELECTION_READY
 - USERNAME_VERIFIED
 - COMPLETING
 - COMPLETED
@@ -2261,6 +2350,7 @@ AuthFlowSession statuses:
 AuthFlowSession is not an authenticated portal session, is not proof of login, and must never grant portal access.
 
 Implemented in P4B:
+
 - AuthFlowSession domain model and port contract
 - Redis persistence using `{prefix}:auth:flow-session:{authFlowSessionId}`
 - CSRF binding that stores only `csrfTokenHash`
@@ -2269,12 +2359,14 @@ Implemented in P4B:
 - package-info placeholder boundary for future AuthenticatedSession only
 
 Important boundaries:
+
 - `AuthFlowSessionId` is the server-side opaque identifier
 - `auth_flow_sid` is the cookie name that later transports `AuthFlowSessionId.value()`
 - Redis adapter does not know or write cookies
 - raw CSRF tokens, cookie values, OTP codes, password values, raw mobile/email, and session ids must not be logged
 
 Not implemented in P4B:
+
 - registration endpoints
 - OTP resend/verify endpoints
 - cookie reading or writing composition; P4B does not read or write cookies at runtime
@@ -2287,9 +2379,11 @@ Not implemented in P4B:
 Do not claim registration/start or OTP endpoints are implemented.
 
 ### Lightweight Workflow Foundation
+
 P5 adds lightweight workflow helper models for future multi-step flows.
 
 Implemented in P5:
+
 - framework-free workflow vocabulary (`WorkflowScenario`, `WorkflowStep`, `WorkflowNextStep`, `WorkflowPageRef`)
 - workflow result helpers that map to the existing `MutationResponse` contract
 - workflow message/error key conventions
@@ -2298,6 +2392,7 @@ Implemented in P5:
 - stable transition/severity helpers
 
 Design rules:
+
 - workflow helpers are not a workflow engine
 - workflow helpers do not implement a graph DSL
 - workflow helpers do not store workflow runtime state in a database
@@ -2306,6 +2401,7 @@ Design rules:
 - failures are represented by response errors, idempotency state, and audit/security events, not by generic FAILED / UNKNOWN / ERROR workflow statuses
 
 Not implemented in P5:
+
 - registration/start endpoint
 - OTP resend/verify endpoints
 - username/check or complete endpoints
@@ -2323,6 +2419,7 @@ P6 adds the registration-start endpoint:
 `POST /api/v1/auth/registration/start`
 
 The endpoint:
+
 - requires `Idempotency-Key`
 - validates identity type, identity value, date of birth, and exactly one of email/mobile
 - calls APIM `/ws/NGTPA/v1/TRPSearchUnregisteredMember`
@@ -2336,6 +2433,7 @@ The endpoint:
 - returns `csrfToken` in the response body for current cross-site FE/BFF scope
 
 The response does not include:
+
 - AuthFlowSessionId
 - `auth_flow_sid` value
 - OTP challenge id
@@ -2344,6 +2442,7 @@ The response does not include:
 - policy number or certificate number
 
 Not implemented in P6:
+
 - OTP resend/verify endpoints
 - username/check endpoint
 - complete endpoint
@@ -2429,6 +2528,75 @@ Not implemented in P7:
 - captcha endpoints/runtime
 - auth-flow resume
 
+#### Registration Username Check Foundation
+  
+P9.0-P9.3 add the registration username-check foundation used by the future endpoint:
+POST /api/v1/auth/registration/username/check  
+
+Implemented in P9.0-P9.3:
+
+- page-specific downstream business rejection classification under the existing `bff-pages` DSL;
+- framework-free `DownstreamErrorClassificationPort` and config-backed resolver;
+- username/check web boundary DTOs for selectedTrust + username;
+- selectedTrust shape is limited to `trustCode` and `accountEnv` only;
+- framework-free username-check command/result/status models;
+- `RegistrationUsernameAvailabilityPort` and TRPChkCustId APIM boundary;
+- adapter-only TRPChkCustId request/response DTOs under `adapter/out/apim/registration`;
+- APIM/TAS username availability success maps to `AVAILABLE`;
+- APIM/TAS business `err-message` maps to `REJECTED` with the raw downstream code preserved for the page-specific classifier;
+- technical APIM/TAS failures bypass business fallback classification and remain downstream/system failures;
+- `CheckRegistrationUsernameService` application use case;
+- username policy validation from `auth-workflows.registration.username`;
+- AuthFlowSession usernameCheck storage only after username availability succeeds;
+- AuthFlowSession transition to `USERNAME_VERIFIED` only after successful availability check;
+- same selectedTrust + same username repeat while `USERNAME_VERIFIED` returns success without another APIM/TAS call;
+- failed username replacement does not clear the previous stable usernameCheck state.
+  
+Username/check request contract prepared by P9.1-P9.3:
+
+```json
+{
+  "selectedTrust": {
+    "trustCode": "TL",
+    "accountEnv": "ENV1"
+  },
+  "username": "abc1@"
+}
+```
+  
+Session usernameCheck state shape:
+
+```json
+{
+  "selectedTrust": {
+    "trustCode": "TL",
+    "accountEnv": "ENV1"
+  },
+  "username": "abc1@",
+  "checkedAt": "2026-07-10T00:00:00Z",
+  "expiresAt": null
+}
+```
+  
+Page-specific downstream classification DSL entries are configured under `bff-pages.pages.<pageId>.downstreamErrorClassification`. For username/check, the page id is `registration-username-check`, source is `APIM_TAS`, endpoint is `TRPChkCustId`, and `err.tpa.username.taken` resolves through config to the BFF-facing response code `registration.username.isregistered`. Unknown APIM/TAS business rejection codes use the page fallback or the safe built-in generic downstream business rejection fallback.
+  
+Important boundaries:
+
+- username/check is not action-idempotent and does not require or process `Idempotency-Key`;
+- no `policyNo` or `certNo` appears in username/check selectedTrust DTOs, application models, session usernameCheck state, or TRPChkCustId application port boundary;
+- APIM DTOs and raw APIM/TAS `err-message` values stay inside outbound adapter/application boundary handling and are not exposed as FE response codes;
+- user-facing messages are not hardcoded in Java and must be resolved later through the existing message resolver using `Accept-Language`;
+- controllers must remain thin when the endpoint is exposed in P9.4.
+  
+Not implemented yet in P9.0-P9.3:
+
+- the public username/check controller route;
+- username/check web response mapper;
+- registration password setup;
+- registration complete / TRPRegMember;
+- username/check idempotency;
+- captcha or OTP behavior changes.
+
 ### Local Registration Context Protection Secret
 
 When running the application with the `local` profile, the registration auth-flow encrypted context protector requires a local development secret. This repository provides a local-only value in:
@@ -2442,4 +2610,3 @@ For production and shared environments, do not use the local value. Provide a se
 ```properties
 auth-workflows.registration.context-protection.secret=<secure-32-byte-minimum-secret>
 ```
-
