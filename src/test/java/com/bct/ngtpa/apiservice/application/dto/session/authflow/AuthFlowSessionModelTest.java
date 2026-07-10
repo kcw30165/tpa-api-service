@@ -18,7 +18,7 @@ class AuthFlowSessionModelTest {
 
     @Test
     void authFlowStatusDefinesExpectedRegistrationLifecycleValues() {
-        assertThat(AuthFlowStatus.values()).containsExactly(AuthFlowStatus.STARTED, AuthFlowStatus.OTP_SENT, AuthFlowStatus.OTP_VERIFIED, AuthFlowStatus.USERNAME_VERIFIED, AuthFlowStatus.COMPLETING, AuthFlowStatus.COMPLETED, AuthFlowStatus.CANCELLED, AuthFlowStatus.EXPIRED);
+        assertThat(AuthFlowStatus.values()).containsExactly(AuthFlowStatus.STARTED, AuthFlowStatus.OTP_SENT, AuthFlowStatus.OTP_VERIFIED, AuthFlowStatus.TRUST_SELECTION_READY, AuthFlowStatus.USERNAME_VERIFIED, AuthFlowStatus.COMPLETING, AuthFlowStatus.COMPLETED, AuthFlowStatus.CANCELLED, AuthFlowStatus.EXPIRED);
         assertThat(Arrays.stream(AuthFlowStatus.values()).map(Enum::name)).doesNotContain("TRUST_SELECTED", "SELECT_REMAINING_TRUST", "FAILED", "UNKNOWN", "ERROR");
     }
 

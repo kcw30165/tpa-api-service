@@ -77,16 +77,16 @@ record RedisAuthFlowSessionRecord(
         }
     }
 
-    record SelectedTrustRecord(String trustCode, String accountEnv, String schemeName, String logoKey, Integer displayOrder) {
+    record SelectedTrustRecord(String trustCode, String accountEnv) {
         static SelectedTrustRecord from(SelectedTrust trust) {
             if (trust == null) {
                 return null;
             }
-            return new SelectedTrustRecord(trust.trustCode(), trust.accountEnv(), trust.schemeName(), trust.logoKey(), trust.displayOrder());
+            return new SelectedTrustRecord(trust.trustCode(), trust.accountEnv());
         }
 
         SelectedTrust toSelectedTrust() {
-            return new SelectedTrust(trustCode, accountEnv, schemeName, logoKey, displayOrder);
+            return new SelectedTrust(trustCode, accountEnv);
         }
     }
 

@@ -11,7 +11,6 @@ public record UsernameCheckState(SelectedTrust selectedTrust, String username, I
             throw new IllegalArgumentException("username must not be blank");
         }
         Objects.requireNonNull(checkedAt, "checkedAt must not be null");
-        Objects.requireNonNull(expiresAt, "expiresAt must not be null");
     }
 
     @Override
