@@ -29,8 +29,6 @@ public class TrpSearchUnregisteredMemberApimResultMapper {
         return new RegistrationLookupAccount(
                 item.email(),
                 item.mobileNumber(),
-                item.policyNo(),
-                item.certNo(),
                 item.env(),
                 item.trustCode());
     }

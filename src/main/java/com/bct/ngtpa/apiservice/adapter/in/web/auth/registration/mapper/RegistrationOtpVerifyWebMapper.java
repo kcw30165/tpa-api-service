@@ -57,7 +57,7 @@ public class RegistrationOtpVerifyWebMapper {
             return new RegistrationOtpVerifyResponse(
                     result.unregisteredTrusts().stream()
                             .map(trust -> new RegistrationUnregisteredTrustResponse(
-                                    trust.accountEnv(), trust.policyNo(), trust.certNo(), trust.trustCode()))
+                                    trust.accountEnv(), trust.trustCode()))
                             .toList(),
                     null);
         }

@@ -93,7 +93,7 @@ public class VerifyRegistrationOtpService implements VerifyRegistrationOtpUseCas
                         return markFailed(command, hash).then(Mono.just(failure(VerifyRegistrationOtpResultStatus.NO_ELIGIBLE_TRUSTS, WorkflowNextStep.VERIFY_OTP, RegistrationOtpVerifyErrorKeys.REGISTRATION_NO_ELIGIBLE_TRUSTS, null, RegistrationIdempotencyStartOutcome.STARTED)));
                     }
                     List<RegistrationUnregisteredTrust> trusts = result.accounts().stream()
-                            .map(a -> new RegistrationUnregisteredTrust(a.accountEnv(), a.policyNo(), a.certNo(), a.trustCode()))
+                            .map(a -> new RegistrationUnregisteredTrust(a.accountEnv(), a.trustCode()))
                             .toList();
                     if (trusts.isEmpty()) {
                         return markFailed(command, hash).then(Mono.just(failure(VerifyRegistrationOtpResultStatus.NO_ELIGIBLE_TRUSTS, WorkflowNextStep.VERIFY_OTP, RegistrationOtpVerifyErrorKeys.REGISTRATION_NO_ELIGIBLE_TRUSTS, null, RegistrationIdempotencyStartOutcome.STARTED)));

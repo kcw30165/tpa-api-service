@@ -56,8 +56,8 @@ class VerifyRegistrationOtpUseCaseTest {
     @Test
     void verifyOtpHappyPathMultipleTrustsReturnsSelectTrust() {
         lookup.accounts = List.of(
-                new RegistrationLookupAccount("DB", "00000008802", "20", "DBA", null, null),
-                new RegistrationLookupAccount("DB", "00000008803", "21", "DBB", null, null));
+                new RegistrationLookupAccount("DB", "DBA", null, null),
+                new RegistrationLookupAccount("DB", "DBB", null, null));
 
         StepVerifier.create(useCase.verify(command("123456")))
                 .assertNext(result -> {
@@ -210,7 +210,7 @@ class VerifyRegistrationOtpUseCaseTest {
     }
 
     private static final class FakeRegistrationLookupPort implements RegistrationLookupPort {
-        boolean called; RegistrationLookupCommand command; List<RegistrationLookupAccount> accounts = List.of(new RegistrationLookupAccount("DB", "00000008802", "20", "DBA", null, null));
+        boolean called; RegistrationLookupCommand command; List<RegistrationLookupAccount> accounts = List.of(new RegistrationLookupAccount("DB", "DBA", null, null));
         @Override public Mono<RegistrationLookupResult> searchUnregisteredMember(RegistrationLookupCommand command) { called = true; this.command = command; return Mono.just(new RegistrationLookupResult(RegistrationLookupStatus.ELIGIBLE, accounts, null)); }
     }
 }

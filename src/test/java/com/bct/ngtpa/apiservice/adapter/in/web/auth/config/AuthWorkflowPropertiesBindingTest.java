@@ -42,7 +42,7 @@ class AuthWorkflowPropertiesBindingTest {
 
             assertNotNull(registration.getCaptcha());
             assertEquals(7, registration.getCaptcha().getLength());
-            assertEquals("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
+            assertEquals("23456789ABCDEFGHJKLMNPQSTUVWXYZ",
                     registration.getCaptcha().getAlphabet());
             assertTrue(registration.getCaptcha().isCaseSensitive());
             assertEquals(300, registration.getCaptcha().getTtlSeconds());

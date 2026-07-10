@@ -21,7 +21,10 @@ public class RegistrationAuthFlowCsrfAdapter implements RegistrationCsrPort {
             int csrfTtlSeconds) {
         this.csrfService = Objects.requireNonNull(csrfService, "csrfService must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
-        this.csrfTtlSeconds = csrfTtlSeconds > 0 ? csrfTtlSeconds : 1800;
+        if (csrfTtlSeconds <= 0) {
+            throw new IllegalArgumentException("csrfTtlSeconds must be greater than zero");
+        }
+        this.csrfTtlSeconds = csrfTtlSeconds;
     }
 
     @Override

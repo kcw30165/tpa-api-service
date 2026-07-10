@@ -30,11 +30,11 @@ class RegistrationLookupModelTest {
 
     @Test
     void lookupResultDoesNotExposeAccountsInToString() {
-        var account = new RegistrationLookupAccount("member@example.com", "91234567", "00000008802", "2", "OI", "JPM");
+        var account = new RegistrationLookupAccount("member@example.com", "91234567", "OI", "JPM");
         var result = new RegistrationLookupResult(RegistrationLookupStatus.ELIGIBLE, List.of(account), null);
 
-        assertThat(account.toString()).doesNotContain("member@example.com", "91234567", "00000008802", "2", "OI", "JPM");
-        assertThat(result.toString()).doesNotContain("member@example.com", "91234567", "00000008802", "2");
+        assertThat(account.toString()).doesNotContain("member@example.com", "91234567",  "OI", "JPM");
+        assertThat(result.toString()).doesNotContain("member@example.com", "91234567",  "OI", "JPM");
         assertThat(result.accounts()).containsExactly(account);
         assertThatThrownBy(() -> result.accounts().add(account)).isInstanceOf(UnsupportedOperationException.class);
     }

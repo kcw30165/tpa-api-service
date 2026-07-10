@@ -137,6 +137,11 @@ auth-workflows:
       not-same-as-username-ignore-case: true
       required-categories: 3
       special-chars: "!@#$%^&*()_-"
+    idempotency:
+      start-ttl-seconds: 300
+      otp-resend-ttl-seconds: 300
+      otp-verify-ttl-seconds: 300
+      complete-ttl-seconds: 300
     rate-limit:
       registration-start:
         by-ip:

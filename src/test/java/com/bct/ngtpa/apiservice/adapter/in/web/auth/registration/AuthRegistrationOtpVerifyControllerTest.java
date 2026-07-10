@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.RegistrationIdempotencyProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationOtpVerifyRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationOtpResendWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationOtpVerifyWebMapper;
@@ -132,7 +133,7 @@ class AuthRegistrationOtpVerifyControllerTest {
             return Mono.just(new VerifyRegistrationOtpResult(
                     VerifyRegistrationOtpResultStatus.VERIFIED,
                     WorkflowNextStep.USERNAME_CHECK,
-                    List.of(new RegistrationUnregisteredTrust("OI", "00000008802", "2", "JPM")),
+                    List.of(new RegistrationUnregisteredTrust("OI", "JPM")),
                     null,
                     List.of(),
                     List.of(),
@@ -146,6 +147,7 @@ class AuthRegistrationOtpVerifyControllerTest {
                 command -> Mono.error(new AssertionError("resend use case must not be called")),
                 new RegistrationOtpResendWebMapper(null),
                 verifyUseCase,
-                new RegistrationOtpVerifyWebMapper(null));
+                new RegistrationOtpVerifyWebMapper(null),
+                new RegistrationIdempotencyProperties());
     }
 }

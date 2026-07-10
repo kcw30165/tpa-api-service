@@ -20,7 +20,7 @@ public record ResendRegistrationOtpCommand(
             throw new IllegalArgumentException("csrfToken must not be blank");
         }
         Objects.requireNonNull(idempotencyKey, "idempotencyKey must not be null");
-        idempotencyTtl = idempotencyTtl == null ? Duration.ofMinutes(5) : idempotencyTtl;
+        idempotencyTtl = Objects.requireNonNull(idempotencyTtl, "idempotencyTtl must not be null");
         if (idempotencyTtl.isZero() || idempotencyTtl.isNegative()) {
             throw new IllegalArgumentException("idempotencyTtl must be positive");
         }
