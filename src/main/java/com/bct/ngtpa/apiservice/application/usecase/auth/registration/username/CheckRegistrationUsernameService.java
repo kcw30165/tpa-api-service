@@ -8,6 +8,8 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenari
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionData;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.RegistrationUsernameCheckAttributeNames;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.RegistrationUsernameCheckEncryptedState;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.SelectedTrust;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.UsernameCheckState;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
@@ -19,12 +21,15 @@ import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import com.bct.ngtpa.apiservice.application.port.out.DownstreamErrorClassificationPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationUsernameAvailabilityPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationUsernameCheckProtectorPort;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -57,6 +62,7 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
     private final RegistrationUsernameAvailabilityPort usernameAvailabilityPort;
     private final AuthWorkflowPolicyPort authWorkflowPolicyPort;
     private final DownstreamErrorClassificationPort downstreamErrorClassificationPort;
+    private final RegistrationUsernameCheckProtectorPort usernameCheckProtectorPort;
     private final Clock clock;
 
     public CheckRegistrationUsernameService(
@@ -64,11 +70,13 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
             RegistrationUsernameAvailabilityPort usernameAvailabilityPort,
             AuthWorkflowPolicyPort authWorkflowPolicyPort,
             DownstreamErrorClassificationPort downstreamErrorClassificationPort,
+            RegistrationUsernameCheckProtectorPort usernameCheckProtectorPort,
             Clock clock) {
         this.authFlowSessionPort = Objects.requireNonNull(authFlowSessionPort, "authFlowSessionPort must not be null");
         this.usernameAvailabilityPort = Objects.requireNonNull(usernameAvailabilityPort, "usernameAvailabilityPort must not be null");
         this.authWorkflowPolicyPort = Objects.requireNonNull(authWorkflowPolicyPort, "authWorkflowPolicyPort must not be null");
         this.downstreamErrorClassificationPort = Objects.requireNonNull(downstreamErrorClassificationPort, "downstreamErrorClassificationPort must not be null");
+        this.usernameCheckProtectorPort = Objects.requireNonNull(usernameCheckProtectorPort, "usernameCheckProtectorPort must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
 
@@ -154,11 +162,16 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
                 now,
                 null);
         AuthFlowSessionData currentData = session.data() == null ? AuthFlowSessionData.empty() : session.data();
+        RegistrationUsernameCheckEncryptedState encrypted = usernameCheckProtectorPort.protect(usernameCheck);
+        Map<String, String> attributes = new LinkedHashMap<>(currentData.attributes());
+        attributes.put(RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_CIPHERTEXT, encrypted.ciphertext());
+        attributes.put(RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_KEY_VERSION, encrypted.keyVersion());
+        attributes.put(RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_ALGORITHM, encrypted.algorithm());
         var updatedData = new AuthFlowSessionData(
                 currentData.contactType(),
                 currentData.maskedDestination(),
-                usernameCheck,
-                currentData.attributes());
+                null,
+                attributes);
         var updated = new AuthFlowSession(
                 session.authFlowSessionId(),
                 session.scenario(),
@@ -295,13 +308,34 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
         if (session.status() != AuthFlowStatus.USERNAME_VERIFIED) {
             return false;
         }
-        UsernameCheckState existing = session.data() == null ? null : session.data().usernameCheck();
+        UsernameCheckState existing = existingUsernameCheck(session);
         if (existing == null || existing.selectedTrust() == null) {
             return false;
         }
         return input.trustCode().equals(existing.selectedTrust().trustCode())
                 && input.accountEnv().equals(existing.selectedTrust().accountEnv())
                 && input.username().equals(existing.username());
+    }
+
+    private UsernameCheckState existingUsernameCheck(AuthFlowSession session) {
+        if (session.data() == null) {
+            return null;
+        }
+        if (session.data().usernameCheck() != null) {
+            return session.data().usernameCheck();
+        }
+        Map<String, String> attributes = session.data().attributes();
+        String ciphertext = attributes.get(RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_CIPHERTEXT);
+        String keyVersion = attributes.get(RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_KEY_VERSION);
+        String algorithm = attributes.get(RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_ALGORITHM);
+        if (ciphertext == null || ciphertext.isBlank() || keyVersion == null || keyVersion.isBlank()) {
+            return null;
+        }
+        try {
+            return usernameCheckProtectorPort.unprotect(new RegistrationUsernameCheckEncryptedState(ciphertext, keyVersion, algorithm));
+        } catch (RuntimeException exception) {
+            return null;
+        }
     }
 
     private boolean csrfMatches(String rawToken, String expectedHash) {

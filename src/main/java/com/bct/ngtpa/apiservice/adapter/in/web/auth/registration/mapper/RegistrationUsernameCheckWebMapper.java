@@ -57,7 +57,7 @@ public class RegistrationUsernameCheckWebMapper {
         boolean success = result.status() == CheckRegistrationUsernameResultStatus.USERNAME_AVAILABLE;
         response.put("success", success);
         response.put("status", apiStatus(result.status()));
-        response.put("result", new RegistrationUsernameCheckResponse(nextStep(result)));
+        response.put("result", resultPayload(nextStep(result)));
         response.put("messages", result.messages() == null ? List.of() : result.messages());
         response.put("errors", success ? List.of() : errorMaps(result));
         return response;
@@ -79,10 +79,29 @@ public class RegistrationUsernameCheckWebMapper {
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("success", false);
         response.put("status", VALIDATION_FAILED);
-        response.put("result", new RegistrationUsernameCheckResponse(WorkflowNextStep.USERNAME_CHECK));
+        response.put("result", resultPayload(WorkflowNextStep.USERNAME_CHECK));
         response.put("messages", List.of());
         response.put("errors", List.of(errorMap(code, TARGET_PAGE)));
         return response;
+    }
+
+    private Map<String, Object> resultPayload(WorkflowNextStep nextStep) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("nextStep", nextStep);
+        result.put("data", null);
+        result.put("pageRef", pageRef(nextStep));
+        return result;
+    }
+
+    private Map<String, Object> pageRef(WorkflowNextStep nextStep) {
+        Map<String, Object> pageRef = new LinkedHashMap<>();
+        pageRef.put("pageId", switch (nextStep) {
+            case PASSWORD_SETUP -> "registration-password-setup";
+            case USERNAME_CHECK -> "registration-username-check";
+            default -> null;
+        });
+        pageRef.put("variant", null);
+        return pageRef;
     }
 
     private String apiStatus(CheckRegistrationUsernameResultStatus status) {

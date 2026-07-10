@@ -5,6 +5,7 @@ import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import com.bct.ngtpa.apiservice.application.port.out.DownstreamErrorClassificationPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationUsernameAvailabilityPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationUsernameCheckProtectorPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.CheckRegistrationUsernameService;
 import java.time.Clock;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -19,12 +20,14 @@ public class RegistrationUsernameCheckUseCaseConfig {
             AuthFlowSessionPort authFlowSessionPort,
             RegistrationUsernameAvailabilityPort registrationUsernameAvailabilityPort,
             AuthWorkflowPolicyPort authWorkflowPolicyPort,
-            DownstreamErrorClassificationPort downstreamErrorClassificationPort) {
+            DownstreamErrorClassificationPort downstreamErrorClassificationPort,
+            RegistrationUsernameCheckProtectorPort registrationUsernameCheckProtectorPort) {
         return new CheckRegistrationUsernameService(
                 authFlowSessionPort,
                 registrationUsernameAvailabilityPort,
                 authWorkflowPolicyPort,
                 downstreamErrorClassificationPort,
+                registrationUsernameCheckProtectorPort,
                 Clock.systemUTC());
     }
 }

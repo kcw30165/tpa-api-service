@@ -15,11 +15,14 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.SelectedTrust;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.UsernameCheckState;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.RegistrationUsernameCheckEncryptedState;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.RegistrationUsernameCheckAttributeNames;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import com.bct.ngtpa.apiservice.application.port.out.DownstreamErrorClassificationPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationUsernameAvailabilityPort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationUsernameCheckProtectorPort;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -96,11 +99,12 @@ class CheckRegistrationUsernameServiceTest {
 
         assertThat(availability.calls).isOne();
         assertThat(sessions.updated.status()).isEqualTo(AuthFlowStatus.USERNAME_VERIFIED);
-        assertThat(sessions.updated.data().usernameCheck().selectedTrust().trustCode()).isEqualTo("TL");
-        assertThat(sessions.updated.data().usernameCheck().selectedTrust().accountEnv()).isEqualTo("ENV1");
-        assertThat(sessions.updated.data().usernameCheck().username()).isEqualTo("abc1@");
-        assertThat(sessions.updated.data().usernameCheck().checkedAt()).isEqualTo(NOW);
-        assertThat(sessions.updated.data().usernameCheck().expiresAt()).isNull();
+        assertThat(sessions.updated.data().usernameCheck()).isNull();
+        assertThat(sessions.updated.data().attributes())
+                .containsKeys(RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_CIPHERTEXT,
+                        RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_KEY_VERSION,
+                        RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_ALGORITHM);
+        assertThat(sessions.updated.data().attributes().toString()).doesNotContain("abc1@", "TL", "ENV1");
     }
 
     @Test
@@ -114,7 +118,8 @@ class CheckRegistrationUsernameServiceTest {
                 .verifyComplete();
 
         assertThat(sessions.updated.status()).isEqualTo(AuthFlowStatus.USERNAME_VERIFIED);
-        assertThat(sessions.updated.data().usernameCheck().username()).isEqualTo("abc1@");
+        assertThat(sessions.updated.data().usernameCheck()).isNull();
+        assertThat(sessions.updated.data().attributes().toString()).doesNotContain("abc1@");
     }
 
     @Test
@@ -258,7 +263,7 @@ class CheckRegistrationUsernameServiceTest {
     }
 
     private CheckRegistrationUsernameService service(FakeSessions sessions, FakeAvailability availability, FakeClassifier classifier) {
-        return new CheckRegistrationUsernameService(sessions, availability, new FakePolicy(), classifier, CLOCK);
+        return new CheckRegistrationUsernameService(sessions, availability, new FakePolicy(), classifier, new FakeUsernameCheckProtector(), CLOCK);
     }
 
     private CheckRegistrationUsernameCommand command(String csrf, RegistrationSelectedTrust selectedTrust, String username) {
@@ -319,6 +324,19 @@ class CheckRegistrationUsernameServiceTest {
             return new RegistrationAuthWorkflowPolicy(null, null, null, new UsernamePolicy(4, 128, true, true, true, true, "!@#$%^&*()_-"), null, null);
         }
         @Override public java.util.Optional<String> resolveIdentityTypeSearchScope(String identityType) { return java.util.Optional.empty(); }
+    }
+
+
+    private static final class FakeUsernameCheckProtector implements RegistrationUsernameCheckProtectorPort {
+        @Override
+        public RegistrationUsernameCheckEncryptedState protect(UsernameCheckState usernameCheckState) {
+            return new RegistrationUsernameCheckEncryptedState("encrypted-username-check", "test-v1", "AES_GCM_V1");
+        }
+
+        @Override
+        public UsernameCheckState unprotect(RegistrationUsernameCheckEncryptedState encryptedState) {
+            return new UsernameCheckState(new SelectedTrust("TL", "ENV1"), "abc1@", NOW.minusSeconds(60), null);
+        }
     }
 
     private static final class FakeClassifier implements DownstreamErrorClassificationPort {
