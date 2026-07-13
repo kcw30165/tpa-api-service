@@ -111,7 +111,7 @@ com.bct.ngtpa.apiservice
 │       │   ├── ConfigBackedReferenceDateAdapter       # Retained for reference; not the active ReferenceDatePort bean
 │       │   └── ReferenceDateResolver                  # Shared production-like / override resolution (used by legacy adapter only)
 │       ├── referencedate/   # Active ReferenceDate outbound adapter
-│       │   ├── NonpReferenceDateAdapter               # PROD/DR => HK system date; nonp => Redis → APIM → HK system date
+│       │   ├── ReferenceDateAdapter               # PROD/DR => HK system date; nonp => Redis → APIM → HK system date
 │       │   ├── ReferenceDateRedisCacheAdapter         # Implements ReferenceDateCacheUpdatePort via CachePort
 │       │   └── config/
 │       │       └── ReferenceDateAdapterConfig         # @Bean referenceDatePort (wires active read adapter and Redis write-back port)
@@ -284,6 +284,42 @@ export JAVA_HOME="C:/Java/OpenJDK/jdk-21" && export M2_HOME="/d/Tools/apache-mav
 
 ## Running Locally
 
+### Registration OTP Destination Override
+
+Registration OTP delivery supports a non-production-only physical destination override so test OTPs do not require database mobile/email changes.
+
+```yaml
+auth-workflows:
+  registration:
+    message:
+      destination-override:
+        mobile: ${REGISTRATION_MESSAGE_OVERRIDE_MOBILE:}
+        email: ${REGISTRATION_MESSAGE_OVERRIDE_EMAIL:}
+```
+
+Deployment classification uses `DeploymentEnvironmentPolicy` and the first active Spring profile:
+
+- `PROD` and `DR` are production-like. OTPs use the original verified recipient, and override values are not required.
+- Every other value is non-production-like, including local, DEV, SIT, UAT, blank, missing, and unknown profiles. Both override values are mandatory; startup fails when either is blank or missing.
+- There is no enable flag and no fallback to the original recipient in a non-production-like deployment.
+
+Delivery rules:
+
+- Existing registration logic first validates recipient availability and selects `MOBILE` or `EMAIL`.
+- `MOBILE` uses `REGISTRATION_MESSAGE_OVERRIDE_MOBILE` in non-production; `EMAIL` uses `REGISTRATION_MESSAGE_OVERRIDE_EMAIL`.
+- Substitution occurs only at the `RegistrationMessagePort` physical-delivery boundary and applies to both registration start and OTP resend.
+- The original database destination remains authoritative for eligibility, channel selection, masked destination shown to the frontend, destination hashing, rate limiting, and registration session state.
+- Errors and logs must not expose original destinations, override destinations, OTP values, message bodies, or provider credentials.
+
+Non-production local startup requires both variables:
+
+```bash
+export REGISTRATION_MESSAGE_OVERRIDE_MOBILE="<test-mobile>"
+export REGISTRATION_MESSAGE_OVERRIDE_EMAIL="<test-email>"
+```
+
+Do not commit real destination values to YAML or source control. Supply them through environment-specific deployment configuration or a secret/configuration manager.
+
 ### OTP Challenge Foundation
 
 The registration foundation includes an internal OTP challenge capability behind `OtpChallengePort`.
@@ -387,11 +423,13 @@ Notes:
 | `REFERENCE_DATE_ACCOUNT_ENV` | Current configured business/account environment used for reference-date lookup | _(empty)_ |
 | `REFERENCE_DATE_OVERRIDE_DATE` | Optional non-production override date in `dd/MM/yyyy` | _(empty)_ |
 | `REFERENCE_DATE_OVERRIDE_ZONE_ID` | Optional non-production override zone ID paired with `REFERENCE_DATE_OVERRIDE_DATE` | _(empty)_ |
-| `REFERENCE_DATE_CACHE_TTL_SECONDS` | Legacy TTL property from the old Config Service populate flow. The active `NonpReferenceDateAdapter` does not use it. | `0` |
+| `REFERENCE_DATE_CACHE_TTL_SECONDS` | Legacy TTL property from the old Config Service populate flow. The active `ReferenceDateAdapter` does not use it. | `0` |
 | `REFERENCE_DATE_REFRESH_CACHE_TTL_SECONDS` | TTL in seconds for the internal refresh Redis write. | `86400` |
 | `REFERENCE_DATE_REFRESH_CONFIG_SERVICE_APPLICATION` | Legacy inactive property retained in YAML/properties only; the active refresh flow does not write Config Service. | _(empty)_ |
 | `REFERENCE_DATE_REFRESH_CONFIG_SERVICE_PROFILE` | Legacy inactive property retained in YAML/properties only; the active refresh flow does not write Config Service. | _(empty)_ |
 | `REFERENCE_DATE_REFRESH_CONFIG_SERVICE_LABEL` | Legacy inactive property retained in YAML/properties only; the active refresh flow does not write Config Service. | _(empty)_ |
+| `REGISTRATION_MESSAGE_OVERRIDE_MOBILE` | Physical mobile destination for registration OTP delivery in non-production-like deployments. Required together with the email override outside PROD/DR. | _(empty; mandatory outside PROD/DR)_ |
+| `REGISTRATION_MESSAGE_OVERRIDE_EMAIL` | Physical email destination for registration OTP delivery in non-production-like deployments. Required together with the mobile override outside PROD/DR. | _(empty; mandatory outside PROD/DR)_ |
 | `APIM_BASE_URL` | APIM base URL (preferred) | _(required)_ |
 | `APIM_BASEURL` | APIM base URL (legacy fallback) | _(see `APIM_BASE_URL`)_ |
 | `APIM_TIMEOUT_MILLISECONDS` | WebClient timeout in ms (preferred) | `10000` |
@@ -545,7 +583,7 @@ Blank or missing `term-status` maps to `TermStatus.BLANK` without warning. Unsup
 
 The reference date is resolved through the `ReferenceDatePort` outbound port for **all** flows that require it: contribution summary validation, contribution export, and notification flows (`GetNotificationsService`, `UpdateNotificationsReadStatusService`). Neither notification service contains a hardcoded date constant.
 
-The active implementation is `NonpReferenceDateAdapter` (under `adapter/out/referencedate`), registered by `ReferenceDateAdapterConfig`. Application services depend only on `ReferenceDatePort`; they do not import Redis, APIM, or Spring types.
+The active implementation is `ReferenceDateAdapter` (under `adapter/out/referencedate`), registered by `ReferenceDateAdapterConfig`. Application services depend only on `ReferenceDatePort`; they do not import Redis, APIM, or Spring types.
 
 ### Source chain
 
@@ -597,7 +635,7 @@ reference-date:
       label: ${REFERENCE_DATE_REFRESH_CONFIG_SERVICE_LABEL:}
 ```
 
-`reference-date.override-date` and `reference-date.override-zone-id` remain only for the legacy config-backed adapter path; the active `NonpReferenceDateAdapter` does not consult them.
+`reference-date.override-date` and `reference-date.override-zone-id` remain only for the legacy config-backed adapter path; the active `ReferenceDateAdapter` does not consult them.
 
 ---
 
@@ -1126,7 +1164,7 @@ currency-mapping:
     HKD.TB.HKBU: 港元
 ```
 
-`reference-date.account-env` is the business/account environment used for reference-date cache keys and the APIM `env` request on the reference-date flow. Production-like safety is based on the runtime deployment environment, not on `accountEnv`; the active `NonpReferenceDateAdapter` derives that deployment signal from the active Spring profile. For production-like deployment values, reference-date resolution returns the current Hong Kong date without calling Redis or APIM. For non-production-like deployment values, the active read path is Redis -> APIM -> Hong Kong system date. The legacy override-date pair and legacy Config Service settings are no longer part of the active read path. `deploymentEnv` is not part of `PortalAccessContext`.
+`reference-date.account-env` is the business/account environment used for reference-date cache keys and the APIM `env` request on the reference-date flow. Production-like safety is based on the runtime deployment environment, not on `accountEnv`; the active `ReferenceDateAdapter` derives that deployment signal from the active Spring profile. For production-like deployment values, reference-date resolution returns the current Hong Kong date without calling Redis or APIM. For non-production-like deployment values, the active read path is Redis -> APIM -> Hong Kong system date. The legacy override-date pair and legacy Config Service settings are no longer part of the active read path. `deploymentEnv` is not part of `PortalAccessContext`.
 
 These values drive the synthetic total detail row in the JSON response, the first three column headers in the XLSX export, the locale-specific currency display returned in contribution summary JSON, and the effective contribution reference date. Currency, date, and amount lookups now run through the global config variant resolver, which evaluates `env`, `trustCode`, and `schemeType` suffix combinations in a fixed order and then falls back to English when the requested language has no match.
 
@@ -2427,7 +2465,7 @@ The endpoint:
 - creates and binds a CSRF token to the AuthFlowSession
 - creates an OTP challenge
 - stores activeOtpChallengeId server-side only
-- sends the OTP using the FE-submitted email/mobile
+- sends the OTP through `RegistrationMessagePort`; non-production physical delivery uses the configured channel override while masking, hashing, and session state retain the original verified destination
 - sets `auth_flow_sid` as HttpOnly, Secure, SameSite=None
 - returns `nextStep = VERIFY_OTP`
 - returns `csrfToken` in the response body for current cross-site FE/BFF scope
@@ -2467,7 +2505,7 @@ OTP resend:
 
 - uses the server-side `AuthFlowSession` and encrypted registration context
 - replaces the active OTP challenge
-- sends a new registration OTP to the original FE-submitted contact
+- sends a new registration OTP through the same `RegistrationMessagePort`; non-production physical delivery uses the configured channel override while the response retains the original masked destination
 - returns `nextStep = VERIFY_OTP`
 - returns masked destination and OTP expiry/cooldown metadata
 

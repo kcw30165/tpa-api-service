@@ -11,6 +11,9 @@ import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
 import com.bct.ngtpa.apiservice.adapter.out.registration.RegistrationAuthFlowCsrfAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.registration.RegistrationAuthFlowSessionAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.registration.RegistrationMessageDeliveryAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.registration.RegistrationMessageDestinationOverrideAdapter;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties;
+import com.bct.ngtpa.apiservice.infrastructure.environment.DeploymentEnvironmentPolicy;
 import com.bct.ngtpa.apiservice.adapter.out.registration.RegistrationOtpChallengeAdapter;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionCsrfService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionLifecycleService;
@@ -68,10 +71,27 @@ public class RegistrationStartGatewayConfig {
     @ConditionalOnMissingBean
     public RegistrationMessagePort registrationMessageGateway(
             MessageDeliveryPort messageDeliveryPort,
-            AuthWorkflowPolicyPort authWorkflowPolicyPort) {
-        return new RegistrationMessageDeliveryAdapter(
+            AuthWorkflowPolicyPort authWorkflowPolicyPort,
+            DeploymentEnvironmentPolicy deploymentEnvironmentPolicy,
+            AuthWorkflowProperties authWorkflowProperties) {
+        var deliveryAdapter = new RegistrationMessageDeliveryAdapter(
                 messageDeliveryPort,
                 authWorkflowPolicyPort);
+        if (deploymentEnvironmentPolicy.isNonProductionLikeDeployment()) {
+            requiredDestinationOverride(authWorkflowProperties).validateRequiredDestinations();
+        }
+        return new RegistrationMessageDestinationOverrideAdapter(
+                deliveryAdapter,
+                deploymentEnvironmentPolicy,
+                authWorkflowProperties);
+    }
+
+    private AuthWorkflowProperties.DestinationOverride requiredDestinationOverride(
+            AuthWorkflowProperties authWorkflowProperties) {
+        if (authWorkflowProperties == null || authWorkflowProperties.getRegistration() == null) {
+            throw new IllegalStateException("auth-workflows.registration configuration is required");
+        }
+        return authWorkflowProperties.getRegistration().getMessage().getDestinationOverride();
     }
 
     private static Object tryCreateCommand(String className, Object... values) {

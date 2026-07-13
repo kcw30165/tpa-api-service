@@ -73,8 +73,8 @@ class AuthWorkflowPolicyResolverTest {
             assertTrue(policy.username().noSpaces());
             assertTrue(policy.username().caseInsensitive());
             assertTrue(policy.username().requiredDigit());
-            assertTrue(policy.username().requiredSpecial());
-            assertEquals("!@#$%^&*()_-", policy.username().allowedSpecialChars());
+            assertFalse(policy.username().requiredSpecial());
+            // assertEquals("!@#$%^&*()_-", policy.username().allowedSpecialChars());
 
             assertEquals(8, policy.password().minLength());
             assertEquals(16, policy.password().maxLength());

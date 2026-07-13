@@ -109,6 +109,10 @@ auth-workflows:
       case-sensitive: true
       ttl-seconds: 300
       max-attempts: 5
+    message:
+      destination-override:
+        mobile: ${REGISTRATION_MESSAGE_OVERRIDE_MOBILE:}
+        email: ${REGISTRATION_MESSAGE_OVERRIDE_EMAIL:}
     otp:
       length: 6
       numeric-only: true
@@ -128,7 +132,7 @@ auth-workflows:
       no-spaces: true
       case-insensitive: true
       required-digit: true
-      required-special: true
+      required-special: false
       allowed-special-chars: "!@#$%^&*()_-"
     password:
       min-length: 8

@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.out.referencedate;
 
 import com.bct.ngtpa.apiservice.adapter.out.configserver.ReferenceDateProperties;
 import com.bct.ngtpa.apiservice.application.dto.ReferenceDateCacheUpdateCommand;
+import com.bct.ngtpa.apiservice.infrastructure.environment.DeploymentEnvironmentPolicy;
 import com.bct.ngtpa.apiservice.application.port.out.ApimReferenceDateRefreshPort;
 import com.bct.ngtpa.apiservice.application.port.out.CachePort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDateCacheUpdatePort;
@@ -18,7 +19,7 @@ import org.springframework.core.env.Environment;
 import reactor.core.publisher.Mono;
 
 @Slf4j
-public class NonpReferenceDateAdapter implements ReferenceDatePort {
+public class ReferenceDateAdapter implements ReferenceDatePort {
 
     private static final DateTimeFormatter DATE_FORMATTER =
         DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(ResolverStyle.STRICT);
@@ -30,10 +31,10 @@ public class NonpReferenceDateAdapter implements ReferenceDatePort {
     private final String keyPrefix;
     private final ApimReferenceDateRefreshPort apimReferenceDateRefreshPort;
     private final ReferenceDateCacheUpdatePort referenceDateCacheUpdatePort;
-    private final Environment environment;
+    private final DeploymentEnvironmentPolicy deploymentEnvironmentPolicy;
     private final Clock clock;
 
-    public NonpReferenceDateAdapter(
+    public ReferenceDateAdapter(
             ReferenceDateProperties properties,
             Optional<CachePort> cachePort,
             String keyPrefix,
@@ -46,13 +47,13 @@ public class NonpReferenceDateAdapter implements ReferenceDatePort {
         this.keyPrefix = keyPrefix;
         this.apimReferenceDateRefreshPort = apimReferenceDateRefreshPort;
         this.referenceDateCacheUpdatePort = referenceDateCacheUpdatePort;
-        this.environment = environment;
+        this.deploymentEnvironmentPolicy = new DeploymentEnvironmentPolicy(environment);
         this.clock = clock;
     }
 
     @Override
     public Mono<LocalDate> resolveReferenceDate(String accountEnv) {
-        if (isProductionLikeDeploymentEnv(currentDeploymentEnv())) {
+        if (deploymentEnvironmentPolicy.isProductionLikeDeployment()) {
             return Mono.fromSupplier(this::resolveHongKongSystemDate);
         }
 
@@ -114,19 +115,6 @@ public class NonpReferenceDateAdapter implements ReferenceDatePort {
 
     private LocalDate resolveHongKongSystemDate() {
         return clock.instant().atZone(HONG_KONG_ZONE).toLocalDate();
-    }
-
-    private String currentDeploymentEnv() {
-        String[] activeProfiles = environment.getActiveProfiles();
-        if (activeProfiles.length == 0) {
-            return "";
-        }
-        return activeProfiles[0];
-    }
-
-    private boolean isProductionLikeDeploymentEnv(String deploymentEnv) {
-        return "PROD".equalsIgnoreCase(deploymentEnv)
-                || "DR".equalsIgnoreCase(deploymentEnv);
     }
 
     private String cacheKey(String accountEnv) {

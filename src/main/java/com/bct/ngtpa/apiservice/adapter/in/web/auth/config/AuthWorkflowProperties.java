@@ -20,6 +20,7 @@ public class AuthWorkflowProperties {
         private final PreStartChallenge preStartChallenge = new PreStartChallenge();
         private final Captcha captcha = new Captcha();
         private final Otp otp = new Otp();
+        private final Message message = new Message();
         private final Username username = new Username();
         private final Password password = new Password();
         private final RateLimit rateLimit = new RateLimit();
@@ -67,6 +68,53 @@ public class AuthWorkflowProperties {
     public static class OtpEmail {
         private String subject;
         private String body;
+    }
+
+    @Getter
+    public static class Message {
+        private final DestinationOverride destinationOverride = new DestinationOverride();
+    }
+
+    @Getter
+    @Setter
+    public static class DestinationOverride {
+        private String mobile;
+        private String email;
+
+        public void validateRequiredDestinations() {
+            boolean mobileMissing = mobile == null || mobile.isBlank();
+            boolean emailMissing = email == null || email.isBlank();
+            if (!mobileMissing && !emailMissing) {
+                return;
+            }
+
+            String missingProperties;
+            if (mobileMissing && emailMissing) {
+                missingProperties = "mobile and email";
+            } else {
+                missingProperties = mobileMissing ? "mobile" : "email";
+            }
+            throw new IllegalStateException(
+                    "auth-workflows.registration.message.destination-override "
+                            + "requires non-blank " + missingProperties + " configuration");
+        }
+
+        public String requiredMobile() {
+            return requiredDestination(mobile, "mobile");
+        }
+
+        public String requiredEmail() {
+            return requiredDestination(email, "email");
+        }
+
+        private String requiredDestination(String destination, String propertyName) {
+            if (destination == null || destination.isBlank()) {
+                throw new IllegalStateException(
+                        "auth-workflows.registration.message.destination-override."
+                                + propertyName + " must not be blank");
+            }
+            return destination.trim();
+        }
     }
 
     @Getter
