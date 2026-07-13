@@ -17,21 +17,17 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.time.Clock;
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-class NonpReferenceDateAdapterTest {
+class ReferenceDateAdapterTest {
 
     private static final ZoneId UTC = ZoneId.of("UTC");
     private static final ZoneId HONG_KONG = ZoneId.of("Asia/Hong_Kong");
@@ -146,7 +142,7 @@ class NonpReferenceDateAdapterTest {
                 .updateReferenceDate(new ReferenceDateCacheUpdateCommand("ngtpa:reference-date:JP", "22/06/2026")))
                 .thenReturn(Mono.empty());
 
-        var logger = (Logger) LoggerFactory.getLogger(NonpReferenceDateAdapter.class);
+        var logger = (Logger) LoggerFactory.getLogger(ReferenceDateAdapter.class);
         var appender = new ListAppender<ILoggingEvent>();
         appender.start();
         logger.addAppender(appender);
@@ -182,7 +178,7 @@ class NonpReferenceDateAdapterTest {
                 .updateReferenceDate(new ReferenceDateCacheUpdateCommand("ngtpa:reference-date:JP", "01/07/2026")))
                 .thenReturn(Mono.empty());
 
-        var logger = (Logger) LoggerFactory.getLogger(NonpReferenceDateAdapter.class);
+        var logger = (Logger) LoggerFactory.getLogger(ReferenceDateAdapter.class);
         var appender = new ListAppender<ILoggingEvent>();
         appender.start();
         logger.addAppender(appender);
@@ -232,7 +228,7 @@ class NonpReferenceDateAdapterTest {
         when(apimPort.fetchReferenceDate("JP"))
                 .thenReturn(Mono.error(new RuntimeException("apim error with token secret-token-value")));
 
-        var logger = (Logger) LoggerFactory.getLogger(NonpReferenceDateAdapter.class);
+        var logger = (Logger) LoggerFactory.getLogger(ReferenceDateAdapter.class);
         var appender = new ListAppender<ILoggingEvent>();
         appender.start();
         logger.addAppender(appender);
@@ -268,7 +264,7 @@ class NonpReferenceDateAdapterTest {
                         "Cache set operation failed",
                         new RuntimeException("redis://secret-host:6379"))));
 
-        var logger = (Logger) LoggerFactory.getLogger(NonpReferenceDateAdapter.class);
+        var logger = (Logger) LoggerFactory.getLogger(ReferenceDateAdapter.class);
         var appender = new ListAppender<ILoggingEvent>();
         appender.start();
         logger.addAppender(appender);
@@ -290,7 +286,7 @@ class NonpReferenceDateAdapterTest {
         }
     }
 
-    private NonpReferenceDateAdapter adapter(
+    private ReferenceDateAdapter adapter(
             String accountEnv,
             String deploymentEnv,
             Optional<CachePort> cachePort,
@@ -301,7 +297,7 @@ class NonpReferenceDateAdapterTest {
         properties.setCacheTtlSeconds(3600);
         var environment = new MockEnvironment();
         environment.setActiveProfiles(deploymentEnv);
-        return new NonpReferenceDateAdapter(
+        return new ReferenceDateAdapter(
                 properties,
                 cachePort,
                 "ngtpa",

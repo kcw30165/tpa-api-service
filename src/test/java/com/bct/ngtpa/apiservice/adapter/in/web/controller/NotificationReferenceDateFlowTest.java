@@ -3,7 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.NotificationReadStatusWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.NotificationWebMapper;
 import com.bct.ngtpa.apiservice.adapter.out.configserver.ReferenceDateProperties;
-import com.bct.ngtpa.apiservice.adapter.out.referencedate.NonpReferenceDateAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.referencedate.ReferenceDateAdapter;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.GetNotificationsCommand;
@@ -79,7 +79,7 @@ class NotificationReferenceDateFlowTest {
         var environment = new MockEnvironment();
         environment.setActiveProfiles("SIT");
 
-        var referenceDatePort = new NonpReferenceDateAdapter(
+        var referenceDatePort = new ReferenceDateAdapter(
                 properties,
                 Optional.of(cachePort),
                 "ngtpa",

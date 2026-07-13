@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.out.referencedate.config;
 
 import com.bct.ngtpa.apiservice.adapter.out.configserver.ReferenceDateProperties;
-import com.bct.ngtpa.apiservice.adapter.out.referencedate.NonpReferenceDateAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.referencedate.ReferenceDateAdapter;
 import com.bct.ngtpa.apiservice.application.port.out.ApimReferenceDateRefreshPort;
 import com.bct.ngtpa.apiservice.application.port.out.CachePort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDateCacheUpdatePort;
@@ -17,7 +17,7 @@ import java.util.Optional;
 /**
  * Spring composition configuration for the {@link ReferenceDatePort} outbound adapter.
  *
- * <p>Registers {@link NonpReferenceDateAdapter} as the application-facing
+ * <p>Registers {@link ReferenceDateAdapter} as the application-facing
  * {@link ReferenceDatePort} bean, wiring:
  * <ul>
  *   <li>{@link ReferenceDateProperties} — accountEnv, read-path cache TTL, refresh settings.</li>
@@ -55,7 +55,7 @@ public class ReferenceDateAdapterConfig {
             ReferenceDateCacheUpdatePort referenceDateCacheUpdatePort,
             Environment environment,
             @Value("${redis-cache.key-prefix:ngtpa}") String keyPrefix) {
-        return new NonpReferenceDateAdapter(
+        return new ReferenceDateAdapter(
                 properties,
                 cachePort,
                 keyPrefix,

@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.out.referencedate.config;
 
 import com.bct.ngtpa.apiservice.adapter.out.configserver.ReferenceDateProperties;
-import com.bct.ngtpa.apiservice.adapter.out.referencedate.NonpReferenceDateAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.referencedate.ReferenceDateAdapter;
 import com.bct.ngtpa.apiservice.application.port.out.ApimReferenceDateRefreshPort;
 import com.bct.ngtpa.apiservice.application.port.out.CachePort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDateCacheUpdatePort;
@@ -19,7 +19,7 @@ import static org.mockito.Mockito.mock;
  * Unit tests for {@link ReferenceDateAdapterConfig}.
  *
  * <p>Verifies that the configuration factory method produces an
- * {@link NonpReferenceDateAdapter} under both Redis-enabled and
+ * {@link ReferenceDateAdapter} under both Redis-enabled and
  * Redis-disabled scenarios. No Spring context is required.
  */
 class ReferenceDateAdapterConfigTest {
@@ -47,7 +47,7 @@ class ReferenceDateAdapterConfigTest {
                 new MockEnvironment(),
                 "ngtpa");
 
-        assertThat(bean).isInstanceOf(NonpReferenceDateAdapter.class);
+        assertThat(bean).isInstanceOf(ReferenceDateAdapter.class);
     }
 
     @Test
@@ -66,7 +66,7 @@ class ReferenceDateAdapterConfigTest {
                 new MockEnvironment(),
                 "ngtpa");
 
-        assertThat(bean).isInstanceOf(NonpReferenceDateAdapter.class);
+        assertThat(bean).isInstanceOf(ReferenceDateAdapter.class);
     }
 
     @Test
@@ -84,14 +84,14 @@ class ReferenceDateAdapterConfigTest {
                 new MockEnvironment(),
                 "custom-pfx");
 
-        assertThat(bean).isInstanceOf(NonpReferenceDateAdapter.class);
+        assertThat(bean).isInstanceOf(ReferenceDateAdapter.class);
     }
 
     @Test
     void springContext_registersSingleReferenceDatePortBean() {
         contextRunner.run(context -> {
             assertThat(context).hasSingleBean(ReferenceDatePort.class);
-            assertThat(context.getBean(ReferenceDatePort.class)).isInstanceOf(NonpReferenceDateAdapter.class);
+            assertThat(context.getBean(ReferenceDatePort.class)).isInstanceOf(ReferenceDateAdapter.class);
         });
     }
 }

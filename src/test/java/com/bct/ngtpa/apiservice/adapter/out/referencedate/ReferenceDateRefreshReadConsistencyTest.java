@@ -115,7 +115,7 @@ class ReferenceDateRefreshReadConsistencyTest {
         return new RefreshReferenceDateService(apimPort, cachePort, REDIS_KEY_PREFIX);
     }
 
-    private NonpReferenceDateAdapter referenceDateReader(
+    private ReferenceDateAdapter referenceDateReader(
             String accountEnv,
             SharedReferenceDateStore stores,
             Optional<CachePort> cachePort,
@@ -126,7 +126,7 @@ class ReferenceDateRefreshReadConsistencyTest {
         properties.setCacheTtlSeconds(3600);
         var environment = new MockEnvironment();
         environment.setActiveProfiles("SIT");
-        return new NonpReferenceDateAdapter(
+        return new ReferenceDateAdapter(
                 properties,
                 cachePort,
                 REDIS_KEY_PREFIX,

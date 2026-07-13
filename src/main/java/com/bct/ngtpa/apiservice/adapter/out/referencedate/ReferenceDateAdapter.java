@@ -18,7 +18,7 @@ import org.springframework.core.env.Environment;
 import reactor.core.publisher.Mono;
 
 @Slf4j
-public class NonpReferenceDateAdapter implements ReferenceDatePort {
+public class ReferenceDateAdapter implements ReferenceDatePort {
 
     private static final DateTimeFormatter DATE_FORMATTER =
         DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(ResolverStyle.STRICT);
@@ -33,7 +33,7 @@ public class NonpReferenceDateAdapter implements ReferenceDatePort {
     private final Environment environment;
     private final Clock clock;
 
-    public NonpReferenceDateAdapter(
+    public ReferenceDateAdapter(
             ReferenceDateProperties properties,
             Optional<CachePort> cachePort,
             String keyPrefix,
