@@ -19,7 +19,7 @@ class RegistrationOtpVerifyWebMapperTest {
         Object response = mapper.toMutationResponse(new VerifyRegistrationOtpResult(
                 VerifyRegistrationOtpResultStatus.VERIFIED,
                 WorkflowNextStep.USERNAME_CHECK,
-                List.of(new RegistrationUnregisteredTrust("OI", "00000008802", "2", "JPM")),
+                List.of(new RegistrationUnregisteredTrust("OI", "JPM")),
                 null,
                 List.of(),
                 List.of(),
@@ -28,7 +28,7 @@ class RegistrationOtpVerifyWebMapperTest {
 
         String json = objectMapper.writeValueAsString(response);
         assertThat(json).contains("\"success\":true", "\"nextStep\":\"USERNAME_CHECK\"", "registration-username-check");
-        assertThat(json).contains("\"accountEnv\":\"OI\"", "\"policyNo\":\"00000008802\"", "\"certNo\":\"2\"", "\"trustCode\":\"JPM\"");
+        assertThat(json).contains("\"accountEnv\":\"OI\"", "\"trustCode\":\"JPM\"");
         assertThat(json).doesNotContain("auth_flow_sid", "csrfToken", "otpChallengeId", "activeOtpChallengeId", "123456", "member@example.com", "3024102", "04/04/1982");
     }
 
@@ -38,8 +38,8 @@ class RegistrationOtpVerifyWebMapperTest {
                 VerifyRegistrationOtpResultStatus.VERIFIED,
                 WorkflowNextStep.SELECT_TRUST,
                 List.of(
-                        new RegistrationUnregisteredTrust("OI", "00000008802", "2", "JPM"),
-                        new RegistrationUnregisteredTrust("OI", "00000008803", "3", "BCT")),
+                        new RegistrationUnregisteredTrust("OI", "JPM"),
+                        new RegistrationUnregisteredTrust("OI", "BCT")),
                 null,
                 List.of(),
                 List.of(),
@@ -48,7 +48,6 @@ class RegistrationOtpVerifyWebMapperTest {
 
         String json = objectMapper.writeValueAsString(response);
         assertThat(json).contains("\"success\":true", "\"nextStep\":\"SELECT_TRUST\"", "registration-trust-selection");
-        assertThat(json).contains("00000008802", "00000008803");
     }
 
     @Test

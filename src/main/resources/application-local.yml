@@ -204,3 +204,8 @@ error-message:
 config-service:
   base-url: "https://ngtpa-config-service.bcthk.info"
   timeout-milliseconds: 3000
+
+auth-workflows:
+  registration:
+    pre-start-challenge:
+      enabled: false

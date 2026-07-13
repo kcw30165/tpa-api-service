@@ -18,8 +18,6 @@ class TrpSearchUnregisteredMemberApimResultMapperTest {
                 {
                   "email": "member@example.com",
                   "mobile-number": "",
-                  "policy-no": "00000008802",
-                  "cert-no": 2,
                   "env": "OI",
                   "trust-code": "JPM"
                 }
@@ -29,8 +27,6 @@ class TrpSearchUnregisteredMemberApimResultMapperTest {
 
         assertThat(item.email()).isEqualTo("member@example.com");
         assertThat(item.mobileNumber()).isEmpty();
-        assertThat(item.policyNo()).isEqualTo("00000008802");
-        assertThat(item.certNo()).isEqualTo("2");
         assertThat(item.env()).isEqualTo("OI");
         assertThat(item.trustCode()).isEqualTo("JPM");
     }
@@ -73,15 +69,13 @@ class TrpSearchUnregisteredMemberApimResultMapperTest {
 
     @Test
     void apimDtosToStringDoNotExposePii() {
-        assertThat(item().toString()).doesNotContain("member@example.com", "91234567", "00000008802", "2", "31/01/1980");
+        assertThat(item().toString()).doesNotContain("member@example.com", "91234567", "31/01/1980");
     }
 
     private static TrpSearchUnregisteredMemberApimDataItem item() {
         return new TrpSearchUnregisteredMemberApimDataItem(
                 "member@example.com",
                 "91234567",
-                "00000008802",
-                "2",
                 "OI",
                 "JPM");
     }

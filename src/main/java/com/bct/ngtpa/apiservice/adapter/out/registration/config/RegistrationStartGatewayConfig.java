@@ -14,7 +14,7 @@ import com.bct.ngtpa.apiservice.adapter.out.registration.RegistrationMessageDeli
 import com.bct.ngtpa.apiservice.adapter.out.registration.RegistrationOtpChallengeAdapter;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionCsrfService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionLifecycleService;
-import org.springframework.beans.factory.annotation.Value;
+import com.bct.ngtpa.apiservice.adapter.in.web.session.config.AuthFlowSessionProperties;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -30,15 +30,13 @@ public class RegistrationStartGatewayConfig {
     @ConditionalOnMissingBean
     public RegistrationSessionPort registrationSessionGateway(
             AuthFlowSessionLifecycleService lifecycleService,
-            @Value("${auth-flow-session.scenarios.registration.ttl-seconds:1800}") int registrationTtlSeconds,
-            @Value("${auth-flow-session.session-id.prefix:afs}") String sessionIdPrefix,
-            @Value("${auth-flow-session.session-id.entropy-bytes:16}") int sessionIdEntropyBytes,
+            AuthFlowSessionProperties authFlowSessionProperties,
             RegistrationAuthFlowContextProtectorPort registrationAuthFlowContextProtector) {
         return new RegistrationAuthFlowSessionAdapter(
                 lifecycleService,
-                registrationTtlSeconds,
-                sessionIdPrefix,
-                sessionIdEntropyBytes,
+                authFlowSessionProperties.getScenarios().getRegistration().getTtlSeconds(),
+                authFlowSessionProperties.getSessionId().getPrefix(),
+                authFlowSessionProperties.getSessionId().getEntropyBytes(),
                 registrationAuthFlowContextProtector);
     }
 
@@ -47,11 +45,11 @@ public class RegistrationStartGatewayConfig {
     public RegistrationCsrPort registrationCsrfGateway(
             AuthFlowSessionCsrfService csrfService,
             Clock clock,
-            @Value("${auth-flow-session.csrf.max-age-seconds:1800}") int csrfTtlSeconds) {
+            AuthFlowSessionProperties authFlowSessionProperties) {
         return new RegistrationAuthFlowCsrfAdapter(
                 csrfService,
                 clock,
-                csrfTtlSeconds);
+                authFlowSessionProperties.getCsrf().getMaxAgeSeconds());
     }
 
     @Bean

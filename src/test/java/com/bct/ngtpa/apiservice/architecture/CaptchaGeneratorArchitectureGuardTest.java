@@ -49,11 +49,9 @@ class CaptchaGeneratorArchitectureGuardTest {
 
     @Test
     void p8_2DoesNotIntroduceFutureRegistrationEndpoints() throws Exception {
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.CheckRegistrationUsernameUseCase");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.CompleteRegistrationUseCase");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.CancelRegistrationUseCase");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.ResumeAuthFlowUseCase");
-        assertThat(sourceContains("/api/v1/auth/registration/username/check")).isFalse();
         assertThat(sourceContains("/api/v1/auth/registration/complete")).isFalse();
         assertThat(sourceContains("/api/v1/auth/registration/cancel")).isFalse();
         assertThat(sourceContains("/api/v1/auth/flow/resume")).isFalse();

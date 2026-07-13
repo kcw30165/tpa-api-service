@@ -593,7 +593,7 @@ class StartRegistrationCaptchaGateTest {
             callOrder.add("lookup");
             return Mono.just(new RegistrationLookupResult(
                     RegistrationLookupStatus.ELIGIBLE,
-                    List.of(new RegistrationLookupAccount("apim@example.com", "49998888", "00000008802", "2", "OI", "JPM")),
+                    List.of(new RegistrationLookupAccount("apim@example.com", "49998888", "OI", "JPM")),
                     null));
         }
 

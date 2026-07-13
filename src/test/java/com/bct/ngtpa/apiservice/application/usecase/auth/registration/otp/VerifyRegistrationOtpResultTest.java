@@ -14,7 +14,7 @@ class VerifyRegistrationOtpResultTest {
         var result = new VerifyRegistrationOtpResult(
                 VerifyRegistrationOtpResultStatus.VERIFIED,
                 WorkflowNextStep.USERNAME_CHECK,
-                List.of(new RegistrationUnregisteredTrust("DB", "00000008802", "20", "DBA")),
+                List.of(new RegistrationUnregisteredTrust("DB", "DBA")),
                 null,
                 List.of(),
                 List.of(),
@@ -22,12 +22,12 @@ class VerifyRegistrationOtpResultTest {
                 null);
 
         assertThat(result.toString())
-                .doesNotContain("123456", "otp_secret", "afs_secret", "csrf_secret", "00000008802", "20", "member@example.com", "3024102", "04/04/1982");
+                .doesNotContain("123456", "otp_secret", "afs_secret", "csrf_secret", "member@example.com", "3024102", "04/04/1982");
     }
 
     @Test
     void unregisteredTrustToStringRedactsPolicyAndCert() {
-        var trust = new RegistrationUnregisteredTrust("DB", "00000008802", "20", "DBA");
-        assertThat(trust.toString()).doesNotContain("00000008802", "20").contains("DB", "DBA");
+        var trust = new RegistrationUnregisteredTrust("DB", "DBA");
+        assertThat(trust.toString()).contains("DB", "DBA");
     }
 }

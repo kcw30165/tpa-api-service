@@ -40,7 +40,7 @@ class P7RegistrationOtpSecurityBoundaryGuardTest {
                 .toMutationResponse(new VerifyRegistrationOtpResult(
                         VerifyRegistrationOtpResultStatus.VERIFIED,
                         WorkflowNextStep.USERNAME_CHECK,
-                        List.of(new RegistrationUnregisteredTrust("OI", "00000008802", "2", "JPM")),
+                        List.of(new RegistrationUnregisteredTrust("OI", "JPM")),
                         null,
                         List.of(),
                         List.of(),

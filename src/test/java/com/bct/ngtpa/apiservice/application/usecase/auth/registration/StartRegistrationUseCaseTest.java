@@ -235,7 +235,7 @@ class StartRegistrationUseCaseTest {
 
     private static final class FakeLookupPort implements RegistrationLookupPort {
         boolean called;
-        RegistrationLookupResult result = new RegistrationLookupResult(RegistrationLookupStatus.ELIGIBLE, List.of(new RegistrationLookupAccount("apim@example.com", "49998888", "00000008802", "2", "OI", "JPM")), null);
+        RegistrationLookupResult result = new RegistrationLookupResult(RegistrationLookupStatus.ELIGIBLE, List.of(new RegistrationLookupAccount("apim@example.com", "49998888", "OI", "JPM")), null);
         @Override public Mono<RegistrationLookupResult> searchUnregisteredMember(RegistrationLookupCommand command) { called = true; return Mono.just(result); }
     }
     private static final class FakeSessionGateway implements RegistrationSessionPort {

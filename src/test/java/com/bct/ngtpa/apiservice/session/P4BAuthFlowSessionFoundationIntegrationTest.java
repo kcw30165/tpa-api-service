@@ -61,13 +61,14 @@ class P4BAuthFlowSessionFoundationIntegrationTest {
                 AuthFlowStatus.STARTED,
                 AuthFlowStatus.OTP_SENT,
                 AuthFlowStatus.OTP_VERIFIED,
+                AuthFlowStatus.TRUST_SELECTION_READY,
                 AuthFlowStatus.USERNAME_VERIFIED,
                 AuthFlowStatus.COMPLETING,
                 AuthFlowStatus.COMPLETED,
                 AuthFlowStatus.CANCELLED,
                 AuthFlowStatus.EXPIRED);
         assertThat(Arrays.stream(AuthFlowStatus.values()).map(Enum::name))
-                .doesNotContain("FAILED", "UNKNOWN", "ERROR", "TRUST_SELECTED", "SELECT_REMAINING_TRUST");
+                .doesNotContain("FAILED", "UNKNOWN", "ERROR");
     }
 
     @Test

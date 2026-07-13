@@ -3,7 +3,6 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationOtpVerifyResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationUnregisteredTrustResponse;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowConstants;
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowPageRefs;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.*;
 import java.util.LinkedHashMap;
@@ -57,7 +56,7 @@ public class RegistrationOtpVerifyWebMapper {
             return new RegistrationOtpVerifyResponse(
                     result.unregisteredTrusts().stream()
                             .map(trust -> new RegistrationUnregisteredTrustResponse(
-                                    trust.accountEnv(), trust.policyNo(), trust.certNo(), trust.trustCode()))
+                                    trust.accountEnv(), trust.trustCode()))
                             .toList(),
                     null);
         }

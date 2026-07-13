@@ -21,6 +21,7 @@ public class PageSchemaProperties {
     private FormMetadataProperties form;
     private List<ValidationRuleProperties> validations;
     private ConfirmationProperties confirmation;
+    private DownstreamErrorClassificationProperties downstreamErrorClassification;
 
     public void setDisplay(Map<String, Map<String, String>> display) {
         this.display = display == null ? new LinkedHashMap<>() : display;

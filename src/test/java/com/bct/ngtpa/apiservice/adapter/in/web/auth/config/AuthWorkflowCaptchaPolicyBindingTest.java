@@ -35,7 +35,7 @@ class AuthWorkflowCaptchaPolicyBindingTest {
             var policy = context.getBean(AuthWorkflowPolicyPort.class).registrationPolicy();
 
             assertThat(policy.captcha().length()).isEqualTo(7);
-            assertThat(policy.captcha().alphabet()).isEqualTo("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789");
+            assertThat(policy.captcha().alphabet()).isEqualTo("23456789ABCDEFGHJKLMNPQSTUVWXYZ");
             assertThat(policy.captcha().caseSensitive()).isTrue();
             assertThat(policy.captcha().ttlSeconds()).isEqualTo(300);
             assertThat(policy.captcha().maxAttempts()).isEqualTo(5);

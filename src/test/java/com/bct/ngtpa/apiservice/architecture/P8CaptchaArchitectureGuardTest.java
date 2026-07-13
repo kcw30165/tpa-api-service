@@ -94,7 +94,6 @@ class P8CaptchaArchitectureGuardTest {
 
     @Test
     void p8DoesNotIntroduceFutureRegistrationEndpointsOrResume() throws Exception {
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.CheckRegistrationUsernameUseCase");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.CompleteRegistrationUseCase");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.CancelRegistrationUseCase");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.ResumeAuthFlowUseCase");

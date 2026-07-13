@@ -43,6 +43,14 @@ public final class RegistrationWorkflowErrorKeys {
 
     public static final WorkflowErrorKey WORKFLOW_IDEMPOTENCY_MISSING = new WorkflowErrorKey("workflow.idempotency.missing");
 
+    public static final WorkflowErrorKey REGISTRATION_USERNAME_INCORRECT = new WorkflowErrorKey("registration.username.incorrect");
+    public static final WorkflowErrorKey REGISTRATION_USERNAME_ISREGISTERED = new WorkflowErrorKey("registration.username.isregistered");
+    public static final WorkflowErrorKey REGISTRATION_USERNAME_CHECK_FAILED_CANONICAL = new WorkflowErrorKey("registration.username.check.failed");
+    public static final WorkflowErrorKey REGISTRATION_SELECTED_TRUST_REQUIRED = new WorkflowErrorKey("registration.selectedTrust.required");
+    public static final WorkflowErrorKey REGISTRATION_SELECTED_TRUST_INVALID = new WorkflowErrorKey("registration.selectedTrust.invalid");
+    public static final WorkflowErrorKey WORKFLOW_STATE_INVALID = new WorkflowErrorKey("workflow.state.invalid");
+    public static final WorkflowErrorKey DOWNSTREAM_GENERIC_BUSINESS_REJECTED = new WorkflowErrorKey("downstream.generic.businessRejected");
+
     private RegistrationWorkflowErrorKeys() {
     }
 }

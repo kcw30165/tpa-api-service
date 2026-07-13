@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationOtpVerifyRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationOtpResendWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationOtpVerifyWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.RegistrationIdempotencyProperties;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.port.in.ResendRegistrationOtpUseCase;
@@ -12,7 +13,6 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.Verify
 
 import lombok.RequiredArgsConstructor;
 
-import java.time.Duration;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,12 +26,12 @@ import reactor.core.publisher.Mono;
 @RequestMapping("/api/v1/auth/registration/otp")
 @RequiredArgsConstructor
 public class AuthRegistrationOtpController {
-    private static final Duration DEFAULT_IDEMPOTENCY_TTL = Duration.ofMinutes(5);
 
     private final ResendRegistrationOtpUseCase resendRegistrationOtpUseCase;
     private final RegistrationOtpResendWebMapper registrationOtpResendMapper;
     private final VerifyRegistrationOtpUseCase verifyRegistrationOtpUseCase;
     private final RegistrationOtpVerifyWebMapper registrationOtpVerifyMapper;
+    private final RegistrationIdempotencyProperties idempotencyProperties;
 
     @PostMapping(path = "/resend", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<Object> resendOtp(
@@ -62,7 +62,7 @@ public class AuthRegistrationOtpController {
                     new RegistrationIdempotencyKey(idempotencyKey.trim()),
                     trimToNull(acceptLanguage),
                     trimToNull(requestId),
-                    DEFAULT_IDEMPOTENCY_TTL);
+                    idempotencyProperties.otpResendTtl());
         } catch (RuntimeException exception) {
             return Mono.just(registrationOtpResendMapper.missingAuthFlowCookieResponse());
         }
@@ -105,7 +105,7 @@ public class AuthRegistrationOtpController {
                     new RegistrationIdempotencyKey(idempotencyKey.trim()),
                     trimToNull(acceptLanguage),
                     trimToNull(requestId),
-                    DEFAULT_IDEMPOTENCY_TTL);
+                    idempotencyProperties.otpVerifyTtl());
         } catch (RuntimeException exception) {
             return Mono.just(registrationOtpVerifyMapper.missingAuthFlowCookieResponse());
         }

@@ -37,9 +37,18 @@ public class RegistrationAuthFlowSessionAdapter implements RegistrationSessionPo
             RegistrationAuthFlowContextProtectorPort contextProtector) {
         this.contextProtector = contextProtector;
         this.lifecycleService = Objects.requireNonNull(lifecycleService, "lifecycleService must not be null");
-        this.registrationTtlSeconds = registrationTtlSeconds > 0 ? registrationTtlSeconds : 1800;
-        this.sessionIdPrefix = sessionIdPrefix == null || sessionIdPrefix.isBlank() ? "afs" : sessionIdPrefix;
-        this.sessionIdEntropyBytes = sessionIdEntropyBytes >= 16 ? sessionIdEntropyBytes : 16;
+        if (registrationTtlSeconds <= 0) {
+            throw new IllegalArgumentException("registrationTtlSeconds must be greater than zero");
+        }
+        if (sessionIdPrefix == null || sessionIdPrefix.isBlank()) {
+            throw new IllegalArgumentException("sessionIdPrefix must not be blank");
+        }
+        if (sessionIdEntropyBytes < 16) {
+            throw new IllegalArgumentException("sessionIdEntropyBytes must be at least 16");
+        }
+        this.registrationTtlSeconds = registrationTtlSeconds;
+        this.sessionIdPrefix = sessionIdPrefix;
+        this.sessionIdEntropyBytes = sessionIdEntropyBytes;
     }
 
     @Override
