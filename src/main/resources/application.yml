@@ -132,7 +132,7 @@ auth-workflows:
       no-spaces: true
       case-insensitive: true
       required-digit: true
-      required-special: true
+      required-special: false
       allowed-special-chars: "!@#$%^&*()_-"
     password:
       min-length: 8
