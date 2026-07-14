@@ -1,6 +1,10 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
+import com.bct.ngtpa.apiservice.application.port.in.CompleteRegistrationUseCase;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.CompleteRegistrationWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.CompleteRegistrationResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.CompleteRegistrationRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartWorkflowDataResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
@@ -16,12 +20,14 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
 @RestController
-@RequestMapping("/api/v1/auth/registration")
 @RequiredArgsConstructor
+@RequestMapping("/api/v1/auth/registration")
 public class AuthRegistrationController {
     private final StartRegistrationUseCase useCase;
     private final RegistrationStartWebMapper mapper;
     private final AuthFlowCookieWriter cookieWriter;
+    private final CompleteRegistrationUseCase completeRegistrationUseCase;
+    private final CompleteRegistrationWebMapper completeRegistrationWebMapper;
 
     @PostMapping("/start")
     public Mono<MutationResponse<WorkflowResultPayload<RegistrationStartWorkflowDataResponse>>> startRegistration(
@@ -40,5 +46,59 @@ public class AuthRegistrationController {
                         cookieWriter.writeAuthFlowCookie(response, result.authFlowSessionId());
                     return mapper.toMutationResponse(result, acceptLanguage);
                 });
+    }
+
+    @PostMapping(path = "/complete", consumes = org.springframework.http.MediaType.APPLICATION_JSON_VALUE, produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
+    public Mono<MutationResponse<CompleteRegistrationResponse>> completeRegistration(
+            @RequestBody(required = false) CompleteRegistrationRequest request,
+            @CookieValue(name = "auth_flow_sid", required = false) String authFlowSessionId,
+            @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrfToken,
+            @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
+            @RequestHeader(name = "X-Request-Id", required = false) String requestId,
+            @RequestHeader(name = "Accept-Language", required = false) String acceptLanguage,
+            @RequestHeader(name = "Origin", required = false) String origin,
+            @RequestHeader(name = "Referer", required = false) String referer,
+            ServerHttpResponse response) {
+        if (!hasText(authFlowSessionId)) {
+            return Mono.just(completeRegistrationWebMapper.missing(
+                    "registration.authFlow.invalid", "PAGE", acceptLanguage));
+        }
+        if (!hasText(csrfToken)) {
+            return Mono.just(completeRegistrationWebMapper.missing(
+                    "registration.csrf.invalid", "PAGE", acceptLanguage));
+        }
+        if (!hasText(idempotencyKey)) {
+            return Mono.just(completeRegistrationWebMapper.missing(
+                    "workflow.idempotency.missing", "Idempotency-Key", acceptLanguage));
+        }
+        if (request == null) {
+            return Mono.just(completeRegistrationWebMapper.missing(
+                    "registration.complete.request.invalid", "PAGE", acceptLanguage));
+        }
+
+        try {
+            return completeRegistrationUseCase.complete(completeRegistrationWebMapper.toCommand(
+                    request,
+                    authFlowSessionId,
+                    csrfToken,
+                    idempotencyKey,
+                    origin,
+                    referer,
+                    acceptLanguage,
+                    requestId))
+                    .map(result -> {
+                        if (result.clearAuthFlowCookie()) {
+                            cookieWriter.clearAuthFlowCookie(response);
+                        }
+                        return completeRegistrationWebMapper.toResponse(result, acceptLanguage);
+                    });
+        } catch (RuntimeException exception) {
+            return Mono.just(completeRegistrationWebMapper.missing(
+                    "registration.complete.request.invalid", "PAGE", acceptLanguage));
+        }
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 }

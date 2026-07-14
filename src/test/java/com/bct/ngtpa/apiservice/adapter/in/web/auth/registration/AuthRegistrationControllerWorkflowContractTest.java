@@ -45,7 +45,11 @@ class AuthRegistrationControllerWorkflowContractTest {
         var controller = new AuthRegistrationController(
                 useCase,
                 new RegistrationStartWebMapper(Duration.ofMinutes(5)),
-                AuthFlowCookieWriter.defaultWriter());
+                AuthFlowCookieWriter.defaultWriter(),
+                        org.mockito.Mockito.mock(
+                                com.bct.ngtpa.apiservice.application.port.in.CompleteRegistrationUseCase.class),
+                        org.mockito.Mockito.mock(
+                                com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.CompleteRegistrationWebMapper.class));
 
         StepVerifier.create(controller.startRegistration(
                         new RegistrationStartRequest("GPFS", "id", "01/01/1980", "m@example.com", null, "cap"),
@@ -71,7 +75,11 @@ class AuthRegistrationControllerWorkflowContractTest {
         var controller = new AuthRegistrationController(
                 useCase,
                 new RegistrationStartWebMapper(Duration.ofMinutes(5)),
-                AuthFlowCookieWriter.defaultWriter());
+                AuthFlowCookieWriter.defaultWriter(),
+                        org.mockito.Mockito.mock(
+                                com.bct.ngtpa.apiservice.application.port.in.CompleteRegistrationUseCase.class),
+                        org.mockito.Mockito.mock(
+                                com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.CompleteRegistrationWebMapper.class));
         var response = new MockServerHttpResponse();
 
         StepVerifier.create(controller.startRegistration(
