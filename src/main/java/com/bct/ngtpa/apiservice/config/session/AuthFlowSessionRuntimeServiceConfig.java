@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.config.session;
 
+import com.bct.ngtpa.apiservice.adapter.out.session.AuthFlowSessionCancellationAdapter;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionCancellationPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.service.session.SecureSessionIdGenerator;
 import com.bct.ngtpa.apiservice.application.service.session.SessionIdGenerator;
@@ -28,6 +30,13 @@ public class AuthFlowSessionRuntimeServiceConfig {
     @ConditionalOnMissingBean
     public SessionTtlCalculator sessionTtlCalculator() {
         return new SessionTtlCalculator();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(AuthFlowSessionCancellationPort.class)
+    public AuthFlowSessionCancellationPort authFlowSessionCancellationPort(
+            AuthFlowSessionPort authFlowSessionPort) {
+        return new AuthFlowSessionCancellationAdapter(authFlowSessionPort);
     }
 
     @Bean
