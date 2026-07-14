@@ -183,6 +183,11 @@ apim:
       - policy-no
       - cert-no
       - user-id
+      - search-value
+      - cust-id
+      - email
+      - mobile-number
+
 
 request-logging:
   enabled: true
