@@ -53,6 +53,19 @@ public class AuthFlowCookieWriter {
                 .build();
     }
 
+    public void clearAuthFlowCookie(ServerHttpResponse response) {
+        if (response == null) {
+            return;
+        }
+        response.addCookie(ResponseCookie.from(properties.name(), "")
+                .path(properties.path())
+                .maxAge(Duration.ZERO)
+                .httpOnly(properties.httpOnly())
+                .secure(properties.secure())
+                .sameSite(properties.sameSite())
+                .build());
+    }
+
     public void writeAuthFlowCookie(ServerHttpResponse response, String authFlowSessionId) {
         if (response != null && authFlowSessionId != null && !authFlowSessionId.isBlank()) {
             response.addCookie(createAuthFlowCookie(authFlowSessionId));

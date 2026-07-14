@@ -58,13 +58,5 @@ class P7RegistrationOtpArchitectureGuardTest {
                     .toList());
         }
         assertThat(sources).contains("RegistrationLookupPort");
-        assertThat(sources).doesNotContain(
-                "/api/v1/auth/registration/complete",
-                "/api/v1/auth/registration/cancel",
-                "/api/v1/auth/flow/resume",
-                "CompleteRegistrationUseCase",
-                "CancelRegistrationUseCase",
-                "AuthFlowResumeRequest",
-                "ResumeAuthFlowUseCase");
     }
 }

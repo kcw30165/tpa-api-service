@@ -14,6 +14,7 @@ public class AuthFlowSessionProperties {
     private final Csrf csrf = new Csrf();
     private final OriginValidation originValidation = new OriginValidation();
     private final Concurrency concurrency = new Concurrency();
+    private final CompletionLock completionLock = new CompletionLock();
     private final Scenarios scenarios = new Scenarios();
 
     @Getter
@@ -66,6 +67,12 @@ public class AuthFlowSessionProperties {
     public enum AuthFlowOnNewFlowPolicy {
         REPLACE_EXISTING,
         ALLOW_PARALLEL
+    }
+
+    @Getter
+    @Setter
+    public static class CompletionLock {
+        private int leaseSeconds = 30;
     }
 
     @Getter

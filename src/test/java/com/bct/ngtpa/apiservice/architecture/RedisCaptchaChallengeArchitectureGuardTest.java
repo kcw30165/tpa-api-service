@@ -5,8 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 class RedisCaptchaChallengeArchitectureGuardTest {
@@ -47,7 +45,8 @@ class RedisCaptchaChallengeArchitectureGuardTest {
                         "..adapter.in.web..",
                         "..adapter.out.apim..",
                         "..adapter.out.sms..",
-                        "..adapter.out.email..").check(classes);
+                        "..adapter.out.email..")
+                .check(classes);
     }
 
     @Test
@@ -72,7 +71,8 @@ class RedisCaptchaChallengeArchitectureGuardTest {
                         "jakarta.servlet..",
                         "io.lettuce..",
                         "org.springframework.data.redis..",
-                        "com.bct.ngtpa.apiservice.adapter..").check(classes);
+                        "com.bct.ngtpa.apiservice.adapter..")
+                .check(classes);
     }
 
     @Test
@@ -80,46 +80,8 @@ class RedisCaptchaChallengeArchitectureGuardTest {
         assertClassPresent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController");
     }
 
-    @Test
-    void p8_3DoesNotIntroduceFutureRegistrationEndpoints() throws Exception {
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.CompleteRegistrationUseCase");
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.CancelRegistrationUseCase");
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.ResumeAuthFlowUseCase");
-        assertThat(sourceContains("/api/v1/auth/registration/complete")).isFalse();
-        assertThat(sourceContains("/api/v1/auth/registration/cancel")).isFalse();
-        assertThat(sourceContains("/api/v1/auth/flow/resume")).isFalse();
-    }
-
-    private static void assertClassAbsent(String className) throws Exception {
-        try {
-            Class.forName(className);
-            throw new AssertionError(className + " should not exist");
-        } catch (ClassNotFoundException expected) {
-            assertThat(expected).isNotNull();
-        }
-    }
-
     private static void assertClassPresent(String className) throws Exception {
         assertThat(Class.forName(className)).isNotNull();
     }
 
-    private static boolean sourceContains(String text) throws Exception {
-        Path root = Path.of("src/main");
-        if (!Files.exists(root)) {
-            return false;
-        }
-        try (var paths = Files.walk(root)) {
-            return paths.filter(Files::isRegularFile)
-                    .filter(path -> path.toString().endsWith(".java") || path.toString().endsWith(".yml") || path.toString().endsWith(".yaml"))
-                    .anyMatch(path -> contains(path, text));
-        }
-    }
-
-    private static boolean contains(Path path, String text) {
-        try {
-            return Files.readString(path).contains(text);
-        } catch (Exception exception) {
-            return false;
-        }
-    }
 }

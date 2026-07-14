@@ -152,35 +152,7 @@ class AuthFlowSessionLifecycleServiceTest {
                 .verifyComplete();
     }
 
-    @Test
-    void updateUsernameCheckStoresStateAndMovesToUsernameVerified() {
-        var session = activeSession(AuthFlowStatus.OTP_VERIFIED);
-        port.save(session);
-        var state = usernameCheckState();
 
-        StepVerifier.create(service.updateUsernameCheck(new UpdateAuthFlowUsernameCheckCommand(session.authFlowSessionId(), state, null)))
-                .assertNext(updated -> {
-                    assertThat(updated.status()).isEqualTo(AuthFlowStatus.USERNAME_VERIFIED);
-                    assertThat(updated.data().usernameCheck()).isEqualTo(state);
-                    assertThat(updated.updatedAt()).isEqualTo(NOW);
-                })
-                .verifyComplete();
-    }
-
-    @Test
-    void updateUsernameCheckRejectsSessionBeforeOtpVerified() {
-        for (AuthFlowStatus status : new AuthFlowStatus[]{AuthFlowStatus.STARTED, AuthFlowStatus.OTP_SENT}) {
-            port.clear();
-            var session = activeSession(status);
-            port.save(session);
-            StepVerifier.create(service.updateUsernameCheck(new UpdateAuthFlowUsernameCheckCommand(session.authFlowSessionId(), usernameCheckState(), null)))
-                    .expectErrorSatisfies(error -> assertThat(error)
-                            .isInstanceOf(IllegalStateException.class)
-                            .hasMessage("Auth flow session is not ready for username check"))
-                    .verify();
-            assertThat(port.sessions.get(session.authFlowSessionId().value()).data().usernameCheck()).isNull();
-        }
-    }
 
     @Test
     void completeMarksCompletedWithoutCreatingAuthenticatedSession() {

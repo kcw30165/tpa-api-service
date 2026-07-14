@@ -2648,3 +2648,41 @@ For production and shared environments, do not use the local value. Provide a se
 ```properties
 auth-workflows.registration.context-protection.secret=<secure-32-byte-minimum-secret>
 ```
+
+<!-- task-0038-registration-complete -->
+## Registration completion
+
+The registration workflow completes through:
+
+```http
+POST /api/v1/auth/registration/complete
+Cookie: auth_flow_sid=<opaque-session-id>
+X-XSRF-TOKEN: <csrf-token>
+Idempotency-Key: <opaque-idempotency-key>
+Accept-Language: en
+Content-Type: application/json
+```
+
+```json
+{
+  "password": "<password>",
+  "confirmPassword": "<password>"
+}
+```
+
+The endpoint is owned by `AuthRegistrationController` and returns the generic
+`MutationResponse` contract. Password values are transient. The workflow loads
+identity/contact data and username/selected-trust data from separately protected
+AuthFlowSession attributes, acquires a session-scoped completion lock, invokes
+`TRPRegMember`, and then checks whether other eligible trusts remain.
+
+Success-page content and actions come from the existing `registration-success`
+page configuration. The `hasRemainingTrusts` variant lets the user continue with
+another trust; `noRemainingTrusts` returns the user to login and expires the
+auth-flow cookie.
+
+Technical outcomes that may have committed downstream are stored as idempotency
+`UNKNOWN_OUTCOME` and are not automatically replayed. See
+[`docs/evidence/0038-registration-complete.md`](docs/evidence/0038-registration-complete.md)
+for security invariants, test commands, and the merge-request evidence checklist.
+

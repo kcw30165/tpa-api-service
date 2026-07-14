@@ -5,8 +5,6 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionData;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.SelectedTrust;
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.UsernameCheckState;
 import java.time.Instant;
 import java.util.Map;
 
@@ -47,46 +45,16 @@ record RedisAuthFlowSessionRecord(
                 instantFromString(expiresAt));
     }
 
-    record Data(String contactType, String maskedDestination, UsernameCheck usernameCheck, Map<String, String> attributes) {
+    record Data(String contactType, String maskedDestination, Map<String, String> attributes) {
         static Data from(AuthFlowSessionData data) {
             if (data == null) {
-                return new Data(null, null, null, Map.of());
+                return new Data(null, null, Map.of());
             }
-            return new Data(data.contactType(), data.maskedDestination(), UsernameCheck.from(data.usernameCheck()), data.attributes());
+            return new Data(data.contactType(), data.maskedDestination(), data.attributes());
         }
 
         AuthFlowSessionData toAuthFlowSessionData() {
-            return new AuthFlowSessionData(contactType, maskedDestination, usernameCheck == null ? null : usernameCheck.toUsernameCheckState(), attributes);
-        }
-    }
-
-    record UsernameCheck(SelectedTrustRecord selectedTrust, String username, String checkedAt, String expiresAt) {
-        static UsernameCheck from(UsernameCheckState state) {
-            if (state == null) {
-                return null;
-            }
-            return new UsernameCheck(
-                    SelectedTrustRecord.from(state.selectedTrust()),
-                    state.username(),
-                    instantToString(state.checkedAt()),
-                    instantToString(state.expiresAt()));
-        }
-
-        UsernameCheckState toUsernameCheckState() {
-            return new UsernameCheckState(selectedTrust.toSelectedTrust(), username, instantFromString(checkedAt), instantFromString(expiresAt));
-        }
-    }
-
-    record SelectedTrustRecord(String trustCode, String accountEnv) {
-        static SelectedTrustRecord from(SelectedTrust trust) {
-            if (trust == null) {
-                return null;
-            }
-            return new SelectedTrustRecord(trust.trustCode(), trust.accountEnv());
-        }
-
-        SelectedTrust toSelectedTrust() {
-            return new SelectedTrust(trustCode, accountEnv);
+            return new AuthFlowSessionData(contactType, maskedDestination, attributes);
         }
     }
 

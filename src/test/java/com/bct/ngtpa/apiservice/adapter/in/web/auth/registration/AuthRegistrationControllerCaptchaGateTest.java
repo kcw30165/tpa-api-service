@@ -125,7 +125,11 @@ class AuthRegistrationControllerCaptchaGateTest {
         return WebTestClient.bindToController(new AuthRegistrationController(
                         useCase,
                         new RegistrationStartWebMapper(Duration.ofMinutes(5)),
-                        AuthFlowCookieWriter.defaultWriter()))
+                        AuthFlowCookieWriter.defaultWriter(),
+                        org.mockito.Mockito.mock(
+                                com.bct.ngtpa.apiservice.application.port.in.CompleteRegistrationUseCase.class),
+                        org.mockito.Mockito.mock(
+                                com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.CompleteRegistrationWebMapper.class)))
                 .build();
     }
 }

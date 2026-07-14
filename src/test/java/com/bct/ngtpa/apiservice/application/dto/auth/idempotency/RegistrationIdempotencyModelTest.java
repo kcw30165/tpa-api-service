@@ -24,7 +24,8 @@ class RegistrationIdempotencyModelTest {
         assertThat(RegistrationIdempotencyAction.REGISTRATION_START.keyNamespace()).isEqualTo("registration-start");
         assertThat(RegistrationIdempotencyAction.OTP_RESEND.keyNamespace()).isEqualTo("otp-resend");
         assertThat(RegistrationIdempotencyAction.OTP_VERIFY.keyNamespace()).isEqualTo("otp-verify");
-        assertThat(RegistrationIdempotencyAction.REGISTRATION_COMPLETE.keyNamespace()).isEqualTo("registration-complete");
+        assertThat(RegistrationIdempotencyAction.REGISTRATION_COMPLETE.keyNamespace())
+                .isEqualTo("registration-complete");
     }
 
     @Test
@@ -136,17 +137,20 @@ class RegistrationIdempotencyModelTest {
 
     @Test
     void startResultDefinesExpectedOutcomes() {
-        assertThat(RegistrationIdempotencyStartOutcome.values()).containsExactly(
-                RegistrationIdempotencyStartOutcome.STARTED,
-                RegistrationIdempotencyStartOutcome.DUPLICATE_IN_PROGRESS,
-                RegistrationIdempotencyStartOutcome.COMPLETED_REPLAY,
-                RegistrationIdempotencyStartOutcome.KEY_REUSED_WITH_DIFFERENT_REQUEST,
-                RegistrationIdempotencyStartOutcome.FAILED_EXISTING);
+        assertThat(RegistrationIdempotencyStartOutcome.values())
+                .containsExactly(
+                        RegistrationIdempotencyStartOutcome.STARTED,
+                        RegistrationIdempotencyStartOutcome.DUPLICATE_IN_PROGRESS,
+                        RegistrationIdempotencyStartOutcome.COMPLETED_REPLAY,
+                        RegistrationIdempotencyStartOutcome.KEY_REUSED_WITH_DIFFERENT_REQUEST,
+                        RegistrationIdempotencyStartOutcome.FAILED_EXISTING,
+                        RegistrationIdempotencyStartOutcome.UNKNOWN_OUTCOME_EXISTING);
     }
 
     @Test
     void idempotencyModelsToStringRedactsKeysHashesAndSnapshots() {
-        var snapshot = new RegistrationIdempotencyResponseSnapshot("200", "{\"secret\":\"value\"}", Map.of("X-Safe", "value"));
+        var snapshot = new RegistrationIdempotencyResponseSnapshot("200", "{\"secret\":\"value\"}",
+                Map.of("X-Safe", "value"));
         var completed = record(RegistrationIdempotencyStatus.COMPLETED, snapshot);
         var startCommand = new RegistrationIdempotencyStartCommand(
                 RegistrationIdempotencyAction.REGISTRATION_START,

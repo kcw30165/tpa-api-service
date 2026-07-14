@@ -17,6 +17,7 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.in.CheckRegistrationUsernameUseCase;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionExpiryRefreshPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import com.bct.ngtpa.apiservice.application.port.out.DownstreamErrorClassificationPort;
@@ -59,6 +60,7 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
             AuthFlowStatus.USERNAME_VERIFIED);
 
     private final AuthFlowSessionPort authFlowSessionPort;
+    private final AuthFlowSessionExpiryRefreshPort expiryRefreshPort;
     private final RegistrationUsernameAvailabilityPort usernameAvailabilityPort;
     private final AuthWorkflowPolicyPort authWorkflowPolicyPort;
     private final DownstreamErrorClassificationPort downstreamErrorClassificationPort;
@@ -67,12 +69,14 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
 
     public CheckRegistrationUsernameService(
             AuthFlowSessionPort authFlowSessionPort,
+            AuthFlowSessionExpiryRefreshPort expiryRefreshPort,
             RegistrationUsernameAvailabilityPort usernameAvailabilityPort,
             AuthWorkflowPolicyPort authWorkflowPolicyPort,
             DownstreamErrorClassificationPort downstreamErrorClassificationPort,
             RegistrationUsernameCheckProtectorPort usernameCheckProtectorPort,
             Clock clock) {
         this.authFlowSessionPort = Objects.requireNonNull(authFlowSessionPort, "authFlowSessionPort must not be null");
+        this.expiryRefreshPort = Objects.requireNonNull(expiryRefreshPort, "expiryRefreshPort must not be null");
         this.usernameAvailabilityPort = Objects.requireNonNull(usernameAvailabilityPort, "usernameAvailabilityPort must not be null");
         this.authWorkflowPolicyPort = Objects.requireNonNull(authWorkflowPolicyPort, "authWorkflowPolicyPort must not be null");
         this.downstreamErrorClassificationPort = Objects.requireNonNull(downstreamErrorClassificationPort, "downstreamErrorClassificationPort must not be null");
@@ -119,6 +123,13 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
                     ERROR_STATE_INVALID));
         }
 
+        return expiryRefreshPort.refresh(command.authFlowSessionId(), now)
+                .flatMap(refreshedSession -> processValidated(command, refreshedSession));
+    }
+
+    private Mono<CheckRegistrationUsernameResult> processValidated(
+            CheckRegistrationUsernameCommand command,
+            AuthFlowSession session) {
         NormalizedInput normalized = normalize(command);
         if (normalized.selectedTrustMissing()) {
             return Mono.just(validationFailure(ERROR_SELECTED_TRUST_REQUIRED));
@@ -170,7 +181,6 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
         var updatedData = new AuthFlowSessionData(
                 currentData.contactType(),
                 currentData.maskedDestination(),
-                null,
                 attributes);
         var updated = new AuthFlowSession(
                 session.authFlowSessionId(),
@@ -320,9 +330,6 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
     private UsernameCheckState existingUsernameCheck(AuthFlowSession session) {
         if (session.data() == null) {
             return null;
-        }
-        if (session.data().usernameCheck() != null) {
-            return session.data().usernameCheck();
         }
         Map<String, String> attributes = session.data().attributes();
         String ciphertext = attributes.get(RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_CIPHERTEXT);

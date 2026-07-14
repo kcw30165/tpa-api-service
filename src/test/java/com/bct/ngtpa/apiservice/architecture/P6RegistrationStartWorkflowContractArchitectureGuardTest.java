@@ -39,20 +39,4 @@ class P6RegistrationStartWorkflowContractArchitectureGuardTest {
                 "MessageDeliveryPort",
                 "RegistrationLookupPort");
     }
-
-    @Test
-    void p6_9DoesNotIntroduceNewEndpoints() throws Exception {
-        String controller = Files.readString(Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationController.java"));
-
-        assertThat(controller).doesNotContain(
-                "/otp/resend",
-                "/otp/verify",
-                "/username/check",
-                "/complete",
-                "/cancel",
-                "/flow/resume",
-                "/captcha/challenge",
-                "/captcha/verify",
-                "/captcha/refresh");
-    }
 }
