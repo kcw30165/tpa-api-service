@@ -1,0 +1,18 @@
+package com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete;
+
+public enum CompleteRegistrationResultStatus {
+    REGISTERED,
+    REGISTERED_WITH_REMAINING_TRUSTS,
+    VALIDATION_FAILED,
+    INVALID_AUTH_FLOW,
+    CSRF_INVALID,
+    INVALID_STATE,
+    IDEMPOTENCY_KEY_REUSED,
+    DUPLICATE_IN_PROGRESS,
+    COMPLETED_REPLAY,
+    UNKNOWN_OUTCOME,
+    DOWNSTREAM_REJECTED,
+    DOWNSTREAM_FAILED,
+    CONTINUATION_LOOKUP_FAILED,
+    SYSTEM_FAILED
+}
