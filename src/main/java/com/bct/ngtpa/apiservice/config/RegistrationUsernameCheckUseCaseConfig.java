@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.config;
 
 import com.bct.ngtpa.apiservice.application.port.in.CheckRegistrationUsernameUseCase;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionExpiryRefreshPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import com.bct.ngtpa.apiservice.application.port.out.DownstreamErrorClassificationPort;
@@ -18,12 +19,14 @@ public class RegistrationUsernameCheckUseCaseConfig {
     @ConditionalOnMissingBean
     public CheckRegistrationUsernameUseCase checkRegistrationUsernameUseCase(
             AuthFlowSessionPort authFlowSessionPort,
+            AuthFlowSessionExpiryRefreshPort expiryRefreshPort,
             RegistrationUsernameAvailabilityPort registrationUsernameAvailabilityPort,
             AuthWorkflowPolicyPort authWorkflowPolicyPort,
             DownstreamErrorClassificationPort downstreamErrorClassificationPort,
             RegistrationUsernameCheckProtectorPort registrationUsernameCheckProtectorPort) {
         return new CheckRegistrationUsernameService(
                 authFlowSessionPort,
+                expiryRefreshPort,
                 registrationUsernameAvailabilityPort,
                 authWorkflowPolicyPort,
                 downstreamErrorClassificationPort,

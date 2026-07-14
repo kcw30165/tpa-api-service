@@ -19,6 +19,7 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.RegistrationUse
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.RegistrationUsernameCheckAttributeNames;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionExpiryRefreshPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import com.bct.ngtpa.apiservice.application.port.out.DownstreamErrorClassificationPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationUsernameAvailabilityPort;
@@ -260,7 +261,26 @@ class CheckRegistrationUsernameServiceTest {
     }
 
     private CheckRegistrationUsernameService service(FakeSessions sessions, FakeAvailability availability, FakeClassifier classifier) {
-        return new CheckRegistrationUsernameService(sessions, availability, new FakePolicy(), classifier, new FakeUsernameCheckProtector(), CLOCK);
+        return new CheckRegistrationUsernameService(sessions, expiryRefresh(sessions), availability, new FakePolicy(), classifier, new FakeUsernameCheckProtector(), CLOCK);
+    }
+
+    private AuthFlowSessionExpiryRefreshPort expiryRefresh(FakeSessions sessions) {
+        return (authFlowSessionId, interactionAt) -> {
+            if (sessions.session == null) {
+                return Mono.error(new IllegalStateException("Auth flow session missing"));
+            }
+            AuthFlowSession current = sessions.session;
+            return Mono.just(new AuthFlowSession(
+                    current.authFlowSessionId(),
+                    current.scenario(),
+                    current.status(),
+                    current.csrfTokenHash(),
+                    current.activeOtpChallengeId(),
+                    current.data(),
+                    current.createdAt(),
+                    interactionAt,
+                    interactionAt.plusSeconds(1800)));
+        };
     }
 
     private CheckRegistrationUsernameCommand command(String csrf, RegistrationSelectedTrust selectedTrust, String username) {
