@@ -170,7 +170,6 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
         var updatedData = new AuthFlowSessionData(
                 currentData.contactType(),
                 currentData.maskedDestination(),
-                null,
                 attributes);
         var updated = new AuthFlowSession(
                 session.authFlowSessionId(),
@@ -320,9 +319,6 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
     private UsernameCheckState existingUsernameCheck(AuthFlowSession session) {
         if (session.data() == null) {
             return null;
-        }
-        if (session.data().usernameCheck() != null) {
-            return session.data().usernameCheck();
         }
         Map<String, String> attributes = session.data().attributes();
         String ciphertext = attributes.get(RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_CIPHERTEXT);

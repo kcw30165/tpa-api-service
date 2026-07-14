@@ -36,7 +36,7 @@ class AuthFlowSessionModelTest {
         var createdAt = Instant.parse("2026-06-29T00:00:00Z");
         var updatedAt = Instant.parse("2026-06-29T00:01:00Z");
         var expiresAt = Instant.parse("2026-06-29T00:30:00Z");
-        var data = new AuthFlowSessionData("EMAIL", "m****r@example.com", null, Map.of("safe", "value"));
+        var data = new AuthFlowSessionData("EMAIL", "m****r@example.com", Map.of("safe", "value"));
         var session = new AuthFlowSession(new AuthFlowSessionId("afs_abc123"), AuthFlowScenario.REGISTRATION, AuthFlowStatus.OTP_SENT, "hash_value", "otp_abc", data, createdAt, updatedAt, expiresAt);
         assertThat(session.authFlowSessionId().value()).isEqualTo("afs_abc123");
         assertThat(session.scenario()).isEqualTo(AuthFlowScenario.REGISTRATION);
@@ -59,7 +59,7 @@ class AuthFlowSessionModelTest {
 
     @Test
     void authFlowSessionDataCarriesMaskedDestinationOnly() {
-        var data = new AuthFlowSessionData("EMAIL", "m****r@example.com", null, Map.of());
+        var data = new AuthFlowSessionData("EMAIL", "m****r@example.com", Map.of());
         assertThat(data.contactType()).isEqualTo("EMAIL");
         assertThat(data.maskedDestination()).isEqualTo("m****r@example.com");
         assertThat(recordComponentNames(AuthFlowSessionData.class)).doesNotContain("email", "mobile", "phone", "contactValue", "rawDestination");
@@ -85,7 +85,7 @@ class AuthFlowSessionModelTest {
     void authFlowSessionToStringDoesNotExposeSensitiveValues() {
         var now = Instant.parse("2026-06-29T00:00:00Z");
         var state = new UsernameCheckState(new SelectedTrust("TL", "ENV1", null, null, null), "user_secret", now, now.plusSeconds(300));
-        var data = new AuthFlowSessionData("EMAIL", "m****r@example.com", state, Map.of());
+        var data = new AuthFlowSessionData("EMAIL", "m****r@example.com", Map.of());
         var session = new AuthFlowSession(new AuthFlowSessionId("afs_secret"), AuthFlowScenario.REGISTRATION, AuthFlowStatus.USERNAME_VERIFIED, "csrf_hash_secret", "otp_secret", data, now, now, now.plusSeconds(1800));
         assertThat(session.toString()).doesNotContain("afs_secret", "csrf_hash_secret", "otp_secret", "user_secret");
     }
@@ -116,7 +116,7 @@ class AuthFlowSessionModelTest {
     void authFlowSessionDataDefensivelyCopiesAttributes() {
         var mutable = new java.util.LinkedHashMap<String, String>();
         mutable.put("safe", "value");
-        var data = new AuthFlowSessionData(null, null, null, mutable);
+        var data = new AuthFlowSessionData(null, null, mutable);
         mutable.put("safe", "changed");
         assertThat(data.attributes()).containsEntry("safe", "value");
         assertThatThrownBy(() -> data.attributes().put("other", "value")).isInstanceOf(UnsupportedOperationException.class);

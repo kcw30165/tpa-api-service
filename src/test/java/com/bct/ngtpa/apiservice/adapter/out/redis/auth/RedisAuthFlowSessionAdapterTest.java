@@ -185,8 +185,9 @@ class RedisAuthFlowSessionAdapterTest {
         return new AuthFlowSessionData(
                 "EMAIL",
                 "m****r@example.com",
-                new UsernameCheckState(new SelectedTrust("TL", "ENV1", "Scheme A", "scheme-a", 10), "user_secret", checkedAt, checkedAt.plusSeconds(600)),
-                Map.of("safe", "value"));
+                Map.of(
+                        "safe", "value",
+                        "usernameCheckCiphertext", "encrypted-username-check"));
     }
 
     private static final class InMemoryCachePort implements CachePort {

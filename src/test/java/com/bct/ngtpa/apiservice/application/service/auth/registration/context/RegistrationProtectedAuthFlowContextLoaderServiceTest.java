@@ -64,7 +64,7 @@ class RegistrationProtectedAuthFlowContextLoaderServiceTest {
                 AuthFlowStatus.OTP_SENT,
                 csrfTokenHash,
                 "otp_abc",
-                new AuthFlowSessionData("EMAIL", "m****r@example.com", null, Map.of(
+                new AuthFlowSessionData("EMAIL", "m****r@example.com", Map.of(
                         RegistrationAuthFlowContextAttributeNames.CONTEXT_CIPHERTEXT, "ciphertext",
                         RegistrationAuthFlowContextAttributeNames.CONTEXT_KEY_VERSION, "v1",
                         RegistrationAuthFlowContextAttributeNames.CONTEXT_ALGORITHM, RegistrationAuthFlowEncryptedContext.DEFAULT_ALGORITHM)),

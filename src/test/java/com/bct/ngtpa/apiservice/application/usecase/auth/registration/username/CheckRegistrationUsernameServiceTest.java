@@ -99,8 +99,7 @@ class CheckRegistrationUsernameServiceTest {
 
         assertThat(availability.calls).isOne();
         assertThat(sessions.updated.status()).isEqualTo(AuthFlowStatus.USERNAME_VERIFIED);
-        assertThat(sessions.updated.data().usernameCheck()).isNull();
-        assertThat(sessions.updated.data().attributes())
+                assertThat(sessions.updated.data().attributes())
                 .containsKeys(RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_CIPHERTEXT,
                         RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_KEY_VERSION,
                         RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_ALGORITHM);
@@ -118,8 +117,7 @@ class CheckRegistrationUsernameServiceTest {
                 .verifyComplete();
 
         assertThat(sessions.updated.status()).isEqualTo(AuthFlowStatus.USERNAME_VERIFIED);
-        assertThat(sessions.updated.data().usernameCheck()).isNull();
-        assertThat(sessions.updated.data().attributes().toString()).doesNotContain("abc1@");
+                assertThat(sessions.updated.data().attributes().toString()).doesNotContain("abc1@");
     }
 
     @Test
@@ -244,8 +242,7 @@ class CheckRegistrationUsernameServiceTest {
                 .verifyComplete();
 
         assertThat(sessions.updated).isNull();
-        assertThat(sessions.session.data().usernameCheck()).isSameAs(existing);
-    }
+            }
 
     @Test
     void rejectsMutationFromCompleting() {
@@ -281,10 +278,25 @@ class CheckRegistrationUsernameServiceTest {
                 status,
                 sha256(rawCsrfToken),
                 "otp_secret",
-                new AuthFlowSessionData("EMAIL", "m****r@example.com", usernameCheck, java.util.Map.of()),
+                new AuthFlowSessionData(
+                        "EMAIL",
+                        "m****r@example.com",
+                        usernameCheckAttributes(usernameCheck)),
                 NOW.minusSeconds(300),
                 NOW.minusSeconds(60),
                 NOW.plusSeconds(1800));
+    }
+
+    private java.util.Map<String, String> usernameCheckAttributes(UsernameCheckState usernameCheck) {
+        if (usernameCheck == null) {
+            return java.util.Map.of();
+        }
+        RegistrationUsernameCheckEncryptedState encrypted =
+                new FakeUsernameCheckProtector().protect(usernameCheck);
+        return java.util.Map.of(
+                RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_CIPHERTEXT, encrypted.ciphertext(),
+                RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_KEY_VERSION, encrypted.keyVersion(),
+                RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_ALGORITHM, encrypted.algorithm());
     }
 
     private static String sha256(String value) {

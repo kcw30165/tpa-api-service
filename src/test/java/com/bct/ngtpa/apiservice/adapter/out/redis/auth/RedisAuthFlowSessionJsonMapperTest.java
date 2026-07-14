@@ -8,8 +8,6 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionData;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.SelectedTrust;
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.UsernameCheckState;
 import com.bct.ngtpa.apiservice.exception.CacheException;
 import java.time.Instant;
 import java.util.Map;
@@ -33,8 +31,7 @@ class RedisAuthFlowSessionJsonMapperTest {
         assertThat(roundTrip.activeOtpChallengeId()).isEqualTo("otp_abc");
         assertThat(roundTrip.data().contactType()).isEqualTo("EMAIL");
         assertThat(roundTrip.data().maskedDestination()).isEqualTo("m****r@example.com");
-        assertThat(roundTrip.data().usernameCheck().selectedTrust().trustCode()).isEqualTo("TL");
-        assertThat(roundTrip.createdAt()).isEqualTo(Instant.parse("2026-06-29T00:00:00Z"));
+                assertThat(roundTrip.createdAt()).isEqualTo(Instant.parse("2026-06-29T00:00:00Z"));
         assertThat(roundTrip.updatedAt()).isEqualTo(Instant.parse("2026-06-29T00:01:00Z"));
         assertThat(roundTrip.expiresAt()).isEqualTo(Instant.parse("2026-06-29T00:30:00Z"));
     }
@@ -77,16 +74,12 @@ class RedisAuthFlowSessionJsonMapperTest {
     }
 
     private static AuthFlowSession sampleSession() {
-        var checkedAt = Instant.parse("2026-06-29T00:05:00Z");
         var data = new AuthFlowSessionData(
                 "EMAIL",
                 "m****r@example.com",
-                new UsernameCheckState(
-                        new SelectedTrust("TL", "ENV1", "Scheme A", "scheme-a", 10),
-                        "user_secret",
-                        checkedAt,
-                        checkedAt.plusSeconds(600)),
-                Map.of("safe", "value"));
+                Map.of(
+                        "safe", "value",
+                        "usernameCheckCiphertext", "encrypted-username-check"));
         return new AuthFlowSession(
                 new AuthFlowSessionId("afs_abc123"),
                 AuthFlowScenario.REGISTRATION,

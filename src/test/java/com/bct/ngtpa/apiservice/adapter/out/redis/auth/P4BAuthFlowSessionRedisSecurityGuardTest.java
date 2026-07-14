@@ -38,7 +38,7 @@ class P4BAuthFlowSessionRedisSecurityGuardTest {
                 AuthFlowStatus.OTP_SENT,
                 "hash_secret",
                 "otp_secret",
-                new AuthFlowSessionData("EMAIL", "m****r@example.com", null, java.util.Map.of("safe", "value")),
+                new AuthFlowSessionData("EMAIL", "m****r@example.com", java.util.Map.of("safe", "value")),
                 Instant.parse("2026-06-29T00:00:00Z"),
                 Instant.parse("2026-06-29T00:00:00Z"),
                 Instant.parse("2026-06-29T00:30:00Z"));

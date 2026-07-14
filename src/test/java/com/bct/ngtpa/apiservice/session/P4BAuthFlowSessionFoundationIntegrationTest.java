@@ -31,7 +31,6 @@ import com.bct.ngtpa.apiservice.application.usecase.session.authflow.StartAuthFl
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.StartAuthFlowSessionWithConcurrencyCommand;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.UpdateAuthFlowDestinationCommand;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.UpdateAuthFlowOtpCommand;
-import com.bct.ngtpa.apiservice.application.usecase.session.authflow.UpdateAuthFlowUsernameCheckCommand;
 import java.lang.reflect.RecordComponent;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -124,28 +123,6 @@ class P4BAuthFlowSessionFoundationIntegrationTest {
         assertThat(port.cookieInstructionCreated).isFalse();
     }
 
-    @Test
-    void p4bLifecycleUpdatesOtpDestinationAndUsernameCheck() {
-        var port = new FakeAuthFlowSessionPort();
-        var lifecycle = lifecycle(port, new PrefixSessionIdGenerator());
-        var id = new AuthFlowSessionId("afs_lifecycle");
-        var expiresAt = NOW.plusSeconds(1800);
-        port.save(activeSession(id, AuthFlowStatus.OTP_VERIFIED, null));
-        var usernameCheck = new UsernameCheckState(new SelectedTrust("TL", "ENV1", "Scheme A", "scheme-a", 10), "user_secret", NOW, NOW.plusSeconds(600));
-
-        StepVerifier.create(lifecycle.updateActiveOtpChallenge(new UpdateAuthFlowOtpCommand(id, "otp_secret", null))).expectNextCount(1).verifyComplete();
-        StepVerifier.create(lifecycle.updateDestination(new UpdateAuthFlowDestinationCommand(id, "EMAIL", "m****r@example.com", null))).expectNextCount(1).verifyComplete();
-        StepVerifier.create(lifecycle.updateUsernameCheck(new UpdateAuthFlowUsernameCheckCommand(id, usernameCheck, null)))
-                .assertNext(updated -> {
-                    assertThat(updated.activeOtpChallengeId()).isEqualTo("otp_secret");
-                    assertThat(updated.data().maskedDestination()).isEqualTo("m****r@example.com");
-                    assertThat(updated.data().usernameCheck()).isEqualTo(usernameCheck);
-                    assertThat(updated.status()).isEqualTo(AuthFlowStatus.USERNAME_VERIFIED);
-                    assertThat(updated.expiresAt()).isEqualTo(expiresAt);
-                    assertThat(recordComponentNames(UsernameCheckState.class)).doesNotContain("password", "confirmPassword");
-                })
-                .verifyComplete();
-    }
 
     @Test
     void p4bConcurrencyReplacesExistingActiveSession() {
@@ -195,9 +172,10 @@ class P4BAuthFlowSessionFoundationIntegrationTest {
                 AuthFlowStatus.OTP_SENT,
                 "csrf_hash_secret",
                 "otp_secret",
-                new AuthFlowSessionData("EMAIL", "m****r@example.com",
-                        new UsernameCheckState(new SelectedTrust("TL", "ENV1", null, null, null), "user_secret", NOW, NOW.plusSeconds(600)),
-                        Map.of()),
+                new AuthFlowSessionData(
+                        "EMAIL",
+                        "m****r@example.com",
+                        Map.of("usernameCheckCiphertext", "encrypted-username-check")),
                 NOW,
                 NOW,
                 NOW.plusSeconds(1800));

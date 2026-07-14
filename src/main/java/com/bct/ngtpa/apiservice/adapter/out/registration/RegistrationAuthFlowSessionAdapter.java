@@ -58,7 +58,6 @@ public class RegistrationAuthFlowSessionAdapter implements RegistrationSessionPo
         var data = new AuthFlowSessionData(
                 contactType == null ? null : contactType.name(),
                 maskedDestination,
-                null,
                 Map.of());
 
         var command = new StartAuthFlowSessionCommand(
@@ -169,7 +168,6 @@ public class RegistrationAuthFlowSessionAdapter implements RegistrationSessionPo
         var data = new AuthFlowSessionData(
                 contactType == null ? null : contactType.name(),
                 maskedDestination,
-                null,
                 attributes == null ? Map.of() : Map.copyOf(attributes));
 
         var command = new StartAuthFlowSessionCommand(

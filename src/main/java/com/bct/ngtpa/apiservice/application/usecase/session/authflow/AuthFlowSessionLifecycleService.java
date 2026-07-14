@@ -64,22 +64,11 @@ public class AuthFlowSessionLifecycleService {
         Objects.requireNonNull(command, "command must not be null");
         return mutateUsable(command.authFlowSessionId(), session -> {
             var currentData = session.data() == null ? AuthFlowSessionData.empty() : session.data();
-            var updatedData = new AuthFlowSessionData(command.contactType(), command.maskedDestination(), currentData.usernameCheck(), currentData.attributes());
+            var updatedData = new AuthFlowSessionData(command.contactType(), command.maskedDestination(), currentData.attributes());
             return copy(session, session.status(), session.csrfTokenHash(), session.activeOtpChallengeId(), updatedData, Instant.now(clock));
         });
     }
 
-    public Mono<AuthFlowSession> updateUsernameCheck(UpdateAuthFlowUsernameCheckCommand command) {
-        Objects.requireNonNull(command, "command must not be null");
-        return mutateUsable(command.authFlowSessionId(), session -> {
-            if (session.status() != AuthFlowStatus.OTP_VERIFIED && session.status() != AuthFlowStatus.USERNAME_VERIFIED) {
-                throw new IllegalStateException("Auth flow session is not ready for username check");
-            }
-            var currentData = session.data() == null ? AuthFlowSessionData.empty() : session.data();
-            var updatedData = new AuthFlowSessionData(currentData.contactType(), currentData.maskedDestination(), command.usernameCheckState(), currentData.attributes());
-            return copy(session, AuthFlowStatus.USERNAME_VERIFIED, session.csrfTokenHash(), session.activeOtpChallengeId(), updatedData, Instant.now(clock));
-        });
-    }
 
     public Mono<AuthFlowSession> complete(CompleteAuthFlowSessionCommand command) {
         Objects.requireNonNull(command, "command must not be null");
