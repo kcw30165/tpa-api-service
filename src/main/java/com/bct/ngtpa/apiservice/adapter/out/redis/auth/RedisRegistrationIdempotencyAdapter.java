@@ -9,6 +9,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIde
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStatus;
+import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyUnknownOutcomeCommand;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationIdempotencyPort;
 import java.util.Optional;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
@@ -101,6 +102,37 @@ public class RedisRegistrationIdempotencyAdapter implements RegistrationIdempote
     }
 
     @Override
+    public Mono<RegistrationIdempotencyRecord> markUnknownOutcome(
+            RegistrationIdempotencyUnknownOutcomeCommand command) {
+        String key = keyFactory.keyFor(command.action(), command.idempotencyKey());
+        return redis.get(key)
+                .flatMap(optional -> optional
+                        .map(json -> Mono.just(jsonMapper.fromJson(json)))
+                        .orElseGet(() -> Mono.error(new IllegalStateException(
+                                "Registration idempotency record missing"))))
+                .flatMap(existing -> {
+                    ensureSameRequestHash(existing, command.requestHash());
+                    if (existing.status() == RegistrationIdempotencyStatus.COMPLETED) {
+                        return Mono.<RegistrationIdempotencyRecord>error(
+                                new IllegalStateException(
+                                        "Completed registration idempotency record cannot become unknown"));
+                    }
+                    var unknown = new RegistrationIdempotencyRecord(
+                            existing.action(),
+                            existing.idempotencyKey(),
+                            existing.requestHash(),
+                            RegistrationIdempotencyStatus.UNKNOWN_OUTCOME,
+                            null,
+                            existing.createdAt(),
+                            command.recordedAt(),
+                            command.recordedAt().plus(command.ttl()));
+                    return redis.set(key, jsonMapper.toJson(unknown), command.ttl())
+                            .thenReturn(unknown);
+                })
+                .onErrorMap(this::safeRedisFailureUnlessBusiness);
+    }
+
+    @Override
     public Mono<Optional<RegistrationIdempotencyRecord>> load(
             RegistrationIdempotencyAction action,
             RegistrationIdempotencyKey idempotencyKey) {
@@ -134,6 +166,7 @@ public class RedisRegistrationIdempotencyAdapter implements RegistrationIdempote
             case PROCESSING -> RegistrationIdempotencyStartOutcome.DUPLICATE_IN_PROGRESS;
             case COMPLETED -> RegistrationIdempotencyStartOutcome.COMPLETED_REPLAY;
             case FAILED -> RegistrationIdempotencyStartOutcome.FAILED_EXISTING;
+            case UNKNOWN_OUTCOME -> RegistrationIdempotencyStartOutcome.UNKNOWN_OUTCOME_EXISTING;
         };
     }
 
@@ -146,7 +179,8 @@ public class RedisRegistrationIdempotencyAdapter implements RegistrationIdempote
     private Throwable safeRedisFailureUnlessBusiness(Throwable throwable) {
         if (throwable instanceof IllegalStateException
                 && ("Registration idempotency record missing".equals(throwable.getMessage())
-                || "Registration idempotency request hash mismatch".equals(throwable.getMessage()))) {
+                || "Registration idempotency request hash mismatch".equals(throwable.getMessage())
+                || "Completed registration idempotency record cannot become unknown".equals(throwable.getMessage()))) {
             return throwable;
         }
         return safeRedisFailure(throwable);

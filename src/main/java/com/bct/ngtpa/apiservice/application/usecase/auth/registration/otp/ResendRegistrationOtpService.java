@@ -96,7 +96,7 @@ public class ResendRegistrationOtpService implements ResendRegistrationOtpUseCas
                             WorkflowNextStep.NONE,
                             RegistrationOtpResendErrorKeys.WORKFLOW_IDEMPOTENCY_KEY_REUSED,
                             start.outcome()));
-                    case FAILED_EXISTING -> Mono.just(failure(
+                    case FAILED_EXISTING, UNKNOWN_OUTCOME_EXISTING -> Mono.just(failure(
                             ResendRegistrationOtpResultStatus.SYSTEM_FAILED,
                             WorkflowNextStep.NONE,
                             RegistrationOtpResendErrorKeys.REGISTRATION_OTP_RESEND_FAILED,

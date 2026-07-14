@@ -9,6 +9,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIde
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartResult;
 import java.util.Optional;
 import reactor.core.publisher.Mono;
+import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyUnknownOutcomeCommand;
 
 public interface RegistrationIdempotencyPort {
     Mono<RegistrationIdempotencyStartResult> startProcessing(RegistrationIdempotencyStartCommand command);
@@ -16,6 +17,12 @@ public interface RegistrationIdempotencyPort {
     Mono<RegistrationIdempotencyRecord> markCompleted(RegistrationIdempotencyCompleteCommand command);
 
     Mono<RegistrationIdempotencyRecord> markFailed(RegistrationIdempotencyFailCommand command);
+
+    default Mono<RegistrationIdempotencyRecord> markUnknownOutcome(
+            RegistrationIdempotencyUnknownOutcomeCommand command) {
+        return Mono.error(new UnsupportedOperationException(
+                "Registration idempotency unknown outcome is not supported"));
+    }
 
     Mono<Optional<RegistrationIdempotencyRecord>> load(
             RegistrationIdempotencyAction action,

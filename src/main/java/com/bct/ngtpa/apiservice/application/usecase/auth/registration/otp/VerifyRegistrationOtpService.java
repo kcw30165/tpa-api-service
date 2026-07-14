@@ -66,7 +66,7 @@ public class VerifyRegistrationOtpService implements VerifyRegistrationOtpUseCas
             case DUPLICATE_IN_PROGRESS -> Mono.just(new VerifyRegistrationOtpResult(VerifyRegistrationOtpResultStatus.DUPLICATE_IN_PROGRESS, WorkflowNextStep.WAIT, List.of(), null, List.of(), List.of(), start.outcome(), null));
             case COMPLETED_REPLAY -> Mono.just(new VerifyRegistrationOtpResult(VerifyRegistrationOtpResultStatus.COMPLETED_REPLAY, WorkflowNextStep.WAIT, List.of(), null, List.of(), List.of(), start.outcome(), start.record() == null ? null : start.record().responseSnapshot()));
             case KEY_REUSED_WITH_DIFFERENT_REQUEST -> Mono.just(failure(VerifyRegistrationOtpResultStatus.IDEMPOTENCY_KEY_REUSED, WorkflowNextStep.NONE, RegistrationOtpVerifyErrorKeys.WORKFLOW_IDEMPOTENCY_KEY_REUSED, null, start.outcome()));
-            case FAILED_EXISTING -> Mono.just(failure(VerifyRegistrationOtpResultStatus.SYSTEM_FAILED, WorkflowNextStep.NONE, RegistrationOtpVerifyErrorKeys.REGISTRATION_OTP_INVALID, null, start.outcome()));
+            case FAILED_EXISTING, UNKNOWN_OUTCOME_EXISTING -> Mono.just(failure(VerifyRegistrationOtpResultStatus.SYSTEM_FAILED, WorkflowNextStep.NONE, RegistrationOtpVerifyErrorKeys.REGISTRATION_OTP_INVALID, null, start.outcome()));
         });
     }
 
