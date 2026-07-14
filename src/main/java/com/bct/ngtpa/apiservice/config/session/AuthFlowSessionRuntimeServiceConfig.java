@@ -2,6 +2,9 @@ package com.bct.ngtpa.apiservice.config.session;
 
 import com.bct.ngtpa.apiservice.adapter.out.session.AuthFlowSessionCancellationAdapter;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionCancellationPort;
+import com.bct.ngtpa.apiservice.adapter.in.web.session.config.AuthFlowSessionProperties;
+import com.bct.ngtpa.apiservice.adapter.out.session.AuthFlowSessionExpiryRefreshAdapter;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionExpiryRefreshPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.service.session.SecureSessionIdGenerator;
 import com.bct.ngtpa.apiservice.application.service.session.SessionIdGenerator;
@@ -37,6 +40,14 @@ public class AuthFlowSessionRuntimeServiceConfig {
     public AuthFlowSessionCancellationPort authFlowSessionCancellationPort(
             AuthFlowSessionPort authFlowSessionPort) {
         return new AuthFlowSessionCancellationAdapter(authFlowSessionPort);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(AuthFlowSessionExpiryRefreshPort.class)
+    public AuthFlowSessionExpiryRefreshPort authFlowSessionExpiryRefreshPort(
+            AuthFlowSessionPort authFlowSessionPort,
+            AuthFlowSessionProperties properties) {
+        return new AuthFlowSessionExpiryRefreshAdapter(authFlowSessionPort, properties);
     }
 
     @Bean

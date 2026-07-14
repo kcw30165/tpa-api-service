@@ -17,9 +17,11 @@ import com.bct.ngtpa.apiservice.application.port.out.RegistrationIdempotencyPort
 import com.bct.ngtpa.apiservice.application.port.out.CacheAdminPort;
 import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthFlowSessionAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthFlowSessionCompletionLockAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthFlowSessionJsonMapper;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisOtpChallengeJsonMapper;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisOtpChallengeStateAdapter;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionCompletionLockPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.CachePort;
 
@@ -143,6 +145,16 @@ public class RedisAdapterConfig {
     @ConditionalOnMissingBean
     public RedisAuthFlowSessionJsonMapper redisAuthFlowSessionJsonMapper() {
         return new RedisAuthFlowSessionJsonMapper();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(AuthFlowSessionCompletionLockPort.class)
+    public AuthFlowSessionCompletionLockPort authFlowSessionCompletionLockPort(
+            ReactiveStringRedisTemplate reactiveStringRedisTemplate,
+            RedisCacheKeyFactory redisCacheKeyFactory) {
+        return new RedisAuthFlowSessionCompletionLockAdapter(
+                reactiveStringRedisTemplate,
+                redisCacheKeyFactory);
     }
 
     @Bean
