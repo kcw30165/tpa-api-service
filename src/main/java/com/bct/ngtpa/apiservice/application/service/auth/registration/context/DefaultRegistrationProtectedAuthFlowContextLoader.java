@@ -62,14 +62,17 @@ public class DefaultRegistrationProtectedAuthFlowContextLoader implements Regist
                         return Mono.just(RegistrationProtectedAuthFlowContextResult.invalid(toStatus(csrf.status())));
                     }
                     return lifecycleService.load(new LoadAuthFlowSessionCommand(command.authFlowSessionId(), command.correlationId()))
-                            .map(optional -> validateAndDecrypt(optional, now));
+                            .map(optional -> validateAndDecrypt(optional, now, command.acceptedStatuses()));
                 })
                 .onErrorResume(RuntimeException.class,
                         ignored -> Mono.just(RegistrationProtectedAuthFlowContextResult.invalid(
                                 RegistrationProtectedAuthFlowContextStatus.CSRF_INVALID)));
     }
 
-    private RegistrationProtectedAuthFlowContextResult validateAndDecrypt(Optional<AuthFlowSession> optional, Instant now) {
+    private RegistrationProtectedAuthFlowContextResult validateAndDecrypt(
+            Optional<AuthFlowSession> optional,
+            Instant now,
+            java.util.Set<AuthFlowStatus> acceptedStatuses) {
         if (optional.isEmpty()) {
             return RegistrationProtectedAuthFlowContextResult.invalid(RegistrationProtectedAuthFlowContextStatus.MISSING_SESSION);
         }
@@ -80,7 +83,7 @@ public class DefaultRegistrationProtectedAuthFlowContextLoader implements Regist
         if (session.scenario() != AuthFlowScenario.REGISTRATION) {
             return RegistrationProtectedAuthFlowContextResult.invalid(RegistrationProtectedAuthFlowContextStatus.WRONG_SCENARIO);
         }
-        if (session.status() != AuthFlowStatus.OTP_SENT) {
+        if (!acceptedStatuses.contains(session.status())) {
             return RegistrationProtectedAuthFlowContextResult.invalid(RegistrationProtectedAuthFlowContextStatus.INVALID_STATUS);
         }
         if (isBlank(session.activeOtpChallengeId())) {
