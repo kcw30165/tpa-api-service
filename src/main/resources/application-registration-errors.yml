@@ -1,0 +1,355 @@
+workflow-error-contract:
+  navigation:
+    VERIFY_OTP:
+      page-id: registration-otp-verification
+    USERNAME_CHECK:
+      page-id: registration-username-check
+    SELECT_TRUST:
+      page-id: registration-trust-selection
+    PASSWORD_SETUP:
+      page-id: registration-password-setup
+    RETURN_TO_LOGIN:
+      page-id: login
+    RESTART_FLOW:
+      page-id: registration-start
+  errors:
+    - code: err.registration.authFlow.invalid
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: RESTART_FLOW
+      messages:
+        en: "The registration session is invalid. Please restart registration."
+        zh_HK: "註冊工作階段無效，請重新開始註冊。"
+    - code: err.registration.csrf.invalid
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+      messages:
+        en: "The request could not be validated."
+        zh_HK: "無法驗證此要求。"
+    - code: err.registration.origin.invalid
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+      messages:
+        en: "The request origin could not be validated."
+        zh_HK: "無法驗證此要求的來源。"
+    - code: err.registration.state.invalid
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+      messages:
+        en: "This action is not available at the current registration step."
+        zh_HK: "目前的註冊步驟不支援此操作。"
+    - code: err.registration.start.request.invalid
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: RESTART_FLOW
+      messages:
+        en: "The registration request is invalid."
+        zh_HK: "註冊要求無效。"
+    - code: err.registration.start.rateLimited
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: RESTART_FLOW
+      messages:
+        en: "Too many registration attempts. Please try again later."
+        zh_HK: "註冊嘗試次數過多，請稍後再試。"
+    - code: err.registration.start.verificationFailed
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: RESTART_FLOW
+      messages:
+        en: "We are unable to verify your details. Please review and try again."
+        zh_HK: "我們未能核實你的資料，請檢查後再試。"
+    - code: err.registration.otp.required
+      type: FIELD
+      severity: ERROR
+      source: SERVER
+      targets:
+        - otpCode
+      next-step: VERIFY_OTP
+      messages:
+        en: "Please enter the verification code."
+        zh_HK: "請輸入驗證碼。"
+    - code: err.registration.otp.invalid
+      type: FIELD
+      severity: ERROR
+      source: SERVER
+      targets:
+        - otpCode
+      next-step: VERIFY_OTP
+      messages:
+        en: "The verification code is invalid."
+        zh_HK: "驗證碼無效。"
+    - code: err.registration.otp.expired
+      type: FIELD
+      severity: ERROR
+      source: SERVER
+      targets:
+        - otpCode
+      next-step: VERIFY_OTP
+      messages:
+        en: "The verification code has expired. Please request a new code."
+        zh_HK: "驗證碼已過期，請重新索取驗證碼。"
+    - code: err.registration.otp.locked
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: VERIFY_OTP
+      messages:
+        en: "Verification is temporarily unavailable because the attempt limit was reached."
+        zh_HK: "由於已達嘗試次數上限，暫時無法進行驗證。"
+    - code: err.registration.otp.cooldownActive
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: VERIFY_OTP
+      messages:
+        en: "Please wait before requesting another verification code."
+        zh_HK: "請稍候再重新索取驗證碼。"
+    - code: err.registration.otp.sendRateLimited
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: VERIFY_OTP
+      messages:
+        en: "Too many verification codes were requested. Please try again later."
+        zh_HK: "索取驗證碼次數過多，請稍後再試。"
+    - code: err.registration.otp.verifyRateLimited
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: VERIFY_OTP
+      messages:
+        en: "Too many verification attempts. Please try again later."
+        zh_HK: "驗證嘗試次數過多，請稍後再試。"
+    - code: err.registration.message.deliveryFailed
+      type: DOWNSTREAM_SYSTEM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: VERIFY_OTP
+      messages:
+        en: "We could not deliver the verification code. Please try again later."
+        zh_HK: "我們未能發送驗證碼，請稍後再試。"
+    - code: err.registration.trust.selectionInvalid
+      type: FIELD
+      severity: ERROR
+      source: SERVER
+      targets:
+        - selectedTrust
+      next-step: SELECT_TRUST
+      messages:
+        en: "Please select an available ORSO scheme."
+        zh_HK: "請選擇可供註冊的公積金計劃。"
+    - code: err.registration.username.request.invalid
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: USERNAME_CHECK
+      messages:
+        en: "The username request is invalid."
+        zh_HK: "用戶名稱要求無效。"
+    - code: err.registration.username.policyInvalid
+      type: FIELD
+      severity: ERROR
+      source: SERVER
+      targets:
+        - username
+      next-step: USERNAME_CHECK
+      messages:
+        en: "The username does not meet the requirements."
+        zh_HK: "用戶名稱不符合要求。"
+    - code: err.registration.username.isRegistered
+      type: FIELD
+      severity: ERROR
+      source: SERVER
+      targets:
+        - username
+      next-step: USERNAME_CHECK
+      messages:
+        en: "This username is already registered. Please choose another username."
+        zh_HK: "此用戶名稱已被註冊，請選擇另一個用戶名稱。"
+    - code: err.registration.complete.request.invalid
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: PASSWORD_SETUP
+      messages:
+        en: "The registration completion request is invalid."
+        zh_HK: "完成註冊的要求無效。"
+    - code: err.registration.complete.memberNotFound
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: RESTART_FLOW
+      messages:
+        en: "We could not continue this registration. Please restart registration."
+        zh_HK: "無法繼續此註冊程序，請重新開始註冊。"
+    - code: err.registration.complete.memberAlreadyRegistered
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: RETURN_TO_LOGIN
+      messages:
+        en: "This member is already registered. Please return to login."
+        zh_HK: "此成員已完成註冊，請返回登入頁面。"
+    - code: err.workflow.idempotency.missing
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+      messages:
+        en: "The Idempotency-Key header is required."
+        zh_HK: "必須提供 Idempotency-Key 標頭。"
+    - code: err.workflow.idempotency.inProgress
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+      messages:
+        en: "The same request is already being processed."
+        zh_HK: "相同的要求正在處理中。"
+    - code: err.workflow.idempotency.keyReused
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+      messages:
+        en: "The Idempotency-Key was already used for another request."
+        zh_HK: "此 Idempotency-Key 已用於另一個要求。"
+    - code: err.workflow.downstream.businessRejected
+      type: DOWNSTREAM_BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成要求，請檢查後再試。"
+    - code: err.workflow.downstream.unavailable
+      type: DOWNSTREAM_SYSTEM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+      messages:
+        en: "The service is temporarily unavailable. Please try again later."
+        zh_HK: "服務暫時未能提供，請稍後再試。"
+    - code: err.workflow.system.unavailable
+      type: SYSTEM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+      messages:
+        en: "The service is temporarily unavailable. Please try again later."
+        zh_HK: "服務暫時未能提供，請稍後再試。"
+
+error-message:
+  en:
+    "err.registration.authFlow.invalid": "The registration session is invalid. Please restart registration."
+    "err.registration.csrf.invalid": "The request could not be validated."
+    "err.registration.origin.invalid": "The request origin could not be validated."
+    "err.registration.state.invalid": "This action is not available at the current registration step."
+    "err.registration.start.request.invalid": "The registration request is invalid."
+    "err.registration.start.rateLimited": "Too many registration attempts. Please try again later."
+    "err.registration.start.verificationFailed": "We are unable to verify your details. Please review and try again."
+    "err.registration.otp.required": "Please enter the verification code."
+    "err.registration.otp.invalid": "The verification code is invalid."
+    "err.registration.otp.expired": "The verification code has expired. Please request a new code."
+    "err.registration.otp.locked": "Verification is temporarily unavailable because the attempt limit was reached."
+    "err.registration.otp.cooldownActive": "Please wait before requesting another verification code."
+    "err.registration.otp.sendRateLimited": "Too many verification codes were requested. Please try again later."
+    "err.registration.otp.verifyRateLimited": "Too many verification attempts. Please try again later."
+    "err.registration.message.deliveryFailed": "We could not deliver the verification code. Please try again later."
+    "err.registration.trust.selectionInvalid": "Please select an available ORSO scheme."
+    "err.registration.username.request.invalid": "The username request is invalid."
+    "err.registration.username.policyInvalid": "The username does not meet the requirements."
+    "err.registration.username.isRegistered": "This username is already registered. Please choose another username."
+    "err.registration.complete.request.invalid": "The registration completion request is invalid."
+    "err.registration.complete.memberNotFound": "We could not continue this registration. Please restart registration."
+    "err.registration.complete.memberAlreadyRegistered": "This member is already registered. Please return to login."
+    "err.workflow.idempotency.missing": "The Idempotency-Key header is required."
+    "err.workflow.idempotency.inProgress": "The same request is already being processed."
+    "err.workflow.idempotency.keyReused": "The Idempotency-Key was already used for another request."
+    "err.workflow.downstream.businessRejected": "The request could not be completed. Please review and try again."
+    "err.workflow.downstream.unavailable": "The service is temporarily unavailable. Please try again later."
+    "err.workflow.system.unavailable": "The service is temporarily unavailable. Please try again later."
+  zh_HK:
+    "err.registration.authFlow.invalid": "註冊工作階段無效，請重新開始註冊。"
+    "err.registration.csrf.invalid": "無法驗證此要求。"
+    "err.registration.origin.invalid": "無法驗證此要求的來源。"
+    "err.registration.state.invalid": "目前的註冊步驟不支援此操作。"
+    "err.registration.start.request.invalid": "註冊要求無效。"
+    "err.registration.start.rateLimited": "註冊嘗試次數過多，請稍後再試。"
+    "err.registration.start.verificationFailed": "我們未能核實你的資料，請檢查後再試。"
+    "err.registration.otp.required": "請輸入驗證碼。"
+    "err.registration.otp.invalid": "驗證碼無效。"
+    "err.registration.otp.expired": "驗證碼已過期，請重新索取驗證碼。"
+    "err.registration.otp.locked": "由於已達嘗試次數上限，暫時無法進行驗證。"
+    "err.registration.otp.cooldownActive": "請稍候再重新索取驗證碼。"
+    "err.registration.otp.sendRateLimited": "索取驗證碼次數過多，請稍後再試。"
+    "err.registration.otp.verifyRateLimited": "驗證嘗試次數過多，請稍後再試。"
+    "err.registration.message.deliveryFailed": "我們未能發送驗證碼，請稍後再試。"
+    "err.registration.trust.selectionInvalid": "請選擇可供註冊的公積金計劃。"
+    "err.registration.username.request.invalid": "用戶名稱要求無效。"
+    "err.registration.username.policyInvalid": "用戶名稱不符合要求。"
+    "err.registration.username.isRegistered": "此用戶名稱已被註冊，請選擇另一個用戶名稱。"
+    "err.registration.complete.request.invalid": "完成註冊的要求無效。"
+    "err.registration.complete.memberNotFound": "無法繼續此註冊程序，請重新開始註冊。"
+    "err.registration.complete.memberAlreadyRegistered": "此成員已完成註冊，請返回登入頁面。"
+    "err.workflow.idempotency.missing": "必須提供 Idempotency-Key 標頭。"
+    "err.workflow.idempotency.inProgress": "相同的要求正在處理中。"
+    "err.workflow.idempotency.keyReused": "此 Idempotency-Key 已用於另一個要求。"
+    "err.workflow.downstream.businessRejected": "未能完成要求，請檢查後再試。"
+    "err.workflow.downstream.unavailable": "服務暫時未能提供，請稍後再試。"
+    "err.workflow.system.unavailable": "服務暫時未能提供，請稍後再試。"

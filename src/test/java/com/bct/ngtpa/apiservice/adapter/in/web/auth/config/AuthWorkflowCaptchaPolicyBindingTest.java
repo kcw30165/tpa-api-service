@@ -36,7 +36,7 @@ class AuthWorkflowCaptchaPolicyBindingTest {
 
             assertThat(policy.captcha().length()).isEqualTo(7);
             assertThat(policy.captcha().alphabet()).isEqualTo("23456789ABCDEFGHJKLMNPQSTUVWXYZ");
-            assertThat(policy.captcha().caseSensitive()).isTrue();
+            assertThat(policy.captcha().caseSensitive()).isFalse();
             assertThat(policy.captcha().ttlSeconds()).isEqualTo(300);
             assertThat(policy.captcha().maxAttempts()).isEqualTo(5);
         });

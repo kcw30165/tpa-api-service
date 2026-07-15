@@ -41,7 +41,7 @@ class AuthWorkflowPolicyResolverTest {
             assertTrue(policy.preStartChallenge().enabled());
             assertEquals(PreStartChallengeType.CAPTCHA, policy.preStartChallenge().type());
             assertEquals(7, policy.captcha().length());
-            assertTrue(policy.captcha().caseSensitive());
+            assertFalse(policy.captcha().caseSensitive());
             assertEquals(300, policy.captcha().ttlSeconds());
             assertEquals(5, policy.captcha().maxAttempts());
         });

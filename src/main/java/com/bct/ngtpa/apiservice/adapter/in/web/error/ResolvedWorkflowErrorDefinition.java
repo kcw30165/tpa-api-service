@@ -1,0 +1,16 @@
+package com.bct.ngtpa.apiservice.adapter.in.web.error;
+
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowPageRef;
+import java.util.List;
+
+public record ResolvedWorkflowErrorDefinition(
+        String code, String message, List<String> targets,
+        WorkflowErrorType type, WorkflowErrorSeverity severity, String source,
+        WorkflowNextStep nextStep, WorkflowPageRef pageRef) {
+    public ResolvedWorkflowErrorDefinition {
+        targets = List.copyOf(targets);
+    }
+}
