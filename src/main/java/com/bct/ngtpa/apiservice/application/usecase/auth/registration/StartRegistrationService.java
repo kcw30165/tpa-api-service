@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.registration;
 
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.RegistrationOtpSendRateLimitedException;
 import java.time.Instant;
 import java.time.Duration;
 import com.bct.ngtpa.apiservice.application.dto.auth.PreStartChallengeType;
@@ -230,6 +231,7 @@ public class StartRegistrationService implements StartRegistrationUseCase {
         return sessionGateway.createRegistrationSession(validated.maskedDestination(), validated.contactType(), registrationContext)
                 .flatMap(sessionId -> csrfGateway.bindCsrfToken(sessionId)
                         .flatMap(csrfToken -> otpGateway.createOtp(validated.contactType(), validated.contactValue())
+                                .onErrorMap(RegistrationOtpSendRateLimitedException.class, error -> error)
                                 .flatMap(otp -> sessionGateway.updateOtpChallenge(sessionId, otp.activeOtpChallengeId(), validated.contactType(), validated.maskedDestination())
                                         .then(messageGateway.deliverRegistrationOtp(validated.contactType(), validated.contactValue(), otp.otpCode(), otp.expiresInSeconds(), command.acceptLanguage(), command.correlationId()))
                                         .flatMap(accepted -> {

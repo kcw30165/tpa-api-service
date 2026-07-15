@@ -145,6 +145,14 @@ public class ResendRegistrationOtpService implements ResendRegistrationOtpUseCas
                                     null);
                             return markCompleted(command, hash, result).then(Mono.just(result));
                         }))
+                .onErrorResume(RegistrationOtpSendRateLimitedException.class, rejection -> markFailed(command, hash)
+                        .then(Mono.just(failure(
+                                ResendRegistrationOtpResultStatus.SEND_RATE_LIMITED,
+                                WorkflowNextStep.VERIFY_OTP,
+                                "err.registration.otp.sendRateLimited",
+                                RegistrationIdempotencyStartOutcome.STARTED,
+                                rejection.retryAfterSeconds(),
+                                null))))
                 .onErrorResume(RegistrationOtpResendRejectedException.class, rejection -> markFailed(command, hash)
                         .then(Mono.just(failure(
                                 rejection.status(),
@@ -166,6 +174,7 @@ public class ResendRegistrationOtpService implements ResendRegistrationOtpUseCas
     private String resendErrorCode(ResendRegistrationOtpResultStatus status) {
         return switch (status) {
             case COOLDOWN_ACTIVE -> RegistrationOtpResendErrorKeys.REGISTRATION_OTP_COOLDOWN_ACTIVE;
+            case SEND_RATE_LIMITED -> "err.registration.otp.sendRateLimited";
             case MAX_RESEND_ATTEMPTS_REACHED -> RegistrationOtpResendErrorKeys.REGISTRATION_OTP_MAX_ATTEMPTS_REACHED;
             case INVALID_AUTH_FLOW -> RegistrationOtpResendErrorKeys.REGISTRATION_AUTH_FLOW_INVALID;
             default -> RegistrationOtpResendErrorKeys.REGISTRATION_OTP_RESEND_FAILED;
