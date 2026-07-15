@@ -50,9 +50,8 @@ class ApiExceptionHandlerLoggingTest {
         logger.addAppender(listAppender);
         handler = new ApiExceptionHandler(
                 testErrorMessageResolver(),
-                testLoggingSanitizer(),
-                currentPortalAccessContextResolver()
-        );
+                testLoggingSanitizer()
+            );
     }
 
     @AfterEach

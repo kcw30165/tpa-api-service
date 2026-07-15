@@ -67,8 +67,8 @@ public final class CancelRegistrationService implements CancelRegistrationUseCas
         if (session.scenario() != AuthFlowScenario.REGISTRATION) {
             return Mono.just(new CancelRegistrationResult(
                     CancelRegistrationResultStatus.INVALID_AUTH_FLOW,
-                    true,
-                    true,
+                    false,
+                    false,
                     List.of(error(WorkflowErrorType.BUSINESS, ERROR_AUTH_FLOW_INVALID))));
         }
         if (session.status() == AuthFlowStatus.CANCELLED) {

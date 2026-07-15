@@ -9,7 +9,6 @@ import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequest
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidPersonalInformationUpdateException;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
-import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.exception.CacheException;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
@@ -44,16 +43,13 @@ public class ApiExceptionHandler {
 
     private final ErrorMessageResolver errorMessageResolver;
     private final LoggingSanitizer loggingSanitizer;
-    private final CurrentPortalAccessContextResolver currentPortalAccessContextResolver;
 
     @Autowired
     public ApiExceptionHandler(
             ErrorMessageResolver errorMessageResolver,
-            LoggingSanitizer loggingSanitizer,
-            CurrentPortalAccessContextResolver currentPortalAccessContextResolver) {
+            LoggingSanitizer loggingSanitizer) {
         this.errorMessageResolver = errorMessageResolver;
         this.loggingSanitizer = loggingSanitizer;
-        this.currentPortalAccessContextResolver = currentPortalAccessContextResolver;
     }
 
     @ExceptionHandler(ApimException.class)
@@ -398,18 +394,25 @@ public class ApiExceptionHandler {
     }
 
     private PortalAccessContext resolvePortalAccessContext(ServerWebExchange exchange) {
-        Object attribute = exchange.getAttributes().get(PortalAccessContextKeys.ATTRIBUTE_KEY);
-        if (attribute instanceof PortalAccessContext portalAccessContext) {
-            return portalAccessContext;
-        }
-        try {
-            var contextMono = currentPortalAccessContextResolver.currentOrEmpty();
-            return contextMono == null ? null : contextMono.block();
-        } catch (RuntimeException exception) {
-            log.warn("Unable to read current PortalAccessContext for API error message context: {}",
-                    loggingSanitizer.toSafeString(exception.getMessage()));
+        if (isPreLoginAuthRequest(exchange)) {
             return null;
         }
+        Object attribute = exchange.getAttributes().get(PortalAccessContextKeys.ATTRIBUTE_KEY);
+        return attribute instanceof PortalAccessContext portalAccessContext
+                ? portalAccessContext
+                : null;
+    }
+
+    private boolean isPreLoginAuthRequest(ServerWebExchange exchange) {
+        if (exchange == null || exchange.getRequest() == null) {
+            return false;
+        }
+        String path = exchange.getRequest().getPath().value();
+        return path != null && (path.startsWith("/api/v1/auth/registration")
+                || path.startsWith("/api/v1/auth/captcha")
+                || path.startsWith("/api/v1/auth/login")
+                || path.startsWith("/api/v1/auth/forgot-password")
+                || path.startsWith("/api/v1/auth/username-recovery"));
     }
 
     private String accountEnv(PortalAccessContext context) {

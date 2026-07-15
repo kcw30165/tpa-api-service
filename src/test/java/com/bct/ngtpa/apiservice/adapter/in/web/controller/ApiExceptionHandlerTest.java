@@ -50,9 +50,8 @@ class ApiExceptionHandlerTest {
 
     private final ApiExceptionHandler handler = new ApiExceptionHandler(
                 errorMessageResolver(),
-                loggingSanitizer(),
-                currentPortalAccessContextResolver()
-        );
+                loggingSanitizer()
+            );
 
     @Test
     void mapsInvalidNotificationRequestExceptionToValidationMutationFailure() {
@@ -241,9 +240,8 @@ class ApiExceptionHandlerTest {
                     capturedLocale.set(locale);
                     return "message for " + errorCode;
                 },
-                loggingSanitizer(),
-                currentPortalAccessContextResolver()
-        );
+                loggingSanitizer()
+            );
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/api/v1/notifications?lang=zh-HK")
                         .header("Accept-Language", "en-US"));
@@ -268,9 +266,8 @@ class ApiExceptionHandlerTest {
                     assertEquals("CTX-SCHEME", schemeType);
                     return "contextual message";
                 },
-                loggingSanitizer(),
-                currentPortalAccessContextResolver()
-        );
+                loggingSanitizer()
+            );
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/api/v1/test")
                         .queryParam("env", "QUERY-ENV")

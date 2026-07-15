@@ -127,8 +127,8 @@ class ReferenceDateRefreshControllerTest {
                         () -> Mono.just(new CleanUpAllReferenceDatesResult(0L))))
                 .controllerAdvice(new ApiExceptionHandler(
                         testErrorMessageResolver(),
-                        testLoggingSanitizer(),
-                        emptyCurrentPortalAccessContextResolver()))
+                        testLoggingSanitizer()
+                    ))
                 .build();
     }
 

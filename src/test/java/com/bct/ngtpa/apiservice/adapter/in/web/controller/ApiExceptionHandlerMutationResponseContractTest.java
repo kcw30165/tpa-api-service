@@ -47,8 +47,8 @@ class ApiExceptionHandlerMutationResponseContractTest {
 
         private final ApiExceptionHandler handler = new ApiExceptionHandler(
                         errorMessageResolver(),
-                        loggingSanitizer(),
-                        currentPortalAccessContextResolver());
+                        loggingSanitizer()
+                    );
 
         @Test
         void invalidNotificationRequestUsesMutationFailureEnvelope() {

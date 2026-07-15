@@ -553,8 +553,8 @@ class ContributionControllerTest {
                                 .webFilter(requestHeaderContextWebFilter())
                                 .controllerAdvice(new ApiExceptionHandler(
                                                 testErrorMessageResolver(),
-                                                testLoggingSanitizer(),
-                                                currentPortalAccessContextResolver()))
+                                                testLoggingSanitizer()
+                                            ))
                                 .build();
                 if (withDefaultAccountRef) {
                         return client.mutate()
