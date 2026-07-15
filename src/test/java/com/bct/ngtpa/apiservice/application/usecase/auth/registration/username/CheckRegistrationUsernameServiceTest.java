@@ -379,7 +379,7 @@ class CheckRegistrationUsernameServiceTest {
         @Override public DownstreamErrorClassification classify(DownstreamErrorClassificationRequest request) {
             calls++;
             lastRequest = request;
-            return new DownstreamErrorClassification("DOWNSTREAM_REJECTION", "ERROR", responseCode, "PAGE", false, null, true);
+            return new DownstreamErrorClassification("DOWNSTREAM_REJECTION", "ERROR", responseCode, 422, "PAGE", false, null, true);
         }
     }
 }

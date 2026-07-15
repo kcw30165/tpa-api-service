@@ -91,12 +91,12 @@ class RegistrationStabilizationContractBaselineTest {
         String yaml = Files.readString(REGISTRATION_YAML);
         assertThat(yaml)
                 .contains("endpoint: TRPSearchUnregisteredMember")
-                .contains("err.tpa.member.not.found:")
-                .contains("err.tpa.hkid.invalid:")
+                .contains("downstreamErrorCode: err.tpa.member.not.found")
+                .contains("downstreamErrorCode: err.tpa.hkid.invalid")
                 .contains("responseCode: err.registration.start.verificationFailed")
                 .contains("endpoint: TRPRegMember")
-                .contains("err.tpa.cust.id.duplicated:")
-                .contains("err.tpa.member.registered:")
+                .contains("downstreamErrorCode: err.tpa.cust.id.duplicated")
+                .contains("downstreamErrorCode: err.tpa.member.registered")
                 .contains("responseCode: err.registration.username.isRegistered")
                 .contains("endpoint: TRPChkCustId");
         assertThat(yaml).doesNotContain("err.tpa.username.taken");

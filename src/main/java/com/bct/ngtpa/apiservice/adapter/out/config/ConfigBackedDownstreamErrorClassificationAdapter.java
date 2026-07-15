@@ -16,7 +16,8 @@ import org.springframework.stereotype.Component;
 public class ConfigBackedDownstreamErrorClassificationAdapter implements DownstreamErrorClassificationPort {
     private static final String GENERIC_EVENT_TYPE = "DOWNSTREAM_REJECTION";
     private static final String GENERIC_LOG_LEVEL = "ERROR";
-    private static final String GENERIC_RESPONSE_CODE = "downstream.generic.businessRejected";
+    private static final String GENERIC_RESPONSE_CODE = "err.workflow.downstream.businessRejected";
+    private static final int GENERIC_HTTP_STATUS = 422;
     private static final String GENERIC_TARGET = "PAGE";
 
     private final BffPagesProperties properties;
@@ -40,7 +41,9 @@ public class ConfigBackedDownstreamErrorClassificationAdapter implements Downstr
         }
 
         DownstreamErrorClassificationMappingProperties explicit = mapping(
-                classification.getMappings(), request.downstreamErrorCode());
+                classification.getExplicitMappings(),
+                classification.getMappings(),
+                request.downstreamErrorCode());
         if (explicit != null) {
             return toClassification(explicit, false);
         }
@@ -55,8 +58,18 @@ public class ConfigBackedDownstreamErrorClassificationAdapter implements Downstr
     }
 
     private DownstreamErrorClassificationMappingProperties mapping(
+            java.util.List<DownstreamErrorClassificationMappingProperties> explicitMappings,
             Map<String, DownstreamErrorClassificationMappingProperties> mappings,
             String downstreamErrorCode) {
+        if (explicitMappings != null) {
+            for (DownstreamErrorClassificationMappingProperties mapping : explicitMappings) {
+                if (mapping != null
+                        && mapping.getDownstreamErrorCode() != null
+                        && mapping.getDownstreamErrorCode().trim().equals(downstreamErrorCode)) {
+                    return mapping;
+                }
+            }
+        }
         if (mappings == null || mappings.isEmpty()) {
             return null;
         }
@@ -77,6 +90,7 @@ public class ConfigBackedDownstreamErrorClassificationAdapter implements Downstr
                 textOrDefault(mapping.getEventType(), GENERIC_EVENT_TYPE),
                 normalizeLogLevel(mapping.getLogLevel()),
                 textOrDefault(mapping.getResponseCode(), GENERIC_RESPONSE_CODE),
+                validHttpStatus(mapping.getHttpStatus()),
                 textOrDefault(mapping.getTarget(), GENERIC_TARGET),
                 Boolean.TRUE.equals(mapping.getIdempotencyCacheable()),
                 mapping.getCacheTtlSeconds(),
@@ -88,10 +102,22 @@ public class ConfigBackedDownstreamErrorClassificationAdapter implements Downstr
                 GENERIC_EVENT_TYPE,
                 GENERIC_LOG_LEVEL,
                 GENERIC_RESPONSE_CODE,
+                GENERIC_HTTP_STATUS,
                 GENERIC_TARGET,
                 false,
                 null,
                 true);
+    }
+
+    private int validHttpStatus(Integer value) {
+        if (value == null) {
+            return GENERIC_HTTP_STATUS;
+        }
+        if (value != 400 && value != 403 && value != 409 && value != 422
+                && value != 429 && value != 502 && value != 503) {
+            throw new IllegalStateException("Unsupported downstream HTTP status: " + value);
+        }
+        return value;
     }
 
     private String normalizeLogLevel(String value) {

@@ -7,6 +7,7 @@ public record DownstreamErrorClassification(
         String eventType,
         String logLevel,
         String responseCode,
+        int httpStatus,
         String target,
         boolean idempotencyCacheable,
         Integer cacheTtlSeconds,

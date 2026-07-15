@@ -6,15 +6,27 @@ bff-pages:
         endpoint: TRPSearchUnregMember
         mappings:
           err.tpa.member.not.found:
+        endpoint: TRPSearchUnregisteredMember
+        explicitMappings:
+          - downstreamErrorCode: err.tpa.member.not.found
             eventType: DOWNSTREAM_REJECTION
             logLevel: ERROR
-            responseCode: registration.start.verificationFailed
+            responseCode: err.registration.start.verificationFailed
+            httpStatus: 422
+            target: PAGE
+            idempotencyCacheable: false
+          - downstreamErrorCode: err.tpa.hkid.invalid
+            eventType: DOWNSTREAM_REJECTION
+            logLevel: ERROR
+            responseCode: err.registration.start.verificationFailed
+            httpStatus: 422
             target: PAGE
             idempotencyCacheable: false
         fallback:
           eventType: DOWNSTREAM_REJECTION
           logLevel: ERROR
-          responseCode: downstream.generic.businessRejected
+          responseCode: err.workflow.downstream.businessRejected
+          httpStatus: 422
           target: PAGE
           idempotencyCacheable: false
       metadata:
@@ -128,18 +140,12 @@ bff-pages:
       downstreamErrorClassification:
         source: APIM_TAS
         endpoint: TRPChkCustId
-        mappings:
-          err.tpa.username.taken:
-            eventType: DOWNSTREAM_REJECTION
-            logLevel: ERROR
-            responseCode: registration.username.isregistered
-            target: PAGE
-            idempotencyCacheable: true
-            cacheTtlSeconds: 60
+        explicitMappings: []
         fallback:
           eventType: DOWNSTREAM_REJECTION
           logLevel: ERROR
-          responseCode: downstream.generic.businessRejected
+          responseCode: err.workflow.downstream.businessRejected
+          httpStatus: 422
           target: PAGE
           idempotencyCacheable: false
       metadata:
@@ -175,18 +181,33 @@ bff-pages:
       downstreamErrorClassification:
         source: APIM_TAS
         endpoint: TRPRegMember
-        mappings:
-          err.tpa.username.taken:
+        explicitMappings:
+          - downstreamErrorCode: err.tpa.member.not.found
             eventType: DOWNSTREAM_REJECTION
             logLevel: ERROR
-            responseCode: registration.username.isregistered
+            responseCode: err.registration.complete.memberNotFound
+            httpStatus: 422
             target: PAGE
-            idempotencyCacheable: true
-            cacheTtlSeconds: 60
+            idempotencyCacheable: false
+          - downstreamErrorCode: err.tpa.cust.id.duplicated
+            eventType: DOWNSTREAM_REJECTION
+            logLevel: ERROR
+            responseCode: err.registration.username.isRegistered
+            httpStatus: 422
+            target: username
+            idempotencyCacheable: false
+          - downstreamErrorCode: err.tpa.member.registered
+            eventType: DOWNSTREAM_REJECTION
+            logLevel: ERROR
+            responseCode: err.registration.complete.memberAlreadyRegistered
+            httpStatus: 422
+            target: PAGE
+            idempotencyCacheable: false
         fallback:
           eventType: DOWNSTREAM_REJECTION
           logLevel: ERROR
-          responseCode: registration.complete.failed
+          responseCode: err.workflow.downstream.businessRejected
+          httpStatus: 422
           target: PAGE
           idempotencyCacheable: false
       metadata:
