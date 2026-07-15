@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.config;
+package com.bct.ngtpa.apiservice.config.registration;
 
 import com.bct.ngtpa.apiservice.application.port.in.CheckRegistrationUsernameUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionExpiryRefreshPort;

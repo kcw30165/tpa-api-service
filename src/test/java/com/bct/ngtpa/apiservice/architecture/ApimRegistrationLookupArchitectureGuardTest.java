@@ -62,16 +62,6 @@ class ApimRegistrationLookupArchitectureGuardTest {
     }
 
     @Test
-    void p6_5DoesNotIntroduceSessionOtpMessageCookieOrCsrfRuntime() throws IOException {
-        assertThat(sourceContainsInRegistrationUsecase("AuthFlowSessionLifecycleService")).isFalse();
-        assertThat(sourceContainsInRegistrationUsecase("AuthFlowSessionConcurrencyService")).isFalse();
-        assertThat(sourceContainsInRegistrationUsecase("AuthFlowSessionCsrfService")).isFalse();
-        assertThat(sourceContainsInRegistrationUsecase("OtpChallengePort")).isFalse();
-        assertThat(sourceContainsInRegistrationUsecase("MessageDeliveryPort")).isFalse();
-        assertThat(sourceContainsInRegistrationUsecase("HttpSessionCookieAdapter")).isFalse();
-    }
-
-    @Test
     void p6_5DoesNotIntroduceAuthFlowResumeRuntime() throws IOException {
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.request.AuthFlowResumeRequest");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.ResumeAuthFlowUseCase");

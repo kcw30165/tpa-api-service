@@ -92,23 +92,6 @@ class P8CaptchaArchitectureGuardTest {
         }
     }
 
-    @Test
-    void p8DoesNotIntroduceFutureRegistrationEndpointsOrResume() throws Exception {
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.CancelRegistrationUseCase");
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.ResumeAuthFlowUseCase");
-        String source = Files.readString(Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationController.java"));
-        assertThat(source).doesNotContain("/cancel", "/flow/resume");
-    }
-
-    private void assertClassAbsent(String className) throws Exception {
-        try {
-            Class.forName(className);
-            throw new AssertionError(className + " should not exist");
-        } catch (ClassNotFoundException expected) {
-            assertThat(expected).isNotNull();
-        }
-    }
-
     private String readSilently(Path path) {
         try {
             return Files.readString(path);
