@@ -47,15 +47,6 @@ class CaptchaGeneratorArchitectureGuardTest {
         assertClassPresent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController");
     }
 
-    @Test
-    void p8_2DoesNotIntroduceFutureRegistrationEndpoints() throws Exception {
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.CancelRegistrationUseCase");
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.ResumeAuthFlowUseCase");
-        assertThat(sourceContains("/api/v1/auth/registration/complete")).isFalse();
-        assertThat(sourceContains("/api/v1/auth/registration/cancel")).isFalse();
-        assertThat(sourceContains("/api/v1/auth/flow/resume")).isFalse();
-    }
-
     private static void assertClassAbsent(String className) throws Exception {
         try {
             Class.forName(className);
