@@ -270,6 +270,11 @@ bff-pages:
 
             labelCode: registration.cancelled.action.returnToLogin
 
+            label:
+
+              en: Return to Login
+
+              zh_HK: 返回登入頁面
             nextStep: RETURN_TO_LOGIN
 
 
