@@ -1,6 +1,10 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.XsrfCookieWriter;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.CancelRegistrationResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.CancelRegistrationWebMapper;
+import com.bct.ngtpa.apiservice.application.port.in.CancelRegistrationUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.CompleteRegistrationUseCase;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.CompleteRegistrationWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.CompleteRegistrationResponse;
@@ -28,6 +32,9 @@ public class AuthRegistrationController {
     private final AuthFlowCookieWriter cookieWriter;
     private final CompleteRegistrationUseCase completeRegistrationUseCase;
     private final CompleteRegistrationWebMapper completeRegistrationWebMapper;
+    private final CancelRegistrationUseCase cancelRegistrationUseCase;
+    private final CancelRegistrationWebMapper cancelRegistrationWebMapper;
+    private final XsrfCookieWriter xsrfCookieWriter;
 
     @PostMapping("/start")
     public Mono<MutationResponse<WorkflowResultPayload<RegistrationStartWorkflowDataResponse>>> startRegistration(
@@ -100,5 +107,43 @@ public class AuthRegistrationController {
 
     private boolean hasText(String value) {
         return value != null && !value.isBlank();
+    }
+
+    @PostMapping(path = "/cancel", produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
+    public Mono<MutationResponse<CancelRegistrationResponse>> cancelRegistration(
+            @CookieValue(name = "auth_flow_sid", required = false) String authFlowSessionId,
+            @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrfToken,
+            @RequestHeader(name = "X-Request-Id", required = false) String requestId,
+            @RequestHeader(name = "Accept-Language", required = false) String acceptLanguage,
+            @RequestHeader(name = "Origin", required = false) String origin,
+            @RequestHeader(name = "Referer", required = false) String referer,
+            ServerHttpResponse response) {
+        if (!hasText(authFlowSessionId)) {
+            cookieWriter.clearAuthFlowCookie(response);
+            xsrfCookieWriter.clearXsrfCookie(response);
+            return Mono.just(cancelRegistrationWebMapper.missingSession(acceptLanguage));
+        }
+        if (!hasText(csrfToken)) {
+            return Mono.just(cancelRegistrationWebMapper.missingCsrf(acceptLanguage));
+        }
+        try {
+            return cancelRegistrationUseCase.cancel(cancelRegistrationWebMapper.toCommand(
+                            authFlowSessionId,
+                            csrfToken,
+                            origin,
+                            referer,
+                            requestId))
+                    .map(result -> {
+                        if (result.clearAuthFlowCookie()) {
+                            cookieWriter.clearAuthFlowCookie(response);
+                        }
+                        if (result.clearXsrfCookie()) {
+                            xsrfCookieWriter.clearXsrfCookie(response);
+                        }
+                        return cancelRegistrationWebMapper.toResponse(result, acceptLanguage);
+                    });
+        } catch (RuntimeException exception) {
+            return Mono.just(cancelRegistrationWebMapper.missingCsrf(acceptLanguage));
+        }
     }
 }

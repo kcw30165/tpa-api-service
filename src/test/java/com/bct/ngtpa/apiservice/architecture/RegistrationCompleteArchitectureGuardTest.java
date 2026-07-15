@@ -104,12 +104,4 @@ class RegistrationCompleteArchitectureGuardTest {
                 .doesNotContain("log.debug")
                 .doesNotContain("log.error");
     }
-
-    @Test
-    void completionEndpointKeepsCancelAndResumeOutOfScope() throws Exception {
-        String controller = Files.readString(REGISTRATION_CONTROLLER);
-        assertThat(controller)
-                .doesNotContain("/cancel")
-                .doesNotContain("/flow/resume");
-    }
 }

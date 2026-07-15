@@ -129,7 +129,13 @@ class AuthRegistrationControllerCaptchaGateTest {
                         org.mockito.Mockito.mock(
                                 com.bct.ngtpa.apiservice.application.port.in.CompleteRegistrationUseCase.class),
                         org.mockito.Mockito.mock(
-                                com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.CompleteRegistrationWebMapper.class)))
+                                com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.CompleteRegistrationWebMapper.class),
+                        org.mockito.Mockito.mock(
+                                com.bct.ngtpa.apiservice.application.port.in.CancelRegistrationUseCase.class),
+                        org.mockito.Mockito.mock(
+                                com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.CancelRegistrationWebMapper.class),
+                        org.mockito.Mockito.mock(
+                                com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.XsrfCookieWriter.class)))
                 .build();
     }
 }

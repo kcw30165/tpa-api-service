@@ -224,6 +224,55 @@ bff-pages:
                   en: Confirm Password
                   zh_HK: 確認密碼
 
+    registration-cancelled:
+
+      metadata:
+
+        id: registration-cancelled
+
+        version: "1.0"
+
+        titleCode: registration.cancelled.title
+
+      display:
+
+        registration.cancelled.title:
+
+          en: Registration Cancelled
+
+          zh_HK: 取消註冊
+
+        registration.cancelled.body:
+
+          en: Your registration has been cancelled. Please return to the login page.
+
+          zh_HK: 你的註冊程序已取消。請返回登入頁面。
+
+        registration.cancelled.action.returnToLogin:
+
+          en: Return to Login
+
+          zh_HK: 返回登入頁面
+
+      form:
+
+        id: registrationCancelledForm
+
+        defaultMode: view
+
+        actions:
+
+          - id: returnToLogin
+
+            name: returnToLogin
+
+            type: PRIMARY
+
+            labelCode: registration.cancelled.action.returnToLogin
+
+            nextStep: RETURN_TO_LOGIN
+
+
     registration-success:
       metadata:
         id: registrationSuccessPage
