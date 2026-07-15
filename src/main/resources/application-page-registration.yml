@@ -236,23 +236,21 @@ bff-pages:
 
       display:
 
-        registration.cancelled.title:
+        en:
 
-          en: Registration Cancelled
+          registration.cancelled.title: Registration Cancelled
 
-          zh_HK: 取消註冊
+          registration.cancelled.body: Your registration has been cancelled. Please return to the login page.
 
-        registration.cancelled.body:
+          registration.cancelled.action.returnToLogin: Return to Login
 
-          en: Your registration has been cancelled. Please return to the login page.
+        zh_HK:
 
-          zh_HK: 你的註冊程序已取消。請返回登入頁面。
+          registration.cancelled.title: 取消註冊
 
-        registration.cancelled.action.returnToLogin:
+          registration.cancelled.body: 你的註冊程序已取消。請返回登入頁面。
 
-          en: Return to Login
-
-          zh_HK: 返回登入頁面
+          registration.cancelled.action.returnToLogin: 返回登入頁面
 
       form:
 

@@ -38,6 +38,7 @@ class RegistrationPageConfigTest {
             assertTrue(pages.containsKey("registration-trust-selection"));
             assertTrue(pages.containsKey("registration-username-check"));
             assertTrue(pages.containsKey("registration-password-setup"));
+            assertTrue(pages.containsKey("registration-cancelled"));
             assertTrue(pages.containsKey("registration-success"));
         });
     }

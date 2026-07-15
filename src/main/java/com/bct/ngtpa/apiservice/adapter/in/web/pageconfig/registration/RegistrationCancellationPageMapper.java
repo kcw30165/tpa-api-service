@@ -45,7 +45,13 @@ public final class RegistrationCancellationPageMapper {
                         null,
                         null);
         String body = displayTextResolver.resolve(
-                page.getDisplay(), BODY_CODE, Map.of(), language, null, null, null);
+                page.getDisplay(),
+                BODY_CODE,
+                Map.of(),
+                language,
+                null,
+                null,
+                null);
         List<RegistrationCancellationPageActionResponse> actions = page.getForm() == null
                         || page.getForm().getActions() == null
                 ? List.of()
