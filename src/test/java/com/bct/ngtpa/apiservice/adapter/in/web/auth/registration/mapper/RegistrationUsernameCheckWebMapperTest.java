@@ -44,11 +44,11 @@ class RegistrationUsernameCheckWebMapperTest {
                 CheckRegistrationUsernameResultStatus.DOWNSTREAM_REJECTED,
                 WorkflowNextStep.USERNAME_CHECK,
                 List.of(),
-                List.of(error("registration.username.isregistered"))));
+                List.of(error("err.registration.username.isRegistered"))));
 
         JsonNode json = objectMapper.valueToTree(response);
         assertThat(json.get("status").asText()).isEqualTo("DOWNSTREAM_REJECTION");
-        assertThat(json.at("/errors/0/code").asText()).isEqualTo("registration.username.isregistered");
+        assertThat(json.at("/errors/0/code").asText()).isEqualTo("err.registration.username.isRegistered");
         assertThat(json.toString()).doesNotContain("err.tpa.username.taken");
     }
 

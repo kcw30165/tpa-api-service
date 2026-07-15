@@ -45,7 +45,7 @@ class CheckRegistrationUsernameServiceTest {
     void rejectsMissingAuthFlowAndDoesNotCallAvailability() {
         var sessions = FakeSessions.empty();
         var availability = new FakeAvailability(RegistrationUsernameAvailabilityResult.available());
-        var service = service(sessions, availability, new FakeClassifier("registration.username.isregistered"));
+        var service = service(sessions, availability, new FakeClassifier("err.registration.username.isRegistered"));
 
         StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "abc1@")))
                 .assertNext(result -> assertThat(result.status()).isEqualTo(CheckRegistrationUsernameResultStatus.INVALID_AUTH_FLOW))
@@ -59,7 +59,7 @@ class CheckRegistrationUsernameServiceTest {
     void rejectsInvalidCsrfAndDoesNotCallAvailability() {
         var sessions = FakeSessions.with(session(AuthFlowStatus.OTP_VERIFIED, "correct-csrf", null));
         var availability = new FakeAvailability(RegistrationUsernameAvailabilityResult.available());
-        var service = service(sessions, availability, new FakeClassifier("registration.username.isregistered"));
+        var service = service(sessions, availability, new FakeClassifier("err.registration.username.isRegistered"));
 
         StepVerifier.create(service.check(command("wrong-csrf", selectedTrust("TL", "ENV1"), "abc1@")))
                 .assertNext(result -> assertThat(result.status()).isEqualTo(CheckRegistrationUsernameResultStatus.CSRF_INVALID))
@@ -73,7 +73,7 @@ class CheckRegistrationUsernameServiceTest {
     void rejectsInvalidStateAndDoesNotCallAvailability() {
         var sessions = FakeSessions.with(session(AuthFlowStatus.OTP_SENT, "csrf", null));
         var availability = new FakeAvailability(RegistrationUsernameAvailabilityResult.available());
-        var service = service(sessions, availability, new FakeClassifier("registration.username.isregistered"));
+        var service = service(sessions, availability, new FakeClassifier("err.registration.username.isRegistered"));
 
         StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "abc1@")))
                 .assertNext(result -> {
@@ -89,7 +89,7 @@ class CheckRegistrationUsernameServiceTest {
     void acceptsOtpVerifiedStoresUsernameCheckAndTransitionsToUsernameVerified() {
         var sessions = FakeSessions.with(session(AuthFlowStatus.OTP_VERIFIED, "csrf", null));
         var availability = new FakeAvailability(RegistrationUsernameAvailabilityResult.available());
-        var service = service(sessions, availability, new FakeClassifier("registration.username.isregistered"));
+        var service = service(sessions, availability, new FakeClassifier("err.registration.username.isRegistered"));
 
         StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "abc1@")))
                 .assertNext(result -> {
@@ -112,7 +112,7 @@ class CheckRegistrationUsernameServiceTest {
     void acceptsTrustSelectionReadyStoresUsernameCheckAndTransitionsToUsernameVerified() {
         var sessions = FakeSessions.with(session(AuthFlowStatus.TRUST_SELECTION_READY, "csrf", null));
         var availability = new FakeAvailability(RegistrationUsernameAvailabilityResult.available());
-        var service = service(sessions, availability, new FakeClassifier("registration.username.isregistered"));
+        var service = service(sessions, availability, new FakeClassifier("err.registration.username.isRegistered"));
 
         StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "abc1@")))
                 .assertNext(result -> assertThat(result.status()).isEqualTo(CheckRegistrationUsernameResultStatus.USERNAME_AVAILABLE))
@@ -126,7 +126,7 @@ class CheckRegistrationUsernameServiceTest {
     void rejectsSelectedTrustMissingOrBlankBeforeAvailability() {
         var sessions = FakeSessions.with(session(AuthFlowStatus.OTP_VERIFIED, "csrf", null));
         var availability = new FakeAvailability(RegistrationUsernameAvailabilityResult.available());
-        var service = service(sessions, availability, new FakeClassifier("registration.username.isregistered"));
+        var service = service(sessions, availability, new FakeClassifier("err.registration.username.isRegistered"));
 
         StepVerifier.create(service.check(command("csrf", null, "abc1@")))
                 .assertNext(result -> {
@@ -149,7 +149,7 @@ class CheckRegistrationUsernameServiceTest {
     void rejectsUsernamePolicyViolationBeforeAvailability() {
         var sessions = FakeSessions.with(session(AuthFlowStatus.OTP_VERIFIED, "csrf", null));
         var availability = new FakeAvailability(RegistrationUsernameAvailabilityResult.available());
-        var service = service(sessions, availability, new FakeClassifier("registration.username.isregistered"));
+        var service = service(sessions, availability, new FakeClassifier("err.registration.username.isRegistered"));
 
         StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "abcd")))
                 .assertNext(result -> {
@@ -165,7 +165,7 @@ class CheckRegistrationUsernameServiceTest {
     void callsAvailabilityWithNormalizedSelectedTrustAndUsername() {
         var sessions = FakeSessions.with(session(AuthFlowStatus.OTP_VERIFIED, "csrf", null));
         var availability = new FakeAvailability(RegistrationUsernameAvailabilityResult.available());
-        var service = service(sessions, availability, new FakeClassifier("registration.username.isregistered"));
+        var service = service(sessions, availability, new FakeClassifier("err.registration.username.isRegistered"));
 
         StepVerifier.create(service.check(command("csrf", selectedTrust(" TL ", " ENV1 "), " abc1@ ")))
                 .assertNext(result -> assertThat(result.status()).isEqualTo(CheckRegistrationUsernameResultStatus.USERNAME_AVAILABLE))
@@ -180,14 +180,14 @@ class CheckRegistrationUsernameServiceTest {
     void mapsDownstreamBusinessRejectionThroughClassifierAndDoesNotStoreUsernameCheck() {
         var sessions = FakeSessions.with(session(AuthFlowStatus.OTP_VERIFIED, "csrf", null));
         var availability = new FakeAvailability(RegistrationUsernameAvailabilityResult.rejected("err.tpa.username.taken"));
-        var classifier = new FakeClassifier("registration.username.isregistered");
+        var classifier = new FakeClassifier("err.registration.username.isRegistered");
         var service = service(sessions, availability, classifier);
 
         StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "abc1@")))
                 .assertNext(result -> {
                     assertThat(result.status()).isEqualTo(CheckRegistrationUsernameResultStatus.DOWNSTREAM_REJECTED);
                     assertThat(result.nextStep()).isEqualTo(WorkflowNextStep.USERNAME_CHECK);
-                    assertThat(result.errors().getFirst().code()).isEqualTo("registration.username.isregistered");
+                    assertThat(result.errors().getFirst().code()).isEqualTo("err.registration.username.isRegistered");
                 })
                 .verifyComplete();
 
@@ -219,7 +219,7 @@ class CheckRegistrationUsernameServiceTest {
         var existing = new UsernameCheckState(new SelectedTrust("TL", "ENV1"), "abc1@", NOW.minusSeconds(60), null);
         var sessions = FakeSessions.with(session(AuthFlowStatus.USERNAME_VERIFIED, "csrf", existing));
         var availability = new FakeAvailability(RegistrationUsernameAvailabilityResult.available());
-        var service = service(sessions, availability, new FakeClassifier("registration.username.isregistered"));
+        var service = service(sessions, availability, new FakeClassifier("err.registration.username.isRegistered"));
 
         StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "abc1@")))
                 .assertNext(result -> {
@@ -237,7 +237,7 @@ class CheckRegistrationUsernameServiceTest {
         var existing = new UsernameCheckState(new SelectedTrust("TL", "ENV1"), "old1@", NOW.minusSeconds(60), null);
         var sessions = FakeSessions.with(session(AuthFlowStatus.USERNAME_VERIFIED, "csrf", existing));
         var availability = new FakeAvailability(RegistrationUsernameAvailabilityResult.rejected("err.tpa.username.taken"));
-        var service = service(sessions, availability, new FakeClassifier("registration.username.isregistered"));
+        var service = service(sessions, availability, new FakeClassifier("err.registration.username.isRegistered"));
 
         StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "new1@")))
                 .assertNext(result -> assertThat(result.status()).isEqualTo(CheckRegistrationUsernameResultStatus.DOWNSTREAM_REJECTED))
@@ -251,7 +251,7 @@ class CheckRegistrationUsernameServiceTest {
         var existing = new UsernameCheckState(new SelectedTrust("TL", "ENV1"), "old1@", NOW.minusSeconds(60), null);
         var sessions = FakeSessions.with(session(AuthFlowStatus.COMPLETING, "csrf", existing));
         var availability = new FakeAvailability(RegistrationUsernameAvailabilityResult.available());
-        var service = service(sessions, availability, new FakeClassifier("registration.username.isregistered"));
+        var service = service(sessions, availability, new FakeClassifier("err.registration.username.isRegistered"));
 
         StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "new1@")))
                 .assertNext(result -> assertThat(result.status()).isEqualTo(CheckRegistrationUsernameResultStatus.INVALID_STATE))

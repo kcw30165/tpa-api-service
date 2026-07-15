@@ -35,7 +35,7 @@ class AuthRegistrationOtpResendControllerTest {
         var useCase = new RecordingUseCase();
         var controller = resendController(useCase);
         String json = objectMapper.writeValueAsString(controller.resendOtp(null, "csrf", "idem", "req", "en", null, null).block());
-        assertThat(json).contains("registration.authFlow.invalid");
+        assertThat(json).contains("err.registration.authFlow.invalid");
         assertThat(useCase.called).isFalse();
     }
 
@@ -44,7 +44,7 @@ class AuthRegistrationOtpResendControllerTest {
         var useCase = new RecordingUseCase();
         var controller = resendController(useCase);
         String json = objectMapper.writeValueAsString(controller.resendOtp("afs", null, "idem", "req", "en", null, null).block());
-        assertThat(json).contains("registration.csrf.invalid");
+        assertThat(json).contains("err.registration.csrf.invalid");
         assertThat(useCase.called).isFalse();
     }
 
@@ -53,7 +53,7 @@ class AuthRegistrationOtpResendControllerTest {
         var useCase = new RecordingUseCase();
         var controller = resendController(useCase);
         String json = objectMapper.writeValueAsString(controller.resendOtp("afs", "csrf", null, "req", "en", null, null).block());
-        assertThat(json).contains("workflow.idempotency.missing");
+        assertThat(json).contains("err.workflow.idempotency.missing");
         assertThat(useCase.called).isFalse();
     }
 

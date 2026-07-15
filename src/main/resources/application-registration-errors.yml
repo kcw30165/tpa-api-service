@@ -653,6 +653,7 @@ error-message:
     "err.registration.trustLookup.noEligibleTrusts": "The request could not be completed."
     "err.registration.username.check.failed": "The request could not be completed."
     "err.registration.username.checkFailed": "The request could not be completed."
+    "err.registration.complete.failed": "We could not complete your registration. Please try again."
   zh_HK:
     "err.registration.authFlow.invalid": "註冊工作階段無效，請重新開始註冊。"
     "err.registration.csrf.invalid": "無法驗證此要求。"
@@ -711,3 +712,4 @@ error-message:
     "err.registration.trustLookup.noEligibleTrusts": "未能完成要求。"
     "err.registration.username.check.failed": "未能完成要求。"
     "err.registration.username.checkFailed": "未能完成要求。"
+    "err.registration.complete.failed": "我們未能完成你的註冊，請再試一次。"

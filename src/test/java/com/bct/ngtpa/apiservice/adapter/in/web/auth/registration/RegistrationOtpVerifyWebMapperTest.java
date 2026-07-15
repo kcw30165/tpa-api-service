@@ -63,7 +63,7 @@ class RegistrationOtpVerifyWebMapperTest {
                 null));
 
         String json = objectMapper.writeValueAsString(response);
-        assertThat(json).contains("\"success\":false", "registration.otp.invalid");
+        assertThat(json).contains("\"success\":false", "err.registration.otp.invalid");
         assertThat(json).doesNotContain("123456", "otpChallengeId", "activeOtpChallengeId");
     }
 
@@ -96,7 +96,7 @@ class RegistrationOtpVerifyWebMapperTest {
                 null));
 
         String json = objectMapper.writeValueAsString(response);
-        assertThat(json).contains("\"success\":false", "registration.otp.invalid");
+        assertThat(json).contains("\"success\":false", "err.registration.otp.invalid");
         assertThat(json).contains("\"nextStep\":\"VERIFY_OTP\"", "registration-otp-verification", "\"remainingVerifyAttempts\":2");
         assertThat(json).doesNotContain("otpChallengeId", "activeOtpChallengeId", "123456", "member@example.com");
     }

@@ -10,16 +10,16 @@ class WorkflowKeyConventionTest {
 
     @Test
     void workflowMessageKeyAcceptsCodeLikeValues() {
-        assertThat(new WorkflowMessageKey("registration.otp.resent").value()).isEqualTo("registration.otp.resent");
-        assertThat(new WorkflowMessageKey("registration.success").value()).isEqualTo("registration.success");
-        assertThat(new WorkflowMessageKey("workflow.duplicateInProgress").value()).isEqualTo("workflow.duplicateInProgress");
+        assertThat(new WorkflowMessageKey("err.registration.otp.resent").value()).isEqualTo("err.registration.otp.resent");
+        assertThat(new WorkflowMessageKey("err.registration.success").value()).isEqualTo("err.registration.success");
+        assertThat(new WorkflowMessageKey("err.workflow.duplicateInProgress").value()).isEqualTo("err.workflow.duplicateInProgress");
     }
 
     @Test
     void workflowErrorKeyAcceptsCodeLikeValues() {
         assertThat(new WorkflowErrorKey("err.registration.start.verificationFailed").value()).isEqualTo("err.registration.start.verificationFailed");
         assertThat(new WorkflowErrorKey("err.registration.csrf.invalid").value()).isEqualTo("err.registration.csrf.invalid");
-        assertThat(new WorkflowErrorKey("workflow.downstream.unavailable").value()).isEqualTo("workflow.downstream.unavailable");
+        assertThat(new WorkflowErrorKey("err.workflow.downstream.unavailable").value()).isEqualTo("err.workflow.downstream.unavailable");
         assertThat(new WorkflowErrorKey("err.request.invalid").value()).isEqualTo("err.request.invalid");
     }
 

@@ -49,7 +49,7 @@ class AuthRegistrationOtpVerifyControllerTest {
         String json = objectMapper.writeValueAsString(controller
                 .verifyOtp(new RegistrationOtpVerifyRequest("123456"), null, "csrf", "idem", "req", "en", null, null)
                 .block());
-        assertThat(json).contains("registration.authFlow.invalid");
+        assertThat(json).contains("err.registration.authFlow.invalid");
         assertThat(useCase.called).isFalse();
     }
 
@@ -62,7 +62,7 @@ class AuthRegistrationOtpVerifyControllerTest {
         String json = objectMapper.writeValueAsString(controller
                 .verifyOtp(new RegistrationOtpVerifyRequest("123456"), "afs", null, "idem", "req", "en", null, null)
                 .block());
-        assertThat(json).contains("registration.csrf.invalid");
+        assertThat(json).contains("err.registration.csrf.invalid");
         assertThat(useCase.called).isFalse();
     }
 
@@ -75,7 +75,7 @@ class AuthRegistrationOtpVerifyControllerTest {
         String json = objectMapper.writeValueAsString(controller
                 .verifyOtp(new RegistrationOtpVerifyRequest("123456"), "afs", "csrf", null, "req", "en", null, null)
                 .block());
-        assertThat(json).contains("workflow.idempotency.missing");
+        assertThat(json).contains("err.workflow.idempotency.missing");
         assertThat(useCase.called).isFalse();
     }
 
@@ -88,7 +88,7 @@ class AuthRegistrationOtpVerifyControllerTest {
         String json = objectMapper.writeValueAsString(controller
                 .verifyOtp(new RegistrationOtpVerifyRequest(" "), "afs", "csrf", "idem", "req", "en", null, null)
                 .block());
-        assertThat(json).contains("registration.otp.invalid");
+        assertThat(json).contains("err.registration.otp.invalid");
         assertThat(useCase.called).isFalse();
     }
 
