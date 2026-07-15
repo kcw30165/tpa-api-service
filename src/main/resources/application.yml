@@ -106,7 +106,7 @@ auth-workflows:
     captcha:
       length: 7
       alphabet: "23456789ABCDEFGHJKLMNPQSTUVWXYZ"
-      case-sensitive: true
+      case-sensitive: false
       ttl-seconds: 300
       max-attempts: 5
     message:
