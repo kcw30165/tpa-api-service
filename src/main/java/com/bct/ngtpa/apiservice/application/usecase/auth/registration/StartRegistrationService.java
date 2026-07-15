@@ -113,7 +113,7 @@ public class StartRegistrationService implements StartRegistrationUseCase {
         if (!validation.valid()) {
             var errors = validation.errors().stream().map(e -> new StartRegistrationError(e.errorKey(), e.target())).toList();
             var invalid = new StartRegistrationResult(StartRegistrationResultStatus.VALIDATION_FAILED, WorkflowNextStep.NONE, null, 0, 0, 0, null, null, List.of(), errors, RegistrationIdempotencyStartOutcome.STARTED, null);
-            return markFailed(command, hash, "registration.validation.failed").thenReturn(invalid);
+            return markFailed(command, hash, com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.REGISTRATION_START_REQUEST_INVALID.value()).thenReturn(invalid);
         }
         RegistrationStartCommand validated = validation.command();
         if (isCaptchaGateEnabled()) {
@@ -131,7 +131,7 @@ public class StartRegistrationService implements StartRegistrationUseCase {
         var lookupCommand = new RegistrationLookupCommand(validated.identityType(), validated.identityValue(), validated.dateOfBirth(), validated.contactType(), validated.contactValue());
         return lookupPort.searchUnregisteredMember(lookupCommand)
                 .flatMap(lookup -> handleLookup(command, hash, validated, lookup))
-                .onErrorResume(error -> markFailed(command, hash, "registration.lookup.failed").then(Mono.error(error)));
+                .onErrorResume(error -> markFailed(command, hash, com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.WORKFLOW_DOWNSTREAM_UNAVAILABLE.value()).then(Mono.error(error)));
     }
 
     private Mono<StartRegistrationResult> consumeRegistrationCaptcha(
@@ -209,7 +209,7 @@ public class StartRegistrationService implements StartRegistrationUseCase {
                     "identityValue",
                     RegistrationIdempotencyStartOutcome.STARTED,
                     null);
-            return markFailed(command, hash, "registration.verification.failed").thenReturn(verificationFailure);
+            return markFailed(command, hash, com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.REGISTRATION_START_VERIFICATIONFAILED.value()).thenReturn(verificationFailure);
         }
         if (lookup.status() == RegistrationLookupStatus.UPSTREAM_BUSINESS_REJECTED) {
             var verificationFailure = result(
@@ -219,7 +219,7 @@ public class StartRegistrationService implements StartRegistrationUseCase {
                     "identityValue",
                     RegistrationIdempotencyStartOutcome.STARTED,
                     null);
-            return markFailed(command, hash, "registration.lookup.businessRejected").thenReturn(verificationFailure);
+            return markFailed(command, hash, com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.WORKFLOW_DOWNSTREAM_BUSINESSREJECTED.value()).thenReturn(verificationFailure);
         }
         RegistrationAuthFlowContext registrationContext = new RegistrationAuthFlowContext(
                 validated.identityType(),
@@ -234,7 +234,7 @@ public class StartRegistrationService implements StartRegistrationUseCase {
                                         .then(messageGateway.deliverRegistrationOtp(validated.contactType(), validated.contactValue(), otp.otpCode(), otp.expiresInSeconds(), command.acceptLanguage(), command.correlationId()))
                                         .flatMap(accepted -> {
                                             if (!Boolean.TRUE.equals(accepted)) {
-                                                return markFailed(command, hash, "registration.messageDelivery.failed")
+                                                return markFailed(command, hash, com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.REGISTRATION_MESSAGE_DELIVERYFAILED.value())
                                                         .thenReturn(result(StartRegistrationResultStatus.MESSAGE_DELIVERY_FAILED, WorkflowNextStep.NONE, RegistrationWorkflowErrorKeys.REGISTRATION_MESSAGE_DELIVERY_FAILED, "email", RegistrationIdempotencyStartOutcome.STARTED));
                                             }
                                             var started = new StartRegistrationResult(StartRegistrationResultStatus.STARTED, WorkflowNextStep.VERIFY_OTP, validated.maskedDestination(), otp.expiresInSeconds(), otp.resendCooldownSeconds(), otp.remainingResendAttempts(), csrfToken, sessionId, List.of(), List.of(), RegistrationIdempotencyStartOutcome.STARTED, null);

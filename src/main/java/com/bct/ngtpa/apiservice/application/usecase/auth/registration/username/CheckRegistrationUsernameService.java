@@ -45,14 +45,14 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
     private static final String DOWNSTREAM_SOURCE = "APIM_TAS";
     private static final String DOWNSTREAM_ENDPOINT = "TRPChkCustId";
 
-    private static final String ERROR_AUTH_FLOW_INVALID = "registration.authFlow.invalid";
-    private static final String ERROR_CSRF_INVALID = "registration.csrf.invalid";
-    private static final String ERROR_STATE_INVALID = "workflow.state.invalid";
-    private static final String ERROR_SELECTED_TRUST_REQUIRED = "registration.selectedTrust.required";
-    private static final String ERROR_SELECTED_TRUST_INVALID = "registration.selectedTrust.invalid";
-    private static final String ERROR_USERNAME_INCORRECT = "registration.username.incorrect";
-    private static final String ERROR_DOWNSTREAM_UNAVAILABLE = "workflow.downstream.unavailable";
-    private static final String ERROR_SYSTEM_UNAVAILABLE = "workflow.system.unavailable";
+    private static final String ERROR_AUTH_FLOW_INVALID = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.REGISTRATION_AUTHFLOW_INVALID.value();
+    private static final String ERROR_CSRF_INVALID = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.REGISTRATION_CSRF_INVALID.value();
+    private static final String ERROR_STATE_INVALID = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.REGISTRATION_STATE_INVALID.value();
+    private static final String ERROR_SELECTED_TRUST_REQUIRED = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.REGISTRATION_TRUST_SELECTIONINVALID.value();
+    private static final String ERROR_SELECTED_TRUST_INVALID = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.REGISTRATION_TRUST_SELECTIONINVALID.value();
+    private static final String ERROR_USERNAME_INCORRECT = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.REGISTRATION_USERNAME_POLICYINVALID.value();
+    private static final String ERROR_DOWNSTREAM_UNAVAILABLE = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.WORKFLOW_DOWNSTREAM_UNAVAILABLE.value();
+    private static final String ERROR_SYSTEM_UNAVAILABLE = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.WORKFLOW_SYSTEM_UNAVAILABLE.value();
 
     private static final Set<AuthFlowStatus> ALLOWED_STATES = Set.of(
             AuthFlowStatus.OTP_VERIFIED,

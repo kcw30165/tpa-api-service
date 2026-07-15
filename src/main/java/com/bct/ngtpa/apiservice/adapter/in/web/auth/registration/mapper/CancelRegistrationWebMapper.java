@@ -8,6 +8,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.cancel.CancelRegistrationCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.cancel.CancelRegistrationResult;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.cancel.CancelRegistrationResultStatus;
 import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import java.util.List;
 import java.util.Objects;
@@ -48,8 +49,8 @@ public final class CancelRegistrationWebMapper {
                     new CancelRegistrationResponse(true, pageMapper.map(language)),
                     List.of());
         }
-        ApiStatus status = result.status().name().equals("CSRF_INVALID")
-                || result.status().name().equals("INVALID_AUTH_FLOW")
+        ApiStatus status = result.status() == CancelRegistrationResultStatus.CSRF_INVALID
+                || result.status() == CancelRegistrationResultStatus.INVALID_AUTH_FLOW
                 ? ApiStatus.VALIDATION_FAILED
                 : ApiStatus.SYSTEM_ERROR;
         List<ApiError> errors = result.errors().stream()
@@ -72,7 +73,7 @@ public final class CancelRegistrationWebMapper {
     }
 
     public MutationResponse<CancelRegistrationResponse> missingCsrf(String language) {
-        String code = "registration.csrf.invalid";
+        String code = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.REGISTRATION_CSRF_INVALID.value();
         ApiError error = ApiError.business(
                 code,
                 messages.resolve(code, language, null, null, null),

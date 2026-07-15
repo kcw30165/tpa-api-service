@@ -68,19 +68,19 @@ public class AuthRegistrationController {
             ServerHttpResponse response) {
         if (!hasText(authFlowSessionId)) {
             return Mono.just(completeRegistrationWebMapper.missing(
-                    "registration.authFlow.invalid", "PAGE", acceptLanguage));
+                    com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.REGISTRATION_AUTHFLOW_INVALID.value(), "PAGE", acceptLanguage));
         }
         if (!hasText(csrfToken)) {
             return Mono.just(completeRegistrationWebMapper.missing(
-                    "registration.csrf.invalid", "PAGE", acceptLanguage));
+                    com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.REGISTRATION_CSRF_INVALID.value(), "PAGE", acceptLanguage));
         }
         if (!hasText(idempotencyKey)) {
             return Mono.just(completeRegistrationWebMapper.missing(
-                    "workflow.idempotency.missing", "Idempotency-Key", acceptLanguage));
+                    com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.WORKFLOW_IDEMPOTENCY_MISSING.value(), "Idempotency-Key", acceptLanguage));
         }
         if (request == null) {
             return Mono.just(completeRegistrationWebMapper.missing(
-                    "registration.complete.request.invalid", "PAGE", acceptLanguage));
+                    com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.REGISTRATION_COMPLETE_REQUEST_INVALID.value(), "PAGE", acceptLanguage));
         }
 
         try {
@@ -101,7 +101,7 @@ public class AuthRegistrationController {
                     });
         } catch (RuntimeException exception) {
             return Mono.just(completeRegistrationWebMapper.missing(
-                    "registration.complete.request.invalid", "PAGE", acceptLanguage));
+                    com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.REGISTRATION_COMPLETE_REQUEST_INVALID.value(), "PAGE", acceptLanguage));
         }
     }
 

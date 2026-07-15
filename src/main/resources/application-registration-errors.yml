@@ -293,6 +293,296 @@ workflow-error-contract:
       messages:
         en: "The service is temporarily unavailable. Please try again later."
         zh_HK: "服務暫時未能提供，請稍後再試。"
+    - code: err.registration.captcha.consumed
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+      messages:
+        en: "The request could not be completed."
+        zh_HK: "未能完成要求。"
+    - code: err.registration.captcha.expired
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+      messages:
+        en: "The request could not be completed."
+        zh_HK: "未能完成要求。"
+    - code: err.registration.captcha.invalid
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+      messages:
+        en: "The request could not be completed."
+        zh_HK: "未能完成要求。"
+    - code: err.registration.captcha.locked
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+      messages:
+        en: "The request could not be completed."
+        zh_HK: "未能完成要求。"
+    - code: err.registration.captcha.notFound
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+      messages:
+        en: "The request could not be completed."
+        zh_HK: "未能完成要求。"
+    - code: err.registration.captcha.refreshFailed
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+      messages:
+        en: "The request could not be completed."
+        zh_HK: "未能完成要求。"
+    - code: err.registration.captcha.required
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+      messages:
+        en: "The request could not be completed."
+        zh_HK: "未能完成要求。"
+    - code: err.registration.complete.continuationUnavailable
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+      messages:
+        en: "The request could not be completed."
+        zh_HK: "未能完成要求。"
+    - code: err.registration.complete.outcomeUnknown
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+      messages:
+        en: "The request could not be completed."
+        zh_HK: "未能完成要求。"
+    - code: err.registration.confirmPassword.required
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - confirmPassword
+      next-step: PASSWORD_SETUP
+      messages:
+        en: "The request could not be completed."
+        zh_HK: "未能完成要求。"
+    - code: err.registration.contact.exactlyOneRequired
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+      messages:
+        en: "The request could not be completed."
+        zh_HK: "未能完成要求。"
+    - code: err.registration.contact.required
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+      messages:
+        en: "The request could not be completed."
+        zh_HK: "未能完成要求。"
+    - code: err.registration.dateOfBirth.invalid
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+      messages:
+        en: "The request could not be completed."
+        zh_HK: "未能完成要求。"
+    - code: err.registration.email.invalid
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+      messages:
+        en: "The request could not be completed."
+        zh_HK: "未能完成要求。"
+    - code: err.registration.identityType.invalid
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+      messages:
+        en: "The request could not be completed."
+        zh_HK: "未能完成要求。"
+    - code: err.registration.identityValue.invalid
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+      messages:
+        en: "The request could not be completed."
+        zh_HK: "未能完成要求。"
+    - code: err.registration.mobile.invalid
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+      messages:
+        en: "The request could not be completed."
+        zh_HK: "未能完成要求。"
+    - code: err.registration.password.maxLength
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - password
+      next-step: PASSWORD_SETUP
+      messages:
+        en: "The request could not be completed."
+        zh_HK: "未能完成要求。"
+    - code: err.registration.password.minLength
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - password
+      next-step: PASSWORD_SETUP
+      messages:
+        en: "The request could not be completed."
+        zh_HK: "未能完成要求。"
+    - code: err.registration.password.mismatch
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - password
+      next-step: PASSWORD_SETUP
+      messages:
+        en: "The request could not be completed."
+        zh_HK: "未能完成要求。"
+    - code: err.registration.password.noSpaces
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - password
+      next-step: PASSWORD_SETUP
+      messages:
+        en: "The request could not be completed."
+        zh_HK: "未能完成要求。"
+    - code: err.registration.password.required
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - password
+      next-step: PASSWORD_SETUP
+      messages:
+        en: "The request could not be completed."
+        zh_HK: "未能完成要求。"
+    - code: err.registration.password.requiredCategories
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - password
+      next-step: PASSWORD_SETUP
+      messages:
+        en: "The request could not be completed."
+        zh_HK: "未能完成要求。"
+    - code: err.registration.password.sameAsUsername
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - password
+      next-step: PASSWORD_SETUP
+      messages:
+        en: "The request could not be completed."
+        zh_HK: "未能完成要求。"
+    - code: err.registration.password.validationFailed
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - password
+      next-step: PASSWORD_SETUP
+      messages:
+        en: "The request could not be completed."
+        zh_HK: "未能完成要求。"
+    - code: err.registration.trustLookup.failed
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+      messages:
+        en: "The request could not be completed."
+        zh_HK: "未能完成要求。"
+    - code: err.registration.trustLookup.noEligibleTrusts
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+      messages:
+        en: "The request could not be completed."
+        zh_HK: "未能完成要求。"
+    - code: err.registration.username.check.failed
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+      messages:
+        en: "The request could not be completed."
+        zh_HK: "未能完成要求。"
+    - code: err.registration.username.checkFailed
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+      messages:
+        en: "The request could not be completed."
+        zh_HK: "未能完成要求。"
 
 error-message:
   en:
@@ -324,6 +614,35 @@ error-message:
     "err.workflow.downstream.businessRejected": "The request could not be completed. Please review and try again."
     "err.workflow.downstream.unavailable": "The service is temporarily unavailable. Please try again later."
     "err.workflow.system.unavailable": "The service is temporarily unavailable. Please try again later."
+    "err.registration.captcha.consumed": "The request could not be completed."
+    "err.registration.captcha.expired": "The request could not be completed."
+    "err.registration.captcha.invalid": "The request could not be completed."
+    "err.registration.captcha.locked": "The request could not be completed."
+    "err.registration.captcha.notFound": "The request could not be completed."
+    "err.registration.captcha.refreshFailed": "The request could not be completed."
+    "err.registration.captcha.required": "The request could not be completed."
+    "err.registration.complete.continuationUnavailable": "The request could not be completed."
+    "err.registration.complete.outcomeUnknown": "The request could not be completed."
+    "err.registration.confirmPassword.required": "The request could not be completed."
+    "err.registration.contact.exactlyOneRequired": "The request could not be completed."
+    "err.registration.contact.required": "The request could not be completed."
+    "err.registration.dateOfBirth.invalid": "The request could not be completed."
+    "err.registration.email.invalid": "The request could not be completed."
+    "err.registration.identityType.invalid": "The request could not be completed."
+    "err.registration.identityValue.invalid": "The request could not be completed."
+    "err.registration.mobile.invalid": "The request could not be completed."
+    "err.registration.password.maxLength": "The request could not be completed."
+    "err.registration.password.minLength": "The request could not be completed."
+    "err.registration.password.mismatch": "The request could not be completed."
+    "err.registration.password.noSpaces": "The request could not be completed."
+    "err.registration.password.required": "The request could not be completed."
+    "err.registration.password.requiredCategories": "The request could not be completed."
+    "err.registration.password.sameAsUsername": "The request could not be completed."
+    "err.registration.password.validationFailed": "The request could not be completed."
+    "err.registration.trustLookup.failed": "The request could not be completed."
+    "err.registration.trustLookup.noEligibleTrusts": "The request could not be completed."
+    "err.registration.username.check.failed": "The request could not be completed."
+    "err.registration.username.checkFailed": "The request could not be completed."
   zh_HK:
     "err.registration.authFlow.invalid": "註冊工作階段無效，請重新開始註冊。"
     "err.registration.csrf.invalid": "無法驗證此要求。"
@@ -353,3 +672,32 @@ error-message:
     "err.workflow.downstream.businessRejected": "未能完成要求，請檢查後再試。"
     "err.workflow.downstream.unavailable": "服務暫時未能提供，請稍後再試。"
     "err.workflow.system.unavailable": "服務暫時未能提供，請稍後再試。"
+    "err.registration.captcha.consumed": "未能完成要求。"
+    "err.registration.captcha.expired": "未能完成要求。"
+    "err.registration.captcha.invalid": "未能完成要求。"
+    "err.registration.captcha.locked": "未能完成要求。"
+    "err.registration.captcha.notFound": "未能完成要求。"
+    "err.registration.captcha.refreshFailed": "未能完成要求。"
+    "err.registration.captcha.required": "未能完成要求。"
+    "err.registration.complete.continuationUnavailable": "未能完成要求。"
+    "err.registration.complete.outcomeUnknown": "未能完成要求。"
+    "err.registration.confirmPassword.required": "未能完成要求。"
+    "err.registration.contact.exactlyOneRequired": "未能完成要求。"
+    "err.registration.contact.required": "未能完成要求。"
+    "err.registration.dateOfBirth.invalid": "未能完成要求。"
+    "err.registration.email.invalid": "未能完成要求。"
+    "err.registration.identityType.invalid": "未能完成要求。"
+    "err.registration.identityValue.invalid": "未能完成要求。"
+    "err.registration.mobile.invalid": "未能完成要求。"
+    "err.registration.password.maxLength": "未能完成要求。"
+    "err.registration.password.minLength": "未能完成要求。"
+    "err.registration.password.mismatch": "未能完成要求。"
+    "err.registration.password.noSpaces": "未能完成要求。"
+    "err.registration.password.required": "未能完成要求。"
+    "err.registration.password.requiredCategories": "未能完成要求。"
+    "err.registration.password.sameAsUsername": "未能完成要求。"
+    "err.registration.password.validationFailed": "未能完成要求。"
+    "err.registration.trustLookup.failed": "未能完成要求。"
+    "err.registration.trustLookup.noEligibleTrusts": "未能完成要求。"
+    "err.registration.username.check.failed": "未能完成要求。"
+    "err.registration.username.checkFailed": "未能完成要求。"

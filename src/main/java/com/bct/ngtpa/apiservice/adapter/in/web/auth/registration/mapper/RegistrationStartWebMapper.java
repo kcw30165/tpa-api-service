@@ -160,8 +160,8 @@ public class RegistrationStartWebMapper {
                     List.of(),
                     List.of(new WorkflowErrorDescriptor(
                             WorkflowErrorType.SYSTEM,
-                            "workflow.system.unavailable",
-                            resolveMessage("workflow.system.unavailable", acceptLanguage),
+                            com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.WORKFLOW_SYSTEM_UNAVAILABLE.value(),
+                            resolveMessage(com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.WORKFLOW_SYSTEM_UNAVAILABLE.value(), acceptLanguage),
                             List.of(),
                             WorkflowErrorSeverity.ERROR,
                             SOURCE_SERVER)));

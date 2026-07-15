@@ -4,6 +4,6 @@ import java.time.Instant;
 
 public record InvalidateOtpChallengeCommand(
         String otpChallengeId,
-        String reason,
+        OtpChallengeInvalidationReason reason,
         Instant now) {
 }

@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.registration.cancel;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.InvalidateOtpChallengeCommand;
+import com.bct.ngtpa.apiservice.application.dto.auth.otp.OtpChallengeInvalidationReason;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionCancellationStatus;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
@@ -24,9 +25,9 @@ import reactor.core.publisher.Mono;
 public final class CancelRegistrationService implements CancelRegistrationUseCase {
     private static final String SOURCE_SERVER = "SERVER";
     private static final String TARGET_PAGE = "PAGE";
-    private static final String ERROR_AUTH_FLOW_INVALID = "registration.authFlow.invalid";
-    private static final String ERROR_CSRF_INVALID = "registration.csrf.invalid";
-    private static final String ERROR_CANCEL_UNAVAILABLE = "registration.cancel.unavailable";
+    private static final String ERROR_AUTH_FLOW_INVALID = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.REGISTRATION_AUTHFLOW_INVALID.value();
+    private static final String ERROR_CSRF_INVALID = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.REGISTRATION_CSRF_INVALID.value();
+    private static final String ERROR_CANCEL_UNAVAILABLE = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.WORKFLOW_SYSTEM_UNAVAILABLE.value();
 
     private final AuthFlowSessionPort sessions;
     private final AuthFlowSessionCsrfService csrfService;
@@ -112,7 +113,7 @@ public final class CancelRegistrationService implements CancelRegistrationUseCas
         }
         return otpChallenges.invalidateChallenge(new InvalidateOtpChallengeCommand(
                         session.activeOtpChallengeId(),
-                        "USER_CANCELLED_REGISTRATION",
+                        OtpChallengeInvalidationReason.USER_CANCELLED_REGISTRATION,
                         now));
     }
 

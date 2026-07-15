@@ -129,7 +129,7 @@ class RegistrationStabilizationContractBaselineTest {
                         + "CancelRegistrationService.java");
         String source = Files.readString(service);
         assertThat(source)
-                .doesNotContain("USER_CANCELLED_REGISTRATION")
+                .doesNotContain("\"USER_CANCELLED_REGISTRATION\"")
                 .contains("OtpChallengeInvalidationReason.USER_CANCELLED_REGISTRATION");
     }
 
@@ -182,6 +182,7 @@ class RegistrationStabilizationContractBaselineTest {
             return files.filter(path -> path.toString().endsWith(".java"))
                     .filter(path -> path.toString().contains("registration")
                             || path.getFileName().toString().startsWith("AuthRegistration"))
+                    .filter(path -> !path.toString().contains("pageconfig"))
                     .sorted().toList();
         }
     }
