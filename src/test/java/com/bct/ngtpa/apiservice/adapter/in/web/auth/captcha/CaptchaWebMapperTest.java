@@ -41,24 +41,24 @@ class CaptchaWebMapperTest {
         assertThat(response.success()).isFalse();
         assertThat(response.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
         assertThat(response.errors()).singleElement().satisfies(error -> {
-            assertThat(error.code()).isEqualTo("registration.captcha.invalid");
+            assertThat(error.code()).isEqualTo("err.registration.captcha.invalid");
             assertThat(error.targets()).containsExactly("captchaAnswer");
-                        assertThat(error.message()).isEqualTo("resolved-registration.captcha.invalid-zh_HK");
+                        assertThat(error.message()).isEqualTo("resolved-err.registration.captcha.invalid-zh_HK");
         });
     }
 
     @Test
     void captchaVerifyMapsLifecycleOutcomesToValidationFailure() {
         assertThat(mapper.toVerifyMutationResponse(new VerifyCaptchaChallengeResult(CaptchaVerificationOutcome.EXPIRED, false, null, 0), "en").errors().getFirst().code())
-                .isEqualTo("registration.captcha.expired");
+                .isEqualTo("err.registration.captcha.expired");
         assertThat(mapper.toVerifyMutationResponse(new VerifyCaptchaChallengeResult(CaptchaVerificationOutcome.LOCKED, false, null, 0), "en").errors().getFirst().code())
-                .isEqualTo("registration.captcha.locked");
+                .isEqualTo("err.registration.captcha.locked");
         assertThat(mapper.toVerifyMutationResponse(new VerifyCaptchaChallengeResult(CaptchaVerificationOutcome.CONSUMED, false, null, 0), "en").errors().getFirst().code())
-                .isEqualTo("registration.captcha.consumed");
+                .isEqualTo("err.registration.captcha.consumed");
         assertThat(mapper.toVerifyMutationResponse(new VerifyCaptchaChallengeResult(CaptchaVerificationOutcome.NOT_FOUND, false, null, 0), "en").errors().getFirst().code())
-                .isEqualTo("registration.captcha.notFound");
+                .isEqualTo("err.registration.captcha.notFound");
         assertThat(mapper.toVerifyMutationResponse(new VerifyCaptchaChallengeResult(CaptchaVerificationOutcome.REFRESHED, false, null, 0), "en").errors().getFirst().code())
-                .isEqualTo("registration.captcha.refreshFailed");
+                .isEqualTo("err.registration.captcha.refreshFailed");
     }
 
     @Test

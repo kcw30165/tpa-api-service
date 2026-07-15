@@ -65,10 +65,12 @@ class AuthRegistrationControllerWorkflowContractTest {
                         null,
                         new MockServerHttpResponse()))
                 .assertNext(response -> {
-                    assertThat(response).isInstanceOf(MutationResponse.class);
-                    assertThat(response.success()).isFalse();
-                    assertThat(response.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
-                    assertThat(response.errors()).isNotEmpty();
+                    assertThat(response).isInstanceOf(org.springframework.http.ResponseEntity.class);
+        assertThat(java.util.Objects.requireNonNull(response.getBody()))
+                .isInstanceOf(MutationResponse.class);
+                    assertThat(java.util.Objects.requireNonNull(response.getBody()).success()).isFalse();
+                    assertThat(java.util.Objects.requireNonNull(response.getBody()).status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
+                    assertThat(java.util.Objects.requireNonNull(response.getBody()).errors()).isNotEmpty();
                 })
                 .verifyComplete();
 
@@ -102,9 +104,9 @@ class AuthRegistrationControllerWorkflowContractTest {
                         null,
                         response))
                 .assertNext(body -> {
-                    assertThat(body.success()).isTrue();
-                    assertThat(body.result().nextStep()).isEqualTo(WorkflowNextStep.VERIFY_OTP);
-                    assertThat(body.result().data().csrfToken()).isEqualTo("csrf_token_safe");
+                    assertThat(java.util.Objects.requireNonNull(body.getBody()).success()).isTrue();
+                    assertThat(java.util.Objects.requireNonNull(body.getBody()).result().nextStep()).isEqualTo(WorkflowNextStep.VERIFY_OTP);
+                    assertThat(java.util.Objects.requireNonNull(body.getBody()).result().data().csrfToken()).isEqualTo("csrf_token_safe");
                 })
                 .verifyComplete();
 

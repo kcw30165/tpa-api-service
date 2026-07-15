@@ -72,7 +72,7 @@ class CompleteRegistrationExpiryOrderingTest {
                             .isEqualTo(CompleteRegistrationResultStatus.CSRF_INVALID);
                     assertThat(result.errors())
                             .extracting(error -> error.code())
-                            .containsExactly("registration.authFlow.invalid");
+                            .containsExactly("err.registration.authFlow.invalid");
                 })
                 .verifyComplete();
 

@@ -71,7 +71,7 @@ class RegistrationStartWebMapperTest {
         var response = mapper.toMutationResponse(result);
 
         assertThat(response.errors()).singleElement().satisfies(error -> {
-            assertThat(error.code()).isEqualTo("registration.start.verificationFailed");
+            assertThat(error.code()).isEqualTo("err.registration.start.verificationFailed");
             assertThat(error.message()).isEqualTo("We are unable to verify your details. Please review and try again.");
         });
     }
@@ -98,7 +98,7 @@ class RegistrationStartWebMapperTest {
         var response = localMapper.toMutationResponse(result, "zh-HK");
 
         assertThat(response.errors()).singleElement().satisfies(error -> {
-            assertThat(error.code()).isEqualTo("registration.start.verificationFailed");
+            assertThat(error.code()).isEqualTo("err.registration.start.verificationFailed");
             assertThat(error.message()).isEqualTo("resolved-message");
         });
     }
@@ -127,7 +127,7 @@ class RegistrationStartWebMapperTest {
         assertThat(response.status()).isEqualTo(ApiStatus.DOWNSTREAM_ERROR);
         assertThat(response.result()).isNotNull();
         assertThat(response.errors()).singleElement()
-                .satisfies(error -> assertThat(error.code()).isEqualTo("registration.messageDelivery.failed"));
+                .satisfies(error -> assertThat(error.code()).isEqualTo("err.registration.message.deliveryFailed"));
     }
 
     @Test

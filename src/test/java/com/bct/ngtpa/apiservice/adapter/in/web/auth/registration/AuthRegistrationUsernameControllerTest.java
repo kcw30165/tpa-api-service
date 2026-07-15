@@ -52,7 +52,7 @@ class AuthRegistrationUsernameControllerTest {
 
         assertThat(json.get("success").asBoolean()).isFalse();
         assertThat(json.get("status").asText()).isEqualTo("VALIDATION_FAILED");
-        assertThat(json.at("/errors/0/code").asText()).isEqualTo("registration.authFlow.invalid");
+        assertThat(json.at("/errors/0/code").asText()).isEqualTo("err.registration.authFlow.invalid");
         assertThat(useCase.called).isFalse();
     }
 
@@ -64,7 +64,7 @@ class AuthRegistrationUsernameControllerTest {
         JsonNode json = json(controller.checkUsername(validRequest(), "afs", null, "req", "en", null, null).block());
 
         assertThat(json.get("success").asBoolean()).isFalse();
-        assertThat(json.at("/errors/0/code").asText()).isEqualTo("registration.csrf.invalid");
+        assertThat(json.at("/errors/0/code").asText()).isEqualTo("err.registration.csrf.invalid");
         assertThat(useCase.called).isFalse();
     }
 
@@ -77,7 +77,7 @@ class AuthRegistrationUsernameControllerTest {
 
         assertThat(json.get("success").asBoolean()).isFalse();
         assertThat(json.get("status").asText()).isEqualTo("VALIDATION_FAILED");
-        assertThat(json.at("/errors/0/code").asText()).isEqualTo("registration.username.check.request.invalid");
+        assertThat(json.at("/errors/0/code").asText()).isEqualTo("err.registration.username.request.invalid");
         assertThat(useCase.called).isFalse();
     }
 
@@ -121,7 +121,7 @@ class AuthRegistrationUsernameControllerTest {
                 CheckRegistrationUsernameResultStatus.VALIDATION_FAILED,
                 WorkflowNextStep.USERNAME_CHECK,
                 List.of(),
-                List.of(error("registration.username.incorrect")));
+                List.of(error("err.registration.username.policyInvalid")));
         var controller = controller(new RecordingUseCase(result));
 
         JsonNode json = json(controller.checkUsername(validRequest(), "afs", "csrf", "req", "en", null, null).block());
@@ -129,7 +129,7 @@ class AuthRegistrationUsernameControllerTest {
         assertThat(json.get("success").asBoolean()).isFalse();
         assertThat(json.get("status").asText()).isEqualTo("VALIDATION_FAILED");
         assertThat(json.at("/result/nextStep").asText()).isEqualTo("USERNAME_CHECK");
-        assertThat(json.at("/errors/0/code").asText()).isEqualTo("registration.username.incorrect");
+        assertThat(json.at("/errors/0/code").asText()).isEqualTo("err.registration.username.policyInvalid");
         assertThat(json.at("/errors/0/target").asText()).isEqualTo("PAGE");
     }
 
@@ -139,7 +139,7 @@ class AuthRegistrationUsernameControllerTest {
                 CheckRegistrationUsernameResultStatus.DOWNSTREAM_REJECTED,
                 WorkflowNextStep.USERNAME_CHECK,
                 List.of(),
-                List.of(error("registration.username.isregistered")));
+                List.of(error("err.registration.username.isRegistered")));
         var controller = controller(new RecordingUseCase(result));
 
         JsonNode json = json(controller.checkUsername(validRequest(), "afs", "csrf", "req", "en", null, null).block());
@@ -147,7 +147,7 @@ class AuthRegistrationUsernameControllerTest {
         assertThat(json.get("success").asBoolean()).isFalse();
         assertThat(json.get("status").asText()).isEqualTo("DOWNSTREAM_REJECTION");
         assertThat(json.at("/result/nextStep").asText()).isEqualTo("USERNAME_CHECK");
-        assertThat(json.at("/errors/0/code").asText()).isEqualTo("registration.username.isregistered");
+        assertThat(json.at("/errors/0/code").asText()).isEqualTo("err.registration.username.isRegistered");
     }
 
     @Test
@@ -156,7 +156,7 @@ class AuthRegistrationUsernameControllerTest {
                 CheckRegistrationUsernameResultStatus.DOWNSTREAM_FAILED,
                 WorkflowNextStep.USERNAME_CHECK,
                 List.of(),
-                List.of(error("workflow.downstream.unavailable")));
+                List.of(error("err.workflow.downstream.unavailable")));
         var controller = controller(new RecordingUseCase(result));
 
         JsonNode json = json(controller.checkUsername(validRequest(), "afs", "csrf", "req", "en", null, null).block());
@@ -164,7 +164,7 @@ class AuthRegistrationUsernameControllerTest {
         assertThat(json.get("success").asBoolean()).isFalse();
         assertThat(json.get("status").asText()).isEqualTo("DOWNSTREAM_ERROR");
         assertThat(json.at("/result/nextStep").asText()).isEqualTo("USERNAME_CHECK");
-        assertThat(json.toString()).doesNotContain("downstream.generic.businessRejected", "registration.username.isregistered");
+        assertThat(json.toString()).doesNotContain("err.workflow.downstream.businessRejected", "err.registration.username.isRegistered");
     }
 
     @Test
@@ -172,7 +172,12 @@ class AuthRegistrationUsernameControllerTest {
         assertThat(commandComponents()).doesNotContain("idempotencyKey", "RegistrationIdempotencyKey", "idempotencyTtl");
     }
 
-    private JsonNode json(Object value) throws Exception { return objectMapper.valueToTree(value); }
+    private JsonNode json(Object value) throws Exception {
+        if (value instanceof org.springframework.http.ResponseEntity<?> response) {
+            value = java.util.Objects.requireNonNull(response.getBody());
+        }
+        return objectMapper.valueToTree(value);
+    }
 
     private static RegistrationUsernameCheckRequest validRequest() {
         return new RegistrationUsernameCheckRequest(new RegistrationSelectedTrustRequest("TL", "ENV1"), "abc1@");

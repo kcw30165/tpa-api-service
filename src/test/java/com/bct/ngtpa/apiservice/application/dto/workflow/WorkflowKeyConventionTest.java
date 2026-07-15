@@ -17,8 +17,8 @@ class WorkflowKeyConventionTest {
 
     @Test
     void workflowErrorKeyAcceptsCodeLikeValues() {
-        assertThat(new WorkflowErrorKey("registration.start.verificationFailed").value()).isEqualTo("registration.start.verificationFailed");
-        assertThat(new WorkflowErrorKey("registration.csrf.invalid").value()).isEqualTo("registration.csrf.invalid");
+        assertThat(new WorkflowErrorKey("err.registration.start.verificationFailed").value()).isEqualTo("err.registration.start.verificationFailed");
+        assertThat(new WorkflowErrorKey("err.registration.csrf.invalid").value()).isEqualTo("err.registration.csrf.invalid");
         assertThat(new WorkflowErrorKey("workflow.downstream.unavailable").value()).isEqualTo("workflow.downstream.unavailable");
         assertThat(new WorkflowErrorKey("err.request.invalid").value()).isEqualTo("err.request.invalid");
     }
@@ -62,30 +62,30 @@ class WorkflowKeyConventionTest {
 
     @Test
     void registrationWorkflowErrorKeysHaveExpectedValues() {
-        assertThat(RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED.value()).isEqualTo("registration.start.verificationFailed");
-        assertThat(RegistrationWorkflowErrorKeys.REGISTRATION_CONTACT_EXACTLY_ONE_REQUIRED.value()).isEqualTo("registration.contact.exactlyOneRequired");
-        assertThat(RegistrationWorkflowErrorKeys.REGISTRATION_IDENTITY_TYPE_INVALID.value()).isEqualTo("registration.identityType.invalid");
-        assertThat(RegistrationWorkflowErrorKeys.REGISTRATION_IDENTITY_VALUE_INVALID.value()).isEqualTo("registration.identityValue.invalid");
-        assertThat(RegistrationWorkflowErrorKeys.REGISTRATION_DATE_OF_BIRTH_INVALID.value()).isEqualTo("registration.dateOfBirth.invalid");
-        assertThat(RegistrationWorkflowErrorKeys.REGISTRATION_AUTH_FLOW_INVALID.value()).isEqualTo("registration.authFlow.invalid");
-        assertThat(RegistrationWorkflowErrorKeys.REGISTRATION_CSRF_INVALID.value()).isEqualTo("registration.csrf.invalid");
-        assertThat(RegistrationWorkflowErrorKeys.REGISTRATION_OTP_INVALID.value()).isEqualTo("registration.otp.invalid");
-        assertThat(RegistrationWorkflowErrorKeys.REGISTRATION_OTP_EXPIRED.value()).isEqualTo("registration.otp.expired");
-        assertThat(RegistrationWorkflowErrorKeys.REGISTRATION_OTP_MAX_ATTEMPTS.value()).isEqualTo("registration.otp.maxAttemptsReached");
-        assertThat(RegistrationWorkflowErrorKeys.REGISTRATION_USERNAME_UNAVAILABLE.value()).isEqualTo("registration.username.unavailable");
-        assertThat(RegistrationWorkflowErrorKeys.REGISTRATION_COMPLETE_FAILED.value()).isEqualTo("registration.complete.failed");
-        assertThat(RegistrationWorkflowErrorKeys.REGISTRATION_MESSAGE_DELIVERY_FAILED.value()).isEqualTo("registration.messageDelivery.failed");
-        assertThat(RegistrationWorkflowErrorKeys.WORKFLOW_IDEMPOTENCY_DUPLICATE_IN_PROGRESS.value()).isEqualTo("workflow.idempotency.duplicateInProgress");
-        assertThat(RegistrationWorkflowErrorKeys.WORKFLOW_IDEMPOTENCY_KEY_REUSED.value()).isEqualTo("workflow.idempotency.keyReused");
-        assertThat(RegistrationWorkflowErrorKeys.WORKFLOW_SYSTEM_UNAVAILABLE.value()).isEqualTo("workflow.system.unavailable");
-        assertThat(RegistrationWorkflowErrorKeys.WORKFLOW_DOWNSTREAM_UNAVAILABLE.value()).isEqualTo("workflow.downstream.unavailable");
+        assertThat(RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED.value()).isEqualTo("err.registration.start.verificationFailed");
+        assertThat(RegistrationWorkflowErrorKeys.REGISTRATION_CONTACT_EXACTLY_ONE_REQUIRED.value()).isEqualTo("err.registration.contact.exactlyOneRequired");
+        assertThat(RegistrationWorkflowErrorKeys.REGISTRATION_IDENTITY_TYPE_INVALID.value()).isEqualTo("err.registration.identityType.invalid");
+        assertThat(RegistrationWorkflowErrorKeys.REGISTRATION_IDENTITY_VALUE_INVALID.value()).isEqualTo("err.registration.identityValue.invalid");
+        assertThat(RegistrationWorkflowErrorKeys.REGISTRATION_DATE_OF_BIRTH_INVALID.value()).isEqualTo("err.registration.dateOfBirth.invalid");
+        assertThat(RegistrationWorkflowErrorKeys.REGISTRATION_AUTH_FLOW_INVALID.value()).isEqualTo("err.registration.authFlow.invalid");
+        assertThat(RegistrationWorkflowErrorKeys.REGISTRATION_CSRF_INVALID.value()).isEqualTo("err.registration.csrf.invalid");
+        assertThat(RegistrationWorkflowErrorKeys.REGISTRATION_OTP_INVALID.value()).isEqualTo("err.registration.otp.invalid");
+        assertThat(RegistrationWorkflowErrorKeys.REGISTRATION_OTP_EXPIRED.value()).isEqualTo("err.registration.otp.expired");
+        assertThat(RegistrationWorkflowErrorKeys.REGISTRATION_OTP_MAX_ATTEMPTS.value()).isEqualTo("err.registration.otp.locked");
+        assertThat(RegistrationWorkflowErrorKeys.REGISTRATION_USERNAME_UNAVAILABLE.value()).isEqualTo("err.registration.username.isRegistered");
+        assertThat(RegistrationWorkflowErrorKeys.REGISTRATION_COMPLETE_FAILED.value()).isEqualTo("err.registration.complete.failed");
+        assertThat(RegistrationWorkflowErrorKeys.REGISTRATION_MESSAGE_DELIVERY_FAILED.value()).isEqualTo("err.registration.message.deliveryFailed");
+        assertThat(RegistrationWorkflowErrorKeys.WORKFLOW_IDEMPOTENCY_DUPLICATE_IN_PROGRESS.value()).isEqualTo("err.workflow.idempotency.inProgress");
+        assertThat(RegistrationWorkflowErrorKeys.WORKFLOW_IDEMPOTENCY_KEY_REUSED.value()).isEqualTo("err.workflow.idempotency.keyReused");
+        assertThat(RegistrationWorkflowErrorKeys.WORKFLOW_SYSTEM_UNAVAILABLE.value()).isEqualTo("err.workflow.system.unavailable");
+        assertThat(RegistrationWorkflowErrorKeys.WORKFLOW_DOWNSTREAM_UNAVAILABLE.value()).isEqualTo("err.workflow.downstream.unavailable");
     }
 
     @Test
     void registrationStartApimMemberNotFoundMappingIsDocumentedAsKeyOnly() {
         assertThat(RegistrationWorkflowErrorKeys.APIM_MEMBER_NOT_FOUND).isEqualTo("err.tpa.member.not.found");
         assertThat(RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED.value())
-                .isEqualTo("registration.start.verificationFailed");
+                .isEqualTo("err.registration.start.verificationFailed");
         assertThat(RegistrationWorkflowErrorKeys.P6_MEMBER_NOT_FOUND_TARGET_KEY)
                 .isEqualTo(RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED);
     }

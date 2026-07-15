@@ -1,11 +1,13 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.RegistrationHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationUsernameCheckRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationUsernameCheckWebMapper;
 import com.bct.ngtpa.apiservice.application.port.in.CheckRegistrationUsernameUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.CheckRegistrationUsernameCommand;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -22,7 +24,7 @@ public class AuthRegistrationUsernameController {
     private final RegistrationUsernameCheckWebMapper registrationUsernameCheckWebMapper;
 
     @PostMapping(path = "/username/check", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<Object> checkUsername(
+    public Mono<ResponseEntity<Object>> checkUsername(
             @RequestBody(required = false) RegistrationUsernameCheckRequest request,
             @CookieValue(name = "auth_flow_sid", required = false) String authFlowSessionId,
             @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrfToken,
@@ -31,13 +33,13 @@ public class AuthRegistrationUsernameController {
             @RequestHeader(name = "Origin", required = false) String origin,
             @RequestHeader(name = "Referer", required = false) String referer) {
         if (!hasText(authFlowSessionId)) {
-            return Mono.just(registrationUsernameCheckWebMapper.missingAuthFlowCookieResponse());
+            return Mono.just(RegistrationHttpResponses.toObjectResponse(registrationUsernameCheckWebMapper.missingAuthFlowCookieResponse()));
         }
         if (!hasText(csrfToken)) {
-            return Mono.just(registrationUsernameCheckWebMapper.missingCsrfTokenResponse());
+            return Mono.just(RegistrationHttpResponses.toObjectResponse(registrationUsernameCheckWebMapper.missingCsrfTokenResponse()));
         }
         if (request == null) {
-            return Mono.just(registrationUsernameCheckWebMapper.missingRequestBodyResponse());
+            return Mono.just(RegistrationHttpResponses.toObjectResponse(registrationUsernameCheckWebMapper.missingRequestBodyResponse()));
         }
 
         CheckRegistrationUsernameCommand command;
@@ -51,11 +53,12 @@ public class AuthRegistrationUsernameController {
                     origin,
                     referer);
         } catch (RuntimeException exception) {
-            return Mono.just(registrationUsernameCheckWebMapper.missingAuthFlowCookieResponse());
+            return Mono.just(RegistrationHttpResponses.toObjectResponse(registrationUsernameCheckWebMapper.missingAuthFlowCookieResponse()));
         }
 
         return checkRegistrationUsernameUseCase.check(command)
-                .map(registrationUsernameCheckWebMapper::toMutationResponse);
+                .map(registrationUsernameCheckWebMapper::toMutationResponse)
+                .map(RegistrationHttpResponses::toObjectResponse);
     }
 
     private boolean hasText(String value) {

@@ -140,7 +140,7 @@ class RegistrationStartValidatorTest {
         var result = validator.validate(input("BAD", "ABC", "31/02/1980", null, null, null));
 
         assertThat(result.errors()).allSatisfy(error -> {
-            assertThat(error.errorKey().value()).startsWith("registration.");
+            assertThat(error.errorKey().value()).startsWith("err.registration.");
             assertThat(error.toString()).doesNotContain("Invalid", "Please", "請", "錯誤");
         });
     }

@@ -233,6 +233,16 @@ workflow-error-contract:
       messages:
         en: "This member is already registered. Please return to login."
         zh_HK: "此成員已完成註冊，請返回登入頁面。"
+    - code: err.registration.complete.failed
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: PASSWORD_SETUP
+      messages:
+        en: We could not complete your registration. Please try again.
+        zh_HK: 我們未能完成你的註冊，請再試一次。        
     - code: err.workflow.idempotency.missing
       type: FORM
       severity: ERROR

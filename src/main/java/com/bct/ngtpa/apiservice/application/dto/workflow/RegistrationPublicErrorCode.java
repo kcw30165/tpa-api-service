@@ -15,6 +15,7 @@ public enum RegistrationPublicErrorCode {
     REGISTRATION_COMPLETE_OUTCOMEUNKNOWN("err.registration.complete.outcomeUnknown"),
     REGISTRATION_COMPLETE_REQUEST_INVALID("err.registration.complete.request.invalid"),
     REGISTRATION_CONFIRMPASSWORD_REQUIRED("err.registration.confirmPassword.required"),
+    REGISTRATION_COMPLETE_FAILED("err.registration.complete.failed"),
     REGISTRATION_CONTACT_EXACTLYONEREQUIRED("err.registration.contact.exactlyOneRequired"),
     REGISTRATION_CONTACT_REQUIRED("err.registration.contact.required"),
     REGISTRATION_CSRF_INVALID("err.registration.csrf.invalid"),
@@ -54,7 +55,7 @@ public enum RegistrationPublicErrorCode {
     WORKFLOW_IDEMPOTENCY_KEYREUSED("err.workflow.idempotency.keyReused"),
     WORKFLOW_IDEMPOTENCY_MISSING("err.workflow.idempotency.missing"),
     WORKFLOW_SYSTEM_UNAVAILABLE("err.workflow.system.unavailable");
-
+    
     private final String value;
     RegistrationPublicErrorCode(String value) { this.value = value; }
     public String value() { return value; }
