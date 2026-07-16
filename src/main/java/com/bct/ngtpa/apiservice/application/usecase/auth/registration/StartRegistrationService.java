@@ -202,7 +202,7 @@ public class StartRegistrationService implements StartRegistrationUseCase {
     }
 
     private Mono<StartRegistrationResult> handleLookup(StartRegistrationCommand command, RegistrationRequestHash hash, RegistrationStartCommand validated, RegistrationLookupResult lookup) {
-        if (lookup.status() == RegistrationLookupStatus.NOT_FOUND_OR_NOT_ELIGIBLE) {
+        if (lookup.status() == RegistrationLookupStatus.NOT_ELIGIBLE) {
             var verificationFailure = result(
                     StartRegistrationResultStatus.VERIFICATION_FAILED,
                     WorkflowNextStep.NONE,
@@ -211,16 +211,6 @@ public class StartRegistrationService implements StartRegistrationUseCase {
                     RegistrationIdempotencyStartOutcome.STARTED,
                     null);
             return markFailed(command, hash, com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.REGISTRATION_START_VERIFICATIONFAILED.value()).thenReturn(verificationFailure);
-        }
-        if (lookup.status() == RegistrationLookupStatus.UPSTREAM_BUSINESS_REJECTED) {
-            var verificationFailure = result(
-                    StartRegistrationResultStatus.DOWNSTREAM_REJECTED,
-                    WorkflowNextStep.NONE,
-                    RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED,
-                    "identityValue",
-                    RegistrationIdempotencyStartOutcome.STARTED,
-                    null);
-            return markFailed(command, hash, com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.WORKFLOW_DOWNSTREAM_BUSINESSREJECTED.value()).thenReturn(verificationFailure);
         }
         RegistrationAuthFlowContext registrationContext = new RegistrationAuthFlowContext(
                 validated.identityType(),

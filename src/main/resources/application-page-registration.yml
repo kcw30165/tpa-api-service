@@ -12,13 +12,6 @@ bff-pages:
             httpStatus: 422
             target: PAGE
             idempotencyCacheable: false
-          - downstreamErrorCode: err.tpa.hkid.invalid
-            eventType: DOWNSTREAM_REJECTION
-            logLevel: ERROR
-            responseCode: err.registration.start.verificationFailed
-            httpStatus: 422
-            target: PAGE
-            idempotencyCacheable: false
         fallback:
           eventType: DOWNSTREAM_REJECTION
           logLevel: ERROR

@@ -120,7 +120,7 @@ class StartRegistrationUseCaseTest {
 
     @Test
     void lookupNotFoundMapsToVerificationFailure() {
-        lookup.result = new RegistrationLookupResult(RegistrationLookupStatus.NOT_FOUND_OR_NOT_ELIGIBLE, List.of(), "err.tpa.member.not.found");
+        lookup.result = new RegistrationLookupResult(RegistrationLookupStatus.NOT_ELIGIBLE, List.of(), "err.tpa.member.not.found");
 
         StepVerifier.create(useCase.start(command()))
                 .assertNext(result -> {
@@ -135,7 +135,7 @@ class StartRegistrationUseCaseTest {
 
     @Test
     void lookupBusinessRejectedMapsToVerificationFailedError() {
-        lookup.result = new RegistrationLookupResult(RegistrationLookupStatus.UPSTREAM_BUSINESS_REJECTED, List.of(), "err.tpa.other");
+        lookup.result = new RegistrationLookupResult(RegistrationLookupStatus.NOT_ELIGIBLE, List.of(), "err.tpa.other");
 
         StepVerifier.create(useCase.start(command()))
                 .assertNext(result -> assertThat(result.errors())
@@ -169,7 +169,7 @@ class StartRegistrationUseCaseTest {
 
     @Test
     void memberNotFoundErrMessageReturnsVerificationFailedCodeWithoutApplicationMessage() {
-        lookup.result = new RegistrationLookupResult(RegistrationLookupStatus.NOT_FOUND_OR_NOT_ELIGIBLE, List.of(), "err.tpa.member.not.found");
+        lookup.result = new RegistrationLookupResult(RegistrationLookupStatus.NOT_ELIGIBLE, List.of(), "err.tpa.member.not.found");
 
         StepVerifier.create(useCase.start(command()))
                 .assertNext(result -> {
@@ -184,7 +184,7 @@ class StartRegistrationUseCaseTest {
 
     @Test
     void memberNotFoundErrMessageReturnsVerificationFailedCodeWithoutApplicationMessageForChinese() {
-        lookup.result = new RegistrationLookupResult(RegistrationLookupStatus.NOT_FOUND_OR_NOT_ELIGIBLE, List.of(), "err.tpa.member.not.found");
+        lookup.result = new RegistrationLookupResult(RegistrationLookupStatus.NOT_ELIGIBLE, List.of(), "err.tpa.member.not.found");
         var base = command();
         var zhCommand = new StartRegistrationCommand(base.idempotencyKey(), base.identityType(), base.identityValue(), base.dateOfBirth(), base.email(), base.mobile(), base.captchaChallengeId(), base.authFlowSessionId(), "zh-HK", base.correlationId(), base.idempotencyTtl());
 
@@ -196,7 +196,7 @@ class StartRegistrationUseCaseTest {
 
     @Test
     void otherApimBusinessErrorReturnsVerificationFailedCodeWithoutLocalizedMemberNotFoundText() {
-        lookup.result = new RegistrationLookupResult(RegistrationLookupStatus.UPSTREAM_BUSINESS_REJECTED, List.of(), "err.tpa.other");
+        lookup.result = new RegistrationLookupResult(RegistrationLookupStatus.NOT_ELIGIBLE, List.of(), "err.tpa.other");
 
         StepVerifier.create(useCase.start(command()))
                 .assertNext(result -> assertThat(result.errors())

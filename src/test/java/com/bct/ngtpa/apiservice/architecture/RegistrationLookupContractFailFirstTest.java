@@ -9,11 +9,9 @@ import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationId
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupStatus;
 import java.lang.reflect.Method;
-import java.lang.reflect.RecordComponent;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -65,8 +63,8 @@ class RegistrationLookupContractFailFirstTest {
         String mapper = readMain("TrpSearchUnregMemberApimResultMapper.java");
 
         assertThat(mapper)
-                .contains("RegistrationLookupDownstreamException")
-                .doesNotContain("RegistrationLookupStatus.NOT_FOUND_OR_NOT_ELIGIBLE");
+                .contains("RegistrationLookupDownstreamException.Reason.EMPTY_DATA")
+                .contains("RegistrationLookupStatus.NOT_ELIGIBLE");
     }
 
     @Test
@@ -77,8 +75,8 @@ class RegistrationLookupContractFailFirstTest {
         assertThat(mapper)
                 .contains("contactValue")
                 .contains("contactType")
-                .contains("accountEnv")
-                .contains("trustCode")
+                .contains("item.env()")
+                .contains("item.trustCode()")
                 .contains("RegistrationLookupDownstreamException");
     }
 

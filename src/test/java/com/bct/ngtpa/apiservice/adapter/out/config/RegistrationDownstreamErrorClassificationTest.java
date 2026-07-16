@@ -28,7 +28,7 @@ class RegistrationDownstreamErrorClassificationTest {
             assertThat(pages.get("registration-start").getDownstreamErrorClassification()
                     .getExplicitMappings()).extracting(
                             com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.DownstreamErrorClassificationMappingProperties::getDownstreamErrorCode)
-                    .containsExactly("err.tpa.member.not.found", "err.tpa.hkid.invalid");
+                    .containsExactly("err.tpa.member.not.found");
             assertThat(pages.get("registration-password-setup").getDownstreamErrorClassification()
                     .getExplicitMappings()).extracting(
                             com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.DownstreamErrorClassificationMappingProperties::getDownstreamErrorCode)
@@ -39,7 +39,7 @@ class RegistrationDownstreamErrorClassificationTest {
     @Test void searchKnownErrorsMapToOnePublicVerificationFailure() {
         runner.run(context -> {
             var adapter=adapter(context);
-            for(String code:java.util.List.of("err.tpa.member.not.found","err.tpa.hkid.invalid")) {
+            for(String code:java.util.List.of("err.tpa.member.not.found")) {
                 var result=adapter.classify(request("registration-start","TRPSearchUnregMember",code));
                 assertThat(result.responseCode()).isEqualTo("err.registration.start.verificationFailed");
                 assertThat(result.httpStatus()).isEqualTo(422);

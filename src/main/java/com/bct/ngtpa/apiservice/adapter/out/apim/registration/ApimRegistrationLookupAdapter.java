@@ -59,7 +59,7 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
         if (legacyTestTransport != null) {
             var request = requestMapper.toApimRequest(command);
             return legacyTestTransport.postSearchUnregisteredMember(API_NAME, request)
-                    .map(envelope -> resultMapper.toResult(envelope.errMessage(), envelope.data()));
+                    .map(envelope -> resultMapper.toResult(envelope.errMessage(), envelope.data(), command));
         }
         if (!apimProperties.getEncryption().isEnabled()) {
             var request = apimPayloadCryptoService.encryptRequest(
@@ -73,7 +73,7 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
                             body,
                             TrpSearchUnregMemberApimDataItem.class,
                             null))
-                    .map(this::toResultPreservingBusinessErrMessage)
+                    .map(envelope -> toResult(envelope, command))
                     .onErrorMap(ApimCryptoException.class, this::toApimException);
         }
         return apimCertificateService.getBctPublicKey()
@@ -89,16 +89,17 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
                                     body,
                                     TrpSearchUnregMemberApimDataItem.class,
                                     publicKey))
-                            .map(this::toResultPreservingBusinessErrMessage);
+                            .map(envelope -> toResult(envelope, command));
                 })
                 .onErrorMap(ApimCryptoException.class, this::toApimException);
     }
 
-    private RegistrationLookupResult toResultPreservingBusinessErrMessage(
-            ApimResponseEnvelope<TrpSearchUnregMemberApimDataItem> envelope) {
+    private RegistrationLookupResult toResult(
+            ApimResponseEnvelope<TrpSearchUnregMemberApimDataItem> envelope,
+            RegistrationLookupCommand command) {
         String errMessage = resolveErrMessage(envelope);
         List<TrpSearchUnregMemberApimDataItem> data = resolveData(envelope);
-        return resultMapper.toResult(errMessage, data);
+        return resultMapper.toResult(errMessage, data, command);
     }
 
     private String resolveErrMessage(ApimResponseEnvelope<TrpSearchUnregMemberApimDataItem> envelope) {
