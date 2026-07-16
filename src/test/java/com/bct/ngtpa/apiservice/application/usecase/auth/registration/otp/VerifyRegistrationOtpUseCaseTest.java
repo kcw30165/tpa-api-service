@@ -71,7 +71,7 @@ class VerifyRegistrationOtpUseCaseTest {
     @Test
     void verifyOtpUsesDecryptedContextForRegistrationLookup() {
         useCase.verify(command("123456")).block();
-        assertThat(lookup.command.identityType()).isEqualTo(RegistrationIdentityType.PASSPORT);
+        assertThat(lookup.command.identityType()).isEqualTo(RegistrationIdentityType.ID);
         assertThat(lookup.command.identityValue()).isEqualTo("3024102");
         assertThat(lookup.command.dateOfBirth()).isEqualTo("04/04/1982");
         assertThat(lookup.command.contactType()).isEqualTo(RegistrationContactType.EMAIL);
@@ -177,7 +177,7 @@ class VerifyRegistrationOtpUseCaseTest {
 
     private static final class FakeProtectedContextService implements RegistrationProtectedAuthFlowContextLoader {
         RegistrationProtectedAuthFlowContextResult result = RegistrationProtectedAuthFlowContextResult.valid(
-                "otp_old", "m****r@example.com", new RegistrationAuthFlowContext(RegistrationIdentityType.PASSPORT, "3024102", "04/04/1982", RegistrationContactType.EMAIL, "member@example.com"));
+                "otp_old", "m****r@example.com", new RegistrationAuthFlowContext(RegistrationIdentityType.ID, "3024102", "04/04/1982", RegistrationContactType.EMAIL, "member@example.com"));
         @Override public Mono<RegistrationProtectedAuthFlowContextResult> load(RegistrationProtectedAuthFlowContextCommand command) { return Mono.just(result); }
     }
 

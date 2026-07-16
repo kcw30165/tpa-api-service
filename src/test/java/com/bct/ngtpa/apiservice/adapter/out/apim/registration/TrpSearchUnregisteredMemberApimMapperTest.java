@@ -32,13 +32,13 @@ class TrpSearchUnregisteredMemberApimMapperTest {
     @Test
     void apimRequestMapsMobileContact() {
         var request = mapper.toApimRequest(new RegistrationLookupCommand(
-                RegistrationIdentityType.HKID,
+                RegistrationIdentityType.ID,
                 "A1234567",
                 "15/01/1980",
                 RegistrationContactType.MOBILE,
                 "91234567"));
 
-        assertThat(request.searchBy()).isEqualTo("HKID");
+        assertThat(request.searchBy()).isEqualTo("ID");
         assertThat(request.searchValue()).isEqualTo("A1234567");
         assertThat(request.dob()).isEqualTo("15/01/1980");
         assertThat(request.email()).isEmpty();

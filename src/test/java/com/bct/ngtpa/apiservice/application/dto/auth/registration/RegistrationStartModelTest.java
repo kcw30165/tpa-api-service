@@ -12,16 +12,14 @@ class RegistrationStartModelTest {
         assertThat(RegistrationIdentityType.values()).containsExactly(
                 RegistrationIdentityType.GPN,
                 RegistrationIdentityType.GPFS,
-                RegistrationIdentityType.STAFF_NO,
-                RegistrationIdentityType.HKID,
-                RegistrationIdentityType.PASSPORT,
-                RegistrationIdentityType.OTHER_NATIONAL_ID);
+                RegistrationIdentityType.STAFF,
+                RegistrationIdentityType.ID);
     }
 
     @Test
     void modelsToStringDoNotExposePii() {
         var command = new RegistrationStartCommand(
-                RegistrationIdentityType.HKID,
+                RegistrationIdentityType.ID,
                 "A1234567",
                 "15/01/1980",
                 RegistrationContactType.EMAIL,

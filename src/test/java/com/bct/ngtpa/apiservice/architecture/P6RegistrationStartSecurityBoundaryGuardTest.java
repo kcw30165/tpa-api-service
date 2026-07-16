@@ -23,7 +23,7 @@ class P6RegistrationStartSecurityBoundaryGuardTest {
         Path readme = Path.of("README.md");
         assertThat(Files.exists(readme)).isTrue();
         String text = Files.readString(readme);
-        assertThat(text).contains("Registration Start", "POST /api/v1/auth/registration/start", "Idempotency-Key", "TRPSearchUnregisteredMember", "auth_flow_sid", "csrfToken");
+        assertThat(text).contains("Registration Start", "POST /api/v1/auth/registration/start", "Idempotency-Key", "TRPSearchUnregMember", "auth_flow_sid", "csrfToken");
         assertThat(text).contains("OTP resend/verify", "username/check", "complete", "cancel", "captcha", "auth-flow resume");
     }
 

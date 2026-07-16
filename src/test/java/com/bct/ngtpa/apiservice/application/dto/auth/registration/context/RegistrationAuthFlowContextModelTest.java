@@ -12,17 +12,17 @@ class RegistrationAuthFlowContextModelTest {
     @Test
     void registrationAuthFlowContextRequiresRequiredFields() {
         var context = new RegistrationAuthFlowContext(
-                RegistrationIdentityType.PASSPORT,
+                RegistrationIdentityType.ID,
                 "3024102",
                 "04/04/1982",
                 RegistrationContactType.EMAIL,
                 "SHMW.ZIVIXV@HCGLT.NLA");
 
-        assertThat(context.identityType()).isEqualTo(RegistrationIdentityType.PASSPORT);
+        assertThat(context.identityType()).isEqualTo(RegistrationIdentityType.ID);
         assertThat(context.contactType()).isEqualTo(RegistrationContactType.EMAIL);
         assertThatThrownBy(() -> new RegistrationAuthFlowContext(null, "3024102", "04/04/1982", RegistrationContactType.EMAIL, "x@y.test"))
                 .isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> new RegistrationAuthFlowContext(RegistrationIdentityType.PASSPORT, " ", "04/04/1982", RegistrationContactType.EMAIL, "x@y.test"))
+        assertThatThrownBy(() -> new RegistrationAuthFlowContext(RegistrationIdentityType.ID, " ", "04/04/1982", RegistrationContactType.EMAIL, "x@y.test"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("identityValue");
     }
@@ -30,14 +30,14 @@ class RegistrationAuthFlowContextModelTest {
     @Test
     void registrationAuthFlowContextToStringRedactsPii() {
         var context = new RegistrationAuthFlowContext(
-                RegistrationIdentityType.PASSPORT,
+                RegistrationIdentityType.ID,
                 "3024102",
                 "04/04/1982",
                 RegistrationContactType.EMAIL,
                 "SHMW.ZIVIXV@HCGLT.NLA");
 
         assertThat(context.toString())
-                .contains("PASSPORT", "EMAIL")
+                .contains("ID", "EMAIL")
                 .doesNotContain("3024102", "04/04/1982", "SHMW.ZIVIXV@HCGLT.NLA", "91234567");
     }
 
