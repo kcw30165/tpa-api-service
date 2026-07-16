@@ -48,6 +48,16 @@ class RegistrationDownstreamErrorClassificationTest {
         });
     }
 
+    @Test void searchUnexpectedErrorMapsToServiceUnavailable() {
+        runner.run(context -> {
+            var result = adapter(context).classify(request(
+                    "registration-start", "TRPSearchUnregMember", "err.tpa.bad.request"));
+            assertThat(result.responseCode()).isEqualTo("err.workflow.downstream.unavailable");
+            assertThat(result.httpStatus()).isEqualTo(503);
+            assertThat(result.fallbackUsed()).isTrue();
+        });
+    }
+
     @Test void usernameCheckHasNoInventedEndpointSpecificApimMapping() {
         runner.run(context -> {
             var result=adapter(context).classify(request("registration-username-check","TRPChkCustId","err.tpa.any.generic.error"));

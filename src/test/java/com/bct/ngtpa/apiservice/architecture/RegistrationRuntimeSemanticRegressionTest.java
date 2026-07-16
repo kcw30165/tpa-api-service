@@ -6,14 +6,18 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 class RegistrationRuntimeSemanticRegressionTest {
-    @Test void apimStartBusinessRejectionRetainsDownstreamStatus() throws Exception {
-        String service=read("StartRegistrationService.java");
-        String mapper=read("RegistrationStartWebMapper.java");
-        assertThat(service).contains("UPSTREAM_BUSINESS_REJECTED")
-                .contains("StartRegistrationResultStatus.DOWNSTREAM_REJECTED");
-        assertThat(mapper).contains("ApiStatus.DOWNSTREAM_REJECTED")
-                .contains("WorkflowErrorType.DOWNSTREAM_BUSINESS");
+    @Test void unexpectedLookupErrorsLeaveTheBusinessResultPath() throws Exception {
+        String status = read("RegistrationLookupStatus.java");
+        String mapper = read("TrpSearchUnregMemberApimResultMapper.java");
+        String handler = read("ApiExceptionHandler.java");
+        assertThat(status).contains("ELIGIBLE", "NOT_ELIGIBLE")
+                .doesNotContain("UPSTREAM_BUSINESS_REJECTED");
+        assertThat(mapper).contains("RegistrationLookupDownstreamException")
+                .contains("err.tpa.member.not.found");
+        assertThat(handler).contains("HttpStatus.SERVICE_UNAVAILABLE")
+                .contains("SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE");
     }
+
     @Test void resendSendRateLimitIsBusinessOutcomeWithLocalizedMessage() throws Exception {
         String mapper=read("RegistrationOtpResendWebMapper.java");
         String controller=read("AuthRegistrationOtpController.java");

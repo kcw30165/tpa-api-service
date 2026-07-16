@@ -66,7 +66,8 @@ class RegistrationStabilizationContractBaselineTest {
             var matcher = PUBLIC_ERROR_LITERAL.matcher(source);
             while (matcher.find()) {
                 String literal = matcher.group();
-                if (!literal.contains("err.")) {
+                if (!literal.contains("err.")
+                        && !isOperationalEventLiteral(literal)) {
                     violations.add(file + " -> " + literal);
                 }
             }
@@ -92,7 +93,7 @@ class RegistrationStabilizationContractBaselineTest {
         assertThat(yaml)
                 .contains("endpoint: TRPSearchUnregMember")
                 .contains("downstreamErrorCode: err.tpa.member.not.found")
-                .contains("downstreamErrorCode: err.tpa.hkid.invalid")
+                .doesNotContain("downstreamErrorCode: err.tpa.hkid.invalid")
                 .contains("responseCode: err.registration.start.verificationFailed")
                 .contains("endpoint: TRPRegMember")
                 .contains("downstreamErrorCode: err.tpa.cust.id.duplicated")
@@ -145,6 +146,11 @@ class RegistrationStabilizationContractBaselineTest {
         assertThat(violations)
                 .as("pre-login registration must not use schemeType or PortalAccessContext")
                 .isEmpty();
+    }
+
+    private boolean isOperationalEventLiteral(String literal) {
+        return "\"registration.lookup.downstream_contract_failure\""
+                .equals(literal);
     }
 
     private List<ContractRow> contractRows() throws Exception {

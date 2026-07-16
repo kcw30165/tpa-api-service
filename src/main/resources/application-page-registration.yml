@@ -4,7 +4,7 @@ bff-pages:
       downstreamErrorClassification:
         source: APIM_TAS
         endpoint: TRPSearchUnregMember
-        mappings:
+        explicitMappings:
           - downstreamErrorCode: err.tpa.member.not.found
             eventType: DOWNSTREAM_REJECTION
             logLevel: ERROR
@@ -13,10 +13,10 @@ bff-pages:
             target: PAGE
             idempotencyCacheable: false
         fallback:
-          eventType: DOWNSTREAM_REJECTION
+          eventType: DOWNSTREAM_ERROR
           logLevel: ERROR
-          responseCode: err.workflow.downstream.businessRejected
-          httpStatus: 422
+          responseCode: err.workflow.downstream.unavailable
+          httpStatus: 503
           target: PAGE
           idempotencyCacheable: false
       metadata:
