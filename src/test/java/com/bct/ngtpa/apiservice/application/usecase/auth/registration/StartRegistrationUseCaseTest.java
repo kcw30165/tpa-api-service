@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.*;
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErrorKeys;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationLookupPort;
@@ -15,6 +14,8 @@ import com.bct.ngtpa.apiservice.application.port.out.RegistrationSessionPort;
 import org.mockito.Mockito;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationCsrPort;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
+import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.service.auth.idempotency.RegistrationRequestHashGenerator;
 import com.bct.ngtpa.apiservice.application.service.auth.registration.RegistrationStartValidator;
@@ -112,7 +113,7 @@ class StartRegistrationUseCaseTest {
         StepVerifier.create(useCase.start(command()))
                 .assertNext(result -> {
                     assertThat(result.status()).isEqualTo(StartRegistrationResultStatus.IDEMPOTENCY_KEY_REUSED);
-                    assertThat(result.errors()).anySatisfy(error -> assertThat(error.errorKey()).isEqualTo(RegistrationWorkflowErrorKeys.WORKFLOW_IDEMPOTENCY_KEY_REUSED));
+                    assertThat(result.errors()).anySatisfy(error -> assertThat(error.errorKey()).isEqualTo(SharedWorkflowErrorKey.IDEMPOTENCY_KEY_REUSED));
                 })
                 .verifyComplete();
         assertThat(lookup.called).isFalse();
@@ -125,7 +126,7 @@ class StartRegistrationUseCaseTest {
         StepVerifier.create(useCase.start(command()))
                 .assertNext(result -> {
                     assertThat(result.status()).isEqualTo(StartRegistrationResultStatus.VERIFICATION_FAILED);
-                    assertThat(result.errors()).anySatisfy(error -> assertThat(error.errorKey()).isEqualTo(RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED));
+                    assertThat(result.errors()).anySatisfy(error -> assertThat(error.errorKey()).isEqualTo(RegistrationErrorKey.START_VERIFICATION_FAILED));
                     assertThat(result.toString()).doesNotContain("00000008802", "apim@example.com", "49998888");
                 })
                 .verifyComplete();
@@ -139,7 +140,7 @@ class StartRegistrationUseCaseTest {
 
         StepVerifier.create(useCase.start(command()))
                 .assertNext(result -> assertThat(result.errors())
-                        .anySatisfy(error -> assertThat(error.errorKey()).isEqualTo(RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED)))
+                        .anySatisfy(error -> assertThat(error.errorKey()).isEqualTo(RegistrationErrorKey.START_VERIFICATION_FAILED)))
                 .verifyComplete();
         assertThat(session.createdAfterLookup).isFalse();
     }
@@ -151,7 +152,7 @@ class StartRegistrationUseCaseTest {
         StepVerifier.create(useCase.start(command()))
                 .assertNext(result -> {
                     assertThat(result.status()).isEqualTo(StartRegistrationResultStatus.MESSAGE_DELIVERY_FAILED);
-                    assertThat(result.errors()).anySatisfy(error -> assertThat(error.errorKey()).isEqualTo(RegistrationWorkflowErrorKeys.REGISTRATION_MESSAGE_DELIVERY_FAILED));
+                    assertThat(result.errors()).anySatisfy(error -> assertThat(error.errorKey()).isEqualTo(RegistrationErrorKey.MESSAGE_DELIVERY_FAILED));
                 })
                 .verifyComplete();
         assertThat(idempotency.failed).isTrue();
@@ -175,7 +176,7 @@ class StartRegistrationUseCaseTest {
                 .assertNext(result -> {
                     assertThat(result.status()).isEqualTo(StartRegistrationResultStatus.VERIFICATION_FAILED);
                     assertThat(result.errors()).anySatisfy(error -> {
-                        assertThat(error.errorKey()).isEqualTo(RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED);
+                        assertThat(error.errorKey()).isEqualTo(RegistrationErrorKey.START_VERIFICATION_FAILED);
                         assertThat(error.message()).isNull();
                     });
                 })
@@ -201,7 +202,7 @@ class StartRegistrationUseCaseTest {
         StepVerifier.create(useCase.start(command()))
                 .assertNext(result -> assertThat(result.errors())
                         .anySatisfy(error -> {
-                            assertThat(error.errorKey()).isEqualTo(RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED);
+                            assertThat(error.errorKey()).isEqualTo(RegistrationErrorKey.START_VERIFICATION_FAILED);
                             assertThat(error.message()).isNull();
                         }))
                 .verifyComplete();

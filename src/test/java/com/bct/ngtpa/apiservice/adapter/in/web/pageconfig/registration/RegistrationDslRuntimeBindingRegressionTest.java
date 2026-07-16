@@ -9,7 +9,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PageDisplayTextResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.ActionProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.BffPagesProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.PageSchemaLinter;
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErrorKey;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import com.bct.ngtpa.apiservice.shared.config.ConfigVariantCandidateGenerator;
 import java.util.List;
 import java.util.Set;
@@ -124,7 +124,7 @@ class RegistrationDslRuntimeBindingRegressionTest {
             var resolver = new WorkflowErrorContractResolver(properties);
 
             var username = resolver.resolve(
-                    RegistrationWorkflowErrorKey.USERNAME_ALREADY_REGISTERED.value(),
+                    RegistrationErrorKey.USERNAME_ALREADY_REGISTERED.value(),
                     "zh-HK");
             assertThat(username.message()).isNotBlank();
             assertThat(username.targets()).containsExactly("username");
@@ -133,7 +133,7 @@ class RegistrationDslRuntimeBindingRegressionTest {
                     .isEqualTo("registration-username-check");
 
             var alreadyRegistered = resolver.resolve(
-                    RegistrationWorkflowErrorKey.COMPLETE_MEMBER_ALREADY_REGISTERED.value(),
+                    RegistrationErrorKey.COMPLETE_MEMBER_ALREADY_REGISTERED.value(),
                     "en");
             assertThat(alreadyRegistered.nextStep().name()).isEqualTo("RETURN_TO_LOGIN");
             assertThat(alreadyRegistered.pageRef().pageId()).isEqualTo("login");

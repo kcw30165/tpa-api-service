@@ -13,7 +13,8 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.CompleteReg
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartWorkflowDataResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
+import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResultPayload;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationStartWebMapper;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResultStatus;
@@ -71,19 +72,19 @@ public class AuthRegistrationController {
             ServerHttpResponse response) {
         if (!hasText(authFlowSessionId)) {
             return Mono.just(RegistrationHttpResponses.toResponse(completeRegistrationWebMapper.missing(
-                    RegistrationPublicErrorCode.REGISTRATION_AUTHFLOW_INVALID.value(), "PAGE", acceptLanguage)));
+                    RegistrationErrorKey.AUTH_FLOW_INVALID.value(), "PAGE", acceptLanguage)));
         }
         if (!hasText(csrfToken)) {
             return Mono.just(RegistrationHttpResponses.toResponse(completeRegistrationWebMapper.missing(
-                    RegistrationPublicErrorCode.REGISTRATION_CSRF_INVALID.value(), "PAGE", acceptLanguage)));
+                    RegistrationErrorKey.CSRF_INVALID.value(), "PAGE", acceptLanguage)));
         }
         if (!hasText(idempotencyKey)) {
             return Mono.just(RegistrationHttpResponses.toResponse(completeRegistrationWebMapper.missing(
-                    RegistrationPublicErrorCode.WORKFLOW_IDEMPOTENCY_MISSING.value(), "Idempotency-Key", acceptLanguage)));
+                    SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value(), "Idempotency-Key", acceptLanguage)));
         }
         if (request == null) {
             return Mono.just(RegistrationHttpResponses.toResponse(completeRegistrationWebMapper.missing(
-                    RegistrationPublicErrorCode.REGISTRATION_COMPLETE_REQUEST_INVALID.value(), "PAGE", acceptLanguage)));
+                    RegistrationErrorKey.COMPLETE_REQUEST_INVALID.value(), "PAGE", acceptLanguage)));
         }
 
         try {
@@ -104,7 +105,7 @@ public class AuthRegistrationController {
                     });
         } catch (RuntimeException exception) {
             return Mono.just(RegistrationHttpResponses.toResponse(completeRegistrationWebMapper.missing(
-                    RegistrationPublicErrorCode.REGISTRATION_COMPLETE_REQUEST_INVALID.value(), "PAGE", acceptLanguage)));
+                    RegistrationErrorKey.COMPLETE_REQUEST_INVALID.value(), "PAGE", acceptLanguage)));
         }
     }
 

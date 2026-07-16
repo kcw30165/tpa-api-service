@@ -7,7 +7,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.Registratio
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationController;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErrorKeys;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.in.StartRegistrationUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationError;
@@ -34,7 +34,7 @@ class AuthRegistrationControllerCaptchaGateTest {
                 null,
                 null,
                 List.of(),
-                List.of(new StartRegistrationError(RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_REQUIRED, "captchaChallengeId")),
+                List.of(new StartRegistrationError(RegistrationErrorKey.REGISTRATION_CAPTCHA_REQUIRED, "captchaChallengeId")),
                 RegistrationIdempotencyStartOutcome.STARTED,
                 null)));
 
@@ -105,7 +105,7 @@ class AuthRegistrationControllerCaptchaGateTest {
                 null,
                 null,
                 List.of(),
-                List.of(new StartRegistrationError(RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_INVALID, "captchaChallengeId")),
+                List.of(new StartRegistrationError(RegistrationErrorKey.REGISTRATION_CAPTCHA_INVALID, "captchaChallengeId")),
                 RegistrationIdempotencyStartOutcome.STARTED,
                 null)));
 

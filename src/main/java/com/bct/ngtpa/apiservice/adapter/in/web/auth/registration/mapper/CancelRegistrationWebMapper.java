@@ -73,7 +73,7 @@ public final class CancelRegistrationWebMapper {
     }
 
     public MutationResponse<CancelRegistrationResponse> missingCsrf(String language) {
-        String code = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.REGISTRATION_CSRF_INVALID.value();
+        String code = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.CSRF_INVALID.value();
         ApiError error = ApiError.business(
                 code,
                 messages.resolve(code, language, null, null, null),

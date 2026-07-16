@@ -18,7 +18,7 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.UsernameCheckSt
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.RegistrationUsernameCheckEncryptedState;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.RegistrationUsernameCheckAttributeNames;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionExpiryRefreshPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
@@ -131,14 +131,14 @@ class CheckRegistrationUsernameServiceTest {
         StepVerifier.create(service.check(command("csrf", null, "abc1@")))
                 .assertNext(result -> {
                     assertThat(result.status()).isEqualTo(CheckRegistrationUsernameResultStatus.VALIDATION_FAILED);
-                    assertThat(result.errors().getFirst().code()).isEqualTo(RegistrationPublicErrorCode.REGISTRATION_TRUST_SELECTIONINVALID.value());
+                    assertThat(result.errors().getFirst().code()).isEqualTo(RegistrationErrorKey.TRUST_SELECTION_INVALID.value());
                 })
                 .verifyComplete();
 
         StepVerifier.create(service.check(command("csrf", selectedTrust(" ", "ENV1"), "abc1@")))
                 .assertNext(result -> {
                     assertThat(result.status()).isEqualTo(CheckRegistrationUsernameResultStatus.VALIDATION_FAILED);
-                    assertThat(result.errors().getFirst().code()).isEqualTo(RegistrationPublicErrorCode.REGISTRATION_TRUST_SELECTIONINVALID.value());
+                    assertThat(result.errors().getFirst().code()).isEqualTo(RegistrationErrorKey.TRUST_SELECTION_INVALID.value());
                 })
                 .verifyComplete();
 
@@ -154,7 +154,7 @@ class CheckRegistrationUsernameServiceTest {
         StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "abcd")))
                 .assertNext(result -> {
                     assertThat(result.status()).isEqualTo(CheckRegistrationUsernameResultStatus.VALIDATION_FAILED);
-                    assertThat(result.errors().getFirst().code()).isEqualTo(RegistrationPublicErrorCode.REGISTRATION_USERNAME_POLICYINVALID.value());
+                    assertThat(result.errors().getFirst().code()).isEqualTo(RegistrationErrorKey.USERNAME_POLICY_INVALID.value());
                 })
                 .verifyComplete();
 

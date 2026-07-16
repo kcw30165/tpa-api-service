@@ -10,27 +10,27 @@ class WorkflowKeyValidatorRegistrationErrorPrefixTest {
 
     @Test
     void acceptsErrPrefixedRegistrationPasswordErrorKey() {
-        assertThatCode(() -> new WorkflowErrorKey(
+        assertThatCode(() -> WorkflowErrorKey.of(
                 "err.registration.password.validationFailed"))
                 .doesNotThrowAnyException();
 
-        assertThat(new WorkflowErrorKey(
+        assertThat(WorkflowErrorKey.of(
                 "err.registration.password.validationFailed").value())
                 .isEqualTo("err.registration.password.validationFailed");
     }
 
     @Test
     void continuesToRejectUnsafePasswordLikeKeysOutsideRegistrationVocabulary() {
-        assertThatThrownBy(() -> new WorkflowErrorKey("err.other.password.secret"))
+        assertThatThrownBy(() -> WorkflowErrorKey.of("err.other.password.secret"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Invalid workflow error key");
     }
 
     @Test
     void registrationWorkflowErrorKeysClassInitializesWithErrPrefixedValues() {
-        assertThat(RegistrationWorkflowErrorKeys.REGISTRATION_PASSWORD_VALIDATION_FAILED.value())
+        assertThat(RegistrationErrorKey.REGISTRATION_PASSWORD_VALIDATIONFAILED.value())
                 .startsWith("err.");
-        assertThat(RegistrationWorkflowErrorKeys.WORKFLOW_IDEMPOTENCY_MISSING.value())
+        assertThat(SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value())
                 .startsWith("err.");
     }
 }

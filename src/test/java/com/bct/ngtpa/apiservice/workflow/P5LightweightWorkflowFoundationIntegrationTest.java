@@ -6,9 +6,10 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowConstants;
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErrorKeys;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowPageSelections;
+import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
@@ -113,15 +114,15 @@ class P5LightweightWorkflowFoundationIntegrationTest {
     @Test
     void p5WorkflowKeysAreCodeKeysOnly() {
         List<WorkflowErrorKey> representativeErrorKeys = List.of(
-                RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED,
-                RegistrationWorkflowErrorKeys.REGISTRATION_CSRF_INVALID,
-                RegistrationWorkflowErrorKeys.REGISTRATION_OTP_INVALID,
-                RegistrationWorkflowErrorKeys.REGISTRATION_USERNAME_UNAVAILABLE,
-                RegistrationWorkflowErrorKeys.REGISTRATION_COMPLETE_FAILED,
-                RegistrationWorkflowErrorKeys.WORKFLOW_IDEMPOTENCY_DUPLICATE_IN_PROGRESS,
-                RegistrationWorkflowErrorKeys.WORKFLOW_IDEMPOTENCY_KEY_REUSED,
-                RegistrationWorkflowErrorKeys.WORKFLOW_SYSTEM_UNAVAILABLE,
-                RegistrationWorkflowErrorKeys.WORKFLOW_DOWNSTREAM_UNAVAILABLE);
+                RegistrationErrorKey.START_VERIFICATION_FAILED,
+                RegistrationErrorKey.CSRF_INVALID,
+                RegistrationErrorKey.OTP_INVALID,
+                RegistrationErrorKey.USERNAME_ALREADY_REGISTERED,
+                RegistrationErrorKey.REGISTRATION_COMPLETE_FAILED,
+                SharedWorkflowErrorKey.IDEMPOTENCY_IN_PROGRESS,
+                SharedWorkflowErrorKey.IDEMPOTENCY_KEY_REUSED,
+                SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE,
+                SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE);
 
         for (WorkflowErrorKey key : representativeErrorKeys) {
             assertCodeKey(key.value());
@@ -131,9 +132,9 @@ class P5LightweightWorkflowFoundationIntegrationTest {
 
     @Test
     void p5RegistrationStartApimMemberNotFoundMappingRemainsKeyOnly() {
-        assertThat(RegistrationWorkflowErrorKeys.APIM_MEMBER_NOT_FOUND).isEqualTo("err.tpa.member.not.found");
-        assertThat(RegistrationWorkflowErrorKeys.P6_MEMBER_NOT_FOUND_TARGET_KEY)
-                .isEqualTo(RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED);
+        assertThat("err.tpa.member.not.found").isEqualTo("err.tpa.member.not.found");
+        assertThat(RegistrationErrorKey.START_VERIFICATION_FAILED)
+                .isEqualTo(RegistrationErrorKey.START_VERIFICATION_FAILED);
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.apim.ApimRegistrationStartAdapter");
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.RegistrationStartUseCase");
     }

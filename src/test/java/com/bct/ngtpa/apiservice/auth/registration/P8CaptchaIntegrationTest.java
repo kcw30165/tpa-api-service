@@ -5,11 +5,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationStartWebMapper;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErrorKeys;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationError;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResultStatus;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.RecordComponent;
 import java.time.Duration;
@@ -66,7 +66,7 @@ class P8CaptchaIntegrationTest {
                 null,
                 null,
                 List.of(),
-                List.of(new StartRegistrationError(RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_INVALID, "captchaChallengeId")),
+                List.of(new StartRegistrationError(RegistrationErrorKey.REGISTRATION_CAPTCHA_INVALID, "captchaChallengeId")),
                 RegistrationIdempotencyStartOutcome.STARTED,
                 null), "en"));
 

@@ -22,9 +22,9 @@ public class RegistrationUsernameCheckWebMapper {
     private static final String SYSTEM_ERROR = "SYSTEM_ERROR";
     private static final String TARGET_PAGE = "PAGE";
 
-    private static final String REGISTRATION_AUTH_FLOW_INVALID = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.REGISTRATION_AUTHFLOW_INVALID.value();
-    private static final String REGISTRATION_CSRF_INVALID = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.REGISTRATION_CSRF_INVALID.value();
-    private static final String REGISTRATION_USERNAME_CHECK_REQUEST_INVALID = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.REGISTRATION_USERNAME_REQUEST_INVALID.value();
+    private static final String REGISTRATION_AUTH_FLOW_INVALID = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.AUTH_FLOW_INVALID.value();
+    private static final String REGISTRATION_CSRF_INVALID = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.CSRF_INVALID.value();
+    private static final String REGISTRATION_USERNAME_CHECK_REQUEST_INVALID = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.USERNAME_REQUEST_INVALID.value();
 
     public CheckRegistrationUsernameCommand toCommand(
             RegistrationUsernameCheckRequest request,
@@ -146,10 +146,10 @@ public class RegistrationUsernameCheckWebMapper {
         return switch (status) {
             case INVALID_AUTH_FLOW -> REGISTRATION_AUTH_FLOW_INVALID;
             case CSRF_INVALID -> REGISTRATION_CSRF_INVALID;
-            case DOWNSTREAM_FAILED -> com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.WORKFLOW_DOWNSTREAM_UNAVAILABLE.value();
+            case DOWNSTREAM_FAILED -> com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value();
             case DOWNSTREAM_REJECTED -> "downstream.generic.businessRejected";
-            case SYSTEM_FAILED -> com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.WORKFLOW_SYSTEM_UNAVAILABLE.value();
-            case INVALID_STATE -> com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.REGISTRATION_STATE_INVALID.value();
+            case SYSTEM_FAILED -> com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value();
+            case INVALID_STATE -> com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.STATE_INVALID.value();
             default -> REGISTRATION_USERNAME_CHECK_REQUEST_INVALID;
         };
     }

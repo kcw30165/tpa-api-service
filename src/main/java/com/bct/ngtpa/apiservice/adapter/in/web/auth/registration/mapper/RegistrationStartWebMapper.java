@@ -7,8 +7,8 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErrorKeys;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowPageRefs;
+import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType;
@@ -135,7 +135,7 @@ public class RegistrationStartWebMapper {
 
     public MutationResponse<WorkflowResultPayload<RegistrationStartWorkflowDataResponse>> missingIdempotencyKeyResponse(
             String acceptLanguage) {
-        var code = RegistrationWorkflowErrorKeys.WORKFLOW_IDEMPOTENCY_MISSING.value();
+        var code = SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value();
         var error = new WorkflowErrorDescriptor(
                 WorkflowErrorType.FIELD,
                 code,
@@ -168,8 +168,8 @@ public class RegistrationStartWebMapper {
                     List.of(),
                     List.of(new WorkflowErrorDescriptor(
                             WorkflowErrorType.SYSTEM,
-                            com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.WORKFLOW_SYSTEM_UNAVAILABLE.value(),
-                            resolveMessage(com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.WORKFLOW_SYSTEM_UNAVAILABLE.value(), acceptLanguage),
+                            com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value(),
+                            resolveMessage(com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value(), acceptLanguage),
                             List.of(),
                             WorkflowErrorSeverity.ERROR,
                             SOURCE_SERVER)));

@@ -6,7 +6,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.Registratio
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErrorKeys;
+import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResultPayload;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationError;
@@ -61,7 +61,7 @@ class RegistrationStartWorkflowResponseMapperTest {
     @Test
     void startRegistrationValidationFailureMapsToApiErrors() {
         var error = new StartRegistrationError(
-                RegistrationWorkflowErrorKeys.WORKFLOW_IDEMPOTENCY_MISSING,
+                SharedWorkflowErrorKey.IDEMPOTENCY_MISSING,
                 "Idempotency-Key",
                 null);
         var result = new StartRegistrationResult(
@@ -84,7 +84,7 @@ class RegistrationStartWorkflowResponseMapperTest {
         assertThat(response.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
         assertThat(response.result()).isNotNull();
         assertThat(response.errors()).hasSize(1);
-        assertThat(response.errors().getFirst().code()).isEqualTo(RegistrationWorkflowErrorKeys.WORKFLOW_IDEMPOTENCY_MISSING.value());
+        assertThat(response.errors().getFirst().code()).isEqualTo(SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value());
         assertThat(response.errors().getFirst().targets()).containsExactly("Idempotency-Key");
     }
 
@@ -96,7 +96,7 @@ class RegistrationStartWorkflowResponseMapperTest {
         assertThat(response.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
         assertThat(response.result()).isNotNull();
         assertThat(response.errors()).hasSize(1);
-        assertThat(response.errors().getFirst().code()).isEqualTo(RegistrationWorkflowErrorKeys.WORKFLOW_IDEMPOTENCY_MISSING.value());
+        assertThat(response.errors().getFirst().code()).isEqualTo(SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value());
         assertThat(response.errors().getFirst().targets()).containsExactly("Idempotency-Key");
     }
 

@@ -1,7 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.error;
 
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErrorKey;
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import java.util.LinkedHashSet;
@@ -21,10 +20,7 @@ public final class WorkflowErrorContractValidator {
         var definitions = properties.definitionsByCode();
 
         Set<String> required = new LinkedHashSet<>();
-        for (var key : RegistrationWorkflowErrorKey.values()) {
-            required.add(key.value());
-        }
-        for (var key : RegistrationPublicErrorCode.values()) {
+        for (var key : RegistrationErrorKey.values()) {
             required.add(key.value());
         }
         for (var key : SharedWorkflowErrorKey.values()) {

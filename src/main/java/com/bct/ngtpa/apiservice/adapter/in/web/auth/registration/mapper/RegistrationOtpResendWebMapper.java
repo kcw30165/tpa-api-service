@@ -87,7 +87,7 @@ public class RegistrationOtpResendWebMapper {
     }
 
     public Object missingIdempotencyKeyResponse() {
-        return errorResponse(com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.WORKFLOW_IDEMPOTENCY_MISSING.value(), VALIDATION_FAILED);
+        return errorResponse(com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value(), VALIDATION_FAILED);
     }
 
     private Map<String, Object> fallbackResponse(ResendRegistrationOtpResult result) {

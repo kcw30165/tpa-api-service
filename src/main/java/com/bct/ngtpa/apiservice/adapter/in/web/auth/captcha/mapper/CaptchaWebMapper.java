@@ -10,7 +10,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.support.RequestLanguageResolver;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CreateCaptchaChallengeResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.RefreshCaptchaChallengeResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.VerifyCaptchaChallengeResult;
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErrorKeys;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import java.util.List;
 import java.util.Objects;
@@ -38,17 +38,17 @@ public class CaptchaWebMapper {
         return switch (result.outcome()) {
             case VERIFIED -> MutationResponse.success(ApiStatus.SUCCESS, toVerifyResponse(result), List.of());
             case INVALID -> failure(result, acceptLanguage,
-                    RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_INVALID.value(), CAPTCHA_ANSWER_TARGET);
+                    RegistrationErrorKey.REGISTRATION_CAPTCHA_INVALID.value(), CAPTCHA_ANSWER_TARGET);
             case EXPIRED -> failure(result, acceptLanguage,
-                    RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_EXPIRED.value(), CAPTCHA_CHALLENGE_ID_TARGET);
+                    RegistrationErrorKey.REGISTRATION_CAPTCHA_EXPIRED.value(), CAPTCHA_CHALLENGE_ID_TARGET);
             case LOCKED -> failure(result, acceptLanguage,
-                    RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_LOCKED.value(), CAPTCHA_CHALLENGE_ID_TARGET);
+                    RegistrationErrorKey.REGISTRATION_CAPTCHA_LOCKED.value(), CAPTCHA_CHALLENGE_ID_TARGET);
             case CONSUMED -> failure(result, acceptLanguage,
-                    RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_CONSUMED.value(), CAPTCHA_CHALLENGE_ID_TARGET);
+                    RegistrationErrorKey.REGISTRATION_CAPTCHA_CONSUMED.value(), CAPTCHA_CHALLENGE_ID_TARGET);
             case REFRESHED -> failure(result, acceptLanguage,
-                    RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_REFRESH_FAILED.value(), CAPTCHA_CHALLENGE_ID_TARGET);
+                    RegistrationErrorKey.REGISTRATION_CAPTCHA_REFRESHFAILED.value(), CAPTCHA_CHALLENGE_ID_TARGET);
             case NOT_FOUND -> failure(result, acceptLanguage,
-                    RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_NOT_FOUND.value(), CAPTCHA_CHALLENGE_ID_TARGET);
+                    RegistrationErrorKey.REGISTRATION_CAPTCHA_NOTFOUND.value(), CAPTCHA_CHALLENGE_ID_TARGET);
         };
     }
 
@@ -59,7 +59,7 @@ public class CaptchaWebMapper {
     public MutationResponse<CaptchaVerifyResponse> missingAnswerResponse(String acceptLanguage) {
         return validationFailure(
                 new CaptchaVerifyResponse(false, null, null),
-                RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_REQUIRED.value(),
+                RegistrationErrorKey.REGISTRATION_CAPTCHA_REQUIRED.value(),
                 CAPTCHA_ANSWER_TARGET,
                 acceptLanguage);
     }
@@ -67,7 +67,7 @@ public class CaptchaWebMapper {
     public MutationResponse<CaptchaVerifyResponse> missingChallengeIdResponse(String acceptLanguage) {
         return validationFailure(
                 new CaptchaVerifyResponse(false, null, null),
-                RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_REQUIRED.value(),
+                RegistrationErrorKey.REGISTRATION_CAPTCHA_REQUIRED.value(),
                 CAPTCHA_CHALLENGE_ID_TARGET,
                 acceptLanguage);
     }
@@ -75,15 +75,15 @@ public class CaptchaWebMapper {
     public MutationResponse<CaptchaVerifyResponse> invalidChallengeIdResponse(String acceptLanguage) {
         return validationFailure(
                 new CaptchaVerifyResponse(false, null, null),
-                RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_INVALID.value(),
+                RegistrationErrorKey.REGISTRATION_CAPTCHA_INVALID.value(),
                 CAPTCHA_CHALLENGE_ID_TARGET,
                 acceptLanguage);
     }
 
         public MutationResponse<CaptchaRefreshResponse> invalidRefreshChallengeIdResponse(String acceptLanguage) {
                 ApiError error = ApiError.field(
-                                RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_INVALID.value(),
-                                resolveMessage(RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_INVALID.value(), acceptLanguage),
+                                RegistrationErrorKey.REGISTRATION_CAPTCHA_INVALID.value(),
+                                resolveMessage(RegistrationErrorKey.REGISTRATION_CAPTCHA_INVALID.value(), acceptLanguage),
                                 List.of(CAPTCHA_CHALLENGE_ID_TARGET),
                                 SOURCE_SERVER);
                 return MutationResponse.failure(ApiStatus.VALIDATION_FAILED, null, List.of(error));

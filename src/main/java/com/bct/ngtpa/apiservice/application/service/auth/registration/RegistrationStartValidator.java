@@ -6,7 +6,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationSt
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationStartInput;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationStartValidationError;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationStartValidationResult;
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErrorKeys;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorKey;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,31 +28,31 @@ public class RegistrationStartValidator {
         String captchaChallengeId = normalize(input == null ? null : input.captchaChallengeId());
 
         if (identityType != null && !RegistrationIdentityValueValidator.isValid(identityType, identityValue)) {
-            errors.add(error(RegistrationWorkflowErrorKeys.REGISTRATION_IDENTITY_VALUE_INVALID, "identityValue"));
+            errors.add(error(RegistrationErrorKey.REGISTRATION_IDENTITYVALUE_INVALID, "identityValue"));
         } else if (identityType == null && identityValue.isBlank()) {
-            errors.add(error(RegistrationWorkflowErrorKeys.REGISTRATION_IDENTITY_VALUE_INVALID, "identityValue"));
+            errors.add(error(RegistrationErrorKey.REGISTRATION_IDENTITYVALUE_INVALID, "identityValue"));
         }
 
         if (!RegistrationDateOfBirthValidator.isValid(dateOfBirth)) {
-            errors.add(error(RegistrationWorkflowErrorKeys.REGISTRATION_DATE_OF_BIRTH_INVALID, "dateOfBirth"));
+            errors.add(error(RegistrationErrorKey.REGISTRATION_DATEOFBIRTH_INVALID, "dateOfBirth"));
         }
 
         boolean hasEmail = !email.isBlank();
         boolean hasMobile = !mobile.isBlank();
         if (!hasEmail && !hasMobile) {
-            errors.add(error(RegistrationWorkflowErrorKeys.REGISTRATION_CONTACT_REQUIRED, "email"));
-            errors.add(error(RegistrationWorkflowErrorKeys.REGISTRATION_CONTACT_REQUIRED, "mobile"));
+            errors.add(error(RegistrationErrorKey.REGISTRATION_CONTACT_REQUIRED, "email"));
+            errors.add(error(RegistrationErrorKey.REGISTRATION_CONTACT_REQUIRED, "mobile"));
         } else if (hasEmail && hasMobile) {
-            errors.add(error(RegistrationWorkflowErrorKeys.REGISTRATION_CONTACT_EXACTLY_ONE_REQUIRED, "email"));
-            errors.add(error(RegistrationWorkflowErrorKeys.REGISTRATION_CONTACT_EXACTLY_ONE_REQUIRED, "mobile"));
+            errors.add(error(RegistrationErrorKey.REGISTRATION_CONTACT_EXACTLYONEREQUIRED, "email"));
+            errors.add(error(RegistrationErrorKey.REGISTRATION_CONTACT_EXACTLYONEREQUIRED, "mobile"));
         } else if (hasEmail && !isValidEmail(email)) {
-            errors.add(error(RegistrationWorkflowErrorKeys.REGISTRATION_EMAIL_INVALID, "email"));
+            errors.add(error(RegistrationErrorKey.REGISTRATION_EMAIL_INVALID, "email"));
         } else if (hasMobile && !HK_MOBILE.matcher(mobile).matches()) {
-            errors.add(error(RegistrationWorkflowErrorKeys.REGISTRATION_MOBILE_INVALID, "mobile"));
+            errors.add(error(RegistrationErrorKey.REGISTRATION_MOBILE_INVALID, "mobile"));
         }
 
         if (!captchaChallengeId.isBlank() && !SAFE_CAPTCHA.matcher(captchaChallengeId).matches()) {
-            errors.add(error(RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_INVALID, "captchaChallengeId"));
+            errors.add(error(RegistrationErrorKey.REGISTRATION_CAPTCHA_INVALID, "captchaChallengeId"));
         }
 
         if (!errors.isEmpty()) {
@@ -73,13 +73,13 @@ public class RegistrationStartValidator {
     private static RegistrationIdentityType parseIdentityType(String raw, List<RegistrationStartValidationError> errors) {
         String value = normalize(raw);
         if (value.isBlank()) {
-            errors.add(error(RegistrationWorkflowErrorKeys.REGISTRATION_IDENTITY_TYPE_INVALID, "identityType"));
+            errors.add(error(RegistrationErrorKey.REGISTRATION_IDENTITYTYPE_INVALID, "identityType"));
             return null;
         }
         try {
             return RegistrationIdentityType.valueOf(value);
         } catch (IllegalArgumentException exception) {
-            errors.add(error(RegistrationWorkflowErrorKeys.REGISTRATION_IDENTITY_TYPE_INVALID, "identityType"));
+            errors.add(error(RegistrationErrorKey.REGISTRATION_IDENTITYTYPE_INVALID, "identityType"));
             return null;
         }
     }

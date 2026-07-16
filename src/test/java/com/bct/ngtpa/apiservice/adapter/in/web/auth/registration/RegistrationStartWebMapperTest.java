@@ -7,8 +7,9 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.Registra
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
+import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErrorKeys;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationError;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResult;
@@ -63,7 +64,7 @@ class RegistrationStartWebMapperTest {
                 null,
                 null,
                 List.of(),
-                List.of(new StartRegistrationError(RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED,
+                List.of(new StartRegistrationError(RegistrationErrorKey.START_VERIFICATION_FAILED,
                         "identityValue", "We are unable to verify your details. Please review and try again.")),
                 RegistrationIdempotencyStartOutcome.STARTED,
                 null);
@@ -90,7 +91,7 @@ class RegistrationStartWebMapperTest {
                 null,
                 null,
                 List.of(),
-                List.of(new StartRegistrationError(RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED,
+                List.of(new StartRegistrationError(RegistrationErrorKey.START_VERIFICATION_FAILED,
                         "identityValue")),
                 RegistrationIdempotencyStartOutcome.STARTED,
                 null);
@@ -116,7 +117,7 @@ class RegistrationStartWebMapperTest {
                 null,
                 List.of(),
                 List.of(new StartRegistrationError(
-                        RegistrationWorkflowErrorKeys.REGISTRATION_MESSAGE_DELIVERY_FAILED,
+                        RegistrationErrorKey.MESSAGE_DELIVERY_FAILED,
                         "email")),
                 RegistrationIdempotencyStartOutcome.STARTED,
                 null);
@@ -143,7 +144,7 @@ class RegistrationStartWebMapperTest {
                 null,
                 List.of(),
                 List.of(new StartRegistrationError(
-                        RegistrationWorkflowErrorKeys.WORKFLOW_SYSTEM_UNAVAILABLE,
+                        SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE,
                         "PAGE")),
                 RegistrationIdempotencyStartOutcome.STARTED,
                 null);

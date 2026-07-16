@@ -30,7 +30,8 @@ import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLo
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionCreateCommand;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErrorKeys;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
+import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
@@ -124,7 +125,7 @@ class StartRegistrationCaptchaGateTest {
                 .assertNext(result -> {
                     assertThat(result.status()).isEqualTo(StartRegistrationResultStatus.VALIDATION_FAILED);
                     assertThat(result.errors()).singleElement().satisfies(error -> {
-                        assertThat(error.errorKey()).isEqualTo(RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_REQUIRED);
+                        assertThat(error.errorKey()).isEqualTo(RegistrationErrorKey.REGISTRATION_CAPTCHA_REQUIRED);
                         assertThat(error.target()).isEqualTo("captchaChallengeId");
                     });
                 })
@@ -152,27 +153,27 @@ class StartRegistrationCaptchaGateTest {
 
     @Test
     void registrationStartDoesNotCallApimWhenCaptchaNotVerified() {
-        assertCaptchaFailure(CaptchaStatus.CREATED, NOW.plusSeconds(300), RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_INVALID);
+        assertCaptchaFailure(CaptchaStatus.CREATED, NOW.plusSeconds(300), RegistrationErrorKey.REGISTRATION_CAPTCHA_INVALID);
     }
 
     @Test
     void registrationStartDoesNotCallApimWhenCaptchaExpired() {
-        assertCaptchaFailure(CaptchaStatus.VERIFIED, NOW.minusSeconds(1), RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_EXPIRED);
+        assertCaptchaFailure(CaptchaStatus.VERIFIED, NOW.minusSeconds(1), RegistrationErrorKey.REGISTRATION_CAPTCHA_EXPIRED);
     }
 
     @Test
     void registrationStartDoesNotCallApimWhenCaptchaLocked() {
-        assertCaptchaFailure(CaptchaStatus.LOCKED, NOW.plusSeconds(300), RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_LOCKED);
+        assertCaptchaFailure(CaptchaStatus.LOCKED, NOW.plusSeconds(300), RegistrationErrorKey.REGISTRATION_CAPTCHA_LOCKED);
     }
 
     @Test
     void registrationStartDoesNotCallApimWhenCaptchaConsumed() {
-        assertCaptchaFailure(CaptchaStatus.CONSUMED, NOW.plusSeconds(300), RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_CONSUMED);
+        assertCaptchaFailure(CaptchaStatus.CONSUMED, NOW.plusSeconds(300), RegistrationErrorKey.REGISTRATION_CAPTCHA_CONSUMED);
     }
 
     @Test
     void registrationStartDoesNotCallApimWhenCaptchaRefreshed() {
-        assertCaptchaFailure(CaptchaStatus.REFRESHED, NOW.plusSeconds(300), RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_REFRESH_FAILED);
+        assertCaptchaFailure(CaptchaStatus.REFRESHED, NOW.plusSeconds(300), RegistrationErrorKey.REGISTRATION_CAPTCHA_REFRESHFAILED);
     }
 
     @Test
@@ -182,7 +183,7 @@ class StartRegistrationCaptchaGateTest {
 
         StepVerifier.create(useCase.start(command(CHALLENGE_ID.value())))
                 .assertNext(result -> assertThat(result.errors()).singleElement()
-                        .satisfies(error -> assertThat(error.errorKey()).isEqualTo(RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_NOT_FOUND)))
+                        .satisfies(error -> assertThat(error.errorKey()).isEqualTo(RegistrationErrorKey.REGISTRATION_CAPTCHA_NOTFOUND)))
                 .verifyComplete();
 
         assertNoDownstreamSideEffects();
@@ -205,7 +206,7 @@ class StartRegistrationCaptchaGateTest {
 
         StepVerifier.create(useCase.start(command(CHALLENGE_ID.value())))
                 .assertNext(result -> assertThat(result.errors()).singleElement()
-                        .satisfies(error -> assertThat(error.errorKey()).isEqualTo(RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_CONSUMED)))
+                        .satisfies(error -> assertThat(error.errorKey()).isEqualTo(RegistrationErrorKey.REGISTRATION_CAPTCHA_CONSUMED)))
                 .verifyComplete();
 
         assertNoDownstreamSideEffects();
@@ -246,7 +247,7 @@ class StartRegistrationCaptchaGateTest {
 
         StepVerifier.create(useCase.start(command(CHALLENGE_ID.value())))
                 .assertNext(result -> assertThat(result.errors()).singleElement()
-                        .satisfies(error -> assertThat(error.errorKey()).isEqualTo(RegistrationWorkflowErrorKeys.WORKFLOW_IDEMPOTENCY_KEY_REUSED)))
+                        .satisfies(error -> assertThat(error.errorKey()).isEqualTo(SharedWorkflowErrorKey.IDEMPOTENCY_KEY_REUSED)))
                 .verifyComplete();
 
         assertThat(captchaPort.loadCalls).isZero();
@@ -287,7 +288,7 @@ class StartRegistrationCaptchaGateTest {
                 .verifyComplete();
 
         assertThat(idempotency.failed).isTrue();
-        assertThat(idempotency.failedReason).isEqualTo(RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_INVALID.value());
+        assertThat(idempotency.failedReason).isEqualTo(RegistrationErrorKey.REGISTRATION_CAPTCHA_INVALID.value());
     }
 
     @Test

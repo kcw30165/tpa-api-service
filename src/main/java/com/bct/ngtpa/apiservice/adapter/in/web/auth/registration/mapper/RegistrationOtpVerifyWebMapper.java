@@ -27,7 +27,7 @@ public class RegistrationOtpVerifyWebMapper {
 
     public Object missingAuthFlowCookieResponse() { return errorResponse(RegistrationOtpVerifyErrorKeys.REGISTRATION_AUTH_FLOW_INVALID, VALIDATION_FAILED); }
     public Object missingCsrfTokenResponse() { return errorResponse(RegistrationOtpVerifyErrorKeys.REGISTRATION_CSRF_INVALID, VALIDATION_FAILED); }
-    public Object missingIdempotencyKeyResponse() { return errorResponse(com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode.WORKFLOW_IDEMPOTENCY_MISSING.value(), VALIDATION_FAILED); }
+    public Object missingIdempotencyKeyResponse() { return errorResponse(com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value(), VALIDATION_FAILED); }
     public Object missingCodeResponse() { return errorResponse(RegistrationOtpVerifyErrorKeys.REGISTRATION_OTP_INVALID, VALIDATION_FAILED); }
 
     private Map<String, Object> fallbackResponse(VerifyRegistrationOtpResult result) {
