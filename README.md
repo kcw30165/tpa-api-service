@@ -2460,7 +2460,7 @@ The endpoint:
 
 - requires `Idempotency-Key`
 - validates identity type, identity value, date of birth, and exactly one of email/mobile
-- calls APIM `/ws/NGTPA/v1/TRPSearchUnregisteredMember`
+- calls APIM `/ws/NGTPA/v1/TRPSearchUnregMember`
 - creates an AuthFlowSession only after APIM verification succeeds
 - creates and binds a CSRF token to the AuthFlowSession
 - creates an OTP challenge
@@ -2542,7 +2542,7 @@ P8 does not implement username/check, registration/complete, registration/cancel
 
 - verifies the submitted OTP against the server-side `activeOtpChallengeId`
 - marks the `AuthFlowSession` as `OTP_VERIFIED`
-- reuses the existing `RegistrationLookupPort` / `TRPSearchUnregisteredMember` integration to fetch current unregistered trusts
+- reuses the existing `RegistrationLookupPort` / `TRPSearchUnregMember` integration to fetch current unregistered trusts
 - returns `nextStep = USERNAME_CHECK` for one trust
 - returns `nextStep = SELECT_TRUST` for multiple trusts
 - returns only safe trust selector fields

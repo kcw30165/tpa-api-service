@@ -25,7 +25,7 @@
 //                 .expectNextMatches(result -> result.status() == RegistrationLookupStatus.ELIGIBLE)
 //                 .verifyComplete();
 
-//         assertThat(transport.path).isEqualTo("/ws/NGTPA/v1/TRPSearchUnregisteredMember");
+//         assertThat(transport.path).isEqualTo("/ws/NGTPA/v1/TRPSearchUnregMember");
 //     }
 
 //     @Test

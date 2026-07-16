@@ -94,7 +94,7 @@ class P7RegistrationOtpSecurityBoundaryGuardTest {
                 "USERNAME_CHECK",
                 "SELECT_TRUST",
                 "RegistrationLookupPort",
-                "TRPSearchUnregisteredMember");
+                "TRPSearchUnregMember");
         assertThat(text).contains("username/check", "registration/complete", "registration/cancel", "auth-flow resume");
     }
 

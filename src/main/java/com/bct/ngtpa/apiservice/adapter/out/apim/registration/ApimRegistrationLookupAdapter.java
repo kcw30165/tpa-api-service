@@ -27,7 +27,7 @@ import reactor.core.publisher.Mono;
 
 @Component
 public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
-    private static final String API_NAME = "/ws/NGTPA/v1/TRPSearchUnregisteredMember";
+    private static final String API_NAME = "/ws/NGTPA/v1/TRPSearchUnregMember";
 
     private final ApimWebClientFacade apimWebClientFacade;
     private final ApimCertificateService apimCertificateService;
