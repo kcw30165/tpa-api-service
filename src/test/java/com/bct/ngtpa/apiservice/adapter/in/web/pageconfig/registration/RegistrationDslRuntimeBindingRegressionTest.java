@@ -145,7 +145,7 @@ class RegistrationDslRuntimeBindingRegressionTest {
         runner.run(context -> {
             var pages = context.getBean(BffPagesProperties.class).getPages();
             assertThat(pages.get("registration-start").getDownstreamErrorClassification()
-                    .getEndpoint()).isEqualTo("TRPSearchUnregisteredMember");
+                    .getEndpoint()).isEqualTo("TRPSearchUnregMember");
             assertThat(pages.get("registration-username-check").getDownstreamErrorClassification()
                     .getEndpoint()).isEqualTo("TRPChkCustId");
             assertThat(pages.get("registration-password-setup").getDownstreamErrorClassification()

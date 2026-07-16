@@ -7,10 +7,10 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.ApimWebClientFacade;
 import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
-import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchUnregisteredMemberApimDataItem;
-import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchUnregisteredMemberApimRequest;
-import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchUnregisteredMemberApimMapper;
-import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchUnregisteredMemberApimResultMapper;
+import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchUnregMemberApimDataItem;
+import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchUnregMemberApimRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchUnregMemberApimMapper;
+import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchUnregMemberApimResultMapper;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupResult;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationLookupPort;
@@ -34,8 +34,8 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
     private final ApimPayloadCryptoService apimPayloadCryptoService;
     private final ApimProperties apimProperties;
     private final ApimRegistrationLookupTransport legacyTestTransport;
-    private final TrpSearchUnregisteredMemberApimMapper requestMapper;
-    private final TrpSearchUnregisteredMemberApimResultMapper resultMapper;
+    private final TrpSearchUnregMemberApimMapper requestMapper;
+    private final TrpSearchUnregMemberApimResultMapper resultMapper;
 
     @Autowired
     public ApimRegistrationLookupAdapter(
@@ -48,8 +48,8 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
         this.apimPayloadCryptoService = Objects.requireNonNull(apimPayloadCryptoService, "apimPayloadCryptoService must not be null");
         this.apimProperties = Objects.requireNonNull(apimProperties, "apimProperties must not be null");
         this.legacyTestTransport = null;
-        this.requestMapper = new TrpSearchUnregisteredMemberApimMapper();
-        this.resultMapper = new TrpSearchUnregisteredMemberApimResultMapper();
+        this.requestMapper = new TrpSearchUnregMemberApimMapper();
+        this.resultMapper = new TrpSearchUnregMemberApimResultMapper();
     }
 
     @Override
@@ -65,13 +65,13 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
             var request = apimPayloadCryptoService.encryptRequest(
                     API_NAME,
                     requestMapper.toApimRequest(command),
-                    TrpSearchUnregisteredMemberApimRequest.class,
+                    TrpSearchUnregMemberApimRequest.class,
                     null);
             return apimWebClientFacade.post(API_NAME, request)
                     .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
                             API_NAME,
                             body,
-                            TrpSearchUnregisteredMemberApimDataItem.class,
+                            TrpSearchUnregMemberApimDataItem.class,
                             null))
                     .map(this::toResultPreservingBusinessErrMessage)
                     .onErrorMap(ApimCryptoException.class, this::toApimException);
@@ -81,13 +81,13 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
                     var request = apimPayloadCryptoService.encryptRequest(
                             API_NAME,
                             requestMapper.toApimRequest(command),
-                            TrpSearchUnregisteredMemberApimRequest.class,
+                            TrpSearchUnregMemberApimRequest.class,
                             publicKey);
                     return apimWebClientFacade.post(API_NAME, request)
                             .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
                                     API_NAME,
                                     body,
-                                    TrpSearchUnregisteredMemberApimDataItem.class,
+                                    TrpSearchUnregMemberApimDataItem.class,
                                     publicKey))
                             .map(this::toResultPreservingBusinessErrMessage);
                 })
@@ -95,13 +95,13 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
     }
 
     private RegistrationLookupResult toResultPreservingBusinessErrMessage(
-            ApimResponseEnvelope<TrpSearchUnregisteredMemberApimDataItem> envelope) {
+            ApimResponseEnvelope<TrpSearchUnregMemberApimDataItem> envelope) {
         String errMessage = resolveErrMessage(envelope);
-        List<TrpSearchUnregisteredMemberApimDataItem> data = resolveData(envelope);
+        List<TrpSearchUnregMemberApimDataItem> data = resolveData(envelope);
         return resultMapper.toResult(errMessage, data);
     }
 
-    private String resolveErrMessage(ApimResponseEnvelope<TrpSearchUnregisteredMemberApimDataItem> envelope) {
+    private String resolveErrMessage(ApimResponseEnvelope<TrpSearchUnregMemberApimDataItem> envelope) {
         Object response = invokeAny(envelope, "getResponse", "response");
         Object source = response == null ? envelope : response;
         Object value = invokeAny(source, "getErrMessage", "errMessage", "getErrmessage", "errmessage");
@@ -109,13 +109,13 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
     }
 
     @SuppressWarnings("unchecked")
-    private List<TrpSearchUnregisteredMemberApimDataItem> resolveData(
-            ApimResponseEnvelope<TrpSearchUnregisteredMemberApimDataItem> envelope) {
+    private List<TrpSearchUnregMemberApimDataItem> resolveData(
+            ApimResponseEnvelope<TrpSearchUnregMemberApimDataItem> envelope) {
         Object response = invokeAny(envelope, "getResponse", "response");
         Object source = response == null ? envelope : response;
         Object value = invokeAny(source, "getData", "data");
         if (value instanceof List<?> list) {
-            return (List<TrpSearchUnregisteredMemberApimDataItem>) list;
+            return (List<TrpSearchUnregMemberApimDataItem>) list;
         }
         try {
             return ApimResponseValidator.requireSuccessData(envelope);

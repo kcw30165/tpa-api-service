@@ -40,7 +40,7 @@ class RegistrationDownstreamErrorClassificationTest {
         runner.run(context -> {
             var adapter=adapter(context);
             for(String code:java.util.List.of("err.tpa.member.not.found","err.tpa.hkid.invalid")) {
-                var result=adapter.classify(request("registration-start","TRPSearchUnregisteredMember",code));
+                var result=adapter.classify(request("registration-start","TRPSearchUnregMember",code));
                 assertThat(result.responseCode()).isEqualTo("err.registration.start.verificationFailed");
                 assertThat(result.httpStatus()).isEqualTo(422);
                 assertThat(result.fallbackUsed()).isFalse();

@@ -90,7 +90,7 @@ class RegistrationStabilizationContractBaselineTest {
     void knownRegistrationApimErrorsAreMappedByExistingDownstreamClassification() throws Exception {
         String yaml = Files.readString(REGISTRATION_YAML);
         assertThat(yaml)
-                .contains("endpoint: TRPSearchUnregisteredMember")
+                .contains("endpoint: TRPSearchUnregMember")
                 .contains("downstreamErrorCode: err.tpa.member.not.found")
                 .contains("downstreamErrorCode: err.tpa.hkid.invalid")
                 .contains("responseCode: err.registration.start.verificationFailed")

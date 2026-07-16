@@ -1,15 +1,15 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper;
 
-import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchUnregisteredMemberApimDataItem;
+import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchUnregMemberApimDataItem;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupAccount;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupStatus;
 import java.util.List;
 
-public class TrpSearchUnregisteredMemberApimResultMapper {
-    public RegistrationLookupResult toResult(String errMessage, List<TrpSearchUnregisteredMemberApimDataItem> data) {
+public class TrpSearchUnregMemberApimResultMapper {
+    public RegistrationLookupResult toResult(String errMessage, List<TrpSearchUnregMemberApimDataItem> data) {
         String safeError = errMessage == null || errMessage.isBlank() ? null : errMessage.trim();
-        List<TrpSearchUnregisteredMemberApimDataItem> items = data == null ? List.of() : data;
+        List<TrpSearchUnregMemberApimDataItem> items = data == null ? List.of() : data;
         if (safeError == null && !items.isEmpty()) {
             return new RegistrationLookupResult(
                     RegistrationLookupStatus.ELIGIBLE,
@@ -25,7 +25,7 @@ public class TrpSearchUnregisteredMemberApimResultMapper {
         return new RegistrationLookupResult(RegistrationLookupStatus.UPSTREAM_BUSINESS_REJECTED, List.of(), safeError);
     }
 
-    private RegistrationLookupAccount toAccount(TrpSearchUnregisteredMemberApimDataItem item) {
+    private RegistrationLookupAccount toAccount(TrpSearchUnregMemberApimDataItem item) {
         return new RegistrationLookupAccount(
                 item.email(),
                 item.mobileNumber(),

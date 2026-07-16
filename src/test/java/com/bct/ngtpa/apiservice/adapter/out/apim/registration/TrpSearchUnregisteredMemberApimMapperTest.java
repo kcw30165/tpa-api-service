@@ -2,16 +2,16 @@ package com.bct.ngtpa.apiservice.adapter.out.apim.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchUnregisteredMemberApimRequest;
-import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchUnregisteredMemberApimMapper;
+import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchUnregMemberApimRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchUnregMemberApimMapper;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupCommand;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
-class TrpSearchUnregisteredMemberApimMapperTest {
-    private final TrpSearchUnregisteredMemberApimMapper mapper = new TrpSearchUnregisteredMemberApimMapper();
+class TrpSearchUnregMemberApimMapperTest {
+    private final TrpSearchUnregMemberApimMapper mapper = new TrpSearchUnregMemberApimMapper();
 
     @Test
     void apimRequestMapsEmailContact() {
@@ -60,7 +60,7 @@ class TrpSearchUnregisteredMemberApimMapperTest {
 
     @Test
     void apimRequestJsonUsesExpectedHyphenatedFieldNames() throws Exception {
-        var json = new ObjectMapper().writeValueAsString(new TrpSearchUnregisteredMemberApimRequest(
+        var json = new ObjectMapper().writeValueAsString(new TrpSearchUnregMemberApimRequest(
                 "GPFS",
                 "1234567890",
                 "31/01/1980",
@@ -73,7 +73,7 @@ class TrpSearchUnregisteredMemberApimMapperTest {
 
     @Test
     void apimDtosToStringDoNotExposePii() {
-        var request = new TrpSearchUnregisteredMemberApimRequest(
+        var request = new TrpSearchUnregMemberApimRequest(
                 "GPFS",
                 "1234567890",
                 "31/01/1980",

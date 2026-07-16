@@ -2,15 +2,15 @@ package com.bct.ngtpa.apiservice.adapter.out.apim.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchUnregisteredMemberApimDataItem;
-import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchUnregisteredMemberApimResultMapper;
+import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchUnregMemberApimDataItem;
+import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchUnregMemberApimResultMapper;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-class TrpSearchUnregisteredMemberApimResultMapperTest {
-    private final TrpSearchUnregisteredMemberApimResultMapper mapper = new TrpSearchUnregisteredMemberApimResultMapper();
+class TrpSearchUnregMemberApimResultMapperTest {
+    private final TrpSearchUnregMemberApimResultMapper mapper = new TrpSearchUnregMemberApimResultMapper();
 
     @Test
     void apimDataItemJsonMapsHyphenatedFields() throws Exception {
@@ -23,7 +23,7 @@ class TrpSearchUnregisteredMemberApimResultMapperTest {
                 }
                 """;
 
-        var item = new ObjectMapper().readValue(json, TrpSearchUnregisteredMemberApimDataItem.class);
+        var item = new ObjectMapper().readValue(json, TrpSearchUnregMemberApimDataItem.class);
 
         assertThat(item.email()).isEqualTo("member@example.com");
         assertThat(item.mobileNumber()).isEmpty();
@@ -72,8 +72,8 @@ class TrpSearchUnregisteredMemberApimResultMapperTest {
         assertThat(item().toString()).doesNotContain("member@example.com", "91234567", "31/01/1980");
     }
 
-    private static TrpSearchUnregisteredMemberApimDataItem item() {
-        return new TrpSearchUnregisteredMemberApimDataItem(
+    private static TrpSearchUnregMemberApimDataItem item() {
+        return new TrpSearchUnregMemberApimDataItem(
                 "member@example.com",
                 "91234567",
                 "OI",

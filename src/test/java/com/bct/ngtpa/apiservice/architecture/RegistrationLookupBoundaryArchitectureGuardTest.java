@@ -1,8 +1,8 @@
 package com.bct.ngtpa.apiservice.architecture;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchUnregisteredMemberApimRequest;
-import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchUnregisteredMemberApimMapper;
+import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchUnregMemberApimRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchUnregMemberApimMapper;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupCommand;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationLookupPort;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
@@ -48,7 +48,7 @@ class RegistrationLookupBoundaryArchitectureGuardTest {
                         "..adapter.out.sms..",
                         "..adapter.out.email..")
                 .check(classes);
-        assertThat(TrpSearchUnregisteredMemberApimRequest.class).isNotNull();
-        assertThat(TrpSearchUnregisteredMemberApimMapper.class).isNotNull();
+        assertThat(TrpSearchUnregMemberApimRequest.class).isNotNull();
+        assertThat(TrpSearchUnregMemberApimMapper.class).isNotNull();
     }
 }

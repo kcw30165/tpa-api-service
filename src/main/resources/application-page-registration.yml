@@ -5,9 +5,6 @@ bff-pages:
         source: APIM_TAS
         endpoint: TRPSearchUnregMember
         mappings:
-          err.tpa.member.not.found:
-        endpoint: TRPSearchUnregisteredMember
-        explicitMappings:
           - downstreamErrorCode: err.tpa.member.not.found
             eventType: DOWNSTREAM_REJECTION
             logLevel: ERROR
