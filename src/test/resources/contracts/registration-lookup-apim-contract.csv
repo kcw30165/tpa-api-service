@@ -1,0 +1,13 @@
+scenario,errMessage,data,contactMatch,accountFieldsValid,expectedDomainResult,expectedHttpStatus,expectedPublicError,expectedInternalOrigin
+eligible-email,,non-empty,true,true,ELIGIBLE,200,,
+eligible-mobile,,non-empty,true,true,ELIGIBLE,200,,
+not-eligible,err.tpa.member.not.found,empty,n/a,n/a,NOT_ELIGIBLE,422,err.registration.start.verificationFailed,DOWNSTREAM_BUSINESS
+bad-request,err.tpa.bad.request,empty,n/a,n/a,EXCEPTION,503,err.workflow.downstream.unavailable,DOWNSTREAM_CONTRACT
+unknown-error,err.tpa.unknown,empty,n/a,n/a,EXCEPTION,503,err.workflow.downstream.unavailable,DOWNSTREAM_CONTRACT
+blank-error-empty-data,,empty,n/a,n/a,EXCEPTION,503,err.workflow.downstream.unavailable,DOWNSTREAM_CONTRACT
+contact-mismatch,,non-empty,false,true,EXCEPTION,503,err.workflow.downstream.unavailable,DOWNSTREAM_CONTRACT
+missing-env,,non-empty,true,false,EXCEPTION,503,err.workflow.downstream.unavailable,DOWNSTREAM_CONTRACT
+missing-trust-code,,non-empty,true,false,EXCEPTION,503,err.workflow.downstream.unavailable,DOWNSTREAM_CONTRACT
+null-envelope,n/a,n/a,n/a,n/a,EXCEPTION,502,err.workflow.downstream.unavailable,DOWNSTREAM_INVALID_RESPONSE
+malformed-envelope,n/a,n/a,n/a,n/a,EXCEPTION,502,err.workflow.downstream.unavailable,DOWNSTREAM_INVALID_RESPONSE
+transport-failure,n/a,n/a,n/a,n/a,EXCEPTION,502,err.workflow.downstream.unavailable,DOWNSTREAM_TRANSPORT
