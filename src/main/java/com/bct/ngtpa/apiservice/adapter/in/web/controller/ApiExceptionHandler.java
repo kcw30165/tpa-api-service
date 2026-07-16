@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupDownstreamException;
+import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
@@ -50,6 +52,26 @@ public class ApiExceptionHandler {
             LoggingSanitizer loggingSanitizer) {
         this.errorMessageResolver = errorMessageResolver;
         this.loggingSanitizer = loggingSanitizer;
+    }
+
+    @ExceptionHandler(RegistrationLookupDownstreamException.class)
+    public ResponseEntity<MutationResponse<Void>> handleRegistrationLookupDownstreamException(
+            RegistrationLookupDownstreamException exception,
+            ServerWebExchange exchange) {
+        String code = SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value();
+        ApiError error = ApiError.downstreamSystem(
+                code,
+                resolvePublicMessage(code, exchange, exception),
+                SOURCE_SERVER);
+        return buildMutationErrorResponse(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                ApiStatus.SYSTEM_ERROR,
+                List.of(error),
+                exchange,
+                exception,
+                "TRPSearchUnregMember contract failure: " + exception.reason(),
+                true,
+                false);
     }
 
     @ExceptionHandler(ApimException.class)

@@ -1,5 +1,13 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.registration;
 
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupDownstreamException;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
+import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
+import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
+import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
+import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimCertificateService;
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimPayloadCryptoService;
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimResponseValidator;
@@ -36,13 +44,15 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
     private final ApimRegistrationLookupTransport legacyTestTransport;
     private final TrpSearchUnregMemberApimMapper requestMapper;
     private final TrpSearchUnregMemberApimResultMapper resultMapper;
+    private final FailureEventPort failureEventPort;
 
     @Autowired
     public ApimRegistrationLookupAdapter(
             ApimWebClientFacade apimWebClientFacade,
             ApimCertificateService apimCertificateService,
             ApimPayloadCryptoService apimPayloadCryptoService,
-            ApimProperties apimProperties) {
+            ApimProperties apimProperties,
+            FailureEventPort failureEventPort) {
         this.apimWebClientFacade = Objects.requireNonNull(apimWebClientFacade, "apimWebClientFacade must not be null");
         this.apimCertificateService = Objects.requireNonNull(apimCertificateService, "apimCertificateService must not be null");
         this.apimPayloadCryptoService = Objects.requireNonNull(apimPayloadCryptoService, "apimPayloadCryptoService must not be null");
@@ -50,6 +60,8 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
         this.legacyTestTransport = null;
         this.requestMapper = new TrpSearchUnregMemberApimMapper();
         this.resultMapper = new TrpSearchUnregMemberApimResultMapper();
+        this.failureEventPort = Objects.requireNonNull(
+                failureEventPort, "failureEventPort must not be null");
     }
 
     @Override
@@ -58,8 +70,11 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
         Objects.requireNonNull(command, "command must not be null");
         if (legacyTestTransport != null) {
             var request = requestMapper.toApimRequest(command);
-            return legacyTestTransport.postSearchUnregisteredMember(API_NAME, request)
-                    .map(envelope -> resultMapper.toResult(envelope.errMessage(), envelope.data(), command));
+            return withFailureLogging(
+                    legacyTestTransport.postSearchUnregisteredMember(API_NAME, request)
+                            .map(envelope -> resultMapper.toResult(
+                                    envelope.errMessage(), envelope.data(), command)),
+                    command);
         }
         if (!apimProperties.getEncryption().isEnabled()) {
             var request = apimPayloadCryptoService.encryptRequest(
@@ -67,16 +82,19 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
                     requestMapper.toApimRequest(command),
                     TrpSearchUnregMemberApimRequest.class,
                     null);
-            return apimWebClientFacade.post(API_NAME, request)
+            return withFailureLogging(
+                    apimWebClientFacade.post(API_NAME, request)
                     .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
                             API_NAME,
                             body,
                             TrpSearchUnregMemberApimDataItem.class,
                             null))
                     .map(envelope -> toResult(envelope, command))
-                    .onErrorMap(ApimCryptoException.class, this::toApimException);
+                    .onErrorMap(ApimCryptoException.class, this::toApimException),
+                    command);
         }
-        return apimCertificateService.getBctPublicKey()
+        return withFailureLogging(
+                apimCertificateService.getBctPublicKey()
                 .flatMap(publicKey -> {
                     var request = apimPayloadCryptoService.encryptRequest(
                             API_NAME,
@@ -91,7 +109,8 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
                                     publicKey))
                             .map(envelope -> toResult(envelope, command));
                 })
-                .onErrorMap(ApimCryptoException.class, this::toApimException);
+                .onErrorMap(ApimCryptoException.class, this::toApimException),
+                command);
     }
 
     private RegistrationLookupResult toResult(
@@ -123,6 +142,39 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
         } catch (RuntimeException ignored) {
             return List.of();
         }
+    }
+
+    private Mono<RegistrationLookupResult> withFailureLogging(
+            Mono<RegistrationLookupResult> pipeline,
+            RegistrationLookupCommand command) {
+        return pipeline.doOnEach(signal -> {
+            if (!signal.isOnError()
+                    || !(signal.getThrowable() instanceof RegistrationLookupDownstreamException exception)) {
+                return;
+            }
+            String requestId = signal.getContextView().getOrDefault(
+                    RequestCorrelation.REQUEST_ID_CONTEXT_KEY,
+                    null);
+            var dimensions = new LinkedHashMap<String, Object>();
+            dimensions.put("searchBy", command.identityType().name());
+            dimensions.put("identityValue", RegistrationLookupLogMasker.identity(command.identityValue()));
+            dimensions.put("dateOfBirth", RegistrationLookupLogMasker.dateOfBirth(command.dateOfBirth()));
+            dimensions.put("contactType", command.contactType().name());
+            dimensions.put("contactValue", RegistrationLookupLogMasker.contact(
+                    command.contactType(), command.contactValue()));
+            dimensions.put("reason", exception.reason().name());
+            failureEventPort.record(new FailureEvent(
+                    "registration.lookup.downstream_contract_failure",
+                    requestId,
+                    "REGISTRATION",
+                    "TRPSearchUnregMember",
+                    FailureOrigin.DOWNSTREAM_CONTRACT,
+                    exception.downstreamErrorCode(),
+                    SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value(),
+                    503,
+                    true,
+                    Map.copyOf(dimensions)));
+        });
     }
 
     private Object invokeAny(Object target, String... methodNames) {
