@@ -148,15 +148,16 @@ auth-workflows:
       otp-verify-ttl-seconds: 300
       complete-ttl-seconds: 300
     rate-limit:
-      registration-start:
-        by-ip:
-          enabled: true
-          max-attempts: 10
-          window-seconds: 600
+      # registration-start:
+      #   by-ip:
+      #     enabled: true
+      #     max-attempts: 10
+      #     window-seconds: 600
       otp-send:
-        by-destination-hash:
+        # by-destination-hash:
+        by-registration-session:
           enabled: true
-          max-attempts: 3
+          max-attempts: 5
           window-seconds: 600
       otp-verify:
         by-registration-session:

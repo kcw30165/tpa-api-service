@@ -70,7 +70,7 @@ public class AuthRegistrationOtpController {
         }
 
         return resendRegistrationOtpUseCase.resend(command)
-                .map(registrationOtpResendMapper::toMutationResponse)
+                .map(result -> registrationOtpResendMapper.toMutationResponse(result, acceptLanguage))
                 .map(RegistrationHttpResponses::toObjectResponse);
     }
 

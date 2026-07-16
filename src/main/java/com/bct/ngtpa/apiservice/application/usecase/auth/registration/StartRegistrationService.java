@@ -214,7 +214,7 @@ public class StartRegistrationService implements StartRegistrationUseCase {
         }
         if (lookup.status() == RegistrationLookupStatus.UPSTREAM_BUSINESS_REJECTED) {
             var verificationFailure = result(
-                    StartRegistrationResultStatus.VERIFICATION_FAILED,
+                    StartRegistrationResultStatus.DOWNSTREAM_REJECTED,
                     WorkflowNextStep.NONE,
                     RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED,
                     "identityValue",

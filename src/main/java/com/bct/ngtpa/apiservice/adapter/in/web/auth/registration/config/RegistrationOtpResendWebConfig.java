@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config;
 
+import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationOtpResendWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper;
 import com.bct.ngtpa.apiservice.application.port.in.ResendRegistrationOtpUseCase;
@@ -22,8 +23,11 @@ public class RegistrationOtpResendWebConfig {
     @Bean
     @ConditionalOnMissingBean
     public RegistrationOtpResendWebMapper registrationOtpResendWebMapper(
-            WorkflowMutationResponseMapper workflowMutationResponseMapper) {
-        return new RegistrationOtpResendWebMapper(workflowMutationResponseMapper);
+            WorkflowMutationResponseMapper workflowMutationResponseMapper,
+            ErrorMessageResolver errorMessageResolver) {
+        return new RegistrationOtpResendWebMapper(
+                workflowMutationResponseMapper,
+                errorMessageResolver);
     }
 
     @Bean

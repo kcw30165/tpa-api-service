@@ -109,6 +109,14 @@ public class RegistrationStartWebMapper {
             String acceptLanguage) {
         logFatalIfNeeded(result);
         var response = workflowMutationResponseMapper.toMutationResponse(toWorkflowResult(result, acceptLanguage));
+        if (result != null && result.status() == StartRegistrationResultStatus.DOWNSTREAM_REJECTED) {
+            return new MutationResponse<>(
+                    false,
+                    ApiStatus.DOWNSTREAM_REJECTED,
+                    response.result(),
+                    response.messages(),
+                    response.errors());
+        }
         if (result != null && result.status() == StartRegistrationResultStatus.MESSAGE_DELIVERY_FAILED) {
             return new MutationResponse<>(
                     false,
@@ -202,6 +210,7 @@ public class RegistrationStartWebMapper {
         return switch (status) {
             case MESSAGE_DELIVERY_FAILED -> WorkflowErrorType.DOWNSTREAM_SYSTEM;
             case SYSTEM_FAILED -> WorkflowErrorType.SYSTEM;
+            case DOWNSTREAM_REJECTED -> WorkflowErrorType.DOWNSTREAM_BUSINESS;
             case VERIFICATION_FAILED, IDEMPOTENCY_KEY_REUSED -> WorkflowErrorType.BUSINESS;
             default -> WorkflowErrorType.FORM;
         };
@@ -212,7 +221,7 @@ public class RegistrationStartWebMapper {
             case STARTED, COMPLETED_REPLAY -> WorkflowResultStatus.SUCCESS;
             case DUPLICATE_IN_PROGRESS -> WorkflowResultStatus.WAITING;
             case VALIDATION_FAILED -> WorkflowResultStatus.VALIDATION_FAILED;
-            case VERIFICATION_FAILED, IDEMPOTENCY_KEY_REUSED -> WorkflowResultStatus.BUSINESS_FAILED;
+            case VERIFICATION_FAILED, DOWNSTREAM_REJECTED, IDEMPOTENCY_KEY_REUSED -> WorkflowResultStatus.BUSINESS_FAILED;
             case MESSAGE_DELIVERY_FAILED, SYSTEM_FAILED -> WorkflowResultStatus.SYSTEM_FAILED;
         };
     }

@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper;
 
+import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationOtpResendResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowConstants;
@@ -23,34 +24,55 @@ public class RegistrationOtpResendWebMapper {
     private static final String SOURCE_SERVER = "SERVER";
 
     private final WorkflowMutationResponseMapper workflowMutationResponseMapper;
+    private final ErrorMessageResolver errorMessageResolver;
 
     public RegistrationOtpResendWebMapper(WorkflowMutationResponseMapper workflowMutationResponseMapper) {
+        this(workflowMutationResponseMapper, null);
+    }
+
+    public RegistrationOtpResendWebMapper(
+            WorkflowMutationResponseMapper workflowMutationResponseMapper,
+            ErrorMessageResolver errorMessageResolver) {
         this.workflowMutationResponseMapper = workflowMutationResponseMapper;
+        this.errorMessageResolver = errorMessageResolver;
     }
 
     public Object toMutationResponse(ResendRegistrationOtpResult result) {
+        return toMutationResponse(result, null);
+    }
+
+    public Object toMutationResponse(ResendRegistrationOtpResult result, String language) {
         if (workflowMutationResponseMapper != null) {
-            return workflowMutationResponseMapper.toMutationResponse(toWorkflowResult(result));
+            return workflowMutationResponseMapper.toMutationResponse(toWorkflowResult(result, language));
         }
         return fallbackResponse(result);
     }
 
 
-    private WorkflowResult<RegistrationOtpResendResponse> toWorkflowResult(ResendRegistrationOtpResult result) {
+    private WorkflowResult<RegistrationOtpResendResponse> toWorkflowResult(
+            ResendRegistrationOtpResult result,
+            String language) {
         return new WorkflowResult<>(
                 workflowStatus(result.status()),
                 result.nextStep(),
                 data(result),
                 RegistrationWorkflowPageRefs.forNextStep(result.nextStep()),
                 result.messages(),
-                result.errors());
+                result.errors().stream()
+                        .map(error -> error.message() == null && errorMessageResolver != null
+                                ? new com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor(
+                                        error.type(), error.code(),
+                                        errorMessageResolver.resolve(error.code(), language, null, null, null),
+                                        error.targets(), error.severity(), error.source())
+                                : error)
+                        .toList());
     }
 
     private WorkflowResultStatus workflowStatus(ResendRegistrationOtpResultStatus status) {
         return switch (status) {
             case RESENT, COMPLETED_REPLAY -> WorkflowResultStatus.SUCCESS;
             case DUPLICATE_IN_PROGRESS -> WorkflowResultStatus.WAITING;
-            case COOLDOWN_ACTIVE, MAX_RESEND_ATTEMPTS_REACHED -> WorkflowResultStatus.BUSINESS_FAILED;
+            case COOLDOWN_ACTIVE, SEND_RATE_LIMITED, MAX_RESEND_ATTEMPTS_REACHED -> WorkflowResultStatus.BUSINESS_FAILED;
             case MESSAGE_DELIVERY_FAILED, SYSTEM_FAILED -> WorkflowResultStatus.SYSTEM_FAILED;
             default -> WorkflowResultStatus.VALIDATION_FAILED;
         };
@@ -201,6 +223,7 @@ public class RegistrationOtpResendWebMapper {
 
     private boolean exposeResendFailurePayload(ResendRegistrationOtpResultStatus status) {
         return status == ResendRegistrationOtpResultStatus.COOLDOWN_ACTIVE
+                || status == ResendRegistrationOtpResultStatus.SEND_RATE_LIMITED
                 || status == ResendRegistrationOtpResultStatus.MAX_RESEND_ATTEMPTS_REACHED;
     }
 
@@ -209,7 +232,7 @@ public class RegistrationOtpResendWebMapper {
             case RESENT, COMPLETED_REPLAY, DUPLICATE_IN_PROGRESS -> SUCCESS;
             case MESSAGE_DELIVERY_FAILED -> DOWNSTREAM_ERROR;
             case SYSTEM_FAILED -> SYSTEM_ERROR;
-            case COOLDOWN_ACTIVE, MAX_RESEND_ATTEMPTS_REACHED -> BUSINESS_FAILED;
+            case COOLDOWN_ACTIVE, SEND_RATE_LIMITED, MAX_RESEND_ATTEMPTS_REACHED -> BUSINESS_FAILED;
             default -> VALIDATION_FAILED;
         };
     }
@@ -249,6 +272,7 @@ public class RegistrationOtpResendWebMapper {
             case CSRF_INVALID -> RegistrationOtpResendErrorKeys.REGISTRATION_CSRF_INVALID;
             case IDEMPOTENCY_KEY_REUSED -> RegistrationOtpResendErrorKeys.WORKFLOW_IDEMPOTENCY_KEY_REUSED;
             case COOLDOWN_ACTIVE -> RegistrationOtpResendErrorKeys.REGISTRATION_OTP_COOLDOWN_ACTIVE;
+            case SEND_RATE_LIMITED -> "err.registration.otp.sendRateLimited";
             case MAX_RESEND_ATTEMPTS_REACHED -> RegistrationOtpResendErrorKeys.REGISTRATION_OTP_MAX_ATTEMPTS_REACHED;
             case MESSAGE_DELIVERY_FAILED -> RegistrationOtpResendErrorKeys.REGISTRATION_MESSAGE_DELIVERY_FAILED;
             default -> RegistrationOtpResendErrorKeys.REGISTRATION_OTP_RESEND_FAILED;
