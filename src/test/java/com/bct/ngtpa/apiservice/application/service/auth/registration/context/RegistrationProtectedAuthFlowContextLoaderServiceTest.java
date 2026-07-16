@@ -42,7 +42,7 @@ class RegistrationProtectedAuthFlowContextLoaderServiceTest {
                     assertThat(result.status()).isEqualTo(RegistrationProtectedAuthFlowContextStatus.VALID);
                     assertThat(result.activeOtpChallengeId()).isEqualTo("otp_abc");
                     assertThat(result.maskedDestination()).isEqualTo("m****r@example.com");
-                    assertThat(result.registrationContext().identityType()).isEqualTo(RegistrationIdentityType.PASSPORT);
+                    assertThat(result.registrationContext().identityType()).isEqualTo(RegistrationIdentityType.ID);
                     assertThat(result.toString()).doesNotContain("3024102", "member@example.com", "otp_abc");
                 })
                 .verifyComplete();
@@ -87,6 +87,6 @@ class RegistrationProtectedAuthFlowContextLoaderServiceTest {
     private static final class FakeContextProtector implements RegistrationAuthFlowContextProtectorPort {
         boolean unprotectCalled;
         @Override public RegistrationAuthFlowEncryptedContext protect(RegistrationAuthFlowContext context) { return new RegistrationAuthFlowEncryptedContext("ciphertext", "v1", RegistrationAuthFlowEncryptedContext.DEFAULT_ALGORITHM); }
-        @Override public RegistrationAuthFlowContext unprotect(RegistrationAuthFlowEncryptedContext encryptedContext) { unprotectCalled = true; return new RegistrationAuthFlowContext(RegistrationIdentityType.PASSPORT, "3024102", "04/04/1982", RegistrationContactType.EMAIL, "member@example.com"); }
+        @Override public RegistrationAuthFlowContext unprotect(RegistrationAuthFlowEncryptedContext encryptedContext) { unprotectCalled = true; return new RegistrationAuthFlowContext(RegistrationIdentityType.ID, "3024102", "04/04/1982", RegistrationContactType.EMAIL, "member@example.com"); }
     }
 }

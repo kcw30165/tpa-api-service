@@ -55,7 +55,7 @@ class AesGcmRegistrationAuthFlowContextProtectorTest {
 
     private static RegistrationAuthFlowContext context() {
         return new RegistrationAuthFlowContext(
-                RegistrationIdentityType.PASSPORT,
+                RegistrationIdentityType.ID,
                 "3024102",
                 "04/04/1982",
                 RegistrationContactType.EMAIL,

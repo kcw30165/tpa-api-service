@@ -102,27 +102,17 @@ class RegistrationStartValidatorTest {
 
     @Test
     void identityValidationAcceptsStaffNo() {
-        assertThat(validator.validate(input("STAFF_NO", "A123B", "31/01/1980", "member@example.com", null, null)).valid()).isTrue();
-        assertThat(validator.validate(input("STAFF_NO", "A 123", "31/01/1980", "member@example.com", null, null)).valid()).isFalse();
-        assertThat(validator.validate(input("STAFF_NO", "A-123", "31/01/1980", "member@example.com", null, null)).valid()).isFalse();
+        assertThat(validator.validate(input("STAFF", "A123B", "31/01/1980", "member@example.com", null, null)).valid()).isTrue();
+        assertThat(validator.validate(input("STAFF", "A 123", "31/01/1980", "member@example.com", null, null)).valid()).isFalse();
+        assertThat(validator.validate(input("STAFF", "A-123", "31/01/1980", "member@example.com", null, null)).valid()).isFalse();
     }
 
     @Test
-    void identityValidationAcceptsHkidFormat() {
-        assertThat(validator.validate(input("HKID", "A1234567", "31/01/1980", "member@example.com", null, null)).valid()).isTrue();
-        assertThat(validator.validate(input("HKID", "A123456(7)", "31/01/1980", "member@example.com", null, null)).valid()).isTrue();
-        assertThat(validator.validate(input("HKID", "AB123456(7)", "31/01/1980", "member@example.com", null, null)).valid()).isTrue();
-        for (String value : java.util.List.of("1234567", "A12345", "A12345678", "A123456 Z")) {
-            assertThat(validator.validate(input("HKID", value, "31/01/1980", "member@example.com", null, null)).valid()).isFalse();
-        }
-    }
-
-    @Test
-    void identityValidationAcceptsPassportAndOtherNationalId() {
-        assertThat(validator.validate(input("PASSPORT", "P1234567", "31/01/1980", "member@example.com", null, null)).valid()).isTrue();
-        assertThat(validator.validate(input("OTHER_NATIONAL_ID", "ID-123456", "31/01/1980", "member@example.com", null, null)).valid()).isTrue();
-        assertThat(validator.validate(input("PASSPORT", "P 123", "31/01/1980", "member@example.com", null, null)).valid()).isFalse();
-        assertThat(validator.validate(input("OTHER_NATIONAL_ID", "A".repeat(41), "31/01/1980", "member@example.com", null, null)).valid()).isFalse();
+    void identityValidationAcceptsID() {
+        assertThat(validator.validate(input("ID", "P1234567", "31/01/1980", "member@example.com", null, null)).valid()).isTrue();
+        assertThat(validator.validate(input("ID", "ID-123456", "31/01/1980", "member@example.com", null, null)).valid()).isTrue();
+        assertThat(validator.validate(input("ID", "P 123", "31/01/1980", "member@example.com", null, null)).valid()).isFalse();
+        assertThat(validator.validate(input("ID", "A".repeat(41), "31/01/1980", "member@example.com", null, null)).valid()).isFalse();
     }
 
     @Test
