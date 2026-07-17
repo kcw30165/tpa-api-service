@@ -1,10 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.out.registration;
 
-import com.bct.ngtpa.apiservice.application.dto.security.ratelimit.RateLimitBucket;
-import com.bct.ngtpa.apiservice.application.dto.security.ratelimit.RateLimitCommand;
-import com.bct.ngtpa.apiservice.application.dto.security.ratelimit.RateLimitStatus;
 import com.bct.ngtpa.apiservice.application.port.out.RateLimitPort;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.RegistrationOtpSendRateLimitedException;
 import com.bct.ngtpa.apiservice.application.dto.auth.RegistrationAuthWorkflowPolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.OtpPolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.CreateOtpChallengeCommand;
@@ -22,12 +18,11 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.HexFormat;
-import java.util.Objects;
 import java.util.Locale;
+import java.util.Objects;
 import reactor.core.publisher.Mono;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.VerifyOtpChallengeCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.RegistrationOtpVerificationResult;
-import com.bct.ngtpa.apiservice.application.dto.auth.otp.OtpReplacementOutcome;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.ReplaceOtpChallengeCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.RegistrationOtpResendRejectedException;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.ResendRegistrationOtpResultStatus;
@@ -76,8 +71,7 @@ public class RegistrationOtpChallengeAdapter implements RegistrationOtpPort {
                 policy.maxResendAttempts(),
                 Instant.now(clock));
 
-        return enforceOtpSendRateLimit(channel, destinationHash)
-                .then(otpChallengePort.createChallenge(command))
+        return otpChallengePort.createChallenge(command)
                 .map(result -> new RegistrationOtpCreationResult(
                         result.otpChallengeId(),
                         result.rawCode(),
@@ -98,14 +92,13 @@ public class RegistrationOtpChallengeAdapter implements RegistrationOtpPort {
         OtpPolicy policy = otpPolicy();
         OtpChannel channel = toOtpChannel(contactType);
         String destinationHash = destinationHash(channel, destination);
-        return enforceOtpSendRateLimit(channel, destinationHash)
-                .then(otpChallengePort.replaceChallenge(new ReplaceOtpChallengeCommand(
+        return otpChallengePort.replaceChallenge(new ReplaceOtpChallengeCommand(
                         activeOtpChallengeId,
                         policy.length(),
                         policy.numericOnly(),
                         policy.ttlSeconds(),
                         policy.resendCooldownSeconds(),
-                        Instant.now(clock))))
+                        Instant.now(clock)))
                 .flatMap(result -> switch (result.outcome()) {
                     case REPLACED -> Mono.just(new RegistrationOtpCreationResult(
                             result.newOtpChallengeId(),
@@ -144,25 +137,7 @@ public class RegistrationOtpChallengeAdapter implements RegistrationOtpPort {
                 });
     }
 
-    private Mono<Void> enforceOtpSendRateLimit(OtpChannel channel, String destinationHash) {
-        RegistrationAuthWorkflowPolicy workflowPolicy = authWorkflowPolicyPort.registrationPolicy();
-        var rule = workflowPolicy == null || workflowPolicy.rateLimit() == null
-                ? null : workflowPolicy.rateLimit().otpSendByDestinationHash();
-        if (rateLimitPort == null || rule == null || !rule.enabled()) {
-            return Mono.empty();
-        }
-        String bucketId = channel.name().toLowerCase(Locale.ROOT) + ":" + destinationHash;
-        return rateLimitPort.checkAndConsume(new RateLimitCommand(
-                        RateLimitBucket.OTP_SEND_BY_DESTINATION_HASH,
-                        bucketId,
-                        true,
-                        rule.maxAttempts(),
-                        rule.windowSeconds(),
-                        null))
-                .flatMap(result -> result.status() == RateLimitStatus.BLOCKED
-                        ? Mono.error(new RegistrationOtpSendRateLimitedException(result.retryAfterSeconds()))
-                        : Mono.empty());
-    }
+
 
     private OtpPolicy otpPolicy() {
         RegistrationAuthWorkflowPolicy policy = authWorkflowPolicyPort.registrationPolicy();
