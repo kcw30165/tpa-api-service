@@ -45,3 +45,5 @@ aa.md
 patches/
 .venv/
 .local/
+
+**/~$*.xlsx
