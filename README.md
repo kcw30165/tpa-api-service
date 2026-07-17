@@ -2533,3 +2533,13 @@ Technical outcomes that may have committed downstream are stored as idempotency
 [`docs/evidence/0038-registration-complete.md`](docs/evidence/0038-registration-complete.md)
 for security invariants, test commands, and the merge-request evidence checklist.
 
+### Registration Start
+
+`POST /api/v1/auth/registration/start` begins the protected registration workflow after captcha verification. The request requires `Idempotency-Key`; eligible-member discovery is performed through `TRPSearchUnregMember`. A successful start creates the opaque `auth_flow_sid` pre-authentication session and returns the `csrfToken` required by later protected registration operations.
+
+### Registration OTP Resend and Verify
+
+`POST /api/v1/auth/registration/otp/resend` keeps the workflow at `VERIFY_OTP` while replacing the active OTP challenge under the configured cooldown and resend limits. `POST /api/v1/auth/registration/otp/verify` validates the active challenge and refreshes eligible trusts through `RegistrationLookupPort`. Successful verification advances to username checking for one trust or `SELECT_TRUST` when multiple eligible trusts remain.
+
+The original verified destination remains authoritative for masking, session state, challenge subject protection, and eligibility checks. Physical destination substitution is confined to `RegistrationMessagePort`. Legacy destination hashing and the removed destination-hash OTP-send limiter are not part of the active resend policy and must not be reintroduced.
+
