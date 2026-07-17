@@ -162,6 +162,7 @@ class VerifyRegistrationOtpUseCaseTest {
 
     @Test
     void noEligibleTrustsReturnsNoEligibleTrustsError() {
+        lookup.status = RegistrationLookupStatus.NOT_ELIGIBLE;
         lookup.accounts = List.of();
         StepVerifier.create(useCase.verify(command("123456")))
                 .assertNext(result -> {
@@ -210,7 +211,15 @@ class VerifyRegistrationOtpUseCaseTest {
     }
 
     private static final class FakeRegistrationLookupPort implements RegistrationLookupPort {
-        boolean called; RegistrationLookupCommand command; List<RegistrationLookupAccount> accounts = List.of(new RegistrationLookupAccount("DB", "DBA", null, null));
-        @Override public Mono<RegistrationLookupResult> searchUnregisteredMember(RegistrationLookupCommand command) { called = true; this.command = command; return Mono.just(new RegistrationLookupResult(RegistrationLookupStatus.ELIGIBLE, accounts, null)); }
+        boolean called; RegistrationLookupCommand command;
+        RegistrationLookupStatus status = RegistrationLookupStatus.ELIGIBLE;
+        List<RegistrationLookupAccount> accounts = List.of(
+                new RegistrationLookupAccount("DB", "DBA", null, null));
+        @Override public Mono<RegistrationLookupResult> searchUnregisteredMember(
+                RegistrationLookupCommand command) {
+            called = true;
+            this.command = command;
+            return Mono.just(new RegistrationLookupResult(status, accounts, null));
+        }
     }
 }
