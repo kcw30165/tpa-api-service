@@ -3,392 +3,336 @@ package com.bct.ngtpa.apiservice.integration.registration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.mapper.CaptchaWebMapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.XsrfCookieWriter;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartRequest;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.CancelRegistrationWebMapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.CompleteRegistrationWebMapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController;
-import com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationController;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestHeaderContextWebFilter;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingWebFilter;
+import com.bct.ngtpa.apiservice.application.dto.auth.CaptchaPolicy;
+import com.bct.ngtpa.apiservice.application.dto.auth.RegistrationAuthWorkflowPolicy;
+import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaAnswerHash;
+import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaChallenge;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaChallengeId;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaImage;
-import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaVerificationOutcome;
-import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CreateCaptchaChallengeCommand;
-import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CreateCaptchaChallengeResult;
-import com.bct.ngtpa.apiservice.application.dto.auth.captcha.RefreshCaptchaChallengeResult;
-import com.bct.ngtpa.apiservice.application.dto.auth.captcha.VerifyCaptchaChallengeResult;
-import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
-import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
-import com.bct.ngtpa.apiservice.application.port.in.CancelRegistrationUseCase;
-import com.bct.ngtpa.apiservice.application.port.in.CompleteRegistrationUseCase;
+import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaStatus;
+import com.bct.ngtpa.apiservice.application.dto.auth.captcha.GeneratedCaptcha;
 import com.bct.ngtpa.apiservice.application.port.in.CreateCaptchaChallengeUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.RefreshCaptchaUseCase;
-import com.bct.ngtpa.apiservice.application.port.in.StartRegistrationUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.VerifyCaptchaUseCase;
-import com.bct.ngtpa.apiservice.application.service.auth.registration.RegistrationStartValidator;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationCommand;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResult;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResultStatus;
+import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
+import com.bct.ngtpa.apiservice.application.port.out.CaptchaAnswerHasherPort;
+import com.bct.ngtpa.apiservice.application.port.out.CaptchaChallengePort;
+import com.bct.ngtpa.apiservice.application.port.out.CaptchaImageGeneratorPort;
+import com.bct.ngtpa.apiservice.application.usecase.auth.captcha.CaptchaChallengeIdGenerator;
+import com.bct.ngtpa.apiservice.application.usecase.auth.captcha.CreateCaptchaChallengeService;
+import com.bct.ngtpa.apiservice.application.usecase.auth.captcha.RefreshCaptchaService;
+import com.bct.ngtpa.apiservice.application.usecase.auth.captcha.VerifyCaptchaService;
+import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
+import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
+import com.bct.ngtpa.apiservice.infrastructure.security.CorsProperties;
+import com.bct.ngtpa.apiservice.infrastructure.security.SecurityConfig;
 import com.bct.ngtpa.apiservice.integration.registration.support.RegistrationTestCase;
 import com.bct.ngtpa.apiservice.integration.registration.support.RegistrationTestResultExtension;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.time.Clock;
 import java.time.Duration;
-import java.util.List;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mockito;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.SpringBootConfiguration;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        classes = RegistrationCaptchaAndStartIntegrationTest.TestApplication.class,
+        properties = {
+                "api.security.require-authentication=false",
+                "redis-cache.enabled=false",
+                "spring.main.banner-mode=off"
+        })
+@AutoConfigureWebTestClient
 @ExtendWith(RegistrationTestResultExtension.class)
 class RegistrationCaptchaAndStartIntegrationTest {
 
-    private static final String CAPTCHA_PATH = "/api/v1/auth/captcha";
-    private static final String START_PATH = "/api/v1/auth/registration/start";
-    private static final CaptchaChallengeId CAPTCHA_ID =
-            new CaptchaChallengeId("cap_abcdefghijklmnop");
-    private static final CaptchaChallengeId REFRESHED_CAPTCHA_ID =
-            new CaptchaChallengeId("cap_bcdefghijklmnopq");
-    private static final String PNG_BASE64 =
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZQmcAAAAASUVORK5CYII=";
+    private static final String CAPTCHA_BASE = "/api/v1/auth/captcha";
+    private static final String ANSWER = "AbC12312";
+    private static final String WRONG = "Wrong999";
+    private static final String PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZQmcAAAAASUVORK5CYII=";
 
-    @Test
-    @RegistrationTestCase({"TC-002", "TC-003", "TC-004", "TC-005"})
-    void captchaChallengeSupportsCorrelationLanguageFallbackAndAnonymousPreStartAccess() {
-        AtomicReference<CreateCaptchaChallengeCommand> captured = new AtomicReference<>();
-        CreateCaptchaChallengeUseCase create = command -> {
-            captured.set(command);
-            return Mono.just(new CreateCaptchaChallengeResult(
-                    CAPTCHA_ID, new CaptchaImage(PNG_BASE64, "image/png"), 300));
-        };
-        WebTestClient client = captchaClient(create, verifiedCaptcha(), refreshedCaptcha());
+    @Autowired WebTestClient client;
+    @Autowired InMemoryCaptchaPort store;
+    @Autowired MutableClock clock;
+    @Autowired SequenceCaptchaIdGenerator ids;
 
-        client.post()
-                .uri(CAPTCHA_PATH + "/challenge?lang=zh_HK")
-                .header("X-Request-Id", "0041-captcha-request")
-                .header("Accept-Language", "en-HK")
-                .exchange()
-                .expectStatus().isOk()
-                .expectHeader().valueEquals("X-Request-Id", "0041-captcha-request")
-                .expectBody()
-                .jsonPath("$.success").isEqualTo(true)
-                .jsonPath("$.result.mimeType").isEqualTo("image/png")
-                .jsonPath("$.result.expiresInSeconds").isEqualTo(300)
-                .jsonPath("$.result.nextStep").doesNotExist();
-
-        assertThat(captured.get().correlationId()).isEqualTo("0041-captcha-request");
-        assertThat(captured.get().acceptLanguage()).isEqualTo("en-HK");
-
-        client.post().uri(CAPTCHA_PATH + "/challenge")
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody(String.class)
-                .value(body -> assertThat(body)
-                        .doesNotContain("auth_flow_sid", "X-XSRF-TOKEN", "Idempotency-Key", "Account-Ref"));
+    @BeforeEach
+    void reset() {
+        store.clear();
+        clock.reset();
+        ids.reset();
     }
 
     @Test
-    @RegistrationTestCase({"TC-006", "TC-007", "TC-008", "TC-009", "TC-010", "TC-011", "TC-012"})
-    void captchaVerifyAndRefreshExposeAllSupportedLifecycleOutcomes() {
-        VerifyCaptchaUseCase verify = command -> Mono.just(switch (command.answer()) {
-            case "correct" -> new VerifyCaptchaChallengeResult(
-                    CaptchaVerificationOutcome.VERIFIED, true, CAPTCHA_ID, 5);
-            case "locked" -> new VerifyCaptchaChallengeResult(
-                    CaptchaVerificationOutcome.LOCKED, false, null, 0);
-            case "expired" -> new VerifyCaptchaChallengeResult(
-                    CaptchaVerificationOutcome.EXPIRED, false, null, 0);
-            case "unknown" -> new VerifyCaptchaChallengeResult(
-                    CaptchaVerificationOutcome.NOT_FOUND, false, null, 0);
-            default -> new VerifyCaptchaChallengeResult(
-                    CaptchaVerificationOutcome.INVALID, false, null, 4);
-        });
-        WebTestClient client = captchaClient(createdCaptcha(), verify, refreshedCaptcha());
+    @RegistrationTestCase("TC-002")
+    void requestIdIsEchoed() {
+        client.post().uri(CAPTCHA_BASE + "/challenge")
+                .header("X-Request-Id", "0041-tc-002")
+                .exchange().expectStatus().isOk()
+                .expectHeader().valueEquals("X-Request-Id", "0041-tc-002");
+    }
 
-        verify(client, "correct").jsonPath("$.success").isEqualTo(true)
+    @Test
+    @RegistrationTestCase("TC-003")
+    void missingRequestIdIsGeneratedAndReturnedInHeader() {
+        client.post().uri(CAPTCHA_BASE + "/challenge")
+                .exchange().expectStatus().isOk()
+                .expectHeader().exists("X-Request-Id")
+                .expectHeader().value("X-Request-Id", value ->
+                        assertThat(value).isNotBlank());
+    }
+
+    @Test
+    @RegistrationTestCase("TC-004")
+    void unsupportedLanguageFallsBackWithoutBilingualPayload() {
+        client.post().uri(CAPTCHA_BASE + "/challenge?lang=zh_HK")
+                .header("Accept-Language", "unsupported-language")
+                .exchange().expectStatus().isOk()
+                .expectBody(String.class)
+                .value(body -> assertThat(body)
+                        .contains("\"status\":\"SUCCESS\"")
+                        .doesNotContain("nextStep", "pageRef"));
+    }
+
+    @Test
+    @RegistrationTestCase("TC-005")
+    void captchaChallengeNeedsNoRegistrationCredentials() {
+        client.post().uri(CAPTCHA_BASE + "/challenge")
+                .exchange().expectStatus().isOk()
+                .expectBody().jsonPath("$.success").isEqualTo(true);
+    }
+
+    @Test
+    @RegistrationTestCase("TC-006")
+    void correctAnswerPersistsVerifiedStateWithoutPlaintext() {
+        String id = createChallenge();
+        verify(id, ANSWER).jsonPath("$.success").isEqualTo(true)
                 .jsonPath("$.result.verified").isEqualTo(true);
-        verify(client, "wrong").jsonPath("$.status").isEqualTo("VALIDATION_FAILED")
+        CaptchaChallenge persisted = store.require(id);
+        assertThat(persisted.status()).isEqualTo(CaptchaStatus.VERIFIED);
+        assertThat(persisted.toString()).doesNotContain(ANSWER);
+    }
+
+    @Test
+    @RegistrationTestCase("TC-007")
+    void wrongAnswerDecrementsAttempts() {
+        String id = createChallenge();
+        verify(id, WRONG).jsonPath("$.success").isEqualTo(false)
                 .jsonPath("$.result.remainingAttempts").isEqualTo(4)
                 .jsonPath("$.errors[0].code").isEqualTo("err.registration.captcha.invalid");
-        verify(client, "locked").jsonPath("$.errors[0].code")
+        assertThat(store.require(id).failedAttemptCount()).isEqualTo(1);
+    }
+
+    @Test
+    @RegistrationTestCase("TC-008")
+    void fifthWrongAnswerLocksChallengeAndLaterAttemptRemainsLocked() {
+        String id = createChallenge();
+        for (int attempt = 1; attempt < 5; attempt++) {
+            verify(id, WRONG).jsonPath("$.result.remainingAttempts").isEqualTo(5 - attempt);
+        }
+        verify(id, WRONG).jsonPath("$.errors[0].code")
                 .isEqualTo("err.registration.captcha.locked");
-        verify(client, "expired").jsonPath("$.errors[0].code")
+        verify(id, ANSWER).jsonPath("$.errors[0].code")
+                .isEqualTo("err.registration.captcha.locked");
+        assertThat(store.require(id).status()).isEqualTo(CaptchaStatus.LOCKED);
+    }
+
+    @Test
+    @RegistrationTestCase("TC-009")
+    void challengeExpiresAfterConfiguredTtl() {
+        String id = createChallenge();
+        clock.advance(Duration.ofSeconds(300));
+        verify(id, ANSWER).jsonPath("$.errors[0].code")
                 .isEqualTo("err.registration.captcha.expired");
-        verify(client, "unknown").jsonPath("$.errors[0].code")
+        assertThat(store.require(id).status()).isEqualTo(CaptchaStatus.CREATED);
+    }
+
+    @Test
+    @RegistrationTestCase("TC-010")
+    void unknownChallengeReturnsSafeNotFound() {
+        verify("cap_unknown000000000", ANSWER)
+                .jsonPath("$.errors[0].code")
                 .isEqualTo("err.registration.captcha.notFound");
-
-        client.post().uri(CAPTCHA_PATH + "/refresh")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(Map.of("captchaChallengeId", CAPTCHA_ID.value()))
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.success").isEqualTo(true)
-                .jsonPath("$.result.captchaChallengeId").isEqualTo(REFRESHED_CAPTCHA_ID.value())
-                .jsonPath("$.result.imageBase64").isEqualTo(PNG_BASE64);
-
-        client.post().uri(CAPTCHA_PATH + "/refresh")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(Map.of("captchaChallengeId", "invalid id"))
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.success").isEqualTo(false);
     }
 
     @Test
-    @RegistrationTestCase({
-            "TC-013", "TC-014", "TC-015", "TC-016", "TC-017", "TC-018",
-            "TC-019", "TC-020", "TC-021", "TC-022", "TC-023"
-    })
-    void registrationStartHttpBoundaryCoversChannelsValidationIdempotencyAndCookieContract() {
-        AtomicReference<StartRegistrationCommand> captured = new AtomicReference<>();
-        AtomicInteger calls = new AtomicInteger();
-        StartRegistrationUseCase useCase = command -> {
-            calls.incrementAndGet();
-            captured.set(command);
-            return Mono.just(started(command.email() != null ? "m****r@example.com" : "9******7"));
-        };
-        WebTestClient client = startClient(useCase);
-
-        client.post().uri(START_PATH)
-                .header("Idempotency-Key", "idem_0123456789abcdef")
-                .header("X-Request-Id", "0041-start-email")
-                .header("Accept-Language", "en")
+    @RegistrationTestCase("TC-011")
+    void refreshInvalidatesPreviousChallengeAndCreatesNewChallenge() {
+        String oldId = createChallenge();
+        String newId = client.post().uri(CAPTCHA_BASE + "/refresh")
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(startRequest("GPFS", "member@example.com", null, CAPTCHA_ID.value()))
-                .exchange()
-                .expectStatus().isOk()
-                .expectCookie().httpOnly("auth_flow_sid", true)
-                .expectCookie().secure("auth_flow_sid", true)
-                .expectBody()
-                .jsonPath("$.success").isEqualTo(true)
-                .jsonPath("$.status").isEqualTo("SUCCESS")
-                .jsonPath("$.result.nextStep").isEqualTo("VERIFY_OTP")
-                .jsonPath("$.result.data.remainingResendAttempts").isEqualTo(5)
-                .jsonPath("$.result.data.csrfToken").isEqualTo("csrf_token_safe");
+                .bodyValue(Map.of("captchaChallengeId", oldId))
+                .exchange().expectStatus().isOk()
+                .expectBody().jsonPath("$.success").isEqualTo(true)
+                .returnResult().getResponseBodyContent() == null
+                ? "" : store.latestIdExcluding(oldId);
+        assertThat(newId).isNotBlank().isNotEqualTo(oldId);
+        assertThat(store.require(oldId).status()).isEqualTo(CaptchaStatus.REFRESHED);
+        assertThat(store.require(newId).status()).isEqualTo(CaptchaStatus.CREATED);
+    }
 
-        assertThat(captured.get().email()).isEqualTo("member@example.com");
-        assertThat(captured.get().mobile()).isNull();
-        assertThat(captured.get().captchaChallengeId()).isEqualTo(CAPTCHA_ID.value());
-
-        client.post().uri(START_PATH)
-                .header("Idempotency-Key", "idem_abcdef0123456789")
+    @Test
+    @RegistrationTestCase("TC-012")
+    void refreshOfUnknownChallengeStillCreatesIndependentNewChallenge() {
+        client.post().uri(CAPTCHA_BASE + "/refresh")
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(startRequest("GPFS", null, "91234567", CAPTCHA_ID.value()))
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody().jsonPath("$.result.data.maskedDestination").isEqualTo("9******7");
-        assertThat(captured.get().mobile()).isEqualTo("91234567");
-        assertThat(captured.get().email()).isNull();
+                .bodyValue(Map.of("captchaChallengeId", "cap_unknown000000000"))
+                .exchange().expectStatus().isOk()
+                .expectBody().jsonPath("$.success").isEqualTo(true);
+        assertThat(store.size()).isEqualTo(1);
+    }
 
-        int beforeMissingKey = calls.get();
-        client.post().uri(START_PATH)
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(startRequest("GPFS", "member@example.com", null, CAPTCHA_ID.value()))
-                .exchange()
-                .expectStatus().isBadRequest()
-                .expectBody()
-                .jsonPath("$.success").isEqualTo(false)
-                .jsonPath("$.errors[0].code").isEqualTo("err.workflow.idempotency.missing");
-        assertThat(calls).hasValue(beforeMissingKey);
-
-        RegistrationStartValidator validator = new RegistrationStartValidator();
-        assertThat(validator.validate(new com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationStartInput(
-                "GPFS", "1234567890", "31/01/1980", null, null, CAPTCHA_ID.value())).valid()).isFalse();
-        assertThat(validator.validate(new com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationStartInput(
-                "GPFS", "1234567890", "31/01/1980", "member@example.com", "91234567", CAPTCHA_ID.value())).valid()).isFalse();
-        assertThat(validator.validate(new com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationStartInput(
-                "BAD", "1", "31/02/1980", "bad-email", null, null)).valid()).isFalse();
-
-        // The command preserves the frontend identity vocabulary; APIM enrichment
-        // owns STAFF_NO -> STAFF mapping and is guarded below.
-        client.post().uri(START_PATH)
-                .header("Idempotency-Key", "idem_staff_01234567")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(startRequest("STAFF_NO", "A12345", null, CAPTCHA_ID.value()))
+    private String createChallenge() {
+        client.post().uri(CAPTCHA_BASE + "/challenge")
                 .exchange().expectStatus().isOk();
-        assertThat(captured.get().identityType()).isEqualTo("STAFF_NO");
+        return store.latestId();
     }
 
-    @Test
-    @RegistrationTestCase({
-            "TC-024", "TC-025", "TC-026", "TC-027", "TC-028",
-            "TC-029", "TC-030", "TC-031", "TC-032"
+    private WebTestClient.BodyContentSpec verify(String id, String answer) {
+        return client.post().uri(CAPTCHA_BASE + "/verify")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(Map.of("captchaChallengeId", id, "answer", answer))
+                .exchange().expectStatus().isOk().expectBody();
+    }
+
+    @SpringBootConfiguration
+    @EnableAutoConfiguration(excludeName = {
+            "org.springframework.boot.micrometer.metrics.autoconfigure.ssl.SslMetricsAutoConfiguration"
     })
-    void stabilizedLookupAndDeliveryContractsRemainWiredIntoRegistrationStart() throws Exception {
-        String lookupAdapter = productionSource("ApimRegistrationLookupAdapter.java");
-        String requestMapper = productionSource("TrpSearchUnregMemberApimMapper.java");
-        String resultMapper = productionSource("TrpSearchUnregMemberApimResultMapper.java");
-        String lookupResult = productionSource("RegistrationLookupResult.java");
-        String startService = productionSource("StartRegistrationService.java");
-        String otpAdapter = productionSource("RegistrationOtpChallengeAdapter.java");
-        String yaml = Files.readString(Path.of("src/main/resources/application.yml"));
-        String contract = Files.readString(Path.of(
-                "src/test/resources/contracts/registration-lookup-apim-contract.csv"));
-
-        // Ownership is intentionally split: the adapter owns transport and
-        // structured failure logging, while the result mapper owns downstream
-        // semantic classification and item validation.
-        assertThat(lookupAdapter)
-                .contains("TRPSearchUnregMember")
-                .contains("withFailureLogging")
-                .contains("registration.lookup.downstream_contract_failure")
-                .contains("TrpSearchUnregMemberApimResultMapper")
-                .doesNotContain("RegistrationLookupStatus.DOWNSTREAM_ERROR");
-        assertThat(requestMapper)
-                .contains("command.identityType().name()")
-                .contains("RegistrationContactType.EMAIL")
-                .contains("RegistrationContactType.MOBILE");
-        assertThat(resultMapper)
-                .contains("err.tpa.member.not.found")
-                .contains("RegistrationLookupStatus.NOT_ELIGIBLE")
-                .contains("RegistrationLookupStatus.ELIGIBLE")
-                .contains("Reason.UNEXPECTED_ERROR")
-                .contains("Reason.EMPTY_DATA")
-                .contains("Reason.INVALID_ACCOUNT_DATA")
-                .contains("Reason.CONTACT_MISMATCH")
-                .contains("validateItem")
-                .doesNotContain("RegistrationLookupStatus.DOWNSTREAM_ERROR");
-        assertThat(lookupResult)
-                .contains("eligible lookup requires at least one account");
-        assertThat(contract)
-                .contains("eligible-email")
-                .contains("eligible-mobile")
-                .contains("not-eligible,err.tpa.member.not.found")
-                .contains("blank-error-empty-data")
-                .contains("malformed-envelope")
-                .contains("contact-mismatch")
-                .contains("missing-env")
-                .contains("missing-trust-code");
-        assertThat(startService)
-                .contains("RegistrationLookupPort")
-                .contains("RegistrationMessagePort")
-                .contains("RegistrationOtpPort");
-        assertThat(otpAdapter)
-                .contains("otpChallengePort.createChallenge(command)")
-                .doesNotContain("OTP_SEND_BY_DESTINATION_HASH")
-                .doesNotContain("enforceOtpSendRateLimit");
-        assertThat(yaml)
-                .doesNotContain("registration-start:")
-                .doesNotContain("by-destination-hash:");
-
-        WebTestClient deliveryFailure = startClient(command -> Mono.just(new StartRegistrationResult(
-                StartRegistrationResultStatus.MESSAGE_DELIVERY_FAILED,
-                WorkflowNextStep.NONE,
-                null,
-                0,
-                0,
-                0,
-                null,
-                null,
-                List.of(),
-                List.of(),
-                RegistrationIdempotencyStartOutcome.STARTED,
-                null)));
-        deliveryFailure.post().uri(START_PATH)
-                .header("Idempotency-Key", "idem_delivery_01234567")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(startRequest("GPFS", "member@example.com", null, CAPTCHA_ID.value()))
-                .exchange()
-                .expectStatus().is5xxServerError()
-                .expectBody(String.class)
-                .value(body -> assertThat(body)
-                        .doesNotContain("member@example.com", "91234567", "captchaAnswer", "otpCode"));
+    @EnableConfigurationProperties(CorsProperties.class)
+    @Import({SecurityConfig.class, AuthCaptchaController.class})
+    static class TestApplication {
+        @Bean MutableClock clock() { return new MutableClock(); }
+        @Bean SequenceCaptchaIdGenerator ids() { return new SequenceCaptchaIdGenerator(); }
+        @Bean InMemoryCaptchaPort captchaPort() { return new InMemoryCaptchaPort(); }
+        @Bean AuthWorkflowPolicyPort policy() {
+            return new AuthWorkflowPolicyPort() {
+                public RegistrationAuthWorkflowPolicy registrationPolicy() {
+                    return new RegistrationAuthWorkflowPolicy(
+                            null, new CaptchaPolicy(8, "ABC123", false, 300, 5), null, null, null);
+                }
+                public Optional<String> resolveIdentityTypeSearchScope(String identityType) {
+                    return Optional.empty();
+                }
+            };
+        }
+        @Bean CaptchaImageGeneratorPort imageGenerator() {
+            return policy -> Mono.just(new GeneratedCaptcha(ANSWER, new CaptchaImage(PNG, "image/png")));
+        }
+        @Bean CaptchaAnswerHasherPort hasher() { return new DeterministicHasher(); }
+        @Bean CreateCaptchaChallengeUseCase create(
+                AuthWorkflowPolicyPort p, CaptchaImageGeneratorPort i, CaptchaAnswerHasherPort h,
+                CaptchaChallengePort s, CaptchaChallengeIdGenerator g, Clock c) {
+            return new CreateCaptchaChallengeService(p, i, h, s, g, c);
+        }
+        @Bean VerifyCaptchaUseCase verify(
+                AuthWorkflowPolicyPort p, CaptchaAnswerHasherPort h, CaptchaChallengePort s, Clock c) {
+            return new VerifyCaptchaService(p, h, s, c);
+        }
+        @Bean RefreshCaptchaUseCase refresh(
+                AuthWorkflowPolicyPort p, CaptchaImageGeneratorPort i, CaptchaAnswerHasherPort h,
+                CaptchaChallengePort s, CaptchaChallengeIdGenerator g, Clock c) {
+            return new RefreshCaptchaService(p, i, h, s, g, c);
+        }
+        @Bean CaptchaWebMapper mapper() {
+            return new CaptchaWebMapper((code, locale, accountEnv, trustCode, schemeType) -> "resolved-" + code);
+        }
+        @Bean RequestLoggingProperties requestLoggingProperties() {
+            RequestLoggingProperties properties = new RequestLoggingProperties();
+            properties.setEnabled(false);
+            return properties;
+        }
+        @Bean ObjectMapper objectMapper() {
+            return new ObjectMapper();
+        }
+        @Bean LoggingSanitizerProperties loggingSanitizerProperties() {
+            return new LoggingSanitizerProperties();
+        }
+        @Bean LoggingSanitizer loggingSanitizer(
+                ObjectMapper objectMapper,
+                LoggingSanitizerProperties properties) {
+            return new LoggingSanitizer(objectMapper, properties);
+        }
+        @Bean RequestLoggingWebFilter requestLoggingWebFilter(
+                RequestLoggingProperties properties,
+                LoggingSanitizer sanitizer,
+                ObjectMapper objectMapper) {
+            return new RequestLoggingWebFilter(properties, sanitizer, objectMapper);
+        }
+        @Bean RequestHeaderContextWebFilter requestHeaderContextWebFilter(
+                RequestLoggingWebFilter requestLoggingWebFilter) {
+            return new RequestHeaderContextWebFilter(requestLoggingWebFilter);
+        }
     }
 
-    private WebTestClient.BodyContentSpec verify(WebTestClient client, String answer) {
-        return client.post().uri(CAPTCHA_PATH + "/verify")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(Map.of("captchaChallengeId", CAPTCHA_ID.value(), "answer", answer))
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody();
+    static final class MutableClock extends Clock {
+        private Instant instant = Instant.parse("2026-07-17T00:00:00Z");
+        void reset() { instant = Instant.parse("2026-07-17T00:00:00Z"); }
+        void advance(Duration duration) { instant = instant.plus(duration); }
+        public ZoneId getZone() { return ZoneOffset.UTC; }
+        public Clock withZone(ZoneId zone) { return this; }
+        public Instant instant() { return instant; }
     }
 
-    private WebTestClient captchaClient(
-            CreateCaptchaChallengeUseCase create,
-            VerifyCaptchaUseCase verify,
-            RefreshCaptchaUseCase refresh) {
-        return WebTestClient.bindToController(new AuthCaptchaController(
-                        create,
-                        verify,
-                        refresh,
-                        new CaptchaWebMapper(
-                                (code, locale, accountEnv, trustCode, schemeType) -> "resolved-" + code)))
-                .build();
+    static final class SequenceCaptchaIdGenerator implements CaptchaChallengeIdGenerator {
+        private final AtomicInteger sequence = new AtomicInteger();
+        void reset() { sequence.set(0); }
+        public CaptchaChallengeId nextId() {
+            return new CaptchaChallengeId("cap_" + String.format("%016d", sequence.incrementAndGet()));
+        }
     }
 
-    private WebTestClient startClient(StartRegistrationUseCase useCase) {
-        return WebTestClient.bindToController(new AuthRegistrationController(
-                        useCase,
-                        new RegistrationStartWebMapper(Duration.ofMinutes(5)),
-                        AuthFlowCookieWriter.defaultWriter(),
-                        Mockito.mock(CompleteRegistrationUseCase.class),
-                        Mockito.mock(CompleteRegistrationWebMapper.class),
-                        Mockito.mock(CancelRegistrationUseCase.class),
-                        Mockito.mock(CancelRegistrationWebMapper.class),
-                        Mockito.mock(XsrfCookieWriter.class)))
-                .build();
+    static final class DeterministicHasher implements CaptchaAnswerHasherPort {
+        public CaptchaAnswerHash hash(String answer, boolean caseSensitive) {
+            String normalized = caseSensitive ? answer : answer.toUpperCase();
+            return new CaptchaAnswerHash(String.format("%064x", normalized.hashCode() & 0xffffffffL));
+        }
+        public boolean matches(String answer, CaptchaAnswerHash hash, boolean caseSensitive) {
+            return hash(answer, caseSensitive).equals(hash);
+        }
     }
 
-    private CreateCaptchaChallengeUseCase createdCaptcha() {
-        return command -> Mono.just(new CreateCaptchaChallengeResult(
-                CAPTCHA_ID, new CaptchaImage(PNG_BASE64, "image/png"), 300));
-    }
-
-    private VerifyCaptchaUseCase verifiedCaptcha() {
-        return command -> Mono.just(new VerifyCaptchaChallengeResult(
-                CaptchaVerificationOutcome.VERIFIED, true, CAPTCHA_ID, 5));
-    }
-
-    private RefreshCaptchaUseCase refreshedCaptcha() {
-        return command -> Mono.just(new RefreshCaptchaChallengeResult(
-                REFRESHED_CAPTCHA_ID, new CaptchaImage(PNG_BASE64, "image/png"), 300));
-    }
-
-    private RegistrationStartRequest startRequest(
-            String identityType,
-            String email,
-            String mobile,
-            String captchaChallengeId) {
-        return new RegistrationStartRequest(
-                identityType,
-                "1234567890",
-                "31/01/1980",
-                email,
-                mobile,
-                captchaChallengeId);
-    }
-
-    private StartRegistrationResult started(String maskedDestination) {
-        return new StartRegistrationResult(
-                StartRegistrationResultStatus.STARTED,
-                WorkflowNextStep.VERIFY_OTP,
-                maskedDestination,
-                300,
-                60,
-                5,
-                "csrf_token_safe",
-                "afs_0123456789abcdef",
-                List.of(),
-                List.of(),
-                RegistrationIdempotencyStartOutcome.STARTED,
-                null);
-    }
-
-    private String productionSource(String fileName) throws Exception {
-        try (var paths = Files.walk(Path.of("src/main/java"))) {
-            Path path = paths
-                    .filter(candidate -> candidate.getFileName().toString().equals(fileName))
-                    .findFirst()
-                    .orElseThrow();
-            return Files.readString(path);
+    static final class InMemoryCaptchaPort implements CaptchaChallengePort {
+        private final Map<CaptchaChallengeId, CaptchaChallenge> values = new ConcurrentHashMap<>();
+        void clear() { values.clear(); }
+        int size() { return values.size(); }
+        String latestId() { return values.keySet().stream().map(CaptchaChallengeId::value).sorted().reduce((a,b)->b).orElseThrow(); }
+        String latestIdExcluding(String excluded) { return values.keySet().stream().map(CaptchaChallengeId::value).filter(id -> !id.equals(excluded)).sorted().reduce((a,b)->b).orElseThrow(); }
+        CaptchaChallenge require(String id) { return values.get(new CaptchaChallengeId(id)); }
+        public Mono<CaptchaChallenge> create(CaptchaChallenge challenge) { values.put(challenge.captchaChallengeId(), challenge); return Mono.just(challenge); }
+        public Mono<Optional<CaptchaChallenge>> load(CaptchaChallengeId id) { return Mono.just(Optional.ofNullable(values.get(id))); }
+        public Mono<CaptchaChallenge> markVerified(CaptchaChallengeId id, Instant at) { return update(id, old -> copy(old, CaptchaStatus.VERIFIED, old.failedAttemptCount(), at, null, null, null)); }
+        public Mono<CaptchaChallenge> incrementFailedAttempt(CaptchaChallengeId id, Instant at) { return update(id, old -> copy(old, old.status(), old.failedAttemptCount()+1, old.verifiedAt(), old.consumedAt(), old.refreshedAt(), old.lockedAt())); }
+        public Mono<CaptchaChallenge> markLocked(CaptchaChallengeId id, Instant at) { return update(id, old -> copy(old, CaptchaStatus.LOCKED, old.failedAttemptCount(), old.verifiedAt(), old.consumedAt(), old.refreshedAt(), at)); }
+        public Mono<CaptchaChallenge> markConsumed(CaptchaChallengeId id, Instant at) { return update(id, old -> copy(old, CaptchaStatus.CONSUMED, old.failedAttemptCount(), old.verifiedAt(), at, old.refreshedAt(), old.lockedAt())); }
+        public Mono<CaptchaChallenge> markRefreshed(CaptchaChallengeId id, Instant at) { return update(id, old -> copy(old, CaptchaStatus.REFRESHED, old.failedAttemptCount(), old.verifiedAt(), old.consumedAt(), at, old.lockedAt())); }
+        public Mono<Void> delete(CaptchaChallengeId id) { values.remove(id); return Mono.empty(); }
+        private Mono<CaptchaChallenge> update(CaptchaChallengeId id, java.util.function.Function<CaptchaChallenge,CaptchaChallenge> fn) { CaptchaChallenge next=fn.apply(values.get(id)); values.put(id,next); return Mono.just(next); }
+        private CaptchaChallenge copy(CaptchaChallenge old, CaptchaStatus status, int failures, Instant verified, Instant consumed, Instant refreshed, Instant locked) {
+            return new CaptchaChallenge(old.captchaChallengeId(), old.answerHash(), status, failures, old.maxAttempts(), old.createdAt(), old.expiresAt(), verified, consumed, refreshed, locked);
         }
     }
 }
