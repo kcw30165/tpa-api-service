@@ -48,10 +48,16 @@ public final class RegistrationTestResultExtension implements TestWatcher, After
             RegistrationTestStatus status,
             String actual,
             String reason) {
-        Method method = context.getRequiredTestMethod();
+        Optional<Method> testMethod = context.getTestMethod();
+        if (testMethod.isEmpty()) {
+            return;
+        }
+        Method method = testMethod.get();
         RegistrationTestCase mapping = method.getAnnotation(RegistrationTestCase.class);
         if (mapping == null || mapping.value().length == 0) {
-            throw new IllegalStateException("Integration test is missing @RegistrationTestCase: " + method);
+            // Harness self-tests and catalogue guards do not represent a catalogue
+            // execution row. Subtask 006 performs the strict unmapped-ID audit.
+            return;
         }
         String evidence = "target/surefire-reports/TEST-" + context.getRequiredTestClass().getName() + ".xml";
         for (String testId : mapping.value()) {
