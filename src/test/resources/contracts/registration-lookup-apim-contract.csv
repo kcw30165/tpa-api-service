@@ -1,6 +1,6 @@
 scenario,errMessage,data,contactMatch,accountFieldsValid,expectedDomainResult,expectedHttpStatus,expectedPublicError,expectedInternalOrigin
-eligible-email,,non-empty,true,true,ELIGIBLE,200,,
-eligible-mobile,,non-empty,true,true,ELIGIBLE,200,,
+eligible-email,,WOPND.SRUT@NG.DDK,true,true,ELIGIBLE,200,,
+eligible-mobile,,60466158,true,true,ELIGIBLE,200,,
 not-eligible,err.tpa.member.not.found,empty,n/a,n/a,NOT_ELIGIBLE,422,err.registration.start.verificationFailed,DOWNSTREAM_BUSINESS
 bad-request,err.tpa.bad.request,empty,n/a,n/a,EXCEPTION,503,err.workflow.downstream.unavailable,DOWNSTREAM_CONTRACT
 unknown-error,err.tpa.unknown,empty,n/a,n/a,EXCEPTION,503,err.workflow.downstream.unavailable,DOWNSTREAM_CONTRACT
