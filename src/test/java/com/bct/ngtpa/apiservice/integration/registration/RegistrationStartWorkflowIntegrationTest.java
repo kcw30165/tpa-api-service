@@ -13,6 +13,8 @@ import com.bct.ngtpa.apiservice.application.dto.auth.RegistrationAuthWorkflowPol
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.*;
+import com.bct.ngtpa.apiservice.application.dto.auth.otp.*;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.*;
 import com.bct.ngtpa.apiservice.application.port.in.*;
 import com.bct.ngtpa.apiservice.application.port.out.*;
 import com.bct.ngtpa.apiservice.application.service.auth.captcha.RegistrationCaptchaGateService;
@@ -63,10 +65,11 @@ class RegistrationStartWorkflowIntegrationTest {
     @Autowired RecordingOtpPort otp;
     @Autowired RecordingMessagePort messages;
     @Autowired SequenceState sequence;
+    @Autowired ReplayState replayState;
 
     @BeforeEach
     void reset() {
-        captcha.clear(); idempotency.clear(); lookup.reset(); sessions.reset(); otp.reset(); messages.reset(); sequence.reset();
+        captcha.clear(); idempotency.clear(); lookup.reset(); sessions.reset(); otp.reset(); messages.reset(); sequence.reset(); replayState.clear();
     }
 
     @Test
@@ -147,6 +150,45 @@ class RegistrationStartWorkflowIntegrationTest {
                 .exchange().expectStatus().isBadRequest()
                 .expectBody().jsonPath("$.errors[0].code").isEqualTo("err.workflow.idempotency.missing");
         assertNoOperationalSideEffects();
+    }
+
+    @Test
+    @RegistrationTestCase("TC-019")
+    void sameKeyAndRequestReplayCurrentSessionWithoutDuplicateSideEffects() {
+        String challenge = verifiedCaptcha();
+        Map<String, Object> request = body(
+                "GPFS", "1234567890", "member@example.com", null, challenge);
+
+        startWithKey("replay-key", request)
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.result.nextStep").isEqualTo("VERIFY_OTP")
+                .jsonPath("$.result.data.remainingResendAttempts").isEqualTo(5);
+
+        int lookupCalls = lookup.calls;
+        int sessionCreates = sessions.created;
+        int otpCreates = otp.destinations.size();
+        int deliveries = messages.recipients.size();
+
+        client.post().uri(START)
+                .header("X-Request-Id", requestId())
+                .header("Idempotency-Key", "replay-key")
+                .header("Accept-Language", "en")
+                .cookie("auth_flow_sid", "sid-1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(request)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.success").isEqualTo(true)
+                .jsonPath("$.result.nextStep").isEqualTo("VERIFY_OTP")
+                .jsonPath("$.result.data.remainingResendAttempts").isEqualTo(5)
+                .jsonPath("$.result.data.csrfToken").isEqualTo("csrf-safe-token");
+
+        assertThat(lookup.calls).isEqualTo(lookupCalls);
+        assertThat(sessions.created).isEqualTo(sessionCreates);
+        assertThat(otp.destinations).hasSize(otpCreates);
+        assertThat(messages.recipients).hasSize(deliveries);
     }
 
     @Test
@@ -265,15 +307,17 @@ class RegistrationStartWorkflowIntegrationTest {
         @Bean AuthWorkflowPolicyPort policy() { return new TestPolicy(); }
         @Bean StatefulIdempotencyPort idempotency() { return new StatefulIdempotencyPort(); }
         @Bean RecordingLookupPort lookup() { return new RecordingLookupPort(); }
-        @Bean RecordingSessionPort sessions() { return new RecordingSessionPort(); }
+        @Bean ReplayState replayState() { return new ReplayState(); }
+        @Bean RecordingSessionPort sessions(ReplayState state) { return new RecordingSessionPort(state); }
         @Bean RegistrationCsrPort csrf() { return sid -> Mono.just("csrf-safe-token"); }
-        @Bean RecordingOtpPort otp() { return new RecordingOtpPort(); }
+        @Bean RecordingOtpPort otp(ReplayState state) { return new RecordingOtpPort(state); }
         @Bean RecordingMessagePort message() { return new RecordingMessagePort(); }
         @Bean StartRegistrationUseCase startUseCase(StatefulIdempotencyPort idem, RecordingLookupPort lookup,
                 RecordingSessionPort sessions, RegistrationCsrPort csrf, RecordingOtpPort otp,
-                RecordingMessagePort message, AuthWorkflowPolicyPort policy, RegistrationCaptchaGateService gate, Clock clock) {
+                RecordingMessagePort message, AuthWorkflowPolicyPort policy, RegistrationCaptchaGateService gate,
+                ReplayState replayState, Clock clock) {
             return new StartRegistrationService(new RegistrationStartValidator(), new Sha256RegistrationRequestHashGenerator(),
-                    idem, lookup, sessions, csrf, otp, message, null, null, policy, gate, clock);
+                    idem, lookup, sessions, csrf, otp, message, replayState, replayState, policy, gate, clock);
         }
         @Bean RegistrationStartWebMapper startMapper(ErrorMessageResolver resolver) { return new RegistrationStartWebMapper(Duration.ofMinutes(5), resolver); }
         @Bean AuthFlowCookieWriter cookieWriter() { return AuthFlowCookieWriter.defaultWriter(); }
@@ -340,16 +384,101 @@ class RegistrationStartWorkflowIntegrationTest {
         void reset(){ calls=0; result=new RegistrationLookupResult(RegistrationLookupStatus.ELIGIBLE,List.of(new RegistrationLookupAccount("member@example.com","91234567","OI","JPM")),null); }
     }
     static final class RecordingSessionPort implements RegistrationSessionPort {
+        private final ReplayState state;
         int created;
-        public Mono<String> createRegistrationSession(String masked, RegistrationContactType type){ created++; return Mono.just("sid-"+created); }
-        public Mono<Void> updateOtpChallenge(String sid,String otpId,RegistrationContactType type,String masked){ return Mono.empty(); }
+        RecordingSessionPort(ReplayState state) { this.state = state; }
+        public Mono<String> createRegistrationSession(String masked, RegistrationContactType type){
+            created++;
+            String sid = "sid-" + created;
+            state.createSession(sid, type, masked);
+            return Mono.just(sid);
+        }
+        public Mono<Void> updateOtpChallenge(String sid,String otpId,RegistrationContactType type,String masked){
+            state.attachOtp(sid, otpId, type, masked);
+            return Mono.empty();
+        }
         void reset(){ created=0; }
     }
     static final class RecordingOtpPort implements RegistrationOtpPort {
+        private final ReplayState state;
         final List<String> destinations=new ArrayList<>();
-        public Mono<RegistrationOtpCreationResult> createOtp(RegistrationContactType type,String destination){ destinations.add(destination); return Mono.just(new RegistrationOtpCreationResult("otp-"+destinations.size(),"123456",300,60,5)); }
+        RecordingOtpPort(ReplayState state) { this.state = state; }
+        public Mono<RegistrationOtpCreationResult> createOtp(RegistrationContactType type,String destination){
+            destinations.add(destination);
+            String id = "otp-" + destinations.size();
+            state.saveOtp(id, type);
+            return Mono.just(new RegistrationOtpCreationResult(id,"123456",300,60,5));
+        }
         void reset(){ destinations.clear(); }
     }
+    static final class ReplayState implements AuthFlowSessionPort, OtpChallengeStatePort {
+        private final Map<AuthFlowSessionId, AuthFlowSession> sessions = new ConcurrentHashMap<>();
+        private final Map<String, OtpChallenge> challenges = new ConcurrentHashMap<>();
+
+        void createSession(String sid, RegistrationContactType type, String masked) {
+            AuthFlowSessionId id = new AuthFlowSessionId(sid);
+            sessions.put(id, new AuthFlowSession(
+                    id,
+                    AuthFlowScenario.REGISTRATION,
+                    AuthFlowStatus.OTP_SENT,
+                    "csrf-hash",
+                    null,
+                    new AuthFlowSessionData(type.name(), masked, Map.of()),
+                    NOW,
+                    NOW,
+                    NOW.plusSeconds(1800)));
+        }
+
+        void attachOtp(String sid, String otpId, RegistrationContactType type, String masked) {
+            AuthFlowSessionId id = new AuthFlowSessionId(sid);
+            AuthFlowSession old = sessions.get(id);
+            sessions.put(id, new AuthFlowSession(
+                    id, old.scenario(), AuthFlowStatus.OTP_SENT, old.csrfTokenHash(), otpId,
+                    new AuthFlowSessionData(type.name(), masked, Map.of()),
+                    old.createdAt(), NOW, old.expiresAt()));
+        }
+
+        void saveOtp(String otpId, RegistrationContactType type) {
+            challenges.put(otpId, new OtpChallenge(
+                    otpId,
+                    OtpScenario.REGISTRATION,
+                    "sid-1",
+                    type == RegistrationContactType.EMAIL ? OtpChannel.EMAIL : OtpChannel.SMS,
+                    "destination-hash",
+                    "code-hash",
+                    OtpStatus.CREATED,
+                    0,
+                    5,
+                    0,
+                    5,
+                    NOW,
+                    NOW.plusSeconds(300),
+                    NOW,
+                    null,
+                    null));
+        }
+
+        public Mono<AuthFlowSession> create(AuthFlowSessionCreateCommand command) {
+            AuthFlowSession value = new AuthFlowSession(
+                    command.authFlowSessionId(), command.scenario(), command.initialStatus(),
+                    command.csrfTokenHash(), command.activeOtpChallengeId(), command.data(),
+                    command.createdAt(), command.createdAt(), command.expiresAt());
+            sessions.put(value.authFlowSessionId(), value);
+            return Mono.just(value);
+        }
+        public Mono<Optional<AuthFlowSession>> load(AuthFlowSessionId id) { return Mono.just(Optional.ofNullable(sessions.get(id))); }
+        public Mono<AuthFlowSession> update(AuthFlowSession value) { sessions.put(value.authFlowSessionId(), value); return Mono.just(value); }
+        public Mono<AuthFlowSession> touch(AuthFlowSessionId id, Instant now) { return load(id).map(Optional::orElseThrow); }
+        public Mono<AuthFlowSession> complete(AuthFlowSessionId id, Instant now) { return load(id).map(Optional::orElseThrow); }
+        public Mono<AuthFlowSession> cancel(AuthFlowSessionId id, Instant now) { return load(id).map(Optional::orElseThrow); }
+        public Mono<Void> delete(AuthFlowSessionId id) { sessions.remove(id); return Mono.empty(); }
+        public Mono<Void> save(OtpChallenge challenge) { challenges.put(challenge.otpChallengeId(), challenge); return Mono.empty(); }
+        public Mono<Optional<OtpChallenge>> findById(String id) { return Mono.just(Optional.ofNullable(challenges.get(id))); }
+        public Mono<Void> update(OtpChallenge challenge) { challenges.put(challenge.otpChallengeId(), challenge); return Mono.empty(); }
+        public Mono<Void> delete(String id) { challenges.remove(id); return Mono.empty(); }
+        void clear() { sessions.clear(); challenges.clear(); }
+    }
+
     static final class RecordingMessagePort implements RegistrationMessagePort {
         final List<String> recipients=new ArrayList<>(); boolean accepted=true;
         public Mono<Boolean> deliverRegistrationOtp(RegistrationContactType type,String recipient,String code,int ttl,String lang,String correlation){ recipients.add(recipient); return Mono.just(accepted); }
