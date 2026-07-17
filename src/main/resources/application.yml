@@ -192,6 +192,7 @@ request-logging:
 error-message:
   en:
     "err.request.invalid": "Invalid request."
+    "err.request.id.missing": "The X-Request-Id header is required."
     "err.request.validation.failed": "Invalid request payload."
     "err.request.body.malformed": "Malformed request body."
     "err.security.access.denied": "Access is denied."
@@ -213,6 +214,7 @@ error-message:
     "registration.start.verificationFailed": "We are unable to verify your details. Please review and try again."
   zh_HK:
     "err.request.invalid": "請求無效。"
+    "err.request.id.missing": "必須提供 X-Request-Id 標頭。"
     "err.request.validation.failed": "請求內容無效。"
     "err.request.body.malformed": "請求內容格式錯誤。"
     "err.security.access.denied": "存取被拒。"

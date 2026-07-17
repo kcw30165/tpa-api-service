@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -47,7 +48,31 @@ public final class RegistrationTestResultStore {
                     .map(header -> values.getOrDefault(header, ""))
                     .toList()));
         }
-        Files.write(OUTPUT, lines, StandardCharsets.UTF_8,
-                StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        writeAtomicallyOrToFallback(lines);
+    }
+
+
+    private static void writeAtomicallyOrToFallback(List<String> lines) throws IOException {
+        String runSuffix = ProcessHandle.current().pid() + "-" + System.currentTimeMillis();
+        Path temporary = OUTPUT.resolveSibling(OUTPUT.getFileName() + ".tmp-" + runSuffix);
+        Files.write(temporary, lines, StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
+        try {
+            try {
+                Files.move(temporary, OUTPUT,
+                        StandardCopyOption.ATOMIC_MOVE,
+                        StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException atomicMoveFailure) {
+                Files.move(temporary, OUTPUT, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } catch (IOException lockedCanonicalOutput) {
+            Path fallback = OUTPUT.resolveSibling(
+                    "registration-test-results-" + runSuffix + ".csv");
+            Files.move(temporary, fallback, StandardCopyOption.REPLACE_EXISTING);
+            System.err.println("[WARN] Canonical registration result CSV is locked; "
+                    + "wrote this run to " + fallback);
+        } finally {
+            Files.deleteIfExists(temporary);
+        }
     }
 }

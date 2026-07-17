@@ -7,6 +7,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestHeaderContextWebFilter;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingWebFilter;
+import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequiredRequestIdWebFilter;
 import com.bct.ngtpa.apiservice.application.dto.auth.CaptchaPolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.RegistrationAuthWorkflowPolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaAnswerHash;
@@ -68,7 +69,6 @@ import reactor.core.publisher.Mono;
 @AutoConfigureWebTestClient
 @ExtendWith(RegistrationTestResultExtension.class)
 class RegistrationCaptchaAndStartIntegrationTest {
-
     private static final String CAPTCHA_BASE = "/api/v1/auth/captcha";
     private static final String ANSWER = "AbC12312";
     private static final String WRONG = "Wrong999";
@@ -78,12 +78,14 @@ class RegistrationCaptchaAndStartIntegrationTest {
     @Autowired InMemoryCaptchaPort store;
     @Autowired MutableClock clock;
     @Autowired SequenceCaptchaIdGenerator ids;
+    private final AtomicInteger requestIds = new AtomicInteger();
 
     @BeforeEach
     void reset() {
         store.clear();
         clock.reset();
         ids.reset();
+        requestIds.set(0);
     }
 
     @Test
@@ -94,21 +96,30 @@ class RegistrationCaptchaAndStartIntegrationTest {
                 .exchange().expectStatus().isOk()
                 .expectHeader().valueEquals("X-Request-Id", "0041-tc-002");
     }
-
     @Test
     @RegistrationTestCase("TC-003")
-    void missingRequestIdIsGeneratedAndReturnedInHeader() {
-        client.post().uri(CAPTCHA_BASE + "/challenge")
-                .exchange().expectStatus().isOk()
-                .expectHeader().exists("X-Request-Id")
-                .expectHeader().value("X-Request-Id", value ->
-                        assertThat(value).isNotBlank());
+    void missingRequestIdIsRejectedBeforeCaptchaCreation() {
+        int before = store.size();
+
+        client.post()
+                .uri(CAPTCHA_BASE + "/challenge")
+                .header("Accept-Language", "en")
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.success").isEqualTo(false)
+                .jsonPath("$.status").isEqualTo("VALIDATION_FAILED")
+                .jsonPath("$.errors[0].code").isEqualTo("err.request.id.missing")
+                .jsonPath("$.errors[0].targets[0]").isEqualTo("X-Request-Id");
+
+        assertThat(store.size()).isEqualTo(before);
     }
 
     @Test
     @RegistrationTestCase("TC-004")
     void unsupportedLanguageFallsBackWithoutBilingualPayload() {
         client.post().uri(CAPTCHA_BASE + "/challenge?lang=zh_HK")
+                .header("X-Request-Id", requestId("004"))
                 .header("Accept-Language", "unsupported-language")
                 .exchange().expectStatus().isOk()
                 .expectBody(String.class)
@@ -121,6 +132,7 @@ class RegistrationCaptchaAndStartIntegrationTest {
     @RegistrationTestCase("TC-005")
     void captchaChallengeNeedsNoRegistrationCredentials() {
         client.post().uri(CAPTCHA_BASE + "/challenge")
+                .header("X-Request-Id", requestId("005"))
                 .exchange().expectStatus().isOk()
                 .expectBody().jsonPath("$.success").isEqualTo(true);
     }
@@ -183,6 +195,7 @@ class RegistrationCaptchaAndStartIntegrationTest {
     void refreshInvalidatesPreviousChallengeAndCreatesNewChallenge() {
         String oldId = createChallenge();
         String newId = client.post().uri(CAPTCHA_BASE + "/refresh")
+                .header("X-Request-Id", requestId("011"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(Map.of("captchaChallengeId", oldId))
                 .exchange().expectStatus().isOk()
@@ -198,6 +211,7 @@ class RegistrationCaptchaAndStartIntegrationTest {
     @RegistrationTestCase("TC-012")
     void refreshOfUnknownChallengeStillCreatesIndependentNewChallenge() {
         client.post().uri(CAPTCHA_BASE + "/refresh")
+                .header("X-Request-Id", requestId("012"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(Map.of("captchaChallengeId", "cap_unknown000000000"))
                 .exchange().expectStatus().isOk()
@@ -205,18 +219,25 @@ class RegistrationCaptchaAndStartIntegrationTest {
         assertThat(store.size()).isEqualTo(1);
     }
 
+    private String requestId(String scenario) {
+        return "0041-captcha-" + scenario + "-" + ids.currentSequence();
+    }
+
     private String createChallenge() {
         client.post().uri(CAPTCHA_BASE + "/challenge")
+                .header("X-Request-Id", requestId("challenge"))
                 .exchange().expectStatus().isOk();
         return store.latestId();
     }
 
     private WebTestClient.BodyContentSpec verify(String id, String answer) {
         return client.post().uri(CAPTCHA_BASE + "/verify")
+                .header("X-Request-Id", requestId("verify"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(Map.of("captchaChallengeId", id, "answer", answer))
                 .exchange().expectStatus().isOk().expectBody();
     }
+
 
     @SpringBootConfiguration
     @EnableAutoConfiguration(excludeName = {
@@ -260,6 +281,9 @@ class RegistrationCaptchaAndStartIntegrationTest {
         @Bean CaptchaWebMapper mapper() {
             return new CaptchaWebMapper((code, locale, accountEnv, trustCode, schemeType) -> "resolved-" + code);
         }
+        @Bean com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver errorMessageResolver() {
+            return (code, locale, accountEnv, trustCode, schemeType) -> "resolved-" + code;
+        }
         @Bean RequestLoggingProperties requestLoggingProperties() {
             RequestLoggingProperties properties = new RequestLoggingProperties();
             properties.setEnabled(false);
@@ -286,6 +310,11 @@ class RegistrationCaptchaAndStartIntegrationTest {
                 RequestLoggingWebFilter requestLoggingWebFilter) {
             return new RequestHeaderContextWebFilter(requestLoggingWebFilter);
         }
+        @Bean RequiredRequestIdWebFilter requiredRequestIdWebFilter(
+                com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver resolver,
+                ObjectMapper objectMapper) {
+            return new RequiredRequestIdWebFilter(resolver, objectMapper);
+        }
     }
 
     static final class MutableClock extends Clock {
@@ -300,6 +329,7 @@ class RegistrationCaptchaAndStartIntegrationTest {
     static final class SequenceCaptchaIdGenerator implements CaptchaChallengeIdGenerator {
         private final AtomicInteger sequence = new AtomicInteger();
         void reset() { sequence.set(0); }
+        int currentSequence() { return sequence.get(); }
         public CaptchaChallengeId nextId() {
             return new CaptchaChallengeId("cap_" + String.format("%016d", sequence.incrementAndGet()));
         }
