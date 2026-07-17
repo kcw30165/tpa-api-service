@@ -98,26 +98,20 @@ class AuthWorkflowPolicyResolverTest {
 
 
     @Test
-    void authWorkflowPolicyExposesRegistrationRateLimitPolicy() {
+    void authWorkflowPolicyExposesOtpLifecyclePolicy() {
         contextRunner.run(context -> {
-            var rateLimit = context.getBean(AuthWorkflowPolicyPort.class)
+            var otp = context.getBean(AuthWorkflowPolicyPort.class)
                     .registrationPolicy()
-                    .rateLimit();
+                    .otp();
 
-            assertNotNull(rateLimit);
-            // assertTrue(rateLimit.registrationStartByIp().enabled());
-            // assertEquals(10, rateLimit.registrationStartByIp().maxAttempts());
-            // assertEquals(600, rateLimit.registrationStartByIp().windowSeconds());
-
-            assertTrue(rateLimit.otpSendByDestinationHash().enabled());
-            assertEquals(3, rateLimit.otpSendByDestinationHash().maxAttempts());
-            assertEquals(600, rateLimit.otpSendByDestinationHash().windowSeconds());
-
-            assertTrue(rateLimit.otpVerifyByRegistrationSession().enabled());
-            assertEquals(5, rateLimit.otpVerifyByRegistrationSession().maxAttempts());
-            assertEquals(300, rateLimit.otpVerifyByRegistrationSession().windowSeconds());
+            assertNotNull(otp);
+            assertEquals(5, otp.maxResendAttempts());
+            assertEquals(5, otp.maxVerifyAttempts());
+            assertEquals(60, otp.resendCooldownSeconds());
+            assertTrue(otp.invalidatePreviousOnResend());
         });
     }
+
 
     @Test
     void rateLimitPolicyIsDirectConfigOnly() throws Exception {

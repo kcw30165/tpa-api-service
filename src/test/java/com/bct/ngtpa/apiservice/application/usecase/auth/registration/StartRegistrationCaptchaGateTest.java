@@ -346,7 +346,6 @@ class StartRegistrationCaptchaGateTest {
                 new CaptchaPolicy(7, "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", true, 300, 5),
                 null,
                 null,
-                null,
                 null);
     }
 

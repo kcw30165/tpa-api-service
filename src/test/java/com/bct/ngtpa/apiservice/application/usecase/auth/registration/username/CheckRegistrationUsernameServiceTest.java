@@ -354,7 +354,7 @@ class CheckRegistrationUsernameServiceTest {
 
     private static final class FakePolicy implements AuthWorkflowPolicyPort {
         @Override public RegistrationAuthWorkflowPolicy registrationPolicy() {
-            return new RegistrationAuthWorkflowPolicy(null, null, null, new UsernamePolicy(4, 128, true, true, true, true, "!@#$%^&*()_-"), null, null);
+            return new RegistrationAuthWorkflowPolicy(null, null, null, new UsernamePolicy(4, 128, true, true, true, true, "!@#$%^&*()_-"), null);
         }
         @Override public java.util.Optional<String> resolveIdentityTypeSearchScope(String identityType) { return java.util.Optional.empty(); }
     }

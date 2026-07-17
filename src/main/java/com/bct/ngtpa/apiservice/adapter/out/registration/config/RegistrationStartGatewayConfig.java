@@ -61,13 +61,11 @@ public class RegistrationStartGatewayConfig {
     public RegistrationOtpPort registrationOtpGateway(
             OtpChallengePort otpChallengePort,
             AuthWorkflowPolicyPort authWorkflowPolicyPort,
-            Clock clock,
-            RateLimitPort rateLimitPort) {
+            Clock clock) {
         return new RegistrationOtpChallengeAdapter(
                 otpChallengePort,
                 authWorkflowPolicyPort,
-                clock,
-                rateLimitPort);
+                clock);
     }
 
     @Bean
