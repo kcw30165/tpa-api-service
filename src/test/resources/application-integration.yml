@@ -1,0 +1,12 @@
+spring:
+  main:
+    banner-mode: off
+
+api:
+  security:
+    require-authentication: false
+
+request-logging:
+  enabled: true
+  body-logging:
+    enabled: false
