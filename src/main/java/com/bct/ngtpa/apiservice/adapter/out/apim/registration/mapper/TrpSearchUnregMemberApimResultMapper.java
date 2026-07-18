@@ -7,10 +7,14 @@ import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLo
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupDownstreamException;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupStatus;
+
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
+@Slf4j
 public class TrpSearchUnregMemberApimResultMapper {
     private static final String MEMBER_NOT_FOUND = "err.tpa.member.not.found";
 
@@ -48,17 +52,83 @@ public class TrpSearchUnregMemberApimResultMapper {
             TrpSearchUnregMemberApimDataItem item,
             RegistrationContactType contactType,
             String contactValue) {
-        if (item == null || text(item.env()) == null || text(item.trustCode()) == null) {
+
+        if (item == null
+                || text(item.env()) == null
+                || text(item.trustCode()) == null) {
             throw new RegistrationLookupDownstreamException(
-                    RegistrationLookupDownstreamException.Reason.INVALID_ACCOUNT_DATA, null);
+                    RegistrationLookupDownstreamException.Reason.INVALID_ACCOUNT_DATA,
+                    null);
         }
-        boolean matches = contactType == RegistrationContactType.EMAIL
-                ? normalizeEmail(item.email()).equals(normalizeEmail(contactValue))
-                : normalizeMobile(item.mobileNumber()).equals(normalizeMobile(contactValue));
+
+        String normalizedRequestContact = contactType == RegistrationContactType.EMAIL
+                ? normalizeEmail(contactValue)
+                : normalizeMobile(contactValue);
+
+        String normalizedResponseContact = contactType == RegistrationContactType.EMAIL
+                ? normalizeEmail(item.email())
+                : normalizeMobile(item.mobileNumber());
+
+        boolean matches = normalizedResponseContact.equals(normalizedRequestContact);
+
+        log.info(
+                "event=registration.lookup.contact.comparison "
+                        + "contactType={} "
+                        + "requestLength={} "
+                        + "responseLength={} "
+                        + "requestMasked={} "
+                        + "responseMasked={} "
+                        + "responseEmailPresent={} "
+                        + "responseMobilePresent={} "
+                        + "matches={}",
+                contactType,
+                normalizedRequestContact.length(),
+                normalizedResponseContact.length(),
+                maskContact(contactType, normalizedRequestContact),
+                maskContact(contactType, normalizedResponseContact),
+                !normalizeEmail(item.email()).isBlank(),
+                !normalizeMobile(item.mobileNumber()).isBlank(),
+                matches);
+
         if (!matches) {
             throw new RegistrationLookupDownstreamException(
-                    RegistrationLookupDownstreamException.Reason.CONTACT_MISMATCH, null);
+                    RegistrationLookupDownstreamException.Reason.CONTACT_MISMATCH,
+                    null);
         }
+    }
+
+    private String maskContact(
+            RegistrationContactType contactType,
+            String value) {
+
+        if (value == null || value.isBlank()) {
+            return "<blank>";
+        }
+
+        if (contactType == RegistrationContactType.EMAIL) {
+            int atIndex = value.indexOf('@');
+
+            if (atIndex <= 0) {
+                return "<invalid-email>";
+            }
+
+            String localPart = value.substring(0, atIndex);
+            String domain = value.substring(atIndex);
+
+            String maskedLocalPart = localPart.length() == 1
+                    ? "*"
+                    : localPart.charAt(0)
+                            + "***"
+                            + localPart.charAt(localPart.length() - 1);
+
+            return maskedLocalPart + domain;
+        }
+
+        if (value.length() <= 4) {
+            return "****";
+        }
+
+        return "****" + value.substring(value.length() - 4);
     }
 
     private RegistrationLookupAccount toAccount(TrpSearchUnregMemberApimDataItem item) {

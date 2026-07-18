@@ -171,6 +171,9 @@ apim:
       - cust-id
       - email
       - mobile-number
+    response-fields:
+      - email
+      - mobile-number
 
 
 request-logging:
