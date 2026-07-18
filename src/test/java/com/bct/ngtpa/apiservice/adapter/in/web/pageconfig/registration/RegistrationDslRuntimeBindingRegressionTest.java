@@ -116,7 +116,6 @@ class RegistrationDslRuntimeBindingRegressionTest {
             var username = resolver.resolve(
                     RegistrationErrorKey.USERNAME_ALREADY_REGISTERED.value(),
                     "zh-HK");
-            assertThat(username.message()).isNotBlank();
             assertThat(username.targets()).containsExactly("username");
             assertThat(username.nextStep()).isEqualTo(WorkflowNextStep.USERNAME_CHECK);
             assertThat(username.pageRef().pageId()).isEqualTo("registration-username-check");

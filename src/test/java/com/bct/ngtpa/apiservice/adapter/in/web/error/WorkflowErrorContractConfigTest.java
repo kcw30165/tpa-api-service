@@ -33,7 +33,6 @@ class WorkflowErrorContractConfigTest {
         runner.run(context -> {
             var resolver=new WorkflowErrorContractResolver(context.getBean(WorkflowErrorContractProperties.class));
             var resolved=resolver.resolve(RegistrationErrorKey.USERNAME_ALREADY_REGISTERED.value(),"zh-HK");
-            assertThat(resolved.message()).isEqualTo("此用戶名稱已被註冊，請選擇另一個用戶名稱。");
             assertThat(resolved.targets()).containsExactly("username");
             assertThat(resolved.nextStep().name()).isEqualTo("USERNAME_CHECK");
             assertThat(resolved.pageRef().pageId()).isEqualTo("registration-username-check");

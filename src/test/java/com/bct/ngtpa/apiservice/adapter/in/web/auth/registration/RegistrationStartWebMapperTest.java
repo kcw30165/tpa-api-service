@@ -73,7 +73,6 @@ class RegistrationStartWebMapperTest {
 
         assertThat(response.errors()).singleElement().satisfies(error -> {
             assertThat(error.code()).isEqualTo("err.registration.start.verificationFailed");
-            assertThat(error.message()).isEqualTo("We are unable to verify your details. Please review and try again.");
         });
     }
 
@@ -100,7 +99,6 @@ class RegistrationStartWebMapperTest {
 
         assertThat(response.errors()).singleElement().satisfies(error -> {
             assertThat(error.code()).isEqualTo("err.registration.start.verificationFailed");
-            assertThat(error.message()).isEqualTo("resolved-message");
         });
     }
 

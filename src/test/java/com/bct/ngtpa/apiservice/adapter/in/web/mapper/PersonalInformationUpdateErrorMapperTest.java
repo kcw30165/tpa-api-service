@@ -28,7 +28,6 @@ class PersonalInformationUpdateErrorMapperTest {
         assertThat(errors).hasSize(2);
         assertThat(errors.get(0).type()).isEqualTo("FIELD");
         assertThat(errors.get(0).code()).isEqualTo("personalInformation.email.required");
-        assertThat(errors.get(0).message()).isEqualTo("Please provide a valid email address.");
         assertThat(errors.get(0).targets()).containsExactly("emailAddress");
         assertThat(errors.get(1).code()).isEqualTo("personalInformation.email.invalid");
         assertThat(errors.get(1).targets()).containsExactly("emailAddress");

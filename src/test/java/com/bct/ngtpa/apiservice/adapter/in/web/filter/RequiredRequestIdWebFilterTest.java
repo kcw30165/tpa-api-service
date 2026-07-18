@@ -17,9 +17,7 @@ import reactor.test.StepVerifier;
 class RequiredRequestIdWebFilterTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final RequiredRequestIdWebFilter filter = new RequiredRequestIdWebFilter(
-            (code, locale, accountEnv, trustCode, schemeType) -> "resolved-" + code,
-            objectMapper);
+    private final RequiredRequestIdWebFilter filter = new RequiredRequestIdWebFilter(objectMapper);
 
     @Test
     void missingRequestIdRejectsApiRequestBeforeBusinessChain() {

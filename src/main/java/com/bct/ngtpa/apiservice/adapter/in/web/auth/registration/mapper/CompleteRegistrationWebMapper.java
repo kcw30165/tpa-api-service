@@ -13,7 +13,6 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowCon
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.CompleteRegistrationCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.CompleteRegistrationResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.CompleteRegistrationResultStatus;
-import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
@@ -22,15 +21,18 @@ public class CompleteRegistrationWebMapper {
     private static final String SOURCE_SERVER = "SERVER";
     private final Duration idempotencyTtl;
     private final RegistrationSuccessPageMapper successPageMapper;
-    private final ErrorMessageResolver messages;
+    public CompleteRegistrationWebMapper(
+            Duration idempotencyTtl,
+            RegistrationSuccessPageMapper successPageMapper) {
+        this(idempotencyTtl, successPageMapper, null);
+    }
 
     public CompleteRegistrationWebMapper(
             Duration idempotencyTtl,
             RegistrationSuccessPageMapper successPageMapper,
-            ErrorMessageResolver messages) {
+            Object ignoredMessages) {
         this.idempotencyTtl = Objects.requireNonNull(idempotencyTtl);
         this.successPageMapper = Objects.requireNonNull(successPageMapper);
-        this.messages = Objects.requireNonNull(messages);
     }
 
     public CompleteRegistrationCommand toCommand(

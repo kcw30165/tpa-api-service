@@ -72,12 +72,6 @@ public final class WorkflowErrorContractValidator {
             throw new IllegalStateException(
                     "Workflow error targets are missing: " + code);
         }
-        if (definition.getMessages() == null
-                || !StringUtils.hasText(definition.getMessages().get("en"))
-                || !StringUtils.hasText(definition.getMessages().get("zh_HK"))) {
-            throw new IllegalStateException(
-                    "Workflow error messages are incomplete: " + code);
-        }
         if (definition.getNextStep() == null) {
             throw new IllegalStateException(
                     "Workflow error nextStep is missing: " + code);

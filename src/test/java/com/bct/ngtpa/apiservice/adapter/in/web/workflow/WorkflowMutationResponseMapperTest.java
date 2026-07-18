@@ -39,7 +39,6 @@ class WorkflowMutationResponseMapperTest {
         assertThat(response.messages()).hasSize(1);
         assertThat(response.messages().getFirst().type()).isEqualTo("INFO");
         assertThat(response.messages().getFirst().code()).isEqualTo("registration.otp.resent");
-        assertThat(response.messages().getFirst().message()).isEqualTo("A new verification code has been sent.");
         assertThat(response.messages().getFirst().target()).isEqualTo("PAGE");
     }
 
@@ -59,7 +58,6 @@ class WorkflowMutationResponseMapperTest {
         assertThat(response.errors()).hasSize(1);
         assertThat(response.errors().getFirst().type()).isEqualTo("FIELD");
         assertThat(response.errors().getFirst().code()).isEqualTo("registration.start.email.invalid");
-        assertThat(response.errors().getFirst().message()).isEqualTo("Invalid email address.");
         assertThat(response.errors().getFirst().targets()).containsExactly("email");
         assertThat(response.errors().getFirst().severity()).isEqualTo("ERROR");
         assertThat(response.errors().getFirst().source()).isEqualTo("SERVER");

@@ -32,10 +32,9 @@ public class WorkflowErrorContractProperties {
             if (definition == null || definition.getCode() == null || definition.getCode().isBlank()) {
                 continue;
             }
-            Definition previous = indexed.putIfAbsent(definition.getCode().trim(), definition);
-            if (previous != null) {
-                throw new IllegalStateException(
-                        "Duplicate workflow error definition: " + definition.getCode().trim());
+            String code = definition.getCode().trim();
+            if (indexed.putIfAbsent(code, definition) != null) {
+                throw new IllegalStateException("Duplicate workflow error definition: " + code);
             }
         }
         return Map.copyOf(indexed);
@@ -50,14 +49,9 @@ public class WorkflowErrorContractProperties {
         private String source;
         private List<String> targets = new ArrayList<>();
         private WorkflowNextStep nextStep;
-        private Map<String, String> messages = new LinkedHashMap<>();
 
         public void setTargets(List<String> targets) {
             this.targets = targets == null ? new ArrayList<>() : new ArrayList<>(targets);
-        }
-
-        public void setMessages(Map<String, String> messages) {
-            this.messages = messages == null ? new LinkedHashMap<>() : new LinkedHashMap<>(messages);
         }
     }
 

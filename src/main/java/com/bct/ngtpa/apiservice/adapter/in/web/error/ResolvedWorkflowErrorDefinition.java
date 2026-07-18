@@ -7,10 +7,14 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowPageRef;
 import java.util.List;
 
 public record ResolvedWorkflowErrorDefinition(
-        String code, String message, List<String> targets,
-        WorkflowErrorType type, WorkflowErrorSeverity severity, String source,
-        WorkflowNextStep nextStep, WorkflowPageRef pageRef) {
+        String code,
+        List<String> targets,
+        WorkflowErrorType type,
+        WorkflowErrorSeverity severity,
+        String source,
+        WorkflowNextStep nextStep,
+        WorkflowPageRef pageRef) {
     public ResolvedWorkflowErrorDefinition {
-        targets = List.copyOf(targets);
+        targets = targets == null ? List.of() : List.copyOf(targets);
     }
 }

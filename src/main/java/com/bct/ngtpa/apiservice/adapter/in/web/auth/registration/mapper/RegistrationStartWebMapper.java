@@ -20,7 +20,6 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegis
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationError;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResultStatus;
-import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import java.time.Duration;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -31,26 +30,31 @@ public class RegistrationStartWebMapper {
     private static final String TARGET_PAGE = "PAGE";
 
     private final Duration defaultIdempotencyTtl;
-    private final ErrorMessageResolver errorMessageResolver;
     private final WorkflowMutationResponseMapper workflowMutationResponseMapper;
 
     public RegistrationStartWebMapper(Duration defaultIdempotencyTtl) {
-        this(defaultIdempotencyTtl, null);
+        this(defaultIdempotencyTtl, new WorkflowMutationResponseMapper());
     }
 
-    public RegistrationStartWebMapper(Duration defaultIdempotencyTtl, ErrorMessageResolver errorMessageResolver) {
-        this(defaultIdempotencyTtl, errorMessageResolver, new WorkflowMutationResponseMapper());
+    public RegistrationStartWebMapper(
+            Duration defaultIdempotencyTtl,
+            Object ignoredMessageResolver) {
+        this(defaultIdempotencyTtl, new WorkflowMutationResponseMapper());
     }
 
     RegistrationStartWebMapper(
             Duration defaultIdempotencyTtl,
-            ErrorMessageResolver errorMessageResolver,
+            Object ignoredMessageResolver,
             WorkflowMutationResponseMapper workflowMutationResponseMapper) {
-        this.defaultIdempotencyTtl = defaultIdempotencyTtl;
-        this.errorMessageResolver = errorMessageResolver;
-        this.workflowMutationResponseMapper = workflowMutationResponseMapper;
+        this(defaultIdempotencyTtl, workflowMutationResponseMapper);
     }
 
+    private RegistrationStartWebMapper(
+            Duration defaultIdempotencyTtl,
+            WorkflowMutationResponseMapper workflowMutationResponseMapper) {
+        this.defaultIdempotencyTtl = java.util.Objects.requireNonNull(defaultIdempotencyTtl);
+        this.workflowMutationResponseMapper = java.util.Objects.requireNonNull(workflowMutationResponseMapper);
+    }
     public StartRegistrationCommand toCommand(
             RegistrationStartRequest request,
             String idempotencyKey,

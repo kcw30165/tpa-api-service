@@ -9,20 +9,21 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.cancel.CancelRegistrationCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.cancel.CancelRegistrationResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.cancel.CancelRegistrationResultStatus;
-import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import java.util.List;
 import java.util.Objects;
 
 public final class CancelRegistrationWebMapper {
     private static final String SOURCE_SERVER = "SERVER";
     private final RegistrationCancellationPageMapper pageMapper;
-    private final ErrorMessageResolver messages;
+    public CancelRegistrationWebMapper(
+            RegistrationCancellationPageMapper pageMapper) {
+        this(pageMapper, null);
+    }
 
     public CancelRegistrationWebMapper(
             RegistrationCancellationPageMapper pageMapper,
-            ErrorMessageResolver messages) {
+            Object ignoredMessages) {
         this.pageMapper = Objects.requireNonNull(pageMapper, "pageMapper must not be null");
-        this.messages = Objects.requireNonNull(messages, "messages must not be null");
     }
 
     public CancelRegistrationCommand toCommand(

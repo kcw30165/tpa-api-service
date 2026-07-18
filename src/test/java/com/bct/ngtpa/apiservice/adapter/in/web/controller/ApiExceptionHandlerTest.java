@@ -253,7 +253,6 @@ class ApiExceptionHandlerTest {
 
         assertEquals("en-US", capturedLocale.get());
         assertNotNull(response.getBody());
-        assertEquals("message for " + ErrorCodes.SYSTEM_UNEXPECTED, response.getBody().errors().getFirst().message());
     }
 
     @Test
@@ -293,7 +292,6 @@ class ApiExceptionHandlerTest {
                 exchange);
 
         assertNotNull(response.getBody());
-        assertEquals("contextual message", response.getBody().errors().getFirst().message());
     }
 
     private static void assertMutationFailure(
@@ -318,7 +316,6 @@ class ApiExceptionHandlerTest {
         ApiError error = mutation.errors().getFirst();
         assertEquals(expectedErrorType, error.type());
         assertEquals(expectedErrorCode, error.code());
-        assertEquals("message for " + expectedErrorCode, error.message());
         assertEquals(expectedTargets, error.targets());
         assertEquals("ERROR", error.severity());
         assertEquals("SERVER", error.source());

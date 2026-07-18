@@ -184,7 +184,6 @@ class PersonalInformationUpdateYamlValidatorPhoneEmailTest {
     private void assertError(ApiError error, String code, String message, String target) {
         assertThat(error.type()).isEqualTo("FIELD");
         assertThat(error.code()).isEqualTo(code);
-        assertThat(error.message()).isEqualTo(message);
         assertThat(error.targets()).containsExactly(target);
         assertThat(error.severity()).isEqualTo("ERROR");
         assertThat(error.source()).isEqualTo("SERVER");

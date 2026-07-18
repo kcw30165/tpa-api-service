@@ -1,6 +1,5 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper;
 
-import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationOtpResendResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowConstants;
@@ -24,17 +23,14 @@ public class RegistrationOtpResendWebMapper {
     private static final String SOURCE_SERVER = "SERVER";
 
     private final WorkflowMutationResponseMapper workflowMutationResponseMapper;
-    private final ErrorMessageResolver errorMessageResolver;
-
     public RegistrationOtpResendWebMapper(WorkflowMutationResponseMapper workflowMutationResponseMapper) {
         this(workflowMutationResponseMapper, null);
     }
 
     public RegistrationOtpResendWebMapper(
             WorkflowMutationResponseMapper workflowMutationResponseMapper,
-            ErrorMessageResolver errorMessageResolver) {
+            Object ignoredMessageResolver) {
         this.workflowMutationResponseMapper = workflowMutationResponseMapper;
-        this.errorMessageResolver = errorMessageResolver;
     }
 
     public Object toMutationResponse(ResendRegistrationOtpResult result) {

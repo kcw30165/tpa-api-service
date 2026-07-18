@@ -313,7 +313,7 @@ class RegistrationCaptchaAndStartIntegrationTest {
         @Bean RequiredRequestIdWebFilter requiredRequestIdWebFilter(
                 com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver resolver,
                 ObjectMapper objectMapper) {
-            return new RequiredRequestIdWebFilter(resolver, objectMapper);
+            return new RequiredRequestIdWebFilter(objectMapper);
         }
     }
 

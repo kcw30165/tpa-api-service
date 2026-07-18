@@ -10,11 +10,28 @@ import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CreateCaptchaChalle
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.RefreshCaptchaChallengeResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.VerifyCaptchaChallengeResult;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
-import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import java.util.List;
 import java.util.Objects;
 
 public class CaptchaWebMapper {
+
+    /**
+     * Temporary source-compatibility target for existing tests that supplied a
+     * message-resolver lambda. The mapper never invokes this function and no
+     * localized text is returned. Remove with the legacy test constructors in
+     * the final regression/evidence subtask.
+     */
+    @FunctionalInterface
+    public interface IgnoredMessageResolver {
+        String resolve(
+                String code,
+                String language,
+                String accountEnv,
+                String trustCode,
+                String schemeType);
+    }
+
+
     private static final String SOURCE_SERVER = "SERVER";
     private static final String CAPTCHA_ANSWER_TARGET = "captchaAnswer";
     private static final String CAPTCHA_CHALLENGE_ID_TARGET = "captchaChallengeId";
@@ -23,8 +40,13 @@ public class CaptchaWebMapper {
      * Kept temporarily for constructor compatibility during the staged 0042 migration.
      * Captcha public responses intentionally do not resolve Java-owned display text.
      */
-    public CaptchaWebMapper(ErrorMessageResolver errorMessageResolver) {
-        Objects.requireNonNull(errorMessageResolver, "errorMessageResolver must not be null");
+    public CaptchaWebMapper() {
+    }
+
+    public CaptchaWebMapper(IgnoredMessageResolver ignoredMessageResolver) {
+        java.util.Objects.requireNonNull(
+                ignoredMessageResolver,
+                "ignoredMessageResolver must not be null");
     }
 
     public MutationResponse<CaptchaChallengeResponse> toChallengeMutationResponse(

@@ -4,9 +4,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
-import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
-import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
@@ -28,15 +26,12 @@ public class RequiredRequestIdWebFilter implements WebFilter {
 
     private static final String API_PREFIX = "/api/";
     private static final String TARGET = RequestCorrelation.REQUEST_ID_HEADER;
-
-    private final ErrorMessageResolver errorMessageResolver;
     private final ObjectMapper objectMapper;
 
-    public RequiredRequestIdWebFilter(
-            ErrorMessageResolver errorMessageResolver,
-            ObjectMapper objectMapper) {
-        this.errorMessageResolver = errorMessageResolver;
-        this.objectMapper = objectMapper;
+    public RequiredRequestIdWebFilter(ObjectMapper objectMapper) {
+        this.objectMapper = java.util.Objects.requireNonNull(
+                objectMapper,
+                "objectMapper must not be null");
     }
 
     @Override

@@ -47,7 +47,6 @@ class PersonalInformationUpdateYamlValidatorAddressTest {
                 .anySatisfy(error -> {
                     assertThat(error.type()).isEqualTo("CROSS_FIELD");
                     assertThat(error.code()).isEqualTo("personalInformation.address.atLeastOneRequired");
-                    assertThat(error.message()).isEqualTo("Please input a residential address or correspondence address.");
                     assertThat(error.targets()).containsExactly("residentialAddressLine1", "mailingAddressLine1");
                     assertThat(error.severity()).isEqualTo("ERROR");
                     assertThat(error.source()).isEqualTo("SERVER");
@@ -175,8 +174,6 @@ class PersonalInformationUpdateYamlValidatorAddressTest {
                 .anySatisfy(error -> {
                     assertThat(error.type()).isEqualTo("FIELD");
                     assertThat(error.code()).isEqualTo("personalInformation.address.poBoxBlocked");
-                    assertThat(error.message()).isEqualTo(
-                            "PO Box address will not be accepted. Please contact the hotline for assistance.");
                     assertThat(error.targets()).containsExactly("mailingAddressLine1");
                 });
     }

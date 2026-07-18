@@ -172,7 +172,6 @@ class PersonalInformationUpdateWebMapperTest {
         assertThat(errors).hasSize(1);
         assertThat(errors.get(0).type()).isEqualTo("FORM");
         assertThat(errors.get(0).code()).isEqualTo("personalInformation.update.validationFailed");
-        assertThat(errors.get(0).message()).isEqualTo("The submitted information is invalid.");
         assertThat(errors.get(0).targets()).containsExactly("addr1", "unknown");
     }
 
@@ -191,7 +190,6 @@ class PersonalInformationUpdateWebMapperTest {
         assertThat(error.type()).isEqualTo("FIELD");
         assertThat(error.targets()).containsExactly("emailAddress");
         assertThat(error.code()).isEqualTo("personalInformation.email.required");
-        assertThat(error.message()).isEqualTo("Email is required");
     }
 
     @Test
@@ -207,13 +205,9 @@ class PersonalInformationUpdateWebMapperTest {
                 new UpdatePersonalInformationError("FIELD", List.of(), "REQUIRED")));
 
         assertThat(errors.get(0).code()).isEqualTo("personalInformation.address.atLeastOneRequired");
-        assertThat(errors.get(0).message())
-                .isEqualTo("Please input a residential address or correspondence address.");
         assertThat(errors.get(1).targets()).containsExactly("homeTel");
         assertThat(errors.get(1).code()).isEqualTo("personalInformation.homeTel.invalid");
-        assertThat(errors.get(1).message()).isEqualTo("Please input a valid value.");
         assertThat(errors.get(2).code()).isEqualTo("personalInformation.field.required");
-        assertThat(errors.get(2).message()).isEqualTo("This field is required.");
     }
 
     @Test

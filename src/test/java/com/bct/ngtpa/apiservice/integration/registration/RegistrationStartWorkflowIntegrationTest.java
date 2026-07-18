@@ -301,7 +301,9 @@ class RegistrationStartWorkflowIntegrationTest {
         @Bean SequenceState sequence() { return new SequenceState(); }
         @Bean ObjectMapper objectMapper() { return new ObjectMapper(); }
         @Bean ErrorMessageResolver messages() { return (code, language, env, trust, scheme) -> code; }
-        @Bean RequiredRequestIdWebFilter requiredRequestIdWebFilter(ErrorMessageResolver resolver, ObjectMapper mapper) { return new RequiredRequestIdWebFilter(resolver, mapper); }
+        @Bean RequiredRequestIdWebFilter requiredRequestIdWebFilter(ObjectMapper mapper) {
+            return new RequiredRequestIdWebFilter(mapper);
+        }
         @Bean InMemoryCaptchaPort captchaPort() { return new InMemoryCaptchaPort(); }
         @Bean RegistrationCaptchaGateService captchaGate(InMemoryCaptchaPort port, Clock clock) { return new RegistrationCaptchaGateService(port, clock); }
         @Bean AuthWorkflowPolicyPort policy() { return new TestPolicy(); }

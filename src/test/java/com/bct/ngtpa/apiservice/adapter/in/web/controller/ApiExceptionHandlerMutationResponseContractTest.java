@@ -254,7 +254,6 @@ class ApiExceptionHandlerMutationResponseContractTest {
                 ApiError error = mutation.errors().getFirst();
                 assertEquals(expectedErrorType, error.type());
                 assertEquals(expectedErrorCode, error.code());
-                assertEquals("message for " + expectedErrorCode, error.message());
                 assertEquals(expectedTargets, error.targets());
                 assertEquals("ERROR", error.severity());
                 assertEquals("SERVER", error.source());

@@ -43,7 +43,6 @@ class CaptchaWebMapperTest {
         assertThat(response.errors()).singleElement().satisfies(error -> {
             assertThat(error.code()).isEqualTo("err.registration.captcha.invalid");
             assertThat(error.targets()).containsExactly("captchaAnswer");
-                        assertThat(error.message()).isNull();
         });
     }
 

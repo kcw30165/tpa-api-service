@@ -177,7 +177,6 @@ class StartRegistrationUseCaseTest {
                     assertThat(result.status()).isEqualTo(StartRegistrationResultStatus.VERIFICATION_FAILED);
                     assertThat(result.errors()).anySatisfy(error -> {
                         assertThat(error.errorKey()).isEqualTo(RegistrationErrorKey.START_VERIFICATION_FAILED);
-                        assertThat(error.message()).isNull();
                     });
                 })
                 .verifyComplete();
@@ -203,7 +202,6 @@ class StartRegistrationUseCaseTest {
                 .assertNext(result -> assertThat(result.errors())
                         .anySatisfy(error -> {
                             assertThat(error.errorKey()).isEqualTo(RegistrationErrorKey.START_VERIFICATION_FAILED);
-                            assertThat(error.message()).isNull();
                         }))
                 .verifyComplete();
     }
