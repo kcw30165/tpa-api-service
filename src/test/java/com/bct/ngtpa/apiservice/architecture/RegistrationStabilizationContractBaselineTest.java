@@ -120,7 +120,7 @@ class RegistrationStabilizationContractBaselineTest {
         assertThat(allYaml)
                 .contains("nextStep:")
                 .contains("targets:")
-                .contains("messages:");
+                .doesNotContain("messages:");
     }
 
     @Test

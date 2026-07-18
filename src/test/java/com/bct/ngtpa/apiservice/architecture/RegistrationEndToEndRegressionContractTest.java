@@ -45,6 +45,6 @@ class RegistrationEndToEndRegressionContractTest {
                 "next-step: USERNAME_CHECK",
                 "next-step: PASSWORD_SETUP",
                 "next-step: RETURN_TO_LOGIN");
-        assertThat(yaml).contains("targets:", "messages:", "zh_HK:");
+        assertThat(yaml).contains("targets:", "next-step:").doesNotContain("messages:", "zh_HK:");
     }
 }

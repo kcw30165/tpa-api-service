@@ -22,7 +22,7 @@ class RegistrationRuntimeSemanticRegressionTest {
         String mapper=read("RegistrationOtpResendWebMapper.java");
         String controller=read("AuthRegistrationOtpController.java");
         assertThat(mapper).contains("SEND_RATE_LIMITED, MAX_RESEND_ATTEMPTS_REACHED -> WorkflowResultStatus.BUSINESS_FAILED")
-                .contains("errorMessageResolver.resolve(error.code(), language");
+                .doesNotContain("ErrorMessageResolver");
         assertThat(controller).contains("toMutationResponse(result, acceptLanguage)");
     }
     private String read(String name) throws Exception {
