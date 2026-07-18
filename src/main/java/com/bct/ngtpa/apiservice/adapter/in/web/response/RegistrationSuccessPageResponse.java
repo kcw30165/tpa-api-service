@@ -5,7 +5,8 @@ import java.util.List;
 public record RegistrationSuccessPageResponse(
         String pageId,
         String variant,
-        String title,
-        String body,
         List<RegistrationSuccessPageActionResponse> actions) {
+    public RegistrationSuccessPageResponse {
+        actions = actions == null ? List.of() : List.copyOf(actions);
+    }
 }

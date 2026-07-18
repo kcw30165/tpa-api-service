@@ -1,7 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.CancelRegistrationWebMapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PageDisplayTextResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.BffPagesProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.registration.RegistrationCancellationPageMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.session.config.AuthFlowSessionProperties;
@@ -15,9 +14,8 @@ public class RegistrationCancelWebConfig {
     @Bean
     @ConditionalOnMissingBean
     RegistrationCancellationPageMapper registrationCancellationPageMapper(
-            BffPagesProperties pages,
-            PageDisplayTextResolver displayTextResolver) {
-        return new RegistrationCancellationPageMapper(pages, displayTextResolver);
+            BffPagesProperties pages) {
+        return new RegistrationCancellationPageMapper(pages);
     }
 
     @Bean

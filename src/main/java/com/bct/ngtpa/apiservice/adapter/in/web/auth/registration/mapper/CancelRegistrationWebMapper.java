@@ -57,7 +57,7 @@ public final class CancelRegistrationWebMapper {
                 .map(error -> new ApiError(
                         error.type().name(),
                         error.code(),
-                        null, language, null, null, null),
+                        null,
                         error.targets(),
                         error.severity().name(),
                         error.source()))

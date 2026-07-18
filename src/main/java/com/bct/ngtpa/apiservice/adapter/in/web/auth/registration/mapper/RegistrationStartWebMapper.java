@@ -168,8 +168,9 @@ public class RegistrationStartWebMapper {
                     List.of(),
                     List.of(new WorkflowErrorDescriptor(
                             WorkflowErrorType.SYSTEM,
-                            com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value(),
-                            null, acceptLanguage),
+                            com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE
+                                    .value(),
+                            null,
                             List.of(),
                             WorkflowErrorSeverity.ERROR,
                             SOURCE_SERVER)));
@@ -221,7 +222,8 @@ public class RegistrationStartWebMapper {
             case STARTED, COMPLETED_REPLAY -> WorkflowResultStatus.SUCCESS;
             case DUPLICATE_IN_PROGRESS -> WorkflowResultStatus.WAITING;
             case VALIDATION_FAILED -> WorkflowResultStatus.VALIDATION_FAILED;
-            case VERIFICATION_FAILED, DOWNSTREAM_REJECTED, IDEMPOTENCY_KEY_REUSED -> WorkflowResultStatus.BUSINESS_FAILED;
+            case VERIFICATION_FAILED, DOWNSTREAM_REJECTED, IDEMPOTENCY_KEY_REUSED ->
+                WorkflowResultStatus.BUSINESS_FAILED;
             case MESSAGE_DELIVERY_FAILED, SYSTEM_FAILED -> WorkflowResultStatus.SYSTEM_FAILED;
         };
     }
@@ -237,13 +239,6 @@ public class RegistrationStartWebMapper {
             return TARGET_PAGE;
         }
         return target.trim();
-    }
-
-    private String null {
-        if (errorMessageResolver == null || code == null || code.isBlank()) {
-            return null;
-        }
-        return errorMessageResolver.resolve(code, acceptLanguage, null, null, null);
     }
 
     private void logFatalIfNeeded(StartRegistrationResult result) {
