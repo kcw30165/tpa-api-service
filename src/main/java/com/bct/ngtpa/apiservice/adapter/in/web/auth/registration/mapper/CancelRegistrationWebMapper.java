@@ -57,7 +57,7 @@ public final class CancelRegistrationWebMapper {
                 .map(error -> new ApiError(
                         error.type().name(),
                         error.code(),
-                        messages.resolve(error.code(), language, null, null, null),
+                        null, language, null, null, null),
                         error.targets(),
                         error.severity().name(),
                         error.source()))
@@ -76,7 +76,7 @@ public final class CancelRegistrationWebMapper {
         String code = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.CSRF_INVALID.value();
         ApiError error = ApiError.business(
                 code,
-                messages.resolve(code, language, null, null, null),
+                null,
                 List.of("PAGE"),
                 SOURCE_SERVER);
         return MutationResponse.failure(ApiStatus.VALIDATION_FAILED, null, List.of(error));

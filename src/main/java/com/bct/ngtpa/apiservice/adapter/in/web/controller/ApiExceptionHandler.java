@@ -397,6 +397,9 @@ public class ApiExceptionHandler {
     }
 
     private String resolvePublicMessage(String errorCode, ServerWebExchange exchange, Throwable exception) {
+        if (isPreLoginAuthRequest(exchange)) {
+            return null;
+        }
         ErrorMessageContext context = resolveErrorMessageContext(exchange, exception);
         return errorMessageResolver.resolve(
                 errorCode,

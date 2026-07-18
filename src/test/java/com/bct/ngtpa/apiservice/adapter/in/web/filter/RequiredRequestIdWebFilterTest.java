@@ -38,7 +38,7 @@ class RequiredRequestIdWebFilterTest {
         assertThat(body.path("success").asBoolean()).isFalse();
         assertThat(body.path("status").asText()).isEqualTo("VALIDATION_FAILED");
         assertThat(body.at("/errors/0/code").asText()).isEqualTo("err.request.id.missing");
-        assertThat(body.at("/errors/0/message").asText()).isEqualTo("resolved-err.request.id.missing");
+        assertThat(body.path("errors").path(0).has("message")).isFalse();
         assertThat(body.at("/errors/0/targets/0").asText()).isEqualTo("X-Request-Id");
     }
 

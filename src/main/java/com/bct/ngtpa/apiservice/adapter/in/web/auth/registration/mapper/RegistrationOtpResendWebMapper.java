@@ -57,14 +57,10 @@ public class RegistrationOtpResendWebMapper {
                 result.nextStep(),
                 data(result),
                 RegistrationWorkflowPageRefs.forNextStep(result.nextStep()),
-                result.messages(),
+                List.of(),
                 result.errors().stream()
-                        .map(error -> error.message() == null && errorMessageResolver != null
-                                ? new com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor(
-                                        error.type(), error.code(),
-                                        errorMessageResolver.resolve(error.code(), language, null, null, null),
-                                        error.targets(), error.severity(), error.source())
-                                : error)
+                        .map(error -> new com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor(
+                                error.type(), error.code(), null, error.targets(), error.severity(), error.source()))
                         .toList());
     }
 
@@ -98,7 +94,7 @@ public class RegistrationOtpResendWebMapper {
         response.put("success", success);
         response.put("status", apiStatus(result.status()));
         response.put("result", success || exposeResendFailurePayload(result.status()) ? payloadMap(result) : null);
-        response.put("messages", result.messages());
+        response.put("messages", List.of());
         response.put("errors", success ? List.of() : errorMaps(result));
         return response;
     }

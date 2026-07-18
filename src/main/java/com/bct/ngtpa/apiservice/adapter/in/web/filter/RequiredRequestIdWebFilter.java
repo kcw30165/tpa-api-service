@@ -56,13 +56,10 @@ public class RequiredRequestIdWebFilter implements WebFilter {
     }
 
     private Mono<Void> reject(ServerWebExchange exchange) {
-        String language = exchange.getRequest().getHeaders()
-                .getFirst(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER);
-        String code = ErrorCodes.REQUEST_ID_MISSING;
-        String message = errorMessageResolver.resolve(code, language, null, null, null);
-        MutationResponse<Void> response = MutationResponse.failure(
+String code = ErrorCodes.REQUEST_ID_MISSING;
+MutationResponse<Void> response = MutationResponse.failure(
                 ApiStatus.VALIDATION_FAILED,
-                List.of(ApiError.field(code, message, List.of(TARGET), "SERVER")));
+                List.of(ApiError.field(code, null, List.of(TARGET), "SERVER")));
 
         byte[] bytes;
         try {

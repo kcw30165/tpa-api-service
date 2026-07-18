@@ -38,7 +38,7 @@ public class RegistrationOtpVerifyWebMapper {
         response.put("success", success);
         response.put("status", apiStatus(result.status()));
         response.put("result", success || exposeOtpFailurePayload(result.status()) ? payloadMap(result) : null);
-        response.put("messages", result.messages());
+        response.put("messages", List.of());
         response.put("errors", success ? List.of() : errorMaps(result));
         return response;
     }

@@ -75,7 +75,7 @@ public class CompleteRegistrationWebMapper {
                 .map(error -> new ApiError(
                         error.type().name(),
                         error.code(),
-                        resolve(error.code(), language),
+                        null,
                         error.targets(),
                         error.severity().name(),
                         error.source()))
@@ -84,7 +84,7 @@ public class CompleteRegistrationWebMapper {
     }
 
     public MutationResponse<CompleteRegistrationResponse> missing(String code, String target, String language) {
-        ApiError error = ApiError.field(code, resolve(code, language), List.of(target), SOURCE_SERVER);
+        ApiError error = ApiError.field(code, null, List.of(target), SOURCE_SERVER);
         return MutationResponse.failure(ApiStatus.VALIDATION_FAILED, null, List.of(error));
     }
 
@@ -109,10 +109,6 @@ public class CompleteRegistrationWebMapper {
                         RegistrationWorkflowConstants.PAGE_REGISTRATION_SUCCESS,
                         variant,
                         language));
-    }
-
-    private String resolve(String code, String language) {
-        return messages.resolve(code, language, null, null, null);
     }
 
     private String trim(String value) {

@@ -139,7 +139,7 @@ public class RegistrationStartWebMapper {
         var error = new WorkflowErrorDescriptor(
                 WorkflowErrorType.FIELD,
                 code,
-                resolveMessage(code, acceptLanguage),
+                null,
                 List.of("Idempotency-Key"),
                 WorkflowErrorSeverity.ERROR,
                 SOURCE_SERVER);
@@ -169,7 +169,7 @@ public class RegistrationStartWebMapper {
                     List.of(new WorkflowErrorDescriptor(
                             WorkflowErrorType.SYSTEM,
                             com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value(),
-                            resolveMessage(com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value(), acceptLanguage),
+                            null, acceptLanguage),
                             List.of(),
                             WorkflowErrorSeverity.ERROR,
                             SOURCE_SERVER)));
@@ -197,7 +197,7 @@ public class RegistrationStartWebMapper {
         return new WorkflowErrorDescriptor(
                 toWorkflowErrorType(status, target),
                 code,
-                error.message() != null ? error.message() : resolveMessage(code, acceptLanguage),
+                null,
                 target == null ? List.of() : List.of(target),
                 WorkflowErrorSeverity.ERROR,
                 SOURCE_SERVER);
@@ -239,7 +239,7 @@ public class RegistrationStartWebMapper {
         return target.trim();
     }
 
-    private String resolveMessage(String code, String acceptLanguage) {
+    private String null {
         if (errorMessageResolver == null || code == null || code.isBlank()) {
             return null;
         }

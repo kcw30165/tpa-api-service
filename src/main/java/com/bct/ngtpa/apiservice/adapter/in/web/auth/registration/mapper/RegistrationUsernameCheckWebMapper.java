@@ -58,7 +58,7 @@ public class RegistrationUsernameCheckWebMapper {
         response.put("success", success);
         response.put("status", apiStatus(result.status()));
         response.put("result", resultPayload(nextStep(result)));
-        response.put("messages", result.messages() == null ? List.of() : result.messages());
+        response.put("messages", List.of());
         response.put("errors", success ? List.of() : errorMaps(result));
         return response;
     }
