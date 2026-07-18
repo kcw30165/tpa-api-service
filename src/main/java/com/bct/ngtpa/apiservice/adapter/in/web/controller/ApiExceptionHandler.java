@@ -59,9 +59,12 @@ public class ApiExceptionHandler {
             RegistrationLookupDownstreamException exception,
             ServerWebExchange exchange) {
         String code = SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value();
-        ApiError error = ApiError.downstreamSystem(
+        ApiError error = new ApiError(
+                "DOWNSTREAM_SYSTEM",
                 code,
-                resolvePublicMessage(code, exchange, exception),
+                null,
+                List.of("PAGE"),
+                "ERROR",
                 SOURCE_SERVER);
         return buildMutationErrorResponse(
                 HttpStatus.SERVICE_UNAVAILABLE,

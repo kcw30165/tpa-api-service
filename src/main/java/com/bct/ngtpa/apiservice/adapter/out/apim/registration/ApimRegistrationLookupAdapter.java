@@ -10,7 +10,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimCertificateService;
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimPayloadCryptoService;
-import com.bct.ngtpa.apiservice.adapter.out.apim.ApimResponseValidator;
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimWebClientFacade;
 import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
@@ -25,7 +24,6 @@ import com.bct.ngtpa.apiservice.application.port.out.RegistrationLookupPort;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
-import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Objects;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,7 +39,6 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
     private final ApimCertificateService apimCertificateService;
     private final ApimPayloadCryptoService apimPayloadCryptoService;
     private final ApimProperties apimProperties;
-    private final ApimRegistrationLookupTransport legacyTestTransport;
     private final TrpSearchUnregMemberApimMapper requestMapper;
     private final TrpSearchUnregMemberApimResultMapper resultMapper;
     private final FailureEventPort failureEventPort;
@@ -57,7 +54,6 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
         this.apimCertificateService = Objects.requireNonNull(apimCertificateService, "apimCertificateService must not be null");
         this.apimPayloadCryptoService = Objects.requireNonNull(apimPayloadCryptoService, "apimPayloadCryptoService must not be null");
         this.apimProperties = Objects.requireNonNull(apimProperties, "apimProperties must not be null");
-        this.legacyTestTransport = null;
         this.requestMapper = new TrpSearchUnregMemberApimMapper();
         this.resultMapper = new TrpSearchUnregMemberApimResultMapper();
         this.failureEventPort = Objects.requireNonNull(
@@ -68,14 +64,6 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
     @LogExecution(value = "apim.searchUnregisteredMember", logArgs = false)
     public Mono<RegistrationLookupResult> searchUnregisteredMember(RegistrationLookupCommand command) {
         Objects.requireNonNull(command, "command must not be null");
-        if (legacyTestTransport != null) {
-            var request = requestMapper.toApimRequest(command);
-            return withFailureLogging(
-                    legacyTestTransport.postSearchUnregisteredMember(API_NAME, request)
-                            .map(envelope -> resultMapper.toResult(
-                                    envelope.errMessage(), envelope.data(), command)),
-                    command);
-        }
         if (!apimProperties.getEncryption().isEnabled()) {
             var request = apimPayloadCryptoService.encryptRequest(
                     API_NAME,
@@ -116,32 +104,16 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
     private RegistrationLookupResult toResult(
             ApimResponseEnvelope<TrpSearchUnregMemberApimDataItem> envelope,
             RegistrationLookupCommand command) {
-        String errMessage = resolveErrMessage(envelope);
-        List<TrpSearchUnregMemberApimDataItem> data = resolveData(envelope);
-        return resultMapper.toResult(errMessage, data, command);
-    }
-
-    private String resolveErrMessage(ApimResponseEnvelope<TrpSearchUnregMemberApimDataItem> envelope) {
-        Object response = invokeAny(envelope, "getResponse", "response");
-        Object source = response == null ? envelope : response;
-        Object value = invokeAny(source, "getErrMessage", "errMessage", "getErrmessage", "errmessage");
-        return value == null ? "" : String.valueOf(value);
-    }
-
-    @SuppressWarnings("unchecked")
-    private List<TrpSearchUnregMemberApimDataItem> resolveData(
-            ApimResponseEnvelope<TrpSearchUnregMemberApimDataItem> envelope) {
-        Object response = invokeAny(envelope, "getResponse", "response");
-        Object source = response == null ? envelope : response;
-        Object value = invokeAny(source, "getData", "data");
-        if (value instanceof List<?> list) {
-            return (List<TrpSearchUnregMemberApimDataItem>) list;
+        if (envelope == null || envelope.getResponse() == null) {
+            throw new RegistrationLookupDownstreamException(
+                    RegistrationLookupDownstreamException.Reason.EMPTY_DATA,
+                    null);
         }
-        try {
-            return ApimResponseValidator.requireSuccessData(envelope);
-        } catch (RuntimeException ignored) {
-            return List.of();
-        }
+        var response = envelope.getResponse();
+        List<TrpSearchUnregMemberApimDataItem> data = response.getData() == null
+                ? List.of()
+                : List.copyOf(response.getData());
+        return resultMapper.toResult(response.getErrMessage(), data, command);
     }
 
     private Mono<RegistrationLookupResult> withFailureLogging(
@@ -175,21 +147,6 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
                     true,
                     Map.copyOf(dimensions)));
         });
-    }
-
-    private Object invokeAny(Object target, String... methodNames) {
-        if (target == null) {
-            return null;
-        }
-        for (String methodName : methodNames) {
-            try {
-                Method method = target.getClass().getMethod(methodName);
-                return method.invoke(target);
-            } catch (ReflectiveOperationException ignored) {
-                // Try the next known envelope style.
-            }
-        }
-        return null;
     }
 
     private ApimException toApimException(ApimCryptoException exception) {
