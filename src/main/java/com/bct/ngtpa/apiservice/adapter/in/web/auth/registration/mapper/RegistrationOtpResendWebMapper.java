@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper;
 
+import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationOtpResendResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowConstants;
@@ -23,14 +24,16 @@ public class RegistrationOtpResendWebMapper {
     private static final String SOURCE_SERVER = "SERVER";
 
     private final WorkflowMutationResponseMapper workflowMutationResponseMapper;
+    private final ErrorMessageResolver errorMessageResolver;
     public RegistrationOtpResendWebMapper(WorkflowMutationResponseMapper workflowMutationResponseMapper) {
         this(workflowMutationResponseMapper, null);
     }
 
     public RegistrationOtpResendWebMapper(
             WorkflowMutationResponseMapper workflowMutationResponseMapper,
-            Object ignoredMessageResolver) {
+            ErrorMessageResolver errorMessageResolver) {
         this.workflowMutationResponseMapper = workflowMutationResponseMapper;
+        this.errorMessageResolver = errorMessageResolver;
     }
 
     public Object toMutationResponse(ResendRegistrationOtpResult result) {
@@ -56,7 +59,14 @@ public class RegistrationOtpResendWebMapper {
                 List.of(),
                 result.errors().stream()
                         .map(error -> new com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor(
-                                error.type(), error.code(), null, error.targets(), error.severity(), error.source()))
+                                error.type(),
+                                error.code(),
+                                error.message() != null
+                                        ? error.message()
+                                        : errorMessageResolver.resolve(error.code(), language, null, null, null),
+                                error.targets(),
+                                error.severity(),
+                                error.source()))
                         .toList());
     }
 
@@ -90,7 +100,7 @@ public class RegistrationOtpResendWebMapper {
         response.put("success", success);
         response.put("status", apiStatus(result.status()));
         response.put("result", success || exposeResendFailurePayload(result.status()) ? payloadMap(result) : null);
-        response.put("messages", List.of());
+        response.put("messages", result.messages());
         response.put("errors", success ? List.of() : errorMaps(result));
         return response;
     }

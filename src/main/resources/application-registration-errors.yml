@@ -20,6 +20,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: RESTART_FLOW
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.csrf.invalid
       type: BUSINESS
       severity: ERROR
@@ -27,6 +30,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.origin.invalid
       type: BUSINESS
       severity: ERROR
@@ -34,6 +40,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.state.invalid
       type: BUSINESS
       severity: ERROR
@@ -41,6 +50,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.start.request.invalid
       type: FORM
       severity: ERROR
@@ -48,6 +60,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: RESTART_FLOW
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.start.rateLimited
       type: BUSINESS
       severity: ERROR
@@ -55,6 +70,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: RESTART_FLOW
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.start.verificationFailed
       type: BUSINESS
       severity: ERROR
@@ -62,6 +80,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: RESTART_FLOW
+      messages:
+        en: "We are unable to verify your details. Please review and try again."
+        zh_HK: "我們未能核實您的資料，請檢查後再試。"
     - code: err.registration.otp.required
       type: FIELD
       severity: ERROR
@@ -69,6 +90,9 @@ workflow-error-contract:
       targets:
         - otpCode
       next-step: VERIFY_OTP
+      messages:
+        en: "Please check this field and try again."
+        zh_HK: "請檢查此欄位後再試。"
     - code: err.registration.otp.invalid
       type: FIELD
       severity: ERROR
@@ -76,6 +100,9 @@ workflow-error-contract:
       targets:
         - otpCode
       next-step: VERIFY_OTP
+      messages:
+        en: "The verification code is invalid."
+        zh_HK: "驗證碼無效。"
     - code: err.registration.otp.expired
       type: FIELD
       severity: ERROR
@@ -83,6 +110,9 @@ workflow-error-contract:
       targets:
         - otpCode
       next-step: VERIFY_OTP
+      messages:
+        en: "The verification code has expired."
+        zh_HK: "驗證碼已過期。"
     - code: err.registration.otp.locked
       type: BUSINESS
       severity: ERROR
@@ -90,6 +120,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: VERIFY_OTP
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.otp.cooldownActive
       type: BUSINESS
       severity: ERROR
@@ -97,6 +130,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: VERIFY_OTP
+      messages:
+        en: "Please wait before requesting another verification code."
+        zh_HK: "請稍候再要求新的驗證碼。"
     - code: err.registration.otp.sendRateLimited
       type: BUSINESS
       severity: ERROR
@@ -104,6 +140,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: VERIFY_OTP
+      messages:
+        en: "Too many OTP requests. Please wait and try again."
+        zh_HK: "驗證碼請求次數過多，請稍後再試。"
     - code: err.registration.otp.verifyRateLimited
       type: BUSINESS
       severity: ERROR
@@ -111,6 +150,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: VERIFY_OTP
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.message.deliveryFailed
       type: DOWNSTREAM_SYSTEM
       severity: ERROR
@@ -118,6 +160,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: VERIFY_OTP
+      messages:
+        en: "The service is temporarily unavailable. Please try again later."
+        zh_HK: "服務暫時未能提供，請稍後再試。"
     - code: err.registration.trust.selectionInvalid
       type: FIELD
       severity: ERROR
@@ -125,6 +170,9 @@ workflow-error-contract:
       targets:
         - selectedTrust
       next-step: SELECT_TRUST
+      messages:
+        en: "Please check this field and try again."
+        zh_HK: "請檢查此欄位後再試。"
     - code: err.registration.username.request.invalid
       type: FORM
       severity: ERROR
@@ -132,6 +180,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: USERNAME_CHECK
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.username.policyInvalid
       type: FIELD
       severity: ERROR
@@ -139,6 +190,9 @@ workflow-error-contract:
       targets:
         - username
       next-step: USERNAME_CHECK
+      messages:
+        en: "Please check this field and try again."
+        zh_HK: "請檢查此欄位後再試。"
     - code: err.registration.username.isRegistered
       type: FIELD
       severity: ERROR
@@ -146,6 +200,9 @@ workflow-error-contract:
       targets:
         - username
       next-step: USERNAME_CHECK
+      messages:
+        en: "Please check this field and try again."
+        zh_HK: "請檢查此欄位後再試。"
     - code: err.registration.complete.request.invalid
       type: FORM
       severity: ERROR
@@ -153,6 +210,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: PASSWORD_SETUP
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.complete.memberNotFound
       type: BUSINESS
       severity: ERROR
@@ -160,6 +220,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: RESTART_FLOW
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.complete.memberAlreadyRegistered
       type: BUSINESS
       severity: ERROR
@@ -167,6 +230,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: RETURN_TO_LOGIN
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.complete.failed
       type: BUSINESS
       severity: ERROR
@@ -174,6 +240,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: PASSWORD_SETUP
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.workflow.idempotency.missing
       type: FORM
       severity: ERROR
@@ -181,6 +250,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.workflow.idempotency.inProgress
       type: BUSINESS
       severity: ERROR
@@ -188,6 +260,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.workflow.idempotency.keyReused
       type: BUSINESS
       severity: ERROR
@@ -195,6 +270,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.workflow.downstream.businessRejected
       type: DOWNSTREAM_BUSINESS
       severity: ERROR
@@ -202,6 +280,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.workflow.downstream.unavailable
       type: DOWNSTREAM_SYSTEM
       severity: ERROR
@@ -209,6 +290,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+      messages:
+        en: "The service is temporarily unavailable. Please try again later."
+        zh_HK: "服務暫時未能提供，請稍後再試。"
     - code: err.workflow.system.unavailable
       type: SYSTEM
       severity: ERROR
@@ -216,6 +300,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+      messages:
+        en: "The service is temporarily unavailable. Please try again later."
+        zh_HK: "服務暫時未能提供，請稍後再試。"
     - code: err.registration.captcha.consumed
       type: FORM
       severity: ERROR
@@ -223,6 +310,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.captcha.expired
       type: FORM
       severity: ERROR
@@ -230,6 +320,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.captcha.invalid
       type: FORM
       severity: ERROR
@@ -237,6 +330,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.captcha.locked
       type: FORM
       severity: ERROR
@@ -244,6 +340,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.captcha.notFound
       type: FORM
       severity: ERROR
@@ -251,6 +350,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.captcha.refreshFailed
       type: FORM
       severity: ERROR
@@ -258,6 +360,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.captcha.required
       type: FORM
       severity: ERROR
@@ -265,6 +370,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.complete.continuationUnavailable
       type: FORM
       severity: ERROR
@@ -272,6 +380,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.complete.outcomeUnknown
       type: FORM
       severity: ERROR
@@ -279,6 +390,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.confirmPassword.required
       type: FORM
       severity: ERROR
@@ -286,6 +400,9 @@ workflow-error-contract:
       targets:
         - confirmPassword
       next-step: PASSWORD_SETUP
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.contact.exactlyOneRequired
       type: FORM
       severity: ERROR
@@ -293,6 +410,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.contact.required
       type: FORM
       severity: ERROR
@@ -300,6 +420,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.dateOfBirth.invalid
       type: FORM
       severity: ERROR
@@ -307,6 +430,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.email.invalid
       type: FORM
       severity: ERROR
@@ -314,6 +440,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.identityType.invalid
       type: FORM
       severity: ERROR
@@ -321,6 +450,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.identityValue.invalid
       type: FORM
       severity: ERROR
@@ -328,6 +460,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.mobile.invalid
       type: FORM
       severity: ERROR
@@ -335,6 +470,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.password.maxLength
       type: FORM
       severity: ERROR
@@ -342,6 +480,9 @@ workflow-error-contract:
       targets:
         - password
       next-step: PASSWORD_SETUP
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.password.minLength
       type: FORM
       severity: ERROR
@@ -349,6 +490,9 @@ workflow-error-contract:
       targets:
         - password
       next-step: PASSWORD_SETUP
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.password.mismatch
       type: FORM
       severity: ERROR
@@ -356,6 +500,9 @@ workflow-error-contract:
       targets:
         - password
       next-step: PASSWORD_SETUP
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.password.noSpaces
       type: FORM
       severity: ERROR
@@ -363,6 +510,9 @@ workflow-error-contract:
       targets:
         - password
       next-step: PASSWORD_SETUP
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.password.required
       type: FORM
       severity: ERROR
@@ -370,6 +520,9 @@ workflow-error-contract:
       targets:
         - password
       next-step: PASSWORD_SETUP
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.password.requiredCategories
       type: FORM
       severity: ERROR
@@ -377,6 +530,9 @@ workflow-error-contract:
       targets:
         - password
       next-step: PASSWORD_SETUP
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.password.sameAsUsername
       type: FORM
       severity: ERROR
@@ -384,6 +540,9 @@ workflow-error-contract:
       targets:
         - password
       next-step: PASSWORD_SETUP
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.password.validationFailed
       type: FORM
       severity: ERROR
@@ -391,6 +550,9 @@ workflow-error-contract:
       targets:
         - password
       next-step: PASSWORD_SETUP
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.trustLookup.failed
       type: FORM
       severity: ERROR
@@ -398,6 +560,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.trustLookup.noEligibleTrusts
       type: FORM
       severity: ERROR
@@ -405,6 +570,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.username.check.failed
       type: FORM
       severity: ERROR
@@ -412,6 +580,9 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
     - code: err.registration.username.checkFailed
       type: FORM
       severity: ERROR
@@ -419,3 +590,6 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+      messages:
+        en: "The request could not be completed. Please review and try again."
+        zh_HK: "未能完成請求，請檢查後再試。"
