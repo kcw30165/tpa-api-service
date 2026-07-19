@@ -164,7 +164,7 @@ class AuthRegistrationUsernameControllerTest {
         assertThat(json.get("success").asBoolean()).isFalse();
         assertThat(json.get("status").asText()).isEqualTo("DOWNSTREAM_ERROR");
         assertThat(json.at("/result/nextStep").asText()).isEqualTo("USERNAME_CHECK");
-        assertThat(json.toString()).doesNotContain("err.workflow.downstream.businessRejected", "err.registration.username.isRegistered");
+        assertThat(json.toString()).doesNotContain("err.registration.username.checkFailed", "err.registration.username.isRegistered");
     }
 
     @Test

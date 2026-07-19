@@ -58,10 +58,10 @@ class RegistrationDownstreamErrorClassificationTest {
         });
     }
 
-    @Test void usernameCheckHasNoInventedEndpointSpecificApimMapping() {
+    @Test void unknownUsernameBusinessErrorUsesCapabilitySpecificFallback() {
         runner.run(context -> {
             var result=adapter(context).classify(request("registration-username-check","TRPChkCustId","err.tpa.any.generic.error"));
-            assertThat(result.responseCode()).isEqualTo("err.workflow.downstream.businessRejected");
+            assertThat(result.responseCode()).isEqualTo("err.registration.username.checkFailed");
             assertThat(result.httpStatus()).isEqualTo(422);
             assertThat(result.fallbackUsed()).isTrue();
         });
@@ -79,7 +79,7 @@ class RegistrationDownstreamErrorClassificationTest {
     @Test void unknownCompletionBusinessErrorUsesConfiguredFallback() {
         runner.run(context -> {
             var result=adapter(context).classify(request("registration-password-setup","TRPRegMember","err.tpa.other"));
-            assertThat(result.responseCode()).isEqualTo("err.workflow.downstream.businessRejected");
+            assertThat(result.responseCode()).isEqualTo("err.registration.complete.failed");
             assertThat(result.httpStatus()).isEqualTo(422);
             assertThat(result.fallbackUsed()).isTrue();
         });

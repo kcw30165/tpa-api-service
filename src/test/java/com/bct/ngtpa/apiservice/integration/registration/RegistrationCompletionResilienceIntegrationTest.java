@@ -124,7 +124,7 @@ class RegistrationCompletionResilienceIntegrationTest {
         assertThat(r.status()).isEqualTo(CompleteRegistrationResultStatus.DOWNSTREAM_REJECTED);
         assertThat(r.registered()).isFalse();
         assertThat(r.errors()).singleElement().satisfies(error ->
-                assertThat(error.code()).isEqualTo("err.workflow.downstream.businessRejected"));
+                assertThat(error.code()).isEqualTo("err.registration.complete.failed"));
         assertThat(r.toString()).doesNotContain(
                 "Password1!", "err.tpa.validation.rejected", "member@example.com");
     }

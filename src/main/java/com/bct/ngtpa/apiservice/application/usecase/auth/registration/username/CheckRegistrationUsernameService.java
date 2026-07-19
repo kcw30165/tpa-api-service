@@ -204,12 +204,31 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
                         downstreamErrorCode == null || downstreamErrorCode.isBlank()
                                 ? "unknown"
                                 : downstreamErrorCode.trim()));
+        String publicCode = publicUsernameRejectionCode(
+                downstreamErrorCode,
+                classification.responseCode());
         return failure(
                 CheckRegistrationUsernameResultStatus.DOWNSTREAM_REJECTED,
                 WorkflowNextStep.USERNAME_CHECK,
-                WorkflowErrorType.DOWNSTREAM_BUSINESS,
-                classification.responseCode(),
-                classification.target());
+                WorkflowErrorType.BUSINESS,
+                publicCode,
+                "username");
+    }
+
+    private String publicUsernameRejectionCode(
+            String downstreamErrorCode,
+            String classifiedCode) {
+        String normalized = downstreamErrorCode == null ? "" : downstreamErrorCode.trim();
+        if (normalized.equals("err.tpa.username.taken")
+                || normalized.equals("err.tpa.cust.id.duplicated")
+                || normalized.equals("err.tpa.member.registered")) {
+            return "err.registration.username.isRegistered";
+        }
+        if (classifiedCode != null
+                && classifiedCode.startsWith("err.registration.username.")) {
+            return classifiedCode;
+        }
+        return "err.registration.username.checkFailed";
     }
 
     private CheckRegistrationUsernameResult downstreamFailed() {

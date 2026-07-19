@@ -81,7 +81,7 @@ bff-pages:
         fallback:
           eventType: DOWNSTREAM_REJECTION
           logLevel: ERROR
-          responseCode: downstream.generic.businessRejected
+          responseCode: err.registration.trustLookup.failed
           target: PAGE
           idempotencyCacheable: false
       metadata:
@@ -130,11 +130,32 @@ bff-pages:
       downstreamErrorClassification:
         source: APIM_TAS
         endpoint: TRPChkCustId
-        explicitMappings: []
+        explicitMappings:
+          - downstreamErrorCode: err.tpa.username.taken
+            eventType: DOWNSTREAM_REJECTION
+            logLevel: ERROR
+            responseCode: err.registration.username.isRegistered
+            httpStatus: 422
+            target: username
+            idempotencyCacheable: false
+          - downstreamErrorCode: err.tpa.cust.id.duplicated
+            eventType: DOWNSTREAM_REJECTION
+            logLevel: ERROR
+            responseCode: err.registration.username.isRegistered
+            httpStatus: 422
+            target: username
+            idempotencyCacheable: false
+          - downstreamErrorCode: err.tpa.member.registered
+            eventType: DOWNSTREAM_REJECTION
+            logLevel: ERROR
+            responseCode: err.registration.username.isRegistered
+            httpStatus: 422
+            target: username
+            idempotencyCacheable: false
         fallback:
           eventType: DOWNSTREAM_REJECTION
           logLevel: ERROR
-          responseCode: err.workflow.downstream.businessRejected
+          responseCode: err.registration.username.checkFailed
           httpStatus: 422
           target: PAGE
           idempotencyCacheable: false
@@ -196,7 +217,7 @@ bff-pages:
         fallback:
           eventType: DOWNSTREAM_REJECTION
           logLevel: ERROR
-          responseCode: err.workflow.downstream.businessRejected
+          responseCode: err.registration.complete.failed
           httpStatus: 422
           target: PAGE
           idempotencyCacheable: false

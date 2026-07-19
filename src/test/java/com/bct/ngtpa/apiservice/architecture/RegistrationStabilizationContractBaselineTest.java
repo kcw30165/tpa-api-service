@@ -100,7 +100,13 @@ class RegistrationStabilizationContractBaselineTest {
                 .contains("downstreamErrorCode: err.tpa.member.registered")
                 .contains("responseCode: err.registration.username.isRegistered")
                 .contains("endpoint: TRPChkCustId");
-        assertThat(yaml).doesNotContain("err.tpa.username.taken");
+        assertThat(yaml)
+                .contains("downstreamErrorCode: err.tpa.username.taken")
+                .contains("responseCode: err.registration.username.isRegistered")
+                .contains("responseCode: err.registration.username.checkFailed")
+                .contains("responseCode: err.registration.complete.failed")
+                .doesNotContain("responseCode: err.workflow.downstream.businessRejected")
+                .doesNotContain("responseCode: downstream.generic.businessRejected");
     }
 
     @Test

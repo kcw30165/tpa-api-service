@@ -21,7 +21,7 @@ username-check,REQUEST_INVALID,400,false,VALIDATION_FAILED,err.registration.user
 username-check,CSRF_INVALID,403,false,VALIDATION_FAILED,err.registration.csrf.invalid,false,KEEP
 username-check,STATE_INVALID,409,false,BUSINESS_REJECTED,err.registration.state.invalid,false,KEEP
 username-check,USERNAME_UNAVAILABLE,422,false,BUSINESS_REJECTED,err.registration.username.isRegistered,false,KEEP
-username-check,APIM_BUSINESS_REJECTION,422,false,DOWNSTREAM_REJECTED,err.workflow.downstream.businessRejected,false,KEEP
+username-check,APIM_BUSINESS_REJECTION,422,false,BUSINESS_REJECTED,err.registration.username.checkFailed,false,KEEP
 username-check,APIM_TECHNICAL_FAILURE,502,false,DOWNSTREAM_ERROR,err.workflow.downstream.unavailable,false,KEEP
 complete,REQUEST_INVALID,400,false,VALIDATION_FAILED,err.registration.complete.request.invalid,false,KEEP
 complete,CSRF_INVALID,403,false,VALIDATION_FAILED,err.registration.csrf.invalid,false,KEEP
