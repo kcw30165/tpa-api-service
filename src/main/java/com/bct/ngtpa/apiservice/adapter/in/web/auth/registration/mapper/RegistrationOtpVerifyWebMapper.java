@@ -12,7 +12,7 @@ import java.util.Map;
 public class RegistrationOtpVerifyWebMapper {
     private static final String SUCCESS = "SUCCESS";
     private static final String VALIDATION_FAILED = "VALIDATION_FAILED";
-    private static final String BUSINESS_FAILED = "BUSINESS_FAILED";
+    private static final String BUSINESS_REJECTED = "BUSINESS_REJECTED";
     private static final String DOWNSTREAM_ERROR = "DOWNSTREAM_ERROR";
     private static final String SYSTEM_ERROR = "SYSTEM_ERROR";
     private final Object workflowMutationResponseMapper;
@@ -89,7 +89,7 @@ public class RegistrationOtpVerifyWebMapper {
     private String apiStatus(VerifyRegistrationOtpResultStatus status) {
         return switch (status) {
             case VERIFIED, COMPLETED_REPLAY, DUPLICATE_IN_PROGRESS -> SUCCESS;
-            case OTP_EXPIRED, OTP_LOCKED, NO_ELIGIBLE_TRUSTS -> BUSINESS_FAILED;
+            case OTP_EXPIRED, OTP_LOCKED, NO_ELIGIBLE_TRUSTS -> BUSINESS_REJECTED;
             case TRUST_LOOKUP_FAILED -> DOWNSTREAM_ERROR;
             case SYSTEM_FAILED -> SYSTEM_ERROR;
             default -> VALIDATION_FAILED;

@@ -105,7 +105,11 @@ public class RegistrationOtpChallengeAdapter implements RegistrationOtpPort {
                             ResendRegistrationOtpResultStatus.MAX_RESEND_ATTEMPTS_REACHED,
                             result.retryAfterSeconds(),
                             result.remainingResendAttempts()));
-                    case EXPIRED, LOCKED, INVALIDATED, ALREADY_VERIFIED, NOT_FOUND, NOT_REPLACEABLE ->
+                    case LOCKED -> Mono.error(new RegistrationOtpResendRejectedException(
+                            ResendRegistrationOtpResultStatus.COOLDOWN_ACTIVE,
+                            result.retryAfterSeconds(),
+                            result.remainingResendAttempts()));
+                    case EXPIRED, INVALIDATED, ALREADY_VERIFIED, NOT_FOUND, NOT_REPLACEABLE ->
                             Mono.error(new RegistrationOtpResendRejectedException(
                                     ResendRegistrationOtpResultStatus.INVALID_AUTH_FLOW,
                                     result.retryAfterSeconds(),

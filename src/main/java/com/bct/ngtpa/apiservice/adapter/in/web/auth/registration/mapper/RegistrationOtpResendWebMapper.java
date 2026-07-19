@@ -17,7 +17,7 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResultStatus;
 public class RegistrationOtpResendWebMapper {
     private static final String SUCCESS = "SUCCESS";
     private static final String VALIDATION_FAILED = "VALIDATION_FAILED";
-    private static final String BUSINESS_FAILED = "BUSINESS_FAILED";
+    private static final String BUSINESS_REJECTED = "BUSINESS_REJECTED";
     private static final String DOWNSTREAM_ERROR = "DOWNSTREAM_ERROR";
     private static final String SYSTEM_ERROR = "SYSTEM_ERROR";
     private static final String SOURCE_SERVER = "SERVER";
@@ -136,7 +136,7 @@ public class RegistrationOtpResendWebMapper {
             case RESENT, COMPLETED_REPLAY, DUPLICATE_IN_PROGRESS -> SUCCESS;
             case MESSAGE_DELIVERY_FAILED -> DOWNSTREAM_ERROR;
             case SYSTEM_FAILED -> SYSTEM_ERROR;
-            case COOLDOWN_ACTIVE, SEND_RATE_LIMITED, MAX_RESEND_ATTEMPTS_REACHED -> BUSINESS_FAILED;
+            case COOLDOWN_ACTIVE, SEND_RATE_LIMITED, MAX_RESEND_ATTEMPTS_REACHED -> BUSINESS_REJECTED;
             default -> VALIDATION_FAILED;
         };
     }
