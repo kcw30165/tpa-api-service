@@ -4,6 +4,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLo
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureOrigin;
 import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import java.util.LinkedHashMap;
@@ -20,6 +21,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchUn
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchUnregMemberApimResultMapper;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupResult;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupStatus;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationLookupPort;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
@@ -120,6 +122,15 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
             Mono<RegistrationLookupResult> pipeline,
             RegistrationLookupCommand command) {
         return pipeline.doOnEach(signal -> {
+            if (signal.isOnNext()
+                    && signal.get() != null
+                    && signal.get().status() == RegistrationLookupStatus.NOT_ELIGIBLE) {
+                String requestId = signal.getContextView().getOrDefault(
+                        RequestCorrelation.REQUEST_ID_CONTEXT_KEY,
+                        null);
+                recordDownstreamRejection(command, requestId);
+                return;
+            }
             if (!signal.isOnError()
                     || !(signal.getThrowable() instanceof RegistrationLookupDownstreamException exception)) {
                 return;
@@ -147,6 +158,32 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
                     true,
                     Map.copyOf(dimensions)));
         });
+    }
+
+    private void recordDownstreamRejection(
+            RegistrationLookupCommand command,
+            String requestId) {
+        var dimensions = new LinkedHashMap<String, Object>();
+        dimensions.put("searchBy", command.identityType().name());
+        dimensions.put("identityValue", RegistrationLookupLogMasker.identity(command.identityValue()));
+        dimensions.put("dateOfBirth", RegistrationLookupLogMasker.dateOfBirth(command.dateOfBirth()));
+        dimensions.put("contactType", command.contactType().name());
+        dimensions.put("contactValue", RegistrationLookupLogMasker.contact(
+                command.contactType(), command.contactValue()));
+        dimensions.put("outcome", RegistrationLookupStatus.NOT_ELIGIBLE.name());
+
+        failureEventPort.record(new FailureEvent(
+                "event.registration.lookup.downstream_rejection",
+                requestId,
+                "REGISTRATION",
+                "TRPSearchUnregMember",
+                FailureOrigin.DOWNSTREAM_CONTRACT,
+                "err.tpa.member.not.found",
+                RegistrationErrorKey
+                        .START_VERIFICATION_FAILED.value(),
+                422,
+                false,
+                Map.copyOf(dimensions)));
     }
 
     private ApimException toApimException(ApimCryptoException exception) {
