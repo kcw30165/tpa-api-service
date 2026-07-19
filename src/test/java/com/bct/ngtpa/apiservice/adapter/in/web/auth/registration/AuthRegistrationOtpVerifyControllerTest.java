@@ -26,7 +26,8 @@ class AuthRegistrationOtpVerifyControllerTest {
     void otpVerifyEndpointExists() throws Exception {
         Method method = AuthRegistrationOtpController.class.getDeclaredMethod(
                 "verifyOtp", RegistrationOtpVerifyRequest.class, String.class, String.class, String.class, String.class,
-                String.class, String.class, String.class);
+                String.class, String.class, String.class,
+                org.springframework.http.server.reactive.ServerHttpResponse.class);
         PostMapping mapping = method.getAnnotation(PostMapping.class);
         assertThat(mapping).isNotNull();
         assertThat(mapping.path()).contains("/verify");
@@ -47,7 +48,8 @@ class AuthRegistrationOtpVerifyControllerTest {
         var controller = otpController(useCase);
 
         String json = objectMapper.writeValueAsString(controller
-                .verifyOtp(new RegistrationOtpVerifyRequest("123456"), null, "csrf", "idem", "req", "en", null, null)
+                .verifyOtp(new RegistrationOtpVerifyRequest("123456"), null, "csrf", "idem", "req", "en", null, null,
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse())
                 .block());
         assertThat(json).contains("err.registration.authFlow.invalid");
         assertThat(useCase.called).isFalse();
@@ -60,7 +62,8 @@ class AuthRegistrationOtpVerifyControllerTest {
         var controller = otpController(useCase);
 
         String json = objectMapper.writeValueAsString(controller
-                .verifyOtp(new RegistrationOtpVerifyRequest("123456"), "afs", null, "idem", "req", "en", null, null)
+                .verifyOtp(new RegistrationOtpVerifyRequest("123456"), "afs", null, "idem", "req", "en", null, null,
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse())
                 .block());
         assertThat(json).contains("err.registration.csrf.invalid");
         assertThat(useCase.called).isFalse();
@@ -73,7 +76,8 @@ class AuthRegistrationOtpVerifyControllerTest {
         var controller = otpController(useCase);
 
         String json = objectMapper.writeValueAsString(controller
-                .verifyOtp(new RegistrationOtpVerifyRequest("123456"), "afs", "csrf", null, "req", "en", null, null)
+                .verifyOtp(new RegistrationOtpVerifyRequest("123456"), "afs", "csrf", null, "req", "en", null, null,
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse())
                 .block());
         assertThat(json).contains("err.workflow.idempotency.missing");
         assertThat(useCase.called).isFalse();
@@ -86,7 +90,8 @@ class AuthRegistrationOtpVerifyControllerTest {
         var controller = otpController(useCase);
 
         String json = objectMapper.writeValueAsString(controller
-                .verifyOtp(new RegistrationOtpVerifyRequest(" "), "afs", "csrf", "idem", "req", "en", null, null)
+                .verifyOtp(new RegistrationOtpVerifyRequest(" "), "afs", "csrf", "idem", "req", "en", null, null,
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse())
                 .block());
         assertThat(json).contains("err.registration.otp.invalid");
         assertThat(useCase.called).isFalse();
@@ -99,7 +104,8 @@ class AuthRegistrationOtpVerifyControllerTest {
         var controller = otpController(useCase);
 
         controller.verifyOtp(new RegistrationOtpVerifyRequest("123456"), "afs_abc", "csrf_abc", "idem_abc", "req_abc",
-                "zh-HK", "https://portal.example", "https://portal.example/page").block();
+                "zh-HK", "https://portal.example", "https://portal.example/page",
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block();
 
         assertThat(useCase.called).isTrue();
         assertThat(useCase.command.authFlowSessionId().value()).isEqualTo("afs_abc");
@@ -116,7 +122,8 @@ class AuthRegistrationOtpVerifyControllerTest {
         var controller = otpController(new RecordingUseCase());
 
         String json = objectMapper.writeValueAsString(controller.verifyOtp(new RegistrationOtpVerifyRequest("123456"),
-                "afs_abc", "csrf_abc", "idem_abc", "req_abc", "en", null, null).block());
+                "afs_abc", "csrf_abc", "idem_abc", "req_abc", "en", null, null,
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block());
         assertThat(json).contains("USERNAME_CHECK", "registration-username-check", "unregisteredTrusts");
         assertThat(json).doesNotContain("afs_abc", "csrf_abc", "idem_abc", "123456", "otpChallengeId",
                 "activeOtpChallengeId", "member@example.com", "3024102", "04/04/1982");
@@ -143,7 +150,7 @@ class AuthRegistrationOtpVerifyControllerTest {
     }
 
     private static AuthRegistrationOtpController otpController(VerifyRegistrationOtpUseCase verifyUseCase) {
-        return new AuthRegistrationOtpController(
+        return new AuthRegistrationOtpController(com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter.defaultWriter(),
                 command -> Mono.error(new AssertionError("resend use case must not be called")),
                 new RegistrationOtpResendWebMapper(null),
                 verifyUseCase,

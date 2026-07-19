@@ -100,6 +100,8 @@ public class AuthRegistrationController {
                     .map(result -> {
                         if (result.clearAuthFlowCookie()) {
                             cookieWriter.clearAuthFlowCookie(response);
+                        } else {
+                            cookieWriter.writeAuthFlowCookie(response, authFlowSessionId);
                         }
                         return RegistrationHttpResponses.toResponse(completeRegistrationWebMapper.toResponse(result, acceptLanguage));
                     });

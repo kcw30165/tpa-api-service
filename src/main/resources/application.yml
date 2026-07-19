@@ -23,7 +23,6 @@ spring:
             certificate: file:/etc/redis-tls/tls.crt
             private-key: file:/etc/redis-tls/tls.key
 
-
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:}
   allowed-headers: ${CORS_ALLOWED_HEADERS:Account-Ref,Accept-Language,X-Request-Id,Content-Type,Authorization}
@@ -118,7 +117,7 @@ auth-workflows:
       length: 6
       numeric-only: true
       ttl-seconds: 300
-      resend-cooldown-seconds: 60
+      resend-cooldown-seconds: 1
       max-verify-attempts: 5
       max-resend-attempts: 5
       invalidate-previous-on-resend: true
@@ -172,9 +171,12 @@ apim:
       - email
       - mobile-number
     response-fields:
+      - policy-no
+      - cert-no
+      - user-id
+      - cust-id
       - email
       - mobile-number
-
 
 request-logging:
   enabled: true
@@ -269,4 +271,3 @@ email:
     port: ${SMTP_PORT:25}
     from: ${SMTP_FROM:}
     timeout-millis: ${SMTP_TIMEOUT_MILLIS:5000}
-

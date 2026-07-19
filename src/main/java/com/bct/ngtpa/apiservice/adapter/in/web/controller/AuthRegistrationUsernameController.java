@@ -1,13 +1,15 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
+import lombok.RequiredArgsConstructor;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.RegistrationHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationUsernameCheckRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationUsernameCheckWebMapper;
 import com.bct.ngtpa.apiservice.application.port.in.CheckRegistrationUsernameUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.CheckRegistrationUsernameCommand;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -20,10 +22,11 @@ import reactor.core.publisher.Mono;
 @RequestMapping("/api/v1/auth/registration")
 @RequiredArgsConstructor
 public class AuthRegistrationUsernameController {
+    private final AuthFlowCookieWriter cookieWriter;
     private final CheckRegistrationUsernameUseCase checkRegistrationUsernameUseCase;
     private final RegistrationUsernameCheckWebMapper registrationUsernameCheckWebMapper;
 
-    @PostMapping(path = "/username/check", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+@PostMapping(path = "/username/check", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<ResponseEntity<Object>> checkUsername(
             @RequestBody(required = false) RegistrationUsernameCheckRequest request,
             @CookieValue(name = "auth_flow_sid", required = false) String authFlowSessionId,
@@ -31,7 +34,8 @@ public class AuthRegistrationUsernameController {
             @RequestHeader(name = "X-Request-Id", required = false) String requestId,
             @RequestHeader(name = "Accept-Language", required = false) String acceptLanguage,
             @RequestHeader(name = "Origin", required = false) String origin,
-            @RequestHeader(name = "Referer", required = false) String referer) {
+            @RequestHeader(name = "Referer", required = false) String referer,
+            ServerHttpResponse response) {
         if (!hasText(authFlowSessionId)) {
             return Mono.just(RegistrationHttpResponses.toObjectResponse(registrationUsernameCheckWebMapper.missingAuthFlowCookieResponse()));
         }
@@ -57,11 +61,19 @@ public class AuthRegistrationUsernameController {
         }
 
         return checkRegistrationUsernameUseCase.check(command)
-                .map(registrationUsernameCheckWebMapper::toMutationResponse)
-                .map(RegistrationHttpResponses::toObjectResponse);
+                .map(result -> {
+                    if (result.status()
+                            != com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.CheckRegistrationUsernameResultStatus.INVALID_AUTH_FLOW
+                            && result.status()
+                            != com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.CheckRegistrationUsernameResultStatus.CSRF_INVALID) {
+                        cookieWriter.writeAuthFlowCookie(response, authFlowSessionId);
+                    }
+                    return RegistrationHttpResponses.toObjectResponse(
+                            registrationUsernameCheckWebMapper.toMutationResponse(result));
+                });
     }
 
-    private boolean hasText(String value) {
+private boolean hasText(String value) {
         return value != null && !value.isBlank();
     }
 }
