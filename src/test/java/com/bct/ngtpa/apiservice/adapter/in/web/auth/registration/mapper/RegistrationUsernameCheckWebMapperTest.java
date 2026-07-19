@@ -47,7 +47,7 @@ class RegistrationUsernameCheckWebMapperTest {
                 List.of(error("err.registration.username.isRegistered"))));
 
         JsonNode json = objectMapper.valueToTree(response);
-        assertThat(json.get("status").asText()).isEqualTo("DOWNSTREAM_REJECTION");
+        assertThat(json.get("status").asText()).isEqualTo("BUSINESS_REJECTED");
         assertThat(json.at("/errors/0/code").asText()).isEqualTo("err.registration.username.isRegistered");
         assertThat(json.toString()).doesNotContain("err.tpa.username.taken");
     }

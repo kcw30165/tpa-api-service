@@ -113,14 +113,6 @@ public class RegistrationStartWebMapper {
             String acceptLanguage) {
         logFatalIfNeeded(result);
         var response = workflowMutationResponseMapper.toMutationResponse(toWorkflowResult(result, acceptLanguage));
-        if (result != null && result.status() == StartRegistrationResultStatus.DOWNSTREAM_REJECTED) {
-            return new MutationResponse<>(
-                    false,
-                    ApiStatus.DOWNSTREAM_REJECTED,
-                    response.result(),
-                    response.messages(),
-                    response.errors());
-        }
         if (result != null && result.status() == StartRegistrationResultStatus.MESSAGE_DELIVERY_FAILED) {
             return new MutationResponse<>(
                     false,

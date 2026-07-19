@@ -17,7 +17,7 @@ import java.util.Map;
 public class RegistrationUsernameCheckWebMapper {
     private static final String SUCCESS = "SUCCESS";
     private static final String VALIDATION_FAILED = "VALIDATION_FAILED";
-    private static final String DOWNSTREAM_REJECTION = "DOWNSTREAM_REJECTION";
+    private static final String BUSINESS_REJECTED = "BUSINESS_REJECTED";
     private static final String DOWNSTREAM_ERROR = "DOWNSTREAM_ERROR";
     private static final String SYSTEM_ERROR = "SYSTEM_ERROR";
     private static final String TARGET_PAGE = "PAGE";
@@ -107,7 +107,7 @@ public class RegistrationUsernameCheckWebMapper {
     private String apiStatus(CheckRegistrationUsernameResultStatus status) {
         return switch (status) {
             case USERNAME_AVAILABLE -> SUCCESS;
-            case DOWNSTREAM_REJECTED -> DOWNSTREAM_REJECTION;
+            case DOWNSTREAM_REJECTED -> BUSINESS_REJECTED;
             case DOWNSTREAM_FAILED -> DOWNSTREAM_ERROR;
             case SYSTEM_FAILED -> SYSTEM_ERROR;
             default -> VALIDATION_FAILED;

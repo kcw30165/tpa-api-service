@@ -145,7 +145,7 @@ class AuthRegistrationUsernameControllerTest {
         JsonNode json = json(controller.checkUsername(validRequest(), "afs", "csrf", "req", "en", null, null).block());
 
         assertThat(json.get("success").asBoolean()).isFalse();
-        assertThat(json.get("status").asText()).isEqualTo("DOWNSTREAM_REJECTION");
+        assertThat(json.get("status").asText()).isEqualTo("BUSINESS_REJECTED");
         assertThat(json.at("/result/nextStep").asText()).isEqualTo("USERNAME_CHECK");
         assertThat(json.at("/errors/0/code").asText()).isEqualTo("err.registration.username.isRegistered");
     }
