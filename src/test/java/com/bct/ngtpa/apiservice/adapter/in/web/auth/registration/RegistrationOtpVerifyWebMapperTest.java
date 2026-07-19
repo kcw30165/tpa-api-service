@@ -12,7 +12,8 @@ import org.junit.jupiter.api.Test;
 
 class RegistrationOtpVerifyWebMapperTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final RegistrationOtpVerifyWebMapper mapper = new RegistrationOtpVerifyWebMapper(null);
+    private final RegistrationOtpVerifyWebMapper mapper = new RegistrationOtpVerifyWebMapper(
+                new com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper());
 
     @Test
     void successSingleTrustMapsToUsernameCheck() throws Exception {

@@ -351,7 +351,7 @@ public class DefaultOtpChallengeAdapter implements OtpChallengePort {
                 newChallengeId,
                 newCodeHash,
                 OtpStatus.CREATED,
-                recoveringFromVerifyLock ? 0 : challenge.failedAttemptCount(),
+                0,
                 updatedResendAttemptCount,
                 now,
                 expiresAt,

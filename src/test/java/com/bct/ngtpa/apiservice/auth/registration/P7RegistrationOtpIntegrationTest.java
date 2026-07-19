@@ -185,7 +185,8 @@ class P7RegistrationOtpIntegrationTest {
                 resendUseCase,
                                 new RegistrationOtpResendWebMapper(null),
                                 verifyUseCase,
-                                new RegistrationOtpVerifyWebMapper(null),
+                                new RegistrationOtpVerifyWebMapper(
+                new com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper()),
                                 new RegistrationIdempotencyProperties());
         }
 

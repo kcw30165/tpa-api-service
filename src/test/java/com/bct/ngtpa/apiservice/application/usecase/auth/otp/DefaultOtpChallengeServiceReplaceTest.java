@@ -181,7 +181,7 @@ class DefaultOtpChallengeServiceReplaceTest {
     }
 
     @Test
-    void replaceDoesNotResetFailedAttemptCount() {
+    void replaceResetsFailedAttemptCountForNewChallenge() {
         FakeOtpChallengeStatePort statePort = new FakeOtpChallengeStatePort();
         statePort.store(sampleChallenge().withFailedAttemptCount(2));
 
@@ -190,7 +190,7 @@ class DefaultOtpChallengeServiceReplaceTest {
                 .expectNextCount(1)
                 .verifyComplete();
 
-        assertThat(statePort.lastSaved.failedAttemptCount()).isEqualTo(2);
+        assertThat(statePort.lastSaved.failedAttemptCount()).isZero();
     }
 
     @Test

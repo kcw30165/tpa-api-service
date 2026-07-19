@@ -2,53 +2,118 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationOtpVerifyResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationUnregisteredTrustResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowConstants;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowPageRefs;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.*;
-import java.util.LinkedHashMap;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowPageRef;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResult;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResultPayload;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResultStatus;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.RegistrationOtpVerifyErrorKeys;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.VerifyRegistrationOtpResult;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.VerifyRegistrationOtpResultStatus;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 
 public class RegistrationOtpVerifyWebMapper {
-    private static final String SUCCESS = "SUCCESS";
-    private static final String VALIDATION_FAILED = "VALIDATION_FAILED";
-    private static final String BUSINESS_REJECTED = "BUSINESS_REJECTED";
-    private static final String DOWNSTREAM_ERROR = "DOWNSTREAM_ERROR";
-    private static final String SYSTEM_ERROR = "SYSTEM_ERROR";
-    private final Object workflowMutationResponseMapper;
 
-    public RegistrationOtpVerifyWebMapper(Object workflowMutationResponseMapper) {
-        this.workflowMutationResponseMapper = workflowMutationResponseMapper;
+    private static final String SOURCE_SERVER = "SERVER";
+    private static final String TARGET_PAGE = "PAGE";
+    private static final String TARGET_OTP_CODE = "otpCode";
+
+    private final WorkflowMutationResponseMapper workflowMutationResponseMapper;
+
+    public RegistrationOtpVerifyWebMapper(
+            WorkflowMutationResponseMapper workflowMutationResponseMapper) {
+        this.workflowMutationResponseMapper = Objects.requireNonNull(
+                workflowMutationResponseMapper,
+                "workflowMutationResponseMapper must not be null");
     }
 
-    public Object toMutationResponse(VerifyRegistrationOtpResult result) {
-        return fallbackResponse(result);
-    }
-
-    public Object missingAuthFlowCookieResponse() { return errorResponse(RegistrationOtpVerifyErrorKeys.REGISTRATION_AUTH_FLOW_INVALID, VALIDATION_FAILED); }
-    public Object missingCsrfTokenResponse() { return errorResponse(RegistrationOtpVerifyErrorKeys.REGISTRATION_CSRF_INVALID, VALIDATION_FAILED); }
-    public Object missingIdempotencyKeyResponse() { return errorResponse(com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value(), VALIDATION_FAILED); }
-    public Object missingCodeResponse() { return errorResponse(RegistrationOtpVerifyErrorKeys.REGISTRATION_OTP_INVALID, VALIDATION_FAILED); }
-
-    private Map<String, Object> fallbackResponse(VerifyRegistrationOtpResult result) {
-        boolean success = result.status() == VerifyRegistrationOtpResultStatus.VERIFIED
-                || result.status() == VerifyRegistrationOtpResultStatus.COMPLETED_REPLAY
-                || result.status() == VerifyRegistrationOtpResultStatus.DUPLICATE_IN_PROGRESS;
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", success);
-        response.put("status", apiStatus(result.status()));
-        response.put("result", success || exposeOtpFailurePayload(result.status()) ? payloadMap(result) : null);
-        response.put("messages", List.of());
-        response.put("errors", success ? List.of() : errorMaps(result));
+    public MutationResponse<WorkflowResultPayload<RegistrationOtpVerifyResponse>> toMutationResponse(
+            VerifyRegistrationOtpResult result) {
+        Objects.requireNonNull(result, "result must not be null");
+        var response = workflowMutationResponseMapper.toMutationResponse(toWorkflowResult(result));
+        if (result.status() == VerifyRegistrationOtpResultStatus.TRUST_LOOKUP_FAILED) {
+            return new MutationResponse<>(
+                    false,
+                    ApiStatus.DOWNSTREAM_ERROR,
+                    response.result(),
+                    response.messages(),
+                    response.errors());
+        }
         return response;
     }
 
-    private Map<String, Object> payloadMap(VerifyRegistrationOtpResult result) {
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("nextStep", result.nextStep());
-        payload.put("data", data(result));
-        payload.put("pageRef", pageRef(result.nextStep()));
-        return payload;
+    public MutationResponse<WorkflowResultPayload<RegistrationOtpVerifyResponse>> missingAuthFlowCookieResponse() {
+        return validationFailure(
+                RegistrationOtpVerifyErrorKeys.REGISTRATION_AUTH_FLOW_INVALID,
+                TARGET_PAGE);
+    }
+
+    public MutationResponse<WorkflowResultPayload<RegistrationOtpVerifyResponse>> missingCsrfTokenResponse() {
+        return validationFailure(
+                RegistrationOtpVerifyErrorKeys.REGISTRATION_CSRF_INVALID,
+                TARGET_PAGE);
+    }
+
+    public MutationResponse<WorkflowResultPayload<RegistrationOtpVerifyResponse>> missingIdempotencyKeyResponse() {
+        return validationFailure(
+                com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey
+                        .IDEMPOTENCY_MISSING.value(),
+                "Idempotency-Key");
+    }
+
+    public MutationResponse<WorkflowResultPayload<RegistrationOtpVerifyResponse>> missingCodeResponse() {
+        return validationFailure(
+                RegistrationOtpVerifyErrorKeys.REGISTRATION_OTP_INVALID,
+                TARGET_OTP_CODE);
+    }
+
+    private WorkflowResult<RegistrationOtpVerifyResponse> toWorkflowResult(
+            VerifyRegistrationOtpResult result) {
+        return new WorkflowResult<>(
+                workflowStatus(result.status()),
+                result.nextStep(),
+                data(result),
+                pageRef(result.nextStep()),
+                List.of(),
+                errors(result));
+    }
+
+    private WorkflowResultStatus workflowStatus(VerifyRegistrationOtpResultStatus status) {
+        return switch (status) {
+            case VERIFIED, COMPLETED_REPLAY -> WorkflowResultStatus.SUCCESS;
+            case DUPLICATE_IN_PROGRESS -> WorkflowResultStatus.WAITING;
+            case OTP_EXPIRED, OTP_LOCKED, NO_ELIGIBLE_TRUSTS ->
+                WorkflowResultStatus.BUSINESS_FAILED;
+            case TRUST_LOOKUP_FAILED, SYSTEM_FAILED -> WorkflowResultStatus.SYSTEM_FAILED;
+            default -> WorkflowResultStatus.VALIDATION_FAILED;
+        };
+    }
+
+    private WorkflowPageRef pageRef(WorkflowNextStep nextStep) {
+        if (nextStep == null) {
+            return null;
+        }
+        return switch (nextStep) {
+            case VERIFY_OTP -> new WorkflowPageRef(
+                    RegistrationWorkflowConstants.PAGE_REGISTRATION_OTP_VERIFICATION,
+                    null);
+            case USERNAME_CHECK -> new WorkflowPageRef(
+                    RegistrationWorkflowConstants.PAGE_REGISTRATION_USERNAME_CHECK,
+                    null);
+            case SELECT_TRUST -> new WorkflowPageRef(
+                    RegistrationWorkflowConstants.PAGE_REGISTRATION_TRUST_SELECTION,
+                    null);
+            default -> RegistrationWorkflowPageRefs.forNextStep(nextStep);
+        };
     }
 
     private RegistrationOtpVerifyResponse data(VerifyRegistrationOtpResult result) {
@@ -56,73 +121,60 @@ public class RegistrationOtpVerifyWebMapper {
             return new RegistrationOtpVerifyResponse(
                     result.unregisteredTrusts().stream()
                             .map(trust -> new RegistrationUnregisteredTrustResponse(
-                                    trust.accountEnv(), trust.trustCode()))
+                                    trust.accountEnv(),
+                                    trust.trustCode()))
                             .toList(),
                     null);
         }
-        if (exposeOtpFailurePayload(result.status())) {
-            return new RegistrationOtpVerifyResponse(List.of(), result.remainingVerifyAttempts());
+        if (exposeFailurePayload(result.status())) {
+            return new RegistrationOtpVerifyResponse(
+                    List.of(),
+                    result.remainingVerifyAttempts());
         }
         return null;
     }
 
-    private boolean exposeOtpFailurePayload(VerifyRegistrationOtpResultStatus status) {
+    private boolean exposeFailurePayload(VerifyRegistrationOtpResultStatus status) {
         return status == VerifyRegistrationOtpResultStatus.OTP_INVALID
                 || status == VerifyRegistrationOtpResultStatus.OTP_EXPIRED
                 || status == VerifyRegistrationOtpResultStatus.OTP_LOCKED;
     }
 
-    private Map<String, Object> pageRef(WorkflowNextStep nextStep) {
-        String pageId = switch (nextStep) {
-            case USERNAME_CHECK -> RegistrationWorkflowConstants.PAGE_REGISTRATION_USERNAME_CHECK;
-            case SELECT_TRUST -> RegistrationWorkflowConstants.PAGE_REGISTRATION_TRUST_SELECTION;
-            case VERIFY_OTP -> RegistrationWorkflowConstants.PAGE_REGISTRATION_OTP_VERIFICATION;
-            default -> null;
-        };
-        if (pageId == null) { return null; }
-        Map<String, Object> pageRef = new LinkedHashMap<>();
-        pageRef.put("pageId", pageId);
-        pageRef.put("variant", null);
-        return pageRef;
-    }
-
-    private String apiStatus(VerifyRegistrationOtpResultStatus status) {
-        return switch (status) {
-            case VERIFIED, COMPLETED_REPLAY, DUPLICATE_IN_PROGRESS -> SUCCESS;
-            case OTP_EXPIRED, OTP_LOCKED, NO_ELIGIBLE_TRUSTS -> BUSINESS_REJECTED;
-            case TRUST_LOOKUP_FAILED -> DOWNSTREAM_ERROR;
-            case SYSTEM_FAILED -> SYSTEM_ERROR;
-            default -> VALIDATION_FAILED;
-        };
-    }
-
-    private List<Map<String, Object>> errorMaps(VerifyRegistrationOtpResult result) {
-        if (!result.errors().isEmpty()) {
-            return result.errors().stream().map(error -> {
-                Map<String, Object> map = new LinkedHashMap<>();
-                map.put("code", error.code());
-                map.put("target", error.targets() == null || error.targets().isEmpty() ? "PAGE" : error.targets().get(0));
-                return map;
-            }).toList();
+    private List<WorkflowErrorDescriptor> errors(VerifyRegistrationOtpResult result) {
+        if (result.errors() != null && !result.errors().isEmpty()) {
+            return result.errors().stream()
+                    .map(error -> new WorkflowErrorDescriptor(
+                            error.type(),
+                            error.code(),
+                            null,
+                            error.targets(),
+                            error.severity(),
+                            error.source()))
+                    .toList();
         }
-        return List.of(errorMap(defaultErrorCode(result.status())));
+        return List.of(new WorkflowErrorDescriptor(
+                defaultErrorType(result.status()),
+                defaultErrorCode(result.status()),
+                null,
+                List.of(defaultTarget(result.status())),
+                WorkflowErrorSeverity.ERROR,
+                SOURCE_SERVER));
     }
 
-    private Object errorResponse(String code, String status) {
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", false);
-        response.put("status", status);
-        response.put("result", null);
-        response.put("messages", List.of());
-        response.put("errors", List.of(errorMap(code)));
-        return response;
+    private WorkflowErrorType defaultErrorType(VerifyRegistrationOtpResultStatus status) {
+        return switch (status) {
+            case OTP_INVALID -> WorkflowErrorType.FIELD;
+            case OTP_EXPIRED, OTP_LOCKED, NO_ELIGIBLE_TRUSTS -> WorkflowErrorType.BUSINESS;
+            case TRUST_LOOKUP_FAILED -> WorkflowErrorType.DOWNSTREAM_SYSTEM;
+            case SYSTEM_FAILED -> WorkflowErrorType.SYSTEM;
+            default -> WorkflowErrorType.FORM;
+        };
     }
 
-    private Map<String, Object> errorMap(String code) {
-        Map<String, Object> map = new LinkedHashMap<>();
-        map.put("code", code);
-        map.put("target", "PAGE");
-        return map;
+    private String defaultTarget(VerifyRegistrationOtpResultStatus status) {
+        return status == VerifyRegistrationOtpResultStatus.OTP_INVALID
+                ? TARGET_OTP_CODE
+                : TARGET_PAGE;
     }
 
     private String defaultErrorCode(VerifyRegistrationOtpResultStatus status) {
@@ -136,5 +188,24 @@ public class RegistrationOtpVerifyWebMapper {
             case TRUST_LOOKUP_FAILED -> RegistrationOtpVerifyErrorKeys.REGISTRATION_TRUST_LOOKUP_FAILED;
             default -> RegistrationOtpVerifyErrorKeys.REGISTRATION_OTP_INVALID;
         };
+    }
+
+    private MutationResponse<WorkflowResultPayload<RegistrationOtpVerifyResponse>> validationFailure(
+            String code,
+            String target) {
+        WorkflowErrorDescriptor error = new WorkflowErrorDescriptor(
+                TARGET_OTP_CODE.equals(target) ? WorkflowErrorType.FIELD : WorkflowErrorType.FORM,
+                code,
+                null,
+                List.of(target),
+                WorkflowErrorSeverity.ERROR,
+                SOURCE_SERVER);
+        return workflowMutationResponseMapper.toMutationResponse(new WorkflowResult<>(
+                WorkflowResultStatus.VALIDATION_FAILED,
+                WorkflowNextStep.VERIFY_OTP,
+                null,
+                RegistrationWorkflowPageRefs.forNextStep(WorkflowNextStep.VERIFY_OTP),
+                List.of(),
+                List.of(error)));
     }
 }

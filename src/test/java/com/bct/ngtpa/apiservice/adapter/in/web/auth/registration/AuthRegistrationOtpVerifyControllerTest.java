@@ -154,7 +154,8 @@ class AuthRegistrationOtpVerifyControllerTest {
                 command -> Mono.error(new AssertionError("resend use case must not be called")),
                 new RegistrationOtpResendWebMapper(null),
                 verifyUseCase,
-                new RegistrationOtpVerifyWebMapper(null),
+                new RegistrationOtpVerifyWebMapper(
+                new com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper()),
                 new RegistrationIdempotencyProperties());
     }
 }

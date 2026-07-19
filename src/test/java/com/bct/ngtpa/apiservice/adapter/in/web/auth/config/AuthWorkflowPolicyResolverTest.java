@@ -59,7 +59,7 @@ class AuthWorkflowPolicyResolverTest {
             assertEquals(5, otp.maxVerifyAttempts());
             assertEquals(5, otp.maxResendAttempts());
             assertTrue(otp.invalidatePreviousOnResend());
-            assertFalse(otp.resetVerifyAttemptsOnResend());
+            assertTrue(otp.resetVerifyAttemptsOnResend());
         });
     }
 

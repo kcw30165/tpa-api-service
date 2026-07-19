@@ -121,7 +121,7 @@ auth-workflows:
       max-verify-attempts: 5
       max-resend-attempts: 5
       invalidate-previous-on-resend: true
-      reset-verify-attempts-on-resend: false
+      reset-verify-attempts-on-resend: true
       sms-template: "Your BCT verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
       email-template:
         subject: "BCT verification code"
