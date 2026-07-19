@@ -141,7 +141,7 @@ class RegistrationCaptchaAndStartIntegrationTest {
     @RegistrationTestCase("TC-006")
     void correctAnswerPersistsVerifiedStateWithoutPlaintext() {
         String id = createChallenge();
-        verify(id, ANSWER).jsonPath("$.success").isEqualTo(true)
+        verifyOk(id, ANSWER).jsonPath("$.success").isEqualTo(true)
                 .jsonPath("$.result.verified").isEqualTo(true);
         CaptchaChallenge persisted = store.require(id);
         assertThat(persisted.status()).isEqualTo(CaptchaStatus.VERIFIED);
@@ -152,7 +152,7 @@ class RegistrationCaptchaAndStartIntegrationTest {
     @RegistrationTestCase("TC-007")
     void wrongAnswerDecrementsAttempts() {
         String id = createChallenge();
-        verify(id, WRONG).jsonPath("$.success").isEqualTo(false)
+        verifyFailure(id, WRONG).jsonPath("$.success").isEqualTo(false)
                 .jsonPath("$.result.remainingAttempts").isEqualTo(4)
                 .jsonPath("$.errors[0].code").isEqualTo("err.registration.captcha.invalid");
         assertThat(store.require(id).failedAttemptCount()).isEqualTo(1);
@@ -163,11 +163,11 @@ class RegistrationCaptchaAndStartIntegrationTest {
     void fifthWrongAnswerLocksChallengeAndLaterAttemptRemainsLocked() {
         String id = createChallenge();
         for (int attempt = 1; attempt < 5; attempt++) {
-            verify(id, WRONG).jsonPath("$.result.remainingAttempts").isEqualTo(5 - attempt);
+            verifyFailure(id, WRONG).jsonPath("$.result.remainingAttempts").isEqualTo(5 - attempt);
         }
-        verify(id, WRONG).jsonPath("$.errors[0].code")
+        verifyFailure(id, WRONG).jsonPath("$.errors[0].code")
                 .isEqualTo("err.registration.captcha.locked");
-        verify(id, ANSWER).jsonPath("$.errors[0].code")
+        verifyFailure(id, ANSWER).jsonPath("$.errors[0].code")
                 .isEqualTo("err.registration.captcha.locked");
         assertThat(store.require(id).status()).isEqualTo(CaptchaStatus.LOCKED);
     }
@@ -177,7 +177,7 @@ class RegistrationCaptchaAndStartIntegrationTest {
     void challengeExpiresAfterConfiguredTtl() {
         String id = createChallenge();
         clock.advance(Duration.ofSeconds(300));
-        verify(id, ANSWER).jsonPath("$.errors[0].code")
+        verifyFailure(id, ANSWER).jsonPath("$.errors[0].code")
                 .isEqualTo("err.registration.captcha.expired");
         assertThat(store.require(id).status()).isEqualTo(CaptchaStatus.CREATED);
     }
@@ -185,7 +185,7 @@ class RegistrationCaptchaAndStartIntegrationTest {
     @Test
     @RegistrationTestCase("TC-010")
     void unknownChallengeReturnsSafeNotFound() {
-        verify("cap_unknown000000000", ANSWER)
+        verifyFailure("cap_unknown000000000", ANSWER)
                 .jsonPath("$.errors[0].code")
                 .isEqualTo("err.registration.captcha.notFound");
     }
@@ -230,12 +230,20 @@ class RegistrationCaptchaAndStartIntegrationTest {
         return store.latestId();
     }
 
-    private WebTestClient.BodyContentSpec verify(String id, String answer) {
+    private WebTestClient.BodyContentSpec verifyOk(String id, String answer) {
+        return verifyRequest(id, answer).expectStatus().isOk().expectBody();
+    }
+
+    private WebTestClient.BodyContentSpec verifyFailure(String id, String answer) {
+        return verifyRequest(id, answer).expectStatus().isBadRequest().expectBody();
+    }
+
+    private WebTestClient.ResponseSpec verifyRequest(String id, String answer) {
         return client.post().uri(CAPTCHA_BASE + "/verify")
                 .header("X-Request-Id", requestId("verify"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(Map.of("captchaChallengeId", id, "answer", answer))
-                .exchange().expectStatus().isOk().expectBody();
+                .exchange();
     }
 
 
@@ -269,7 +277,7 @@ class RegistrationCaptchaAndStartIntegrationTest {
                 CaptchaChallengePort s, CaptchaChallengeIdGenerator g, Clock c) {
             return new CreateCaptchaChallengeService(p, i, h, s, g, c);
         }
-        @Bean VerifyCaptchaUseCase verify(
+        @Bean VerifyCaptchaUseCase verifyFailure(
                 AuthWorkflowPolicyPort p, CaptchaAnswerHasherPort h, CaptchaChallengePort s, Clock c) {
             return new VerifyCaptchaService(p, h, s, c);
         }
