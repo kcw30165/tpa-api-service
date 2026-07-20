@@ -65,19 +65,29 @@ class DefaultOtpChallengeServiceReplaceTest {
     }
 
     @Test
-    void replaceRejectsLockedChallenge() {
+    void replaceLockedChallengeWithFreshVerificationAllowance() {
         FakeOtpChallengeStatePort statePort = new FakeOtpChallengeStatePort();
-        statePort.store(sampleChallenge().withStatus(OtpStatus.LOCKED));
+        statePort.store(sampleChallenge()
+                .withStatus(OtpStatus.LOCKED)
+                .withFailedAttemptCount(5));
         FakeOtpCodeGenerator codeGenerator = new FakeOtpCodeGenerator("654321");
 
-        StepVerifier.create(service(statePort, codeGenerator, new FakeOtpChallengeIdGenerator("otp-new-001"))
+        StepVerifier.create(service(
+                        statePort,
+                        codeGenerator,
+                        new FakeOtpChallengeIdGenerator("otp-new-001"))
                         .replaceChallenge(command("otp-001", 60)))
-                .assertNext(result -> assertThat(result.outcome()).isEqualTo(OtpReplacementOutcome.LOCKED))
+                .assertNext(result -> {
+                    assertThat(result.outcome()).isEqualTo(OtpReplacementOutcome.REPLACED);
+                    assertThat(result.newOtpChallengeId()).isEqualTo("otp-new-001");
+                    assertThat(result.rawCode()).isEqualTo("654321");
+                })
                 .verifyComplete();
 
-        assertThat(codeGenerator.invocationCount).isZero();
-        assertThat(statePort.updatedChallenges).isEmpty();
-        assertThat(statePort.savedChallenges).isEmpty();
+        assertThat(statePort.lastUpdated.status()).isEqualTo(OtpStatus.INVALIDATED);
+        assertThat(statePort.lastSaved.status()).isEqualTo(OtpStatus.CREATED);
+        assertThat(statePort.lastSaved.failedAttemptCount()).isZero();
+        assertThat(statePort.lastSaved.maxVerifyAttempts()).isEqualTo(5);
     }
 
     @Test
@@ -171,7 +181,7 @@ class DefaultOtpChallengeServiceReplaceTest {
     }
 
     @Test
-    void replaceDoesNotResetFailedAttemptCount() {
+    void replaceResetsFailedAttemptCountForNewChallenge() {
         FakeOtpChallengeStatePort statePort = new FakeOtpChallengeStatePort();
         statePort.store(sampleChallenge().withFailedAttemptCount(2));
 
@@ -180,7 +190,7 @@ class DefaultOtpChallengeServiceReplaceTest {
                 .expectNextCount(1)
                 .verifyComplete();
 
-        assertThat(statePort.lastSaved.failedAttemptCount()).isEqualTo(2);
+        assertThat(statePort.lastSaved.failedAttemptCount()).isZero();
     }
 
     @Test

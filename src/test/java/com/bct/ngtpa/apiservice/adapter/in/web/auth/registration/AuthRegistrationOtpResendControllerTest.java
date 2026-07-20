@@ -24,7 +24,8 @@ class AuthRegistrationOtpResendControllerTest {
     @Test
     void otpResendEndpointExists() throws Exception {
         Method method = AuthRegistrationOtpController.class.getDeclaredMethod(
-                "resendOtp", String.class, String.class, String.class, String.class, String.class, String.class, String.class);
+                "resendOtp", String.class, String.class, String.class, String.class, String.class, String.class, String.class,
+                org.springframework.http.server.reactive.ServerHttpResponse.class);
         PostMapping mapping = method.getAnnotation(PostMapping.class);
         assertThat(mapping).isNotNull();
         assertThat(mapping.path()).contains("/resend");
@@ -34,8 +35,9 @@ class AuthRegistrationOtpResendControllerTest {
     void otpResendRequiresAuthFlowCookie() throws Exception {
         var useCase = new RecordingUseCase();
         var controller = resendController(useCase);
-        String json = objectMapper.writeValueAsString(controller.resendOtp(null, "csrf", "idem", "req", "en", null, null).block());
-        assertThat(json).contains("registration.authFlow.invalid");
+        String json = objectMapper.writeValueAsString(controller.resendOtp(null, "csrf", "idem", "req", "en", null, null,
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block());
+        assertThat(json).contains("err.registration.authFlow.invalid");
         assertThat(useCase.called).isFalse();
     }
 
@@ -43,8 +45,9 @@ class AuthRegistrationOtpResendControllerTest {
     void otpResendRequiresXsrfTokenHeader() throws Exception {
         var useCase = new RecordingUseCase();
         var controller = resendController(useCase);
-        String json = objectMapper.writeValueAsString(controller.resendOtp("afs", null, "idem", "req", "en", null, null).block());
-        assertThat(json).contains("registration.csrf.invalid");
+        String json = objectMapper.writeValueAsString(controller.resendOtp("afs", null, "idem", "req", "en", null, null,
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block());
+        assertThat(json).contains("err.registration.csrf.invalid");
         assertThat(useCase.called).isFalse();
     }
 
@@ -52,8 +55,9 @@ class AuthRegistrationOtpResendControllerTest {
     void otpResendRequiresIdempotencyKeyAndDoesNotUseRequestIdAsFallback() throws Exception {
         var useCase = new RecordingUseCase();
         var controller = resendController(useCase);
-        String json = objectMapper.writeValueAsString(controller.resendOtp("afs", "csrf", null, "req", "en", null, null).block());
-        assertThat(json).contains("workflow.idempotency.missing");
+        String json = objectMapper.writeValueAsString(controller.resendOtp("afs", "csrf", null, "req", "en", null, null,
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block());
+        assertThat(json).contains("err.workflow.idempotency.missing");
         assertThat(useCase.called).isFalse();
     }
 
@@ -62,7 +66,8 @@ class AuthRegistrationOtpResendControllerTest {
         var useCase = new RecordingUseCase();
         var controller = resendController(useCase);
 
-        controller.resendOtp("afs_abc", "csrf_abc", "idem_abc", "req_abc", "zh-HK", "https://portal.example", "https://portal.example/page").block();
+        controller.resendOtp("afs_abc", "csrf_abc", "idem_abc", "req_abc", "zh-HK", "https://portal.example", "https://portal.example/page",
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block();
 
         assertThat(useCase.called).isTrue();
         assertThat(useCase.command.authFlowSessionId().value()).isEqualTo("afs_abc");
@@ -77,7 +82,8 @@ class AuthRegistrationOtpResendControllerTest {
     @Test
     void otpResendSuccessDoesNotSetCookieValueInBody() throws Exception {
         var controller = resendController(new RecordingUseCase());
-        String json = objectMapper.writeValueAsString(controller.resendOtp("afs_abc", "csrf_abc", "idem_abc", "req_abc", "en", null, null).block());
+        String json = objectMapper.writeValueAsString(controller.resendOtp("afs_abc", "csrf_abc", "idem_abc", "req_abc", "en", null, null,
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block());
         assertThat(json).contains("VERIFY_OTP", "registration-otp-verification");
         assertThat(json).doesNotContain("afs_abc", "csrf_abc", "idem_abc", "otpChallengeId", "activeOtpChallengeId", "123456");
     }
@@ -104,11 +110,12 @@ class AuthRegistrationOtpResendControllerTest {
     }
 
     private static AuthRegistrationOtpController resendController(ResendRegistrationOtpUseCase resendUseCase) {
-    return new AuthRegistrationOtpController(
-            resendUseCase,
+    return new AuthRegistrationOtpController(com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter.defaultWriter(),
+                resendUseCase,
             new RegistrationOtpResendWebMapper(null),
             command -> Mono.error(new AssertionError("verify use case must not be called")),
-            new RegistrationOtpVerifyWebMapper(null),
+            new RegistrationOtpVerifyWebMapper(
+                new com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper()),
             new RegistrationIdempotencyProperties());
 }
 }

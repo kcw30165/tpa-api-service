@@ -37,7 +37,8 @@ class AuthRegistrationUsernameControllerTest {
                 String.class,
                 String.class,
                 String.class,
-                String.class);
+                String.class,
+                org.springframework.http.server.reactive.ServerHttpResponse.class);
         PostMapping mapping = method.getAnnotation(PostMapping.class);
         assertThat(mapping).isNotNull();
         assertThat(mapping.path()).contains("/username/check");
@@ -48,11 +49,12 @@ class AuthRegistrationUsernameControllerTest {
         var useCase = new RecordingUseCase(successResult());
         var controller = controller(useCase);
 
-        JsonNode json = json(controller.checkUsername(validRequest(), null, "csrf", "req", "en", null, null).block());
+        JsonNode json = json(controller.checkUsername(validRequest(), null, "csrf", "req", "en", null, null,
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block());
 
         assertThat(json.get("success").asBoolean()).isFalse();
         assertThat(json.get("status").asText()).isEqualTo("VALIDATION_FAILED");
-        assertThat(json.at("/errors/0/code").asText()).isEqualTo("registration.authFlow.invalid");
+        assertThat(json.at("/errors/0/code").asText()).isEqualTo("err.registration.authFlow.invalid");
         assertThat(useCase.called).isFalse();
     }
 
@@ -61,10 +63,11 @@ class AuthRegistrationUsernameControllerTest {
         var useCase = new RecordingUseCase(successResult());
         var controller = controller(useCase);
 
-        JsonNode json = json(controller.checkUsername(validRequest(), "afs", null, "req", "en", null, null).block());
+        JsonNode json = json(controller.checkUsername(validRequest(), "afs", null, "req", "en", null, null,
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block());
 
         assertThat(json.get("success").asBoolean()).isFalse();
-        assertThat(json.at("/errors/0/code").asText()).isEqualTo("registration.csrf.invalid");
+        assertThat(json.at("/errors/0/code").asText()).isEqualTo("err.registration.csrf.invalid");
         assertThat(useCase.called).isFalse();
     }
 
@@ -73,11 +76,12 @@ class AuthRegistrationUsernameControllerTest {
         var useCase = new RecordingUseCase(successResult());
         var controller = controller(useCase);
 
-        JsonNode json = json(controller.checkUsername(null, "afs", "csrf", "req", "en", null, null).block());
+        JsonNode json = json(controller.checkUsername(null, "afs", "csrf", "req", "en", null, null,
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block());
 
         assertThat(json.get("success").asBoolean()).isFalse();
         assertThat(json.get("status").asText()).isEqualTo("VALIDATION_FAILED");
-        assertThat(json.at("/errors/0/code").asText()).isEqualTo("registration.username.check.request.invalid");
+        assertThat(json.at("/errors/0/code").asText()).isEqualTo("err.registration.username.request.invalid");
         assertThat(useCase.called).isFalse();
     }
 
@@ -86,7 +90,8 @@ class AuthRegistrationUsernameControllerTest {
         var useCase = new RecordingUseCase(successResult());
         var controller = controller(useCase);
 
-        controller.checkUsername(validRequest(), "afs_abc", "csrf_abc", "req_abc", "en", "https://portal.example", "https://portal.example/start").block();
+        controller.checkUsername(validRequest(), "afs_abc", "csrf_abc", "req_abc", "en", "https://portal.example", "https://portal.example/start",
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block();
 
         assertThat(useCase.called).isTrue();
         assertThat(useCase.command.authFlowSessionId().value()).isEqualTo("afs_abc");
@@ -105,7 +110,8 @@ class AuthRegistrationUsernameControllerTest {
     void successResponseContract() throws Exception {
         var controller = controller(new RecordingUseCase(successResult()));
 
-        JsonNode json = json(controller.checkUsername(validRequest(), "afs", "csrf", "req", "en", null, null).block());
+        JsonNode json = json(controller.checkUsername(validRequest(), "afs", "csrf", "req", "en", null, null,
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block());
 
         assertThat(json.get("success").asBoolean()).isTrue();
         assertThat(json.get("status").asText()).isEqualTo("SUCCESS");
@@ -121,16 +127,17 @@ class AuthRegistrationUsernameControllerTest {
                 CheckRegistrationUsernameResultStatus.VALIDATION_FAILED,
                 WorkflowNextStep.USERNAME_CHECK,
                 List.of(),
-                List.of(error("registration.username.incorrect")));
+                List.of(error("err.registration.username.policyInvalid")));
         var controller = controller(new RecordingUseCase(result));
 
-        JsonNode json = json(controller.checkUsername(validRequest(), "afs", "csrf", "req", "en", null, null).block());
+        JsonNode json = json(controller.checkUsername(validRequest(), "afs", "csrf", "req", "en", null, null,
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block());
 
         assertThat(json.get("success").asBoolean()).isFalse();
         assertThat(json.get("status").asText()).isEqualTo("VALIDATION_FAILED");
         assertThat(json.at("/result/nextStep").asText()).isEqualTo("USERNAME_CHECK");
-        assertThat(json.at("/errors/0/code").asText()).isEqualTo("registration.username.incorrect");
-        assertThat(json.at("/errors/0/target").asText()).isEqualTo("PAGE");
+        assertThat(json.at("/errors/0/code").asText()).isEqualTo("err.registration.username.policyInvalid");
+        assertThat(json.at("/errors/0/targets/0").asText()).isEqualTo("PAGE");
     }
 
     @Test
@@ -139,15 +146,16 @@ class AuthRegistrationUsernameControllerTest {
                 CheckRegistrationUsernameResultStatus.DOWNSTREAM_REJECTED,
                 WorkflowNextStep.USERNAME_CHECK,
                 List.of(),
-                List.of(error("registration.username.isregistered")));
+                List.of(error("err.registration.username.isRegistered")));
         var controller = controller(new RecordingUseCase(result));
 
-        JsonNode json = json(controller.checkUsername(validRequest(), "afs", "csrf", "req", "en", null, null).block());
+        JsonNode json = json(controller.checkUsername(validRequest(), "afs", "csrf", "req", "en", null, null,
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block());
 
         assertThat(json.get("success").asBoolean()).isFalse();
-        assertThat(json.get("status").asText()).isEqualTo("DOWNSTREAM_REJECTION");
+        assertThat(json.get("status").asText()).isEqualTo("BUSINESS_REJECTED");
         assertThat(json.at("/result/nextStep").asText()).isEqualTo("USERNAME_CHECK");
-        assertThat(json.at("/errors/0/code").asText()).isEqualTo("registration.username.isregistered");
+        assertThat(json.at("/errors/0/code").asText()).isEqualTo("err.registration.username.isRegistered");
     }
 
     @Test
@@ -156,15 +164,16 @@ class AuthRegistrationUsernameControllerTest {
                 CheckRegistrationUsernameResultStatus.DOWNSTREAM_FAILED,
                 WorkflowNextStep.USERNAME_CHECK,
                 List.of(),
-                List.of(error("workflow.downstream.unavailable")));
+                List.of(error("err.workflow.downstream.unavailable")));
         var controller = controller(new RecordingUseCase(result));
 
-        JsonNode json = json(controller.checkUsername(validRequest(), "afs", "csrf", "req", "en", null, null).block());
+        JsonNode json = json(controller.checkUsername(validRequest(), "afs", "csrf", "req", "en", null, null,
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block());
 
         assertThat(json.get("success").asBoolean()).isFalse();
         assertThat(json.get("status").asText()).isEqualTo("DOWNSTREAM_ERROR");
         assertThat(json.at("/result/nextStep").asText()).isEqualTo("USERNAME_CHECK");
-        assertThat(json.toString()).doesNotContain("downstream.generic.businessRejected", "registration.username.isregistered");
+        assertThat(json.toString()).doesNotContain("err.registration.username.checkFailed", "err.registration.username.isRegistered");
     }
 
     @Test
@@ -172,7 +181,12 @@ class AuthRegistrationUsernameControllerTest {
         assertThat(commandComponents()).doesNotContain("idempotencyKey", "RegistrationIdempotencyKey", "idempotencyTtl");
     }
 
-    private JsonNode json(Object value) throws Exception { return objectMapper.valueToTree(value); }
+    private JsonNode json(Object value) throws Exception {
+        if (value instanceof org.springframework.http.ResponseEntity<?> response) {
+            value = java.util.Objects.requireNonNull(response.getBody());
+        }
+        return objectMapper.valueToTree(value);
+    }
 
     private static RegistrationUsernameCheckRequest validRequest() {
         return new RegistrationUsernameCheckRequest(new RegistrationSelectedTrustRequest("TL", "ENV1"), "abc1@");
@@ -191,7 +205,8 @@ class AuthRegistrationUsernameControllerTest {
     }
 
     private static AuthRegistrationUsernameController controller(CheckRegistrationUsernameUseCase useCase) {
-        return new AuthRegistrationUsernameController(useCase, new RegistrationUsernameCheckWebMapper());
+        return new AuthRegistrationUsernameController(com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter.defaultWriter(),
+                useCase, new RegistrationUsernameCheckWebMapper());
     }
 
     private static final class RecordingUseCase implements CheckRegistrationUsernameUseCase {

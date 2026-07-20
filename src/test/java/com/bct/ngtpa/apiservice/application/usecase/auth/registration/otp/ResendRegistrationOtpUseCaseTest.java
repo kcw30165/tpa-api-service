@@ -71,7 +71,7 @@ class ResendRegistrationOtpUseCaseTest {
                 .assertNext(result -> {
                     assertThat(result.status()).isEqualTo(ResendRegistrationOtpResultStatus.INVALID_AUTH_FLOW);
                     assertThat(result.errors()).singleElement()
-                            .satisfies(error -> assertThat(error.code()).isEqualTo("registration.authFlow.invalid"));
+                            .satisfies(error -> assertThat(error.code()).isEqualTo("err.registration.authFlow.invalid"));
                 })
                 .verifyComplete();
 
@@ -89,7 +89,7 @@ class ResendRegistrationOtpUseCaseTest {
                 .assertNext(result -> {
                     assertThat(result.status()).isEqualTo(ResendRegistrationOtpResultStatus.CSRF_INVALID);
                     assertThat(result.errors()).singleElement()
-                            .satisfies(error -> assertThat(error.code()).isEqualTo("registration.csrf.invalid"));
+                            .satisfies(error -> assertThat(error.code()).isEqualTo("err.registration.csrf.invalid"));
                 })
                 .verifyComplete();
 
@@ -122,7 +122,7 @@ class ResendRegistrationOtpUseCaseTest {
                 .assertNext(result -> {
                     assertThat(result.status()).isEqualTo(ResendRegistrationOtpResultStatus.IDEMPOTENCY_KEY_REUSED);
                     assertThat(result.errors()).singleElement()
-                            .satisfies(error -> assertThat(error.code()).isEqualTo("workflow.idempotency.keyReused"));
+                            .satisfies(error -> assertThat(error.code()).isEqualTo("err.workflow.idempotency.keyReused"));
                 })
                 .verifyComplete();
 
@@ -147,7 +147,7 @@ class ResendRegistrationOtpUseCaseTest {
                 .assertNext(result -> {
                     assertThat(result.status()).isEqualTo(ResendRegistrationOtpResultStatus.MESSAGE_DELIVERY_FAILED);
                     assertThat(result.errors()).singleElement()
-                            .satisfies(error -> assertThat(error.code()).isEqualTo("registration.messageDelivery.failed"));
+                            .satisfies(error -> assertThat(error.code()).isEqualTo("err.registration.message.deliveryFailed"));
                 })
                 .verifyComplete();
 

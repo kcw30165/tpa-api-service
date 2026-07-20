@@ -36,7 +36,8 @@ class P7RegistrationOtpSecurityBoundaryGuardTest {
                         RegistrationIdempotencyStartOutcome.STARTED,
                         null)));
 
-        String verifyJson = objectMapper.writeValueAsString(new RegistrationOtpVerifyWebMapper(null)
+        String verifyJson = objectMapper.writeValueAsString(new RegistrationOtpVerifyWebMapper(
+                new com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper())
                 .toMutationResponse(new VerifyRegistrationOtpResult(
                         VerifyRegistrationOtpResultStatus.VERIFIED,
                         WorkflowNextStep.USERNAME_CHECK,

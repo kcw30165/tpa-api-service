@@ -37,6 +37,8 @@ final class WorkflowKeyValidator {
         return "password".equals(lower)
                 || lower.startsWith("password.")
                 || lower.endsWith(".password")
-                || (lower.contains(".password.") && !lower.startsWith("registration.password."));
+                || (lower.contains(".password.")
+                        && !lower.startsWith("registration.password.")
+                        && !lower.startsWith("err.registration.password."));
     }
 }

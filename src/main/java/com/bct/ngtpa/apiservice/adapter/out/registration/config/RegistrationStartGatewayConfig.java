@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.out.registration.config;
 
+import com.bct.ngtpa.apiservice.application.port.out.RateLimitPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationAuthFlowContextProtectorPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationCsrPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationMessagePort;

@@ -70,18 +70,18 @@ class RegistrationFoundationIntegrationTest {
             assertEquals(1, noRemainingTrusts.actions().size());
             assertEquals("returnToLogin", noRemainingTrusts.actions().get(0).id());
             assertEquals("PRIMARY", noRemainingTrusts.actions().get(0).type());
-            assertEquals("RETURN_TO_LOGIN", noRemainingTrusts.actions().get(0).nextStep());
+            assertEquals("RETURN_TO_LOGIN", noRemainingTrusts.actions().get(0).nextStep().name());
 
             RegistrationSuccessPageResponse hasRemainingTrusts = mapper.map("registration-success", "hasRemainingTrusts", "en");
             assertEquals("registration-success", hasRemainingTrusts.pageId());
             assertEquals("hasRemainingTrusts", hasRemainingTrusts.variant());
             assertEquals(2, hasRemainingTrusts.actions().size());
-            assertEquals("continueRegistration", hasRemainingTrusts.actions().get(0).id());
+            assertEquals("registerAnotherTrust", hasRemainingTrusts.actions().get(0).id());
             assertEquals("PRIMARY", hasRemainingTrusts.actions().get(0).type());
-            assertEquals("SELECT_TRUST", hasRemainingTrusts.actions().get(0).nextStep());
+            assertEquals("SELECT_TRUST", hasRemainingTrusts.actions().get(0).nextStep().name());
             assertEquals("returnToLogin", hasRemainingTrusts.actions().get(1).id());
             assertEquals("SECONDARY", hasRemainingTrusts.actions().get(1).type());
-            assertEquals("RETURN_TO_LOGIN", hasRemainingTrusts.actions().get(1).nextStep());
+            assertEquals("RETURN_TO_LOGIN", hasRemainingTrusts.actions().get(1).nextStep().name());
         });
     }
 

@@ -172,7 +172,8 @@ public class DefaultOtpChallengeAdapter implements OtpChallengePort {
             return otpChallengeStatePort.update(expiredChallenge)
                     .thenReturn(result(challenge.otpChallengeId(), OtpVerificationOutcome.EXPIRED, 0));
         }
-        if (challenge.status() != OtpStatus.CREATED) {
+        boolean recoveringFromVerifyLock = challenge.status() == OtpStatus.LOCKED;
+        if (challenge.status() != OtpStatus.CREATED && !recoveringFromVerifyLock) {
             return Mono.just(result(challenge.otpChallengeId(), OtpVerificationOutcome.INVALIDATED, 0));
         }
         if (otpCodeHasher.matches(command.code(), challenge.codeHash())) {
@@ -222,24 +223,13 @@ public class DefaultOtpChallengeAdapter implements OtpChallengePort {
         }
 
         OtpChallenge challenge = optionalChallenge.orElseThrow();
+        boolean recoveringFromVerifyLock = challenge.status() == OtpStatus.LOCKED;
         if (challenge.status() == OtpStatus.VERIFIED || challenge.status() == OtpStatus.CONSUMED) {
             return Mono.just(replacementResult(
                     challenge.otpChallengeId(),
                     null,
                     null,
                     OtpReplacementOutcome.ALREADY_VERIFIED,
-                    null,
-                    0,
-                    command.resendCooldownSeconds(),
-                    remainingResendAttempts(challenge.maxResendAttempts(), challenge.resendAttemptCount()),
-                    null));
-        }
-        if (challenge.status() == OtpStatus.LOCKED) {
-            return Mono.just(replacementResult(
-                    challenge.otpChallengeId(),
-                    null,
-                    null,
-                    OtpReplacementOutcome.LOCKED,
                     null,
                     0,
                     command.resendCooldownSeconds(),
@@ -296,7 +286,7 @@ public class DefaultOtpChallengeAdapter implements OtpChallengePort {
                             remainingResendAttempts(challenge.maxResendAttempts(), challenge.resendAttemptCount()),
                             null));
         }
-        if (challenge.status() != OtpStatus.CREATED) {
+        if (challenge.status() != OtpStatus.CREATED && !recoveringFromVerifyLock) {
             return Mono.just(replacementResult(
                     challenge.otpChallengeId(),
                     null,
@@ -309,8 +299,10 @@ public class DefaultOtpChallengeAdapter implements OtpChallengePort {
                     null));
         }
 
-        Integer retryAfterSeconds = cooldownRetryAfterSeconds(challenge.lastSentAt(), command.resendCooldownSeconds(),
-                now);
+        Integer retryAfterSeconds = recoveringFromVerifyLock
+                ? null
+                : cooldownRetryAfterSeconds(
+                        challenge.lastSentAt(), command.resendCooldownSeconds(), now);
         if (retryAfterSeconds != null) {
             return Mono.just(replacementResult(
                     challenge.otpChallengeId(),
@@ -359,7 +351,7 @@ public class DefaultOtpChallengeAdapter implements OtpChallengePort {
                 newChallengeId,
                 newCodeHash,
                 OtpStatus.CREATED,
-                challenge.failedAttemptCount(),
+                0,
                 updatedResendAttemptCount,
                 now,
                 expiresAt,

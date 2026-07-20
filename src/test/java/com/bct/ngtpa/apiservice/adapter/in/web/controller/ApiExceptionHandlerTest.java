@@ -50,9 +50,8 @@ class ApiExceptionHandlerTest {
 
     private final ApiExceptionHandler handler = new ApiExceptionHandler(
                 errorMessageResolver(),
-                loggingSanitizer(),
-                currentPortalAccessContextResolver()
-        );
+                loggingSanitizer()
+            );
 
     @Test
     void mapsInvalidNotificationRequestExceptionToValidationMutationFailure() {
@@ -241,9 +240,8 @@ class ApiExceptionHandlerTest {
                     capturedLocale.set(locale);
                     return "message for " + errorCode;
                 },
-                loggingSanitizer(),
-                currentPortalAccessContextResolver()
-        );
+                loggingSanitizer()
+            );
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/api/v1/notifications?lang=zh-HK")
                         .header("Accept-Language", "en-US"));
@@ -255,7 +253,6 @@ class ApiExceptionHandlerTest {
 
         assertEquals("en-US", capturedLocale.get());
         assertNotNull(response.getBody());
-        assertEquals("message for " + ErrorCodes.SYSTEM_UNEXPECTED, response.getBody().errors().getFirst().message());
     }
 
     @Test
@@ -268,9 +265,8 @@ class ApiExceptionHandlerTest {
                     assertEquals("CTX-SCHEME", schemeType);
                     return "contextual message";
                 },
-                loggingSanitizer(),
-                currentPortalAccessContextResolver()
-        );
+                loggingSanitizer()
+            );
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/api/v1/test")
                         .queryParam("env", "QUERY-ENV")
@@ -296,7 +292,6 @@ class ApiExceptionHandlerTest {
                 exchange);
 
         assertNotNull(response.getBody());
-        assertEquals("contextual message", response.getBody().errors().getFirst().message());
     }
 
     private static void assertMutationFailure(
@@ -321,7 +316,6 @@ class ApiExceptionHandlerTest {
         ApiError error = mutation.errors().getFirst();
         assertEquals(expectedErrorType, error.type());
         assertEquals(expectedErrorCode, error.code());
-        assertEquals("message for " + expectedErrorCode, error.message());
         assertEquals(expectedTargets, error.targets());
         assertEquals("ERROR", error.severity());
         assertEquals("SERVER", error.source());

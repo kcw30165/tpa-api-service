@@ -17,12 +17,11 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.HexFormat;
-import java.util.Objects;
 import java.util.Locale;
+import java.util.Objects;
 import reactor.core.publisher.Mono;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.VerifyOtpChallengeCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.RegistrationOtpVerificationResult;
-import com.bct.ngtpa.apiservice.application.dto.auth.otp.OtpReplacementOutcome;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.ReplaceOtpChallengeCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.RegistrationOtpResendRejectedException;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.ResendRegistrationOtpResultStatus;
@@ -36,8 +35,10 @@ public class RegistrationOtpChallengeAdapter implements RegistrationOtpPort {
             OtpChallengePort otpChallengePort,
             AuthWorkflowPolicyPort authWorkflowPolicyPort,
             Clock clock) {
-        this.otpChallengePort = Objects.requireNonNull(otpChallengePort, "otpChallengePort must not be null");
-        this.authWorkflowPolicyPort = Objects.requireNonNull(authWorkflowPolicyPort, "authWorkflowPolicyPort must not be null");
+        this.otpChallengePort = Objects.requireNonNull(
+                otpChallengePort, "otpChallengePort must not be null");
+        this.authWorkflowPolicyPort = Objects.requireNonNull(
+                authWorkflowPolicyPort, "authWorkflowPolicyPort must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
 
@@ -80,6 +81,8 @@ public class RegistrationOtpChallengeAdapter implements RegistrationOtpPort {
             RegistrationContactType contactType,
             String destination) {
         OtpPolicy policy = otpPolicy();
+        OtpChannel channel = toOtpChannel(contactType);
+        String destinationHash = destinationHash(channel, destination);
         return otpChallengePort.replaceChallenge(new ReplaceOtpChallengeCommand(
                         activeOtpChallengeId,
                         policy.length(),
@@ -102,7 +105,11 @@ public class RegistrationOtpChallengeAdapter implements RegistrationOtpPort {
                             ResendRegistrationOtpResultStatus.MAX_RESEND_ATTEMPTS_REACHED,
                             result.retryAfterSeconds(),
                             result.remainingResendAttempts()));
-                    case EXPIRED, LOCKED, INVALIDATED, ALREADY_VERIFIED, NOT_FOUND, NOT_REPLACEABLE ->
+                    case LOCKED -> Mono.error(new RegistrationOtpResendRejectedException(
+                            ResendRegistrationOtpResultStatus.COOLDOWN_ACTIVE,
+                            result.retryAfterSeconds(),
+                            result.remainingResendAttempts()));
+                    case EXPIRED, INVALIDATED, ALREADY_VERIFIED, NOT_FOUND, NOT_REPLACEABLE ->
                             Mono.error(new RegistrationOtpResendRejectedException(
                                     ResendRegistrationOtpResultStatus.INVALID_AUTH_FLOW,
                                     result.retryAfterSeconds(),
@@ -124,6 +131,8 @@ public class RegistrationOtpChallengeAdapter implements RegistrationOtpPort {
                             RegistrationOtpVerificationResult.invalid(result.remainingAttempts());
                 });
     }
+
+
 
     private OtpPolicy otpPolicy() {
         RegistrationAuthWorkflowPolicy policy = authWorkflowPolicyPort.registrationPolicy();

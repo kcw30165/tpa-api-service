@@ -39,7 +39,7 @@ class RegistrationStartModelTest {
     void validationResultDefensivelyCopiesErrors() {
         var errors = new java.util.ArrayList<RegistrationStartValidationError>();
         errors.add(new RegistrationStartValidationError(
-                com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErrorKeys.REGISTRATION_START_INVALID,
+                com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.START_REQUEST_INVALID,
                 "identityType",
                 "LOCAL"));
         var result = RegistrationStartValidationResult.invalid(errors);

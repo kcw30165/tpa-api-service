@@ -37,7 +37,8 @@ class P7RegistrationOtpIntegrationTest {
                                 String.class,
                                 String.class,
                                 String.class,
-                                String.class);
+                                String.class,
+                org.springframework.http.server.reactive.ServerHttpResponse.class);
 
                 Method verify = AuthRegistrationOtpController.class.getDeclaredMethod(
                                 "verifyOtp",
@@ -48,7 +49,8 @@ class P7RegistrationOtpIntegrationTest {
                                 String.class,
                                 String.class,
                                 String.class,
-                                String.class);
+                                String.class,
+                org.springframework.http.server.reactive.ServerHttpResponse.class);
 
                 assertThat(AuthRegistrationOtpController.class.getAnnotation(RequestMapping.class).value())
                                 .contains("/api/v1/auth/registration/otp");
@@ -60,11 +62,14 @@ class P7RegistrationOtpIntegrationTest {
         void p7OtpEndpointsRequireAuthFlowCookieXsrfAndIdempotencyKey() throws Exception {
                 var resendUseCase = new RecordingResendUseCase();
                 var resend = otpController(resendUseCase, failVerifyUseCase());
-                assertThat(json(resend.resendOtp(null, "csrf", "idem", "req", "en", null, null).block()))
+                assertThat(json(resend.resendOtp(null, "csrf", "idem", "req", "en", null, null,
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block()))
                                 .contains("registration.authFlow.invalid");
-                assertThat(json(resend.resendOtp("afs", null, "idem", "req", "en", null, null).block()))
+                assertThat(json(resend.resendOtp("afs", null, "idem", "req", "en", null, null,
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block()))
                                 .contains("registration.csrf.invalid");
-                assertThat(json(resend.resendOtp("afs", "csrf", null, "req", "en", null, null).block()))
+                assertThat(json(resend.resendOtp("afs", "csrf", null, "req", "en", null, null,
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block()))
                                 .contains("workflow.idempotency.missing");
                 assertThat(resendUseCase.called).isFalse();
 
@@ -72,15 +77,18 @@ class P7RegistrationOtpIntegrationTest {
                 var verify = otpController(failResendUseCase(), verifyUseCase);
                 assertThat(json(verify
                                 .verifyOtp(new RegistrationOtpVerifyRequest("123456"), null, "csrf", "idem", "req",
-                                                "en", null, null)
+                                                "en", null, null,
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse())
                                 .block())).contains("registration.authFlow.invalid");
                 assertThat(json(verify
                                 .verifyOtp(new RegistrationOtpVerifyRequest("123456"), "afs", null, "idem", "req", "en",
-                                                null, null)
+                                                null, null,
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse())
                                 .block())).contains("registration.csrf.invalid");
                 assertThat(json(verify
                                 .verifyOtp(new RegistrationOtpVerifyRequest("123456"), "afs", "csrf", null, "req", "en",
-                                                null, null)
+                                                null, null,
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse())
                                 .block())).contains("workflow.idempotency.missing");
                 assertThat(verifyUseCase.called).isFalse();
         }
@@ -91,9 +99,11 @@ class P7RegistrationOtpIntegrationTest {
                 var resend = otpController(resendUseCase, failVerifyUseCase());
                 assertThat(json(
                                 resend.resendOtp(validAuthFlowSessionId(), "csrf", null, "x-request-id", "zh-HK", null,
-                                                null).block()))
+                                                null,
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block()))
                                 .contains("workflow.idempotency.missing");
-                resend.resendOtp(validAuthFlowSessionId(), "csrf", validIdempotencyKey(), "req", "zh-HK", null, null)
+                resend.resendOtp(validAuthFlowSessionId(), "csrf", validIdempotencyKey(), "req", "zh-HK", null, null,
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse())
                                 .block();
                 assertThat(resendUseCase.called).isTrue();
                 assertThat(resendUseCase.command.acceptLanguage()).isEqualTo("zh-HK");
@@ -102,10 +112,12 @@ class P7RegistrationOtpIntegrationTest {
                 var verify = otpController(failResendUseCase(), verifyUseCase);
                 assertThat(json(verify
                                 .verifyOtp(new RegistrationOtpVerifyRequest("123456"), validAuthFlowSessionId(), "csrf",
-                                                null, "x-request-id", "zh-HK", null, null)
+                                                null, "x-request-id", "zh-HK", null, null,
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse())
                                 .block())).contains("workflow.idempotency.missing");
                 verify.verifyOtp(new RegistrationOtpVerifyRequest("123456"), validAuthFlowSessionId(), "csrf",
-                                validIdempotencyKey(), "req", "zh-HK", null, null).block();
+                                validIdempotencyKey(), "req", "zh-HK", null, null,
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block();
                 assertThat(verifyUseCase.called).isTrue();
                 assertThat(verifyUseCase.command.acceptLanguage()).isEqualTo("zh-HK");
         }
@@ -127,7 +139,8 @@ class P7RegistrationOtpIntegrationTest {
                 var resend = otpController(new RecordingResendUseCase(), failVerifyUseCase());
                 String resendJson = json(resend
                                 .resendOtp(validAuthFlowSessionId(), "csrf_secret", validIdempotencyKey(), "req", "en",
-                                                null, null)
+                                                null, null,
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse())
                                 .block());
                 assertThat(resendJson).contains("success", "status", "result", "messages", "errors", "VERIFY_OTP",
                                 "registration-otp-verification", "maskedDestination", "expiresInSeconds",
@@ -141,7 +154,8 @@ class P7RegistrationOtpIntegrationTest {
                 var verify = otpController(failResendUseCase(), new RecordingVerifyUseCase());
                 String verifyJson = json(
                                 verify.verifyOtp(new RegistrationOtpVerifyRequest("123456"), validAuthFlowSessionId(),
-                                                "csrf_secret", validIdempotencyKey(), "req", "en", null, null).block());
+                                                "csrf_secret", validIdempotencyKey(), "req", "en", null, null,
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block());
                 assertThat(verifyJson).contains("success", "status", "result", "messages", "errors", "USERNAME_CHECK",
                                 "registration-username-check", "unregisteredTrusts", "accountEnv", 
                                 "trustCode");
@@ -158,7 +172,8 @@ class P7RegistrationOtpIntegrationTest {
                 var verify = otpController(failResendUseCase(), verifyUseCase);
                 String json = json(
                                 verify.verifyOtp(new RegistrationOtpVerifyRequest("123456"), validAuthFlowSessionId(),
-                                                "csrf", validIdempotencyKey(), "req", "en", null, null).block());
+                                                "csrf", validIdempotencyKey(), "req", "en", null, null,
+                new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block());
                 assertThat(json).contains("SELECT_TRUST", "registration-trust-selection");
                 assertThat(json).doesNotContain("apimEmail", "apimMobile", "member@example.com");
         }
@@ -166,11 +181,12 @@ class P7RegistrationOtpIntegrationTest {
         private static AuthRegistrationOtpController otpController(
                         ResendRegistrationOtpUseCase resendUseCase,
                         VerifyRegistrationOtpUseCase verifyUseCase) {
-                return new AuthRegistrationOtpController(
-                                resendUseCase,
+                return new AuthRegistrationOtpController(com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter.defaultWriter(),
+                resendUseCase,
                                 new RegistrationOtpResendWebMapper(null),
                                 verifyUseCase,
-                                new RegistrationOtpVerifyWebMapper(null),
+                                new RegistrationOtpVerifyWebMapper(
+                new com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper()),
                                 new RegistrationIdempotencyProperties());
         }
 

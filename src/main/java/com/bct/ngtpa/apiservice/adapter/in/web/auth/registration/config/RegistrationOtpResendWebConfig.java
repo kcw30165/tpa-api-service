@@ -23,7 +23,8 @@ public class RegistrationOtpResendWebConfig {
     @ConditionalOnMissingBean
     public RegistrationOtpResendWebMapper registrationOtpResendWebMapper(
             WorkflowMutationResponseMapper workflowMutationResponseMapper) {
-        return new RegistrationOtpResendWebMapper(workflowMutationResponseMapper);
+        return new RegistrationOtpResendWebMapper(
+                workflowMutationResponseMapper);
     }
 
     @Bean

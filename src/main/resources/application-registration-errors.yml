@@ -1,0 +1,421 @@
+workflow-error-contract:
+  navigation:
+    VERIFY_OTP:
+      page-id: registration-otp-verification
+    USERNAME_CHECK:
+      page-id: registration-username-check
+    SELECT_TRUST:
+      page-id: registration-trust-selection
+    PASSWORD_SETUP:
+      page-id: registration-password-setup
+    RETURN_TO_LOGIN:
+      page-id: login
+    RESTART_FLOW:
+      page-id: registration-start
+  errors:
+    - code: err.registration.authFlow.invalid
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: RESTART_FLOW
+    - code: err.registration.csrf.invalid
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+    - code: err.registration.origin.invalid
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+    - code: err.registration.state.invalid
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+    - code: err.registration.start.request.invalid
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: RESTART_FLOW
+    - code: err.registration.start.rateLimited
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: RESTART_FLOW
+    - code: err.registration.start.verificationFailed
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: RESTART_FLOW
+    - code: err.registration.otp.required
+      type: FIELD
+      severity: ERROR
+      source: SERVER
+      targets:
+        - otpCode
+      next-step: VERIFY_OTP
+    - code: err.registration.otp.invalid
+      type: FIELD
+      severity: ERROR
+      source: SERVER
+      targets:
+        - otpCode
+      next-step: VERIFY_OTP
+    - code: err.registration.otp.expired
+      type: FIELD
+      severity: ERROR
+      source: SERVER
+      targets:
+        - otpCode
+      next-step: VERIFY_OTP
+    - code: err.registration.otp.locked
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: VERIFY_OTP
+    - code: err.registration.otp.cooldownActive
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: VERIFY_OTP
+    - code: err.registration.otp.sendRateLimited
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: VERIFY_OTP
+    - code: err.registration.otp.verifyRateLimited
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: VERIFY_OTP
+    - code: err.registration.message.deliveryFailed
+      type: DOWNSTREAM_SYSTEM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: VERIFY_OTP
+    - code: err.registration.trust.selectionInvalid
+      type: FIELD
+      severity: ERROR
+      source: SERVER
+      targets:
+        - selectedTrust
+      next-step: SELECT_TRUST
+    - code: err.registration.username.request.invalid
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: USERNAME_CHECK
+    - code: err.registration.username.policyInvalid
+      type: FIELD
+      severity: ERROR
+      source: SERVER
+      targets:
+        - username
+      next-step: USERNAME_CHECK
+    - code: err.registration.username.isRegistered
+      type: FIELD
+      severity: ERROR
+      source: SERVER
+      targets:
+        - username
+      next-step: USERNAME_CHECK
+    - code: err.registration.complete.request.invalid
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: PASSWORD_SETUP
+    - code: err.registration.complete.memberNotFound
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: RESTART_FLOW
+    - code: err.registration.complete.memberAlreadyRegistered
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: RETURN_TO_LOGIN
+    - code: err.registration.complete.failed
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: PASSWORD_SETUP
+    - code: err.workflow.idempotency.missing
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+    - code: err.workflow.idempotency.inProgress
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+    - code: err.workflow.idempotency.keyReused
+      type: BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+    - code: err.workflow.downstream.businessRejected
+      type: DOWNSTREAM_BUSINESS
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+    - code: err.workflow.downstream.unavailable
+      type: DOWNSTREAM_SYSTEM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+    - code: err.workflow.system.unavailable
+      type: SYSTEM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+    - code: err.registration.captcha.consumed
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+    - code: err.registration.captcha.expired
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+    - code: err.registration.captcha.invalid
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+    - code: err.registration.captcha.locked
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+    - code: err.registration.captcha.notFound
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+    - code: err.registration.captcha.refreshFailed
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+    - code: err.registration.captcha.required
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+    - code: err.registration.complete.continuationUnavailable
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+    - code: err.registration.complete.outcomeUnknown
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+    - code: err.registration.confirmPassword.required
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - confirmPassword
+      next-step: PASSWORD_SETUP
+    - code: err.registration.contact.exactlyOneRequired
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+    - code: err.registration.contact.required
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+    - code: err.registration.dateOfBirth.invalid
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+    - code: err.registration.email.invalid
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+    - code: err.registration.identityType.invalid
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+    - code: err.registration.identityValue.invalid
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+    - code: err.registration.mobile.invalid
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+    - code: err.registration.password.maxLength
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - password
+      next-step: PASSWORD_SETUP
+    - code: err.registration.password.minLength
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - password
+      next-step: PASSWORD_SETUP
+    - code: err.registration.password.mismatch
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - password
+      next-step: PASSWORD_SETUP
+    - code: err.registration.password.noSpaces
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - password
+      next-step: PASSWORD_SETUP
+    - code: err.registration.password.required
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - password
+      next-step: PASSWORD_SETUP
+    - code: err.registration.password.requiredCategories
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - password
+      next-step: PASSWORD_SETUP
+    - code: err.registration.password.sameAsUsername
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - password
+      next-step: PASSWORD_SETUP
+    - code: err.registration.password.validationFailed
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - password
+      next-step: PASSWORD_SETUP
+    - code: err.registration.trustLookup.failed
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+    - code: err.registration.trustLookup.noEligibleTrusts
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+    - code: err.registration.username.check.failed
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE
+    - code: err.registration.username.checkFailed
+      type: FORM
+      severity: ERROR
+      source: SERVER
+      targets:
+        - PAGE
+      next-step: NONE

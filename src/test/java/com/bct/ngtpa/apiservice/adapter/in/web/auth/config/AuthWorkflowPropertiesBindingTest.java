@@ -44,7 +44,7 @@ class AuthWorkflowPropertiesBindingTest {
             assertEquals(7, registration.getCaptcha().getLength());
             assertEquals("23456789ABCDEFGHJKLMNPQSTUVWXYZ",
                     registration.getCaptcha().getAlphabet());
-            assertTrue(registration.getCaptcha().isCaseSensitive());
+            assertFalse(registration.getCaptcha().isCaseSensitive());
             assertEquals(300, registration.getCaptcha().getTtlSeconds());
             assertEquals(5, registration.getCaptcha().getMaxAttempts());
 
@@ -56,7 +56,7 @@ class AuthWorkflowPropertiesBindingTest {
             assertEquals(5, registration.getOtp().getMaxVerifyAttempts());
             assertEquals(5, registration.getOtp().getMaxResendAttempts());
             assertTrue(registration.getOtp().isInvalidatePreviousOnResend());
-            assertFalse(registration.getOtp().isResetVerifyAttemptsOnResend());
+            assertTrue(registration.getOtp().isResetVerifyAttemptsOnResend());
             assertEquals("Your BCT verification code is {code}. It is valid for {ttlValue} {ttlUnit}.",
                     registration.getOtp().getSmsTemplate());
             assertNotNull(registration.getOtp().getEmailTemplate());
@@ -95,32 +95,20 @@ class AuthWorkflowPropertiesBindingTest {
 
 
     @Test
-    void authWorkflowPropertiesBindsRegistrationRateLimitPolicy() {
+    void authWorkflowPropertiesBindsOtpLifecyclePolicy() {
         contextRunner.run(context -> {
-            var rateLimit = context.getBean(AuthWorkflowProperties.class)
+            var otp = context.getBean(AuthWorkflowProperties.class)
                     .getRegistration()
-                    .getRateLimit();
+                    .getOtp();
 
-            assertNotNull(rateLimit);
-            assertNotNull(rateLimit.getRegistrationStart());
-            assertNotNull(rateLimit.getRegistrationStart().getByIp());
-            assertTrue(rateLimit.getRegistrationStart().getByIp().isEnabled());
-            assertEquals(10, rateLimit.getRegistrationStart().getByIp().getMaxAttempts());
-            assertEquals(600, rateLimit.getRegistrationStart().getByIp().getWindowSeconds());
-
-            assertNotNull(rateLimit.getOtpSend());
-            assertNotNull(rateLimit.getOtpSend().getByDestinationHash());
-            assertTrue(rateLimit.getOtpSend().getByDestinationHash().isEnabled());
-            assertEquals(3, rateLimit.getOtpSend().getByDestinationHash().getMaxAttempts());
-            assertEquals(600, rateLimit.getOtpSend().getByDestinationHash().getWindowSeconds());
-
-            assertNotNull(rateLimit.getOtpVerify());
-            assertNotNull(rateLimit.getOtpVerify().getByRegistrationSession());
-            assertTrue(rateLimit.getOtpVerify().getByRegistrationSession().isEnabled());
-            assertEquals(5, rateLimit.getOtpVerify().getByRegistrationSession().getMaxAttempts());
-            assertEquals(300, rateLimit.getOtpVerify().getByRegistrationSession().getWindowSeconds());
+            assertNotNull(otp);
+            assertEquals(5, otp.getMaxResendAttempts());
+            assertEquals(5, otp.getMaxVerifyAttempts());
+            assertEquals(60, otp.getResendCooldownSeconds());
+            assertTrue(otp.isInvalidatePreviousOnResend());
         });
     }
+
 
     @Configuration(proxyBeanMethods = false)
     @EnableConfigurationProperties(AuthWorkflowProperties.class)

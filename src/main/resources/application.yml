@@ -7,6 +7,7 @@ spring:
       - optional:file:./.env[.properties]
       - optional:classpath:application-page-personal-information.yml
       - optional:classpath:application-page-registration.yml
+      - optional:classpath:application-registration-errors.yml
   application:
     name: ngtpa-api-server
   cloud:
@@ -21,7 +22,6 @@ spring:
           keystore:
             certificate: file:/etc/redis-tls/tls.crt
             private-key: file:/etc/redis-tls/tls.key
-
 
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:}
@@ -121,7 +121,7 @@ auth-workflows:
       max-verify-attempts: 5
       max-resend-attempts: 5
       invalidate-previous-on-resend: true
-      reset-verify-attempts-on-resend: false
+      reset-verify-attempts-on-resend: true
       sms-template: "Your BCT verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
       email-template:
         subject: "BCT verification code"
@@ -146,23 +146,6 @@ auth-workflows:
       otp-resend-ttl-seconds: 300
       otp-verify-ttl-seconds: 300
       complete-ttl-seconds: 300
-    rate-limit:
-      registration-start:
-        by-ip:
-          enabled: true
-          max-attempts: 10
-          window-seconds: 600
-      otp-send:
-        by-destination-hash:
-          enabled: true
-          max-attempts: 3
-          window-seconds: 600
-      otp-verify:
-        by-registration-session:
-          enabled: true
-          max-attempts: 5
-          window-seconds: 300
-
 apim:
   base-url: ${APIM_BASE_URL:${APIM_BASEURL:}}
   timeout-milliseconds: ${APIM_TIMEOUT_MILLISECONDS:${APIM_TIMEOUTMILLISECONDS:10000}}
@@ -187,7 +170,13 @@ apim:
       - cust-id
       - email
       - mobile-number
-
+    response-fields:
+      - policy-no
+      - cert-no
+      - user-id
+      - cust-id
+      - email
+      - mobile-number
 
 request-logging:
   enabled: true
@@ -208,6 +197,7 @@ request-logging:
 error-message:
   en:
     "err.request.invalid": "Invalid request."
+    "err.request.id.missing": "The X-Request-Id header is required."
     "err.request.validation.failed": "Invalid request payload."
     "err.request.body.malformed": "Malformed request body."
     "err.security.access.denied": "Access is denied."
@@ -229,6 +219,7 @@ error-message:
     "registration.start.verificationFailed": "We are unable to verify your details. Please review and try again."
   zh_HK:
     "err.request.invalid": "請求無效。"
+    "err.request.id.missing": "必須提供 X-Request-Id 標頭。"
     "err.request.validation.failed": "請求內容無效。"
     "err.request.body.malformed": "請求內容格式錯誤。"
     "err.security.access.denied": "存取被拒。"
@@ -280,4 +271,3 @@ email:
     port: ${SMTP_PORT:25}
     from: ${SMTP_FROM:}
     timeout-millis: ${SMTP_TIMEOUT_MILLIS:5000}
-

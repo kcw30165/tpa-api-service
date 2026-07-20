@@ -7,7 +7,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.Registratio
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationController;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErrorKeys;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.in.StartRegistrationUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationError;
@@ -34,7 +34,7 @@ class AuthRegistrationControllerCaptchaGateTest {
                 null,
                 null,
                 List.of(),
-                List.of(new StartRegistrationError(RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_REQUIRED, "captchaChallengeId")),
+                List.of(new StartRegistrationError(RegistrationErrorKey.REGISTRATION_CAPTCHA_REQUIRED, "captchaChallengeId")),
                 RegistrationIdempotencyStartOutcome.STARTED,
                 null)));
 
@@ -44,11 +44,11 @@ class AuthRegistrationControllerCaptchaGateTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(new RegistrationStartRequest("GPFS", "1234567890", "31/01/1980", "member@example.com", null, null))
                 .exchange()
-                .expectStatus().isOk()
+                .expectStatus().isBadRequest()
                 .expectCookie().doesNotExist("auth_flow_sid")
                 .expectBody(String.class)
                 .value(body -> assertThat(body)
-                        .contains("registration.captcha.required")
+                        .contains("err.registration.captcha.required")
                         .contains("captchaChallengeId")
                         .doesNotContain("csrfToken")
                         .doesNotContain("auth_flow_sid")
@@ -105,7 +105,7 @@ class AuthRegistrationControllerCaptchaGateTest {
                 null,
                 null,
                 List.of(),
-                List.of(new StartRegistrationError(RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_INVALID, "captchaChallengeId")),
+                List.of(new StartRegistrationError(RegistrationErrorKey.REGISTRATION_CAPTCHA_INVALID, "captchaChallengeId")),
                 RegistrationIdempotencyStartOutcome.STARTED,
                 null)));
 
@@ -115,9 +115,9 @@ class AuthRegistrationControllerCaptchaGateTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(new RegistrationStartRequest("GPFS", "1234567890", "31/01/1980", "member@example.com", null, "cap_abcdefghijklmnop"))
                 .exchange()
-                .expectStatus().isOk()
+                .expectStatus().isBadRequest()
                 .expectBody()
-                .jsonPath("$.errors[0].code").isEqualTo("registration.captcha.invalid")
+                .jsonPath("$.errors[0].code").isEqualTo("err.registration.captcha.invalid")
                 .jsonPath("$.errors[0].targets[0]").isEqualTo("captchaChallengeId");
     }
 

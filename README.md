@@ -272,7 +272,7 @@ infrastructure          →  Spring/framework infrastructure only (no applicatio
 
 ```bash
 # Compile
-export JAVA_HOME="C:/Java/OpenJDK/jdk-21" && export M2_HOME="/d/Tools/apache-maven-3.9.15" && export PATH="$JAVA_HOME/bin:$M2_HOME/bin:$PATH" && mvn compile -DskipTests
+export JAVA_HOME="C:/Java/OpenJDK/jdk-21" && export M2_HOME="/d/Tools/apache-maven-3.9.15" && export PATH="$JAVA_HOME/bin:$M2_HOME/bin:$PATH" && mvn -DskipTests compile
 
 # Run tests
 export JAVA_HOME="C:/Java/OpenJDK/jdk-21" && export M2_HOME="/d/Tools/apache-maven-3.9.15" && export PATH="$JAVA_HOME/bin:$M2_HOME/bin:$PATH" && mvn test
@@ -283,6 +283,65 @@ export JAVA_HOME="C:/Java/OpenJDK/jdk-21" && export M2_HOME="/d/Tools/apache-mav
 ---
 
 ## Running Locally
+
+## Current Registration Workflow
+
+The registration workflow is active and uses the common `MutationResponse` contract. Registration endpoints do not require `Account-Ref`; they use the opaque pre-authentication session transported by the `auth_flow_sid` cookie.
+
+### Endpoints
+
+- `POST /api/v1/auth/captcha/challenge`
+- `POST /api/v1/auth/captcha/verify`
+- `POST /api/v1/auth/captcha/refresh`
+- `POST /api/v1/auth/registration/start`
+- `POST /api/v1/auth/registration/otp/resend`
+- `POST /api/v1/auth/registration/otp/verify`
+- `POST /api/v1/auth/registration/username/check`
+- `POST /api/v1/auth/registration/complete`
+- `POST /api/v1/auth/registration/cancel`
+
+Protected operations require the applicable combination of `auth_flow_sid`, `X-XSRF-TOKEN`, `Idempotency-Key`, `X-Request-Id`, and `Accept-Language`.
+
+### Registration lookup contract
+
+Registration start and post-OTP trust refresh use `TRPSearchUnregMember`. The normal application outcomes are `ELIGIBLE` and `NOT_ELIGIBLE`. `ELIGIBLE` must contain at least one valid account/trust entry. `err.tpa.member.not.found` maps to `NOT_ELIGIBLE`.
+
+Any other APIM `err-message`, a malformed envelope, blank success with empty data, contact mismatch, or an eligible item missing required account fields is a downstream technical/contract failure—not a business result. Frontend identity type `STAFF_NO` maps to APIM `STAFF` at the adapter boundary.
+
+### OTP lifecycle
+
+```yaml
+auth-workflows:
+  registration:
+    otp:
+      length: 6
+      numeric-only: true
+      ttl-seconds: 300
+      resend-cooldown-seconds: 60
+      max-verify-attempts: 5
+      max-resend-attempts: 5
+      invalidate-previous-on-resend: true
+```
+
+- The initial OTP does not consume a resend attempt.
+- Five resends are permitted, so the maximum is six OTP deliveries: one initial send plus five resends.
+- Challenge replacement owns cooldown, resend counting, invalidation of the previous challenge, and creation of the new active challenge.
+- Each OTP challenge/send has five verification attempts.
+- Registration start has no rate limit.
+- There is no destination-hash OTP-send limiter and no registration `rate-limit` policy tree.
+
+Raw OTP values are never persisted. Redis stores only the OTP hash and challenge state under opaque challenge identifiers.
+
+### Completion and trust continuation
+
+After OTP verification, one eligible trust advances to username checking and multiple trusts advance to trust selection. Completion calls `TRPRegMember`. If eligible unregistered trusts remain, the frontend may continue with another trust; otherwise the workflow returns the user to login and expires the auth-flow cookie.
+
+### Error and logging model
+
+Public workflow errors use typed `WorkflowErrorKey` implementations: `RegistrationErrorKey` and `SharedWorkflowErrorKey`. The removed `RegistrationPublicErrorCode`, `RegistrationWorkflowErrorKey`, and `RegistrationWorkflowErrorKeys` types must not be reintroduced.
+
+Lookup contract failures emit masked semantic failure events. Public responses do not expose APIM error codes or internal origins. Completed `4xx` responses use `WARN`/`http.request.failed`; completed `5xx` responses use `ERROR`/`http.request.failed`.
+
 
 ### Registration OTP Destination Override
 
@@ -308,7 +367,7 @@ Delivery rules:
 - Existing registration logic first validates recipient availability and selects `MOBILE` or `EMAIL`.
 - `MOBILE` uses `REGISTRATION_MESSAGE_OVERRIDE_MOBILE` in non-production; `EMAIL` uses `REGISTRATION_MESSAGE_OVERRIDE_EMAIL`.
 - Substitution occurs only at the `RegistrationMessagePort` physical-delivery boundary and applies to both registration start and OTP resend.
-- The original database destination remains authoritative for eligibility, channel selection, masked destination shown to the frontend, destination hashing, rate limiting, and registration session state.
+- The original database destination remains authoritative for eligibility, channel selection, the masked destination shown to the frontend, OTP challenge subject hashing, and registration session state. The removed destination-hash OTP-send limiter must not be reintroduced.
 - Errors and logs must not expose original destinations, override destinations, OTP values, message bodies, or provider credentials.
 
 Non-production local startup requires both variables:
@@ -320,34 +379,11 @@ export REGISTRATION_MESSAGE_OVERRIDE_EMAIL="<test-email>"
 
 Do not commit real destination values to YAML or source control. Supply them through environment-specific deployment configuration or a secret/configuration manager.
 
-### OTP Challenge Foundation
+### OTP Challenge and Resend Lifecycle
 
-The registration foundation includes an internal OTP challenge capability behind `OtpChallengePort`.
+`OtpChallengePort` is active for registration start, resend, and verification. It provides hash-only Redis persistence, expiry, verification-attempt tracking, lockout, replacement, and invalidation. The auth-flow session stores the active challenge ID server-side.
 
-Implemented foundation behaviour:
-
-- OTP challenge creation
-- OTP code generation
-- OTP code hashing
-- Redis persistence of OTP challenge state under `{prefix}:auth:otp:{otpChallengeId}`
-- OTP verification
-- failed-attempt tracking and lock after max attempts
-- OTP replacement model for resend
-- explicit invalidation
-
-Security rules:
-
-- raw OTP values are never persisted;
-- Redis stores only `codeHash`;
-- OTP Redis keys use opaque challenge ids only;
-- OTP endpoints and message delivery are not implemented in this phase.
-
-Not implemented yet:
-
-- SMS/email/message delivery;
-- registration session `activeOtpChallengeId`;
-- registration OTP endpoints;
-- registration start/complete flows.
+The configured maximum is five **resends**, not five total sends. Initial delivery leaves five resends available, so at most six OTPs can be delivered. Each replacement challenge receives a fresh five-attempt verification allowance.
 
 ### Via VS Code Debugger (recommended)
 
@@ -1170,46 +1206,9 @@ These values drive the synthetic total detail row in the JSON response, the firs
 
 ## Auth Workflow Registration Configuration
 
-`auth-workflows.registration` is foundation-only configuration for future registration workflow slices. P0.1 adds only property-binding defaults in `src/main/resources/application.yml`; it does not add registration endpoints, OTP delivery, Redis auth state, APIM registration adapters, or captcha execution.
+`auth-workflows.registration` is the active YAML-owned policy for captcha, OTP, username, password, message templates, destination overrides, and idempotency TTLs. Java defines the typed binding schema; YAML owns the values.
 
-P0.2 adds `AuthWorkflowPolicyPort` as the application-facing direct lookup boundary for registration policy. No variant lookup is implemented for `auth-workflows`, and `identity-type-mapping` remains Java-side APIM request enrichment only. P0.2 still does not add registration endpoints.
-
-P0.3 adds registration page schemas under `bff-pages`, including true page-level `variants` for `registration-success`.
-
-P0.4 adds a web/pageconfig mapper for `registration-success` variants. The later registration-complete flow may select only the variant; localized success-page title, body, and actions remain presentation mapping in the web layer.
-
-Implemented in P0:
-
-- `auth-workflows.registration` policy binding
-- direct registration auth workflow policy lookup
-- Java-side identity type search-scope mapping
-- registration page schemas under `bff-pages`
-- page-level variants for `registration-success`
-- web/pageconfig mapper for registration success-page variants
-
-Not implemented in P0:
-
-- registration endpoints
-- OTP challenge lifecycle
-- registration Redis session/idempotency state
-- APIM registration verification/completion adapters
-- message delivery
-- rate limiting
-- captcha endpoints/gate
-
-Current local defaults in `src/main/resources/application.yml`:
-
-```yaml
-auth-workflows:
-  registration:
-    pre-start-challenge:
-      enabled: false
-      type: CAPTCHA
-```
-
-`pre-start-challenge.enabled=false` means the future captcha gate is disabled until the later P5 confirmation slice enables and implements it.
-
----
+There is intentionally no `auth-workflows.registration.rate-limit` block. Registration start is not rate-limited, and the OTP challenge replacement lifecycle owns the five-resend maximum and cooldown. See **Current Registration Workflow** for the canonical OTP configuration.
 
 ## API Endpoints
 
@@ -1902,6 +1901,8 @@ Error message localization by `Accept-Language` is deferred, and notification re
 
 ## Project Documents
 
+Registration stabilization evidence: `docs/0040-registration-stabilization-013-otp-lifecycle-evidence.md`.
+
 | Document | Location |
 |---|---|
 | Functional Requirements | `docs/brd/converted/functional_reqs.md` |
@@ -2265,64 +2266,18 @@ Not implemented in P2:
 - message queue persistence/worker
 - Spring Mail or Jakarta Mail SMTP dependency
 
-### Abuse Prevention and Hardening Foundation
+### Abuse Prevention and Security Hardening
 
-P3 adds internal abuse-prevention and security-hardening foundations for the future registration workflow.
+The generic `RateLimitPort`, Redis rate-limit adapter, CSRF foundation, exact-origin checks, and security audit model remain available for capabilities that require them. Registration OTP resend does not use the former destination-hash limiter.
 
-Implemented in P3:
+Current registration rules:
 
-- registration rate-limit policy configuration under `auth-workflows.registration.rate-limit`
-- framework-free `RateLimitPort` and rate-limit decision model
-- Redis-backed rate-limit counters using key shape `{prefix}:auth:rate:{bucket}:{opaqueBucketId}`
-- destination hashing helper for EMAIL and MOBILE bucket ids
-- framework-free CSRF token generation / hashing / validation model
-- Origin/Referer exact-origin validation foundation
-- CORS hardening tests for credentialed cross-site requests
-- sanitized security/audit event foundation
-
-Security rules:
-
-- raw mobile numbers and email addresses must never be used in Redis rate-limit keys
-- destination-based rate limits use opaque hashed bucket ids
-- raw CSRF tokens and token hashes must not be logged
-- `reg_sid` cookie values must not be logged
-- OTP values, passwords, SMS content, email bodies, Authorization headers, Cookie headers, full mobile numbers, and full email addresses must not be logged
-- wildcard origins must not be used with credentialed registration flows
-
-Rate-limit configuration example:
-
-```yaml
-auth-workflows:
-  registration:
-    rate-limit:
-      registration-start:
-        by-ip:
-          enabled: true
-          max-attempts: 10
-          window-seconds: 600
-      otp-send:
-        by-destination-hash:
-          enabled: true
-          max-attempts: 3
-          window-seconds: 600
-      otp-verify:
-        by-registration-session:
-          enabled: true
-          max-attempts: 5
-          window-seconds: 300
-```
-
-Not implemented in P3:
-
-- registration endpoints
-- OTP resend/verify endpoints
-- registration session Redis state
-- `reg_sid` cookie handling
-- runtime CSRF enforcement on endpoints
-- runtime Origin/Referer enforcement on endpoints
-- runtime rate-limit enforcement on endpoints
-- APIM registration adapters
-- captcha
+- no registration-start rate limit;
+- initial OTP does not consume a resend;
+- five resends are enforced by challenge lineage;
+- five verification attempts are enforced per challenge;
+- raw destinations, CSRF values, cookie values, OTPs, passwords, message bodies, and provider credentials are not logged;
+- credentialed registration flows do not allow wildcard origins.
 
 ### Session Management Foundation
 
@@ -2450,121 +2405,13 @@ Not implemented in P5:
 
 Do not claim any registration endpoint is implemented in P5.
 
-### Registration Start
+### Registration Runtime Endpoints
 
-P6 adds the registration-start endpoint:
+The active runtime includes captcha challenge/verify/refresh, registration start, OTP resend/verify, username check, completion, and cancellation. Controllers remain thin and delegate to framework-free application use cases.
 
-`POST /api/v1/auth/registration/start`
+Registration start applies the configured captcha gate, calls `TRPSearchUnregMember`, creates the auth-flow session only after eligibility succeeds, binds CSRF state, creates the initial challenge, and sends the OTP. Resend replaces the active challenge; the initial send is not counted and five replacements are allowed. Verification uses the active challenge and refreshes the unregistered trust list.
 
-The endpoint:
-
-- requires `Idempotency-Key`
-- validates identity type, identity value, date of birth, and exactly one of email/mobile
-- calls APIM `/ws/NGTPA/v1/TRPSearchUnregMember`
-- creates an AuthFlowSession only after APIM verification succeeds
-- creates and binds a CSRF token to the AuthFlowSession
-- creates an OTP challenge
-- stores activeOtpChallengeId server-side only
-- sends the OTP through `RegistrationMessagePort`; non-production physical delivery uses the configured channel override while masking, hashing, and session state retain the original verified destination
-- sets `auth_flow_sid` as HttpOnly, Secure, SameSite=None
-- returns `nextStep = VERIFY_OTP`
-- returns `csrfToken` in the response body for current cross-site FE/BFF scope
-
-The response does not include:
-
-- AuthFlowSessionId
-- `auth_flow_sid` value
-- OTP challenge id
-- OTP code
-- APIM account data
-- policy number or certificate number
-
-Not implemented in P6:
-
-- OTP resend/verify endpoints
-- username/check endpoint
-- complete endpoint
-- cancel endpoint
-- captcha endpoints/runtime
-- auth-flow resume
-
-### Registration OTP Resend and Verify
-
-P7 adds protected OTP endpoints for the registration auth flow:
-
-- `POST /api/v1/auth/registration/otp/resend`
-- `POST /api/v1/auth/registration/otp/verify`
-
-Both endpoints require:
-
-- `auth_flow_sid`
-- `X-XSRF-TOKEN`
-- `Idempotency-Key`
-
-OTP resend:
-
-- uses the server-side `AuthFlowSession` and encrypted registration context
-- replaces the active OTP challenge
-- sends a new registration OTP through the same `RegistrationMessagePort`; non-production physical delivery uses the configured channel override while the response retains the original masked destination
-- returns `nextStep = VERIFY_OTP`
-- returns masked destination and OTP expiry/cooldown metadata
-
-OTP verify:
-
-### Captcha
-
-P8 adds Captcha support for registration pre-start validation.
-
-Captcha endpoints:
-
-- `POST /api/v1/auth/captcha/challenge`
-- `POST /api/v1/auth/captcha/verify`
-- `POST /api/v1/auth/captcha/refresh`
-
-Captcha endpoints:
-
-- do not require `auth_flow_sid`
-- do not require `X-XSRF-TOKEN`
-- do not require `Idempotency-Key`
-- do not require `Account-Ref`
-- use the standard MutationResponse envelope
-- no nextStep/pageRef
-
-Captcha policy is configured under:
-
-`auth-workflows.registration.captcha`
-
-Captcha answers are hashed in Redis. Plaintext answers are not persisted.
-
-When `auth-workflows.registration.pre-start-challenge.enabled=true` and type is `CAPTCHA`, `registration/start` requires `captchaChallengeId` and consumes a verified Captcha before calling APIM or creating an AuthFlowSession.
-
-P8 does not implement username/check, registration/complete, registration/cancel, or auth-flow resume.
-
-- verifies the submitted OTP against the server-side `activeOtpChallengeId`
-- marks the `AuthFlowSession` as `OTP_VERIFIED`
-- reuses the existing `RegistrationLookupPort` / `TRPSearchUnregMember` integration to fetch current unregistered trusts
-- returns `nextStep = USERNAME_CHECK` for one trust
-- returns `nextStep = SELECT_TRUST` for multiple trusts
-- returns only safe trust selector fields
-
-P7 responses do not include:
-
-- `AuthFlowSessionId`
-- `auth_flow_sid` cookie value
-- `csrfToken` or `csrfTokenHash`
-- OTP challenge id
-- OTP code
-- raw email/mobile/contact values
-- encrypted registration context
-- APIM email/mobile or raw APIM payload
-
-Not implemented in P7:
-
-- username/check
-- registration/complete
-- registration/cancel
-- captcha endpoints/runtime
-- auth-flow resume
+Captcha endpoints do not require `auth_flow_sid`, `X-XSRF-TOKEN`, `Idempotency-Key`, or `Account-Ref`. Protected registration endpoints enforce the applicable session, CSRF, origin/referer, and idempotency rules.
 
 #### Registration Username Check Foundation
   
@@ -2685,4 +2532,14 @@ Technical outcomes that may have committed downstream are stored as idempotency
 `UNKNOWN_OUTCOME` and are not automatically replayed. See
 [`docs/evidence/0038-registration-complete.md`](docs/evidence/0038-registration-complete.md)
 for security invariants, test commands, and the merge-request evidence checklist.
+
+### Registration Start
+
+`POST /api/v1/auth/registration/start` begins the protected registration workflow after captcha verification. The request requires `Idempotency-Key`; eligible-member discovery is performed through `TRPSearchUnregMember`. A successful start creates the opaque `auth_flow_sid` pre-authentication session and returns the `csrfToken` required by later protected registration operations.
+
+### Registration OTP Resend and Verify
+
+`POST /api/v1/auth/registration/otp/resend` keeps the workflow at `VERIFY_OTP` while replacing the active OTP challenge under the configured cooldown and resend limits. `POST /api/v1/auth/registration/otp/verify` validates the active challenge and refreshes eligible trusts through `RegistrationLookupPort`. Successful verification advances to username checking for one trust or `SELECT_TRUST` when multiple eligible trusts remain.
+
+The original verified destination remains authoritative for masking, session state, challenge subject protection, and eligibility checks. Physical destination substitution is confined to `RegistrationMessagePort`. Legacy destination hashing and the removed destination-hash OTP-send limiter are not part of the active resend policy and must not be reintroduced.
 

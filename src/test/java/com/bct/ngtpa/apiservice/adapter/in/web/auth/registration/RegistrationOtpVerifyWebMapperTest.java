@@ -12,7 +12,8 @@ import org.junit.jupiter.api.Test;
 
 class RegistrationOtpVerifyWebMapperTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final RegistrationOtpVerifyWebMapper mapper = new RegistrationOtpVerifyWebMapper(null);
+    private final RegistrationOtpVerifyWebMapper mapper = new RegistrationOtpVerifyWebMapper(
+                new com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper());
 
     @Test
     void successSingleTrustMapsToUsernameCheck() throws Exception {
@@ -63,7 +64,7 @@ class RegistrationOtpVerifyWebMapperTest {
                 null));
 
         String json = objectMapper.writeValueAsString(response);
-        assertThat(json).contains("\"success\":false", "registration.otp.invalid");
+        assertThat(json).contains("\"success\":false", "err.registration.otp.invalid");
         assertThat(json).doesNotContain("123456", "otpChallengeId", "activeOtpChallengeId");
     }
 
@@ -96,7 +97,7 @@ class RegistrationOtpVerifyWebMapperTest {
                 null));
 
         String json = objectMapper.writeValueAsString(response);
-        assertThat(json).contains("\"success\":false", "registration.otp.invalid");
+        assertThat(json).contains("\"success\":false", "err.registration.otp.invalid");
         assertThat(json).contains("\"nextStep\":\"VERIFY_OTP\"", "registration-otp-verification", "\"remainingVerifyAttempts\":2");
         assertThat(json).doesNotContain("otpChallengeId", "activeOtpChallengeId", "123456", "member@example.com");
     }

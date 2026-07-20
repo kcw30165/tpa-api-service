@@ -1,5 +1,8 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationSelectedTrustRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationUsernameCheckRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationUsernameCheckResponse;
@@ -17,14 +20,14 @@ import java.util.Map;
 public class RegistrationUsernameCheckWebMapper {
     private static final String SUCCESS = "SUCCESS";
     private static final String VALIDATION_FAILED = "VALIDATION_FAILED";
-    private static final String DOWNSTREAM_REJECTION = "DOWNSTREAM_REJECTION";
+    private static final String BUSINESS_REJECTED = "BUSINESS_REJECTED";
     private static final String DOWNSTREAM_ERROR = "DOWNSTREAM_ERROR";
     private static final String SYSTEM_ERROR = "SYSTEM_ERROR";
     private static final String TARGET_PAGE = "PAGE";
 
-    private static final String REGISTRATION_AUTH_FLOW_INVALID = "registration.authFlow.invalid";
-    private static final String REGISTRATION_CSRF_INVALID = "registration.csrf.invalid";
-    private static final String REGISTRATION_USERNAME_CHECK_REQUEST_INVALID = "registration.username.check.request.invalid";
+    private static final String REGISTRATION_AUTH_FLOW_INVALID = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.AUTH_FLOW_INVALID.value();
+    private static final String REGISTRATION_CSRF_INVALID = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.CSRF_INVALID.value();
+    private static final String REGISTRATION_USERNAME_CHECK_REQUEST_INVALID = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.USERNAME_REQUEST_INVALID.value();
 
     public CheckRegistrationUsernameCommand toCommand(
             RegistrationUsernameCheckRequest request,
@@ -52,45 +55,47 @@ public class RegistrationUsernameCheckWebMapper {
                 trimToNull(requestId));
     }
 
-    public Object toMutationResponse(CheckRegistrationUsernameResult result) {
-        Map<String, Object> response = new LinkedHashMap<>();
+    public MutationResponse<RegistrationUsernameCheckResponse> toMutationResponse(
+            CheckRegistrationUsernameResult result) {
         boolean success = result.status() == CheckRegistrationUsernameResultStatus.USERNAME_AVAILABLE;
-        response.put("success", success);
-        response.put("status", apiStatus(result.status()));
-        response.put("result", resultPayload(nextStep(result)));
-        response.put("messages", result.messages() == null ? List.of() : result.messages());
-        response.put("errors", success ? List.of() : errorMaps(result));
-        return response;
+        RegistrationUsernameCheckResponse payload = new RegistrationUsernameCheckResponse(
+                nextStep(result));
+        if (success) {
+            return MutationResponse.success(ApiStatus.SUCCESS, payload, List.of());
+        }
+        ApiStatus status = switch (result.status()) {
+            case DOWNSTREAM_REJECTED -> ApiStatus.BUSINESS_REJECTED;
+            case DOWNSTREAM_FAILED -> ApiStatus.DOWNSTREAM_ERROR;
+            case SYSTEM_FAILED -> ApiStatus.SYSTEM_ERROR;
+            default -> ApiStatus.VALIDATION_FAILED;
+        };
+        List<ApiError> errors = result.errors() == null || result.errors().isEmpty()
+                ? List.of(apiError(defaultErrorCode(result.status()), TARGET_PAGE))
+                : result.errors().stream()
+                        .map(error -> apiError(error.code(), firstTarget(error)))
+                        .toList();
+        return MutationResponse.failure(status, payload, errors);
     }
 
-    public Object missingAuthFlowCookieResponse() {
+    public MutationResponse<RegistrationUsernameCheckResponse> missingAuthFlowCookieResponse() {
         return errorResponse(REGISTRATION_AUTH_FLOW_INVALID);
     }
 
-    public Object missingCsrfTokenResponse() {
+    public MutationResponse<RegistrationUsernameCheckResponse> missingCsrfTokenResponse() {
         return errorResponse(REGISTRATION_CSRF_INVALID);
     }
 
-    public Object missingRequestBodyResponse() {
+    public MutationResponse<RegistrationUsernameCheckResponse> missingRequestBodyResponse() {
         return errorResponse(REGISTRATION_USERNAME_CHECK_REQUEST_INVALID);
     }
 
-    private Object errorResponse(String code) {
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("success", false);
-        response.put("status", VALIDATION_FAILED);
-        response.put("result", resultPayload(WorkflowNextStep.USERNAME_CHECK));
-        response.put("messages", List.of());
-        response.put("errors", List.of(errorMap(code, TARGET_PAGE)));
-        return response;
-    }
-
-    private Map<String, Object> resultPayload(WorkflowNextStep nextStep) {
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("nextStep", nextStep);
-        result.put("data", null);
-        result.put("pageRef", pageRef(nextStep));
-        return result;
+    private MutationResponse<RegistrationUsernameCheckResponse> errorResponse(String code) {
+        RegistrationUsernameCheckResponse payload = new RegistrationUsernameCheckResponse(
+                WorkflowNextStep.USERNAME_CHECK);
+        return MutationResponse.failure(
+                ApiStatus.VALIDATION_FAILED,
+                payload,
+                List.of(apiError(code, TARGET_PAGE)));
     }
 
     private Map<String, Object> pageRef(WorkflowNextStep nextStep) {
@@ -104,27 +109,8 @@ public class RegistrationUsernameCheckWebMapper {
         return pageRef;
     }
 
-    private String apiStatus(CheckRegistrationUsernameResultStatus status) {
-        return switch (status) {
-            case USERNAME_AVAILABLE -> SUCCESS;
-            case DOWNSTREAM_REJECTED -> DOWNSTREAM_REJECTION;
-            case DOWNSTREAM_FAILED -> DOWNSTREAM_ERROR;
-            case SYSTEM_FAILED -> SYSTEM_ERROR;
-            default -> VALIDATION_FAILED;
-        };
-    }
-
     private WorkflowNextStep nextStep(CheckRegistrationUsernameResult result) {
         return result.nextStep() == null ? WorkflowNextStep.USERNAME_CHECK : result.nextStep();
-    }
-
-    private List<Map<String, Object>> errorMaps(CheckRegistrationUsernameResult result) {
-        if (result.errors() == null || result.errors().isEmpty()) {
-            return List.of(errorMap(defaultErrorCode(result.status()), TARGET_PAGE));
-        }
-        return result.errors().stream()
-                .map(error -> errorMap(error.code(), firstTarget(error)))
-                .toList();
     }
 
     private String firstTarget(WorkflowErrorDescriptor error) {
@@ -135,21 +121,24 @@ public class RegistrationUsernameCheckWebMapper {
         return target == null || target.isBlank() ? TARGET_PAGE : target;
     }
 
-    private Map<String, Object> errorMap(String code, String target) {
-        Map<String, Object> map = new LinkedHashMap<>();
-        map.put("code", code);
-        map.put("target", target == null || target.isBlank() ? TARGET_PAGE : target);
-        return map;
+    private ApiError apiError(String code, String target) {
+        return new ApiError(
+                "BUSINESS",
+                code,
+                null,
+                List.of(target == null || target.isBlank() ? TARGET_PAGE : target),
+                "ERROR",
+                "SERVER");
     }
 
     private String defaultErrorCode(CheckRegistrationUsernameResultStatus status) {
         return switch (status) {
             case INVALID_AUTH_FLOW -> REGISTRATION_AUTH_FLOW_INVALID;
             case CSRF_INVALID -> REGISTRATION_CSRF_INVALID;
-            case DOWNSTREAM_FAILED -> "workflow.downstream.unavailable";
-            case DOWNSTREAM_REJECTED -> "downstream.generic.businessRejected";
-            case SYSTEM_FAILED -> "workflow.system.unavailable";
-            case INVALID_STATE -> "workflow.state.invalid";
+            case DOWNSTREAM_FAILED -> com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value();
+            case DOWNSTREAM_REJECTED -> com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.REGISTRATION_USERNAME_CHECKFAILED.value();
+            case SYSTEM_FAILED -> com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value();
+            case INVALID_STATE -> com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.STATE_INVALID.value();
             default -> REGISTRATION_USERNAME_CHECK_REQUEST_INVALID;
         };
     }

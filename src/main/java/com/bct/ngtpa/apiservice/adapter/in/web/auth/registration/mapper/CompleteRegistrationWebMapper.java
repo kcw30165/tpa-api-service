@@ -13,7 +13,6 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowCon
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.CompleteRegistrationCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.CompleteRegistrationResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.CompleteRegistrationResultStatus;
-import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
@@ -22,15 +21,18 @@ public class CompleteRegistrationWebMapper {
     private static final String SOURCE_SERVER = "SERVER";
     private final Duration idempotencyTtl;
     private final RegistrationSuccessPageMapper successPageMapper;
-    private final ErrorMessageResolver messages;
+    public CompleteRegistrationWebMapper(
+            Duration idempotencyTtl,
+            RegistrationSuccessPageMapper successPageMapper) {
+        this(idempotencyTtl, successPageMapper, null);
+    }
 
     public CompleteRegistrationWebMapper(
             Duration idempotencyTtl,
             RegistrationSuccessPageMapper successPageMapper,
-            ErrorMessageResolver messages) {
+            Object ignoredMessages) {
         this.idempotencyTtl = Objects.requireNonNull(idempotencyTtl);
         this.successPageMapper = Objects.requireNonNull(successPageMapper);
-        this.messages = Objects.requireNonNull(messages);
     }
 
     public CompleteRegistrationCommand toCommand(
@@ -67,7 +69,7 @@ public class CompleteRegistrationWebMapper {
         ApiStatus status = switch (result.status()) {
             case VALIDATION_FAILED, INVALID_AUTH_FLOW, CSRF_INVALID, INVALID_STATE,
                     IDEMPOTENCY_KEY_REUSED -> ApiStatus.VALIDATION_FAILED;
-            case DOWNSTREAM_REJECTED -> ApiStatus.DOWNSTREAM_REJECTED;
+            case DOWNSTREAM_REJECTED -> ApiStatus.BUSINESS_REJECTED;
             case DOWNSTREAM_FAILED, CONTINUATION_LOOKUP_FAILED -> ApiStatus.DOWNSTREAM_ERROR;
             default -> ApiStatus.SYSTEM_ERROR;
         };
@@ -75,7 +77,7 @@ public class CompleteRegistrationWebMapper {
                 .map(error -> new ApiError(
                         error.type().name(),
                         error.code(),
-                        resolve(error.code(), language),
+                        null,
                         error.targets(),
                         error.severity().name(),
                         error.source()))
@@ -84,7 +86,7 @@ public class CompleteRegistrationWebMapper {
     }
 
     public MutationResponse<CompleteRegistrationResponse> missing(String code, String target, String language) {
-        ApiError error = ApiError.field(code, resolve(code, language), List.of(target), SOURCE_SERVER);
+        ApiError error = ApiError.field(code, null, List.of(target), SOURCE_SERVER);
         return MutationResponse.failure(ApiStatus.VALIDATION_FAILED, null, List.of(error));
     }
 
@@ -109,10 +111,6 @@ public class CompleteRegistrationWebMapper {
                         RegistrationWorkflowConstants.PAGE_REGISTRATION_SUCCESS,
                         variant,
                         language));
-    }
-
-    private String resolve(String code, String language) {
-        return messages.resolve(code, language, null, null, null);
     }
 
     private String trim(String value) {

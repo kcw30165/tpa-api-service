@@ -50,7 +50,7 @@ class RegistrationOtpResendWebMapperTest {
                 null));
 
         String json = objectMapper.writeValueAsString(response);
-        assertThat(json).contains("\"success\":false", "registration.messageDelivery.failed");
+        assertThat(json).contains("\"success\":false", "err.registration.message.deliveryFailed");
         assertThat(json).doesNotContain("123456", "member@example.com", "SMS content", "email body");
     }
 

@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.registration;
 
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.RegistrationOtpSendRateLimitedException;
 import java.time.Instant;
 import java.time.Duration;
 import com.bct.ngtpa.apiservice.application.dto.auth.PreStartChallengeType;
@@ -13,7 +14,8 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErrorKeys;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
+import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.in.StartRegistrationUseCase;
@@ -101,10 +103,10 @@ public class StartRegistrationService implements StartRegistrationUseCase {
     private Mono<StartRegistrationResult> handleIdempotency(StartRegistrationCommand command, RegistrationRequestHash hash, RegistrationIdempotencyStartResult start) {
         return switch (start.outcome()) {
             case STARTED -> continueAfterIdempotency(command, hash);
-            case DUPLICATE_IN_PROGRESS -> Mono.just(result(StartRegistrationResultStatus.DUPLICATE_IN_PROGRESS, WorkflowNextStep.WAIT, RegistrationWorkflowErrorKeys.WORKFLOW_IDEMPOTENCY_DUPLICATE_IN_PROGRESS, "Idempotency-Key", start.outcome()));
+            case DUPLICATE_IN_PROGRESS -> Mono.just(result(StartRegistrationResultStatus.DUPLICATE_IN_PROGRESS, WorkflowNextStep.WAIT, SharedWorkflowErrorKey.IDEMPOTENCY_IN_PROGRESS, "Idempotency-Key", start.outcome()));
             case COMPLETED_REPLAY -> replayCompletedRegistrationStartFromCurrentState(command, start);
-            case KEY_REUSED_WITH_DIFFERENT_REQUEST -> Mono.just(result(StartRegistrationResultStatus.IDEMPOTENCY_KEY_REUSED, WorkflowNextStep.NONE, RegistrationWorkflowErrorKeys.WORKFLOW_IDEMPOTENCY_KEY_REUSED, "Idempotency-Key", start.outcome()));
-            case FAILED_EXISTING, UNKNOWN_OUTCOME_EXISTING -> Mono.just(result(StartRegistrationResultStatus.SYSTEM_FAILED, WorkflowNextStep.NONE, RegistrationWorkflowErrorKeys.WORKFLOW_SYSTEM_UNAVAILABLE, "PAGE", start.outcome()));
+            case KEY_REUSED_WITH_DIFFERENT_REQUEST -> Mono.just(result(StartRegistrationResultStatus.IDEMPOTENCY_KEY_REUSED, WorkflowNextStep.NONE, SharedWorkflowErrorKey.IDEMPOTENCY_KEY_REUSED, "Idempotency-Key", start.outcome()));
+            case FAILED_EXISTING, UNKNOWN_OUTCOME_EXISTING -> Mono.just(result(StartRegistrationResultStatus.SYSTEM_FAILED, WorkflowNextStep.NONE, SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE, "PAGE", start.outcome()));
         };
     }
 
@@ -113,7 +115,7 @@ public class StartRegistrationService implements StartRegistrationUseCase {
         if (!validation.valid()) {
             var errors = validation.errors().stream().map(e -> new StartRegistrationError(e.errorKey(), e.target())).toList();
             var invalid = new StartRegistrationResult(StartRegistrationResultStatus.VALIDATION_FAILED, WorkflowNextStep.NONE, null, 0, 0, 0, null, null, List.of(), errors, RegistrationIdempotencyStartOutcome.STARTED, null);
-            return markFailed(command, hash, "registration.validation.failed").thenReturn(invalid);
+            return markFailed(command, hash, com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.START_REQUEST_INVALID.value()).thenReturn(invalid);
         }
         RegistrationStartCommand validated = validation.command();
         if (isCaptchaGateEnabled()) {
@@ -131,7 +133,7 @@ public class StartRegistrationService implements StartRegistrationUseCase {
         var lookupCommand = new RegistrationLookupCommand(validated.identityType(), validated.identityValue(), validated.dateOfBirth(), validated.contactType(), validated.contactValue());
         return lookupPort.searchUnregisteredMember(lookupCommand)
                 .flatMap(lookup -> handleLookup(command, hash, validated, lookup))
-                .onErrorResume(error -> markFailed(command, hash, "registration.lookup.failed").then(Mono.error(error)));
+                .onErrorResume(error -> markFailed(command, hash, com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value()).then(Mono.error(error)));
     }
 
     private Mono<StartRegistrationResult> consumeRegistrationCaptcha(
@@ -140,13 +142,13 @@ public class StartRegistrationService implements StartRegistrationUseCase {
             RegistrationStartCommand validated) {
         String captchaChallengeId = validated.captchaChallengeId();
         if (!hasText(captchaChallengeId)) {
-            return captchaFailure(command, hash, RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_REQUIRED);
+            return captchaFailure(command, hash, RegistrationErrorKey.REGISTRATION_CAPTCHA_REQUIRED);
         }
         CaptchaChallengeId challengeId;
         try {
             challengeId = new CaptchaChallengeId(captchaChallengeId);
         } catch (RuntimeException exception) {
-            return captchaFailure(command, hash, RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_INVALID);
+            return captchaFailure(command, hash, RegistrationErrorKey.REGISTRATION_CAPTCHA_INVALID);
         }
         if (registrationCaptchaGateService == null) {
             return gateSystemFailure(command, hash);
@@ -154,12 +156,12 @@ public class StartRegistrationService implements StartRegistrationUseCase {
         return registrationCaptchaGateService.consume(new ConsumeCaptchaChallengeCommand(challengeId, clock.instant()))
                 .flatMap(result -> switch (result.outcome()) {
                     case CONSUMED -> Mono.empty();
-                    case NOT_FOUND -> captchaFailure(command, hash, RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_NOT_FOUND);
-                    case NOT_VERIFIED -> captchaFailure(command, hash, RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_INVALID);
-                    case EXPIRED -> captchaFailure(command, hash, RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_EXPIRED);
-                    case LOCKED -> captchaFailure(command, hash, RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_LOCKED);
-                    case ALREADY_CONSUMED -> captchaFailure(command, hash, RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_CONSUMED);
-                    case REFRESHED -> captchaFailure(command, hash, RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_REFRESH_FAILED);
+                    case NOT_FOUND -> captchaFailure(command, hash, RegistrationErrorKey.REGISTRATION_CAPTCHA_NOTFOUND);
+                    case NOT_VERIFIED -> captchaFailure(command, hash, RegistrationErrorKey.REGISTRATION_CAPTCHA_INVALID);
+                    case EXPIRED -> captchaFailure(command, hash, RegistrationErrorKey.REGISTRATION_CAPTCHA_EXPIRED);
+                    case LOCKED -> captchaFailure(command, hash, RegistrationErrorKey.REGISTRATION_CAPTCHA_LOCKED);
+                    case ALREADY_CONSUMED -> captchaFailure(command, hash, RegistrationErrorKey.REGISTRATION_CAPTCHA_CONSUMED);
+                    case REFRESHED -> captchaFailure(command, hash, RegistrationErrorKey.REGISTRATION_CAPTCHA_REFRESHFAILED);
                 });
     }
 
@@ -179,11 +181,11 @@ public class StartRegistrationService implements StartRegistrationUseCase {
     private Mono<StartRegistrationResult> gateSystemFailure(
             StartRegistrationCommand command,
             RegistrationRequestHash hash) {
-        return markFailed(command, hash, RegistrationWorkflowErrorKeys.WORKFLOW_SYSTEM_UNAVAILABLE.value())
+        return markFailed(command, hash, SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value())
                 .thenReturn(result(
                         StartRegistrationResultStatus.SYSTEM_FAILED,
                         WorkflowNextStep.NONE,
-                        RegistrationWorkflowErrorKeys.WORKFLOW_SYSTEM_UNAVAILABLE,
+                        SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE,
                         "PAGE",
                         RegistrationIdempotencyStartOutcome.STARTED));
     }
@@ -201,25 +203,15 @@ public class StartRegistrationService implements StartRegistrationUseCase {
     }
 
     private Mono<StartRegistrationResult> handleLookup(StartRegistrationCommand command, RegistrationRequestHash hash, RegistrationStartCommand validated, RegistrationLookupResult lookup) {
-        if (lookup.status() == RegistrationLookupStatus.NOT_FOUND_OR_NOT_ELIGIBLE) {
+        if (lookup.status() == RegistrationLookupStatus.NOT_ELIGIBLE) {
             var verificationFailure = result(
                     StartRegistrationResultStatus.VERIFICATION_FAILED,
                     WorkflowNextStep.NONE,
-                    RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED,
+                    RegistrationErrorKey.START_VERIFICATION_FAILED,
                     "identityValue",
                     RegistrationIdempotencyStartOutcome.STARTED,
                     null);
-            return markFailed(command, hash, "registration.verification.failed").thenReturn(verificationFailure);
-        }
-        if (lookup.status() == RegistrationLookupStatus.UPSTREAM_BUSINESS_REJECTED) {
-            var verificationFailure = result(
-                    StartRegistrationResultStatus.VERIFICATION_FAILED,
-                    WorkflowNextStep.NONE,
-                    RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED,
-                    "identityValue",
-                    RegistrationIdempotencyStartOutcome.STARTED,
-                    null);
-            return markFailed(command, hash, "registration.lookup.businessRejected").thenReturn(verificationFailure);
+            return markFailed(command, hash, com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.START_VERIFICATION_FAILED.value()).thenReturn(verificationFailure);
         }
         RegistrationAuthFlowContext registrationContext = new RegistrationAuthFlowContext(
                 validated.identityType(),
@@ -230,12 +222,13 @@ public class StartRegistrationService implements StartRegistrationUseCase {
         return sessionGateway.createRegistrationSession(validated.maskedDestination(), validated.contactType(), registrationContext)
                 .flatMap(sessionId -> csrfGateway.bindCsrfToken(sessionId)
                         .flatMap(csrfToken -> otpGateway.createOtp(validated.contactType(), validated.contactValue())
+                                .onErrorMap(RegistrationOtpSendRateLimitedException.class, error -> error)
                                 .flatMap(otp -> sessionGateway.updateOtpChallenge(sessionId, otp.activeOtpChallengeId(), validated.contactType(), validated.maskedDestination())
                                         .then(messageGateway.deliverRegistrationOtp(validated.contactType(), validated.contactValue(), otp.otpCode(), otp.expiresInSeconds(), command.acceptLanguage(), command.correlationId()))
                                         .flatMap(accepted -> {
                                             if (!Boolean.TRUE.equals(accepted)) {
-                                                return markFailed(command, hash, "registration.messageDelivery.failed")
-                                                        .thenReturn(result(StartRegistrationResultStatus.MESSAGE_DELIVERY_FAILED, WorkflowNextStep.NONE, RegistrationWorkflowErrorKeys.REGISTRATION_MESSAGE_DELIVERY_FAILED, "email", RegistrationIdempotencyStartOutcome.STARTED));
+                                                return markFailed(command, hash, com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.MESSAGE_DELIVERY_FAILED.value())
+                                                        .thenReturn(result(StartRegistrationResultStatus.MESSAGE_DELIVERY_FAILED, WorkflowNextStep.NONE, RegistrationErrorKey.MESSAGE_DELIVERY_FAILED, "email", RegistrationIdempotencyStartOutcome.STARTED));
                                             }
                                             var started = new StartRegistrationResult(StartRegistrationResultStatus.STARTED, WorkflowNextStep.VERIFY_OTP, validated.maskedDestination(), otp.expiresInSeconds(), otp.resendCooldownSeconds(), otp.remainingResendAttempts(), csrfToken, sessionId, List.of(), List.of(), RegistrationIdempotencyStartOutcome.STARTED, null);
                                             return markCompleted(command, hash, started).thenReturn(started);

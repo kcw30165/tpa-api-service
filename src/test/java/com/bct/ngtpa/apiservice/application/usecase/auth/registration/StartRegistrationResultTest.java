@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErrorKeys;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -23,7 +23,7 @@ class StartRegistrationResultTest {
                 "csrf_secret",
                 "afs_secret",
                 List.of(),
-                List.of(new StartRegistrationError(RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED, "identityValue")),
+                List.of(new StartRegistrationError(RegistrationErrorKey.START_VERIFICATION_FAILED, "identityValue")),
                 RegistrationIdempotencyStartOutcome.STARTED,
                 null);
 

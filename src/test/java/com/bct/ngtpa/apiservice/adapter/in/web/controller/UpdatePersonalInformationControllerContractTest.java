@@ -83,8 +83,8 @@ class UpdatePersonalInformationControllerContractTest {
                 .webFilter(requestHeaderContextWebFilter())
                 .controllerAdvice(new ApiExceptionHandler(
                         testErrorMessageResolver(),
-                        testLoggingSanitizer(),
-                        provider))
+                        testLoggingSanitizer()
+                    ))
                 .build();
     }
 

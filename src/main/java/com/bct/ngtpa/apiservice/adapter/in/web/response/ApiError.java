@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.response;
 
 import java.util.List;
 import java.util.Locale;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 /**
  * Blocking validation/business/system error. Validation messages belong here, not in messages[].
@@ -9,7 +10,7 @@ import java.util.Locale;
 public record ApiError(
         String type,
         String code,
-        String message,
+        @JsonInclude(JsonInclude.Include.NON_NULL) String message,
         List<String> targets,
         String severity,
         String source) {

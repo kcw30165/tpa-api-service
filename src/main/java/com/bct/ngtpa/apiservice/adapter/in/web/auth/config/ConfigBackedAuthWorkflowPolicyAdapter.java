@@ -7,8 +7,6 @@ import com.bct.ngtpa.apiservice.application.dto.auth.PasswordPolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.PreStartChallengePolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.PreStartChallengeType;
 import com.bct.ngtpa.apiservice.application.dto.auth.RegistrationAuthWorkflowPolicy;
-import com.bct.ngtpa.apiservice.application.dto.auth.RateLimitRulePolicy;
-import com.bct.ngtpa.apiservice.application.dto.auth.RegistrationRateLimitPolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.UsernamePolicy;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import org.springframework.stereotype.Component;
@@ -65,11 +63,7 @@ public class ConfigBackedAuthWorkflowPolicyAdapter implements AuthWorkflowPolicy
                         registration.getPassword().isNoSpaces(),
                         registration.getPassword().isNotSameAsUsernameIgnoreCase(),
                         registration.getPassword().getRequiredCategories(),
-                        registration.getPassword().getSpecialChars()),
-                new RegistrationRateLimitPolicy(
-                        toRateLimitRulePolicy(registration.getRateLimit().getRegistrationStart().getByIp()),
-                        toRateLimitRulePolicy(registration.getRateLimit().getOtpSend().getByDestinationHash()),
-                        toRateLimitRulePolicy(registration.getRateLimit().getOtpVerify().getByRegistrationSession())));
+                        registration.getPassword().getSpecialChars()));
     }
 
     @Override
@@ -85,13 +79,6 @@ public class ConfigBackedAuthWorkflowPolicyAdapter implements AuthWorkflowPolicy
 
         return Optional.ofNullable(requiredRegistration().getIdentityTypeMapping().get(normalizedIdentityType))
                 .filter(scope -> !scope.isBlank());
-    }
-
-    private RateLimitRulePolicy toRateLimitRulePolicy(AuthWorkflowProperties.RateLimitRule rule) {
-        return new RateLimitRulePolicy(
-                rule.isEnabled(),
-                rule.getMaxAttempts(),
-                rule.getWindowSeconds());
     }
 
     private AuthWorkflowProperties.Registration requiredRegistration() {

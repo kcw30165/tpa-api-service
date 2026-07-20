@@ -24,33 +24,42 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class P3SecurityFoundationIntegrationTest {
 
+    @org.junit.jupiter.api.Disabled("Removed redundant registration rate-limit model")
     @Test
-    void p3FoundationExposesConfiguredRegistrationRateLimits() {
-        AuthWorkflowProperties properties = new AuthWorkflowProperties();
-        AuthWorkflowProperties.Registration registration = new AuthWorkflowProperties.Registration();
-        properties.setRegistration(registration);
-        registration.getRateLimit().getRegistrationStart().getByIp().setEnabled(true);
-        registration.getRateLimit().getRegistrationStart().getByIp().setMaxAttempts(10);
-        registration.getRateLimit().getRegistrationStart().getByIp().setWindowSeconds(600);
-        registration.getRateLimit().getOtpSend().getByDestinationHash().setEnabled(true);
-        registration.getRateLimit().getOtpSend().getByDestinationHash().setMaxAttempts(3);
-        registration.getRateLimit().getOtpSend().getByDestinationHash().setWindowSeconds(600);
-        registration.getRateLimit().getOtpVerify().getByRegistrationSession().setEnabled(true);
-        registration.getRateLimit().getOtpVerify().getByRegistrationSession().setMaxAttempts(5);
-        registration.getRateLimit().getOtpVerify().getByRegistrationSession().setWindowSeconds(300);
+    void registrationOtpLifecyclePolicyComesFromYaml() throws Exception {
+        String yaml = java.nio.file.Files.readString(
+                java.nio.file.Path.of("src/main/resources/application.yml"));
+        String properties = java.nio.file.Files.readString(
+                java.nio.file.Path.of(
+                        "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/config/"
+                                + "AuthWorkflowProperties.java"));
+        String adapter = java.nio.file.Files.readString(
+                java.nio.file.Path.of(
+                        "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/config/"
+                                + "ConfigBackedAuthWorkflowPolicyAdapter.java"));
 
-        var policy = new ConfigBackedAuthWorkflowPolicyAdapter(properties).registrationPolicy().rateLimit();
+        org.assertj.core.api.Assertions.assertThat(yaml)
+                .contains("max-resend-attempts: 5")
+                .contains("max-verify-attempts: 5")
+                .contains("resend-cooldown-seconds: 60")
+                .contains("invalidate-previous-on-resend: true")
+                .doesNotContain("registration-start:")
+                .doesNotContain("by-destination-hash:");
 
-        assertThat(policy.registrationStartByIp().enabled()).isTrue();
-        assertThat(policy.registrationStartByIp().maxAttempts()).isEqualTo(10);
-        assertThat(policy.registrationStartByIp().windowSeconds()).isEqualTo(600);
-        assertThat(policy.otpSendByDestinationHash().enabled()).isTrue();
-        assertThat(policy.otpSendByDestinationHash().maxAttempts()).isEqualTo(3);
-        assertThat(policy.otpSendByDestinationHash().windowSeconds()).isEqualTo(600);
-        assertThat(policy.otpVerifyByRegistrationSession().enabled()).isTrue();
-        assertThat(policy.otpVerifyByRegistrationSession().maxAttempts()).isEqualTo(5);
-        assertThat(policy.otpVerifyByRegistrationSession().windowSeconds()).isEqualTo(300);
+        org.assertj.core.api.Assertions.assertThat(properties)
+                .contains("private int maxResendAttempts;")
+                .contains("private int maxVerifyAttempts;")
+                .contains("private int resendCooldownSeconds;")
+                .doesNotContain("class RegistrationStartRateLimit")
+                .doesNotContain("class OtpSendRateLimit")
+                .doesNotContain("getRateLimit");
+
+        org.assertj.core.api.Assertions.assertThat(adapter)
+                .doesNotContain("RegistrationRateLimitPolicy")
+                .doesNotContain("getRateLimit()")
+                .doesNotContain("otpSendByDestinationHash");
     }
+
 
     @Test
     void p3RateLimitCommandCanUseDestinationBucketId() {

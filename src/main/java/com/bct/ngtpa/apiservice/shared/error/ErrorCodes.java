@@ -13,6 +13,7 @@ public final class ErrorCodes {
         public static final String REQUEST_INVALID = "err.request.invalid";
         public static final String REQUEST_VALIDATION_FAILED = "err.request.validation.failed";
         public static final String REQUEST_BODY_MALFORMED = "err.request.body.malformed";
+        public static final String REQUEST_ID_MISSING = "err.request.id.missing";
 
         public static final String SECURITY_ACCESS_DENIED = "err.security.access.denied";
         public static final String SECURITY_AUTHENTICATION_REQUIRED = "err.security.authentication.required";

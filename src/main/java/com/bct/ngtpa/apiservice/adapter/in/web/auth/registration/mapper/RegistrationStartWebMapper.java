@@ -7,8 +7,8 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErrorKeys;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowPageRefs;
+import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType;
@@ -20,7 +20,6 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegis
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationError;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResultStatus;
-import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
 import java.time.Duration;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -31,26 +30,31 @@ public class RegistrationStartWebMapper {
     private static final String TARGET_PAGE = "PAGE";
 
     private final Duration defaultIdempotencyTtl;
-    private final ErrorMessageResolver errorMessageResolver;
     private final WorkflowMutationResponseMapper workflowMutationResponseMapper;
 
     public RegistrationStartWebMapper(Duration defaultIdempotencyTtl) {
-        this(defaultIdempotencyTtl, null);
+        this(defaultIdempotencyTtl, new WorkflowMutationResponseMapper());
     }
 
-    public RegistrationStartWebMapper(Duration defaultIdempotencyTtl, ErrorMessageResolver errorMessageResolver) {
-        this(defaultIdempotencyTtl, errorMessageResolver, new WorkflowMutationResponseMapper());
+    public RegistrationStartWebMapper(
+            Duration defaultIdempotencyTtl,
+            Object ignoredMessageResolver) {
+        this(defaultIdempotencyTtl, new WorkflowMutationResponseMapper());
     }
 
     RegistrationStartWebMapper(
             Duration defaultIdempotencyTtl,
-            ErrorMessageResolver errorMessageResolver,
+            Object ignoredMessageResolver,
             WorkflowMutationResponseMapper workflowMutationResponseMapper) {
-        this.defaultIdempotencyTtl = defaultIdempotencyTtl;
-        this.errorMessageResolver = errorMessageResolver;
-        this.workflowMutationResponseMapper = workflowMutationResponseMapper;
+        this(defaultIdempotencyTtl, workflowMutationResponseMapper);
     }
 
+    private RegistrationStartWebMapper(
+            Duration defaultIdempotencyTtl,
+            WorkflowMutationResponseMapper workflowMutationResponseMapper) {
+        this.defaultIdempotencyTtl = java.util.Objects.requireNonNull(defaultIdempotencyTtl);
+        this.workflowMutationResponseMapper = java.util.Objects.requireNonNull(workflowMutationResponseMapper);
+    }
     public StartRegistrationCommand toCommand(
             RegistrationStartRequest request,
             String idempotencyKey,
@@ -127,11 +131,11 @@ public class RegistrationStartWebMapper {
 
     public MutationResponse<WorkflowResultPayload<RegistrationStartWorkflowDataResponse>> missingIdempotencyKeyResponse(
             String acceptLanguage) {
-        var code = RegistrationWorkflowErrorKeys.WORKFLOW_IDEMPOTENCY_MISSING.value();
+        var code = SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value();
         var error = new WorkflowErrorDescriptor(
                 WorkflowErrorType.FIELD,
                 code,
-                resolveMessage(code, acceptLanguage),
+                null,
                 List.of("Idempotency-Key"),
                 WorkflowErrorSeverity.ERROR,
                 SOURCE_SERVER);
@@ -160,8 +164,9 @@ public class RegistrationStartWebMapper {
                     List.of(),
                     List.of(new WorkflowErrorDescriptor(
                             WorkflowErrorType.SYSTEM,
-                            "workflow.system.unavailable",
-                            resolveMessage("workflow.system.unavailable", acceptLanguage),
+                            com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE
+                                    .value(),
+                            null,
                             List.of(),
                             WorkflowErrorSeverity.ERROR,
                             SOURCE_SERVER)));
@@ -189,7 +194,7 @@ public class RegistrationStartWebMapper {
         return new WorkflowErrorDescriptor(
                 toWorkflowErrorType(status, target),
                 code,
-                error.message() != null ? error.message() : resolveMessage(code, acceptLanguage),
+                null,
                 target == null ? List.of() : List.of(target),
                 WorkflowErrorSeverity.ERROR,
                 SOURCE_SERVER);
@@ -202,6 +207,7 @@ public class RegistrationStartWebMapper {
         return switch (status) {
             case MESSAGE_DELIVERY_FAILED -> WorkflowErrorType.DOWNSTREAM_SYSTEM;
             case SYSTEM_FAILED -> WorkflowErrorType.SYSTEM;
+            case DOWNSTREAM_REJECTED -> WorkflowErrorType.DOWNSTREAM_BUSINESS;
             case VERIFICATION_FAILED, IDEMPOTENCY_KEY_REUSED -> WorkflowErrorType.BUSINESS;
             default -> WorkflowErrorType.FORM;
         };
@@ -212,7 +218,8 @@ public class RegistrationStartWebMapper {
             case STARTED, COMPLETED_REPLAY -> WorkflowResultStatus.SUCCESS;
             case DUPLICATE_IN_PROGRESS -> WorkflowResultStatus.WAITING;
             case VALIDATION_FAILED -> WorkflowResultStatus.VALIDATION_FAILED;
-            case VERIFICATION_FAILED, IDEMPOTENCY_KEY_REUSED -> WorkflowResultStatus.BUSINESS_FAILED;
+            case VERIFICATION_FAILED, DOWNSTREAM_REJECTED, IDEMPOTENCY_KEY_REUSED ->
+                WorkflowResultStatus.BUSINESS_FAILED;
             case MESSAGE_DELIVERY_FAILED, SYSTEM_FAILED -> WorkflowResultStatus.SYSTEM_FAILED;
         };
     }
@@ -228,13 +235,6 @@ public class RegistrationStartWebMapper {
             return TARGET_PAGE;
         }
         return target.trim();
-    }
-
-    private String resolveMessage(String code, String acceptLanguage) {
-        if (errorMessageResolver == null || code == null || code.isBlank()) {
-            return null;
-        }
-        return errorMessageResolver.resolve(code, acceptLanguage, null, null, null);
     }
 
     private void logFatalIfNeeded(StartRegistrationResult result) {

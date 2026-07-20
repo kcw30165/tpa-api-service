@@ -26,7 +26,8 @@ class DownstreamErrorClassificationAdapterTest {
                 "TRPChkCustId",
                 "err.tpa.username.taken"));
 
-        assertEquals("registration.username.isregistered", result.responseCode());
+        assertEquals("err.workflow.downstream.businessRejected", result.responseCode());
+        assertEquals(422, result.httpStatus());
         assertEquals("PAGE", result.target());
         assertFalse(result.fallbackUsed());
     }
@@ -41,7 +42,8 @@ class DownstreamErrorClassificationAdapterTest {
                 "TRPChkCustId",
                 "err.tpa.some.unknown.business.error"));
 
-        assertEquals("downstream.generic.businessRejected", result.responseCode());
+        assertEquals("err.workflow.downstream.businessRejected", result.responseCode());
+        assertEquals(422, result.httpStatus());
         assertEquals("PAGE", result.target());
         assertTrue(result.fallbackUsed());
     }
@@ -56,7 +58,8 @@ class DownstreamErrorClassificationAdapterTest {
                 "TRPRegMember",
                 "err.tpa.unknown"));
 
-        assertEquals("registration.complete.failed", result.responseCode());
+        assertEquals("err.workflow.downstream.businessRejected", result.responseCode());
+        assertEquals(422, result.httpStatus());
         assertEquals("PAGE", result.target());
         assertTrue(result.fallbackUsed());
     }
@@ -71,7 +74,8 @@ class DownstreamErrorClassificationAdapterTest {
                 "TRPRegMember",
                 "err.tpa.username.taken"));
 
-        assertEquals("downstream.generic.businessRejected", result.responseCode());
+        assertEquals("err.workflow.downstream.businessRejected", result.responseCode());
+        assertEquals(422, result.httpStatus());
         assertEquals("PAGE", result.target());
         assertTrue(result.fallbackUsed());
     }
@@ -88,7 +92,8 @@ class DownstreamErrorClassificationAdapterTest {
 
         assertEquals("DOWNSTREAM_REJECTION", result.eventType());
         assertEquals("ERROR", result.logLevel());
-        assertEquals("downstream.generic.businessRejected", result.responseCode());
+        assertEquals("err.workflow.downstream.businessRejected", result.responseCode());
+        assertEquals(422, result.httpStatus());
         assertEquals("PAGE", result.target());
         assertFalse(result.idempotencyCacheable());
         assertNull(result.cacheTtlSeconds());
@@ -143,7 +148,7 @@ class DownstreamErrorClassificationAdapterTest {
         classification.setSource("APIM_TAS");
         classification.setEndpoint("TRPChkCustId");
         classification.setMappings(Map.of("err.tpa.username.taken", usernameTakenMapping()));
-        classification.setFallback(mapping("downstream.generic.businessRejected", false, null));
+        classification.setFallback(mapping("err.workflow.downstream.businessRejected", false, null));
         return classification;
     }
 
@@ -152,12 +157,12 @@ class DownstreamErrorClassificationAdapterTest {
         classification.setSource("APIM_TAS");
         classification.setEndpoint("TRPRegMember");
         classification.setMappings(Map.of("err.tpa.username.taken", usernameTakenMapping()));
-        classification.setFallback(mapping("registration.complete.failed", false, null));
+        classification.setFallback(mapping("err.workflow.downstream.businessRejected", false, null));
         return classification;
     }
 
     private DownstreamErrorClassificationMappingProperties usernameTakenMapping() {
-        return mapping("registration.username.isregistered", true, 60);
+        return mapping("err.workflow.downstream.businessRejected", true, 60);
     }
 
     private DownstreamErrorClassificationMappingProperties mapping(

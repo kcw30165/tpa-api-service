@@ -83,7 +83,7 @@ class VerifyRegistrationOtpUseCaseTest {
         StepVerifier.create(useCase.verify(command(" ")))
                 .assertNext(result -> {
                     assertThat(result.status()).isEqualTo(VerifyRegistrationOtpResultStatus.VALIDATION_FAILED);
-                    assertThat(result.errors()).singleElement().satisfies(error -> assertThat(error.code()).isEqualTo("registration.otp.invalid"));
+                    assertThat(result.errors()).singleElement().satisfies(error -> assertThat(error.code()).isEqualTo("err.registration.otp.invalid"));
                 })
                 .verifyComplete();
         assertThat(otp.called).isFalse();
@@ -131,7 +131,7 @@ class VerifyRegistrationOtpUseCaseTest {
         StepVerifier.create(useCase.verify(command("123456")))
                 .assertNext(result -> {
                     assertThat(result.status()).isEqualTo(VerifyRegistrationOtpResultStatus.IDEMPOTENCY_KEY_REUSED);
-                    assertThat(result.errors()).singleElement().satisfies(error -> assertThat(error.code()).isEqualTo("workflow.idempotency.keyReused"));
+                    assertThat(result.errors()).singleElement().satisfies(error -> assertThat(error.code()).isEqualTo("err.workflow.idempotency.keyReused"));
                 })
                 .verifyComplete();
         assertThat(otp.called).isFalse();
@@ -154,7 +154,7 @@ class VerifyRegistrationOtpUseCaseTest {
                 .assertNext(result -> {
                     assertThat(result.status()).isEqualTo(VerifyRegistrationOtpResultStatus.OTP_INVALID);
                     assertThat(result.remainingVerifyAttempts()).isEqualTo(3);
-                    assertThat(result.errors()).singleElement().satisfies(error -> assertThat(error.code()).isEqualTo("registration.otp.invalid"));
+                    assertThat(result.errors()).singleElement().satisfies(error -> assertThat(error.code()).isEqualTo("err.registration.otp.invalid"));
                 })
                 .verifyComplete();
         assertThat(lookup.called).isFalse();
@@ -162,11 +162,12 @@ class VerifyRegistrationOtpUseCaseTest {
 
     @Test
     void noEligibleTrustsReturnsNoEligibleTrustsError() {
+        lookup.status = RegistrationLookupStatus.NOT_ELIGIBLE;
         lookup.accounts = List.of();
         StepVerifier.create(useCase.verify(command("123456")))
                 .assertNext(result -> {
                     assertThat(result.status()).isEqualTo(VerifyRegistrationOtpResultStatus.NO_ELIGIBLE_TRUSTS);
-                    assertThat(result.errors()).singleElement().satisfies(error -> assertThat(error.code()).isEqualTo("registration.trustLookup.noEligibleTrusts"));
+                    assertThat(result.errors()).singleElement().satisfies(error -> assertThat(error.code()).isEqualTo("err.registration.trustLookup.noEligibleTrusts"));
                 })
                 .verifyComplete();
     }
@@ -210,7 +211,15 @@ class VerifyRegistrationOtpUseCaseTest {
     }
 
     private static final class FakeRegistrationLookupPort implements RegistrationLookupPort {
-        boolean called; RegistrationLookupCommand command; List<RegistrationLookupAccount> accounts = List.of(new RegistrationLookupAccount("DB", "DBA", null, null));
-        @Override public Mono<RegistrationLookupResult> searchUnregisteredMember(RegistrationLookupCommand command) { called = true; this.command = command; return Mono.just(new RegistrationLookupResult(RegistrationLookupStatus.ELIGIBLE, accounts, null)); }
+        boolean called; RegistrationLookupCommand command;
+        RegistrationLookupStatus status = RegistrationLookupStatus.ELIGIBLE;
+        List<RegistrationLookupAccount> accounts = List.of(
+                new RegistrationLookupAccount("DB", "DBA", null, null));
+        @Override public Mono<RegistrationLookupResult> searchUnregisteredMember(
+                RegistrationLookupCommand command) {
+            called = true;
+            this.command = command;
+            return Mono.just(new RegistrationLookupResult(status, accounts, null));
+        }
     }
 }

@@ -7,8 +7,9 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.Registra
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
+import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErrorKeys;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationError;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResult;
@@ -63,7 +64,7 @@ class RegistrationStartWebMapperTest {
                 null,
                 null,
                 List.of(),
-                List.of(new StartRegistrationError(RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED,
+                List.of(new StartRegistrationError(RegistrationErrorKey.START_VERIFICATION_FAILED,
                         "identityValue", "We are unable to verify your details. Please review and try again.")),
                 RegistrationIdempotencyStartOutcome.STARTED,
                 null);
@@ -71,8 +72,7 @@ class RegistrationStartWebMapperTest {
         var response = mapper.toMutationResponse(result);
 
         assertThat(response.errors()).singleElement().satisfies(error -> {
-            assertThat(error.code()).isEqualTo("registration.start.verificationFailed");
-            assertThat(error.message()).isEqualTo("We are unable to verify your details. Please review and try again.");
+            assertThat(error.code()).isEqualTo("err.registration.start.verificationFailed");
         });
     }
 
@@ -90,7 +90,7 @@ class RegistrationStartWebMapperTest {
                 null,
                 null,
                 List.of(),
-                List.of(new StartRegistrationError(RegistrationWorkflowErrorKeys.REGISTRATION_START_VERIFICATION_FAILED,
+                List.of(new StartRegistrationError(RegistrationErrorKey.START_VERIFICATION_FAILED,
                         "identityValue")),
                 RegistrationIdempotencyStartOutcome.STARTED,
                 null);
@@ -98,8 +98,7 @@ class RegistrationStartWebMapperTest {
         var response = localMapper.toMutationResponse(result, "zh-HK");
 
         assertThat(response.errors()).singleElement().satisfies(error -> {
-            assertThat(error.code()).isEqualTo("registration.start.verificationFailed");
-            assertThat(error.message()).isEqualTo("resolved-message");
+            assertThat(error.code()).isEqualTo("err.registration.start.verificationFailed");
         });
     }
 
@@ -116,7 +115,7 @@ class RegistrationStartWebMapperTest {
                 null,
                 List.of(),
                 List.of(new StartRegistrationError(
-                        RegistrationWorkflowErrorKeys.REGISTRATION_MESSAGE_DELIVERY_FAILED,
+                        RegistrationErrorKey.MESSAGE_DELIVERY_FAILED,
                         "email")),
                 RegistrationIdempotencyStartOutcome.STARTED,
                 null);
@@ -127,7 +126,7 @@ class RegistrationStartWebMapperTest {
         assertThat(response.status()).isEqualTo(ApiStatus.DOWNSTREAM_ERROR);
         assertThat(response.result()).isNotNull();
         assertThat(response.errors()).singleElement()
-                .satisfies(error -> assertThat(error.code()).isEqualTo("registration.messageDelivery.failed"));
+                .satisfies(error -> assertThat(error.code()).isEqualTo("err.registration.message.deliveryFailed"));
     }
 
     @Test
@@ -143,7 +142,7 @@ class RegistrationStartWebMapperTest {
                 null,
                 List.of(),
                 List.of(new StartRegistrationError(
-                        RegistrationWorkflowErrorKeys.WORKFLOW_SYSTEM_UNAVAILABLE,
+                        SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE,
                         "PAGE")),
                 RegistrationIdempotencyStartOutcome.STARTED,
                 null);

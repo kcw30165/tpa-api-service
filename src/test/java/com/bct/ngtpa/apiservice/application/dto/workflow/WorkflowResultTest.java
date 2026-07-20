@@ -42,7 +42,7 @@ class WorkflowResultTest {
     void workflowResultFailureCarriesErrors() {
         var error = new WorkflowErrorDescriptor(
                 WorkflowErrorType.FORM,
-                "registration.start.invalid",
+                "err.registration.start.invalid",
                 "Invalid registration start request.",
                 List.of(),
                 WorkflowErrorSeverity.ERROR,

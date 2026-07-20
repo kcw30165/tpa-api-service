@@ -199,15 +199,29 @@ public class RequestLoggingWebFilter implements WebFilter {
         log.info("{}", toJson(event));
     }
 
-    private void logRequestEnd(ServerWebExchange exchange, String requestId, long startNanos) {
+    private void logRequestEnd(
+            ServerWebExchange exchange,
+            String requestId,
+            long startNanos) {
+        int status = statusCode(exchange);
         Map<String, Object> event = new LinkedHashMap<>();
-        event.put("event", "http.request.end");
+        event.put("event", status >= 400
+                ? "http.request.failed"
+                : "http.request.end");
         event.put("requestId", requestId);
         event.put("method", exchange.getRequest().getMethod().name());
         event.put("path", exchange.getRequest().getPath().value());
-        event.put("status", statusCode(exchange));
+        event.put("status", status);
         event.put("elapsedMs", elapsedMillis(startNanos));
-        log.info("{}", toJson(event));
+
+        String payload = toJson(event);
+        if (status >= 500) {
+            log.error("{}", payload);
+        } else if (status >= 400) {
+            log.warn("{}", payload);
+        } else {
+            log.info("{}", payload);
+        }
     }
 
     private void logRequestError(ServerWebExchange exchange, String requestId, long startNanos, Throwable throwable) {

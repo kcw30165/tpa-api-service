@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.RegistrationHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.dto.CaptchaRefreshRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.dto.CaptchaRefreshResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.dto.CaptchaChallengeResponse;
@@ -18,6 +19,7 @@ import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -48,17 +50,19 @@ public class AuthCaptchaController {
     }
 
     @PostMapping(path = "/verify", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<MutationResponse<CaptchaVerifyResponse>> verify(
+    public Mono<ResponseEntity<MutationResponse<CaptchaVerifyResponse>>> verify(
             @RequestBody(required = false) CaptchaVerifyRequest request,
             @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false) String requestId,
             @RequestHeader(name = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false) String acceptLanguage,
             ServerHttpResponse response) {
         echoRequestId(response, requestId);
         if (request == null || !hasText(request.captchaChallengeId())) {
-            return Mono.just(captchaWebMapper.missingChallengeIdResponse(trimToNull(acceptLanguage)));
+            return Mono.just(RegistrationHttpResponses.toResponse(
+                    captchaWebMapper.missingChallengeIdResponse(trimToNull(acceptLanguage))));
         }
         if (!hasText(request.answer())) {
-            return Mono.just(captchaWebMapper.missingAnswerResponse(trimToNull(acceptLanguage)));
+            return Mono.just(RegistrationHttpResponses.toResponse(
+                    captchaWebMapper.missingAnswerResponse(trimToNull(acceptLanguage))));
         }
 
         try {
@@ -67,9 +71,11 @@ public class AuthCaptchaController {
                     request.answer().trim(),
                     trimToNull(requestId));
             return verifyCaptchaUseCase.verify(command)
-                    .map(result -> captchaWebMapper.toVerifyMutationResponse(result, trimToNull(acceptLanguage)));
+                    .map(result -> captchaWebMapper.toVerifyMutationResponse(result, trimToNull(acceptLanguage)))
+                    .map(RegistrationHttpResponses::toResponse);
         } catch (RuntimeException exception) {
-            return Mono.just(captchaWebMapper.invalidChallengeIdResponse(trimToNull(acceptLanguage)));
+            return Mono.just(RegistrationHttpResponses.toResponse(
+                    captchaWebMapper.invalidChallengeIdResponse(trimToNull(acceptLanguage))));
         }
     }
 

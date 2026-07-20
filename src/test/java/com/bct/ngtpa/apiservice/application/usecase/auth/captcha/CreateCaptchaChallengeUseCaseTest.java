@@ -115,7 +115,7 @@ class CreateCaptchaChallengeUseCaseTest {
         private final RegistrationAuthWorkflowPolicy registrationPolicy;
 
         private RecordingAuthWorkflowPolicyPort(CaptchaPolicy captchaPolicy) {
-            this.registrationPolicy = new RegistrationAuthWorkflowPolicy(null, captchaPolicy, null, null, null, null);
+            this.registrationPolicy = new RegistrationAuthWorkflowPolicy(null, captchaPolicy, null, null, null);
         }
 
         @Override

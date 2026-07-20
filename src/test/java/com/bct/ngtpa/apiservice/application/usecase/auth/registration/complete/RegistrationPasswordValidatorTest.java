@@ -70,7 +70,7 @@ class RegistrationPasswordValidatorTest {
     private static final class Policy implements AuthWorkflowPolicyPort {
         @Override public RegistrationAuthWorkflowPolicy registrationPolicy() {
             return new RegistrationAuthWorkflowPolicy(null, null, null, null,
-                    new PasswordPolicy(8, 16, true, true, 3, "!@#$%^&*()_-"), null);
+                    new PasswordPolicy(8, 16, true, true, 3, "!@#$%^&*()_-"));
         }
         @Override public Optional<String> resolveIdentityTypeSearchScope(String identityType) {
             return Optional.empty();

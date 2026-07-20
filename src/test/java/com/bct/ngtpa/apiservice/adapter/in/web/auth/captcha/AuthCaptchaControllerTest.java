@@ -214,34 +214,34 @@ class AuthCaptchaControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(Map.of("captchaChallengeId", CHALLENGE_ID.value(), "answer", "wrong"))
                 .exchange()
-                .expectStatus().isOk()
+                .expectStatus().isBadRequest()
                 .expectBody()
                 .jsonPath("$.success").isEqualTo(false)
                 .jsonPath("$.status").isEqualTo("VALIDATION_FAILED")
                 .jsonPath("$.result.verified").isEqualTo(false)
                 .jsonPath("$.result.remainingAttempts").isEqualTo(4)
-                .jsonPath("$.errors[0].code").isEqualTo("registration.captcha.invalid")
+                .jsonPath("$.errors[0].code").isEqualTo("err.registration.captcha.invalid")
                 .jsonPath("$.errors[0].targets[0]").isEqualTo("captchaAnswer");
     }
 
     @Test
     void captchaVerifyMapsExpiredToValidationFailure() {
-        assertVerifyFailureOutcome(CaptchaVerificationOutcome.EXPIRED, "registration.captcha.expired", "captchaChallengeId");
+        assertVerifyFailureOutcome(CaptchaVerificationOutcome.EXPIRED, "err.registration.captcha.expired", "captchaChallengeId");
     }
 
     @Test
     void captchaVerifyMapsLockedToValidationFailure() {
-        assertVerifyFailureOutcome(CaptchaVerificationOutcome.LOCKED, "registration.captcha.locked", "captchaChallengeId");
+        assertVerifyFailureOutcome(CaptchaVerificationOutcome.LOCKED, "err.registration.captcha.locked", "captchaChallengeId");
     }
 
     @Test
     void captchaVerifyMapsConsumedToValidationFailure() {
-        assertVerifyFailureOutcome(CaptchaVerificationOutcome.CONSUMED, "registration.captcha.consumed", "captchaChallengeId");
+        assertVerifyFailureOutcome(CaptchaVerificationOutcome.CONSUMED, "err.registration.captcha.consumed", "captchaChallengeId");
     }
 
     @Test
     void captchaVerifyMapsNotFoundToValidationFailure() {
-        assertVerifyFailureOutcome(CaptchaVerificationOutcome.NOT_FOUND, "registration.captcha.notFound", "captchaChallengeId");
+        assertVerifyFailureOutcome(CaptchaVerificationOutcome.NOT_FOUND, "err.registration.captcha.notFound", "captchaChallengeId");
     }
 
     @Test
@@ -265,11 +265,11 @@ class AuthCaptchaControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(Map.of("captchaChallengeId", CHALLENGE_ID.value(), "answer", "   "))
                 .exchange()
-                .expectStatus().isOk()
+                .expectStatus().isBadRequest()
                 .expectBody()
                 .jsonPath("$.success").isEqualTo(false)
                 .jsonPath("$.status").isEqualTo("VALIDATION_FAILED")
-                .jsonPath("$.errors[0].code").isEqualTo("registration.captcha.required")
+                .jsonPath("$.errors[0].code").isEqualTo("err.registration.captcha.required")
                 .jsonPath("$.errors[0].targets[0]").isEqualTo("captchaAnswer");
 
         assertThat(called).isFalse();
@@ -289,11 +289,11 @@ class AuthCaptchaControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(Map.of("captchaChallengeId", " ", "answer", "AbC123x"))
                 .exchange()
-                .expectStatus().isOk()
+                .expectStatus().isBadRequest()
                 .expectBody()
                 .jsonPath("$.success").isEqualTo(false)
                 .jsonPath("$.status").isEqualTo("VALIDATION_FAILED")
-                .jsonPath("$.errors[0].code").isEqualTo("registration.captcha.required")
+                .jsonPath("$.errors[0].code").isEqualTo("err.registration.captcha.required")
                 .jsonPath("$.errors[0].targets[0]").isEqualTo("captchaChallengeId");
 
         assertThat(called).isFalse();
@@ -374,7 +374,7 @@ class AuthCaptchaControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(Map.of("captchaChallengeId", CHALLENGE_ID.value(), "answer", "wrong"))
                 .exchange()
-                .expectStatus().isOk()
+                .expectStatus().isBadRequest()
                 .expectBody()
                 .jsonPath("$.success").isEqualTo(false)
                 .jsonPath("$.status").isEqualTo("VALIDATION_FAILED")

@@ -5,7 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationStartInput;
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErrorKeys;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
+
 import org.junit.jupiter.api.Test;
 
 class RegistrationStartValidatorTest {
@@ -17,7 +18,7 @@ class RegistrationStartValidatorTest {
 
         assertThat(result.valid()).isFalse();
         assertThat(result.errors()).anySatisfy(error -> {
-            assertThat(error.errorKey()).isEqualTo(RegistrationWorkflowErrorKeys.REGISTRATION_CONTACT_REQUIRED);
+            assertThat(error.errorKey()).isEqualTo(RegistrationErrorKey.REGISTRATION_CONTACT_REQUIRED);
             assertThat(error.target()).isEqualTo("email");
         });
     }
@@ -28,7 +29,7 @@ class RegistrationStartValidatorTest {
 
         assertThat(result.valid()).isFalse();
         assertThat(result.errors()).anySatisfy(error ->
-                assertThat(error.errorKey()).isEqualTo(RegistrationWorkflowErrorKeys.REGISTRATION_CONTACT_EXACTLY_ONE_REQUIRED));
+                assertThat(error.errorKey()).isEqualTo(RegistrationErrorKey.REGISTRATION_CONTACT_EXACTLYONEREQUIRED));
     }
 
     @Test
@@ -36,7 +37,7 @@ class RegistrationStartValidatorTest {
         for (String email : java.util.List.of("memberexample.com", "@domain.com", "member@", "member@@example.com", "member example@example.com")) {
             var result = validator.validate(input("GPFS", "1234567890", "31/01/1980", email, null, null));
             assertThat(result.errors()).anySatisfy(error -> {
-                assertThat(error.errorKey()).isEqualTo(RegistrationWorkflowErrorKeys.REGISTRATION_EMAIL_INVALID);
+                assertThat(error.errorKey()).isEqualTo(RegistrationErrorKey.REGISTRATION_EMAIL_INVALID);
                 assertThat(error.target()).isEqualTo("email");
                 assertThat(error.toString()).doesNotContain(email);
             });
@@ -56,7 +57,7 @@ class RegistrationStartValidatorTest {
         for (String mobile : java.util.List.of("31234567", "9123456", "912345678", "9123abcd", "9123 4567")) {
             var result = validator.validate(input("GPFS", "1234567890", "31/01/1980", null, mobile, null));
             assertThat(result.errors()).anySatisfy(error -> {
-                assertThat(error.errorKey()).isEqualTo(RegistrationWorkflowErrorKeys.REGISTRATION_MOBILE_INVALID);
+                assertThat(error.errorKey()).isEqualTo(RegistrationErrorKey.REGISTRATION_MOBILE_INVALID);
                 assertThat(error.target()).isEqualTo("mobile");
                 assertThat(error.toString()).doesNotContain(mobile);
             });
@@ -74,7 +75,7 @@ class RegistrationStartValidatorTest {
         for (String dob : java.util.List.of("31/02/1980", "1980-01-31", "01/31/1980", " ")) {
             var result = validator.validate(input("GPFS", "1234567890", dob, "member@example.com", null, null));
             assertThat(result.errors()).anySatisfy(error -> {
-                assertThat(error.errorKey()).isEqualTo(RegistrationWorkflowErrorKeys.REGISTRATION_DATE_OF_BIRTH_INVALID);
+                assertThat(error.errorKey()).isEqualTo(RegistrationErrorKey.REGISTRATION_DATEOFBIRTH_INVALID);
                 assertThat(error.target()).isEqualTo("dateOfBirth");
             });
         }
@@ -140,7 +141,7 @@ class RegistrationStartValidatorTest {
         var result = validator.validate(input("BAD", "ABC", "31/02/1980", null, null, null));
 
         assertThat(result.errors()).allSatisfy(error -> {
-            assertThat(error.errorKey().value()).startsWith("registration.");
+            assertThat(error.errorKey().value()).startsWith("err.registration.");
             assertThat(error.toString()).doesNotContain("Invalid", "Please", "請", "錯誤");
         });
     }
@@ -152,7 +153,7 @@ class RegistrationStartValidatorTest {
         for (String captcha : java.util.List.of("cap abc", "cap:abc", "member@example.com")) {
             var result = validator.validate(input("GPFS", "1234567890", "31/01/1980", "member@example.com", null, captcha));
             assertThat(result.errors()).anySatisfy(error -> {
-                assertThat(error.errorKey()).isEqualTo(RegistrationWorkflowErrorKeys.REGISTRATION_CAPTCHA_INVALID);
+                assertThat(error.errorKey()).isEqualTo(RegistrationErrorKey.REGISTRATION_CAPTCHA_INVALID);
                 assertThat(error.target()).isEqualTo("captchaChallengeId");
                 assertThat(error.toString()).doesNotContain(captcha);
             });

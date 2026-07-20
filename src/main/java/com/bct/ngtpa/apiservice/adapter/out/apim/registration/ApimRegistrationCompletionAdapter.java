@@ -11,7 +11,6 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.*
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
-import java.lang.reflect.Method;
 import java.security.PublicKey;
 import java.util.*;
 import org.springframework.beans.factory.annotation.Autowired;

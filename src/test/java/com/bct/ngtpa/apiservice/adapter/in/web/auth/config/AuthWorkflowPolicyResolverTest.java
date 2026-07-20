@@ -41,7 +41,7 @@ class AuthWorkflowPolicyResolverTest {
             assertTrue(policy.preStartChallenge().enabled());
             assertEquals(PreStartChallengeType.CAPTCHA, policy.preStartChallenge().type());
             assertEquals(7, policy.captcha().length());
-            assertTrue(policy.captcha().caseSensitive());
+            assertFalse(policy.captcha().caseSensitive());
             assertEquals(300, policy.captcha().ttlSeconds());
             assertEquals(5, policy.captcha().maxAttempts());
         });
@@ -59,7 +59,7 @@ class AuthWorkflowPolicyResolverTest {
             assertEquals(5, otp.maxVerifyAttempts());
             assertEquals(5, otp.maxResendAttempts());
             assertTrue(otp.invalidatePreviousOnResend());
-            assertFalse(otp.resetVerifyAttemptsOnResend());
+            assertTrue(otp.resetVerifyAttemptsOnResend());
         });
     }
 
@@ -98,26 +98,20 @@ class AuthWorkflowPolicyResolverTest {
 
 
     @Test
-    void authWorkflowPolicyExposesRegistrationRateLimitPolicy() {
+    void authWorkflowPolicyExposesOtpLifecyclePolicy() {
         contextRunner.run(context -> {
-            var rateLimit = context.getBean(AuthWorkflowPolicyPort.class)
+            var otp = context.getBean(AuthWorkflowPolicyPort.class)
                     .registrationPolicy()
-                    .rateLimit();
+                    .otp();
 
-            assertNotNull(rateLimit);
-            assertTrue(rateLimit.registrationStartByIp().enabled());
-            assertEquals(10, rateLimit.registrationStartByIp().maxAttempts());
-            assertEquals(600, rateLimit.registrationStartByIp().windowSeconds());
-
-            assertTrue(rateLimit.otpSendByDestinationHash().enabled());
-            assertEquals(3, rateLimit.otpSendByDestinationHash().maxAttempts());
-            assertEquals(600, rateLimit.otpSendByDestinationHash().windowSeconds());
-
-            assertTrue(rateLimit.otpVerifyByRegistrationSession().enabled());
-            assertEquals(5, rateLimit.otpVerifyByRegistrationSession().maxAttempts());
-            assertEquals(300, rateLimit.otpVerifyByRegistrationSession().windowSeconds());
+            assertNotNull(otp);
+            assertEquals(5, otp.maxResendAttempts());
+            assertEquals(5, otp.maxVerifyAttempts());
+            assertEquals(60, otp.resendCooldownSeconds());
+            assertTrue(otp.invalidatePreviousOnResend());
         });
     }
+
 
     @Test
     void rateLimitPolicyIsDirectConfigOnly() throws Exception {
