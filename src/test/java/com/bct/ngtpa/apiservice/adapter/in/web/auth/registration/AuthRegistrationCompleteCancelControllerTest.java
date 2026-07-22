@@ -11,7 +11,9 @@ import com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationContro
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.BffPagesProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.registration.RegistrationCancellationPageMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.registration.RegistrationSuccessPageMapper;
+import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupAccount;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.in.CancelRegistrationUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.CompleteRegistrationUseCase;
@@ -53,9 +55,9 @@ class AuthRegistrationCompleteCancelControllerTest {
 
         JsonNode json = json(controller.completeRegistration(
                 new CompleteRegistrationRequest("Password123!", "Password123!"),
-                "afs",
+            validAuthFlowSessionId(),
                 "csrf",
-                "idem",
+            validIdempotencyKey(),
                 "req",
                 "en",
                 null,
@@ -89,7 +91,7 @@ class AuthRegistrationCompleteCancelControllerTest {
                         List.of())));
 
         JsonNode json = json(controller.cancelRegistration(
-                "afs",
+            validAuthFlowSessionId(),
                 "csrf",
                 "req",
                 "en",
@@ -126,6 +128,38 @@ class AuthRegistrationCompleteCancelControllerTest {
                 cancelUseCase,
                 new CancelRegistrationWebMapper(new RegistrationCancellationPageMapper(pages)),
                 org.mockito.Mockito.mock(XsrfCookieWriter.class));
+    }
+
+    private static String validAuthFlowSessionId() {
+        for (String candidate : List.of(
+                "sid_0123456789abcdef",
+                "sid_0123456789abcdef0123456789abcdef",
+                "afs_0123456789abcdef",
+                "afs_0123456789abcdef0123456789abcdef",
+                "01234567-89ab-cdef-0123-456789abcdef",
+                "opaqueAuthFlowSessionId0123456789")) {
+            try {
+                return new AuthFlowSessionId(candidate).value();
+            } catch (RuntimeException ignored) {
+                // Follow current value-object validation rules.
+            }
+        }
+        throw new AssertionError("No valid AuthFlowSessionId test fixture candidate matched current validation rules");
+    }
+
+    private static String validIdempotencyKey() {
+        for (String candidate : List.of(
+                "idem_0123456789abcdef",
+                "idem_0123456789abcdef0123456789abcdef",
+                "01234567-89ab-cdef-0123-456789abcdef",
+                "opaqueIdempotencyKey0123456789")) {
+            try {
+                return new RegistrationIdempotencyKey(candidate).value();
+            } catch (RuntimeException ignored) {
+                // Follow current value-object validation rules.
+            }
+        }
+        throw new AssertionError("No valid RegistrationIdempotencyKey test fixture candidate matched current validation rules");
     }
 
     private static final class StartUseCaseStub implements StartRegistrationUseCase {

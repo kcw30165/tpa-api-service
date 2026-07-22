@@ -3,6 +3,9 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationOtpResendResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationWorkflowResultResponse;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.RegistrationOtpResendErrorKeys;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.ResendRegistrationOtpResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.ResendRegistrationOtpResultStatus;
@@ -11,22 +14,23 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResult;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResultStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper;
 
 public class RegistrationOtpResendWebMapper {
     private static final String SOURCE_SERVER = "SERVER";
 
     private final RegistrationWorkflowMutationResponseMapper workflowMutationResponseMapper;
     public RegistrationOtpResendWebMapper(
-            com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper workflowMutationResponseMapper) {
+            WorkflowMutationResponseMapper workflowMutationResponseMapper) {
         this(workflowMutationResponseMapper, null);
     }
 
     public RegistrationOtpResendWebMapper(
-            com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper workflowMutationResponseMapper,
+            WorkflowMutationResponseMapper workflowMutationResponseMapper,
             Object ignoredMessageResolver) {
         this.workflowMutationResponseMapper = new RegistrationWorkflowMutationResponseMapper(
                 workflowMutationResponseMapper == null
-                        ? new com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper()
+                        ? new WorkflowMutationResponseMapper()
                         : workflowMutationResponseMapper);
     }
 
@@ -57,15 +61,7 @@ public class RegistrationOtpResendWebMapper {
                 data(result),
             null,
                 List.of(),
-                result.errors().stream()
-                        .map(error -> new com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor(
-                                error.type(),
-                                error.code(),
-                                null,
-                                error.targets(),
-                                error.severity(),
-                                error.source()))
-                        .toList());
+            errors(result));
     }
 
     private WorkflowResultStatus workflowStatus(ResendRegistrationOtpResultStatus status) {
@@ -108,6 +104,48 @@ public class RegistrationOtpResendWebMapper {
         return status == ResendRegistrationOtpResultStatus.COOLDOWN_ACTIVE
                 || status == ResendRegistrationOtpResultStatus.SEND_RATE_LIMITED
                 || status == ResendRegistrationOtpResultStatus.MAX_RESEND_ATTEMPTS_REACHED;
+    }
+
+    private List<WorkflowErrorDescriptor> errors(ResendRegistrationOtpResult result) {
+        if (result.errors() != null && !result.errors().isEmpty()) {
+            return result.errors().stream()
+                    .map(error -> new WorkflowErrorDescriptor(
+                            error.type(),
+                            error.code(),
+                            null,
+                            error.targets(),
+                            error.severity(),
+                            error.source()))
+                    .toList();
+        }
+        if (workflowStatus(result.status()) == WorkflowResultStatus.SUCCESS
+                || workflowStatus(result.status()) == WorkflowResultStatus.WAITING) {
+            return List.of();
+        }
+        return List.of(new WorkflowErrorDescriptor(
+                defaultErrorType(result.status()),
+                defaultErrorCode(result.status()),
+                null,
+                List.of("PAGE"),
+                WorkflowErrorSeverity.ERROR,
+                SOURCE_SERVER));
+    }
+
+    private WorkflowErrorType defaultErrorType(ResendRegistrationOtpResultStatus status) {
+        return switch (status) {
+            case MESSAGE_DELIVERY_FAILED -> WorkflowErrorType.DOWNSTREAM_SYSTEM;
+            case SYSTEM_FAILED -> WorkflowErrorType.SYSTEM;
+            default -> WorkflowErrorType.BUSINESS;
+        };
+    }
+
+    private String defaultErrorCode(ResendRegistrationOtpResultStatus status) {
+        return switch (status) {
+            case COOLDOWN_ACTIVE -> RegistrationOtpResendErrorKeys.REGISTRATION_OTP_COOLDOWN_ACTIVE;
+            case MAX_RESEND_ATTEMPTS_REACHED -> RegistrationOtpResendErrorKeys.REGISTRATION_OTP_MAX_ATTEMPTS_REACHED;
+            case MESSAGE_DELIVERY_FAILED, SYSTEM_FAILED -> RegistrationOtpResendErrorKeys.REGISTRATION_MESSAGE_DELIVERY_FAILED;
+            default -> RegistrationOtpResendErrorKeys.REGISTRATION_OTP_RESEND_FAILED;
+        };
     }
 
     private MutationResponse<RegistrationWorkflowResultResponse<RegistrationOtpResendResponse>> errorResponse(String code) {
