@@ -2,7 +2,9 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.CompleteRegistrationRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.CompleteRegistrationResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationActionResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationUnregisteredTrustResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationWorkflowResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.registration.RegistrationSuccessPageMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
@@ -10,6 +12,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowConstants;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.CompleteRegistrationCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.CompleteRegistrationResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.CompleteRegistrationResultStatus;
@@ -57,12 +60,12 @@ public class CompleteRegistrationWebMapper {
                 idempotencyTtl);
     }
 
-    public MutationResponse<CompleteRegistrationResponse> toResponse(
+        public MutationResponse<RegistrationWorkflowResultResponse<CompleteRegistrationResponse>> toResponse(
             CompleteRegistrationResult result,
             String language) {
         boolean success = result.registered()
                 || result.status() == CompleteRegistrationResultStatus.COMPLETED_REPLAY;
-        CompleteRegistrationResponse payload = payload(result, language, success);
+                RegistrationWorkflowResultResponse<CompleteRegistrationResponse> payload = payload(result, language, success);
         if (success) {
             return MutationResponse.success(ApiStatus.SUCCESS, payload, List.of());
         }
@@ -85,12 +88,17 @@ public class CompleteRegistrationWebMapper {
         return MutationResponse.failure(status, payload, errors);
     }
 
-    public MutationResponse<CompleteRegistrationResponse> missing(String code, String target, String language) {
+    public MutationResponse<RegistrationWorkflowResultResponse<CompleteRegistrationResponse>> missing(String code, String target, String language) {
         ApiError error = ApiError.field(code, null, List.of(target), SOURCE_SERVER);
-        return MutationResponse.failure(ApiStatus.VALIDATION_FAILED, null, List.of(error));
+        return MutationResponse.failure(
+                ApiStatus.VALIDATION_FAILED,
+                new RegistrationWorkflowResultResponse<>(
+                        WorkflowNextStep.PASSWORD_SETUP,
+                        new CompleteRegistrationResponse(List.of(), List.of())),
+                List.of(error));
     }
 
-    private CompleteRegistrationResponse payload(
+    private RegistrationWorkflowResultResponse<CompleteRegistrationResponse> payload(
             CompleteRegistrationResult result,
             String language,
             boolean success) {
@@ -98,19 +106,28 @@ public class CompleteRegistrationWebMapper {
                 .map(trust -> new RegistrationUnregisteredTrustResponse(
                         trust.accountEnv(), trust.trustCode()))
                 .toList();
+                CompleteRegistrationResponse data = new CompleteRegistrationResponse(trusts, List.of());
         if (!success) {
-            return new CompleteRegistrationResponse(false, trusts, null);
+            return new RegistrationWorkflowResultResponse<>(result.nextStep(), data);
         }
         String variant = trusts.isEmpty()
                 ? RegistrationWorkflowConstants.SUCCESS_VARIANT_NO_REMAINING_TRUSTS
                 : RegistrationWorkflowConstants.SUCCESS_VARIANT_HAS_REMAINING_TRUSTS;
-        return new CompleteRegistrationResponse(
-                true,
-                trusts,
-                successPageMapper.map(
-                        RegistrationWorkflowConstants.PAGE_REGISTRATION_SUCCESS,
-                        variant,
-                        language));
+        return new RegistrationWorkflowResultResponse<>(
+                result.nextStep(),
+                new CompleteRegistrationResponse(
+                        trusts,
+                        successPageMapper.map(
+                                        RegistrationWorkflowConstants.PAGE_REGISTRATION_SUCCESS,
+                                        variant,
+                                        language)
+                                .actions()
+                                .stream()
+                                .map(action -> new RegistrationActionResponse(
+                                        action.id(),
+                                        action.type(),
+                                        action.nextStep()))
+                                .toList()));
     }
 
     private String trim(String value) {

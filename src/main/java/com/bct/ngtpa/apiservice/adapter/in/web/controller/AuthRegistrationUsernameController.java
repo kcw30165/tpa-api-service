@@ -4,9 +4,12 @@ import lombok.RequiredArgsConstructor;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.RegistrationHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationUsernameCheckRequest;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationUsernameCheckResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationWorkflowResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationUsernameCheckWebMapper;
 import com.bct.ngtpa.apiservice.application.port.in.CheckRegistrationUsernameUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.CheckRegistrationUsernameCommand;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -27,7 +30,7 @@ public class AuthRegistrationUsernameController {
     private final RegistrationUsernameCheckWebMapper registrationUsernameCheckWebMapper;
 
 @PostMapping(path = "/username/check", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<ResponseEntity<Object>> checkUsername(
+    public Mono<ResponseEntity<MutationResponse<RegistrationWorkflowResultResponse<RegistrationUsernameCheckResponse>>>> checkUsername(
             @RequestBody(required = false) RegistrationUsernameCheckRequest request,
             @CookieValue(name = "auth_flow_sid", required = false) String authFlowSessionId,
             @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrfToken,
@@ -37,13 +40,13 @@ public class AuthRegistrationUsernameController {
             @RequestHeader(name = "Referer", required = false) String referer,
             ServerHttpResponse response) {
         if (!hasText(authFlowSessionId)) {
-            return Mono.just(RegistrationHttpResponses.toObjectResponse(registrationUsernameCheckWebMapper.missingAuthFlowCookieResponse()));
+            return Mono.just(RegistrationHttpResponses.toResponse(registrationUsernameCheckWebMapper.missingAuthFlowCookieResponse()));
         }
         if (!hasText(csrfToken)) {
-            return Mono.just(RegistrationHttpResponses.toObjectResponse(registrationUsernameCheckWebMapper.missingCsrfTokenResponse()));
+            return Mono.just(RegistrationHttpResponses.toResponse(registrationUsernameCheckWebMapper.missingCsrfTokenResponse()));
         }
         if (request == null) {
-            return Mono.just(RegistrationHttpResponses.toObjectResponse(registrationUsernameCheckWebMapper.missingRequestBodyResponse()));
+            return Mono.just(RegistrationHttpResponses.toResponse(registrationUsernameCheckWebMapper.missingRequestBodyResponse()));
         }
 
         CheckRegistrationUsernameCommand command;
@@ -57,7 +60,7 @@ public class AuthRegistrationUsernameController {
                     origin,
                     referer);
         } catch (RuntimeException exception) {
-            return Mono.just(RegistrationHttpResponses.toObjectResponse(registrationUsernameCheckWebMapper.missingAuthFlowCookieResponse()));
+            return Mono.just(RegistrationHttpResponses.toResponse(registrationUsernameCheckWebMapper.missingAuthFlowCookieResponse()));
         }
 
         return checkRegistrationUsernameUseCase.check(command)
@@ -68,7 +71,7 @@ public class AuthRegistrationUsernameController {
                             != com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.CheckRegistrationUsernameResultStatus.CSRF_INVALID) {
                         cookieWriter.writeAuthFlowCookie(response, authFlowSessionId);
                     }
-                    return RegistrationHttpResponses.toObjectResponse(
+                        return RegistrationHttpResponses.toResponse(
                             registrationUsernameCheckWebMapper.toMutationResponse(result));
                 });
     }

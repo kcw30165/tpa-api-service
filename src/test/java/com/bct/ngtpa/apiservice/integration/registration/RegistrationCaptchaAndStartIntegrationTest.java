@@ -125,7 +125,8 @@ class RegistrationCaptchaAndStartIntegrationTest {
                 .expectBody(String.class)
                 .value(body -> assertThat(body)
                         .contains("\"status\":\"SUCCESS\"")
-                        .doesNotContain("nextStep", "pageRef"));
+                    .contains("\"nextStep\":\"NONE\"")
+                    .doesNotContain("pageRef"));
     }
 
     @Test
@@ -142,7 +143,8 @@ class RegistrationCaptchaAndStartIntegrationTest {
     void correctAnswerPersistsVerifiedStateWithoutPlaintext() {
         String id = createChallenge();
         verifyOk(id, ANSWER).jsonPath("$.success").isEqualTo(true)
-                .jsonPath("$.result.verified").isEqualTo(true);
+            .jsonPath("$.result.nextStep").isEqualTo("NONE")
+            .jsonPath("$.result.data.verified").isEqualTo(true);
         CaptchaChallenge persisted = store.require(id);
         assertThat(persisted.status()).isEqualTo(CaptchaStatus.VERIFIED);
         assertThat(persisted.toString()).doesNotContain(ANSWER);
@@ -153,7 +155,8 @@ class RegistrationCaptchaAndStartIntegrationTest {
     void wrongAnswerDecrementsAttempts() {
         String id = createChallenge();
         verifyFailure(id, WRONG).jsonPath("$.success").isEqualTo(false)
-                .jsonPath("$.result.remainingAttempts").isEqualTo(4)
+            .jsonPath("$.result.nextStep").isEqualTo("NONE")
+            .jsonPath("$.result.data.remainingAttempts").isEqualTo(4)
                 .jsonPath("$.errors[0].code").isEqualTo("err.registration.captcha.invalid");
         assertThat(store.require(id).failedAttemptCount()).isEqualTo(1);
     }
@@ -163,7 +166,7 @@ class RegistrationCaptchaAndStartIntegrationTest {
     void fifthWrongAnswerLocksChallengeAndLaterAttemptRemainsLocked() {
         String id = createChallenge();
         for (int attempt = 1; attempt < 5; attempt++) {
-            verifyFailure(id, WRONG).jsonPath("$.result.remainingAttempts").isEqualTo(5 - attempt);
+            verifyFailure(id, WRONG).jsonPath("$.result.data.remainingAttempts").isEqualTo(5 - attempt);
         }
         verifyFailure(id, WRONG).jsonPath("$.errors[0].code")
                 .isEqualTo("err.registration.captcha.locked");

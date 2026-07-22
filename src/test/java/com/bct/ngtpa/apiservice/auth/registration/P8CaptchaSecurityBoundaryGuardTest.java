@@ -20,14 +20,15 @@ class P8CaptchaSecurityBoundaryGuardTest {
     }
 
     @Test
-    void captchaEndpointsStillUseMutationResponseWithoutWorkflowFields() throws Exception {
+        void captchaEndpointsStillUseMutationResponseWithResultWrapperOnly() throws Exception {
         String controller = Files.readString(Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthCaptchaController.java"));
         String mapper = Files.readString(Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/captcha/mapper/CaptchaWebMapper.java"));
 
         assertThat(controller + mapper)
                 .contains("MutationResponse")
+                                .contains("CaptchaWorkflowResultResponse")
+                                .contains("WorkflowNextStep.NONE")
                 .doesNotContain("WorkflowResultPayload")
-                .doesNotContain("nextStep")
                 .doesNotContain("pageRef");
     }
 

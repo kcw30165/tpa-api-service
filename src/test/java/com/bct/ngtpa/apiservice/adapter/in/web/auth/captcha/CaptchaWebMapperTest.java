@@ -11,6 +11,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaVerification
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CreateCaptchaChallengeResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.RefreshCaptchaChallengeResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.VerifyCaptchaChallengeResult;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,6 +30,7 @@ class CaptchaWebMapperTest {
 
         assertThat(response.success()).isTrue();
         assertThat(response.status()).isEqualTo(ApiStatus.SUCCESS);
+        assertThat(response.result().toString()).contains("nextStep=NONE", "data=");
         assertThat(response.result().toString()).doesNotContain(CHALLENGE_ID.value(), "base64-image");
     }
 
@@ -40,6 +42,7 @@ class CaptchaWebMapperTest {
 
         assertThat(response.success()).isFalse();
         assertThat(response.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
+                assertThat(response.result().toString()).contains("nextStep=NONE", "data=");
         assertThat(response.errors()).singleElement().satisfies(error -> {
             assertThat(error.code()).isEqualTo("err.registration.captcha.invalid");
             assertThat(error.targets()).containsExactly("captchaAnswer");
@@ -67,6 +70,7 @@ class CaptchaWebMapperTest {
 
         assertThat(response.success()).isTrue();
         assertThat(response.status()).isEqualTo(ApiStatus.SUCCESS);
+        assertThat(response.result().toString()).contains("nextStep=NONE", "data=");
         assertThat(response.result().toString()).doesNotContain(NEW_CHALLENGE_ID.value(), "base64-refresh");
     }
 
@@ -78,8 +82,9 @@ class CaptchaWebMapperTest {
         String source = Files.readString(Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/captcha/mapper/CaptchaWebMapper.java"));
 
         assertThat(response).isInstanceOf(MutationResponse.class);
-        assertThat(json).doesNotContain("nextStep", "pageRef");
-        assertThat(source).doesNotContain("WorkflowMutationResponseMapper", "WorkflowResultPayload", "nextStep", "pageRef");
+                assertThat(json).contains("\"nextStep\":\"NONE\"", "\"data\":");
+                assertThat(json).doesNotContain("pageRef");
+                assertThat(source).doesNotContain("WorkflowMutationResponseMapper", "WorkflowResultPayload", "pageRef");
     }
 
     @Test

@@ -2,18 +2,15 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationOtpVerifyResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationUnregisteredTrustResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationWorkflowResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowConstants;
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowPageRefs;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
-import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowPageRef;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResult;
-import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResultPayload;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResultStatus;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.RegistrationOtpVerifyErrorKeys;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.VerifyRegistrationOtpResult;
@@ -27,16 +24,16 @@ public class RegistrationOtpVerifyWebMapper {
     private static final String TARGET_PAGE = "PAGE";
     private static final String TARGET_OTP_CODE = "otpCode";
 
-    private final WorkflowMutationResponseMapper workflowMutationResponseMapper;
+        private final RegistrationWorkflowMutationResponseMapper workflowMutationResponseMapper;
 
     public RegistrationOtpVerifyWebMapper(
-            WorkflowMutationResponseMapper workflowMutationResponseMapper) {
-        this.workflowMutationResponseMapper = Objects.requireNonNull(
+            com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper workflowMutationResponseMapper) {
+        this.workflowMutationResponseMapper = new RegistrationWorkflowMutationResponseMapper(Objects.requireNonNull(
                 workflowMutationResponseMapper,
-                "workflowMutationResponseMapper must not be null");
+            "workflowMutationResponseMapper must not be null"));
     }
 
-    public MutationResponse<WorkflowResultPayload<RegistrationOtpVerifyResponse>> toMutationResponse(
+        public MutationResponse<RegistrationWorkflowResultResponse<RegistrationOtpVerifyResponse>> toMutationResponse(
             VerifyRegistrationOtpResult result) {
         Objects.requireNonNull(result, "result must not be null");
         var response = workflowMutationResponseMapper.toMutationResponse(toWorkflowResult(result));
@@ -51,26 +48,26 @@ public class RegistrationOtpVerifyWebMapper {
         return response;
     }
 
-    public MutationResponse<WorkflowResultPayload<RegistrationOtpVerifyResponse>> missingAuthFlowCookieResponse() {
+    public MutationResponse<RegistrationWorkflowResultResponse<RegistrationOtpVerifyResponse>> missingAuthFlowCookieResponse() {
         return validationFailure(
                 RegistrationOtpVerifyErrorKeys.REGISTRATION_AUTH_FLOW_INVALID,
                 TARGET_PAGE);
     }
 
-    public MutationResponse<WorkflowResultPayload<RegistrationOtpVerifyResponse>> missingCsrfTokenResponse() {
+    public MutationResponse<RegistrationWorkflowResultResponse<RegistrationOtpVerifyResponse>> missingCsrfTokenResponse() {
         return validationFailure(
                 RegistrationOtpVerifyErrorKeys.REGISTRATION_CSRF_INVALID,
                 TARGET_PAGE);
     }
 
-    public MutationResponse<WorkflowResultPayload<RegistrationOtpVerifyResponse>> missingIdempotencyKeyResponse() {
+    public MutationResponse<RegistrationWorkflowResultResponse<RegistrationOtpVerifyResponse>> missingIdempotencyKeyResponse() {
         return validationFailure(
                 com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey
                         .IDEMPOTENCY_MISSING.value(),
                 "Idempotency-Key");
     }
 
-    public MutationResponse<WorkflowResultPayload<RegistrationOtpVerifyResponse>> missingCodeResponse() {
+    public MutationResponse<RegistrationWorkflowResultResponse<RegistrationOtpVerifyResponse>> missingCodeResponse() {
         return validationFailure(
                 RegistrationOtpVerifyErrorKeys.REGISTRATION_OTP_INVALID,
                 TARGET_OTP_CODE);
@@ -82,7 +79,7 @@ public class RegistrationOtpVerifyWebMapper {
                 workflowStatus(result.status()),
                 result.nextStep(),
                 data(result),
-                pageRef(result.nextStep()),
+                null,
                 List.of(),
                 errors(result));
     }
@@ -95,24 +92,6 @@ public class RegistrationOtpVerifyWebMapper {
                 WorkflowResultStatus.BUSINESS_FAILED;
             case TRUST_LOOKUP_FAILED, SYSTEM_FAILED -> WorkflowResultStatus.SYSTEM_FAILED;
             default -> WorkflowResultStatus.VALIDATION_FAILED;
-        };
-    }
-
-    private WorkflowPageRef pageRef(WorkflowNextStep nextStep) {
-        if (nextStep == null) {
-            return null;
-        }
-        return switch (nextStep) {
-            case VERIFY_OTP -> new WorkflowPageRef(
-                    RegistrationWorkflowConstants.PAGE_REGISTRATION_OTP_VERIFICATION,
-                    null);
-            case USERNAME_CHECK -> new WorkflowPageRef(
-                    RegistrationWorkflowConstants.PAGE_REGISTRATION_USERNAME_CHECK,
-                    null);
-            case SELECT_TRUST -> new WorkflowPageRef(
-                    RegistrationWorkflowConstants.PAGE_REGISTRATION_TRUST_SELECTION,
-                    null);
-            default -> RegistrationWorkflowPageRefs.forNextStep(nextStep);
         };
     }
 
@@ -190,7 +169,7 @@ public class RegistrationOtpVerifyWebMapper {
         };
     }
 
-    private MutationResponse<WorkflowResultPayload<RegistrationOtpVerifyResponse>> validationFailure(
+    private MutationResponse<RegistrationWorkflowResultResponse<RegistrationOtpVerifyResponse>> validationFailure(
             String code,
             String target) {
         WorkflowErrorDescriptor error = new WorkflowErrorDescriptor(
@@ -204,7 +183,7 @@ public class RegistrationOtpVerifyWebMapper {
                 WorkflowResultStatus.VALIDATION_FAILED,
                 WorkflowNextStep.VERIFY_OTP,
                 null,
-                RegistrationWorkflowPageRefs.forNextStep(WorkflowNextStep.VERIFY_OTP),
+            null,
                 List.of(),
                 List.of(error)));
     }

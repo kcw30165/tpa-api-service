@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.dto.CaptchaRefreshRe
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.dto.CaptchaChallengeResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.dto.CaptchaVerifyRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.dto.CaptchaVerifyResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.dto.CaptchaWorkflowResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.mapper.CaptchaWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaChallengeId;
@@ -39,7 +40,7 @@ public class AuthCaptchaController {
     private final CaptchaWebMapper captchaWebMapper;
 
     @PostMapping(path = "/challenge", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<MutationResponse<CaptchaChallengeResponse>> challenge(
+    public Mono<MutationResponse<CaptchaWorkflowResultResponse<CaptchaChallengeResponse>>> challenge(
             @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false) String requestId,
             @RequestHeader(name = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false) String acceptLanguage,
             ServerHttpResponse response) {
@@ -50,7 +51,7 @@ public class AuthCaptchaController {
     }
 
     @PostMapping(path = "/verify", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<ResponseEntity<MutationResponse<CaptchaVerifyResponse>>> verify(
+    public Mono<ResponseEntity<MutationResponse<CaptchaWorkflowResultResponse<CaptchaVerifyResponse>>>> verify(
             @RequestBody(required = false) CaptchaVerifyRequest request,
             @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false) String requestId,
             @RequestHeader(name = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false) String acceptLanguage,
@@ -80,7 +81,7 @@ public class AuthCaptchaController {
     }
 
     @PostMapping(path = "/refresh", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<MutationResponse<CaptchaRefreshResponse>> refresh(
+    public Mono<MutationResponse<CaptchaWorkflowResultResponse<CaptchaRefreshResponse>>> refresh(
             @RequestBody(required = false) CaptchaRefreshRequest request,
             @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false) String requestId,
             @RequestHeader(name = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false) String acceptLanguage,

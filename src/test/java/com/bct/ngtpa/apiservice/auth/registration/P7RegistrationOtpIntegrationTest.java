@@ -143,9 +143,10 @@ class P7RegistrationOtpIntegrationTest {
                 new org.springframework.mock.http.server.reactive.MockServerHttpResponse())
                                 .block());
                 assertThat(resendJson).contains("success", "status", "result", "messages", "errors", "VERIFY_OTP",
-                                "registration-otp-verification", "maskedDestination", "expiresInSeconds",
+                                "maskedDestination", "expiresInSeconds",
                                 "resendCooldownSeconds",
                                 "remainingResendAttempts");
+                assertThat(resendJson).doesNotContain("registration-otp-verification", "pageRef");
                 assertThat(resendJson).doesNotContain("afs_secret", "auth_flow_sid", "csrf_secret", "csrfToken",
                                 "csrfTokenHash", "otpChallengeId", "activeOtpChallengeId", "123456",
                                 "member@example.com", "3024102",
@@ -157,8 +158,9 @@ class P7RegistrationOtpIntegrationTest {
                                                 "csrf_secret", validIdempotencyKey(), "req", "en", null, null,
                 new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block());
                 assertThat(verifyJson).contains("success", "status", "result", "messages", "errors", "USERNAME_CHECK",
-                                "registration-username-check", "unregisteredTrusts", "accountEnv", 
+                                "unregisteredTrusts", "accountEnv", 
                                 "trustCode");
+                assertThat(verifyJson).doesNotContain("registration-username-check", "pageRef");
                 assertThat(verifyJson).doesNotContain("afs_secret", "auth_flow_sid", "csrf_secret", "csrfToken",
                                 "csrfTokenHash", "otpChallengeId", "activeOtpChallengeId", "123456",
                                 "member@example.com", "3024102",
@@ -174,7 +176,8 @@ class P7RegistrationOtpIntegrationTest {
                                 verify.verifyOtp(new RegistrationOtpVerifyRequest("123456"), validAuthFlowSessionId(),
                                                 "csrf", validIdempotencyKey(), "req", "en", null, null,
                 new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block());
-                assertThat(json).contains("SELECT_TRUST", "registration-trust-selection");
+                assertThat(json).contains("SELECT_TRUST");
+                assertThat(json).doesNotContain("registration-trust-selection", "pageRef");
                 assertThat(json).doesNotContain("apimEmail", "apimMobile", "member@example.com");
         }
 

@@ -8,7 +8,6 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
-import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResultPayload;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationError;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResultStatus;
@@ -26,7 +25,6 @@ class RegistrationStartWorkflowResponseMapperTest {
 
         assertThat(response.success()).isTrue();
         assertThat(response.status()).isEqualTo(ApiStatus.SUCCESS);
-        assertThat(response.result()).isInstanceOf(WorkflowResultPayload.class);
         assertThat(response.result().nextStep()).isEqualTo(WorkflowNextStep.VERIFY_OTP);
         assertThat(response.result().data()).isInstanceOf(RegistrationStartWorkflowDataResponse.class);
         assertThat(response.result().data().maskedDestination()).isEqualTo("m****r@example.com");
@@ -133,11 +131,9 @@ class RegistrationStartWorkflowResponseMapperTest {
         var response = mapper.toMutationResponse(started(), "en");
 
         assertThat(response.result().nextStep()).isEqualTo(WorkflowNextStep.VERIFY_OTP);
-        assertThat(response.result().data().getClass().getRecordComponents())
+        assertThat(response.result().getClass().getRecordComponents())
                 .extracting(java.lang.reflect.RecordComponent::getName)
-                .doesNotContain("nextStep");
-        assertThat(response.result().pageRef().pageId()).isEqualTo("registration-otp-verification");
-        assertThat(response.result().pageRef().variant()).isNull();
+            .containsExactly("nextStep", "data");
     }
 
     private static StartRegistrationResult started() {

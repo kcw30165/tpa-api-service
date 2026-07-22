@@ -82,10 +82,13 @@ class AuthRegistrationOtpResendControllerTest {
     @Test
     void otpResendSuccessDoesNotSetCookieValueInBody() throws Exception {
         var controller = resendController(new RecordingUseCase());
-        String json = objectMapper.writeValueAsString(controller.resendOtp("afs_abc", "csrf_abc", "idem_abc", "req_abc", "en", null, null,
-                new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block());
-        assertThat(json).contains("VERIFY_OTP", "registration-otp-verification");
-        assertThat(json).doesNotContain("afs_abc", "csrf_abc", "idem_abc", "otpChallengeId", "activeOtpChallengeId", "123456");
+        com.fasterxml.jackson.databind.JsonNode json = objectMapper.valueToTree(controller.resendOtp("afs_abc", "csrf_abc", "idem_abc", "req_abc", "en", null, null,
+            new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block());
+        assertThat(json.at("/body/result/nextStep").asText()).isEqualTo("VERIFY_OTP");
+        assertThat(json.at("/body/result/data/maskedDestination").asText()).isEqualTo("m****r@example.com");
+        assertThat(json.at("/body/result/pageRef").isMissingNode()).isTrue();
+        assertThat(json.toString()).doesNotContain("registration-otp-verification");
+        assertThat(json.toString()).doesNotContain("afs_abc", "csrf_abc", "idem_abc", "otpChallengeId", "activeOtpChallengeId", "123456");
     }
 
     private static final class RecordingUseCase implements ResendRegistrationOtpUseCase {

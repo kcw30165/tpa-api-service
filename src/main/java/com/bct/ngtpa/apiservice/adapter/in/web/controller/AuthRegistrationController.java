@@ -12,10 +12,10 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.CompleteReg
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.CompleteRegistrationRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartWorkflowDataResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationWorkflowResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
-import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResultPayload;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationStartWebMapper;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResultStatus;
 
@@ -41,7 +41,7 @@ public class AuthRegistrationController {
     private final XsrfCookieWriter xsrfCookieWriter;
 
     @PostMapping("/start")
-    public Mono<ResponseEntity<MutationResponse<WorkflowResultPayload<RegistrationStartWorkflowDataResponse>>>> startRegistration(
+    public Mono<ResponseEntity<MutationResponse<RegistrationWorkflowResultResponse<RegistrationStartWorkflowDataResponse>>>> startRegistration(
             @RequestBody RegistrationStartRequest request,
             @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
             @RequestHeader(name = "X-Request-Id", required = false) String requestId,
@@ -60,7 +60,7 @@ public class AuthRegistrationController {
     }
 
     @PostMapping(path = "/complete", consumes = org.springframework.http.MediaType.APPLICATION_JSON_VALUE, produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
-    public Mono<ResponseEntity<MutationResponse<CompleteRegistrationResponse>>> completeRegistration(
+    public Mono<ResponseEntity<MutationResponse<RegistrationWorkflowResultResponse<CompleteRegistrationResponse>>>> completeRegistration(
             @RequestBody(required = false) CompleteRegistrationRequest request,
             @CookieValue(name = "auth_flow_sid", required = false) String authFlowSessionId,
             @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrfToken,
@@ -116,7 +116,7 @@ public class AuthRegistrationController {
     }
 
     @PostMapping(path = "/cancel", produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
-    public Mono<ResponseEntity<MutationResponse<CancelRegistrationResponse>>> cancelRegistration(
+    public Mono<ResponseEntity<MutationResponse<RegistrationWorkflowResultResponse<CancelRegistrationResponse>>>> cancelRegistration(
             @CookieValue(name = "auth_flow_sid", required = false) String authFlowSessionId,
             @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrfToken,
             @RequestHeader(name = "X-Request-Id", required = false) String requestId,
