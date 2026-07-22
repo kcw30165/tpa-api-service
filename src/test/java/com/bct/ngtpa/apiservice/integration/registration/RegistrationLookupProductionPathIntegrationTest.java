@@ -54,16 +54,16 @@ class RegistrationLookupProductionPathIntegrationTest {
                         "STAFF_NO", "12345678", "31/01/1980",
                         "member@example.com", null, "cap_123456"));
         assertThat(validation.valid()).isTrue();
-        assertThat(validation.command().identityType()).isEqualTo(RegistrationIdentityType.STAFF);
+        assertThat(validation.command().identityType()).isEqualTo(RegistrationIdentityType.STAFFNO);
 
         respond("", List.of(validItem()));
-        adapter.searchUnregisteredMember(command(RegistrationIdentityType.STAFF)).block();
+        adapter.searchUnregisteredMember(command(RegistrationIdentityType.STAFFNO)).block();
 
         ArgumentCaptor<Object> request = ArgumentCaptor.forClass(Object.class);
         verify(webClient).post(eq("/ws/NGTPA/v1/TRPSearchUnregMember"), request.capture());
         assertThat(request.getValue()).isInstanceOf(TrpSearchUnregMemberApimRequest.class);
         var apimRequest = (TrpSearchUnregMemberApimRequest) request.getValue();
-        assertThat(apimRequest.searchBy()).isEqualTo("STAFF");
+        assertThat(apimRequest.searchBy()).isEqualTo("STAFFNO");
         assertThat(apimRequest.searchBy()).isNotEqualTo("STAFF_NO");
     }
 

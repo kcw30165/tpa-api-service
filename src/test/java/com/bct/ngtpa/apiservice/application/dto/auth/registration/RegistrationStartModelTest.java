@@ -12,7 +12,7 @@ class RegistrationStartModelTest {
         assertThat(RegistrationIdentityType.values()).containsExactly(
                 RegistrationIdentityType.GPN,
                 RegistrationIdentityType.GPFS,
-                RegistrationIdentityType.STAFF,
+                RegistrationIdentityType.STAFFNO,
                 RegistrationIdentityType.ID);
     }
 

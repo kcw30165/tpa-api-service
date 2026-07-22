@@ -6,6 +6,6 @@ public enum RegistrationIdentityType {
     GPN,
     GPFS,
     @JsonProperty("STAFF_NO")
-    STAFF,
+    STAFFNO,
     ID
 }

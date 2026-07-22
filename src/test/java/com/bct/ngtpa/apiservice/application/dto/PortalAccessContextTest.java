@@ -14,7 +14,7 @@ class PortalAccessContextTest {
         var actor = new ActorContext("user-01", "RM");
 
         assertEquals("user-01", actor.actorUserId());
-        // assertEquals("STAFF", actor.actorUserType());
+        // assertEquals("STAFFNO", actor.actorUserType());
         assertEquals("RM", actor.actorUserRole());
     }
 
