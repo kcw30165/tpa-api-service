@@ -50,11 +50,11 @@ public class ResendRegistrationOtpService implements ResendRegistrationOtpUseCas
     public Mono<ResendRegistrationOtpResult> resend(ResendRegistrationOtpCommand command) {
         Objects.requireNonNull(command, "command must not be null");
         return protectedContextService.load(new RegistrationProtectedAuthFlowContextCommand(
-                        command.authFlowSessionId(),
-                        command.csrfToken(),
-                        command.origin(),
-                        command.referer(),
-                        command.correlationId()))
+                command.authFlowSessionId(),
+                command.csrfToken(),
+                command.origin(),
+                command.referer(),
+                command.correlationId()))
                 .flatMap(context -> {
                     if (context.status() == RegistrationProtectedAuthFlowContextStatus.CSRF_INVALID) {
                         return Mono.just(failure(
@@ -113,10 +113,10 @@ public class ResendRegistrationOtpService implements ResendRegistrationOtpUseCas
         String contactValue = context.contactValue();
         return otpGateway.resendOtp(protectedContext.activeOtpChallengeId(), contactType, contactValue)
                 .flatMap(otp -> sessionGateway.updateOtpChallenge(
-                                command.authFlowSessionId().value(),
-                                otpChallengeId(otp),
-                                contactType,
-                                protectedContext.maskedDestination())
+                        command.authFlowSessionId().value(),
+                        otpChallengeId(otp),
+                        contactType,
+                        protectedContext.maskedDestination())
                         .then(messageGateway.deliverRegistrationOtp(
                                 contactType,
                                 contactValue,
@@ -128,7 +128,7 @@ public class ResendRegistrationOtpService implements ResendRegistrationOtpUseCas
                             if (!Boolean.TRUE.equals(accepted)) {
                                 return markFailed(command, hash).then(Mono.just(failure(
                                         ResendRegistrationOtpResultStatus.MESSAGE_DELIVERY_FAILED,
-                                        WorkflowNextStep.VERIFY_OTP,
+                                        WorkflowNextStep.RESEND_OTP,
                                         RegistrationOtpResendErrorKeys.REGISTRATION_MESSAGE_DELIVERY_FAILED,
                                         RegistrationIdempotencyStartOutcome.STARTED)));
                             }
@@ -148,15 +148,15 @@ public class ResendRegistrationOtpService implements ResendRegistrationOtpUseCas
                 .onErrorResume(RegistrationOtpSendRateLimitedException.class, rejection -> markFailed(command, hash)
                         .then(Mono.just(failure(
                                 ResendRegistrationOtpResultStatus.SEND_RATE_LIMITED,
-                                WorkflowNextStep.VERIFY_OTP,
-                                "err.registration.otp.sendRateLimited",
+                                WorkflowNextStep.RESTART_FLOW,
+                                resendErrorCode(ResendRegistrationOtpResultStatus.SEND_RATE_LIMITED),                                
                                 RegistrationIdempotencyStartOutcome.STARTED,
                                 rejection.retryAfterSeconds(),
                                 null))))
                 .onErrorResume(RegistrationOtpResendRejectedException.class, rejection -> markFailed(command, hash)
                         .then(Mono.just(failure(
                                 rejection.status(),
-                                WorkflowNextStep.VERIFY_OTP,
+                        nextStepForRejectedResend(rejection.status()),
                                 resendErrorCode(rejection.status()),
                                 RegistrationIdempotencyStartOutcome.STARTED,
                                 rejection.retryAfterSeconds(),
@@ -169,15 +169,20 @@ public class ResendRegistrationOtpService implements ResendRegistrationOtpUseCas
                                 RegistrationIdempotencyStartOutcome.STARTED))));
     }
 
-
-
     private String resendErrorCode(ResendRegistrationOtpResultStatus status) {
         return switch (status) {
             case COOLDOWN_ACTIVE -> RegistrationOtpResendErrorKeys.REGISTRATION_OTP_COOLDOWN_ACTIVE;
-            case SEND_RATE_LIMITED -> "err.registration.otp.sendRateLimited";
+            case SEND_RATE_LIMITED -> RegistrationOtpResendErrorKeys.REGISTRATION_OTP_SEND_RATE_LIMITED;
             case MAX_RESEND_ATTEMPTS_REACHED -> RegistrationOtpResendErrorKeys.REGISTRATION_OTP_MAX_ATTEMPTS_REACHED;
             case INVALID_AUTH_FLOW -> RegistrationOtpResendErrorKeys.REGISTRATION_AUTH_FLOW_INVALID;
             default -> RegistrationOtpResendErrorKeys.REGISTRATION_OTP_RESEND_FAILED;
+        };
+    }
+
+    private WorkflowNextStep nextStepForRejectedResend(ResendRegistrationOtpResultStatus status) {
+        return switch (status) {
+            case MAX_RESEND_ATTEMPTS_REACHED -> WorkflowNextStep.RESTART_FLOW;
+            default -> WorkflowNextStep.VERIFY_OTP;
         };
     }
 
@@ -218,7 +223,8 @@ public class ResendRegistrationOtpService implements ResendRegistrationOtpUseCas
     }
 
     private String jsonField(String name, String value) {
-        return "\"" + name + "\":" + (value == null ? "null" : "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\"");
+        return "\"" + name + "\":"
+                + (value == null ? "null" : "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\"");
     }
 
     private String jsonNumberField(String name, int value) {
@@ -289,7 +295,8 @@ public class ResendRegistrationOtpService implements ResendRegistrationOtpUseCas
     }
 
     private String otpChallengeId(RegistrationOtpCreationResult otp) {
-        Object value = firstOtpValue(otp, "otpChallengeId", "activeOtpChallengeId", "newOtpChallengeId", "challengeId", "id");
+        Object value = firstOtpValue(otp, "otpChallengeId", "activeOtpChallengeId", "newOtpChallengeId", "challengeId",
+                "id");
         if (value == null) {
             throw new IllegalStateException("OTP resend result does not contain a challenge id");
         }

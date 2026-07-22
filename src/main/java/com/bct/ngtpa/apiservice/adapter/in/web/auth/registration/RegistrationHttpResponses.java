@@ -50,7 +50,8 @@ public final class RegistrationHttpResponses {
                 || code.startsWith("err.workflow.idempotency.keyReused")) {
             return HttpStatus.CONFLICT;
         }
-        if (code.contains("rateLimited") || code.contains("cooldownActive")
+        if (code.equals("err.registration.otp.sendRateLimited")
+            || code.contains("rateLimited") || code.contains("cooldownActive")
                 || code.equals("err.registration.otp.locked")) {
             return HttpStatus.TOO_MANY_REQUESTS;
         }

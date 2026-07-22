@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.in.ResendRegistrationOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationIdempotencyPort;
@@ -154,6 +155,25 @@ class ResendRegistrationOtpUseCaseTest {
         assertThat(idempotency.failed).isTrue();
     }
 
+    @Test
+        void resendRateLimitedReturnsRestartFlow() {
+        otp.error = new RegistrationOtpSendRateLimitedException();
+
+        StepVerifier.create(useCase.resend(command()))
+                .assertNext(result -> {
+                assertThat(result.status()).isEqualTo(ResendRegistrationOtpResultStatus.SEND_RATE_LIMITED);
+                    assertThat(result.nextStep()).isEqualTo(WorkflowNextStep.RESTART_FLOW);
+                assertThat(result.retryAfterSeconds()).isZero();
+                assertThat(result.remainingResendAttempts()).isZero();
+                    assertThat(result.errors()).singleElement()
+                            .satisfies(error -> assertThat(error.code())
+                        .isEqualTo(RegistrationErrorKey.OTP_SEND_RATE_LIMITED.value()));
+                })
+                .verifyComplete();
+
+        assertThat(idempotency.failed).isTrue();
+    }
+
     private static ResendRegistrationOtpCommand command() {
         return new ResendRegistrationOtpCommand(
                 new AuthFlowSessionId("afs_secret"),
@@ -231,10 +251,14 @@ class ResendRegistrationOtpUseCaseTest {
     private static final class FakeOtpGateway implements RegistrationOtpPort {
         boolean called;
         String activeOtpChallengeId;
+        RuntimeException error;
         @Override public Mono<RegistrationOtpCreationResult> createOtp(RegistrationContactType type, String destination) { throw new UnsupportedOperationException(); }
         @Override public Mono<RegistrationOtpCreationResult> resendOtp(String activeOtpChallengeId, RegistrationContactType type, String destination) {
             called = true;
             this.activeOtpChallengeId = activeOtpChallengeId;
+            if (error != null) {
+                return Mono.error(error);
+            }
             return Mono.just(new RegistrationOtpCreationResult("otp_new", "123456", 300, 60, 4));
         }
     }

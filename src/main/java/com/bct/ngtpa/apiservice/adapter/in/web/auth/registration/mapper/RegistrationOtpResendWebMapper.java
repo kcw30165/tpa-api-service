@@ -143,6 +143,7 @@ public class RegistrationOtpResendWebMapper {
     private String defaultErrorCode(ResendRegistrationOtpResultStatus status) {
         return switch (status) {
             case COOLDOWN_ACTIVE -> RegistrationOtpResendErrorKeys.REGISTRATION_OTP_COOLDOWN_ACTIVE;
+            case SEND_RATE_LIMITED -> RegistrationOtpResendErrorKeys.REGISTRATION_OTP_SEND_RATE_LIMITED;
             case MAX_RESEND_ATTEMPTS_REACHED -> RegistrationOtpResendErrorKeys.REGISTRATION_OTP_MAX_ATTEMPTS_REACHED;
             case MESSAGE_DELIVERY_FAILED, SYSTEM_FAILED -> RegistrationOtpResendErrorKeys.REGISTRATION_MESSAGE_DELIVERY_FAILED;
             default -> RegistrationOtpResendErrorKeys.REGISTRATION_OTP_RESEND_FAILED;

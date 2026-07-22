@@ -7,6 +7,10 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.Registra
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationOtpVerifyWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.in.ResendRegistrationOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.VerifyRegistrationOtpUseCase;
@@ -15,6 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Method;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import reactor.core.publisher.Mono;
 
@@ -91,24 +96,61 @@ class AuthRegistrationOtpResendControllerTest {
         assertThat(json.toString()).doesNotContain("afs_abc", "csrf_abc", "idem_abc", "otpChallengeId", "activeOtpChallengeId", "123456");
     }
 
+        @Test
+        void otpResendSendRateLimitedMapsToTooManyRequests() {
+        var useCase = new RecordingUseCase();
+        useCase.result = new ResendRegistrationOtpResult(
+            ResendRegistrationOtpResultStatus.SEND_RATE_LIMITED,
+            WorkflowNextStep.RESTART_FLOW,
+            null,
+            0,
+            0,
+            0,
+            0,
+            List.of(),
+            List.of(new WorkflowErrorDescriptor(
+                WorkflowErrorType.FORM,
+                RegistrationErrorKey.OTP_SEND_RATE_LIMITED.value(),
+                null,
+                List.of("PAGE"),
+                WorkflowErrorSeverity.ERROR,
+                "SERVER")),
+            RegistrationIdempotencyStartOutcome.STARTED,
+            null);
+
+        var response = resendController(useCase).resendOtp(
+            "afs_abc", "csrf_abc", "idem_abc", "req_abc", "en", null, null,
+            new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block();
+
+        assertThat(response).isNotNull();
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().errors()).singleElement()
+            .satisfies(error -> assertThat(error.code())
+                .isEqualTo(RegistrationErrorKey.OTP_SEND_RATE_LIMITED.value()));
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
+        assertThat(response.getBody().status().name()).isEqualTo("BUSINESS_REJECTED");
+        assertThat(response.getBody().result().nextStep()).isEqualTo(WorkflowNextStep.RESTART_FLOW);
+        }
+
     private static final class RecordingUseCase implements ResendRegistrationOtpUseCase {
         boolean called;
         ResendRegistrationOtpCommand command;
+        ResendRegistrationOtpResult result = new ResendRegistrationOtpResult(
+            ResendRegistrationOtpResultStatus.RESENT,
+            WorkflowNextStep.VERIFY_OTP,
+            "m****r@example.com",
+            300,
+            60,
+            4,
+            List.of(),
+            List.of(),
+            RegistrationIdempotencyStartOutcome.STARTED,
+            null);
         @Override
         public Mono<ResendRegistrationOtpResult> resend(ResendRegistrationOtpCommand command) {
             called = true;
             this.command = command;
-            return Mono.just(new ResendRegistrationOtpResult(
-                    ResendRegistrationOtpResultStatus.RESENT,
-                    WorkflowNextStep.VERIFY_OTP,
-                    "m****r@example.com",
-                    300,
-                    60,
-                    4,
-                    List.of(),
-                    List.of(),
-                    RegistrationIdempotencyStartOutcome.STARTED,
-                    null));
+            return Mono.just(result);
         }
     }
 

@@ -16,12 +16,16 @@ import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
 import com.bct.ngtpa.apiservice.application.service.auth.otp.OtpChallengeIdGenerator;
 import com.bct.ngtpa.apiservice.application.service.auth.otp.OtpCodeGenerator;
 import com.bct.ngtpa.apiservice.application.service.auth.otp.OtpCodeHasher;
+
+import lombok.extern.slf4j.Slf4j;
+
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import reactor.core.publisher.Mono;
 
+@Slf4j
 public class DefaultOtpChallengeAdapter implements OtpChallengePort {
 
     private final OtpChallengeStatePort otpChallengeStatePort;
@@ -316,6 +320,7 @@ public class DefaultOtpChallengeAdapter implements OtpChallengePort {
                     retryAfterSeconds));
         }
         if (challenge.resendAttemptCount() >= challenge.maxResendAttempts()) {
+            log.warn("Max resend attempts reached for OTP challenge {} ({}).", challenge.otpChallengeId(), challenge.resendAttemptCount());
             return Mono.just(replacementResult(
                     challenge.otpChallengeId(),
                     null,
