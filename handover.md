@@ -26,3 +26,15 @@
 - Regression command: mvn -Dtest=RegistrationOtpChallengeLifecycleIntegrationTest,RegistrationOtpResendServiceIntegrationTest,RegistrationOtpVerificationLifecycleIntegrationTest,RegistrationContractStabilizationIntegrationTest,RegistrationRedisSensitiveDataSafetyIntegrationTest test
 - Production behavior changed by this correction: no
 - Commit message: test(auth): fix shared compatibility verification assertion
+
+### 0043-002-004-fix-shared-otp-port-method-contract
+
+- Status: completed
+- Root cause: AuthFlowOtpPort declared create/resend/verify, while the existing production capability and RegistrationOtpPort use createOtp/resendOtp/verifyOtp.
+- Correction: aligned the shared port method contract to the existing production API; no constructor was added or changed.
+- Production constructors added for tests: none
+- Original 0043-002-003 fail-first evidence remains valid: target/0043-002-003-fail-first.log
+- Targeted command: mvn -Dtest=Task0043RegistrationSharedPortMigrationTest,Task0043SharedAuthFlowContractArchitectureTest,Task0043RegistrationOtpPolicyCharacterizationTest,Task0043AuthenticationFoundationArchitectureGuardTest test
+- Regression command: mvn -Dtest=RegistrationOtpChallengeLifecycleIntegrationTest,RegistrationOtpResendServiceIntegrationTest,RegistrationOtpVerificationLifecycleIntegrationTest,RegistrationContractStabilizationIntegrationTest,RegistrationRedisSensitiveDataSafetyIntegrationTest test
+- Preservation: registration OTP adapter implementation, constructors, endpoint contracts, OTP behavior, Redis state, cookies, CSRF, and public mappings remain unchanged.
+- Commit message: fix(auth): align shared OTP port with existing registration contract
