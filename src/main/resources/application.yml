@@ -119,6 +119,7 @@ auth-workflows:
       ttl-seconds: 300
       resend-cooldown-seconds: 60
       max-verify-attempts: 5
+      resend-limit-enabled: true
       max-resend-attempts: 5
       invalidate-previous-on-resend: true
       reset-verify-attempts-on-resend: true

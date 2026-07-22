@@ -319,7 +319,8 @@ public class DefaultOtpChallengeAdapter implements OtpChallengePort {
                     remainingResendAttempts(challenge.maxResendAttempts(), challenge.resendAttemptCount()),
                     retryAfterSeconds));
         }
-        if (challenge.resendAttemptCount() >= challenge.maxResendAttempts()) {
+        if (challenge.maxResendAttempts() >= 0
+                && challenge.resendAttemptCount() >= challenge.maxResendAttempts()) {
             log.warn("Max resend attempts reached for OTP challenge {} ({}).", challenge.otpChallengeId(), challenge.resendAttemptCount());
             return Mono.just(replacementResult(
                     challenge.otpChallengeId(),
@@ -410,7 +411,9 @@ public class DefaultOtpChallengeAdapter implements OtpChallengePort {
     }
 
     private int remainingResendAttempts(int maxResendAttempts, int resendAttemptCount) {
-        return Math.max(0, maxResendAttempts - resendAttemptCount);
+        return maxResendAttempts < 0
+                ? -1
+                : Math.max(0, maxResendAttempts - resendAttemptCount);
     }
 
     private Integer cooldownRetryAfterSeconds(Instant lastSentAt, int resendCooldownSeconds, Instant now) {
@@ -451,8 +454,9 @@ public class DefaultOtpChallengeAdapter implements OtpChallengePort {
         if (command.maxVerifyAttempts() <= 0) {
             throw new IllegalArgumentException("OTP max verify attempts must be greater than zero");
         }
-        if (command.maxResendAttempts() < 0) {
-            throw new IllegalArgumentException("OTP max resend attempts must not be negative");
+        if (command.maxResendAttempts() < -1) {
+            throw new IllegalArgumentException(
+                    "OTP max resend attempts must be -1 (unlimited) or zero/positive");
         }
     }
 

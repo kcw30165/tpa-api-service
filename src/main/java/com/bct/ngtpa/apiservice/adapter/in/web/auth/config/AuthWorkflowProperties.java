@@ -55,6 +55,7 @@ public class AuthWorkflowProperties {
         private int ttlSeconds;
         private int resendCooldownSeconds;
         private int maxVerifyAttempts;
+        private boolean resendLimitEnabled = true;
         private int maxResendAttempts;
         private boolean invalidatePreviousOnResend;
         private boolean resetVerifyAttemptsOnResend;

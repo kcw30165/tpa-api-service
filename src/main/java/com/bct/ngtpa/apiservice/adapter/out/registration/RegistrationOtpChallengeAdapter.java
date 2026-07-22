@@ -60,7 +60,7 @@ public class RegistrationOtpChallengeAdapter implements RegistrationOtpPort {
                 policy.numericOnly(),
                 policy.ttlSeconds(),
                 policy.maxVerifyAttempts(),
-                policy.maxResendAttempts(),
+                policy.resendLimitEnabled() ? policy.maxResendAttempts() : -1,
                 Instant.now(clock));
 
         return otpChallengePort.createChallenge(command)

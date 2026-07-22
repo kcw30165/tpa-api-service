@@ -6,6 +6,7 @@ public record OtpPolicy(
         int ttlSeconds,
         int resendCooldownSeconds,
         int maxVerifyAttempts,
+        boolean resendLimitEnabled,
         int maxResendAttempts,
         boolean invalidatePreviousOnResend,
         boolean resetVerifyAttemptsOnResend,

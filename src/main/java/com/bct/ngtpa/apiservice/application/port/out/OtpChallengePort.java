@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.application.port.out;
 
+import com.bct.ngtpa.apiservice.application.port.out.authflow.AuthFlowOtpPort;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.CreateOtpChallengeCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.CreateOtpChallengeResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.InvalidateOtpChallengeCommand;
@@ -9,7 +10,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.otp.VerifyOtpChallengeComma
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.VerifyOtpChallengeResult;
 import reactor.core.publisher.Mono;
 
-public interface OtpChallengePort {
+public interface OtpChallengePort extends AuthFlowOtpPort {
 
     Mono<CreateOtpChallengeResult> createChallenge(CreateOtpChallengeCommand command);
 

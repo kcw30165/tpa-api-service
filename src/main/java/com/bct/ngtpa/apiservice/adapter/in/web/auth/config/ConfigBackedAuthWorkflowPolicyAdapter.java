@@ -42,6 +42,7 @@ public class ConfigBackedAuthWorkflowPolicyAdapter implements AuthWorkflowPolicy
                         registration.getOtp().getTtlSeconds(),
                         registration.getOtp().getResendCooldownSeconds(),
                         registration.getOtp().getMaxVerifyAttempts(),
+                        registration.getOtp().isResendLimitEnabled(),
                         registration.getOtp().getMaxResendAttempts(),
                         registration.getOtp().isInvalidatePreviousOnResend(),
                         registration.getOtp().isResetVerifyAttemptsOnResend(),
