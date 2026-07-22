@@ -43,7 +43,7 @@ class Task0043RegistrationCompatibilityAdapterTest {
         StepVerifier.create(adapter.create(RegistrationContactType.EMAIL, "member@example.com")).verifyComplete();
         StepVerifier.create(adapter.resend("challenge", RegistrationContactType.EMAIL, "member@example.com")).verifyComplete();
         StepVerifier.create(adapter.verify("challenge", "123456"))
-                .assertNext(result -> assertThat(result.remainingAttempts()).isEqualTo(4))
+                .assertNext(result -> assertThat(result.remainingVerifyAttempts()).isEqualTo(4))
                 .verifyComplete();
 
         assertThat(creates).hasValue(1);
