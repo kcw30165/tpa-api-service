@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.mapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.dto.CaptchaChallengeResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.dto.CaptchaRefreshResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.dto.CaptchaVerifyResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.dto.CaptchaWorkflowResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
@@ -10,6 +11,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CreateCaptchaChalle
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.RefreshCaptchaChallengeResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.VerifyCaptchaChallengeResult;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import java.util.List;
 import java.util.Objects;
 
@@ -49,17 +51,17 @@ public class CaptchaWebMapper {
                 "ignoredMessageResolver must not be null");
     }
 
-    public MutationResponse<CaptchaChallengeResponse> toChallengeMutationResponse(
+        public MutationResponse<CaptchaWorkflowResultResponse<CaptchaChallengeResponse>> toChallengeMutationResponse(
             CreateCaptchaChallengeResult result) {
-        return MutationResponse.success(ApiStatus.SUCCESS, toChallengeResponse(result), List.of());
+                return MutationResponse.success(ApiStatus.SUCCESS, wrap(toChallengeResponse(result)), List.of());
     }
 
-    public MutationResponse<CaptchaVerifyResponse> toVerifyMutationResponse(
+        public MutationResponse<CaptchaWorkflowResultResponse<CaptchaVerifyResponse>> toVerifyMutationResponse(
             VerifyCaptchaChallengeResult result,
             String acceptLanguage) {
         Objects.requireNonNull(result, "result must not be null");
         return switch (result.outcome()) {
-            case VERIFIED -> MutationResponse.success(ApiStatus.SUCCESS, toVerifyResponse(result), List.of());
+                        case VERIFIED -> MutationResponse.success(ApiStatus.SUCCESS, wrap(toVerifyResponse(result)), List.of());
             case INVALID -> failure(
                     result,
                     RegistrationErrorKey.REGISTRATION_CAPTCHA_INVALID.value(),
@@ -87,50 +89,53 @@ public class CaptchaWebMapper {
         };
     }
 
-    public MutationResponse<CaptchaRefreshResponse> toRefreshMutationResponse(
+        public MutationResponse<CaptchaWorkflowResultResponse<CaptchaRefreshResponse>> toRefreshMutationResponse(
             RefreshCaptchaChallengeResult result) {
-        return MutationResponse.success(ApiStatus.SUCCESS, toRefreshResponse(result), List.of());
+                return MutationResponse.success(ApiStatus.SUCCESS, wrap(toRefreshResponse(result)), List.of());
     }
 
-    public MutationResponse<CaptchaVerifyResponse> missingAnswerResponse(String acceptLanguage) {
+        public MutationResponse<CaptchaWorkflowResultResponse<CaptchaVerifyResponse>> missingAnswerResponse(String acceptLanguage) {
         return validationFailure(
                 new CaptchaVerifyResponse(false, null, null),
                 RegistrationErrorKey.REGISTRATION_CAPTCHA_REQUIRED.value(),
                 CAPTCHA_ANSWER_TARGET);
     }
 
-    public MutationResponse<CaptchaVerifyResponse> missingChallengeIdResponse(String acceptLanguage) {
+        public MutationResponse<CaptchaWorkflowResultResponse<CaptchaVerifyResponse>> missingChallengeIdResponse(String acceptLanguage) {
         return validationFailure(
                 new CaptchaVerifyResponse(false, null, null),
                 RegistrationErrorKey.REGISTRATION_CAPTCHA_REQUIRED.value(),
                 CAPTCHA_CHALLENGE_ID_TARGET);
     }
 
-    public MutationResponse<CaptchaVerifyResponse> invalidChallengeIdResponse(String acceptLanguage) {
+        public MutationResponse<CaptchaWorkflowResultResponse<CaptchaVerifyResponse>> invalidChallengeIdResponse(String acceptLanguage) {
         return validationFailure(
                 new CaptchaVerifyResponse(false, null, null),
                 RegistrationErrorKey.REGISTRATION_CAPTCHA_INVALID.value(),
                 CAPTCHA_CHALLENGE_ID_TARGET);
     }
 
-    public MutationResponse<CaptchaRefreshResponse> invalidRefreshChallengeIdResponse(
+        public MutationResponse<CaptchaWorkflowResultResponse<CaptchaRefreshResponse>> invalidRefreshChallengeIdResponse(
             String acceptLanguage) {
         ApiError error = ApiError.field(
                 RegistrationErrorKey.REGISTRATION_CAPTCHA_INVALID.value(),
                 null,
                 List.of(CAPTCHA_CHALLENGE_ID_TARGET),
                 SOURCE_SERVER);
-        return MutationResponse.failure(ApiStatus.VALIDATION_FAILED, null, List.of(error));
+                return MutationResponse.failure(
+                                ApiStatus.VALIDATION_FAILED,
+                                wrap(null),
+                                List.of(error));
     }
 
-    private MutationResponse<CaptchaVerifyResponse> failure(
+        private MutationResponse<CaptchaWorkflowResultResponse<CaptchaVerifyResponse>> failure(
             VerifyCaptchaChallengeResult result,
             String errorCode,
             String target) {
         return validationFailure(toVerifyResponse(result), errorCode, target);
     }
 
-    private MutationResponse<CaptchaVerifyResponse> validationFailure(
+        private MutationResponse<CaptchaWorkflowResultResponse<CaptchaVerifyResponse>> validationFailure(
             CaptchaVerifyResponse response,
             String errorCode,
             String target) {
@@ -139,8 +144,12 @@ public class CaptchaWebMapper {
                 null,
                 List.of(target),
                 SOURCE_SERVER);
-        return MutationResponse.failure(ApiStatus.VALIDATION_FAILED, response, List.of(error));
+                return MutationResponse.failure(ApiStatus.VALIDATION_FAILED, wrap(response), List.of(error));
     }
+
+        private <T> CaptchaWorkflowResultResponse<T> wrap(T data) {
+                return new CaptchaWorkflowResultResponse<>(WorkflowNextStep.NONE, data);
+        }
 
     private CaptchaChallengeResponse toChallengeResponse(CreateCaptchaChallengeResult result) {
         Objects.requireNonNull(result, "result must not be null");

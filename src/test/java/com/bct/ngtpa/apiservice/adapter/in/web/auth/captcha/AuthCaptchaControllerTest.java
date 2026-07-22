@@ -15,6 +15,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.captcha.RefreshCaptchaChall
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.RefreshCaptchaChallengeResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.VerifyCaptchaChallengeCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.VerifyCaptchaChallengeResult;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.in.CreateCaptchaChallengeUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.RefreshCaptchaUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.VerifyCaptchaUseCase;
@@ -147,10 +148,11 @@ class AuthCaptchaControllerTest {
                 .expectBody()
                 .jsonPath("$.success").isEqualTo(true)
                 .jsonPath("$.status").isEqualTo("SUCCESS")
-                .jsonPath("$.result.captchaChallengeId").isEqualTo(CHALLENGE_ID.value())
-                .jsonPath("$.result.imageBase64").isEqualTo("base64-image")
-                .jsonPath("$.result.mimeType").isEqualTo("image/png")
-                .jsonPath("$.result.expiresInSeconds").isEqualTo(300)
+                .jsonPath("$.result.nextStep").isEqualTo(WorkflowNextStep.NONE.name())
+                .jsonPath("$.result.data.captchaChallengeId").isEqualTo(CHALLENGE_ID.value())
+                .jsonPath("$.result.data.imageBase64").isEqualTo("base64-image")
+                .jsonPath("$.result.data.mimeType").isEqualTo("image/png")
+                .jsonPath("$.result.data.expiresInSeconds").isEqualTo(300)
                 .jsonPath("$.messages").isArray()
                 .jsonPath("$.errors").isArray();
 
@@ -166,9 +168,9 @@ class AuthCaptchaControllerTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.result.nextStep").doesNotExist()
+                .jsonPath("$.result.nextStep").isEqualTo(WorkflowNextStep.NONE.name())
                 .jsonPath("$.result.pageRef").doesNotExist()
-                .jsonPath("$.result.data").doesNotExist();
+                .jsonPath("$.result.data").exists();
     }
 
     @Test
@@ -200,8 +202,9 @@ class AuthCaptchaControllerTest {
                 .expectBody()
                 .jsonPath("$.success").isEqualTo(true)
                 .jsonPath("$.status").isEqualTo("SUCCESS")
-                .jsonPath("$.result.verified").isEqualTo(true)
-                .jsonPath("$.result.captchaChallengeId").isEqualTo(CHALLENGE_ID.value());
+                .jsonPath("$.result.nextStep").isEqualTo(WorkflowNextStep.NONE.name())
+                .jsonPath("$.result.data.verified").isEqualTo(true)
+                .jsonPath("$.result.data.captchaChallengeId").isEqualTo(CHALLENGE_ID.value());
     }
 
     @Test
@@ -218,8 +221,9 @@ class AuthCaptchaControllerTest {
                 .expectBody()
                 .jsonPath("$.success").isEqualTo(false)
                 .jsonPath("$.status").isEqualTo("VALIDATION_FAILED")
-                .jsonPath("$.result.verified").isEqualTo(false)
-                .jsonPath("$.result.remainingAttempts").isEqualTo(4)
+                .jsonPath("$.result.nextStep").isEqualTo(WorkflowNextStep.NONE.name())
+                .jsonPath("$.result.data.verified").isEqualTo(false)
+                .jsonPath("$.result.data.remainingAttempts").isEqualTo(4)
                 .jsonPath("$.errors[0].code").isEqualTo("err.registration.captcha.invalid")
                 .jsonPath("$.errors[0].targets[0]").isEqualTo("captchaAnswer");
     }
@@ -317,10 +321,11 @@ class AuthCaptchaControllerTest {
                 .expectBody()
                 .jsonPath("$.success").isEqualTo(true)
                 .jsonPath("$.status").isEqualTo("SUCCESS")
-                .jsonPath("$.result.captchaChallengeId").isEqualTo(NEW_CHALLENGE_ID.value())
-                .jsonPath("$.result.imageBase64").isEqualTo("base64-refresh")
-                .jsonPath("$.result.mimeType").isEqualTo("image/png")
-                .jsonPath("$.result.expiresInSeconds").isEqualTo(300);
+                .jsonPath("$.result.nextStep").isEqualTo(WorkflowNextStep.NONE.name())
+                .jsonPath("$.result.data.captchaChallengeId").isEqualTo(NEW_CHALLENGE_ID.value())
+                .jsonPath("$.result.data.imageBase64").isEqualTo("base64-refresh")
+                .jsonPath("$.result.data.mimeType").isEqualTo("image/png")
+                .jsonPath("$.result.data.expiresInSeconds").isEqualTo(300);
 
         assertThat(captured.get().oldCaptchaChallengeId()).isEqualTo(CHALLENGE_ID);
     }
@@ -340,7 +345,6 @@ class AuthCaptchaControllerTest {
                         .doesNotContain("answer")
                         .doesNotContain("answerHash")
                     .doesNotContain("oldStatus")
-                        .doesNotContain("nextStep")
                         .doesNotContain("pageRef"));
     }
 
@@ -360,7 +364,8 @@ class AuthCaptchaControllerTest {
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.result.captchaChallengeId").isEqualTo(NEW_CHALLENGE_ID.value());
+                .jsonPath("$.result.nextStep").isEqualTo(WorkflowNextStep.NONE.name())
+                .jsonPath("$.result.data.captchaChallengeId").isEqualTo(NEW_CHALLENGE_ID.value());
 
         assertThat(captured.get().oldCaptchaChallengeId()).isNull();
     }
