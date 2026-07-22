@@ -121,11 +121,14 @@ class AuthRegistrationOtpVerifyControllerTest {
 
         var controller = otpController(new RecordingUseCase());
 
-        String json = objectMapper.writeValueAsString(controller.verifyOtp(new RegistrationOtpVerifyRequest("123456"),
-                "afs_abc", "csrf_abc", "idem_abc", "req_abc", "en", null, null,
-                new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block());
-        assertThat(json).contains("USERNAME_CHECK", "registration-username-check", "unregisteredTrusts");
-        assertThat(json).doesNotContain("afs_abc", "csrf_abc", "idem_abc", "123456", "otpChallengeId",
+        com.fasterxml.jackson.databind.JsonNode json = objectMapper.valueToTree(controller.verifyOtp(new RegistrationOtpVerifyRequest("123456"),
+            "afs_abc", "csrf_abc", "idem_abc", "req_abc", "en", null, null,
+            new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block());
+        assertThat(json.at("/body/result/nextStep").asText()).isEqualTo("USERNAME_CHECK");
+        assertThat(json.at("/body/result/data/unregisteredTrusts/0/accountEnv").asText()).isEqualTo("OI");
+        assertThat(json.at("/body/result/pageRef").isMissingNode()).isTrue();
+        assertThat(json.toString()).doesNotContain("registration-username-check");
+        assertThat(json.toString()).doesNotContain("afs_abc", "csrf_abc", "idem_abc", "123456", "otpChallengeId",
                 "activeOtpChallengeId", "member@example.com", "3024102", "04/04/1982");
     }
 

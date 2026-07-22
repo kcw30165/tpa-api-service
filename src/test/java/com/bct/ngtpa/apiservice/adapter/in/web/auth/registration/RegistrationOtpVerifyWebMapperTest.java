@@ -17,7 +17,7 @@ class RegistrationOtpVerifyWebMapperTest {
 
     @Test
     void successSingleTrustMapsToUsernameCheck() throws Exception {
-        Object response = mapper.toMutationResponse(new VerifyRegistrationOtpResult(
+        var response = mapper.toMutationResponse(new VerifyRegistrationOtpResult(
                 VerifyRegistrationOtpResultStatus.VERIFIED,
                 WorkflowNextStep.USERNAME_CHECK,
                 List.of(new RegistrationUnregisteredTrust("OI", "JPM")),
@@ -28,14 +28,19 @@ class RegistrationOtpVerifyWebMapperTest {
                 null));
 
         String json = objectMapper.writeValueAsString(response);
-        assertThat(json).contains("\"success\":true", "\"nextStep\":\"USERNAME_CHECK\"", "registration-username-check");
-        assertThat(json).contains("\"accountEnv\":\"OI\"", "\"trustCode\":\"JPM\"");
+        assertThat(response.result().nextStep()).isEqualTo(WorkflowNextStep.USERNAME_CHECK);
+        assertThat(response.result().data().unregisteredTrusts()).singleElement().satisfies(trust -> {
+            assertThat(trust.accountEnv()).isEqualTo("OI");
+            assertThat(trust.trustCode()).isEqualTo("JPM");
+        });
+        assertThat(json).contains("\"success\":true", "\"nextStep\":\"USERNAME_CHECK\"");
+        assertThat(json).doesNotContain("registration-username-check", "pageRef");
         assertThat(json).doesNotContain("auth_flow_sid", "csrfToken", "otpChallengeId", "activeOtpChallengeId", "123456", "member@example.com", "3024102", "04/04/1982");
     }
 
     @Test
     void successMultipleTrustsMapsToSelectTrust() throws Exception {
-        Object response = mapper.toMutationResponse(new VerifyRegistrationOtpResult(
+        var response = mapper.toMutationResponse(new VerifyRegistrationOtpResult(
                 VerifyRegistrationOtpResultStatus.VERIFIED,
                 WorkflowNextStep.SELECT_TRUST,
                 List.of(
@@ -48,7 +53,10 @@ class RegistrationOtpVerifyWebMapperTest {
                 null));
 
         String json = objectMapper.writeValueAsString(response);
-        assertThat(json).contains("\"success\":true", "\"nextStep\":\"SELECT_TRUST\"", "registration-trust-selection");
+        assertThat(response.result().nextStep()).isEqualTo(WorkflowNextStep.SELECT_TRUST);
+        assertThat(response.result().data().unregisteredTrusts()).hasSize(2);
+        assertThat(json).contains("\"success\":true", "\"nextStep\":\"SELECT_TRUST\"");
+        assertThat(json).doesNotContain("registration-trust-selection", "pageRef");
     }
 
     @Test
@@ -70,7 +78,7 @@ class RegistrationOtpVerifyWebMapperTest {
 
     @Test
     void duplicateInProgressMapsToWait() throws Exception {
-        Object response = mapper.toMutationResponse(new VerifyRegistrationOtpResult(
+        var response = mapper.toMutationResponse(new VerifyRegistrationOtpResult(
                 VerifyRegistrationOtpResultStatus.DUPLICATE_IN_PROGRESS,
                 WorkflowNextStep.WAIT,
                 List.of(),
@@ -80,13 +88,13 @@ class RegistrationOtpVerifyWebMapperTest {
                 RegistrationIdempotencyStartOutcome.DUPLICATE_IN_PROGRESS,
                 null));
 
-        String json = objectMapper.writeValueAsString(response);
-        assertThat(json).contains("\"success\":true", "\"nextStep\":\"WAIT\"");
+        assertThat(response.result().nextStep()).isEqualTo(WorkflowNextStep.WAIT);
+        assertThat(response.result().data()).isNull();
     }
 
     @Test
     void invalidOtpMapsRemainingAttemptsToVerifyOtpPayload() throws Exception {
-        Object response = mapper.toMutationResponse(new VerifyRegistrationOtpResult(
+        var response = mapper.toMutationResponse(new VerifyRegistrationOtpResult(
                 VerifyRegistrationOtpResultStatus.OTP_INVALID,
                 WorkflowNextStep.VERIFY_OTP,
                 List.of(),
@@ -98,7 +106,8 @@ class RegistrationOtpVerifyWebMapperTest {
 
         String json = objectMapper.writeValueAsString(response);
         assertThat(json).contains("\"success\":false", "err.registration.otp.invalid");
-        assertThat(json).contains("\"nextStep\":\"VERIFY_OTP\"", "registration-otp-verification", "\"remainingVerifyAttempts\":2");
+        assertThat(json).contains("\"nextStep\":\"VERIFY_OTP\"", "\"remainingVerifyAttempts\":2");
+        assertThat(json).doesNotContain("registration-otp-verification", "pageRef");
         assertThat(json).doesNotContain("otpChallengeId", "activeOtpChallengeId", "123456", "member@example.com");
     }
 

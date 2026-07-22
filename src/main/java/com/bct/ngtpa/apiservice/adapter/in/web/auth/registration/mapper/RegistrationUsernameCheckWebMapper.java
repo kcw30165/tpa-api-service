@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationSelectedTrustRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationUsernameCheckRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationUsernameCheckResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationWorkflowResultResponse;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationSelectedTrust;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
@@ -13,9 +14,7 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.CheckRegistrationUsernameCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.CheckRegistrationUsernameResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.CheckRegistrationUsernameResultStatus;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 public class RegistrationUsernameCheckWebMapper {
     private static final String SUCCESS = "SUCCESS";
@@ -55,11 +54,10 @@ public class RegistrationUsernameCheckWebMapper {
                 trimToNull(requestId));
     }
 
-    public MutationResponse<RegistrationUsernameCheckResponse> toMutationResponse(
+    public MutationResponse<RegistrationWorkflowResultResponse<RegistrationUsernameCheckResponse>> toMutationResponse(
             CheckRegistrationUsernameResult result) {
         boolean success = result.status() == CheckRegistrationUsernameResultStatus.USERNAME_AVAILABLE;
-        RegistrationUsernameCheckResponse payload = new RegistrationUsernameCheckResponse(
-                nextStep(result));
+        RegistrationWorkflowResultResponse<RegistrationUsernameCheckResponse> payload = payload(nextStep(result));
         if (success) {
             return MutationResponse.success(ApiStatus.SUCCESS, payload, List.of());
         }
@@ -77,36 +75,28 @@ public class RegistrationUsernameCheckWebMapper {
         return MutationResponse.failure(status, payload, errors);
     }
 
-    public MutationResponse<RegistrationUsernameCheckResponse> missingAuthFlowCookieResponse() {
+    public MutationResponse<RegistrationWorkflowResultResponse<RegistrationUsernameCheckResponse>> missingAuthFlowCookieResponse() {
         return errorResponse(REGISTRATION_AUTH_FLOW_INVALID);
     }
 
-    public MutationResponse<RegistrationUsernameCheckResponse> missingCsrfTokenResponse() {
+    public MutationResponse<RegistrationWorkflowResultResponse<RegistrationUsernameCheckResponse>> missingCsrfTokenResponse() {
         return errorResponse(REGISTRATION_CSRF_INVALID);
     }
 
-    public MutationResponse<RegistrationUsernameCheckResponse> missingRequestBodyResponse() {
+    public MutationResponse<RegistrationWorkflowResultResponse<RegistrationUsernameCheckResponse>> missingRequestBodyResponse() {
         return errorResponse(REGISTRATION_USERNAME_CHECK_REQUEST_INVALID);
     }
 
-    private MutationResponse<RegistrationUsernameCheckResponse> errorResponse(String code) {
-        RegistrationUsernameCheckResponse payload = new RegistrationUsernameCheckResponse(
-                WorkflowNextStep.USERNAME_CHECK);
+    private MutationResponse<RegistrationWorkflowResultResponse<RegistrationUsernameCheckResponse>> errorResponse(String code) {
+        RegistrationWorkflowResultResponse<RegistrationUsernameCheckResponse> payload = payload(WorkflowNextStep.USERNAME_CHECK);
         return MutationResponse.failure(
                 ApiStatus.VALIDATION_FAILED,
                 payload,
                 List.of(apiError(code, TARGET_PAGE)));
     }
 
-    private Map<String, Object> pageRef(WorkflowNextStep nextStep) {
-        Map<String, Object> pageRef = new LinkedHashMap<>();
-        pageRef.put("pageId", switch (nextStep) {
-            case PASSWORD_SETUP -> "registration-password-setup";
-            case USERNAME_CHECK -> "registration-username-check";
-            default -> null;
-        });
-        pageRef.put("variant", null);
-        return pageRef;
+    private RegistrationWorkflowResultResponse<RegistrationUsernameCheckResponse> payload(WorkflowNextStep nextStep) {
+        return new RegistrationWorkflowResultResponse<>(nextStep, new RegistrationUsernameCheckResponse());
     }
 
     private WorkflowNextStep nextStep(CheckRegistrationUsernameResult result) {

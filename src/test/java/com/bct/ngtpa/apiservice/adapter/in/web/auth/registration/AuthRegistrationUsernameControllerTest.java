@@ -116,6 +116,8 @@ class AuthRegistrationUsernameControllerTest {
         assertThat(json.get("success").asBoolean()).isTrue();
         assertThat(json.get("status").asText()).isEqualTo("SUCCESS");
         assertThat(json.at("/result/nextStep").asText()).isEqualTo("PASSWORD_SETUP");
+        assertThat(json.at("/result/data").isObject()).isTrue();
+        assertThat(json.at("/result/pageRef").isMissingNode()).isTrue();
         assertThat(json.get("messages")).isEmpty();
         assertThat(json.get("errors")).isEmpty();
         assertThat(json.toString()).doesNotContain("afs", "csrf", "abc1@");
@@ -136,6 +138,8 @@ class AuthRegistrationUsernameControllerTest {
         assertThat(json.get("success").asBoolean()).isFalse();
         assertThat(json.get("status").asText()).isEqualTo("VALIDATION_FAILED");
         assertThat(json.at("/result/nextStep").asText()).isEqualTo("USERNAME_CHECK");
+        assertThat(json.at("/result/data").isObject()).isTrue();
+        assertThat(json.at("/result/pageRef").isMissingNode()).isTrue();
         assertThat(json.at("/errors/0/code").asText()).isEqualTo("err.registration.username.policyInvalid");
         assertThat(json.at("/errors/0/targets/0").asText()).isEqualTo("PAGE");
     }

@@ -18,8 +18,8 @@ class RegistrationHttpAndCookieSlidingContractTest {
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/mapper/RegistrationUsernameCheckWebMapper.java"));
 
         assertThat(captcha).contains("RegistrationHttpResponses.toResponse");
-        assertThat(username).contains("RegistrationHttpResponses.toObjectResponse");
-        assertThat(mapper).contains("MutationResponse<RegistrationUsernameCheckResponse>");
+                assertThat(username).contains("RegistrationHttpResponses.toResponse");
+                assertThat(mapper).contains("MutationResponse<RegistrationWorkflowResultResponse<RegistrationUsernameCheckResponse>>");
     }
 
     @Test

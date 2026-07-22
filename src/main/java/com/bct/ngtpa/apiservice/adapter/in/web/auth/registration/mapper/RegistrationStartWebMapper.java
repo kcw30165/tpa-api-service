@@ -3,23 +3,22 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartWorkflowDataResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationWorkflowResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowPageRefs;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResult;
-import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResultPayload;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResultStatus;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationError;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResultStatus;
+import com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper;
 import java.time.Duration;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
@@ -30,16 +29,18 @@ public class RegistrationStartWebMapper {
     private static final String TARGET_PAGE = "PAGE";
 
     private final Duration defaultIdempotencyTtl;
-    private final WorkflowMutationResponseMapper workflowMutationResponseMapper;
+    private final RegistrationWorkflowMutationResponseMapper workflowMutationResponseMapper;
 
     public RegistrationStartWebMapper(Duration defaultIdempotencyTtl) {
-        this(defaultIdempotencyTtl, new WorkflowMutationResponseMapper());
+        this(defaultIdempotencyTtl,
+            new WorkflowMutationResponseMapper());
     }
 
     public RegistrationStartWebMapper(
             Duration defaultIdempotencyTtl,
             Object ignoredMessageResolver) {
-        this(defaultIdempotencyTtl, new WorkflowMutationResponseMapper());
+        this(defaultIdempotencyTtl,
+            new WorkflowMutationResponseMapper());
     }
 
     RegistrationStartWebMapper(
@@ -53,7 +54,8 @@ public class RegistrationStartWebMapper {
             Duration defaultIdempotencyTtl,
             WorkflowMutationResponseMapper workflowMutationResponseMapper) {
         this.defaultIdempotencyTtl = java.util.Objects.requireNonNull(defaultIdempotencyTtl);
-        this.workflowMutationResponseMapper = java.util.Objects.requireNonNull(workflowMutationResponseMapper);
+        this.workflowMutationResponseMapper = new RegistrationWorkflowMutationResponseMapper(
+                java.util.Objects.requireNonNull(workflowMutationResponseMapper));
     }
     public StartRegistrationCommand toCommand(
             RegistrationStartRequest request,
@@ -108,7 +110,7 @@ public class RegistrationStartWebMapper {
                 result.csrfToken());
     }
 
-    public MutationResponse<WorkflowResultPayload<RegistrationStartWorkflowDataResponse>> toMutationResponse(
+    public MutationResponse<RegistrationWorkflowResultResponse<RegistrationStartWorkflowDataResponse>> toMutationResponse(
             StartRegistrationResult result,
             String acceptLanguage) {
         logFatalIfNeeded(result);
@@ -124,12 +126,12 @@ public class RegistrationStartWebMapper {
         return response;
     }
 
-    public MutationResponse<WorkflowResultPayload<RegistrationStartWorkflowDataResponse>> toMutationResponse(
+    public MutationResponse<RegistrationWorkflowResultResponse<RegistrationStartWorkflowDataResponse>> toMutationResponse(
             StartRegistrationResult result) {
         return toMutationResponse(result, null);
     }
 
-    public MutationResponse<WorkflowResultPayload<RegistrationStartWorkflowDataResponse>> missingIdempotencyKeyResponse(
+    public MutationResponse<RegistrationWorkflowResultResponse<RegistrationStartWorkflowDataResponse>> missingIdempotencyKeyResponse(
             String acceptLanguage) {
         var code = SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value();
         var error = new WorkflowErrorDescriptor(
@@ -149,7 +151,7 @@ public class RegistrationStartWebMapper {
                         List.of(error)));
     }
 
-    public MutationResponse<WorkflowResultPayload<RegistrationStartWorkflowDataResponse>> missingIdempotencyKeyResponse() {
+    public MutationResponse<RegistrationWorkflowResultResponse<RegistrationStartWorkflowDataResponse>> missingIdempotencyKeyResponse() {
         return missingIdempotencyKeyResponse(null);
     }
 
@@ -178,7 +180,7 @@ public class RegistrationStartWebMapper {
                 workflowStatus,
                 result.nextStep(),
                 response,
-                RegistrationWorkflowPageRefs.forNextStep(result.nextStep()),
+            null,
                 List.of(),
                 result.errors().stream()
                         .map(error -> toWorkflowError(error, result.status(), acceptLanguage))

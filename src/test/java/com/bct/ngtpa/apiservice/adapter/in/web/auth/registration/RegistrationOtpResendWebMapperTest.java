@@ -17,7 +17,7 @@ class RegistrationOtpResendWebMapperTest {
 
     @Test
     void successMapsToWorkflowMutationResponseWithoutSensitiveValues() throws Exception {
-        Object response = mapper.toMutationResponse(new ResendRegistrationOtpResult(
+        var response = mapper.toMutationResponse(new ResendRegistrationOtpResult(
                 ResendRegistrationOtpResultStatus.RESENT,
                 WorkflowNextStep.VERIFY_OTP,
                 "s****v@hcglt.nla",
@@ -30,8 +30,12 @@ class RegistrationOtpResendWebMapperTest {
                 null));
 
         String json = objectMapper.writeValueAsString(response);
-        assertThat(json).contains("\"success\":true", "\"nextStep\":\"VERIFY_OTP\"", "registration-otp-verification");
+        assertThat(response.result().nextStep()).isEqualTo(WorkflowNextStep.VERIFY_OTP);
+        assertThat(response.result().data().maskedDestination()).isEqualTo("s****v@hcglt.nla");
+        assertThat(response.result().retryAfterSeconds()).isNull();
+        assertThat(json).contains("\"success\":true", "\"nextStep\":\"VERIFY_OTP\"");
         assertThat(json).contains("\"maskedDestination\":\"s****v@hcglt.nla\"", "\"expiresInSeconds\":287", "\"resendCooldownSeconds\":47", "\"remainingResendAttempts\":5");
+        assertThat(json).doesNotContain("registration-otp-verification", "pageRef");
         assertThat(json).doesNotContain("csrfToken", "auth_flow_sid", "otpChallengeId", "activeOtpChallengeId", "123456", "member@example.com", "3024102", "04/04/1982");
     }
 
@@ -56,7 +60,7 @@ class RegistrationOtpResendWebMapperTest {
 
     @Test
     void duplicateInProgressMapsToWait() throws Exception {
-        Object response = mapper.toMutationResponse(new ResendRegistrationOtpResult(
+        var response = mapper.toMutationResponse(new ResendRegistrationOtpResult(
                 ResendRegistrationOtpResultStatus.DUPLICATE_IN_PROGRESS,
                 WorkflowNextStep.WAIT,
                 null,
@@ -68,7 +72,7 @@ class RegistrationOtpResendWebMapperTest {
                 RegistrationIdempotencyStartOutcome.DUPLICATE_IN_PROGRESS,
                 null));
 
-        String json = objectMapper.writeValueAsString(response);
-        assertThat(json).contains("\"success\":true", "\"nextStep\":\"WAIT\"");
+        assertThat(response.result().nextStep()).isEqualTo(WorkflowNextStep.WAIT);
+        assertThat(response.result().data()).isNull();
     }
 }

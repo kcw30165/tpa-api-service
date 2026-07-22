@@ -1,11 +1,14 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.CancelRegistrationResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationActionResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationWorkflowResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.registration.RegistrationCancellationPageMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.cancel.CancelRegistrationCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.cancel.CancelRegistrationResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.cancel.CancelRegistrationResultStatus;
@@ -40,14 +43,14 @@ public final class CancelRegistrationWebMapper {
                 trim(requestId));
     }
 
-    public MutationResponse<CancelRegistrationResponse> toResponse(
+    public MutationResponse<RegistrationWorkflowResultResponse<CancelRegistrationResponse>> toResponse(
             CancelRegistrationResult result,
             String language) {
         Objects.requireNonNull(result, "result must not be null");
         if (result.successfulCleanup()) {
             return MutationResponse.success(
                     ApiStatus.SUCCESS,
-                    new CancelRegistrationResponse(true, pageMapper.map(language)),
+                    payload(language),
                     List.of());
         }
         ApiStatus status = result.status() == CancelRegistrationResultStatus.CSRF_INVALID
@@ -63,24 +66,35 @@ public final class CancelRegistrationWebMapper {
                         error.severity().name(),
                         error.source()))
                 .toList();
-        return MutationResponse.failure(status, null, errors);
+        return MutationResponse.failure(status, payload(language), errors);
     }
 
-    public MutationResponse<CancelRegistrationResponse> missingSession(String language) {
+    public MutationResponse<RegistrationWorkflowResultResponse<CancelRegistrationResponse>> missingSession(String language) {
         return MutationResponse.success(
                 ApiStatus.SUCCESS,
-                new CancelRegistrationResponse(true, pageMapper.map(language)),
+                payload(language),
                 List.of());
     }
 
-    public MutationResponse<CancelRegistrationResponse> missingCsrf(String language) {
+    public MutationResponse<RegistrationWorkflowResultResponse<CancelRegistrationResponse>> missingCsrf(String language) {
         String code = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.CSRF_INVALID.value();
         ApiError error = ApiError.business(
                 code,
                 null,
                 List.of("PAGE"),
                 SOURCE_SERVER);
-        return MutationResponse.failure(ApiStatus.VALIDATION_FAILED, null, List.of(error));
+        return MutationResponse.failure(ApiStatus.VALIDATION_FAILED, payload(language), List.of(error));
+    }
+
+    private RegistrationWorkflowResultResponse<CancelRegistrationResponse> payload(String language) {
+        return new RegistrationWorkflowResultResponse<>(
+                WorkflowNextStep.RETURN_TO_LOGIN,
+                new CancelRegistrationResponse(pageMapper.map(language).actions().stream()
+                        .map(action -> new RegistrationActionResponse(
+                                action.id(),
+                                action.type(),
+                                action.nextStep()))
+                        .toList()));
     }
 
     private String trim(String value) {
