@@ -148,6 +148,10 @@ auth-workflows:
       otp-verify-ttl-seconds: 300
       complete-ttl-seconds: 300
 apim:
+  retry:
+    business-call:
+      max-attempts: ${APIM_BUSINESS_RETRY_MAX_ATTEMPTS:3}
+      backoff-milliseconds: ${APIM_BUSINESS_RETRY_BACKOFF_MILLISECONDS:100}
   base-url: ${APIM_BASE_URL:${APIM_BASEURL:}}
   timeout-milliseconds: ${APIM_TIMEOUT_MILLISECONDS:${APIM_TIMEOUTMILLISECONDS:10000}}
   oauth:

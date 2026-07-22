@@ -50,3 +50,17 @@
 - Targeted command: mvn -Dtest=RegistrationSharedCoreMigrationArchitectureTest,Task0043OtpResendLimitPolicyTest,Task0043SharedAuthFlowContractArchitectureTest,Task0043RegistrationOtpPolicyCharacterizationTest,Task0043AuthenticationFoundationArchitectureGuardTest,RegistrationOtpChallengeAdapterVerifyGuardTest,RegistrationOtpResendCooldownGuardTest test
 - Regression command: mvn -Dtest=RegistrationOtpChallengeLifecycleIntegrationTest,RegistrationOtpResendServiceIntegrationTest,RegistrationOtpVerificationLifecycleIntegrationTest,RegistrationContractStabilizationIntegrationTest,RegistrationRedisSensitiveDataSafetyIntegrationTest test
 - Commit message: test(auth): align registration migration guard with shared core architecture
+
+### 0043-004-001-apim-business-retry-classification-and-configuration
+
+- Status: completed
+- Added ApimRetryEligibility: SAFE_BUSINESS_CALL, IDEMPOTENT_MUTATION, NON_RETRYABLE
+- Added apim.retry.business-call max-attempts and backoff-milliseconds to existing ApimProperties/application.yml
+- max-attempts means total business-call attempts including the first call
+- ApimWebClientFacade transport retry is intentionally deferred to 0043-004-002
+- Existing token/certificate recovery behavior is unchanged
+- Production constructors added or changed for tests: none
+- Fail-first evidence: target/0043-004-001-fail-first.log
+- Targeted command: mvn -Dtest=ApimBusinessRetryPolicyTest,ApimRetryClassificationArchitectureTest,ApimPropertiesBindingTest,ApimWebClientFacadeRetryTest test
+- Regression command: mvn -Dtest=RegistrationContractStabilizationIntegrationTest,RegistrationLoggingLookupStabilizationIntegrationTest,RegistrationCompletionResilienceIntegrationTest test
+- Commit message: feat(apim): add business-call retry classification and configuration
