@@ -85,20 +85,20 @@ class RegistrationLookupContractFailFirstTest {
         var mapper = new TrpSearchUnregMemberApimMapper();
 
         assertSearchBy(mapper, RegistrationIdentityType.ID, "ID");
-        assertSearchBy(mapper, RegistrationIdentityType.STAFF, "STAFF");
+        assertSearchBy(mapper, RegistrationIdentityType.STAFFNO, "STAFFNO");
         assertSearchBy(mapper, RegistrationIdentityType.GPFS, "GPFS");
         assertSearchBy(mapper, RegistrationIdentityType.GPN, "GPN");
     }
 
     @Test
     void staffEnumKeepsTheFrontendStaffNoAlias() throws Exception {
-        var field = RegistrationIdentityType.class.getField("STAFF");
+        var field = RegistrationIdentityType.class.getField("STAFFNO");
         var annotation = field.getAnnotation(
                 com.fasterxml.jackson.annotation.JsonProperty.class);
 
         assertThat(annotation).isNotNull();
         assertThat(annotation.value()).isEqualTo("STAFF_NO");
-        assertThat(RegistrationIdentityType.STAFF.name()).isEqualTo("STAFF");
+        assertThat(RegistrationIdentityType.STAFFNO.name()).isEqualTo("STAFFNO");
     }
 
     @Test

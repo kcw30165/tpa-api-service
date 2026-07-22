@@ -161,6 +161,22 @@ class VerifyRegistrationOtpUseCaseTest {
     }
 
     @Test
+    void otpLockedReturnsReturnToLoginWithoutLookupOrSessionMutation() {
+        otp.result = RegistrationOtpVerificationResult.locked();
+        StepVerifier.create(useCase.verify(command("123456")))
+                .assertNext(result -> {
+                    assertThat(result.status()).isEqualTo(VerifyRegistrationOtpResultStatus.OTP_LOCKED);
+                    assertThat(result.nextStep()).isEqualTo(WorkflowNextStep.RESTART_FLOW);
+                    assertThat(result.remainingVerifyAttempts()).isZero();
+                    assertThat(result.errors()).singleElement().satisfies(error -> assertThat(error.code()).isEqualTo("err.registration.otp.locked"));
+                })
+                .verifyComplete();
+        assertThat(lookup.called).isFalse();
+        assertThat(session.markedOtpVerified).isFalse();
+        assertThat(idempotency.completed).isFalse();
+    }
+
+    @Test
     void noEligibleTrustsReturnsNoEligibleTrustsError() {
         lookup.status = RegistrationLookupStatus.NOT_ELIGIBLE;
         lookup.accounts = List.of();

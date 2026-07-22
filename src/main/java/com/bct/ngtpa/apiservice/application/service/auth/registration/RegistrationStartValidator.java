@@ -78,7 +78,7 @@ public class RegistrationStartValidator {
         }
         try {
             return "STAFF_NO".equals(value)
-                    ? RegistrationIdentityType.STAFF
+                    ? RegistrationIdentityType.STAFFNO
                     : RegistrationIdentityType.valueOf(value);
         } catch (IllegalArgumentException exception) {
             errors.add(error(RegistrationErrorKey.REGISTRATION_IDENTITYTYPE_INVALID, "identityType"));

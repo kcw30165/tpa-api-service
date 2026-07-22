@@ -100,6 +100,8 @@ class RegistrationOtpVerificationLifecycleIntegrationTest {
         VerifyRegistrationOtpResult sixth = service.verify(command("idem-sixth", "111111")).block();
         assertThat(fifth.status()).isEqualTo(VerifyRegistrationOtpResultStatus.OTP_LOCKED);
         assertThat(sixth.status()).isEqualTo(VerifyRegistrationOtpResultStatus.OTP_LOCKED);
+        assertThat(fifth.nextStep().name()).isEqualTo("RESTART_FLOW");
+        assertThat(sixth.nextStep().name()).isEqualTo("RESTART_FLOW");
         assertThat(fifth.remainingVerifyAttempts()).isZero();
         assertThat(lookup.calls).isZero();
     }

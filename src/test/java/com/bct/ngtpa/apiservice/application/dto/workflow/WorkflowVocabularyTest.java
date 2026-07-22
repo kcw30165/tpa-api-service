@@ -56,7 +56,9 @@ class WorkflowVocabularyTest {
                 WorkflowNextStep.RETURN_TO_LOGIN,
                 WorkflowNextStep.WAIT,
                 WorkflowNextStep.RESTART_FLOW,
+                WorkflowNextStep.RESEND_OTP,
                 WorkflowNextStep.NONE);
+
     }
 
     @Test

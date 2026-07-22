@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationOtpResendResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationWorkflowResultResponse;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
+import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType;
@@ -83,7 +84,7 @@ public class RegistrationOtpResendWebMapper {
     }
 
     public MutationResponse<RegistrationWorkflowResultResponse<RegistrationOtpResendResponse>> missingIdempotencyKeyResponse() {
-        return errorResponse(com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value());
+        return errorResponse(SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value());
     }
 
     private RegistrationOtpResendResponse data(ResendRegistrationOtpResult result) {
@@ -142,6 +143,7 @@ public class RegistrationOtpResendWebMapper {
     private String defaultErrorCode(ResendRegistrationOtpResultStatus status) {
         return switch (status) {
             case COOLDOWN_ACTIVE -> RegistrationOtpResendErrorKeys.REGISTRATION_OTP_COOLDOWN_ACTIVE;
+            case SEND_RATE_LIMITED -> RegistrationOtpResendErrorKeys.REGISTRATION_OTP_SEND_RATE_LIMITED;
             case MAX_RESEND_ATTEMPTS_REACHED -> RegistrationOtpResendErrorKeys.REGISTRATION_OTP_MAX_ATTEMPTS_REACHED;
             case MESSAGE_DELIVERY_FAILED, SYSTEM_FAILED -> RegistrationOtpResendErrorKeys.REGISTRATION_MESSAGE_DELIVERY_FAILED;
             default -> RegistrationOtpResendErrorKeys.REGISTRATION_OTP_RESEND_FAILED;
@@ -149,12 +151,12 @@ public class RegistrationOtpResendWebMapper {
     }
 
     private MutationResponse<RegistrationWorkflowResultResponse<RegistrationOtpResendResponse>> errorResponse(String code) {
-        var error = new com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor(
-                com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType.FORM,
+        var error = new WorkflowErrorDescriptor(
+                WorkflowErrorType.FORM,
                 code,
                 null,
                 List.of("PAGE"),
-                com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity.ERROR,
+                WorkflowErrorSeverity.ERROR,
                 SOURCE_SERVER);
         return workflowMutationResponseMapper.toMutationResponse(new WorkflowResult<>(
                 WorkflowResultStatus.VALIDATION_FAILED,

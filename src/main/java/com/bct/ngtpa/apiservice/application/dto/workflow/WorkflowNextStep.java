@@ -9,5 +9,6 @@ public enum WorkflowNextStep {
     RETURN_TO_LOGIN,
     WAIT,
     RESTART_FLOW,
+    RESEND_OTP,
     NONE
 }

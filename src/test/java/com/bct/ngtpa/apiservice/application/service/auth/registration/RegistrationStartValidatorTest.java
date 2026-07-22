@@ -103,9 +103,9 @@ class RegistrationStartValidatorTest {
 
     @Test
     void identityValidationAcceptsStaffNo() {
-        assertThat(validator.validate(input("STAFF", "A123B", "31/01/1980", "member@example.com", null, null)).valid()).isTrue();
-        assertThat(validator.validate(input("STAFF", "A 123", "31/01/1980", "member@example.com", null, null)).valid()).isFalse();
-        assertThat(validator.validate(input("STAFF", "A-123", "31/01/1980", "member@example.com", null, null)).valid()).isFalse();
+        assertThat(validator.validate(input("STAFFNO", "A123B", "31/01/1980", "member@example.com", null, null)).valid()).isTrue();
+        assertThat(validator.validate(input("STAFFNO", "A 123", "31/01/1980", "member@example.com", null, null)).valid()).isFalse();
+        assertThat(validator.validate(input("STAFFNO", "A-123", "31/01/1980", "member@example.com", null, null)).valid()).isFalse();
     }
 
     @Test

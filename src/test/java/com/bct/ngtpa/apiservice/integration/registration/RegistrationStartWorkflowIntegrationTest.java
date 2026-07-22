@@ -335,7 +335,7 @@ class RegistrationStartWorkflowIntegrationTest {
             return new RegistrationAuthWorkflowPolicy(new PreStartChallengePolicy(true, PreStartChallengeType.CAPTCHA),
                     new CaptchaPolicy(8, "ABC123", false, 300, 5), null, null, null);
         }
-        public Optional<String> resolveIdentityTypeSearchScope(String identityType) { return Optional.of("STAFF_NO".equals(identityType) ? "STAFF" : identityType); }
+        public Optional<String> resolveIdentityTypeSearchScope(String identityType) { return Optional.of("STAFF_NO".equals(identityType) ? "STAFFNO" : identityType); }
     }
 
     static final class InMemoryCaptchaPort implements CaptchaChallengePort {

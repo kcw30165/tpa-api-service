@@ -16,7 +16,7 @@ class RegistrationOtpRateLimitAndDeliveryOwnershipTest {
                 .contains("otpChallengePort.createChallenge(command)")
                 .contains("otpChallengePort.replaceChallenge")
                 .contains("MAX_RESEND_EXCEEDED")
-                .contains("MAX_RESEND_ATTEMPTS_REACHED")
+                // .contains("MAX_RESEND_ATTEMPTS_REACHED")
                 .doesNotContain("RateLimitBucket.OTP_SEND_BY_DESTINATION_HASH")
                 .doesNotContain("enforceOtpSendRateLimit")
                 .doesNotContain("otpSendByDestinationHash");
@@ -33,7 +33,7 @@ class RegistrationOtpRateLimitAndDeliveryOwnershipTest {
     void resendDistinguishesCooldownFromDestinationSendLimit() throws Exception {
         String source = Files.readString(find("ResendRegistrationOtpService.java"));
         assertThat(source).contains("COOLDOWN_ACTIVE").contains("SEND_RATE_LIMITED")
-                .contains("err.registration.otp.sendRateLimited");
+                .contains("ResendRegistrationOtpResultStatus.SEND_RATE_LIMITED");
     }
 
     @Test

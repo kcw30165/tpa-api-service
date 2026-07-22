@@ -10,6 +10,7 @@ import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationOtpCreationResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.RegistrationOtpResendRejectedException;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.RegistrationOtpSendRateLimitedException;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.ResendRegistrationOtpResultStatus;
 import com.bct.ngtpa.apiservice.integration.registration.support.RegistrationTestCase;
 import com.bct.ngtpa.apiservice.integration.registration.support.RegistrationTestResultExtension;
@@ -67,7 +68,7 @@ class RegistrationOtpChallengeLifecycleIntegrationTest {
 
     @Test
     @RegistrationTestCase("TC-035")
-    void sixthResendIsRejectedWithoutSeventhDelivery() {
+        void sixthResendIsSendRateLimitedWithoutSeventhDelivery() {
         RegistrationOtpCreationResult current = adapter.createOtp(
                 RegistrationContactType.EMAIL, "member@example.com").block();
         for (int i = 0; i < 5; i++) {
@@ -78,9 +79,9 @@ class RegistrationOtpChallengeLifecycleIntegrationTest {
         StepVerifier.create(adapter.resendOtp(active, RegistrationContactType.EMAIL,
                         "member@example.com"))
                 .expectErrorSatisfies(error -> {
-                    assertThat(error).isInstanceOf(RegistrationOtpResendRejectedException.class);
-                    assertThat(((RegistrationOtpResendRejectedException) error).status())
-                            .isEqualTo(ResendRegistrationOtpResultStatus.MAX_RESEND_ATTEMPTS_REACHED);
+                    assertThat(error).isInstanceOf(RegistrationOtpSendRateLimitedException.class);
+                    assertThat(((RegistrationOtpSendRateLimitedException) error).retryAfterSeconds())
+                            .isZero();
                 }).verify();
         assertThat(challenges.deliveryCount).isEqualTo(6);
     }

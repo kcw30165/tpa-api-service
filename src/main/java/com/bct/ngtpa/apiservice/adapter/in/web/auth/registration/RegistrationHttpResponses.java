@@ -3,6 +3,9 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
+import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
+
 import java.util.List;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -41,17 +44,18 @@ public final class RegistrationHttpResponses {
             return HttpStatus.OK;
         }
         String code = firstCode(body.errors());
-        if (code.equals("err.registration.csrf.invalid")
-                || code.equals("err.registration.origin.invalid")) {
+        if (code.equals(RegistrationErrorKey.CSRF_INVALID.value())
+                || code.equals(RegistrationErrorKey.ORIGIN_INVALID.value())) {
             return HttpStatus.FORBIDDEN;
         }
-        if (code.equals("err.registration.state.invalid")
-                || code.startsWith("err.workflow.idempotency.inProgress")
-                || code.startsWith("err.workflow.idempotency.keyReused")) {
+        if (code.equals(RegistrationErrorKey.STATE_INVALID.value())
+                || code.startsWith(SharedWorkflowErrorKey.IDEMPOTENCY_IN_PROGRESS.value())
+                || code.startsWith(SharedWorkflowErrorKey.IDEMPOTENCY_KEY_REUSED.value())) {
             return HttpStatus.CONFLICT;
         }
-        if (code.contains("rateLimited") || code.contains("cooldownActive")
-                || code.equals("err.registration.otp.locked")) {
+        if (code.equals(RegistrationErrorKey.OTP_SEND_RATE_LIMITED.value())
+            || code.equals(RegistrationErrorKey.OTP_VERIFY_RATE_LIMITED.value()) || code.equals(RegistrationErrorKey.OTP_COOLDOWN_ACTIVE.value())
+                || code.equals(RegistrationErrorKey.OTP_LOCKED.value())) {
             return HttpStatus.TOO_MANY_REQUESTS;
         }
         if (body.status() == ApiStatus.DOWNSTREAM_ERROR) {
