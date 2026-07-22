@@ -9,10 +9,12 @@ import org.junit.jupiter.api.Test;
 class ApimRetryClassificationArchitectureTest {
 
     @Test
-    void classificationDoesNotImplementTransportRetryPrematurely() throws Exception {
+    void facadeOwnsBusinessRetryWithoutUsingEndpointLocalRetryOperators() throws Exception {
         String facade = Files.readString(Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimWebClientFacade.java"));
-        assertThat(facade).doesNotContain("retryWhen(");
+        assertThat(facade)
+                .contains("sendBusinessAttempt(", "ApimRetryEligibility")
+                .doesNotContain("retryWhen(");
     }
 
     @Test

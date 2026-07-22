@@ -36,7 +36,7 @@ class Task0043OtpResendLimitPolicyTest {
         String source = Files.readString(Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/otp/DefaultOtpChallengeAdapter.java"));
         assertThat(source)
-                .contains("challenge.maxResendAttempts() >= 0")
+                .contains("command.resendLimitEnabled()")
                 .doesNotContain("99999")
                 .doesNotContain("Integer.MAX_VALUE");
     }

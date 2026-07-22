@@ -1,5 +1,9 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim;
 
+import org.springframework.web.reactive.function.client.WebClientRequestException;
+import java.util.concurrent.TimeoutException;
+import java.time.Duration;
+import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimErrorResponse;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfileResolver;
@@ -87,8 +91,72 @@ public class ApimWebClientFacade {
 
     @LogExecution(value = "apim.post", logArgs = true)
     public Mono<String> post(String path, Object requestBody, ApimCredentialResolutionContext resolutionContext) {
+        return post(path, requestBody, resolutionContext, ApimRetryEligibility.NON_RETRYABLE);
+    }
+
+    public Mono<String> post(
+            String path,
+            Object requestBody,
+            ApimCredentialResolutionContext resolutionContext,
+            ApimRetryEligibility retryEligibility) {
+        ApimRetryEligibility eligibility = retryEligibility == null
+                ? ApimRetryEligibility.NON_RETRYABLE
+                : retryEligibility;
+        apimProperties.validateRetryPolicy();
         return profileResolver.resolve(resolutionContext)
-                .flatMap(profile -> sendWithProfile(profile, path, requestBody, new RetryContext()));
+                .flatMap(profile -> sendBusinessAttempt(
+                        profile,
+                        path,
+                        requestBody,
+                        eligibility,
+                        1));
+    }
+
+    private Mono<String> sendBusinessAttempt(
+            ApimCredentialProfile profile,
+            String path,
+            Object requestBody,
+            ApimRetryEligibility retryEligibility,
+            int attempt) {
+        return sendWithProfile(profile, path, requestBody, new RetryContext())
+                .onErrorResume(error -> {
+                    int maxAttempts = apimProperties.getRetry().getBusinessCall().getMaxAttempts();
+                    if (!retryEligibility.retryEligible()
+                            || attempt >= maxAttempts
+                            || !isTransientBusinessFailure(error)) {
+                        return Mono.error(error);
+                    }
+                    long backoffMilliseconds = apimProperties.getRetry()
+                            .getBusinessCall()
+                            .getBackoffMilliseconds();
+                    log.warn(
+                            "Retrying transient APIM business call path={} attempt={}/{}",
+                            path,
+                            attempt + 1,
+                            maxAttempts);
+                    Mono<Long> delay = backoffMilliseconds == 0
+                            ? Mono.just(0L)
+                            : Mono.delay(Duration.ofMillis(backoffMilliseconds));
+                    return delay.then(sendBusinessAttempt(
+                            profile,
+                            path,
+                            requestBody,
+                            retryEligibility,
+                            attempt + 1));
+                });
+    }
+
+    private boolean isTransientBusinessFailure(Throwable error) {
+        if (error instanceof ApimException apimException) {
+            String message = apimException.getMessage();
+            return message != null && message.matches(
+                    ".*status=(500|501|502|503|504|505|506|507|508|510|511)(?:\\s|\\b).*" );
+        }
+        if (error instanceof WebClientRequestException || error instanceof TimeoutException) {
+            return true;
+        }
+        Throwable cause = error.getCause();
+        return cause != null && cause != error && isTransientBusinessFailure(cause);
     }
 
     private Mono<String> sendWithProfile(ApimCredentialProfile profile, String path, Object requestBody, RetryContext retryContext) {

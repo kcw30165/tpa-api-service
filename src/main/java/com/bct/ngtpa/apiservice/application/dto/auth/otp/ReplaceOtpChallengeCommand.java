@@ -8,5 +8,6 @@ public record ReplaceOtpChallengeCommand(
         boolean numericOnly,
         int ttlSeconds,
         int resendCooldownSeconds,
+        boolean resendLimitEnabled,
         Instant now) {
 }
