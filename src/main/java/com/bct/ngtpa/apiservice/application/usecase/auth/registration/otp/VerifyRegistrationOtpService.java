@@ -79,7 +79,7 @@ public class VerifyRegistrationOtpService implements VerifyRegistrationOtpUseCas
                     case CONSUMED -> markFailed(command, hash).then(Mono.just(failure(VerifyRegistrationOtpResultStatus.OTP_INVALID, WorkflowNextStep.VERIFY_OTP, RegistrationOtpVerifyErrorKeys.REGISTRATION_OTP_INVALID, otp.remainingVerifyAttempts(), RegistrationIdempotencyStartOutcome.STARTED)));
                     case INVALIDATED -> markFailed(command, hash).then(Mono.just(failure(VerifyRegistrationOtpResultStatus.OTP_INVALID, WorkflowNextStep.VERIFY_OTP, RegistrationOtpVerifyErrorKeys.REGISTRATION_OTP_INVALID, otp.remainingVerifyAttempts(), RegistrationIdempotencyStartOutcome.STARTED)));
                     case EXPIRED -> markFailed(command, hash).then(Mono.just(failure(VerifyRegistrationOtpResultStatus.OTP_EXPIRED, WorkflowNextStep.VERIFY_OTP, RegistrationOtpVerifyErrorKeys.REGISTRATION_OTP_EXPIRED, null, RegistrationIdempotencyStartOutcome.STARTED)));
-                    case LOCKED -> markFailed(command, hash).then(Mono.just(failure(VerifyRegistrationOtpResultStatus.OTP_LOCKED, WorkflowNextStep.VERIFY_OTP, RegistrationOtpVerifyErrorKeys.REGISTRATION_OTP_MAX_ATTEMPTS_REACHED, 0, RegistrationIdempotencyStartOutcome.STARTED)));
+                    case LOCKED -> markFailed(command, hash).then(Mono.just(failure(VerifyRegistrationOtpResultStatus.OTP_LOCKED, WorkflowNextStep.RESTART_FLOW, RegistrationOtpVerifyErrorKeys.REGISTRATION_OTP_MAX_ATTEMPTS_REACHED, 0, RegistrationIdempotencyStartOutcome.STARTED)));
                 });
     }
 
