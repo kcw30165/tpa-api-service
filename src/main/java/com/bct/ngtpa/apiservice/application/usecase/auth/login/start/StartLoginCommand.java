@@ -1,0 +1,2 @@
+package com.bct.ngtpa.apiservice.application.usecase.auth.login.start;
+public record StartLoginCommand(String username,String password,String acceptLanguage,String correlationId,String idempotencyKey){@Override public String toString(){return "StartLoginCommand[username=<redacted>, password=<redacted>, acceptLanguage="+acceptLanguage+", correlationId="+correlationId+", idempotencyKey=<redacted>]";}}
