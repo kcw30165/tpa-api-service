@@ -177,3 +177,12 @@
 - Removed the login APIM transport dependency on the crypto implementation exception package.
 - Renamed the private execute helper to authenticateAndEstablish.
 - Fail-first evidence: target/0043-006-016-fail-first.log
+
+### 0043-006-018-protected-login-start-replay-foundation
+
+- Status: completed after test import correction in 0043-006-019-fix-login-replay-test-import
+- Added sensitive LoginStartReplayPayload and infrastructure-neutral replay protection/storage ports.
+- Added AES-256-GCM replay protection, opaque commitment references, and protected Redis replay storage.
+- LoginIdempotencyReplaySnapshot remains safe metadata only.
+- Spring composition remains outside the application layer.
+- Fail-first evidence: target/0043-006-018-fail-first.log

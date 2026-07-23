@@ -1,0 +1,3 @@
+package com.bct.ngtpa.apiservice.adapter.out.security.login.replay;
+import com.bct.ngtpa.apiservice.application.dto.auth.login.replay.LoginStartReplayCommitRef;import com.bct.ngtpa.apiservice.application.port.out.LoginStartReplayCommitRefGenerator;import java.security.SecureRandom;import java.util.Base64;
+public final class SecureLoginStartReplayCommitRefGenerator implements LoginStartReplayCommitRefGenerator {private final SecureRandom random=new SecureRandom();public LoginStartReplayCommitRef generate(){byte[] value=new byte[24];random.nextBytes(value);return new LoginStartReplayCommitRef("rpl_"+Base64.getUrlEncoder().withoutPadding().encodeToString(value));}}
