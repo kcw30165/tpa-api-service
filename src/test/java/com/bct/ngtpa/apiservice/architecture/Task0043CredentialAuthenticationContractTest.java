@@ -6,8 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.CredentialAuthenticationCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.CredentialAuthenticationResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.CredentialAuthenticationStatus;
-import com.bct.ngtpa.apiservice.application.dto.auth.login.LoginActorReference;
-import com.bct.ngtpa.apiservice.application.dto.auth.login.OtpDestination;
+import com.bct.ngtpa.apiservice.application.dto.auth.login.LoginCredentialDestination;
 import com.bct.ngtpa.apiservice.application.port.out.CredentialAuthenticationPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.AuthenticateLoginCredentialsUseCase;
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -16,8 +15,10 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import java.lang.reflect.RecordComponent;
 import java.util.Arrays;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 @AnalyzeClasses(
         packages = "com.bct.ngtpa.apiservice.application",
@@ -25,16 +26,18 @@ import reactor.core.publisher.Mono;
 class Task0043CredentialAuthenticationContractTest {
 
     @Test
-    void statusVocabularyDistinguishesAuthenticationOutcomesWithoutApimDetails() {
+    void canonicalOutcomeVocabularyMatchesConfirmedCredentialScenarios() {
         assertThat(CredentialAuthenticationStatus.values()).containsExactly(
                 CredentialAuthenticationStatus.AUTHENTICATED,
-                CredentialAuthenticationStatus.INVALID_CREDENTIALS,
-                CredentialAuthenticationStatus.REJECTED,
+                CredentialAuthenticationStatus.INCORRECT_PASSWORD,
+                CredentialAuthenticationStatus.INCORRECT_USERNAME,
+                CredentialAuthenticationStatus.INVALID_ACCOUNT,
+                CredentialAuthenticationStatus.ACCOUNT_LOCKED,
                 CredentialAuthenticationStatus.UNAVAILABLE);
     }
 
     @Test
-    void commandContainsCredentialsAndRequestContextButNoAccountRef() {
+    void commandCarriesExactCredentialsAndRequestContextWithoutAccountOrSession() {
         assertThat(componentNames(CredentialAuthenticationCommand.class)).containsExactly(
                 "username", "password", "acceptLanguage", "correlationId");
         assertThat(componentNames(CredentialAuthenticationCommand.class))
@@ -42,32 +45,34 @@ class Task0043CredentialAuthenticationContractTest {
     }
 
     @Test
-    void authenticatedResultCarriesOpaqueActorReferenceAndSelectableOtpDestinations() {
+    void successResultCarriesProtectedPreAuthInputsWithoutTransportDtos() {
         assertThat(componentNames(CredentialAuthenticationResult.class)).containsExactly(
-                "status", "actorReference", "otpDestinations", "reasonCode");
-        assertThat(componentNames(LoginActorReference.class)).containsExactly("value");
-        assertThat(componentNames(OtpDestination.class)).containsExactly(
-                "destinationRef", "channel", "maskedDestination");
+                "status",
+                "normalizedUsername",
+                "custType",
+                "userRole",
+                "failCount",
+                "destinations",
+                "downstreamCode");
+        assertThat(componentNames(LoginCredentialDestination.class)).containsExactly(
+                "channel", "destination");
     }
 
     @Test
-    void useCaseDelegatesToOutboundContractWithoutTransportTypes() {
+    void useCaseDelegatesThroughApplicationBoundary() {
         CredentialAuthenticationResult expected = new CredentialAuthenticationResult(
-                CredentialAuthenticationStatus.INVALID_CREDENTIALS,
-                null,
-                java.util.List.of(),
-                "INVALID_CREDENTIALS");
+                CredentialAuthenticationStatus.INCORRECT_PASSWORD,
+                null, null, null, 1, List.of(), null);
         CredentialAuthenticationPort port = command -> Mono.just(expected);
-        AuthenticateLoginCredentialsUseCase useCase =
-                new AuthenticateLoginCredentialsUseCase(port);
+        var useCase = new AuthenticateLoginCredentialsUseCase(port);
 
-        reactor.test.StepVerifier.create(useCase.authenticate(
-                        new CredentialAuthenticationCommand("member", "secret", "en", "req-1")))
+        StepVerifier.create(useCase.authenticate(
+                        new CredentialAuthenticationCommand("member", "Exact", "en", "req-1")))
                 .expectNext(expected)
                 .verifyComplete();
     }
 
-    private java.util.List<String> componentNames(Class<?> recordType) {
+    private List<String> componentNames(Class<?> recordType) {
         return Arrays.stream(recordType.getRecordComponents())
                 .map(RecordComponent::getName)
                 .toList();

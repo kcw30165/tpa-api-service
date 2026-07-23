@@ -4,6 +4,11 @@ package com.bct.ngtpa.apiservice.application.dto.workflow;
 public enum LoginErrorKey implements WorkflowErrorKey {
     REQUEST_INVALID("err.login.request.invalid"),
     CREDENTIALS_INVALID("err.login.credentials.invalid"),
+    CREDENTIALS_UNAVAILABLE("err.login.credentials.unavailable"),
+    INCORRECT_PASSWORD("err.login.incorrect.password"),
+    INCORRECT_USERNAME("err.login.incorrect.username"),
+    INVALID_ACCOUNT("err.login.invalid.account"),
+    ACCOUNT_LOCKED("err.login.locked.account"),
     AUTH_FLOW_INVALID("err.login.authFlow.invalid"),
     CSRF_INVALID("err.login.csrf.invalid"),
     ORIGIN_INVALID("err.login.origin.invalid"),

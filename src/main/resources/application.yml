@@ -175,6 +175,10 @@ auth-workflows:
       otp-verify-ttl-seconds: 300
       complete-ttl-seconds: 300
 apim:
+  login:
+    member-login:
+      path: ${APIM_LOGIN_MEMBER_LOGIN_PATH:/ws/NGTPA/v1/TRPMemberLogin}
+      operation-name: ${APIM_LOGIN_MEMBER_LOGIN_OPERATION:TRPMemberLogin}
   retry:
     business-call:
       max-attempts: ${APIM_BUSINESS_RETRY_MAX_ATTEMPTS:3}
@@ -195,6 +199,7 @@ apim:
     private-key-pem: ${APIM_PRIVATE_KEY_PEM:}
     public-key-pem: ${APIM_PUBLIC_KEY_PEM:}
     request-fields:
+      - password
       - policy-no
       - cert-no
       - user-id
