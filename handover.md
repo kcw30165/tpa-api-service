@@ -191,3 +191,15 @@
 
 - Status: completed after replay-fixture correction in 0043-006-024-fix-completed-replay-commit-ref-fixture
 - Replay transition architecture checks are scoped per guarded Java method.
+
+### 0043-006-025-login-web-endpoint-cookie-and-response-mapping
+- Status: completed
+- Added POST /api/v1/auth/login with required Idempotency-Key handling plus X-Request-Id and Accept-Language propagation.
+- Fresh success and valid completed replay write auth_flow_sid through the shared configured AuthFlowCookieWriter.
+- Success returns SELECT_OTP_DESTINATION with csrfToken, opaque/masked destinations, expiresInSeconds, failCount, and actions=[].
+- Response body excludes authFlowSessionId, replayCommitRef, password, raw destination, and ciphertext.
+- Added explicit HTTP mappings for credential rejection, idempotency conflict, downstream unavailability, and unknown/session outcome.
+- Controller remains thin and depends only on StartLoginUseCase, mapper, and cookie writer.
+- Production constructors added merely for tests: none
+- Fail-first evidence: target/0043-006-025-fail-first.log
+- Commit message: feat(auth): expose login start endpoint and cookie contract
