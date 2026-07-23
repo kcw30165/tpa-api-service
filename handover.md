@@ -147,3 +147,12 @@
 - Production constructors added merely for tests: none
 - Fail-first evidence: target/0043-006-009-fail-first.log
 - Commit message: feat(auth): add login credential idempotency foundation
+
+### 0043-006-010-login-preauth-session-establishment-orchestration
+
+- Status: completed after test-double correction in 0043-006-011-fix-login-start-test-doubles
+- Added StartLoginUseCase orchestration from credential policy/idempotency through TRPMemberLogin, protected LOGIN AuthFlowSession creation, and CSRF hash binding.
+- Only STARTED reservations call APIM or create sessions; other idempotency outcomes are side-effect free.
+- AuthFlowSession attributes contain only the encrypted login-context envelope.
+- Production constructors added merely for tests: none
+- Fail-first evidence: target/0043-006-010-fail-first.log
