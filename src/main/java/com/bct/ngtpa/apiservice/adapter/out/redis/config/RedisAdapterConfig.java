@@ -7,6 +7,9 @@ import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisCaptchaChallengeAdap
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisCaptchaChallengeJsonMapper;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRateLimitAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRegistrationIdempotencyAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.redis.auth.login.RedisLoginCredentialIdempotencyAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.redis.auth.login.RedisLoginIdempotencyKeyFactory;
+import com.bct.ngtpa.apiservice.application.port.out.LoginCredentialIdempotencyPort;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRegistrationIdempotencyJsonMapper;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRegistrationIdempotencyKeyFactory;
 import com.bct.ngtpa.apiservice.application.port.out.CaptchaChallengePort;
@@ -117,6 +120,19 @@ public class RedisAdapterConfig {
             ReactiveRedisTemplate<String, String> reactiveRedisTemplate,
             RedisCacheKeyFactory redisCacheKeyFactory) {
         return new RedisRateLimitAdapter(reactiveRedisTemplate, redisCacheKeyFactory);
+    }
+
+    @Bean
+    public RedisLoginIdempotencyKeyFactory redisLoginIdempotencyKeyFactory(
+            @Value("${redis-cache.key-prefix:ngtpa}") String keyPrefix) {
+        return new RedisLoginIdempotencyKeyFactory(keyPrefix);
+    }
+
+    @Bean
+    public LoginCredentialIdempotencyPort loginCredentialIdempotencyPort(
+            RedisLoginIdempotencyKeyFactory keyFactory,
+            ReactiveStringRedisTemplate redisTemplate) {
+        return new RedisLoginCredentialIdempotencyAdapter(keyFactory, redisTemplate);
     }
 
     @Bean

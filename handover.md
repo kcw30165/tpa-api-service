@@ -135,3 +135,15 @@
 - Status: completed after postcondition correction in 0043-006-008-fix-login-foundation-fixture-postcondition
 - Updated Task0043LoginFoundationTest with all newly required configured credential-policy values.
 - Production validation remained unchanged.
+
+### 0043-006-009-login-credential-idempotency-foundation
+- Status: completed
+- Added login credential idempotency key, request hash, lifecycle records, coordinator, and Redis adapter through the shared AuthFlowIdempotencyPort contract.
+- Atomic reservation uses Redis SETNX with configured auth-workflows.login.idempotency.start-ttl-seconds.
+- Request hash includes normalized username and exact password but exposes/stores only SHA-256 digest.
+- Redis key contains only configured prefix, login action namespace, and opaque idempotency key.
+- Replay snapshot is safe metadata only and cannot carry cookie, CSRF, credentials, destination, username, or session ID.
+- Endpoint execution/completion and protected replay commitment are deferred to 0043-006-010.
+- Production constructors added merely for tests: none
+- Fail-first evidence: target/0043-006-009-fail-first.log
+- Commit message: feat(auth): add login credential idempotency foundation
