@@ -45,6 +45,11 @@ public class AuthWorkflowProperties {
         private int passwordMinLength;
         private int passwordMaxLength;
         private boolean usernameCaseInsensitive = true;
+        private boolean usernameTrim = true;
+        private String usernameNormalization = "ASCII_LOWERCASE";
+        private String usernameAllowedPattern;
+        private boolean passwordTrim;
+        private boolean passwordCaseSensitive = true;
     }
 
     @Getter
@@ -205,6 +210,12 @@ public class AuthWorkflowProperties {
         requirePositive(login.credential.usernameMinLength, "credential.username-min-length");
         requireRange(login.credential.usernameMinLength, login.credential.usernameMaxLength,
                 "credential username length");
+        if (login.credential.usernameAllowedPattern == null || login.credential.usernameAllowedPattern.isBlank()) {
+            throw new IllegalStateException("auth-workflows.login.credential.username-allowed-pattern must not be blank");
+        }
+        if (!login.credential.passwordCaseSensitive || login.credential.passwordTrim) {
+            throw new IllegalStateException("auth-workflows.login password must remain exact and case-sensitive");
+        }
         requirePositive(login.credential.passwordMinLength, "credential.password-min-length");
         requireRange(login.credential.passwordMinLength, login.credential.passwordMaxLength,
                 "credential password length");

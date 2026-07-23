@@ -106,6 +106,16 @@ auth-workflows:
       password-min-length: ${LOGIN_PASSWORD_MIN_LENGTH:1}
       password-max-length: ${LOGIN_PASSWORD_MAX_LENGTH:128}
       username-case-insensitive: true
+      username-trim: true
+      username-normalization: ASCII_LOWERCASE
+      username-allowed-pattern: ${LOGIN_USERNAME_ALLOWED_PATTERN:^[A-Za-z0-9._-]+$}
+      password-trim: false
+      password-case-sensitive: true
+    context-protection:
+      enabled: true
+      key-version: ${LOGIN_PREAUTH_CONTEXT_KEY_VERSION:}
+      secret: ${LOGIN_PREAUTH_CONTEXT_SECRET:}
+      destination-id-entropy-bytes: ${LOGIN_DESTINATION_ID_ENTROPY_BYTES:24}
     otp:
       length: ${LOGIN_OTP_LENGTH:6}
       numeric-only: true
