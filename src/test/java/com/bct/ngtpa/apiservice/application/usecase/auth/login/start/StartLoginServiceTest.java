@@ -5,6 +5,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.login.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.idempotency.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.*;
 import com.bct.ngtpa.apiservice.application.port.out.*;
+import com.bct.ngtpa.apiservice.application.port.in.CreateAuthFlowSessionCsrfUseCase;
 import com.bct.ngtpa.apiservice.application.service.session.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.preauth.*;
@@ -31,18 +32,14 @@ class StartLoginServiceTest {
         var lifecycle = new AuthFlowSessionLifecycleService(sessions,
                 cmd -> new com.bct.ngtpa.apiservice.application.dto.session.SessionId("afs_test_value"),
                 new SessionTtlCalculator(), Clock.fixed(NOW, ZoneOffset.UTC));
-        var csrf = new AuthFlowSessionCsrfService(
-                sessions,
-                () -> "csrf_raw_value",
-                new CsrfTokenHasher() {
-                    public String hash(String value) {
-                        return "csrf_hash_value";
-                    }
-
-                    public boolean matches(String raw, String stored) {
-                        return "csrf_hash_value".equals(stored);
-                    }
-                });
+        CreateAuthFlowSessionCsrfUseCase csrf = command -> {
+            sessions.current = new AuthFlowSession(
+                    sessions.current.authFlowSessionId(), sessions.current.scenario(), sessions.current.status(),
+                    "csrf_hash_value", sessions.current.activeOtpChallengeId(), sessions.current.data(),
+                    sessions.current.createdAt(), command.now(), sessions.current.expiresAt());
+            return Mono.just(new CreateAuthFlowSessionCsrfResult(
+                    "csrf_raw_value", command.now().plusSeconds(command.ttlSeconds()), command.ttlSeconds()));
+        };
         var service = service(credentials, lifecycle, csrf, coordinator(LoginIdempotencyStartOutcome.STARTED));
         StepVerifier
                 .create(service.start(new StartLoginCommand(" Member ", "Exact", "en", "req-1", "login_key_opaque")))
@@ -72,7 +69,8 @@ class StartLoginServiceTest {
                 new AuthFlowSessionLifecycleService(sessions,
                         cmd -> new com.bct.ngtpa.apiservice.application.dto.session.SessionId("afs_unused"),
                         new SessionTtlCalculator(), Clock.fixed(NOW, ZoneOffset.UTC)),
-                new AuthFlowSessionCsrfService(sessions), coordinator(LoginIdempotencyStartOutcome.COMPLETED_REPLAY));
+                command -> Mono.error(new AssertionError("CSRF must not run for replay")),
+                coordinator(LoginIdempotencyStartOutcome.COMPLETED_REPLAY));
         StepVerifier.create(service.start(new StartLoginCommand("member", "Exact", "en", "req", "login_key_opaque")))
                 .assertNext(r -> assertThat(r.status()).isEqualTo(StartLoginStatus.COMPLETED_REPLAY)).verifyComplete();
         assertThat(calls).hasValue(0);
@@ -80,7 +78,7 @@ class StartLoginServiceTest {
     }
 
     private StartLoginService service(CredentialAuthenticationPort credentials,
-            AuthFlowSessionLifecycleService lifecycle, AuthFlowSessionCsrfService csrf,
+            AuthFlowSessionLifecycleService lifecycle, CreateAuthFlowSessionCsrfUseCase csrf,
             LoginCredentialIdempotencyCoordinator idempotency) {
         var policy = new LoginCredentialPolicyService(true, LoginUsernameNormalization.ASCII_LOWERCASE, 1, 120,
                 "^[A-Za-z0-9._-]+$", false, true, 1, 128);
