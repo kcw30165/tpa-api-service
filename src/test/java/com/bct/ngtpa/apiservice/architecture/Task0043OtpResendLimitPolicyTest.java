@@ -42,10 +42,13 @@ class Task0043OtpResendLimitPolicyTest {
     }
 
     @Test
-    void registrationAdapterKeepsLimitEnabledAndMapsDisabledPolicyToUnlimitedSentinel() throws Exception {
+    void registrationAdapterPassesExplicitResendLimitPolicyWithoutMagicSentinel() throws Exception {
         String source = Files.readString(Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/out/registration/RegistrationOtpChallengeAdapter.java"));
-        assertThat(source).contains(
-                "policy.resendLimitEnabled() ? policy.maxResendAttempts() : -1");
+
+        assertThat(source)
+                .contains("policy.maxResendAttempts()")
+                .contains("policy.resendLimitEnabled()")
+                .doesNotContain("policy.resendLimitEnabled() ? policy.maxResendAttempts() : -1");
     }
 }

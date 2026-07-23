@@ -64,3 +64,14 @@
 - Targeted command: mvn -Dtest=ApimBusinessRetryPolicyTest,ApimRetryClassificationArchitectureTest,ApimPropertiesBindingTest,ApimWebClientFacadeRetryTest test
 - Regression command: mvn -Dtest=RegistrationContractStabilizationIntegrationTest,RegistrationLoggingLookupStabilizationIntegrationTest,RegistrationCompletionResilienceIntegrationTest test
 - Commit message: feat(apim): add business-call retry classification and configuration
+
+### 0043-004-009-replace-stale-otp-resend-policy-test-method
+
+- Status: completed
+- Replaced the complete stale test method using brace-balanced method boundaries.
+- The test now verifies explicit resendLimitEnabled propagation and rejects the discarded -1 sentinel expression.
+- Production code changed by this correction: no
+- Production constructors added or changed for tests: none
+- Targeted command: mvn -Dtest=Task0043OtpResendLimitPolicyTest,DefaultOtpChallengeServiceReplaceTest,DefaultOtpChallengeServiceCreateInvalidateTest,ApimBusinessCallRetryIntegrationTest,ApimBusinessRetryPolicyTest,ApimRetryClassificationArchitectureTest,ApimWebClientFacadeRetryTest,ApimPropertiesBindingTest test
+- Regression command: mvn -Dtest=RegistrationOtpChallengeLifecycleIntegrationTest,RegistrationOtpResendServiceIntegrationTest,RegistrationOtpVerificationLifecycleIntegrationTest,RegistrationContractStabilizationIntegrationTest,RegistrationLoggingLookupStabilizationIntegrationTest,RegistrationCompletionResilienceIntegrationTest test
+- Commit message: test(auth): replace stale OTP unlimited-sentinel assertion
