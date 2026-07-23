@@ -111,3 +111,27 @@
 - Targeted command: mvn -Dtest=WorkflowVocabularyTest,WorkflowKeyValidatorLoginErrorPrefixTest,WorkflowKeyValidatorRegistrationErrorPrefixTest,Task0043LoginFoundationTest,TrpMemberLoginContractMapperTest,TrpMemberLoginAdapterTest,SharedApimTrpMemberLoginTransportArchitectureTest,Task0043CredentialAuthenticationContractTest test
 - Regression command: mvn -Dtest=ApimBusinessCallRetryIntegrationTest,ApimWebClientFacadeRetryTest,RegistrationContractStabilizationIntegrationTest,RegistrationOtpChallengeLifecycleIntegrationTest,RegistrationOtpResendServiceIntegrationTest,RegistrationOtpVerificationLifecycleIntegrationTest test
 - Commit message: fix(auth): align login workflow vocabulary and public error validation
+
+### 0043-006-004-login-credential-policy-and-protected-preauth-context
+
+- Status: completed after corrections through 0043-006-008-fix-login-foundation-fixture-postcondition
+- Added configured username trim/ASCII lowercase validation, exact-password preservation, opaque destination IDs, masking, and approved protected login context.
+- Added dedicated AES-256-GCM complete-context protection with no registration-secret fallback.
+- Production constructors added merely for tests: none
+- Fail-first evidence: target/0043-006-004-fail-first.log
+
+### 0043-006-005-fix-login-preauth-policy-test-and-instant-codec
+
+- Status: completed after corrections through 0043-006-008-fix-login-foundation-fixture-postcondition
+- Corrected the ASCII normalization fixture and encoded credentialVerifiedAt explicitly as ISO-8601 inside the protected payload.
+
+### 0043-006-006-fix-preauth-destination-order-preservation
+
+- Status: completed after corrections through 0043-006-008-fix-login-foundation-fixture-postcondition
+- Preserved validated APIM destination order using an immutable LinkedHashMap copy.
+
+### 0043-006-007-fix-login-foundation-required-credential-policy-fixture
+
+- Status: completed after postcondition correction in 0043-006-008-fix-login-foundation-fixture-postcondition
+- Updated Task0043LoginFoundationTest with all newly required configured credential-policy values.
+- Production validation remained unchanged.

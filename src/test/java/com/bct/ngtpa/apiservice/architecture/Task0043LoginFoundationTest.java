@@ -65,6 +65,11 @@ class Task0043LoginFoundationTest {
         login.getCredential().setUsernameMaxLength(128);
         login.getCredential().setPasswordMinLength(1);
         login.getCredential().setPasswordMaxLength(128);
+        login.getCredential().setUsernameTrim(true);
+        login.getCredential().setUsernameNormalization("ASCII_LOWERCASE");
+        login.getCredential().setUsernameAllowedPattern("^[A-Za-z0-9._-]+$");
+        login.getCredential().setPasswordTrim(false);
+        login.getCredential().setPasswordCaseSensitive(true);
         login.getOtp().setLength(6);
         login.getOtp().setTtlSeconds(300);
         login.getOtp().setResendCooldownSeconds(60);
