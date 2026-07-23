@@ -100,3 +100,14 @@
 - Regression command: mvn -Dtest=RegistrationContractStabilizationIntegrationTest,RegistrationOtpResendServiceIntegrationTest,ApimBusinessCallRetryIntegrationTest test
 - Deferred: TRPMemberLogin APIM adapter in 0043-006-002
 - Commit message: feat(auth): add credential authentication application contract
+
+### 0043-006-003-fix-login-workflow-vocabulary-and-error-key-validation
+
+- Status: completed
+- Classification 1: stale test expectation. WorkflowNextStep is shared and now legitimately includes SELECT_OTP_DESTINATION and SELECT_ACCOUNT; the vocabulary test was renamed and aligned.
+- Classification 2: production validator conflict. WorkflowKeyValidator rejected the approved public code err.login.incorrect.password because of its generic password-token guard.
+- Validator correction is narrowly scoped to err.login.* public codes; arbitrary password-like keys remain rejected.
+- Production constructors added or changed for tests: none
+- Targeted command: mvn -Dtest=WorkflowVocabularyTest,WorkflowKeyValidatorLoginErrorPrefixTest,WorkflowKeyValidatorRegistrationErrorPrefixTest,Task0043LoginFoundationTest,TrpMemberLoginContractMapperTest,TrpMemberLoginAdapterTest,SharedApimTrpMemberLoginTransportArchitectureTest,Task0043CredentialAuthenticationContractTest test
+- Regression command: mvn -Dtest=ApimBusinessCallRetryIntegrationTest,ApimWebClientFacadeRetryTest,RegistrationContractStabilizationIntegrationTest,RegistrationOtpChallengeLifecycleIntegrationTest,RegistrationOtpResendServiceIntegrationTest,RegistrationOtpVerificationLifecycleIntegrationTest test
+- Commit message: fix(auth): align login workflow vocabulary and public error validation

@@ -46,7 +46,7 @@ class WorkflowVocabularyTest {
     }
 
     @Test
-    void workflowNextStepDefinesRegistrationValues() {
+    void workflowNextStepDefinesSharedRegistrationAndLoginValues() {
         assertThat(WorkflowNextStep.values()).containsExactly(
                 WorkflowNextStep.SELECT_OTP_DESTINATION,
                 WorkflowNextStep.VERIFY_OTP,
@@ -60,7 +60,6 @@ class WorkflowVocabularyTest {
                 WorkflowNextStep.RESTART_FLOW,
                 WorkflowNextStep.RESEND_OTP,
                 WorkflowNextStep.NONE);
-
     }
 
     @Test
