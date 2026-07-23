@@ -1,4 +1,5 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.login.start;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.replay.LoginStartReplayCoordinator;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.login.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.idempotency.*;
@@ -23,7 +24,7 @@ public final class StartLoginService implements StartLoginUseCase {
     private final LoginPreAuthContextFactory contexts;
     private final LoginPreAuthContextProtectorPort protector;
     private final AuthFlowSessionLifecycleService sessions;
-    private final CreateAuthFlowSessionCsrfUseCase csrf;
+    private final CreateAuthFlowSessionCsrfUseCase csrf;private final LoginStartReplayCoordinator replayCoordinator;
     private final Clock clock;
     private final int ttl;
     private final boolean required;
@@ -33,7 +34,7 @@ public final class StartLoginService implements StartLoginUseCase {
     public StartLoginService(LoginCredentialPolicyService policy, LoginCredentialRequestHasher hasher,
             LoginCredentialIdempotencyCoordinator idempotency, CredentialAuthenticationPort credentials,
             LoginPreAuthContextFactory contexts, LoginPreAuthContextProtectorPort protector,
-            AuthFlowSessionLifecycleService sessions, CreateAuthFlowSessionCsrfUseCase csrf, Clock clock, int ttl,
+            AuthFlowSessionLifecycleService sessions, CreateAuthFlowSessionCsrfUseCase csrf,LoginStartReplayCoordinator replayCoordinator, Clock clock, int ttl,
             boolean required, String prefix, int entropy) {
         this.policy = Objects.requireNonNull(policy);
         this.hasher = Objects.requireNonNull(hasher);
@@ -42,7 +43,7 @@ public final class StartLoginService implements StartLoginUseCase {
         this.contexts = Objects.requireNonNull(contexts);
         this.protector = Objects.requireNonNull(protector);
         this.sessions = Objects.requireNonNull(sessions);
-        this.csrf = Objects.requireNonNull(csrf);
+        this.csrf = Objects.requireNonNull(csrf);this.replayCoordinator=Objects.requireNonNull(replayCoordinator);
         this.clock = Objects.requireNonNull(clock);
         this.ttl = ttl;
         this.required = required;
@@ -51,20 +52,34 @@ public final class StartLoginService implements StartLoginUseCase {
     }
 
     public Mono<StartLoginResult> start(StartLoginCommand command) {
-        Objects.requireNonNull(command);
-        CredentialAuthenticationCommand normalized = policy.validateAndNormalize(new CredentialAuthenticationCommand(
-                command.username(), command.password(), command.acceptLanguage(), command.correlationId()));
+        Objects.requireNonNull(command, "command must not be null");
+        CredentialAuthenticationCommand normalized = policy.validateAndNormalize(
+                new CredentialAuthenticationCommand(
+                        command.username(),
+                        command.password(),
+                        command.acceptLanguage(),
+                        command.correlationId()));
         LoginIdempotencyKey key = new LoginIdempotencyKey(command.idempotencyKey());
         LoginCredentialRequestHash hash = hasher.hash(normalized);
-        return idempotency.reserve(key, hash).flatMap(r -> switch (r.outcome()) {
-            case STARTED -> authenticateAndEstablish(normalized);
-            case COMPLETED_REPLAY -> Mono.just(simple(StartLoginStatus.COMPLETED_REPLAY,
-                    r.record().replaySnapshot() == null ? null : r.record().replaySnapshot().opaqueCommitRef()));
-            case DUPLICATE_IN_PROGRESS -> Mono.just(simple(StartLoginStatus.DUPLICATE_IN_PROGRESS, null));
-            case KEY_REUSED_WITH_DIFFERENT_REQUEST -> Mono.just(simple(StartLoginStatus.KEY_REUSED, null));
-            case FAILED_EXISTING -> Mono.just(simple(StartLoginStatus.FAILED_EXISTING, null));
-            case UNKNOWN_OUTCOME_EXISTING -> Mono.just(simple(StartLoginStatus.UNKNOWN_OUTCOME, null));
-        });
+
+        return idempotency.reserve(key, hash)
+                .flatMap(reservation -> switch (reservation.outcome()) {
+                    case STARTED -> authenticateAndEstablish(normalized)
+                            .flatMap(result -> finalizeStarted(key, hash, result))
+                            .onErrorResume(error -> replayCoordinator.markUnknown(key, hash)
+                                    .onErrorResume(markError -> Mono.empty())
+                                    .then(Mono.error(error)));
+                    case COMPLETED_REPLAY -> replayCoordinator.replay(
+                            reservation.record().replaySnapshot());
+                    case DUPLICATE_IN_PROGRESS -> Mono.just(simple(
+                            StartLoginStatus.DUPLICATE_IN_PROGRESS, null));
+                    case KEY_REUSED_WITH_DIFFERENT_REQUEST -> Mono.just(simple(
+                            StartLoginStatus.KEY_REUSED, null));
+                    case FAILED_EXISTING -> Mono.just(simple(
+                            StartLoginStatus.FAILED_EXISTING, null));
+                    case UNKNOWN_OUTCOME_EXISTING -> Mono.just(simple(
+                            StartLoginStatus.UNKNOWN_OUTCOME, null));
+                });
     }
 
     private Mono<StartLoginResult> authenticateAndEstablish(CredentialAuthenticationCommand command) {
@@ -89,6 +104,19 @@ public final class StartLoginService implements StartLoginUseCase {
                             created.session().authFlowSessionId().value(), token.rawToken(), created.expiresInSeconds(),
                             publicChoices(context), result.failCount(), null)));
         });
+    }
+
+    private Mono<StartLoginResult> finalizeStarted(
+            LoginIdempotencyKey key,
+            LoginCredentialRequestHash hash,
+            StartLoginResult result) {
+        if (result.status() == StartLoginStatus.STARTED) {
+            return replayCoordinator.commit(key, hash, result);
+        }
+        if (result.status() == StartLoginStatus.UNAVAILABLE) {
+            return replayCoordinator.markUnknown(key, hash).thenReturn(result);
+        }
+        return replayCoordinator.markRejected(key, hash, result.status()).thenReturn(result);
     }
 
     private List<LoginDestinationChoice> publicChoices(LoginPreAuthContext c) {

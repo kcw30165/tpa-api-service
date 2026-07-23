@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.login.start;
 
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.replay.LoginStartReplayCoordinator;
+import com.bct.ngtpa.apiservice.application.dto.auth.login.replay.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.idempotency.*;
@@ -95,8 +97,26 @@ class StartLoginServiceTest {
                 throw new UnsupportedOperationException();
             }
         };
-        return new StartLoginService(policy, new LoginCredentialRequestHasher(), idempotency, credentials, factory,
-                protector, lifecycle, csrf, Clock.fixed(NOW, ZoneOffset.UTC), 900, true, "afs", 16);
+        LoginStartReplayPort replayPort=new LoginStartReplayPort(){
+   public Mono<Void> save(LoginStartReplayCommitRef ref,ProtectedLoginStartReplay value,Duration replayTtl){return Mono.empty();}
+   public Mono<Optional<ProtectedLoginStartReplay>> load(LoginStartReplayCommitRef ref){return Mono.just(Optional.of(new ProtectedLoginStartReplay("v1","test","iv","cipher")));}
+   public Mono<Boolean> delete(LoginStartReplayCommitRef ref){return Mono.just(false);}
+  };
+  LoginStartReplayProtectorPort replayProtector=new LoginStartReplayProtectorPort(){
+   public ProtectedLoginStartReplay protect(LoginStartReplayPayload value){return new ProtectedLoginStartReplay("v1","test","iv","cipher");}
+   public LoginStartReplayPayload unprotect(ProtectedLoginStartReplay value){
+    return new LoginStartReplayPayload(
+            "afs_test_value","csrf_raw_value",900,
+            List.of(new LoginDestinationChoice("dst_opaque_value","email","m*****@example.com")),
+            NOW.plusSeconds(900));
+   }
+  };
+  var replay=new LoginStartReplayCoordinator(
+          replayPort,replayProtector,
+          ()->new LoginStartReplayCommitRef("rpl_opaque_commit_reference"),
+          idempotency,Clock.fixed(NOW,ZoneOffset.UTC));
+  return new StartLoginService(policy, new LoginCredentialRequestHasher(), idempotency, credentials, factory,
+                protector, lifecycle, csrf,replay, Clock.fixed(NOW, ZoneOffset.UTC), 900, true, "afs", 16);
     }
 
     private static final class InMemorySessionPort implements AuthFlowSessionPort {
@@ -156,7 +176,7 @@ class StartLoginServiceTest {
 
         public Mono<LoginIdempotencyStartResult> startProcessing(LoginIdempotencyStartCommand c) {
             LoginIdempotencyReplaySnapshot snapshot = outcome == LoginIdempotencyStartOutcome.COMPLETED_REPLAY
-                    ? new LoginIdempotencyReplaySnapshot("STARTED", "commit_opaque")
+                    ? new LoginIdempotencyReplaySnapshot("STARTED", "rpl_opaque_commit_reference")
                     : null;
             LoginIdempotencyStatus status = outcome == LoginIdempotencyStartOutcome.COMPLETED_REPLAY
                     ? LoginIdempotencyStatus.COMPLETED
@@ -166,17 +186,21 @@ class StartLoginServiceTest {
             return Mono.just(new LoginIdempotencyStartResult(outcome, record));
         }
 
-        public Mono<LoginIdempotencyRecord> markCompleted(LoginIdempotencyCompleteCommand c) {
-            return Mono.error(new UnsupportedOperationException());
-        }
+        public Mono<LoginIdempotencyRecord> markCompleted(LoginIdempotencyCompleteCommand c){
+   return Mono.just(new LoginIdempotencyRecord(
+           c.action(),c.idempotencyKey(),c.requestHash(),LoginIdempotencyStatus.COMPLETED,
+           c.replaySnapshot(),NOW,NOW,NOW.plus(c.ttl())));
+  }
 
         public Mono<LoginIdempotencyRecord> markFailed(LoginIdempotencyFailCommand c) {
             return Mono.error(new UnsupportedOperationException());
         }
 
-        public Mono<LoginIdempotencyRecord> markUnknownOutcome(LoginIdempotencyUnknownOutcomeCommand c) {
-            return Mono.error(new UnsupportedOperationException());
-        }
+        public Mono<LoginIdempotencyRecord> markUnknownOutcome(LoginIdempotencyUnknownOutcomeCommand c){
+   return Mono.just(new LoginIdempotencyRecord(
+           c.action(),c.idempotencyKey(),c.requestHash(),LoginIdempotencyStatus.UNKNOWN_OUTCOME,
+           null,NOW,NOW,NOW.plus(c.ttl())));
+  }
 
         public Mono<Optional<LoginIdempotencyRecord>> load(LoginIdempotencyAction a, LoginIdempotencyKey k) {
             return Mono.just(Optional.empty());

@@ -14,17 +14,27 @@ class Task0043LoginStartReplayIntegrationArchitectureTest {
                 "LoginStartReplayCoordinator",
                 "replayCoordinator.commit",
                 "replayCoordinator.replay",
-                "idempotency.markFailed",
-                "idempotency.markUnknown");
+                "replayCoordinator.markRejected",
+                "replayCoordinator.markUnknown");
         assertThat(source).doesNotContain(
-                "Redis", "Cipher", "ObjectMapper", "org.springframework", "ServerHttpResponse");
+                "idempotency.markFailed",
+                "idempotency.markUnknown",
+                "Redis",
+                "Cipher",
+                "ObjectMapper",
+                "org.springframework",
+                "ServerHttpResponse");
     }
 
     @Test
     void coordinatorCompletesOnlyAfterProtectedReplaySave() throws Exception {
         String source = Files.readString(Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/replay/LoginStartReplayCoordinator.java"));
-        assertThat(source.indexOf("replayPort.save")).isLessThan(source.indexOf("idempotency.complete"));
-        assertThat(source).contains("boundedTtl", "markUnknown");
+        assertThat(source.indexOf("replayPort.save"))
+                .isLessThan(source.indexOf("idempotency.complete"));
+        assertThat(source).contains(
+                "boundedTtl",
+                "idempotency.markFailed",
+                "idempotency.markUnknown");
     }
 }

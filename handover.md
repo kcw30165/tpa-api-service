@@ -186,3 +186,8 @@
 - LoginIdempotencyReplaySnapshot remains safe metadata only.
 - Spring composition remains outside the application layer.
 - Fail-first evidence: target/0043-006-018-fail-first.log
+
+### 0043-006-023-fix-replay-architecture-postcondition-scope
+
+- Status: completed after replay-fixture correction in 0043-006-024-fix-completed-replay-commit-ref-fixture
+- Replay transition architecture checks are scoped per guarded Java method.

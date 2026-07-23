@@ -1,5 +1,9 @@
 package com.bct.ngtpa.apiservice.config.auth.login;
 
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.replay.LoginStartReplayCoordinator;
+import com.bct.ngtpa.apiservice.application.port.out.LoginStartReplayPort;
+import com.bct.ngtpa.apiservice.application.port.out.LoginStartReplayProtectorPort;
+import com.bct.ngtpa.apiservice.application.port.out.LoginStartReplayCommitRefGenerator;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.session.config.AuthFlowSessionProperties;
 import com.bct.ngtpa.apiservice.application.port.in.CreateAuthFlowSessionCsrfUseCase;
@@ -39,6 +43,17 @@ public class LoginApplicationConfig {
                 Duration.ofSeconds(
                         properties.getLogin().getIdempotency().getStartTtlSeconds()));
     }
+    @Bean
+    LoginStartReplayCoordinator loginStartReplayCoordinator(
+            LoginStartReplayPort replayPort,
+            LoginStartReplayProtectorPort protector,
+            LoginStartReplayCommitRefGenerator refs,
+            LoginCredentialIdempotencyCoordinator idempotency,
+            Clock clock) {
+        return new LoginStartReplayCoordinator(
+                replayPort, protector, refs, idempotency, clock);
+    }
+
 
     @Bean
     StartLoginUseCase startLoginUseCase(
@@ -50,6 +65,7 @@ public class LoginApplicationConfig {
             LoginPreAuthContextProtectorPort protector,
             AuthFlowSessionLifecycleService sessions,
             CreateAuthFlowSessionCsrfUseCase csrf,
+            LoginStartReplayCoordinator replayCoordinator,
             Clock clock,
             AuthWorkflowProperties workflows,
             AuthFlowSessionProperties sessionProperties) {
@@ -64,6 +80,7 @@ public class LoginApplicationConfig {
                 protector,
                 sessions,
                 csrf,
+                replayCoordinator,
                 clock,
                 loginScenario.getTtlSeconds(),
                 loginScenario.isRequired(),
