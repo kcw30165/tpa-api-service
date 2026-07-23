@@ -168,3 +168,12 @@
 
 - Status: completed after stale architecture-test correction in 0043-006-015-fix-login-start-architecture-test-for-csrf-interface
 - Removed residual direct concrete CSRF dependencies from login-start production and test code.
+
+### 0043-006-016-fix-login-clean-architecture-boundaries
+
+- Status: completed after stale-path guard correction in 0043-006-017-fix-csrf-capability-config-path-guard
+- Moved login Spring composition from application.usecase to config.auth.login.LoginApplicationConfig.
+- Removed application-layer dependencies on Spring and inbound adapter configuration.
+- Removed the login APIM transport dependency on the crypto implementation exception package.
+- Renamed the private execute helper to authenticateAndEstablish.
+- Fail-first evidence: target/0043-006-016-fail-first.log

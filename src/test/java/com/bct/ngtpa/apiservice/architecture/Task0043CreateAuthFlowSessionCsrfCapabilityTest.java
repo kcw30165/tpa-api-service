@@ -33,11 +33,19 @@ class Task0043CreateAuthFlowSessionCsrfCapabilityTest {
     void loginStartDependsOnlyOnCreateCapability() throws Exception {
         String service = Files.readString(Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/start/StartLoginService.java"));
-        String config = Files.readString(Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/start/StartLoginConfig.java"));
+        String composition = Files.readString(Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/config/auth/login/LoginApplicationConfig.java"));
 
         assertThat(service).contains("CreateAuthFlowSessionCsrfUseCase");
-        assertThat(service).doesNotContain("AuthFlowSessionCsrfService");
-        assertThat(config).contains("CreateAuthFlowSessionCsrfUseCase");
+        assertThat(service).doesNotContain(
+                "AuthFlowSessionCsrfService",
+                "org.springframework",
+                "@Configuration",
+                "@Bean");
+        assertThat(composition).contains(
+                "package com.bct.ngtpa.apiservice.config.auth.login",
+                "@Configuration",
+                "CreateAuthFlowSessionCsrfUseCase");
+        assertThat(composition).contains("CreateAuthFlowSessionCsrfUseCase");
     }
 }

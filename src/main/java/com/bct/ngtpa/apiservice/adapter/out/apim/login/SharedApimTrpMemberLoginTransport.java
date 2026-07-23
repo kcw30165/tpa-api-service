@@ -5,18 +5,14 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.ApimPayloadCryptoService;
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimWebClientFacade;
 import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
-import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.login.config.TrpMemberLoginProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.login.dto.TrpMemberLoginApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.login.dto.TrpMemberLoginApimRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
-import com.bct.ngtpa.apiservice.exception.ApimException;
-import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import java.security.PublicKey;
 import java.util.Map;
 import java.util.Objects;
-import org.springframework.http.HttpStatus;
 import reactor.core.publisher.Mono;
 
 public final class SharedApimTrpMemberLoginTransport implements TrpMemberLoginTransport {
@@ -69,15 +65,7 @@ public final class SharedApimTrpMemberLoginTransport implements TrpMemberLoginTr
                         body,
                         TrpMemberLoginApimDataItem.class,
                         publicKey))
-                .onErrorMap(ApimCryptoException.class, this::cryptoFailure);
-    }
-
-    private ApimException cryptoFailure(ApimCryptoException exception) {
-        return new ApimException(
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                ErrorCodes.SYSTEM_UNEXPECTED,
-                "TRPMemberLogin crypto contract failure",
-                exception);
+                ;
     }
 
     private String requireText(String value, String property) {
