@@ -75,3 +75,13 @@
 - Targeted command: mvn -Dtest=Task0043OtpResendLimitPolicyTest,DefaultOtpChallengeServiceReplaceTest,DefaultOtpChallengeServiceCreateInvalidateTest,ApimBusinessCallRetryIntegrationTest,ApimBusinessRetryPolicyTest,ApimRetryClassificationArchitectureTest,ApimWebClientFacadeRetryTest,ApimPropertiesBindingTest test
 - Regression command: mvn -Dtest=RegistrationOtpChallengeLifecycleIntegrationTest,RegistrationOtpResendServiceIntegrationTest,RegistrationOtpVerificationLifecycleIntegrationTest,RegistrationContractStabilizationIntegrationTest,RegistrationLoggingLookupStabilizationIntegrationTest,RegistrationCompletionResilienceIntegrationTest test
 - Commit message: test(auth): replace stale OTP unlimited-sentinel assertion
+
+### 0043-005-002-fix-login-foundation-yaml-key-assertions
+
+- Status: completed
+- Root cause: Task0043LoginFoundationTest asserted flattened names session-idle-timeout-seconds and account-identifier-width, while YAML correctly nests idle-timeout-seconds under session and identifier-width under account.
+- Production code changed by this correction: no
+- Production constructors added or changed for tests: none
+- Targeted command: mvn -Dtest=Task0043LoginFoundationTest,AuthWorkflowPropertiesBindingTest,Task0043OtpResendLimitPolicyTest test
+- Regression command: mvn -Dtest=RegistrationContractStabilizationIntegrationTest,RegistrationOtpResendServiceIntegrationTest,RegistrationOtpVerificationLifecycleIntegrationTest,ApimBusinessCallRetryIntegrationTest test
+- Commit message: test(auth): align login foundation YAML assertions

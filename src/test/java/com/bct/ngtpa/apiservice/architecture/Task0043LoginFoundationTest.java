@@ -54,8 +54,8 @@ class Task0043LoginFoundationTest {
                 "login:",
                 "resend-limit-enabled: false",
                 "max-verify-attempts: 5",
-                "session-idle-timeout-seconds:",
-                "account-identifier-width:");
+                "idle-timeout-seconds:",
+                "identifier-width:");
     }
 
     private AuthWorkflowProperties validProperties() {
