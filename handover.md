@@ -85,3 +85,18 @@
 - Targeted command: mvn -Dtest=Task0043LoginFoundationTest,AuthWorkflowPropertiesBindingTest,Task0043OtpResendLimitPolicyTest test
 - Regression command: mvn -Dtest=RegistrationContractStabilizationIntegrationTest,RegistrationOtpResendServiceIntegrationTest,RegistrationOtpVerificationLifecycleIntegrationTest,ApimBusinessCallRetryIntegrationTest test
 - Commit message: test(auth): align login foundation YAML assertions
+
+### 0043-006-001-credential-authentication-application-contract
+
+- Status: completed
+- Added CredentialAuthenticationPort and transport-neutral login credential command/result contracts.
+- Result supports an opaque actor reference and a selectable OTP destination list even when only one destination exists.
+- Account-Ref and authenticated session are deliberately absent from the login credential command.
+- Credentials are redacted by command toString and are not persisted by this contract.
+- Added AuthenticateLoginCredentialsUseCase as the application boundary; no web or APIM implementation is included.
+- Compatibility/test-only constructors added: none
+- Fail-first evidence: target/0043-006-001-fail-first.log
+- Targeted command: mvn -Dtest=Task0043CredentialAuthenticationContractTest,Task0043LoginFoundationTest test
+- Regression command: mvn -Dtest=RegistrationContractStabilizationIntegrationTest,RegistrationOtpResendServiceIntegrationTest,ApimBusinessCallRetryIntegrationTest test
+- Deferred: TRPMemberLogin APIM adapter in 0043-006-002
+- Commit message: feat(auth): add credential authentication application contract
