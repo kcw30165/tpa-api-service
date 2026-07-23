@@ -99,6 +99,33 @@ auth-flow-session:
       ttl-seconds: 900
 
 auth-workflows:
+  login:
+    credential:
+      username-min-length: ${LOGIN_USERNAME_MIN_LENGTH:1}
+      username-max-length: ${LOGIN_USERNAME_MAX_LENGTH:128}
+      password-min-length: ${LOGIN_PASSWORD_MIN_LENGTH:1}
+      password-max-length: ${LOGIN_PASSWORD_MAX_LENGTH:128}
+      username-case-insensitive: true
+    otp:
+      length: ${LOGIN_OTP_LENGTH:6}
+      numeric-only: true
+      ttl-seconds: ${LOGIN_OTP_TTL_SECONDS:300}
+      resend-cooldown-seconds: ${LOGIN_OTP_RESEND_COOLDOWN_SECONDS:60}
+      max-verify-attempts: ${LOGIN_OTP_MAX_VERIFY_ATTEMPTS:5}
+      resend-limit-enabled: false
+      max-resend-attempts: 0
+    idempotency:
+      start-ttl-seconds: ${LOGIN_START_IDEMPOTENCY_TTL_SECONDS:300}
+      otp-send-ttl-seconds: ${LOGIN_OTP_SEND_IDEMPOTENCY_TTL_SECONDS:300}
+      otp-resend-ttl-seconds: ${LOGIN_OTP_RESEND_IDEMPOTENCY_TTL_SECONDS:300}
+      otp-verify-ttl-seconds: ${LOGIN_OTP_VERIFY_IDEMPOTENCY_TTL_SECONDS:300}
+      cancel-ttl-seconds: ${LOGIN_CANCEL_IDEMPOTENCY_TTL_SECONDS:300}
+    session:
+      ttl-seconds: ${LOGIN_AUTH_FLOW_TTL_SECONDS:900}
+      idle-timeout-seconds: ${LOGIN_SESSION_IDLE_TIMEOUT_SECONDS:900}
+    account:
+      identifier-width: ${LOGIN_ACCOUNT_IDENTIFIER_WIDTH:8}
+      identifier-pad-character: "0"
   registration:
     pre-start-challenge:
       enabled: true

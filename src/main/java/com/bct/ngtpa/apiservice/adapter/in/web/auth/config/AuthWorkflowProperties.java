@@ -13,6 +13,7 @@ import java.util.Map;
 public class AuthWorkflowProperties {
 
     private Registration registration;
+    private Login login;
 
     @Getter
     @Setter
@@ -24,6 +25,62 @@ public class AuthWorkflowProperties {
         private final Username username = new Username();
         private final Password password = new Password();
         private Map<String, String> identityTypeMapping = new LinkedHashMap<>();
+    }
+
+    @Getter
+    @Setter
+    public static class Login {
+        private final LoginCredential credential = new LoginCredential();
+        private final LoginOtp otp = new LoginOtp();
+        private final LoginIdempotency idempotency = new LoginIdempotency();
+        private final LoginSession session = new LoginSession();
+        private final LoginAccount account = new LoginAccount();
+    }
+
+    @Getter
+    @Setter
+    public static class LoginCredential {
+        private int usernameMinLength;
+        private int usernameMaxLength;
+        private int passwordMinLength;
+        private int passwordMaxLength;
+        private boolean usernameCaseInsensitive = true;
+    }
+
+    @Getter
+    @Setter
+    public static class LoginOtp {
+        private int length;
+        private boolean numericOnly = true;
+        private int ttlSeconds;
+        private int resendCooldownSeconds;
+        private int maxVerifyAttempts;
+        private boolean resendLimitEnabled;
+        private int maxResendAttempts;
+    }
+
+    @Getter
+    @Setter
+    public static class LoginIdempotency {
+        private int startTtlSeconds;
+        private int otpSendTtlSeconds;
+        private int otpResendTtlSeconds;
+        private int otpVerifyTtlSeconds;
+        private int cancelTtlSeconds;
+    }
+
+    @Getter
+    @Setter
+    public static class LoginSession {
+        private int ttlSeconds;
+        private int idleTimeoutSeconds;
+    }
+
+    @Getter
+    @Setter
+    public static class LoginAccount {
+        private int identifierWidth;
+        private char identifierPadCharacter = '0';
     }
 
     @Getter
@@ -138,6 +195,51 @@ public class AuthWorkflowProperties {
         private boolean notSameAsUsernameIgnoreCase;
         private int requiredCategories;
         private String specialChars;
+    }
+
+
+    public void validateLoginPolicy() {
+        if (login == null) {
+            throw new IllegalStateException("auth-workflows.login configuration is required");
+        }
+        requirePositive(login.credential.usernameMinLength, "credential.username-min-length");
+        requireRange(login.credential.usernameMinLength, login.credential.usernameMaxLength,
+                "credential username length");
+        requirePositive(login.credential.passwordMinLength, "credential.password-min-length");
+        requireRange(login.credential.passwordMinLength, login.credential.passwordMaxLength,
+                "credential password length");
+        requirePositive(login.otp.length, "otp.length");
+        requirePositive(login.otp.ttlSeconds, "otp.ttl-seconds");
+        requireNonNegative(login.otp.resendCooldownSeconds, "otp.resend-cooldown-seconds");
+        requirePositive(login.otp.maxVerifyAttempts, "otp.max-verify-attempts");
+        if (login.otp.resendLimitEnabled) {
+            requirePositive(login.otp.maxResendAttempts, "otp.max-resend-attempts");
+        }
+        requirePositive(login.idempotency.startTtlSeconds, "idempotency.start-ttl-seconds");
+        requirePositive(login.idempotency.otpSendTtlSeconds, "idempotency.otp-send-ttl-seconds");
+        requirePositive(login.idempotency.otpResendTtlSeconds, "idempotency.otp-resend-ttl-seconds");
+        requirePositive(login.idempotency.otpVerifyTtlSeconds, "idempotency.otp-verify-ttl-seconds");
+        requirePositive(login.session.ttlSeconds, "session.ttl-seconds");
+        requirePositive(login.session.idleTimeoutSeconds, "session.idle-timeout-seconds");
+        requirePositive(login.account.identifierWidth, "account.identifier-width");
+    }
+
+    private void requirePositive(int value, String property) {
+        if (value <= 0) {
+            throw new IllegalStateException("auth-workflows.login." + property + " must be greater than zero");
+        }
+    }
+
+    private void requireNonNegative(int value, String property) {
+        if (value < 0) {
+            throw new IllegalStateException("auth-workflows.login." + property + " must not be negative");
+        }
+    }
+
+    private void requireRange(int minimum, int maximum, String property) {
+        if (maximum < minimum) {
+            throw new IllegalStateException("auth-workflows.login " + property + " maximum must not be less than minimum");
+        }
     }
 
 }
