@@ -669,3 +669,24 @@
 - Added a regression test proving unrelated login-policy fields are not required and invalid session-duration relationships still fail fast.
 - Existing handover content was preserved byte-for-byte; the missing 010-005 completion and this correction were appended only after all gates passed.
 - Commit message: fix(auth): scope authenticated session policy validation
+
+### 0043-010-007-login-protected-context-csrf-hash-handoff
+- Status: completed after corrective stabilization through 0043-010-009-fix-csrf-hash-architecture-variable-assertion
+- Extended validated protected-login context results with the persisted CSRF-token hash needed for authenticated-session creation.
+- The loader exposes the hash only after CSRF, session, workflow-state, and encrypted-context validation succeeds; invalid results carry no hash and diagnostics redact it.
+- Fail-first evidence: target/0043-010-007-fail-first.log
+- Commit message: feat(auth): hand off verified login CSRF hash
+
+### 0043-010-008-fix-login-csrf-hash-loader-variable-anchor
+- Status: completed through 0043-010-009-fix-csrf-hash-architecture-variable-assertion
+- Corrected the production loader handoff to use s.csrfTokenHash() from the validated loaded AuthFlowSession.
+- Commit message: fix(auth): bind persisted login CSRF hash from loaded session
+
+### 0043-010-009-fix-csrf-hash-architecture-variable-assertion
+- Status: completed
+- Classification: stale architecture-test variable-name assertion; production CSRF hash handoff was already correct.
+- Root cause: the test expected session.csrfTokenHash(), while DefaultLoginProtectedAuthFlowContextLoader names the validated loaded AuthFlowSession variable s.
+- Correction: normalize source whitespace and assert the complete valid-result factory call using s.csrfTokenHash(), thereby proving the hash comes from the validated loaded session rather than the submitted raw token.
+- Existing handover content was preserved byte-for-byte; missing 010-007/008 records and this correction were appended only after all gates passed.
+- Production source changed: no.
+- Commit message: test(auth): align CSRF hash handoff architecture assertion

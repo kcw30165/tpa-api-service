@@ -30,7 +30,7 @@ class LoginOtpSendServiceTest {
 
         LoginProtectedAuthFlowContextLoader loader = command -> {
             order.add("load");
-            return Mono.just(LoginProtectedAuthFlowContextResult.valid(context(), null, null));
+            return Mono.just(LoginProtectedAuthFlowContextResult.valid(context(), null, null,"csrf_hash"));
         };
         OtpChallengePort otp = new StubOtpPort() {
             public Mono<CreateOtpChallengeResult> createChallenge(CreateOtpChallengeCommand command) {
@@ -105,7 +105,7 @@ class LoginOtpSendServiceTest {
             }
         };
         var service = service(command -> Mono.just(
-                        LoginProtectedAuthFlowContextResult.valid(context(), null, null)), otp,
+                        LoginProtectedAuthFlowContextResult.valid(context(), null, null,"csrf_hash")), otp,
                 command -> {
                     order.add("deliver");
                     return Mono.just(new MessageDeliveryResult(
