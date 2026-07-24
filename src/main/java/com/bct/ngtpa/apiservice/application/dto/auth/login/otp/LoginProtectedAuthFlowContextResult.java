@@ -1,8 +1,3 @@
 package com.bct.ngtpa.apiservice.application.dto.auth.login.otp;
-import com.bct.ngtpa.apiservice.application.dto.auth.login.preauth.LoginPreAuthContext;
-public record LoginProtectedAuthFlowContextResult(LoginProtectedAuthFlowContextStatus status,LoginPreAuthContext context){
- public static LoginProtectedAuthFlowContextResult valid(LoginPreAuthContext context){return new LoginProtectedAuthFlowContextResult(LoginProtectedAuthFlowContextStatus.VALID,context);}
- public static LoginProtectedAuthFlowContextResult invalid(LoginProtectedAuthFlowContextStatus status){return new LoginProtectedAuthFlowContextResult(status,null);}
- public boolean isValid(){return status==LoginProtectedAuthFlowContextStatus.VALID&&context!=null;}
- @Override public String toString(){return "LoginProtectedAuthFlowContextResult[status="+status+", context=<redacted>]";}
-}
+import com.bct.ngtpa.apiservice.application.dto.auth.login.preauth.*;
+public record LoginProtectedAuthFlowContextResult(LoginProtectedAuthFlowContextStatus status,LoginPreAuthContext context,String activeOtpChallengeId,LoginPreAuthDestination selectedDestination){public static LoginProtectedAuthFlowContextResult valid(LoginPreAuthContext context,String activeOtpChallengeId,LoginPreAuthDestination selectedDestination){return new LoginProtectedAuthFlowContextResult(LoginProtectedAuthFlowContextStatus.VALID,context,activeOtpChallengeId,selectedDestination);}public static LoginProtectedAuthFlowContextResult invalid(LoginProtectedAuthFlowContextStatus status){return new LoginProtectedAuthFlowContextResult(status,null,null,null);}public boolean isValid(){return status==LoginProtectedAuthFlowContextStatus.VALID&&context!=null;}@Override public String toString(){return "LoginProtectedAuthFlowContextResult[status="+status+", context=<redacted>, activeOtpChallengeId=<redacted>, selectedDestination=<redacted>]";}}

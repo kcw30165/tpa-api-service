@@ -52,7 +52,9 @@ class LoginOtpSessionBindingAdapterTest {
         var lifecycle = new AuthFlowSessionLifecycleService(port, c -> null, new SessionTtlCalculator(),
                 Clock.systemUTC());
         StepVerifier.create(new LoginOtpSessionBindingAdapter(lifecycle)
-                .bind(new LoginOtpSessionBindingCommand("afs_opaque", "otp_opaque", "req"))).verifyComplete();
+                .bind(new LoginOtpSessionBindingCommand(
+          "afs_opaque", null, "otp_opaque",
+          AuthFlowStatus.STARTED, AuthFlowStatus.OTP_SENT, "req"))).verifyComplete();
         assertThat(current.get().activeOtpChallengeId()).isEqualTo("otp_opaque");
         assertThat(current.get().status()).isEqualTo(AuthFlowStatus.OTP_SENT);
     }

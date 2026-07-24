@@ -30,7 +30,7 @@ class LoginOtpSendServiceTest {
 
         LoginProtectedAuthFlowContextLoader loader = command -> {
             order.add("load");
-            return Mono.just(LoginProtectedAuthFlowContextResult.valid(context()));
+            return Mono.just(LoginProtectedAuthFlowContextResult.valid(context(), null, null));
         };
         OtpChallengePort otp = new StubOtpPort() {
             public Mono<CreateOtpChallengeResult> createChallenge(CreateOtpChallengeCommand command) {
@@ -66,7 +66,7 @@ class LoginOtpSendServiceTest {
         assertThat(delivery.get().messageType()).isEqualTo(MessageDeliveryType.LOGIN_OTP);
         assertThat(delivery.get().recipient()).isEqualTo("91234567");
         assertThat(delivery.get().templateVariables()).containsEntry("code", "123456");
-        assertThat(binding.get().otpChallengeId()).isEqualTo("otp_opaque");
+        assertThat(binding.get().newOtpChallengeId()).isEqualTo("otp_opaque");
         assertThat(service.toString()).doesNotContain("123456", "91234567");
     }
 
@@ -105,7 +105,7 @@ class LoginOtpSendServiceTest {
             }
         };
         var service = service(command -> Mono.just(
-                        LoginProtectedAuthFlowContextResult.valid(context())), otp,
+                        LoginProtectedAuthFlowContextResult.valid(context(), null, null)), otp,
                 command -> {
                     order.add("deliver");
                     return Mono.just(new MessageDeliveryResult(

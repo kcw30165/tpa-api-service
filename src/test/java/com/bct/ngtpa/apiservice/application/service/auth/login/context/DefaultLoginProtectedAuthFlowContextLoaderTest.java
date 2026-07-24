@@ -22,7 +22,7 @@ class DefaultLoginProtectedAuthFlowContextLoaderTest {
  @Test void invalidCsrfFailsWithoutLoadingProtectedContext(){
   StepVerifier.create(loader(session(AuthFlowScenario.LOGIN,AuthFlowStatus.STARTED),null,false).load(command())).assertNext(r->assertThat(r.status()).isEqualTo(LoginProtectedAuthFlowContextStatus.CSRF_INVALID)).verifyComplete();
  }
- private LoginProtectedAuthFlowContextCommand command(){return new LoginProtectedAuthFlowContextCommand("afs_opaque","csrf_opaque","https://portal.example",null,"req-1");}
+ private LoginProtectedAuthFlowContextCommand command(){return new LoginProtectedAuthFlowContextCommand("afs_opaque","csrf_opaque","https://portal.example",null,"req-1",AuthFlowStatus.STARTED,false);}
  private DefaultLoginProtectedAuthFlowContextLoader loader(AuthFlowSession session,LoginPreAuthContext context,boolean csrfValid){
   AuthFlowSessionPort port=new AuthFlowSessionPort(){public Mono<AuthFlowSession> create(AuthFlowSessionCreateCommand c){return Mono.error(new UnsupportedOperationException());}public Mono<Optional<AuthFlowSession>> load(AuthFlowSessionId id){return Mono.just(Optional.of(session));}public Mono<AuthFlowSession> update(AuthFlowSession s){return Mono.just(s);}public Mono<AuthFlowSession> touch(AuthFlowSessionId id,Instant n){return Mono.just(session);}public Mono<AuthFlowSession> complete(AuthFlowSessionId id,Instant n){return Mono.just(session);}public Mono<AuthFlowSession> cancel(AuthFlowSessionId id,Instant n){return Mono.just(session);}public Mono<Void> delete(AuthFlowSessionId id){return Mono.empty();}};
   var lifecycle=new AuthFlowSessionLifecycleService(port,c->null,new SessionTtlCalculator(),Clock.fixed(NOW,ZoneOffset.UTC));
