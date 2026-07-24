@@ -1,6 +1,15 @@
 package com.bct.ngtpa.apiservice.config.auth.session;
 
 import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties;
+import com.bct.ngtpa.apiservice.application.port.in.EstablishAuthenticatedLoginSessionUseCase;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.session.DeleteAuthFlowSessionPort;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.session.EstablishAuthenticatedLoginSessionService;
+import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionLifecycleService;
+import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.SecureAuthenticatedSessionIdGenerator;
+import java.time.Clock;
+import java.time.Duration;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthenticatedSessionAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthenticatedSessionJsonMapper;
 import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionPort;
@@ -36,5 +45,54 @@ public class AuthenticatedSessionConfig {
         return new AesGcmAuthenticatedSessionProtector(
                 properties.getBase64Key(),
                 objectMapper.copy());
+    }
+
+    @Bean
+    SecureAuthenticatedSessionIdGenerator authenticatedSessionIdGenerator() {
+        return new SecureAuthenticatedSessionIdGenerator();
+    }
+
+    @Bean
+    AuthenticatedSessionLifecycleService authenticatedSessionLifecycleService(
+            AuthenticatedSessionPort authenticatedSessionPort,
+            AuthenticatedSessionProtectorPort authenticatedSessionProtector,
+            SecureAuthenticatedSessionIdGenerator authenticatedSessionIdGenerator,
+            Clock clock,
+            AuthWorkflowProperties properties) {
+        if (properties.getLogin() == null) {
+            throw new IllegalStateException("auth-workflows.login configuration is required");
+        }
+        var session = properties.getLogin().getSession();
+        if (session.getIdleTimeoutSeconds() <= 0) {
+            throw new IllegalStateException(
+                    "auth-workflows.login.session.idle-timeout-seconds must be greater than zero");
+        }
+        if (session.getTtlSeconds() <= 0) {
+            throw new IllegalStateException(
+                    "auth-workflows.login.session.ttl-seconds must be greater than zero");
+        }
+        if (session.getIdleTimeoutSeconds() > session.getTtlSeconds()) {
+            throw new IllegalStateException(
+                    "auth-workflows.login.session.idle-timeout-seconds must not exceed ttl-seconds");
+        }
+        return new AuthenticatedSessionLifecycleService(
+                authenticatedSessionPort,
+                authenticatedSessionProtector,
+                authenticatedSessionIdGenerator,
+                Duration.ofSeconds(session.getIdleTimeoutSeconds()),
+                Duration.ofSeconds(session.getTtlSeconds()),
+                clock);
+    }
+
+    @Bean
+    DeleteAuthFlowSessionPort deleteAuthFlowSessionPort(AuthFlowSessionPort authFlowSessionPort) {
+        return authFlowSessionPort::delete;
+    }
+
+    @Bean
+    EstablishAuthenticatedLoginSessionUseCase establishAuthenticatedLoginSessionUseCase(
+            AuthenticatedSessionLifecycleService lifecycle,
+            DeleteAuthFlowSessionPort cleanup) {
+        return new EstablishAuthenticatedLoginSessionService(lifecycle, cleanup, lifecycle);
     }
 }

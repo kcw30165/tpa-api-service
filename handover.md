@@ -651,3 +651,21 @@
 - Correction: the guard now rejects actual broad-port imports, fields, and constructor dependencies while explicitly allowing DeleteAuthFlowSessionPort.
 - Existing handover content was preserved byte-for-byte; missing 010-002/003 records and this correction were appended only after all gates passed.
 - Commit message: test(auth): distinguish narrow pre-auth cleanup capability
+
+### 0043-010-005-login-authenticated-session-transition-composition
+- Status: completed after focused policy-validation correction in 0043-010-006-fix-session-composition-policy-validation-scope
+- Composed SecureAuthenticatedSessionIdGenerator and AuthenticatedSessionLifecycleService using the existing login session idle timeout, absolute TTL, Clock, protected persistence port, and protector.
+- Adapted AuthFlowSessionPort to the narrow DeleteAuthFlowSessionPort capability only at the Spring composition boundary.
+- Composed EstablishAuthenticatedLoginSessionUseCase with the lifecycle service as the narrow create and revoke implementation and the pre-auth delete adapter as cleanup.
+- Reused the existing Sentinel-compatible Redis persistence and AES-GCM protection composition.
+- Fail-first evidence: target/0043-010-005-fail-first.log
+- Commit message: feat(auth): compose login authenticated session transition
+
+### 0043-010-006-fix-session-composition-policy-validation-scope
+- Status: completed
+- Classification: production composition validation-scope defect.
+- Root cause: authenticatedSessionLifecycleService called validateLoginPolicy(), coupling session bean creation to unrelated credential, OTP, idempotency, template, and account settings. The focused composition test therefore failed on username-min-length before session durations could be composed.
+- Correction: validate only the configuration owned by this bean: login presence, positive idle timeout, positive absolute TTL, and idle timeout not exceeding absolute TTL.
+- Added a regression test proving unrelated login-policy fields are not required and invalid session-duration relationships still fail fast.
+- Existing handover content was preserved byte-for-byte; the missing 010-005 completion and this correction were appended only after all gates passed.
+- Commit message: fix(auth): scope authenticated session policy validation
