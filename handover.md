@@ -217,3 +217,14 @@
 
 - Status: superseded and completed by 0043-006-028-fix-login-endpoint-architecture-guard-method
 - Intended correction was valid, but the script expected one exact formatting of the negative AssertJ assertion and stopped before Maven.
+
+### 0043-007-001-trp-get-account-list-application-contract
+- Status: completed
+- Restarted subtask 007 from the d954 reset baseline; discarded backup-branch 007-001/002 logic is not reused.
+- Added the transport-neutral TRPGetAccountList command with cust-id, cust-type, search-key=cust-id, and search-value from protected pre-auth values.
+- Added raw account-item contract for env, trust-code, policy-no, sch-type, integer cert-no, term-status, and term-complete-date.
+- Account formatting, malformed-record omission, AccountRef generation, authenticated-session creation, and OTP-verification orchestration remain later scripts.
+- Result exposes AVAILABLE or UNAVAILABLE only; no raw downstream error code crosses the application port.
+- Production constructors added merely for tests: none
+- Fail-first evidence: target/0043-007-001-fail-first.log
+- Commit message: feat(auth): add TRPGetAccountList application contract
