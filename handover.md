@@ -711,3 +711,21 @@
 - Existing handover content was preserved byte-for-byte; the missing 010-010 completion and this correction were appended only after all gates passed.
 - Production source changed: no.
 - Commit message: test(auth): align login OTP transition fixtures with canonical contracts
+
+### 0043-010-012-sid-xxx-authenticated-transport-and-cookie-transition
+- Status: completed after test-API correction in 0043-010-013-fix-authenticated-transport-httpheaders-assertion
+- Added the canonical authenticated-session response transport header sid_xxx through RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER.
+- POST /api/v1/auth/login/otp/verify publishes sid_xxx only for ACCOUNTS_READY with an authenticated session ID.
+- Successful transition clears auth_flow_sid and the pre-auth XSRF cookie; failure paths never publish sid_xxx.
+- The authenticated session ID remains absent from the JSON response body; the account-selection payload continues to expose AccountRef only.
+- Fail-first evidence: target/0043-010-012-sid-xxx-authenticated-transport-and-cookie-transition-fail-first.log
+- Commit message: feat(auth): publish authenticated sid transport after OTP verification
+
+### 0043-010-013-fix-authenticated-transport-httpheaders-assertion
+- Status: completed
+- Classification: test-compilation defect; production sid_xxx transport and cookie transition were unchanged.
+- Root cause: Spring HttpHeaders in the project version does not expose Map.containsKey(String).
+- Correction: the negative transport assertion now uses getFirst(AUTHENTICATED_SESSION_HEADER).isNull(), which directly verifies that failure responses do not publish sid_xxx.
+- Existing handover content was preserved byte-for-byte; the missing 010-012 completion and this correction were appended only after all gates passed.
+- Production source changed: no.
+- Commit message: test(auth): align sid transport assertion with HttpHeaders API
