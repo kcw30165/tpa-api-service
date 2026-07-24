@@ -594,3 +594,26 @@
 - Correction: the lifecycle guard now requires AuthenticatedAccountContextResolver to exist while continuing to require AuthenticatedSessionCookieWriter and web transport to remain deferred.
 - Existing handover content was preserved byte-for-byte; missing 009-013/014/015 records and this correction were appended only after all gates passed.
 - Commit message: test(auth): advance authenticated session lifecycle stage guard
+
+### 0043-009-017-final-authenticated-session-foundation-stabilization-and-evidence
+- Status: completed
+- Finalized subtask 009 authenticated-session foundation evidence across domain invariants, protected persistence contracts, Redis adapter behavior, AES-256-GCM protection, Spring composition, idle/absolute lifecycle enforcement, opaque sid generation, and selected AccountRef resolution into PortalAccessContext.
+- Verified ActorContext remains actorUserId plus actorUserRole only; actorType was not introduced.
+- Verified Redis values remain protected envelopes, AccountRef resolution is session-scoped, and missing/expired/revoked/unknown context fails closed.
+- Verified Login OTP continuation, account validation, AccountRef assignment, registration OTP, and Redis sensitive-data behavior remain preserved.
+- Login-success transition, pre-auth cleanup, sid_xxx web transport, and runtime replacement of the temporary portal-context adapter remain deferred to subsequent subtasks.
+- Evidence index: target/0043-009-017-evidence/evidence.md
+- Evidence logs: target/0043-009-017-evidence/01-domain-model.log through target/0043-009-017-evidence/07-login-registration-preservation.log
+- Existing handover content was preserved byte-for-byte and this section appended only after all gates passed.
+- Subtask 009 status: complete.
+- Commit message: test(auth): finalize authenticated session foundation evidence
+
+### 0043-009-018-fix-final-evidence-actortype-guard-scope
+- Status: completed
+- Classification: final-evidence static-guard scope defect; no production-code defect.
+- Root cause: 009-017 searched raw text for actorType and matched package-info.java, whose documentation intentionally states that the authenticated-session model contains no actorType field.
+- Correction: the guard now excludes package-info.java and detects structural actorType fields, accessors, parameters, assignments, and actor-type configuration keys in authenticated-session production Java sources.
+- The corrected 009-017 evidence script completed all seven evidence gates and generated target/0043-009-017-evidence/evidence.md.
+- Existing handover content was preserved byte-for-byte; the 009-017 completion remains intact and this correction was appended afterward.
+- Production source changed: no.
+- Commit message: test(auth): scope authenticated session actorType guard
