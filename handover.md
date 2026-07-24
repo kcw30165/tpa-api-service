@@ -319,3 +319,15 @@
 - Production constructors added merely for tests: none
 - Fail-first evidence: target/0043-008-006-fail-first.log
 - Commit message: feat(auth): add login OTP send idempotency and safe replay
+
+### 0043-008-007-login-otp-send-redis-idempotency-adapter
+- Status: completed
+- Added atomic Redis SETNX reservation for login OTP send under the dedicated opaque namespace {prefix}:auth:idempotency:login:otp-send:{idempotencyKey}.
+- Redis values contain request hash, lifecycle status, safe replay metadata, and timestamps only.
+- Existing records classify duplicate processing, completed replay, key reuse, failed, and unknown outcomes without repeating side effects.
+- TTL remains owned by auth-workflows.login.idempotency.otp-send-ttl-seconds and is validated by existing login policy binding.
+- No session ID, destination ID/address, CSRF, OTP code, or provider response is stored in keys or wire values.
+- HTTP endpoint and final SendLoginOtpUseCase composition remain the next script so no fabricated login message-template configuration is introduced here.
+- Production constructors added merely for tests: none
+- Fail-first evidence: target/0043-008-007-fail-first.log
+- Commit message: feat(auth): persist login OTP send idempotency in Redis
