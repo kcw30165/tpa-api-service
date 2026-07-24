@@ -543,3 +543,14 @@
 - AES-GCM key, nonce, AAD, authentication-tag, redaction, tamper detection, and Redis protected-envelope boundaries remain unchanged.
 - Existing handover content was preserved byte-for-byte; missing 009-008/009 records and this correction were appended only after all gates passed.
 - Commit message: fix(auth): encode authenticated session temporal fields explicitly
+
+### 0043-009-011-authenticated-session-protection-and-redis-composition
+- Status: completed
+- Added Spring composition for AuthenticatedSessionPort, RedisAuthenticatedSessionJsonMapper, and AuthenticatedSessionProtectorPort outside the application layer.
+- Added validated auth-workflows.login.session.protection properties requiring a version and dedicated Base64-encoded 256-bit key.
+- AesGcmAuthenticatedSessionProtector receives a copied application ObjectMapper; Redis persistence continues through the existing Sentinel-compatible CachePort and RedisCacheKeyFactory.
+- No second Redis client, Redis connection factory, hardcoded key, registration-secret fallback, cookie handling, lifecycle orchestration, or PortalAccessContext resolution was introduced.
+- Deployment must supply AUTH_WORKFLOWS_LOGIN_SESSION_PROTECTION_BASE64_KEY or equivalent externalized configuration.
+- Existing handover content was preserved byte-for-byte and this section appended after all gates passed.
+- Fail-first evidence: target/0043-009-011-fail-first.log
+- Commit message: feat(auth): compose protected authenticated session persistence

@@ -338,3 +338,6 @@ email:
     port: ${SMTP_PORT:25}
     from: ${SMTP_FROM:}
     timeout-millis: ${SMTP_TIMEOUT_MILLIS:5000}
+
+# Authenticated portal-session context protection. Supply the key from the deployment secret store.
+authenticated-session-protection-key-placeholder: ${AUTHENTICATED_SESSION_PROTECTION_KEY:}
