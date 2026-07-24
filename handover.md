@@ -137,6 +137,7 @@
 - Production validation remained unchanged.
 
 ### 0043-006-009-login-credential-idempotency-foundation
+
 - Status: completed
 - Added login credential idempotency key, request hash, lifecycle records, coordinator, and Redis adapter through the shared AuthFlowIdempotencyPort contract.
 - Atomic reservation uses Redis SETNX with configured auth-workflows.login.idempotency.start-ttl-seconds.
@@ -193,6 +194,7 @@
 - Replay transition architecture checks are scoped per guarded Java method.
 
 ### 0043-006-025-login-web-endpoint-cookie-and-response-mapping
+
 - Status: completed
 - Added POST /api/v1/auth/login with required Idempotency-Key handling plus X-Request-Id and Accept-Language propagation.
 - Fresh success and valid completed replay write auth_flow_sid through the shared configured AuthFlowCookieWriter.
@@ -219,6 +221,7 @@
 - Intended correction was valid, but the script expected one exact formatting of the negative AssertJ assertion and stopped before Maven.
 
 ### 0043-007-001-trp-get-account-list-application-contract
+
 - Status: completed
 - Restarted subtask 007 from the d954 reset baseline; discarded backup-branch 007-001/002 logic is not reused.
 - Added the transport-neutral TRPGetAccountList command with cust-id, cust-type, search-key=cust-id, and search-value from protected pre-auth values.
@@ -230,6 +233,7 @@
 - Commit message: feat(auth): add TRPGetAccountList application contract
 
 ### 0043-007-002-trp-get-account-list-apim-adapter
+
 - Status: completed
 - Added the corrected TRPGetAccountList shared-envelope adapter using the existing APIM facade, certificate service, payload crypto, credential resolution, request-ID metadata, and SAFE_BUSINESS_CALL retry classification.
 - Request JSON is exactly cust-id, cust-type, search-key, and search-value; response JSON maps env, trust-code, policy-no, sch-type, integer cert-no, term-status, and term-complete-date.
@@ -250,6 +254,7 @@
 - Fail-first evidence: target/0043-007-003-fail-first.log
 
 ### 0043-007-005-session-scoped-account-ref-generation
+
 - Status: completed
 - Added LoginAccountRef and a dedicated LoginAccountRefGeneratorPort with a SecureRandom URL-safe implementation.
 - Account references use configurable prefix acc, 24 bytes of entropy, and bounded collision retries; they are not derived from username, environment, trust, policy, or certificate data.
@@ -262,6 +267,7 @@
 - Commit message: feat(auth): generate session-scoped account references
 
 ### 0043-008-001-login-otp-send-application-contract
+
 - Status: completed
 - Added the login OTP-send input/result contract and SendLoginOtpUseCase boundary.
 - Input requires auth-flow session, CSRF, opaque destination ID, idempotency key, origin/referer, Accept-Language, and request correlation; AccountRef is absent before authentication.
@@ -274,6 +280,7 @@
 - Commit message: feat(auth): add login OTP send application contract
 
 ### 0043-008-002-login-otp-send-orchestration
+
 - Status: completed
 - Added framework-neutral login OTP send orchestration using narrow protected-context loading and session-binding capabilities plus the existing OtpChallengePort and MessageDeliveryPort.
 - Valid flow order is protected context/security validation, opaque destination resolution, shared LOGIN challenge creation, LOGIN_OTP delivery, then active-challenge binding.
@@ -284,3 +291,19 @@
 - Production constructors added merely for tests: none
 - Fail-first evidence: target/0043-008-002-fail-first.log
 - Commit message: feat(auth): orchestrate login OTP challenge and delivery
+
+### 0043-008-003-login-protected-context-and-session-binding-adapters
+
+- Status: completed after production sequencing correction in 0043-008-005-fix-login-otp-session-binding-sequencing
+- LOGIN protected-context loading and active-challenge/status binding now pass targeted and cumulative gates.
+- Status: completed
+- Classification: production reactive sequencing defect plus one stale OTP-scenario characterization test.
+- Root cause: LoginOtpSessionBindingAdapter constructed lifecycle.updateStatus eagerly inside Mono.then. Its lifecycle load occurred before updateActiveOtpChallenge committed, so the stale status mutation overwrote activeOtpChallengeId with null.
+- Production correction: defer updateStatus with Mono.defer so the second lifecycle load occurs only after the challenge-binding update completes.
+- Test correction: OtpChallengeModelTest now recognizes the intentional shared LOGIN scenario.
+- No compatibility constructor or direct session repository access was added.
+- Targeted command: mvn -Dtest=LoginOtpSessionBindingAdapterTest,DefaultLoginProtectedAuthFlowContextLoaderTest,Task0043LoginOtpSessionAdaptersArchitectureTest,LoginOtpSendServiceTest,OtpChallengeModelTest test
+- OTP regression command: mvn -Dtest=$P32RuntimeRateLimitComponentGuardTest,MessageDeliveryModelTest,RateLimitDestinationHashArchitectureGuardTest,DefaultOtpChallengeServiceCreateInvalidateTest,DefaultOtpChallengeServiceReplaceTest,RegistrationOtpChallengeLifecycleIntegrationTest,RegistrationOtpResendServiceIntegrationTest,RegistrationOtpVerificationLifecycleIntegrationTest test
+- Login regression command: mvn -Dtest=StartLoginServiceTest,LoginStartEvidenceIntegrationTest,TrpGetAccountListAdapterTest,LoginAccountRecordValidationServiceTest,LoginAccountReferenceAssignmentServiceTest test
+- Registration regression command: mvn -DtestRegistrationContractStabilizationIntegrationTest,RegistrationRedisSensitiveDataSafetyIntegrationTest
+- Commit message: feat(auth): bind login OTP to protected pre-auth session

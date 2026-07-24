@@ -7,6 +7,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.login.preauth.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.*;
 import com.bct.ngtpa.apiservice.application.dto.message.*;
 import com.bct.ngtpa.apiservice.application.port.out.*;
+import com.bct.ngtpa.apiservice.application.service.security.ratelimit.*;
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
@@ -128,8 +129,8 @@ class LoginOtpSendServiceTest {
             MessageDeliveryPort messages,
             LoginOtpSessionBindingPort sessions) {
         return new LoginOtpSendService(loader, new LoginOtpDestinationResolver(), otp, messages,
-                sessions, new LoginOtpDestinationHashPort() {
-                    public String hash(String value) { return "hash_only"; }
+                sessions, new DestinationBucketIdGenerator() {
+                    public String generateBucketId(DestinationType type, String value) { return "hash_only"; }
                 }, Clock.fixed(NOW, ZoneOffset.UTC),
                 new LoginOtpSendPolicy(6, true, 300, 60, 5, false, 0,
                         "Your verification code is {code}", "Verification code"));
