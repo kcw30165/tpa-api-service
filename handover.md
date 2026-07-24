@@ -729,3 +729,26 @@
 - Existing handover content was preserved byte-for-byte; the missing 010-012 completion and this correction were appended only after all gates passed.
 - Production source changed: no.
 - Commit message: test(auth): align sid transport assertion with HttpHeaders API
+
+### 0043-010-014-final-login-authenticated-transition-stabilization-and-evidence
+- Status: completed
+- Finalized subtask 010 evidence for the verified-OTP to authenticated-session transition.
+- Verified AccountRef assignment precedes authenticated-session establishment, authenticated-session creation precedes pre-auth deletion, and cleanup failure revokes the new authenticated session.
+- Verified successful OTP verification publishes the opaque authenticated session through sid_xxx, clears auth_flow_sid and the pre-auth XSRF cookie, and keeps the session ID out of the JSON body and diagnostics.
+- Verified failure paths never publish sid_xxx and do not expose accounts or authenticated-session identity.
+- Verified protected Redis persistence, idle/absolute session lifecycle, session-scoped AccountRef resolution, Login OTP preservation, registration preservation, and clean-architecture boundaries.
+- Evidence index: target/0043-010-014-evidence/evidence.md
+- Evidence logs: target/0043-010-014-evidence/01-transition-contract-and-orchestration.log through target/0043-010-014-evidence/07-registration-and-architecture-preservation.log
+- Existing handover content was preserved byte-for-byte and this section appended only after all gates passed.
+- Subtask 010 status: complete.
+- Deferred: authenticated request filtering, runtime replacement of temporary PortalAccessContext, logout/revocation transport, and removal of legacy Session-Id belong to later subtasks.
+- Commit message: test(auth): finalize authenticated login transition evidence
+
+### 0043-010-016-fix-final-evidence-transition-capability-names
+- Status: completed
+- Classification: final-evidence variable-name defect; production transition orchestration was unchanged.
+- Corrected static checks to match the concrete service fields: create.create, cleanup.delete, and revoke.revoke.
+- Verified create-before-cleanup ordering and cleanup-failure revocation through the existing behavioral and architecture tests.
+- Evidence index: target/0043-010-014-evidence/evidence.md
+- Production source changed: no.
+- Commit message: test(auth): align transition evidence with concrete capability fields
