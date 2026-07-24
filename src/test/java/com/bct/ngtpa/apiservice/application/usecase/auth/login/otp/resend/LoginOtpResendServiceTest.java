@@ -1,0 +1,101 @@
+package com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.resend;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import com.bct.ngtpa.apiservice.application.dto.auth.login.otp.*;
+import com.bct.ngtpa.apiservice.application.dto.auth.login.otp.resend.*;
+import com.bct.ngtpa.apiservice.application.dto.auth.otp.*;
+import com.bct.ngtpa.apiservice.application.dto.message.*;
+import com.bct.ngtpa.apiservice.application.port.out.*;
+import java.time.*;
+import java.util.*;
+import java.util.concurrent.atomic.*;
+import org.junit.jupiter.api.Test;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
+
+class LoginOtpResendServiceTest {
+    static final Instant NOW = Instant.parse("2026-07-24T04:00:00Z");
+    static final ResendLoginOtpCommand COMMAND = new ResendLoginOtpCommand("afs_secret", "csrf_secret", "idem_key_123",
+            "https://portal", null, "en", "req");
+
+    @Test
+    void replacesDeliversThenBindsNewChallenge() {
+        var delivered = new AtomicReference<MessageDeliveryCommand>();
+        var bound = new AtomicReference<LoginOtpReplacementBindingCommand>();
+        OtpChallengePort otp = new Stub() {
+            public Mono<ReplaceOtpChallengeResult> replaceChallenge(ReplaceOtpChallengeCommand c) {
+                return Mono.just(new ReplaceOtpChallengeResult("old", "new", "123456", OtpReplacementOutcome.REPLACED,
+                        NOW.plusSeconds(300), 300, 60, 0, null));
+            }
+        };
+        var service = service(
+                c -> Mono.just(LoginOtpResendContextResult.valid("old", LoginOtpChannel.SMS, "91234567", "****4567")),
+                otp, c -> {
+                    delivered.set(c);
+                    return Mono.just(
+                            new MessageDeliveryResult(MessageDeliveryStatus.ACCEPTED, c.channel(), null, null, null));
+                }, c -> {
+                    bound.set(c);
+                    return Mono.empty();
+                });
+        StepVerifier.create(service.resend(COMMAND)).assertNext(r -> {
+            assertThat(r.status()).isEqualTo(ResendLoginOtpStatus.RESENT);
+            assertThat(r.maskedDestination()).isEqualTo("****4567");
+        }).verifyComplete();
+        assertThat(delivered.get().templateVariables()).containsEntry("code", "123456");
+        assertThat(bound.get().newOtpChallengeId()).isEqualTo("new");
+    }
+
+    @Test
+    void cooldownDoesNotDeliverOrBind() {
+        OtpChallengePort otp = new Stub() {
+            public Mono<ReplaceOtpChallengeResult> replaceChallenge(ReplaceOtpChallengeCommand c) {
+                return Mono.just(new ReplaceOtpChallengeResult("old", null, null, OtpReplacementOutcome.COOLDOWN_ACTIVE,
+                        null, 0, 60, 0, 25));
+            }
+        };
+        var service = service(
+                c -> Mono.just(LoginOtpResendContextResult.valid("old", LoginOtpChannel.EMAIL, "member@example.com",
+                        "m***@example.com")),
+                otp, c -> Mono.error(new AssertionError()), c -> Mono.error(new AssertionError()));
+        StepVerifier.create(service.resend(COMMAND)).assertNext(r -> {
+            assertThat(r.status()).isEqualTo(ResendLoginOtpStatus.COOLDOWN_ACTIVE);
+            assertThat(r.retryAfterSeconds()).isEqualTo(25);
+        }).verifyComplete();
+    }
+
+    @Test
+    void invalidContextHasNoOtpSideEffects() {
+        var service = service(
+                c -> Mono.just(LoginOtpResendContextResult.invalid(LoginOtpResendContextStatus.CSRF_INVALID)),
+                new Stub() {
+                }, c -> Mono.error(new AssertionError()), c -> Mono.error(new AssertionError()));
+        StepVerifier.create(service.resend(COMMAND))
+                .assertNext(r -> assertThat(r.status()).isEqualTo(ResendLoginOtpStatus.AUTH_FLOW_INVALID))
+                .verifyComplete();
+    }
+
+    private LoginOtpResendService service(LoginOtpResendContextLoader l, OtpChallengePort o, MessageDeliveryPort m,
+            LoginOtpReplacementBindingPort b) {
+        return new LoginOtpResendService(l, o, m, b, Clock.fixed(NOW, ZoneOffset.UTC),
+                new LoginOtpSendPolicy(6, true, 300, 60, 5, false, 0, "Your code is {code}", "Code"));
+    }
+
+    abstract static class Stub implements OtpChallengePort {
+        public Mono<CreateOtpChallengeResult> createChallenge(CreateOtpChallengeCommand c) {
+            return Mono.error(new UnsupportedOperationException());
+        }
+
+        public Mono<VerifyOtpChallengeResult> verifyChallenge(VerifyOtpChallengeCommand c) {
+            return Mono.error(new UnsupportedOperationException());
+        }
+
+        public Mono<ReplaceOtpChallengeResult> replaceChallenge(ReplaceOtpChallengeCommand c) {
+            return Mono.error(new UnsupportedOperationException());
+        }
+
+        public Mono<Void> invalidateChallenge(InvalidateOtpChallengeCommand c) {
+            return Mono.empty();
+        }
+    }
+}

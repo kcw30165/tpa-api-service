@@ -339,3 +339,14 @@
 - Fresh success and completed replay return VERIFY_OTP with masked destination and timing metadata only.
 - Fail-first evidence: target/0043-008-008-fail-first.log
 - Commit message: feat(auth): expose idempotent login OTP send endpoint
+
+### 0043-008-010-login-otp-resend-application-contract-and-orchestration
+- Status: completed
+- Added login OTP resend input/result contracts, protected-context capability, replacement-binding capability, and framework-neutral orchestration.
+- Resend requires a security-validated OTP_SENT login context with an active challenge; concrete loader/adapter wiring follows separately.
+- Reuses OtpChallengePort.replaceChallenge and MessageDeliveryPort with LOGIN/LOGIN_OTP; no parallel OTP store or delivery stack was added.
+- Cooldown, expiry, lock, and non-replaceable outcomes have no delivery or session-binding side effects.
+- Successful replacement delivers the raw code once and binds the new challenge only after delivery acceptance.
+- Existing handover content was preserved byte-for-byte and this section appended.
+- Fail-first evidence: target/0043-008-010-fail-first.log
+- Commit message: feat(auth): add login OTP resend application orchestration
