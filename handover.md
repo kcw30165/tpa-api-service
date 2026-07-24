@@ -523,3 +523,23 @@
 - Correction: the test now requires RedisAuthenticatedSessionAdapter and RedisAuthenticatedSessionJsonMapper to exist while continuing to require AuthenticatedSessionConfig to remain deferred.
 - Existing handover content was preserved byte-for-byte; missing 009-005/006 records and this correction were appended only after all gates passed.
 - Commit message: test(auth): align authenticated session architecture stage
+
+### 0043-009-008-aes-gcm-authenticated-session-protector
+- Status: completed after explicit temporal-codec correction in 0043-009-010-fix-authenticated-session-explicit-time-codec
+- Added infrastructure-owned AES-256-GCM implementation of AuthenticatedSessionProtectorPort with fresh nonce, authentication tag, and version-bound AAD.
+- Commit message: feat(auth): protect authenticated session context with AES-GCM
+
+### 0043-009-009-fix-aes-gcm-throwable-assertion-compatibility
+- Status: completed through 0043-009-010-fix-authenticated-session-explicit-time-codec
+- Corrected AssertJ throwable assertions to use one hasMessageNotContaining value per invocation.
+- Production behavior changed: no.
+- Commit message: test(auth): align AES-GCM throwable assertions with AssertJ API
+
+### 0043-009-010-fix-authenticated-session-explicit-time-codec
+- Status: completed
+- Classification: production serialization defect in the new authenticated-session protector.
+- Root cause: the protector serialized AuthenticatedSession directly, making Instant and LocalDate handling depend on a Jackson Java-time module that is not available in the project runtime mapper.
+- Correction: added adapter-private WireSession and WireAccount records that encode all Instant and LocalDate values explicitly as ISO-8601 strings and reconstruct the domain model after authenticated decryption.
+- AES-GCM key, nonce, AAD, authentication-tag, redaction, tamper detection, and Redis protected-envelope boundaries remain unchanged.
+- Existing handover content was preserved byte-for-byte; missing 009-008/009 records and this correction were appended only after all gates passed.
+- Commit message: fix(auth): encode authenticated session temporal fields explicitly
