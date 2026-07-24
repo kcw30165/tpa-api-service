@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.adapter.in.web.auth.login.otp;
+package com.bct.ngtpa.apiservice.adapter.in.web.auth.login.mapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.*;

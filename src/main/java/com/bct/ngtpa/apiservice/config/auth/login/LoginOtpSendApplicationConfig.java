@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.config.auth.login;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.otp.LoginOtpSendWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.mapper.LoginOtpSendWebMapper;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.LoginOtpSendPolicy;
 import com.bct.ngtpa.apiservice.application.port.in.SendLoginOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.*;

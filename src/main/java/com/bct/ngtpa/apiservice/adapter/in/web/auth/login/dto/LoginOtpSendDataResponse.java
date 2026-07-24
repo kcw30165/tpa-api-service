@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.adapter.in.web.auth.login.otp;
+package com.bct.ngtpa.apiservice.adapter.in.web.auth.login.dto;
 
 public record LoginOtpSendDataResponse(String maskedDestination, Integer expiresInSeconds,
         Integer resendCooldownSeconds, Integer retryAfterSeconds) {

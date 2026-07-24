@@ -1,4 +1,5 @@
-package com.bct.ngtpa.apiservice.adapter.in.web.auth.login.otp;
+package com.bct.ngtpa.apiservice.adapter.in.web.auth.login.mapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.dto.LoginOtpSendDataResponse;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.dto.LoginWorkflowResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.*;

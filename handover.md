@@ -410,3 +410,12 @@
 - No login-specific cancellation repository, OTP store, Redis access, or application/dto/auth/login/otp tree was introduced.
 - Fail-first evidence: target/0043-008-026-fail-first.log
 - Commit message: feat(auth): cancel login pre-auth flow and clean up OTP
+
+### 0043-008-028-align-login-otp-web-package-with-registration
+- Status: completed after residual-import correction in 0043-008-029-fix-login-otp-web-migration-residual-imports
+- Removed adapter/in/web/auth/login/otp and aligned login web ownership with registration's dto and mapper package structure.
+- Moved login OTP request/response records to adapter/in/web/auth/login/dto and web mappers to adapter/in/web/auth/login/mapper.
+- No generic OTP web DTO family was added; OtpChallengePort and application.dto.auth.otp remain the generic technical OTP core.
+- Added a durable architecture guard preventing the login/otp inbound web package from returning.
+- Fail-first evidence: target/0043-008-028-fail-first.log
+- Commit message: refactor(auth): align login OTP web package ownership

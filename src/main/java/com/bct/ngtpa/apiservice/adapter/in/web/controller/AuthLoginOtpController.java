@@ -1,7 +1,10 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.*;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.otp.*;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.dto.LoginOtpSendDataResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.dto.LoginOtpSendRequest;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.mapper.LoginOtpResendWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.mapper.LoginOtpSendWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.dto.LoginWorkflowResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.SendLoginOtpCommand;

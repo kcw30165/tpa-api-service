@@ -24,7 +24,7 @@ class Task0043LoginOtpSendEndpointArchitectureTest {
     @Test
     void responseCannotExposeCsrfSessionDestinationOrOtpCode() {
         var componentNames = java.util.Arrays.stream(
-                com.bct.ngtpa.apiservice.adapter.in.web.auth.login.otp.LoginOtpSendDataResponse.class
+                com.bct.ngtpa.apiservice.adapter.in.web.auth.login.dto.LoginOtpSendDataResponse.class
                         .getRecordComponents())
                 .map(java.lang.reflect.RecordComponent::getName)
                 .toList();
