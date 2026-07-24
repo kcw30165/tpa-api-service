@@ -628,3 +628,26 @@
 - Existing handover content was preserved byte-for-byte and this section appended only after all gates passed.
 - Fail-first evidence: target/0043-010-001-fail-first.log
 - Commit message: feat(auth): add login authenticated session transition contract
+
+### 0043-010-002-login-authenticated-session-transition-orchestration
+- Status: completed after architecture-test stabilization through 0043-010-004-fix-transition-architecture-port-name-collision
+- Added safe transition orchestration behind EstablishAuthenticatedLoginSessionUseCase using narrow create, pre-auth delete, and authenticated-session revoke capabilities.
+- Ordering is create protected authenticated session first, then delete the verified pre-auth session; creation failure preserves pre-auth state.
+- If pre-auth cleanup fails after creation, the new authenticated session is revoked and no session ID or cookie-cleanup instruction is exposed.
+- LoginSessionAccount mappings are converted through LoginAuthenticatedSessionAccountMapper before persistence, so raw policy and certificate identifiers are not retained.
+- Fail-first evidence: target/0043-010-002-fail-first.log
+- Commit message: feat(auth): establish authenticated login session safely
+
+### 0043-010-003-fix-transition-orchestration-architecture-test-throws
+- Status: completed through 0043-010-004-fix-transition-architecture-port-name-collision
+- Added the missing checked-exception declaration to the transition source-reading architecture test.
+- Production behavior changed: no.
+- Commit message: test(auth): declare transition architecture IO failure
+
+### 0043-010-004-fix-transition-architecture-port-name-collision
+- Status: completed
+- Classification: architecture-test substring collision; production transition orchestration was unchanged.
+- Root cause: the test prohibited the raw text AuthFlowSessionPort, which also appears as the suffix of the intended narrow capability DeleteAuthFlowSessionPort.
+- Correction: the guard now rejects actual broad-port imports, fields, and constructor dependencies while explicitly allowing DeleteAuthFlowSessionPort.
+- Existing handover content was preserved byte-for-byte; missing 010-002/003 records and this correction were appended only after all gates passed.
+- Commit message: test(auth): distinguish narrow pre-auth cleanup capability

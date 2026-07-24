@@ -1,0 +1,1 @@
+package com.bct.ngtpa.apiservice.application.usecase.auth.login.session;import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;import reactor.core.publisher.Mono;@FunctionalInterface public interface DeleteAuthFlowSessionPort {Mono<Void> delete(AuthFlowSessionId authFlowSessionId);}
