@@ -239,3 +239,12 @@
 - Production constructors added merely for tests: none
 - Fail-first evidence: target/0043-007-002-fail-first.log
 - Commit message: feat(auth): implement TRPGetAccountList shared APIM adapter
+
+### 0043-007-003-account-record-validation-and-formatting
+
+- Status: completed after YAML-anchor correction in 0043-007-004-fix-account-identifiers-yaml-anchor
+- Added configurable policy width 11, certificate width 4, and numeric left-pad character under auth-workflows.login.account-identifiers.
+- Added strict policy/certificate validation, left-zero formatting, nullable schemeType preservation, and strict termination-pair validation using dd/MM/yyyy input.
+- Raw APIM records remain permissive so malformed records are omitted individually when valid records remain.
+- Returned-but-zero-valid records produce ZERO_VALID_RECORDS, distinct from APIM UNAVAILABLE.
+- Fail-first evidence: target/0043-007-003-fail-first.log

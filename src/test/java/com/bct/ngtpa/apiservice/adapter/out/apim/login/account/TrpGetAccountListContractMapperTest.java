@@ -1,7 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.login.account;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.bct.ngtpa.apiservice.adapter.out.apim.login.account.dto.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.account.LoginAccountAuthorizationCommand;
@@ -33,11 +32,12 @@ class TrpGetAccountListContractMapperTest {
         assertThat(mapped.termStatus()).isEqualTo("T");
         assertThat(mapped.termCompletionDate()).isEqualTo("20/07/2026");
     }
-
     @Test
-    void rejectsMalformedTransportShapeWithoutFormattingBusinessIdentifiers() {
-        assertThatThrownBy(() -> mapper.toRecord(new TrpGetAccountListApimDataItem(
-                "", "DBA", "8802", "OE", 1, "", "")))
-                .isInstanceOf(IllegalStateException.class);
+    void preservesMalformedTransportShapeForPerRecordApplicationValidation() {
+        var mapped = mapper.toRecord(new TrpGetAccountListApimDataItem(
+                "", "DBA", "ABC", "OE", 0, "T", null));
+        assertThat(mapped.accountEnv()).isEmpty();
+        assertThat(mapped.rawPolicyNo()).isEqualTo("ABC");
+        assertThat(mapped.rawCertNo()).isZero();
     }
 }

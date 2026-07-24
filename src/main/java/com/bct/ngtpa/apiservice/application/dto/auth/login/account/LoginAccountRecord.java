@@ -1,6 +1,6 @@
 package com.bct.ngtpa.apiservice.application.dto.auth.login.account;
 
-/** Raw validated-shape account item; formatting and business validation occur later. */
+/** Raw APIM account item. Deliberately permissive; application validation follows. */
 public record LoginAccountRecord(
         String accountEnv,
         String trustCode,
@@ -9,16 +9,14 @@ public record LoginAccountRecord(
         int rawCertNo,
         String termStatus,
         String termCompletionDate) {
-    public LoginAccountRecord {
-        accountEnv = required(accountEnv,"accountEnv");
-        trustCode = required(trustCode,"trustCode");
-        rawPolicyNo = required(rawPolicyNo,"rawPolicyNo");
-        schemeType = optional(schemeType);
-        if(rawCertNo<=0)throw new IllegalArgumentException("rawCertNo must be positive");
-        termStatus = optional(termStatus);
-        termCompletionDate = optional(termCompletionDate);
+    @Override
+    public String toString() {
+        return "LoginAccountRecord[accountEnv=<redacted>, trustCode=<redacted>, "
+                + "rawPolicyNo=<redacted>, schemeType=" + safePresence(schemeType)
+                + ", rawCertNo=<redacted>, termStatus=" + safePresence(termStatus)
+                + ", termCompletionDate=<redacted>]";
     }
-    private static String required(String value,String name){if(value==null||value.isBlank())throw new IllegalArgumentException(name+" must not be blank");return value.trim();}
-    private static String optional(String value){return value==null||value.isBlank()?null:value.trim();}
-    @Override public String toString(){return "LoginAccountRecord[accountEnv=<redacted>, trustCode=<redacted>, rawPolicyNo=<redacted>, schemeType="+schemeType+", rawCertNo=<redacted>, termStatus="+(termStatus==null?"blank":"present")+", termCompletionDate=<redacted>]";}
+    private static String safePresence(String value) {
+        return value == null || value.isBlank() ? "blank" : "present";
+    }
 }
