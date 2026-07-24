@@ -617,3 +617,14 @@
 - Existing handover content was preserved byte-for-byte; the 009-017 completion remains intact and this correction was appended afterward.
 - Production source changed: no.
 - Commit message: test(auth): scope authenticated session actorType guard
+
+### 0043-010-001-login-authenticated-session-transition-contract
+- Status: completed
+- Added framework-neutral EstablishAuthenticatedLoginSessionUseCase command/result contract for the post-OTP transition.
+- The command carries the verified pre-auth session identity, existing ActorContext, ordered LoginSessionAccount mappings, CSRF hash, and correlation ID; all diagnostics redact actor, account, session, and CSRF values.
+- Added LoginAuthenticatedSessionAccountMapper that preserves opaque AccountRef plus validated/formatted session fields and deliberately discards raw policy/certificate identifiers.
+- Success returns only the opaque authenticated session ID plus auth-flow/XSRF cleanup flags; failure results cannot carry a session ID.
+- Authenticated-session creation ordering, pre-auth deletion, OTP verification integration, cookie/header transport, and idempotent transition handling remain subsequent 010 scripts.
+- Existing handover content was preserved byte-for-byte and this section appended only after all gates passed.
+- Fail-first evidence: target/0043-010-001-fail-first.log
+- Commit message: feat(auth): add login authenticated session transition contract
