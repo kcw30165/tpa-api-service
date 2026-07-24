@@ -554,3 +554,14 @@
 - Existing handover content was preserved byte-for-byte and this section appended after all gates passed.
 - Fail-first evidence: target/0043-009-011-fail-first.log
 - Commit message: feat(auth): compose protected authenticated session persistence
+
+### 0043-009-012-authenticated-session-lifecycle-service
+- Status: completed
+- Added framework-neutral authenticated-session create, load-and-touch, expiry cleanup, and revoke orchestration.
+- Added a dedicated SecureAuthenticatedSessionIdGenerator producing opaque sid_ values from 24 random bytes.
+- Create protects the complete domain model and stores it with the earlier of idle and absolute expiry.
+- Load-and-touch decrypts, rejects missing/revoked/expired sessions, deletes expired state, and refreshes idle expiry without extending absolute expiry.
+- No web filter, cookie/header transport, PortalAccessContext resolution, or successful-login transition was introduced; account resolution remains next.
+- Existing handover content was preserved byte-for-byte and this section appended after all gates passed.
+- Fail-first evidence: target/0043-009-012-fail-first.log
+- Commit message: feat(auth): add authenticated session lifecycle service
