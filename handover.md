@@ -248,3 +248,15 @@
 - Raw APIM records remain permissive so malformed records are omitted individually when valid records remain.
 - Returned-but-zero-valid records produce ZERO_VALID_RECORDS, distinct from APIM UNAVAILABLE.
 - Fail-first evidence: target/0043-007-003-fail-first.log
+
+### 0043-007-005-session-scoped-account-ref-generation
+- Status: completed
+- Added LoginAccountRef and a dedicated LoginAccountRefGeneratorPort with a SecureRandom URL-safe implementation.
+- Account references use configurable prefix acc, 24 bytes of entropy, and bounded collision retries; they are not derived from username, environment, trust, policy, or certificate data.
+- Added one-to-one ordered assignment from validated accounts to LoginSessionAccount mappings, preserving raw and formatted identifiers for the later encrypted authenticated-session context.
+- Assignment fails closed if uniqueness cannot be established and rejects an empty account list.
+- No APIM, Redis, cookie, CSRF, pre-auth deletion, or authenticated-session persistence logic was added; those remain later session/OTP-verification orchestration work.
+- Production constructors added merely for tests: none
+- Fail-first evidence: target/0043-007-005-fail-first.log
+- Subtask 007 non-fix implementation scripts completed: 007-001, 007-002, 007-003, 007-005.
+- Commit message: feat(auth): generate session-scoped account references

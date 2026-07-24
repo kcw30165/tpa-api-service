@@ -133,6 +133,10 @@ auth-workflows:
     session:
       ttl-seconds: ${LOGIN_AUTH_FLOW_TTL_SECONDS:900}
       idle-timeout-seconds: ${LOGIN_SESSION_IDLE_TIMEOUT_SECONDS:900}
+    account-ref:
+      prefix: acc
+      entropy-bytes: 24
+      max-generation-attempts: 8
     account-identifiers:
       policy-no:
         width: 11
