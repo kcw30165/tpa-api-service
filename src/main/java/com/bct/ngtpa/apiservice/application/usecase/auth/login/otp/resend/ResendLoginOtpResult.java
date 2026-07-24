@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.application.dto.auth.login.otp.resend;
+package com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.resend;
 
 public record ResendLoginOtpResult(ResendLoginOtpStatus status, String maskedDestination, Integer expiresInSeconds,
         Integer resendCooldownSeconds, Integer retryAfterSeconds) {

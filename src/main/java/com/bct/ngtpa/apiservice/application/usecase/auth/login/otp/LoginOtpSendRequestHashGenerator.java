@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.login.otp;
 
-import com.bct.ngtpa.apiservice.application.dto.auth.login.otp.SendLoginOtpCommand;
-import com.bct.ngtpa.apiservice.application.dto.auth.login.otp.idempotency.LoginOtpSendRequestHash;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.SendLoginOtpCommand;
+import com.bct.ngtpa.apiservice.application.dto.auth.login.idempotency.LoginOtpSendRequestHash;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.util.HexFormat;

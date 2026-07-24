@@ -4,7 +4,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.*;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.otp.*;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.dto.LoginWorkflowResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
-import com.bct.ngtpa.apiservice.application.dto.auth.login.otp.SendLoginOtpCommand;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.SendLoginOtpCommand;
 import com.bct.ngtpa.apiservice.application.dto.workflow.*;
 import com.bct.ngtpa.apiservice.application.port.in.SendLoginOtpUseCase;
 import org.springframework.http.*;

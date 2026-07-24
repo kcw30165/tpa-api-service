@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.application.dto.auth.login.otp.idempotency;
+package com.bct.ngtpa.apiservice.application.dto.auth.login.idempotency;
 
 import java.time.*;
 

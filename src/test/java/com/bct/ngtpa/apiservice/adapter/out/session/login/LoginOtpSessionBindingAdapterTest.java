@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.out.session.login;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import com.bct.ngtpa.apiservice.application.dto.auth.login.otp.*;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.*;
 import com.bct.ngtpa.apiservice.application.port.out.*;
 import com.bct.ngtpa.apiservice.application.service.session.*;

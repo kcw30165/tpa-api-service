@@ -1,6 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.out.redis.auth.login.otp;
 
-import com.bct.ngtpa.apiservice.application.dto.auth.login.otp.idempotency.*;
+import com.bct.ngtpa.apiservice.application.dto.auth.login.idempotency.*;
 import com.bct.ngtpa.apiservice.application.port.out.LoginOtpSendIdempotencyPort;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.*;

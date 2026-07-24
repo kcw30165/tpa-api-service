@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.out.redis.auth.login.otp;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import com.bct.ngtpa.apiservice.application.dto.auth.login.otp.idempotency.*;
+import com.bct.ngtpa.apiservice.application.dto.auth.login.idempotency.*;
 import java.time.*;
 import java.util.*;
 import org.junit.jupiter.api.Test;

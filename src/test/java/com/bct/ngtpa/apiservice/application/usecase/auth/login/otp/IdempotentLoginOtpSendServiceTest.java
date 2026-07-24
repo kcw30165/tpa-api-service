@@ -1,8 +1,8 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.login.otp;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import com.bct.ngtpa.apiservice.application.dto.auth.login.otp.*;
-import com.bct.ngtpa.apiservice.application.dto.auth.login.otp.idempotency.*;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.*;
+import com.bct.ngtpa.apiservice.application.dto.auth.login.idempotency.*;
 import com.bct.ngtpa.apiservice.application.port.in.SendLoginOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.LoginOtpSendIdempotencyPort;
 import java.time.*;

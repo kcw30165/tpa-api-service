@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.resend;
 
-import com.bct.ngtpa.apiservice.application.dto.auth.login.otp.*;
-import com.bct.ngtpa.apiservice.application.dto.auth.login.otp.resend.*;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.*;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.resend.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.*;
 import com.bct.ngtpa.apiservice.application.dto.message.*;
 import com.bct.ngtpa.apiservice.application.port.in.ResendLoginOtpUseCase;
@@ -51,9 +51,9 @@ public final class LoginOtpResendService implements ResendLoginOtpUseCase {
 
     private Mono<ResendLoginOtpResult> deliver(ResendLoginOtpCommand c, LoginProtectedAuthFlowContextResult x,
             ReplaceOtpChallengeResult r) {
-        var channel = channel(x.selectedDestination().channel()) == LoginOtpChannel.EMAIL ? MessageDeliveryChannel.EMAIL : MessageDeliveryChannel.SMS;
+        var channel = channel(x.selectedDestination().channel()) == OtpChannel.EMAIL ? MessageDeliveryChannel.EMAIL : MessageDeliveryChannel.SMS;
         var command = new MessageDeliveryCommand(MessageDeliveryType.LOGIN_OTP, MessageDeliveryScenario.LOGIN, channel,
-                x.selectedDestination().destination(), channel(x.selectedDestination().channel()) == LoginOtpChannel.EMAIL ? policy.emailSubject() : null,
+                x.selectedDestination().destination(), channel(x.selectedDestination().channel()) == OtpChannel.EMAIL ? policy.emailSubject() : null,
                 policy.messageTemplate(), null,
                 Map.of("code", r.rawCode(), "ttlValue", Integer.toString(policy.ttlSeconds()), "ttlUnit", "seconds"),
                 c.acceptLanguage(), c.correlationId());
@@ -66,7 +66,7 @@ public final class LoginOtpResendService implements ResendLoginOtpUseCase {
                         : Mono.just(result(ResendLoginOtpStatus.DELIVERY_FAILED, x, null)));
     }
 
-    private LoginOtpChannel channel(String value) { return "email".equalsIgnoreCase(value) ? LoginOtpChannel.EMAIL : LoginOtpChannel.SMS; }
+    private OtpChannel channel(String value) { return "email".equalsIgnoreCase(value) ? OtpChannel.EMAIL : OtpChannel.SMS; }
 
     private ResendLoginOtpResult result(ResendLoginOtpStatus s, LoginProtectedAuthFlowContextResult x, Integer retry) {
         return new ResendLoginOtpResult(s, x == null ? null : x.selectedDestination().maskedDestination(), null, null, retry);

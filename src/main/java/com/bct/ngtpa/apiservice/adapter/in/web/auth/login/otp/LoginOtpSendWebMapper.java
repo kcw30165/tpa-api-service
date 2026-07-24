@@ -2,7 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.login.otp;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.dto.LoginWorkflowResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.*;
-import com.bct.ngtpa.apiservice.application.dto.auth.login.otp.*;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.*;
 import com.bct.ngtpa.apiservice.application.dto.workflow.*;
 import java.util.*;
 

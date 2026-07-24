@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.application.dto.auth.login.otp.idempotency;
+package com.bct.ngtpa.apiservice.application.dto.auth.login.idempotency;
 
 public record LoginOtpSendReplaySnapshot(String maskedDestination, int expiresInSeconds, int resendCooldownSeconds) {
     public LoginOtpSendReplaySnapshot {

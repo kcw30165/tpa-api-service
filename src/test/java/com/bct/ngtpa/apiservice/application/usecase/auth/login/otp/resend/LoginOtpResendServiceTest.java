@@ -1,10 +1,10 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.resend;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import com.bct.ngtpa.apiservice.application.dto.auth.login.otp.*;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.preauth.LoginPreAuthContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.preauth.LoginPreAuthDestination;
-import com.bct.ngtpa.apiservice.application.dto.auth.login.otp.resend.*;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.resend.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.*;
 import com.bct.ngtpa.apiservice.application.dto.message.*;
 import com.bct.ngtpa.apiservice.application.port.out.*;

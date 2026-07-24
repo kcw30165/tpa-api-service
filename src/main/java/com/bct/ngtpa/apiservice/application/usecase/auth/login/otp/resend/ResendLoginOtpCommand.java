@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.application.dto.auth.login.otp.resend;
+package com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.resend;
 
 public record ResendLoginOtpCommand(String authFlowSessionId, String csrfToken, String idempotencyKey, String origin,
         String referer, String acceptLanguage, String correlationId) {

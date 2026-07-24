@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.application.dto.auth.login.otp;
+package com.bct.ngtpa.apiservice.application.usecase.auth.login.otp;
 
 public record SendLoginOtpCommand(
         String authFlowSessionId,

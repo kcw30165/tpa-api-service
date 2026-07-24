@@ -1,3 +1,3 @@
-package com.bct.ngtpa.apiservice.application.dto.auth.login.otp;
+package com.bct.ngtpa.apiservice.application.usecase.auth.login.otp;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;import java.util.Objects;
 public record LoginOtpSessionBindingCommand(String authFlowSessionId,String expectedCurrentOtpChallengeId,String newOtpChallengeId,AuthFlowStatus expectedStatus,AuthFlowStatus resultingStatus,String correlationId){public LoginOtpSessionBindingCommand{Objects.requireNonNull(authFlowSessionId);Objects.requireNonNull(newOtpChallengeId);Objects.requireNonNull(expectedStatus);Objects.requireNonNull(resultingStatus);}@Override public String toString(){return "LoginOtpSessionBindingCommand[authFlowSessionId=<redacted>, expectedCurrentOtpChallengeId=<redacted>, newOtpChallengeId=<redacted>, expectedStatus="+expectedStatus+", resultingStatus="+resultingStatus+", correlationId="+correlationId+"]";}}

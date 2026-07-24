@@ -1,9 +1,10 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.login.otp;
+import com.bct.ngtpa.apiservice.application.dto.auth.otp.OtpChannel;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.bct.ngtpa.apiservice.application.dto.auth.login.otp.*;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.preauth.*;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -28,7 +29,7 @@ class LoginOtpDestinationResolverTest {
                 "idem_opaque", "https://portal.example", null, "en", "req-1"));
 
         assertThat(resolved.destinationId()).isEqualTo("dst_second_opaque");
-        assertThat(resolved.channel()).isEqualTo(LoginOtpChannel.SMS);
+        assertThat(resolved.channel()).isEqualTo(OtpChannel.SMS);
         assertThat(resolved.destination()).isEqualTo("91234567");
         assertThat(resolved.maskedDestination()).isEqualTo("****4567");
         assertThat(resolved.toString()).doesNotContain(
@@ -58,6 +59,6 @@ class LoginOtpDestinationResolverTest {
         var resolved = resolver.resolve(context, new SendLoginOtpCommand(
                 "afs_opaque_session", "csrf_opaque", "dst_mobile",
                 "idem_opaque", null, null, "en", "req-1"));
-        assertThat(resolved.channel()).isEqualTo(LoginOtpChannel.SMS);
+        assertThat(resolved.channel()).isEqualTo(OtpChannel.SMS);
     }
 }
