@@ -399,3 +399,14 @@
 - Production source changed by this script: no.
 - Existing handover content was preserved byte-for-byte and this entry was appended only after all gates passed.
 - Commit message: test(build): rebuild Maven outputs for login OTP gates
+
+### 0043-008-026-login-cancellation-and-preauth-cleanup
+- Status: completed after test-fixture correction in 0043-008-027-fix-login-cancellation-csrf-test-fixture
+- Added POST /api/v1/auth/login/cancel with LOGIN scenario, CSRF, and origin/referer validation.
+- Reused AuthFlowSessionPort, AuthFlowSessionCsrfService, AuthFlowSessionCancellationPort, and OtpChallengePort.
+- Active OTP challenges are invalidated with USER_CANCELLED_LOGIN before pre-auth cancellation with USER_CANCELLED.
+- Missing, already-cancelled, and already-terminal sessions return idempotent cleanup and clear auth_flow_sid plus XSRF cookies.
+- Successful cleanup returns nextStep=RETURN_TO_LOGIN.
+- No login-specific cancellation repository, OTP store, Redis access, or application/dto/auth/login/otp tree was introduced.
+- Fail-first evidence: target/0043-008-026-fail-first.log
+- Commit message: feat(auth): cancel login pre-auth flow and clean up OTP

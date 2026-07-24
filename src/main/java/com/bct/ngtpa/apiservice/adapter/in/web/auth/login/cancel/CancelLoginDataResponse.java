@@ -1,0 +1,1 @@
+package com.bct.ngtpa.apiservice.adapter.in.web.auth.login.cancel;public record CancelLoginDataResponse(java.util.List<String> actions){public CancelLoginDataResponse{actions=actions==null?java.util.List.of():java.util.List.copyOf(actions);}}
