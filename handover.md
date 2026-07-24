@@ -260,3 +260,15 @@
 - Fail-first evidence: target/0043-007-005-fail-first.log
 - Subtask 007 non-fix implementation scripts completed: 007-001, 007-002, 007-003, 007-005.
 - Commit message: feat(auth): generate session-scoped account references
+
+### 0043-008-001-login-otp-send-application-contract
+- Status: completed
+- Added the login OTP-send input/result contract and SendLoginOtpUseCase boundary.
+- Input requires auth-flow session, CSRF, opaque destination ID, idempotency key, origin/referer, Accept-Language, and request correlation; AccountRef is absent before authentication.
+- Added protected-context-only destination resolution with no fallback to the first or sole destination. APIM mobile and public sms map to the shared SMS delivery channel.
+- Extended existing shared OtpScenario, MessageDeliveryScenario, and MessageDeliveryType vocabularies with LOGIN/LOGIN_OTP; no parallel LoginOtpPort, OTP store, counter, status, or message-delivery infrastructure was introduced.
+- OTP-send result deliberately excludes csrfToken, session ID, destination ID, raw destination, and OTP code.
+- Session load/CSRF/origin/idempotency orchestration, challenge creation, delivery, replay, and web endpoint remain subsequent 008 scripts.
+- Production constructors added merely for tests: none
+- Fail-first evidence: target/0043-008-001-fail-first.log
+- Commit message: feat(auth): add login OTP send application contract
