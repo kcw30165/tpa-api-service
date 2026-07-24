@@ -186,7 +186,7 @@ class P4BAuthFlowSessionFoundationIntegrationTest {
     @Test
     void p4bAuthenticatedSessionPlaceholderPackageOnlyAndReadmeDocumentsFoundationOnly() throws Exception {
         assertThat(Files.exists(Path.of("src/main/java/com/bct/ngtpa/apiservice/application/dto/session/authenticated/package-info.java"))).isTrue();
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSession");
+        assertThat(Class.forName("com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSession")).isNotNull();
         assertClassAbsent("com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionPort");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthenticatedSessionAdapter");
 
