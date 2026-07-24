@@ -690,3 +690,24 @@
 - Existing handover content was preserved byte-for-byte; missing 010-007/008 records and this correction were appended only after all gates passed.
 - Production source changed: no.
 - Commit message: test(auth): align CSRF hash handoff architecture assertion
+
+### 0043-010-010-login-otp-success-authenticated-session-transition
+- Status: completed after test-contract correction in 0043-010-011-fix-login-otp-session-transition-test-contracts
+- Integrated successful Login OTP verification and validated account assignment with EstablishAuthenticatedLoginSessionUseCase.
+- ActorContext is created from validated protected login context using normalizedUsername and userRole only; no actorType is introduced.
+- The transition receives the verified AuthFlowSessionId, assigned LoginSessionAccount list, persisted CSRF hash, and correlation ID.
+- ACCOUNTS_READY requires and internally carries an opaque authenticatedSessionId for the following web-transport step; the public mapper continues to expose only AccountRef values.
+- Transition failure returns SESSION_CREATION_FAILED without accounts, session ID, or cleanup instruction.
+- Fail-first evidence: target/0043-010-010-fail-first.log
+- Commit message: feat(auth): establish session after successful login OTP
+
+### 0043-010-011-fix-login-otp-session-transition-test-contracts
+- Status: completed
+- Classification: test-fixture and cumulative constructor-migration defects; authenticated-session transition production orchestration remains authoritative.
+- Corrected the transition fixture to use OtpVerificationOutcome and the canonical four-component VerifyOtpChallengeResult.
+- Constructed GetLoginAccountsUseCase through its LoginAccountAuthorizationPort dependency instead of treating the concrete use case as a functional interface.
+- Used the actual LoginAccountRecordValidationService width/pad constructor and LoginAccountReferenceAssignmentService generator/max-attempts constructor.
+- Migrated every direct LoginOtpVerifyService test caller to the canonical transition dependency without adding a production compatibility constructor.
+- Existing handover content was preserved byte-for-byte; the missing 010-010 completion and this correction were appended only after all gates passed.
+- Production source changed: no.
+- Commit message: test(auth): align login OTP transition fixtures with canonical contracts
