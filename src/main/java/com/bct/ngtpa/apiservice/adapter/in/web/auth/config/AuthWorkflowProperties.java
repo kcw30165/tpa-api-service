@@ -62,6 +62,15 @@ public class AuthWorkflowProperties {
         private int maxVerifyAttempts;
         private boolean resendLimitEnabled;
         private int maxResendAttempts;
+        private String smsTemplate;
+        private final LoginOtpEmail emailTemplate = new LoginOtpEmail();
+    }
+
+    @Getter
+    @Setter
+    public static class LoginOtpEmail {
+        private String subject;
+        private String body;
     }
 
     @Getter
@@ -202,7 +211,6 @@ public class AuthWorkflowProperties {
         private String specialChars;
     }
 
-
     public void validateLoginPolicy() {
         if (login == null) {
             throw new IllegalStateException("auth-workflows.login configuration is required");
@@ -211,7 +219,8 @@ public class AuthWorkflowProperties {
         requireRange(login.credential.usernameMinLength, login.credential.usernameMaxLength,
                 "credential username length");
         if (login.credential.usernameAllowedPattern == null || login.credential.usernameAllowedPattern.isBlank()) {
-            throw new IllegalStateException("auth-workflows.login.credential.username-allowed-pattern must not be blank");
+            throw new IllegalStateException(
+                    "auth-workflows.login.credential.username-allowed-pattern must not be blank");
         }
         if (!login.credential.passwordCaseSensitive || login.credential.passwordTrim) {
             throw new IllegalStateException("auth-workflows.login password must remain exact and case-sensitive");
@@ -223,6 +232,11 @@ public class AuthWorkflowProperties {
         requirePositive(login.otp.ttlSeconds, "otp.ttl-seconds");
         requireNonNegative(login.otp.resendCooldownSeconds, "otp.resend-cooldown-seconds");
         requirePositive(login.otp.maxVerifyAttempts, "otp.max-verify-attempts");
+        if (login.otp.smsTemplate == null || !login.otp.smsTemplate.contains("{code}"))
+            throw new IllegalStateException("auth-workflows.login.otp.sms-template must contain {code}");
+        if (login.otp.emailTemplate.subject == null || login.otp.emailTemplate.subject.isBlank()
+                || login.otp.emailTemplate.body == null || !login.otp.emailTemplate.body.contains("{code}"))
+            throw new IllegalStateException("auth-workflows.login.otp.email-template is invalid");
         if (login.otp.resendLimitEnabled) {
             requirePositive(login.otp.maxResendAttempts, "otp.max-resend-attempts");
         }
@@ -249,7 +263,8 @@ public class AuthWorkflowProperties {
 
     private void requireRange(int minimum, int maximum, String property) {
         if (maximum < minimum) {
-            throw new IllegalStateException("auth-workflows.login " + property + " maximum must not be less than minimum");
+            throw new IllegalStateException(
+                    "auth-workflows.login " + property + " maximum must not be less than minimum");
         }
     }
 

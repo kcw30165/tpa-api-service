@@ -12,8 +12,26 @@ import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 
 @Configuration
 public class LoginStartReplayConfig {
-    @Bean LoginStartReplayProtectorPort loginStartReplayProtector(ObjectMapper mapper,LoginPreAuthContextProtectionProperties properties){return new AesGcmLoginStartReplayProtector(mapper,properties.getKeyVersion(),properties.getSecret());}
-    @Bean LoginStartReplayCommitRefGenerator loginStartReplayCommitRefGenerator(){return new SecureLoginStartReplayCommitRefGenerator();}
-    @Bean RedisLoginStartReplayKeyFactory redisLoginStartReplayKeyFactory(@Value("${redis-cache.key-prefix:ngtpa}")String prefix){return new RedisLoginStartReplayKeyFactory(prefix);}
-    @Bean LoginStartReplayPort loginStartReplayPort(RedisLoginStartReplayKeyFactory keys,ReactiveStringRedisTemplate redis,ObjectMapper mapper){return new RedisLoginStartReplayAdapter(keys,redis,mapper);}
+    @Bean
+    LoginStartReplayProtectorPort loginStartReplayProtector(ObjectMapper mapper,
+            LoginPreAuthContextProtectionProperties properties) {
+        return new AesGcmLoginStartReplayProtector(mapper, properties.getKeyVersion(), properties.getSecret());
+    }
+
+    @Bean
+    LoginStartReplayCommitRefGenerator loginStartReplayCommitRefGenerator() {
+        return new SecureLoginStartReplayCommitRefGenerator();
+    }
+
+    @Bean
+    RedisLoginStartReplayKeyFactory redisLoginStartReplayKeyFactory(
+            @Value("${redis-cache.key-prefix:ngtpa}") String prefix) {
+        return new RedisLoginStartReplayKeyFactory(prefix);
+    }
+
+    @Bean
+    LoginStartReplayPort loginStartReplayPort(RedisLoginStartReplayKeyFactory keys, ReactiveStringRedisTemplate redis,
+            ObjectMapper mapper) {
+        return new RedisLoginStartReplayAdapter(keys, redis, mapper);
+    }
 }

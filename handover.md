@@ -331,3 +331,11 @@
 - Production constructors added merely for tests: none
 - Fail-first evidence: target/0043-008-007-fail-first.log
 - Commit message: feat(auth): persist login OTP send idempotency in Redis
+
+### 0043-008-008-login-otp-send-endpoint-and-composition
+- Status: completed after architecture-test correction in 0043-008-009-fix-login-otp-response-architecture-guard
+- Added POST /api/v1/auth/login/otp/send and final Redis-idempotent SendLoginOtpUseCase composition.
+- Added login-owned SMS/email OTP templates; registration templates are not reused.
+- Fresh success and completed replay return VERIFY_OTP with masked destination and timing metadata only.
+- Fail-first evidence: target/0043-008-008-fail-first.log
+- Commit message: feat(auth): expose idempotent login OTP send endpoint
