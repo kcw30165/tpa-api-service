@@ -498,3 +498,28 @@
 - Correction: the test now requires all protected-wire labels to be present with <redacted> and verifies distinct secret fixture values are absent.
 - Existing handover content was preserved byte-for-byte; missing 009-002/003 records and this correction were appended only after all gates passed.
 - Commit message: test(auth): assert protected session values are redacted
+
+### 0043-009-005-redis-authenticated-session-adapter
+- Status: completed after corrective stabilization through 0043-009-007-fix-stale-redis-adapter-deferred-architecture-test
+- Added RedisAuthenticatedSessionAdapter behind AuthenticatedSessionPort using the existing CachePort and RedisCacheKeyFactory infrastructure.
+- Keys use {prefix}:auth:authenticated-session:{opaque sid}; values contain only the serialized ProtectedAuthenticatedSession envelope.
+- Store and touch use caller-calculated positive TTL; load returns the protected envelope; revoke/delete remove the opaque session key idempotently.
+- Added a dedicated protected-envelope JSON mapper; domain actor/account/CSRF fields never appear in the Redis adapter contract.
+- Reuses the project's Sentinel-compatible Redis infrastructure through CachePort; no application-layer Redis dependency or separate Redis client was introduced.
+- Spring wiring, AES-GCM protector implementation, lifecycle orchestration, cookies, and PortalAccessContext resolution remain later scripts.
+- Fail-first evidence: target/0043-009-005-fail-first.log
+- Commit message: feat(auth): persist protected authenticated sessions in Redis
+
+### 0043-009-006-fix-redis-authenticated-session-cache-test-double
+- Status: completed through 0043-009-007-fix-stale-redis-adapter-deferred-architecture-test
+- Corrected RedisAuthenticatedSessionAdapterTest.MemoryCache to implement CachePort.evict as Mono<Boolean>.
+- Production behavior changed: no.
+- Commit message: test(auth): align authenticated session cache test double
+
+### 0043-009-007-fix-stale-redis-adapter-deferred-architecture-test
+- Status: completed
+- Classification: stale stage-specific architecture assertion; production Redis adapter behavior was unchanged.
+- Root cause: the 009-002 architecture test correctly required the Redis adapter to be absent at the contract-only stage, but 009-005 intentionally introduced that adapter and did not advance the older assertion.
+- Correction: the test now requires RedisAuthenticatedSessionAdapter and RedisAuthenticatedSessionJsonMapper to exist while continuing to require AuthenticatedSessionConfig to remain deferred.
+- Existing handover content was preserved byte-for-byte; missing 009-005/006 records and this correction were appended only after all gates passed.
+- Commit message: test(auth): align authenticated session architecture stage

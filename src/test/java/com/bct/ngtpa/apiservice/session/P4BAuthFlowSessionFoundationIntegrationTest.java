@@ -188,7 +188,7 @@ class P4BAuthFlowSessionFoundationIntegrationTest {
         assertThat(Files.exists(Path.of("src/main/java/com/bct/ngtpa/apiservice/application/dto/session/authenticated/package-info.java"))).isTrue();
         assertThat(Class.forName("com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSession")).isNotNull();
         assertThat(Class.forName("com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionPort")).isNotNull();
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthenticatedSessionAdapter");
+        assertThat(Class.forName("com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthenticatedSessionAdapter")).isNotNull();
 
         var readme = Files.readString(Path.of("README.md"));
         assertThat(readme).contains("### AuthFlowSession Foundation");
