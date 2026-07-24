@@ -350,3 +350,14 @@
 - Existing handover content was preserved byte-for-byte and this section appended.
 - Fail-first evidence: target/0043-008-010-fail-first.log
 - Commit message: feat(auth): add login OTP resend application orchestration
+
+### 0043-008-011-login-otp-resend-context-and-binding-adapters
+- Status: completed
+- Added concrete OTP_SENT LOGIN protected-context loading through existing lifecycle, CSRF/security validation, and LoginPreAuthContextProtectorPort.
+- Resend requires a usable LOGIN session, OTP_SENT status, and an active OTP challenge.
+- Destination is recovered only from the protected context and matched to the session's selected masked destination.
+- Added replacement binding that verifies the expected old challenge before updating to the new challenge through the existing lifecycle.
+- Session remains OTP_SENT; no direct Redis, duplicate crypto, or duplicate CSRF logic was introduced.
+- Existing handover content was preserved byte-for-byte and this section appended.
+- Fail-first evidence: target/0043-008-011-fail-first.log
+- Commit message: feat(auth): validate and bind login OTP resend sessions
