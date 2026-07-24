@@ -186,6 +186,12 @@ auth-workflows:
       complete-ttl-seconds: 300
 apim:
   login:
+    get-account-list:
+      path: /ws/NGTPA/v1/TRPGetAccountList
+      operation-name: TRPGetAccountList
+      error-mappings:
+        err.tpa.no.active.account: UNAVAILABLE
+        err.tpa.no.valid.login.ac: UNAVAILABLE
     member-login:
       path: ${APIM_LOGIN_MEMBER_LOGIN_PATH:/ws/NGTPA/v1/TRPMemberLogin}
       operation-name: ${APIM_LOGIN_MEMBER_LOGIN_OPERATION:TRPMemberLogin}

@@ -228,3 +228,14 @@
 - Production constructors added merely for tests: none
 - Fail-first evidence: target/0043-007-001-fail-first.log
 - Commit message: feat(auth): add TRPGetAccountList application contract
+
+### 0043-007-002-trp-get-account-list-apim-adapter
+- Status: completed
+- Added the corrected TRPGetAccountList shared-envelope adapter using the existing APIM facade, certificate service, payload crypto, credential resolution, request-ID metadata, and SAFE_BUSINESS_CALL retry classification.
+- Request JSON is exactly cust-id, cust-type, search-key, and search-value; response JSON maps env, trust-code, policy-no, sch-type, integer cert-no, term-status, and term-complete-date.
+- Known downstream messages err.tpa.no.active.account and err.tpa.no.valid.login.ac are configuration-owned and map to the safe UNAVAILABLE application outcome.
+- Empty success data, mixed error/data, unknown downstream messages, malformed envelopes, and transport/crypto/mapping failures return the safe unavailable outcome without exposing APIM details.
+- Identifier formatting, term-pair business validation, malformed-record omission, and AccountRef generation remain 007-003/004.
+- Production constructors added merely for tests: none
+- Fail-first evidence: target/0043-007-002-fail-first.log
+- Commit message: feat(auth): implement TRPGetAccountList shared APIM adapter
