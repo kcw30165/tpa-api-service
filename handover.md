@@ -435,3 +435,28 @@
 - Corrected the valid OTP fixture to return one valid account and assert the generated opaque AccountRef.
 - Production behavior changed: no.
 - Commit message: test(auth): align valid OTP fixture with account continuation
+
+### 0043-008-033-final-login-otp-stabilization-and-evidence
+- Status: completed
+- Finalized subtask 008 Login OTP lifecycle evidence across send, resend, verification failure paths, verification-attempt exhaustion, RESTART_FLOW, cancellation, successful verification, account retrieval, account validation, and opaque AccountRef assignment.
+- Verified public successful verification returns SELECT_ACCOUNT and exposes AccountRef only.
+- Verified OtpChallengePort remains the shared technical OTP core and that no login-specific OTP DTO tree, inbound otp package, OTP store, or channel vocabulary exists.
+- Verified authenticated-session runtime implementation remains deferred to subtask 009.
+- Ran clean-architecture, rate-limit/destination-hash, account-list, APIM adapter, sensitive-data, and registration-preservation gates.
+- Evidence index: target/0043-008-033-evidence/evidence.md
+- Evidence logs: target/0043-008-033-evidence/01-login-otp-send.log through target/0043-008-033-evidence/07-registration-preservation.log
+- Existing handover content was preserved byte-for-byte and this section appended only after all gates passed.
+- Subtask 008 status: complete.
+- Next implementation: 0043-009-001-authenticated-session-domain-model.sh
+- Commit message: test(auth): finalize login OTP lifecycle evidence
+
+### 0043-008-036-fix-final-evidence-run-gate-local-binding
+- Status: completed
+- Classification: final-evidence shell variable-binding defect; no production-code defect.
+- Root cause: with set -u enabled, run_gate declared name, tests, and log in one local command and expanded ${name} before Bash had assigned name, producing an unbound-variable failure.
+- Correction: run_gate now binds name, tests, and log in three sequential local declarations.
+- The script also preserves the canonical LoginOtpSendService and consolidated protected-context/session-binding evidence class names.
+- The corrected 008-033 evidence script completed all seven gates and generated target/0043-008-033-evidence/evidence.md.
+- Existing handover content was preserved byte-for-byte; the 008-033 completion remains intact and this correction was appended afterward.
+- Production source changed: no.
+- Commit message: test(auth): fix final OTP evidence gate binding
