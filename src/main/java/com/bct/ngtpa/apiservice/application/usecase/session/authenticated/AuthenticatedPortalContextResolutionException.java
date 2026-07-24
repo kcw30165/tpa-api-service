@@ -1,0 +1,1 @@
+package com.bct.ngtpa.apiservice.application.usecase.session.authenticated;public final class AuthenticatedPortalContextResolutionException extends RuntimeException {public AuthenticatedPortalContextResolutionException(){super("Authenticated account context unavailable");}}

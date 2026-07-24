@@ -565,3 +565,32 @@
 - Existing handover content was preserved byte-for-byte and this section appended after all gates passed.
 - Fail-first evidence: target/0043-009-012-fail-first.log
 - Commit message: feat(auth): add authenticated session lifecycle service
+
+### 0043-009-013-authenticated-account-context-resolution
+- Status: completed after architecture stabilization through 0043-009-016-fix-lifecycle-stage-after-account-context-resolution
+- Added authenticated-session-backed PortalAccessContextPort resolution using selected AccountRef plus authenticated session ID.
+- Resolution loads and touches the active session, matches AccountRef only inside that session, and maps the existing ActorContext plus selected account into PortalAccessContext.
+- Missing, malformed, inactive, expired, revoked, and cross-session or unknown AccountRef inputs fail closed through one non-sensitive error.
+- Web transport and successful-login transition remain deferred.
+- Fail-first evidence: target/0043-009-013-fail-first.log
+- Commit message: feat(auth): resolve portal context from authenticated session
+
+### 0043-009-014-fix-account-context-architecture-test-throws
+- Status: completed through 0043-009-016-fix-lifecycle-stage-after-account-context-resolution
+- Added the missing checked-exception declaration to the account-context source-reading architecture test.
+- Production behavior changed: no.
+- Commit message: test(auth): declare account context architecture IO failure
+
+### 0043-009-015-fix-account-context-architecture-semantic-assertions
+- Status: completed through 0043-009-016-fix-lifecycle-stage-after-account-context-resolution
+- Replaced formatting-sensitive account-context source assertions with whitespace-normalized semantic checks and verified the error message in its owning exception class.
+- Production behavior changed: no.
+- Commit message: test(auth): make account context architecture assertions semantic
+
+### 0043-009-016-fix-lifecycle-stage-after-account-context-resolution
+- Status: completed
+- Classification: stale stage-specific lifecycle architecture assertion; production session lifecycle and account-context behavior were unchanged.
+- Root cause: the 009-012 lifecycle test correctly required AuthenticatedAccountContextResolver to be absent before account resolution, but 009-013 intentionally introduced that resolver.
+- Correction: the lifecycle guard now requires AuthenticatedAccountContextResolver to exist while continuing to require AuthenticatedSessionCookieWriter and web transport to remain deferred.
+- Existing handover content was preserved byte-for-byte; missing 009-013/014/015 records and this correction were appended only after all gates passed.
+- Commit message: test(auth): advance authenticated session lifecycle stage guard
