@@ -460,3 +460,41 @@
 - Existing handover content was preserved byte-for-byte; the 008-033 completion remains intact and this correction was appended afterward.
 - Production source changed: no.
 - Commit message: test(auth): fix final OTP evidence gate binding
+
+### 0043-009-001-authenticated-session-domain-model
+- Status: completed
+- Added a framework-neutral authenticated-session domain model distinct from pre-auth AuthFlowSession.
+- AuthenticatedSession contains AuthenticatedSessionId, the existing ActorContext, ordered account mappings, ACTIVE/LOGGED_OUT/REVOKED/EXPIRED status, CSRF hash, created/last-accessed timestamps, and idle/absolute expiry.
+- ActorContext remains actorUserId plus actorUserRole only; actorType was not introduced.
+- AuthenticatedSessionAccount contains AccountRef, accountEnv, policyNo, certNo, trustCode, schemeType, termStatus, and termCompletionDate.
+- Session/account identifiers and diagnostic strings are redacted; duplicate AccountRefs and invalid termination pairs fail closed.
+- No Redis adapter, persistence port, crypto, Spring wiring, cookies, or PortalAccessContext resolution was introduced; those remain 009-002 and later subtasks.
+- Updated the old P4B placeholder assertion while retaining the absence of AuthenticatedSessionPort and Redis adapter.
+- Existing handover content was preserved byte-for-byte and this section appended after all gates passed.
+- Fail-first evidence: target/0043-009-001-fail-first.log
+- Commit message: eat(auth): add authenticated session domain model
+
+
+### 0043-009-002-authenticated-session-persistence-contract-and-protected-wire-model
+- Status: completed after test corrections through 0043-009-004-fix-protected-session-redaction-assertion
+- Added framework-neutral AuthenticatedSessionPort operations for store, load, touch, revoke, and delete.
+- Added opaque, redacted persistence commands with positive TTL and explicit timestamps/correlation IDs.
+- Added ProtectedAuthenticatedSession as a versioned AEAD wire envelope containing ciphertext, nonce, and authentication tag only.
+- Added AuthenticatedSessionProtectorPort for domain-to-protected-wire conversion without coupling the application layer to a crypto implementation.
+- No Redis adapter, Spring configuration, ObjectMapper contract, cookie handling, PortalAccessContext resolution, or authenticated-session lifecycle orchestration was introduced.
+- Fail-first evidence: target/0043-009-002-fail-first.log
+- Commit message: feat(auth): add authenticated session persistence contract
+
+### 0043-009-003-fix-protected-session-test-port-import
+- Status: completed through 0043-009-004-fix-protected-session-redaction-assertion
+- Added the missing AuthenticatedSessionProtectorPort import to ProtectedAuthenticatedSessionTest.
+- Production behavior changed: no.
+- Commit message: test(auth): import authenticated session protector port
+
+### 0043-009-004-fix-protected-session-redaction-assertion
+- Status: completed
+- Classification: stale redaction assertion; production ProtectedAuthenticatedSession.toString() was already correct.
+- Root cause: the test rejected the safe field labels ciphertext and nonce even though their values were rendered as <redacted>.
+- Correction: the test now requires all protected-wire labels to be present with <redacted> and verifies distinct secret fixture values are absent.
+- Existing handover content was preserved byte-for-byte; missing 009-002/003 records and this correction were appended only after all gates passed.
+- Commit message: test(auth): assert protected session values are redacted
