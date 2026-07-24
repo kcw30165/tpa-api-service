@@ -69,6 +69,13 @@ public final class LoginOtpResendService implements ResendLoginOtpUseCase {
     private OtpChannel channel(String value) { return "email".equalsIgnoreCase(value) ? OtpChannel.EMAIL : OtpChannel.SMS; }
 
     private ResendLoginOtpResult result(ResendLoginOtpStatus s, LoginProtectedAuthFlowContextResult x, Integer retry) {
-        return new ResendLoginOtpResult(s, x == null ? null : x.selectedDestination().maskedDestination(), null, null, retry);
+        return new ResendLoginOtpResult(
+                s,
+                x == null || x.selectedDestination() == null
+                        ? null
+                        : x.selectedDestination().maskedDestination(),
+                null,
+                null,
+                retry);
     }
 }

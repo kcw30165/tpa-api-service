@@ -16,7 +16,7 @@ class Task0043LoginOtpResendArchitectureTest {
     @Test
     void commandAndResultExcludeSecrets() throws Exception {
         String s = Files.readString(Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/application/dto/auth/login/otp/resend/ResendLoginOtpResult.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/otp/resend/ResendLoginOtpResult.java"));
         assertThat(s).doesNotContain("csrf", "sessionId", "rawCode", "destinationId", "destination");
     }
 }

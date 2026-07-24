@@ -361,3 +361,13 @@
 - Existing handover content was preserved byte-for-byte and this section appended.
 - Fail-first evidence: target/0043-008-011-fail-first.log
 - Commit message: feat(auth): validate and bind login OTP resend sessions
+
+### 0043-008-014-align-login-otp-with-shared-and-registration-architecture
+- Status: completed after resend correction in 0043-008-015-fix-login-otp-resend-null-safe-result-and-guard-path
+- Removed the application/dto/auth/login/otp production Java tree.
+- Login OTP send and resend workflow contracts now live beside their use cases, matching registration workflow ownership.
+- Removed LoginOtpChannel and reused generic OtpChannel.
+- Moved OTP-send idempotency records into the existing login idempotency family and extended the single LoginIdempotencyAction vocabulary with OTP_SEND, OTP_RESEND, and OTP_VERIFY.
+- Added Task0043LoginOtpPackageOwnershipArchitectureTest to prevent the login OTP DTO tree from returning.
+- Fail-first evidence: target/0043-008-014-fail-first.log
+- Commit message: refactor(auth): align login OTP package ownership with registration

@@ -72,7 +72,13 @@ class LoginOtpResendServiceTest {
                 new Stub() {
                 }, c -> Mono.error(new AssertionError()), c -> Mono.error(new AssertionError()));
         StepVerifier.create(service.resend(COMMAND))
-                .assertNext(r -> assertThat(r.status()).isEqualTo(ResendLoginOtpStatus.AUTH_FLOW_INVALID))
+                .assertNext(r -> {
+                    assertThat(r.status()).isEqualTo(ResendLoginOtpStatus.AUTH_FLOW_INVALID);
+                    assertThat(r.maskedDestination()).isNull();
+                    assertThat(r.expiresInSeconds()).isNull();
+                    assertThat(r.resendCooldownSeconds()).isNull();
+                    assertThat(r.retryAfterSeconds()).isNull();
+                })
                 .verifyComplete();
     }
 
