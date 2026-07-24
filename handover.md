@@ -272,3 +272,15 @@
 - Production constructors added merely for tests: none
 - Fail-first evidence: target/0043-008-001-fail-first.log
 - Commit message: feat(auth): add login OTP send application contract
+
+### 0043-008-002-login-otp-send-orchestration
+- Status: completed
+- Added framework-neutral login OTP send orchestration using narrow protected-context loading and session-binding capabilities plus the existing OtpChallengePort and MessageDeliveryPort.
+- Valid flow order is protected context/security validation, opaque destination resolution, shared LOGIN challenge creation, LOGIN_OTP delivery, then active-challenge binding.
+- Raw OTP exists only between challenge creation and delivery template variables and is never returned or logged.
+- Delivery failure invalidates the newly created challenge and does not bind it to the pre-auth session.
+- Login resend remains unlimited at this stage by passing maxResendAttempts=0 when resend-limit-enabled=false; common challenge lifecycle remains authoritative.
+- Concrete protected-context loader, session-binding adapter, origin/CSRF wiring, idempotency/replay, and HTTP endpoint remain subsequent scripts.
+- Production constructors added merely for tests: none
+- Fail-first evidence: target/0043-008-002-fail-first.log
+- Commit message: feat(auth): orchestrate login OTP challenge and delivery

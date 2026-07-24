@@ -1,0 +1,2 @@
+package com.bct.ngtpa.apiservice.application.dto.auth.login.otp;
+public record LoginOtpSessionBindingCommand(String authFlowSessionId,String otpChallengeId,String correlationId){public LoginOtpSessionBindingCommand{if(authFlowSessionId==null||authFlowSessionId.isBlank()||otpChallengeId==null||otpChallengeId.isBlank())throw new IllegalArgumentException("session and challenge IDs are required");} @Override public String toString(){return "LoginOtpSessionBindingCommand[authFlowSessionId=<redacted>, otpChallengeId=<redacted>, correlationId="+correlationId+"]";}}
