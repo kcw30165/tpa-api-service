@@ -307,3 +307,15 @@
 - Login regression command: mvn -Dtest=StartLoginServiceTest,LoginStartEvidenceIntegrationTest,TrpGetAccountListAdapterTest,LoginAccountRecordValidationServiceTest,LoginAccountReferenceAssignmentServiceTest test
 - Registration regression command: mvn -DtestRegistrationContractStabilizationIntegrationTest,RegistrationRedisSensitiveDataSafetyIntegrationTest
 - Commit message: feat(auth): bind login OTP to protected pre-auth session
+
+### 0043-008-006-login-otp-send-idempotency-and-replay
+- Status: completed
+- Added transport-neutral OTP-send reservation, terminal transition, and safe completed-replay contracts.
+- Request hash domain-separates LOGIN_OTP_SEND and hashes only session identity plus opaque destination ID; CSRF, raw destination, origin/referer, language, and provider data are excluded.
+- Only STARTED invokes challenge/delivery orchestration. Completed replay returns masked destination and timing metadata without repeating side effects.
+- Deterministic non-success outcomes mark failed; unexpected or indeterminate exceptions mark unknown.
+- Raw OTP, destination, session ID, CSRF, and provider details are absent from replay snapshots and diagnostic strings.
+- Concrete Redis adapter/wiring and HTTP endpoint remain subsequent scripts.
+- Production constructors added merely for tests: none
+- Fail-first evidence: target/0043-008-006-fail-first.log
+- Commit message: feat(auth): add login OTP send idempotency and safe replay
