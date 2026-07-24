@@ -17,7 +17,7 @@ class RedisLoginOtpSendIdempotencyAdapterTest {
     void atomicallyReservesAndUsesOpaqueKeyOnly() {
         var ops = new MemoryOps();
         var adapter = adapter(ops);
-        StepVerifier.create(adapter.reserve(new LoginOtpSendReserveCommand("idem_key_123", HASH, NOW, TTL)))
+        StepVerifier.create(adapter.reserve(new LoginOtpSendReserveCommand(LoginIdempotencyAction.OTP_SEND,"idem_key_123", HASH, NOW, TTL)))
                 .assertNext(r -> assertThat(r.outcome()).isEqualTo(LoginOtpSendReservationOutcome.STARTED))
                 .verifyComplete();
         assertThat(ops.lastKey).isEqualTo("ngtpa:auth:idempotency:login:otp-send:idem_key_123");
@@ -29,17 +29,17 @@ class RedisLoginOtpSendIdempotencyAdapterTest {
     void classifiesExistingLifecycleAndRequestHash() {
         var ops = new MemoryOps();
         var adapter = adapter(ops);
-        var reserve = new LoginOtpSendReserveCommand("idem_key_123", HASH, NOW, TTL);
+        var reserve = new LoginOtpSendReserveCommand(LoginIdempotencyAction.OTP_SEND,"idem_key_123", HASH, NOW, TTL);
         adapter.reserve(reserve).block();
         assertThat(adapter.reserve(reserve).block().outcome())
                 .isEqualTo(LoginOtpSendReservationOutcome.DUPLICATE_IN_PROGRESS);
-        adapter.complete(new LoginOtpSendCompleteCommand("idem_key_123", HASH,
+        adapter.complete(new LoginOtpSendCompleteCommand(LoginIdempotencyAction.OTP_SEND,"idem_key_123", HASH,
                 new LoginOtpSendReplaySnapshot("****4567", 300, 60), NOW, TTL)).block();
         var replay = adapter.reserve(reserve).block();
         assertThat(replay.outcome()).isEqualTo(LoginOtpSendReservationOutcome.COMPLETED_REPLAY);
         assertThat(replay.replay().maskedDestination()).isEqualTo("****4567");
         var other = new LoginOtpSendRequestHash("b".repeat(64));
-        assertThat(adapter.reserve(new LoginOtpSendReserveCommand("idem_key_123", other, NOW, TTL)).block().outcome())
+        assertThat(adapter.reserve(new LoginOtpSendReserveCommand(LoginIdempotencyAction.OTP_SEND,"idem_key_123", other, NOW, TTL)).block().outcome())
                 .isEqualTo(LoginOtpSendReservationOutcome.KEY_REUSED);
     }
 
@@ -47,14 +47,14 @@ class RedisLoginOtpSendIdempotencyAdapterTest {
     void failedAndUnknownTransitionsAreReplaySafe() {
         var ops = new MemoryOps();
         var adapter = adapter(ops);
-        var reserve = new LoginOtpSendReserveCommand("idem_key_123", HASH, NOW, TTL);
+        var reserve = new LoginOtpSendReserveCommand(LoginIdempotencyAction.OTP_SEND,"idem_key_123", HASH, NOW, TTL);
         adapter.reserve(reserve).block();
-        adapter.fail(new LoginOtpSendTerminalCommand("idem_key_123", HASH, "INVALID_DESTINATION", NOW, TTL)).block();
+        adapter.fail(new LoginOtpSendTerminalCommand(LoginIdempotencyAction.OTP_SEND,"idem_key_123", HASH, "INVALID_DESTINATION", NOW, TTL)).block();
         assertThat(adapter.reserve(reserve).block().outcome())
                 .isEqualTo(LoginOtpSendReservationOutcome.FAILED_EXISTING);
         ops.clear();
         adapter.reserve(reserve).block();
-        adapter.unknown(new LoginOtpSendTerminalCommand("idem_key_123", HASH, "INDETERMINATE", NOW, TTL)).block();
+        adapter.unknown(new LoginOtpSendTerminalCommand(LoginIdempotencyAction.OTP_SEND,"idem_key_123", HASH, "INDETERMINATE", NOW, TTL)).block();
         assertThat(adapter.reserve(reserve).block().outcome())
                 .isEqualTo(LoginOtpSendReservationOutcome.UNKNOWN_OUTCOME);
     }

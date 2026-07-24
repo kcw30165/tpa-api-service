@@ -19,7 +19,7 @@ public final class RedisLoginOtpSendIdempotencyAdapter implements LoginOtpSendId
     }
 
     public Mono<LoginOtpSendReservation> reserve(LoginOtpSendReserveCommand c) {
-        String key = keys.keyFor(c.idempotencyKey());
+        String key = keys.keyFor(c.action(),c.idempotencyKey());
         Wire created = new Wire(c.requestHash().value(), "PROCESSING", null, c.now().toString(), c.now().toString(),
                 c.now().plus(c.ttl()).toString());
         return redis.setIfAbsent(key, json(created), c.ttl())
@@ -28,20 +28,20 @@ public final class RedisLoginOtpSendIdempotencyAdapter implements LoginOtpSendId
     }
 
     public Mono<Void> complete(LoginOtpSendCompleteCommand c) {
-        return mutate(c.idempotencyKey(), c.requestHash(), "COMPLETED", c.replay(), c.now(), c.ttl());
+        return mutate(c.action(),c.idempotencyKey(), c.requestHash(), "COMPLETED", c.replay(), c.now(), c.ttl());
     }
 
     public Mono<Void> fail(LoginOtpSendTerminalCommand c) {
-        return mutate(c.idempotencyKey(), c.requestHash(), "FAILED", null, c.now(), c.ttl());
+        return mutate(c.action(),c.idempotencyKey(), c.requestHash(), "FAILED", null, c.now(), c.ttl());
     }
 
     public Mono<Void> unknown(LoginOtpSendTerminalCommand c) {
-        return mutate(c.idempotencyKey(), c.requestHash(), "UNKNOWN", null, c.now(), c.ttl());
+        return mutate(c.action(),c.idempotencyKey(), c.requestHash(), "UNKNOWN", null, c.now(), c.ttl());
     }
 
-    private Mono<Void> mutate(String keyValue, LoginOtpSendRequestHash hash, String status,
+    private Mono<Void> mutate(LoginIdempotencyAction action,String keyValue, LoginOtpSendRequestHash hash, String status,
             LoginOtpSendReplaySnapshot replay, Instant now, Duration ttl) {
-        String key = keys.keyFor(keyValue);
+        String key = keys.keyFor(action,keyValue);
         return redis.get(key).flatMap(v -> {
             Wire old = read(v.orElseThrow(() -> new IllegalStateException("OTP idempotency record missing")));
             if (!old.requestHash.equals(hash.value()))

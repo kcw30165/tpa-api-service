@@ -26,7 +26,7 @@ public final class IdempotentLoginOtpSendService implements SendLoginOtpUseCase 
 
     public Mono<SendLoginOtpResult> send(SendLoginOtpCommand c) {
         var hash = hashes.generate(c);
-        return idempotency.reserve(new LoginOtpSendReserveCommand(c.idempotencyKey(), hash, clock.instant(), ttl))
+        return idempotency.reserve(new LoginOtpSendReserveCommand(LoginIdempotencyAction.OTP_SEND,c.idempotencyKey(), hash, clock.instant(), ttl))
                 .flatMap(r -> switch (r.outcome()) {
                     case STARTED -> execute(c, hash);
                     case COMPLETED_REPLAY -> Mono.just(replay(r.replay()));
@@ -43,14 +43,14 @@ public final class IdempotentLoginOtpSendService implements SendLoginOtpUseCase 
                 var snap = new LoginOtpSendReplaySnapshot(r.maskedDestination(), r.expiresInSeconds(),
                         r.resendCooldownSeconds());
                 return idempotency
-                        .complete(new LoginOtpSendCompleteCommand(c.idempotencyKey(), hash, snap, clock.instant(), ttl))
+                        .complete(new LoginOtpSendCompleteCommand(LoginIdempotencyAction.OTP_SEND,c.idempotencyKey(), hash, snap, clock.instant(), ttl))
                         .thenReturn(r);
             }
             return idempotency.fail(
-                    new LoginOtpSendTerminalCommand(c.idempotencyKey(), hash, r.status().name(), clock.instant(), ttl))
+                    new LoginOtpSendTerminalCommand(LoginIdempotencyAction.OTP_SEND,c.idempotencyKey(), hash, r.status().name(), clock.instant(), ttl))
                     .thenReturn(r);
         }).onErrorResume(e -> idempotency.unknown(
-                new LoginOtpSendTerminalCommand(c.idempotencyKey(), hash, "INDETERMINATE", clock.instant(), ttl))
+                new LoginOtpSendTerminalCommand(LoginIdempotencyAction.OTP_SEND,c.idempotencyKey(), hash, "INDETERMINATE", clock.instant(), ttl))
                 .thenReturn(new SendLoginOtpResult(SendLoginOtpStatus.UNKNOWN_OUTCOME, null, null, null, null)));
     }
 

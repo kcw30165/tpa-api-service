@@ -371,3 +371,20 @@
 - Added Task0043LoginOtpPackageOwnershipArchitectureTest to prevent the login OTP DTO tree from returning.
 - Fail-first evidence: target/0043-008-014-fail-first.log
 - Commit message: refactor(auth): align login OTP package ownership with registration
+
+### 0043-008-016-login-otp-resend-idempotency-endpoint-and-composition
+- Status: completed after UTF-8 and stale-output corrections through 0043-008-018-fix-stale-maven-output-after-resend-resume
+- Completed POST /api/v1/auth/login/otp/resend with auth_flow_sid, X-XSRF-TOKEN, Idempotency-Key, X-Request-Id, Accept-Language, Origin, and Referer handling.
+- Reused the existing Redis-backed login OTP idempotency lifecycle, generalized by LoginIdempotencyAction so OTP_SEND and OTP_RESEND use separate namespaces.
+- Only a new OTP_RESEND reservation can replace, deliver, and bind a challenge; completed replay is side-effect free.
+- Safe replay contains masked destination and timing metadata only; cooldown stays on VERIFY_OTP and emits Retry-After when available.
+- No login OTP DTO tree, login-specific channel, duplicate OTP lifecycle, duplicate idempotency port, or second action enum was introduced.
+- Fail-first evidence: target/evidence/0043-008-016-fail-first.log
+- Commit message: feat(auth): complete idempotent login OTP resend endpoint
+
+### 0043-008-017-fix-windows-python-encoding-and-complete-resend
+- Status: completed after stale Maven output correction in 0043-008-018-fix-stale-maven-output-after-resend-resume
+- Classified the CP950 UnicodeDecodeError as a script portability defect.
+- Updated implicit pathlib text reads in 008-016 to use UTF-8 before resuming the cumulative implementation.
+- Java production behavior was not changed by the encoding correction.
+- Commit message: fix(auth): complete login OTP resend with UTF-8 script handling

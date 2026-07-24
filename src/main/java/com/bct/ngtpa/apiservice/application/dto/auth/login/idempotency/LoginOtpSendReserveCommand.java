@@ -2,7 +2,7 @@ package com.bct.ngtpa.apiservice.application.dto.auth.login.idempotency;
 
 import java.time.*;
 
-public record LoginOtpSendReserveCommand(String idempotencyKey, LoginOtpSendRequestHash requestHash, Instant now,
+public record LoginOtpSendReserveCommand(LoginIdempotencyAction action,String idempotencyKey, LoginOtpSendRequestHash requestHash, Instant now,
         Duration ttl) {
     public LoginOtpSendReserveCommand {
         if (idempotencyKey == null || idempotencyKey.isBlank() || requestHash == null || now == null || ttl == null

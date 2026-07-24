@@ -9,9 +9,9 @@ public final class RedisLoginOtpSendIdempotencyKeyFactory {
         this.prefix = prefix.endsWith(":") ? prefix.substring(0, prefix.length() - 1) : prefix;
     }
 
-    public String keyFor(String opaqueIdempotencyKey) {
+    public String keyFor(com.bct.ngtpa.apiservice.application.dto.auth.login.idempotency.LoginIdempotencyAction action,String opaqueIdempotencyKey) {
         if (opaqueIdempotencyKey == null || !opaqueIdempotencyKey.matches("^[A-Za-z0-9_-]{8,128}$"))
             throw new IllegalArgumentException("invalid opaque idempotency key");
-        return prefix + ":auth:idempotency:login:otp-send:" + opaqueIdempotencyKey;
+        return prefix + ":auth:idempotency:login:" + action.keyNamespace() + ":" + opaqueIdempotencyKey;
     }
 }
