@@ -39,7 +39,7 @@ class Task0043LoginOtpSendContractTest {
     @Test
     void inputContractContainsRequiredSecurityAndIdempotencyInputsButNoAccountRef() throws Exception {
         String source = Files.readString(Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/application/dto/auth/login/otp/SendLoginOtpCommand.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/otp/SendLoginOtpCommand.java"));
         assertThat(source).contains(
                 "authFlowSessionId", "csrfToken", "destinationId", "idempotencyKey",
                 "origin", "referer", "acceptLanguage", "correlationId");
@@ -49,7 +49,7 @@ class Task0043LoginOtpSendContractTest {
     @Test
     void sendResultNeverContainsCsrfSessionRawDestinationOrOtpCode() throws Exception {
         String source = Files.readString(Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/application/dto/auth/login/otp/SendLoginOtpResult.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/otp/SendLoginOtpResult.java"));
         assertThat(source).contains(
                 "status", "maskedDestination", "expiresInSeconds", "resendCooldownSeconds");
         assertThat(source).doesNotContain(
@@ -60,9 +60,9 @@ class Task0043LoginOtpSendContractTest {
     @Test
     void applicationContractHasNoSpringWebRedisOrAdapterDependency() throws Exception {
         String command = Files.readString(Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/application/dto/auth/login/otp/SendLoginOtpCommand.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/otp/SendLoginOtpCommand.java"));
         String result = Files.readString(Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/application/dto/auth/login/otp/SendLoginOtpResult.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/otp/SendLoginOtpResult.java"));
         String resolver = Files.readString(Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/otp/LoginOtpDestinationResolver.java"));
         assertThat(command + result + resolver).doesNotContain(

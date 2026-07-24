@@ -9,7 +9,7 @@ class Task0043LoginOtpSendRedisIdempotencyArchitectureTest {
     void keyUsesDedicatedOpaqueNamespace() throws Exception {
         String s = Files.readString(Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/login/otp/RedisLoginOtpSendIdempotencyKeyFactory.java"));
-        assertThat(s).contains(":auth:idempotency:login:otp-send:");
+        assertThat(s).contains(":auth:idempotency:login:", "action.keyNamespace()", "opaqueIdempotencyKey");
         assertThat(s).doesNotContain("sessionId", "destinationId", "csrfToken", "requestHash");
     }
 

@@ -1,0 +1,1 @@
+package com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.verify;public record VerifyLoginOtpResult(VerifyLoginOtpStatus status,Integer remainingVerifyAttempts,boolean clearAuthFlowCookie){}

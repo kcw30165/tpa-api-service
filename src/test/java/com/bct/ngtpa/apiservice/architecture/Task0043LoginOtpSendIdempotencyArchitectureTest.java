@@ -8,7 +8,7 @@ class Task0043LoginOtpSendIdempotencyArchitectureTest {
     @Test
     void safeReplayContainsOnlyPublicResponseMetadata() throws Exception {
         String s = Files.readString(Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/application/dto/auth/login/otp/idempotency/LoginOtpSendReplaySnapshot.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/application/dto/auth/login/idempotency/LoginOtpSendReplaySnapshot.java"));
         assertThat(s).contains("maskedDestination", "expiresInSeconds", "resendCooldownSeconds");
         assertThat(s).doesNotContain("sessionId", "csrf", "destinationId", "rawCode", "provider");
     }

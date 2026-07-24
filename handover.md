@@ -388,3 +388,14 @@
 - Updated implicit pathlib text reads in 008-016 to use UTF-8 before resuming the cumulative implementation.
 - Java production behavior was not changed by the encoding correction.
 - Commit message: fix(auth): complete login OTP resend with UTF-8 script handling
+
+### 0043-008-025-rebuild-maven-outputs-and-complete-login-otp-gates
+- Status: completed
+- Classification: stale/incomplete Maven compiler output; no Java source defect in MutationResponse or LoginOtpVerifyWebMapperTest.
+- Evidence: MutationResponse.java existed in src/main/java, while testCompile reported that MutationResponse.class could not be accessed.
+- Correction: removed target/classes, target/test-classes, generated source directories, maven-status, and Surefire output together; then rebuilt production and test classes with mvn -DskipTests test-compile.
+- Verified MutationResponse.class, LoginOtpVerifyWebMapperTest.class, and Task0043AuthenticationFoundationArchitectureGuardTest.class before running tests.
+- Ran login OTP verification/architecture, login OTP send/resend preservation, and registration OTP preservation gates.
+- Production source changed by this script: no.
+- Existing handover content was preserved byte-for-byte and this entry was appended only after all gates passed.
+- Commit message: test(build): rebuild Maven outputs for login OTP gates

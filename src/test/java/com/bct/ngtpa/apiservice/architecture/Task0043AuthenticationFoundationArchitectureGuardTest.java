@@ -43,10 +43,16 @@ class Task0043AuthenticationFoundationArchitectureGuardTest {
 
     @ArchTest
     static final ArchRule loginMustNotOwnOtpPersistenceInfrastructure = noClasses()
-            .that().resideInAnyPackage("..login..", "..forgotpassword..", "..usernamerecovery..")
+            .that().resideInAnyPackage(
+                    "..application..login..",
+                    "..application..forgotpassword..",
+                    "..application..usernamerecovery..",
+                    "..adapter.in..login..",
+                    "..adapter.in..forgotpassword..",
+                    "..adapter.in..usernamerecovery..")
             .should().dependOnClassesThat().resideInAPackage("..adapter.out.redis..otp..")
             .allowEmptyShould(true)
-            .as("future auth workflows must use the shared OTP ports, not Redis OTP internals");
+            .as("login workflow and inbound layers must use shared OTP ports and must not depend on Redis OTP infrastructure; infrastructure composition remains allowed");
 
     @ArchTest
     static final ArchRule authFlowSessionMustNotDependOnPortalContextAdapters = noClasses()

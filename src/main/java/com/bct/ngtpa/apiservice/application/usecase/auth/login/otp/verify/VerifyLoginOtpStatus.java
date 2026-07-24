@@ -1,0 +1,1 @@
+package com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.verify;public enum VerifyLoginOtpStatus {VERIFIED_READY,INVALID,EXPIRED,VERIFY_ATTEMPTS_EXCEEDED,AUTH_FLOW_INVALID,ALREADY_VERIFIED,SYSTEM_FAILED}

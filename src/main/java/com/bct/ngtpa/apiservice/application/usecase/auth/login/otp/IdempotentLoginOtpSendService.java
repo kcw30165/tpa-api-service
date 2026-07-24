@@ -28,7 +28,7 @@ public final class IdempotentLoginOtpSendService implements SendLoginOtpUseCase 
         var hash = hashes.generate(c);
         return idempotency.reserve(new LoginOtpSendReserveCommand(LoginIdempotencyAction.OTP_SEND,c.idempotencyKey(), hash, clock.instant(), ttl))
                 .flatMap(r -> switch (r.outcome()) {
-                    case STARTED -> execute(c, hash);
+                    case STARTED -> executeStarted(c, hash);
                     case COMPLETED_REPLAY -> Mono.just(replay(r.replay()));
                     case DUPLICATE_IN_PROGRESS -> simple(SendLoginOtpStatus.DUPLICATE_IN_PROGRESS);
                     case KEY_REUSED -> simple(SendLoginOtpStatus.KEY_REUSED);
@@ -37,7 +37,7 @@ public final class IdempotentLoginOtpSendService implements SendLoginOtpUseCase 
                 });
     }
 
-    private Mono<SendLoginOtpResult> execute(SendLoginOtpCommand c, LoginOtpSendRequestHash hash) {
+    private Mono<SendLoginOtpResult> executeStarted(SendLoginOtpCommand c, LoginOtpSendRequestHash hash) {
         return delegate.send(c).flatMap(r -> {
             if (r.status() == SendLoginOtpStatus.SENT) {
                 var snap = new LoginOtpSendReplaySnapshot(r.maskedDestination(), r.expiresInSeconds(),
