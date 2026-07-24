@@ -36,12 +36,20 @@ class GetLoginAccountsUseCaseTest {
     }
 
     @Test
-    void commandAndRecordsRejectMalformedRequiredTransportNeutralValues() {
+    void commandRejectsMalformedRequiredTransportNeutralValuesWhileRawRecordsRemainPermissive() {
         assertThatThrownBy(() -> new GetLoginAccountsCommand(" ", "MBR", "req"))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new LoginAccountRecord(
-                        "DB", "DBA", "8802", "OE", 0, "", ""))
-                .isInstanceOf(IllegalArgumentException.class);
+
+        var malformedRawRecord = new LoginAccountRecord(
+                "DB", "DBA", "8802", "OE", 0, "", "");
+        var validation = new LoginAccountRecordValidationService(11, 4, '0')
+                .validate(List.of(malformedRawRecord));
+
+        assertThat(validation.status()).isEqualTo(LoginAccountValidationStatus.ZERO_VALID_RECORDS);
+        assertThat(validation.accounts()).isEmpty();
+        assertThat(validation.rejections()).hasSize(1);
+        assertThat(validation.rejections().getFirst().category())
+                .isEqualTo(LoginAccountRecordRejectionCategory.CERTIFICATE_NUMBER);
     }
 
     @Test

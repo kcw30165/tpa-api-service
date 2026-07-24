@@ -1,9 +1,1 @@
-package com.bct.ngtpa.apiservice.adapter.in.web.auth.login.dto;
-
-import java.util.List;
-
-public record LoginOtpVerifyDataResponse(Integer remainingVerifyAttempts, List<LoginOtpActionResponse> actions) {
-    public LoginOtpVerifyDataResponse {
-        actions = actions == null ? List.of() : List.copyOf(actions);
-    }
-}
+package com.bct.ngtpa.apiservice.adapter.in.web.auth.login.dto;import java.util.List;public record LoginOtpVerifyDataResponse(Integer remainingVerifyAttempts,List<LoginOtpActionResponse> actions,List<LoginOtpAccountResponse> accounts){public LoginOtpVerifyDataResponse{actions=actions==null?List.of():List.copyOf(actions);accounts=accounts==null?List.of():List.copyOf(accounts);}public LoginOtpVerifyDataResponse(Integer remaining,List<LoginOtpActionResponse> actions){this(remaining,actions,List.of());}}

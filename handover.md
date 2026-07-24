@@ -419,3 +419,19 @@
 - Added a durable architecture guard preventing the login/otp inbound web package from returning.
 - Fail-first evidence: target/0043-008-028-fail-first.log
 - Commit message: refactor(auth): align login OTP web package ownership
+
+### 0043-008-030-login-otp-success-account-continuation
+- Status: completed after fixture and account-contract corrections through 0043-008-032-fix-stale-permissive-account-record-contract-test
+- After generic OTP verification succeeds, the flow marks the LOGIN pre-auth session OTP_VERIFIED and uses protected normalizedUsername/custType to call the existing GetLoginAccountsUseCase.
+- Reused LoginAccountRecordValidationService and LoginAccountReferenceAssignmentService; malformed records are omitted and APIM order is preserved.
+- Distinct outcomes are ACCOUNTS_READY, ACCOUNT_LIST_UNAVAILABLE, and ZERO_VALID_ACCOUNTS.
+- Successful public response returns nextStep=SELECT_ACCOUNT and exposes only opaque accountRef values.
+- Authenticated-session creation, portal cookie transition, and pre-auth deletion remain deferred to subtasks 009-011.
+- Fail-first evidence: target/0043-008-030-fail-first.log
+- Commit message: feat(auth): continue verified login into account retrieval
+
+### 0043-008-031-fix-stale-login-otp-valid-account-fixture
+- Status: completed through 0043-008-032-fix-stale-permissive-account-record-contract-test
+- Corrected the valid OTP fixture to return one valid account and assert the generated opaque AccountRef.
+- Production behavior changed: no.
+- Commit message: test(auth): align valid OTP fixture with account continuation
