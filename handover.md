@@ -203,3 +203,17 @@
 - Production constructors added merely for tests: none
 - Fail-first evidence: target/0043-006-025-fail-first.log
 - Commit message: feat(auth): expose login start endpoint and cookie contract
+
+### 0043-006-026-login-start-stabilization-and-evidence
+
+- Status: completed after architecture-guard correction in 0043-006-028-fix-login-endpoint-architecture-guard-method
+- Added mandatory X-Request-Id validation and response-header echo for POST /api/v1/auth/login.
+- Added canonical err.request.id.missing targeting X-Request-Id.
+- Added reactive failure containment mapped to err.workflow.system.unavailable without exception leakage.
+- Verified all StartLoginStatus/API/HTTP mappings, fresh and replay cookie behavior, response security, clean architecture, APIM, and registration regressions.
+- Evidence pack: target/0043-006-026-evidence.md
+
+### 0043-006-027-fix-login-endpoint-request-id-architecture-guard
+
+- Status: superseded and completed by 0043-006-028-fix-login-endpoint-architecture-guard-method
+- Intended correction was valid, but the script expected one exact formatting of the negative AssertJ assertion and stopped before Maven.

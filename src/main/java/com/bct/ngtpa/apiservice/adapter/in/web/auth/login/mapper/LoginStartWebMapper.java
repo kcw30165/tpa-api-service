@@ -4,6 +4,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.dto.*;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.*;
 import com.bct.ngtpa.apiservice.application.dto.workflow.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.start.*;
+import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import java.util.List;
 
 public final class LoginStartWebMapper {
@@ -47,6 +48,23 @@ public final class LoginStartWebMapper {
             case UNAVAILABLE ->
                 failure(ApiStatus.DOWNSTREAM_ERROR, LoginErrorKey.CREDENTIALS_UNAVAILABLE.value(), "DOWNSTREAM");
         };
+    }
+
+    public MutationResponse<LoginWorkflowResultResponse<LoginStartDataResponse>> missingRequestId() {
+        return MutationResponse.failure(
+                ApiStatus.VALIDATION_FAILED,
+                List.of(ApiError.form(
+                        ErrorCodes.REQUEST_ID_MISSING,
+                        null,
+                        List.of("X-Request-Id"),
+                        "BFF")));
+    }
+
+    public MutationResponse<LoginWorkflowResultResponse<LoginStartDataResponse>> systemUnavailable() {
+        return failure(
+                ApiStatus.SYSTEM_ERROR,
+                SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value(),
+                "BFF");
     }
 
     public MutationResponse<LoginWorkflowResultResponse<LoginStartDataResponse>> missingIdempotencyKey() {
