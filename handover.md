@@ -949,3 +949,15 @@
 - Main-script progress remains 5/5; zero main scripts remain. Corrective scripts do not change the total.
 - Existing handover content was preserved byte-for-byte and this section appended only after all gates passed.
 - Commit message: fix(auth): preserve reactive message delivery errors
+
+### 0043-012-014-fix-login-otp-binding-package-and-test-contracts
+- Status: completed
+- Classification: corrective-script package/import and duplicate-test-fixture defects; the selected-destination production fix remains unchanged.
+- Corrected UpdateAuthFlowDestinationCommand, UpdateAuthFlowOtpCommand, and UpdateAuthFlowStatusCommand imports to application.usecase.session.authflow.
+- Removed the invalid duplicate LoginOtpSelectedDestinationPersistenceTest introduced by 012-013.
+- Extended the existing LoginOtpSessionBindingAdapterTest using its canonical AuthFlowSession, AuthFlowSessionPort, SessionTtlCalculator, and four-argument lifecycle constructor fixtures.
+- The cumulative regression now verifies challenge binding, OTP_SENT transition, selected contact type, and selected masked destination in session data.
+- Full-suite evidence: target/0043-012-014-fix-login-otp-binding-package-and-test-contracts-full-suite.log
+- Main-script progress remains 5/5; zero main scripts remain. Corrective scripts do not change the total.
+- Existing handover content was preserved byte-for-byte and this section appended only after all gates passed.
+- Commit message: fix(auth): align OTP binding with auth-flow lifecycle contracts

@@ -54,8 +54,11 @@ class LoginOtpSessionBindingAdapterTest {
         StepVerifier.create(new LoginOtpSessionBindingAdapter(lifecycle)
                 .bind(new LoginOtpSessionBindingCommand(
           "afs_opaque", null, "otp_opaque",
-          AuthFlowStatus.STARTED, AuthFlowStatus.OTP_SENT, "req"))).verifyComplete();
+          AuthFlowStatus.STARTED, AuthFlowStatus.OTP_SENT,
+          "email", "m****@example.com", "req"))).verifyComplete();
         assertThat(current.get().activeOtpChallengeId()).isEqualTo("otp_opaque");
         assertThat(current.get().status()).isEqualTo(AuthFlowStatus.OTP_SENT);
+        assertThat(current.get().data().contactType()).isEqualTo("email");
+        assertThat(current.get().data().maskedDestination()).isEqualTo("m****@example.com");
     }
 }

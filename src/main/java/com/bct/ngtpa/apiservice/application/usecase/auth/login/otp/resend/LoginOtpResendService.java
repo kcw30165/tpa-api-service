@@ -6,11 +6,11 @@ import com.bct.ngtpa.apiservice.application.dto.auth.otp.*;
 import com.bct.ngtpa.apiservice.application.dto.message.*;
 import com.bct.ngtpa.apiservice.application.port.in.ResendLoginOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.*;
-import java.time.*;
+import org.slf4j.Logger;import org.slf4j.LoggerFactory;import java.time.*;
 import java.util.*;
 import reactor.core.publisher.Mono;
 
-public final class LoginOtpResendService implements ResendLoginOtpUseCase {
+public final class LoginOtpResendService implements ResendLoginOtpUseCase {private static final Logger LOG=LoggerFactory.getLogger(LoginOtpResendService.class);
     private final LoginProtectedAuthFlowContextLoader loader;
     private final OtpChallengePort otp;
     private final MessageDeliveryPort messages;
@@ -32,7 +32,7 @@ public final class LoginOtpResendService implements ResendLoginOtpUseCase {
         return loader
                 .load(new LoginProtectedAuthFlowContextCommand(c.authFlowSessionId(), c.csrfToken(), c.origin(), c.referer(), c.correlationId(), com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus.OTP_SENT, true))
                 .flatMap(x -> x.isValid() ? replace(c, x)
-                        : Mono.just(result(ResendLoginOtpStatus.AUTH_FLOW_INVALID, x, null)));
+                        : Mono.just(result(ResendLoginOtpStatus.AUTH_FLOW_INVALID, x, null))).doOnNext(r->LOG.info("event=login.otp.resend.result status={}",r.status())).doOnError(e->LOG.error("event=login.otp.resend.failure exceptionType={}",e.getClass().getSimpleName()));
     }
 
     private Mono<ResendLoginOtpResult> replace(ResendLoginOtpCommand c, LoginProtectedAuthFlowContextResult x) {
@@ -60,7 +60,9 @@ public final class LoginOtpResendService implements ResendLoginOtpUseCase {
         return messages.deliver(command)
                 .flatMap(d -> d.status() == MessageDeliveryStatus.ACCEPTED
                         ? binding
-                                .bind(new LoginOtpSessionBindingCommand(c.authFlowSessionId(), r.previousOtpChallengeId(), r.newOtpChallengeId(), com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus.OTP_SENT, com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus.OTP_SENT, c.correlationId()))
+                                .bind(new LoginOtpSessionBindingCommand(c.authFlowSessionId(), r.previousOtpChallengeId(), r.newOtpChallengeId(), com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus.OTP_SENT, com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus.OTP_SENT,
+        x.selectedDestination().channel(), x.selectedDestination().maskedDestination(),
+        c.correlationId()))
                                 .thenReturn(new ResendLoginOtpResult(ResendLoginOtpStatus.RESENT, x.selectedDestination().maskedDestination(),
                                         r.expiresInSeconds(), r.resendCooldownSeconds(), null))
                         : Mono.just(result(ResendLoginOtpStatus.DELIVERY_FAILED, x, null)));
