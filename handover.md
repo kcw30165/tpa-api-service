@@ -885,3 +885,17 @@
 - Existing handover content was preserved byte-for-byte and this section appended only after all gates passed.
 - Fail-first evidence: target/0043-012-004-authenticated-logout-http-endpoint-fail-first.log
 - Commit message: feat(auth): expose idempotent authenticated logout endpoint
+
+### 0043-012-005-final-authenticated-logout-stabilization-and-evidence
+- Status: completed
+- Finalized subtask 012 evidence for authenticated-session logout and revocation.
+- Verified framework-neutral logout contracts, revocation orchestration, runtime composition, POST /api/v1/auth/logout, sid_xxx request transport, idempotent public success, generic failure handling, and Cache-Control no-store.
+- Verified missing, malformed, absent, expired, and already terminated sessions do not expose session existence and do not invoke unsafe fallback behavior.
+- Verified logout responses and diagnostics expose no session ID, actor/account context, policy/certificate identifiers, Redis details, or internal failure cause.
+- Verified session lifecycle/revocation, request-context fail-closed behavior, login transition, personal-information context, registration preservation, and Redis sensitive-data safety.
+- Evidence index: target/0043-012-005-evidence/evidence.md
+- Evidence logs: target/0043-012-005-evidence/01-logout-contract.log through target/0043-012-005-evidence/07-request-and-registration-preservation.log
+- Existing handover content was preserved byte-for-byte and this section appended only after all gates passed.
+- Main-script progress: 5/5; zero main scripts remain for subtask 012.
+- Subtask 012 status: complete.
+- Commit message: test(auth): finalize authenticated logout evidence
