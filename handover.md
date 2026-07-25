@@ -805,3 +805,24 @@
 - Correction: restored the exact retired-reference check using a split string literal, preventing future bulk migrations from rewriting the guard target.
 - Production source changed: no.
 - Commit message: test(auth): restore exact legacy header reference guard
+
+### 0043-011-008-authenticated-request-failure-http-contract
+- Status: completed after cumulative stabilization through 0043-011-010-fix-authenticated-filter-typed-failure-expectation
+- Added a typed authenticated portal-context failure shared by the request filter and session-backed resolver.
+- Added pre-controller WebExceptionHandler mapping to HTTP 401 and err.security.authentication.required without exposing session/account details.
+- Fail-first evidence: target/0043-011-008-authenticated-request-failure-http-contract-fail-first.log
+- Commit message: feat(auth): map authenticated context failures to HTTP contract
+
+### 0043-011-009-fix-authenticated-failure-mutation-factory-arity
+- Status: completed through 0043-011-010-fix-authenticated-filter-typed-failure-expectation
+- Corrected the handler to use MutationResponse.failure(status, result, errors).
+- Commit message: fix(auth): use canonical mutation failure factory
+
+### 0043-011-010-fix-authenticated-filter-typed-failure-expectation
+- Status: completed
+- Classification: stale cumulative test expectation; production typed failure and HTTP contract were unchanged.
+- Root cause: the authenticated filter test still expected the temporary IllegalStateException after 011-008 deliberately standardized filter and resolver failures on AuthenticatedPortalContextResolutionException.
+- Correction: the missing-sid_xxx test now expects the typed authenticated-context exception handled by AuthenticatedPortalContextWebExceptionHandler.
+- Existing handover content was preserved byte-for-byte; missing 011-008/009 records and this correction were appended only after all gates passed.
+- Production source changed: no.
+- Commit message: test(auth): expect typed authenticated context failure

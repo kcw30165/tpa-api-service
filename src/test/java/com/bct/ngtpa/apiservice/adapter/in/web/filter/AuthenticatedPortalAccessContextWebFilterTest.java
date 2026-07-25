@@ -1,4 +1,5 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.filter;
+import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedPortalContextResolutionException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import com.bct.ngtpa.apiservice.application.dto.*;
@@ -54,7 +55,7 @@ class AuthenticatedPortalAccessContextWebFilterTest {
         StepVerifier
                 .create(new PortalAccessContextWebFilter(port).filter(exchange,
                         e -> Mono.error(new AssertionError("chain must not run"))))
-                .expectError(IllegalStateException.class).verify();
+                .expectError(AuthenticatedPortalContextResolutionException.class).verify();
     }
 
     @Test

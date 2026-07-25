@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.filter;
 
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
-import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
+import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedPortalContextResolutionException;
 import com.bct.ngtpa.apiservice.shared.web.*;
 
 import lombok.RequiredArgsConstructor;
@@ -30,7 +30,7 @@ public final class PortalAccessContextWebFilter implements WebFilter {
             return chain.filter(exchange);
         String sessionId = sessionId(exchange);
         if (!StringUtils.hasText(sessionId))
-            return Mono.error(new IllegalStateException("Authenticated portal context unavailable"));
+            return Mono.error(new AuthenticatedPortalContextResolutionException());
         return portalAccessContextPort.resolvePortalAccessContext(accountRef, sessionId)
                 .flatMap(context -> continueWith(exchange, chain, context));
     }
