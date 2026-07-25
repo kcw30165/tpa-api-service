@@ -852,3 +852,14 @@
 - Existing handover content was preserved byte-for-byte and this section appended only after all gates passed.
 - Fail-first evidence: target/0043-012-001-authenticated-logout-usecase-contract-fail-first.log
 - Commit message: feat(auth): define authenticated logout use case contract
+
+### 0043-012-002-authenticated-logout-orchestration
+- Status: completed
+- Added AuthenticatedLogoutService orchestration over the existing RevokeAuthenticatedSessionUseCase capability.
+- Revocation uses the fixed non-sensitive reason USER_LOGOUT and propagates only the optional correlation ID.
+- REVOKED maps to LOGGED_OUT; NOT_FOUND and EXPIRED map to idempotent ALREADY_LOGGED_OUT; FAILED, unexpected states, and reactive errors map to FAILED.
+- The service exposes no session existence details beyond the two successful public outcomes and has no web, Redis, persistence-port, crypto, or serialization dependency.
+- Main-script progress: 2/5; three main scripts remain for subtask 012.
+- Existing handover content was preserved byte-for-byte and this section appended only after all gates passed.
+- Fail-first evidence: target/0043-012-002-authenticated-logout-orchestration-fail-first.log
+- Commit message: feat(auth): orchestrate authenticated session logout
