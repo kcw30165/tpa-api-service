@@ -937,3 +937,15 @@
 - Production source changed: yes, inbound web composition only.
 - Existing handover content was preserved byte-for-byte and this section appended only after all gates passed.
 - Commit message: fix(auth): compose authenticated logout web mapper
+
+### 0043-012-012-fix-message-delivery-reactive-error-contract
+- Status: completed
+- Classification: production reactive-contract regression introduced during the message-delivery corrective rewrite.
+- Wrapped command validation, template rendering, and sender command construction in Mono.defer so validation/rendering failures are emitted reactively to subscribers rather than thrown before subscription.
+- Restored canonical IllegalArgumentException messages for null/missing command fields and EMAIL subject validation.
+- Preserved sender errors unchanged and retained the rule that rendering failures dispatch no SMS or email.
+- Added no production constructor; MessageDeliveryAdapter retains exactly its two established constructors.
+- Full-suite evidence: target/0043-012-012-fix-message-delivery-reactive-error-contract-full-suite.log
+- Main-script progress remains 5/5; zero main scripts remain. Corrective scripts do not change the total.
+- Existing handover content was preserved byte-for-byte and this section appended only after all gates passed.
+- Commit message: fix(auth): preserve reactive message delivery errors

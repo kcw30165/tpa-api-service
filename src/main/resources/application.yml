@@ -100,6 +100,11 @@ auth-flow-session:
 
 auth-workflows:
   login:
+    message:
+      destination-override:
+        mobile: ${LOGIN_MESSAGE_OVERRIDE_MOBILE:}
+        email: ${LOGIN_MESSAGE_OVERRIDE_EMAIL:}
+
     credential:
       username-min-length: ${LOGIN_USERNAME_MIN_LENGTH:1}
       username-max-length: ${LOGIN_USERNAME_MAX_LENGTH:128}
@@ -232,7 +237,6 @@ apim:
     private-key-pem: ${APIM_PRIVATE_KEY_PEM:}
     public-key-pem: ${APIM_PUBLIC_KEY_PEM:}
     request-fields:
-      - password
       - policy-no
       - cert-no
       - user-id

@@ -35,6 +35,7 @@ public class AuthWorkflowProperties {
         private final LoginIdempotency idempotency = new LoginIdempotency();
         private final LoginSession session = new LoginSession();
         private final LoginAccount account = new LoginAccount();
+        private final Message message = new Message();
     }
 
     @Getter

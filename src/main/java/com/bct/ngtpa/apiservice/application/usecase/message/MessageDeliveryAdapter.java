@@ -14,13 +14,12 @@ import com.bct.ngtpa.apiservice.application.port.out.SmsSenderPort;
 import com.bct.ngtpa.apiservice.application.service.message.DefaultMessageTemplateRenderer;
 import com.bct.ngtpa.apiservice.application.service.message.MessageTemplateRenderCommand;
 import com.bct.ngtpa.apiservice.application.service.message.MessageTemplateRenderer;
+import java.util.Objects;
 import reactor.core.publisher.Mono;
 
 public class MessageDeliveryAdapter implements MessageDeliveryPort {
-
     private static final String SENDER_RESULT_MISSING = "SENDER_RESULT_MISSING";
-    private static final String SENDER_RESULT_MISSING_MESSAGE = "Sender returned no result";
-
+    private static final String SENDER_RESULT_MISSING_MESSAGE = "Sender result is missing";
     private final SmsSenderPort smsSenderPort;
     private final EmailSenderPort emailSenderPort;
     private final MessageTemplateRenderer messageTemplateRenderer;
@@ -33,16 +32,15 @@ public class MessageDeliveryAdapter implements MessageDeliveryPort {
             SmsSenderPort smsSenderPort,
             EmailSenderPort emailSenderPort,
             MessageTemplateRenderer messageTemplateRenderer) {
-        this.smsSenderPort = smsSenderPort;
-        this.emailSenderPort = emailSenderPort;
-        this.messageTemplateRenderer = messageTemplateRenderer;
+        this.smsSenderPort = Objects.requireNonNull(smsSenderPort);
+        this.emailSenderPort = Objects.requireNonNull(emailSenderPort);
+        this.messageTemplateRenderer = Objects.requireNonNull(messageTemplateRenderer);
     }
 
     @Override
     public Mono<MessageDeliveryResult> deliver(MessageDeliveryCommand command) {
         return Mono.defer(() -> {
             validate(command);
-
             return switch (command.channel()) {
                 case SMS -> smsSenderPort.sendSms(toSmsMessage(command))
                         .map(result -> toDeliveryResult(MessageDeliveryChannel.SMS, result));
@@ -50,6 +48,36 @@ public class MessageDeliveryAdapter implements MessageDeliveryPort {
                         .map(result -> toDeliveryResult(MessageDeliveryChannel.EMAIL, result));
             };
         });
+    }
+
+    private SmsMessage toSmsMessage(MessageDeliveryCommand command) {
+        return new SmsMessage(command.recipient(), render(command.body(), command), null, command.correlationId());
+    }
+
+    private EmailMessage toEmailMessage(MessageDeliveryCommand command) {
+        return new EmailMessage(
+                command.recipient(),
+                render(command.subject(), command),
+                render(command.body(), command),
+                null,
+                command.correlationId());
+    }
+
+    private String render(String template, MessageDeliveryCommand command) {
+        return messageTemplateRenderer.render(new MessageTemplateRenderCommand(template, command.templateVariables())).renderedText();
+    }
+
+    private MessageDeliveryResult toDeliveryResult(MessageDeliveryChannel channel, SenderResult result) {
+        if (result == null) {
+            return new MessageDeliveryResult(MessageDeliveryStatus.FAILED, channel, null,
+                    SENDER_RESULT_MISSING, SENDER_RESULT_MISSING_MESSAGE);
+        }
+        return new MessageDeliveryResult(mapStatus(result.status()), channel, result.providerMessageId(),
+                result.failureCode(), result.failureMessage());
+    }
+
+    private MessageDeliveryStatus mapStatus(SenderStatus status) {
+        return status == SenderStatus.ACCEPTED ? MessageDeliveryStatus.ACCEPTED : MessageDeliveryStatus.FAILED;
     }
 
     private void validate(MessageDeliveryCommand command) {
@@ -76,53 +104,5 @@ public class MessageDeliveryAdapter implements MessageDeliveryPort {
         }
     }
 
-    private SmsMessage toSmsMessage(MessageDeliveryCommand command) {
-        return new SmsMessage(
-                command.recipient(),
-                render(command.body(), command),
-                null,
-                command.correlationId());
-    }
-
-    private EmailMessage toEmailMessage(MessageDeliveryCommand command) {
-        return new EmailMessage(
-                command.recipient(),
-                render(command.subject(), command),
-                render(command.body(), command),
-                null,
-                command.correlationId());
-    }
-
-    private String render(String template, MessageDeliveryCommand command) {
-        return messageTemplateRenderer.render(new MessageTemplateRenderCommand(template, command.templateVariables()))
-                .renderedText();
-    }
-
-    private MessageDeliveryResult toDeliveryResult(MessageDeliveryChannel channel, SenderResult result) {
-        if (result == null) {
-            return new MessageDeliveryResult(
-                    MessageDeliveryStatus.FAILED,
-                    channel,
-                    null,
-                    SENDER_RESULT_MISSING,
-                    SENDER_RESULT_MISSING_MESSAGE);
-        }
-
-        return new MessageDeliveryResult(
-                mapStatus(result.status()),
-                channel,
-                result.providerMessageId(),
-                result.failureCode(),
-                result.failureMessage());
-    }
-
-    private MessageDeliveryStatus mapStatus(SenderStatus status) {
-        return status == SenderStatus.ACCEPTED
-                ? MessageDeliveryStatus.ACCEPTED
-                : MessageDeliveryStatus.FAILED;
-    }
-
-    private boolean isBlank(String value) {
-        return value == null || value.isBlank();
-    }
+    private boolean isBlank(String value) { return value == null || value.isBlank(); }
 }
