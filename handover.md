@@ -774,3 +774,14 @@
 - No legacy fallback to Session-Id or one-argument resolution was added.
 - Production source changed: no.
 - Commit message: test(auth): align portal filter tests with sid authenticated context
+
+### 0043-011-004-runtime-authenticated-portal-context-composition
+- Status: completed
+- Added a primary PortalAccessContextPort bean backed by AuthenticatedAccountContextResolver and the existing LoadAndTouchAuthenticatedSessionUseCase lifecycle boundary.
+- Runtime selected-account resolution now uses protected Redis authenticated-session state, enforces session status/expiry, refreshes idle access, and restricts AccountRef lookup to the loaded session.
+- PortalAccessContextWebFilter retains the project-standard Lombok @RequiredArgsConstructor style and continues to depend only on PortalAccessContextPort.
+- TemporaryPortalAccessContextAdapter remains present only for the following isolation/removal stage; @Primary makes authenticated resolution authoritative for ordinary injection in this stage.
+- No Redis, crypto, or lifecycle implementation dependency was introduced into the inbound web filter.
+- Existing handover content was preserved byte-for-byte and this section appended only after all gates passed.
+- Fail-first evidence: target/0043-011-004-runtime-authenticated-portal-context-composition-fail-first.log
+- Commit message: feat(auth): compose authenticated portal context resolution

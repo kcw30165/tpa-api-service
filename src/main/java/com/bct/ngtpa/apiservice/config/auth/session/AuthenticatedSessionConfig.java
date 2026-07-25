@@ -14,12 +14,16 @@ import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthenticatedSession
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthenticatedSessionJsonMapper;
 import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionProtectorPort;
+import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
+import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedAccountContextResolver;
+import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.LoadAndTouchAuthenticatedSessionUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.CachePort;
 import com.bct.ngtpa.apiservice.infrastructure.security.session.AesGcmAuthenticatedSessionProtector;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 
 @Configuration
 @EnableConfigurationProperties(AuthenticatedSessionProtectionProperties.class)
@@ -82,6 +86,14 @@ public class AuthenticatedSessionConfig {
                 Duration.ofSeconds(session.getIdleTimeoutSeconds()),
                 Duration.ofSeconds(session.getTtlSeconds()),
                 clock);
+    }
+
+
+    @Bean
+    @Primary
+    PortalAccessContextPort authenticatedPortalAccessContextPort(
+            LoadAndTouchAuthenticatedSessionUseCase lifecycle) {
+        return new AuthenticatedAccountContextResolver(lifecycle);
     }
 
     @Bean
