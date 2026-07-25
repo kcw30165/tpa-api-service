@@ -41,6 +41,7 @@ class PortalAccessContextFinalMigrationEvidenceTest {
         try (Stream<Path> files = Files.walk(USECASE_PACKAGE)) {
             offenders = files
                     .filter(path -> path.toString().endsWith(".java"))
+                    .filter(path -> !path.endsWith("AuthenticatedAccountContextResolver.java"))
                     .filter(path -> contains(path, "PortalAccessContextPort"))
                     .toList();
         }

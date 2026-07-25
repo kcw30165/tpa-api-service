@@ -1,4 +1,5 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.filter;
+
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedPortalContextResolutionException;
 
 import static org.assertj.core.api.Assertions.assertThat;

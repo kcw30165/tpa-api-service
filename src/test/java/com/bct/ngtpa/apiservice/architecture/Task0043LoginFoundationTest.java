@@ -74,6 +74,9 @@ class Task0043LoginFoundationTest {
         login.getOtp().setTtlSeconds(300);
         login.getOtp().setResendCooldownSeconds(60);
         login.getOtp().setMaxVerifyAttempts(5);
+        login.getOtp().setSmsTemplate("Your verification code is {code}");
+        login.getOtp().getEmailTemplate().setSubject("Verification code");
+        login.getOtp().getEmailTemplate().setBody("Your verification code is {code}");
         login.getIdempotency().setStartTtlSeconds(300);
         login.getIdempotency().setOtpSendTtlSeconds(300);
         login.getIdempotency().setOtpResendTtlSeconds(300);

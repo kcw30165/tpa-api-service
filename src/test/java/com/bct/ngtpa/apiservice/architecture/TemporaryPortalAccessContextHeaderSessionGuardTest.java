@@ -10,23 +10,28 @@ import org.junit.jupiter.api.Test;
 class TemporaryPortalAccessContextHeaderSessionGuardTest {
 
     @Test
-    void requestHeaderContextCarriesTemporarySessionIdHeader() throws Exception {
+    void requestHeaderContextCarriesCanonicalAuthenticatedSessionHeader() throws Exception {
         String keys = Files.readString(Path.of("src/main/java/com/bct/ngtpa/apiservice/shared/web/RequestHeaderContextKeys.java"));
         String context = Files.readString(Path.of("src/main/java/com/bct/ngtpa/apiservice/shared/web/RequestHeaderContext.java"));
         String loggingFilter = Files.readString(Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/filter/RequestLoggingWebFilter.java"));
 
-        assertTrue(keys.contains("SESSION_ID_HEADER"));
-        assertTrue(keys.contains("Session-Id"));
+        assertTrue(keys.contains("AUTHENTICATED_SESSION_HEADER"));
+        assertTrue(keys.contains("sid_xxx"));
+        assertFalse(keys.contains("public static final String SESSION_ID_HEADER ="));
+        assertFalse(keys.contains("\"Session-Id\""));
         assertTrue(context.contains("String sessionId"));
         assertTrue(loggingFilter.contains("RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER"));
     }
 
     @Test
-    void portalAccessContextFilterPassesHeaderSessionIdToPort() throws Exception {
+    void portalAccessContextFilterPassesCanonicalSidToPort() throws Exception {
         String source = Files.readString(Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/filter/PortalAccessContextWebFilter.java"));
 
-        assertTrue(source.contains("resolveSessionId(exchange)"));
-        assertTrue(source.contains("resolvePortalAccessContext(accountRef, resolveSessionId(exchange))"));
+        String compact = source.replaceAll("\\s+", "");
+        assertTrue(compact.contains("sessionId(exchange)"));
+        assertTrue(compact.contains("resolvePortalAccessContext(accountRef,sessionId)"));
+        assertTrue(source.contains("RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER"));
+        assertFalse(source.contains("SESSION_ID_HEADER"));
     }
 
     @Test

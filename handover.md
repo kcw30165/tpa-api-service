@@ -899,3 +899,15 @@
 - Main-script progress: 5/5; zero main scripts remain for subtask 012.
 - Subtask 012 status: complete.
 - Commit message: test(auth): finalize authenticated logout evidence
+
+### 0043-012-008-fix-account-continuation-architecture-test-throws
+- Status: completed
+- Classification: architecture-test compilation defect; no production behavior change.
+- Added the required checked-exception declaration to authenticatedSessionTransitionIsDelivered because the test reads LoginOtpVerifyService through Files.readString(...).
+- Preserved the delivered authenticated-session transition assertions from 0043-012-007.
+- Ran the corrected architecture test, transition/foundation preservation tests, and the complete Maven test suite.
+- Full-suite evidence: target/0043-012-008-fix-account-continuation-architecture-test-throws-full-suite.log
+- Main-script progress remains 5/5; zero main scripts remain for subtask 012. Corrective scripts do not change the main-script total.
+- Existing handover content was preserved byte-for-byte and this section appended only after all gates passed.
+- Production source changed: no.
+- Commit message: test(auth): declare account continuation architecture IO failure

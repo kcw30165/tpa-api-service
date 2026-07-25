@@ -28,9 +28,19 @@ class Task0043LoginAuthenticatedSessionTransitionContractArchitectureTest {
     }
 
     @Test
-    void orchestrationAndWebTransportRemainDeferred() {
-        assertThat(Files.exists(Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/session/EstablishAuthenticatedLoginSessionService.java"))).isFalse();
+    void orchestrationAndCanonicalHeaderTransportAreDelivered() throws Exception {
+        Path service = Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/session/EstablishAuthenticatedLoginSessionService.java");
+        Path controller = Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthLoginOtpVerifyController.java");
+        assertThat(Files.exists(service)).isTrue();
+        assertThat(Files.readString(service)).contains(
+                "CreateAuthenticatedSessionUseCase",
+                "DeleteAuthFlowSessionPort",
+                "RevokeAuthenticatedSessionUseCase");
+        assertThat(Files.readString(controller)).contains(
+                "RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER",
+                "result.authenticatedSessionId().value()");
         assertThat(Files.exists(Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/login/config/AuthenticatedSessionCookieWriter.java"))).isFalse();
     }
