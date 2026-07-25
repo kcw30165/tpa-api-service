@@ -36,7 +36,8 @@ class PortalAccessContextWebFilterTest {
         });
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/api/v1/personal-information")
-                        .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, "ACC-1"));
+                        .header(RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER, "sid_abcdefghijklmnopqrstuvwx")
+                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, "ACC-1"));
 
         WebFilterChain chain = currentContextAssertingChain(expected);
 
@@ -57,7 +58,8 @@ class PortalAccessContextWebFilterTest {
         });
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/api/v1/personal-information")
-                        .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, "ACC-FROM-HEADER"));
+                        .header(RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER, "sid_abcdefghijklmnopqrstuvwx")
+                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, "ACC-FROM-HEADER"));
         exchange.getAttributes().put(
                 RequestHeaderContextKeys.ATTRIBUTE_KEY,
                 new RequestHeaderContext("ACC-FROM-CONTEXT", "REQ-1", "en"));
@@ -96,7 +98,8 @@ class PortalAccessContextWebFilterTest {
         });
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/api/v1/personal-information")
-                        .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, "   "));
+                        .header(RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER, "sid_abcdefghijklmnopqrstuvwx")
+                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, "   "));
 
         StepVerifier.create(filter.filter(exchange, currentContextAbsentAssertingChain()))
                 .verifyComplete();
@@ -112,7 +115,8 @@ class PortalAccessContextWebFilterTest {
                         "No context for " + accountRef)));
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/api/v1/personal-information")
-                        .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, "ACC-404"));
+                        .header(RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER, "sid_abcdefghijklmnopqrstuvwx")
+                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, "ACC-404"));
 
         StepVerifier.create(filter.filter(exchange, currentContextAbsentAssertingChain()))
                 .expectErrorSatisfies(error -> {
@@ -133,10 +137,12 @@ class PortalAccessContextWebFilterTest {
 
         MockServerWebExchange firstExchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/api/v1/personal-information")
-                        .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, "ACC-1"));
+                        .header(RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER, "sid_abcdefghijklmnopqrstuvwx")
+                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, "ACC-1"));
         MockServerWebExchange secondExchange = MockServerWebExchange.from(
                 MockServerHttpRequest.get("/api/v1/personal-information")
-                        .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, "ACC-2"));
+                        .header(RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER, "sid_abcdefghijklmnopqrstuvwx")
+                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, "ACC-2"));
 
         StepVerifier.create(filter.filter(firstExchange, currentContextAssertingChain(first)))
                 .verifyComplete();

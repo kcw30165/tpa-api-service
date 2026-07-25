@@ -752,3 +752,25 @@
 - Evidence index: target/0043-010-014-evidence/evidence.md
 - Production source changed: no.
 - Commit message: test(auth): align transition evidence with concrete capability fields
+
+### 0043-011-001-authenticated-request-context-filter
+- Status: completed after cumulative-test stabilization through 0043-011-003-fix-authenticated-filter-cumulative-tests
+- Added Account-Ref plus sid_xxx authenticated request-context filtering through the two-argument PortalAccessContextPort boundary.
+- Requests with Account-Ref but without sid_xxx fail closed; unscoped requests without Account-Ref pass through.
+- Fail-first evidence: target/0043-011-001-authenticated-request-context-filter-fail-first.log
+- Commit message: feat(auth): resolve authenticated request context from sid transport
+
+### 0043-011-002-fix-authenticated-filter-attribute-assertion
+- Status: completed through 0043-011-003-fix-authenticated-filter-cumulative-tests
+- Disambiguated the generic exchange attribute assertion with an explicit PortalAccessContext cast.
+- Production source changed: no.
+- Commit message: test(auth): disambiguate authenticated context attribute assertion
+
+### 0043-011-003-fix-authenticated-filter-cumulative-tests
+- Status: completed
+- Classification: stale cumulative filter fixtures plus formatting-sensitive architecture assertion; production filter behavior was unchanged.
+- Added sid_xxx to existing account-scoped filter requests so they exercise the authenticated two-argument contract.
+- Normalized whitespace before asserting the two-argument resolver invocation.
+- No legacy fallback to Session-Id or one-argument resolution was added.
+- Production source changed: no.
+- Commit message: test(auth): align portal filter tests with sid authenticated context
