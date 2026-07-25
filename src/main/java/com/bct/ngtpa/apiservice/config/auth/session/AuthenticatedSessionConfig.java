@@ -3,6 +3,9 @@ package com.bct.ngtpa.apiservice.config.auth.session;
 import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties;
 import com.bct.ngtpa.apiservice.application.port.in.EstablishAuthenticatedLoginSessionUseCase;
+import com.bct.ngtpa.apiservice.application.usecase.auth.logout.AuthenticatedLogoutService;
+import com.bct.ngtpa.apiservice.application.usecase.auth.logout.AuthenticatedLogoutUseCase;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.session.RevokeAuthenticatedSessionUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.session.DeleteAuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.session.EstablishAuthenticatedLoginSessionService;
@@ -99,6 +102,13 @@ public class AuthenticatedSessionConfig {
     @Bean
     DeleteAuthFlowSessionPort deleteAuthFlowSessionPort(AuthFlowSessionPort authFlowSessionPort) {
         return authFlowSessionPort::delete;
+    }
+
+
+    @Bean
+    AuthenticatedLogoutUseCase authenticatedLogoutUseCase(
+            RevokeAuthenticatedSessionUseCase revoke) {
+        return new AuthenticatedLogoutService(revoke);
     }
 
     @Bean

@@ -863,3 +863,13 @@
 - Existing handover content was preserved byte-for-byte and this section appended only after all gates passed.
 - Fail-first evidence: target/0043-012-002-authenticated-logout-orchestration-fail-first.log
 - Commit message: feat(auth): orchestrate authenticated session logout
+
+### 0043-012-003-authenticated-logout-runtime-composition
+- Status: completed
+- Composed AuthenticatedLogoutUseCase in AuthenticatedSessionConfig using AuthenticatedLogoutService and the existing RevokeAuthenticatedSessionUseCase capability.
+- Runtime wiring remains at the application capability boundary; the logout bean does not access AuthenticatedSessionPort, Redis, CachePort, protection, or serialization directly.
+- Existing authenticated-session lifecycle, transition, portal-context, login transport, and registration composition remain preserved.
+- Main-script progress: 3/5; two main scripts remain for subtask 012.
+- Existing handover content was preserved byte-for-byte and this section appended only after all gates passed.
+- Fail-first evidence: target/0043-012-003-authenticated-logout-runtime-composition-fail-first.log
+- Commit message: feat(auth): compose authenticated logout runtime
