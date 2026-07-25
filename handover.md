@@ -961,3 +961,15 @@
 - Main-script progress remains 5/5; zero main scripts remain. Corrective scripts do not change the total.
 - Existing handover content was preserved byte-for-byte and this section appended only after all gates passed.
 - Commit message: fix(auth): align OTP binding with auth-flow lifecycle contracts
+
+### 0043-012-015-fix-login-otp-send-destination-handoff-anchor
+- Status: completed
+- Classification: corrective-script production-call migration defect.
+- Runtime evidence proved the diagnosis: OTP send returned success and Redis stored OTP_SENT plus an active challenge, but AuthFlowSessionData.contactType and maskedDestination remained null. Resend and verify logged MISSING_CONTEXT and returned AUTH_FLOW_INVALID.
+- Root cause of the incomplete correction: 012-013 migrated LoginOtpSessionBindingCommand calls to eight arguments first, then attempted a formatting-specific replacement for the old call; the replacement anchor no longer matched, leaving null/null in the production send and resend calls.
+- Corrected both production calls using balanced Java invocation parsing and explicit eight-argument replacement.
+- Initial send now passes destination channel and masked destination. Resend passes the selected protected-context channel and masked destination.
+- Existing safe diagnostics remain unchanged.
+- Full-suite evidence: target/0043-012-015-fix-login-otp-send-destination-handoff-anchor-full-suite.log
+- Main-script progress remains 5/5; zero main scripts remain. Corrective scripts do not change the total.
+- Commit message: fix(auth): hand off selected destination during OTP send

@@ -60,9 +60,14 @@ public final class LoginOtpResendService implements ResendLoginOtpUseCase {priva
         return messages.deliver(command)
                 .flatMap(d -> d.status() == MessageDeliveryStatus.ACCEPTED
                         ? binding
-                                .bind(new LoginOtpSessionBindingCommand(c.authFlowSessionId(), r.previousOtpChallengeId(), r.newOtpChallengeId(), com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus.OTP_SENT, com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus.OTP_SENT,
-        x.selectedDestination().channel(), x.selectedDestination().maskedDestination(),
-        c.correlationId()))
+                                .bind(new LoginOtpSessionBindingCommand(c.authFlowSessionId(),
+                r.previousOtpChallengeId(),
+                r.newOtpChallengeId(),
+                com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus.OTP_SENT,
+                com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus.OTP_SENT,
+                x.selectedDestination().channel(),
+                x.selectedDestination().maskedDestination(),
+                c.correlationId()))
                                 .thenReturn(new ResendLoginOtpResult(ResendLoginOtpStatus.RESENT, x.selectedDestination().maskedDestination(),
                                         r.expiresInSeconds(), r.resendCooldownSeconds(), null))
                         : Mono.just(result(ResendLoginOtpStatus.DELIVERY_FAILED, x, null)));
