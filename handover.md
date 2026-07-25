@@ -826,3 +826,18 @@
 - Existing handover content was preserved byte-for-byte; missing 011-008/009 records and this correction were appended only after all gates passed.
 - Production source changed: no.
 - Commit message: test(auth): expect typed authenticated context failure
+
+### 0043-011-011-final-authenticated-request-context-stabilization-and-evidence
+- Status: completed
+- Finalized subtask 011 evidence for authenticated Account-Ref plus sid_xxx request-context resolution.
+- Verified filter fail-closed behavior, protected-session load/touch, session-scoped AccountRef lookup, exchange/Reactor context propagation, and generic HTTP 401 handling.
+- Verified AuthenticatedAccountContextResolver is the primary runtime PortalAccessContextPort implementation and TemporaryPortalAccessContextAdapter is isolated from component scanning.
+- Verified legacy Session-Id is absent and sid_xxx is the sole authenticated-session transport.
+- Verified failure responses do not disclose session identity, account existence, AccountRef, policy/certificate identifiers, or internal exception messages.
+- Verified login transition, protected session lifecycle, personal-information context use, registration preservation, Redis safety, and architecture boundaries.
+- Evidence index: target/0043-011-011-evidence/evidence.md
+- Evidence logs: target/0043-011-011-evidence/01-authenticated-request-filter.log through target/0043-011-011-evidence/07-page-and-registration-preservation.log
+- Existing handover content was preserved byte-for-byte and this section appended only after all gates passed.
+- Subtask 011 status: complete.
+- Deferred: logout/revocation endpoint and authenticated-session termination transport belong to the next phase.
+- Commit message: test(auth): finalize authenticated request context evidence
