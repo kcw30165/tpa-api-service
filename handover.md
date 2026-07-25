@@ -841,3 +841,14 @@
 - Subtask 011 status: complete.
 - Deferred: logout/revocation endpoint and authenticated-session termination transport belong to the next phase.
 - Commit message: test(auth): finalize authenticated request context evidence
+
+### 0043-012-001-authenticated-logout-usecase-contract
+- Status: completed
+- Defined a framework-neutral AuthenticatedLogoutUseCase with redacted command and terminal-only result contracts.
+- Public outcomes are LOGGED_OUT, ALREADY_LOGGED_OUT, and FAILED; successful repeat logout remains representable without exposing session existence.
+- AuthenticatedLogoutResult carries no session ID, actor, account, Redis, cookie, or transport details.
+- The existing RevokeAuthenticatedSessionUseCase remains the lower-level lifecycle capability to be orchestrated in the next main script.
+- Main-script progress: 1/5; four main scripts remain for subtask 012.
+- Existing handover content was preserved byte-for-byte and this section appended only after all gates passed.
+- Fail-first evidence: target/0043-012-001-authenticated-logout-usecase-contract-fail-first.log
+- Commit message: feat(auth): define authenticated logout use case contract
