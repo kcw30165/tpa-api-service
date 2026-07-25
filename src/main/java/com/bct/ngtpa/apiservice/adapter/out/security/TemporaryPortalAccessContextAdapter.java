@@ -11,7 +11,6 @@ import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 
@@ -20,7 +19,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Map;
 
-@Component
 @RequiredArgsConstructor
 @Slf4j
 public class TemporaryPortalAccessContextAdapter implements PortalAccessContextPort {
@@ -53,7 +51,7 @@ public class TemporaryPortalAccessContextAdapter implements PortalAccessContextP
         if (!StringUtils.hasText(sessionId)) {
             return Mono.<PortalAccessContext>error(new PortalAccessContextResolutionException(
                     ErrorCodes.MEMBER_CONTEXT_INVALID,
-                    "Session id header " + RequestHeaderContextKeys.SESSION_ID_HEADER
+                    "Authenticated session header " + RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER
                             + " is required to resolve temporary portal access context."));
         }
         TemporaryPortalAccessContextProperties.SessionProfile session = sessions.get(sessionId);

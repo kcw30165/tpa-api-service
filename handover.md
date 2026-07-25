@@ -785,3 +785,23 @@
 - Existing handover content was preserved byte-for-byte and this section appended only after all gates passed.
 - Fail-first evidence: target/0043-011-004-runtime-authenticated-portal-context-composition-fail-first.log
 - Commit message: feat(auth): compose authenticated portal context resolution
+
+### 0043-011-005-isolate-temporary-context-and-remove-legacy-session-header
+- Status: completed after guard stabilization through 0043-011-007-fix-legacy-header-reference-guard-migration
+- Removed the retired Session-Id constant/wire vocabulary and removed TemporaryPortalAccessContextAdapter from component scanning.
+- sid_xxx and AuthenticatedAccountContextResolver are authoritative at runtime.
+- Commit message: refactor(auth): isolate temporary context and remove legacy session header
+
+### 0043-011-006-fix-legacy-session-header-guard-name-collision
+- Status: completed through 0043-011-007-fix-legacy-header-reference-guard-migration
+- Scoped the constant guard to the exact retired declaration rather than a suffix shared by the canonical constant.
+- Production source changed: no.
+- Commit message: test(auth): distinguish canonical sid header from legacy constant
+
+### 0043-011-007-fix-legacy-header-reference-guard-migration
+- Status: completed
+- Classification: test migration overreach; production legacy-header removal was unchanged.
+- Root cause: 011-005 globally replaced RequestHeaderContextKeys.SESSION_ID_HEADER in tests, including the architecture guard itself, causing the guard to prohibit the required canonical AUTHENTICATED_SESSION_HEADER.
+- Correction: restored the exact retired-reference check using a split string literal, preventing future bulk migrations from rewriting the guard target.
+- Production source changed: no.
+- Commit message: test(auth): restore exact legacy header reference guard

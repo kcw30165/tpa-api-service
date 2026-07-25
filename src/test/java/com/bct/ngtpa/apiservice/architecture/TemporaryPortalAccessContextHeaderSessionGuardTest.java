@@ -18,7 +18,7 @@ class TemporaryPortalAccessContextHeaderSessionGuardTest {
         assertTrue(keys.contains("SESSION_ID_HEADER"));
         assertTrue(keys.contains("Session-Id"));
         assertTrue(context.contains("String sessionId"));
-        assertTrue(loggingFilter.contains("RequestHeaderContextKeys.SESSION_ID_HEADER"));
+        assertTrue(loggingFilter.contains("RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER"));
     }
 
     @Test
