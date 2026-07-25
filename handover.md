@@ -925,3 +925,15 @@
 - Production source changed: yes, Spring composition only.
 - Existing handover content was preserved; this section was appended only after all gates passed.
 - Commit message: fix(auth): compose login account lookup use case
+
+### 0043-012-010-fix-authenticated-logout-web-mapper-composition
+- Status: completed
+- Classification: production runtime web-composition defect discovered by Spring Boot startup; production and test compilation had already succeeded.
+- Root cause: AuthLogoutController requires AuthenticatedLogoutWebMapper, but the mapper was neither component-scanned nor explicitly registered as a Spring bean.
+- Added AuthenticatedLogoutWebConfig in the inbound web adapter configuration boundary and explicitly composed AuthenticatedLogoutWebMapper.
+- Kept the mapper free of @Component/@Service annotations and kept logout application/runtime composition unchanged.
+- Added fail-first Spring context coverage and ran logout endpoint, logout orchestration, authenticated-session lifecycle, request-context, login transport, and clean test-compilation gates.
+- Main-script progress remains 5/5; zero main scripts remain for subtask 012. Corrective scripts do not change the main-script total.
+- Production source changed: yes, inbound web composition only.
+- Existing handover content was preserved byte-for-byte and this section appended only after all gates passed.
+- Commit message: fix(auth): compose authenticated logout web mapper
