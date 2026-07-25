@@ -873,3 +873,15 @@
 - Existing handover content was preserved byte-for-byte and this section appended only after all gates passed.
 - Fail-first evidence: target/0043-012-003-authenticated-logout-runtime-composition-fail-first.log
 - Commit message: feat(auth): compose authenticated logout runtime
+
+### 0043-012-004-authenticated-logout-http-endpoint
+- Status: completed
+- Added POST /api/v1/auth/logout using the canonical sid_xxx request header and AuthenticatedLogoutUseCase boundary.
+- Valid sid_xxx values are revoked through the application use case; missing, blank, malformed, absent, expired, or already terminated sessions return the same idempotent HTTP 200 success envelope.
+- LOGGED_OUT and ALREADY_LOGGED_OUT are intentionally indistinguishable in the public JSON response; neither session identity nor prior existence is exposed.
+- Logout failure returns HTTP 503 with a generic err.system.unexpected MutationResponse and no infrastructure details.
+- Responses use Cache-Control: no-store; the BFF does not echo sid_xxx in the response body or response headers. FE must discard its sid_xxx transport value after the logout response.
+- Main-script progress: 4/5; one main script remains for subtask 012.
+- Existing handover content was preserved byte-for-byte and this section appended only after all gates passed.
+- Fail-first evidence: target/0043-012-004-authenticated-logout-http-endpoint-fail-first.log
+- Commit message: feat(auth): expose idempotent authenticated logout endpoint
