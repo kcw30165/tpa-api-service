@@ -16,7 +16,7 @@ class TemporaryPortalAccessContextHeaderSessionGuardTest {
         String loggingFilter = Files.readString(Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/filter/RequestLoggingWebFilter.java"));
 
         assertTrue(keys.contains("AUTHENTICATED_SESSION_HEADER"));
-        assertTrue(keys.contains("sid_xxx"));
+        assertTrue(keys.contains("X-Authenticated-Session-Id"));
         assertFalse(keys.contains("public static final String SESSION_ID_HEADER ="));
         assertFalse(keys.contains("\"Session-Id\""));
         assertTrue(context.contains("String sessionId"));

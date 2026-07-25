@@ -16,7 +16,7 @@ import reactor.core.publisher.Mono;
 
 /**
  * Resolves authenticated selected-account context from Account-Ref plus
- * sid_xxx.
+ * X-Authenticated-Session-Id.
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE + 1)

@@ -11,7 +11,7 @@ class Task0043AuthenticatedSidTransportArchitectureTest {
     void canonicalAuthenticatedTransportIsSidXxx() throws Exception {
         String keys = Files.readString(Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/shared/web/RequestHeaderContextKeys.java"));
-        assertThat(keys).contains("AUTHENTICATED_SESSION_HEADER = \"sid_xxx\"");
+        assertThat(keys).contains("AUTHENTICATED_SESSION_HEADER = \"X-Authenticated-Session-Id\"");
     }
 
     @Test

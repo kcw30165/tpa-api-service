@@ -973,3 +973,27 @@
 - Full-suite evidence: target/0043-012-015-fix-login-otp-send-destination-handoff-anchor-full-suite.log
 - Main-script progress remains 5/5; zero main scripts remain. Corrective scripts do not change the total.
 - Commit message: fix(auth): hand off selected destination during OTP send
+
+### 0043-012-016-rename-authenticated-session-header
+- Status: completed
+- Renamed the post-login authenticated-session HTTP header from sid_xxx to X-Authenticated-Session-Id.
+- Retained RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER as the canonical Java constant and changed only its wire value.
+- Retained the opaque authenticated-session value format sid_<URL-safe-random-value>; no actor, account, policy, certificate, or trust data is encoded in the value.
+- Kept auth_flow_sid as the distinct pre-auth cookie and did not reintroduce the retired Session-Id header.
+- Updated production filters/controllers, runtime request context, tests, architecture guards, active documentation, and request fixtures consistently.
+- No compatibility fallback accepts sid_xxx; callers must migrate to X-Authenticated-Session-Id.
+- Renamed-file evidence: target/evidence/rename-authenticated-session-header-renamed-files.txt
+- Full-suite evidence: target/0043-012-016-rename-authenticated-session-header-full-suite.log
+- Main-script progress remains 5/5; zero main scripts remain. Corrective scripts do not change the total.
+- Existing handover content was preserved byte-for-byte and this section appended only after all gates passed.
+- Commit message: refactor(auth): use explicit authenticated session header
+
+### 0043-012-018-make-authenticated-header-migration-resumable
+- Status: completed
+- Classification: corrective-script resumability defect; the source rename had already completed before the earlier evidence guard failed.
+- Changed 012-016 so a rerun succeeds when no sid_xxx references remain and RequestHeaderContextKeys already contains X-Authenticated-Session-Id.
+- The migration still fails if neither source changes nor the canonical header is present.
+- Resumed compilation, authenticated transport tests, architecture guards, preservation tests, and the full Maven suite through the corrected 012-016 script.
+- Retained the authenticated-session value prefix sid_ and the pre-auth auth_flow_sid cookie.
+- Main-script progress remains 5/5; zero main scripts remain. Corrective scripts do not change the total.
+- Commit message: test(auth): make authenticated header migration resumable

@@ -19,7 +19,7 @@ class Task0043LegacySessionHeaderAndTemporaryContextIsolationTest {
                     catch (Exception exception) { throw new RuntimeException(exception); }
                 })
                 .reduce("", String::concat);
-        assertThat(keys).contains("AUTHENTICATED_SESSION_HEADER = \"sid_xxx\"")
+        assertThat(keys).contains("AUTHENTICATED_SESSION_HEADER = \"X-Authenticated-Session-Id\"")
                 .doesNotContain(
                         "public static final String SESSION_ID_HEADER =",
                         "\"Session-Id\"");
