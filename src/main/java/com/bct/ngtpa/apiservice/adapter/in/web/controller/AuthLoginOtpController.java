@@ -25,7 +25,13 @@ public final class AuthLoginOtpController {
     private final ResendLoginOtpUseCase resendUseCase;
     private final LoginOtpResendWebMapper resendMapper;
 
-    public AuthLoginOtpController(SendLoginOtpUseCase useCase, LoginOtpSendWebMapper mapper, ResendLoginOtpUseCase resendUseCase, LoginOtpResendWebMapper resendMapper) { this.useCase=useCase; this.mapper=mapper; this.resendUseCase=resendUseCase; this.resendMapper=resendMapper; }
+    public AuthLoginOtpController(SendLoginOtpUseCase useCase, LoginOtpSendWebMapper mapper,
+            ResendLoginOtpUseCase resendUseCase, LoginOtpResendWebMapper resendMapper) {
+        this.useCase = useCase;
+        this.mapper = mapper;
+        this.resendUseCase = resendUseCase;
+        this.resendMapper = resendMapper;
+    }
 
     @PostMapping("/send")
     public Mono<ResponseEntity<MutationResponse<LoginWorkflowResultResponse<LoginOtpSendDataResponse>>>> send(
@@ -62,8 +68,48 @@ public final class AuthLoginOtpController {
     }
 
     @PostMapping("/resend")
-    public Mono<ResponseEntity<MutationResponse<LoginWorkflowResultResponse<LoginOtpSendDataResponse>>>> resend(@CookieValue(name="auth_flow_sid",required=false) String session,@RequestHeader(name="X-XSRF-TOKEN",required=false) String csrf,@RequestHeader(name="Idempotency-Key",required=false) String idem,@RequestHeader(name="X-Request-Id",required=false) String requestId,@RequestHeader(name="Accept-Language",required=false) String lang,@RequestHeader(name="Origin",required=false) String origin,@RequestHeader(name="Referer",required=false) String referer,ServerHttpResponse response){if(text(requestId))response.getHeaders().set("X-Request-Id",requestId.trim());if(!text(session))return resendJust(LoginErrorKey.AUTH_FLOW_INVALID.value(),"PAGE");if(!text(csrf))return resendJust(LoginErrorKey.CSRF_INVALID.value(),"PAGE");if(!text(idem))return resendJust(SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value(),"Idempotency-Key");if(!text(requestId))return resendJust("err.request.id.missing","X-Request-Id");try{return resendUseCase.resend(new ResendLoginOtpCommand(session.trim(),csrf.trim(),idem.trim(),clean(origin),clean(referer),clean(lang),requestId.trim())).map(resendMapper::toMutationResponse).map(LoginHttpResponses::toResponse).map(entity->{Integer retry=entity.getBody()!=null&&entity.getBody().result()!=null&&entity.getBody().result().data()!=null?entity.getBody().result().data().retryAfterSeconds():null;return retry!=null&&retry>0?ResponseEntity.status(entity.getStatusCode()).header(HttpHeaders.RETRY_AFTER,Integer.toString(retry)).body(entity.getBody()):entity;});}catch(RuntimeException e){return resendJust(LoginErrorKey.REQUEST_INVALID.value(),"PAGE");}}
-    private Mono<ResponseEntity<MutationResponse<LoginWorkflowResultResponse<LoginOtpSendDataResponse>>>> resendJust(String code,String target){return Mono.just(LoginHttpResponses.toResponse(resendMapper.missing(code,target)));}
+    public Mono<ResponseEntity<MutationResponse<LoginWorkflowResultResponse<LoginOtpSendDataResponse>>>> resend(
+            @CookieValue(name = "auth_flow_sid", required = false) String session,
+            @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrf,
+            @RequestHeader(name = "Idempotency-Key", required = false) String idem,
+            @RequestHeader(name = "X-Request-Id", required = false) String requestId,
+            @RequestHeader(name = "Accept-Language", required = false) String lang,
+            @RequestHeader(name = "Origin", required = false) String origin,
+            @RequestHeader(name = "Referer", required = false) String referer, ServerHttpResponse response) {
+        if (text(requestId))
+            response.getHeaders().set("X-Request-Id", requestId.trim());
+        if (!text(session))
+            return resendJust(LoginErrorKey.AUTH_FLOW_INVALID.value(), "PAGE");
+        if (!text(csrf))
+            return resendJust(LoginErrorKey.CSRF_INVALID.value(), "PAGE");
+        if (!text(idem))
+            return resendJust(SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value(), "Idempotency-Key");
+        if (!text(requestId))
+            return resendJust("err.request.id.missing", "X-Request-Id");
+        try {
+            return resendUseCase
+                    .resend(new ResendLoginOtpCommand(session.trim(), csrf.trim(), idem.trim(), clean(origin),
+                            clean(referer), clean(lang), requestId.trim()))
+                    .map(resendMapper::toMutationResponse).map(LoginHttpResponses::toResponse).map(entity -> {
+                        Integer retry = entity.getBody() != null && entity.getBody().result() != null
+                                && entity.getBody().result().data() != null
+                                        ? entity.getBody().result().data().retryAfterSeconds()
+                                        : null;
+                        return retry != null && retry > 0
+                                ? ResponseEntity.status(entity.getStatusCode())
+                                        .header(HttpHeaders.RETRY_AFTER, Integer.toString(retry)).body(entity.getBody())
+                                : entity;
+                    });
+        } catch (RuntimeException e) {
+            return resendJust(LoginErrorKey.REQUEST_INVALID.value(), "PAGE");
+        }
+    }
+
+    private Mono<ResponseEntity<MutationResponse<LoginWorkflowResultResponse<LoginOtpSendDataResponse>>>> resendJust(
+            String code, String target) {
+        return Mono.just(LoginHttpResponses.toResponse(resendMapper.missing(code, target)));
+    }
+
     private Mono<ResponseEntity<MutationResponse<LoginWorkflowResultResponse<LoginOtpSendDataResponse>>>> just(
             String code, String target) {
         return Mono.just(LoginHttpResponses.toResponse(mapper.missing(code, target)));

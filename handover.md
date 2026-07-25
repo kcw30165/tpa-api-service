@@ -911,3 +911,17 @@
 - Existing handover content was preserved byte-for-byte and this section appended only after all gates passed.
 - Production source changed: no.
 - Commit message: test(auth): declare account continuation architecture IO failure
+
+### 0043-012-009-fix-get-login-accounts-runtime-composition
+- Status: completed
+- Classification: production runtime-composition defect discovered by Spring Boot startup; Java production and test compilation had already succeeded.
+- Root cause: LoginOtpVerifyApplicationConfig requires GetLoginAccountsUseCase, while TrpGetAccountListAdapterConfig exposed LoginAccountAuthorizationPort but did not compose the canonical application use case.
+- Added an explicit outer-layer @Bean that constructs GetLoginAccountsUseCase from the existing LoginAccountAuthorizationPort.
+- Kept GetLoginAccountsUseCase framework-neutral; no @Component/@Service annotation and no compatibility constructor were added.
+- Reused the existing TRPGetAccountList adapter, shared APIM transport, crypto, retry, and error mapping.
+- Added fail-first runtime-composition architecture coverage and ran account-list, OTP verification, authenticated-transition, clean-architecture, registration-preservation, and clean test-compilation gates.
+- Fail-first evidence: target/0043-012-009-fix-get-login-accounts-runtime-composition-fail-first.log (created before mvn clean; retain externally if clean removes target).
+- Main-script progress remains 5/5; zero main scripts remain for subtask 012. Corrective scripts do not change the main-script total.
+- Production source changed: yes, Spring composition only.
+- Existing handover content was preserved; this section was appended only after all gates passed.
+- Commit message: fix(auth): compose login account lookup use case
