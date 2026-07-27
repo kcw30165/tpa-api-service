@@ -89,6 +89,30 @@ public class AuthWorkflowProperties {
     public static class LoginSession {
         private int ttlSeconds;
         private int idleTimeoutSeconds;
+        private final AuthenticatedCookie cookie = new AuthenticatedCookie();
+        private final AuthenticatedCsrf csrf = new AuthenticatedCsrf();
+    }
+
+    @Getter
+    @Setter
+    public static class AuthenticatedCookie {
+        private String name = "portal_sid";
+        private String path = "/api";
+        private int maxAgeSeconds = 900;
+        private boolean httpOnly = true;
+        private boolean secure = true;
+        private String sameSite = "None";
+    }
+
+    @Getter
+    @Setter
+    public static class AuthenticatedCsrf {
+        private String cookieName = "XSRF-TOKEN";
+        private String headerName = "X-XSRF-TOKEN";
+        private String cookiePath = "/api";
+        private int maxAgeSeconds = 900;
+        private boolean secure = true;
+        private String sameSite = "None";
     }
 
     @Getter

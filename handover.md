@@ -1006,3 +1006,14 @@
 - Production source changed by this correction: no.
 - Main-script progress remains 5/5; zero main scripts remain.
 - Commit message: test(auth): align login credential contract with HTTP 401
+
+### 0043-013-001-authenticated-session-cookie-foundation
+- Status: completed
+- Subtask 013 main-script progress: 1/5; four main scripts remain.
+- Added login.session cookie policy for portal_sid and authenticated XSRF-TOKEN under the existing AuthWorkflowProperties/YAML tree.
+- Added plain inbound-web cookie writers and explicit Spring composition; portal_sid is always HttpOnly and XSRF-TOKEN is intentionally readable for double-submit CSRF.
+- Cookie defaults use Path=/api, Secure=true, SameSite=None, and max-age aligned to the 900-second authenticated-session default.
+- This stage intentionally does not cut over runtime transport; X-Authenticated-Session-Id remains active until the atomic verify/filter/logout migration stages.
+- Fail-first evidence: target/evidence/0043-013-001-authenticated-session-cookie-foundation-fail-first.log
+- Production constructors added merely for tests: none.
+- Commit message: feat(auth): add authenticated session cookie foundation

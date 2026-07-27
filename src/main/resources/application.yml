@@ -142,6 +142,20 @@ auth-workflows:
     session:
       ttl-seconds: ${AUTH_WORKFLOWS_LOGIN_SESSION_TTL_SECONDS:900}
       idle-timeout-seconds: ${AUTH_WORKFLOWS_LOGIN_SESSION_IDLE_TIMEOUT_SECONDS:900}
+      cookie:
+        name: ${AUTH_WORKFLOWS_LOGIN_SESSION_COOKIE_NAME:portal_sid}
+        path: ${AUTH_WORKFLOWS_LOGIN_SESSION_COOKIE_PATH:/api}
+        max-age-seconds: ${AUTH_WORKFLOWS_LOGIN_SESSION_COOKIE_MAX_AGE_SECONDS:900}
+        http-only: true
+        secure: ${AUTH_WORKFLOWS_LOGIN_SESSION_COOKIE_SECURE:true}
+        same-site: ${AUTH_WORKFLOWS_LOGIN_SESSION_COOKIE_SAME_SITE:None}
+      csrf:
+        cookie-name: ${AUTH_WORKFLOWS_LOGIN_SESSION_CSRF_COOKIE_NAME:XSRF-TOKEN}
+        header-name: ${AUTH_WORKFLOWS_LOGIN_SESSION_CSRF_HEADER_NAME:X-XSRF-TOKEN}
+        cookie-path: ${AUTH_WORKFLOWS_LOGIN_SESSION_CSRF_COOKIE_PATH:/api}
+        max-age-seconds: ${AUTH_WORKFLOWS_LOGIN_SESSION_CSRF_MAX_AGE_SECONDS:900}
+        secure: ${AUTH_WORKFLOWS_LOGIN_SESSION_CSRF_SECURE:true}
+        same-site: ${AUTH_WORKFLOWS_LOGIN_SESSION_CSRF_SAME_SITE:None}
       protection:
         key-version: ${AUTH_WORKFLOWS_LOGIN_SESSION_PROTECTION_KEY_VERSION:}
         base64-key: ${AUTH_WORKFLOWS_LOGIN_SESSION_PROTECTION_BASE64_KEY:}
@@ -206,6 +220,7 @@ auth-workflows:
       otp-resend-ttl-seconds: 300
       otp-verify-ttl-seconds: 300
       complete-ttl-seconds: 300
+
 apim:
   login:
     get-account-list:
