@@ -58,7 +58,7 @@ class AuthLoginOtpVerifyAuthenticatedTransportTest {
                                 .verifyComplete();
 
                 assertThat(response.getHeaders().getFirst(RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER))
-                                .isEqualTo(SID);
+                                .isNull();
                 assertThat(response.getCookies().getFirst(properties.getCookie().getName()).getMaxAge().isZero())
                                 .isTrue();
                 assertThat(response.getCookies().get(properties.getCsrf().getCookieName()))

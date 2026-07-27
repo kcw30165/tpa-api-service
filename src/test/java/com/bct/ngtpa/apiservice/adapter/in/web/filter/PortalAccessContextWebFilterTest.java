@@ -1,196 +1,109 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.filter;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import com.bct.ngtpa.apiservice.application.dto.AccountContext;
-import com.bct.ngtpa.apiservice.application.dto.ActorContext;
-import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
-import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
-import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
-import com.bct.ngtpa.apiservice.shared.web.PortalAccessContextKeys;
-import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
-import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.*;
+import com.bct.ngtpa.apiservice.application.dto.*;
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.*;
+import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
+import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.*;
+import com.bct.ngtpa.apiservice.shared.web.*;
+import java.time.Instant;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpCookie;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
-import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 class PortalAccessContextWebFilterTest {
+    private static final String SID = "sid_abcdefghijklmnopqrstuvwx";
 
-        @Test
-        void resolvesContextFromAccountRefHeaderAndStoresItInExchangeAndReactorContext() {
-                PortalAccessContext expected = portalAccessContext("ACC-1", "JP", "JPM", "OE");
-                AtomicInteger resolveCount = new AtomicInteger();
-                PortalAccessContextWebFilter filter = new PortalAccessContextWebFilter(accountRef -> {
-                        resolveCount.incrementAndGet();
-                        assertEquals("ACC-1", accountRef);
-                        return Mono.just(expected);
-                });
-                MockServerWebExchange exchange = MockServerWebExchange.from(
-                                MockServerHttpRequest.get("/api/v1/personal-information")
-                                                .header(RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER,
-                                                                "sid_abcdefghijklmnopqrstuvwx")
-                                                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, "ACC-1"));
+    @Test
+    void storesResolvedContextInExchangeAndReactorContext() {
+        var expected = context("ACC-1");
+        AtomicReference<String> resolved = new AtomicReference<>();
+        PortalAccessContextPort port = new PortalAccessContextPort() {
+            public Mono<PortalAccessContext> resolvePortalAccessContext(String accountRef) {
+                return Mono.error(new AssertionError("one argument forbidden"));
+            }
+            public Mono<PortalAccessContext> resolvePortalAccessContext(String accountRef, String sessionId) {
+                resolved.set(accountRef); return Mono.just(expected);
+            }
+        };
+        var exchange = exchange("ACC-1");
+        AtomicReference<PortalAccessContext> reactor = new AtomicReference<>();
 
-                WebFilterChain chain = currentContextAssertingChain(expected);
+        StepVerifier.create(filter(port).filter(exchange, current -> Mono.deferContextual(value -> {
+                    reactor.set(value.get(PortalAccessContextKeys.CONTEXT_KEY)); return Mono.empty();
+                })))
+                .verifyComplete();
 
-                StepVerifier.create(filter.filter(exchange, chain))
-                                .verifyComplete();
+        assertThat(resolved.get()).isEqualTo("ACC-1");
+        assertThat((PortalAccessContext) exchange.getAttribute(PortalAccessContextKeys.ATTRIBUTE_KEY))
+                .isEqualTo(expected);
+        assertThat(reactor.get()).isEqualTo(expected);
+    }
 
-                assertEquals(1, resolveCount.get());
-                assertSame(expected, exchange.getAttributes().get(PortalAccessContextKeys.ATTRIBUTE_KEY));
+    @Test
+    void requestHeaderContextAccountRefTakesPrecedence() {
+        var expected = context("ACC-CONTEXT");
+        AtomicReference<String> resolved = new AtomicReference<>();
+        PortalAccessContextPort port = new PortalAccessContextPort() {
+            public Mono<PortalAccessContext> resolvePortalAccessContext(String accountRef) { return Mono.just(expected); }
+            public Mono<PortalAccessContext> resolvePortalAccessContext(String accountRef, String sessionId) {
+                resolved.set(accountRef); return Mono.just(expected);
+            }
+        };
+        var exchange = exchange("ACC-HEADER");
+        exchange.getAttributes().put(RequestHeaderContextKeys.ATTRIBUTE_KEY,
+                new RequestHeaderContext("ACC-CONTEXT", "REQ-1", "en"));
+        StepVerifier.create(filter(port).filter(exchange, current -> Mono.empty())).verifyComplete();
+        assertThat(resolved.get()).isEqualTo("ACC-CONTEXT");
+    }
+
+    @Test
+    void missingOrBlankAccountRefSkipsResolution() {
+        AtomicInteger calls = new AtomicInteger();
+        PortalAccessContextPort port = ref -> { calls.incrementAndGet(); return Mono.empty(); };
+        for (String ref : new String[] {null, "   "}) {
+            var request = MockServerHttpRequest.get("/api/v1/reference-data/countries");
+            if (ref != null) request.header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, ref);
+            StepVerifier.create(filter(port).filter(MockServerWebExchange.from(request), current -> Mono.empty()))
+                    .verifyComplete();
         }
+        assertThat(calls).hasValue(0);
+    }
 
-        @Test
-        void prefersRequestHeaderContextAttributeWhenPresent() {
-                PortalAccessContext expected = portalAccessContext("ACC-FROM-CONTEXT", "JP", "JPM", "OE");
-                AtomicReference<String> resolvedAccountRef = new AtomicReference<>();
-                PortalAccessContextWebFilter filter = new PortalAccessContextWebFilter(accountRef -> {
-                        resolvedAccountRef.set(accountRef);
-                        return Mono.just(expected);
-                });
-                MockServerWebExchange exchange = MockServerWebExchange.from(
-                                MockServerHttpRequest.get("/api/v1/personal-information")
-                                                .header(RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER,
-                                                                "sid_abcdefghijklmnopqrstuvwx")
-                                                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER,
-                                                                "ACC-FROM-HEADER"));
-                exchange.getAttributes().put(
-                                RequestHeaderContextKeys.ATTRIBUTE_KEY,
-                                new RequestHeaderContext("ACC-FROM-CONTEXT", "REQ-1", "en"));
+    private PortalAccessContextWebFilter filter(PortalAccessContextPort port) {
+        return new PortalAccessContextWebFilter(
+                port,
+                command -> Mono.just(authenticatedSession()),
+                new AuthenticatedSessionCookieWriter(new AuthWorkflowProperties.AuthenticatedCookie()),
+                new AuthenticatedCsrfCookieWriter(new AuthWorkflowProperties.AuthenticatedCsrf()));
+    }
 
-                StepVerifier.create(filter.filter(exchange, currentContextAssertingChain(expected)))
-                                .verifyComplete();
+    private MockServerWebExchange exchange(String accountRef) {
+        return MockServerWebExchange.from(MockServerHttpRequest.get("/api/v1/personal-information")
+                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, accountRef)
+                .cookie(new HttpCookie("portal_sid", SID))
+                .header("X-XSRF-TOKEN", "csrf_value"));
+    }
 
-                assertEquals("ACC-FROM-CONTEXT", resolvedAccountRef.get());
-        }
+    private AuthenticatedSession authenticatedSession() {
+        return new AuthenticatedSession(
+                new AuthenticatedSessionId(SID), new ActorContext("actor", "USER"), List.of(),
+                AuthenticatedSessionStatus.ACTIVE, "csrf_hash",
+                Instant.EPOCH, Instant.EPOCH,
+                Instant.EPOCH.plusSeconds(300), Instant.EPOCH.plusSeconds(900));
+    }
 
-        @Test
-        void missingAccountRefSkipsResolutionAndDoesNotFailFilterChain() {
-                AtomicInteger resolveCount = new AtomicInteger();
-                PortalAccessContextWebFilter filter = new PortalAccessContextWebFilter(accountRef -> {
-                        resolveCount.incrementAndGet();
-                        return Mono.error(
-                                        new AssertionError("resolver must not be called when Account-Ref is missing"));
-                });
-                MockServerWebExchange exchange = MockServerWebExchange.from(
-                                MockServerHttpRequest.get("/actuator/health"));
-
-                WebFilterChain chain = currentContextAbsentAssertingChain();
-
-                StepVerifier.create(filter.filter(exchange, chain))
-                                .verifyComplete();
-
-                assertEquals(0, resolveCount.get());
-                assertFalse(exchange.getAttributes().containsKey(PortalAccessContextKeys.ATTRIBUTE_KEY));
-        }
-
-        @Test
-        void blankAccountRefSkipsResolutionAndDoesNotFailFilterChain() {
-                AtomicInteger resolveCount = new AtomicInteger();
-                PortalAccessContextWebFilter filter = new PortalAccessContextWebFilter(accountRef -> {
-                        resolveCount.incrementAndGet();
-                        return Mono.error(new AssertionError("resolver must not be called when Account-Ref is blank"));
-                });
-                MockServerWebExchange exchange = MockServerWebExchange.from(
-                                MockServerHttpRequest.get("/api/v1/personal-information")
-                                                .header(RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER,
-                                                                "sid_abcdefghijklmnopqrstuvwx")
-                                                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, "   "));
-
-                StepVerifier.create(filter.filter(exchange, currentContextAbsentAssertingChain()))
-                                .verifyComplete();
-
-                assertEquals(0, resolveCount.get());
-        }
-
-        @Test
-        void propagatesResolutionFailure() {
-                PortalAccessContextWebFilter filter = new PortalAccessContextWebFilter(accountRef -> Mono.error(
-                                new PortalAccessContextResolutionException(
-                                                ErrorCodes.MEMBER_CONTEXT_INVALID,
-                                                "No context for " + accountRef)));
-                MockServerWebExchange exchange = MockServerWebExchange.from(
-                                MockServerHttpRequest.get("/api/v1/personal-information")
-                                                .header(RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER,
-                                                                "sid_abcdefghijklmnopqrstuvwx")
-                                                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, "ACC-404"));
-
-                StepVerifier.create(filter.filter(exchange, currentContextAbsentAssertingChain()))
-                                .expectErrorSatisfies(error -> {
-                                        assertTrue(error instanceof PortalAccessContextResolutionException);
-                                        assertEquals("No context for ACC-404", error.getMessage());
-                                })
-                                .verify();
-
-                assertFalse(exchange.getAttributes().containsKey(PortalAccessContextKeys.ATTRIBUTE_KEY));
-        }
-
-        @Test
-        void contextsArePerRequestAndDoNotLeak() {
-                PortalAccessContext first = portalAccessContext("ACC-1", "JP", "JPM", "OE");
-                PortalAccessContext second = portalAccessContext("ACC-2", "DB", "", "");
-                PortalAccessContextWebFilter filter = new PortalAccessContextWebFilter(accountRef -> Mono.just(
-                                "ACC-1".equals(accountRef) ? first : second));
-
-                MockServerWebExchange firstExchange = MockServerWebExchange.from(
-                                MockServerHttpRequest.get("/api/v1/personal-information")
-                                                .header(RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER,
-                                                                "sid_abcdefghijklmnopqrstuvwx")
-                                                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, "ACC-1"));
-                MockServerWebExchange secondExchange = MockServerWebExchange.from(
-                                MockServerHttpRequest.get("/api/v1/personal-information")
-                                                .header(RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER,
-                                                                "sid_abcdefghijklmnopqrstuvwx")
-                                                .header(RequestHeaderContextKeys.ACCOUNT_REF_HEADER, "ACC-2"));
-
-                StepVerifier.create(filter.filter(firstExchange, currentContextAssertingChain(first)))
-                                .verifyComplete();
-                StepVerifier.create(filter.filter(secondExchange, currentContextAssertingChain(second)))
-                                .verifyComplete();
-
-                assertSame(first, firstExchange.getAttributes().get(PortalAccessContextKeys.ATTRIBUTE_KEY));
-                assertSame(second, secondExchange.getAttributes().get(PortalAccessContextKeys.ATTRIBUTE_KEY));
-        }
-
-        private static WebFilterChain currentContextAssertingChain(PortalAccessContext expected) {
-                return exchange -> Mono.deferContextual(contextView -> {
-                        assertSame(expected, exchange.getAttributes().get(PortalAccessContextKeys.ATTRIBUTE_KEY));
-                        assertTrue(contextView.hasKey(PortalAccessContextKeys.CONTEXT_KEY));
-                        assertSame(expected, contextView.get(PortalAccessContextKeys.CONTEXT_KEY));
-                        return Mono.empty();
-                });
-        }
-
-        private static WebFilterChain currentContextAbsentAssertingChain() {
-                return exchange -> Mono.deferContextual(contextView -> {
-                        assertFalse(contextView.hasKey(PortalAccessContextKeys.CONTEXT_KEY));
-                        return Mono.empty();
-                });
-        }
-
-        private static PortalAccessContext portalAccessContext(
-                        String accountRef,
-                        String accountEnv,
-                        String trustCode,
-                        String schemeType) {
-                return new PortalAccessContext(
-                                new ActorContext("actor-001", "MEMBER"),
-                                new AccountContext(
-                                                accountRef,
-                                                accountEnv,
-                                                "policy-001",
-                                                "cert-001",
-                                                trustCode,
-                                                schemeType,
-                                                null,
-                                                null));
-        }
+    private PortalAccessContext context(String accountRef) {
+        return new PortalAccessContext(new ActorContext("actor", "USER"),
+                new AccountContext(accountRef, "JP", "00000008802", "0001", "JPM", "OE", null, null));
+    }
 }

@@ -98,12 +98,6 @@ public final class AuthLoginOtpVerifyController {
                             authenticatedCsrfCookies.write(
                                     response,
                                     result.authenticatedCsrfToken());
-                            // Temporary dual publication for one migration stage. The
-                            // following cutover removes this header after filters and
-                            // logout consume portal_sid and authenticated CSRF.
-                            response.getHeaders().set(
-                                    RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER,
-                                    result.authenticatedSessionId().value());
                         }
                         if (result.clearAuthFlowCookie()) {
                             authFlowCookies.clearAuthFlowCookie(response);

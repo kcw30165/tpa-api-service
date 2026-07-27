@@ -10,6 +10,8 @@ import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.session.DeleteAuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.session.EstablishAuthenticatedLoginSessionService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionLifecycleService;
+import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionValidationService;
+import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.ValidateAuthenticatedSessionUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.SecureAuthenticatedSessionIdGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenHasher;
@@ -120,4 +122,11 @@ public class AuthenticatedSessionConfig {
         return new EstablishAuthenticatedLoginSessionService(
                 lifecycle, cleanup, lifecycle, csrfTokenGenerator, csrfTokenHasher);
     }
+    @Bean
+    ValidateAuthenticatedSessionUseCase validateAuthenticatedSessionUseCase(
+            AuthenticatedSessionLifecycleService lifecycle,
+            CsrfTokenHasher csrfTokenHasher) {
+        return new AuthenticatedSessionValidationService(lifecycle, csrfTokenHasher);
+    }
+
 }

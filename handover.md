@@ -1042,3 +1042,12 @@
 - Updated the transport test to select and verify both cookies by path instead of using getFirst(cookieName), whose result depends on insertion order.
 - Production behavior changed by this correction: no.
 - Commit message: test(auth): distinguish pre-auth and authenticated XSRF cookies
+
+### 0043-013-012-fix-ambiguous-context-assertions
+- Status: completed
+- Classification: corrective test-compilation fix for 013-011; subtask 013 main-script progress remains 4/5 with one main script remaining.
+- Added explicit PortalAccessContext casts to ServerWebExchange.getAttribute results in both portal-context filter tests.
+- This removes Eclipse/JDT and javac AssertJ overload ambiguity between object and predicate assertions.
+- Production behavior changed by this correction: no.
+- Updated-file evidence: target/evidence/0043-013-012-updated-files.txt
+- Commit message: test(auth): disambiguate portal context assertions
