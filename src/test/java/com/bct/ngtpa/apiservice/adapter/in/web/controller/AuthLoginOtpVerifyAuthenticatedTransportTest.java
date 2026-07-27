@@ -30,7 +30,7 @@ class AuthLoginOtpVerifyAuthenticatedTransportTest {
                 null,
                 true,
                 List.of(account()),
-                new AuthenticatedSessionId(SID)));
+                new AuthenticatedSessionId(SID), "authenticated_csrf_token"));
         AuthFlowSessionProperties properties = new AuthFlowSessionProperties();
         AuthLoginOtpVerifyController controller = new AuthLoginOtpVerifyController(
                 useCase,

@@ -53,8 +53,7 @@ class EstablishAuthenticatedLoginSessionContractTest {
 
     @Test
     void successResultExposesOpaqueSessionIdentityOnly() {
-        var result = EstablishAuthenticatedLoginSessionResult.established(
-                new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx"));
+        var result = EstablishAuthenticatedLoginSessionResult.established(new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx"), "authenticated_csrf_token");
         assertThat(result.status()).isEqualTo(EstablishAuthenticatedLoginSessionStatus.ESTABLISHED);
         assertThat(result.authenticatedSessionId()).isNotNull();
         assertThat(result.clearAuthFlowCookie()).isTrue();

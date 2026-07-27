@@ -6,35 +6,46 @@ import java.util.Objects;
 public record EstablishAuthenticatedLoginSessionResult(
         EstablishAuthenticatedLoginSessionStatus status,
         AuthenticatedSessionId authenticatedSessionId,
+        String authenticatedCsrfToken,
         boolean clearAuthFlowCookie,
         boolean clearXsrfCookie) {
+
     public EstablishAuthenticatedLoginSessionResult {
         Objects.requireNonNull(status, "status must not be null");
-        if (status == EstablishAuthenticatedLoginSessionStatus.ESTABLISHED && authenticatedSessionId == null) {
+        boolean established = status == EstablishAuthenticatedLoginSessionStatus.ESTABLISHED;
+        if (established && authenticatedSessionId == null) {
             throw new IllegalArgumentException("ESTABLISHED requires authenticatedSessionId");
         }
-        if (status != EstablishAuthenticatedLoginSessionStatus.ESTABLISHED && authenticatedSessionId != null) {
-            throw new IllegalArgumentException("Failure result cannot expose authenticatedSessionId");
+        if (established && (authenticatedCsrfToken == null || authenticatedCsrfToken.isBlank())) {
+            throw new IllegalArgumentException("ESTABLISHED requires authenticatedCsrfToken");
         }
+        if (!established && (authenticatedSessionId != null || authenticatedCsrfToken != null)) {
+            throw new IllegalArgumentException("Failure result cannot expose authenticated credentials");
+        }
+        authenticatedCsrfToken = established ? authenticatedCsrfToken.trim() : null;
     }
 
-    public static EstablishAuthenticatedLoginSessionResult established(AuthenticatedSessionId id) {
+    public static EstablishAuthenticatedLoginSessionResult established(
+            AuthenticatedSessionId id,
+            String rawAuthenticatedCsrfToken) {
         return new EstablishAuthenticatedLoginSessionResult(
                 EstablishAuthenticatedLoginSessionStatus.ESTABLISHED,
                 Objects.requireNonNull(id),
+                rawAuthenticatedCsrfToken,
                 true,
                 true);
     }
 
     public static EstablishAuthenticatedLoginSessionResult failed(
             EstablishAuthenticatedLoginSessionStatus status) {
-        return new EstablishAuthenticatedLoginSessionResult(status, null, false, false);
+        return new EstablishAuthenticatedLoginSessionResult(status, null, null, false, false);
     }
 
     @Override
     public String toString() {
         return "EstablishAuthenticatedLoginSessionResult[status=" + status
-                + ", authenticatedSessionId=<redacted>, clearAuthFlowCookie=" + clearAuthFlowCookie
+                + ", authenticatedSessionId=<redacted>, authenticatedCsrfToken=<redacted>"
+                + ", clearAuthFlowCookie=" + clearAuthFlowCookie
                 + ", clearXsrfCookie=" + clearXsrfCookie + "]";
     }
 }

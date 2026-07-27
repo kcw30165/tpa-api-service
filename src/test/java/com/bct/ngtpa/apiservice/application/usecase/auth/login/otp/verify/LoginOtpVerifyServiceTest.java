@@ -84,7 +84,7 @@ class LoginOtpVerifyServiceTest {
                             com.bct.ngtpa.apiservice.application.usecase.auth.login.session.EstablishAuthenticatedLoginSessionResult
                                     .established(
                                             new com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId(
-                                                    "sid_abcdefghijklmnopqrstuvwx"))),
+                                                    "sid_abcdefghijklmnopqrstuvwx"), "authenticated_csrf_token")),
                     Clock.systemUTC());
         }
     }

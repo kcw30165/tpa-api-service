@@ -6,30 +6,36 @@ import java.util.*;
 
 public record VerifyLoginOtpResult(VerifyLoginOtpStatus status, Integer remainingVerifyAttempts,
         boolean clearAuthFlowCookie, List<LoginSessionAccount> accounts,
-        AuthenticatedSessionId authenticatedSessionId) {
+        AuthenticatedSessionId authenticatedSessionId,
+        String authenticatedCsrfToken) {
     public VerifyLoginOtpResult {
         Objects.requireNonNull(status);
         accounts = accounts == null ? List.of() : List.copyOf(accounts);
-        if (status == VerifyLoginOtpStatus.ACCOUNTS_READY && (accounts.isEmpty() || authenticatedSessionId == null))
-            throw new IllegalArgumentException("ACCOUNTS_READY requires accounts and authenticated session");
-        if (status != VerifyLoginOtpStatus.ACCOUNTS_READY && (!accounts.isEmpty() || authenticatedSessionId != null))
-            throw new IllegalArgumentException("Failure result cannot carry accounts or session");
+        if (status == VerifyLoginOtpStatus.ACCOUNTS_READY
+                && (accounts.isEmpty() || authenticatedSessionId == null
+                        || authenticatedCsrfToken == null || authenticatedCsrfToken.isBlank()))
+            throw new IllegalArgumentException("ACCOUNTS_READY requires accounts and authenticated credentials");
+        if (status != VerifyLoginOtpStatus.ACCOUNTS_READY
+                && (!accounts.isEmpty() || authenticatedSessionId != null || authenticatedCsrfToken != null))
+            throw new IllegalArgumentException("Failure result cannot carry accounts or authenticated credentials");
+        authenticatedCsrfToken = status == VerifyLoginOtpStatus.ACCOUNTS_READY
+                ? authenticatedCsrfToken.trim() : null;
     }
 
     public VerifyLoginOtpResult(VerifyLoginOtpStatus status, Integer remainingVerifyAttempts,
             boolean clearAuthFlowCookie, List<LoginSessionAccount> accounts) {
-        this(status, remainingVerifyAttempts, clearAuthFlowCookie, accounts, null);
+        this(status, remainingVerifyAttempts, clearAuthFlowCookie, accounts, null, null);
     }
 
     public VerifyLoginOtpResult(VerifyLoginOtpStatus status, Integer remainingVerifyAttempts,
             boolean clearAuthFlowCookie) {
-        this(status, remainingVerifyAttempts, clearAuthFlowCookie, List.of(), null);
+        this(status, remainingVerifyAttempts, clearAuthFlowCookie, List.of(), null, null);
     }
 
     @Override
     public String toString() {
         return "VerifyLoginOtpResult[status=" + status + ", remainingVerifyAttempts=" + remainingVerifyAttempts
                 + ", clearAuthFlowCookie=" + clearAuthFlowCookie + ", accountCount=" + accounts.size()
-                + ", authenticatedSessionId=<redacted>]";
+                + ", authenticatedSessionId=<redacted>, authenticatedCsrfToken=<redacted>]";
     }
 }

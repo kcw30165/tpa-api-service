@@ -11,6 +11,8 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.login.session.DeleteAut
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.session.EstablishAuthenticatedLoginSessionService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionLifecycleService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.SecureAuthenticatedSessionIdGenerator;
+import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenGenerator;
+import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenHasher;
 import java.time.Clock;
 import java.time.Duration;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthenticatedSessionAdapter;
@@ -112,7 +114,10 @@ public class AuthenticatedSessionConfig {
     @Bean
     EstablishAuthenticatedLoginSessionUseCase establishAuthenticatedLoginSessionUseCase(
             AuthenticatedSessionLifecycleService lifecycle,
-            DeleteAuthFlowSessionPort cleanup) {
-        return new EstablishAuthenticatedLoginSessionService(lifecycle, cleanup, lifecycle);
+            DeleteAuthFlowSessionPort cleanup,
+            CsrfTokenGenerator csrfTokenGenerator,
+            CsrfTokenHasher csrfTokenHasher) {
+        return new EstablishAuthenticatedLoginSessionService(
+                lifecycle, cleanup, lifecycle, csrfTokenGenerator, csrfTokenHasher);
     }
 }

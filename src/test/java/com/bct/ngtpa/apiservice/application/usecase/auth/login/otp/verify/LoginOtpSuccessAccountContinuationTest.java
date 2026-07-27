@@ -95,7 +95,7 @@ class LoginOtpSuccessAccountContinuationTest {
                             com.bct.ngtpa.apiservice.application.usecase.auth.login.session.EstablishAuthenticatedLoginSessionResult
                                     .established(
                                             new com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId(
-                                                    "sid_abcdefghijklmnopqrstuvwx"))),
+                                                    "sid_abcdefghijklmnopqrstuvwx"), "authenticated_csrf_token")),
                     Clock.fixed(Instant.parse("2026-07-20T00:00:00Z"), ZoneOffset.UTC));
         }
     }

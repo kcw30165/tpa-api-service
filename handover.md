@@ -1017,3 +1017,20 @@
 - Fail-first evidence: target/evidence/0043-013-001-authenticated-session-cookie-foundation-fail-first.log
 - Production constructors added merely for tests: none.
 - Commit message: feat(auth): add authenticated session cookie foundation
+
+### 0043-013-006-fix-established-fixtures-by-call-shape
+- Status: completed
+- Classification: corrective fixture-only migration for 013-002; subtask 013 main-script progress remains 2/5 with three main scripts remaining.
+- Matched the two remaining one-argument established calls by Java call shape, independent of whitespace, line wrapping, indentation, and fully qualified type names.
+- Captured exact before/after call-shape evidence in target/evidence/0043-013-006-fix-established-fixtures-by-call-shape-call-shapes.txt before compiling.
+- Production contracts remain strict; no compatibility constructor or factory was added.
+- Commit message: test(auth): fix remaining established result call shapes
+
+### 0043-013-007-fix-call-shape-evidence-path-and-resume
+- Status: completed
+- Classification: evidence-path and resumability defect in corrective script 013-006.
+- 013-006 had already migrated both test fixtures before failing because it wrote 0043-013-006-call-shapes.txt but attempted to display 0043-013-006-fix-established-fixtures-by-call-shape-call-shapes.txt.
+- Aligned the evidence writer and display path, made the fixture migration idempotent, preserved prior evidence, and resumed compilation and targeted tests.
+- Production contracts remain unchanged and strict.
+- Subtask 013 main-script progress remains 2/5; three main scripts remain.
+- Commit message: test(auth): fix CSRF fixture evidence path and resume

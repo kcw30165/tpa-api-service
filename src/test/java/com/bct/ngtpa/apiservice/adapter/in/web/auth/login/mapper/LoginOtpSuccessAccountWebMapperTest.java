@@ -18,7 +18,7 @@ class LoginOtpSuccessAccountWebMapperTest {
         var response = mapper.toMutationResponse(
                 new VerifyLoginOtpResult(VerifyLoginOtpStatus.ACCOUNTS_READY, null, false, List.of(account),
                         new com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId(
-                                "sid_abcdefghijklmnopqrstuvwx")));
+                                "sid_abcdefghijklmnopqrstuvwx"), "authenticated_csrf_token"));
         assertThat(response.success()).isTrue();
         assertThat(response.result().nextStep()).isEqualTo(WorkflowNextStep.SELECT_ACCOUNT);
         assertThat(response.result().data().accounts()).extracting(a -> a.accountRef())

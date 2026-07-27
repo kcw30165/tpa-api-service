@@ -91,12 +91,13 @@ public final class LoginOtpVerifyService implements VerifyLoginOtpUseCase {
                             established -> established.status() == EstablishAuthenticatedLoginSessionStatus.ESTABLISHED
                                     ? new VerifyLoginOtpResult(VerifyLoginOtpStatus.ACCOUNTS_READY, null,
                                             established.clearAuthFlowCookie(), assigned.accounts(),
-                                            established.authenticatedSessionId())
+                                            established.authenticatedSessionId(),
+                                            established.authenticatedCsrfToken())
                                     : result(VerifyLoginOtpStatus.SESSION_CREATION_FAILED, null, false));
                 });
     }
 
     private VerifyLoginOtpResult result(VerifyLoginOtpStatus s, Integer remaining, boolean clear) {
-        return new VerifyLoginOtpResult(s, remaining, clear, List.of(), null);
+        return new VerifyLoginOtpResult(s, remaining, clear, List.of(), null, null);
     }
 }

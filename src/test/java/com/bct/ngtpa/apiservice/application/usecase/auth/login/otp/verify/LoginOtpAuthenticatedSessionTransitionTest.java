@@ -48,7 +48,7 @@ class LoginOtpAuthenticatedSessionTransitionTest {
         AtomicReference<EstablishAuthenticatedLoginSessionCommand> transitionCommand = new AtomicReference<>();
         LoginOtpVerifyService service = service(command -> {
             transitionCommand.set(command);
-            return Mono.just(EstablishAuthenticatedLoginSessionResult.established(SID));
+            return Mono.just(EstablishAuthenticatedLoginSessionResult.established(SID, "authenticated_csrf_token"));
         });
 
         StepVerifier.create(service.verify(command()))

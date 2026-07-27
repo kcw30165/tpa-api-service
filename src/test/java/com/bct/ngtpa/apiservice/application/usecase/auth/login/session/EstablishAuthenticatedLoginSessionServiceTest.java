@@ -5,11 +5,9 @@ import com.bct.ngtpa.apiservice.application.dto.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.account.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.*;
-import com.bct.ngtpa.apiservice.application.port.out.*;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.*;
 import java.time.*;
 import java.util.*;
-import java.util.concurrent.atomic.*;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -27,6 +25,7 @@ class EstablishAuthenticatedLoginSessionServiceTest {
             assertThat(r.authenticatedSessionId()).isEqualTo(SID);
             assertThat(r.clearAuthFlowCookie()).isTrue();
             assertThat(r.clearXsrfCookie()).isTrue();
+            assertThat(r.authenticatedCsrfToken()).isEqualTo("fresh_authenticated_csrf");
         }).verifyComplete();
         assertThat(order).containsExactly("create-authenticated", "delete-preauth");
     }
@@ -72,7 +71,12 @@ class EstablishAuthenticatedLoginSessionServiceTest {
             order.add("revoke-authenticated");
             return Mono.just(AuthenticatedSessionLifecycleResult.of(AuthenticatedSessionLifecycleStatus.REVOKED));
         };
-        return new EstablishAuthenticatedLoginSessionService(create, cleanup, revoke);
+        return new EstablishAuthenticatedLoginSessionService(
+                create,
+                cleanup,
+                revoke,
+                () -> "fresh_authenticated_csrf",
+                new com.bct.ngtpa.apiservice.application.usecase.session.authflow.Sha256CsrfTokenHasher());
     }
 
     private EstablishAuthenticatedLoginSessionCommand command() {

@@ -63,7 +63,11 @@ class AuthenticatedSessionTransitionConfigTest {
 
         DeleteAuthFlowSessionPort cleanup = config.deleteAuthFlowSessionPort(preAuth);
         EstablishAuthenticatedLoginSessionUseCase transition =
-                config.establishAuthenticatedLoginSessionUseCase(lifecycle, cleanup);
+                config.establishAuthenticatedLoginSessionUseCase(
+                lifecycle,
+                cleanup,
+                () -> "authenticated_csrf_token",
+                new com.bct.ngtpa.apiservice.application.usecase.session.authflow.Sha256CsrfTokenHasher());
 
         assertThat(cleanup).isNotNull();
         assertThat(transition).isInstanceOf(EstablishAuthenticatedLoginSessionService.class);
