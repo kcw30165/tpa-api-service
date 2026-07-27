@@ -2625,7 +2625,7 @@ Successful OTP verification establishes browser-managed authenticated transport:
 
 ```http
 Set-Cookie: portal_sid=sid_<opaque-value>; Path=/api; HttpOnly; Secure; SameSite=None
-Set-Cookie: XSRF-TOKEN=<authenticated-csrf-token>; Path=/api; Secure; SameSite=None
+; Path=/api; Secure; SameSite=None
 ```
 
 Account-scoped requests use:
@@ -2638,3 +2638,41 @@ X-Request-Id: <request-id>
 ```
 
 The authenticated session ID is never returned in JSON and is not exposed to frontend JavaScript. Logout validates the authenticated CSRF token, revokes the server-side session, and clears both authenticated cookies. The retired `portal_sid HttpOnly cookie`, `sid_xxx`, and `Session-Id` transports have no compatibility fallback.
+
+## Authenticated browser session and CSRF contract
+
+After successful Login OTP verification, the BFF sets only the authenticated-session cookie:
+
+```http
+Set-Cookie: portal_sid=sid_<opaque-value>; Path=/api; HttpOnly; Secure; SameSite=None
+```
+
+The successful response returns a freshly rotated authenticated CSRF token in endpoint-specific response data:
+
+```json
+{
+  "result": {
+    "nextStep": "SELECT_ACCOUNT",
+    "data": {
+      "csrfToken": "<authenticated-csrf-token>",
+      "accounts": [{ "accountRef": "acc_<opaque-value>" }],
+      "actions": []
+    }
+  }
+}
+```
+
+Only the token hash is stored in the encrypted authenticated session. The BFF does not create an authenticated `XSRF-TOKEN` cookie.
+
+Subsequent account-scoped requests use:
+
+```http
+Cookie: portal_sid=sid_<opaque-value>
+X-XSRF-TOKEN: <csrfToken-from-successful-verify-response>
+Account-Ref: acc_<selected-account>
+X-Request-Id: <request-id>
+```
+
+Logout uses the same `portal_sid` cookie and `X-XSRF-TOKEN` header. Logout clears `portal_sid`; there is no authenticated `XSRF-TOKEN` cookie to clear.
+
+The pre-authentication contract remains separate: `auth_flow_sid` is HttpOnly, the pre-auth CSRF token is returned in response data, and the frontend sends it through `X-XSRF-TOKEN` on later pre-auth requests.

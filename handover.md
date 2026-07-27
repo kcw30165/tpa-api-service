@@ -1082,3 +1082,22 @@
 - Preserved the authenticated contract: portal_sid HttpOnly cookie plus result.data.csrfToken plus X-XSRF-TOKEN request header.
 - Production behavior changed by this correction: no.
 - Commit message: test(auth): remove stale authenticated XSRF cookie assertion
+
+### 0043-014-012-fix-portal-sid-architecture-guard-configuration-boundary
+- Status: completed
+- Classification: corrective architecture-test boundary alignment; subtask 014 remains complete at 3/3 main scripts.
+- Root cause: the architecture guard expected the literal portal_sid inside AuthenticatedSessionCookieWriter, but the writer correctly obtains the cookie name from AuthWorkflowProperties.AuthenticatedCookie.
+- The guard now verifies the configurable cookie-policy dependency, forced HttpOnly behavior, and portal_sid as the application.yml default through AUTH_WORKFLOWS_LOGIN_SESSION_COOKIE_NAME.
+- Preserved the final authenticated contract: configurable HttpOnly portal_sid cookie plus result.data.csrfToken plus X-XSRF-TOKEN request header.
+- Production behavior changed by this correction: no.
+- Commit message: test(auth): verify portal sid through configuration boundary
+
+### 0043-014-009-final-csrf-response-transport-stabilization-and-readme
+- Status: completed
+- Subtask 014 main-script progress: 3/3; main scripts remaining: 0.
+- Final authenticated transport: portal_sid HttpOnly cookie plus csrfToken returned in successful OTP-verification response data plus X-XSRF-TOKEN on subsequent authenticated requests.
+- Removed authenticated XSRF-TOKEN cookie writer, properties, YAML, publication, logout clearing, and stale tests.
+- Preserved pre-auth auth_flow_sid and response-body CSRF-token behavior.
+- Full Maven suite passed; evidence: target/0043-014-009-evidence/evidence.md
+- README.md updated with the final browser-session and CSRF contract.
+- Commit message: test(auth): finalize body CSRF transport and documentation
