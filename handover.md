@@ -1034,3 +1034,11 @@
 - Production contracts remain unchanged and strict.
 - Subtask 013 main-script progress remains 2/5; three main scripts remain.
 - Commit message: test(auth): fix CSRF fixture evidence path and resume
+
+### 0043-013-009-fix-authenticated-xsrf-cookie-path-assertion
+- Status: completed
+- Classification: stale path-insensitive cookie assertion after 013-008; subtask 013 main-script progress remains 3/5 with two main scripts remaining.
+- XSRF-TOKEN is intentionally present twice in the OTP-success response: the pre-auth cookie at /api/v1/auth is cleared with Max-Age=0, while the fresh authenticated cookie at /api is active.
+- Updated the transport test to select and verify both cookies by path instead of using getFirst(cookieName), whose result depends on insertion order.
+- Production behavior changed by this correction: no.
+- Commit message: test(auth): distinguish pre-auth and authenticated XSRF cookies

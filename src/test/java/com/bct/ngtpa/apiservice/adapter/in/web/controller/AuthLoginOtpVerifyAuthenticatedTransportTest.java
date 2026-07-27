@@ -21,74 +21,96 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 class AuthLoginOtpVerifyAuthenticatedTransportTest {
-    private static final String SID = "sid_abcdefghijklmnopqrstuvwx";
+        private static final String SID = "sid_abcdefghijklmnopqrstuvwx";
 
-    @Test
-    void successfulVerificationPublishesSidAndClearsPreAuthCookies() {
-        VerifyLoginOtpUseCase useCase = command -> Mono.just(new VerifyLoginOtpResult(
-                VerifyLoginOtpStatus.ACCOUNTS_READY,
-                null,
-                true,
-                List.of(account()),
-                new AuthenticatedSessionId(SID), "authenticated_csrf_token"));
-        AuthFlowSessionProperties properties = new AuthFlowSessionProperties();
-        AuthLoginOtpVerifyController controller = new AuthLoginOtpVerifyController(
-                useCase,
-                new LoginOtpVerifyWebMapper(),
-                AuthFlowCookieWriter.from(properties),
-                new XsrfCookieWriter(properties));
-        MockServerHttpResponse response = new MockServerHttpResponse();
+        @Test
+        void successfulVerificationPublishesAuthenticatedTransportAndClearsPreAuthCookies() {
+                VerifyLoginOtpUseCase useCase = command -> Mono.just(new VerifyLoginOtpResult(
+                                VerifyLoginOtpStatus.ACCOUNTS_READY,
+                                null,
+                                true,
+                                List.of(account()),
+                                new AuthenticatedSessionId(SID), "authenticated_csrf_token"));
+                AuthFlowSessionProperties properties = new AuthFlowSessionProperties();
+                AuthLoginOtpVerifyController controller = new AuthLoginOtpVerifyController(
+                                useCase,
+                                new LoginOtpVerifyWebMapper(),
+                                AuthFlowCookieWriter.from(properties),
+                                new XsrfCookieWriter(properties),
+                                new com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieWriter(
+                                                new com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties.AuthenticatedCookie()),
+                                new com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedCsrfCookieWriter(
+                                                new com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties.AuthenticatedCsrf()));
+                MockServerHttpResponse response = new MockServerHttpResponse();
 
-        StepVerifier.create(controller.verify(
-                        new com.bct.ngtpa.apiservice.adapter.in.web.auth.login.dto.LoginOtpVerifyRequest("123456"),
-                        "afs_opaque",
-                        "csrf",
-                        "idem",
-                        "req",
-                        "en",
-                        "https://portal",
-                        null,
-                        response))
-                .assertNext(entity -> assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK))
-                .verifyComplete();
+                StepVerifier.create(controller.verify(
+                                new com.bct.ngtpa.apiservice.adapter.in.web.auth.login.dto.LoginOtpVerifyRequest(
+                                                "123456"),
+                                "afs_opaque",
+                                "csrf",
+                                "idem",
+                                "req",
+                                "en",
+                                "https://portal",
+                                null,
+                                response))
+                                .assertNext(entity -> assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK))
+                                .verifyComplete();
 
-        assertThat(response.getHeaders().getFirst(RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER))
-                .isEqualTo(SID);
-        assertThat(response.getCookies().getFirst(properties.getCookie().getName()).getMaxAge().isZero()).isTrue();
-        assertThat(response.getCookies().getFirst(properties.getCsrf().getCookieName()).getMaxAge().isZero()).isTrue();
-    }
+                assertThat(response.getHeaders().getFirst(RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER))
+                                .isEqualTo(SID);
+                assertThat(response.getCookies().getFirst(properties.getCookie().getName()).getMaxAge().isZero())
+                                .isTrue();
+                assertThat(response.getCookies().get(properties.getCsrf().getCookieName()))
+                                .anySatisfy(cookie -> {
+                                        assertThat(cookie.getPath()).isEqualTo(properties.getCsrf().getCookiePath());
+                                        assertThat(cookie.getMaxAge().isZero()).isTrue();
+                                })
+                                .anySatisfy(cookie -> {
+                                        assertThat(cookie.getPath()).isEqualTo("/api");
+                                        assertThat(cookie.getValue()).isEqualTo("authenticated_csrf_token");
+                                        assertThat(cookie.getMaxAge().isZero()).isFalse();
+                                });
+        }
 
-    @Test
-    void failedVerificationNeverPublishesSid() {
-        VerifyLoginOtpUseCase useCase = command -> Mono.just(
-                new VerifyLoginOtpResult(VerifyLoginOtpStatus.INVALID, 3, false));
-        AuthFlowSessionProperties properties = new AuthFlowSessionProperties();
-        AuthLoginOtpVerifyController controller = new AuthLoginOtpVerifyController(
-                useCase,
-                new LoginOtpVerifyWebMapper(),
-                AuthFlowCookieWriter.from(properties),
-                new XsrfCookieWriter(properties));
-        MockServerHttpResponse response = new MockServerHttpResponse();
+        @Test
+        void failedVerificationNeverPublishesSid() {
+                VerifyLoginOtpUseCase useCase = command -> Mono.just(
+                                new VerifyLoginOtpResult(VerifyLoginOtpStatus.INVALID, 3, false));
+                AuthFlowSessionProperties properties = new AuthFlowSessionProperties();
+                AuthLoginOtpVerifyController controller = new AuthLoginOtpVerifyController(
+                                useCase,
+                                new LoginOtpVerifyWebMapper(),
+                                AuthFlowCookieWriter.from(properties),
+                                new XsrfCookieWriter(properties),
+                                new com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieWriter(
+                                                new com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties.AuthenticatedCookie()),
+                                new com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedCsrfCookieWriter(
+                                                new com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties.AuthenticatedCsrf()));
+                MockServerHttpResponse response = new MockServerHttpResponse();
 
-        StepVerifier.create(controller.verify(
-                        new com.bct.ngtpa.apiservice.adapter.in.web.auth.login.dto.LoginOtpVerifyRequest("000000"),
-                        "afs_opaque",
-                        "csrf",
-                        "idem",
-                        "req",
-                        "en",
-                        "https://portal",
-                        null,
-                        response))
-                .assertNext(entity -> assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY))
-                .verifyComplete();
+                StepVerifier.create(controller.verify(
+                                new com.bct.ngtpa.apiservice.adapter.in.web.auth.login.dto.LoginOtpVerifyRequest(
+                                                "000000"),
+                                "afs_opaque",
+                                "csrf",
+                                "idem",
+                                "req",
+                                "en",
+                                "https://portal",
+                                null,
+                                response))
+                                .assertNext(entity -> assertThat(entity.getStatusCode())
+                                                .isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY))
+                                .verifyComplete();
 
-        assertThat(response.getHeaders().getFirst(RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER)).isNull();
-    }
+                assertThat(response.getHeaders().getFirst(RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER))
+                                .isNull();
+        }
 
-    private LoginSessionAccount account() {
-        return new LoginSessionAccount(
-                new LoginAccountRef("acc_abcdefghijklmnopqrstuvwx"),
-                "DB", "8802", "00000008802", "1", "0001", "DBA", "OE", null, null);
-    }
+        private LoginSessionAccount account() {
+                return new LoginSessionAccount(
+                                new LoginAccountRef("acc_abcdefghijklmnopqrstuvwx"),
+                                "DB", "8802", "00000008802", "1", "0001", "DBA", "OE", null, null);
+        }
 }

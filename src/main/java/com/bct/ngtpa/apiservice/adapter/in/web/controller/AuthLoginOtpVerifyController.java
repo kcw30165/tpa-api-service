@@ -7,6 +7,8 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.dto.LoginWorkflowResul
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.mapper.LoginOtpVerifyWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.XsrfCookieWriter;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieWriter;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedCsrfCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.workflow.LoginErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
@@ -32,16 +34,22 @@ public final class AuthLoginOtpVerifyController {
     private final LoginOtpVerifyWebMapper mapper;
     private final AuthFlowCookieWriter authFlowCookies;
     private final XsrfCookieWriter xsrfCookies;
+    private final AuthenticatedSessionCookieWriter authenticatedSessionCookies;
+    private final AuthenticatedCsrfCookieWriter authenticatedCsrfCookies;
 
     public AuthLoginOtpVerifyController(
             VerifyLoginOtpUseCase useCase,
             LoginOtpVerifyWebMapper mapper,
             AuthFlowCookieWriter authFlowCookies,
-            XsrfCookieWriter xsrfCookies) {
+            XsrfCookieWriter xsrfCookies,
+            AuthenticatedSessionCookieWriter authenticatedSessionCookies,
+            AuthenticatedCsrfCookieWriter authenticatedCsrfCookies) {
         this.useCase = useCase;
         this.mapper = mapper;
         this.authFlowCookies = authFlowCookies;
         this.xsrfCookies = xsrfCookies;
+        this.authenticatedSessionCookies = authenticatedSessionCookies;
+        this.authenticatedCsrfCookies = authenticatedCsrfCookies;
     }
 
     @PostMapping("/verify")
@@ -82,7 +90,17 @@ public final class AuthLoginOtpVerifyController {
                     clean(requestId)))
                     .map(result -> {
                         if (result.status() == VerifyLoginOtpStatus.ACCOUNTS_READY
-                                && result.authenticatedSessionId() != null) {
+                                && result.authenticatedSessionId() != null
+                                && hasText(result.authenticatedCsrfToken())) {
+                            authenticatedSessionCookies.write(
+                                    response,
+                                    result.authenticatedSessionId().value());
+                            authenticatedCsrfCookies.write(
+                                    response,
+                                    result.authenticatedCsrfToken());
+                            // Temporary dual publication for one migration stage. The
+                            // following cutover removes this header after filters and
+                            // logout consume portal_sid and authenticated CSRF.
                             response.getHeaders().set(
                                     RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER,
                                     result.authenticatedSessionId().value());
