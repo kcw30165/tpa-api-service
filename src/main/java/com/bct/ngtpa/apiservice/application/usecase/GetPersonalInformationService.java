@@ -46,7 +46,8 @@ public class GetPersonalInformationService implements GetPersonalInformationUseC
     }
 
     /**
-     * Supports both the existing flattened payload shape and the raw APIM envelope shape:
+     * Supports both the existing flattened payload shape and the raw APIM envelope
+     * shape:
      * response.data[0].config / response.data[0].data.
      */
     private Map<String, Object> normalizePayload(Map<String, Object> payload) {

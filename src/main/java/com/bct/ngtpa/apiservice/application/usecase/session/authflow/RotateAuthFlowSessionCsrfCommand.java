@@ -4,7 +4,8 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import java.time.Instant;
 import java.util.Objects;
 
-public record RotateAuthFlowSessionCsrfCommand(AuthFlowSessionId authFlowSessionId, Instant now, int ttlSeconds, String correlationId) {
+public record RotateAuthFlowSessionCsrfCommand(AuthFlowSessionId authFlowSessionId, Instant now, int ttlSeconds,
+        String correlationId) {
     public RotateAuthFlowSessionCsrfCommand {
         Objects.requireNonNull(authFlowSessionId, "authFlowSessionId must not be null");
         Objects.requireNonNull(now, "now must not be null");
@@ -12,5 +13,10 @@ public record RotateAuthFlowSessionCsrfCommand(AuthFlowSessionId authFlowSession
             throw new IllegalArgumentException("ttlSeconds must be positive");
         }
     }
-    @Override public String toString() { return "RotateAuthFlowSessionCsrfCommand[authFlowSessionId=<redacted>, now=" + now + ", ttlSeconds=" + ttlSeconds + ", correlationId=" + correlationId + "]"; }
+
+    @Override
+    public String toString() {
+        return "RotateAuthFlowSessionCsrfCommand[authFlowSessionId=<redacted>, now=" + now + ", ttlSeconds="
+                + ttlSeconds + ", correlationId=" + correlationId + "]";
+    }
 }

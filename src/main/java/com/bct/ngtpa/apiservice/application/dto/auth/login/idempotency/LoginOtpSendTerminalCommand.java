@@ -2,7 +2,8 @@ package com.bct.ngtpa.apiservice.application.dto.auth.login.idempotency;
 
 import java.time.*;
 
-public record LoginOtpSendTerminalCommand(LoginIdempotencyAction action,String idempotencyKey, LoginOtpSendRequestHash requestHash, String reason,
+public record LoginOtpSendTerminalCommand(LoginIdempotencyAction action, String idempotencyKey,
+        LoginOtpSendRequestHash requestHash, String reason,
         Instant now, Duration ttl) {
     @Override
     public String toString() {

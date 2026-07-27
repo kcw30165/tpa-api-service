@@ -10,28 +10,39 @@ import java.util.Comparator;
 import java.util.List;
 
 /**
- * Core engine that applies {@link ApplySorts} sort configurations to an object graph.
+ * Core engine that applies {@link ApplySorts} sort configurations to an object
+ * graph.
  *
- * <p>Supports sorting lists identified by dot-separated accessor paths on Java records.
- * After sorting, the engine rebuilds every affected record using the canonical constructor so
+ * <p>
+ * Supports sorting lists identified by dot-separated accessor paths on Java
+ * records.
+ * After sorting, the engine rebuilds every affected record using the canonical
+ * constructor so
  * that immutable record graphs are handled correctly without in-place mutation.
  *
- * <p>Path resolution uses public record accessor methods (e.g. {@code report()} for the
- * {@code report} component). Nested field paths in {@link SortBy#field()} are also navigated
+ * <p>
+ * Path resolution uses public record accessor methods (e.g. {@code report()}
+ * for the
+ * {@code report} component). Nested field paths in {@link SortBy#field()} are
+ * also navigated
  * via accessor methods.
  *
- * <p>Null/blank/unparseable DATE values are treated as {@code null} and placed according to
+ * <p>
+ * Null/blank/unparseable DATE values are treated as {@code null} and placed
+ * according to
  * {@link SortBy#nullsLast()} (default: {@code true} → nulls last).
  */
 @Component
 public class SortEngine {
 
     /**
-     * Applies all {@link SortList} configurations declared in {@code applySorts} to {@code target}
+     * Applies all {@link SortList} configurations declared in {@code applySorts} to
+     * {@code target}
      * and returns the rebuilt, sorted result.
      *
      * @param target     the object to sort (must be a Java record for nested paths)
-     * @param applySorts the annotation holding one or more {@link SortList} configurations
+     * @param applySorts the annotation holding one or more {@link SortList}
+     *                   configurations
      * @return the sorted (and immutably rebuilt) result
      */
     public Object sort(Object target, ApplySorts applySorts) {
@@ -64,8 +75,8 @@ public class SortEngine {
             if (!(fieldValue instanceof List<?> list)) {
                 throw new IllegalStateException(
                         "SortEngine: path field '" + field + "' on " + current.getClass().getSimpleName()
-                        + " does not resolve to a List; got: "
-                        + (fieldValue == null ? "null" : fieldValue.getClass().getName()));
+                                + " does not resolve to a List; got: "
+                                + (fieldValue == null ? "null" : fieldValue.getClass().getName()));
             }
             List<?> sorted = applySortComparator(list, sortBys);
             return rebuildRecord(current, field, sorted);
@@ -74,14 +85,17 @@ public class SortEngine {
             if (fieldValue == null) {
                 throw new IllegalStateException(
                         "SortEngine: cannot navigate path – field '" + field
-                        + "' resolved to null on " + current.getClass().getSimpleName());
+                                + "' resolved to null on " + current.getClass().getSimpleName());
             }
             Object rebuiltNested = rebuildWithSort(fieldValue, parts, index + 1, sortBys);
             return rebuildRecord(current, field, rebuiltNested);
         }
     }
 
-    /** Invokes the public no-arg accessor method named {@code fieldName} on {@code obj}. */
+    /**
+     * Invokes the public no-arg accessor method named {@code fieldName} on
+     * {@code obj}.
+     */
     private Object readSimpleField(Object obj, String fieldName) {
         try {
             var method = obj.getClass().getMethod(fieldName);
@@ -89,11 +103,13 @@ public class SortEngine {
         } catch (NoSuchMethodException e) {
             throw new IllegalStateException(
                     "SortEngine: cannot resolve field '" + fieldName + "' on "
-                    + obj.getClass().getSimpleName() + ": no public accessor method found", e);
+                            + obj.getClass().getSimpleName() + ": no public accessor method found",
+                    e);
         } catch (Exception e) {
             throw new IllegalStateException(
                     "SortEngine: failed to read field '" + fieldName + "' on "
-                    + obj.getClass().getSimpleName(), e);
+                            + obj.getClass().getSimpleName(),
+                    e);
         }
     }
 
@@ -104,26 +120,31 @@ public class SortEngine {
     private Object readFieldPath(Object obj, String fieldPath) {
         Object current = obj;
         for (String part : fieldPath.split("\\.", -1)) {
-            if (current == null) return null;
+            if (current == null)
+                return null;
             current = readSimpleField(current, part);
         }
         return current;
     }
 
     /**
-     * Rebuilds the given Java record by replacing the component named {@code fieldToReplace}
-     * with {@code newValue}, copying all other component values from the original record.
+     * Rebuilds the given Java record by replacing the component named
+     * {@code fieldToReplace}
+     * with {@code newValue}, copying all other component values from the original
+     * record.
      * Invokes the canonical constructor to produce an immutable replacement.
      *
-     * @throws IllegalStateException if {@code record} is not a Java record, if a component
-     *                               cannot be read, or if the canonical constructor cannot be invoked
+     * @throws IllegalStateException if {@code record} is not a Java record, if a
+     *                               component
+     *                               cannot be read, or if the canonical constructor
+     *                               cannot be invoked
      */
     private Object rebuildRecord(Object record, String fieldToReplace, Object newValue) {
         var clazz = record.getClass();
         if (!clazz.isRecord()) {
             throw new IllegalStateException(
                     "SortEngine: cannot rebuild non-record type: " + clazz.getName()
-                    + ". Only Java records are supported for immutable rebuilding.");
+                            + ". Only Java records are supported for immutable rebuilding.");
         }
         var components = clazz.getRecordComponents();
         Object[] args = new Object[components.length];
@@ -139,7 +160,8 @@ public class SortEngine {
                 } catch (Exception e) {
                     throw new IllegalStateException(
                             "SortEngine: failed to read record component '" + component.getName()
-                            + "' on " + clazz.getSimpleName(), e);
+                                    + "' on " + clazz.getSimpleName(),
+                            e);
                 }
             }
         }
@@ -158,7 +180,8 @@ public class SortEngine {
 
     @SuppressWarnings("unchecked")
     private <T> List<T> applySortComparator(List<T> list, SortBy[] sortBys) {
-        if (list == null || list.isEmpty()) return list;
+        if (list == null || list.isEmpty())
+            return list;
         Comparator<T> comparator = buildComparator(sortBys);
         return list.stream().sorted(comparator).toList();
     }
@@ -183,12 +206,15 @@ public class SortEngine {
         };
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
+    @SuppressWarnings({ "rawtypes", "unchecked" })
     private int compareNullSafe(Comparable valA, Comparable valB, boolean nullsLast,
-                                SortDirection direction) {
-        if (valA == null && valB == null) return 0;
-        if (valA == null) return nullsLast ? 1 : -1;
-        if (valB == null) return nullsLast ? -1 : 1;
+            SortDirection direction) {
+        if (valA == null && valB == null)
+            return 0;
+        if (valA == null)
+            return nullsLast ? 1 : -1;
+        if (valB == null)
+            return nullsLast ? -1 : 1;
         int cmp = valA.compareTo(valB);
         return direction == SortDirection.DESC ? -cmp : cmp;
     }
@@ -203,7 +229,8 @@ public class SortEngine {
     }
 
     private BigDecimal toNumber(Object rawValue) {
-        if (rawValue == null) return null;
+        if (rawValue == null)
+            return null;
         return switch (rawValue) {
             case BigDecimal bd -> bd;
             case Number n -> BigDecimal.valueOf(n.doubleValue());
@@ -218,9 +245,11 @@ public class SortEngine {
     }
 
     private LocalDate toDate(Object rawValue, String pattern) {
-        if (rawValue == null) return null;
+        if (rawValue == null)
+            return null;
         String str = rawValue.toString().trim();
-        if (str.isEmpty()) return null;
+        if (str.isEmpty())
+            return null;
         if (pattern == null || pattern.isEmpty()) {
             try {
                 return LocalDate.parse(str);

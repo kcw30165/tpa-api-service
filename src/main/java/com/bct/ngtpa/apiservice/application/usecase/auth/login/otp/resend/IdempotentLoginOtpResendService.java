@@ -1,3 +1,64 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.resend;
-import com.bct.ngtpa.apiservice.application.dto.auth.login.idempotency.*;import com.bct.ngtpa.apiservice.application.port.in.ResendLoginOtpUseCase;import com.bct.ngtpa.apiservice.application.port.out.LoginOtpSendIdempotencyPort;import java.time.*;import java.util.Objects;import reactor.core.publisher.Mono;
-public final class IdempotentLoginOtpResendService implements ResendLoginOtpUseCase {private final ResendLoginOtpUseCase delegate;private final LoginOtpSendIdempotencyPort idempotency;private final LoginOtpResendRequestHashGenerator hashes;private final Clock clock;private final Duration ttl;public IdempotentLoginOtpResendService(ResendLoginOtpUseCase d,LoginOtpSendIdempotencyPort i,LoginOtpResendRequestHashGenerator h,Clock c,Duration t){delegate=Objects.requireNonNull(d);idempotency=Objects.requireNonNull(i);hashes=Objects.requireNonNull(h);clock=Objects.requireNonNull(c);ttl=Objects.requireNonNull(t);}public Mono<ResendLoginOtpResult> resend(ResendLoginOtpCommand c){var h=hashes.generate(c);return idempotency.reserve(new LoginOtpSendReserveCommand(LoginIdempotencyAction.OTP_RESEND,c.idempotencyKey(),h,clock.instant(),ttl)).flatMap(r->switch(r.outcome()){case STARTED->executeStarted(c,h);case COMPLETED_REPLAY->Mono.just(new ResendLoginOtpResult(ResendLoginOtpStatus.COMPLETED_REPLAY,r.replay().maskedDestination(),r.replay().expiresInSeconds(),r.replay().resendCooldownSeconds(),null));case DUPLICATE_IN_PROGRESS->simple(ResendLoginOtpStatus.DUPLICATE_IN_PROGRESS);case KEY_REUSED->simple(ResendLoginOtpStatus.KEY_REUSED);case FAILED_EXISTING->simple(ResendLoginOtpStatus.FAILED_EXISTING);case UNKNOWN_OUTCOME->simple(ResendLoginOtpStatus.UNKNOWN_OUTCOME);});}private Mono<ResendLoginOtpResult> executeStarted(ResendLoginOtpCommand c,LoginOtpSendRequestHash h){return delegate.resend(c).flatMap(r->{if(r.status()==ResendLoginOtpStatus.RESENT){var snap=new LoginOtpSendReplaySnapshot(r.maskedDestination(),r.expiresInSeconds(),r.resendCooldownSeconds());return idempotency.complete(new LoginOtpSendCompleteCommand(LoginIdempotencyAction.OTP_RESEND,c.idempotencyKey(),h,snap,clock.instant(),ttl)).thenReturn(r);}return idempotency.fail(new LoginOtpSendTerminalCommand(LoginIdempotencyAction.OTP_RESEND,c.idempotencyKey(),h,r.status().name(),clock.instant(),ttl)).thenReturn(r);}).onErrorResume(e->idempotency.unknown(new LoginOtpSendTerminalCommand(LoginIdempotencyAction.OTP_RESEND,c.idempotencyKey(),h,"INDETERMINATE",clock.instant(),ttl)).thenReturn(simpleValue(ResendLoginOtpStatus.UNKNOWN_OUTCOME)));}private Mono<ResendLoginOtpResult> simple(ResendLoginOtpStatus s){return Mono.just(simpleValue(s));}private ResendLoginOtpResult simpleValue(ResendLoginOtpStatus s){return new ResendLoginOtpResult(s,null,null,null,null);}}
+
+import com.bct.ngtpa.apiservice.application.dto.auth.login.idempotency.*;
+import com.bct.ngtpa.apiservice.application.port.in.ResendLoginOtpUseCase;
+import com.bct.ngtpa.apiservice.application.port.out.LoginOtpSendIdempotencyPort;
+import java.time.*;
+import java.util.Objects;
+import reactor.core.publisher.Mono;
+
+public final class IdempotentLoginOtpResendService implements ResendLoginOtpUseCase {
+    private final ResendLoginOtpUseCase delegate;
+    private final LoginOtpSendIdempotencyPort idempotency;
+    private final LoginOtpResendRequestHashGenerator hashes;
+    private final Clock clock;
+    private final Duration ttl;
+
+    public IdempotentLoginOtpResendService(ResendLoginOtpUseCase d, LoginOtpSendIdempotencyPort i,
+            LoginOtpResendRequestHashGenerator h, Clock c, Duration t) {
+        delegate = Objects.requireNonNull(d);
+        idempotency = Objects.requireNonNull(i);
+        hashes = Objects.requireNonNull(h);
+        clock = Objects.requireNonNull(c);
+        ttl = Objects.requireNonNull(t);
+    }
+
+    public Mono<ResendLoginOtpResult> resend(ResendLoginOtpCommand c) {
+        var h = hashes.generate(c);
+        return idempotency.reserve(new LoginOtpSendReserveCommand(LoginIdempotencyAction.OTP_RESEND, c.idempotencyKey(),
+                h, clock.instant(), ttl)).flatMap(r -> switch (r.outcome()) {
+                    case STARTED -> executeStarted(c, h);
+                    case COMPLETED_REPLAY -> Mono.just(new ResendLoginOtpResult(ResendLoginOtpStatus.COMPLETED_REPLAY,
+                            r.replay().maskedDestination(), r.replay().expiresInSeconds(),
+                            r.replay().resendCooldownSeconds(), null));
+                    case DUPLICATE_IN_PROGRESS -> simple(ResendLoginOtpStatus.DUPLICATE_IN_PROGRESS);
+                    case KEY_REUSED -> simple(ResendLoginOtpStatus.KEY_REUSED);
+                    case FAILED_EXISTING -> simple(ResendLoginOtpStatus.FAILED_EXISTING);
+                    case UNKNOWN_OUTCOME -> simple(ResendLoginOtpStatus.UNKNOWN_OUTCOME);
+                });
+    }
+
+    private Mono<ResendLoginOtpResult> executeStarted(ResendLoginOtpCommand c, LoginOtpSendRequestHash h) {
+        return delegate.resend(c).flatMap(r -> {
+            if (r.status() == ResendLoginOtpStatus.RESENT) {
+                var snap = new LoginOtpSendReplaySnapshot(r.maskedDestination(), r.expiresInSeconds(),
+                        r.resendCooldownSeconds());
+                return idempotency.complete(new LoginOtpSendCompleteCommand(LoginIdempotencyAction.OTP_RESEND,
+                        c.idempotencyKey(), h, snap, clock.instant(), ttl)).thenReturn(r);
+            }
+            return idempotency.fail(new LoginOtpSendTerminalCommand(LoginIdempotencyAction.OTP_RESEND,
+                    c.idempotencyKey(), h, r.status().name(), clock.instant(), ttl)).thenReturn(r);
+        }).onErrorResume(e -> idempotency
+                .unknown(new LoginOtpSendTerminalCommand(LoginIdempotencyAction.OTP_RESEND, c.idempotencyKey(), h,
+                        "INDETERMINATE", clock.instant(), ttl))
+                .thenReturn(simpleValue(ResendLoginOtpStatus.UNKNOWN_OUTCOME)));
+    }
+
+    private Mono<ResendLoginOtpResult> simple(ResendLoginOtpStatus s) {
+        return Mono.just(simpleValue(s));
+    }
+
+    private ResendLoginOtpResult simpleValue(ResendLoginOtpStatus s) {
+        return new ResendLoginOtpResult(s, null, null, null, null);
+    }
+}

@@ -1,6 +1,8 @@
 package com.bct.ngtpa.apiservice.application.dto.auth.login;
 
-/** Credentials are transient and must never be included in logs or persisted. */
+/**
+ * Credentials are transient and must never be included in logs or persisted.
+ */
 public record CredentialAuthenticationCommand(
         String username,
         String password,

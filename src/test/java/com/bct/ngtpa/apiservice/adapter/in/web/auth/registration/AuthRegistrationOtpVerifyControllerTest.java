@@ -13,7 +13,6 @@ import com.bct.ngtpa.apiservice.application.port.in.VerifyRegistrationOtpUseCase
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Method;
-import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.bind.annotation.PostMapping;

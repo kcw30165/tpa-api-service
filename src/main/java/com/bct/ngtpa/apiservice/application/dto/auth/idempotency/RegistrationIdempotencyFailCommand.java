@@ -31,7 +31,8 @@ public record RegistrationIdempotencyFailCommand(
 
     @Override
     public String toString() {
-        return "RegistrationIdempotencyFailCommand[action=" + action + ", reasonCode=" + reasonCode + ", failedAt=" + failedAt
+        return "RegistrationIdempotencyFailCommand[action=" + action + ", reasonCode=" + reasonCode + ", failedAt="
+                + failedAt
                 + ", ttl=" + ttl + ", idempotencyKey=<redacted>, requestHash=<redacted>]";
     }
 }

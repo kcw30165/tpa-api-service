@@ -20,70 +20,68 @@ import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-@AnalyzeClasses(
-        packages = "com.bct.ngtpa.apiservice.application",
-        importOptions = ImportOption.DoNotIncludeTests.class)
+@AnalyzeClasses(packages = "com.bct.ngtpa.apiservice.application", importOptions = ImportOption.DoNotIncludeTests.class)
 class Task0043CredentialAuthenticationContractTest {
 
-    @Test
-    void canonicalOutcomeVocabularyMatchesConfirmedCredentialScenarios() {
-        assertThat(CredentialAuthenticationStatus.values()).containsExactly(
-                CredentialAuthenticationStatus.AUTHENTICATED,
-                CredentialAuthenticationStatus.INCORRECT_PASSWORD,
-                CredentialAuthenticationStatus.INCORRECT_USERNAME,
-                CredentialAuthenticationStatus.INVALID_ACCOUNT,
-                CredentialAuthenticationStatus.ACCOUNT_LOCKED,
-                CredentialAuthenticationStatus.UNAVAILABLE);
-    }
+        @Test
+        void canonicalOutcomeVocabularyMatchesConfirmedCredentialScenarios() {
+                assertThat(CredentialAuthenticationStatus.values()).containsExactly(
+                                CredentialAuthenticationStatus.AUTHENTICATED,
+                                CredentialAuthenticationStatus.INCORRECT_PASSWORD,
+                                CredentialAuthenticationStatus.INCORRECT_USERNAME,
+                                CredentialAuthenticationStatus.INVALID_ACCOUNT,
+                                CredentialAuthenticationStatus.ACCOUNT_LOCKED,
+                                CredentialAuthenticationStatus.UNAVAILABLE);
+        }
 
-    @Test
-    void commandCarriesExactCredentialsAndRequestContextWithoutAccountOrSession() {
-        assertThat(componentNames(CredentialAuthenticationCommand.class)).containsExactly(
-                "username", "password", "acceptLanguage", "correlationId");
-        assertThat(componentNames(CredentialAuthenticationCommand.class))
-                .doesNotContain("accountRef", "sessionId");
-    }
+        @Test
+        void commandCarriesExactCredentialsAndRequestContextWithoutAccountOrSession() {
+                assertThat(componentNames(CredentialAuthenticationCommand.class)).containsExactly(
+                                "username", "password", "acceptLanguage", "correlationId");
+                assertThat(componentNames(CredentialAuthenticationCommand.class))
+                                .doesNotContain("accountRef", "sessionId");
+        }
 
-    @Test
-    void successResultCarriesProtectedPreAuthInputsWithoutTransportDtos() {
-        assertThat(componentNames(CredentialAuthenticationResult.class)).containsExactly(
-                "status",
-                "normalizedUsername",
-                "custType",
-                "userRole",
-                "failCount",
-                "destinations",
-                "downstreamCode");
-        assertThat(componentNames(LoginCredentialDestination.class)).containsExactly(
-                "channel", "destination");
-    }
+        @Test
+        void successResultCarriesProtectedPreAuthInputsWithoutTransportDtos() {
+                assertThat(componentNames(CredentialAuthenticationResult.class)).containsExactly(
+                                "status",
+                                "normalizedUsername",
+                                "custType",
+                                "userRole",
+                                "failCount",
+                                "destinations",
+                                "downstreamCode");
+                assertThat(componentNames(LoginCredentialDestination.class)).containsExactly(
+                                "channel", "destination");
+        }
 
-    @Test
-    void useCaseDelegatesThroughApplicationBoundary() {
-        CredentialAuthenticationResult expected = new CredentialAuthenticationResult(
-                CredentialAuthenticationStatus.INCORRECT_PASSWORD,
-                null, null, null, 1, List.of(), null);
-        CredentialAuthenticationPort port = command -> Mono.just(expected);
-        var useCase = new AuthenticateLoginCredentialsUseCase(port);
+        @Test
+        void useCaseDelegatesThroughApplicationBoundary() {
+                CredentialAuthenticationResult expected = new CredentialAuthenticationResult(
+                                CredentialAuthenticationStatus.INCORRECT_PASSWORD,
+                                null, null, null, 1, List.of(), null);
+                CredentialAuthenticationPort port = command -> Mono.just(expected);
+                var useCase = new AuthenticateLoginCredentialsUseCase(port);
 
-        StepVerifier.create(useCase.authenticate(
-                        new CredentialAuthenticationCommand("member", "Exact", "en", "req-1")))
-                .expectNext(expected)
-                .verifyComplete();
-    }
+                StepVerifier.create(useCase.authenticate(
+                                new CredentialAuthenticationCommand("member", "Exact", "en", "req-1")))
+                                .expectNext(expected)
+                                .verifyComplete();
+        }
 
-    private List<String> componentNames(Class<?> recordType) {
-        return Arrays.stream(recordType.getRecordComponents())
-                .map(RecordComponent::getName)
-                .toList();
-    }
+        private List<String> componentNames(Class<?> recordType) {
+                return Arrays.stream(recordType.getRecordComponents())
+                                .map(RecordComponent::getName)
+                                .toList();
+        }
 
-    @ArchTest
-    static final ArchRule loginApplicationContractMustNotDependOnAdapters = noClasses()
-            .that().resideInAPackage("..application..auth.login..")
-            .should().dependOnClassesThat().resideInAnyPackage(
-                    "..adapter..",
-                    "org.springframework..",
-                    "com.fasterxml.jackson..")
-            .as("login application contracts must remain independent of web and APIM adapters");
+        @ArchTest
+        static final ArchRule loginApplicationContractMustNotDependOnAdapters = noClasses()
+                        .that().resideInAPackage("..application..auth.login..")
+                        .should().dependOnClassesThat().resideInAnyPackage(
+                                        "..adapter..",
+                                        "org.springframework..",
+                                        "com.fasterxml.jackson..")
+                        .as("login application contracts must remain independent of web and APIM adapters");
 }

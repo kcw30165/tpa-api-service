@@ -15,7 +15,8 @@ public class RegistrationAuthFlowContextProtectorConfig {
     @ConditionalOnMissingBean(RegistrationAuthFlowContextProtectorPort.class)
     public RegistrationAuthFlowContextProtectorPort registrationAuthFlowContextProtector(
             RegistrationAuthFlowContextProperties properties) {
-        return new AesGcmRegistrationAuthFlowContextProtectorAdapter(properties.getKeyVersion(), properties.getSecret());
+        return new AesGcmRegistrationAuthFlowContextProtectorAdapter(properties.getKeyVersion(),
+                properties.getSecret());
     }
 
     @Bean

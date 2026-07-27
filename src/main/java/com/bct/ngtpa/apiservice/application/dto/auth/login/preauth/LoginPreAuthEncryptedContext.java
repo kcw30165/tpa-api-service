@@ -8,10 +8,14 @@ public record LoginPreAuthEncryptedContext(
         String iv,
         String ciphertext) {
     public LoginPreAuthEncryptedContext {
-        Objects.requireNonNull(keyVersion); Objects.requireNonNull(algorithm);
-        Objects.requireNonNull(iv); Objects.requireNonNull(ciphertext);
+        Objects.requireNonNull(keyVersion);
+        Objects.requireNonNull(algorithm);
+        Objects.requireNonNull(iv);
+        Objects.requireNonNull(ciphertext);
     }
-    @Override public String toString() {
+
+    @Override
+    public String toString() {
         return "LoginPreAuthEncryptedContext[keyVersion=" + keyVersion
                 + ", algorithm=" + algorithm + ", iv=<redacted>, ciphertext=<redacted>]";
     }

@@ -51,8 +51,8 @@ public class RequiredRequestIdWebFilter implements WebFilter {
     }
 
     private Mono<Void> reject(ServerWebExchange exchange) {
-String code = ErrorCodes.REQUEST_ID_MISSING;
-MutationResponse<Void> response = MutationResponse.failure(
+        String code = ErrorCodes.REQUEST_ID_MISSING;
+        MutationResponse<Void> response = MutationResponse.failure(
                 ApiStatus.VALIDATION_FAILED,
                 List.of(ApiError.field(code, null, List.of(TARGET), "SERVER")));
 

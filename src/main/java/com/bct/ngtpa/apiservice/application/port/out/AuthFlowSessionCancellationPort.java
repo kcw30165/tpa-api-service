@@ -5,5 +5,5 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 
 /** Typed cancellation capability for pre-authentication workflow sessions. */
 public interface AuthFlowSessionCancellationPort
-        extends SessionCancellationPort<AuthFlowSessionId, AuthFlowSessionCancellationReason> {
+                extends SessionCancellationPort<AuthFlowSessionId, AuthFlowSessionCancellationReason> {
 }

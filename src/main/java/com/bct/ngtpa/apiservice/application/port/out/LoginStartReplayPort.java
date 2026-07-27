@@ -6,9 +6,13 @@ import java.time.Duration;
 import java.util.Optional;
 import reactor.core.publisher.Mono;
 
-/** Protected login-start replay storage addressed only by an opaque commitment. */
+/**
+ * Protected login-start replay storage addressed only by an opaque commitment.
+ */
 public interface LoginStartReplayPort {
     Mono<Void> save(LoginStartReplayCommitRef commitRef, ProtectedLoginStartReplay replay, Duration ttl);
+
     Mono<Optional<ProtectedLoginStartReplay>> load(LoginStartReplayCommitRef commitRef);
+
     Mono<Boolean> delete(LoginStartReplayCommitRef commitRef);
 }

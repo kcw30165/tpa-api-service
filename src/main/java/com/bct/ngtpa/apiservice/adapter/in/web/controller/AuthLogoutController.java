@@ -27,10 +27,8 @@ public final class AuthLogoutController {
 
     @PostMapping("/logout")
     public Mono<ResponseEntity<MutationResponse<Void>>> logout(
-            @RequestHeader(name = RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER, required = false)
-                    String authenticatedSessionId,
-            @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false)
-                    String requestId,
+            @RequestHeader(name = RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER, required = false) String authenticatedSessionId,
+            @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false) String requestId,
             ServerHttpResponse response) {
         response.getHeaders().setCacheControl(CacheControl.noStore());
         if (hasText(requestId)) {

@@ -22,7 +22,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Adapter for fetching personal/member information from APIM TRPGetMemberInfo endpoint.
+ * Adapter for fetching personal/member information from APIM TRPGetMemberInfo
+ * endpoint.
  */
 @Slf4j
 @Component
@@ -39,23 +40,27 @@ public class ApimMemberInfoAdapter implements ApimMemberInfoPort {
     @Override
     public Mono<MemberInfoResult> fetchMemberInfo(FetchMemberInfoCommand command) {
         if (!apimProperties.getEncryption().isEnabled()) {
-            var request = apimPayloadCryptoService.encryptRequest(API_NAME, toApimRequest(command), GetMemberInfoApimRequest.class, null);
+            var request = apimPayloadCryptoService.encryptRequest(API_NAME, toApimRequest(command),
+                    GetMemberInfoApimRequest.class, null);
             return apimWebClientFacade.post(API_NAME, request)
-                    .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(API_NAME, body, GetMemberInfoDataItem.class, null))
+                    .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(API_NAME, body,
+                            GetMemberInfoDataItem.class, null))
                     .map(this::toMemberInfoResult)
-                    .onErrorMap(ApimCryptoException.class, ex ->
-                            new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
+                    .onErrorMap(ApimCryptoException.class, ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR,
+                            ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
         }
 
         return apimCertificateService.getBctPublicKey()
                 .flatMap(publicKey -> {
-                    var request = apimPayloadCryptoService.encryptRequest(API_NAME, toApimRequest(command), GetMemberInfoApimRequest.class, publicKey);
+                    var request = apimPayloadCryptoService.encryptRequest(API_NAME, toApimRequest(command),
+                            GetMemberInfoApimRequest.class, publicKey);
                     return apimWebClientFacade.post(API_NAME, request)
-                            .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(API_NAME, body, GetMemberInfoDataItem.class, publicKey))
+                            .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(API_NAME, body,
+                                    GetMemberInfoDataItem.class, publicKey))
                             .map(this::toMemberInfoResult);
                 })
-                .onErrorMap(ApimCryptoException.class, ex ->
-                        new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
+                .onErrorMap(ApimCryptoException.class, ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR,
+                        ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
     }
 
     private GetMemberInfoApimRequest toApimRequest(FetchMemberInfoCommand command) {

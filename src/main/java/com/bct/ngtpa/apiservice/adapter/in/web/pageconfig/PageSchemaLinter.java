@@ -1,8 +1,10 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.pageconfig;
+
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
 public class PageSchemaLinter {
     private static final Set<String> SUPPORTED_TYPES = Set.of(
             "required",
@@ -15,33 +17,42 @@ public class PageSchemaLinter {
             "groupRequirement",
             "conditionalWarning",
             "noSpaces");
-    private static final Set<String> SUPPORTED_WHEN = Set.of("notBlank", "blank", "changed", "all", "any", "allGroupsEmpty");
+    private static final Set<String> SUPPORTED_WHEN = Set.of("notBlank", "blank", "changed", "all", "any",
+            "allGroupsEmpty");
     private static final Set<String> SUPPORTED_THEN = Set.of("fail", "required", "allRequired", "showMessage");
     private static final Set<String> SUPPORTED_SEVERITY = Set.of("error", "warning", "info");
+
     public static LintResult lint(BffPagesProperties properties) {
         LintResult result = new LintResult();
-        if (properties == null) return result;
+        if (properties == null)
+            return result;
         Map<String, PageSchemaProperties> pages = properties.getPages();
-        if (pages == null) return result;
+        if (pages == null)
+            return result;
         for (Map.Entry<String, PageSchemaProperties> e : pages.entrySet()) {
             String pageKey = e.getKey();
             PageSchemaProperties page = e.getValue();
-            if (page == null) continue;
+            if (page == null)
+                continue;
             validatePageVariants(result, pageKey, page);
             Set<String> fieldIds = new HashSet<>();
             if (page.getForm() != null && page.getForm().getSections() != null) {
                 for (SectionProperties s : page.getForm().getSections()) {
-                    if (s == null || s.getFields() == null) continue;
+                    if (s == null || s.getFields() == null)
+                        continue;
                     for (FieldProperties f : s.getFields()) {
-                        if (f != null && f.getId() != null) fieldIds.add(f.getId());
+                        if (f != null && f.getId() != null)
+                            fieldIds.add(f.getId());
                     }
                 }
             }
             if (page.getForm() != null && page.getForm().getSections() != null) {
                 for (SectionProperties s : page.getForm().getSections()) {
-                    if (s == null || s.getFields() == null) continue;
+                    if (s == null || s.getFields() == null)
+                        continue;
                     for (FieldProperties f : s.getFields()) {
-                        if (f == null || f.getValidations() == null) continue;
+                        if (f == null || f.getValidations() == null)
+                            continue;
                         for (ValidationRuleProperties v : f.getValidations()) {
                             validateRule(result, pageKey, fieldIds, v);
                         }
@@ -110,7 +121,9 @@ public class PageSchemaLinter {
             result.addError(pageKey + ": page variant " + variantKey + " action requires label");
         }
     }
-    private static void validateRule(LintResult result, String pageKey, Set<String> fieldIds, ValidationRuleProperties v) {
+
+    private static void validateRule(LintResult result, String pageKey, Set<String> fieldIds,
+            ValidationRuleProperties v) {
         if (v == null) {
             return;
         }
@@ -127,12 +140,14 @@ public class PageSchemaLinter {
         validateRuleValue(result, pageKey, ruleId, v);
         validateValueByVariant(result, pageKey, ruleId, v);
     }
+
     private static void validateType(LintResult result, String pageKey, String ruleId, ValidationRuleProperties v) {
         String type = v.getType();
         if (type != null && !type.isBlank() && !SUPPORTED_TYPES.contains(type)) {
             result.addError(pageKey + ": unsupported validation type " + type + " in rule " + ruleId);
         }
     }
+
     private static void validateCondition(
             LintResult result,
             String pageKey,
@@ -155,6 +170,7 @@ public class PageSchemaLinter {
             }
         }
     }
+
     private static void validateAction(
             LintResult result,
             String pageKey,
@@ -172,6 +188,7 @@ public class PageSchemaLinter {
         validateReferencedFields(result, pageKey, fieldIds, ruleId, action.getFields());
         validateReferencedFields(result, pageKey, fieldIds, ruleId, action.getTargets());
     }
+
     private static void validateGroups(
             LintResult result,
             String pageKey,
@@ -194,6 +211,7 @@ public class PageSchemaLinter {
             }
         }
     }
+
     private static void validateReferencedFields(
             LintResult result,
             String pageKey,
@@ -207,6 +225,7 @@ public class PageSchemaLinter {
             validateReferencedField(result, pageKey, fieldIds, ruleId, ref);
         }
     }
+
     private static void validateReferencedField(
             LintResult result,
             String pageKey,
@@ -217,7 +236,9 @@ public class PageSchemaLinter {
             result.addError(pageKey + ": rule " + ruleId + " references unknown field " + ref);
         }
     }
-    private static void validateRuleValue(LintResult result, String pageKey, String ruleId, ValidationRuleProperties v) {
+
+    private static void validateRuleValue(LintResult result, String pageKey, String ruleId,
+            ValidationRuleProperties v) {
         String type = v.getType();
         Object value = v.getValue();
         if ("blockedAddress".equals(type) && isBlank(value)) {
@@ -227,7 +248,9 @@ public class PageSchemaLinter {
             result.addError(pageKey + ": " + type + " rule " + ruleId + " requires numeric value");
         }
     }
-    private static void validateValueByVariant(LintResult result, String pageKey, String ruleId, ValidationRuleProperties v) {
+
+    private static void validateValueByVariant(LintResult result, String pageKey, String ruleId,
+            ValidationRuleProperties v) {
         Map<String, Object> variants = v.getValueByVariant();
         if (variants == null || variants.isEmpty()) {
             return;
@@ -243,6 +266,7 @@ public class PageSchemaLinter {
             }
         }
     }
+
     private static boolean isBlank(Object value) {
         return value == null || value.toString().isBlank();
     }

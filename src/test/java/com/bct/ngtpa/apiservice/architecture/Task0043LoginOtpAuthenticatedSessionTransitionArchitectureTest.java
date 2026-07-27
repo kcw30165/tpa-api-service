@@ -1,2 +1,24 @@
-package com.bct.ngtpa.apiservice.architecture;import static org.assertj.core.api.Assertions.assertThat;import java.nio.file.*;import org.junit.jupiter.api.Test;
-class Task0043LoginOtpAuthenticatedSessionTransitionArchitectureTest {@Test void otpServiceInvokesTransitionOnlyAfterAssignedAccounts() throws Exception {String s=Files.readString(Path.of("src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/otp/verify/LoginOtpVerifyService.java")).replaceAll("\\s+","");assertThat(s).contains("EstablishAuthenticatedLoginSessionUseCase","accountAssignment.assign","transition.establish");assertThat(s.indexOf("accountAssignment.assign")).isLessThan(s.indexOf("transition.establish"));}@Test void configInjectsTransitionUseCase() throws Exception {String s=Files.readString(Path.of("src/main/java/com/bct/ngtpa/apiservice/config/auth/login/LoginOtpVerifyApplicationConfig.java"));assertThat(s).contains("EstablishAuthenticatedLoginSessionUseCase");}}
+package com.bct.ngtpa.apiservice.architecture;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import java.nio.file.*;
+import org.junit.jupiter.api.Test;
+
+class Task0043LoginOtpAuthenticatedSessionTransitionArchitectureTest {
+    @Test
+    void otpServiceInvokesTransitionOnlyAfterAssignedAccounts() throws Exception {
+        String s = Files.readString(Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/otp/verify/LoginOtpVerifyService.java"))
+                .replaceAll("\\s+", "");
+        assertThat(s).contains("EstablishAuthenticatedLoginSessionUseCase", "accountAssignment.assign",
+                "transition.establish");
+        assertThat(s.indexOf("accountAssignment.assign")).isLessThan(s.indexOf("transition.establish"));
+    }
+
+    @Test
+    void configInjectsTransitionUseCase() throws Exception {
+        String s = Files.readString(Path
+                .of("src/main/java/com/bct/ngtpa/apiservice/config/auth/login/LoginOtpVerifyApplicationConfig.java"));
+        assertThat(s).contains("EstablishAuthenticatedLoginSessionUseCase");
+    }
+}

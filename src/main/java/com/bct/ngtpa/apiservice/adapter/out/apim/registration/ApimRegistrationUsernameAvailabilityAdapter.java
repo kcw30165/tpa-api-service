@@ -44,8 +44,10 @@ public class ApimRegistrationUsernameAvailabilityAdapter implements Registration
             ApimPayloadCryptoService apimPayloadCryptoService,
             ApimProperties apimProperties) {
         this.apimWebClientFacade = Objects.requireNonNull(apimWebClientFacade, "apimWebClientFacade must not be null");
-        this.apimCertificateService = Objects.requireNonNull(apimCertificateService, "apimCertificateService must not be null");
-        this.apimPayloadCryptoService = Objects.requireNonNull(apimPayloadCryptoService, "apimPayloadCryptoService must not be null");
+        this.apimCertificateService = Objects.requireNonNull(apimCertificateService,
+                "apimCertificateService must not be null");
+        this.apimPayloadCryptoService = Objects.requireNonNull(apimPayloadCryptoService,
+                "apimPayloadCryptoService must not be null");
         this.apimProperties = Objects.requireNonNull(apimProperties, "apimProperties must not be null");
         this.testTransport = null;
         this.requestMapper = new TrpChkCustIdApimMapper();

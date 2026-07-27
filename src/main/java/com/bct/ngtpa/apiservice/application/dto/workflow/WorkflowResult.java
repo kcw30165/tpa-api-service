@@ -30,7 +30,8 @@ public record WorkflowResult<T>(
             WorkflowResultStatus status,
             WorkflowNextStep nextStep,
             List<WorkflowErrorDescriptor> errors) {
-        if (status == WorkflowResultStatus.SUCCESS || status == WorkflowResultStatus.UPDATED || status == WorkflowResultStatus.WAITING) {
+        if (status == WorkflowResultStatus.SUCCESS || status == WorkflowResultStatus.UPDATED
+                || status == WorkflowResultStatus.WAITING) {
             throw new IllegalArgumentException("failure status must not be success-like");
         }
         return new WorkflowResult<>(status, nextStep, null, null, List.of(), errors);

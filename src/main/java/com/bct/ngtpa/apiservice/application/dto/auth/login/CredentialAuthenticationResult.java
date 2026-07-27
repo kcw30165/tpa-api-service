@@ -3,7 +3,9 @@ package com.bct.ngtpa.apiservice.application.dto.auth.login;
 import java.util.List;
 import java.util.Objects;
 
-/** Transport-neutral result used to establish protected LOGIN pre-auth context. */
+/**
+ * Transport-neutral result used to establish protected LOGIN pre-auth context.
+ */
 public record CredentialAuthenticationResult(
         CredentialAuthenticationStatus status,
         String normalizedUsername,
@@ -16,7 +18,8 @@ public record CredentialAuthenticationResult(
     public CredentialAuthenticationResult {
         Objects.requireNonNull(status, "status must not be null");
         destinations = destinations == null ? List.of() : List.copyOf(destinations);
-        // Raw Progress/APIM codes are adapter-internal and must never cross this boundary.
+        // Raw Progress/APIM codes are adapter-internal and must never cross this
+        // boundary.
         downstreamCode = null;
     }
 

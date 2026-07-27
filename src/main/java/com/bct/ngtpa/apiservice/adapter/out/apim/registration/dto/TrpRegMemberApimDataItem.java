@@ -7,7 +7,8 @@ public record TrpRegMemberApimDataItem(
         @JsonProperty("cust-id") String customerId,
         @JsonProperty("create-date") String createDate,
         @JsonProperty("create-time") String createTime) {
-    @Override public String toString() {
+    @Override
+    public String toString() {
         return "TrpRegMemberApimDataItem[success=" + success
                 + ", customerId=<redacted>, createDate=<redacted>, createTime=<redacted>]";
     }

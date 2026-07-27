@@ -64,8 +64,10 @@ class SecurityAuditMetadataSanitizer {
         if (!lower.startsWith("otp_")) {
             return false;
         }
-        // Preserve safe enum-like metadata values, e.g. rateLimitBucket=OTP_SEND_BY_DESTINATION_HASH.
-        // Raw OTP challenge identifiers should be redacted through forbidden keys such as otp/otpCode/code/rawCode,
+        // Preserve safe enum-like metadata values, e.g.
+        // rateLimitBucket=OTP_SEND_BY_DESTINATION_HASH.
+        // Raw OTP challenge identifiers should be redacted through forbidden keys such
+        // as otp/otpCode/code/rawCode,
         // or by non-enum-looking lowercase token values such as otp_abc123.
         return !value.matches("^[A-Z0-9_]+$");
     }

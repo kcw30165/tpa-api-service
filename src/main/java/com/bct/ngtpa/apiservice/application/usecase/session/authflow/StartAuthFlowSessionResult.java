@@ -6,6 +6,7 @@ import java.util.Objects;
 public record StartAuthFlowSessionResult(AuthFlowSession session, int expiresInSeconds) {
     public StartAuthFlowSessionResult {
         Objects.requireNonNull(session, "session must not be null");
-        if (expiresInSeconds <= 0) throw new IllegalArgumentException("expiresInSeconds must be positive");
+        if (expiresInSeconds <= 0)
+            throw new IllegalArgumentException("expiresInSeconds must be positive");
     }
 }

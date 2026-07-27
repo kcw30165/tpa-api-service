@@ -14,7 +14,6 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
-import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.exception.CacheException;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizer;
 import com.bct.ngtpa.apiservice.infrastructure.logging.LoggingSanitizerProperties;
@@ -50,8 +49,7 @@ class ApiExceptionHandlerLoggingTest {
         logger.addAppender(listAppender);
         handler = new ApiExceptionHandler(
                 testErrorMessageResolver(),
-                testLoggingSanitizer()
-            );
+                testLoggingSanitizer());
     }
 
     @AfterEach
@@ -92,18 +90,23 @@ class ApiExceptionHandlerLoggingTest {
     }
 
     // @Test
-    // void logsApimExceptionsAsIntegrationFailuresAtErrorWithoutStackTrace() throws Exception {
-    //     handler.handleApimException(
-    //             new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE, "userId=member-1 upstream failure"),
-    //             exchangeWithRequestId("apim-req-id"));
+    // void logsApimExceptionsAsIntegrationFailuresAtErrorWithoutStackTrace() throws
+    // Exception {
+    // handler.handleApimException(
+    // new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_UPSTREAM_FAILURE,
+    // "userId=member-1 upstream failure"),
+    // exchangeWithRequestId("apim-req-id"));
 
-    //     ILoggingEvent event = singleEvent();
-    //     assertEquals(Level.ERROR, event.getLevel());
-    //     JsonNode payload = parse(event);
-    //     assertEquals(ErrorCodes.APIM_UPSTREAM_FAILURE, payload.get("errorCode").asText());
-    //     assertEquals("ApimException", payload.get("exceptionType").asText());
-    //     assertEquals("userId=*** upstream failure", payload.get("sanitizedMessage").asText());
-    //     assertTrue(event.getThrowableProxy() == null, "Expected no stack trace for APIM exception");
+    // ILoggingEvent event = singleEvent();
+    // assertEquals(Level.ERROR, event.getLevel());
+    // JsonNode payload = parse(event);
+    // assertEquals(ErrorCodes.APIM_UPSTREAM_FAILURE,
+    // payload.get("errorCode").asText());
+    // assertEquals("ApimException", payload.get("exceptionType").asText());
+    // assertEquals("userId=*** upstream failure",
+    // payload.get("sanitizedMessage").asText());
+    // assertTrue(event.getThrowableProxy() == null, "Expected no stack trace for
+    // APIM exception");
     // }
 
     @Test
@@ -134,7 +137,8 @@ class ApiExceptionHandlerLoggingTest {
         assertNotNull(event.getThrowableProxy());
     }
 
-    // ── CacheException ───────────────────────────────────────────────────────────────
+    // ── CacheException
+    // ───────────────────────────────────────────────────────────────
 
     @Test
     void logsCacheExceptionAtErrorWithoutStackTrace() throws Exception {
@@ -191,6 +195,7 @@ class ApiExceptionHandlerLoggingTest {
                 "userId"));
         return new LoggingSanitizer(OBJECT_MAPPER, properties);
     }
+
     private static CurrentPortalAccessContextResolver currentPortalAccessContextResolver() {
         return new CurrentPortalAccessContextResolver() {
             @Override

@@ -15,7 +15,8 @@ import java.util.Optional;
  *
  * <h3>Key contract</h3>
  * The adapter accepts fully-formed cache keys as-is — it does not add any
- * additional namespace prefix. Callers must supply keys that already include the
+ * additional namespace prefix. Callers must supply keys that already include
+ * the
  * application prefix (e.g. {@code "ngtpa:reference-date:JP"}).
  *
  * <h3>Error mapping</h3>

@@ -91,7 +91,6 @@ public class AuthenticatedSessionConfig {
                 clock);
     }
 
-
     @Bean
     @Primary
     PortalAccessContextPort authenticatedPortalAccessContextPort(
@@ -103,7 +102,6 @@ public class AuthenticatedSessionConfig {
     DeleteAuthFlowSessionPort deleteAuthFlowSessionPort(AuthFlowSessionPort authFlowSessionPort) {
         return authFlowSessionPort::delete;
     }
-
 
     @Bean
     AuthenticatedLogoutUseCase authenticatedLogoutUseCase(

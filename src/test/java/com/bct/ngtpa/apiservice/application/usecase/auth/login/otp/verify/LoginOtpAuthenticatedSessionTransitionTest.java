@@ -16,8 +16,6 @@ import com.bct.ngtpa.apiservice.application.dto.auth.otp.ReplaceOtpChallengeComm
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.ReplaceOtpChallengeResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.VerifyOtpChallengeCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.VerifyOtpChallengeResult;
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionCancellationReason;
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.port.in.EstablishAuthenticatedLoginSessionUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionCancellationPort;
@@ -43,8 +41,7 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 class LoginOtpAuthenticatedSessionTransitionTest {
-    private static final AuthenticatedSessionId SID =
-            new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx");
+    private static final AuthenticatedSessionId SID = new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx");
 
     @Test
     void validOtpAndAccountsEstablishAuthenticatedSession() {
@@ -110,17 +107,15 @@ class LoginOtpAuthenticatedSessionTransitionTest {
             }
         };
         LoginOtpVerifiedSessionPort verified = (sessionId, requestId) -> Mono.empty();
-        AuthFlowSessionCancellationPort cancellation =
-                (sessionId, reason, now) -> Mono.error(new UnsupportedOperationException());
+        AuthFlowSessionCancellationPort cancellation = (sessionId, reason, now) -> Mono
+                .error(new UnsupportedOperationException());
         LoginAccountAuthorizationPort accountPort = (LoginAccountAuthorizationCommand command) -> Mono.just(
                 LoginAccountAuthorizationResult.available(List.of(
                         new LoginAccountRecord("DB", "DBA", "8802", "OE", 1, null, null))));
         GetLoginAccountsUseCase accounts = new GetLoginAccountsUseCase(accountPort);
-        LoginAccountRecordValidationService validation =
-                new LoginAccountRecordValidationService(11, 4, '0');
-        LoginAccountReferenceAssignmentService assignment =
-                new LoginAccountReferenceAssignmentService(
-                        () -> new LoginAccountRef("acc_abcdefghijklmnopqrstuvwx"), 8);
+        LoginAccountRecordValidationService validation = new LoginAccountRecordValidationService(11, 4, '0');
+        LoginAccountReferenceAssignmentService assignment = new LoginAccountReferenceAssignmentService(
+                () -> new LoginAccountRef("acc_abcdefghijklmnopqrstuvwx"), 8);
 
         return new LoginOtpVerifyService(
                 loader,

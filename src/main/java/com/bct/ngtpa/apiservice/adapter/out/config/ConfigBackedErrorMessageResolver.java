@@ -16,8 +16,7 @@ import java.util.Optional;
 @Component
 public class ConfigBackedErrorMessageResolver implements ErrorMessageResolver {
 
-    static final String HARD_CODED_FALLBACK =
-            "Sorry, this service might be interrupted. Please try again later.";
+    static final String HARD_CODED_FALLBACK = "Sorry, this service might be interrupted. Please try again later.";
 
     private static final Locale ZH_HK_LOCALE = Locale.forLanguageTag("zh-HK");
 
@@ -33,13 +32,15 @@ public class ConfigBackedErrorMessageResolver implements ErrorMessageResolver {
         var normalizedCode = normalizeCode(errorCode);
 
         if (StringUtils.hasText(normalizedCode)) {
-            var requested = resolveConfiguredMessage(normalizedCode, accountEnv, trustCode, schemeType, normalizedLocale);
+            var requested = resolveConfiguredMessage(normalizedCode, accountEnv, trustCode, schemeType,
+                    normalizedLocale);
             if (requested.isPresent()) {
                 return requested.orElseThrow();
             }
 
             if (!Locale.ENGLISH.equals(normalizedLocale)) {
-                var english = resolveConfiguredMessage(normalizedCode, accountEnv, trustCode, schemeType, Locale.ENGLISH);
+                var english = resolveConfiguredMessage(normalizedCode, accountEnv, trustCode, schemeType,
+                        Locale.ENGLISH);
                 if (english.isPresent()) {
                     return english.orElseThrow();
                 }

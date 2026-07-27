@@ -24,6 +24,8 @@ public record AuthFlowSessionCreateCommand(
 
     @Override
     public String toString() {
-        return "AuthFlowSessionCreateCommand[authFlowSessionId=<redacted>, scenario=" + scenario + ", initialStatus=" + initialStatus + ", createdAt=" + createdAt + ", expiresAt=" + expiresAt + ", data=" + data + ", csrfTokenHash=<redacted>, activeOtpChallengeId=<redacted>]";
+        return "AuthFlowSessionCreateCommand[authFlowSessionId=<redacted>, scenario=" + scenario + ", initialStatus="
+                + initialStatus + ", createdAt=" + createdAt + ", expiresAt=" + expiresAt + ", data=" + data
+                + ", csrfTokenHash=<redacted>, activeOtpChallengeId=<redacted>]";
     }
 }

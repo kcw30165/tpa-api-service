@@ -27,36 +27,39 @@ import reactor.core.publisher.Mono;
 @RequestMapping("/api/v1/internal/reference-date")
 @RequiredArgsConstructor
 public class ReferenceDateController {
-    private final RefreshReferenceDateUseCase refreshReferenceDateUseCase;
-    private final GetAllReferenceDatesUseCase getAllReferenceDatesUseCase;
-    private final CleanUpAllReferenceDatesUseCase cleanUpAllReferenceDatesUseCase;
+        private final RefreshReferenceDateUseCase refreshReferenceDateUseCase;
+        private final GetAllReferenceDatesUseCase getAllReferenceDatesUseCase;
+        private final CleanUpAllReferenceDatesUseCase cleanUpAllReferenceDatesUseCase;
 
-    @PostMapping(value = {"/refresh"}, consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<RefreshReferenceDateResponse> refreshReferenceDate(@Valid @RequestBody RefreshReferenceDateRequest request) {
-        return refreshReferenceDateUseCase.execute(new RefreshReferenceDateCommand(request.accountEnv()))
-                .map(result -> new RefreshReferenceDateResponse(
-                        result.accountEnv(),
-                        result.refDate(),
-                        result.redisUpdated()));
-    }
+        @PostMapping(value = {
+                        "/refresh" }, consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+        public Mono<RefreshReferenceDateResponse> refreshReferenceDate(
+                        @Valid @RequestBody RefreshReferenceDateRequest request) {
+                return refreshReferenceDateUseCase.execute(new RefreshReferenceDateCommand(request.accountEnv()))
+                                .map(result -> new RefreshReferenceDateResponse(
+                                                result.accountEnv(),
+                                                result.refDate(),
+                                                result.redisUpdated()));
+        }
 
-    @GetMapping(value = "/all", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<MutationResponse<GetAllReferenceDatesResponse>> getAllReferenceDates() {
-        return getAllReferenceDatesUseCase.execute()
-                .map(result -> MutationResponse.success(
-                        ApiStatus.SUCCESS,
-                        new GetAllReferenceDatesResponse(result.referenceDates().stream()
-                                .map(entry -> new ReferenceDateEntryResponse(entry.accountEnv(), entry.refDate()))
-                                .toList()),
-                        List.of()));
-    }
+        @GetMapping(value = "/all", produces = MediaType.APPLICATION_JSON_VALUE)
+        public Mono<MutationResponse<GetAllReferenceDatesResponse>> getAllReferenceDates() {
+                return getAllReferenceDatesUseCase.execute()
+                                .map(result -> MutationResponse.success(
+                                                ApiStatus.SUCCESS,
+                                                new GetAllReferenceDatesResponse(result.referenceDates().stream()
+                                                                .map(entry -> new ReferenceDateEntryResponse(
+                                                                                entry.accountEnv(), entry.refDate()))
+                                                                .toList()),
+                                                List.of()));
+        }
 
-    @DeleteMapping(value = "/all", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<MutationResponse<CleanUpAllReferenceDatesResponse>> cleanUpAllReferenceDates() {
-        return cleanUpAllReferenceDatesUseCase.execute()
-                .map(result -> MutationResponse.success(
-                        ApiStatus.UPDATED,
-                        new CleanUpAllReferenceDatesResponse(result.deletedCount()),
-                        List.of()));
-    }
+        @DeleteMapping(value = "/all", produces = MediaType.APPLICATION_JSON_VALUE)
+        public Mono<MutationResponse<CleanUpAllReferenceDatesResponse>> cleanUpAllReferenceDates() {
+                return cleanUpAllReferenceDatesUseCase.execute()
+                                .map(result -> MutationResponse.success(
+                                                ApiStatus.UPDATED,
+                                                new CleanUpAllReferenceDatesResponse(result.deletedCount()),
+                                                List.of()));
+        }
 }

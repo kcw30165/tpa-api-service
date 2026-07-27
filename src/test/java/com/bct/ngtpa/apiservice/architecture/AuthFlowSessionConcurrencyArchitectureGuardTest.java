@@ -1,6 +1,5 @@
 package com.bct.ngtpa.apiservice.architecture;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;

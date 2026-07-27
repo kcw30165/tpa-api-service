@@ -53,12 +53,13 @@ public class PersonalInformationWebMapper {
     private static final String DEFAULT_LANGUAGE = "en";
     private static final String ZH_HK_LANGUAGE = "zh_HK";
     private final ConfigVariantCandidateGenerator configVariantCandidateGenerator = new ConfigVariantCandidateGenerator();
-    private final PageDisplayTextResolver pageDisplayTextResolver = new PageDisplayTextResolver(configVariantCandidateGenerator);
-private final LoggingSanitizer loggingSanitizer;
+    private final PageDisplayTextResolver pageDisplayTextResolver = new PageDisplayTextResolver(
+            configVariantCandidateGenerator);
+    private final LoggingSanitizer loggingSanitizer;
     private final BffPagesProperties bffPagesProperties;
     private final YamlResponseMapper yamlResponseMapper;
     private final ObjectMapper responseObjectMapper = new ObjectMapper();
-    
+
     @Autowired
     public PersonalInformationWebMapper(
             LoggingSanitizer loggingSanitizer,
@@ -92,13 +93,13 @@ private final LoggingSanitizer loggingSanitizer;
         Map<String, MemberInfoConfigItem> apimConfigItems = result != null ? result.configItems() : Map.of();
         return toFormPageResponse(apimData, apimConfig, apimConfigItems, language, accountEnv, trustCode, schemeType);
     }
+
     public FormPageResponse<FormSchemaResponse> toFormPageResponse(
             Map<String, Object> apimData,
             Map<String, String> apimConfig,
             String language) {
         return toFormPageResponse(apimData, apimConfig, language, null, null, null);
     }
-
 
     public FormPageResponse<FormSchemaResponse> toFormPageResponse(
             Map<String, Object> apimData,
@@ -109,6 +110,7 @@ private final LoggingSanitizer loggingSanitizer;
             String schemeType) {
         return toFormPageResponse(apimData, apimConfig, Map.of(), language, accountEnv, trustCode, schemeType);
     }
+
     public FormPageResponse<FormSchemaResponse> toFormPageResponse(
             Map<String, Object> apimData,
             Map<String, String> apimConfig,
@@ -116,7 +118,6 @@ private final LoggingSanitizer loggingSanitizer;
             String language) {
         return toFormPageResponse(apimData, apimConfig, apimConfigItems, language, null, null, null);
     }
-
 
     public FormPageResponse<FormSchemaResponse> toFormPageResponse(
             Map<String, Object> apimData,
@@ -130,23 +131,25 @@ private final LoggingSanitizer loggingSanitizer;
         PageSchemaProperties pageSchema = resolvePageSchema();
         return FormPageResponse.success(
                 buildPage(pageSchema, language, accountEnv, trustCode, schemeType),
-                buildForm(pageSchema, apimData, apimConfig, apimConfigItems, language, accountEnv, trustCode, schemeType));
+                buildForm(pageSchema, apimData, apimConfig, apimConfigItems, language, accountEnv, trustCode,
+                        schemeType));
     }
 
     /**
-     * Backward-compatible map view for existing mapper tests and callers that have not yet moved
+     * Backward-compatible map view for existing mapper tests and callers that have
+     * not yet moved
      * to FormPageResponse<FormSchemaResponse>.
      */
     public Map<String, Object> toResponse(PersonalInformationResult result, String language) {
         return toMap(toFormPageResponse(result, language));
     }
+
     public Map<String, Object> toResponse(
             Map<String, Object> apimData,
             Map<String, String> apimConfig,
             String language) {
         return toResponse(apimData, apimConfig, language, null, null, null);
     }
-
 
     public Map<String, Object> toResponse(
             Map<String, Object> apimData,
@@ -157,6 +160,7 @@ private final LoggingSanitizer loggingSanitizer;
             String schemeType) {
         return toMap(toFormPageResponse(apimData, apimConfig, language, accountEnv, trustCode, schemeType));
     }
+
     public Map<String, Object> toResponse(
             Map<String, Object> apimData,
             Map<String, String> apimConfig,
@@ -164,7 +168,6 @@ private final LoggingSanitizer loggingSanitizer;
             String language) {
         return toResponse(apimData, apimConfig, apimConfigItems, language, null, null, null);
     }
-
 
     public Map<String, Object> toResponse(
             Map<String, Object> apimData,
@@ -174,7 +177,8 @@ private final LoggingSanitizer loggingSanitizer;
             String accountEnv,
             String trustCode,
             String schemeType) {
-        return toMap(toFormPageResponse(apimData, apimConfig, apimConfigItems, language, accountEnv, trustCode, schemeType));
+        return toMap(
+                toFormPageResponse(apimData, apimConfig, apimConfigItems, language, accountEnv, trustCode, schemeType));
     }
 
     private Map<String, Object> toMap(FormPageResponse<FormSchemaResponse> response) {
@@ -194,13 +198,15 @@ private final LoggingSanitizer loggingSanitizer;
         return pageSchema;
     }
 
-    private PageResponse buildPage(PageSchemaProperties pageSchema, String language, String accountEnv, String trustCode, String schemeType) {
+    private PageResponse buildPage(PageSchemaProperties pageSchema, String language, String accountEnv,
+            String trustCode, String schemeType) {
         PageMetadataProperties metadata = pageSchema != null ? pageSchema.getMetadata() : null;
         return new PageResponse(
                 metadata != null ? metadata.getId() : null,
                 resolvePageTitle(pageSchema, metadata, language, accountEnv, trustCode, schemeType),
                 language);
     }
+
     private String resolvePageTitle(
             PageSchemaProperties pageSchema,
             PageMetadataProperties metadata,
@@ -221,7 +227,6 @@ private final LoggingSanitizer loggingSanitizer;
         return resolveLabel(metadata != null ? metadata.getTitle() : null, language);
     }
 
-
     private FormSchemaResponse buildForm(PageSchemaProperties pageSchema,
             Map<String, Object> apimData,
             Map<String, String> apimConfig,
@@ -236,12 +241,15 @@ private final LoggingSanitizer loggingSanitizer;
                 formSchema != null ? formSchema.getId() : null,
                 metadata != null ? metadata.getVersion() : null,
                 formSchema != null && hasText(formSchema.getDefaultMode()) ? formSchema.getDefaultMode() : "view",
-                buildSections(pageSchema, apimData, apimConfig, apimConfigItems, language, accountEnv, trustCode, schemeType),
+                buildSections(pageSchema, apimData, apimConfig, apimConfigItems, language, accountEnv, trustCode,
+                        schemeType),
                 buildOptionSets(pageSchema, formSchema, language, accountEnv, trustCode, schemeType),
-                mapValidationRules(pageSchema, pageSchema != null ? pageSchema.getValidations() : null, language, accountEnv, trustCode, schemeType),
+                mapValidationRules(pageSchema, pageSchema != null ? pageSchema.getValidations() : null, language,
+                        accountEnv, trustCode, schemeType),
                 buildConfirmation(pageSchema, language, accountEnv, trustCode, schemeType),
                 buildActions(pageSchema, formSchema, language, accountEnv, trustCode, schemeType));
     }
+
     private Map<String, Object> buildConfirmation(
             PageSchemaProperties pageSchema,
             String language,
@@ -255,17 +263,22 @@ private final LoggingSanitizer loggingSanitizer;
             return response;
         }
 
-        putResolvedConfirmationText(response, "title", confirmation.getTitleCode(), confirmation.getTitle(), pageSchema, language, accountEnv, trustCode, schemeType);
-        putResolvedConfirmationText(response, "reviewMessage", confirmation.getReviewMessageCode(), confirmation.getReviewMessage(), pageSchema, language, accountEnv, trustCode, schemeType);
-        putResolvedConfirmationText(response, "beforeLabel", confirmation.getBeforeLabelCode(), confirmation.getBeforeLabel(), pageSchema, language, accountEnv, trustCode, schemeType);
-        putResolvedConfirmationText(response, "afterLabel", confirmation.getAfterLabelCode(), confirmation.getAfterLabel(), pageSchema, language, accountEnv, trustCode, schemeType);
+        putResolvedConfirmationText(response, "title", confirmation.getTitleCode(), confirmation.getTitle(), pageSchema,
+                language, accountEnv, trustCode, schemeType);
+        putResolvedConfirmationText(response, "reviewMessage", confirmation.getReviewMessageCode(),
+                confirmation.getReviewMessage(), pageSchema, language, accountEnv, trustCode, schemeType);
+        putResolvedConfirmationText(response, "beforeLabel", confirmation.getBeforeLabelCode(),
+                confirmation.getBeforeLabel(), pageSchema, language, accountEnv, trustCode, schemeType);
+        putResolvedConfirmationText(response, "afterLabel", confirmation.getAfterLabelCode(),
+                confirmation.getAfterLabel(), pageSchema, language, accountEnv, trustCode, schemeType);
 
         response.remove("titleCode");
         response.remove("reviewMessageCode");
         response.remove("beforeLabelCode");
         response.remove("afterLabelCode");
 
-        putResolvedSecurityVerificationText(response, confirmation.getSecurityVerification(), pageSchema, language, accountEnv, trustCode, schemeType);
+        putResolvedSecurityVerificationText(response, confirmation.getSecurityVerification(), pageSchema, language,
+                accountEnv, trustCode, schemeType);
         return response;
     }
 
@@ -279,7 +292,8 @@ private final LoggingSanitizer loggingSanitizer;
             String accountEnv,
             String trustCode,
             String schemeType) {
-        String resolved = resolvePageDisplayText(pageSchema, code, inlineFallback, language, accountEnv, trustCode, schemeType);
+        String resolved = resolvePageDisplayText(pageSchema, code, inlineFallback, language, accountEnv, trustCode,
+                schemeType);
         if (hasText(resolved)) {
             response.put(responseKey, resolved);
         }
@@ -307,8 +321,13 @@ private final LoggingSanitizer loggingSanitizer;
             }
         }
 
-        putResolvedConfirmationText(securityResponse, "label", stringValue(securityVerification.get("labelCode")), localizedMap(securityVerification.get("label")), pageSchema, language, accountEnv, trustCode, schemeType);
-        putResolvedConfirmationText(securityResponse, "instruction", stringValue(securityVerification.get("instructionCode")), localizedMap(securityVerification.get("instruction")), pageSchema, language, accountEnv, trustCode, schemeType);
+        putResolvedConfirmationText(securityResponse, "label", stringValue(securityVerification.get("labelCode")),
+                localizedMap(securityVerification.get("label")), pageSchema, language, accountEnv, trustCode,
+                schemeType);
+        putResolvedConfirmationText(securityResponse, "instruction",
+                stringValue(securityVerification.get("instructionCode")),
+                localizedMap(securityVerification.get("instruction")), pageSchema, language, accountEnv, trustCode,
+                schemeType);
 
         securityResponse.remove("labelCode");
         securityResponse.remove("instructionCode");
@@ -332,7 +351,6 @@ private final LoggingSanitizer loggingSanitizer;
         return value instanceof String text ? text : null;
     }
 
-
     private List<SectionResponse> buildSections(PageSchemaProperties pageSchema,
             Map<String, Object> apimData,
             Map<String, String> apimConfig,
@@ -351,14 +369,16 @@ private final LoggingSanitizer loggingSanitizer;
             if (sectionSchema == null || !hasText(sectionSchema.getId())) {
                 continue;
             }
-            List<FieldResponse> fields = buildSectionFields(pageSchema, sectionSchema, fieldStates, language, accountEnv, trustCode, schemeType);
+            List<FieldResponse> fields = buildSectionFields(pageSchema, sectionSchema, fieldStates, language,
+                    accountEnv, trustCode, schemeType);
             if (fields.isEmpty()) {
                 defaultSectionOrder += 10;
                 continue;
             }
             sections.add(new SectionResponse(
                     sectionSchema.getId(),
-                    resolvePageDisplayText(pageSchema, sectionSchema.getTitleCode(), sectionSchema.getTitle(), language, accountEnv, trustCode, schemeType),
+                    resolvePageDisplayText(pageSchema, sectionSchema.getTitleCode(), sectionSchema.getTitle(), language,
+                            accountEnv, trustCode, schemeType),
                     defaultSectionOrder,
                     fields));
             defaultSectionOrder += 10;
@@ -463,7 +483,9 @@ private final LoggingSanitizer loggingSanitizer;
         return fieldsByConfigItemId;
     }
 
-    private List<FieldResponse> buildSectionFields(PageSchemaProperties pageSchema, SectionProperties sectionSchema, Map<String, FieldState> fieldStates, String language, String accountEnv, String trustCode, String schemeType) {
+    private List<FieldResponse> buildSectionFields(PageSchemaProperties pageSchema, SectionProperties sectionSchema,
+            Map<String, FieldState> fieldStates, String language, String accountEnv, String trustCode,
+            String schemeType) {
         if (sectionSchema.getFields() == null) {
             return List.of();
         }
@@ -478,10 +500,12 @@ private final LoggingSanitizer loggingSanitizer;
                 defaultFieldOrder += 10;
                 continue;
             }
-            List<ValidationRuleResponse> validations = mapValidationRules(pageSchema, fieldSchema.getValidations(), language, accountEnv, trustCode, schemeType);
+            List<ValidationRuleResponse> validations = mapValidationRules(pageSchema, fieldSchema.getValidations(),
+                    language, accountEnv, trustCode, schemeType);
             fields.add(new FieldResponse(
                     fieldSchema.getId(),
-                    resolvePageDisplayText(pageSchema, fieldSchema.getLabelCode(), fieldSchema.getLabel(), language, accountEnv, trustCode, schemeType),
+                    resolvePageDisplayText(pageSchema, fieldSchema.getLabelCode(), fieldSchema.getLabel(), language,
+                            accountEnv, trustCode, schemeType),
                     hasText(fieldSchema.getDataType()) ? fieldSchema.getDataType() : null,
                     hasText(fieldSchema.getControlType()) ? fieldSchema.getControlType() : null,
                     state.value(),
@@ -491,9 +515,11 @@ private final LoggingSanitizer loggingSanitizer;
                     fieldSchema.getMinLength(),
                     fieldSchema.getMaxLength(),
                     hasText(fieldSchema.getPattern()) ? fieldSchema.getPattern() : null,
-                    hasText(resolvePageDisplayText(pageSchema, fieldSchema.getPlaceholderCode(), fieldSchema.getPlaceholder(), language, accountEnv, trustCode, schemeType))
-                            ? resolvePageDisplayText(pageSchema, fieldSchema.getPlaceholderCode(), fieldSchema.getPlaceholder(), language, accountEnv, trustCode, schemeType)
-                            : null,
+                    hasText(resolvePageDisplayText(pageSchema, fieldSchema.getPlaceholderCode(),
+                            fieldSchema.getPlaceholder(), language, accountEnv, trustCode, schemeType))
+                                    ? resolvePageDisplayText(pageSchema, fieldSchema.getPlaceholderCode(),
+                                            fieldSchema.getPlaceholder(), language, accountEnv, trustCode, schemeType)
+                                    : null,
                     hasText(fieldSchema.getOptionSource()) ? fieldSchema.getOptionSource() : null,
                     fieldSchema.getCopyWhenChecked(),
                     fieldSchema.getDisplayOrder() != null ? fieldSchema.getDisplayOrder() : defaultFieldOrder,
@@ -503,7 +529,9 @@ private final LoggingSanitizer loggingSanitizer;
         return fields;
     }
 
-    private List<ValidationRuleResponse> mapValidationRules(PageSchemaProperties pageSchema, List<ValidationRuleProperties> rules, String language, String accountEnv, String trustCode, String schemeType) {
+    private List<ValidationRuleResponse> mapValidationRules(PageSchemaProperties pageSchema,
+            List<ValidationRuleProperties> rules, String language, String accountEnv, String trustCode,
+            String schemeType) {
         if (rules == null || rules.isEmpty()) {
             return yamlResponseMapper.toResponseList(rules, language).stream()
                     .map(ValidationRuleResponse::from)
@@ -511,13 +539,15 @@ private final LoggingSanitizer loggingSanitizer;
                     .toList();
         }
         return rules.stream()
-                .flatMap(rule -> mapValidationRule(pageSchema, rule, language, accountEnv, trustCode, schemeType).stream())
+                .flatMap(rule -> mapValidationRule(pageSchema, rule, language, accountEnv, trustCode, schemeType)
+                        .stream())
                 .map(ValidationRuleResponse::from)
                 .filter(java.util.Objects::nonNull)
                 .toList();
     }
 
-    private List<java.util.Map<String, Object>> mapValidationRule(PageSchemaProperties pageSchema, ValidationRuleProperties rule, String language, String accountEnv, String trustCode, String schemeType) {
+    private List<java.util.Map<String, Object>> mapValidationRule(PageSchemaProperties pageSchema,
+            ValidationRuleProperties rule, String language, String accountEnv, String trustCode, String schemeType) {
         if (rule == null) {
             return yamlResponseMapper.toResponseList(Collections.singletonList(rule), language);
         }
@@ -543,7 +573,6 @@ private final LoggingSanitizer loggingSanitizer;
         }
     }
 
-
     private Map<String, List<FormOptionResponse>> buildOptionSets(
             PageSchemaProperties pageSchema,
             FormMetadataProperties formSchema,
@@ -558,11 +587,13 @@ private final LoggingSanitizer loggingSanitizer;
         for (Map.Entry<String, OptionSetProperties> entry : formSchema.getOptionSets().entrySet()) {
             String optionSetId = entry.getKey();
             OptionSetProperties optionSet = entry.getValue();
-            if (!hasText(optionSetId) || optionSet == null || optionSet.getOptions() == null || optionSet.getOptions().isEmpty()) {
+            if (!hasText(optionSetId) || optionSet == null || optionSet.getOptions() == null
+                    || optionSet.getOptions().isEmpty()) {
                 continue;
             }
             String code = hasText(optionSet.getCode()) ? optionSet.getCode() : optionSetId;
-            List<OptionProperties> options = resolveOptionSetOptions(optionSet, code, language, accountEnv, trustCode, schemeType);
+            List<OptionProperties> options = resolveOptionSetOptions(optionSet, code, language, accountEnv, trustCode,
+                    schemeType);
             if (options.isEmpty()) {
                 continue;
             }
@@ -615,18 +646,20 @@ private final LoggingSanitizer loggingSanitizer;
             String trustCode,
             String schemeType) {
         String value = option == null || option.getValue() == null ? "" : option.getValue();
-        String text = option == null ? "" : resolvePageDisplayText(
-                pageSchema,
-                option.getLabelCode(),
-                option.getLabel(),
-                language,
-                accountEnv,
-                trustCode,
-                schemeType);
+        String text = option == null ? ""
+                : resolvePageDisplayText(
+                        pageSchema,
+                        option.getLabelCode(),
+                        option.getLabel(),
+                        language,
+                        accountEnv,
+                        trustCode,
+                        schemeType);
         return new FormOptionResponse(value, hasText(text) ? text : value);
     }
 
-    private Map<String, Object> buildActions(PageSchemaProperties pageSchema, FormMetadataProperties formSchema, String language, String accountEnv, String trustCode, String schemeType) {
+    private Map<String, Object> buildActions(PageSchemaProperties pageSchema, FormMetadataProperties formSchema,
+            String language, String accountEnv, String trustCode, String schemeType) {
         Map<String, Object> actions = new LinkedHashMap<>();
         if (formSchema == null || formSchema.getActions() == null) {
             return actions;
@@ -637,7 +670,8 @@ private final LoggingSanitizer loggingSanitizer;
             }
             Map<String, Object> action = new LinkedHashMap<>();
             action.put("enabled", Boolean.TRUE);
-            action.put("label", resolvePageDisplayText(pageSchema, actionSchema.getLabelCode(), actionSchema.getLabel(), language, accountEnv, trustCode, schemeType));
+            action.put("label", resolvePageDisplayText(pageSchema, actionSchema.getLabelCode(), actionSchema.getLabel(),
+                    language, accountEnv, trustCode, schemeType));
             actions.put(actionSchema.getName(), action);
         }
         return actions;
@@ -676,7 +710,6 @@ private final LoggingSanitizer loggingSanitizer;
                 trustCode,
                 schemeType);
     }
-
 
     private String resolveLabel(Map<String, String> labels, String language) {
         if (labels == null || labels.isEmpty()) {

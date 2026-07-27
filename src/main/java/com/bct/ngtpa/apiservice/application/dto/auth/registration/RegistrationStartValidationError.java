@@ -12,6 +12,7 @@ public record RegistrationStartValidationError(WorkflowErrorKey errorKey, String
 
     @Override
     public String toString() {
-        return "RegistrationStartValidationError[errorKey=" + errorKey.value() + ", target=" + target + ", source=" + source + "]";
+        return "RegistrationStartValidationError[errorKey=" + errorKey.value() + ", target=" + target + ", source="
+                + source + "]";
     }
 }

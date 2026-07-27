@@ -25,7 +25,14 @@ public record StartRegistrationResult(
         messages = messages == null ? List.of() : List.copyOf(messages);
         errors = errors == null ? List.of() : List.copyOf(errors);
     }
-    @Override public String toString() {
-        return "StartRegistrationResult[status=" + status + ", nextStep=" + nextStep + ", maskedDestination=" + maskedDestination + ", otpExpiresInSeconds=" + otpExpiresInSeconds + ", resendCooldownSeconds=" + resendCooldownSeconds + ", remainingResendAttempts=" + remainingResendAttempts + ", csrfToken=<redacted>, authFlowSessionId=<redacted>, messageCount=" + messages.size() + ", errorCount=" + errors.size() + ", idempotencyOutcome=" + idempotencyOutcome + ", replaySnapshot=<redacted>]";
+
+    @Override
+    public String toString() {
+        return "StartRegistrationResult[status=" + status + ", nextStep=" + nextStep + ", maskedDestination="
+                + maskedDestination + ", otpExpiresInSeconds=" + otpExpiresInSeconds + ", resendCooldownSeconds="
+                + resendCooldownSeconds + ", remainingResendAttempts=" + remainingResendAttempts
+                + ", csrfToken=<redacted>, authFlowSessionId=<redacted>, messageCount=" + messages.size()
+                + ", errorCount=" + errors.size() + ", idempotencyOutcome=" + idempotencyOutcome
+                + ", replaySnapshot=<redacted>]";
     }
 }

@@ -7,8 +7,10 @@ import org.springframework.stereotype.Component;
 /**
  * Temporary implementation of {@link ContributionActionPermissionPort}.
  *
- * <p>Returns a fixed set of contribution actions with export enabled.
- * Replace with access-token-based permission resolution when auth is fully implemented.
+ * <p>
+ * Returns a fixed set of contribution actions with export enabled.
+ * Replace with access-token-based permission resolution when auth is fully
+ * implemented.
  */
 @Component
 public class TemporaryContributionActionPermissionAdapter implements ContributionActionPermissionPort {

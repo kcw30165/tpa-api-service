@@ -19,5 +19,11 @@ public record ValidateAuthFlowSessionCsrfCommand(
         Objects.requireNonNull(now, "now must not be null");
         allowedOrigins = allowedOrigins == null ? List.of() : List.copyOf(allowedOrigins);
     }
-    @Override public String toString() { return "ValidateAuthFlowSessionCsrfCommand[authFlowSessionId=<redacted>, submittedToken=<redacted>, now=" + now + ", origin=<redacted>, referer=<redacted>, allowedOriginsSize=" + allowedOrigins.size() + ", correlationId=" + correlationId + "]"; }
+
+    @Override
+    public String toString() {
+        return "ValidateAuthFlowSessionCsrfCommand[authFlowSessionId=<redacted>, submittedToken=<redacted>, now=" + now
+                + ", origin=<redacted>, referer=<redacted>, allowedOriginsSize=" + allowedOrigins.size()
+                + ", correlationId=" + correlationId + "]";
+    }
 }

@@ -1,6 +1,8 @@
 # NGTPA API Service
 
-> **Document ownership:** This README is the source of truth for the current implemented service behaviour, local setup, configuration, API contracts, logging behaviour, and developer/operator guidance.  
+> **Document ownership:** This README is the source of truth for the current implemented service behaviour, local setup, configuration, API contracts, logging behaviour, and developer/operator guidance.
+
+**Login implementation status:** complete — credential authentication, OTP send/resend/verify/cancel, account retrieval, authenticated-session establishment, request-context resolution, and logout are implemented.  
 > `architecture_plan.md` is retained as the architecture baseline and decision-history document; it should not duplicate every implementation detail.
 
 Backend-for-Frontend (BFF) service for the **ORSO NGTPA** member portal.  
@@ -29,6 +31,17 @@ The service runs as a reactive Spring Boot application and reads local developme
 ---
 
 ## Architecture
+
+Login uses the same ports-and-adapters rules as the rest of the service. The framework-neutral application layer owns credential, OTP, account-list, session-lifecycle, logout, and context-resolution contracts. Spring configuration composes the use cases; APIM, Redis, crypto, mail/SMS, cookies, headers, and WebFlux remain adapter/infrastructure concerns.
+
+The implemented Login runtime adds these main capabilities:
+
+```text
+Credential authentication -> protected pre-auth session -> shared OTP lifecycle
+-> account retrieval/validation -> protected authenticated session
+-> session-scoped PortalAccessContext -> logout/revocation
+```
+
 
 ## Logging Stack
 
@@ -162,42 +175,45 @@ com.bct.ngtpa.apiservice
 └── exception/           # ApimException (shared)
 ```
 
-## Inbound Request Header Context
+## Inbound Request and Authenticated Context
 
-Phase 1 now provides a single global inbound request header context at the WebFlux boundary.
+`RequestLoggingWebFilter` resolves the global inbound `RequestHeaderContext` once per request and stores it in both Reactor Context and `ServerWebExchange` attributes. The relevant headers are:
 
-The live owner is `RequestLoggingWebFilter`, which resolves a typed `RequestHeaderContext` once per inbound request and stores it in both Reactor Context and `ServerWebExchange` attributes for web and infrastructure code.
+- `Account-Ref` — opaque selected-account reference for account-scoped APIs.
+- `X-Authenticated-Session-Id` — opaque post-login session transport. Values use the `sid_` prefix.
+- `X-Request-Id` — correlation identifier; a UUID is generated when missing or blank and the effective value is returned in the response header.
+- `Accept-Language` — inbound language preference; defaults to `en` when missing or blank.
 
-Extracted headers:
+`auth_flow_sid` is a separate **pre-authentication HttpOnly cookie** used by registration and login workflows before portal authentication. It is not accepted as authenticated portal-session transport.
 
-- `Account-Ref`
-- `X-Request-Id`
-- `Accept-Language`
+### Selected-account request rules
 
-Behavior:
+Selected-account APIs require both:
 
-- `Account-Ref` is optional globally and must not be required for login or account-list style flows.
-- Selected-account APIs now require `Account-Ref` for:
-  - `GET /api/v1/contributions`
-  - `GET /api/v1/contributions/export`
-  - `GET /api/v1/notifications`
-  - `PATCH /api/v1/notifications`
-  - `GET /api/v1/reference-data/countries`
-  - `GET /api/v1/personal-information`
-  - `PUT /api/v1/personal-information`
-- Missing or invalid `Account-Ref` on those selected-account APIs returns HTTP `400` with error code `err.member.context.invalid`.
-- `X-Request-Id` behavior is unchanged: the filter reuses a non-blank inbound value, generates a UUID when missing, returns the value in the response header, and keeps propagating it through Reactor Context.
-- Only `X-Request-Id` is propagated to APIM by `ApimRequestIdExchangeFilter`.
-- `Account-Ref` is not propagated to APIM.
-- `Accept-Language` is not propagated to APIM.
-- `Accept-Language` is extracted from the inbound request and defaults to `en` when missing or blank.
-- Contribution success responses now prefer inbound `Accept-Language` for `GET /api/v1/contributions` and `GET /api/v1/contributions/export`, with `lang` kept as a temporary fallback and `en` as the default.
-- Reference-data countries response text uses inbound `Accept-Language`: English (`en`) uses `country-name-eng`, and `zh-HK` uses `country-name-chi` with fallback to English when Chinese text is blank.
-- Contribution endpoint normalization is `en`, `en-US`, `en_HK` -> `en`; `zh-HK`, `zh_HK`, `zh` -> `zh_HK`; blank, missing, and unknown values -> `en`.
-- Error-message localization by `Accept-Language` is still deferred, and notification response behavior is unchanged.
-- Login, account-list, OAuth, and Account-Ref generation remain future work outside this phase.
+```http
+X-Authenticated-Session-Id: sid_<opaque-value>
+Account-Ref: acc_<opaque-value>
+```
 
-### APIM Response Envelope
+The runtime flow is:
+
+```text
+X-Authenticated-Session-Id
+  -> load/decrypt/touch authenticated session in Redis
+  -> resolve Account-Ref only within that session
+  -> create PortalAccessContext
+  -> propagate through exchange attributes and Reactor Context
+```
+
+`AuthenticatedAccountContextResolver` is the primary runtime `PortalAccessContextPort`. `TemporaryPortalAccessContextAdapter` is not component-scanned and is retained only for isolated legacy/local tests. There is no fallback to the retired `Session-Id` header or to YAML-backed account profiles.
+
+For an account-scoped request, missing, malformed, expired, revoked, or unknown session state—and unknown or cross-session `Account-Ref` values—fail closed with HTTP **401**, `err.security.authentication.required`, and no session/account existence disclosure.
+
+Only `X-Request-Id` is propagated to APIM. `Account-Ref`, `X-Authenticated-Session-Id`, and `Accept-Language` are not propagated to APIM.
+
+---
+
+## APIM Response Envelope
 
 All APIM endpoints share a single top-level envelope and are modeled once under `adapter/out/apim/dto`:
 
@@ -283,6 +299,131 @@ export JAVA_HOME="C:/Java/OpenJDK/jdk-21" && export M2_HOME="/d/Tools/apache-mav
 ---
 
 ## Running Locally
+
+## Current Login Workflow
+
+The complete username/password, OTP, account-selection, authenticated-session, request-context, and logout workflow is active.
+
+### Endpoints
+
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/login/otp/send`
+- `POST /api/v1/auth/login/otp/resend`
+- `POST /api/v1/auth/login/otp/verify`
+- `POST /api/v1/auth/login/cancel`
+- `POST /api/v1/auth/logout`
+
+### Login start
+
+`POST /api/v1/auth/login` validates and normalizes the username, preserves the password exactly for credential authentication, calls `TRPMemberLogin` through the shared APIM transport, and returns all available OTP destinations—even when only one destination exists.
+
+Required request headers:
+
+```text
+Idempotency-Key
+X-Request-Id
+Accept-Language
+```
+
+A successful response establishes a protected pre-auth flow:
+
+- writes the HttpOnly `auth_flow_sid` cookie;
+- returns the plaintext CSRF token once in endpoint-specific `result.data.csrfToken`;
+- stores only the CSRF hash in the server-side session;
+- returns opaque destination IDs plus masked destinations;
+- returns `nextStep = SELECT_OTP_DESTINATION`.
+
+Credentials, raw destinations, and the plaintext CSRF token are never persisted in the pre-auth session. The encrypted login context contains only the validated workflow state needed by later login operations.
+
+### Login OTP lifecycle
+
+Login OTP operations reuse the shared `OtpChallengePort`, `MessageDeliveryPort`, challenge state, Redis persistence, hashing, expiry, cooldown, verification counters, and invalidation behavior used by registration. There is no login-specific OTP store or OTP channel model.
+
+```yaml
+auth-workflows:
+  login:
+    otp:
+      length: 6
+      numeric-only: true
+      ttl-seconds: 300
+      resend-cooldown-seconds: 60
+      max-verify-attempts: 5
+      resend-limit-enabled: false
+```
+
+- OTP send requires `auth_flow_sid`, `X-XSRF-TOKEN`, `Idempotency-Key`, `X-Request-Id`, and a selected opaque `destinationId`.
+- Send and resend are Redis-idempotent; completed replay does not create or deliver another OTP.
+- Resend observes cooldown, replaces the active challenge, invalidates the previous challenge, and keeps the session in `OTP_SENT`.
+- Login has no resend-count limit, but expiry, cooldown, CSRF, origin/referer, idempotency, and verification-attempt protections remain active.
+- Invalid OTP remains on `VERIFY_OTP` and returns the remaining verification attempts.
+- Verification-attempt exhaustion invalidates/cancels the pre-auth flow and returns `nextStep = RESTART_FLOW` with action code `RESTART_FLOW`.
+- `POST /api/v1/auth/login/cancel` invalidates any active challenge, cancels the pre-auth flow, clears pre-auth cookies, and returns `RETURN_TO_LOGIN`.
+
+In non-production-like deployments, physical Login OTP delivery uses the separate Login destination overrides. The original verified destination remains authoritative for masking, workflow state, hashing, and validation.
+
+```yaml
+auth-workflows:
+  login:
+    message:
+      destination-override:
+        mobile: ${LOGIN_MESSAGE_OVERRIDE_MOBILE:}
+        email: ${LOGIN_MESSAGE_OVERRIDE_EMAIL:}
+```
+
+### Account retrieval and selection
+
+After successful OTP verification, the BFF calls `TRPGetAccountList` through the shared APIM envelope, encryption, credential, retry, and request-ID infrastructure. Request values come only from the protected pre-auth context.
+
+The BFF validates and formats each returned account:
+
+- policy number: digits only, positive, width `11`, left-zero padded;
+- certificate number: positive integer, width `4`, left-zero padded;
+- termination pair: blank/blank or `T` plus strict `dd/MM/yyyy`;
+- malformed records are omitted when at least one valid record remains;
+- zero valid records fail the login continuation.
+
+Each valid account is assigned a cryptographically random, session-scoped `Account-Ref`. Public verification success returns only opaque account references and `nextStep = SELECT_ACCOUNT`; policy, certificate, environment, trust, scheme, and termination details remain inside the protected authenticated-session context.
+
+### Authenticated session
+
+Successful OTP verification creates the authenticated session before deleting the pre-auth flow. If pre-auth cleanup fails, the new authenticated session is revoked and no session identifier is exposed.
+
+Authenticated sessions:
+
+- use opaque values such as `sid_<URL-safe-random-value>`;
+- are protected as a complete AES-256-GCM context before Redis persistence;
+- store `ActorContext`, ordered account mappings, a CSRF hash, status, and idle/absolute expiry metadata;
+- enforce idle and absolute expiry without extending the absolute timeout;
+- use Redis Sentinel through the existing `CachePort` infrastructure;
+- resolve `Account-Ref` only inside the loaded session.
+
+On successful OTP verification, the BFF returns the session value in the response header:
+
+```http
+X-Authenticated-Session-Id: sid_<opaque-value>
+```
+
+The authenticated session ID is not included in the JSON response. The successful transition clears `auth_flow_sid` and the pre-auth XSRF cookie.
+
+### Authenticated requests and logout
+
+Account-scoped APIs use:
+
+```http
+X-Authenticated-Session-Id: sid_<opaque-value>
+Account-Ref: acc_<opaque-value>
+```
+
+`POST /api/v1/auth/logout` accepts `X-Authenticated-Session-Id`, revokes the server-side session, returns `Cache-Control: no-store`, and is intentionally idempotent. Missing, malformed, absent, expired, or already-terminated sessions return the same generic success response so session existence is not disclosed. The frontend must discard its stored session value after logout.
+
+### Security and diagnostics
+
+- Raw passwords, OTPs, CSRF tokens, destinations, session IDs, account identifiers, policy numbers, and certificate numbers are not logged.
+- Login send/resend/verify diagnostics use stable semantic events and safe statuses only.
+- Public errors use stable BFF-owned codes and never expose raw APIM/Progress codes or Redis/crypto details.
+- `X-Authenticated-Session-Id` is the only authenticated-session header; the retired `Session-Id` and former `sid_xxx` header names have no compatibility fallback.
+
+---
 
 ## Current Registration Workflow
 
@@ -466,6 +607,16 @@ Notes:
 | `REFERENCE_DATE_REFRESH_CONFIG_SERVICE_LABEL` | Legacy inactive property retained in YAML/properties only; the active refresh flow does not write Config Service. | _(empty)_ |
 | `REGISTRATION_MESSAGE_OVERRIDE_MOBILE` | Physical mobile destination for registration OTP delivery in non-production-like deployments. Required together with the email override outside PROD/DR. | _(empty; mandatory outside PROD/DR)_ |
 | `REGISTRATION_MESSAGE_OVERRIDE_EMAIL` | Physical email destination for registration OTP delivery in non-production-like deployments. Required together with the mobile override outside PROD/DR. | _(empty; mandatory outside PROD/DR)_ |
+| `LOGIN_PREAUTH_CONTEXT_KEY_VERSION` | Version label for the Login pre-auth AES-GCM key | _(required)_ |
+| `LOGIN_PREAUTH_CONTEXT_SECRET` | Base64-encoded 32-byte AES key for protected Login pre-auth context | _(required)_ |
+| `AUTH_WORKFLOWS_LOGIN_SESSION_PROTECTION_KEY_VERSION` | Version label for the authenticated-session AES-GCM key | _(required)_ |
+| `AUTH_WORKFLOWS_LOGIN_SESSION_PROTECTION_BASE64_KEY` | Base64-encoded 32-byte AES key for protected authenticated sessions; must differ from the pre-auth key | _(required)_ |
+| `LOGIN_MESSAGE_OVERRIDE_MOBILE` | Physical mobile destination for Login OTP delivery in non-production-like deployments | _(empty; mandatory outside PROD/DR)_ |
+| `LOGIN_MESSAGE_OVERRIDE_EMAIL` | Physical email destination for Login OTP delivery in non-production-like deployments | _(empty; mandatory outside PROD/DR)_ |
+| `AUTH_WORKFLOWS_LOGIN_SESSION_TTL_SECONDS` | Absolute authenticated-session lifetime | `900` |
+| `AUTH_WORKFLOWS_LOGIN_SESSION_IDLE_TIMEOUT_SECONDS` | Authenticated-session idle timeout | `900` |
+| `APIM_BUSINESS_RETRY_MAX_ATTEMPTS` | Total attempts for eligible safe APIM business calls, including the initial attempt | `3` |
+| `APIM_BUSINESS_RETRY_BACKOFF_MILLISECONDS` | Backoff between eligible APIM business-call attempts | `100` |
 | `APIM_BASE_URL` | APIM base URL (preferred) | _(required)_ |
 | `APIM_BASEURL` | APIM base URL (legacy fallback) | _(see `APIM_BASE_URL`)_ |
 | `APIM_TIMEOUT_MILLISECONDS` | WebClient timeout in ms (preferred) | `10000` |
@@ -505,113 +656,38 @@ For the dev cluster, the Kubernetes deployment or external config repository mus
 
 ---
 
-## Authentication
+## Authentication and Portal Access Context
 
-### Local Development
+### Local and external HTTP authentication
 
-HTTP Basic Auth is auto-configured by Spring Boot when `api.security.require-authentication=true` (the default). Local credentials are defined in `src/main/resources/application-local.yml`:
+HTTP Basic authentication remains available for local development when `api.security.require-authentication=true`; local credentials are defined in `application-local.yml`. Deployments that authenticate at ingress, gateway, service mesh, or another trusted external layer may set `API_SECURITY_REQUIRE_AUTHENTICATION=false`.
 
-```yaml
-spring:
-  security:
-    user:
-      name: dev
-      password: dev-local
-```
+This transport-layer setting is separate from the implemented portal Login workflow documented above.
 
-In Postman, set **Authorization → Basic Auth** with username `dev` and password `dev-local`.
+### Runtime portal context
 
-### Kubernetes / External Auth Layer
-
-When authentication is enforced externally (K8s ingress controller, API gateway, or service mesh mTLS), disable in-process auth in the Deployment manifest or ConfigMap:
-
-```yaml
-env:
-  - name: API_SECURITY_REQUIRE_AUTHENTICATION
-    value: "false"
-```
-
-When `false`, the application logs a startup `WARN` confirming that the external auth layer is trusted. All traffic reaching the pod is permitted without in-process credential checks.
-
-### Future: OAuth2 / OIDC Resource Server
-
-When an Auth Server is available, set `api.security.require-authentication=true` and configure `SecurityConfig` as a WebFlux OAuth2 resource server (`http.oauth2ResourceServer(...)`). Portal access context will then be extracted from JWT claims instead of the temporary profile configuration.
-
----
-
-## Temporary Portal Access Context Configuration
-
-Until Auth Server integration is implemented, the actor identity, member ownership, and account routing fields used in APIM calls are sourced from a temporary profile configuration rather than derived from a JWT token.
-
-For the selected-account APIs, `TemporaryPortalAccessContextAdapter` now resolves the context from an account-ref keyed profile entry:
+Portal access context is now resolved from the protected authenticated session—not from the temporary YAML profile configuration.
 
 ```text
-temporary-portal-access-context.profiles[{accountRef}]
+X-Authenticated-Session-Id + Account-Ref
+  -> AuthenticatedAccountContextResolver
+  -> active protected session
+  -> selected session-owned account
+  -> PortalAccessContext(ActorContext, AccountContext)
 ```
 
-The older feature-key entries such as `notifications` and `contributions` remain only as a transitional fallback for non-migrated callers and should be removed once all selected-account flows supply real `Account-Ref` values end to end.
+`ActorContext` contains only:
 
-The context model is structured into three separate dimensions:
-
-- **Actor** (`actorUserId`, `actorUserType`, `actorUserRole`) — identifies who is acting (the logged-in user)
-- **Member owner** (`memberUserId`, `memberType`) — identifies the member whose data is being accessed
-- **Account** (`accountEnv`, `policyNo`, `certNo`, `trustCode`, `schemeType`, `termStatus`, `termCompletionDate`) — routing fields and term metadata for the target APIM account
-
-The property class `TemporaryPortalAccessContextProperties` binds `temporary-portal-access-context.profiles.*`. The outbound adapter `TemporaryPortalAccessContextAdapter` (under `adapter/out/security`) implements `PortalAccessContextPort`, resolves the correct profile by account reference key (for example `ACC-123`), retains transitional support for legacy feature-key entries when callers still pass `notifications` or `contributions`, converts raw `term-status` into the framework-free `TermStatus` enum, and parses `term-completion-date` as `dd/MM/yyyy` when present.
-
-For the selected-account APIs, missing or invalid `Account-Ref` values fail fast with `PortalAccessContextResolutionException` mapped to HTTP **400** with error code `err.member.context.invalid`. Genuine context unavailability still maps to HTTP **500** with `err.member.context.unavailable`.
-
-Example YAML (present in `application-local.yml` with blank-safe defaults for the term fields):
-
-```yaml
-temporary-portal-access-context:
-  profiles:
-    ACC-123:
-      actor-user-id: ${TEMP_ACC_123_ACTOR_USER_ID:C402400A}
-      actor-user-type: ${TEMP_ACC_123_ACTOR_USER_TYPE:MEMBER}
-      actor-user-role: ${TEMP_ACC_123_ACTOR_USER_ROLE:SELF}
-      member-user-id: ${TEMP_ACC_123_MEMBER_USER_ID:C402400A}
-      member-type: ${TEMP_ACC_123_MEMBER_TYPE:MBR}
-      account-env: ${TEMP_ACC_123_ACCOUNT_ENV:JP}
-      policy-no: ${TEMP_ACC_123_POLICY_NO:00000000217}
-      cert-no: ${TEMP_ACC_123_CERT_NO:95}
-      trust-code: ${TEMP_ACC_123_TRUST_CODE:JPM}
-      scheme-type: ${TEMP_ACC_123_SCHEME_TYPE:OE}
-      term-status: ${TEMP_ACC_123_TERM_STATUS:}
-      term-completion-date: ${TEMP_ACC_123_TERM_COMPLETION_DATE:}
-    notifications:
-      actor-user-id: ${TEMP_NOTIF_ACTOR_USER_ID:C402400A}
-      actor-user-type: ${TEMP_NOTIF_ACTOR_USER_TYPE:MEMBER}
-      actor-user-role: ${TEMP_NOTIF_ACTOR_USER_ROLE:SELF}
-      member-user-id: ${TEMP_NOTIF_MEMBER_USER_ID:C402400A}
-      member-type: ${TEMP_NOTIF_MEMBER_TYPE:MBR}
-      account-env: ${TEMP_NOTIF_ACCOUNT_ENV:JP}
-      policy-no: ${TEMP_NOTIF_POLICY_NO:00000000118}
-      cert-no: ${TEMP_NOTIF_CERT_NO:2}
-      trust-code: ${TEMP_NOTIF_TRUST_CODE:}
-      scheme-type: ${TEMP_NOTIF_SCHEME_TYPE:}
-      term-status: ${TEMP_NOTIF_TERM_STATUS:}
-      term-completion-date: ${TEMP_NOTIF_TERM_COMPLETION_DATE:}
-    contributions:
-      actor-user-id: ${TEMP_CONT_ACTOR_USER_ID:C402400A}
-      actor-user-type: ${TEMP_CONT_ACTOR_USER_TYPE:MEMBER}
-      actor-user-role: ${TEMP_CONT_ACTOR_USER_ROLE:SELF}
-      member-user-id: ${TEMP_CONT_MEMBER_USER_ID:C402400A}
-      member-type: ${TEMP_CONT_MEMBER_TYPE:MBR}
-      account-env: ${TEMP_CONT_ACCOUNT_ENV:JP}
-      policy-no: ${TEMP_CONT_POLICY_NO:00000000217}
-      cert-no: ${TEMP_CONT_CERT_NO:95}
-      trust-code: ${TEMP_CONT_TRUST_CODE:JPM}
-      scheme-type: ${TEMP_CONT_SCHEME_TYPE:OE}
-      term-status: ${TEMP_CONT_TERM_STATUS:}
-      term-completion-date: ${TEMP_CONT_TERM_COMPLETION_DATE:}
+```text
+actorUserId
+actorUserRole
 ```
 
-  `ACC-123` demonstrates the preferred selected-account shape. The `notifications` and `contributions` entries are transitional examples kept only to support the legacy fallback during migration.
+There is no `actorType` field in the authenticated-session model.
 
-Blank or missing `term-status` maps to `TermStatus.BLANK` without warning. Unsupported non-blank raw values map to `TermStatus.UNKNOWN` and emit a sanitized warning from the temporary provider boundary only.
+`TemporaryPortalAccessContextAdapter` and its profile properties remain in the repository only for isolated legacy/local test compatibility. The adapter is not component-scanned, is not the runtime `PortalAccessContextPort`, and no selected-account request falls back to the temporary YAML data.
 
-  This configuration is **temporary**. It will be replaced once the Auth Server is integrated and portal access context is extracted from JWT access token claims.
+Future OAuth2/OIDC resource-server integration may replace the outer authentication mechanism, but it is not required for the current Redis-backed portal-session and account-context flow.
 
 ---
 
@@ -1522,7 +1598,7 @@ Updates the read status for one or more notifications.
 - `env` and `mbrType` must be non-blank.
 - `notificationId` must contain at least one non-blank value.
 - Duplicate notification IDs are preserved in request order and forwarded to APIM unchanged.
-- Actor identity, member ownership, and account routing fields (`actor-user-id`, `policy-no`, `cert-no`, etc.) are resolved from externalized `temporary-portal-access-context.profiles.notifications.*` configuration (see **Temporary Portal Access Context Configuration** below) until Auth Server integration is implemented. `ref-date` remains temporarily hardcoded.
+- Actor and account routing fields are resolved from the authenticated session selected by `X-Authenticated-Session-Id` and `Account-Ref`. The notification flow does not read temporary YAML portal-context profiles at runtime.
 
 **Response:**
 
@@ -1588,7 +1664,7 @@ Accept-Language: zh-HK
 - Dynamic detail items are joined from `contDtl[*].disp-src` to `dispSrc[*].disp-src` and sorted by `dispSrc.seq` ascending.
 - Amount `text` values are formatted using `display-format.amount.*` configuration (language and env-specific). Value `value` is the raw `BigDecimal`.
 - Date values carry the query-string text (`fromDate`/`toDate`) and also the ISO date string derived from APIM `cover-from`/`cover-to` date parsing.
-- Actor identity, member ownership, and account routing fields (`actor-user-id`, `policy-no`, `cert-no`, `trustCode`, `schemeType`, etc.) are resolved from externalized `temporary-portal-access-context.profiles.contributions.*` configuration (see **Temporary Portal Access Context Configuration** below) until Auth Server integration is implemented.
+- Actor and account routing fields are resolved from the authenticated session selected by `X-Authenticated-Session-Id` and `Account-Ref`. The contribution flow does not read temporary YAML portal-context profiles at runtime.
 - `actions.export.enabled` is always `true` (temporary stub via `TemporaryContributionActionPermissionAdapter`).
 - `Accept-Language` is not propagated to APIM; only `X-Request-Id` continues to be propagated.
 

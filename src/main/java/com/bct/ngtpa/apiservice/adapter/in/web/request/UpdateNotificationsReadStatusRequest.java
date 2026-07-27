@@ -6,9 +6,7 @@ import jakarta.validation.constraints.NotEmpty;
 import java.util.List;
 
 public record UpdateNotificationsReadStatusRequest(
-        @NotEmpty(message = "notificationId must not be empty")
-        List<@NotBlank(message = "notificationId must not contain blank values") String> notificationId
-) {
+        @NotEmpty(message = "notificationId must not be empty") List<@NotBlank(message = "notificationId must not contain blank values") String> notificationId) {
     public UpdateNotificationsReadStatusRequest {
         notificationId = notificationId == null ? null : List.copyOf(notificationId);
     }

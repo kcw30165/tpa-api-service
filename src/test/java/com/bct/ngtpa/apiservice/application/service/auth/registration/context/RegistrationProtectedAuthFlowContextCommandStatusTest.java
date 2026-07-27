@@ -9,31 +9,31 @@ import org.junit.jupiter.api.Test;
 
 class RegistrationProtectedAuthFlowContextCommandStatusTest {
 
-    @Test
-    void legacyConstructorRemainsRestrictedToOtpSent() {
-        var command = new RegistrationProtectedAuthFlowContextCommand(
-                new AuthFlowSessionId("afs_safe"),
-                "csrf-safe",
-                null,
-                null,
-                "req-safe");
+        @Test
+        void legacyConstructorRemainsRestrictedToOtpSent() {
+                var command = new RegistrationProtectedAuthFlowContextCommand(
+                                new AuthFlowSessionId("afs_safe"),
+                                "csrf-safe",
+                                null,
+                                null,
+                                "req-safe");
 
-        assertThat(command.acceptedStatuses()).containsExactly(AuthFlowStatus.OTP_SENT);
-    }
+                assertThat(command.acceptedStatuses()).containsExactly(AuthFlowStatus.OTP_SENT);
+        }
 
-    @Test
-    void completionCallerCanRequireUsernameVerified() {
-        var command = new RegistrationProtectedAuthFlowContextCommand(
-                new AuthFlowSessionId("afs_safe"),
-                "csrf-safe",
-                null,
-                null,
-                "req-safe",
-                Set.of(AuthFlowStatus.USERNAME_VERIFIED));
+        @Test
+        void completionCallerCanRequireUsernameVerified() {
+                var command = new RegistrationProtectedAuthFlowContextCommand(
+                                new AuthFlowSessionId("afs_safe"),
+                                "csrf-safe",
+                                null,
+                                null,
+                                "req-safe",
+                                Set.of(AuthFlowStatus.USERNAME_VERIFIED));
 
-        assertThat(command.acceptedStatuses())
-                .containsExactly(AuthFlowStatus.USERNAME_VERIFIED);
-        assertThat(command.toString())
-                .doesNotContain("afs_safe", "csrf-safe", "req-safe");
-    }
+                assertThat(command.acceptedStatuses())
+                                .containsExactly(AuthFlowStatus.USERNAME_VERIFIED);
+                assertThat(command.toString())
+                                .doesNotContain("afs_safe", "csrf-safe", "req-safe");
+        }
 }

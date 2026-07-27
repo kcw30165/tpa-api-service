@@ -2,7 +2,10 @@ package com.bct.ngtpa.apiservice.application.dto.auth.login;
 
 import java.util.Objects;
 
-/** Internal protected-context destination. The raw destination is never returned to FE. */
+/**
+ * Internal protected-context destination. The raw destination is never returned
+ * to FE.
+ */
 public record LoginCredentialDestination(
         String channel,
         String destination) {

@@ -1,4 +1,5 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.mapper;
+
 import java.util.Comparator;
 import java.util.Set;
 
@@ -134,8 +135,6 @@ public class YamlResponseMapper {
         return false;
     }
 
-
-
     private List<Object> normalizeResponseMap(List<Object> source) {
         if (source == null || source.isEmpty()) {
             return source;
@@ -172,7 +171,6 @@ public class YamlResponseMapper {
         }
         return normalized;
     }
-
 
     private Object normalizeFieldValueByDataType(Object dataTypeValue, Object value) {
         if (dataTypeValue == null) {

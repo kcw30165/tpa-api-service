@@ -11,7 +11,8 @@ public record TrpRegMemberApimRequest(
         @JsonProperty("dob") String dateOfBirth,
         @JsonProperty("mobile-number") String mobileNumber,
         @JsonProperty("email") String email) {
-    @Override public String toString() {
+    @Override
+    public String toString() {
         return "TrpRegMemberApimRequest[environment=<redacted>, trustCode=<redacted>, "
                 + "customerId=<redacted>, userId=<redacted>, password=<redacted>, "
                 + "dateOfBirth=<redacted>, mobileNumber=<redacted>, email=<redacted>]";

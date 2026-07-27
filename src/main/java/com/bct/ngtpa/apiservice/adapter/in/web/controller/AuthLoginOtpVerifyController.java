@@ -72,14 +72,14 @@ public final class AuthLoginOtpVerifyController {
         }
         try {
             return useCase.verify(new VerifyLoginOtpCommand(
-                            session.trim(),
-                            csrf.trim(),
-                            request.code().trim(),
-                            idempotencyKey.trim(),
-                            clean(origin),
-                            clean(referer),
-                            clean(language),
-                            clean(requestId)))
+                    session.trim(),
+                    csrf.trim(),
+                    request.code().trim(),
+                    idempotencyKey.trim(),
+                    clean(origin),
+                    clean(referer),
+                    clean(language),
+                    clean(requestId)))
                     .map(result -> {
                         if (result.status() == VerifyLoginOtpStatus.ACCOUNTS_READY
                                 && result.authenticatedSessionId() != null) {

@@ -35,7 +35,11 @@ class RegistrationOtpResendServiceIntegrationTest {
 
     @BeforeEach
     void reset() {
-        context.reset(); idempotency.reset(); otp.reset(); session.reset(); message.reset();
+        context.reset();
+        idempotency.reset();
+        otp.reset();
+        session.reset();
+        message.reset();
     }
 
     @Test
@@ -124,14 +128,17 @@ class RegistrationOtpResendServiceIntegrationTest {
         RegistrationProtectedAuthFlowContextResult result;
         boolean rejectDisallowedOrigin;
         String lastOrigin;
+
         void reset() {
-            rejectDisallowedOrigin = false; lastOrigin = null;
+            rejectDisallowedOrigin = false;
+            lastOrigin = null;
             result = RegistrationProtectedAuthFlowContextResult.valid(
                     "otp-old", "m****r@example.com",
                     new RegistrationAuthFlowContext(RegistrationIdentityType.ID,
                             "3024102", "04/04/1982", RegistrationContactType.EMAIL,
                             "member@example.com"));
         }
+
         public Mono<RegistrationProtectedAuthFlowContextResult> load(
                 RegistrationProtectedAuthFlowContextCommand command) {
             lastOrigin = command.origin();
@@ -153,7 +160,13 @@ class RegistrationOtpResendServiceIntegrationTest {
         private final Map<String, RegistrationIdempotencyRecord> records = new HashMap<>();
         int starts;
         int failed;
-        void reset() { records.clear(); starts = 0; failed = 0; }
+
+        void reset() {
+            records.clear();
+            starts = 0;
+            failed = 0;
+        }
+
         public Mono<RegistrationIdempotencyStartResult> startProcessing(RegistrationIdempotencyStartCommand command) {
             starts++;
             String key = command.idempotencyKey().value();
@@ -168,6 +181,7 @@ class RegistrationOtpResendServiceIntegrationTest {
             return Mono.just(new RegistrationIdempotencyStartResult(
                     RegistrationIdempotencyStartOutcome.STARTED, processing));
         }
+
         public Mono<RegistrationIdempotencyRecord> markCompleted(RegistrationIdempotencyCompleteCommand command) {
             RegistrationIdempotencyRecord completed = record(command.idempotencyKey(),
                     command.requestHash(), RegistrationIdempotencyStatus.COMPLETED,
@@ -175,16 +189,22 @@ class RegistrationOtpResendServiceIntegrationTest {
             records.put(command.idempotencyKey().value(), completed);
             return Mono.just(completed);
         }
+
         public Mono<RegistrationIdempotencyRecord> markFailed(RegistrationIdempotencyFailCommand command) {
             failed++;
             return Mono.just(records.get(command.idempotencyKey().value()));
         }
-        public Mono<Optional<RegistrationIdempotencyRecord>> load(RegistrationIdempotencyAction action, RegistrationIdempotencyKey key) {
+
+        public Mono<Optional<RegistrationIdempotencyRecord>> load(RegistrationIdempotencyAction action,
+                RegistrationIdempotencyKey key) {
             return Mono.just(Optional.ofNullable(records.get(key.value())));
         }
+
         public Mono<Void> delete(RegistrationIdempotencyAction action, RegistrationIdempotencyKey key) {
-            records.remove(key.value()); return Mono.empty();
+            records.remove(key.value());
+            return Mono.empty();
         }
+
         private RegistrationIdempotencyRecord record(RegistrationIdempotencyKey key,
                 RegistrationRequestHash hash, RegistrationIdempotencyStatus status,
                 RegistrationIdempotencyResponseSnapshot snapshot) {
@@ -195,10 +215,15 @@ class RegistrationOtpResendServiceIntegrationTest {
 
     static final class OtpGateway implements RegistrationOtpPort {
         int calls;
-        void reset() { calls = 0; }
+
+        void reset() {
+            calls = 0;
+        }
+
         public Mono<RegistrationOtpCreationResult> createOtp(RegistrationContactType type, String destination) {
             throw new UnsupportedOperationException();
         }
+
         public Mono<RegistrationOtpCreationResult> resendOtp(String activeId,
                 RegistrationContactType type, String destination) {
             calls++;
@@ -209,23 +234,35 @@ class RegistrationOtpResendServiceIntegrationTest {
 
     static final class SessionGateway implements RegistrationSessionPort {
         int updates;
-        void reset() { updates = 0; }
+
+        void reset() {
+            updates = 0;
+        }
+
         public Mono<String> createRegistrationSession(String masked, RegistrationContactType type) {
             throw new UnsupportedOperationException();
         }
+
         public Mono<Void> updateOtpChallenge(String sid, String otpId,
                 RegistrationContactType type, String masked) {
-            updates++; return Mono.empty();
+            updates++;
+            return Mono.empty();
         }
     }
 
     static final class MessageGateway implements RegistrationMessagePort {
         int deliveries;
         boolean accepted;
-        void reset() { deliveries = 0; accepted = true; }
+
+        void reset() {
+            deliveries = 0;
+            accepted = true;
+        }
+
         public Mono<Boolean> deliverRegistrationOtp(RegistrationContactType type,
                 String recipient, String code, int ttl, String language, String correlation) {
-            deliveries++; return Mono.just(accepted);
+            deliveries++;
+            return Mono.just(accepted);
         }
     }
 }

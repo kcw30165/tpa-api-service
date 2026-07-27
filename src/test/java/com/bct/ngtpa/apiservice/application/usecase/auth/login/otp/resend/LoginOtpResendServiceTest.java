@@ -4,12 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.preauth.LoginPreAuthContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.preauth.LoginPreAuthDestination;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.resend.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.*;
 import com.bct.ngtpa.apiservice.application.dto.message.*;
 import com.bct.ngtpa.apiservice.application.port.out.*;
 import java.time.*;
-import java.util.*;
 import java.util.concurrent.atomic.*;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
@@ -31,7 +29,9 @@ class LoginOtpResendServiceTest {
             }
         };
         var service = service(
-                c -> Mono.just(LoginProtectedAuthFlowContextResult.valid(new LoginPreAuthContext("member", "MBR", null, java.util.Map.of(), NOW, "v1"), "old", new LoginPreAuthDestination("dst_selected", "mobile", "91234567", "****4567"),"csrf_hash")),
+                c -> Mono.just(LoginProtectedAuthFlowContextResult.valid(
+                        new LoginPreAuthContext("member", "MBR", null, java.util.Map.of(), NOW, "v1"), "old",
+                        new LoginPreAuthDestination("dst_selected", "mobile", "91234567", "****4567"), "csrf_hash")),
                 otp, c -> {
                     delivered.set(c);
                     return Mono.just(
@@ -57,7 +57,11 @@ class LoginOtpResendServiceTest {
             }
         };
         var service = service(
-                c -> Mono.just(LoginProtectedAuthFlowContextResult.valid(new LoginPreAuthContext("member", "MBR", null, java.util.Map.of(), NOW, "v1"), "old", new LoginPreAuthDestination("dst_selected", "email", "member@example.com", "m***@example.com"),"csrf_hash")),
+                c -> Mono.just(LoginProtectedAuthFlowContextResult
+                        .valid(new LoginPreAuthContext("member", "MBR", null, java.util.Map.of(), NOW, "v1"), "old",
+                                new LoginPreAuthDestination("dst_selected", "email", "member@example.com",
+                                        "m***@example.com"),
+                                "csrf_hash")),
                 otp, c -> Mono.error(new AssertionError()), c -> Mono.error(new AssertionError()));
         StepVerifier.create(service.resend(COMMAND)).assertNext(r -> {
             assertThat(r.status()).isEqualTo(ResendLoginOtpStatus.COOLDOWN_ACTIVE);
@@ -68,7 +72,8 @@ class LoginOtpResendServiceTest {
     @Test
     void invalidContextHasNoOtpSideEffects() {
         var service = service(
-                c -> Mono.just(LoginProtectedAuthFlowContextResult.invalid(LoginProtectedAuthFlowContextStatus.CSRF_INVALID)),
+                c -> Mono.just(
+                        LoginProtectedAuthFlowContextResult.invalid(LoginProtectedAuthFlowContextStatus.CSRF_INVALID)),
                 new Stub() {
                 }, c -> Mono.error(new AssertionError()), c -> Mono.error(new AssertionError()));
         StepVerifier.create(service.resend(COMMAND))
@@ -82,7 +87,8 @@ class LoginOtpResendServiceTest {
                 .verifyComplete();
     }
 
-    private LoginOtpResendService service(LoginProtectedAuthFlowContextLoader l, OtpChallengePort o, MessageDeliveryPort m,
+    private LoginOtpResendService service(LoginProtectedAuthFlowContextLoader l, OtpChallengePort o,
+            MessageDeliveryPort m,
             LoginOtpSessionBindingPort b) {
         return new LoginOtpResendService(l, o, m, b, Clock.fixed(NOW, ZoneOffset.UTC),
                 new LoginOtpSendPolicy(6, true, 300, 60, 5, false, 0, "Your code is {code}", "Code"));

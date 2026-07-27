@@ -41,7 +41,7 @@ public class AuthRegistrationOtpController {
     private final RegistrationOtpVerifyWebMapper registrationOtpVerifyMapper;
     private final RegistrationIdempotencyProperties idempotencyProperties;
 
-@PostMapping(path = "/resend", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(path = "/resend", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<ResponseEntity<MutationResponse<RegistrationWorkflowResultResponse<RegistrationOtpResendResponse>>>> resendOtp(
             @CookieValue(name = "auth_flow_sid", required = false) String authFlowSessionId,
             @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrfToken,
@@ -52,13 +52,16 @@ public class AuthRegistrationOtpController {
             @RequestHeader(name = "Referer", required = false) String referer,
             ServerHttpResponse response) {
         if (!hasText(authFlowSessionId)) {
-            return Mono.just(RegistrationHttpResponses.toResponse(registrationOtpResendMapper.missingAuthFlowCookieResponse()));
+            return Mono.just(
+                    RegistrationHttpResponses.toResponse(registrationOtpResendMapper.missingAuthFlowCookieResponse()));
         }
         if (!hasText(csrfToken)) {
-            return Mono.just(RegistrationHttpResponses.toResponse(registrationOtpResendMapper.missingCsrfTokenResponse()));
+            return Mono
+                    .just(RegistrationHttpResponses.toResponse(registrationOtpResendMapper.missingCsrfTokenResponse()));
         }
         if (!hasText(idempotencyKey)) {
-            return Mono.just(RegistrationHttpResponses.toResponse(registrationOtpResendMapper.missingIdempotencyKeyResponse()));
+            return Mono.just(
+                    RegistrationHttpResponses.toResponse(registrationOtpResendMapper.missingIdempotencyKeyResponse()));
         }
 
         ResendRegistrationOtpCommand command;
@@ -73,15 +76,16 @@ public class AuthRegistrationOtpController {
                     trimToNull(requestId),
                     idempotencyProperties.otpResendTtl());
         } catch (RuntimeException exception) {
-            return Mono.just(RegistrationHttpResponses.toResponse(registrationOtpResendMapper.missingAuthFlowCookieResponse()));
+            return Mono.just(
+                    RegistrationHttpResponses.toResponse(registrationOtpResendMapper.missingAuthFlowCookieResponse()));
         }
 
         return resendRegistrationOtpUseCase.resend(command)
                 .map(result -> {
-                    if (result.status()
-                            != com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.ResendRegistrationOtpResultStatus.INVALID_AUTH_FLOW
-                            && result.status()
-                            != com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.ResendRegistrationOtpResultStatus.CSRF_INVALID) {
+                    if (result
+                            .status() != com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.ResendRegistrationOtpResultStatus.INVALID_AUTH_FLOW
+                            && result
+                                    .status() != com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.ResendRegistrationOtpResultStatus.CSRF_INVALID) {
                         cookieWriter.writeAuthFlowCookie(response, authFlowSessionId);
                     }
                     return RegistrationHttpResponses.toResponse(
@@ -89,7 +93,7 @@ public class AuthRegistrationOtpController {
                 });
     }
 
-@PostMapping(path = "/verify", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(path = "/verify", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<ResponseEntity<MutationResponse<RegistrationWorkflowResultResponse<RegistrationOtpVerifyResponse>>>> verifyOtp(
             @RequestBody(required = false) RegistrationOtpVerifyRequest request,
             @CookieValue(name = "auth_flow_sid", required = false) String authFlowSessionId,
@@ -101,13 +105,16 @@ public class AuthRegistrationOtpController {
             @RequestHeader(name = "Referer", required = false) String referer,
             ServerHttpResponse response) {
         if (!hasText(authFlowSessionId)) {
-            return Mono.just(RegistrationHttpResponses.toResponse(registrationOtpVerifyMapper.missingAuthFlowCookieResponse()));
+            return Mono.just(
+                    RegistrationHttpResponses.toResponse(registrationOtpVerifyMapper.missingAuthFlowCookieResponse()));
         }
         if (!hasText(csrfToken)) {
-            return Mono.just(RegistrationHttpResponses.toResponse(registrationOtpVerifyMapper.missingCsrfTokenResponse()));
+            return Mono
+                    .just(RegistrationHttpResponses.toResponse(registrationOtpVerifyMapper.missingCsrfTokenResponse()));
         }
         if (!hasText(idempotencyKey)) {
-            return Mono.just(RegistrationHttpResponses.toResponse(registrationOtpVerifyMapper.missingIdempotencyKeyResponse()));
+            return Mono.just(
+                    RegistrationHttpResponses.toResponse(registrationOtpVerifyMapper.missingIdempotencyKeyResponse()));
         }
         if (request == null || !hasText(request.code())) {
             return Mono.just(RegistrationHttpResponses.toResponse(registrationOtpVerifyMapper.missingCodeResponse()));
@@ -126,23 +133,24 @@ public class AuthRegistrationOtpController {
                     trimToNull(requestId),
                     idempotencyProperties.otpVerifyTtl());
         } catch (RuntimeException exception) {
-            return Mono.just(RegistrationHttpResponses.toResponse(registrationOtpVerifyMapper.missingAuthFlowCookieResponse()));
+            return Mono.just(
+                    RegistrationHttpResponses.toResponse(registrationOtpVerifyMapper.missingAuthFlowCookieResponse()));
         }
 
         return verifyRegistrationOtpUseCase.verify(command)
                 .map(result -> {
-                    if (result.status()
-                            != com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.VerifyRegistrationOtpResultStatus.INVALID_AUTH_FLOW
-                            && result.status()
-                            != com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.VerifyRegistrationOtpResultStatus.CSRF_INVALID) {
+                    if (result
+                            .status() != com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.VerifyRegistrationOtpResultStatus.INVALID_AUTH_FLOW
+                            && result
+                                    .status() != com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.VerifyRegistrationOtpResultStatus.CSRF_INVALID) {
                         cookieWriter.writeAuthFlowCookie(response, authFlowSessionId);
                     }
-                        return RegistrationHttpResponses.toResponse(
+                    return RegistrationHttpResponses.toResponse(
                             registrationOtpVerifyMapper.toMutationResponse(result));
                 });
     }
 
-private boolean hasText(String value) {
+    private boolean hasText(String value) {
         return value != null && !value.isBlank();
     }
 

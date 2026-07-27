@@ -32,7 +32,8 @@ import java.util.Map;
  * APIM HTTP transport facade.
  * - Resolves credential profile per operation
  * - Attaches API key and Authorization header per-profile
- * - Evicts and retries on `invalid_token` and `invalid_public_key` when appropriate
+ * - Evicts and retries on `invalid_token` and `invalid_public_key` when
+ * appropriate
  */
 @Slf4j
 @Service
@@ -150,7 +151,7 @@ public class ApimWebClientFacade {
         if (error instanceof ApimException apimException) {
             String message = apimException.getMessage();
             return message != null && message.matches(
-                    ".*status=(500|501|502|503|504|505|506|507|508|510|511)(?:\\s|\\b).*" );
+                    ".*status=(500|501|502|503|504|505|506|507|508|510|511)(?:\\s|\\b).*");
         }
         if (error instanceof WebClientRequestException || error instanceof TimeoutException) {
             return true;
@@ -159,7 +160,8 @@ public class ApimWebClientFacade {
         return cause != null && cause != error && isTransientBusinessFailure(cause);
     }
 
-    private Mono<String> sendWithProfile(ApimCredentialProfile profile, String path, Object requestBody, RetryContext retryContext) {
+    private Mono<String> sendWithProfile(ApimCredentialProfile profile, String path, Object requestBody,
+            RetryContext retryContext) {
         return apimTokenService.getAccessToken(profile)
                 .flatMap(token -> {
                     String baseUrl = profile.baseUrl() != null ? profile.baseUrl() : apimProperties.getBaseUrl();
@@ -167,7 +169,8 @@ public class ApimWebClientFacade {
 
                     WebClient.RequestBodySpec request = client.post()
                             .uri(uriBuilder -> uriBuilder.path(path).build())
-                            .header(apimProperties.getApiKeyHeaderName(), profile.apiKey() != null ? profile.apiKey() : "")
+                            .header(apimProperties.getApiKeyHeaderName(),
+                                    profile.apiKey() != null ? profile.apiKey() : "")
                             .header("Authorization", "Bearer " + token);
 
                     String certificateHeaderValue = getCertificateHeaderValue();
@@ -178,7 +181,8 @@ public class ApimWebClientFacade {
                     WebClient.RequestHeadersSpec<?> req = request.bodyValue(requestBody);
 
                     logRequest(path, requestBody);
-                    return req.exchangeToMono(response -> handleResponse(response, profile, path, requestBody, retryContext));
+                    return req.exchangeToMono(
+                            response -> handleResponse(response, profile, path, requestBody, retryContext));
                 });
     }
 
@@ -186,7 +190,8 @@ public class ApimWebClientFacade {
         return apimAppCertificateService == null ? null : apimAppCertificateService.getCertificateHeaderValue();
     }
 
-    private Mono<String> handleResponse(ClientResponse response, ApimCredentialProfile profile, String path, Object requestBody, RetryContext retryContext) {
+    private Mono<String> handleResponse(ClientResponse response, ApimCredentialProfile profile, String path,
+            Object requestBody, RetryContext retryContext) {
         HttpStatusCode statusCode = response.statusCode();
         return response.bodyToMono(String.class)
                 .defaultIfEmpty("")
@@ -196,7 +201,8 @@ public class ApimWebClientFacade {
                         if ("invalid_token".equals(errorCode)) {
                             if (!retryContext.tokenRetry) {
                                 retryContext.tokenRetry = true;
-                                log.info("APIM returned invalid_token for profileId={}; evicting cached token and retrying once.",
+                                log.info(
+                                        "APIM returned invalid_token for profileId={}; evicting cached token and retrying once.",
                                         profile.profileId());
                                 apimTokenService.evictToken(profile.profileId());
                                 return apimTokenService.refreshAccessToken(profile)
@@ -206,9 +212,10 @@ public class ApimWebClientFacade {
                         if ("invalid_public_key".equals(errorCode)) {
                             if (!retryContext.certificateRetry) {
                                 retryContext.certificateRetry = true;
-                                                        apimCertificateService.evictCertificate(profile.profileId());
-                                                        // Let caller (adapter) be responsible for re-encryption; retry the same payload once
-                                                        return sendWithProfile(profile, path, requestBody, retryContext);
+                                apimCertificateService.evictCertificate(profile.profileId());
+                                // Let caller (adapter) be responsible for re-encryption; retry the same payload
+                                // once
+                                return sendWithProfile(profile, path, requestBody, retryContext);
                             }
                         }
 
@@ -265,7 +272,8 @@ public class ApimWebClientFacade {
         this.webClientBuilder = WebClient.builder();
         this.objectMapper = objectMapper;
         this.profileResolver = ctx -> Mono.empty();
-        this.apimTokenService = new com.bct.ngtpa.apiservice.adapter.out.apim.oauth.ApimTokenService(WebClient.builder(), new ApimProperties());
+        this.apimTokenService = new com.bct.ngtpa.apiservice.adapter.out.apim.oauth.ApimTokenService(
+                WebClient.builder(), new ApimProperties());
         this.apimCertificateService = new ApimCertificateService(WebClient.builder(), new ApimProperties(), null);
         this.apimProperties = new ApimProperties();
         this.apimAppCertificateService = null;

@@ -13,8 +13,8 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 class TrpGetAccountListAdapterTest {
-    private static final LoginAccountAuthorizationCommand COMMAND =
-            new LoginAccountAuthorizationCommand("member01", "MBR", "cust-id", "member01", "req-1");
+    private static final LoginAccountAuthorizationCommand COMMAND = new LoginAccountAuthorizationCommand("member01",
+            "MBR", "cust-id", "member01", "req-1");
 
     @Test
     void mapsSuccessfulSharedEnvelopeAndPreservesRecordOrder() {

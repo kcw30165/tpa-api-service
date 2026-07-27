@@ -1,1 +1,19 @@
-package com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.verify;public record VerifyLoginOtpCommand(String authFlowSessionId,String csrfToken,String otpCode,String idempotencyKey,String origin,String referer,String acceptLanguage,String correlationId){public VerifyLoginOtpCommand{if(blank(authFlowSessionId)||blank(csrfToken)||blank(otpCode)||blank(idempotencyKey))throw new IllegalArgumentException("Required OTP verification input missing");}@Override public String toString(){return "VerifyLoginOtpCommand[authFlowSessionId=<redacted>, csrfToken=<redacted>, otpCode=<redacted>, idempotencyKey=<redacted>, origin=<redacted>, referer=<redacted>, acceptLanguage="+acceptLanguage+", correlationId="+correlationId+"]";}private static boolean blank(String v){return v==null||v.isBlank();}}
+package com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.verify;
+
+public record VerifyLoginOtpCommand(String authFlowSessionId, String csrfToken, String otpCode, String idempotencyKey,
+        String origin, String referer, String acceptLanguage, String correlationId) {
+    public VerifyLoginOtpCommand {
+        if (blank(authFlowSessionId) || blank(csrfToken) || blank(otpCode) || blank(idempotencyKey))
+            throw new IllegalArgumentException("Required OTP verification input missing");
+    }
+
+    @Override
+    public String toString() {
+        return "VerifyLoginOtpCommand[authFlowSessionId=<redacted>, csrfToken=<redacted>, otpCode=<redacted>, idempotencyKey=<redacted>, origin=<redacted>, referer=<redacted>, acceptLanguage="
+                + acceptLanguage + ", correlationId=" + correlationId + "]";
+    }
+
+    private static boolean blank(String v) {
+        return v == null || v.isBlank();
+    }
+}

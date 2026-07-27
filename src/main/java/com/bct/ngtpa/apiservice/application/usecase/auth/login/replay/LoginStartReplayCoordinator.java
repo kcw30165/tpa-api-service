@@ -10,7 +10,9 @@ import java.util.List;
 import java.util.Objects;
 import reactor.core.publisher.Mono;
 
-/** Coordinates protected response replay with the credential idempotency record. */
+/**
+ * Coordinates protected response replay with the credential idempotency record.
+ */
 public final class LoginStartReplayCoordinator {
     private static final String OUTCOME_STARTED = "STARTED";
     private final LoginStartReplayPort replayPort;
@@ -102,7 +104,8 @@ public final class LoginStartReplayCoordinator {
 
     private StartLoginResult toReplayResult(LoginStartReplayPayload payload) {
         long remaining = Duration.between(clock.instant(), payload.expiresAt()).toSeconds();
-        if (remaining <= 0) return unknown();
+        if (remaining <= 0)
+            return unknown();
         return new StartLoginResult(
                 StartLoginStatus.COMPLETED_REPLAY,
                 payload.authFlowSessionId(),

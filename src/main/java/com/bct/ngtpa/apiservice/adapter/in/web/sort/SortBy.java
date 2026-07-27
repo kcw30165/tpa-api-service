@@ -8,11 +8,15 @@ import java.lang.annotation.Target;
 /**
  * Declares a single field sort rule within a {@link SortList}.
  *
- * <p>{@code field} may be a simple accessor name (e.g. {@code "dealingDate"}) or a
- * dot-separated nested path (e.g. {@code "period.fromDate"}). Accessors are resolved via the
+ * <p>
+ * {@code field} may be a simple accessor name (e.g. {@code "dealingDate"}) or a
+ * dot-separated nested path (e.g. {@code "period.fromDate"}). Accessors are
+ * resolved via the
  * Java record accessor method for each path segment.
  *
- * <p>Multiple {@link SortBy} rules on the same {@link SortList} form a compound comparator applied
+ * <p>
+ * Multiple {@link SortBy} rules on the same {@link SortList} form a compound
+ * comparator applied
  * in declaration order (primary, secondary, tertiary, …).
  */
 @Retention(RetentionPolicy.RUNTIME)
@@ -25,7 +29,10 @@ public @interface SortBy {
     /** Sort direction. Defaults to {@link SortDirection#ASC}. */
     SortDirection direction() default SortDirection.ASC;
 
-    /** Value type used to determine comparison semantics. Defaults to {@link SortType#STRING}. */
+    /**
+     * Value type used to determine comparison semantics. Defaults to
+     * {@link SortType#STRING}.
+     */
     SortType type() default SortType.STRING;
 
     /**
@@ -35,7 +42,8 @@ public @interface SortBy {
     String datePattern() default "";
 
     /**
-     * When {@code true} (default), {@code null}/blank/unparseable values sort after non-null values.
+     * When {@code true} (default), {@code null}/blank/unparseable values sort after
+     * non-null values.
      * Set to {@code false} to place them first.
      */
     boolean nullsLast() default true;

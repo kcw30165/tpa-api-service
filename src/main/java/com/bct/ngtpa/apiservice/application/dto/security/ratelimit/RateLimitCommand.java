@@ -5,9 +5,11 @@ import java.util.Objects;
 /**
  * Application-level rate-limit decision input.
  *
- * <p>The {@code bucketId} is an opaque caller-prepared identifier. It must not
+ * <p>
+ * The {@code bucketId} is an opaque caller-prepared identifier. It must not
  * contain raw PII such as email, mobile, phone number, IP address, registration
- * session id, Redis keys, or request payload data.</p>
+ * session id, Redis keys, or request payload data.
+ * </p>
  */
 public record RateLimitCommand(
         RateLimitBucket bucket,
@@ -27,7 +29,8 @@ public record RateLimitCommand(
                 throw new IllegalArgumentException("maxAttempts must be greater than zero when rate limit is enabled");
             }
             if (windowSeconds <= 0) {
-                throw new IllegalArgumentException("windowSeconds must be greater than zero when rate limit is enabled");
+                throw new IllegalArgumentException(
+                        "windowSeconds must be greater than zero when rate limit is enabled");
             }
         }
     }

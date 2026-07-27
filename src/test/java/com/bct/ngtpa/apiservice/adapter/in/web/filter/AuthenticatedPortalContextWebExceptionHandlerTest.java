@@ -3,7 +3,6 @@ package com.bct.ngtpa.apiservice.adapter.in.web.filter;
 import static org.assertj.core.api.Assertions.assertThat;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedPortalContextResolutionException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.*;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;

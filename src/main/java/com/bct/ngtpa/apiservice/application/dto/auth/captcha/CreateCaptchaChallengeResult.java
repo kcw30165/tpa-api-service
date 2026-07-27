@@ -2,7 +2,8 @@ package com.bct.ngtpa.apiservice.application.dto.auth.captcha;
 
 import java.util.Objects;
 
-public record CreateCaptchaChallengeResult(CaptchaChallengeId captchaChallengeId, CaptchaImage image, int expiresInSeconds) {
+public record CreateCaptchaChallengeResult(CaptchaChallengeId captchaChallengeId, CaptchaImage image,
+        int expiresInSeconds) {
 
     public CreateCaptchaChallengeResult {
         Objects.requireNonNull(captchaChallengeId, "captchaChallengeId must not be null");
@@ -14,6 +15,7 @@ public record CreateCaptchaChallengeResult(CaptchaChallengeId captchaChallengeId
 
     @Override
     public String toString() {
-        return "CreateCaptchaChallengeResult[captchaChallengeId=<redacted>, image=<redacted>, expiresInSeconds=" + expiresInSeconds + "]";
+        return "CreateCaptchaChallengeResult[captchaChallengeId=<redacted>, image=<redacted>, expiresInSeconds="
+                + expiresInSeconds + "]";
     }
 }

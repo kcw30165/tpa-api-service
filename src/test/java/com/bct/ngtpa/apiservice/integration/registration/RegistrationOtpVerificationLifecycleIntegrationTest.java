@@ -20,7 +20,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import reactor.core.publisher.Mono;
 
-/** Executes the real OTP verification orchestration with controlled external ports. */
+/**
+ * Executes the real OTP verification orchestration with controlled external
+ * ports.
+ */
 @ExtendWith(RegistrationTestResultExtension.class)
 class RegistrationOtpVerificationLifecycleIntegrationTest {
     private static final Instant NOW = Instant.parse("2026-07-17T00:00:00Z");
@@ -35,7 +38,11 @@ class RegistrationOtpVerificationLifecycleIntegrationTest {
 
     @BeforeEach
     void reset() {
-        context.reset(); idempotency.reset(); otp.reset(); session.reset(); lookup.reset();
+        context.reset();
+        idempotency.reset();
+        otp.reset();
+        session.reset();
+        lookup.reset();
     }
 
     @Test
@@ -71,8 +78,8 @@ class RegistrationOtpVerificationLifecycleIntegrationTest {
         lookup.accounts = List.of();
         VerifyRegistrationOtpResult result = service.verify(command("idem-none", "123456")).block();
         assertThat(result.status()).isEqualTo(VerifyRegistrationOtpResultStatus.NO_ELIGIBLE_TRUSTS);
-        assertThat(result.errors()).singleElement().satisfies(error ->
-                assertThat(error.code()).isEqualTo("err.registration.trustLookup.noEligibleTrusts"));
+        assertThat(result.errors()).singleElement().satisfies(
+                error -> assertThat(error.code()).isEqualTo("err.registration.trustLookup.noEligibleTrusts"));
     }
 
     @Test
@@ -194,23 +201,28 @@ class RegistrationOtpVerificationLifecycleIntegrationTest {
         RegistrationProtectedAuthFlowContextResult result;
         String activeOtpId;
         boolean rejectOrigin;
+
         void reset() {
-            activeOtpId = "otp-old"; rejectOrigin = false;
+            activeOtpId = "otp-old";
+            rejectOrigin = false;
             result = valid();
         }
+
         private RegistrationProtectedAuthFlowContextResult valid() {
             return RegistrationProtectedAuthFlowContextResult.valid(activeOtpId,
                     "m****r@example.com", new RegistrationAuthFlowContext(
                             RegistrationIdentityType.ID, "3024102", "04/04/1982",
                             RegistrationContactType.EMAIL, "member@example.com"));
         }
+
         public Mono<RegistrationProtectedAuthFlowContextResult> load(
                 RegistrationProtectedAuthFlowContextCommand command) {
             if (rejectOrigin && !"https://portal.test".equals(command.origin())) {
                 return Mono.just(RegistrationProtectedAuthFlowContextResult.invalid(
                         RegistrationProtectedAuthFlowContextStatus.INVALID_STATUS));
             }
-            if (result != null && result.isValid()) return Mono.just(valid());
+            if (result != null && result.isValid())
+                return Mono.just(valid());
             return Mono.just(result);
         }
     }
@@ -224,32 +236,46 @@ class RegistrationOtpVerificationLifecycleIntegrationTest {
     static final class IdempotencyStore implements RegistrationIdempotencyPort {
         private final Map<String, RegistrationIdempotencyRecord> records = new HashMap<>();
         int starts;
-        void reset() { records.clear(); starts = 0; }
+
+        void reset() {
+            records.clear();
+            starts = 0;
+        }
+
         public Mono<RegistrationIdempotencyStartResult> startProcessing(RegistrationIdempotencyStartCommand command) {
             starts++;
             RegistrationIdempotencyRecord existing = records.get(command.idempotencyKey().value());
-            if (existing != null) return Mono.just(new RegistrationIdempotencyStartResult(
-                    RegistrationIdempotencyStartOutcome.COMPLETED_REPLAY, existing));
+            if (existing != null)
+                return Mono.just(new RegistrationIdempotencyStartResult(
+                        RegistrationIdempotencyStartOutcome.COMPLETED_REPLAY, existing));
             RegistrationIdempotencyRecord processing = record(command.idempotencyKey(), command.requestHash(),
                     RegistrationIdempotencyStatus.PROCESSING, null);
             records.put(command.idempotencyKey().value(), processing);
             return Mono.just(new RegistrationIdempotencyStartResult(
                     RegistrationIdempotencyStartOutcome.STARTED, processing));
         }
+
         public Mono<RegistrationIdempotencyRecord> markCompleted(RegistrationIdempotencyCompleteCommand command) {
             RegistrationIdempotencyRecord completed = record(command.idempotencyKey(), command.requestHash(),
                     RegistrationIdempotencyStatus.COMPLETED, command.responseSnapshot());
-            records.put(command.idempotencyKey().value(), completed); return Mono.just(completed);
+            records.put(command.idempotencyKey().value(), completed);
+            return Mono.just(completed);
         }
+
         public Mono<RegistrationIdempotencyRecord> markFailed(RegistrationIdempotencyFailCommand command) {
             return Mono.just(records.get(command.idempotencyKey().value()));
         }
-        public Mono<Optional<RegistrationIdempotencyRecord>> load(RegistrationIdempotencyAction action, RegistrationIdempotencyKey key) {
+
+        public Mono<Optional<RegistrationIdempotencyRecord>> load(RegistrationIdempotencyAction action,
+                RegistrationIdempotencyKey key) {
             return Mono.just(Optional.ofNullable(records.get(key.value())));
         }
+
         public Mono<Void> delete(RegistrationIdempotencyAction action, RegistrationIdempotencyKey key) {
-            records.remove(key.value()); return Mono.empty();
+            records.remove(key.value());
+            return Mono.empty();
         }
+
         private RegistrationIdempotencyRecord record(RegistrationIdempotencyKey key,
                 RegistrationRequestHash hash, RegistrationIdempotencyStatus status,
                 RegistrationIdempotencyResponseSnapshot snapshot) {
@@ -263,33 +289,61 @@ class RegistrationOtpVerificationLifecycleIntegrationTest {
         int calls;
         String lastChallengeId;
         int maxAttemptsForActiveChallenge;
-        void reset() { result = RegistrationOtpVerificationResult.verified(); calls = 0; lastChallengeId = null; maxAttemptsForActiveChallenge = 5; }
-        public Mono<RegistrationOtpCreationResult> createOtp(RegistrationContactType type, String destination) { throw new UnsupportedOperationException(); }
+
+        void reset() {
+            result = RegistrationOtpVerificationResult.verified();
+            calls = 0;
+            lastChallengeId = null;
+            maxAttemptsForActiveChallenge = 5;
+        }
+
+        public Mono<RegistrationOtpCreationResult> createOtp(RegistrationContactType type, String destination) {
+            throw new UnsupportedOperationException();
+        }
+
         public Mono<RegistrationOtpVerificationResult> verifyOtp(String activeId, String code) {
-            calls++; lastChallengeId = activeId; return Mono.just(result);
+            calls++;
+            lastChallengeId = activeId;
+            return Mono.just(result);
         }
     }
 
     static final class SessionGateway implements RegistrationSessionPort {
         int verifiedTransitions;
-        void reset() { verifiedTransitions = 0; }
-        public Mono<String> createRegistrationSession(String masked, RegistrationContactType type) { throw new UnsupportedOperationException(); }
-        public Mono<Void> updateOtpChallenge(String sid, String otpId, RegistrationContactType type, String masked) { return Mono.empty(); }
-        public Mono<Void> markOtpVerified(String sid) { verifiedTransitions++; return Mono.empty(); }
+
+        void reset() {
+            verifiedTransitions = 0;
+        }
+
+        public Mono<String> createRegistrationSession(String masked, RegistrationContactType type) {
+            throw new UnsupportedOperationException();
+        }
+
+        public Mono<Void> updateOtpChallenge(String sid, String otpId, RegistrationContactType type, String masked) {
+            return Mono.empty();
+        }
+
+        public Mono<Void> markOtpVerified(String sid) {
+            verifiedTransitions++;
+            return Mono.empty();
+        }
     }
 
     static final class LookupGateway implements RegistrationLookupPort {
         RegistrationLookupStatus status;
         List<RegistrationLookupAccount> accounts;
         int calls;
+
         void reset() {
             status = RegistrationLookupStatus.ELIGIBLE;
             accounts = List.of(new RegistrationLookupAccount(
                     "member@example.com", "91234567", "OI", "JPM"));
             calls = 0;
         }
+
         public Mono<RegistrationLookupResult> searchUnregisteredMember(RegistrationLookupCommand command) {
-            calls++; return Mono.just(new RegistrationLookupResult(status, accounts, null));
+            calls++;
+            return Mono.just(new RegistrationLookupResult(status, accounts, null));
         }
     }
 }

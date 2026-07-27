@@ -152,7 +152,8 @@ class P4ASessionManagementFoundationIntegrationTest {
                     var authFlow = context.getBean(AuthFlowSessionProperties.class);
                     var cors = context.getBean(CorsProperties.class);
 
-                    assertThat(fieldNames(authFlow.getClass())).doesNotContain("cors", "allowedOrigins", "allowCredentials");
+                    assertThat(fieldNames(authFlow.getClass())).doesNotContain("cors", "allowedOrigins",
+                            "allowCredentials");
                     assertThat(Arrays.stream(authFlow.getClass().getDeclaredClasses()).map(Class::getSimpleName))
                             .doesNotContain("Cors", "CorsPolicy");
                     assertThat(fieldNames(authFlow.getOriginValidation().getClass()))
@@ -184,7 +185,8 @@ class P4ASessionManagementFoundationIntegrationTest {
         assertThat(readme).contains("### Session Management Foundation");
         assertThat(readme).contains("P4A adds reusable session-management foundation components");
         assertThat(readme).contains("`auth_flow_sid` is HttpOnly, Secure, SameSite=None, Path=/api/v1/auth");
-        assertThat(readme).contains("`XSRF-TOKEN` is Secure, SameSite=None, Path=/api/v1/auth, and intentionally not HttpOnly");
+        assertThat(readme)
+                .contains("`XSRF-TOKEN` is Secure, SameSite=None, Path=/api/v1/auth, and intentionally not HttpOnly");
         assertThat(readme).contains("existing `CorsProperties` remains the single source of truth");
         assertThat(readme).contains("Not implemented in P4A");
         assertThat(readme).contains("AuthFlowSession Redis persistence");
@@ -196,7 +198,7 @@ class P4ASessionManagementFoundationIntegrationTest {
     }
 
     @Configuration(proxyBeanMethods = false)
-    @EnableConfigurationProperties({AuthFlowSessionProperties.class, CorsProperties.class})
+    @EnableConfigurationProperties({ AuthFlowSessionProperties.class, CorsProperties.class })
     static class TestConfig {
     }
 }

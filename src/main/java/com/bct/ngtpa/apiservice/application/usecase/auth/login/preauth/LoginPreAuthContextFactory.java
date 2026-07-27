@@ -10,15 +10,20 @@ public final class LoginPreAuthContextFactory {
     private static final String WORKFLOW_VERSION = "v1";
     private final LoginDestinationIdGenerator ids;
     private final LoginDestinationMasker masker;
+
     public LoginPreAuthContextFactory(LoginDestinationIdGenerator ids, LoginDestinationMasker masker) {
-        this.ids = Objects.requireNonNull(ids); this.masker = Objects.requireNonNull(masker);
+        this.ids = Objects.requireNonNull(ids);
+        this.masker = Objects.requireNonNull(masker);
     }
+
     public LoginPreAuthContext create(CredentialAuthenticationResult result, Instant verifiedAt) {
-        Objects.requireNonNull(result); Objects.requireNonNull(verifiedAt);
+        Objects.requireNonNull(result);
+        Objects.requireNonNull(verifiedAt);
         if (result.status() != CredentialAuthenticationStatus.AUTHENTICATED) {
             throw new IllegalArgumentException("Only authenticated credentials can create pre-auth context");
         }
-        if (result.destinations().isEmpty()) throw new IllegalStateException("Login requires at least one OTP destination");
+        if (result.destinations().isEmpty())
+            throw new IllegalStateException("Login requires at least one OTP destination");
         Map<String, LoginPreAuthDestination> destinations = new LinkedHashMap<>();
         for (LoginCredentialDestination source : result.destinations()) {
             String id = ids.generate();

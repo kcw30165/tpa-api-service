@@ -41,10 +41,9 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
      * Assumed APIM datetime format based on BRD section 6.1 (dd/mm/yyyy hh:mm:ss).
      * To be confirmed with the APIM/Progress team.
      */
-        private static final List<DateTimeFormatter> APIM_DT_FORMATTERS = List.of(
+    private static final List<DateTimeFormatter> APIM_DT_FORMATTERS = List.of(
             DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"),
-            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
-        );
+            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
 
     private final ApimWebClientFacade apimWebClientFacade;
     private final ApimCertificateService apimCertificateService;
@@ -58,11 +57,11 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
             var request = apimPayloadCryptoService.encryptRequest(
                     API_NAME, toApimRequest(command), GetMessageBoardApimRequest.class, null);
             return apimWebClientFacade.post(API_NAME, request)
-                .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
-                    API_NAME, body, GetMessageBoardDataItem.class, null))
-                .map(this::toNotificationListResult)
-                .onErrorMap(ApimCryptoException.class, ex ->
-                    new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
+                    .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
+                            API_NAME, body, GetMessageBoardDataItem.class, null))
+                    .map(this::toNotificationListResult)
+                    .onErrorMap(ApimCryptoException.class, ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR,
+                            ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
         }
 
         return apimCertificateService.getBctPublicKey()
@@ -70,12 +69,12 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
                     var request = apimPayloadCryptoService.encryptRequest(
                             API_NAME, toApimRequest(command), GetMessageBoardApimRequest.class, publicKey);
                     return apimWebClientFacade.post(API_NAME, request)
-                        .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
-                            API_NAME, body, GetMessageBoardDataItem.class, publicKey))
-                        .map(this::toNotificationListResult);
+                            .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
+                                    API_NAME, body, GetMessageBoardDataItem.class, publicKey))
+                            .map(this::toNotificationListResult);
                 })
-                .onErrorMap(ApimCryptoException.class, ex ->
-                    new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
+                .onErrorMap(ApimCryptoException.class, ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR,
+                        ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
     }
 
     private GetMessageBoardApimRequest toApimRequest(GetNotificationsCommand command) {
@@ -122,11 +121,11 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
                 item.getMsgContentEng(),
                 status.isRead(),
                 parseDateTime(item.getStartDatetime()),
-                null,               // endDatetime: TBC — not yet returned by APIM
+                null, // endDatetime: TBC — not yet returned by APIM
                 status,
                 (AudienceType) null, // targetAudience: TBC — not yet returned by APIM
-                null,               // triggerPoint:  TBC — not yet returned by APIM
-                List.of()           // hyperlinks:    TBC — not yet returned by APIM
+                null, // triggerPoint: TBC — not yet returned by APIM
+                List.of() // hyperlinks: TBC — not yet returned by APIM
         );
     }
 
@@ -148,4 +147,3 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
         return null;
     }
 }
-

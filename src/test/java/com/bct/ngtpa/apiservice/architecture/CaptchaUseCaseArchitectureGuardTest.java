@@ -1,7 +1,6 @@
 package com.bct.ngtpa.apiservice.architecture;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
-import static org.assertj.core.api.Assertions.assertThat;
 
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -29,7 +28,8 @@ class CaptchaUseCaseArchitectureGuardTest {
                         "jakarta.servlet..",
                         "com.bct.ngtpa.apiservice.adapter..",
                         "io.lettuce..",
-                        "org.springframework.data.redis..").check(classes);
+                        "org.springframework.data.redis..")
+                .check(classes);
     }
 
     private static boolean contains(Path path, String text) {

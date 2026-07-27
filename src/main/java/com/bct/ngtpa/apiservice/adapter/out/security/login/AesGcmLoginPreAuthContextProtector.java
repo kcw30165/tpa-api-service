@@ -106,7 +106,10 @@ public final class AesGcmLoginPreAuthContextProtector
         return value.trim();
     }
 
-    /** Adapter-private wire payload with an explicit ISO-8601 Instant representation. */
+    /**
+     * Adapter-private wire payload with an explicit ISO-8601 Instant
+     * representation.
+     */
     private record ProtectedPayload(
             String normalizedUsername,
             String custType,

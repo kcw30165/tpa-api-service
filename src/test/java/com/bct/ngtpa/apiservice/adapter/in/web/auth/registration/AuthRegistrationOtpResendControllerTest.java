@@ -13,7 +13,6 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.in.ResendRegistrationOtpUseCase;
-import com.bct.ngtpa.apiservice.application.port.in.VerifyRegistrationOtpUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Method;

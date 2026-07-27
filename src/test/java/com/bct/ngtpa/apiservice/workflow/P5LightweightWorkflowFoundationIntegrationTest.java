@@ -2,7 +2,6 @@ package com.bct.ngtpa.apiservice.workflow;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper;
@@ -10,10 +9,7 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowConstants;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowPageSelections;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
-import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorKey;
-import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
-import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowFailureCategory;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowFailureClassification;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowLogSeverity;
@@ -141,12 +137,18 @@ class P5LightweightWorkflowFoundationIntegrationTest {
 
     @Test
     void p5WorkflowFailureClassificationMatchesLoggingSeverityContract() {
-        assertThat(WorkflowFailureClassification.forCategory(WorkflowFailureCategory.VALIDATION).logSeverity()).isEqualTo(WorkflowLogSeverity.ERROR);
-        assertThat(WorkflowFailureClassification.forCategory(WorkflowFailureCategory.BUSINESS).logSeverity()).isEqualTo(WorkflowLogSeverity.ERROR);
-        assertThat(WorkflowFailureClassification.forCategory(WorkflowFailureCategory.SECURITY).logSeverity()).isEqualTo(WorkflowLogSeverity.ERROR);
-        assertThat(WorkflowFailureClassification.forCategory(WorkflowFailureCategory.DOWNSTREAM_BUSINESS).logSeverity()).isEqualTo(WorkflowLogSeverity.ERROR);
-        assertThat(WorkflowFailureClassification.forCategory(WorkflowFailureCategory.DOWNSTREAM_AVAILABILITY).logSeverity()).isEqualTo(WorkflowLogSeverity.FATAL);
-        assertThat(WorkflowFailureClassification.forCategory(WorkflowFailureCategory.SYSTEM).logSeverity()).isEqualTo(WorkflowLogSeverity.FATAL);
+        assertThat(WorkflowFailureClassification.forCategory(WorkflowFailureCategory.VALIDATION).logSeverity())
+                .isEqualTo(WorkflowLogSeverity.ERROR);
+        assertThat(WorkflowFailureClassification.forCategory(WorkflowFailureCategory.BUSINESS).logSeverity())
+                .isEqualTo(WorkflowLogSeverity.ERROR);
+        assertThat(WorkflowFailureClassification.forCategory(WorkflowFailureCategory.SECURITY).logSeverity())
+                .isEqualTo(WorkflowLogSeverity.ERROR);
+        assertThat(WorkflowFailureClassification.forCategory(WorkflowFailureCategory.DOWNSTREAM_BUSINESS).logSeverity())
+                .isEqualTo(WorkflowLogSeverity.ERROR);
+        assertThat(WorkflowFailureClassification.forCategory(WorkflowFailureCategory.DOWNSTREAM_AVAILABILITY)
+                .logSeverity()).isEqualTo(WorkflowLogSeverity.FATAL);
+        assertThat(WorkflowFailureClassification.forCategory(WorkflowFailureCategory.SYSTEM).logSeverity())
+                .isEqualTo(WorkflowLogSeverity.FATAL);
     }
 
     @Test
@@ -162,8 +164,10 @@ class P5LightweightWorkflowFoundationIntegrationTest {
                 WorkflowNextStep.VERIFY_OTP,
                 WorkflowFailureCategory.VALIDATION).rule())
                 .isEqualTo(WorkflowStableStateRule.KEEP_CURRENT_STABLE_STATE);
-        assertThat(Arrays.stream(WorkflowNextStep.values()).map(Enum::name)).doesNotContain("FAILED", "UNKNOWN_FAILURE", "ERROR");
-        assertThat(Arrays.stream(WorkflowResultStatus.values()).map(Enum::name)).doesNotContain("FAILED", "UNKNOWN", "ERROR");
+        assertThat(Arrays.stream(WorkflowNextStep.values()).map(Enum::name)).doesNotContain("FAILED", "UNKNOWN_FAILURE",
+                "ERROR");
+        assertThat(Arrays.stream(WorkflowResultStatus.values()).map(Enum::name)).doesNotContain("FAILED", "UNKNOWN",
+                "ERROR");
     }
 
     @Test
@@ -186,7 +190,8 @@ class P5LightweightWorkflowFoundationIntegrationTest {
                 "hasRemainingTrusts",
                 "Successful Registration",
                 "Your registration is complete.",
-                List.of(new WorkflowResolvedPageAction("returnToLogin", "PRIMARY", "Return to Login", WorkflowNextStep.RETURN_TO_LOGIN)));
+                List.of(new WorkflowResolvedPageAction("returnToLogin", "PRIMARY", "Return to Login",
+                        WorkflowNextStep.RETURN_TO_LOGIN)));
 
         assertThat(page.title()).isInstanceOf(String.class);
         assertThat(page.body()).isInstanceOf(String.class);
@@ -199,13 +204,20 @@ class P5LightweightWorkflowFoundationIntegrationTest {
 
     @Test
     void p5RegistrationWorkflowPageSelectionsMatchBffPagesIds() {
-        assertThat(RegistrationWorkflowPageSelections.registrationStart().pageRef().pageId()).isEqualTo(RegistrationWorkflowConstants.PAGE_REGISTRATION_START);
-        assertThat(RegistrationWorkflowPageSelections.registrationOtpVerification().pageRef().pageId()).isEqualTo(RegistrationWorkflowConstants.PAGE_REGISTRATION_OTP_VERIFICATION);
-        assertThat(RegistrationWorkflowPageSelections.registrationTrustSelection().pageRef().pageId()).isEqualTo(RegistrationWorkflowConstants.PAGE_REGISTRATION_TRUST_SELECTION);
-        assertThat(RegistrationWorkflowPageSelections.registrationUsernameCheck().pageRef().pageId()).isEqualTo(RegistrationWorkflowConstants.PAGE_REGISTRATION_USERNAME_CHECK);
-        assertThat(RegistrationWorkflowPageSelections.registrationPasswordSetup().pageRef().pageId()).isEqualTo(RegistrationWorkflowConstants.PAGE_REGISTRATION_PASSWORD_SETUP);
-        assertThat(RegistrationWorkflowPageSelections.registrationSuccessNoRemainingTrusts().pageRef().variant()).isEqualTo("noRemainingTrusts");
-        assertThat(RegistrationWorkflowPageSelections.registrationSuccessHasRemainingTrusts().pageRef().variant()).isEqualTo("hasRemainingTrusts");
+        assertThat(RegistrationWorkflowPageSelections.registrationStart().pageRef().pageId())
+                .isEqualTo(RegistrationWorkflowConstants.PAGE_REGISTRATION_START);
+        assertThat(RegistrationWorkflowPageSelections.registrationOtpVerification().pageRef().pageId())
+                .isEqualTo(RegistrationWorkflowConstants.PAGE_REGISTRATION_OTP_VERIFICATION);
+        assertThat(RegistrationWorkflowPageSelections.registrationTrustSelection().pageRef().pageId())
+                .isEqualTo(RegistrationWorkflowConstants.PAGE_REGISTRATION_TRUST_SELECTION);
+        assertThat(RegistrationWorkflowPageSelections.registrationUsernameCheck().pageRef().pageId())
+                .isEqualTo(RegistrationWorkflowConstants.PAGE_REGISTRATION_USERNAME_CHECK);
+        assertThat(RegistrationWorkflowPageSelections.registrationPasswordSetup().pageRef().pageId())
+                .isEqualTo(RegistrationWorkflowConstants.PAGE_REGISTRATION_PASSWORD_SETUP);
+        assertThat(RegistrationWorkflowPageSelections.registrationSuccessNoRemainingTrusts().pageRef().variant())
+                .isEqualTo("noRemainingTrusts");
+        assertThat(RegistrationWorkflowPageSelections.registrationSuccessHasRemainingTrusts().pageRef().variant())
+                .isEqualTo("hasRemainingTrusts");
     }
 
     @Test

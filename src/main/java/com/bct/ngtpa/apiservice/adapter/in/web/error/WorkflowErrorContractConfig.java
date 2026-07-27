@@ -12,6 +12,7 @@ public class WorkflowErrorContractConfig {
     WorkflowErrorContractResolver workflowErrorContractResolver(WorkflowErrorContractProperties properties) {
         return new WorkflowErrorContractResolver(properties);
     }
+
     @Bean
     SmartInitializingSingleton workflowErrorContractValidation(WorkflowErrorContractProperties properties) {
         return () -> WorkflowErrorContractValidator.validate(properties);

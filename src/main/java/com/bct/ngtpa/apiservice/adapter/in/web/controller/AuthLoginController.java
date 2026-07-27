@@ -48,10 +48,10 @@ public class AuthLoginController {
 
         try {
             return useCase.start(mapper.toCommand(
-                            request,
-                            idempotencyKey.trim(),
-                            requestId.trim(),
-                            acceptLanguage))
+                    request,
+                    idempotencyKey.trim(),
+                    requestId.trim(),
+                    acceptLanguage))
                     .map(result -> {
                         if (result.status() == StartLoginStatus.STARTED
                                 || result.status() == StartLoginStatus.COMPLETED_REPLAY) {

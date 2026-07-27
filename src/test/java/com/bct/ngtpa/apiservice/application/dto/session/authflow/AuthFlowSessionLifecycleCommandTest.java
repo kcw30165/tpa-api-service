@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionTtlPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.StartAuthFlowSessionCommand;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.UpdateAuthFlowOtpCommand;
-import java.time.Instant;
 import org.junit.jupiter.api.Test;
 
 class AuthFlowSessionLifecycleCommandTest {

@@ -4,28 +4,17 @@ import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public record MemberInfoConfigItem(
-        @JsonProperty("item-id")
-        @JsonAlias("itemId")
-        String itemId,
+        @JsonProperty("item-id") @JsonAlias("itemId") String itemId,
 
-        @JsonProperty("item-name")
-        @JsonAlias("itemName")
-        String itemName,
+        @JsonProperty("item-name") @JsonAlias("itemName") String itemName,
 
-        @JsonProperty("item-type")
-        @JsonAlias("itemType")
-        MemberInfoConfigItemType itemType,
+        @JsonProperty("item-type") @JsonAlias("itemType") MemberInfoConfigItemType itemType,
 
         String function,
 
-        @JsonProperty("sch-type")
-        @JsonAlias("schType")
-        String schType,
+        @JsonProperty("sch-type") @JsonAlias("schType") String schType,
 
-        @JsonProperty("config-value")
-        @JsonAlias("configValue")
-        String configValue
-) {
+        @JsonProperty("config-value") @JsonAlias("configValue") String configValue) {
     public MemberInfoConfigItem {
         itemId = trimToNull(itemId);
         itemName = trimToNull(itemName);

@@ -8,16 +8,22 @@ public record ProtectedLoginStartReplay(
         String iv,
         String ciphertext) {
     public ProtectedLoginStartReplay {
-        Objects.requireNonNull(keyVersion); Objects.requireNonNull(algorithm);
-        Objects.requireNonNull(iv); Objects.requireNonNull(ciphertext);
+        Objects.requireNonNull(keyVersion);
+        Objects.requireNonNull(algorithm);
+        Objects.requireNonNull(iv);
+        Objects.requireNonNull(ciphertext);
     }
+
     public ProtectedLoginStartReplay withKeyVersion(String value) {
         return new ProtectedLoginStartReplay(value, algorithm, iv, ciphertext);
     }
+
     public ProtectedLoginStartReplay withCiphertext(String value) {
         return new ProtectedLoginStartReplay(keyVersion, algorithm, iv, value);
     }
-    @Override public String toString() {
+
+    @Override
+    public String toString() {
         return "ProtectedLoginStartReplay[keyVersion=" + keyVersion
                 + ", algorithm=" + algorithm + ", iv=<redacted>, ciphertext=<redacted>]";
     }

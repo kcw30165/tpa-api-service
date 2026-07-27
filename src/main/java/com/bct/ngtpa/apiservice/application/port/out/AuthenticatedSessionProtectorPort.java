@@ -1,1 +1,9 @@
-package com.bct.ngtpa.apiservice.application.port.out;import com.bct.ngtpa.apiservice.application.dto.session.authenticated.*;public interface AuthenticatedSessionProtectorPort {ProtectedAuthenticatedSession protect(AuthenticatedSession session);AuthenticatedSession unprotect(ProtectedAuthenticatedSession protectedSession);}
+package com.bct.ngtpa.apiservice.application.port.out;
+
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.*;
+
+public interface AuthenticatedSessionProtectorPort {
+    ProtectedAuthenticatedSession protect(AuthenticatedSession session);
+
+    AuthenticatedSession unprotect(ProtectedAuthenticatedSession protectedSession);
+}

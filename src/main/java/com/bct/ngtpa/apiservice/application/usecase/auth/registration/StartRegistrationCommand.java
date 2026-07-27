@@ -19,10 +19,15 @@ public record StartRegistrationCommand(
     public StartRegistrationCommand {
         Objects.requireNonNull(idempotencyKey, "idempotencyKey must not be null");
         Objects.requireNonNull(idempotencyTtl, "idempotencyTtl must not be null");
-        if (!idempotencyTtl.isPositive()) throw new IllegalArgumentException("idempotencyTtl must be positive");
+        if (!idempotencyTtl.isPositive())
+            throw new IllegalArgumentException("idempotencyTtl must be positive");
     }
-    @Override public String toString() {
-        return "StartRegistrationCommand[idempotencyKey=<redacted>, identityType=" + identityType + ", identityValue=<redacted>, dateOfBirth=<redacted>, email=<redacted>, mobile=<redacted>, captchaChallengeId=<redacted>, acceptLanguage=<redacted>, correlationId=<redacted>, idempotencyTtl=" + idempotencyTtl + "]";
+
+    @Override
+    public String toString() {
+        return "StartRegistrationCommand[idempotencyKey=<redacted>, identityType=" + identityType
+                + ", identityValue=<redacted>, dateOfBirth=<redacted>, email=<redacted>, mobile=<redacted>, captchaChallengeId=<redacted>, acceptLanguage=<redacted>, correlationId=<redacted>, idempotencyTtl="
+                + idempotencyTtl + "]";
     }
 
     public StartRegistrationCommand(
@@ -36,7 +41,8 @@ public record StartRegistrationCommand(
             String acceptLanguage,
             String correlationId,
             Duration idempotencyTtl) {
-        this(idempotencyKey, identityType, identityValue, dateOfBirth, email, mobile, captchaChallengeId, null, acceptLanguage, correlationId, idempotencyTtl);
+        this(idempotencyKey, identityType, identityValue, dateOfBirth, email, mobile, captchaChallengeId, null,
+                acceptLanguage, correlationId, idempotencyTtl);
     }
 
 }

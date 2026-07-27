@@ -1,1 +1,8 @@
-package com.bct.ngtpa.apiservice.application.usecase.session.authenticated;import reactor.core.publisher.Mono;@FunctionalInterface public interface LoadAndTouchAuthenticatedSessionUseCase {Mono<AuthenticatedSessionLifecycleResult> loadAndTouch(LoadAndTouchAuthenticatedSessionCommand command);}
+package com.bct.ngtpa.apiservice.application.usecase.session.authenticated;
+
+import reactor.core.publisher.Mono;
+
+@FunctionalInterface
+public interface LoadAndTouchAuthenticatedSessionUseCase {
+    Mono<AuthenticatedSessionLifecycleResult> loadAndTouch(LoadAndTouchAuthenticatedSessionCommand command);
+}

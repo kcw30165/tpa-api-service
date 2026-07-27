@@ -1,6 +1,9 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.retry;
 
-/** Classifies whether an APIM business operation may use transient transport retry. */
+/**
+ * Classifies whether an APIM business operation may use transient transport
+ * retry.
+ */
 public enum ApimRetryEligibility {
     SAFE_BUSINESS_CALL(true),
     IDEMPOTENT_MUTATION(true),

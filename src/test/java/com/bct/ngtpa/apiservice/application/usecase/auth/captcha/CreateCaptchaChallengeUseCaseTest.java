@@ -30,12 +30,12 @@ class CreateCaptchaChallengeUseCaseTest {
 
     private final CaptchaPolicy policy = new CaptchaPolicy(8, "ABC123", false, 123, 9);
     private final RecordingAuthWorkflowPolicyPort policyPort = new RecordingAuthWorkflowPolicyPort(policy);
-    private final RecordingCaptchaImageGeneratorPort imageGeneratorPort =
-            new RecordingCaptchaImageGeneratorPort(new GeneratedCaptcha("AbC12312", new CaptchaImage("base64-image", "image/png")));
+    private final RecordingCaptchaImageGeneratorPort imageGeneratorPort = new RecordingCaptchaImageGeneratorPort(
+            new GeneratedCaptcha("AbC12312", new CaptchaImage("base64-image", "image/png")));
     private final RecordingCaptchaAnswerHasherPort hasherPort = new RecordingCaptchaAnswerHasherPort();
     private final RecordingCaptchaChallengePort challengePort = new RecordingCaptchaChallengePort();
-    private final FixedCaptchaChallengeIdGenerator idGenerator =
-            new FixedCaptchaChallengeIdGenerator(new CaptchaChallengeId("cap_abcdefghijklmnop"));
+    private final FixedCaptchaChallengeIdGenerator idGenerator = new FixedCaptchaChallengeIdGenerator(
+            new CaptchaChallengeId("cap_abcdefghijklmnop"));
 
     private final CreateCaptchaChallengeUseCase useCase = new CreateCaptchaChallengeService(
             policyPort,
@@ -59,9 +59,9 @@ class CreateCaptchaChallengeUseCaseTest {
         assertThat(challengePort.createdChallenge.createdAt()).isEqualTo(Instant.parse("2026-07-07T12:00:00Z"));
         assertThat(challengePort.createdChallenge.expiresAt()).isEqualTo(Instant.parse("2026-07-07T12:02:03Z"));
         assertThat(challengePort.createdChallenge.toString())
-            .doesNotContain("AbC12312")
-            .doesNotContain("0123456789abcdef")
-            .doesNotContain("cap_abcdefghijklmnop");
+                .doesNotContain("AbC12312")
+                .doesNotContain("0123456789abcdef")
+                .doesNotContain("cap_abcdefghijklmnop");
     }
 
     @Test
@@ -181,7 +181,8 @@ class CreateCaptchaChallengeUseCaseTest {
         }
 
         @Override
-        public Mono<CaptchaChallenge> incrementFailedAttempt(CaptchaChallengeId captchaChallengeId, Instant attemptedAt) {
+        public Mono<CaptchaChallenge> incrementFailedAttempt(CaptchaChallengeId captchaChallengeId,
+                Instant attemptedAt) {
             throw new UnsupportedOperationException();
         }
 

@@ -14,12 +14,14 @@ public record VerifyCaptchaChallengeResult(
             throw new IllegalArgumentException("VerifyCaptchaChallengeResult remainingAttempts is invalid");
         }
         if (verified && captchaChallengeId == null) {
-            throw new IllegalArgumentException("VerifyCaptchaChallengeResult captchaChallengeId is required when verified");
+            throw new IllegalArgumentException(
+                    "VerifyCaptchaChallengeResult captchaChallengeId is required when verified");
         }
     }
 
     @Override
     public String toString() {
-        return "VerifyCaptchaChallengeResult[outcome=" + outcome + ", verified=" + verified + ", captchaChallengeId=<redacted>, remainingAttempts=" + remainingAttempts + "]";
+        return "VerifyCaptchaChallengeResult[outcome=" + outcome + ", verified=" + verified
+                + ", captchaChallengeId=<redacted>, remainingAttempts=" + remainingAttempts + "]";
     }
 }

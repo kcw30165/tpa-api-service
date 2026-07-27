@@ -41,7 +41,8 @@ public class ApimUpdatePersonalInformationAdapter implements ApimUpdatePersonalI
                                         .map(response -> toResults(response, command))
                                         .onErrorMap(ApimCryptoException.class,
                                                         ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR,
-                                                                        ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
+                                                                        ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(),
+                                                                        ex));
                 }
 
                 return apimCertificateService.getBctPublicKey()

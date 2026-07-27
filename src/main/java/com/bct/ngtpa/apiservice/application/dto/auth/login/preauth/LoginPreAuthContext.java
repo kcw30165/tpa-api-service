@@ -21,7 +21,9 @@ public record LoginPreAuthContext(
         Objects.requireNonNull(credentialVerifiedAt);
         Objects.requireNonNull(workflowVersion);
     }
-    @Override public String toString() {
+
+    @Override
+    public String toString() {
         return "LoginPreAuthContext[normalizedUsername=<redacted>, custType=" + custType
                 + ", userRole=" + userRole + ", destinationsCount=" + destinationsById.size()
                 + ", credentialVerifiedAt=" + credentialVerifiedAt + ", workflowVersion="

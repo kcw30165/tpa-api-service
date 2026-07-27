@@ -13,34 +13,33 @@ import org.springframework.web.reactive.function.client.WebClient;
 @RequiredArgsConstructor
 public class ApimWebClientConfig {
 
-    private final ApimRequestIdExchangeFilter requestIdExchangeFilter;
-    private final ApimRequestLoggingExchangeFilter requestLoggingExchangeFilter;
+        private final ApimRequestIdExchangeFilter requestIdExchangeFilter;
+        private final ApimRequestLoggingExchangeFilter requestLoggingExchangeFilter;
 
-    @Bean
-    public WebClient apimWebClient(
-            ApimProperties apimProperties,
-            ApimCertificateHeaderProvider certificateHeaderProvider,
-            ReactiveOAuth2AuthorizedClientManager authorizedClientManager) {
+        @Bean
+        public WebClient apimWebClient(
+                        ApimProperties apimProperties,
+                        ApimCertificateHeaderProvider certificateHeaderProvider,
+                        ReactiveOAuth2AuthorizedClientManager authorizedClientManager) {
 
-        ServerOAuth2AuthorizedClientExchangeFilterFunction oauth2Filter =
-                new ServerOAuth2AuthorizedClientExchangeFilterFunction(authorizedClientManager);
+                ServerOAuth2AuthorizedClientExchangeFilterFunction oauth2Filter = new ServerOAuth2AuthorizedClientExchangeFilterFunction(
+                                authorizedClientManager);
 
-        oauth2Filter.setDefaultClientRegistrationId(
-                apimProperties.getOauth().getRegistrationId()
-        );
+                oauth2Filter.setDefaultClientRegistrationId(
+                                apimProperties.getOauth().getRegistrationId());
 
-        WebClient.Builder webClientBuilder = WebClient.builder()
-                .baseUrl(apimProperties.getBaseUrl())
-                .defaultHeader("Accept", "application/json")
-                .filter(oauth2Filter)
-                .filter(requestIdExchangeFilter.filter())
-                .filter(requestLoggingExchangeFilter.filter());
+                WebClient.Builder webClientBuilder = WebClient.builder()
+                                .baseUrl(apimProperties.getBaseUrl())
+                                .defaultHeader("Accept", "application/json")
+                                .filter(oauth2Filter)
+                                .filter(requestIdExchangeFilter.filter())
+                                .filter(requestLoggingExchangeFilter.filter());
 
-        String certHeader = certificateHeaderProvider.getCertificateHeaderValue();
-        if (certHeader != null) {
-            webClientBuilder.defaultHeader("Certificate", certHeader);
+                String certHeader = certificateHeaderProvider.getCertificateHeaderValue();
+                if (certHeader != null) {
+                        webClientBuilder.defaultHeader("Certificate", certHeader);
+                }
+
+                return webClientBuilder.build();
         }
-
-        return webClientBuilder.build();
-    }
 }

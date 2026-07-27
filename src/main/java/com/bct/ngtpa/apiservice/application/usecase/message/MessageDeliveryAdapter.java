@@ -64,7 +64,8 @@ public class MessageDeliveryAdapter implements MessageDeliveryPort {
     }
 
     private String render(String template, MessageDeliveryCommand command) {
-        return messageTemplateRenderer.render(new MessageTemplateRenderCommand(template, command.templateVariables())).renderedText();
+        return messageTemplateRenderer.render(new MessageTemplateRenderCommand(template, command.templateVariables()))
+                .renderedText();
     }
 
     private MessageDeliveryResult toDeliveryResult(MessageDeliveryChannel channel, SenderResult result) {
@@ -104,5 +105,7 @@ public class MessageDeliveryAdapter implements MessageDeliveryPort {
         }
     }
 
-    private boolean isBlank(String value) { return value == null || value.isBlank(); }
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
 }

@@ -11,8 +11,10 @@ class RegistrationRequestHashGeneratorTest {
 
     @Test
     void sha256RequestHashIsDeterministic() {
-        var first = generator.hash(RegistrationIdempotencyAction.REGISTRATION_START, List.of("HKID", "A1234567", "2000-01-01"));
-        var second = generator.hash(RegistrationIdempotencyAction.REGISTRATION_START, List.of("HKID", "A1234567", "2000-01-01"));
+        var first = generator.hash(RegistrationIdempotencyAction.REGISTRATION_START,
+                List.of("HKID", "A1234567", "2000-01-01"));
+        var second = generator.hash(RegistrationIdempotencyAction.REGISTRATION_START,
+                List.of("HKID", "A1234567", "2000-01-01"));
 
         assertThat(first).isEqualTo(second);
         assertThat(first.value()).matches("^[a-f0-9]{64}$");

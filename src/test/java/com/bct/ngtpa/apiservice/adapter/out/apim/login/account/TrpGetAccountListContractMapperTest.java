@@ -32,6 +32,7 @@ class TrpGetAccountListContractMapperTest {
         assertThat(mapped.termStatus()).isEqualTo("T");
         assertThat(mapped.termCompletionDate()).isEqualTo("20/07/2026");
     }
+
     @Test
     void preservesMalformedTransportShapeForPerRecordApplicationValidation() {
         var mapped = mapper.toRecord(new TrpGetAccountListApimDataItem(

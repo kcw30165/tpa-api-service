@@ -6,7 +6,10 @@ import com.bct.ngtpa.apiservice.application.port.out.CredentialAuthenticationPor
 import java.util.Objects;
 import reactor.core.publisher.Mono;
 
-/** Application entry point; web/session orchestration is added in a later script. */
+/**
+ * Application entry point; web/session orchestration is added in a later
+ * script.
+ */
 public final class AuthenticateLoginCredentialsUseCase {
     private final CredentialAuthenticationPort credentialAuthenticationPort;
 

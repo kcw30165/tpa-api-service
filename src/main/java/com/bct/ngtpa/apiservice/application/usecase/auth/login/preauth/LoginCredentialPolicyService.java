@@ -42,7 +42,8 @@ public final class LoginCredentialPolicyService {
     public CredentialAuthenticationCommand validateAndNormalize(CredentialAuthenticationCommand command) {
         Objects.requireNonNull(command, "command must not be null");
         String username = command.username();
-        if (usernameTrim && username != null) username = username.trim();
+        if (usernameTrim && username != null)
+            username = username.trim();
         if (normalization == LoginUsernameNormalization.ASCII_LOWERCASE && username != null) {
             StringBuilder value = new StringBuilder(username.length());
             for (char ch : username.toCharArray()) {

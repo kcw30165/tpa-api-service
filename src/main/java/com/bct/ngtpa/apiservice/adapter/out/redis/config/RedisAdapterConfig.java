@@ -18,7 +18,6 @@ import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
 import com.bct.ngtpa.apiservice.application.port.out.RateLimitPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.CacheAdminPort;
-import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthFlowSessionAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthFlowSessionCompletionLockAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthFlowSessionJsonMapper;
@@ -26,9 +25,6 @@ import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisOtpChallengeJsonMapp
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisOtpChallengeStateAdapter;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionCompletionLockPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
-import com.bct.ngtpa.apiservice.application.port.out.CachePort;
-
-import java.time.Clock;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import io.lettuce.core.ClientOptions;
 import io.lettuce.core.SslOptions;

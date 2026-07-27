@@ -21,12 +21,17 @@ import java.util.Optional;
 import reactor.core.publisher.Mono;
 
 /**
- * Default protected context loader for registration OTP resend/verify use cases.
+ * Default protected context loader for registration OTP resend/verify use
+ * cases.
  *
- * <p>This class intentionally lives in the application service layer and remains
- * framework-free. It validates AuthFlowSession/CSRF state, ensures the flow is the
- * registration OTP step, decrypts the encrypted registration context from session
- * attributes, and returns only application DTOs.</p>
+ * <p>
+ * This class intentionally lives in the application service layer and remains
+ * framework-free. It validates AuthFlowSession/CSRF state, ensures the flow is
+ * the
+ * registration OTP step, decrypts the encrypted registration context from
+ * session
+ * attributes, and returns only application DTOs.
+ * </p>
  */
 public class DefaultRegistrationProtectedAuthFlowContextLoader implements RegistrationProtectedAuthFlowContextLoader {
     private final AuthFlowSessionLifecycleService lifecycleService;
@@ -50,18 +55,19 @@ public class DefaultRegistrationProtectedAuthFlowContextLoader implements Regist
         Objects.requireNonNull(command, "command must not be null");
         Instant now = Instant.now(clock);
         return csrfService.validateForSession(new ValidateAuthFlowSessionCsrfCommand(
-                        command.authFlowSessionId(),
-                        command.csrfToken(),
-                        now,
-                        command.origin(),
-                        command.referer(),
-                        java.util.List.of(),
-                        command.correlationId()))
+                command.authFlowSessionId(),
+                command.csrfToken(),
+                now,
+                command.origin(),
+                command.referer(),
+                java.util.List.of(),
+                command.correlationId()))
                 .flatMap(csrf -> {
                     if (!csrf.valid()) {
                         return Mono.just(RegistrationProtectedAuthFlowContextResult.invalid(toStatus(csrf.status())));
                     }
-                    return lifecycleService.load(new LoadAuthFlowSessionCommand(command.authFlowSessionId(), command.correlationId()))
+                    return lifecycleService
+                            .load(new LoadAuthFlowSessionCommand(command.authFlowSessionId(), command.correlationId()))
                             .map(optional -> validateAndDecrypt(optional, now, command.acceptedStatuses()));
                 })
                 .onErrorResume(RuntimeException.class,
@@ -74,20 +80,25 @@ public class DefaultRegistrationProtectedAuthFlowContextLoader implements Regist
             Instant now,
             java.util.Set<AuthFlowStatus> acceptedStatuses) {
         if (optional.isEmpty()) {
-            return RegistrationProtectedAuthFlowContextResult.invalid(RegistrationProtectedAuthFlowContextStatus.MISSING_SESSION);
+            return RegistrationProtectedAuthFlowContextResult
+                    .invalid(RegistrationProtectedAuthFlowContextStatus.MISSING_SESSION);
         }
         AuthFlowSession session = optional.get();
         if (session.isExpired(now) || session.isTerminal()) {
-            return RegistrationProtectedAuthFlowContextResult.invalid(RegistrationProtectedAuthFlowContextStatus.EXPIRED_OR_TERMINAL_SESSION);
+            return RegistrationProtectedAuthFlowContextResult
+                    .invalid(RegistrationProtectedAuthFlowContextStatus.EXPIRED_OR_TERMINAL_SESSION);
         }
         if (session.scenario() != AuthFlowScenario.REGISTRATION) {
-            return RegistrationProtectedAuthFlowContextResult.invalid(RegistrationProtectedAuthFlowContextStatus.WRONG_SCENARIO);
+            return RegistrationProtectedAuthFlowContextResult
+                    .invalid(RegistrationProtectedAuthFlowContextStatus.WRONG_SCENARIO);
         }
         if (!acceptedStatuses.contains(session.status())) {
-            return RegistrationProtectedAuthFlowContextResult.invalid(RegistrationProtectedAuthFlowContextStatus.INVALID_STATUS);
+            return RegistrationProtectedAuthFlowContextResult
+                    .invalid(RegistrationProtectedAuthFlowContextStatus.INVALID_STATUS);
         }
         if (isBlank(session.activeOtpChallengeId())) {
-            return RegistrationProtectedAuthFlowContextResult.invalid(RegistrationProtectedAuthFlowContextStatus.MISSING_ACTIVE_OTP);
+            return RegistrationProtectedAuthFlowContextResult
+                    .invalid(RegistrationProtectedAuthFlowContextStatus.MISSING_ACTIVE_OTP);
         }
 
         Map<String, String> attributes = attributes(session.data());
@@ -95,7 +106,8 @@ public class DefaultRegistrationProtectedAuthFlowContextLoader implements Regist
         String keyVersion = attributes.get(RegistrationAuthFlowContextAttributeNames.CONTEXT_KEY_VERSION);
         String algorithm = attributes.get(RegistrationAuthFlowContextAttributeNames.CONTEXT_ALGORITHM);
         if (isBlank(ciphertext) || isBlank(keyVersion)) {
-            return RegistrationProtectedAuthFlowContextResult.invalid(RegistrationProtectedAuthFlowContextStatus.MISSING_CONTEXT);
+            return RegistrationProtectedAuthFlowContextResult
+                    .invalid(RegistrationProtectedAuthFlowContextStatus.MISSING_CONTEXT);
         }
 
         try {

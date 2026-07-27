@@ -8,8 +8,7 @@ public record FormPageResponse<TForm>(
         PageResponse page,
         TForm form,
         List<ApiMessage> messages,
-        List<ApiError> errors
-) implements ApiResponse {
+        List<ApiError> errors) implements ApiResponse {
 
     public FormPageResponse {
         messages = messages == null ? List.of() : List.copyOf(messages);
@@ -26,7 +25,6 @@ public record FormPageResponse<TForm>(
                 page,
                 form,
                 List.of(),
-                List.of()
-        );
+                List.of());
     }
 }

@@ -49,7 +49,8 @@ public class AuthRegistrationController {
             @CookieValue(name = "auth_flow_sid", required = false) String authFlowSessionIdCookie,
             ServerHttpResponse response) {
         if (idempotencyKey == null || idempotencyKey.isBlank())
-            return Mono.just(RegistrationHttpResponses.toResponse(mapper.missingIdempotencyKeyResponse(acceptLanguage)));
+            return Mono
+                    .just(RegistrationHttpResponses.toResponse(mapper.missingIdempotencyKeyResponse(acceptLanguage)));
         return useCase
                 .start(mapper.toCommand(request, idempotencyKey, requestId, acceptLanguage, authFlowSessionIdCookie))
                 .map(result -> {
@@ -103,7 +104,8 @@ public class AuthRegistrationController {
                         } else {
                             cookieWriter.writeAuthFlowCookie(response, authFlowSessionId);
                         }
-                        return RegistrationHttpResponses.toResponse(completeRegistrationWebMapper.toResponse(result, acceptLanguage));
+                        return RegistrationHttpResponses
+                                .toResponse(completeRegistrationWebMapper.toResponse(result, acceptLanguage));
                     });
         } catch (RuntimeException exception) {
             return Mono.just(RegistrationHttpResponses.toResponse(completeRegistrationWebMapper.missing(
@@ -127,18 +129,20 @@ public class AuthRegistrationController {
         if (!hasText(authFlowSessionId)) {
             cookieWriter.clearAuthFlowCookie(response);
             xsrfCookieWriter.clearXsrfCookie(response);
-            return Mono.just(RegistrationHttpResponses.toResponse(cancelRegistrationWebMapper.missingSession(acceptLanguage)));
+            return Mono.just(
+                    RegistrationHttpResponses.toResponse(cancelRegistrationWebMapper.missingSession(acceptLanguage)));
         }
         if (!hasText(csrfToken)) {
-            return Mono.just(RegistrationHttpResponses.toResponse(cancelRegistrationWebMapper.missingCsrf(acceptLanguage)));
+            return Mono.just(
+                    RegistrationHttpResponses.toResponse(cancelRegistrationWebMapper.missingCsrf(acceptLanguage)));
         }
         try {
             return cancelRegistrationUseCase.cancel(cancelRegistrationWebMapper.toCommand(
-                            authFlowSessionId,
-                            csrfToken,
-                            origin,
-                            referer,
-                            requestId))
+                    authFlowSessionId,
+                    csrfToken,
+                    origin,
+                    referer,
+                    requestId))
                     .map(result -> {
                         if (result.clearAuthFlowCookie()) {
                             cookieWriter.clearAuthFlowCookie(response);
@@ -146,10 +150,12 @@ public class AuthRegistrationController {
                         if (result.clearXsrfCookie()) {
                             xsrfCookieWriter.clearXsrfCookie(response);
                         }
-                        return RegistrationHttpResponses.toResponse(cancelRegistrationWebMapper.toResponse(result, acceptLanguage));
+                        return RegistrationHttpResponses
+                                .toResponse(cancelRegistrationWebMapper.toResponse(result, acceptLanguage));
                     });
         } catch (RuntimeException exception) {
-            return Mono.just(RegistrationHttpResponses.toResponse(cancelRegistrationWebMapper.missingCsrf(acceptLanguage)));
+            return Mono.just(
+                    RegistrationHttpResponses.toResponse(cancelRegistrationWebMapper.missingCsrf(acceptLanguage)));
         }
     }
 }

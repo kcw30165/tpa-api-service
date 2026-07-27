@@ -13,7 +13,9 @@ public record LoginPreAuthDestination(
         Objects.requireNonNull(destination);
         Objects.requireNonNull(maskedDestination);
     }
-    @Override public String toString() {
+
+    @Override
+    public String toString() {
         return "LoginPreAuthDestination[destinationId=<redacted>, channel=" + channel
                 + ", destination=<redacted>, maskedDestination=<redacted>]";
     }

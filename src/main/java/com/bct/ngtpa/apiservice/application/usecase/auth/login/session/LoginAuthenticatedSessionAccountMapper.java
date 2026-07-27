@@ -6,7 +6,8 @@ import com.bct.ngtpa.apiservice.application.dto.session.authenticated.Authentica
 import java.util.List;
 
 public final class LoginAuthenticatedSessionAccountMapper {
-    private LoginAuthenticatedSessionAccountMapper() {}
+    private LoginAuthenticatedSessionAccountMapper() {
+    }
 
     public static List<AuthenticatedSessionAccount> map(List<LoginSessionAccount> accounts) {
         if (accounts == null || accounts.isEmpty()) {

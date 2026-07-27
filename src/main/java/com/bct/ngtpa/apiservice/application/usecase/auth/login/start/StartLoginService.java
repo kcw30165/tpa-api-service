@@ -1,4 +1,5 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.login.start;
+
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.replay.LoginStartReplayCoordinator;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.login.*;
@@ -24,7 +25,8 @@ public final class StartLoginService implements StartLoginUseCase {
     private final LoginPreAuthContextFactory contexts;
     private final LoginPreAuthContextProtectorPort protector;
     private final AuthFlowSessionLifecycleService sessions;
-    private final CreateAuthFlowSessionCsrfUseCase csrf;private final LoginStartReplayCoordinator replayCoordinator;
+    private final CreateAuthFlowSessionCsrfUseCase csrf;
+    private final LoginStartReplayCoordinator replayCoordinator;
     private final Clock clock;
     private final int ttl;
     private final boolean required;
@@ -34,7 +36,8 @@ public final class StartLoginService implements StartLoginUseCase {
     public StartLoginService(LoginCredentialPolicyService policy, LoginCredentialRequestHasher hasher,
             LoginCredentialIdempotencyCoordinator idempotency, CredentialAuthenticationPort credentials,
             LoginPreAuthContextFactory contexts, LoginPreAuthContextProtectorPort protector,
-            AuthFlowSessionLifecycleService sessions, CreateAuthFlowSessionCsrfUseCase csrf,LoginStartReplayCoordinator replayCoordinator, Clock clock, int ttl,
+            AuthFlowSessionLifecycleService sessions, CreateAuthFlowSessionCsrfUseCase csrf,
+            LoginStartReplayCoordinator replayCoordinator, Clock clock, int ttl,
             boolean required, String prefix, int entropy) {
         this.policy = Objects.requireNonNull(policy);
         this.hasher = Objects.requireNonNull(hasher);
@@ -43,7 +46,8 @@ public final class StartLoginService implements StartLoginUseCase {
         this.contexts = Objects.requireNonNull(contexts);
         this.protector = Objects.requireNonNull(protector);
         this.sessions = Objects.requireNonNull(sessions);
-        this.csrf = Objects.requireNonNull(csrf);this.replayCoordinator=Objects.requireNonNull(replayCoordinator);
+        this.csrf = Objects.requireNonNull(csrf);
+        this.replayCoordinator = Objects.requireNonNull(replayCoordinator);
         this.clock = Objects.requireNonNull(clock);
         this.ttl = ttl;
         this.required = required;

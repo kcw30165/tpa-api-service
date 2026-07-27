@@ -1,8 +1,10 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.response;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 /**
- * Non-blocking UI notification. Do not use this for blocking validation/system errors.
+ * Non-blocking UI notification. Do not use this for blocking validation/system
+ * errors.
  */
 public record ApiMessage(
         String type,

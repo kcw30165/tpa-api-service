@@ -16,62 +16,61 @@ import java.util.Objects;
 import reactor.core.publisher.Mono;
 
 public final class SharedApimTrpMemberLoginTransport implements TrpMemberLoginTransport {
-    private final ApimWebClientFacade facade;
-    private final ApimCertificateService certificates;
-    private final ApimPayloadCryptoService crypto;
-    private final ApimProperties apimProperties;
-    private final TrpMemberLoginProperties loginProperties;
+        private final ApimWebClientFacade facade;
+        private final ApimCertificateService certificates;
+        private final ApimPayloadCryptoService crypto;
+        private final ApimProperties apimProperties;
+        private final TrpMemberLoginProperties loginProperties;
 
-    public SharedApimTrpMemberLoginTransport(
-            ApimWebClientFacade facade,
-            ApimCertificateService certificates,
-            ApimPayloadCryptoService crypto,
-            ApimProperties apimProperties,
-            TrpMemberLoginProperties loginProperties) {
-        this.facade = Objects.requireNonNull(facade, "facade must not be null");
-        this.certificates = Objects.requireNonNull(certificates, "certificates must not be null");
-        this.crypto = Objects.requireNonNull(crypto, "crypto must not be null");
-        this.apimProperties = Objects.requireNonNull(apimProperties, "apimProperties must not be null");
-        this.loginProperties = Objects.requireNonNull(loginProperties, "loginProperties must not be null");
-    }
-
-    @Override
-    public Mono<ApimResponseEnvelope<TrpMemberLoginApimDataItem>> post(
-            TrpMemberLoginApimRequest request) {
-        if (!apimProperties.getEncryption().isEnabled()) {
-            return postEncrypted(request, null);
+        public SharedApimTrpMemberLoginTransport(
+                        ApimWebClientFacade facade,
+                        ApimCertificateService certificates,
+                        ApimPayloadCryptoService crypto,
+                        ApimProperties apimProperties,
+                        TrpMemberLoginProperties loginProperties) {
+                this.facade = Objects.requireNonNull(facade, "facade must not be null");
+                this.certificates = Objects.requireNonNull(certificates, "certificates must not be null");
+                this.crypto = Objects.requireNonNull(crypto, "crypto must not be null");
+                this.apimProperties = Objects.requireNonNull(apimProperties, "apimProperties must not be null");
+                this.loginProperties = Objects.requireNonNull(loginProperties, "loginProperties must not be null");
         }
-        return certificates.getBctPublicKey()
-                .flatMap(publicKey -> postEncrypted(request, publicKey));
-    }
 
-    private Mono<ApimResponseEnvelope<TrpMemberLoginApimDataItem>> postEncrypted(
-            TrpMemberLoginApimRequest request,
-            PublicKey publicKey) {
-        String path = requireText(loginProperties.getPath(), "apim.login.member-login.path");
-        String operation = requireText(
-                loginProperties.getOperationName(),
-                "apim.login.member-login.operation-name");
-        var encryptedRequest = crypto.encryptRequest(
-                path,
-                request,
-                TrpMemberLoginApimRequest.class,
-                publicKey);
-        var context = new ApimCredentialResolutionContext(
-                null, null, null, null, null, null, null, operation, Map.of());
-        return facade.post(path, encryptedRequest, context, ApimRetryEligibility.SAFE_BUSINESS_CALL)
-                .map(body -> crypto.decryptResponseEnvelope(
-                        path,
-                        body,
-                        TrpMemberLoginApimDataItem.class,
-                        publicKey))
-                ;
-    }
-
-    private String requireText(String value, String property) {
-        if (value == null || value.isBlank()) {
-            throw new IllegalStateException(property + " must not be blank");
+        @Override
+        public Mono<ApimResponseEnvelope<TrpMemberLoginApimDataItem>> post(
+                        TrpMemberLoginApimRequest request) {
+                if (!apimProperties.getEncryption().isEnabled()) {
+                        return postEncrypted(request, null);
+                }
+                return certificates.getBctPublicKey()
+                                .flatMap(publicKey -> postEncrypted(request, publicKey));
         }
-        return value.trim();
-    }
+
+        private Mono<ApimResponseEnvelope<TrpMemberLoginApimDataItem>> postEncrypted(
+                        TrpMemberLoginApimRequest request,
+                        PublicKey publicKey) {
+                String path = requireText(loginProperties.getPath(), "apim.login.member-login.path");
+                String operation = requireText(
+                                loginProperties.getOperationName(),
+                                "apim.login.member-login.operation-name");
+                var encryptedRequest = crypto.encryptRequest(
+                                path,
+                                request,
+                                TrpMemberLoginApimRequest.class,
+                                publicKey);
+                var context = new ApimCredentialResolutionContext(
+                                null, null, null, null, null, null, null, operation, Map.of());
+                return facade.post(path, encryptedRequest, context, ApimRetryEligibility.SAFE_BUSINESS_CALL)
+                                .map(body -> crypto.decryptResponseEnvelope(
+                                                path,
+                                                body,
+                                                TrpMemberLoginApimDataItem.class,
+                                                publicKey));
+        }
+
+        private String requireText(String value, String property) {
+                if (value == null || value.isBlank()) {
+                        throw new IllegalStateException(property + " must not be blank");
+                }
+                return value.trim();
+        }
 }

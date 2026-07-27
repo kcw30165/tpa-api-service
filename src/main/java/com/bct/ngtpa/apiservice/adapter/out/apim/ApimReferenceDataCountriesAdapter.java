@@ -5,16 +5,11 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetCountryListApimRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetCountryListDataItem;
 import com.bct.ngtpa.apiservice.application.dto.ReferenceDataCountryItem;
 import com.bct.ngtpa.apiservice.application.port.out.ApimReferenceDataCountriesPort;
-import com.bct.ngtpa.apiservice.exception.ApimException;
-import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
 import java.util.List;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
-import org.springframework.util.CollectionUtils;
-import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 
 @Component

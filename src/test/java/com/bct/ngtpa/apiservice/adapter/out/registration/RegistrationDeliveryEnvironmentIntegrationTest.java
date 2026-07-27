@@ -26,12 +26,12 @@ class RegistrationDeliveryEnvironmentIntegrationTest {
         var adapter = adapter("sit", configuredProperties(), delegate);
 
         StepVerifier.create(adapter.deliverRegistrationOtp(
-                        RegistrationContactType.MOBILE,
-                        "original-mobile",
-                        "123456",
-                        300,
-                        "en",
-                        "request-123"))
+                RegistrationContactType.MOBILE,
+                "original-mobile",
+                "123456",
+                300,
+                "en",
+                "request-123"))
                 .expectNext(true)
                 .verifyComplete();
 
@@ -50,12 +50,12 @@ class RegistrationDeliveryEnvironmentIntegrationTest {
         var adapter = adapter("uat", configuredProperties(), delegate);
 
         StepVerifier.create(adapter.deliverRegistrationOtp(
-                        RegistrationContactType.EMAIL,
-                        "original@example.com",
-                        "654321",
-                        180,
-                        "zh-HK",
-                        "request-456"))
+                RegistrationContactType.EMAIL,
+                "original@example.com",
+                "654321",
+                180,
+                "zh-HK",
+                "request-456"))
                 .expectNext(true)
                 .verifyComplete();
 
@@ -71,12 +71,12 @@ class RegistrationDeliveryEnvironmentIntegrationTest {
         var adapter = adapter("prod", properties, delegate);
 
         StepVerifier.create(adapter.deliverRegistrationOtp(
-                        RegistrationContactType.MOBILE,
-                        "original-mobile",
-                        "123456",
-                        300,
-                        "en",
-                        "request-123"))
+                RegistrationContactType.MOBILE,
+                "original-mobile",
+                "123456",
+                300,
+                "en",
+                "request-123"))
                 .expectNext(true)
                 .verifyComplete();
 
@@ -89,12 +89,12 @@ class RegistrationDeliveryEnvironmentIntegrationTest {
         var adapter = adapter("DR", configuredProperties(), delegate);
 
         StepVerifier.create(adapter.deliverRegistrationOtp(
-                        RegistrationContactType.EMAIL,
-                        "original@example.com",
-                        "123456",
-                        300,
-                        "en",
-                        "request-123"))
+                RegistrationContactType.EMAIL,
+                "original@example.com",
+                "123456",
+                300,
+                "en",
+                "request-123"))
                 .expectNext(true)
                 .verifyComplete();
 
@@ -107,12 +107,12 @@ class RegistrationDeliveryEnvironmentIntegrationTest {
         var adapter = adapter("future-env", configuredProperties(), delegate);
 
         StepVerifier.create(adapter.deliverRegistrationOtp(
-                        RegistrationContactType.MOBILE,
-                        "original-mobile",
-                        "123456",
-                        300,
-                        "en",
-                        "request-123"))
+                RegistrationContactType.MOBILE,
+                "original-mobile",
+                "123456",
+                300,
+                "en",
+                "request-123"))
                 .expectNext(true)
                 .verifyComplete();
 

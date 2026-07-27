@@ -112,12 +112,15 @@ public class ApimPayloadCryptoService {
         }
     }
 
-    public <T> ApimResponseEnvelope<T> decryptResponseEnvelope(String apiName, String responseJson, Class<T> dataClass) {
+    public <T> ApimResponseEnvelope<T> decryptResponseEnvelope(String apiName, String responseJson,
+            Class<T> dataClass) {
         return decryptResponseEnvelope(apiName, responseJson, dataClass, null);
     }
 
-    public <T> ApimResponseEnvelope<T> decryptResponseEnvelope(String apiName, String responseJson, Class<T> dataClass, PublicKey publicKey) {
-        JavaType javaType = objectMapper.getTypeFactory().constructParametricType(ApimResponseEnvelope.class, dataClass);
+    public <T> ApimResponseEnvelope<T> decryptResponseEnvelope(String apiName, String responseJson, Class<T> dataClass,
+            PublicKey publicKey) {
+        JavaType javaType = objectMapper.getTypeFactory().constructParametricType(ApimResponseEnvelope.class,
+                dataClass);
         return decryptResponse(apiName, responseJson, javaType, publicKey);
     }
 
@@ -125,7 +128,8 @@ public class ApimPayloadCryptoService {
             UnaryOperator<String> transformFn) {
         try {
             JsonNode sourceNode = objectMapper.valueToTree(source);
-            JsonNode transformedNode = apimPayloadFieldTransformer.transformFields(sourceNode, targetFields, transformFn);
+            JsonNode transformedNode = apimPayloadFieldTransformer.transformFields(sourceNode, targetFields,
+                    transformFn);
             return objectMapper.treeToValue(transformedNode, targetType);
         } catch (Exception ex) {
             throw new ApimCryptoException("Failed to transform APIM payload.", ex);
@@ -138,7 +142,8 @@ public class ApimPayloadCryptoService {
         }
 
         SecretKey aesKey = apimAesKeyFactory.generateKey();
-        String signedJwt = apimRsaPayloadCrypto.createSignedJwt(plainText, apimAppCertificateService.getAppPrivateKey());
+        String signedJwt = apimRsaPayloadCrypto.createSignedJwt(plainText,
+                apimAppCertificateService.getAppPrivateKey());
         String encryptedPayload = encryptAes(signedJwt, aesKey);
         String encryptedAesKey = apimRsaPayloadCrypto.encryptPlaintext(
                 new String(aesKey.getEncoded(), StandardCharsets.UTF_8), publicKey);
@@ -212,7 +217,10 @@ public class ApimPayloadCryptoService {
         return new LinkedHashSet<>(apimProperties.getEncryption().getResponseFields());
     }
 
-    /** Extracts the last path segment to use as the YAML map key (e.g. "/ws/NGTPA/v1/TRPGetMsgBoard" -> "TRPGetMsgBoard"). */
+    /**
+     * Extracts the last path segment to use as the YAML map key (e.g.
+     * "/ws/NGTPA/v1/TRPGetMsgBoard" -> "TRPGetMsgBoard").
+     */
     private String normalizeApiKey(String apiName) {
         int idx = apiName.lastIndexOf('/');
         return idx >= 0 ? apiName.substring(idx + 1) : apiName;

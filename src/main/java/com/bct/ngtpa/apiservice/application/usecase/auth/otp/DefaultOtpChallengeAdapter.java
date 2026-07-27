@@ -324,7 +324,8 @@ public class DefaultOtpChallengeAdapter implements OtpChallengePort {
         }
         if (command.resendLimitEnabled()
                 && challenge.resendAttemptCount() >= challenge.maxResendAttempts()) {
-            log.warn("Max resend attempts reached for OTP challenge {} ({}).", challenge.otpChallengeId(), challenge.resendAttemptCount());
+            log.warn("Max resend attempts reached for OTP challenge {} ({}).", challenge.otpChallengeId(),
+                    challenge.resendAttemptCount());
             return Mono.just(replacementResult(
                     challenge.otpChallengeId(),
                     null,

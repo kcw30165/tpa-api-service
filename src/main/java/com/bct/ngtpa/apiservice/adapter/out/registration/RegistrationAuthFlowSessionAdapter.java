@@ -1,4 +1,5 @@
 package com.bct.ngtpa.apiservice.adapter.out.registration;
+
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContextAttributeNames;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowEncryptedContext;
@@ -90,8 +91,6 @@ public class RegistrationAuthFlowSessionAdapter implements RegistrationSessionPo
         return lifecycleService.updateActiveOtpChallenge(command).then();
     }
 
-
-
     @Override
     public Mono<Void> markOtpVerified(String authFlowSessionId) {
         var command = new UpdateAuthFlowStatusCommand(
@@ -146,7 +145,6 @@ public class RegistrationAuthFlowSessionAdapter implements RegistrationSessionPo
 
         return null;
     }
-
 
     @Override
     public Mono<String> createRegistrationSession(

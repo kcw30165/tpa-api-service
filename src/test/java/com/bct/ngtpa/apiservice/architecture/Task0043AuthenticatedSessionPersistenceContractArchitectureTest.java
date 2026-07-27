@@ -1,7 +1,38 @@
 package com.bct.ngtpa.apiservice.architecture;
-import static org.assertj.core.api.Assertions.assertThat;import java.nio.file.*;import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import java.nio.file.*;
+import org.junit.jupiter.api.Test;
+
 class Task0043AuthenticatedSessionPersistenceContractArchitectureTest {
- @Test void contractsAreApplicationOwnedAndFrameworkNeutral() throws Exception {String port=Files.readString(Path.of("src/main/java/com/bct/ngtpa/apiservice/application/port/out/AuthenticatedSessionPort.java"));String protector=Files.readString(Path.of("src/main/java/com/bct/ngtpa/apiservice/application/port/out/AuthenticatedSessionProtectorPort.java"));assertThat(port+protector).contains("application.dto.session.authenticated").doesNotContain("org.springframework","Redis","ObjectMapper","WebClient","adapter.out");}
- @Test void protectedWireContractCannotExposeDomainFields() throws Exception {String s=Files.readString(Path.of("src/main/java/com/bct/ngtpa/apiservice/application/dto/session/authenticated/ProtectedAuthenticatedSession.java"));assertThat(s).contains("version","ciphertext","nonce","authenticationTag").doesNotContain("actorUserId","actorUserRole","accountEnv","policyNo","certNo","trustCode","csrfTokenHash");}
- @Test void redisAdapterExistsWhileSpringCompositionRemainsDeferred(){assertThat(Files.exists(Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/RedisAuthenticatedSessionAdapter.java"))).isTrue();assertThat(Files.exists(Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/RedisAuthenticatedSessionJsonMapper.java"))).isTrue();assertThat(Files.exists(Path.of("src/main/java/com/bct/ngtpa/apiservice/config/auth/login/AuthenticatedSessionConfig.java"))).isFalse();}
+    @Test
+    void contractsAreApplicationOwnedAndFrameworkNeutral() throws Exception {
+        String port = Files.readString(
+                Path.of("src/main/java/com/bct/ngtpa/apiservice/application/port/out/AuthenticatedSessionPort.java"));
+        String protector = Files.readString(Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/application/port/out/AuthenticatedSessionProtectorPort.java"));
+        assertThat(port + protector).contains("application.dto.session.authenticated")
+                .doesNotContain("org.springframework", "Redis", "ObjectMapper", "WebClient", "adapter.out");
+    }
+
+    @Test
+    void protectedWireContractCannotExposeDomainFields() throws Exception {
+        String s = Files.readString(Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/application/dto/session/authenticated/ProtectedAuthenticatedSession.java"));
+        assertThat(s).contains("version", "ciphertext", "nonce", "authenticationTag").doesNotContain("actorUserId",
+                "actorUserRole", "accountEnv", "policyNo", "certNo", "trustCode", "csrfTokenHash");
+    }
+
+    @Test
+    void redisAdapterExistsWhileSpringCompositionRemainsDeferred() {
+        assertThat(Files.exists(Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/RedisAuthenticatedSessionAdapter.java")))
+                .isTrue();
+        assertThat(Files.exists(Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/RedisAuthenticatedSessionJsonMapper.java")))
+                .isTrue();
+        assertThat(Files.exists(
+                Path.of("src/main/java/com/bct/ngtpa/apiservice/config/auth/login/AuthenticatedSessionConfig.java")))
+                .isFalse();
+    }
 }

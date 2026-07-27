@@ -47,7 +47,7 @@ public class RegistrationMessageDeliveryAdapter implements RegistrationMessagePo
         variables.put("code", otpCode);
         variables.put("ttlValue", String.valueOf(Math.max(1, ttlSeconds / 60)));
         variables.put("ttlUnit", "minutes");
-        
+
         var command = new MessageDeliveryCommand(
                 MessageDeliveryType.REGISTRATION_OTP,
                 MessageDeliveryScenario.REGISTRATION,

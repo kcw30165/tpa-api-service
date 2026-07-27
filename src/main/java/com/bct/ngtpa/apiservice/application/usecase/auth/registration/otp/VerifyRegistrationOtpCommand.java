@@ -17,11 +17,15 @@ public record VerifyRegistrationOtpCommand(
         Duration idempotencyTtl) {
     public VerifyRegistrationOtpCommand {
         Objects.requireNonNull(authFlowSessionId, "authFlowSessionId must not be null");
-        if (csrfToken == null || csrfToken.isBlank()) { throw new IllegalArgumentException("csrfToken must not be blank"); }
+        if (csrfToken == null || csrfToken.isBlank()) {
+            throw new IllegalArgumentException("csrfToken must not be blank");
+        }
         Objects.requireNonNull(idempotencyKey, "idempotencyKey must not be null");
         idempotencyTtl = Objects.requireNonNull(idempotencyTtl, "idempotencyTtl must not be null");
     }
-    @Override public String toString() {
+
+    @Override
+    public String toString() {
         return "VerifyRegistrationOtpCommand[authFlowSessionId=<redacted>, csrfToken=<redacted>, otpCode=<redacted>, idempotencyKey=<redacted>, origin=<redacted>, referer=<redacted>]";
     }
 }

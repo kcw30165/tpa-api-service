@@ -13,7 +13,6 @@ import com.bct.ngtpa.apiservice.application.dto.message.SenderResult;
 import com.bct.ngtpa.apiservice.application.dto.message.SenderStatus;
 import com.bct.ngtpa.apiservice.application.dto.message.SmsMessage;
 import com.bct.ngtpa.apiservice.application.port.out.EmailSenderPort;
-import com.bct.ngtpa.apiservice.application.port.out.SmsSenderPort;
 import com.bct.ngtpa.apiservice.application.service.message.DefaultMessageTemplateRenderer;
 import com.bct.ngtpa.apiservice.application.service.message.MessageTemplateRenderCommand;
 import java.lang.reflect.Constructor;

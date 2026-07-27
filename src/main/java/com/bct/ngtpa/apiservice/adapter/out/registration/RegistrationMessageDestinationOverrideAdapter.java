@@ -11,9 +11,12 @@ import reactor.core.publisher.Mono;
  * Registration-specific delivery decorator that substitutes only the physical
  * destination outside production-like deployments.
  *
- * <p>The original recipient remains owned by the registration workflow for
- * eligibility, masking, hashing, rate limiting, and session state. No destination
- * value is logged or included in configuration errors.</p>
+ * <p>
+ * The original recipient remains owned by the registration workflow for
+ * eligibility, masking, hashing, rate limiting, and session state. No
+ * destination
+ * value is logged or included in configuration errors.
+ * </p>
  */
 public class RegistrationMessageDestinationOverrideAdapter implements RegistrationMessagePort {
 
