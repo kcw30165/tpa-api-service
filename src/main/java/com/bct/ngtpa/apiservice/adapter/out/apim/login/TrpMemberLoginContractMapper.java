@@ -57,7 +57,23 @@ public final class TrpMemberLoginContractMapper {
     }
 
     public CredentialAuthenticationResult failure(CredentialAuthenticationStatus status) {
-        return new CredentialAuthenticationResult(status, null, null, null, null, List.of(), null);
+        return credentialFailure(status, null);
+    }
+
+    public CredentialAuthenticationResult credentialFailure(
+            CredentialAuthenticationStatus status,
+            Integer failCount) {
+        if (status == null || status == CredentialAuthenticationStatus.AUTHENTICATED) {
+            throw new IllegalArgumentException("Credential failure status is required");
+        }
+        return new CredentialAuthenticationResult(
+                status,
+                null,
+                null,
+                null,
+                failCount,
+                List.of(),
+                null);
     }
 
     private String required(String value, String field) {

@@ -997,3 +997,12 @@
 - Retained the authenticated-session value prefix sid_ and the pre-auth auth_flow_sid cookie.
 - Main-script progress remains 5/5; zero main scripts remain. Corrective scripts do not change the total.
 - Commit message: test(auth): make authenticated header migration resumable
+
+### 0043-012-020-fix-login-start-stabilization-http-expectations
+- Status: completed
+- Classification: stale contract-test expectation after the approved credential-rejection HTTP correction.
+- Updated LoginStartWebContractStabilizationTest so incorrect password, incorrect username, invalid account, locked account, and previously failed credential submissions expect HTTP 401 instead of HTTP 422.
+- Preserved BUSINESS_REJECTED and the existing safe BFF-owned error codes; DOWNSTREAM_ERROR remains reserved for genuine downstream technical failure.
+- Production source changed by this correction: no.
+- Main-script progress remains 5/5; zero main scripts remain.
+- Commit message: test(auth): align login credential contract with HTTP 401

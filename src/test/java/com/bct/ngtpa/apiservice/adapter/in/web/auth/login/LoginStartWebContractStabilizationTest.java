@@ -15,19 +15,19 @@ class LoginStartWebContractStabilizationTest {
         @Test
         void everyApplicationStatusHasStableApiAndHttpMapping() {
                 assertMapping(StartLoginStatus.INCORRECT_PASSWORD, ApiStatus.BUSINESS_REJECTED,
-                                "err.login.incorrect.password", HttpStatus.UNPROCESSABLE_ENTITY);
+                                "err.login.incorrect.password", HttpStatus.UNAUTHORIZED);
                 assertMapping(StartLoginStatus.INCORRECT_USERNAME, ApiStatus.BUSINESS_REJECTED,
-                                "err.login.incorrect.username", HttpStatus.UNPROCESSABLE_ENTITY);
+                                "err.login.incorrect.username", HttpStatus.UNAUTHORIZED);
                 assertMapping(StartLoginStatus.INVALID_ACCOUNT, ApiStatus.BUSINESS_REJECTED,
-                                "err.login.invalid.account", HttpStatus.UNPROCESSABLE_ENTITY);
+                                "err.login.invalid.account", HttpStatus.UNAUTHORIZED);
                 assertMapping(StartLoginStatus.ACCOUNT_LOCKED, ApiStatus.BUSINESS_REJECTED,
-                                "err.login.locked.account", HttpStatus.UNPROCESSABLE_ENTITY);
+                                "err.login.locked.account", HttpStatus.UNAUTHORIZED);
                 assertMapping(StartLoginStatus.DUPLICATE_IN_PROGRESS, ApiStatus.BUSINESS_REJECTED,
                                 "err.workflow.idempotency.inProgress", HttpStatus.CONFLICT);
                 assertMapping(StartLoginStatus.KEY_REUSED, ApiStatus.VALIDATION_FAILED,
                                 "err.workflow.idempotency.keyReused", HttpStatus.CONFLICT);
                 assertMapping(StartLoginStatus.FAILED_EXISTING, ApiStatus.BUSINESS_REJECTED,
-                                "err.login.credentials.invalid", HttpStatus.UNPROCESSABLE_ENTITY);
+                                "err.login.credentials.invalid", HttpStatus.UNAUTHORIZED);
                 assertMapping(StartLoginStatus.UNKNOWN_OUTCOME, ApiStatus.SYSTEM_ERROR,
                                 "err.login.session.creationFailed", HttpStatus.SERVICE_UNAVAILABLE);
                 assertMapping(StartLoginStatus.UNAVAILABLE, ApiStatus.DOWNSTREAM_ERROR,

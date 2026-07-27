@@ -30,13 +30,13 @@ public final class LoginStartWebMapper {
                                     result.expiresInSeconds(), List.of(), result.failCount())),
                     List.of());
             case INCORRECT_PASSWORD ->
-                failure(ApiStatus.BUSINESS_REJECTED, LoginErrorKey.INCORRECT_PASSWORD.value(), "DOWNSTREAM");
+                failure(ApiStatus.BUSINESS_REJECTED, LoginErrorKey.INCORRECT_PASSWORD.value(), "BFF");
             case INCORRECT_USERNAME ->
-                failure(ApiStatus.BUSINESS_REJECTED, LoginErrorKey.INCORRECT_USERNAME.value(), "DOWNSTREAM");
+                failure(ApiStatus.BUSINESS_REJECTED, LoginErrorKey.INCORRECT_USERNAME.value(), "BFF");
             case INVALID_ACCOUNT ->
-                failure(ApiStatus.BUSINESS_REJECTED, LoginErrorKey.INVALID_ACCOUNT.value(), "DOWNSTREAM");
+                failure(ApiStatus.BUSINESS_REJECTED, LoginErrorKey.INVALID_ACCOUNT.value(), "BFF");
             case ACCOUNT_LOCKED ->
-                failure(ApiStatus.BUSINESS_REJECTED, LoginErrorKey.ACCOUNT_LOCKED.value(), "DOWNSTREAM");
+                failure(ApiStatus.BUSINESS_REJECTED, LoginErrorKey.ACCOUNT_LOCKED.value(), "BFF");
             case DUPLICATE_IN_PROGRESS ->
                 failure(ApiStatus.BUSINESS_REJECTED, SharedWorkflowErrorKey.IDEMPOTENCY_IN_PROGRESS.value(), "BFF");
             case KEY_REUSED ->

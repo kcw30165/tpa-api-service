@@ -58,7 +58,20 @@ public final class TrpMemberLoginAdapter implements CredentialAuthenticationPort
         if (data.size() != 1) {
             return mapper.failure(CredentialAuthenticationStatus.UNAVAILABLE);
         }
-        return mapper.toAuthenticated(normalizedUsername, data.get(0));
+        TrpMemberLoginApimDataItem item = data.get(0);
+        if (item == null) {
+            return mapper.failure(CredentialAuthenticationStatus.UNAVAILABLE);
+        }
+        if (!item.success()) {
+            // TRPMemberLogin represents an incorrect password as a single
+            // unsuccessful data item with fail-count and no envelope error.
+            // Explicit envelope errors above remain authoritative for unknown
+            // username, invalid account, and account lock outcomes.
+            return mapper.credentialFailure(
+                    CredentialAuthenticationStatus.INCORRECT_PASSWORD,
+                    item.failCount());
+        }
+        return mapper.toAuthenticated(normalizedUsername, item);
     }
 
     private CredentialAuthenticationStatus statusFor(String error) {
