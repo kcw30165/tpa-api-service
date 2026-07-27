@@ -38,9 +38,7 @@ class AuthLoginOtpVerifyAuthenticatedTransportTest {
                                 AuthFlowCookieWriter.from(properties),
                                 new XsrfCookieWriter(properties),
                                 new com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieWriter(
-                                                new com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties.AuthenticatedCookie()),
-                                new com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedCsrfCookieWriter(
-                                                new com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties.AuthenticatedCsrf()));
+                                                new com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties.AuthenticatedCookie()));
                 MockServerHttpResponse response = new MockServerHttpResponse();
 
                 StepVerifier.create(controller.verify(
@@ -62,15 +60,13 @@ class AuthLoginOtpVerifyAuthenticatedTransportTest {
                 assertThat(response.getCookies().getFirst(properties.getCookie().getName()).getMaxAge().isZero())
                                 .isTrue();
                 assertThat(response.getCookies().get(properties.getCsrf().getCookieName()))
-                                .anySatisfy(cookie -> {
-                                        assertThat(cookie.getPath()).isEqualTo(properties.getCsrf().getCookiePath());
-                                        assertThat(cookie.getMaxAge().isZero()).isTrue();
-                                })
-                                .anySatisfy(cookie -> {
-                                        assertThat(cookie.getPath()).isEqualTo("/api");
-                                        assertThat(cookie.getValue()).isEqualTo("authenticated_csrf_token");
-                                        assertThat(cookie.getMaxAge().isZero()).isFalse();
-                                });
+                                .hasSize(1);
+                var clearedPreAuthXsrf = response.getCookies()
+                                .getFirst(properties.getCsrf().getCookieName());
+                assertThat(clearedPreAuthXsrf).isNotNull();
+                assertThat(clearedPreAuthXsrf.getPath())
+                                .isEqualTo(properties.getCsrf().getCookiePath());
+                assertThat(clearedPreAuthXsrf.getMaxAge().isZero()).isTrue();
         }
 
         @Test
@@ -84,9 +80,7 @@ class AuthLoginOtpVerifyAuthenticatedTransportTest {
                                 AuthFlowCookieWriter.from(properties),
                                 new XsrfCookieWriter(properties),
                                 new com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieWriter(
-                                                new com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties.AuthenticatedCookie()),
-                                new com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedCsrfCookieWriter(
-                                                new com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties.AuthenticatedCsrf()));
+                                                new com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties.AuthenticatedCookie()));
                 MockServerHttpResponse response = new MockServerHttpResponse();
 
                 StepVerifier.create(controller.verify(

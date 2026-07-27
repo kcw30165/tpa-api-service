@@ -12,10 +12,9 @@ class Task0043AuthenticatedRequestContextFilterArchitectureTest {
                 .replaceAll("\\s+", "");
         org.assertj.core.api.Assertions.assertThat(source)
                 .contains("AuthenticatedSessionCookieWriter",
-                        "AuthenticatedCsrfCookieWriter",
                         "ValidateAuthenticatedSessionUseCase",
                         "sessionCookies.cookieName()",
-                        "csrfCookies.headerName()",
+                        "RequestHeaderContextKeys.XSRF_TOKEN_HEADER",
                         "resolvePortalAccessContext(accountRef,sessionId)")
                 .doesNotContain("AUTHENTICATED_SESSION_HEADER",
                         "X-Authenticated-Session-Id");

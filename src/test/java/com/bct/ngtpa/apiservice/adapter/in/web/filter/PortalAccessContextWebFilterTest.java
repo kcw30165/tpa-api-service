@@ -83,8 +83,7 @@ class PortalAccessContextWebFilterTest {
         return new PortalAccessContextWebFilter(
                 port,
                 command -> Mono.just(authenticatedSession()),
-                new AuthenticatedSessionCookieWriter(new AuthWorkflowProperties.AuthenticatedCookie()),
-                new AuthenticatedCsrfCookieWriter(new AuthWorkflowProperties.AuthenticatedCsrf()));
+                new AuthenticatedSessionCookieWriter(new AuthWorkflowProperties.AuthenticatedCookie()));
     }
 
     private MockServerWebExchange exchange(String accountRef) {

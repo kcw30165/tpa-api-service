@@ -8,19 +8,9 @@ import org.springframework.context.annotation.Configuration;
 public class AuthenticatedSessionWebConfig {
     @Bean
     AuthenticatedSessionCookieWriter authenticatedSessionCookieWriter(AuthWorkflowProperties properties) {
-        requireLogin(properties);
-        return new AuthenticatedSessionCookieWriter(properties.getLogin().getSession().getCookie());
-    }
-
-    @Bean
-    AuthenticatedCsrfCookieWriter authenticatedCsrfCookieWriter(AuthWorkflowProperties properties) {
-        requireLogin(properties);
-        return new AuthenticatedCsrfCookieWriter(properties.getLogin().getSession().getCsrf());
-    }
-
-    private static void requireLogin(AuthWorkflowProperties properties) {
         if (properties == null || properties.getLogin() == null) {
             throw new IllegalStateException("auth-workflows.login configuration is required");
         }
+        return new AuthenticatedSessionCookieWriter(properties.getLogin().getSession().getCookie());
     }
 }

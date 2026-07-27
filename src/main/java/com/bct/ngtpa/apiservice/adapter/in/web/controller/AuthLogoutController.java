@@ -1,13 +1,13 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.logout.AuthenticatedLogoutWebMapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedCsrfCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.usecase.auth.logout.*;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.*;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
+import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -23,11 +23,10 @@ public final class AuthLogoutController {
     private final AuthenticatedLogoutWebMapper mapper;
     private final ValidateAuthenticatedSessionUseCase sessionValidation;
     private final AuthenticatedSessionCookieWriter sessionCookies;
-    private final AuthenticatedCsrfCookieWriter csrfCookies;
 
     @PostMapping("/logout")
     public Mono<ResponseEntity<MutationResponse<Void>>> logout(
-            @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrf,
+            @RequestHeader(name = RequestHeaderContextKeys.XSRF_TOKEN_HEADER, required = false) String csrf,
             @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false) String requestId,
             ServerWebExchange exchange,
             ServerHttpResponse response) {
@@ -63,7 +62,7 @@ public final class AuthLogoutController {
                                 com.bct.ngtpa.apiservice.shared.error.ErrorCodes.SECURITY_AUTHENTICATION_REQUIRED,
                                 null, java.util.List.of("PAGE"), "ERROR", "SERVER")))));
     }
-    private void clear(ServerHttpResponse response) { sessionCookies.clear(response); csrfCookies.clear(response); }
+    private void clear(ServerHttpResponse response) { sessionCookies.clear(response); }
     private String cookie(ServerWebExchange exchange, String name) {
         var value = exchange.getRequest().getCookies().getFirst(name);
         return value == null ? null : value.getValue();

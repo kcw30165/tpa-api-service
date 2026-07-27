@@ -78,8 +78,7 @@ class AuthenticatedPortalAccessContextWebFilterTest {
             ValidateAuthenticatedSessionUseCase validation) {
         return new PortalAccessContextWebFilter(
                 port, validation,
-                new AuthenticatedSessionCookieWriter(new AuthWorkflowProperties.AuthenticatedCookie()),
-                new AuthenticatedCsrfCookieWriter(new AuthWorkflowProperties.AuthenticatedCsrf()));
+                new AuthenticatedSessionCookieWriter(new AuthWorkflowProperties.AuthenticatedCookie()));
     }
 
     private ValidateAuthenticatedSessionUseCase validSession() {

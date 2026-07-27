@@ -14,13 +14,12 @@ class Task0043AuthenticatedLogoutHttpArchitectureTest {
         org.assertj.core.api.Assertions.assertThat(source)
                 .contains("@PostMapping(\"/logout\")",
                         "AuthenticatedSessionCookieWriter",
-                        "AuthenticatedCsrfCookieWriter",
                         "ValidateAuthenticatedSessionUseCase",
                         "AuthenticatedLogoutUseCase",
                         "AuthenticatedLogoutCommand",
                         "sessionCookies.cookieName()",
                         "sessionCookies.clear(response)",
-                        "csrfCookies.clear(response)")
+                        "RequestHeaderContextKeys.XSRF_TOKEN_HEADER")
                 .doesNotContain("AUTHENTICATED_SESSION_HEADER",
                         "X-Authenticated-Session-Id");
     }

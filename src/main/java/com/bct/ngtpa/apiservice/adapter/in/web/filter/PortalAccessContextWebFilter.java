@@ -1,6 +1,5 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.filter;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedCsrfCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieWriter;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
@@ -23,14 +22,13 @@ public final class PortalAccessContextWebFilter implements WebFilter {
     private final PortalAccessContextPort portalAccessContextPort;
     private final ValidateAuthenticatedSessionUseCase sessionValidation;
     private final AuthenticatedSessionCookieWriter sessionCookies;
-    private final AuthenticatedCsrfCookieWriter csrfCookies;
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         String accountRef = accountRef(exchange);
         if (!StringUtils.hasText(accountRef)) return chain.filter(exchange);
         String sessionId = cookie(exchange, sessionCookies.cookieName());
-        String csrf = exchange.getRequest().getHeaders().getFirst(csrfCookies.headerName());
+        String csrf = exchange.getRequest().getHeaders().getFirst(RequestHeaderContextKeys.XSRF_TOKEN_HEADER);
         if (!StringUtils.hasText(sessionId) || !StringUtils.hasText(csrf)) {
             return Mono.error(new AuthenticatedPortalContextResolutionException());
         }

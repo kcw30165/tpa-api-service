@@ -1072,3 +1072,13 @@
 - The authenticated XSRF-TOKEN cookie remains temporarily present in this stage and will be removed atomically in 0043-014-002.
 - Fail-first evidence: target/evidence/0043-014-001-return-authenticated-csrf-in-verify-response-fail-first.log
 - Commit message: feat(auth): return authenticated CSRF token after OTP verification
+
+### 0043-014-008-fix-exact-verify-xsrf-cookie-assertion
+- Status: completed
+- Classification: corrective exact cumulative test migration; subtask 014 main-script progress remains 2/3 with one main script remaining.
+- Root cause: the cumulative test asserts the XSRF cookies using properties.getCsrf().getCookieName() rather than a literal XSRF-TOKEN string, so the previous generic migration could not locate the assertion.
+- Removed the stale active authenticated XSRF-TOKEN cookie expectation at /api.
+- The successful verification response now requires exactly one XSRF response cookie: the expired pre-auth cleanup cookie at the configured pre-auth cookie path.
+- Preserved the authenticated contract: portal_sid HttpOnly cookie plus result.data.csrfToken plus X-XSRF-TOKEN request header.
+- Production behavior changed by this correction: no.
+- Commit message: test(auth): remove stale authenticated XSRF cookie assertion

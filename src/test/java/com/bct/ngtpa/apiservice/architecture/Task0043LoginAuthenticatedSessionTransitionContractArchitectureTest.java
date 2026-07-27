@@ -39,7 +39,6 @@ class Task0043LoginAuthenticatedSessionTransitionContractArchitectureTest {
                         "RevokeAuthenticatedSessionUseCase");
         org.assertj.core.api.Assertions.assertThat(controller)
                 .contains("AuthenticatedSessionCookieWriter",
-                        "AuthenticatedCsrfCookieWriter",
                         "result.authenticatedSessionId().value()",
                         "result.authenticatedCsrfToken()")
                 .doesNotContain("AUTHENTICATED_SESSION_HEADER",

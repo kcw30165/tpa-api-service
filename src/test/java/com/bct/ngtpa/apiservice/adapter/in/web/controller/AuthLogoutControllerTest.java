@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.logout.AuthenticatedLogoutWebMapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedCsrfCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieWriter;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.*;
@@ -47,7 +46,6 @@ class AuthLogoutControllerTest {
         assertThat(exchange.getResponse().getHeaders().getCacheControl())
                 .isEqualTo(CacheControl.noStore().getHeaderValue());
         assertThat(exchange.getResponse().getCookies().getFirst("portal_sid").getMaxAge().isZero()).isTrue();
-        assertThat(exchange.getResponse().getCookies().getFirst("XSRF-TOKEN").getMaxAge().isZero()).isTrue();
     }
 
     @Test
@@ -103,8 +101,7 @@ class AuthLogoutControllerTest {
                 useCase,
                 new AuthenticatedLogoutWebMapper(),
                 validation,
-                new AuthenticatedSessionCookieWriter(new AuthWorkflowProperties.AuthenticatedCookie()),
-                new AuthenticatedCsrfCookieWriter(new AuthWorkflowProperties.AuthenticatedCsrf()));
+                new AuthenticatedSessionCookieWriter(new AuthWorkflowProperties.AuthenticatedCookie()));
     }
 
     private MockServerWebExchange exchange(String sid) {

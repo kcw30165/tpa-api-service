@@ -8,7 +8,6 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.mapper.LoginOtpVerifyW
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.XsrfCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieWriter;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedCsrfCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.workflow.LoginErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
@@ -35,21 +34,18 @@ public final class AuthLoginOtpVerifyController {
     private final AuthFlowCookieWriter authFlowCookies;
     private final XsrfCookieWriter xsrfCookies;
     private final AuthenticatedSessionCookieWriter authenticatedSessionCookies;
-    private final AuthenticatedCsrfCookieWriter authenticatedCsrfCookies;
 
     public AuthLoginOtpVerifyController(
             VerifyLoginOtpUseCase useCase,
             LoginOtpVerifyWebMapper mapper,
             AuthFlowCookieWriter authFlowCookies,
             XsrfCookieWriter xsrfCookies,
-            AuthenticatedSessionCookieWriter authenticatedSessionCookies,
-            AuthenticatedCsrfCookieWriter authenticatedCsrfCookies) {
+            AuthenticatedSessionCookieWriter authenticatedSessionCookies) {
         this.useCase = useCase;
         this.mapper = mapper;
         this.authFlowCookies = authFlowCookies;
         this.xsrfCookies = xsrfCookies;
         this.authenticatedSessionCookies = authenticatedSessionCookies;
-        this.authenticatedCsrfCookies = authenticatedCsrfCookies;
     }
 
     @PostMapping("/verify")
@@ -95,9 +91,6 @@ public final class AuthLoginOtpVerifyController {
                             authenticatedSessionCookies.write(
                                     response,
                                     result.authenticatedSessionId().value());
-                            authenticatedCsrfCookies.write(
-                                    response,
-                                    result.authenticatedCsrfToken());
                         }
                         if (result.clearAuthFlowCookie()) {
                             authFlowCookies.clearAuthFlowCookie(response);
