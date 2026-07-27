@@ -15,15 +15,18 @@ class Task0043AuthenticatedSidTransportArchitectureTest {
     }
 
     @Test
-    void verifyControllerPublishesSidOnlyFromSuccessfulInternalResult() throws Exception {
-        String source = Files.readString(Path.of(
+    void verifyControllerPublishesAuthenticatedCookiesOnlyFromSuccessfulInternalResult() throws Exception {
+        String source = java.nio.file.Files.readString(java.nio.file.Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthLoginOtpVerifyController.java"));
-        assertThat(source).contains(
-                "VerifyLoginOtpStatus.ACCOUNTS_READY",
-                "result.authenticatedSessionId().value()",
-                "RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER",
-                "clearAuthFlowCookie",
-                "clearXsrfCookie");
-        assertThat(source).doesNotContain("Session-Id");
+        org.assertj.core.api.Assertions.assertThat(source)
+                .contains("VerifyLoginOtpStatus.ACCOUNTS_READY",
+                        "result.authenticatedSessionId().value()",
+                        "result.authenticatedCsrfToken()",
+                        "authenticatedSessionCookies.write",
+                        "authenticatedCsrfCookies.write",
+                        "clearAuthFlowCookie",
+                        "clearXsrfCookie")
+                .doesNotContain("AUTHENTICATED_SESSION_HEADER",
+                        "X-Authenticated-Session-Id");
     }
 }

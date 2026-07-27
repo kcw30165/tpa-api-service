@@ -24,14 +24,15 @@ class TemporaryPortalAccessContextHeaderSessionGuardTest {
     }
 
     @Test
-    void portalAccessContextFilterPassesCanonicalSidToPort() throws Exception {
-        String source = Files.readString(Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/filter/PortalAccessContextWebFilter.java"));
-
-        String compact = source.replaceAll("\\s+", "");
-        assertTrue(compact.contains("sessionId(exchange)"));
-        assertTrue(compact.contains("resolvePortalAccessContext(accountRef,sessionId)"));
-        assertTrue(source.contains("RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER"));
-        assertFalse(source.contains("SESSION_ID_HEADER"));
+    void portalAccessContextFilterPassesPortalCookieSessionToPort() throws Exception {
+        String source = java.nio.file.Files.readString(java.nio.file.Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/filter/PortalAccessContextWebFilter.java"))
+                .replaceAll("\\s+", "");
+        org.junit.jupiter.api.Assertions.assertTrue(source.contains("sessionCookies.cookieName()"));
+        org.junit.jupiter.api.Assertions.assertTrue(
+                source.contains("resolvePortalAccessContext(accountRef,sessionId)"));
+        org.junit.jupiter.api.Assertions.assertFalse(source.contains("AUTHENTICATED_SESSION_HEADER"));
+        org.junit.jupiter.api.Assertions.assertFalse(source.contains("X-Authenticated-Session-Id"));
     }
 
     @Test

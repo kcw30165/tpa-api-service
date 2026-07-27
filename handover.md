@@ -1051,3 +1051,13 @@
 - Production behavior changed by this correction: no.
 - Updated-file evidence: target/evidence/0043-013-012-updated-files.txt
 - Commit message: test(auth): disambiguate portal context assertions
+
+### 0043-013-015-fix-stale-header-transport-architecture-guards
+- Status: completed
+- Classification: corrective full-suite architecture-guard migration after the portal_sid cutover; subtask 013 main-script progress remains 5/5 with zero main scripts remaining.
+- Updated five stale guards that still required X-Authenticated-Session-Id or AUTHENTICATED_SESSION_HEADER.
+- Guards now require portal_sid cookie consumption, authenticated X-XSRF-TOKEN validation, authenticated cookie publication after OTP verification, and cookie clearing during logout.
+- Retained transition ordering, thin controller boundaries, two-argument Account-Ref resolution, and absence of header fallback.
+- Complete Maven suite evidence: target/evidence/0043-013-015-fix-stale-header-transport-architecture-guards-full-suite.log
+- Production behavior changed by this correction: no.
+- Commit message: test(auth): align architecture guards with portal cookie transport

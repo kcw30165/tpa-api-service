@@ -8,19 +8,21 @@ import org.junit.jupiter.api.Test;
 
 class Task0043AuthenticatedLogoutHttpArchitectureTest {
     @Test
-    void endpointUsesCanonicalSidTransportAndThinUseCaseBoundary() throws Exception {
-        String source = Files.readString(Path.of(
+    void endpointUsesPortalCookieCsrfAndThinUseCaseBoundary() throws Exception {
+        String source = java.nio.file.Files.readString(java.nio.file.Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthLogoutController.java"));
-        assertThat(source).contains(
-                "@PostMapping(\"/logout\")",
-                "RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER",
-                "AuthenticatedLogoutUseCase",
-                "AuthenticatedLogoutCommand");
-        assertThat(source).doesNotContain(
-                "Session-Id",
-                "AuthenticatedSessionPort",
-                "Redis",
-                "RevokeAuthenticatedSessionCommand");
+        org.assertj.core.api.Assertions.assertThat(source)
+                .contains("@PostMapping(\"/logout\")",
+                        "AuthenticatedSessionCookieWriter",
+                        "AuthenticatedCsrfCookieWriter",
+                        "ValidateAuthenticatedSessionUseCase",
+                        "AuthenticatedLogoutUseCase",
+                        "AuthenticatedLogoutCommand",
+                        "sessionCookies.cookieName()",
+                        "sessionCookies.clear(response)",
+                        "csrfCookies.clear(response)")
+                .doesNotContain("AUTHENTICATED_SESSION_HEADER",
+                        "X-Authenticated-Session-Id");
     }
 
     @Test

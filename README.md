@@ -180,7 +180,7 @@ com.bct.ngtpa.apiservice
 `RequestLoggingWebFilter` resolves the global inbound `RequestHeaderContext` once per request and stores it in both Reactor Context and `ServerWebExchange` attributes. The relevant headers are:
 
 - `Account-Ref` — opaque selected-account reference for account-scoped APIs.
-- `X-Authenticated-Session-Id` — opaque post-login session transport. Values use the `sid_` prefix.
+- `portal_sid HttpOnly cookie` — opaque post-login session transport. Values use the `sid_` prefix.
 - `X-Request-Id` — correlation identifier; a UUID is generated when missing or blank and the effective value is returned in the response header.
 - `Accept-Language` — inbound language preference; defaults to `en` when missing or blank.
 
@@ -191,14 +191,14 @@ com.bct.ngtpa.apiservice
 Selected-account APIs require both:
 
 ```http
-X-Authenticated-Session-Id: sid_<opaque-value>
+Cookie: portal_sid=sid_<opaque-value>
 Account-Ref: acc_<opaque-value>
 ```
 
 The runtime flow is:
 
 ```text
-X-Authenticated-Session-Id
+portal_sid HttpOnly cookie
   -> load/decrypt/touch authenticated session in Redis
   -> resolve Account-Ref only within that session
   -> create PortalAccessContext
@@ -209,7 +209,7 @@ X-Authenticated-Session-Id
 
 For an account-scoped request, missing, malformed, expired, revoked, or unknown session state—and unknown or cross-session `Account-Ref` values—fail closed with HTTP **401**, `err.security.authentication.required`, and no session/account existence disclosure.
 
-Only `X-Request-Id` is propagated to APIM. `Account-Ref`, `X-Authenticated-Session-Id`, and `Accept-Language` are not propagated to APIM.
+Only `X-Request-Id` is propagated to APIM. `Account-Ref`, `portal_sid HttpOnly cookie`, and `Accept-Language` are not propagated to APIM.
 
 ---
 
@@ -400,7 +400,7 @@ Authenticated sessions:
 On successful OTP verification, the BFF returns the session value in the response header:
 
 ```http
-X-Authenticated-Session-Id: sid_<opaque-value>
+Cookie: portal_sid=sid_<opaque-value>
 ```
 
 The authenticated session ID is not included in the JSON response. The successful transition clears `auth_flow_sid` and the pre-auth XSRF cookie.
@@ -410,18 +410,18 @@ The authenticated session ID is not included in the JSON response. The successfu
 Account-scoped APIs use:
 
 ```http
-X-Authenticated-Session-Id: sid_<opaque-value>
+Cookie: portal_sid=sid_<opaque-value>
 Account-Ref: acc_<opaque-value>
 ```
 
-`POST /api/v1/auth/logout` accepts `X-Authenticated-Session-Id`, revokes the server-side session, returns `Cache-Control: no-store`, and is intentionally idempotent. Missing, malformed, absent, expired, or already-terminated sessions return the same generic success response so session existence is not disclosed. The frontend must discard its stored session value after logout.
+`POST /api/v1/auth/logout` accepts `portal_sid HttpOnly cookie`, revokes the server-side session, returns `Cache-Control: no-store`, and is intentionally idempotent. Missing, malformed, absent, expired, or already-terminated sessions return the same generic success response so session existence is not disclosed. The frontend must discard its stored session value after logout.
 
 ### Security and diagnostics
 
 - Raw passwords, OTPs, CSRF tokens, destinations, session IDs, account identifiers, policy numbers, and certificate numbers are not logged.
 - Login send/resend/verify diagnostics use stable semantic events and safe statuses only.
 - Public errors use stable BFF-owned codes and never expose raw APIM/Progress codes or Redis/crypto details.
-- `X-Authenticated-Session-Id` is the only authenticated-session header; the retired `Session-Id` and former `sid_xxx` header names have no compatibility fallback.
+- `portal_sid HttpOnly cookie` is the only authenticated-session header; the retired `Session-Id` and former `sid_xxx` header names have no compatibility fallback.
 
 ---
 
@@ -669,7 +669,7 @@ This transport-layer setting is separate from the implemented portal Login workf
 Portal access context is now resolved from the protected authenticated session—not from the temporary YAML profile configuration.
 
 ```text
-X-Authenticated-Session-Id + Account-Ref
+portal_sid HttpOnly cookie + Account-Ref
   -> AuthenticatedAccountContextResolver
   -> active protected session
   -> selected session-owned account
@@ -1598,7 +1598,7 @@ Updates the read status for one or more notifications.
 - `env` and `mbrType` must be non-blank.
 - `notificationId` must contain at least one non-blank value.
 - Duplicate notification IDs are preserved in request order and forwarded to APIM unchanged.
-- Actor and account routing fields are resolved from the authenticated session selected by `X-Authenticated-Session-Id` and `Account-Ref`. The notification flow does not read temporary YAML portal-context profiles at runtime.
+- Actor and account routing fields are resolved from the authenticated session selected by `portal_sid HttpOnly cookie` and `Account-Ref`. The notification flow does not read temporary YAML portal-context profiles at runtime.
 
 **Response:**
 
@@ -1664,7 +1664,7 @@ Accept-Language: zh-HK
 - Dynamic detail items are joined from `contDtl[*].disp-src` to `dispSrc[*].disp-src` and sorted by `dispSrc.seq` ascending.
 - Amount `text` values are formatted using `display-format.amount.*` configuration (language and env-specific). Value `value` is the raw `BigDecimal`.
 - Date values carry the query-string text (`fromDate`/`toDate`) and also the ISO date string derived from APIM `cover-from`/`cover-to` date parsing.
-- Actor and account routing fields are resolved from the authenticated session selected by `X-Authenticated-Session-Id` and `Account-Ref`. The contribution flow does not read temporary YAML portal-context profiles at runtime.
+- Actor and account routing fields are resolved from the authenticated session selected by `portal_sid HttpOnly cookie` and `Account-Ref`. The contribution flow does not read temporary YAML portal-context profiles at runtime.
 - `actions.export.enabled` is always `true` (temporary stub via `TemporaryContributionActionPermissionAdapter`).
 - `Accept-Language` is not propagated to APIM; only `X-Request-Id` continues to be propagated.
 
@@ -2619,3 +2619,22 @@ for security invariants, test commands, and the merge-request evidence checklist
 
 The original verified destination remains authoritative for masking, session state, challenge subject protection, and eligibility checks. Physical destination substitution is confined to `RegistrationMessagePort`. Legacy destination hashing and the removed destination-hash OTP-send limiter are not part of the active resend policy and must not be reintroduced.
 
+## Authenticated browser request contract
+
+Successful OTP verification establishes browser-managed authenticated transport:
+
+```http
+Set-Cookie: portal_sid=sid_<opaque-value>; Path=/api; HttpOnly; Secure; SameSite=None
+Set-Cookie: XSRF-TOKEN=<authenticated-csrf-token>; Path=/api; Secure; SameSite=None
+```
+
+Account-scoped requests use:
+
+```http
+Cookie: portal_sid=sid_<opaque-value>
+Account-Ref: acc_<opaque-value>
+X-XSRF-TOKEN: <authenticated-csrf-token>
+X-Request-Id: <request-id>
+```
+
+The authenticated session ID is never returned in JSON and is not exposed to frontend JavaScript. Logout validates the authenticated CSRF token, revokes the server-side session, and clears both authenticated cookies. The retired `portal_sid HttpOnly cookie`, `sid_xxx`, and `Session-Id` transports have no compatibility fallback.
