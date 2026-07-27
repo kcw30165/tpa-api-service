@@ -13,6 +13,7 @@ class LoginOtpVerifyWebMapperTest {
         var r = m.toMutationResponse(new VerifyLoginOtpResult(VerifyLoginOtpStatus.INVALID, 3, false));
         assertThat(r.result().nextStep()).isEqualTo(WorkflowNextStep.VERIFY_OTP);
         assertThat(r.errors().getFirst().code()).isEqualTo("err.login.otp.invalid");
+        assertThat(r.result().data().csrfToken()).isNull();
     }
 
     @Test
@@ -20,5 +21,6 @@ class LoginOtpVerifyWebMapperTest {
         var r = m.toMutationResponse(new VerifyLoginOtpResult(VerifyLoginOtpStatus.VERIFY_ATTEMPTS_EXCEEDED, 0, true));
         assertThat(r.result().nextStep()).isEqualTo(WorkflowNextStep.RESTART_FLOW);
         assertThat(r.result().data().actions().getFirst().code()).isEqualTo("RESTART_FLOW");
+        assertThat(r.result().data().csrfToken()).isNull();
     }
 }

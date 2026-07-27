@@ -21,6 +21,8 @@ class LoginOtpSuccessAccountWebMapperTest {
                                 "sid_abcdefghijklmnopqrstuvwx"), "authenticated_csrf_token"));
         assertThat(response.success()).isTrue();
         assertThat(response.result().nextStep()).isEqualTo(WorkflowNextStep.SELECT_ACCOUNT);
+        assertThat(response.result().data().csrfToken()).isEqualTo("authenticated_csrf_token");
+        assertThat(response.result().data().toString()).doesNotContain("authenticated_csrf_token");
         assertThat(response.result().data().accounts()).extracting(a -> a.accountRef())
                 .containsExactly("acc_abcdefghijklmnopqrstuvwx");
         assertThat(response.toString()).doesNotContain("00000000012", "0001", "DB", "TR");

@@ -1061,3 +1061,14 @@
 - Complete Maven suite evidence: target/evidence/0043-013-015-fix-stale-header-transport-architecture-guards-full-suite.log
 - Production behavior changed by this correction: no.
 - Commit message: test(auth): align architecture guards with portal cookie transport
+
+### 0043-014-001-return-authenticated-csrf-in-verify-response
+- Status: completed
+- Subtask 014 main-script progress: 1/3; two main scripts remain.
+- Successful Login OTP verification now returns the freshly rotated authenticated CSRF token as result.data.csrfToken together with SELECT_ACCOUNT and opaque AccountRef values.
+- Failure, missing-input, invalid OTP, exhaustion, account-list, and system outcomes never expose csrfToken.
+- The authenticated session ID remains absent from the JSON response and continues to be delivered only through the HttpOnly portal_sid cookie.
+- LoginOtpVerifyDataResponse redacts csrfToken from diagnostics.
+- The authenticated XSRF-TOKEN cookie remains temporarily present in this stage and will be removed atomically in 0043-014-002.
+- Fail-first evidence: target/evidence/0043-014-001-return-authenticated-csrf-in-verify-response-fail-first.log
+- Commit message: feat(auth): return authenticated CSRF token after OTP verification
