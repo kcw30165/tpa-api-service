@@ -46,7 +46,7 @@ class TrpMemberLoginAdapterTest {
         TrpMemberLoginTransport contradictory = request -> Mono.just(
                 envelope("err.tpa.wrong.password", List.of(item)));
         StepVerifier.create(new TrpMemberLoginAdapter(
-                        contradictory, new TrpMemberLoginContractMapper()).authenticate(command()))
+                contradictory, new TrpMemberLoginContractMapper()).authenticate(command()))
                 .assertNext(result -> assertThat(result.status())
                         .isEqualTo(CredentialAuthenticationStatus.UNAVAILABLE))
                 .verifyComplete();
@@ -57,7 +57,7 @@ class TrpMemberLoginAdapterTest {
         var item = new TrpMemberLoginApimDataItem(true, null, "MBR", 0, List.of());
         TrpMemberLoginTransport transport = request -> Mono.just(envelope("", List.of(item, item)));
         StepVerifier.create(new TrpMemberLoginAdapter(
-                        transport, new TrpMemberLoginContractMapper()).authenticate(command()))
+                transport, new TrpMemberLoginContractMapper()).authenticate(command()))
                 .assertNext(result -> assertThat(result.status())
                         .isEqualTo(CredentialAuthenticationStatus.UNAVAILABLE))
                 .verifyComplete();
@@ -66,7 +66,7 @@ class TrpMemberLoginAdapterTest {
     private void assertOutcome(String errMessage, CredentialAuthenticationStatus expected) {
         TrpMemberLoginTransport transport = request -> Mono.just(envelope(errMessage, List.of()));
         StepVerifier.create(new TrpMemberLoginAdapter(
-                        transport, new TrpMemberLoginContractMapper()).authenticate(command()))
+                transport, new TrpMemberLoginContractMapper()).authenticate(command()))
                 .assertNext(result -> {
                     assertThat(result.status()).isEqualTo(expected);
                     assertThat(result.downstreamCode()).isNull();

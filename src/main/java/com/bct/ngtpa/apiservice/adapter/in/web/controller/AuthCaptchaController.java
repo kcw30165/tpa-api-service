@@ -40,14 +40,15 @@ public class AuthCaptchaController {
     private final CaptchaWebMapper captchaWebMapper;
 
     @PostMapping(path = "/challenge", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<MutationResponse<CaptchaWorkflowResultResponse<CaptchaChallengeResponse>>> challenge(
+    public Mono<ResponseEntity<MutationResponse<CaptchaWorkflowResultResponse<CaptchaChallengeResponse>>>> challenge(
             @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false) String requestId,
             @RequestHeader(name = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false) String acceptLanguage,
             ServerHttpResponse response) {
         echoRequestId(response, requestId);
         return createCaptchaChallengeUseCase
                 .create(new CreateCaptchaChallengeCommand(trimToNull(requestId), trimToNull(acceptLanguage)))
-                .map(captchaWebMapper::toChallengeMutationResponse);
+                .map(captchaWebMapper::toChallengeMutationResponse)
+                .map(RegistrationHttpResponses::toResponse);
     }
 
     @PostMapping(path = "/verify", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
@@ -81,7 +82,7 @@ public class AuthCaptchaController {
     }
 
     @PostMapping(path = "/refresh", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<MutationResponse<CaptchaWorkflowResultResponse<CaptchaRefreshResponse>>> refresh(
+    public Mono<ResponseEntity<MutationResponse<CaptchaWorkflowResultResponse<CaptchaRefreshResponse>>>> refresh(
             @RequestBody(required = false) CaptchaRefreshRequest request,
             @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false) String requestId,
             @RequestHeader(name = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false) String acceptLanguage,
@@ -95,9 +96,11 @@ public class AuthCaptchaController {
             }
             return refreshCaptchaUseCase
                     .refresh(new RefreshCaptchaChallengeCommand(oldCaptchaChallengeId, trimToNull(requestId)))
-                    .map(captchaWebMapper::toRefreshMutationResponse);
+                    .map(captchaWebMapper::toRefreshMutationResponse)
+                    .map(RegistrationHttpResponses::toResponse);
         } catch (RuntimeException exception) {
-            return Mono.just(captchaWebMapper.invalidRefreshChallengeIdResponse(trimToNull(acceptLanguage)));
+            return Mono.just(RegistrationHttpResponses.toResponse(
+                    captchaWebMapper.invalidRefreshChallengeIdResponse(trimToNull(acceptLanguage))));
         }
     }
 

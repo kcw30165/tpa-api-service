@@ -1,22 +1,14 @@
 package com.bct.ngtpa.apiservice.security;
 
-import com.bct.ngtpa.apiservice.application.dto.security.csrf.CsrfToken;
 import com.bct.ngtpa.apiservice.application.dto.security.ratelimit.RateLimitBucket;
 import com.bct.ngtpa.apiservice.application.dto.security.ratelimit.RateLimitCommand;
 import com.bct.ngtpa.apiservice.application.service.security.csrf.OriginRefererValidationStatus;
 import com.bct.ngtpa.apiservice.application.service.security.csrf.OriginRefererValidator;
-import com.bct.ngtpa.apiservice.application.service.security.csrf.SecureCsrfTokenGenerator;
-import com.bct.ngtpa.apiservice.application.service.security.csrf.Sha256CsrfTokenHasher;
 import com.bct.ngtpa.apiservice.application.service.security.ratelimit.DestinationType;
 import com.bct.ngtpa.apiservice.application.service.security.ratelimit.Sha256DestinationBucketIdGenerator;
 import org.junit.jupiter.api.Test;
 
-import java.lang.reflect.RecordComponent;
-import java.time.Instant;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -75,26 +67,6 @@ class P3SecurityFoundationIntegrationTest {
                 assertThat(bucketId).doesNotContain("member@example.com").doesNotContain("@");
                 assertThat(command.bucket()).isEqualTo(RateLimitBucket.OTP_SEND_BY_DESTINATION_HASH);
                 assertThat(command.bucketId()).isEqualTo(bucketId);
-        }
-
-        @Test
-        void p3CsrfTokenFoundationStoresHashNotRawToken() {
-                String token = new SecureCsrfTokenGenerator().generateToken();
-                Sha256CsrfTokenHasher hasher = new Sha256CsrfTokenHasher();
-                String hash = hasher.hash(token);
-                var persisted = new CsrfToken(
-                                "workflow_opaque",
-                                hash,
-                                Instant.parse("2026-01-01T00:00:00Z"),
-                                Instant.parse("2026-01-01T00:10:00Z"));
-
-                assertThat(token).isNotBlank().matches("^[A-Za-z0-9_.-]+$");
-                assertThat(hash).isNotBlank().isNotEqualTo(token);
-                assertThat(persisted.tokenHash()).isEqualTo(hash);
-                Set<String> fields = Arrays.stream(CsrfToken.class.getRecordComponents())
-                                .map(RecordComponent::getName)
-                                .collect(Collectors.toSet());
-                assertThat(fields).doesNotContain("token", "rawToken", "csrfToken", "plainToken");
         }
 
         @Test

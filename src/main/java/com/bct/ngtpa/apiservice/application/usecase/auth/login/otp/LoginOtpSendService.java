@@ -43,7 +43,9 @@ public final class LoginOtpSendService implements SendLoginOtpUseCase {
                 .flatMap(loaded -> {
                     if (!loaded.isValid())
                         return Mono.just(
-                                new SendLoginOtpResult(SendLoginOtpStatus.AUTH_FLOW_INVALID, null, null, null, null));
+                                new SendLoginOtpResult(loaded.status() == LoginProtectedAuthFlowContextStatus.CSRF_INVALID
+                                ? SendLoginOtpStatus.CSRF_INVALID
+                                : SendLoginOtpStatus.AUTH_FLOW_INVALID, null, null, null, null));
                     ResolvedLoginOtpDestination destination;
                     try {
                         destination = destinationResolver.resolve(loaded.context(), command);

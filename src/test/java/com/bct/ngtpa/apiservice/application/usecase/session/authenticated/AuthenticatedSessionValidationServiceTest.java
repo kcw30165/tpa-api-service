@@ -25,6 +25,6 @@ class AuthenticatedSessionValidationServiceTest {
                 .assertNext(value -> assertThat(value).isEqualTo(session)).verifyComplete();
         StepVerifier.create(service.validate(new ValidateAuthenticatedSessionCommand(
                 session.authenticatedSessionId(), "wrong", "req")))
-                .expectError(AuthenticatedPortalContextResolutionException.class).verify();
+                .expectError(AuthenticatedCsrfValidationException.class).verify();
     }
 }

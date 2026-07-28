@@ -37,7 +37,9 @@ public final class LoginOtpResendService implements ResendLoginOtpUseCase {
                                                 com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus.OTP_SENT,
                                                 true))
                                 .flatMap(x -> x.isValid() ? replace(c, x)
-                                                : Mono.just(result(ResendLoginOtpStatus.AUTH_FLOW_INVALID, x, null)))
+                                                : Mono.just(result(x.status() == LoginProtectedAuthFlowContextStatus.CSRF_INVALID
+                                ? ResendLoginOtpStatus.CSRF_INVALID
+                                : ResendLoginOtpStatus.AUTH_FLOW_INVALID, x, null)))
                                 .doOnNext(r -> LOG.info("event=login.otp.resend.result status={}", r.status()))
                                 .doOnError(e -> LOG.error("event=login.otp.resend.failure exceptionType={}",
                                                 e.getClass().getSimpleName()));

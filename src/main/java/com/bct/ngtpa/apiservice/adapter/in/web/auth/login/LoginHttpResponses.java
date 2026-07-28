@@ -19,16 +19,20 @@ public final class LoginHttpResponses {
         if (body.success())
             return HttpStatus.OK;
         String code = firstCode(body.errors());
+        if (code.equals(LoginErrorKey.CSRF_INVALID.value())
+                || code.equals(LoginErrorKey.ORIGIN_INVALID.value()))
+            return HttpStatus.FORBIDDEN;
         if (code.equals(SharedWorkflowErrorKey.IDEMPOTENCY_IN_PROGRESS.value())
                 || code.equals(SharedWorkflowErrorKey.IDEMPOTENCY_KEY_REUSED.value()))
             return HttpStatus.CONFLICT;
         if (code.equals(LoginErrorKey.OTP_VERIFY_ATTEMPTS_EXCEEDED.value())
                 || code.equals(LoginErrorKey.OTP_COOLDOWN_ACTIVE.value()))
             return HttpStatus.TOO_MANY_REQUESTS;
+        if (code.equals(LoginErrorKey.ACCOUNT_LOCKED.value()))
+            return HttpStatus.LOCKED;
         if (code.equals(LoginErrorKey.INCORRECT_PASSWORD.value())
                 || code.equals(LoginErrorKey.INCORRECT_USERNAME.value())
                 || code.equals(LoginErrorKey.INVALID_ACCOUNT.value())
-                || code.equals(LoginErrorKey.ACCOUNT_LOCKED.value())
                 || code.equals(LoginErrorKey.CREDENTIALS_INVALID.value()))
             return HttpStatus.UNAUTHORIZED;
         if (code.equals(LoginErrorKey.CREDENTIALS_UNAVAILABLE.value()))

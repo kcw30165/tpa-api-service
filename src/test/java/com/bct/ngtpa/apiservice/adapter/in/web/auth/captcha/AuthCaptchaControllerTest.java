@@ -80,15 +80,18 @@ class AuthCaptchaControllerTest {
 
         CreateCaptchaChallengeUseCase createUseCase = command -> {
             createCalled.set(true);
-            return Mono.just(new CreateCaptchaChallengeResult(CHALLENGE_ID, new CaptchaImage("base64-image", "image/png"), 300));
+            return Mono.just(
+                    new CreateCaptchaChallengeResult(CHALLENGE_ID, new CaptchaImage("base64-image", "image/png"), 300));
         };
         VerifyCaptchaUseCase verifyUseCase = command -> {
             verifyCalled.set(true);
-            return Mono.just(new VerifyCaptchaChallengeResult(CaptchaVerificationOutcome.VERIFIED, true, CHALLENGE_ID, 5));
+            return Mono
+                    .just(new VerifyCaptchaChallengeResult(CaptchaVerificationOutcome.VERIFIED, true, CHALLENGE_ID, 5));
         };
         RefreshCaptchaUseCase refreshUseCase = command -> {
             refreshCalled.set(true);
-            return Mono.just(new RefreshCaptchaChallengeResult(NEW_CHALLENGE_ID, new CaptchaImage("base64-refresh", "image/png"), 300));
+            return Mono.just(new RefreshCaptchaChallengeResult(NEW_CHALLENGE_ID,
+                    new CaptchaImage("base64-refresh", "image/png"), 300));
         };
 
         WebTestClient client = webClient(createUseCase, verifyUseCase, refreshUseCase);
@@ -115,7 +118,8 @@ class AuthCaptchaControllerTest {
         AtomicReference<CreateCaptchaChallengeCommand> captured = new AtomicReference<>();
         CreateCaptchaChallengeUseCase createUseCase = command -> {
             captured.set(command);
-            return Mono.just(new CreateCaptchaChallengeResult(CHALLENGE_ID, new CaptchaImage("base64-image", "image/png"), 300));
+            return Mono.just(
+                    new CreateCaptchaChallengeResult(CHALLENGE_ID, new CaptchaImage("base64-image", "image/png"), 300));
         };
 
         webClient(createUseCase, stubVerifyUseCase(), stubRefreshUseCase())
@@ -133,7 +137,8 @@ class AuthCaptchaControllerTest {
         AtomicReference<CreateCaptchaChallengeCommand> captured = new AtomicReference<>();
         CreateCaptchaChallengeUseCase createUseCase = command -> {
             captured.set(command);
-            return Mono.just(new CreateCaptchaChallengeResult(CHALLENGE_ID, new CaptchaImage("base64-image", "image/png"), 300));
+            return Mono.just(
+                    new CreateCaptchaChallengeResult(CHALLENGE_ID, new CaptchaImage("base64-image", "image/png"), 300));
         };
 
         webClient(createUseCase, stubVerifyUseCase(), stubRefreshUseCase())
@@ -208,7 +213,8 @@ class AuthCaptchaControllerTest {
 
     @Test
     void captchaVerifyMapsInvalidAnswerToValidationFailure() {
-        VerifyCaptchaUseCase verifyUseCase = command -> Mono.just(new VerifyCaptchaChallengeResult(CaptchaVerificationOutcome.INVALID, false, null, 4));
+        VerifyCaptchaUseCase verifyUseCase = command -> Mono
+                .just(new VerifyCaptchaChallengeResult(CaptchaVerificationOutcome.INVALID, false, null, 4));
 
         webClient(stubCreateUseCase(), verifyUseCase, stubRefreshUseCase())
                 .post()
@@ -229,22 +235,26 @@ class AuthCaptchaControllerTest {
 
     @Test
     void captchaVerifyMapsExpiredToValidationFailure() {
-        assertVerifyFailureOutcome(CaptchaVerificationOutcome.EXPIRED, "err.registration.captcha.expired", "captchaChallengeId");
+        assertVerifyFailureOutcome(CaptchaVerificationOutcome.EXPIRED, "err.registration.captcha.expired",
+                "captchaChallengeId");
     }
 
     @Test
     void captchaVerifyMapsLockedToValidationFailure() {
-        assertVerifyFailureOutcome(CaptchaVerificationOutcome.LOCKED, "err.registration.captcha.locked", "captchaChallengeId");
+        assertVerifyFailureOutcome(CaptchaVerificationOutcome.LOCKED, "err.registration.captcha.locked",
+                "captchaChallengeId");
     }
 
     @Test
     void captchaVerifyMapsConsumedToValidationFailure() {
-        assertVerifyFailureOutcome(CaptchaVerificationOutcome.CONSUMED, "err.registration.captcha.consumed", "captchaChallengeId");
+        assertVerifyFailureOutcome(CaptchaVerificationOutcome.CONSUMED, "err.registration.captcha.consumed",
+                "captchaChallengeId");
     }
 
     @Test
     void captchaVerifyMapsNotFoundToValidationFailure() {
-        assertVerifyFailureOutcome(CaptchaVerificationOutcome.NOT_FOUND, "err.registration.captcha.notFound", "captchaChallengeId");
+        assertVerifyFailureOutcome(CaptchaVerificationOutcome.NOT_FOUND, "err.registration.captcha.notFound",
+                "captchaChallengeId");
     }
 
     @Test
@@ -259,7 +269,8 @@ class AuthCaptchaControllerTest {
         AtomicBoolean called = new AtomicBoolean();
         VerifyCaptchaUseCase verifyUseCase = command -> {
             called.set(true);
-            return Mono.just(new VerifyCaptchaChallengeResult(CaptchaVerificationOutcome.VERIFIED, true, CHALLENGE_ID, 5));
+            return Mono
+                    .just(new VerifyCaptchaChallengeResult(CaptchaVerificationOutcome.VERIFIED, true, CHALLENGE_ID, 5));
         };
 
         webClient(stubCreateUseCase(), verifyUseCase, stubRefreshUseCase())
@@ -283,7 +294,8 @@ class AuthCaptchaControllerTest {
         AtomicBoolean called = new AtomicBoolean();
         VerifyCaptchaUseCase verifyUseCase = command -> {
             called.set(true);
-            return Mono.just(new VerifyCaptchaChallengeResult(CaptchaVerificationOutcome.VERIFIED, true, CHALLENGE_ID, 5));
+            return Mono
+                    .just(new VerifyCaptchaChallengeResult(CaptchaVerificationOutcome.VERIFIED, true, CHALLENGE_ID, 5));
         };
 
         webClient(stubCreateUseCase(), verifyUseCase, stubRefreshUseCase())
@@ -303,11 +315,37 @@ class AuthCaptchaControllerTest {
     }
 
     @Test
+    void captchaVerifyRequestRejectsMalformedChallengeId() {
+        AtomicBoolean called = new AtomicBoolean();
+        VerifyCaptchaUseCase verifyUseCase = command -> {
+            called.set(true);
+            return Mono
+                    .just(new VerifyCaptchaChallengeResult(CaptchaVerificationOutcome.VERIFIED, true, CHALLENGE_ID, 5));
+        };
+
+        webClient(stubCreateUseCase(), verifyUseCase, stubRefreshUseCase())
+                .post()
+                .uri(VERIFY_PATH)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(Map.of("captchaChallengeId", "bad-id", "answer", "AbC123x"))
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.success").isEqualTo(false)
+                .jsonPath("$.status").isEqualTo("VALIDATION_FAILED")
+                .jsonPath("$.errors[0].code").isEqualTo("err.registration.captcha.invalid")
+                .jsonPath("$.errors[0].targets[0]").isEqualTo("captchaChallengeId");
+
+        assertThat(called).isFalse();
+    }
+
+    @Test
     void captchaRefreshMapsUseCaseResultToMutationResponse() {
         AtomicReference<RefreshCaptchaChallengeCommand> captured = new AtomicReference<>();
         RefreshCaptchaUseCase refreshUseCase = command -> {
             captured.set(command);
-            return Mono.just(new RefreshCaptchaChallengeResult(NEW_CHALLENGE_ID, new CaptchaImage("base64-refresh", "image/png"), 300));
+            return Mono.just(new RefreshCaptchaChallengeResult(NEW_CHALLENGE_ID,
+                    new CaptchaImage("base64-refresh", "image/png"), 300));
         };
 
         webClient(stubCreateUseCase(), stubVerifyUseCase(), refreshUseCase)
@@ -343,7 +381,7 @@ class AuthCaptchaControllerTest {
                         .doesNotContain("oldCaptchaChallengeId")
                         .doesNotContain("answer")
                         .doesNotContain("answerHash")
-                    .doesNotContain("oldStatus")
+                        .doesNotContain("oldStatus")
                         .doesNotContain("pageRef"));
     }
 
@@ -352,7 +390,8 @@ class AuthCaptchaControllerTest {
         AtomicReference<RefreshCaptchaChallengeCommand> captured = new AtomicReference<>();
         RefreshCaptchaUseCase refreshUseCase = command -> {
             captured.set(command);
-            return Mono.just(new RefreshCaptchaChallengeResult(NEW_CHALLENGE_ID, new CaptchaImage("base64-refresh", "image/png"), 300));
+            return Mono.just(new RefreshCaptchaChallengeResult(NEW_CHALLENGE_ID,
+                    new CaptchaImage("base64-refresh", "image/png"), 300));
         };
 
         webClient(stubCreateUseCase(), stubVerifyUseCase(), refreshUseCase)
@@ -369,8 +408,34 @@ class AuthCaptchaControllerTest {
         assertThat(captured.get().oldCaptchaChallengeId()).isNull();
     }
 
+    @Test
+    void captchaRefreshRequestRejectsMalformedChallengeId() {
+        AtomicBoolean called = new AtomicBoolean();
+        RefreshCaptchaUseCase refreshUseCase = command -> {
+            called.set(true);
+            return Mono.just(new RefreshCaptchaChallengeResult(NEW_CHALLENGE_ID,
+                    new CaptchaImage("base64-refresh", "image/png"), 300));
+        };
+
+        webClient(stubCreateUseCase(), stubVerifyUseCase(), refreshUseCase)
+                .post()
+                .uri(REFRESH_PATH)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(Map.of("captchaChallengeId", "bad-id"))
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.success").isEqualTo(false)
+                .jsonPath("$.status").isEqualTo("VALIDATION_FAILED")
+                .jsonPath("$.errors[0].code").isEqualTo("err.registration.captcha.invalid")
+                .jsonPath("$.errors[0].targets[0]").isEqualTo("captchaChallengeId");
+
+        assertThat(called).isFalse();
+    }
+
     private void assertVerifyFailureOutcome(CaptchaVerificationOutcome outcome, String code, String target) {
-        VerifyCaptchaUseCase verifyUseCase = command -> Mono.just(new VerifyCaptchaChallengeResult(outcome, false, null, 0));
+        VerifyCaptchaUseCase verifyUseCase = command -> Mono
+                .just(new VerifyCaptchaChallengeResult(outcome, false, null, 0));
 
         webClient(stubCreateUseCase(), verifyUseCase, stubRefreshUseCase())
                 .post()
@@ -391,22 +456,25 @@ class AuthCaptchaControllerTest {
             VerifyCaptchaUseCase verifyUseCase,
             RefreshCaptchaUseCase refreshUseCase) {
         return WebTestClient.bindToController(new AuthCaptchaController(
-                        createUseCase,
-                        verifyUseCase,
-                        refreshUseCase,
-                        new CaptchaWebMapper((code, locale, accountEnv, trustCode, schemeType) -> "resolved-" + code)))
+                createUseCase,
+                verifyUseCase,
+                refreshUseCase,
+                new CaptchaWebMapper((code, locale, accountEnv, trustCode, schemeType) -> "resolved-" + code)))
                 .build();
     }
 
     private CreateCaptchaChallengeUseCase stubCreateUseCase() {
-        return command -> Mono.just(new CreateCaptchaChallengeResult(CHALLENGE_ID, new CaptchaImage("base64-image", "image/png"), 300));
+        return command -> Mono.just(
+                new CreateCaptchaChallengeResult(CHALLENGE_ID, new CaptchaImage("base64-image", "image/png"), 300));
     }
 
     private VerifyCaptchaUseCase stubVerifyUseCase() {
-        return command -> Mono.just(new VerifyCaptchaChallengeResult(CaptchaVerificationOutcome.VERIFIED, true, CHALLENGE_ID, 5));
+        return command -> Mono
+                .just(new VerifyCaptchaChallengeResult(CaptchaVerificationOutcome.VERIFIED, true, CHALLENGE_ID, 5));
     }
 
     private RefreshCaptchaUseCase stubRefreshUseCase() {
-        return command -> Mono.just(new RefreshCaptchaChallengeResult(NEW_CHALLENGE_ID, new CaptchaImage("base64-refresh", "image/png"), 300));
+        return command -> Mono.just(new RefreshCaptchaChallengeResult(NEW_CHALLENGE_ID,
+                new CaptchaImage("base64-refresh", "image/png"), 300));
     }
 }

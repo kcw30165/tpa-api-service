@@ -1215,3 +1215,71 @@
 - Fail-first evidence: target/evidence/0043-016-001-expand-login-otp-account-selection-response-fail-first.log
 - Targeted evidence: target/evidence/0043-016-001-expand-login-otp-account-selection-response-targeted.log
 - Commit message: feat(auth): expose account details after login OTP verification
+
+### 0043-016-006-fix-business-error-architecture-test-expectation
+
+- Aligned the Task 0043 business-error architecture guard with the implemented compatible mixed-envelope mapping.
+- Wrong-password plus exactly one `success=false` item preserves `fail-count` through `data.get(0).failCount()`.
+- Contradictory known-error envelopes remain `UNAVAILABLE`.
+- Production Login behavior was not changed.
+- Commit message: `test(auth): align login business error architecture expectation`
+
+### 0043-016-007-final-login-apim-error-mapping-audit-and-evidence
+
+- Status: completed
+- Corrective subtask 016 progress: 3/3; zero main scripts remain.
+- Finalized TRPMemberLogin APIM-to-Java mappings for wrong password, unregistered username, locked account, and no-valid-account outcomes.
+- Confirmed compatible wrong-password mixed envelopes preserve fail-count internally; contradictory envelopes fail closed as unavailable.
+- Updated login-error-matrix.md to use the confirmed APIM codes and HTTP 401/423 contracts and removed the typoed downstream code.
+- Verified raw APIM/TAS error codes do not cross the public API boundary.
+- Focused and complete Maven suites passed.
+- Evidence: target/0043-016-007-evidence/evidence.md
+- Commit message: `test(auth): finalize login APIM error mapping evidence`
+
+### 0043-017-002-fix-authenticated-csrf-typed-failure-expectation
+
+- Status: completed.
+- Classification: stale test expectation after 0043-017-001 introduced a typed authenticated-CSRF failure.
+- Updated the CSRF-mismatch assertion to expect AuthenticatedCsrfValidationException instead of AuthenticatedPortalContextResolutionException.
+- This preserves the required distinction: unusable session maps later to HTTP 401 authentication required, while a usable session with invalid CSRF maps later to HTTP 403 flow-specific CSRF invalid.
+- Production behavior changed by this correction: no.
+- Evidence: target/evidence/0043-017-002-fix-authenticated-csrf-typed-failure-expectation-targeted.log and target/evidence/0043-017-002-fix-authenticated-csrf-typed-failure-expectation-regression.log
+- Commit message: test(auth): expect typed authenticated CSRF failure
+
+### 0043-017-003-login-and-logout-csrf-http-mappings
+
+- Status: completed.
+- Centralized CSRF verification remains owned by CsrfTokenValidationService; this stage adds flow-specific HTTP/error mappings.
+- Invalid or unavailable sessions remain HTTP 401 with err.security.authentication.required.
+- A usable Login pre-auth session with missing/incorrect CSRF now returns HTTP 403, VALIDATION_FAILED, err.login.csrf.invalid, source SERVER.
+- A usable authenticated session with missing/incorrect logout CSRF now returns HTTP 403, VALIDATION_FAILED, err.logout.csrf.invalid, source SERVER.
+- Registration's existing HTTP 403 err.registration.csrf.invalid behavior is preserved.
+- Commit message: fix(auth): map invalid CSRF to flow-specific HTTP 403
+- Evidence: target/0043-017-003-login-and-logout-csrf-http-mappings-evidence/evidence.md
+
+### 0043-017-005-fix-stale-csrf-service-test-expectations
+
+- Status: completed.
+- Corrected stale Login OTP send/resend service-test expectations from AUTH_FLOW_INVALID to CSRF_INVALID for explicitly CSRF-invalid protected contexts.
+- Preserved the existing no-side-effect assertions.
+- Task 0043 CSRF focused tests pass; unrelated repository-wide README and account-projection failures remain separate follow-up work.
+- Commit message: test(auth): align Login OTP service tests with typed CSRF outcomes
+- Evidence: target/0043-017-005-fix-stale-csrf-service-test-expectations-evidence/evidence.md
+
+### 0043-017-006-final-csrf-evidence-with-repository-baseline
+
+- Status: completed for Task 0043 subtask 017.
+- Task-bounded acceptance and focused CSRF regression suites passed.
+- Login and Logout distinguish invalid CSRF from missing or unusable sessions.
+- Login OTP send/resend service expectations now preserve typed CSRF_INVALID results and no-side-effect guarantees.
+- Repository-wide regression baseline: failed with unrelated repository-baseline failures; complete output and exit code are retained as evidence.
+- README.md and unrelated public account-projection behavior were not modified by this CSRF subtask.
+- Commit message: test(auth): finalize CSRF evidence against repository baseline
+- Evidence: target/0043-017-006-final-csrf-evidence-with-repository-baseline-evidence/evidence.md
+
+### 0043-017-007-remove-unused-legacy-csrf-abstraction
+- Status: completed.
+- Removed unused legacy CSRF abstraction and legacy-only tests.
+- Preserved broad P3 tests and active session-bound Login/Registration/authenticated-session CSRF behavior.
+- Commit message: refactor(security): remove unused legacy CSRF abstraction
+- Evidence: target/0043-017-007-remove-unused-legacy-csrf-abstraction-evidence/evidence.md

@@ -21,7 +21,7 @@ class LoginStartWebContractStabilizationTest {
                 assertMapping(StartLoginStatus.INVALID_ACCOUNT, ApiStatus.BUSINESS_REJECTED,
                                 "err.login.invalid.account", HttpStatus.UNAUTHORIZED);
                 assertMapping(StartLoginStatus.ACCOUNT_LOCKED, ApiStatus.BUSINESS_REJECTED,
-                                "err.login.locked.account", HttpStatus.UNAUTHORIZED);
+                                "err.login.locked.account", HttpStatus.LOCKED);
                 assertMapping(StartLoginStatus.DUPLICATE_IN_PROGRESS, ApiStatus.BUSINESS_REJECTED,
                                 "err.workflow.idempotency.inProgress", HttpStatus.CONFLICT);
                 assertMapping(StartLoginStatus.KEY_REUSED, ApiStatus.VALIDATION_FAILED,

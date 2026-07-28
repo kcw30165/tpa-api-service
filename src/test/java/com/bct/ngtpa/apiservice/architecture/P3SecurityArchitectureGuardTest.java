@@ -32,7 +32,6 @@ class P3SecurityArchitectureGuardTest {
                             || path.toString().contains("security/csrf")
                             || path.toString().contains("security/audit")
                             || path.getFileName().toString().equals("RateLimitPort.java")
-                            || path.getFileName().toString().equals("CsrfTokenPort.java")
                             || path.getFileName().toString().equals("SecurityAuditEventPort.java"))
                     .toList();
 

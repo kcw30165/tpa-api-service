@@ -1,6 +1,9 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
+import com.bct.ngtpa.apiservice.application.dto.workflow.LogoutErrorKey;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.logout.AuthenticatedLogoutWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
@@ -46,6 +49,7 @@ public final class AuthLogoutController {
                             ? ResponseEntity.ok(mapper.toResponse(result))
                             : ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(mapper.toResponse(result));
                 })
+                .onErrorResume(AuthenticatedCsrfValidationException.class, ignored -> csrfInvalid())
                 .onErrorResume(AuthenticatedPortalContextResolutionException.class, ignored -> unauthorized());
     }
 
@@ -53,6 +57,15 @@ public final class AuthLogoutController {
         clear(response);
         return Mono.just(ResponseEntity.ok(mapper.idempotentSuccess()));
     }
+    private Mono<ResponseEntity<MutationResponse<Void>>> csrfInvalid() {
+        return Mono.just(ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                MutationResponse.failure(
+                        ApiStatus.VALIDATION_FAILED,
+                        java.util.List.of(ApiError.form(
+                                LogoutErrorKey.CSRF_INVALID.value(), null,
+                                java.util.List.of("PAGE"), "SERVER")))));
+    }
+
     private Mono<ResponseEntity<MutationResponse<Void>>> unauthorized() {
         return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
                 MutationResponse.failure(

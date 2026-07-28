@@ -66,7 +66,7 @@ public final class AuthLoginOtpVerifyController {
             return missing(LoginErrorKey.AUTH_FLOW_INVALID.value(), "PAGE");
         }
         if (!hasText(csrf)) {
-            return missing(LoginErrorKey.CSRF_INVALID.value(), "PAGE");
+            return Mono.just(LoginHttpResponses.toResponse(mapper.csrfInvalid()));
         }
         if (!hasText(idempotencyKey)) {
             return missing(SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value(), "Idempotency-Key");

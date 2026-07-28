@@ -44,37 +44,51 @@ public final class TrpMemberLoginAdapter implements CredentialAuthenticationPort
             return mapper.failure(CredentialAuthenticationStatus.UNAVAILABLE);
         }
         ApimResponseBody<TrpMemberLoginApimDataItem> response = envelope.getResponse();
+        List<TrpMemberLoginApimDataItem> data = response.getData();
         String error = normalize(response.getErrMessage());
-        List<TrpMemberLoginApimDataItem> data = response.getData() == null
-                ? List.of()
-                : List.copyOf(response.getData());
 
-        if (error != null) {
-            if (!data.isEmpty()) {
-                return mapper.failure(CredentialAuthenticationStatus.UNAVAILABLE);
+        // Known APIM business errors are authoritative even if APIM also
+        // returns one success=false item carrying fail-count.
+        CredentialAuthenticationStatus businessStatus = statusFor(error);
+        if (businessStatus != CredentialAuthenticationStatus.UNAVAILABLE) {
+            if (data == null || data.isEmpty()) {
+                return mapper.credentialFailure(businessStatus, null);
             }
-            return mapper.failure(statusFor(error));
+            if (businessStatus == CredentialAuthenticationStatus.INCORRECT_PASSWORD
+                    && data.size() == 1
+                    && data.get(0) != null
+                    && Boolean.FALSE.equals(data.get(0).success())) {
+                return mapper.credentialFailure(businessStatus, data.get(0).failCount());
+            }
+            // Known error plus incompatible data is contradictory, not a safe
+            // business rejection. Keep it as a technical/unavailable outcome.
+            return mapper.failure(CredentialAuthenticationStatus.UNAVAILABLE);
         }
-        if (data.size() != 1) {
+        // Unknown nonblank downstream errors remain technical failures.
+        if (error != null) {
+            return mapper.failure(CredentialAuthenticationStatus.UNAVAILABLE);
+        }
+        if (data == null || data.size() != 1 || data.get(0) == null) {
             return mapper.failure(CredentialAuthenticationStatus.UNAVAILABLE);
         }
         TrpMemberLoginApimDataItem item = data.get(0);
-        if (item == null) {
-            return mapper.failure(CredentialAuthenticationStatus.UNAVAILABLE);
-        }
-        if (!item.success()) {
-            // TRPMemberLogin represents an incorrect password as a single
-            // unsuccessful data item with fail-count and no envelope error.
-            // Explicit envelope errors above remain authoritative for unknown
-            // username, invalid account, and account lock outcomes.
+        if (Boolean.FALSE.equals(item.success())) {
             return mapper.credentialFailure(
                     CredentialAuthenticationStatus.INCORRECT_PASSWORD,
                     item.failCount());
         }
+        if (!Boolean.TRUE.equals(item.success())) {
+            return mapper.failure(CredentialAuthenticationStatus.UNAVAILABLE);
+        }
         return mapper.toAuthenticated(normalizedUsername, item);
     }
 
+
+
     private CredentialAuthenticationStatus statusFor(String error) {
+        if (error == null) {
+            return CredentialAuthenticationStatus.UNAVAILABLE;
+        }
         return switch (error) {
             case WRONG_PASSWORD -> CredentialAuthenticationStatus.INCORRECT_PASSWORD;
             case USERNAME_NOT_REGISTERED -> CredentialAuthenticationStatus.INCORRECT_USERNAME;

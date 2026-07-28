@@ -48,7 +48,7 @@ public final class AuthLoginOtpController {
         if (!text(session))
             return just(LoginErrorKey.AUTH_FLOW_INVALID.value(), "PAGE");
         if (!text(csrf))
-            return just(LoginErrorKey.CSRF_INVALID.value(), "PAGE");
+            return Mono.just(LoginHttpResponses.toResponse(mapper.csrfInvalid()));
         if (!text(idem))
             return just(SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value(), "Idempotency-Key");
         if (!text(requestId))
@@ -81,7 +81,7 @@ public final class AuthLoginOtpController {
         if (!text(session))
             return resendJust(LoginErrorKey.AUTH_FLOW_INVALID.value(), "PAGE");
         if (!text(csrf))
-            return resendJust(LoginErrorKey.CSRF_INVALID.value(), "PAGE");
+            return Mono.just(LoginHttpResponses.toResponse(resendMapper.csrfInvalid()));
         if (!text(idem))
             return resendJust(SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value(), "Idempotency-Key");
         if (!text(requestId))

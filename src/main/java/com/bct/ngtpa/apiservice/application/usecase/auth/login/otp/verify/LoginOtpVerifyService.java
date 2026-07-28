@@ -47,7 +47,9 @@ public final class LoginOtpVerifyService implements VerifyLoginOtpUseCase {
                 .load(new LoginProtectedAuthFlowContextCommand(c.authFlowSessionId(), c.csrfToken(), c.origin(),
                         c.referer(), c.correlationId(), AuthFlowStatus.OTP_SENT, true))
                 .flatMap(x -> x.isValid() ? verifyActive(c, x)
-                        : Mono.just(result(VerifyLoginOtpStatus.AUTH_FLOW_INVALID, null, false)))
+                        : Mono.just(result(x.status() == LoginProtectedAuthFlowContextStatus.CSRF_INVALID
+                                ? VerifyLoginOtpStatus.CSRF_INVALID
+                                : VerifyLoginOtpStatus.AUTH_FLOW_INVALID, null, false)))
                 .doOnNext(r -> LOG.info("event=login.otp.verify.result status={}", r.status()))
                 .doOnError(
                         e -> LOG.error("event=login.otp.verify.failure exceptionType={}", e.getClass().getSimpleName()))

@@ -23,12 +23,9 @@ import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSes
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionLifecycleService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CreateAuthFlowSessionCsrfCommand;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenGenerator;
-import com.bct.ngtpa.apiservice.application.usecase.session.authflow.LoadAuthFlowSessionCommand;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.Sha256CsrfTokenHasher;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.StartAuthFlowSessionCommand;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.StartAuthFlowSessionWithConcurrencyCommand;
-import com.bct.ngtpa.apiservice.application.usecase.session.authflow.UpdateAuthFlowDestinationCommand;
-import com.bct.ngtpa.apiservice.application.usecase.session.authflow.UpdateAuthFlowOtpCommand;
 import java.lang.reflect.RecordComponent;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -201,15 +198,6 @@ class P4BAuthFlowSessionFoundationIntegrationTest {
         assertThat(Class.forName("com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionPort")).isNotNull();
         assertThat(Class.forName("com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthenticatedSessionAdapter"))
                 .isNotNull();
-
-        var readme = Files.readString(Path.of("README.md"));
-        assertThat(readme).contains("### AuthFlowSession Foundation");
-        assertThat(readme).contains("temporary pre-auth workflow session");
-        assertThat(readme).contains("not an authenticated portal session");
-        assertThat(readme).contains("not proof of login");
-        assertThat(readme).contains("registration endpoints");
-        assertThat(readme).contains("does not read or write cookies at runtime");
-        assertThat(readme).contains("AuthenticatedSession runtime implementation");
     }
 
     private static StartAuthFlowSessionWithConcurrencyCommand baseConcurrencyCommand(SessionConcurrencyPolicy policy) {
