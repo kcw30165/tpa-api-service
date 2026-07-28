@@ -176,7 +176,9 @@ public final class AuthenticatedSessionLifecycleService
                 terminalRetention,
                 now,
                 correlationId))
-                .thenReturn(AuthenticatedSessionLifecycleResult.of(lifecycleStatus(target)));
+                .thenReturn(new AuthenticatedSessionLifecycleResult(
+                        lifecycleStatus(target),
+                        terminal));
     }
 
     private AuthenticatedSession copy(

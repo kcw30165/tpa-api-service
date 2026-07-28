@@ -1,38 +1,39 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.logout;
 
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.session.RevokeAuthenticatedSessionUseCase;
+import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionLifecycleResult;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedSessionLifecycleStatus;
-import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.RevokeActiveAuthenticatedSessionCommand;
+import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.LogoutActiveAuthenticatedSessionCommand;
+import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.LogoutAuthenticatedSessionUseCase;
 import java.util.Objects;
 import reactor.core.publisher.Mono;
 
+/** Maps normal user logout onto the persisted ACTIVE to LOGGED_OUT lifecycle transition. */
 public final class AuthenticatedLogoutService implements AuthenticatedLogoutUseCase {
-    static final String USER_LOGOUT_REASON = "USER_LOGOUT";
+    private final LogoutAuthenticatedSessionUseCase logout;
 
-    private final RevokeAuthenticatedSessionUseCase revoke;
-
-    public AuthenticatedLogoutService(RevokeAuthenticatedSessionUseCase revoke) {
-        this.revoke = Objects.requireNonNull(revoke, "revoke must not be null");
+    public AuthenticatedLogoutService(LogoutAuthenticatedSessionUseCase logout) {
+        this.logout = Objects.requireNonNull(logout, "logout must not be null");
     }
 
     @Override
     public Mono<AuthenticatedLogoutResult> logout(AuthenticatedLogoutCommand command) {
         Objects.requireNonNull(command, "command must not be null");
-        var revokeCommand = new RevokeActiveAuthenticatedSessionCommand(
-                command.authenticatedSessionId(),
-                USER_LOGOUT_REASON,
-                command.correlationId());
-        return revoke.revoke(revokeCommand)
-                .map(result -> map(result.status()))
+        return logout.logout(new LogoutActiveAuthenticatedSessionCommand(
+                        command.authenticatedSessionId(),
+                        command.correlationId()))
+                .map(this::map)
                 .onErrorReturn(AuthenticatedLogoutResult.failed());
     }
 
-    private AuthenticatedLogoutResult map(AuthenticatedSessionLifecycleStatus status) {
-        if (status == AuthenticatedSessionLifecycleStatus.REVOKED) {
-            return AuthenticatedLogoutResult.loggedOut();
+    private AuthenticatedLogoutResult map(AuthenticatedSessionLifecycleResult result) {
+        if (result.status() == AuthenticatedSessionLifecycleStatus.LOGGED_OUT) {
+            return result.session() == null
+                    ? AuthenticatedLogoutResult.alreadyLoggedOut()
+                    : AuthenticatedLogoutResult.loggedOut();
         }
-        if (status == AuthenticatedSessionLifecycleStatus.NOT_FOUND
-                || status == AuthenticatedSessionLifecycleStatus.EXPIRED) {
+        if (result.status() == AuthenticatedSessionLifecycleStatus.NOT_FOUND
+                || result.status() == AuthenticatedSessionLifecycleStatus.EXPIRED
+                || result.status() == AuthenticatedSessionLifecycleStatus.REVOKED) {
             return AuthenticatedLogoutResult.alreadyLoggedOut();
         }
         return AuthenticatedLogoutResult.failed();

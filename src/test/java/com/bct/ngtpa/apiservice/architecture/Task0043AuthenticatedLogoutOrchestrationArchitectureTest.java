@@ -8,16 +8,19 @@ import org.junit.jupiter.api.Test;
 
 class Task0043AuthenticatedLogoutOrchestrationArchitectureTest {
     @Test
-    void serviceDelegatesToExistingRevocationCapability() throws Exception {
+    void serviceDelegatesNormalLogoutToLoggedOutLifecycleCapability() throws Exception {
         String source = Files.readString(Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/logout/AuthenticatedLogoutService.java"));
         String compact = source.replaceAll("\\s+", "");
         assertThat(compact).contains(
                 "implementsAuthenticatedLogoutUseCase",
+                "LogoutAuthenticatedSessionUseCase",
+                "newLogoutActiveAuthenticatedSessionCommand(",
+                "logout.logout(");
+        assertThat(source).doesNotContain(
                 "RevokeAuthenticatedSessionUseCase",
-                "newRevokeActiveAuthenticatedSessionCommand(",
-                "USER_LOGOUT",
-                "revoke.revoke(");
+                "RevokeActiveAuthenticatedSessionCommand",
+                "USER_LOGOUT_REASON");
     }
 
     @Test

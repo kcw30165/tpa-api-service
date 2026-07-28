@@ -8,14 +8,14 @@ import org.junit.jupiter.api.Test;
 
 class Task0043AuthenticatedLogoutRuntimeCompositionArchitectureTest {
     @Test
-    void sessionConfigurationComposesLogoutAtApplicationCapabilityBoundary() throws Exception {
+    void sessionConfigurationComposesNormalLogoutCapability() throws Exception {
         String source = Files.readString(Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/config/auth/session/AuthenticatedSessionConfig.java"));
         String compact = source.replaceAll("\\s+", "");
         assertThat(compact).contains(
                 "AuthenticatedLogoutUseCaseauthenticatedLogoutUseCase(",
-                "RevokeAuthenticatedSessionUseCaserevoke)",
-                "returnnewAuthenticatedLogoutService(revoke)");
+                "LogoutAuthenticatedSessionUseCaselogout)",
+                "returnnewAuthenticatedLogoutService(logout)");
     }
 
     @Test
@@ -28,6 +28,7 @@ class Task0043AuthenticatedLogoutRuntimeCompositionArchitectureTest {
         assertThat(logoutSection).doesNotContain(
                 "AuthenticatedSessionPort",
                 "RedisAuthenticatedSessionAdapter",
-                "CachePort");
+                "CachePort",
+                "RevokeAuthenticatedSessionUseCase");
     }
 }

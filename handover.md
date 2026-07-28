@@ -1162,3 +1162,13 @@
 - No deprecated property alias, compatibility constructor, or test-only production path was added.
 - Evidence: target/evidence/0043-015-015-fix-transition-config-production-timeout-message-targeted.log and target/evidence/0043-015-015-fix-transition-config-production-timeout-message-regression.log
 - Commit message: fix(auth): align session duration validation terminology
+
+### 0043-015-016-authenticated-logout-orchestration-logged-out-transition
+- Status: completed
+- Subtask 015 main-script progress: 4/5; one main script remains.
+- Migrated normal user logout from RevokeAuthenticatedSessionUseCase to the narrow LogoutAuthenticatedSessionUseCase.
+- AuthenticatedLogoutService now issues LogoutActiveAuthenticatedSessionCommand and maps a newly persisted LOGGED_OUT session to LOGGED_OUT; status-only LOGGED_OUT, REVOKED, EXPIRED, and NOT_FOUND results remain idempotent ALREADY_LOGGED_OUT outcomes.
+- Security/admin invalidation and failed-transition compensation continue using RevokeAuthenticatedSessionUseCase and persist REVOKED.
+- Runtime composition remains at the lifecycle capability boundary and does not access Redis or AuthenticatedSessionPort directly.
+- Evidence: target/evidence/0043-015-016-authenticated-logout-orchestration-logged-out-transition-fail-first.log, target/evidence/0043-015-016-authenticated-logout-orchestration-logged-out-transition-targeted.log, and target/evidence/0043-015-016-authenticated-logout-orchestration-logged-out-transition-regression.log
+- Commit message: refactor(auth): route user logout through logged-out lifecycle

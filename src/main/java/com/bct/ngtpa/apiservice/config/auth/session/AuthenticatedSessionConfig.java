@@ -5,7 +5,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowPropertie
 import com.bct.ngtpa.apiservice.application.port.in.EstablishAuthenticatedLoginSessionUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.auth.logout.AuthenticatedLogoutService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.logout.AuthenticatedLogoutUseCase;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.session.RevokeAuthenticatedSessionUseCase;
+import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.LogoutAuthenticatedSessionUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.session.DeleteAuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.session.EstablishAuthenticatedLoginSessionService;
@@ -96,7 +96,7 @@ public class AuthenticatedSessionConfig {
                 authenticatedSessionIdGenerator,
                 Duration.ofSeconds(session.getIdleTimeoutSeconds()),
                 Duration.ofSeconds(session.getAbsoluteTimeoutSeconds()),
-            Duration.ofSeconds(session.getTerminalRetentionSeconds()),
+                Duration.ofSeconds(session.getTerminalRetentionSeconds()),
                 clock);
     }
 
@@ -114,8 +114,8 @@ public class AuthenticatedSessionConfig {
 
     @Bean
     AuthenticatedLogoutUseCase authenticatedLogoutUseCase(
-            RevokeAuthenticatedSessionUseCase revoke) {
-        return new AuthenticatedLogoutService(revoke);
+            LogoutAuthenticatedSessionUseCase logout) {
+        return new AuthenticatedLogoutService(logout);
     }
 
     @Bean
@@ -127,6 +127,7 @@ public class AuthenticatedSessionConfig {
         return new EstablishAuthenticatedLoginSessionService(
                 lifecycle, cleanup, lifecycle, csrfTokenGenerator, csrfTokenHasher);
     }
+
     @Bean
     ValidateAuthenticatedSessionUseCase validateAuthenticatedSessionUseCase(
             AuthenticatedSessionLifecycleService lifecycle,
