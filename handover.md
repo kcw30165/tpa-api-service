@@ -1235,3 +1235,13 @@
 - Focused and complete Maven suites passed.
 - Evidence: target/0043-016-007-evidence/evidence.md
 - Commit message: `test(auth): finalize login APIM error mapping evidence`
+
+### 0043-017-002-fix-authenticated-csrf-typed-failure-expectation
+
+- Status: completed.
+- Classification: stale test expectation after 0043-017-001 introduced a typed authenticated-CSRF failure.
+- Updated the CSRF-mismatch assertion to expect AuthenticatedCsrfValidationException instead of AuthenticatedPortalContextResolutionException.
+- This preserves the required distinction: unusable session maps later to HTTP 401 authentication required, while a usable session with invalid CSRF maps later to HTTP 403 flow-specific CSRF invalid.
+- Production behavior changed by this correction: no.
+- Evidence: target/evidence/0043-017-002-fix-authenticated-csrf-typed-failure-expectation-targeted.log and target/evidence/0043-017-002-fix-authenticated-csrf-typed-failure-expectation-regression.log
+- Commit message: test(auth): expect typed authenticated CSRF failure

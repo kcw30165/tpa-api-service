@@ -12,7 +12,8 @@ import reactor.core.publisher.Mono;
 public class AuthFlowSessionCsrfService implements CreateAuthFlowSessionCsrfUseCase {
     private final AuthFlowSessionPort authFlowSessionPort;
     private final CsrfTokenGenerator csrfTokenGenerator;
-    private final CsrfTokenHasher csrfTokenHasher;
+    private final CsrfTokenValidationService csrfTokenValidationService;
+    private final CsrfTokenHasher tokenBindingHasher;
 
     public AuthFlowSessionCsrfService(AuthFlowSessionPort authFlowSessionPort) {
         this(authFlowSessionPort, new SecureRandomCsrfTokenGenerator(), new Sha256CsrfTokenHasher());
@@ -21,7 +22,8 @@ public class AuthFlowSessionCsrfService implements CreateAuthFlowSessionCsrfUseC
     public AuthFlowSessionCsrfService(AuthFlowSessionPort authFlowSessionPort, CsrfTokenGenerator csrfTokenGenerator, CsrfTokenHasher csrfTokenHasher) {
         this.authFlowSessionPort = Objects.requireNonNull(authFlowSessionPort, "authFlowSessionPort must not be null");
         this.csrfTokenGenerator = Objects.requireNonNull(csrfTokenGenerator, "csrfTokenGenerator must not be null");
-        this.csrfTokenHasher = Objects.requireNonNull(csrfTokenHasher, "csrfTokenHasher must not be null");
+        this.tokenBindingHasher = Objects.requireNonNull(csrfTokenHasher, "csrfTokenHasher must not be null");
+        this.csrfTokenValidationService = new CsrfTokenValidationService(tokenBindingHasher);
     }
 
     @Override
@@ -49,16 +51,14 @@ public class AuthFlowSessionCsrfService implements CreateAuthFlowSessionCsrfUseC
                     if (session.isTerminal()) {
                         return result(AuthFlowSessionCsrfValidationStatus.SESSION_NOT_USABLE);
                     }
-                    if (command.submittedToken() == null || command.submittedToken().isBlank()) {
-                        return result(AuthFlowSessionCsrfValidationStatus.TOKEN_MISSING);
-                    }
-                    if (session.csrfTokenHash() == null || session.csrfTokenHash().isBlank()) {
-                        return result(AuthFlowSessionCsrfValidationStatus.TOKEN_HASH_MISSING);
-                    }
-                    if (!csrfTokenHasher.matches(command.submittedToken(), session.csrfTokenHash())) {
-                        return result(AuthFlowSessionCsrfValidationStatus.TOKEN_MISMATCH);
-                    }
-                    return result(AuthFlowSessionCsrfValidationStatus.VALID);
+                    CsrfTokenValidationResult token = csrfTokenValidationService.validate(
+                            command.submittedToken(), session.csrfTokenHash());
+                    return result(switch (token.status()) {
+                        case VALID -> AuthFlowSessionCsrfValidationStatus.VALID;
+                        case TOKEN_MISSING -> AuthFlowSessionCsrfValidationStatus.TOKEN_MISSING;
+                        case TOKEN_HASH_MISSING -> AuthFlowSessionCsrfValidationStatus.TOKEN_HASH_MISSING;
+                        case TOKEN_MISMATCH -> AuthFlowSessionCsrfValidationStatus.TOKEN_MISMATCH;
+                    });
                 });
     }
 
@@ -72,7 +72,7 @@ public class AuthFlowSessionCsrfService implements CreateAuthFlowSessionCsrfUseC
                         return Mono.error(new IllegalStateException("Auth flow session is not usable"));
                     }
                     String rawToken = csrfTokenGenerator.generate();
-                    String tokenHash = csrfTokenHasher.hash(rawToken);
+                    String tokenHash = tokenBindingHasher.hash(rawToken);
                     AuthFlowSession updated = new AuthFlowSession(
                             session.authFlowSessionId(),
                             session.scenario(),
