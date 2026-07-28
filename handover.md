@@ -1265,3 +1265,14 @@
 - Task 0043 CSRF focused tests pass; unrelated repository-wide README and account-projection failures remain separate follow-up work.
 - Commit message: test(auth): align Login OTP service tests with typed CSRF outcomes
 - Evidence: target/0043-017-005-fix-stale-csrf-service-test-expectations-evidence/evidence.md
+
+### 0043-017-006-final-csrf-evidence-with-repository-baseline
+
+- Status: completed for Task 0043 subtask 017.
+- Task-bounded acceptance and focused CSRF regression suites passed.
+- Login and Logout distinguish invalid CSRF from missing or unusable sessions.
+- Login OTP send/resend service expectations now preserve typed CSRF_INVALID results and no-side-effect guarantees.
+- Repository-wide regression baseline: failed with unrelated repository-baseline failures; complete output and exit code are retained as evidence.
+- README.md and unrelated public account-projection behavior were not modified by this CSRF subtask.
+- Commit message: test(auth): finalize CSRF evidence against repository baseline
+- Evidence: target/0043-017-006-final-csrf-evidence-with-repository-baseline-evidence/evidence.md
