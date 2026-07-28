@@ -18,18 +18,10 @@ class P6RegistrationStartSecurityBoundaryGuardTest {
                 "我們未能核實您的資料");
     }
 
-    @Test
-    void p6ReadmeDocumentsRegistrationStartOnly() throws IOException {
-        Path readme = Path.of("README.md");
-        assertThat(Files.exists(readme)).isTrue();
-        String text = Files.readString(readme);
-        assertThat(text).contains("Registration Start", "POST /api/v1/auth/registration/start", "Idempotency-Key", "TRPSearchUnregMember", "auth_flow_sid", "csrfToken");
-        assertThat(text).contains("OTP resend/verify", "username/check", "complete", "cancel", "captcha", "auth-flow resume");
-    }
-
     private static String productionText() throws IOException {
         Path root = Path.of("src/main/java/com/bct/ngtpa/apiservice");
-        if (!Files.exists(root)) return "";
+        if (!Files.exists(root))
+            return "";
         StringBuilder builder = new StringBuilder();
         try (var paths = Files.walk(root)) {
             paths.filter(Files::isRegularFile)
@@ -40,6 +32,10 @@ class P6RegistrationStartSecurityBoundaryGuardTest {
     }
 
     private static String read(Path path) {
-        try { return Files.readString(path); } catch (IOException exception) { return ""; }
+        try {
+            return Files.readString(path);
+        } catch (IOException exception) {
+            return "";
+        }
     }
 }

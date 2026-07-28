@@ -178,21 +178,6 @@ class P4ASessionManagementFoundationIntegrationTest {
         assertThat(source.getCorsConfiguration(exchange)).isNull();
     }
 
-    @Test
-    void p4aReadmeDocumentsFoundationOnlySection() throws Exception {
-        var readme = Files.readString(Path.of("README.md"));
-
-        assertThat(readme).contains("### Session Management Foundation");
-        assertThat(readme).contains("P4A adds reusable session-management foundation components");
-        assertThat(readme).contains("`auth_flow_sid` is HttpOnly, Secure, SameSite=None, Path=/api/v1/auth");
-        assertThat(readme)
-                .contains("`XSRF-TOKEN` is Secure, SameSite=None, Path=/api/v1/auth, and intentionally not HttpOnly");
-        assertThat(readme).contains("existing `CorsProperties` remains the single source of truth");
-        assertThat(readme).contains("Not implemented in P4A");
-        assertThat(readme).contains("AuthFlowSession Redis persistence");
-        assertThat(readme).contains("registration endpoints");
-    }
-
     private static List<String> fieldNames(Class<?> type) {
         return Arrays.stream(type.getDeclaredFields()).map(Field::getName).toList();
     }

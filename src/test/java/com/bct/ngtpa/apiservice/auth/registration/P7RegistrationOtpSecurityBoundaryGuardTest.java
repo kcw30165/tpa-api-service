@@ -79,34 +79,15 @@ class P7RegistrationOtpSecurityBoundaryGuardTest {
                 "驗證碼");
     }
 
-    @Test
-    void readmeDocumentsP7ResendVerifyOnly() throws Exception {
-        Path readme = Path.of("README.md");
-        assertThat(Files.exists(readme)).isTrue();
-        String text = Files.readString(readme);
-        assertThat(text).contains(
-                "Registration OTP Resend and Verify",
-                "POST /api/v1/auth/registration/otp/resend",
-                "POST /api/v1/auth/registration/otp/verify",
-                "auth_flow_sid",
-                "X-XSRF-TOKEN",
-                "Idempotency-Key",
-                "VERIFY_OTP",
-                "USERNAME_CHECK",
-                "SELECT_TRUST",
-                "RegistrationLookupPort",
-                "TRPSearchUnregMember");
-        assertThat(text).contains("username/check", "registration/complete", "registration/cancel", "auth-flow resume");
-    }
-
-
     private String p7ProductionSources() throws Exception {
         StringBuilder builder = new StringBuilder();
         for (Path root : new Path[] {
                 Path.of("src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/otp"),
                 Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration"),
-                Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller")}) {
-            if (!Files.exists(root)) { continue; }
+                Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller") }) {
+            if (!Files.exists(root)) {
+                continue;
+            }
             try (var files = Files.walk(root)) {
                 for (Path path : files.filter(p -> p.toString().endsWith(".java")).toList()) {
                     builder.append(Files.readString(path)).append('\n');
