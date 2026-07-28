@@ -24,6 +24,7 @@ class AuthenticatedSessionTransitionConfigTest {
         var login = new AuthWorkflowProperties.Login();
         login.getSession().setIdleTimeoutSeconds(1800);
         login.getSession().setAbsoluteTimeoutSeconds(28800);
+        login.getSession().setTerminalRetentionSeconds(300);
         properties.setLogin(login);
 
         AuthenticatedSessionLifecycleService lifecycle = config.authenticatedSessionLifecycleService(
@@ -43,6 +44,7 @@ class AuthenticatedSessionTransitionConfigTest {
         var login = new AuthWorkflowProperties.Login();
         login.getSession().setIdleTimeoutSeconds(1801);
         login.getSession().setAbsoluteTimeoutSeconds(1800);
+        login.getSession().setTerminalRetentionSeconds(300);
         properties.setLogin(login);
 
         assertThatThrownBy(() -> config.authenticatedSessionLifecycleService(
@@ -52,7 +54,7 @@ class AuthenticatedSessionTransitionConfigTest {
                 Clock.systemUTC(),
                 properties))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("idle-timeout-seconds must not exceed ttl-seconds");
+                .hasMessageContaining("idle-timeout-seconds must not exceed absolute-timeout-seconds");
     }
 
     @Test

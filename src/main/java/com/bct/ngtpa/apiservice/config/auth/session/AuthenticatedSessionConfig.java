@@ -82,9 +82,13 @@ public class AuthenticatedSessionConfig {
             throw new IllegalStateException(
                     "auth-workflows.login.session.absolute-timeout-seconds must be greater than zero");
         }
+        if (session.getTerminalRetentionSeconds() <= 0) {
+            throw new IllegalStateException(
+                    "auth-workflows.login.session.terminal-retention-seconds must be greater than zero");
+        }
         if (session.getIdleTimeoutSeconds() > session.getAbsoluteTimeoutSeconds()) {
             throw new IllegalStateException(
-                    "auth-workflows.login.session.idle-timeout-seconds must not exceed ttl-seconds");
+                    "auth-workflows.login.session.idle-timeout-seconds must not exceed absolute-timeout-seconds");
         }
         return new AuthenticatedSessionLifecycleService(
                 authenticatedSessionPort,
@@ -92,6 +96,7 @@ public class AuthenticatedSessionConfig {
                 authenticatedSessionIdGenerator,
                 Duration.ofSeconds(session.getIdleTimeoutSeconds()),
                 Duration.ofSeconds(session.getAbsoluteTimeoutSeconds()),
+            Duration.ofSeconds(session.getTerminalRetentionSeconds()),
                 clock);
     }
 

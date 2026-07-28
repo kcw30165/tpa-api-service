@@ -1153,3 +1153,12 @@
 - Resumed and completed the timeout migration and its targeted/regression gates.
 - Production behavior changed by this correction: no.
 - Commit message: test(auth): align login foundation with absolute timeout key
+
+### 0043-015-015-fix-transition-config-production-timeout-message
+- Status: completed
+- Classification: stale production validation message after renaming the authenticated-session absolute lifetime property; subtask 015 main-script progress remains 3/5 with two main scripts remaining.
+- Updated AuthenticatedSessionConfig duration-relationship failure from ttl-seconds to absolute-timeout-seconds.
+- Validation behavior remains fail-fast and unchanged; only the configuration terminology was corrected.
+- No deprecated property alias, compatibility constructor, or test-only production path was added.
+- Evidence: target/evidence/0043-015-015-fix-transition-config-production-timeout-message-targeted.log and target/evidence/0043-015-015-fix-transition-config-production-timeout-message-regression.log
+- Commit message: fix(auth): align session duration validation terminology

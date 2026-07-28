@@ -66,11 +66,28 @@ class AuthenticatedSessionLifecycleServiceTest {
     }
 
     @Test
-    void revokeDelegatesOpaqueSessionRemoval() {
-        var f = new Fixture();
-        StepVerifier.create(f.service.revoke(new RevokeActiveAuthenticatedSessionCommand(ID, "LOGOUT", "req")))
-                .assertNext(r -> assertThat(r.status()).isEqualTo(AuthenticatedSessionLifecycleStatus.REVOKED))
+    void revokePersistsProtectedTerminalSession() {
+        var fixture = new Fixture();
+        fixture.loaded.set(session(
+                NOW.minusSeconds(100),
+                NOW.plusSeconds(100),
+                NOW.plusSeconds(1000),
+                AuthenticatedSessionStatus.ACTIVE));
+
+        StepVerifier.create(fixture.service.revoke(
+                        new RevokeActiveAuthenticatedSessionCommand(
+                                ID,
+                                "SECURITY_REJECTION",
+                                "req")))
+                .assertNext(result -> assertThat(result.status())
+                        .isEqualTo(AuthenticatedSessionLifecycleStatus.REVOKED))
                 .verifyComplete();
+
+        assertThat(fixture.loaded.get().status())
+                .isEqualTo(AuthenticatedSessionStatus.REVOKED);
+        assertThat(fixture.touched.get()).isNotNull();
+        assertThat(fixture.touched.get().ttl())
+                .isEqualTo(Duration.ofSeconds(300));
     }
 
     private static AuthenticatedSessionAccount account() {
@@ -130,7 +147,8 @@ class AuthenticatedSessionLifecycleServiceTest {
                 }
             };
             service = new AuthenticatedSessionLifecycleService(port, protector, () -> ID, Duration.ofSeconds(1800),
-                    Duration.ofSeconds(28800), Clock.fixed(NOW, ZoneOffset.UTC));
+                    Duration.ofSeconds(28800),
+            Duration.ofSeconds(300), Clock.fixed(NOW, ZoneOffset.UTC));
         }
     }
 }
