@@ -3,10 +3,8 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.verify;
 import static org.assertj.core.api.Assertions.assertThat;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.*;
 import com.bct.ngtpa.apiservice.application.dto.session.*;
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.*;
 import com.bct.ngtpa.apiservice.application.port.out.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.*;
-import com.bct.ngtpa.apiservice.application.usecase.session.authflow.*;
 import java.time.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
@@ -84,7 +82,8 @@ class LoginOtpVerifyServiceTest {
                             com.bct.ngtpa.apiservice.application.usecase.auth.login.session.EstablishAuthenticatedLoginSessionResult
                                     .established(
                                             new com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId(
-                                                    "sid_abcdefghijklmnopqrstuvwx"), "authenticated_csrf_token")),
+                                                    "sid_abcdefghijklmnopqrstuvwx"),
+                                            "authenticated_csrf_token")),
                     Clock.systemUTC());
         }
     }

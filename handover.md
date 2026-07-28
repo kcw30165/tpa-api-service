@@ -1256,3 +1256,12 @@
 - Registration's existing HTTP 403 err.registration.csrf.invalid behavior is preserved.
 - Commit message: fix(auth): map invalid CSRF to flow-specific HTTP 403
 - Evidence: target/0043-017-003-login-and-logout-csrf-http-mappings-evidence/evidence.md
+
+### 0043-017-005-fix-stale-csrf-service-test-expectations
+
+- Status: completed.
+- Corrected stale Login OTP send/resend service-test expectations from AUTH_FLOW_INVALID to CSRF_INVALID for explicitly CSRF-invalid protected contexts.
+- Preserved the existing no-side-effect assertions.
+- Task 0043 CSRF focused tests pass; unrelated repository-wide README and account-projection failures remain separate follow-up work.
+- Commit message: test(auth): align Login OTP service tests with typed CSRF outcomes
+- Evidence: target/0043-017-005-fix-stale-csrf-service-test-expectations-evidence/evidence.md

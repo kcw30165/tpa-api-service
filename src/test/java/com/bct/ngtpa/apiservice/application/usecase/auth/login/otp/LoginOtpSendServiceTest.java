@@ -85,7 +85,7 @@ class LoginOtpSendServiceTest {
 
         StepVerifier.create(result.send(COMMAND))
                 .assertNext(value -> assertThat(value.status())
-                        .isEqualTo(SendLoginOtpStatus.AUTH_FLOW_INVALID))
+                        .isEqualTo(SendLoginOtpStatus.CSRF_INVALID))
                 .verifyComplete();
         assertThat(called.get()).isFalse();
     }
