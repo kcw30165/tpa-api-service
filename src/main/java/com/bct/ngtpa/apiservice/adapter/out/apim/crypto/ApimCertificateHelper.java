@@ -118,7 +118,8 @@ public class ApimCertificateHelper {
                 }
             }
 
-            String decodedPem = stripPemMarkers(pemDocument, "-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----");
+            String decodedPem = stripPemMarkers(pemDocument, "-----BEGIN PRIVATE KEY-----",
+                    "-----END PRIVATE KEY-----");
             byte[] der = Base64.getDecoder().decode(decodedPem);
             PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(der);
             return KeyFactory.getInstance("RSA").generatePrivate(spec);
@@ -135,7 +136,8 @@ public class ApimCertificateHelper {
                     .replaceAll("\\s", "");
             byte[] certBytes = Base64.getDecoder().decode(cleanedCert);
             CertificateFactory factory = CertificateFactory.getInstance("X.509");
-            X509Certificate certificate = (X509Certificate) factory.generateCertificate(new ByteArrayInputStream(certBytes));
+            X509Certificate certificate = (X509Certificate) factory
+                    .generateCertificate(new ByteArrayInputStream(certBytes));
             return certificate.getPublicKey();
         } catch (Exception ex) {
             throw new ApimCryptoException("Failed to parse BCT public certificate.", ex);

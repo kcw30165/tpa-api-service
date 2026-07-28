@@ -5,7 +5,8 @@ import java.util.Locale;
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 /**
- * Blocking validation/business/system error. Validation messages belong here, not in messages[].
+ * Blocking validation/business/system error. Validation messages belong here,
+ * not in messages[].
  */
 public record ApiError(
         String type,

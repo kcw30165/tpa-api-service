@@ -2,14 +2,11 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.otp;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.bct.ngtpa.apiservice.application.dto.auth.otp.CreateOtpChallengeCommand;
-import com.bct.ngtpa.apiservice.application.dto.auth.otp.InvalidateOtpChallengeCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.OtpChallenge;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.OtpChannel;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.OtpScenario;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.OtpStatus;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.OtpVerificationOutcome;
-import com.bct.ngtpa.apiservice.application.dto.auth.otp.ReplaceOtpChallengeCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.VerifyOtpChallengeCommand;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
 import com.bct.ngtpa.apiservice.application.service.auth.otp.Sha256OtpCodeHasher;
@@ -31,7 +28,9 @@ class DefaultOtpChallengeServiceVerifyTest {
     void verifyReturnsNotFoundWhenChallengeMissing() {
         FakeOtpChallengeStatePort statePort = new FakeOtpChallengeStatePort();
 
-        StepVerifier.create(service(statePort).verifyChallenge(new VerifyOtpChallengeCommand("missing", "123456", FIXED_NOW)))
+        StepVerifier
+                .create(service(statePort)
+                        .verifyChallenge(new VerifyOtpChallengeCommand("missing", "123456", FIXED_NOW)))
                 .assertNext(result -> {
                     assertThat(result.otpChallengeId()).isEqualTo("missing");
                     assertThat(result.outcome()).isEqualTo(OtpVerificationOutcome.NOT_FOUND);
@@ -47,7 +46,9 @@ class DefaultOtpChallengeServiceVerifyTest {
         FakeOtpChallengeStatePort statePort = new FakeOtpChallengeStatePort();
         statePort.store(sampleChallenge().withStatus(OtpStatus.CREATED).withExpiresAt(FIXED_NOW.minusSeconds(1)));
 
-        StepVerifier.create(service(statePort).verifyChallenge(new VerifyOtpChallengeCommand("otp-001", "123456", FIXED_NOW)))
+        StepVerifier
+                .create(service(statePort)
+                        .verifyChallenge(new VerifyOtpChallengeCommand("otp-001", "123456", FIXED_NOW)))
                 .assertNext(result -> assertThat(result.outcome()).isEqualTo(OtpVerificationOutcome.EXPIRED))
                 .verifyComplete();
 
@@ -59,7 +60,9 @@ class DefaultOtpChallengeServiceVerifyTest {
         FakeOtpChallengeStatePort statePort = new FakeOtpChallengeStatePort();
         statePort.store(sampleChallenge().withStatus(OtpStatus.LOCKED).withFailedAttemptCount(5));
 
-        StepVerifier.create(service(statePort).verifyChallenge(new VerifyOtpChallengeCommand("otp-001", "123456", FIXED_NOW)))
+        StepVerifier
+                .create(service(statePort)
+                        .verifyChallenge(new VerifyOtpChallengeCommand("otp-001", "123456", FIXED_NOW)))
                 .assertNext(result -> assertThat(result.outcome()).isEqualTo(OtpVerificationOutcome.LOCKED))
                 .verifyComplete();
 
@@ -71,7 +74,9 @@ class DefaultOtpChallengeServiceVerifyTest {
         FakeOtpChallengeStatePort statePort = new FakeOtpChallengeStatePort();
         statePort.store(sampleChallenge().withStatus(OtpStatus.INVALIDATED));
 
-        StepVerifier.create(service(statePort).verifyChallenge(new VerifyOtpChallengeCommand("otp-001", "123456", FIXED_NOW)))
+        StepVerifier
+                .create(service(statePort)
+                        .verifyChallenge(new VerifyOtpChallengeCommand("otp-001", "123456", FIXED_NOW)))
                 .assertNext(result -> assertThat(result.outcome()).isEqualTo(OtpVerificationOutcome.INVALIDATED))
                 .verifyComplete();
 
@@ -83,7 +88,9 @@ class DefaultOtpChallengeServiceVerifyTest {
         FakeOtpChallengeStatePort statePort = new FakeOtpChallengeStatePort();
         statePort.store(sampleChallenge().withStatus(OtpStatus.VERIFIED).withVerifiedAt(FIXED_NOW.minusSeconds(30)));
 
-        StepVerifier.create(service(statePort).verifyChallenge(new VerifyOtpChallengeCommand("otp-001", "123456", FIXED_NOW)))
+        StepVerifier
+                .create(service(statePort)
+                        .verifyChallenge(new VerifyOtpChallengeCommand("otp-001", "123456", FIXED_NOW)))
                 .assertNext(result -> assertThat(result.outcome()).isEqualTo(OtpVerificationOutcome.ALREADY_VERIFIED))
                 .verifyComplete();
 
@@ -95,7 +102,9 @@ class DefaultOtpChallengeServiceVerifyTest {
         FakeOtpChallengeStatePort statePort = new FakeOtpChallengeStatePort();
         statePort.store(sampleChallenge().withStatus(OtpStatus.CONSUMED));
 
-        StepVerifier.create(service(statePort).verifyChallenge(new VerifyOtpChallengeCommand("otp-001", "123456", FIXED_NOW)))
+        StepVerifier
+                .create(service(statePort)
+                        .verifyChallenge(new VerifyOtpChallengeCommand("otp-001", "123456", FIXED_NOW)))
                 .assertNext(result -> assertThat(result.outcome()).isEqualTo(OtpVerificationOutcome.ALREADY_VERIFIED))
                 .verifyComplete();
 
@@ -107,7 +116,9 @@ class DefaultOtpChallengeServiceVerifyTest {
         FakeOtpChallengeStatePort statePort = new FakeOtpChallengeStatePort();
         statePort.store(sampleChallenge());
 
-        StepVerifier.create(service(statePort).verifyChallenge(new VerifyOtpChallengeCommand("otp-001", "123456", FIXED_NOW)))
+        StepVerifier
+                .create(service(statePort)
+                        .verifyChallenge(new VerifyOtpChallengeCommand("otp-001", "123456", FIXED_NOW)))
                 .assertNext(result -> {
                     assertThat(result.outcome()).isEqualTo(OtpVerificationOutcome.VALID);
                     assertThat(result.remainingAttempts()).isEqualTo(5);
@@ -124,7 +135,9 @@ class DefaultOtpChallengeServiceVerifyTest {
         FakeOtpChallengeStatePort statePort = new FakeOtpChallengeStatePort();
         statePort.store(sampleChallenge());
 
-        StepVerifier.create(service(statePort).verifyChallenge(new VerifyOtpChallengeCommand("otp-001", "000000", FIXED_NOW)))
+        StepVerifier
+                .create(service(statePort)
+                        .verifyChallenge(new VerifyOtpChallengeCommand("otp-001", "000000", FIXED_NOW)))
                 .assertNext(result -> {
                     assertThat(result.outcome()).isEqualTo(OtpVerificationOutcome.INVALID);
                     assertThat(result.remainingAttempts()).isEqualTo(4);
@@ -140,7 +153,9 @@ class DefaultOtpChallengeServiceVerifyTest {
         FakeOtpChallengeStatePort statePort = new FakeOtpChallengeStatePort();
         statePort.store(sampleChallenge().withFailedAttemptCount(4));
 
-        StepVerifier.create(service(statePort).verifyChallenge(new VerifyOtpChallengeCommand("otp-001", "000000", FIXED_NOW)))
+        StepVerifier
+                .create(service(statePort)
+                        .verifyChallenge(new VerifyOtpChallengeCommand("otp-001", "000000", FIXED_NOW)))
                 .assertNext(result -> {
                     assertThat(result.outcome()).isEqualTo(OtpVerificationOutcome.LOCKED);
                     assertThat(result.remainingAttempts()).isZero();
@@ -155,7 +170,8 @@ class DefaultOtpChallengeServiceVerifyTest {
     void verifyRejectsBlankSubmittedCodeSafely() {
         FakeOtpChallengeStatePort statePort = new FakeOtpChallengeStatePort();
 
-        StepVerifier.create(service(statePort).verifyChallenge(new VerifyOtpChallengeCommand("otp-001", "   ", FIXED_NOW)))
+        StepVerifier
+                .create(service(statePort).verifyChallenge(new VerifyOtpChallengeCommand("otp-001", "   ", FIXED_NOW)))
                 .expectError(IllegalArgumentException.class)
                 .verify();
 
@@ -167,7 +183,9 @@ class DefaultOtpChallengeServiceVerifyTest {
         FakeOtpChallengeStatePort statePort = new FakeOtpChallengeStatePort();
         statePort.store(sampleChallenge());
 
-        StepVerifier.create(service(statePort).verifyChallenge(new VerifyOtpChallengeCommand("otp-001", "000000", FIXED_NOW)))
+        StepVerifier
+                .create(service(statePort)
+                        .verifyChallenge(new VerifyOtpChallengeCommand("otp-001", "000000", FIXED_NOW)))
                 .expectNextCount(1)
                 .verifyComplete();
 
@@ -248,30 +266,42 @@ class DefaultOtpChallengeServiceVerifyTest {
 
         private TestOtpChallenge withStatus(OtpStatus status) {
             return new TestOtpChallenge(copy(
-                    value.otpChallengeId(), value.scenario(), value.workflowRef(), value.channel(), value.destinationHash(),
-                    value.codeHash(), status, value.failedAttemptCount(), value.maxVerifyAttempts(), value.resendAttemptCount(),
-                    value.maxResendAttempts(), value.createdAt(), value.expiresAt(), value.lastSentAt(), value.invalidatedAt(), value.verifiedAt()));
+                    value.otpChallengeId(), value.scenario(), value.workflowRef(), value.channel(),
+                    value.destinationHash(),
+                    value.codeHash(), status, value.failedAttemptCount(), value.maxVerifyAttempts(),
+                    value.resendAttemptCount(),
+                    value.maxResendAttempts(), value.createdAt(), value.expiresAt(), value.lastSentAt(),
+                    value.invalidatedAt(), value.verifiedAt()));
         }
 
         private TestOtpChallenge withExpiresAt(Instant expiresAt) {
             return new TestOtpChallenge(copy(
-                    value.otpChallengeId(), value.scenario(), value.workflowRef(), value.channel(), value.destinationHash(),
-                    value.codeHash(), value.status(), value.failedAttemptCount(), value.maxVerifyAttempts(), value.resendAttemptCount(),
-                    value.maxResendAttempts(), value.createdAt(), expiresAt, value.lastSentAt(), value.invalidatedAt(), value.verifiedAt()));
+                    value.otpChallengeId(), value.scenario(), value.workflowRef(), value.channel(),
+                    value.destinationHash(),
+                    value.codeHash(), value.status(), value.failedAttemptCount(), value.maxVerifyAttempts(),
+                    value.resendAttemptCount(),
+                    value.maxResendAttempts(), value.createdAt(), expiresAt, value.lastSentAt(), value.invalidatedAt(),
+                    value.verifiedAt()));
         }
 
         private TestOtpChallenge withFailedAttemptCount(int failedAttemptCount) {
             return new TestOtpChallenge(copy(
-                    value.otpChallengeId(), value.scenario(), value.workflowRef(), value.channel(), value.destinationHash(),
-                    value.codeHash(), value.status(), failedAttemptCount, value.maxVerifyAttempts(), value.resendAttemptCount(),
-                    value.maxResendAttempts(), value.createdAt(), value.expiresAt(), value.lastSentAt(), value.invalidatedAt(), value.verifiedAt()));
+                    value.otpChallengeId(), value.scenario(), value.workflowRef(), value.channel(),
+                    value.destinationHash(),
+                    value.codeHash(), value.status(), failedAttemptCount, value.maxVerifyAttempts(),
+                    value.resendAttemptCount(),
+                    value.maxResendAttempts(), value.createdAt(), value.expiresAt(), value.lastSentAt(),
+                    value.invalidatedAt(), value.verifiedAt()));
         }
 
         private TestOtpChallenge withVerifiedAt(Instant verifiedAt) {
             return new TestOtpChallenge(copy(
-                    value.otpChallengeId(), value.scenario(), value.workflowRef(), value.channel(), value.destinationHash(),
-                    value.codeHash(), value.status(), value.failedAttemptCount(), value.maxVerifyAttempts(), value.resendAttemptCount(),
-                    value.maxResendAttempts(), value.createdAt(), value.expiresAt(), value.lastSentAt(), value.invalidatedAt(), verifiedAt));
+                    value.otpChallengeId(), value.scenario(), value.workflowRef(), value.channel(),
+                    value.destinationHash(),
+                    value.codeHash(), value.status(), value.failedAttemptCount(), value.maxVerifyAttempts(),
+                    value.resendAttemptCount(),
+                    value.maxResendAttempts(), value.createdAt(), value.expiresAt(), value.lastSentAt(),
+                    value.invalidatedAt(), verifiedAt));
         }
 
         private OtpChallenge copy(

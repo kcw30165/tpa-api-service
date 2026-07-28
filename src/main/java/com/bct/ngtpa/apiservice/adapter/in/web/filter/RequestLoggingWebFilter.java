@@ -34,19 +34,30 @@ import reactor.util.context.Context;
 /**
  * Global WebFilter that:
  * <ul>
- *   <li>Resolves or generates an {@code X-Request-Id} for every inbound request.</li>
- *   <li>Stores the request ID in the HTTP response header, exchange attributes, and Reactor Context.</li>
- *   <li>Logs structured JSON events for request start, end, and error lifecycle phases.</li>
- *   <li>Optionally logs request and response bodies per endpoint-level configuration.</li>
+ * <li>Resolves or generates an {@code X-Request-Id} for every inbound
+ * request.</li>
+ * <li>Stores the request ID in the HTTP response header, exchange attributes,
+ * and Reactor Context.</li>
+ * <li>Logs structured JSON events for request start, end, and error lifecycle
+ * phases.</li>
+ * <li>Optionally logs request and response bodies per endpoint-level
+ * configuration.</li>
  * </ul>
  *
- * <p>Body logging is disabled by default. Enable it globally via
+ * <p>
+ * Body logging is disabled by default. Enable it globally via
  * {@code request-logging.body-logging.enabled=true} and opt in per endpoint via
- * {@code request-logging.body-logging.endpoints}.</p>
+ * {@code request-logging.body-logging.endpoints}.
+ * </p>
  *
- * <p><strong>Response body logging limitation:</strong> response body interception requires
- * buffering the full response payload. This is not supported for binary content types
- * (e.g. Excel exports, PDFs, octet-stream). Binary responses are passed through unmodified.</p>
+ * <p>
+ * <strong>Response body logging limitation:</strong> response body interception
+ * requires
+ * buffering the full response payload. This is not supported for binary content
+ * types
+ * (e.g. Excel exports, PDFs, octet-stream). Binary responses are passed through
+ * unmodified.
+ * </p>
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
@@ -120,7 +131,7 @@ public class RequestLoggingWebFilter implements WebFilter {
                 request.getHeaders().getFirst(RequestHeaderContextKeys.ACCOUNT_REF_HEADER),
                 requestId,
                 request.getHeaders().getFirst(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER),
-                request.getHeaders().getFirst(RequestHeaderContextKeys.SESSION_ID_HEADER));
+                request.getHeaders().getFirst(RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER));
     }
 
     private Mono<Void> processWithRequestBodyLogging(
@@ -165,7 +176,8 @@ public class RequestLoggingWebFilter implements WebFilter {
                 .contextWrite(ctx -> withRequestContexts(ctx, requestId, requestHeaderContext));
     }
 
-    private ServerWebExchange wrapWithResponseDecorator(ServerWebExchange exchange, String requestId, int maxBodyBytes) {
+    private ServerWebExchange wrapWithResponseDecorator(ServerWebExchange exchange, String requestId,
+            int maxBodyBytes) {
         return exchange.mutate()
                 .response(new ResponseBodyLoggingDecorator(exchange, requestId, maxBodyBytes))
                 .build();

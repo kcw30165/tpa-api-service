@@ -1,6 +1,5 @@
 package com.bct.ngtpa.apiservice.adapter.out.configservice;
 
-import com.bct.ngtpa.apiservice.adapter.out.configservice.config.ConfigServiceProperties;
 import com.bct.ngtpa.apiservice.adapter.out.configservice.dto.ConfigServiceRequest;
 import com.bct.ngtpa.apiservice.adapter.out.configservice.dto.ConfigServiceResponse;
 import com.bct.ngtpa.apiservice.application.dto.ConfigEntry;
@@ -48,15 +47,14 @@ public class ConfigServiceWebClientAdapter implements ConfigServicePort {
                     return uriBuilder.build();
                 })
                 .retrieve()
-                .onStatus(HttpStatusCode::isError, response ->
-                        response.bodyToMono(String.class)
-                                .defaultIfEmpty("")
-                                .map(body -> {
-                                    log.error("Config Service error: status={}", response.statusCode().value());
-                                    return new ConfigServiceException(
-                                            response.statusCode(),
-                                            "Config Service returned error status: " + response.statusCode().value());
-                                }))
+                .onStatus(HttpStatusCode::isError, response -> response.bodyToMono(String.class)
+                        .defaultIfEmpty("")
+                        .map(body -> {
+                            log.error("Config Service error: status={}", response.statusCode().value());
+                            return new ConfigServiceException(
+                                    response.statusCode(),
+                                    "Config Service returned error status: " + response.statusCode().value());
+                        }))
                 .bodyToFlux(ConfigServiceResponse.class)
                 .collectList()
                 .map(responses -> responses.stream()
@@ -77,15 +75,14 @@ public class ConfigServiceWebClientAdapter implements ConfigServicePort {
                 .uri(CONFIGS_PATH)
                 .bodyValue(request)
                 .retrieve()
-                .onStatus(HttpStatusCode::isError, response ->
-                        response.bodyToMono(String.class)
-                                .defaultIfEmpty("")
-                                .map(body -> {
-                                    log.error("Config Service error: status={}", response.statusCode().value());
-                                    return new ConfigServiceException(
-                                            response.statusCode(),
-                                            "Config Service returned error status: " + response.statusCode().value());
-                                }))
+                .onStatus(HttpStatusCode::isError, response -> response.bodyToMono(String.class)
+                        .defaultIfEmpty("")
+                        .map(body -> {
+                            log.error("Config Service error: status={}", response.statusCode().value());
+                            return new ConfigServiceException(
+                                    response.statusCode(),
+                                    "Config Service returned error status: " + response.statusCode().value());
+                        }))
                 .bodyToMono(ConfigServiceResponse.class)
                 .map(this::toConfigEntry);
     }
@@ -101,15 +98,14 @@ public class ConfigServiceWebClientAdapter implements ConfigServicePort {
                 .uri("/api/configs/{application}/{profile}/{label}/{configKey}",
                         application, profile, label, configKey)
                 .retrieve()
-                .onStatus(HttpStatusCode::isError, response ->
-                        response.bodyToMono(String.class)
-                                .defaultIfEmpty("")
-                                .map(body -> {
-                                    log.error("Config Service error: status={}", response.statusCode().value());
-                                    return new ConfigServiceException(
-                                            response.statusCode(),
-                                            "Config Service returned error status: " + response.statusCode().value());
-                                }))
+                .onStatus(HttpStatusCode::isError, response -> response.bodyToMono(String.class)
+                        .defaultIfEmpty("")
+                        .map(body -> {
+                            log.error("Config Service error: status={}", response.statusCode().value());
+                            return new ConfigServiceException(
+                                    response.statusCode(),
+                                    "Config Service returned error status: " + response.statusCode().value());
+                        }))
                 .toBodilessEntity()
                 .then();
     }

@@ -55,7 +55,7 @@ public class RedisCaptchaChallengeAdapter implements CaptchaChallengePort {
     @Override
     public Mono<Optional<CaptchaChallenge>> load(CaptchaChallengeId captchaChallengeId) {
         return Mono.defer(() -> redis.get(keyFor(captchaChallengeId))
-                        .map(optionalJson -> optionalJson.map(jsonMapper::fromJson)))
+                .map(optionalJson -> optionalJson.map(jsonMapper::fromJson)))
                 .onErrorMap(this::safeFailure);
     }
 
@@ -178,7 +178,8 @@ public class RedisCaptchaChallengeAdapter implements CaptchaChallengePort {
     }
 
     private Throwable safeFailure(Throwable throwable) {
-        if (throwable instanceof IllegalArgumentException || throwable instanceof IllegalStateException || throwable instanceof CacheException) {
+        if (throwable instanceof IllegalArgumentException || throwable instanceof IllegalStateException
+                || throwable instanceof CacheException) {
             return throwable;
         }
         return new CacheException("Captcha challenge persistence operation failed", throwable);

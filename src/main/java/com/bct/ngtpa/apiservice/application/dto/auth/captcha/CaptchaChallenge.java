@@ -17,8 +17,8 @@ public record CaptchaChallenge(
         Instant refreshedAt,
         Instant lockedAt) {
 
-    private static final EnumSet<CaptchaStatus> HASH_REQUIRED_STATUSES =
-            EnumSet.of(CaptchaStatus.CREATED, CaptchaStatus.VERIFIED, CaptchaStatus.LOCKED);
+    private static final EnumSet<CaptchaStatus> HASH_REQUIRED_STATUSES = EnumSet.of(CaptchaStatus.CREATED,
+            CaptchaStatus.VERIFIED, CaptchaStatus.LOCKED);
 
     public CaptchaChallenge {
         Objects.requireNonNull(captchaChallengeId, "captchaChallengeId must not be null");

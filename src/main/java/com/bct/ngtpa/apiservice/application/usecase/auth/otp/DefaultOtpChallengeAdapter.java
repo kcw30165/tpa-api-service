@@ -227,6 +227,9 @@ public class DefaultOtpChallengeAdapter implements OtpChallengePort {
         }
 
         OtpChallenge challenge = optionalChallenge.orElseThrow();
+        int effectiveMaxResendAttempts = command.resendLimitEnabled()
+                ? challenge.maxResendAttempts()
+                : -1;
         boolean recoveringFromVerifyLock = challenge.status() == OtpStatus.LOCKED;
         if (challenge.status() == OtpStatus.VERIFIED || challenge.status() == OtpStatus.CONSUMED) {
             return Mono.just(replacementResult(
@@ -237,7 +240,7 @@ public class DefaultOtpChallengeAdapter implements OtpChallengePort {
                     null,
                     0,
                     command.resendCooldownSeconds(),
-                    remainingResendAttempts(challenge.maxResendAttempts(), challenge.resendAttemptCount()),
+                    remainingResendAttempts(effectiveMaxResendAttempts, challenge.resendAttemptCount()),
                     null));
         }
         if (challenge.status() == OtpStatus.INVALIDATED) {
@@ -249,7 +252,7 @@ public class DefaultOtpChallengeAdapter implements OtpChallengePort {
                     null,
                     0,
                     command.resendCooldownSeconds(),
-                    remainingResendAttempts(challenge.maxResendAttempts(), challenge.resendAttemptCount()),
+                    remainingResendAttempts(effectiveMaxResendAttempts, challenge.resendAttemptCount()),
                     null));
         }
         if (challenge.status() == OtpStatus.EXPIRED || !challenge.expiresAt().isAfter(now)) {
@@ -262,7 +265,7 @@ public class DefaultOtpChallengeAdapter implements OtpChallengePort {
                         null,
                         0,
                         command.resendCooldownSeconds(),
-                        remainingResendAttempts(challenge.maxResendAttempts(), challenge.resendAttemptCount()),
+                        remainingResendAttempts(effectiveMaxResendAttempts, challenge.resendAttemptCount()),
                         null));
             }
 
@@ -287,7 +290,7 @@ public class DefaultOtpChallengeAdapter implements OtpChallengePort {
                             null,
                             0,
                             command.resendCooldownSeconds(),
-                            remainingResendAttempts(challenge.maxResendAttempts(), challenge.resendAttemptCount()),
+                            remainingResendAttempts(effectiveMaxResendAttempts, challenge.resendAttemptCount()),
                             null));
         }
         if (challenge.status() != OtpStatus.CREATED && !recoveringFromVerifyLock) {
@@ -299,7 +302,7 @@ public class DefaultOtpChallengeAdapter implements OtpChallengePort {
                     null,
                     0,
                     command.resendCooldownSeconds(),
-                    remainingResendAttempts(challenge.maxResendAttempts(), challenge.resendAttemptCount()),
+                    remainingResendAttempts(effectiveMaxResendAttempts, challenge.resendAttemptCount()),
                     null));
         }
 
@@ -316,11 +319,13 @@ public class DefaultOtpChallengeAdapter implements OtpChallengePort {
                     null,
                     0,
                     command.resendCooldownSeconds(),
-                    remainingResendAttempts(challenge.maxResendAttempts(), challenge.resendAttemptCount()),
+                    remainingResendAttempts(effectiveMaxResendAttempts, challenge.resendAttemptCount()),
                     retryAfterSeconds));
         }
-        if (challenge.resendAttemptCount() >= challenge.maxResendAttempts()) {
-            log.warn("Max resend attempts reached for OTP challenge {} ({}).", challenge.otpChallengeId(), challenge.resendAttemptCount());
+        if (command.resendLimitEnabled()
+                && challenge.resendAttemptCount() >= challenge.maxResendAttempts()) {
+            log.warn("Max resend attempts reached for OTP challenge {} ({}).", challenge.otpChallengeId(),
+                    challenge.resendAttemptCount());
             return Mono.just(replacementResult(
                     challenge.otpChallengeId(),
                     null,
@@ -374,7 +379,7 @@ public class DefaultOtpChallengeAdapter implements OtpChallengePort {
                         replacementChallenge.expiresAt(),
                         command.ttlSeconds(),
                         command.resendCooldownSeconds(),
-                        remainingResendAttempts(challenge.maxResendAttempts(), updatedResendAttemptCount),
+                        remainingResendAttempts(effectiveMaxResendAttempts, updatedResendAttemptCount),
                         null));
     }
 
@@ -410,7 +415,9 @@ public class DefaultOtpChallengeAdapter implements OtpChallengePort {
     }
 
     private int remainingResendAttempts(int maxResendAttempts, int resendAttemptCount) {
-        return Math.max(0, maxResendAttempts - resendAttemptCount);
+        return maxResendAttempts < 0
+                ? -1
+                : Math.max(0, maxResendAttempts - resendAttemptCount);
     }
 
     private Integer cooldownRetryAfterSeconds(Instant lastSentAt, int resendCooldownSeconds, Instant now) {

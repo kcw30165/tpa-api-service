@@ -1,5 +1,9 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim;
 
+import org.springframework.web.reactive.function.client.WebClientRequestException;
+import java.util.concurrent.TimeoutException;
+import java.time.Duration;
+import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimErrorResponse;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfileResolver;
@@ -28,7 +32,8 @@ import java.util.Map;
  * APIM HTTP transport facade.
  * - Resolves credential profile per operation
  * - Attaches API key and Authorization header per-profile
- * - Evicts and retries on `invalid_token` and `invalid_public_key` when appropriate
+ * - Evicts and retries on `invalid_token` and `invalid_public_key` when
+ * appropriate
  */
 @Slf4j
 @Service
@@ -87,11 +92,76 @@ public class ApimWebClientFacade {
 
     @LogExecution(value = "apim.post", logArgs = true)
     public Mono<String> post(String path, Object requestBody, ApimCredentialResolutionContext resolutionContext) {
-        return profileResolver.resolve(resolutionContext)
-                .flatMap(profile -> sendWithProfile(profile, path, requestBody, new RetryContext()));
+        return post(path, requestBody, resolutionContext, ApimRetryEligibility.NON_RETRYABLE);
     }
 
-    private Mono<String> sendWithProfile(ApimCredentialProfile profile, String path, Object requestBody, RetryContext retryContext) {
+    public Mono<String> post(
+            String path,
+            Object requestBody,
+            ApimCredentialResolutionContext resolutionContext,
+            ApimRetryEligibility retryEligibility) {
+        ApimRetryEligibility eligibility = retryEligibility == null
+                ? ApimRetryEligibility.NON_RETRYABLE
+                : retryEligibility;
+        apimProperties.validateRetryPolicy();
+        return profileResolver.resolve(resolutionContext)
+                .flatMap(profile -> sendBusinessAttempt(
+                        profile,
+                        path,
+                        requestBody,
+                        eligibility,
+                        1));
+    }
+
+    private Mono<String> sendBusinessAttempt(
+            ApimCredentialProfile profile,
+            String path,
+            Object requestBody,
+            ApimRetryEligibility retryEligibility,
+            int attempt) {
+        return sendWithProfile(profile, path, requestBody, new RetryContext())
+                .onErrorResume(error -> {
+                    int maxAttempts = apimProperties.getRetry().getBusinessCall().getMaxAttempts();
+                    if (!retryEligibility.retryEligible()
+                            || attempt >= maxAttempts
+                            || !isTransientBusinessFailure(error)) {
+                        return Mono.error(error);
+                    }
+                    long backoffMilliseconds = apimProperties.getRetry()
+                            .getBusinessCall()
+                            .getBackoffMilliseconds();
+                    log.warn(
+                            "Retrying transient APIM business call path={} attempt={}/{}",
+                            path,
+                            attempt + 1,
+                            maxAttempts);
+                    Mono<Long> delay = backoffMilliseconds == 0
+                            ? Mono.just(0L)
+                            : Mono.delay(Duration.ofMillis(backoffMilliseconds));
+                    return delay.then(sendBusinessAttempt(
+                            profile,
+                            path,
+                            requestBody,
+                            retryEligibility,
+                            attempt + 1));
+                });
+    }
+
+    private boolean isTransientBusinessFailure(Throwable error) {
+        if (error instanceof ApimException apimException) {
+            String message = apimException.getMessage();
+            return message != null && message.matches(
+                    ".*status=(500|501|502|503|504|505|506|507|508|510|511)(?:\\s|\\b).*");
+        }
+        if (error instanceof WebClientRequestException || error instanceof TimeoutException) {
+            return true;
+        }
+        Throwable cause = error.getCause();
+        return cause != null && cause != error && isTransientBusinessFailure(cause);
+    }
+
+    private Mono<String> sendWithProfile(ApimCredentialProfile profile, String path, Object requestBody,
+            RetryContext retryContext) {
         return apimTokenService.getAccessToken(profile)
                 .flatMap(token -> {
                     String baseUrl = profile.baseUrl() != null ? profile.baseUrl() : apimProperties.getBaseUrl();
@@ -99,7 +169,8 @@ public class ApimWebClientFacade {
 
                     WebClient.RequestBodySpec request = client.post()
                             .uri(uriBuilder -> uriBuilder.path(path).build())
-                            .header(apimProperties.getApiKeyHeaderName(), profile.apiKey() != null ? profile.apiKey() : "")
+                            .header(apimProperties.getApiKeyHeaderName(),
+                                    profile.apiKey() != null ? profile.apiKey() : "")
                             .header("Authorization", "Bearer " + token);
 
                     String certificateHeaderValue = getCertificateHeaderValue();
@@ -110,7 +181,8 @@ public class ApimWebClientFacade {
                     WebClient.RequestHeadersSpec<?> req = request.bodyValue(requestBody);
 
                     logRequest(path, requestBody);
-                    return req.exchangeToMono(response -> handleResponse(response, profile, path, requestBody, retryContext));
+                    return req.exchangeToMono(
+                            response -> handleResponse(response, profile, path, requestBody, retryContext));
                 });
     }
 
@@ -118,7 +190,8 @@ public class ApimWebClientFacade {
         return apimAppCertificateService == null ? null : apimAppCertificateService.getCertificateHeaderValue();
     }
 
-    private Mono<String> handleResponse(ClientResponse response, ApimCredentialProfile profile, String path, Object requestBody, RetryContext retryContext) {
+    private Mono<String> handleResponse(ClientResponse response, ApimCredentialProfile profile, String path,
+            Object requestBody, RetryContext retryContext) {
         HttpStatusCode statusCode = response.statusCode();
         return response.bodyToMono(String.class)
                 .defaultIfEmpty("")
@@ -128,7 +201,8 @@ public class ApimWebClientFacade {
                         if ("invalid_token".equals(errorCode)) {
                             if (!retryContext.tokenRetry) {
                                 retryContext.tokenRetry = true;
-                                log.info("APIM returned invalid_token for profileId={}; evicting cached token and retrying once.",
+                                log.info(
+                                        "APIM returned invalid_token for profileId={}; evicting cached token and retrying once.",
                                         profile.profileId());
                                 apimTokenService.evictToken(profile.profileId());
                                 return apimTokenService.refreshAccessToken(profile)
@@ -138,9 +212,10 @@ public class ApimWebClientFacade {
                         if ("invalid_public_key".equals(errorCode)) {
                             if (!retryContext.certificateRetry) {
                                 retryContext.certificateRetry = true;
-                                                        apimCertificateService.evictCertificate(profile.profileId());
-                                                        // Let caller (adapter) be responsible for re-encryption; retry the same payload once
-                                                        return sendWithProfile(profile, path, requestBody, retryContext);
+                                apimCertificateService.evictCertificate(profile.profileId());
+                                // Let caller (adapter) be responsible for re-encryption; retry the same payload
+                                // once
+                                return sendWithProfile(profile, path, requestBody, retryContext);
                             }
                         }
 
@@ -197,7 +272,8 @@ public class ApimWebClientFacade {
         this.webClientBuilder = WebClient.builder();
         this.objectMapper = objectMapper;
         this.profileResolver = ctx -> Mono.empty();
-        this.apimTokenService = new com.bct.ngtpa.apiservice.adapter.out.apim.oauth.ApimTokenService(WebClient.builder(), new ApimProperties());
+        this.apimTokenService = new com.bct.ngtpa.apiservice.adapter.out.apim.oauth.ApimTokenService(
+                WebClient.builder(), new ApimProperties());
         this.apimCertificateService = new ApimCertificateService(WebClient.builder(), new ApimProperties(), null);
         this.apimProperties = new ApimProperties();
         this.apimAppCertificateService = null;

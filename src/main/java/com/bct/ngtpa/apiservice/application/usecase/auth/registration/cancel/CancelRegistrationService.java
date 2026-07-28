@@ -25,9 +25,12 @@ import reactor.core.publisher.Mono;
 public final class CancelRegistrationService implements CancelRegistrationUseCase {
     private static final String SOURCE_SERVER = "SERVER";
     private static final String TARGET_PAGE = "PAGE";
-    private static final String ERROR_AUTH_FLOW_INVALID = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.AUTH_FLOW_INVALID.value();
-    private static final String ERROR_CSRF_INVALID = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.CSRF_INVALID.value();
-    private static final String ERROR_CANCEL_UNAVAILABLE = com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value();
+    private static final String ERROR_AUTH_FLOW_INVALID = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.AUTH_FLOW_INVALID
+            .value();
+    private static final String ERROR_CSRF_INVALID = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.CSRF_INVALID
+            .value();
+    private static final String ERROR_CANCEL_UNAVAILABLE = com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE
+            .value();
 
     private final AuthFlowSessionPort sessions;
     private final AuthFlowSessionCsrfService csrfService;
@@ -83,13 +86,13 @@ public final class CancelRegistrationService implements CancelRegistrationUseCas
             return Mono.just(csrfFailure());
         }
         return csrfService.validateForSession(new ValidateAuthFlowSessionCsrfCommand(
-                        command.authFlowSessionId(),
-                        command.csrfToken(),
-                        now,
-                        command.origin(),
-                        command.referer(),
-                        List.of(),
-                        command.correlationId()))
+                command.authFlowSessionId(),
+                command.csrfToken(),
+                now,
+                command.origin(),
+                command.referer(),
+                List.of(),
+                command.correlationId()))
                 .flatMap(csrf -> {
                     if (!csrf.valid()) {
                         return Mono.just(csrfFailure());
@@ -112,9 +115,9 @@ public final class CancelRegistrationService implements CancelRegistrationUseCas
             return Mono.empty();
         }
         return otpChallenges.invalidateChallenge(new InvalidateOtpChallengeCommand(
-                        session.activeOtpChallengeId(),
-                        OtpChallengeInvalidationReason.USER_CANCELLED_REGISTRATION,
-                        now));
+                session.activeOtpChallengeId(),
+                OtpChallengeInvalidationReason.USER_CANCELLED_REGISTRATION,
+                now));
     }
 
     private CancelRegistrationResult mapCancellationStatus(SessionCancellationStatus status) {

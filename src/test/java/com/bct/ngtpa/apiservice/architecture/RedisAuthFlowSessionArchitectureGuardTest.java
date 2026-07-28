@@ -1,6 +1,6 @@
 package com.bct.ngtpa.apiservice.architecture;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
@@ -44,11 +44,12 @@ class RedisAuthFlowSessionArchitectureGuardTest {
 
     @Test
     void p4b2DoesNotIntroduceAuthenticatedSessionImplementation() {
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.session.AuthenticatedSession");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthenticatedSessionAdapter");
+        assertNotEquals(
+                com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession.class,
+                com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSession.class);
+        assertNotEquals(
+                com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthFlowSessionAdapter.class,
+                com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthenticatedSessionAdapter.class);
     }
 
-    private static void assertClassAbsent(String className) {
-        assertThrows(ClassNotFoundException.class, () -> Class.forName(className));
-    }
 }

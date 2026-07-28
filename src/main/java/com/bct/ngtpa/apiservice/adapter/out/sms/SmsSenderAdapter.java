@@ -154,9 +154,9 @@ public class SmsSenderAdapter implements SmsSenderPort {
         }
         return "provider error redacted";
         // return error.getMessage()
-        //         .replace('\n', ' ')
-        //         .replace('\r', ' ')
-        //         .replaceAll("\\d{4,}", "****");
+        // .replace('\n', ' ')
+        // .replace('\r', ' ')
+        // .replaceAll("\\d{4,}", "****");
     }
 
     private String resolveCountry(String country) {

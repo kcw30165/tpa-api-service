@@ -24,8 +24,8 @@ public class RedisRateLimitAdapter implements RateLimitPort {
             + "return { current, ttl }\n";
 
     @SuppressWarnings("rawtypes")
-    private static final RedisScript<List> INCREMENT_AND_TTL_SCRIPT =
-            RedisScript.of(INCREMENT_AND_TTL_SCRIPT_TEXT, List.class);
+    private static final RedisScript<List> INCREMENT_AND_TTL_SCRIPT = RedisScript.of(INCREMENT_AND_TTL_SCRIPT_TEXT,
+            List.class);
 
     private final ReactiveRedisTemplate<String, String> redisTemplate;
     private final RedisCacheKeyFactory keyFactory;
@@ -60,9 +60,9 @@ public class RedisRateLimitAdapter implements RateLimitPort {
 
         String redisKey = redisKey(command);
         return redisTemplate.execute(
-                        INCREMENT_AND_TTL_SCRIPT,
-                        List.of(redisKey),
-                        List.of(String.valueOf(command.windowSeconds())))
+                INCREMENT_AND_TTL_SCRIPT,
+                List.of(redisKey),
+                List.of(String.valueOf(command.windowSeconds())))
                 .next()
                 .switchIfEmpty(Mono.error(new CacheException("Redis rate-limit operation failed")))
                 .map(result -> toRateLimitResult(command, result))

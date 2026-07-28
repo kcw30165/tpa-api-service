@@ -96,7 +96,8 @@ public final class JavaCaptchaImageGeneratorAdapter implements CaptchaImageGener
     }
 
     private Color randomPastel() {
-        return new Color(190 + secureRandom.nextInt(50), 190 + secureRandom.nextInt(50), 190 + secureRandom.nextInt(50));
+        return new Color(190 + secureRandom.nextInt(50), 190 + secureRandom.nextInt(50),
+                190 + secureRandom.nextInt(50));
     }
 
     private Color randomDark() {

@@ -11,7 +11,6 @@ import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 
@@ -20,7 +19,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Map;
 
-@Component
 @RequiredArgsConstructor
 @Slf4j
 public class TemporaryPortalAccessContextAdapter implements PortalAccessContextPort {
@@ -29,6 +27,7 @@ public class TemporaryPortalAccessContextAdapter implements PortalAccessContextP
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final TemporaryPortalAccessContextProperties properties;
+
     @Override
     public Mono<PortalAccessContext> resolvePortalAccessContext(String accountRef) {
         return resolvePortalAccessContext(accountRef, null);
@@ -47,13 +46,14 @@ public class TemporaryPortalAccessContextAdapter implements PortalAccessContextP
         }
         return resolveFromLegacyProfileShape(normalizedAccountRef);
     }
+
     private Mono<PortalAccessContext> resolveFromSessionShape(String accountRef, String requestedSessionId) {
         Map<String, TemporaryPortalAccessContextProperties.SessionProfile> sessions = properties.getSessions();
         String sessionId = resolveHeaderSessionId(requestedSessionId);
         if (!StringUtils.hasText(sessionId)) {
             return Mono.<PortalAccessContext>error(new PortalAccessContextResolutionException(
                     ErrorCodes.MEMBER_CONTEXT_INVALID,
-                    "Session id header " + RequestHeaderContextKeys.SESSION_ID_HEADER
+                    "Authenticated session header " + RequestHeaderContextKeys.AUTHENTICATED_SESSION_HEADER
                             + " is required to resolve temporary portal access context."));
         }
         TemporaryPortalAccessContextProperties.SessionProfile session = sessions.get(sessionId);
@@ -63,7 +63,8 @@ public class TemporaryPortalAccessContextAdapter implements PortalAccessContextP
                     "No temporary portal access context session configured for sessionId: " + sessionId));
         }
         Map<String, TemporaryPortalAccessContextProperties.AccountProfile> accounts = session.getAccounts();
-        TemporaryPortalAccessContextProperties.AccountProfile account = accounts == null ? null : accounts.get(accountRef);
+        TemporaryPortalAccessContextProperties.AccountProfile account = accounts == null ? null
+                : accounts.get(accountRef);
         if (account == null) {
             return Mono.<PortalAccessContext>error(new PortalAccessContextResolutionException(
                     ErrorCodes.MEMBER_CONTEXT_INVALID,
@@ -86,9 +87,11 @@ public class TemporaryPortalAccessContextAdapter implements PortalAccessContextP
                         termStatus,
                         parseTermCompletionDate(account.getTermCompletionDate(), accountRef))));
     }
+
     private String resolveHeaderSessionId(String sessionId) {
         return StringUtils.hasText(sessionId) ? sessionId.trim() : null;
     }
+
     private Mono<PortalAccessContext> resolveFromLegacyProfileShape(String accountRef) {
         var profile = properties.getProfiles().get(accountRef);
         if (profile == null) {
@@ -113,7 +116,8 @@ public class TemporaryPortalAccessContextAdapter implements PortalAccessContextP
     private TermStatus mapTermStatus(String rawCode, String accountRef, String accountEnv) {
         TermStatus status = TermStatus.fromCode(rawCode);
         if (status == TermStatus.UNKNOWN) {
-            log.warn("Unknown temporary portal access context termStatus. source={}, accountRef={}, accountEnv={}, rawTermStatus={}",
+            log.warn(
+                    "Unknown temporary portal access context termStatus. source={}, accountRef={}, accountEnv={}, rawTermStatus={}",
                     SOURCE_NAME, accountRef, accountEnv, rawCode);
         }
         return status;
@@ -126,7 +130,8 @@ public class TemporaryPortalAccessContextAdapter implements PortalAccessContextP
         try {
             return LocalDate.parse(rawDate.trim(), DATE_FORMATTER);
         } catch (DateTimeParseException exception) {
-            log.warn("Invalid temporary portal access context termCompletionDate. source={}, accountRef={}, rawTermCompletionDate={}",
+            log.warn(
+                    "Invalid temporary portal access context termCompletionDate. source={}, accountRef={}, rawTermCompletionDate={}",
                     SOURCE_NAME, accountRef, rawDate);
             return null;
         }

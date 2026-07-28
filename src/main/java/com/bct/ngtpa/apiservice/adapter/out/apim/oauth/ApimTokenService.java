@@ -79,10 +79,12 @@ public class ApimTokenService {
                     if (expiresAt <= now) {
                         expiresAt = now + (tr.expiresIn * 1000L);
                     }
-                    ApimTokenCacheEntry entry = new ApimTokenCacheEntry(profile.profileId(), tr.accessToken, tr.tokenType, expiresAt, tr.refreshToken);
+                    ApimTokenCacheEntry entry = new ApimTokenCacheEntry(profile.profileId(), tr.accessToken,
+                            tr.tokenType, expiresAt, tr.refreshToken);
                     return entry;
                 })
-                .doOnError(ex -> log.warn("Failed to fetch APIM token for profileId={}, error={}", profile.profileId(), ex.toString()));
+                .doOnError(ex -> log.warn("Failed to fetch APIM token for profileId={}, error={}", profile.profileId(),
+                        ex.toString()));
     }
 
     // Token response DTO

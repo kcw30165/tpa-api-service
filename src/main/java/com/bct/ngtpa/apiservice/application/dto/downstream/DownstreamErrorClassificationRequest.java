@@ -1,7 +1,8 @@
 package com.bct.ngtpa.apiservice.application.dto.downstream;
 
 /**
- * Framework-free request for classifying a technically valid downstream business rejection.
+ * Framework-free request for classifying a technically valid downstream
+ * business rejection.
  */
 public record DownstreamErrorClassificationRequest(
         String pageId,

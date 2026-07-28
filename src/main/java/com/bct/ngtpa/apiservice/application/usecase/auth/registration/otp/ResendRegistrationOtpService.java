@@ -149,14 +149,14 @@ public class ResendRegistrationOtpService implements ResendRegistrationOtpUseCas
                         .then(Mono.just(failure(
                                 ResendRegistrationOtpResultStatus.SEND_RATE_LIMITED,
                                 WorkflowNextStep.RESTART_FLOW,
-                                resendErrorCode(ResendRegistrationOtpResultStatus.SEND_RATE_LIMITED),                                
+                                resendErrorCode(ResendRegistrationOtpResultStatus.SEND_RATE_LIMITED),
                                 RegistrationIdempotencyStartOutcome.STARTED,
                                 rejection.retryAfterSeconds(),
                                 null))))
                 .onErrorResume(RegistrationOtpResendRejectedException.class, rejection -> markFailed(command, hash)
                         .then(Mono.just(failure(
                                 rejection.status(),
-                        nextStepForRejectedResend(rejection.status()),
+                                nextStepForRejectedResend(rejection.status()),
                                 resendErrorCode(rejection.status()),
                                 RegistrationIdempotencyStartOutcome.STARTED,
                                 rejection.retryAfterSeconds(),

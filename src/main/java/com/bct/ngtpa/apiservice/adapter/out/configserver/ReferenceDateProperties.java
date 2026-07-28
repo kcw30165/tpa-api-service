@@ -12,7 +12,10 @@ public class ReferenceDateProperties {
     private String accountEnv = "";
     private String overrideDate = "";
     private String overrideZoneId = "";
-    /** TTL in seconds for Redis populate after a Config Service hit. 0 = skip populate. */
+    /**
+     * TTL in seconds for Redis populate after a Config Service hit. 0 = skip
+     * populate.
+     */
     private long cacheTtlSeconds = 0;
     private final Refresh refresh = new Refresh();
 

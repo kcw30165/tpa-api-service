@@ -17,6 +17,7 @@ public class ApimProperties {
     private final Oauth oauth = new Oauth();
     private final Encryption encryption = new Encryption();
     private final CredentialProfiles credentialProfiles = new CredentialProfiles();
+    private final Retry retry = new Retry();
 
     @Getter
     @Setter
@@ -43,6 +44,31 @@ public class ApimProperties {
         private List<String> responseFields = new ArrayList<>();
         private int certificateCacheTtlSeconds = 3600;
         private int certificateRenewalSkewSeconds = 60;
+    }
+
+    @Getter
+    @Setter
+    public static class Retry {
+        private final BusinessCall businessCall = new BusinessCall();
+
+        @Getter
+        @Setter
+        public static class BusinessCall {
+            /** Total business-call attempts, including the initial attempt. */
+            private int maxAttempts = 3;
+            private long backoffMilliseconds = 100;
+        }
+    }
+
+    public void validateRetryPolicy() {
+        if (retry.businessCall.maxAttempts <= 0) {
+            throw new IllegalStateException(
+                    "apim.retry.business-call.max-attempts must be greater than zero");
+        }
+        if (retry.businessCall.backoffMilliseconds < 0) {
+            throw new IllegalStateException(
+                    "apim.retry.business-call.backoff-milliseconds must not be negative");
+        }
     }
 
     @Getter

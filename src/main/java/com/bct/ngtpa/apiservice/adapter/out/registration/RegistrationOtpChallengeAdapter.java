@@ -84,6 +84,7 @@ public class RegistrationOtpChallengeAdapter implements RegistrationOtpPort {
                 policy.numericOnly(),
                 policy.ttlSeconds(),
                 policy.resendCooldownSeconds(),
+                policy.resendLimitEnabled(),
                 Instant.now(clock)))
                 .flatMap(result -> switch (result.outcome()) {
                     case REPLACED -> Mono.just(new RegistrationOtpCreationResult(

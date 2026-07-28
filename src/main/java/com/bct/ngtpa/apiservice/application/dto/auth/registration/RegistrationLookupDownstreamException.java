@@ -2,7 +2,8 @@ package com.bct.ngtpa.apiservice.application.dto.auth.registration;
 
 /**
  * Signals a structurally readable TRPSearchUnregMember response that violates
- * the agreed lookup contract. Sensitive request/response values are deliberately
+ * the agreed lookup contract. Sensitive request/response values are
+ * deliberately
  * excluded from the exception message and state.
  */
 public final class RegistrationLookupDownstreamException extends RuntimeException {
@@ -13,11 +14,17 @@ public final class RegistrationLookupDownstreamException extends RuntimeExceptio
         super("TRPSearchUnregMember contract failure: " + reason);
         this.reason = java.util.Objects.requireNonNull(reason, "reason must not be null");
         this.downstreamErrorCode = downstreamErrorCode == null || downstreamErrorCode.isBlank()
-                ? null : downstreamErrorCode.trim();
+                ? null
+                : downstreamErrorCode.trim();
     }
 
-    public Reason reason() { return reason; }
-    public String downstreamErrorCode() { return downstreamErrorCode; }
+    public Reason reason() {
+        return reason;
+    }
+
+    public String downstreamErrorCode() {
+        return downstreamErrorCode;
+    }
 
     public enum Reason {
         UNEXPECTED_ERROR,

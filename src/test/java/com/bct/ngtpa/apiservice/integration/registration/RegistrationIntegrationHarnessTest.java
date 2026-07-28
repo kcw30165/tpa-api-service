@@ -47,22 +47,18 @@ import org.springframework.test.web.reactive.server.EntityExchangeResult;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
-@SpringBootTest(
-        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-        classes = RegistrationIntegrationHarnessTest.TestApplication.class,
-        properties = {
-                "api.security.require-authentication=false",
-                "redis-cache.enabled=false",
-                "spring.main.banner-mode=off"
-        })
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = RegistrationIntegrationHarnessTest.TestApplication.class, properties = {
+        "api.security.require-authentication=false",
+        "redis-cache.enabled=false",
+        "spring.main.banner-mode=off"
+})
 @AutoConfigureWebTestClient
 @ExtendWith(RegistrationTestResultExtension.class)
 class RegistrationIntegrationHarnessTest {
 
     private static final String CHALLENGE_ID = "cap_abcdefghijklmnop";
     private static final String CAPTCHA_ANSWER = "AbC12312";
-    private static final String PNG_BASE64 =
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZQmcAAAAASUVORK5CYII=";
+    private static final String PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZQmcAAAAASUVORK5CYII=";
 
     @Autowired
     private WebTestClient webTestClient;
@@ -226,8 +222,7 @@ class RegistrationIntegrationHarnessTest {
     }
 
     static final class InMemoryCaptchaChallengePort implements CaptchaChallengePort {
-        private final Map<CaptchaChallengeId, CaptchaChallenge> challenges =
-                new ConcurrentHashMap<>();
+        private final Map<CaptchaChallengeId, CaptchaChallenge> challenges = new ConcurrentHashMap<>();
 
         @Override
         public Mono<CaptchaChallenge> create(CaptchaChallenge challenge) {

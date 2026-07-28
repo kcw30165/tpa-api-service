@@ -40,7 +40,7 @@ public class SmtpEmailSenderAdapter implements EmailSenderPort {
             return Mono.error(new IllegalArgumentException("message must not be null"));
         }
 
-        String recipientMasked = EmailAddressMasker.mask(message.recipient());        
+        String recipientMasked = EmailAddressMasker.mask(message.recipient());
         SmtpSendCommand command = toCommand(message);
 
         log.info(
@@ -106,7 +106,7 @@ public class SmtpEmailSenderAdapter implements EmailSenderPort {
         }
         return "provider error redacted";
         // return error.getMessage()
-        //         .replace('\n', ' ')
-        //         .replace('\r', ' ');
+        // .replace('\n', ' ')
+        // .replace('\r', ' ');
     }
 }

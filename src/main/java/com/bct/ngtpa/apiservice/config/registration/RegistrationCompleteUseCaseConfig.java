@@ -1,6 +1,5 @@
 package com.bct.ngtpa.apiservice.config.registration;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.RegistrationIdempotencyProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.session.config.AuthFlowSessionProperties;
 import com.bct.ngtpa.apiservice.application.port.in.CompleteRegistrationUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.*;

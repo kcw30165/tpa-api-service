@@ -9,7 +9,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-/** Validates completion passwords using the existing registration PasswordPolicy. */
+/**
+ * Validates completion passwords using the existing registration
+ * PasswordPolicy.
+ */
 public class RegistrationPasswordValidator {
     private static final String SOURCE_SERVER = "SERVER";
     private final AuthWorkflowPolicyPort policyPort;
@@ -65,10 +68,14 @@ public class RegistrationPasswordValidator {
     private int categoryCount(String password, String configuredSpecials) {
         String specialChars = configuredSpecials == null ? "" : configuredSpecials;
         int categories = 0;
-        if (password.chars().anyMatch(Character::isUpperCase)) categories++;
-        if (password.chars().anyMatch(Character::isLowerCase)) categories++;
-        if (password.chars().anyMatch(Character::isDigit)) categories++;
-        if (password.chars().anyMatch(ch -> specialChars.indexOf(ch) >= 0)) categories++;
+        if (password.chars().anyMatch(Character::isUpperCase))
+            categories++;
+        if (password.chars().anyMatch(Character::isLowerCase))
+            categories++;
+        if (password.chars().anyMatch(Character::isDigit))
+            categories++;
+        if (password.chars().anyMatch(ch -> specialChars.indexOf(ch) >= 0))
+            categories++;
         return categories;
     }
 

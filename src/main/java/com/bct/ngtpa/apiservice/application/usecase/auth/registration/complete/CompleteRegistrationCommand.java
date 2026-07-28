@@ -5,7 +5,10 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import java.time.Duration;
 import java.util.Objects;
 
-/** Inbound application command. Password values must never be persisted or logged. */
+/**
+ * Inbound application command. Password values must never be persisted or
+ * logged.
+ */
 public record CompleteRegistrationCommand(
         AuthFlowSessionId authFlowSessionId,
         String csrfToken,

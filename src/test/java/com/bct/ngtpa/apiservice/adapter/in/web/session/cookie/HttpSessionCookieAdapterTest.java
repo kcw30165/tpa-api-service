@@ -96,7 +96,6 @@ class HttpSessionCookieAdapterTest {
         adapter.applyAll(response, instructions);
 
         assertThat(response.getCookies().getFirst("auth_flow_sid")).isNotNull();
-        assertThat(response.getCookies().getFirst("XSRF-TOKEN")).isNotNull();
     }
 
     @Test

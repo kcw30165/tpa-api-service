@@ -50,7 +50,8 @@ public class RedisRegistrationIdempotencyAdapter implements RegistrationIdempote
                 command.expiresAt());
         return redis.setIfAbsent(key, jsonMapper.toJson(record), command.ttl())
                 .flatMap(created -> created
-                        ? Mono.just(new RegistrationIdempotencyStartResult(RegistrationIdempotencyStartOutcome.STARTED, record))
+                        ? Mono.just(new RegistrationIdempotencyStartResult(RegistrationIdempotencyStartOutcome.STARTED,
+                                record))
                         : loadExistingForStart(key, command))
                 .onErrorMap(this::safeRedisFailure);
     }
@@ -61,7 +62,8 @@ public class RedisRegistrationIdempotencyAdapter implements RegistrationIdempote
         return redis.get(key)
                 .flatMap(optional -> optional
                         .map(json -> Mono.just(jsonMapper.fromJson(json)))
-                        .orElseGet(() -> Mono.error(new IllegalStateException("Registration idempotency record missing"))))
+                        .orElseGet(
+                                () -> Mono.error(new IllegalStateException("Registration idempotency record missing"))))
                 .flatMap(existing -> {
                     ensureSameRequestHash(existing, command.requestHash());
                     var completed = new RegistrationIdempotencyRecord(
@@ -84,7 +86,8 @@ public class RedisRegistrationIdempotencyAdapter implements RegistrationIdempote
         return redis.get(key)
                 .flatMap(optional -> optional
                         .map(json -> Mono.just(jsonMapper.fromJson(json)))
-                        .orElseGet(() -> Mono.error(new IllegalStateException("Registration idempotency record missing"))))
+                        .orElseGet(
+                                () -> Mono.error(new IllegalStateException("Registration idempotency record missing"))))
                 .flatMap(existing -> {
                     ensureSameRequestHash(existing, command.requestHash());
                     var failed = new RegistrationIdempotencyRecord(
@@ -148,12 +151,15 @@ public class RedisRegistrationIdempotencyAdapter implements RegistrationIdempote
         return redis.delete(key).onErrorMap(this::safeRedisFailure);
     }
 
-    private Mono<RegistrationIdempotencyStartResult> loadExistingForStart(String key, RegistrationIdempotencyStartCommand command) {
+    private Mono<RegistrationIdempotencyStartResult> loadExistingForStart(String key,
+            RegistrationIdempotencyStartCommand command) {
         return redis.get(key)
                 .flatMap(optional -> optional
                         .map(json -> Mono.just(jsonMapper.fromJson(json)))
-                        .orElseGet(() -> Mono.error(new IllegalStateException("Registration idempotency record missing"))))
-                .map(existing -> new RegistrationIdempotencyStartResult(outcomeForExisting(existing, command), existing));
+                        .orElseGet(
+                                () -> Mono.error(new IllegalStateException("Registration idempotency record missing"))))
+                .map(existing -> new RegistrationIdempotencyStartResult(outcomeForExisting(existing, command),
+                        existing));
     }
 
     private static RegistrationIdempotencyStartOutcome outcomeForExisting(
@@ -179,8 +185,9 @@ public class RedisRegistrationIdempotencyAdapter implements RegistrationIdempote
     private Throwable safeRedisFailureUnlessBusiness(Throwable throwable) {
         if (throwable instanceof IllegalStateException
                 && ("Registration idempotency record missing".equals(throwable.getMessage())
-                || "Registration idempotency request hash mismatch".equals(throwable.getMessage())
-                || "Completed registration idempotency record cannot become unknown".equals(throwable.getMessage()))) {
+                        || "Registration idempotency request hash mismatch".equals(throwable.getMessage())
+                        || "Completed registration idempotency record cannot become unknown"
+                                .equals(throwable.getMessage()))) {
             return throwable;
         }
         return safeRedisFailure(throwable);
@@ -189,8 +196,8 @@ public class RedisRegistrationIdempotencyAdapter implements RegistrationIdempote
     private Throwable safeRedisFailure(Throwable throwable) {
         if (throwable instanceof IllegalStateException
                 && ("Unable to deserialize registration idempotency record".equals(throwable.getMessage())
-                || "Unable to serialize registration idempotency record".equals(throwable.getMessage())
-                || "Registration idempotency record missing".equals(throwable.getMessage()))) {
+                        || "Unable to serialize registration idempotency record".equals(throwable.getMessage())
+                        || "Registration idempotency record missing".equals(throwable.getMessage()))) {
             return throwable;
         }
         return new IllegalStateException("Redis registration idempotency operation failed");

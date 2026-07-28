@@ -10,11 +10,14 @@ import lombok.NoArgsConstructor;
 /**
  * HTTP request DTO for the Config Service PUT /api/configs endpoint.
  *
- * <p>Field names are assumed to be camelCase based on the Config Service query
+ * <p>
+ * Field names are assumed to be camelCase based on the Config Service query
  * parameter naming convention. Verify the exact JSON keys against the actual
  * Config Service {@code ConfigRequest} before promoting to production.
  *
- * <p>Must not be used outside {@code adapter/out/configservice} — enforced by ArchUnit.
+ * <p>
+ * Must not be used outside {@code adapter/out/configservice} — enforced by
+ * ArchUnit.
  */
 @Data
 @Builder

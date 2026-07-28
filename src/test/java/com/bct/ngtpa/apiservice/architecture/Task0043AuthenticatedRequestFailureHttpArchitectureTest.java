@@ -1,0 +1,26 @@
+package com.bct.ngtpa.apiservice.architecture;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import java.nio.file.*;
+import org.junit.jupiter.api.Test;
+
+class Task0043AuthenticatedRequestFailureHttpArchitectureTest {
+    @Test
+    void filterAndResolverUseSameTypedFailure() throws Exception {
+        String f = Files.readString(Path
+                .of("src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/filter/PortalAccessContextWebFilter.java"));
+        String e = Files.readString(Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/session/authenticated/AuthenticatedPortalContextResolutionException.java"));
+        assertThat(f).contains("new AuthenticatedPortalContextResolutionException()")
+                .doesNotContain("new IllegalStateException");
+        assertThat(e).doesNotContain("sid_", "accountRef", "policyNo");
+    }
+
+    @Test
+    void webExceptionHandlerOwnsPreControllerFailureContract() throws Exception {
+        String h = Files.readString(Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/filter/AuthenticatedPortalContextWebExceptionHandler.java"));
+        assertThat(h).contains("implements WebExceptionHandler", "HttpStatus.UNAUTHORIZED",
+                "SECURITY_AUTHENTICATION_REQUIRED").doesNotContain("getMessage()", "printStackTrace");
+    }
+}

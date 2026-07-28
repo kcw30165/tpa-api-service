@@ -251,9 +251,10 @@ public class ApiExceptionHandler {
     @ExceptionHandler(CacheException.class)
     public ResponseEntity<MutationResponse<Void>> handleCacheException(
             CacheException ex, ServerWebExchange exchange) {
-        // Log at ERROR without stack trace: the cause contains raw Redis connection details
+        // Log at ERROR without stack trace: the cause contains raw Redis connection
+        // details
         // (addresses, passwords, cert paths) that must not appear in application logs.
-        
+
         String errorCode = ErrorCodes.CACHE_UNEXPECTED;
         ApiError error = ApiError.form(
                 errorCode,

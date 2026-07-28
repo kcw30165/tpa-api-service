@@ -121,8 +121,10 @@ class RequestLoggingPropertiesBindingTest {
 
     @Test
     void baseApplicationYmlHasBodyLoggingDisabledByDefault() {
-        // Verifies that the base application.yml explicitly keeps body logging disabled.
-        // Body logging must remain opt-in (local/lower environments only) to protect PII.
+        // Verifies that the base application.yml explicitly keeps body logging
+        // disabled.
+        // Body logging must remain opt-in (local/lower environments only) to protect
+        // PII.
         new ApplicationContextRunner()
                 .withUserConfiguration(TestConfig.class)
                 .withInitializer(ctx -> {
@@ -138,7 +140,7 @@ class RequestLoggingPropertiesBindingTest {
                     RequestLoggingProperties props = context.getBean(RequestLoggingProperties.class);
                     assertFalse(props.getBodyLogging().isEnabled(),
                             "Body logging must be disabled in the base application.yml to protect PII. " +
-                            "Enable only in local/non-production profiles.");
+                                    "Enable only in local/non-production profiles.");
                 });
     }
 

@@ -23,9 +23,9 @@ class OtpChallengeModelTest {
     }
 
     @Test
-    void otpScenarioInitiallySupportsRegistrationOnly() {
+    void otpScenarioSupportsRegistrationAndLogin() {
         assertThat(Arrays.stream(OtpScenario.values()).map(Enum::name).toList())
-                .containsExactly("REGISTRATION");
+                .containsExactly("REGISTRATION", "LOGIN");
     }
 
     @Test

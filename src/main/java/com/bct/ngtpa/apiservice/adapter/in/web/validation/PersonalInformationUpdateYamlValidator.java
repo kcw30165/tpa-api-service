@@ -20,7 +20,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
@@ -70,7 +69,8 @@ public class PersonalInformationUpdateYamlValidator {
             boolean fieldSubmitted = submittedFields.containsKey(field.getId());
             Object value = submittedFields.get(field.getId());
             for (ValidationRuleProperties rule : field.getValidations()) {
-                validateFieldRule(errors, page, field.getId(), fieldSubmitted, value, rule, language, accountEnv, trustCode, schemeType);
+                validateFieldRule(errors, page, field.getId(), fieldSubmitted, value, rule, language, accountEnv,
+                        trustCode, schemeType);
             }
         }
 
@@ -129,11 +129,16 @@ public class PersonalInformationUpdateYamlValidator {
         }
         boolean failed = switch (type) {
             case "required" -> isBlankValue(value);
-            case "minLength" -> stringValue(value).length() < intValue(resolveRuleValue(rule, accountEnv, trustCode, schemeType), 0);
-            case "maxLength" -> stringValue(value).length() > intValue(resolveRuleValue(rule, accountEnv, trustCode, schemeType), Integer.MAX_VALUE);
-            case "pattern" -> !Pattern.compile(stringValue(resolveRuleValue(rule, accountEnv, trustCode, schemeType))).matcher(stringValue(value)).matches();
-            case "email" -> !isValidEmail(stringValue(value), resolveRuleValue(rule, accountEnv, trustCode, schemeType));
-            case "blockedAddress" -> isBlockedAddress(stringValue(value), stringValue(resolveRuleValue(rule, accountEnv, trustCode, schemeType)));
+            case "minLength" ->
+                stringValue(value).length() < intValue(resolveRuleValue(rule, accountEnv, trustCode, schemeType), 0);
+            case "maxLength" -> stringValue(value)
+                    .length() > intValue(resolveRuleValue(rule, accountEnv, trustCode, schemeType), Integer.MAX_VALUE);
+            case "pattern" -> !Pattern.compile(stringValue(resolveRuleValue(rule, accountEnv, trustCode, schemeType)))
+                    .matcher(stringValue(value)).matches();
+            case "email" ->
+                !isValidEmail(stringValue(value), resolveRuleValue(rule, accountEnv, trustCode, schemeType));
+            case "blockedAddress" -> isBlockedAddress(stringValue(value),
+                    stringValue(resolveRuleValue(rule, accountEnv, trustCode, schemeType)));
             default -> false;
         };
         if (failed) {
@@ -161,7 +166,8 @@ public class PersonalInformationUpdateYamlValidator {
         if ("conditionalRequired".equals(rule.getType()) && conditionMatches(rule.getWhen(), submittedFields)) {
             for (String target : targets(rule.getThen())) {
                 if (isBlankValue(submittedFields.get(target))) {
-                    errors.add(error(TYPE_FIELD, page, rule, List.of(target), language, accountEnv, trustCode, schemeType));
+                    errors.add(error(TYPE_FIELD, page, rule, List.of(target), language, accountEnv, trustCode,
+                            schemeType));
                 }
             }
         }
@@ -245,7 +251,8 @@ public class PersonalInformationUpdateYamlValidator {
         return defaultString(messageCode, defaultString(rule.getCode(), rule.getType()));
     }
 
-    private Object resolveRuleValue(ValidationRuleProperties rule, String accountEnv, String trustCode, String schemeType) {
+    private Object resolveRuleValue(ValidationRuleProperties rule, String accountEnv, String trustCode,
+            String schemeType) {
         Map<String, Object> valueByVariant = rule.getValueByVariant();
         if (valueByVariant == null || valueByVariant.isEmpty()) {
             return rule.getValue();
@@ -272,7 +279,8 @@ public class PersonalInformationUpdateYamlValidator {
                     }
                 }
             } catch (ReflectiveOperationException ignored) {
-                // Fall back to the documented DSL order below if the runtime context signature differs.
+                // Fall back to the documented DSL order below if the runtime context signature
+                // differs.
             }
         }
         return fallbackVariantCandidates(accountEnv, trustCode, schemeType);

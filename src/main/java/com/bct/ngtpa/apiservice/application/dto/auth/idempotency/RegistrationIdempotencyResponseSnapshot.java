@@ -57,6 +57,7 @@ public record RegistrationIdempotencyResponseSnapshot(
 
     @Override
     public String toString() {
-        return "RegistrationIdempotencyResponseSnapshot[status=" + status + ", safeHeaderCount=" + safeHeaders.size() + "]";
+        return "RegistrationIdempotencyResponseSnapshot[status=" + status + ", safeHeaderCount=" + safeHeaders.size()
+                + "]";
     }
 }

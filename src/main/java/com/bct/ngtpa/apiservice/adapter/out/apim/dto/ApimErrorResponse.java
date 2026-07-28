@@ -5,8 +5,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record ApimErrorResponse(
-        String id,
-        String error,
-        @JsonAlias({"error_description", "error_desciption"})
-        String errorDescription
-) {}
+                String id,
+                String error,
+                @JsonAlias({
+                                "error_description", "error_desciption" }) String errorDescription) {
+}

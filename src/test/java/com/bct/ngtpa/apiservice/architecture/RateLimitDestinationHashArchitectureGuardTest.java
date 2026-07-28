@@ -5,12 +5,9 @@ import org.junit.jupiter.api.Test;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RateLimitDestinationHashArchitectureGuardTest {
 
@@ -23,7 +20,8 @@ class RateLimitDestinationHashArchitectureGuardTest {
                 "import org.springframework.data.redis.",
                 "import org.springframework.web.");
 
-        try (Stream<Path> paths = Files.walk(Path.of("src/main/java/com/bct/ngtpa/apiservice/application/service/security/ratelimit"))) {
+        try (Stream<Path> paths = Files
+                .walk(Path.of("src/main/java/com/bct/ngtpa/apiservice/application/service/security/ratelimit"))) {
             var sources = paths
                     .filter(Files::isRegularFile)
                     .filter(path -> path.toString().endsWith(".java"))

@@ -21,8 +21,8 @@ import reactor.core.publisher.Mono;
 @Slf4j
 public class ReferenceDateAdapter implements ReferenceDatePort {
 
-    private static final DateTimeFormatter DATE_FORMATTER =
-        DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(ResolverStyle.STRICT);
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/uuuu")
+            .withResolverStyle(ResolverStyle.STRICT);
     private static final ZoneId HONG_KONG_ZONE = ZoneId.of("Asia/Hong_Kong");
     private static final String CACHE_KEY_SEGMENT = ":reference-date:";
 
@@ -69,7 +69,8 @@ public class ReferenceDateAdapter implements ReferenceDatePort {
 
         return Mono.defer(() -> cachePort.get().get(cacheKey(accountEnv))
                 .flatMap(value -> parseOptionalDate(value.orElse(null),
-                        () -> log.warn("reference-date: Redis cache value is not a valid date; falling through to APIM")))
+                        () -> log.warn(
+                                "reference-date: Redis cache value is not a valid date; falling through to APIM")))
                 .onErrorResume(ex -> {
                     log.warn("reference-date: Redis cache read failed; falling through to APIM");
                     return Mono.empty();

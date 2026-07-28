@@ -17,6 +17,7 @@ public final class RegistrationOtpSendRateLimitedException extends RuntimeExcept
     public int retryAfterSeconds() {
         return retryAfterSeconds;
     }
+
     public ResendRegistrationOtpResultStatus status() {
         return status;
     }

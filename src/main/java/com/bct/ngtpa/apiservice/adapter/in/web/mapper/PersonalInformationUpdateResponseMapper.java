@@ -23,7 +23,8 @@ public class PersonalInformationUpdateResponseMapper {
         this.errorMapper = errorMapper;
     }
 
-    public MutationResponse<List<PersonalInformationUpdateResultResponse>> toResponse(List<UpdatePersonalInformationResult> results) {
+    public MutationResponse<List<PersonalInformationUpdateResultResponse>> toResponse(
+            List<UpdatePersonalInformationResult> results) {
         if (results == null || results.isEmpty()) {
             return MutationResponse.failure(ApiStatus.SYSTEM_ERROR, List.of());
         }
@@ -41,11 +42,13 @@ public class PersonalInformationUpdateResponseMapper {
         return MutationResponse.failure(failureStatus(results, selected.errors()), resultResponses, selectedErrors);
     }
 
-    public MutationResponse<List<PersonalInformationUpdateResultResponse>> toResponse(UpdatePersonalInformationResult result) {
+    public MutationResponse<List<PersonalInformationUpdateResultResponse>> toResponse(
+            UpdatePersonalInformationResult result) {
         return toResponse(result == null ? List.of() : List.of(result));
     }
 
-    private List<PersonalInformationUpdateResultResponse> resultResponses(List<UpdatePersonalInformationResult> results) {
+    private List<PersonalInformationUpdateResultResponse> resultResponses(
+            List<UpdatePersonalInformationResult> results) {
         return results.stream()
                 .map(result -> new PersonalInformationUpdateResultResponse(
                         result.selected(), result.success(), result.policyNo(), result.certNo(), result.env(),
@@ -58,10 +61,12 @@ public class PersonalInformationUpdateResponseMapper {
         return results.stream()
                 .filter(UpdatePersonalInformationResult::selected)
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException("Personal information update result does not contain selected account."));
+                .orElseThrow(() -> new IllegalStateException(
+                        "Personal information update result does not contain selected account."));
     }
 
-    private ApiStatus failureStatus(List<UpdatePersonalInformationResult> results, List<UpdatePersonalInformationError> selectedErrors) {
+    private ApiStatus failureStatus(List<UpdatePersonalInformationResult> results,
+            List<UpdatePersonalInformationError> selectedErrors) {
         if (hasAnySuccess(results) && hasAnyFailure(results)) {
             return ApiStatus.PARTIAL_SUCCESS;
         }
@@ -85,8 +90,10 @@ public class PersonalInformationUpdateResponseMapper {
     }
 
     private String partialSuccessMessage(List<UpdatePersonalInformationResult> results) {
-        var otherSuccesses = results.stream().filter(result -> !result.selected() && result.success()).map(this::accountLabel).toList();
-        var otherFailures = results.stream().filter(result -> !result.selected() && !result.success()).map(this::failedAccountMessage).toList();
+        var otherSuccesses = results.stream().filter(result -> !result.selected() && result.success())
+                .map(this::accountLabel).toList();
+        var otherFailures = results.stream().filter(result -> !result.selected() && !result.success())
+                .map(this::failedAccountMessage).toList();
         StringBuilder message = new StringBuilder("The update was successful for the selected account");
         if (!otherSuccesses.isEmpty()) {
             message.append(" and ").append(joinLabels(otherSuccesses));
@@ -96,22 +103,27 @@ public class PersonalInformationUpdateResponseMapper {
     }
 
     private String failedAccountMessage(UpdatePersonalInformationResult result) {
-        var details = result.errors().isEmpty() ? "" : errorMapper.toApiErrors(result.errors()).stream()
-                .map(ApiError::message)
-                .filter(message -> message != null && !message.isBlank())
-                .collect(Collectors.joining("; "));
+        var details = result.errors().isEmpty() ? ""
+                : errorMapper.toApiErrors(result.errors()).stream()
+                        .map(ApiError::message)
+                        .filter(message -> message != null && !message.isBlank())
+                        .collect(Collectors.joining("; "));
         return details.isBlank() ? accountLabel(result) : accountLabel(result) + ": " + details;
     }
 
     private String accountLabel(UpdatePersonalInformationResult result) {
-        String policy = result.policyNo() == null || result.policyNo().isBlank() ? "unknown policy" : "policy " + result.policyNo();
-        String cert = result.certNo() == null || result.certNo().isBlank() ? "unknown certificate" : "certificate " + result.certNo();
+        String policy = result.policyNo() == null || result.policyNo().isBlank() ? "unknown policy"
+                : "policy " + result.policyNo();
+        String cert = result.certNo() == null || result.certNo().isBlank() ? "unknown certificate"
+                : "certificate " + result.certNo();
         return policy + " " + cert;
     }
 
     private String joinLabels(List<String> labels) {
-        if (labels.isEmpty()) return "";
-        if (labels.size() == 1) return labels.getFirst();
+        if (labels.isEmpty())
+            return "";
+        if (labels.size() == 1)
+            return labels.getFirst();
         return String.join(", ", labels.subList(0, labels.size() - 1)) + " and " + labels.getLast();
     }
 }

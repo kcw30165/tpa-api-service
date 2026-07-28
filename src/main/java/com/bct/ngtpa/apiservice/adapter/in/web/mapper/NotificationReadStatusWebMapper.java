@@ -12,7 +12,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class NotificationReadStatusWebMapper {
 
-    public MutationResponse<UpdateNotificationsReadStatusResponse> toResponse(UpdateNotificationsReadStatusResult result) {
+    public MutationResponse<UpdateNotificationsReadStatusResponse> toResponse(
+            UpdateNotificationsReadStatusResult result) {
         return MutationResponse.success(
                 ApiStatus.UPDATED,
                 new UpdateNotificationsReadStatusResponse(

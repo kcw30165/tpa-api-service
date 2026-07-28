@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.application.port.out;
 
+import com.bct.ngtpa.apiservice.application.port.out.authflow.AuthFlowIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyAction;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyCompleteCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyFailCommand;
@@ -11,7 +12,15 @@ import java.util.Optional;
 import reactor.core.publisher.Mono;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyUnknownOutcomeCommand;
 
-public interface RegistrationIdempotencyPort {
+public interface RegistrationIdempotencyPort extends AuthFlowIdempotencyPort<
+        RegistrationIdempotencyAction,
+        RegistrationIdempotencyKey,
+        RegistrationIdempotencyStartCommand,
+        RegistrationIdempotencyStartResult,
+        RegistrationIdempotencyCompleteCommand,
+        RegistrationIdempotencyFailCommand,
+        RegistrationIdempotencyUnknownOutcomeCommand,
+        RegistrationIdempotencyRecord> {
     Mono<RegistrationIdempotencyStartResult> startProcessing(RegistrationIdempotencyStartCommand command);
 
     Mono<RegistrationIdempotencyRecord> markCompleted(RegistrationIdempotencyCompleteCommand command);

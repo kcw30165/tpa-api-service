@@ -49,14 +49,13 @@ public class ApimOAuthClientConfig {
             ReactiveClientRegistrationRepository clientRegistrationRepository,
             ReactiveOAuth2AuthorizedClientService authorizedClientService) {
 
-        ReactiveOAuth2AuthorizedClientProvider authorizedClientProvider =
-                ReactiveOAuth2AuthorizedClientProviderBuilder.builder()
-                        .clientCredentials()
-                        .build();
+        ReactiveOAuth2AuthorizedClientProvider authorizedClientProvider = ReactiveOAuth2AuthorizedClientProviderBuilder
+                .builder()
+                .clientCredentials()
+                .build();
 
-        AuthorizedClientServiceReactiveOAuth2AuthorizedClientManager authorizedClientManager =
-                new AuthorizedClientServiceReactiveOAuth2AuthorizedClientManager(
-                        clientRegistrationRepository, authorizedClientService);
+        AuthorizedClientServiceReactiveOAuth2AuthorizedClientManager authorizedClientManager = new AuthorizedClientServiceReactiveOAuth2AuthorizedClientManager(
+                clientRegistrationRepository, authorizedClientService);
 
         authorizedClientManager.setAuthorizedClientProvider(authorizedClientProvider);
         return authorizedClientManager;

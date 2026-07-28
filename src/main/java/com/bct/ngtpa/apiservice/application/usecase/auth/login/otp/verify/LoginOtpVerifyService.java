@@ -1,0 +1,103 @@
+package com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.verify;
+
+import com.bct.ngtpa.apiservice.application.dto.ActorContext;
+import com.bct.ngtpa.apiservice.application.dto.auth.login.account.*;
+import com.bct.ngtpa.apiservice.application.dto.auth.otp.*;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.*;
+import com.bct.ngtpa.apiservice.application.port.in.*;
+import com.bct.ngtpa.apiservice.application.port.out.*;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.account.*;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.*;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.session.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.time.*;
+import java.util.*;
+import reactor.core.publisher.Mono;
+
+public final class LoginOtpVerifyService implements VerifyLoginOtpUseCase {
+    private static final Logger LOG = LoggerFactory.getLogger(LoginOtpVerifyService.class);
+    private final LoginProtectedAuthFlowContextLoader loader;
+    private final OtpChallengePort otp;
+    private final LoginOtpVerifiedSessionPort verifiedSession;
+    private final AuthFlowSessionCancellationPort cancellation;
+    private final GetLoginAccountsUseCase accountLookup;
+    private final LoginAccountRecordValidationService accountValidation;
+    private final LoginAccountReferenceAssignmentService accountAssignment;
+    private final EstablishAuthenticatedLoginSessionUseCase transition;
+    private final Clock clock;
+
+    public LoginOtpVerifyService(LoginProtectedAuthFlowContextLoader l, OtpChallengePort o,
+            LoginOtpVerifiedSessionPort v, AuthFlowSessionCancellationPort c, GetLoginAccountsUseCase g,
+            LoginAccountRecordValidationService validation, LoginAccountReferenceAssignmentService assignment,
+            EstablishAuthenticatedLoginSessionUseCase transition, Clock k) {
+        loader = Objects.requireNonNull(l);
+        otp = Objects.requireNonNull(o);
+        verifiedSession = Objects.requireNonNull(v);
+        cancellation = Objects.requireNonNull(c);
+        accountLookup = Objects.requireNonNull(g);
+        accountValidation = Objects.requireNonNull(validation);
+        accountAssignment = Objects.requireNonNull(assignment);
+        this.transition = Objects.requireNonNull(transition);
+        clock = Objects.requireNonNull(k);
+    }
+
+    public Mono<VerifyLoginOtpResult> verify(VerifyLoginOtpCommand c) {
+        return loader
+                .load(new LoginProtectedAuthFlowContextCommand(c.authFlowSessionId(), c.csrfToken(), c.origin(),
+                        c.referer(), c.correlationId(), AuthFlowStatus.OTP_SENT, true))
+                .flatMap(x -> x.isValid() ? verifyActive(c, x)
+                        : Mono.just(result(VerifyLoginOtpStatus.AUTH_FLOW_INVALID, null, false)))
+                .doOnNext(r -> LOG.info("event=login.otp.verify.result status={}", r.status()))
+                .doOnError(
+                        e -> LOG.error("event=login.otp.verify.failure exceptionType={}", e.getClass().getSimpleName()))
+                .onErrorReturn(result(VerifyLoginOtpStatus.SYSTEM_FAILED, null, false));
+    }
+
+    private Mono<VerifyLoginOtpResult> verifyActive(VerifyLoginOtpCommand c, LoginProtectedAuthFlowContextResult x) {
+        return otp
+                .verifyChallenge(new VerifyOtpChallengeCommand(x.activeOtpChallengeId(), c.otpCode(), clock.instant()))
+                .flatMap(r -> switch (r.outcome()) {
+                    case VALID -> verifiedSession.markVerified(c.authFlowSessionId(), c.correlationId())
+                            .then(Mono.defer(() -> continueToAccounts(c, x)));
+                    case INVALID -> Mono.just(result(VerifyLoginOtpStatus.INVALID, r.remainingAttempts(), false));
+                    case EXPIRED -> Mono.just(result(VerifyLoginOtpStatus.EXPIRED, null, false));
+                    case LOCKED -> cancellation
+                            .cancel(new AuthFlowSessionId(c.authFlowSessionId()),
+                                    AuthFlowSessionCancellationReason.SECURITY_REJECTION, clock.instant())
+                            .thenReturn(result(VerifyLoginOtpStatus.VERIFY_ATTEMPTS_EXCEEDED, 0, true));
+                    case ALREADY_VERIFIED -> Mono.just(result(VerifyLoginOtpStatus.ALREADY_VERIFIED, null, false));
+                    default -> Mono.just(result(VerifyLoginOtpStatus.AUTH_FLOW_INVALID, null, false));
+                });
+    }
+
+    private Mono<VerifyLoginOtpResult> continueToAccounts(VerifyLoginOtpCommand c,
+            LoginProtectedAuthFlowContextResult x) {
+        var context = x.context();
+        return accountLookup.getAccounts(
+                new GetLoginAccountsCommand(context.normalizedUsername(), context.custType(), c.correlationId()))
+                .flatMap(auth -> {
+                    if (auth.status() == LoginAccountAuthorizationStatus.UNAVAILABLE)
+                        return Mono.just(result(VerifyLoginOtpStatus.ACCOUNT_LIST_UNAVAILABLE, null, false));
+                    var validated = accountValidation.validate(auth.accounts());
+                    if (validated.status() == LoginAccountValidationStatus.ZERO_VALID_RECORDS)
+                        return Mono.just(result(VerifyLoginOtpStatus.ZERO_VALID_ACCOUNTS, null, false));
+                    var assigned = accountAssignment.assign(validated.accounts());
+                    var actor = new ActorContext(context.normalizedUsername(), context.userRole());
+                    var command = new EstablishAuthenticatedLoginSessionCommand(
+                            new AuthFlowSessionId(c.authFlowSessionId()), actor, assigned.accounts(), x.csrfTokenHash(),
+                            c.correlationId());
+                    return transition.establish(command).map(
+                            established -> established.status() == EstablishAuthenticatedLoginSessionStatus.ESTABLISHED
+                                    ? new VerifyLoginOtpResult(VerifyLoginOtpStatus.ACCOUNTS_READY, null,
+                                            established.clearAuthFlowCookie(), assigned.accounts(),
+                                            established.authenticatedSessionId(),
+                                            established.authenticatedCsrfToken())
+                                    : result(VerifyLoginOtpStatus.SESSION_CREATION_FAILED, null, false));
+                });
+    }
+
+    private VerifyLoginOtpResult result(VerifyLoginOtpStatus s, Integer remaining, boolean clear) {
+        return new VerifyLoginOtpResult(s, remaining, clear, List.of(), null, null);
+    }
+}

@@ -2,7 +2,6 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.captcha;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.CaptchaPolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaChallenge;
-import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaStatus;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaVerificationOutcome;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.VerifyCaptchaChallengeCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.VerifyCaptchaChallengeResult;
@@ -27,9 +26,12 @@ public class VerifyCaptchaService implements VerifyCaptchaUseCase {
             CaptchaAnswerHasherPort captchaAnswerHasherPort,
             CaptchaChallengePort captchaChallengePort,
             Clock clock) {
-        this.authWorkflowPolicyPort = Objects.requireNonNull(authWorkflowPolicyPort, "authWorkflowPolicyPort must not be null");
-        this.captchaAnswerHasherPort = Objects.requireNonNull(captchaAnswerHasherPort, "captchaAnswerHasherPort must not be null");
-        this.captchaChallengePort = Objects.requireNonNull(captchaChallengePort, "captchaChallengePort must not be null");
+        this.authWorkflowPolicyPort = Objects.requireNonNull(authWorkflowPolicyPort,
+                "authWorkflowPolicyPort must not be null");
+        this.captchaAnswerHasherPort = Objects.requireNonNull(captchaAnswerHasherPort,
+                "captchaAnswerHasherPort must not be null");
+        this.captchaChallengePort = Objects.requireNonNull(captchaChallengePort,
+                "captchaChallengePort must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
 

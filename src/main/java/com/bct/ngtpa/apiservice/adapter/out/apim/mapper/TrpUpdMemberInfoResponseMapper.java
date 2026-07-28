@@ -40,6 +40,7 @@ public class TrpUpdMemberInfoResponseMapper {
                         selectedEnv))
                 .toList();
     }
+
     public UpdatePersonalInformationResult toResult(TrpUpdMemberInfoResponse response) {
         return toResults(response).stream()
                 .findFirst()
@@ -79,7 +80,8 @@ public class TrpUpdMemberInfoResponseMapper {
             String selectedCertNo,
             String selectedEnv) {
         // TrpUpdMemberInfoData legacy DTO does not expose policy/cert/env fields.
-        // The overload exists for forward compatibility; production selection is handled in ApimUpdatePersonalInformationAdapter.
+        // The overload exists for forward compatibility; production selection is
+        // handled in ApimUpdatePersonalInformationAdapter.
         return false;
     }
 

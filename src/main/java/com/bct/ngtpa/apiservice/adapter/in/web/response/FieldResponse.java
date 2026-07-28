@@ -11,11 +11,9 @@ public record FieldResponse(
         String dataType,
         String controlType,
 
-        @JsonInclude(JsonInclude.Include.ALWAYS)
-        Object value,
+        @JsonInclude(JsonInclude.Include.ALWAYS) Object value,
 
-        @JsonInclude(JsonInclude.Include.ALWAYS)
-        Object originalValue,
+        @JsonInclude(JsonInclude.Include.ALWAYS) Object originalValue,
 
         Boolean readonly,
         Boolean required,

@@ -30,11 +30,13 @@ public record UpdatePersonalInformationResponse(
     }
 
     public static UpdatePersonalInformationResponse validationFailed(List<ApiError> errors) {
-        return new UpdatePersonalInformationResponse(false, ApiStatus.VALIDATION_FAILED.toString(), null, List.of(), errors);
+        return new UpdatePersonalInformationResponse(false, ApiStatus.VALIDATION_FAILED.toString(), null, List.of(),
+                errors);
     }
 
     public static UpdatePersonalInformationResponse businessRejected(List<ApiError> errors) {
-        return new UpdatePersonalInformationResponse(false, ApiStatus.BUSINESS_REJECTED.toString(), null, List.of(), errors);
+        return new UpdatePersonalInformationResponse(false, ApiStatus.BUSINESS_REJECTED.toString(), null, List.of(),
+                errors);
     }
 
     public static UpdatePersonalInformationResponse systemError(List<ApiError> errors) {

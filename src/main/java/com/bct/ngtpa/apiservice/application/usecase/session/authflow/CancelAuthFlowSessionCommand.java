@@ -4,6 +4,13 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import java.util.Objects;
 
 public record CancelAuthFlowSessionCommand(AuthFlowSessionId authFlowSessionId, String reason, String correlationId) {
-    public CancelAuthFlowSessionCommand { Objects.requireNonNull(authFlowSessionId, "authFlowSessionId must not be null"); }
-    @Override public String toString() { return "CancelAuthFlowSessionCommand[authFlowSessionId=<redacted>, reason=" + reason + ", correlationId=" + correlationId + "]"; }
+    public CancelAuthFlowSessionCommand {
+        Objects.requireNonNull(authFlowSessionId, "authFlowSessionId must not be null");
+    }
+
+    @Override
+    public String toString() {
+        return "CancelAuthFlowSessionCommand[authFlowSessionId=<redacted>, reason=" + reason + ", correlationId="
+                + correlationId + "]";
+    }
 }

@@ -16,7 +16,6 @@ public class PageSchemaProperties {
     private Map<String, Map<String, String>> display = new LinkedHashMap<>();
     private Map<String, PageVariantProperties> variants = new LinkedHashMap<>();
 
-
     private PageMetadataProperties metadata;
     private FormMetadataProperties form;
     private List<ValidationRuleProperties> validations;

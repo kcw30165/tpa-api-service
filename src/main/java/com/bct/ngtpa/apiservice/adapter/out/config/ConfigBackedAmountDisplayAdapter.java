@@ -19,17 +19,21 @@ import java.util.Locale;
 /**
  * Config-backed implementation of {@link AmountDisplayPort}.
  *
- * <p>Resolves the decimal format pattern using the following fallback order:
+ * <p>
+ * Resolves the decimal format pattern using the following fallback order:
  * <ol>
- *   <li>{@code display-format.amount.<lang>.<trustCode>}</li>
- *   <li>{@code display-format.amount.<lang>.*}</li>
- *   <li>{@code display-format.amount.en.<trustCode>}</li>
- *   <li>{@code display-format.amount.en.*}</li>
- *   <li>Hardcoded fallback: {@value FALLBACK_PATTERN}</li>
+ * <li>{@code display-format.amount.<lang>.<trustCode>}</li>
+ * <li>{@code display-format.amount.<lang>.*}</li>
+ * <li>{@code display-format.amount.en.<trustCode>}</li>
+ * <li>{@code display-format.amount.en.*}</li>
+ * <li>Hardcoded fallback: {@value FALLBACK_PATTERN}</li>
  * </ol>
  *
- * <p>The {@code accountEnv} and {@code schemeType} parameters are accepted but not used for pattern
- * resolution in this implementation; they are reserved for the future global config resolver.
+ * <p>
+ * The {@code accountEnv} and {@code schemeType} parameters are accepted but not
+ * used for pattern
+ * resolution in this implementation; they are reserved for the future global
+ * config resolver.
  */
 @Component
 public class ConfigBackedAmountDisplayAdapter implements AmountDisplayPort {
@@ -45,7 +49,8 @@ public class ConfigBackedAmountDisplayAdapter implements AmountDisplayPort {
 
     ConfigBackedAmountDisplayAdapter(LocalizedConfigProperties amountFormatProperties) {
         this(new DefaultConfigVariantResolver(
-                List.of(new LocalizedConfigSource(ConfigCategory.DISPLAY_AMOUNT_FORMAT, amountFormatProperties, "amount")),
+                List.of(new LocalizedConfigSource(ConfigCategory.DISPLAY_AMOUNT_FORMAT, amountFormatProperties,
+                        "amount")),
                 List.of(new DefaultConfigKeyCandidateStrategy(
                         new ConfigVariantCandidateGenerator(),
                         ConfigCategory.DISPLAY_AMOUNT_FORMAT))));
@@ -78,4 +83,3 @@ public class ConfigBackedAmountDisplayAdapter implements AmountDisplayPort {
         return df.format(value);
     }
 }
-

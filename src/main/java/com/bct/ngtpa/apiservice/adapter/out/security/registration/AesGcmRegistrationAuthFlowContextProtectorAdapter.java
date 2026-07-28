@@ -64,7 +64,8 @@ public class AesGcmRegistrationAuthFlowContextProtectorAdapter implements Regist
                     keyVersion,
                     RegistrationAuthFlowEncryptedContext.DEFAULT_ALGORITHM);
         } catch (Exception exception) {
-            throw new RegistrationAuthFlowContextProtectionException("Unable to protect registration context", exception);
+            throw new RegistrationAuthFlowContextProtectionException("Unable to protect registration context",
+                    exception);
         }
     }
 
@@ -90,7 +91,8 @@ public class AesGcmRegistrationAuthFlowContextProtectorAdapter implements Regist
                     RegistrationContactType.valueOf(payload.contactType()),
                     payload.contactValue());
         } catch (Exception exception) {
-            throw new RegistrationAuthFlowContextProtectionException("Unable to unprotect registration context", exception);
+            throw new RegistrationAuthFlowContextProtectionException("Unable to unprotect registration context",
+                    exception);
         }
     }
 

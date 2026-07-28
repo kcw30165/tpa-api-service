@@ -7,6 +7,9 @@ import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisCaptchaChallengeAdap
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisCaptchaChallengeJsonMapper;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRateLimitAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRegistrationIdempotencyAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.redis.auth.login.RedisLoginCredentialIdempotencyAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.redis.auth.login.RedisLoginIdempotencyKeyFactory;
+import com.bct.ngtpa.apiservice.application.port.out.LoginCredentialIdempotencyPort;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRegistrationIdempotencyJsonMapper;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRegistrationIdempotencyKeyFactory;
 import com.bct.ngtpa.apiservice.application.port.out.CaptchaChallengePort;
@@ -15,7 +18,6 @@ import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
 import com.bct.ngtpa.apiservice.application.port.out.RateLimitPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.CacheAdminPort;
-import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthFlowSessionAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthFlowSessionCompletionLockAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthFlowSessionJsonMapper;
@@ -23,9 +25,6 @@ import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisOtpChallengeJsonMapp
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisOtpChallengeStateAdapter;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionCompletionLockPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
-import com.bct.ngtpa.apiservice.application.port.out.CachePort;
-
-import java.time.Clock;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import io.lettuce.core.ClientOptions;
 import io.lettuce.core.SslOptions;
@@ -117,6 +116,19 @@ public class RedisAdapterConfig {
             ReactiveRedisTemplate<String, String> reactiveRedisTemplate,
             RedisCacheKeyFactory redisCacheKeyFactory) {
         return new RedisRateLimitAdapter(reactiveRedisTemplate, redisCacheKeyFactory);
+    }
+
+    @Bean
+    public RedisLoginIdempotencyKeyFactory redisLoginIdempotencyKeyFactory(
+            @Value("${redis-cache.key-prefix:ngtpa}") String keyPrefix) {
+        return new RedisLoginIdempotencyKeyFactory(keyPrefix);
+    }
+
+    @Bean
+    public LoginCredentialIdempotencyPort loginCredentialIdempotencyPort(
+            RedisLoginIdempotencyKeyFactory keyFactory,
+            ReactiveStringRedisTemplate redisTemplate) {
+        return new RedisLoginCredentialIdempotencyAdapter(keyFactory, redisTemplate);
     }
 
     @Bean

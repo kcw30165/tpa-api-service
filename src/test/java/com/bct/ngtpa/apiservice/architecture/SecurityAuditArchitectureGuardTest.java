@@ -5,12 +5,9 @@ import org.junit.jupiter.api.Test;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SecurityAuditArchitectureGuardTest {
 
@@ -49,7 +46,8 @@ class SecurityAuditArchitectureGuardTest {
                 "import com.bct.ngtpa.apiservice.adapter.out.sms.",
                 "import com.bct.ngtpa.apiservice.adapter.out.email.");
 
-        try (Stream<Path> paths = Files.walk(Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/out/security/audit"))) {
+        try (Stream<Path> paths = Files
+                .walk(Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/out/security/audit"))) {
             var sources = paths
                     .filter(Files::isRegularFile)
                     .filter(path -> path.toString().endsWith(".java"))

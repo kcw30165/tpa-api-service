@@ -34,7 +34,8 @@ public class DefaultApimCredentialProfileResolver implements ApimCredentialProfi
             }
             // If defaultProfileId not found, return first profile
             ApimProperties.CredentialProfiles.Profile first = cp.getProfiles().get(0);
-            log.warn("Configured defaultProfileId={} not found; using first profileId={}", cp.getDefaultProfileId(), first.getProfileId());
+            log.warn("Configured defaultProfileId={} not found; using first profileId={}", cp.getDefaultProfileId(),
+                    first.getProfileId());
             return Mono.just(toRecord(first));
         }
 
@@ -49,8 +50,7 @@ public class DefaultApimCredentialProfileResolver implements ApimCredentialProfi
                 o.getTokenUri(),
                 apimProperties.getBaseUrl(),
                 o.getScope(),
-                e.getCertificatePath()
-        );
+                e.getCertificatePath());
         log.debug("Resolved legacy default APIM profileId={}", profile.profileId());
         return Mono.just(profile);
     }
@@ -64,7 +64,6 @@ public class DefaultApimCredentialProfileResolver implements ApimCredentialProfi
                 p.getTokenUri(),
                 p.getBaseUrl(),
                 p.getScope(),
-                p.getCertificatePath()
-        );
+                p.getCertificatePath());
     }
 }

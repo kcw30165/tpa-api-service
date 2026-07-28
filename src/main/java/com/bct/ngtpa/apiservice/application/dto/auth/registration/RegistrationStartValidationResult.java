@@ -30,6 +30,7 @@ public record RegistrationStartValidationResult(
 
     @Override
     public String toString() {
-        return "RegistrationStartValidationResult[valid=" + valid + ", command=<redacted>, errorCount=" + errors.size() + "]";
+        return "RegistrationStartValidationResult[valid=" + valid + ", command=<redacted>, errorCount=" + errors.size()
+                + "]";
     }
 }

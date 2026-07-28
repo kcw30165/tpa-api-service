@@ -9,8 +9,6 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionData;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.SelectedTrust;
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.UsernameCheckState;
 import com.bct.ngtpa.apiservice.application.port.out.CachePort;
 import com.bct.ngtpa.apiservice.exception.CacheException;
 import java.time.Clock;
@@ -207,7 +205,8 @@ class RedisAuthFlowSessionAdapterTest {
         @Override
         public Mono<Void> set(String cacheKey, String value, Duration ttl) {
             if (failSet) {
-                return Mono.error(new RuntimeException("boom afs_abc123 ngtpa:auth:flow-session:afs_abc123 csrf_hash_value otp_secret user_secret"));
+                return Mono.error(new RuntimeException(
+                        "boom afs_abc123 ngtpa:auth:flow-session:afs_abc123 csrf_hash_value otp_secret user_secret"));
             }
             values.put(cacheKey, value);
             ttls.put(cacheKey, ttl);

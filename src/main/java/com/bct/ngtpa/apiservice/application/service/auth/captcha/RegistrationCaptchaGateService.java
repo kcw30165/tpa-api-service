@@ -17,7 +17,8 @@ public class RegistrationCaptchaGateService {
     private final Clock clock;
 
     public RegistrationCaptchaGateService(CaptchaChallengePort captchaChallengePort, Clock clock) {
-        this.captchaChallengePort = Objects.requireNonNull(captchaChallengePort, "captchaChallengePort must not be null");
+        this.captchaChallengePort = Objects.requireNonNull(captchaChallengePort,
+                "captchaChallengePort must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
 
@@ -35,8 +36,9 @@ public class RegistrationCaptchaGateService {
                     }
                     return switch (challenge.status()) {
                         case CREATED -> Mono.just(result(command, CaptchaConsumeOutcome.NOT_VERIFIED));
-                        case VERIFIED -> captchaChallengePort.markConsumed(command.captchaChallengeId(), command.consumedAt())
-                                .thenReturn(result(command, CaptchaConsumeOutcome.CONSUMED));
+                        case VERIFIED ->
+                            captchaChallengePort.markConsumed(command.captchaChallengeId(), command.consumedAt())
+                                    .thenReturn(result(command, CaptchaConsumeOutcome.CONSUMED));
                         case CONSUMED -> Mono.just(result(command, CaptchaConsumeOutcome.ALREADY_CONSUMED));
                         case REFRESHED -> Mono.just(result(command, CaptchaConsumeOutcome.REFRESHED));
                         case LOCKED -> Mono.just(result(command, CaptchaConsumeOutcome.LOCKED));
@@ -45,7 +47,8 @@ public class RegistrationCaptchaGateService {
                 });
     }
 
-    private ConsumeCaptchaChallengeResult result(ConsumeCaptchaChallengeCommand command, CaptchaConsumeOutcome outcome) {
+    private ConsumeCaptchaChallengeResult result(ConsumeCaptchaChallengeCommand command,
+            CaptchaConsumeOutcome outcome) {
         return new ConsumeCaptchaChallengeResult(outcome, command.captchaChallengeId());
     }
 }

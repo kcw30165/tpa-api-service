@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 @Component
 @Slf4j
 public class PersonalInformationUpdateWebMapper {
-    
+
     private static final String PAGE_KEY = "personalInformation";
 
     private final BffPagesProperties properties;
@@ -26,7 +26,8 @@ public class PersonalInformationUpdateWebMapper {
         this.properties = Objects.requireNonNull(properties);
     }
 
-    public UpdatePersonalInformationCommand toCommand(Boolean applyToAllAccounts, UpdatePersonalInformationRequest request) {
+    public UpdatePersonalInformationCommand toCommand(Boolean applyToAllAccounts,
+            UpdatePersonalInformationRequest request) {
         if (request == null || request.fields() == null || request.fields().isEmpty()) {
             throw new InvalidPersonalInformationUpdateException("No personal information fields were submitted.");
         }
@@ -53,7 +54,8 @@ public class PersonalInformationUpdateWebMapper {
         });
 
         if (mapped.isEmpty()) {
-            throw new InvalidPersonalInformationUpdateException("No updatable personal information fields were submitted.");
+            throw new InvalidPersonalInformationUpdateException(
+                    "No updatable personal information fields were submitted.");
         }
         return new UpdatePersonalInformationCommand(applyToAllAccounts, mapped);
     }
@@ -86,22 +88,27 @@ public class PersonalInformationUpdateWebMapper {
             return;
         }
         if ("boolean".equalsIgnoreCase(field.getDataType()) && !(value instanceof Boolean)) {
-            throw new InvalidPersonalInformationUpdateException("Personal information field must be boolean: " + fieldId);
+            throw new InvalidPersonalInformationUpdateException(
+                    "Personal information field must be boolean: " + fieldId);
         }
         if (isTextLike(field) && !(value instanceof String)) {
-            throw new InvalidPersonalInformationUpdateException("Personal information field must be string: " + fieldId);
+            throw new InvalidPersonalInformationUpdateException(
+                    "Personal information field must be string: " + fieldId);
         }
         if (value instanceof String text) {
             if (field.getMaxLength() != null && text.length() > field.getMaxLength()) {
-                throw new InvalidPersonalInformationUpdateException("Personal information field exceeds maxLength: " + fieldId);
+                throw new InvalidPersonalInformationUpdateException(
+                        "Personal information field exceeds maxLength: " + fieldId);
             }
             var pattern = trimToNull(field.getPattern());
             if (pattern != null && !text.isBlank() && !Pattern.compile(pattern).matcher(text).matches()) {
-                throw new InvalidPersonalInformationUpdateException("Personal information field pattern mismatch: " + fieldId);
+                throw new InvalidPersonalInformationUpdateException(
+                        "Personal information field pattern mismatch: " + fieldId);
             }
             if ("email".equalsIgnoreCase(field.getControlType()) && !text.isBlank()
                     && !Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$").matcher(text).matches()) {
-                throw new InvalidPersonalInformationUpdateException("Personal information field must be email: " + fieldId);
+                throw new InvalidPersonalInformationUpdateException(
+                        "Personal information field must be email: " + fieldId);
             }
         }
     }

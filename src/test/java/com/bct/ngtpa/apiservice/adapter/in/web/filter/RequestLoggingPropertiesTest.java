@@ -34,8 +34,7 @@ class RequestLoggingPropertiesTest {
     @Test
     void storesEndpointBodyLoggingRules() {
         RequestLoggingProperties.BodyLogging body = new RequestLoggingProperties.BodyLogging();
-        RequestLoggingProperties.EndpointRule endpoint =
-                new RequestLoggingProperties.EndpointRule();
+        RequestLoggingProperties.EndpointRule endpoint = new RequestLoggingProperties.EndpointRule();
         endpoint.setMethod("PATCH");
         endpoint.setPathPattern("/api/v1/notifications");
         endpoint.setLogRequestBody(true);

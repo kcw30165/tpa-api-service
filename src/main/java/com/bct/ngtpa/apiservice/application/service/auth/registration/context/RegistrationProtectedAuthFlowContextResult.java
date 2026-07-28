@@ -19,7 +19,8 @@ public record RegistrationProtectedAuthFlowContextResult(
                 registrationContext);
     }
 
-    public static RegistrationProtectedAuthFlowContextResult invalid(RegistrationProtectedAuthFlowContextStatus status) {
+    public static RegistrationProtectedAuthFlowContextResult invalid(
+            RegistrationProtectedAuthFlowContextStatus status) {
         return new RegistrationProtectedAuthFlowContextResult(status, null, null, null);
     }
 

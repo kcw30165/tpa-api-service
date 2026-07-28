@@ -36,9 +36,11 @@ final class WorkflowKeyValidator {
     private static boolean isUnsafePasswordLikeKey(String lower) {
         return "password".equals(lower)
                 || lower.startsWith("password.")
-                || lower.endsWith(".password")
+                || (lower.endsWith(".password")
+                        && !lower.startsWith("err.login."))
                 || (lower.contains(".password.")
                         && !lower.startsWith("registration.password.")
-                        && !lower.startsWith("err.registration.password."));
+                        && !lower.startsWith("err.registration.password.")
+                        && !lower.startsWith("err.login."));
     }
 }

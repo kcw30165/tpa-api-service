@@ -31,7 +31,7 @@ class RedisAuthFlowSessionJsonMapperTest {
         assertThat(roundTrip.activeOtpChallengeId()).isEqualTo("otp_abc");
         assertThat(roundTrip.data().contactType()).isEqualTo("EMAIL");
         assertThat(roundTrip.data().maskedDestination()).isEqualTo("m****r@example.com");
-                assertThat(roundTrip.createdAt()).isEqualTo(Instant.parse("2026-06-29T00:00:00Z"));
+        assertThat(roundTrip.createdAt()).isEqualTo(Instant.parse("2026-06-29T00:00:00Z"));
         assertThat(roundTrip.updatedAt()).isEqualTo(Instant.parse("2026-06-29T00:01:00Z"));
         assertThat(roundTrip.expiresAt()).isEqualTo(Instant.parse("2026-06-29T00:30:00Z"));
     }

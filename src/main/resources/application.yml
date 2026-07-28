@@ -99,6 +99,73 @@ auth-flow-session:
       ttl-seconds: 900
 
 auth-workflows:
+  login:
+    message:
+      destination-override:
+        mobile: ${LOGIN_MESSAGE_OVERRIDE_MOBILE:}
+        email: ${LOGIN_MESSAGE_OVERRIDE_EMAIL:}
+
+    credential:
+      username-min-length: ${LOGIN_USERNAME_MIN_LENGTH:1}
+      username-max-length: ${LOGIN_USERNAME_MAX_LENGTH:128}
+      password-min-length: ${LOGIN_PASSWORD_MIN_LENGTH:1}
+      password-max-length: ${LOGIN_PASSWORD_MAX_LENGTH:128}
+      username-case-insensitive: true
+      username-trim: true
+      username-normalization: ASCII_LOWERCASE
+      username-allowed-pattern: ${LOGIN_USERNAME_ALLOWED_PATTERN:^[A-Za-z0-9._-]+$}
+      password-trim: false
+      password-case-sensitive: true
+    context-protection:
+      enabled: true
+      key-version: ${LOGIN_PREAUTH_CONTEXT_KEY_VERSION:}
+      secret: ${LOGIN_PREAUTH_CONTEXT_SECRET:}
+      destination-id-entropy-bytes: ${LOGIN_DESTINATION_ID_ENTROPY_BYTES:24}
+    otp:
+      length: ${LOGIN_OTP_LENGTH:6}
+      numeric-only: true
+      ttl-seconds: ${LOGIN_OTP_TTL_SECONDS:300}
+      resend-cooldown-seconds: ${LOGIN_OTP_RESEND_COOLDOWN_SECONDS:60}
+      max-verify-attempts: ${LOGIN_OTP_MAX_VERIFY_ATTEMPTS:5}
+      resend-limit-enabled: false
+      max-resend-attempts: 0
+      sms-template: "Your BCT login verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
+      email-template:
+        subject: "BCT login verification code"
+        body: "Your BCT login verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
+    idempotency:
+      start-ttl-seconds: ${LOGIN_START_IDEMPOTENCY_TTL_SECONDS:300}
+      otp-send-ttl-seconds: ${LOGIN_OTP_SEND_IDEMPOTENCY_TTL_SECONDS:300}
+      otp-resend-ttl-seconds: ${LOGIN_OTP_RESEND_IDEMPOTENCY_TTL_SECONDS:300}
+      otp-verify-ttl-seconds: ${LOGIN_OTP_VERIFY_IDEMPOTENCY_TTL_SECONDS:300}
+      cancel-ttl-seconds: ${LOGIN_CANCEL_IDEMPOTENCY_TTL_SECONDS:300}
+    session:
+      absolute-timeout-seconds: ${AUTH_WORKFLOWS_LOGIN_SESSION_ABSOLUTE_TIMEOUT_SECONDS:28800}
+      terminal-retention-seconds: ${AUTH_WORKFLOWS_LOGIN_SESSION_TERMINAL_RETENTION_SECONDS:300}
+      idle-timeout-seconds: ${AUTH_WORKFLOWS_LOGIN_SESSION_IDLE_TIMEOUT_SECONDS:900}
+      cookie:
+        name: ${AUTH_WORKFLOWS_LOGIN_SESSION_COOKIE_NAME:portal_sid}
+        path: ${AUTH_WORKFLOWS_LOGIN_SESSION_COOKIE_PATH:/api}
+        max-age-seconds: ${AUTH_WORKFLOWS_LOGIN_SESSION_COOKIE_MAX_AGE_SECONDS:900}
+        http-only: true
+        secure: ${AUTH_WORKFLOWS_LOGIN_SESSION_COOKIE_SECURE:true}
+        same-site: ${AUTH_WORKFLOWS_LOGIN_SESSION_COOKIE_SAME_SITE:None}
+      protection:
+        key-version: ${AUTH_WORKFLOWS_LOGIN_SESSION_PROTECTION_KEY_VERSION:}
+        base64-key: ${AUTH_WORKFLOWS_LOGIN_SESSION_PROTECTION_BASE64_KEY:}
+    account-ref:
+      prefix: acc
+      entropy-bytes: 24
+      max-generation-attempts: 8
+    account-identifiers:
+      policy-no:
+        width: 11
+      cert-no:
+        width: 4
+      pad-character: "0"
+    account:
+      identifier-width: ${LOGIN_ACCOUNT_IDENTIFIER_WIDTH:8}
+      identifier-pad-character: "0"
   registration:
     pre-start-challenge:
       enabled: true
@@ -119,6 +186,7 @@ auth-workflows:
       ttl-seconds: 300
       resend-cooldown-seconds: 60
       max-verify-attempts: 5
+      resend-limit-enabled: true
       max-resend-attempts: 5
       invalidate-previous-on-resend: true
       reset-verify-attempts-on-resend: true
@@ -146,7 +214,22 @@ auth-workflows:
       otp-resend-ttl-seconds: 300
       otp-verify-ttl-seconds: 300
       complete-ttl-seconds: 300
+
 apim:
+  login:
+    get-account-list:
+      path: /ws/NGTPA/v1/TRPGetAccountList
+      operation-name: TRPGetAccountList
+      error-mappings:
+        err.tpa.no.active.account: UNAVAILABLE
+        err.tpa.no.valid.login.ac: UNAVAILABLE
+    member-login:
+      path: ${APIM_LOGIN_MEMBER_LOGIN_PATH:/ws/NGTPA/v1/TRPMemberLogin}
+      operation-name: ${APIM_LOGIN_MEMBER_LOGIN_OPERATION:TRPMemberLogin}
+  retry:
+    business-call:
+      max-attempts: ${APIM_BUSINESS_RETRY_MAX_ATTEMPTS:3}
+      backoff-milliseconds: ${APIM_BUSINESS_RETRY_BACKOFF_MILLISECONDS:100}
   base-url: ${APIM_BASE_URL:${APIM_BASEURL:}}
   timeout-milliseconds: ${APIM_TIMEOUT_MILLISECONDS:${APIM_TIMEOUTMILLISECONDS:10000}}
   oauth:

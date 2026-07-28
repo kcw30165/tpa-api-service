@@ -20,7 +20,8 @@ public record RegistrationStartCommand(
         if (identityValue.isBlank() || dateOfBirth.isBlank() || contactValue.isBlank() || maskedDestination.isBlank()) {
             throw new IllegalArgumentException("registration start command fields must not be blank");
         }
-        captchaChallengeId = captchaChallengeId == null || captchaChallengeId.isBlank() ? null : captchaChallengeId.trim();
+        captchaChallengeId = captchaChallengeId == null || captchaChallengeId.isBlank() ? null
+                : captchaChallengeId.trim();
     }
 
     @Override

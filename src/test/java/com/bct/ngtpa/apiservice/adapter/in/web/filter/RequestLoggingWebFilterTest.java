@@ -414,7 +414,7 @@ class RequestLoggingWebFilterTest {
         WebFilterChain chain = ex -> {
             ex.getResponse().getHeaders().setContentType(org.springframework.http.MediaType.APPLICATION_OCTET_STREAM);
             return ex.getResponse().writeWith(reactor.core.publisher.Mono.just(
-                    ex.getResponse().bufferFactory().wrap(new byte[]{1, 2, 3})));
+                    ex.getResponse().bufferFactory().wrap(new byte[] { 1, 2, 3 })));
         };
 
         StepVerifier.create(responseFilter.filter(exchange, chain)).verifyComplete();
@@ -441,7 +441,7 @@ class RequestLoggingWebFilterTest {
             ex.getResponse().getHeaders().set("Content-Type",
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
             return ex.getResponse().writeWith(reactor.core.publisher.Mono.just(
-                    ex.getResponse().bufferFactory().wrap(new byte[]{1, 2, 3})));
+                    ex.getResponse().bufferFactory().wrap(new byte[] { 1, 2, 3 })));
         };
 
         StepVerifier.create(responseFilter.filter(exchange, chain)).verifyComplete();
@@ -467,7 +467,7 @@ class RequestLoggingWebFilterTest {
         WebFilterChain chain = ex -> {
             ex.getResponse().getHeaders().set("Content-Type", "application/pdf");
             return ex.getResponse().writeWith(reactor.core.publisher.Mono.just(
-                    ex.getResponse().bufferFactory().wrap(new byte[]{1, 2, 3})));
+                    ex.getResponse().bufferFactory().wrap(new byte[] { 1, 2, 3 })));
         };
 
         StepVerifier.create(responseFilter.filter(exchange, chain)).verifyComplete();
@@ -571,7 +571,8 @@ class RequestLoggingWebFilterTest {
         rule.setLogRequestBody(true);
         props.getBodyLogging().getEndpoints().add(rule);
 
-        // POST with empty body (no body bytes → Flux.empty() branch in anonymous ServerHttpRequestDecorator)
+        // POST with empty body (no body bytes → Flux.empty() branch in anonymous
+        // ServerHttpRequestDecorator)
         MockServerWebExchange exchange = exchange(
                 MockServerHttpRequest.post("/api/v1/test").build());
 
@@ -595,8 +596,6 @@ class RequestLoggingWebFilterTest {
         props.setBodyLogging(null);
         assertNotNull(props.getBodyLogging(), "null bodyLogging should produce default");
     }
-
-
 
     private static void run(RequestLoggingWebFilter f, MockServerWebExchange exchange) {
         WebFilterChain chain = ex -> Mono.empty();

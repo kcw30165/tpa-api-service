@@ -48,8 +48,7 @@ public class ApimCertificateService {
                 o.getTokenUri(),
                 apimProperties.getBaseUrl(),
                 o.getScope(),
-                e.getCertificatePath()
-        );
+                e.getCertificatePath());
         return getPublicKey(profile);
     }
 
@@ -65,11 +64,12 @@ public class ApimCertificateService {
 
     public Mono<PublicKey> refreshPublicKey(ApimCredentialProfile profile) {
         String pid = profile.profileId();
-        Mono<CertificateCacheEntry> request = inFlight.computeIfAbsent(pid, id -> Mono.defer(() -> fetchCertificateEntry(profile))
-            .doOnNext(entry -> log.debug("Fetched certificate for profileId={}", pid))
-            .doOnNext(entry -> certCache.put(pid, entry))
-                .doFinally(sig -> inFlight.remove(pid))
-                .cache());
+        Mono<CertificateCacheEntry> request = inFlight.computeIfAbsent(pid,
+                id -> Mono.defer(() -> fetchCertificateEntry(profile))
+                        .doOnNext(entry -> log.debug("Fetched certificate for profileId={}", pid))
+                        .doOnNext(entry -> certCache.put(pid, entry))
+                        .doFinally(sig -> inFlight.remove(pid))
+                        .cache());
         return request.map(entry -> entry.publicKey);
     }
 
@@ -86,12 +86,13 @@ public class ApimCertificateService {
         }
 
         String baseUrl = profile.baseUrl() != null ? profile.baseUrl() : apimProperties.getBaseUrl();
-        String certificatePath = profile.certificatePath() != null ? profile.certificatePath() : apimProperties.getEncryption().getCertificatePath();
+        String certificatePath = profile.certificatePath() != null ? profile.certificatePath()
+                : apimProperties.getEncryption().getCertificatePath();
 
         WebClient client = webClientBuilder.clone()
-            .baseUrl(baseUrl)
-            .defaultHeader("Accept", "application/json")
-            .build();
+                .baseUrl(baseUrl)
+                .defaultHeader("Accept", "application/json")
+                .build();
 
         return client.get()
                 .uri(UriComponentsBuilder.fromUriString(baseUrl)

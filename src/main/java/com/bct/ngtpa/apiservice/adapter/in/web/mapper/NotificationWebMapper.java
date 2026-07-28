@@ -10,26 +10,26 @@ import org.springframework.stereotype.Component;
 @Component
 public class NotificationWebMapper {
 
-    public NotificationListResponse toResponse(NotificationListResult result) {
-        var dateOptions = result.dateOptions() != null
-                ? result.dateOptions()
-                : NotificationDateOptions.defaults();
+        public NotificationListResponse toResponse(NotificationListResult result) {
+                var dateOptions = result.dateOptions() != null
+                                ? result.dateOptions()
+                                : NotificationDateOptions.defaults();
 
-        return new NotificationListResponse(
-                result.notifications().stream()
-                        .map(message -> toDto(message, dateOptions))
-                        .toList());
-    }
+                return new NotificationListResponse(
+                                result.notifications().stream()
+                                                .map(message -> toDto(message, dateOptions))
+                                                .toList());
+        }
 
-    NotificationDto toDto(NoticeMessage message, NotificationDateOptions dateOptions) {
-        return new NotificationDto(
-                message.msgCodeLong() != null ? message.msgCodeLong() : message.msgCode(),
-                message.seq() != null ? message.seq().toString() : null,
-                message.category(),
-                message.msgTitle(),
-                message.msgContentChi(),
-                message.msgContentEng(),
-                message.isRead(),
-                dateOptions.format(message.startDatetime()));
-    }
+        NotificationDto toDto(NoticeMessage message, NotificationDateOptions dateOptions) {
+                return new NotificationDto(
+                                message.msgCodeLong() != null ? message.msgCodeLong() : message.msgCode(),
+                                message.seq() != null ? message.seq().toString() : null,
+                                message.category(),
+                                message.msgTitle(),
+                                message.msgContentChi(),
+                                message.msgContentEng(),
+                                message.isRead(),
+                                dateOptions.format(message.startDatetime()));
+        }
 }

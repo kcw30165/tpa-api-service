@@ -27,18 +27,20 @@ class VerifyCaptchaUseCaseTest {
 
     private static final Clock FIXED_CLOCK = Clock.fixed(Instant.parse("2026-07-07T12:00:00Z"), ZoneOffset.UTC);
     private static final CaptchaChallengeId ID = new CaptchaChallengeId("cap_abcdefghijklmnop");
-    private static final CaptchaAnswerHash HASH =
-            new CaptchaAnswerHash("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+    private static final CaptchaAnswerHash HASH = new CaptchaAnswerHash(
+            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
 
     private final RecordingAuthWorkflowPolicyPort caseInsensitivePolicy = new RecordingAuthWorkflowPolicyPort(
             new CaptchaPolicy(8, "ABC123", false, 123, 5));
     private final RecordingCaptchaAnswerHasherPort hasherPort = new RecordingCaptchaAnswerHasherPort();
     private final RecordingCaptchaChallengePort challengePort = new RecordingCaptchaChallengePort();
-    private final VerifyCaptchaUseCase useCase = new VerifyCaptchaService(caseInsensitivePolicy, hasherPort, challengePort, FIXED_CLOCK);
+    private final VerifyCaptchaUseCase useCase = new VerifyCaptchaService(caseInsensitivePolicy, hasherPort,
+            challengePort, FIXED_CLOCK);
 
     @Test
     void verifyCaptchaReturnsVerifiedForCorrectAnswer() {
-        challengePort.loadedChallenge = Optional.of(createdChallenge(CaptchaStatus.CREATED, 0, Instant.parse("2026-07-07T12:05:00Z")));
+        challengePort.loadedChallenge = Optional
+                .of(createdChallenge(CaptchaStatus.CREATED, 0, Instant.parse("2026-07-07T12:05:00Z")));
         hasherPort.matchesResult = true;
 
         StepVerifier.create(useCase.verify(new VerifyCaptchaChallengeCommand(ID, "aBc123", "corr")))
@@ -84,8 +86,10 @@ class VerifyCaptchaUseCaseTest {
 
     @Test
     void verifyCaptchaInvalidAnswerIncrementsFailedAttempt() {
-        challengePort.loadedChallenge = Optional.of(createdChallenge(CaptchaStatus.CREATED, 0, Instant.parse("2026-07-07T12:05:00Z")));
-        challengePort.incrementedChallenge = createdChallenge(CaptchaStatus.CREATED, 1, Instant.parse("2026-07-07T12:05:00Z"));
+        challengePort.loadedChallenge = Optional
+                .of(createdChallenge(CaptchaStatus.CREATED, 0, Instant.parse("2026-07-07T12:05:00Z")));
+        challengePort.incrementedChallenge = createdChallenge(CaptchaStatus.CREATED, 1,
+                Instant.parse("2026-07-07T12:05:00Z"));
         hasherPort.matchesResult = false;
 
         StepVerifier.create(useCase.verify(new VerifyCaptchaChallengeCommand(ID, "wrong", "corr")))
@@ -99,8 +103,10 @@ class VerifyCaptchaUseCaseTest {
 
     @Test
     void verifyCaptchaInvalidAnswerLocksAtMaxAttempts() {
-        challengePort.loadedChallenge = Optional.of(createdChallenge(CaptchaStatus.CREATED, 4, Instant.parse("2026-07-07T12:05:00Z")));
-        challengePort.incrementedChallenge = createdChallenge(CaptchaStatus.CREATED, 5, Instant.parse("2026-07-07T12:05:00Z"));
+        challengePort.loadedChallenge = Optional
+                .of(createdChallenge(CaptchaStatus.CREATED, 4, Instant.parse("2026-07-07T12:05:00Z")));
+        challengePort.incrementedChallenge = createdChallenge(CaptchaStatus.CREATED, 5,
+                Instant.parse("2026-07-07T12:05:00Z"));
         challengePort.lockedChallenge = new CaptchaChallenge(
                 ID,
                 HASH,
@@ -128,7 +134,8 @@ class VerifyCaptchaUseCaseTest {
 
     @Test
     void verifyCaptchaExpiredChallengeReturnsExpiredWithoutMatchingAnswer() {
-        challengePort.loadedChallenge = Optional.of(createdChallenge(CaptchaStatus.CREATED, 0, Instant.parse("2026-07-07T11:59:59Z")));
+        challengePort.loadedChallenge = Optional
+                .of(createdChallenge(CaptchaStatus.CREATED, 0, Instant.parse("2026-07-07T11:59:59Z")));
 
         StepVerifier.create(useCase.verify(new VerifyCaptchaChallengeCommand(ID, "anything", "corr")))
                 .assertNext(result -> {
@@ -232,7 +239,8 @@ class VerifyCaptchaUseCaseTest {
                 hasherPort,
                 challengePort,
                 FIXED_CLOCK);
-        challengePort.loadedChallenge = Optional.of(createdChallenge(CaptchaStatus.CREATED, 0, Instant.parse("2026-07-07T12:05:00Z")));
+        challengePort.loadedChallenge = Optional
+                .of(createdChallenge(CaptchaStatus.CREATED, 0, Instant.parse("2026-07-07T12:05:00Z")));
         hasherPort.matchesResult = true;
 
         StepVerifier.create(sensitiveUseCase.verify(new VerifyCaptchaChallengeCommand(ID, "AbC123", "corr")))
@@ -242,7 +250,8 @@ class VerifyCaptchaUseCaseTest {
         assertThat(hasherPort.caseSensitive).isTrue();
 
         challengePort.reset();
-        challengePort.loadedChallenge = Optional.of(createdChallenge(CaptchaStatus.CREATED, 0, Instant.parse("2026-07-07T12:05:00Z")));
+        challengePort.loadedChallenge = Optional
+                .of(createdChallenge(CaptchaStatus.CREATED, 0, Instant.parse("2026-07-07T12:05:00Z")));
         hasherPort.reset();
         hasherPort.matchesResult = true;
 
@@ -346,7 +355,8 @@ class VerifyCaptchaUseCaseTest {
         }
 
         @Override
-        public Mono<CaptchaChallenge> incrementFailedAttempt(CaptchaChallengeId captchaChallengeId, Instant attemptedAt) {
+        public Mono<CaptchaChallenge> incrementFailedAttempt(CaptchaChallengeId captchaChallengeId,
+                Instant attemptedAt) {
             this.incrementFailedAttemptCalled = true;
             return Mono.just(incrementedChallenge);
         }

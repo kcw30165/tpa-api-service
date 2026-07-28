@@ -12,7 +12,6 @@ import com.bct.ngtpa.apiservice.application.dto.ContributionActions;
 import com.bct.ngtpa.apiservice.application.dto.CurrencyDisplay;
 import com.bct.ngtpa.apiservice.application.dto.ContributionSummaryReportResult;
 import com.bct.ngtpa.apiservice.application.dto.GetContributionSummaryCommand;
-import com.bct.ngtpa.apiservice.application.exception.ApplicationException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import com.bct.ngtpa.apiservice.application.port.in.ExportContributionSummaryUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetContributionSummaryUseCase;

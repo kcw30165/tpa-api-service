@@ -26,48 +26,45 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class NotificationController {
 
-    private final GetNotificationsUseCase getNotificationsUseCase;
-    private final UpdateNotificationsReadStatusUseCase updateNotificationsReadStatusUseCase;
-    private final NotificationWebMapper notificationWebMapper;
-    private final NotificationReadStatusWebMapper notificationReadStatusWebMapper;
+        private final GetNotificationsUseCase getNotificationsUseCase;
+        private final UpdateNotificationsReadStatusUseCase updateNotificationsReadStatusUseCase;
+        private final NotificationWebMapper notificationWebMapper;
+        private final NotificationReadStatusWebMapper notificationReadStatusWebMapper;
 
-    @GetMapping(value = "/notifications", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<NotificationListResponse> getNotifications(
-            @RequestParam(value = "page", required = false) Integer page,
-            @RequestParam(value = "size", required = false) Integer size,
-            @RequestParam(value = "dateFormat", required = false) String dateFormat,
-            @RequestParam(value = "timezone", required = false) String timezone) {
-        return getNotificationsUseCase
-                .execute(new GetNotificationsCommand(
-                        null,
-                        null,
-                        page,
-                        size,
-                        dateFormat,
-                        timezone,
-                        null,
-                        null,
-                        null,
-                        null))
-                .map(notificationWebMapper::toResponse);
-    }
+        @GetMapping(value = "/notifications", produces = MediaType.APPLICATION_JSON_VALUE)
+        public Mono<NotificationListResponse> getNotifications(
+                        @RequestParam(value = "page", required = false) Integer page,
+                        @RequestParam(value = "size", required = false) Integer size,
+                        @RequestParam(value = "dateFormat", required = false) String dateFormat,
+                        @RequestParam(value = "timezone", required = false) String timezone) {
+                return getNotificationsUseCase
+                                .execute(new GetNotificationsCommand(
+                                                null,
+                                                null,
+                                                page,
+                                                size,
+                                                dateFormat,
+                                                timezone,
+                                                null,
+                                                null,
+                                                null,
+                                                null))
+                                .map(notificationWebMapper::toResponse);
+        }
 
-    @PatchMapping(
-            value = "/notifications",
-            consumes = MediaType.APPLICATION_JSON_VALUE,
-            produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<MutationResponse<UpdateNotificationsReadStatusResponse>> updateNotificationsReadStatus(
-            @Valid @RequestBody UpdateNotificationsReadStatusRequest request) {
-        return updateNotificationsReadStatusUseCase
-                .execute(new UpdateNotificationsReadStatusCommand(
-                        null,
-                        null,
-                        request.notificationId(),
-                        null,
-                        null,
-                        null,
-                        null,
-                        null))
-                .map(notificationReadStatusWebMapper::toResponse);
-    }
+        @PatchMapping(value = "/notifications", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+        public Mono<MutationResponse<UpdateNotificationsReadStatusResponse>> updateNotificationsReadStatus(
+                        @Valid @RequestBody UpdateNotificationsReadStatusRequest request) {
+                return updateNotificationsReadStatusUseCase
+                                .execute(new UpdateNotificationsReadStatusCommand(
+                                                null,
+                                                null,
+                                                request.notificationId(),
+                                                null,
+                                                null,
+                                                null,
+                                                null,
+                                                null))
+                                .map(notificationReadStatusWebMapper::toResponse);
+        }
 }

@@ -13,7 +13,8 @@ public final class Sha256CaptchaAnswerHasher implements CaptchaAnswerHasherPort 
     @Override
     public CaptchaAnswerHash hash(String answer, boolean caseSensitive) {
         String normalized = normalize(answer, caseSensitive);
-        return new CaptchaAnswerHash(HexFormat.of().formatHex(messageDigest().digest(normalized.getBytes(StandardCharsets.UTF_8))));
+        return new CaptchaAnswerHash(
+                HexFormat.of().formatHex(messageDigest().digest(normalized.getBytes(StandardCharsets.UTF_8))));
     }
 
     @Override

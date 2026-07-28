@@ -103,7 +103,8 @@ class RegistrationCaptchaGateServiceTest {
     private static CaptchaChallenge challenge(CaptchaStatus status, Instant expiresAt) {
         return new CaptchaChallenge(
                 CHALLENGE_ID,
-                status == CaptchaStatus.CONSUMED || status == CaptchaStatus.REFRESHED ? null : new CaptchaAnswerHash(ANSWER_HASH),
+                status == CaptchaStatus.CONSUMED || status == CaptchaStatus.REFRESHED ? null
+                        : new CaptchaAnswerHash(ANSWER_HASH),
                 status,
                 0,
                 5,
@@ -140,7 +141,8 @@ class RegistrationCaptchaGateServiceTest {
         }
 
         @Override
-        public Mono<CaptchaChallenge> incrementFailedAttempt(CaptchaChallengeId captchaChallengeId, Instant attemptedAt) {
+        public Mono<CaptchaChallenge> incrementFailedAttempt(CaptchaChallengeId captchaChallengeId,
+                Instant attemptedAt) {
             return Mono.just(challenge);
         }
 

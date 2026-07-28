@@ -77,7 +77,8 @@ public class ContributionSummaryWorkbookExporter {
         }
     }
 
-    private String resolveTotalHeader(com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionWebDisplayConfig displayConfig,
+    private String resolveTotalHeader(
+            com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionWebDisplayConfig displayConfig,
             String lang) {
         return RequestLanguageResolver.isZhHk(lang) ? displayConfig.totalLabelZh() : displayConfig.totalLabelEn();
     }

@@ -2,7 +2,8 @@ package com.bct.ngtpa.apiservice.application.dto.auth.captcha;
 
 import java.util.Objects;
 
-public record VerifyCaptchaChallengeCommand(CaptchaChallengeId captchaChallengeId, String answer, String correlationId) {
+public record VerifyCaptchaChallengeCommand(CaptchaChallengeId captchaChallengeId, String answer,
+        String correlationId) {
 
     public VerifyCaptchaChallengeCommand {
         Objects.requireNonNull(captchaChallengeId, "captchaChallengeId must not be null");

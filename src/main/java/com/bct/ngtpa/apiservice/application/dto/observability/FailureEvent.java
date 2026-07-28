@@ -2,7 +2,10 @@ package com.bct.ngtpa.apiservice.application.dto.observability;
 
 import java.util.Map;
 
-/** Internal structured failure information. Never serialize this into API responses. */
+/**
+ * Internal structured failure information. Never serialize this into API
+ * responses.
+ */
 public record FailureEvent(
         String event,
         String requestId,

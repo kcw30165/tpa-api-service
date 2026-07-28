@@ -8,7 +8,8 @@ import java.util.Optional;
 /**
  * Outbound port for generic string-value cache operations.
  *
- * <p>This port exposes only application-facing types: no Redis, Lettuce,
+ * <p>
+ * This port exposes only application-facing types: no Redis, Lettuce,
  * Spring Data, or {@link java.util.concurrent.TimeUnit} types are used.
  *
  * <h3>Key contract</h3>

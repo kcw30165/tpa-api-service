@@ -12,15 +12,15 @@ import org.junit.jupiter.api.Test;
 class MessageDeliveryModelTest {
 
     @Test
-    void messageDeliveryTypeInitiallySupportsRegistrationOtp() {
+    void messageDeliveryTypeSupportsRegistrationAndLoginOtp() {
         assertThat(Arrays.stream(MessageDeliveryType.values()).map(Enum::name).toList())
-                .containsExactly("REGISTRATION_OTP");
+                .containsExactly("REGISTRATION_OTP", "LOGIN_OTP");
     }
 
     @Test
-    void messageDeliveryScenarioInitiallySupportsRegistration() {
+    void messageDeliveryScenarioSupportsRegistrationAndLogin() {
         assertThat(Arrays.stream(MessageDeliveryScenario.values()).map(Enum::name).toList())
-                .containsExactly("REGISTRATION");
+                .containsExactly("REGISTRATION", "LOGIN");
     }
 
     @Test

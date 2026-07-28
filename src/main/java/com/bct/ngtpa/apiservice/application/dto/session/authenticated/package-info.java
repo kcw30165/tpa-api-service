@@ -1,9 +1,2 @@
-/**
- * Reserved for future post-login AuthenticatedSession model support.
- *
- * <p>P4B implements only the pre-auth {@code AuthFlowSession} foundation.
- * No AuthenticatedSession runtime behaviour, persistence, lifecycle service,
- * or adapter wiring is implemented in P4B. AuthFlowSession must not be treated
- * as an authenticated portal session and must never grant portal access.</p>
- */
+/** Framework-neutral post-login authenticated portal-session domain model. Persistence, context protection, lifecycle, cookies, and PortalAccessContext resolution are implemented by later Task 0043 subtasks. The model is distinct from pre-auth AuthFlowSession and contains no actorType field. */
 package com.bct.ngtpa.apiservice.application.dto.session.authenticated;

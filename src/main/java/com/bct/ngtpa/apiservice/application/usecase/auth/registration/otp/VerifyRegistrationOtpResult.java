@@ -24,7 +24,9 @@ public record VerifyRegistrationOtpResult(
         messages = messages == null ? List.of() : List.copyOf(messages);
         errors = errors == null ? List.of() : List.copyOf(errors);
     }
-    @Override public String toString() {
+
+    @Override
+    public String toString() {
         return "VerifyRegistrationOtpResult[status=" + status + ", nextStep=" + nextStep
                 + ", trustCount=" + unregisteredTrusts.size() + ", remainingVerifyAttempts=" + remainingVerifyAttempts
                 + ", messageCount=" + messages.size() + ", errorCount=" + errors.size() + "]";

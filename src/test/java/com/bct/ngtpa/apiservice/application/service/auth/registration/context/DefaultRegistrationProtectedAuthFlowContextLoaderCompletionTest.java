@@ -32,125 +32,124 @@ import reactor.test.StepVerifier;
 
 class DefaultRegistrationProtectedAuthFlowContextLoaderCompletionTest {
 
-    private static final Instant NOW = Instant.parse("2026-07-14T10:50:00Z");
-    private static final AuthFlowSessionId SESSION_ID = new AuthFlowSessionId("afs_safe");
+        private static final Instant NOW = Instant.parse("2026-07-14T10:50:00Z");
+        private static final AuthFlowSessionId SESSION_ID = new AuthFlowSessionId("afs_safe");
 
-    @Test
-    void usernameVerifiedSessionIsValidForCompletionCaller() {
-        var expectedContext = context();
-        var loader = loader(session(AuthFlowStatus.USERNAME_VERIFIED), expectedContext);
-        var command = new RegistrationProtectedAuthFlowContextCommand(
-                SESSION_ID,
-                "csrf-safe",
-                null,
-                null,
-                "req-safe",
-                Set.of(AuthFlowStatus.USERNAME_VERIFIED));
+        @Test
+        void usernameVerifiedSessionIsValidForCompletionCaller() {
+                var expectedContext = context();
+                var loader = loader(session(AuthFlowStatus.USERNAME_VERIFIED), expectedContext);
+                var command = new RegistrationProtectedAuthFlowContextCommand(
+                                SESSION_ID,
+                                "csrf-safe",
+                                null,
+                                null,
+                                "req-safe",
+                                Set.of(AuthFlowStatus.USERNAME_VERIFIED));
 
-        StepVerifier.create(loader.load(command))
-                .assertNext(result -> {
-                    assertThat(result.status())
-                            .isEqualTo(RegistrationProtectedAuthFlowContextStatus.VALID);
-                    assertThat(result.registrationContext()).isEqualTo(expectedContext);
-                })
-                .verifyComplete();
-    }
+                StepVerifier.create(loader.load(command))
+                                .assertNext(result -> {
+                                        assertThat(result.status())
+                                                        .isEqualTo(RegistrationProtectedAuthFlowContextStatus.VALID);
+                                        assertThat(result.registrationContext()).isEqualTo(expectedContext);
+                                })
+                                .verifyComplete();
+        }
 
-    @Test
-    void usernameVerifiedSessionRemainsInvalidForLegacyOtpCaller() {
-        var loader = loader(session(AuthFlowStatus.USERNAME_VERIFIED), context());
-        var legacyOtpCommand = new RegistrationProtectedAuthFlowContextCommand(
-                SESSION_ID,
-                "csrf-safe",
-                null,
-                null,
-                "req-safe");
+        @Test
+        void usernameVerifiedSessionRemainsInvalidForLegacyOtpCaller() {
+                var loader = loader(session(AuthFlowStatus.USERNAME_VERIFIED), context());
+                var legacyOtpCommand = new RegistrationProtectedAuthFlowContextCommand(
+                                SESSION_ID,
+                                "csrf-safe",
+                                null,
+                                null,
+                                "req-safe");
 
-        StepVerifier.create(loader.load(legacyOtpCommand))
-                .assertNext(result -> assertThat(result.status())
-                        .isEqualTo(RegistrationProtectedAuthFlowContextStatus.INVALID_STATUS))
-                .verifyComplete();
-    }
+                StepVerifier.create(loader.load(legacyOtpCommand))
+                                .assertNext(result -> assertThat(result.status())
+                                                .isEqualTo(RegistrationProtectedAuthFlowContextStatus.INVALID_STATUS))
+                                .verifyComplete();
+        }
 
-    @Test
-    void otpSentSessionIsInvalidForCompletionCaller() {
-        var loader = loader(session(AuthFlowStatus.OTP_SENT), context());
-        var completionCommand = new RegistrationProtectedAuthFlowContextCommand(
-                SESSION_ID,
-                "csrf-safe",
-                null,
-                null,
-                "req-safe",
-                Set.of(AuthFlowStatus.USERNAME_VERIFIED));
+        @Test
+        void otpSentSessionIsInvalidForCompletionCaller() {
+                var loader = loader(session(AuthFlowStatus.OTP_SENT), context());
+                var completionCommand = new RegistrationProtectedAuthFlowContextCommand(
+                                SESSION_ID,
+                                "csrf-safe",
+                                null,
+                                null,
+                                "req-safe",
+                                Set.of(AuthFlowStatus.USERNAME_VERIFIED));
 
-        StepVerifier.create(loader.load(completionCommand))
-                .assertNext(result -> assertThat(result.status())
-                        .isEqualTo(RegistrationProtectedAuthFlowContextStatus.INVALID_STATUS))
-                .verifyComplete();
-    }
+                StepVerifier.create(loader.load(completionCommand))
+                                .assertNext(result -> assertThat(result.status())
+                                                .isEqualTo(RegistrationProtectedAuthFlowContextStatus.INVALID_STATUS))
+                                .verifyComplete();
+        }
 
-    private DefaultRegistrationProtectedAuthFlowContextLoader loader(
-            AuthFlowSession session,
-            RegistrationAuthFlowContext context) {
-        var lifecycle = mock(AuthFlowSessionLifecycleService.class);
-        var csrf = mock(AuthFlowSessionCsrfService.class);
-        when(csrf.validateForSession(any())).thenReturn(Mono.just(
-                new ValidateAuthFlowSessionCsrfResult(
-                        AuthFlowSessionCsrfValidationStatus.VALID,
-                        true)));
-        when(lifecycle.load(any())).thenReturn(Mono.just(Optional.of(session)));
+        private DefaultRegistrationProtectedAuthFlowContextLoader loader(
+                        AuthFlowSession session,
+                        RegistrationAuthFlowContext context) {
+                var lifecycle = mock(AuthFlowSessionLifecycleService.class);
+                var csrf = mock(AuthFlowSessionCsrfService.class);
+                when(csrf.validateForSession(any())).thenReturn(Mono.just(
+                                new ValidateAuthFlowSessionCsrfResult(
+                                                AuthFlowSessionCsrfValidationStatus.VALID,
+                                                true)));
+                when(lifecycle.load(any())).thenReturn(Mono.just(Optional.of(session)));
 
-        RegistrationAuthFlowContextProtectorPort protector =
-                new RegistrationAuthFlowContextProtectorPort() {
-                    @Override
-                    public RegistrationAuthFlowEncryptedContext protect(
-                            RegistrationAuthFlowContext ignored) {
-                        throw new UnsupportedOperationException();
-                    }
+                RegistrationAuthFlowContextProtectorPort protector = new RegistrationAuthFlowContextProtectorPort() {
+                        @Override
+                        public RegistrationAuthFlowEncryptedContext protect(
+                                        RegistrationAuthFlowContext ignored) {
+                                throw new UnsupportedOperationException();
+                        }
 
-                    @Override
-                    public RegistrationAuthFlowContext unprotect(
-                            RegistrationAuthFlowEncryptedContext ignored) {
-                        return context;
-                    }
+                        @Override
+                        public RegistrationAuthFlowContext unprotect(
+                                        RegistrationAuthFlowEncryptedContext ignored) {
+                                return context;
+                        }
                 };
 
-        return new DefaultRegistrationProtectedAuthFlowContextLoader(
-                lifecycle,
-                csrf,
-                protector,
-                Clock.fixed(NOW, ZoneOffset.UTC));
-    }
+                return new DefaultRegistrationProtectedAuthFlowContextLoader(
+                                lifecycle,
+                                csrf,
+                                protector,
+                                Clock.fixed(NOW, ZoneOffset.UTC));
+        }
 
-    private AuthFlowSession session(AuthFlowStatus status) {
-        var data = new AuthFlowSessionData(
-                "EMAIL",
-                "m****r@example.com",
-                Map.of(
-                        RegistrationAuthFlowContextAttributeNames.CONTEXT_CIPHERTEXT,
-                        "encrypted-registration-context",
-                        RegistrationAuthFlowContextAttributeNames.CONTEXT_KEY_VERSION,
-                        "local-v1",
-                        RegistrationAuthFlowContextAttributeNames.CONTEXT_ALGORITHM,
-                        "AES_GCM_V1"));
-        return new AuthFlowSession(
-                SESSION_ID,
-                AuthFlowScenario.REGISTRATION,
-                status,
-                "csrf-hash",
-                "otp_safe",
-                data,
-                NOW.minusSeconds(120),
-                NOW.minusSeconds(60),
-                NOW.plusSeconds(1200));
-    }
+        private AuthFlowSession session(AuthFlowStatus status) {
+                var data = new AuthFlowSessionData(
+                                "EMAIL",
+                                "m****r@example.com",
+                                Map.of(
+                                                RegistrationAuthFlowContextAttributeNames.CONTEXT_CIPHERTEXT,
+                                                "encrypted-registration-context",
+                                                RegistrationAuthFlowContextAttributeNames.CONTEXT_KEY_VERSION,
+                                                "local-v1",
+                                                RegistrationAuthFlowContextAttributeNames.CONTEXT_ALGORITHM,
+                                                "AES_GCM_V1"));
+                return new AuthFlowSession(
+                                SESSION_ID,
+                                AuthFlowScenario.REGISTRATION,
+                                status,
+                                "csrf-hash",
+                                "otp_safe",
+                                data,
+                                NOW.minusSeconds(120),
+                                NOW.minusSeconds(60),
+                                NOW.plusSeconds(1200));
+        }
 
-    private RegistrationAuthFlowContext context() {
-        return new RegistrationAuthFlowContext(
-                RegistrationIdentityType.GPFS,
-                "identity-safe",
-                "31/01/1980",
-                RegistrationContactType.EMAIL,
-                "member@example.com");
-    }
+        private RegistrationAuthFlowContext context() {
+                return new RegistrationAuthFlowContext(
+                                RegistrationIdentityType.GPFS,
+                                "identity-safe",
+                                "31/01/1980",
+                                RegistrationContactType.EMAIL,
+                                "member@example.com");
+        }
 }

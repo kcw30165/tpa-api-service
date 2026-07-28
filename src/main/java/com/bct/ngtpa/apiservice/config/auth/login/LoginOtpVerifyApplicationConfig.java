@@ -1,0 +1,33 @@
+package com.bct.ngtpa.apiservice.config.auth.login;
+
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.mapper.LoginOtpVerifyWebMapper;
+import com.bct.ngtpa.apiservice.adapter.out.session.login.LoginOtpVerifiedSessionAdapter;
+import com.bct.ngtpa.apiservice.application.port.in.EstablishAuthenticatedLoginSessionUseCase;
+import com.bct.ngtpa.apiservice.application.port.in.VerifyLoginOtpUseCase;
+import com.bct.ngtpa.apiservice.application.port.out.*;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.verify.*;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.account.*;
+import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionLifecycleService;
+import java.time.Clock;
+import org.springframework.context.annotation.*;
+
+@Configuration
+public class LoginOtpVerifyApplicationConfig {
+    @Bean
+    LoginOtpVerifyWebMapper loginOtpVerifyWebMapper() {
+        return new LoginOtpVerifyWebMapper();
+    }
+
+    @Bean
+    LoginOtpVerifiedSessionPort loginOtpVerifiedSessionPort(AuthFlowSessionLifecycleService l) {
+        return new LoginOtpVerifiedSessionAdapter(l);
+    }
+
+    @Bean
+    VerifyLoginOtpUseCase verifyLoginOtpUseCase(LoginProtectedAuthFlowContextLoader l, OtpChallengePort o,
+            LoginOtpVerifiedSessionPort v, AuthFlowSessionCancellationPort c, GetLoginAccountsUseCase g,
+            LoginAccountRecordValidationService validation, LoginAccountReferenceAssignmentService assignment,
+            EstablishAuthenticatedLoginSessionUseCase transition, Clock clock) {
+        return new LoginOtpVerifyService(l, o, v, c, g, validation, assignment, transition, clock);
+    }
+}

@@ -12,13 +12,19 @@ import java.util.Map;
 @Setter
 public class TemporaryPortalAccessContextProperties {
 
-    /** Transitional legacy shape retained until callers move to the request-scoped session resolver. */
+    /**
+     * Transitional legacy shape retained until callers move to the request-scoped
+     * session resolver.
+     */
     private Map<String, Profile> profiles = new LinkedHashMap<>();
 
     /** Temporary Redis-like shape: session-id -> actor + authorized accounts. */
     private Map<String, SessionProfile> sessions = new LinkedHashMap<>();
 
-    /** Temporary stand-in for the HttpOnly session-id cookie until login/session exists. */
+    /**
+     * Temporary stand-in for the HttpOnly session-id cookie until login/session
+     * exists.
+     */
     private String defaultSessionId = "";
 
     @Getter

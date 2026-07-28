@@ -1,0 +1,6 @@
+package com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.verify;
+
+public enum VerifyLoginOtpStatus {
+    ACCOUNTS_READY, ACCOUNT_LIST_UNAVAILABLE, ZERO_VALID_ACCOUNTS, INVALID, EXPIRED, VERIFY_ATTEMPTS_EXCEEDED,
+    AUTH_FLOW_INVALID, ALREADY_VERIFIED, SESSION_CREATION_FAILED, SYSTEM_FAILED
+}

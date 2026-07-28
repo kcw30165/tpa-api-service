@@ -30,8 +30,8 @@ class RegistrationContractStabilizationIntegrationTest {
     @RegistrationTestCase("TC-079")
     void registrationPublicErrorKeysUseCanonicalPrefixedInventories() {
         Stream.concat(
-                        Stream.of(RegistrationErrorKey.values()).map(RegistrationErrorKey::value),
-                        Stream.of(SharedWorkflowErrorKey.values()).map(SharedWorkflowErrorKey::value))
+                Stream.of(RegistrationErrorKey.values()).map(RegistrationErrorKey::value),
+                Stream.of(SharedWorkflowErrorKey.values()).map(SharedWorkflowErrorKey::value))
                 .forEach(key -> {
                     assertNotNull(key);
                     assertFalse(key.isBlank());
@@ -87,8 +87,10 @@ class RegistrationContractStabilizationIntegrationTest {
 
         assertEquals(1, response.messages().size());
         assertEquals(1, response.errors().size());
-        assertThrows(UnsupportedOperationException.class, () -> response.messages().add(ApiMessage.info("x", "x", "PAGE")));
-        assertThrows(UnsupportedOperationException.class, () -> response.errors().add(ApiError.system("x", "x", "BFF")));
+        assertThrows(UnsupportedOperationException.class,
+                () -> response.messages().add(ApiMessage.info("x", "x", "PAGE")));
+        assertThrows(UnsupportedOperationException.class,
+                () -> response.errors().add(ApiError.system("x", "x", "BFF")));
     }
 
     @Test

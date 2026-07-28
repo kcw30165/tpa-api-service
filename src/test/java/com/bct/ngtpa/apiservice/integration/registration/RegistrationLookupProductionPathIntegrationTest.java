@@ -124,7 +124,7 @@ class RegistrationLookupProductionPathIntegrationTest {
 
     private void expectFailure(RegistrationLookupDownstreamException.Reason reason, String requestId) {
         StepVerifier.create(adapter.searchUnregisteredMember(command(RegistrationIdentityType.GPFS))
-                        .contextWrite(Context.of(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, requestId)))
+                .contextWrite(Context.of(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, requestId)))
                 .expectErrorSatisfies(error -> {
                     assertThat(error).isInstanceOf(RegistrationLookupDownstreamException.class);
                     assertThat(((RegistrationLookupDownstreamException) error).reason()).isEqualTo(reason);
@@ -150,6 +150,9 @@ class RegistrationLookupProductionPathIntegrationTest {
 
     static final class RecordingFailureEvents implements FailureEventPort {
         final List<FailureEvent> events = new ArrayList<>();
-        public void record(FailureEvent event) { events.add(event); }
+
+        public void record(FailureEvent event) {
+            events.add(event);
+        }
     }
 }

@@ -7,7 +7,9 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import java.util.List;
 import java.util.Objects;
 
-/** Maps the registration cancellation result to FE-owned semantic identifiers. */
+/**
+ * Maps the registration cancellation result to FE-owned semantic identifiers.
+ */
 public final class RegistrationCancellationPageMapper {
     public static final String PAGE_KEY = "registration-cancelled";
 

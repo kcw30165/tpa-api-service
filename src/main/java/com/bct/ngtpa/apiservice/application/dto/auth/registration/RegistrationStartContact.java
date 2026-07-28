@@ -20,6 +20,7 @@ public record RegistrationStartContact(
 
     @Override
     public String toString() {
-        return "RegistrationStartContact[contactType=" + contactType + ", contactValue=<redacted>, maskedDestination=" + maskedDestination + "]";
+        return "RegistrationStartContact[contactType=" + contactType + ", contactValue=<redacted>, maskedDestination="
+                + maskedDestination + "]";
     }
 }

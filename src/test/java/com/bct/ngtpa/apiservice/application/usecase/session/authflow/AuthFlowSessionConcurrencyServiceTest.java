@@ -71,7 +71,8 @@ class AuthFlowSessionConcurrencyServiceTest {
         port.save(session(existingId, AuthFlowStatus.OTP_SENT, NOW.plusSeconds(1800)));
 
         StepVerifier.create(service.start(command(existingId, SUPPORTED, "afs")))
-                .assertNext(result -> assertThat(result.decision()).isEqualTo(AuthFlowConcurrencyDecision.REPLACED_EXISTING))
+                .assertNext(result -> assertThat(result.decision())
+                        .isEqualTo(AuthFlowConcurrencyDecision.REPLACED_EXISTING))
                 .verifyComplete();
 
         assertThat(port.events).containsExactly("load:afs_existing", "cancel:afs_existing", "create:afs_generated_1");
@@ -83,7 +84,8 @@ class AuthFlowSessionConcurrencyServiceTest {
     @Test
     void startCreatesNewWhenExistingSessionMissing() {
         StepVerifier.create(service.start(command(new AuthFlowSessionId("afs_missing"), SUPPORTED, "afs")))
-                .assertNext(result -> assertThat(result.decision()).isEqualTo(AuthFlowConcurrencyDecision.CREATED_NEW_EXISTING_MISSING))
+                .assertNext(result -> assertThat(result.decision())
+                        .isEqualTo(AuthFlowConcurrencyDecision.CREATED_NEW_EXISTING_MISSING))
                 .verifyComplete();
 
         assertThat(port.createCount).isEqualTo(1);
@@ -92,14 +94,16 @@ class AuthFlowSessionConcurrencyServiceTest {
 
     @Test
     void startCreatesNewWhenExistingSessionAlreadyTerminal() {
-        for (AuthFlowStatus terminal : new AuthFlowStatus[]{AuthFlowStatus.COMPLETED, AuthFlowStatus.CANCELLED, AuthFlowStatus.EXPIRED}) {
+        for (AuthFlowStatus terminal : new AuthFlowStatus[] { AuthFlowStatus.COMPLETED, AuthFlowStatus.CANCELLED,
+                AuthFlowStatus.EXPIRED }) {
             port.clear();
             idGenerator.reset();
             var existingId = new AuthFlowSessionId("afs_existing");
             port.save(session(existingId, terminal, NOW.plusSeconds(1800)));
 
             StepVerifier.create(service.start(command(existingId, SUPPORTED, "afs")))
-                    .assertNext(result -> assertThat(result.decision()).isEqualTo(AuthFlowConcurrencyDecision.CREATED_NEW_EXISTING_ALREADY_TERMINAL))
+                    .assertNext(result -> assertThat(result.decision())
+                            .isEqualTo(AuthFlowConcurrencyDecision.CREATED_NEW_EXISTING_ALREADY_TERMINAL))
                     .verifyComplete();
 
             assertThat(port.createCount).isEqualTo(1);
@@ -109,7 +113,8 @@ class AuthFlowSessionConcurrencyServiceTest {
 
     @Test
     void unsupportedMultiFlowPolicyFailsSafely() {
-        var policy = new SessionConcurrencyPolicy(SessionConcurrencyMode.MULTI_FLOW, SessionOnNewFlowPolicy.REPLACE_EXISTING);
+        var policy = new SessionConcurrencyPolicy(SessionConcurrencyMode.MULTI_FLOW,
+                SessionOnNewFlowPolicy.REPLACE_EXISTING);
         StepVerifier.create(service.start(command(new AuthFlowSessionId("afs_secret"), policy, "afs")))
                 .expectErrorSatisfies(error -> assertThat(error)
                         .isInstanceOf(UnsupportedOperationException.class)
@@ -121,7 +126,8 @@ class AuthFlowSessionConcurrencyServiceTest {
 
     @Test
     void unsupportedAllowParallelPolicyFailsSafely() {
-        var policy = new SessionConcurrencyPolicy(SessionConcurrencyMode.SINGLE_ACTIVE_FLOW, SessionOnNewFlowPolicy.ALLOW_PARALLEL);
+        var policy = new SessionConcurrencyPolicy(SessionConcurrencyMode.SINGLE_ACTIVE_FLOW,
+                SessionOnNewFlowPolicy.ALLOW_PARALLEL);
         StepVerifier.create(service.start(command(null, policy, "afs")))
                 .expectErrorSatisfies(error -> assertThat(error)
                         .isInstanceOf(UnsupportedOperationException.class)
@@ -165,12 +171,17 @@ class AuthFlowSessionConcurrencyServiceTest {
     }
 
     private static AuthFlowSession session(AuthFlowSessionId id, AuthFlowStatus status, Instant expiresAt) {
-        return new AuthFlowSession(id, AuthFlowScenario.REGISTRATION, status, null, null, AuthFlowSessionData.empty(), NOW.minusSeconds(60), NOW.minusSeconds(60), expiresAt);
+        return new AuthFlowSession(id, AuthFlowScenario.REGISTRATION, status, null, null, AuthFlowSessionData.empty(),
+                NOW.minusSeconds(60), NOW.minusSeconds(60), expiresAt);
     }
 
     private static final class CapturingSessionIdGenerator implements SessionIdGenerator {
         private int sequence;
-        void reset() { sequence = 0; }
+
+        void reset() {
+            sequence = 0;
+        }
+
         @Override
         public SessionId generate(SessionIdGenerationCommand command) {
             sequence++;
@@ -185,38 +196,70 @@ class AuthFlowSessionConcurrencyServiceTest {
         private int cancelCount;
         private boolean failCancel;
 
-        void save(AuthFlowSession session) { sessions.put(session.authFlowSessionId().value(), session); }
-        void clear() { sessions.clear(); events.clear(); createCount = 0; cancelCount = 0; failCancel = false; }
+        void save(AuthFlowSession session) {
+            sessions.put(session.authFlowSessionId().value(), session);
+        }
 
-        @Override public Mono<AuthFlowSession> create(AuthFlowSessionCreateCommand command) {
+        void clear() {
+            sessions.clear();
+            events.clear();
+            createCount = 0;
+            cancelCount = 0;
+            failCancel = false;
+        }
+
+        @Override
+        public Mono<AuthFlowSession> create(AuthFlowSessionCreateCommand command) {
             createCount++;
             events.add("create:" + command.authFlowSessionId().value());
-            var session = new AuthFlowSession(command.authFlowSessionId(), command.scenario(), command.initialStatus(), command.csrfTokenHash(), command.activeOtpChallengeId(), command.data(), command.createdAt(), command.createdAt(), command.expiresAt());
+            var session = new AuthFlowSession(command.authFlowSessionId(), command.scenario(), command.initialStatus(),
+                    command.csrfTokenHash(), command.activeOtpChallengeId(), command.data(), command.createdAt(),
+                    command.createdAt(), command.expiresAt());
             save(session);
             return Mono.just(session);
         }
 
-        @Override public Mono<Optional<AuthFlowSession>> load(AuthFlowSessionId id) {
+        @Override
+        public Mono<Optional<AuthFlowSession>> load(AuthFlowSessionId id) {
             events.add("load:" + id.value());
             return Mono.just(Optional.ofNullable(sessions.get(id.value())));
         }
 
-        @Override public Mono<AuthFlowSession> update(AuthFlowSession session) { save(session); return Mono.just(session); }
-        @Override public Mono<AuthFlowSession> touch(AuthFlowSessionId id, Instant now) { return Mono.error(new UnsupportedOperationException()); }
-        @Override public Mono<AuthFlowSession> complete(AuthFlowSessionId id, Instant now) { return Mono.error(new UnsupportedOperationException()); }
+        @Override
+        public Mono<AuthFlowSession> update(AuthFlowSession session) {
+            save(session);
+            return Mono.just(session);
+        }
 
-        @Override public Mono<AuthFlowSession> cancel(AuthFlowSessionId id, Instant now) {
+        @Override
+        public Mono<AuthFlowSession> touch(AuthFlowSessionId id, Instant now) {
+            return Mono.error(new UnsupportedOperationException());
+        }
+
+        @Override
+        public Mono<AuthFlowSession> complete(AuthFlowSessionId id, Instant now) {
+            return Mono.error(new UnsupportedOperationException());
+        }
+
+        @Override
+        public Mono<AuthFlowSession> cancel(AuthFlowSessionId id, Instant now) {
             if (failCancel) {
                 return Mono.error(new IllegalStateException("Cancel failed"));
             }
             cancelCount++;
             events.add("cancel:" + id.value());
             var existing = sessions.get(id.value());
-            var cancelled = new AuthFlowSession(existing.authFlowSessionId(), existing.scenario(), AuthFlowStatus.CANCELLED, existing.csrfTokenHash(), existing.activeOtpChallengeId(), existing.data(), existing.createdAt(), now, existing.expiresAt());
+            var cancelled = new AuthFlowSession(existing.authFlowSessionId(), existing.scenario(),
+                    AuthFlowStatus.CANCELLED, existing.csrfTokenHash(), existing.activeOtpChallengeId(),
+                    existing.data(), existing.createdAt(), now, existing.expiresAt());
             save(cancelled);
             return Mono.just(cancelled);
         }
 
-        @Override public Mono<Void> delete(AuthFlowSessionId id) { sessions.remove(id.value()); return Mono.empty(); }
+        @Override
+        public Mono<Void> delete(AuthFlowSessionId id) {
+            sessions.remove(id.value());
+            return Mono.empty();
+        }
     }
 }

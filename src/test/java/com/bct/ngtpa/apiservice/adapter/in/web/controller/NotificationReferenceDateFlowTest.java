@@ -136,7 +136,7 @@ class NotificationReferenceDateFlowTest {
                 .header("Account-Ref", "ACC-1")
                 .header("Accept-Language", "en")
                 .header("X-Request-Id", "REQ-123")
-                .header("sid_xxx", "SID-123")
+                .header("X-Authenticated-Session-Id", "SID-123")
                 .exchange()
                 .expectStatus().isOk()
                 .expectBody()

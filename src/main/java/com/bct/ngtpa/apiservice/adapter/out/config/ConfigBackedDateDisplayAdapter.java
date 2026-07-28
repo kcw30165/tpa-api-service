@@ -54,4 +54,3 @@ public class ConfigBackedDateDisplayAdapter implements DateDisplayPort {
         return configVariantResolver.resolve(request).orElse(FALLBACK_PATTERN);
     }
 }
-

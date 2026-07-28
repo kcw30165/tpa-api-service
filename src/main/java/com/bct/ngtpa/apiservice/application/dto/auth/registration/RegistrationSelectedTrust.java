@@ -5,6 +5,6 @@ package com.bct.ngtpa.apiservice.application.dto.auth.registration;
  * The latest FE and session contract contains only trustCode and accountEnv.
  */
 public record RegistrationSelectedTrust(
-        String trustCode,
-        String accountEnv) {
+                String trustCode,
+                String accountEnv) {
 }

@@ -24,8 +24,8 @@ class RedisCaptchaChallengeAdapterTest {
     private static final Clock FIXED_CLOCK = Clock.fixed(Instant.parse("2026-07-07T00:00:00Z"), ZoneOffset.UTC);
     private static final String KEY = "ngtpa:auth:captcha:cap_abcdefghijklmnop";
     private static final CaptchaChallengeId CHALLENGE_ID = new CaptchaChallengeId("cap_abcdefghijklmnop");
-    private static final CaptchaAnswerHash ANSWER_HASH =
-            new CaptchaAnswerHash("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
+    private static final CaptchaAnswerHash ANSWER_HASH = new CaptchaAnswerHash(
+            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef");
 
     private final InMemoryRedisCaptchaChallengeOperations redis = new InMemoryRedisCaptchaChallengeOperations();
     private final RedisCaptchaChallengeJsonMapper jsonMapper = new RedisCaptchaChallengeJsonMapper();
@@ -54,17 +54,17 @@ class RedisCaptchaChallengeAdapterTest {
     @Test
     void createRejectsExpiredChallenge() {
         var challenge = new CaptchaChallenge(
-            CHALLENGE_ID,
-            ANSWER_HASH,
-            CaptchaStatus.CREATED,
-            0,
-            5,
-            Instant.parse("2026-07-06T23:59:00Z"),
-            Instant.parse("2026-07-07T00:00:00Z"),
-            null,
-            null,
-            null,
-            null);
+                CHALLENGE_ID,
+                ANSWER_HASH,
+                CaptchaStatus.CREATED,
+                0,
+                5,
+                Instant.parse("2026-07-06T23:59:00Z"),
+                Instant.parse("2026-07-07T00:00:00Z"),
+                null,
+                null,
+                null,
+                null);
 
         StepVerifier.create(adapter.create(challenge))
                 .expectErrorSatisfies(error -> assertThat(error)

@@ -23,28 +23,25 @@ public class ApimRequestLoggingExchangeFilter {
     private final ObjectMapper objectMapper;
 
     public ExchangeFilterFunction filter() {
-        return ExchangeFilterFunction.ofRequestProcessor(request ->
-                Mono.deferContextual(ctx -> {
-                    String requestId = ctx.getOrDefault(
-                            RequestCorrelation.REQUEST_ID_CONTEXT_KEY,
-                            ""
-                    );
+        return ExchangeFilterFunction.ofRequestProcessor(request -> Mono.deferContextual(ctx -> {
+            String requestId = ctx.getOrDefault(
+                    RequestCorrelation.REQUEST_ID_CONTEXT_KEY,
+                    "");
 
-                    Map<String, List<String>> headers = new LinkedHashMap<>();
-                    request.headers().forEach(headers::put);
+            Map<String, List<String>> headers = new LinkedHashMap<>();
+            request.headers().forEach(headers::put);
 
-                    Map<String, Object> event = new LinkedHashMap<>();
-                    event.put("event", "apim.request");
-                    event.put("requestId", requestId);
-                    event.put("method", request.method().name());
-                    event.put("url", String.valueOf(request.url()));
-                    event.put("headers", loggingSanitizer.sanitizeValue(headers));
+            Map<String, Object> event = new LinkedHashMap<>();
+            event.put("event", "apim.request");
+            event.put("requestId", requestId);
+            event.put("method", request.method().name());
+            event.put("url", String.valueOf(request.url()));
+            event.put("headers", loggingSanitizer.sanitizeValue(headers));
 
-                    log.info("{}", toJson(event));
+            log.info("{}", toJson(event));
 
-                    return Mono.just(request);
-                })
-        );
+            return Mono.just(request);
+        }));
     }
 
     private String toJson(Object obj) {

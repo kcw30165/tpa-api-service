@@ -45,14 +45,22 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
     private static final String DOWNSTREAM_SOURCE = "APIM_TAS";
     private static final String DOWNSTREAM_ENDPOINT = "TRPChkCustId";
 
-    private static final String ERROR_AUTH_FLOW_INVALID = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.AUTH_FLOW_INVALID.value();
-    private static final String ERROR_CSRF_INVALID = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.CSRF_INVALID.value();
-    private static final String ERROR_STATE_INVALID = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.STATE_INVALID.value();
-    private static final String ERROR_SELECTED_TRUST_REQUIRED = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.TRUST_SELECTION_INVALID.value();
-    private static final String ERROR_SELECTED_TRUST_INVALID = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.TRUST_SELECTION_INVALID.value();
-    private static final String ERROR_USERNAME_INCORRECT = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.USERNAME_POLICY_INVALID.value();
-    private static final String ERROR_DOWNSTREAM_UNAVAILABLE = com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value();
-    private static final String ERROR_SYSTEM_UNAVAILABLE = com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value();
+    private static final String ERROR_AUTH_FLOW_INVALID = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.AUTH_FLOW_INVALID
+            .value();
+    private static final String ERROR_CSRF_INVALID = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.CSRF_INVALID
+            .value();
+    private static final String ERROR_STATE_INVALID = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.STATE_INVALID
+            .value();
+    private static final String ERROR_SELECTED_TRUST_REQUIRED = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.TRUST_SELECTION_INVALID
+            .value();
+    private static final String ERROR_SELECTED_TRUST_INVALID = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.TRUST_SELECTION_INVALID
+            .value();
+    private static final String ERROR_USERNAME_INCORRECT = com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.USERNAME_POLICY_INVALID
+            .value();
+    private static final String ERROR_DOWNSTREAM_UNAVAILABLE = com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE
+            .value();
+    private static final String ERROR_SYSTEM_UNAVAILABLE = com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE
+            .value();
 
     private static final Set<AuthFlowStatus> ALLOWED_STATES = Set.of(
             AuthFlowStatus.OTP_VERIFIED,
@@ -77,10 +85,14 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
             Clock clock) {
         this.authFlowSessionPort = Objects.requireNonNull(authFlowSessionPort, "authFlowSessionPort must not be null");
         this.expiryRefreshPort = Objects.requireNonNull(expiryRefreshPort, "expiryRefreshPort must not be null");
-        this.usernameAvailabilityPort = Objects.requireNonNull(usernameAvailabilityPort, "usernameAvailabilityPort must not be null");
-        this.authWorkflowPolicyPort = Objects.requireNonNull(authWorkflowPolicyPort, "authWorkflowPolicyPort must not be null");
-        this.downstreamErrorClassificationPort = Objects.requireNonNull(downstreamErrorClassificationPort, "downstreamErrorClassificationPort must not be null");
-        this.usernameCheckProtectorPort = Objects.requireNonNull(usernameCheckProtectorPort, "usernameCheckProtectorPort must not be null");
+        this.usernameAvailabilityPort = Objects.requireNonNull(usernameAvailabilityPort,
+                "usernameAvailabilityPort must not be null");
+        this.authWorkflowPolicyPort = Objects.requireNonNull(authWorkflowPolicyPort,
+                "authWorkflowPolicyPort must not be null");
+        this.downstreamErrorClassificationPort = Objects.requireNonNull(downstreamErrorClassificationPort,
+                "downstreamErrorClassificationPort must not be null");
+        this.usernameCheckProtectorPort = Objects.requireNonNull(usernameCheckProtectorPort,
+                "usernameCheckProtectorPort must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
 
@@ -156,7 +168,8 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
                     case DOWNSTREAM_FAILED -> Mono.just(downstreamFailed());
                 })
                 .onErrorResume(exception -> {
-                    log.error("event=registration.usernameCheck.failure severity=FATAL status=TECHNICAL_FAILURE correlationId={}",
+                    log.error(
+                            "event=registration.usernameCheck.failure severity=FATAL status=TECHNICAL_FAILURE correlationId={}",
                             safe(command.correlationId()));
                     return Mono.just(downstreamFailed());
                 });
@@ -358,7 +371,8 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
             return null;
         }
         try {
-            return usernameCheckProtectorPort.unprotect(new RegistrationUsernameCheckEncryptedState(ciphertext, keyVersion, algorithm));
+            return usernameCheckProtectorPort
+                    .unprotect(new RegistrationUsernameCheckEncryptedState(ciphertext, keyVersion, algorithm));
         } catch (RuntimeException exception) {
             return null;
         }

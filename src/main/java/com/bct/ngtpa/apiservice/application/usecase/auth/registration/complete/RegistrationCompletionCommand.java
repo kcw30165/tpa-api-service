@@ -22,12 +22,16 @@ public record RegistrationCompletionCommand(
         mobileNumber = mobileNumber == null ? "" : mobileNumber;
         email = email == null ? "" : email;
     }
+
     private static String required(String value, String name) {
         Objects.requireNonNull(value, name + " must not be null");
-        if (value.isBlank()) throw new IllegalArgumentException(name + " must not be blank");
+        if (value.isBlank())
+            throw new IllegalArgumentException(name + " must not be blank");
         return value;
     }
-    @Override public String toString() {
+
+    @Override
+    public String toString() {
         return "RegistrationCompletionCommand[accountEnv=<redacted>, trustCode=<redacted>, "
                 + "customerId=<redacted>, userId=<redacted>, password=<redacted>, "
                 + "dateOfBirth=<redacted>, mobileNumber=<redacted>, email=<redacted>, "

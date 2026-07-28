@@ -30,96 +30,105 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class ApimContributionSummaryAdapter implements ApimContributionSummaryPort {
 
-    private static final String API_NAME = "/ws/NGTPA/v1/TRPGetContSumy";
+        private static final String API_NAME = "/ws/NGTPA/v1/TRPGetContSumy";
 
-    private final ApimWebClientFacade apimWebClientFacade;
-    private final ApimCertificateService apimCertificateService;
-    private final ApimPayloadCryptoService apimPayloadCryptoService;
-    private final ApimProperties apimProperties;
+        private final ApimWebClientFacade apimWebClientFacade;
+        private final ApimCertificateService apimCertificateService;
+        private final ApimPayloadCryptoService apimPayloadCryptoService;
+        private final ApimProperties apimProperties;
 
-    @Override
-    @LogExecution(value = "apim.fetchContributionSummary", logArgs = true)
-    public Mono<ContributionSummaryDataset> fetchContributionSummary(FetchContributionSummaryCommand command) {
-        if (!apimProperties.getEncryption().isEnabled()) {
-            var request = apimPayloadCryptoService.encryptRequest(
-                    API_NAME, toApimRequest(command), GetContributionSummaryApimRequest.class, null);
-            return apimWebClientFacade.post(API_NAME, request)
-                    .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
-                            API_NAME, body, GetContributionSummaryDataItem.class, null))
-                    .map(this::toContributionSummaryDataset)
-                    .onErrorMap(ApimCryptoException.class,
-                            ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
+        @Override
+        @LogExecution(value = "apim.fetchContributionSummary", logArgs = true)
+        public Mono<ContributionSummaryDataset> fetchContributionSummary(FetchContributionSummaryCommand command) {
+                if (!apimProperties.getEncryption().isEnabled()) {
+                        var request = apimPayloadCryptoService.encryptRequest(
+                                        API_NAME, toApimRequest(command), GetContributionSummaryApimRequest.class,
+                                        null);
+                        return apimWebClientFacade.post(API_NAME, request)
+                                        .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
+                                                        API_NAME, body, GetContributionSummaryDataItem.class, null))
+                                        .map(this::toContributionSummaryDataset)
+                                        .onErrorMap(ApimCryptoException.class,
+                                                        ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR,
+                                                                        ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(),
+                                                                        ex));
+                }
+
+                return apimCertificateService.getBctPublicKey()
+                                .flatMap(publicKey -> {
+                                        var request = apimPayloadCryptoService.encryptRequest(
+                                                        API_NAME, toApimRequest(command),
+                                                        GetContributionSummaryApimRequest.class, publicKey);
+                                        return apimWebClientFacade.post(API_NAME, request)
+                                                        .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
+                                                                        API_NAME, body,
+                                                                        GetContributionSummaryDataItem.class,
+                                                                        publicKey))
+                                                        .map(this::toContributionSummaryDataset);
+                                })
+                                .onErrorMap(ApimCryptoException.class,
+                                                ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR,
+                                                                ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
         }
 
-        return apimCertificateService.getBctPublicKey()
-                .flatMap(publicKey -> {
-                    var request = apimPayloadCryptoService.encryptRequest(
-                            API_NAME, toApimRequest(command), GetContributionSummaryApimRequest.class, publicKey);
-                    return apimWebClientFacade.post(API_NAME, request)
-                            .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
-                                    API_NAME, body, GetContributionSummaryDataItem.class, publicKey))
-                            .map(this::toContributionSummaryDataset);
-                })
-                .onErrorMap(ApimCryptoException.class,
-                        ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
-    }
-
-    private GetContributionSummaryApimRequest toApimRequest(FetchContributionSummaryCommand command) {
-        return GetContributionSummaryApimRequest.builder()
-                .policyNo(command.policyNo())
-                .certNo(command.certNo())
-                .userId(command.userId())
-                .coverFrom(command.coverFrom())
-                .coverTo(command.coverTo())
-                .build();
-    }
-
-    private ContributionSummaryDataset toContributionSummaryDataset(
-            ApimResponseEnvelope<GetContributionSummaryDataItem> response) {
-        List<GetContributionSummaryDataItem> data = ApimResponseValidator.requireSuccessData(response);
-        if (data.isEmpty()) {
-            return new ContributionSummaryDataset("", List.of(), List.of());
+        private GetContributionSummaryApimRequest toApimRequest(FetchContributionSummaryCommand command) {
+                return GetContributionSummaryApimRequest.builder()
+                                .policyNo(command.policyNo())
+                                .certNo(command.certNo())
+                                .userId(command.userId())
+                                .coverFrom(command.coverFrom())
+                                .coverTo(command.coverTo())
+                                .build();
         }
 
-        Map<String, ContributionSource> sources = new LinkedHashMap<>();
-        String currency = data.stream()
-                .filter(Objects::nonNull)
-                .map(GetContributionSummaryDataItem::getCurrency)
-                .filter(StringUtils::hasText)
-                .findFirst()
-                .orElse("");
-        List<ContributionEntry> entries = data.stream()
-                .filter(Objects::nonNull)
-                .flatMap(item -> {
-                    var dispSources = item.getDispSrc() == null
-                            ? List.<com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetContributionSummaryDispSrcItem>of()
-                            : item.getDispSrc();
-                    dispSources.stream()
-                            .filter(Objects::nonNull)
-                            .forEach(sourceItem -> sources.putIfAbsent(
-                                    sourceItem.getDispSrc(),
-                                    new ContributionSource(
-                                            sourceItem.getDispSrc(),
-                                            new ContributionLabels(sourceItem.getSrcDesc(),
-                                                    sourceItem.getSrcChinDesc()),
-                                            sourceItem.getSeq())));
-                    var details = item.getContDtl() == null ? List.<GetContributionSummaryContDtlItem>of()
-                            : item.getContDtl();
-                    return details.stream();
-                })
-                .filter(Objects::nonNull)
-                .map(this::toContributionEntry)
-                .toList();
+        private ContributionSummaryDataset toContributionSummaryDataset(
+                        ApimResponseEnvelope<GetContributionSummaryDataItem> response) {
+                List<GetContributionSummaryDataItem> data = ApimResponseValidator.requireSuccessData(response);
+                if (data.isEmpty()) {
+                        return new ContributionSummaryDataset("", List.of(), List.of());
+                }
 
-        return new ContributionSummaryDataset(currency, List.copyOf(sources.values()), entries);
-    }
+                Map<String, ContributionSource> sources = new LinkedHashMap<>();
+                String currency = data.stream()
+                                .filter(Objects::nonNull)
+                                .map(GetContributionSummaryDataItem::getCurrency)
+                                .filter(StringUtils::hasText)
+                                .findFirst()
+                                .orElse("");
+                List<ContributionEntry> entries = data.stream()
+                                .filter(Objects::nonNull)
+                                .flatMap(item -> {
+                                        var dispSources = item.getDispSrc() == null
+                                                        ? List.<com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetContributionSummaryDispSrcItem>of()
+                                                        : item.getDispSrc();
+                                        dispSources.stream()
+                                                        .filter(Objects::nonNull)
+                                                        .forEach(sourceItem -> sources.putIfAbsent(
+                                                                        sourceItem.getDispSrc(),
+                                                                        new ContributionSource(
+                                                                                        sourceItem.getDispSrc(),
+                                                                                        new ContributionLabels(
+                                                                                                        sourceItem.getSrcDesc(),
+                                                                                                        sourceItem.getSrcChinDesc()),
+                                                                                        sourceItem.getSeq())));
+                                        var details = item.getContDtl() == null
+                                                        ? List.<GetContributionSummaryContDtlItem>of()
+                                                        : item.getContDtl();
+                                        return details.stream();
+                                })
+                                .filter(Objects::nonNull)
+                                .map(this::toContributionEntry)
+                                .toList();
 
-    private ContributionEntry toContributionEntry(GetContributionSummaryContDtlItem item) {
-        return new ContributionEntry(
-                item.getDispSrc(),
-                item.getCoverFrom(),
-                item.getCoverTo(),
-                item.getDealDate(),
-                item.getContAmt());
-    }
+                return new ContributionSummaryDataset(currency, List.copyOf(sources.values()), entries);
+        }
+
+        private ContributionEntry toContributionEntry(GetContributionSummaryContDtlItem item) {
+                return new ContributionEntry(
+                                item.getDispSrc(),
+                                item.getCoverFrom(),
+                                item.getCoverTo(),
+                                item.getDealDate(),
+                                item.getContAmt());
+        }
 }

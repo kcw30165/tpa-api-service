@@ -89,7 +89,8 @@ public class ContributionSummaryWebMapper {
             String currencyCode,
             String currencyText) {
 
-        // Period: value=ISO, text=formatted via DateDisplayPort from the actual row period dates
+        // Period: value=ISO, text=formatted via DateDisplayPort from the actual row
+        // period dates
         LocalDate periodFrom = tryParseApimDate(row.coverFrom());
         LocalDate periodTo = tryParseApimDate(row.coverTo());
         String fromIso = periodFrom != null ? periodFrom.format(ISO_DATE_FORMATTER) : row.coverFrom();
@@ -105,7 +106,8 @@ public class ContributionSummaryWebMapper {
                 new ContributionDateValueResponse(fromIso, fromText),
                 new ContributionDateValueResponse(toIso, toText));
 
-        // Dealing date: value=ISO, text=formatted via DateDisplayPort (same as period dates)
+        // Dealing date: value=ISO, text=formatted via DateDisplayPort (same as period
+        // dates)
         LocalDate dealing = tryParseApimDate(row.dealingDate());
         String dealingIso = dealing != null ? dealing.format(ISO_DATE_FORMATTER) : row.dealingDate();
         String dealingText = dealing != null
@@ -127,7 +129,7 @@ public class ContributionSummaryWebMapper {
         // Breakdown rows: total first, then by source order
         List<ContributionBreakdownRowResponse> breakdownRows = new ArrayList<>();
         breakdownRows.add(new ContributionBreakdownRowResponse(
-            resolveTotalLabel(displayConfig, lang),
+                resolveTotalLabel(displayConfig, lang),
                 new ContributionAmountValueResponse(totalAmount, totalText)));
 
         row.details(result.report().sources()).forEach(detail -> {
@@ -152,19 +154,24 @@ public class ContributionSummaryWebMapper {
     // --- Helpers ---
 
     private String resolveCurrencyText(com.bct.ngtpa.apiservice.application.dto.CurrencyDisplay display, String lang) {
-        if (display == null) return "";
-        if (isZhHk(lang)) return display.zh() != null ? display.zh() : "";
+        if (display == null)
+            return "";
+        if (isZhHk(lang))
+            return display.zh() != null ? display.zh() : "";
         return display.en() != null ? display.en() : "";
     }
 
     private String resolveTotalLabel(ContributionWebDisplayConfig displayConfig, String lang) {
-        if (isZhHk(lang)) return displayConfig.totalLabelZh();
+        if (isZhHk(lang))
+            return displayConfig.totalLabelZh();
         return displayConfig.totalLabelEn();
     }
 
     private String resolveLabel(com.bct.ngtpa.apiservice.domain.model.ContributionLabels labels, String lang) {
-        if (labels == null) return "";
-        if (isZhHk(lang)) return StringUtils.hasText(labels.zh()) ? labels.zh() : labels.en();
+        if (labels == null)
+            return "";
+        if (isZhHk(lang))
+            return StringUtils.hasText(labels.zh()) ? labels.zh() : labels.en();
         return StringUtils.hasText(labels.en()) ? labels.en() : "";
     }
 
@@ -173,7 +180,8 @@ public class ContributionSummaryWebMapper {
     }
 
     static LocalDate tryParseApimDate(String raw) {
-        if (!StringUtils.hasText(raw)) return null;
+        if (!StringUtils.hasText(raw))
+            return null;
         try {
             return LocalDate.parse(raw.trim(), APIM_DATE_FORMATTER);
         } catch (DateTimeParseException e) {
@@ -183,7 +191,8 @@ public class ContributionSummaryWebMapper {
 
     /**
      * Builds a stable list of unique item IDs for the given rows.
-     * If a base ID (CONTRIB-yyyy-MM) appears multiple times, duplicates are suffixed with -2, -3, etc.
+     * If a base ID (CONTRIB-yyyy-MM) appears multiple times, duplicates are
+     * suffixed with -2, -3, etc.
      * The first occurrence keeps the unsuffixed base ID.
      */
     static List<String> buildItemIds(List<ContributionSummaryRow> rows) {
@@ -207,7 +216,8 @@ public class ContributionSummaryWebMapper {
 
     static String baseItemId(ContributionSummaryRow row) {
         LocalDate date = tryParseApimDate(row.coverFrom());
-        if (date == null) return "CONTRIB-unknown";
+        if (date == null)
+            return "CONTRIB-unknown";
         return "CONTRIB-" + date.format(DateTimeFormatter.ofPattern("yyyy-MM"));
     }
 }

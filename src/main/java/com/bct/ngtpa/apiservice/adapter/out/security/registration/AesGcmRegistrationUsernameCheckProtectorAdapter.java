@@ -65,7 +65,8 @@ public class AesGcmRegistrationUsernameCheckProtectorAdapter implements Registra
                     keyVersion,
                     RegistrationAuthFlowEncryptedContext.DEFAULT_ALGORITHM);
         } catch (Exception exception) {
-            throw new RegistrationAuthFlowContextProtectionException("Unable to protect registration username check", exception);
+            throw new RegistrationAuthFlowContextProtectionException("Unable to protect registration username check",
+                    exception);
         }
     }
 
@@ -85,7 +86,8 @@ public class AesGcmRegistrationUsernameCheckProtectorAdapter implements Registra
             Payload payload = objectMapper.readValue(cipher.doFinal(encrypted), Payload.class);
             return payload.toUsernameCheckState();
         } catch (Exception exception) {
-            throw new RegistrationAuthFlowContextProtectionException("Unable to unprotect registration username check", exception);
+            throw new RegistrationAuthFlowContextProtectionException("Unable to unprotect registration username check",
+                    exception);
         }
     }
 

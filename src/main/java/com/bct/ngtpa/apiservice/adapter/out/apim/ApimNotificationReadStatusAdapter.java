@@ -38,27 +38,27 @@ public class ApimNotificationReadStatusAdapter implements ApimNotificationReadSt
     @LogExecution(value = "apim.updateNotificationReadStatus", logArgs = true)
     public Mono<UpdateNotificationsReadStatusResult> updateReadStatus(UpdateNotificationsReadStatusCommand command) {
         if (!apimProperties.getEncryption().isEnabled()) {
-                var request = apimPayloadCryptoService.encryptRequest(
+            var request = apimPayloadCryptoService.encryptRequest(
                     API_NAME, toApimRequest(command), UpdateNotificationReadStatusApimRequest.class, null);
-                return apimWebClientFacade.post(API_NAME, request)
+            return apimWebClientFacade.post(API_NAME, request)
                     .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
-                        API_NAME, body, UpdateNotificationReadStatusApimDataItem.class, null))
+                            API_NAME, body, UpdateNotificationReadStatusApimDataItem.class, null))
                     .map(response -> toResult(response, command.targetStatus()))
-                    .onErrorMap(ApimCryptoException.class, ex ->
-                        new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
+                    .onErrorMap(ApimCryptoException.class, ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR,
+                            ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
         }
 
         return apimCertificateService.getBctPublicKey()
                 .flatMap(publicKey -> {
-                        var request = apimPayloadCryptoService.encryptRequest(
+                    var request = apimPayloadCryptoService.encryptRequest(
                             API_NAME, toApimRequest(command), UpdateNotificationReadStatusApimRequest.class, publicKey);
-                        return apimWebClientFacade.post(API_NAME, request)
+                    return apimWebClientFacade.post(API_NAME, request)
                             .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
-                                API_NAME, body, UpdateNotificationReadStatusApimDataItem.class, publicKey))
+                                    API_NAME, body, UpdateNotificationReadStatusApimDataItem.class, publicKey))
                             .map(response -> toResult(response, command.targetStatus()));
                 })
-                .onErrorMap(ApimCryptoException.class, ex ->
-                    new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
+                .onErrorMap(ApimCryptoException.class, ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR,
+                        ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
     }
 
     private UpdateNotificationReadStatusApimRequest toApimRequest(UpdateNotificationsReadStatusCommand command) {

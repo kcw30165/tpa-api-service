@@ -34,7 +34,7 @@ class DefaultOtpChallengeServiceReplaceTest {
         FakeOtpCodeGenerator codeGenerator = new FakeOtpCodeGenerator("654321");
 
         StepVerifier.create(service(statePort, codeGenerator, new FakeOtpChallengeIdGenerator("otp-new-001"))
-                        .replaceChallenge(command("missing", 60)))
+                .replaceChallenge(command("missing", 60)))
                 .assertNext(result -> {
                     assertThat(result.previousOtpChallengeId()).isEqualTo("missing");
                     assertThat(result.outcome()).isEqualTo(OtpReplacementOutcome.NOT_FOUND);
@@ -55,7 +55,7 @@ class DefaultOtpChallengeServiceReplaceTest {
         FakeOtpCodeGenerator codeGenerator = new FakeOtpCodeGenerator("654321");
 
         StepVerifier.create(service(statePort, codeGenerator, new FakeOtpChallengeIdGenerator("otp-new-001"))
-                        .replaceChallenge(command("otp-001", 60)))
+                .replaceChallenge(command("otp-001", 60)))
                 .assertNext(result -> assertThat(result.outcome()).isEqualTo(OtpReplacementOutcome.ALREADY_VERIFIED))
                 .verifyComplete();
 
@@ -73,10 +73,10 @@ class DefaultOtpChallengeServiceReplaceTest {
         FakeOtpCodeGenerator codeGenerator = new FakeOtpCodeGenerator("654321");
 
         StepVerifier.create(service(
-                        statePort,
-                        codeGenerator,
-                        new FakeOtpChallengeIdGenerator("otp-new-001"))
-                        .replaceChallenge(command("otp-001", 60)))
+                statePort,
+                codeGenerator,
+                new FakeOtpChallengeIdGenerator("otp-new-001"))
+                .replaceChallenge(command("otp-001", 60)))
                 .assertNext(result -> {
                     assertThat(result.outcome()).isEqualTo(OtpReplacementOutcome.REPLACED);
                     assertThat(result.newOtpChallengeId()).isEqualTo("otp-new-001");
@@ -95,7 +95,9 @@ class DefaultOtpChallengeServiceReplaceTest {
         FakeOtpChallengeStatePort statePort = new FakeOtpChallengeStatePort();
         statePort.store(sampleChallenge().withExpiresAt(FIXED_NOW));
 
-        StepVerifier.create(service(statePort, new FakeOtpCodeGenerator("654321"), new FakeOtpChallengeIdGenerator("otp-new-001"))
+        StepVerifier
+                .create(service(statePort, new FakeOtpCodeGenerator("654321"),
+                        new FakeOtpChallengeIdGenerator("otp-new-001"))
                         .replaceChallenge(command("otp-001", 60)))
                 .assertNext(result -> assertThat(result.outcome()).isEqualTo(OtpReplacementOutcome.EXPIRED))
                 .verifyComplete();
@@ -111,7 +113,7 @@ class DefaultOtpChallengeServiceReplaceTest {
         FakeOtpCodeGenerator codeGenerator = new FakeOtpCodeGenerator("654321");
 
         StepVerifier.create(service(statePort, codeGenerator, new FakeOtpChallengeIdGenerator("otp-new-001"))
-                        .replaceChallenge(command("otp-001", 60)))
+                .replaceChallenge(command("otp-001", 60)))
                 .assertNext(result -> {
                     assertThat(result.outcome()).isEqualTo(OtpReplacementOutcome.COOLDOWN_ACTIVE);
                     assertThat(result.retryAfterSeconds()).isEqualTo(30);
@@ -131,7 +133,7 @@ class DefaultOtpChallengeServiceReplaceTest {
         FakeOtpCodeGenerator codeGenerator = new FakeOtpCodeGenerator("654321");
 
         StepVerifier.create(service(statePort, codeGenerator, new FakeOtpChallengeIdGenerator("otp-new-001"))
-                        .replaceChallenge(command("otp-001", 0)))
+                .replaceChallenge(command("otp-001", 0)))
                 .assertNext(result -> {
                     assertThat(result.outcome()).isEqualTo(OtpReplacementOutcome.MAX_RESEND_EXCEEDED);
                     assertThat(result.rawCode()).isNull();
@@ -151,7 +153,7 @@ class DefaultOtpChallengeServiceReplaceTest {
         FakeOtpCodeGenerator codeGenerator = new FakeOtpCodeGenerator("654321");
 
         StepVerifier.create(service(statePort, codeGenerator, new FakeOtpChallengeIdGenerator("otp-new-001"))
-                        .replaceChallenge(command("otp-001", 60)))
+                .replaceChallenge(command("otp-001", 60)))
                 .assertNext(result -> {
                     assertThat(result.outcome()).isEqualTo(OtpReplacementOutcome.REPLACED);
                     assertThat(result.previousOtpChallengeId()).isEqualTo("otp-001");
@@ -185,7 +187,9 @@ class DefaultOtpChallengeServiceReplaceTest {
         FakeOtpChallengeStatePort statePort = new FakeOtpChallengeStatePort();
         statePort.store(sampleChallenge().withFailedAttemptCount(2));
 
-        StepVerifier.create(service(statePort, new FakeOtpCodeGenerator("654321"), new FakeOtpChallengeIdGenerator("otp-new-001"))
+        StepVerifier
+                .create(service(statePort, new FakeOtpCodeGenerator("654321"),
+                        new FakeOtpChallengeIdGenerator("otp-new-001"))
                         .replaceChallenge(command("otp-001", 60)))
                 .expectNextCount(1)
                 .verifyComplete();
@@ -198,7 +202,9 @@ class DefaultOtpChallengeServiceReplaceTest {
         FakeOtpChallengeStatePort statePort = new FakeOtpChallengeStatePort();
         statePort.store(sampleChallenge().withResendAttemptCount(1));
 
-        StepVerifier.create(service(statePort, new FakeOtpCodeGenerator("654321"), new FakeOtpChallengeIdGenerator("otp-new-001"))
+        StepVerifier
+                .create(service(statePort, new FakeOtpCodeGenerator("654321"),
+                        new FakeOtpChallengeIdGenerator("otp-new-001"))
                         .replaceChallenge(command("otp-001", 60)))
                 .assertNext(result -> assertThat(result.remainingResendAttempts()).isEqualTo(1))
                 .verifyComplete();
@@ -211,7 +217,9 @@ class DefaultOtpChallengeServiceReplaceTest {
         FakeOtpChallengeStatePort statePort = new FakeOtpChallengeStatePort();
         statePort.store(sampleChallenge());
 
-        StepVerifier.create(service(statePort, new FakeOtpCodeGenerator("654321"), new FakeOtpChallengeIdGenerator("otp-new-001"))
+        StepVerifier
+                .create(service(statePort, new FakeOtpCodeGenerator("654321"),
+                        new FakeOtpChallengeIdGenerator("otp-new-001"))
                         .replaceChallenge(command("otp-001", 60)))
                 .assertNext(result -> assertThat(result.rawCode()).isEqualTo("654321"))
                 .verifyComplete();
@@ -227,7 +235,7 @@ class DefaultOtpChallengeServiceReplaceTest {
         FakeOtpCodeGenerator codeGenerator = new FakeOtpCodeGenerator("654321");
 
         StepVerifier.create(service(statePort, codeGenerator, new FakeOtpChallengeIdGenerator("otp-new-001"))
-                        .replaceChallenge(command("otp-001", 0)))
+                .replaceChallenge(command("otp-001", 0)))
                 .assertNext(result -> {
                     assertThat(result.outcome()).isEqualTo(OtpReplacementOutcome.MAX_RESEND_EXCEEDED);
                     assertThat(result.rawCode()).isNull();
@@ -249,8 +257,17 @@ class DefaultOtpChallengeServiceReplaceTest {
                 Clock.fixed(FIXED_NOW, ZoneOffset.UTC));
     }
 
-    private ReplaceOtpChallengeCommand command(String currentOtpChallengeId, int resendCooldownSeconds) {
-        return new ReplaceOtpChallengeCommand(currentOtpChallengeId, 6, true, 300, resendCooldownSeconds, FIXED_NOW);
+    private ReplaceOtpChallengeCommand command(
+            String currentOtpChallengeId,
+            int resendCooldownSeconds) {
+        return new ReplaceOtpChallengeCommand(
+                currentOtpChallengeId,
+                6,
+                true,
+                300,
+                resendCooldownSeconds,
+                true,
+                FIXED_NOW);
     }
 
     private TestOtpChallenge sampleChallenge() {
@@ -349,44 +366,62 @@ class DefaultOtpChallengeServiceReplaceTest {
 
         private TestOtpChallenge withStatus(OtpStatus status) {
             return new TestOtpChallenge(copy(
-                    value.otpChallengeId(), value.scenario(), value.workflowRef(), value.channel(), value.destinationHash(),
-                    value.codeHash(), status, value.failedAttemptCount(), value.maxVerifyAttempts(), value.resendAttemptCount(),
-                    value.maxResendAttempts(), value.createdAt(), value.expiresAt(), value.lastSentAt(), value.invalidatedAt(), value.verifiedAt()));
+                    value.otpChallengeId(), value.scenario(), value.workflowRef(), value.channel(),
+                    value.destinationHash(),
+                    value.codeHash(), status, value.failedAttemptCount(), value.maxVerifyAttempts(),
+                    value.resendAttemptCount(),
+                    value.maxResendAttempts(), value.createdAt(), value.expiresAt(), value.lastSentAt(),
+                    value.invalidatedAt(), value.verifiedAt()));
         }
 
         private TestOtpChallenge withVerifiedAt(Instant verifiedAt) {
             return new TestOtpChallenge(copy(
-                    value.otpChallengeId(), value.scenario(), value.workflowRef(), value.channel(), value.destinationHash(),
-                    value.codeHash(), value.status(), value.failedAttemptCount(), value.maxVerifyAttempts(), value.resendAttemptCount(),
-                    value.maxResendAttempts(), value.createdAt(), value.expiresAt(), value.lastSentAt(), value.invalidatedAt(), verifiedAt));
+                    value.otpChallengeId(), value.scenario(), value.workflowRef(), value.channel(),
+                    value.destinationHash(),
+                    value.codeHash(), value.status(), value.failedAttemptCount(), value.maxVerifyAttempts(),
+                    value.resendAttemptCount(),
+                    value.maxResendAttempts(), value.createdAt(), value.expiresAt(), value.lastSentAt(),
+                    value.invalidatedAt(), verifiedAt));
         }
 
         private TestOtpChallenge withExpiresAt(Instant expiresAt) {
             return new TestOtpChallenge(copy(
-                    value.otpChallengeId(), value.scenario(), value.workflowRef(), value.channel(), value.destinationHash(),
-                    value.codeHash(), value.status(), value.failedAttemptCount(), value.maxVerifyAttempts(), value.resendAttemptCount(),
-                    value.maxResendAttempts(), value.createdAt(), expiresAt, value.lastSentAt(), value.invalidatedAt(), value.verifiedAt()));
+                    value.otpChallengeId(), value.scenario(), value.workflowRef(), value.channel(),
+                    value.destinationHash(),
+                    value.codeHash(), value.status(), value.failedAttemptCount(), value.maxVerifyAttempts(),
+                    value.resendAttemptCount(),
+                    value.maxResendAttempts(), value.createdAt(), expiresAt, value.lastSentAt(), value.invalidatedAt(),
+                    value.verifiedAt()));
         }
 
         private TestOtpChallenge withLastSentAt(Instant lastSentAt) {
             return new TestOtpChallenge(copy(
-                    value.otpChallengeId(), value.scenario(), value.workflowRef(), value.channel(), value.destinationHash(),
-                    value.codeHash(), value.status(), value.failedAttemptCount(), value.maxVerifyAttempts(), value.resendAttemptCount(),
-                    value.maxResendAttempts(), value.createdAt(), value.expiresAt(), lastSentAt, value.invalidatedAt(), value.verifiedAt()));
+                    value.otpChallengeId(), value.scenario(), value.workflowRef(), value.channel(),
+                    value.destinationHash(),
+                    value.codeHash(), value.status(), value.failedAttemptCount(), value.maxVerifyAttempts(),
+                    value.resendAttemptCount(),
+                    value.maxResendAttempts(), value.createdAt(), value.expiresAt(), lastSentAt, value.invalidatedAt(),
+                    value.verifiedAt()));
         }
 
         private TestOtpChallenge withResendAttemptCount(int resendAttemptCount) {
             return new TestOtpChallenge(copy(
-                    value.otpChallengeId(), value.scenario(), value.workflowRef(), value.channel(), value.destinationHash(),
-                    value.codeHash(), value.status(), value.failedAttemptCount(), value.maxVerifyAttempts(), resendAttemptCount,
-                    value.maxResendAttempts(), value.createdAt(), value.expiresAt(), value.lastSentAt(), value.invalidatedAt(), value.verifiedAt()));
+                    value.otpChallengeId(), value.scenario(), value.workflowRef(), value.channel(),
+                    value.destinationHash(),
+                    value.codeHash(), value.status(), value.failedAttemptCount(), value.maxVerifyAttempts(),
+                    resendAttemptCount,
+                    value.maxResendAttempts(), value.createdAt(), value.expiresAt(), value.lastSentAt(),
+                    value.invalidatedAt(), value.verifiedAt()));
         }
 
         private TestOtpChallenge withFailedAttemptCount(int failedAttemptCount) {
             return new TestOtpChallenge(copy(
-                    value.otpChallengeId(), value.scenario(), value.workflowRef(), value.channel(), value.destinationHash(),
-                    value.codeHash(), value.status(), failedAttemptCount, value.maxVerifyAttempts(), value.resendAttemptCount(),
-                    value.maxResendAttempts(), value.createdAt(), value.expiresAt(), value.lastSentAt(), value.invalidatedAt(), value.verifiedAt()));
+                    value.otpChallengeId(), value.scenario(), value.workflowRef(), value.channel(),
+                    value.destinationHash(),
+                    value.codeHash(), value.status(), failedAttemptCount, value.maxVerifyAttempts(),
+                    value.resendAttemptCount(),
+                    value.maxResendAttempts(), value.createdAt(), value.expiresAt(), value.lastSentAt(),
+                    value.invalidatedAt(), value.verifiedAt()));
         }
 
         private OtpChallenge copy(

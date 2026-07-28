@@ -34,7 +34,8 @@ public class DefaultConfigVariantResolver implements ConfigVariantResolver {
 
         var strategy = strategies.get(request.category());
         if (strategy == null) {
-            throw new ConfigResolutionException("No key candidate strategy registered for category " + request.category());
+            throw new ConfigResolutionException(
+                    "No key candidate strategy registered for category " + request.category());
         }
 
         List<String> candidates;

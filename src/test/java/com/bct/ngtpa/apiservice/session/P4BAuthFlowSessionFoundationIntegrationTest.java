@@ -14,8 +14,6 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionData;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.SelectedTrust;
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.UsernameCheckState;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.service.session.SessionIdGenerator;
 import com.bct.ngtpa.apiservice.application.service.session.SessionTtlCalculator;
@@ -86,9 +84,12 @@ class P4BAuthFlowSessionFoundationIntegrationTest {
     void p4bCsrfBindingStoresHashOnly() {
         var port = new FakeAuthFlowSessionPort();
         port.save(activeSession(new AuthFlowSessionId("afs_csrf"), AuthFlowStatus.OTP_SENT, null));
-        var service = new AuthFlowSessionCsrfService(port, new FixedCsrfTokenGenerator("csrf_raw_secret"), new Sha256CsrfTokenHasher());
+        var service = new AuthFlowSessionCsrfService(port, new FixedCsrfTokenGenerator("csrf_raw_secret"),
+                new Sha256CsrfTokenHasher());
 
-        StepVerifier.create(service.createForSession(new CreateAuthFlowSessionCsrfCommand(new AuthFlowSessionId("afs_csrf"), NOW, 1800, null)))
+        StepVerifier
+                .create(service.createForSession(
+                        new CreateAuthFlowSessionCsrfCommand(new AuthFlowSessionId("afs_csrf"), NOW, 1800, null)))
                 .assertNext(result -> {
                     assertThat(result.rawToken()).isEqualTo("csrf_raw_secret");
                     assertThat(result.toString()).doesNotContain("csrf_raw_secret");
@@ -106,15 +107,15 @@ class P4BAuthFlowSessionFoundationIntegrationTest {
         var lifecycle = lifecycle(port, new PrefixSessionIdGenerator());
 
         StepVerifier.create(lifecycle.start(new StartAuthFlowSessionCommand(
-                        AuthFlowScenario.REGISTRATION,
-                        AuthFlowStatus.STARTED,
-                        new SessionTtlPolicy(true, true, 1800),
-                        "afs",
-                        16,
-                        AuthFlowSessionData.empty(),
-                        null,
-                        null,
-                        null)))
+                AuthFlowScenario.REGISTRATION,
+                AuthFlowStatus.STARTED,
+                new SessionTtlPolicy(true, true, 1800),
+                "afs",
+                16,
+                AuthFlowSessionData.empty(),
+                null,
+                null,
+                null)))
                 .assertNext(result -> {
                     assertThat(result.session().authFlowSessionId().value()).startsWith("afs_");
                     assertThat(result.session().toString()).doesNotContain("auth_flow_sid", "Cookie", "Header");
@@ -122,7 +123,6 @@ class P4BAuthFlowSessionFoundationIntegrationTest {
                 .verifyComplete();
         assertThat(port.cookieInstructionCreated).isFalse();
     }
-
 
     @Test
     void p4bConcurrencyReplacesExistingActiveSession() {
@@ -133,18 +133,20 @@ class P4BAuthFlowSessionFoundationIntegrationTest {
         port.save(activeSession(existingId, AuthFlowStatus.OTP_SENT, null));
 
         StepVerifier.create(concurrency.start(new StartAuthFlowSessionWithConcurrencyCommand(
-                        AuthFlowScenario.REGISTRATION,
-                        AuthFlowStatus.STARTED,
-                        new SessionTtlPolicy(true, true, 1800),
-                        "afs",
-                        16,
-                        AuthFlowSessionData.empty(),
-                        null,
-                        null,
-                        existingId,
-                        new SessionConcurrencyPolicy(SessionConcurrencyMode.SINGLE_ACTIVE_FLOW, SessionOnNewFlowPolicy.REPLACE_EXISTING),
-                        null)))
-                .assertNext(result -> assertThat(result.decision()).isEqualTo(AuthFlowConcurrencyDecision.REPLACED_EXISTING))
+                AuthFlowScenario.REGISTRATION,
+                AuthFlowStatus.STARTED,
+                new SessionTtlPolicy(true, true, 1800),
+                "afs",
+                16,
+                AuthFlowSessionData.empty(),
+                null,
+                null,
+                existingId,
+                new SessionConcurrencyPolicy(SessionConcurrencyMode.SINGLE_ACTIVE_FLOW,
+                        SessionOnNewFlowPolicy.REPLACE_EXISTING),
+                null)))
+                .assertNext(result -> assertThat(result.decision())
+                        .isEqualTo(AuthFlowConcurrencyDecision.REPLACED_EXISTING))
                 .verifyComplete();
         assertThat(port.sessions.get("afs_existing").status()).isEqualTo(AuthFlowStatus.CANCELLED);
         assertThat(port.cookieInstructionCreated).isFalse();
@@ -155,10 +157,15 @@ class P4BAuthFlowSessionFoundationIntegrationTest {
         var port = new FakeAuthFlowSessionPort();
         var concurrency = new AuthFlowSessionConcurrencyService(lifecycle(port, new PrefixSessionIdGenerator()));
 
-        StepVerifier.create(concurrency.start(baseConcurrencyCommand(new SessionConcurrencyPolicy(SessionConcurrencyMode.MULTI_FLOW, SessionOnNewFlowPolicy.REPLACE_EXISTING))))
+        StepVerifier
+                .create(concurrency
+                        .start(baseConcurrencyCommand(new SessionConcurrencyPolicy(SessionConcurrencyMode.MULTI_FLOW,
+                                SessionOnNewFlowPolicy.REPLACE_EXISTING))))
                 .expectError(UnsupportedOperationException.class)
                 .verify();
-        StepVerifier.create(concurrency.start(baseConcurrencyCommand(new SessionConcurrencyPolicy(SessionConcurrencyMode.SINGLE_ACTIVE_FLOW, SessionOnNewFlowPolicy.ALLOW_PARALLEL))))
+        StepVerifier
+                .create(concurrency.start(baseConcurrencyCommand(new SessionConcurrencyPolicy(
+                        SessionConcurrencyMode.SINGLE_ACTIVE_FLOW, SessionOnNewFlowPolicy.ALLOW_PARALLEL))))
                 .expectError(UnsupportedOperationException.class)
                 .verify();
         assertThat(port.createCount).isZero();
@@ -180,15 +187,20 @@ class P4BAuthFlowSessionFoundationIntegrationTest {
                 NOW,
                 NOW.plusSeconds(1800));
 
-        assertThat(session.toString()).doesNotContain("afs_secret", "csrf_hash_secret", "otp_secret", "user_secret", "csrf_raw_secret");
+        assertThat(session.toString()).doesNotContain("afs_secret", "csrf_hash_secret", "otp_secret", "user_secret",
+                "csrf_raw_secret");
     }
 
     @Test
     void p4bAuthenticatedSessionPlaceholderPackageOnlyAndReadmeDocumentsFoundationOnly() throws Exception {
-        assertThat(Files.exists(Path.of("src/main/java/com/bct/ngtpa/apiservice/application/dto/session/authenticated/package-info.java"))).isTrue();
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSession");
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionPort");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthenticatedSessionAdapter");
+        assertThat(Files.exists(Path
+                .of("src/main/java/com/bct/ngtpa/apiservice/application/dto/session/authenticated/package-info.java")))
+                .isTrue();
+        assertThat(Class.forName("com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSession"))
+                .isNotNull();
+        assertThat(Class.forName("com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionPort")).isNotNull();
+        assertThat(Class.forName("com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthenticatedSessionAdapter"))
+                .isNotNull();
 
         var readme = Files.readString(Path.of("README.md"));
         assertThat(readme).contains("### AuthFlowSession Foundation");
@@ -215,12 +227,15 @@ class P4BAuthFlowSessionFoundationIntegrationTest {
                 null);
     }
 
-    private static AuthFlowSessionLifecycleService lifecycle(FakeAuthFlowSessionPort port, SessionIdGenerator generator) {
-        return new AuthFlowSessionLifecycleService(port, generator, new SessionTtlCalculator(), Clock.fixed(NOW, ZoneOffset.UTC));
+    private static AuthFlowSessionLifecycleService lifecycle(FakeAuthFlowSessionPort port,
+            SessionIdGenerator generator) {
+        return new AuthFlowSessionLifecycleService(port, generator, new SessionTtlCalculator(),
+                Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
     private static AuthFlowSession activeSession(AuthFlowSessionId id, AuthFlowStatus status, String csrfHash) {
-        return new AuthFlowSession(id, AuthFlowScenario.REGISTRATION, status, csrfHash, null, AuthFlowSessionData.empty(), NOW.minusSeconds(60), NOW.minusSeconds(60), NOW.plusSeconds(1800));
+        return new AuthFlowSession(id, AuthFlowScenario.REGISTRATION, status, csrfHash, null,
+                AuthFlowSessionData.empty(), NOW.minusSeconds(60), NOW.minusSeconds(60), NOW.plusSeconds(1800));
     }
 
     private static java.util.List<String> recordComponentNames(Class<?> type) {
@@ -238,13 +253,22 @@ class P4BAuthFlowSessionFoundationIntegrationTest {
 
     private static final class FixedCsrfTokenGenerator implements CsrfTokenGenerator {
         private final String token;
-        private FixedCsrfTokenGenerator(String token) { this.token = token; }
-        @Override public String generate() { return token; }
+
+        private FixedCsrfTokenGenerator(String token) {
+            this.token = token;
+        }
+
+        @Override
+        public String generate() {
+            return token;
+        }
     }
 
     private static final class PrefixSessionIdGenerator implements SessionIdGenerator {
         private int sequence;
-        @Override public SessionId generate(SessionIdGenerationCommand command) {
+
+        @Override
+        public SessionId generate(SessionIdGenerationCommand command) {
             sequence++;
             return new SessionId(command.prefix() + "_generated_" + sequence);
         }
@@ -254,17 +278,61 @@ class P4BAuthFlowSessionFoundationIntegrationTest {
         private final Map<String, AuthFlowSession> sessions = new LinkedHashMap<>();
         private boolean cookieInstructionCreated;
         private int createCount;
-        void save(AuthFlowSession session) { sessions.put(session.authFlowSessionId().value(), session); }
-        @Override public Mono<AuthFlowSession> create(AuthFlowSessionCreateCommand command) {
-            createCount++;
-            var session = new AuthFlowSession(command.authFlowSessionId(), command.scenario(), command.initialStatus(), command.csrfTokenHash(), command.activeOtpChallengeId(), command.data(), command.createdAt(), command.createdAt(), command.expiresAt());
-            save(session); return Mono.just(session);
+
+        void save(AuthFlowSession session) {
+            sessions.put(session.authFlowSessionId().value(), session);
         }
-        @Override public Mono<Optional<AuthFlowSession>> load(AuthFlowSessionId id) { return Mono.just(Optional.ofNullable(sessions.get(id.value()))); }
-        @Override public Mono<AuthFlowSession> update(AuthFlowSession session) { save(session); return Mono.just(session); }
-        @Override public Mono<AuthFlowSession> touch(AuthFlowSessionId id, Instant now) { return Mono.error(new UnsupportedOperationException()); }
-        @Override public Mono<AuthFlowSession> complete(AuthFlowSessionId id, Instant now) { var existing = sessions.get(id.value()); var updated = new AuthFlowSession(existing.authFlowSessionId(), existing.scenario(), AuthFlowStatus.COMPLETED, existing.csrfTokenHash(), existing.activeOtpChallengeId(), existing.data(), existing.createdAt(), now, existing.expiresAt()); save(updated); return Mono.just(updated); }
-        @Override public Mono<AuthFlowSession> cancel(AuthFlowSessionId id, Instant now) { var existing = sessions.get(id.value()); var updated = new AuthFlowSession(existing.authFlowSessionId(), existing.scenario(), AuthFlowStatus.CANCELLED, existing.csrfTokenHash(), existing.activeOtpChallengeId(), existing.data(), existing.createdAt(), now, existing.expiresAt()); save(updated); return Mono.just(updated); }
-        @Override public Mono<Void> delete(AuthFlowSessionId id) { sessions.remove(id.value()); return Mono.empty(); }
+
+        @Override
+        public Mono<AuthFlowSession> create(AuthFlowSessionCreateCommand command) {
+            createCount++;
+            var session = new AuthFlowSession(command.authFlowSessionId(), command.scenario(), command.initialStatus(),
+                    command.csrfTokenHash(), command.activeOtpChallengeId(), command.data(), command.createdAt(),
+                    command.createdAt(), command.expiresAt());
+            save(session);
+            return Mono.just(session);
+        }
+
+        @Override
+        public Mono<Optional<AuthFlowSession>> load(AuthFlowSessionId id) {
+            return Mono.just(Optional.ofNullable(sessions.get(id.value())));
+        }
+
+        @Override
+        public Mono<AuthFlowSession> update(AuthFlowSession session) {
+            save(session);
+            return Mono.just(session);
+        }
+
+        @Override
+        public Mono<AuthFlowSession> touch(AuthFlowSessionId id, Instant now) {
+            return Mono.error(new UnsupportedOperationException());
+        }
+
+        @Override
+        public Mono<AuthFlowSession> complete(AuthFlowSessionId id, Instant now) {
+            var existing = sessions.get(id.value());
+            var updated = new AuthFlowSession(existing.authFlowSessionId(), existing.scenario(),
+                    AuthFlowStatus.COMPLETED, existing.csrfTokenHash(), existing.activeOtpChallengeId(),
+                    existing.data(), existing.createdAt(), now, existing.expiresAt());
+            save(updated);
+            return Mono.just(updated);
+        }
+
+        @Override
+        public Mono<AuthFlowSession> cancel(AuthFlowSessionId id, Instant now) {
+            var existing = sessions.get(id.value());
+            var updated = new AuthFlowSession(existing.authFlowSessionId(), existing.scenario(),
+                    AuthFlowStatus.CANCELLED, existing.csrfTokenHash(), existing.activeOtpChallengeId(),
+                    existing.data(), existing.createdAt(), now, existing.expiresAt());
+            save(updated);
+            return Mono.just(updated);
+        }
+
+        @Override
+        public Mono<Void> delete(AuthFlowSessionId id) {
+            sessions.remove(id.value());
+            return Mono.empty();
+        }
     }
 }

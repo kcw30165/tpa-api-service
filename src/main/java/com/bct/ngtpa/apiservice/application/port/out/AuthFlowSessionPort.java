@@ -9,10 +9,16 @@ import reactor.core.publisher.Mono;
 
 public interface AuthFlowSessionPort {
     Mono<AuthFlowSession> create(AuthFlowSessionCreateCommand command);
+
     Mono<Optional<AuthFlowSession>> load(AuthFlowSessionId authFlowSessionId);
+
     Mono<AuthFlowSession> update(AuthFlowSession session);
+
     Mono<AuthFlowSession> touch(AuthFlowSessionId authFlowSessionId, Instant now);
+
     Mono<AuthFlowSession> complete(AuthFlowSessionId authFlowSessionId, Instant now);
+
     Mono<AuthFlowSession> cancel(AuthFlowSessionId authFlowSessionId, Instant now);
+
     Mono<Void> delete(AuthFlowSessionId authFlowSessionId);
 }

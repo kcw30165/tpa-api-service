@@ -25,7 +25,8 @@ public record RegistrationIdempotencyCompleteCommand(
 
     @Override
     public String toString() {
-        return "RegistrationIdempotencyCompleteCommand[action=" + action + ", completedAt=" + completedAt + ", ttl=" + ttl
+        return "RegistrationIdempotencyCompleteCommand[action=" + action + ", completedAt=" + completedAt + ", ttl="
+                + ttl
                 + ", idempotencyKey=<redacted>, requestHash=<redacted>, responseSnapshot=<redacted>]";
     }
 }

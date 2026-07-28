@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.application.usecase.session.authflow;
 
+import com.bct.ngtpa.apiservice.application.port.in.CreateAuthFlowSessionCsrfUseCase;
+
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
@@ -7,7 +9,7 @@ import java.time.Instant;
 import java.util.Objects;
 import reactor.core.publisher.Mono;
 
-public class AuthFlowSessionCsrfService {
+public class AuthFlowSessionCsrfService implements CreateAuthFlowSessionCsrfUseCase {
     private final AuthFlowSessionPort authFlowSessionPort;
     private final CsrfTokenGenerator csrfTokenGenerator;
     private final CsrfTokenHasher csrfTokenHasher;
@@ -22,6 +24,7 @@ public class AuthFlowSessionCsrfService {
         this.csrfTokenHasher = Objects.requireNonNull(csrfTokenHasher, "csrfTokenHasher must not be null");
     }
 
+    @Override
     public Mono<CreateAuthFlowSessionCsrfResult> createForSession(CreateAuthFlowSessionCsrfCommand command) {
         Objects.requireNonNull(command, "command must not be null");
         return bindToken(command.authFlowSessionId(), command.now(), command.ttlSeconds());

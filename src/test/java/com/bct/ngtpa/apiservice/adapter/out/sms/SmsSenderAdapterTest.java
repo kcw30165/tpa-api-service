@@ -1,6 +1,5 @@
 package com.bct.ngtpa.apiservice.adapter.out.sms;
 
-
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import static org.assertj.core.api.Assertions.assertThat;
 import ch.qos.logback.classic.Logger;
@@ -112,7 +111,8 @@ class SmsSenderAdapterTest {
 
     @Test
     void returnsAcceptedWhenProviderReturns2xx() {
-        SmsSenderAdapter adapter = adapterWith(baseProperties(), request -> Mono.just(ClientResponse.create(HttpStatus.OK).build()));
+        SmsSenderAdapter adapter = adapterWith(baseProperties(),
+                request -> Mono.just(ClientResponse.create(HttpStatus.OK).build()));
 
         StepVerifier.create(adapter.sendSms(new SmsMessage("91234567", "Hello Member", "HK", "req-123")))
                 .assertNext(result -> {
@@ -124,14 +124,15 @@ class SmsSenderAdapterTest {
 
     @Test
     void returnsFailedOrPropagatesSafeErrorWhenProviderReturns5xx() {
-        SmsSenderAdapter adapter = adapterWith(baseProperties(), request ->
-                Mono.just(ClientResponse.create(HttpStatus.INTERNAL_SERVER_ERROR).body("provider failure").build()));
+        SmsSenderAdapter adapter = adapterWith(baseProperties(), request -> Mono
+                .just(ClientResponse.create(HttpStatus.INTERNAL_SERVER_ERROR).body("provider failure").build()));
 
         StepVerifier.create(adapter.sendSms(new SmsMessage("91234567", "Your code is 123456", "HK", "req-123")))
                 .assertNext(result -> {
                     assertThat(result.status()).isEqualTo(SenderStatus.FAILED);
                     assertThat(result.failureCode()).isEqualTo("SMS_HTTP_500");
-                    assertThat(result.failureMessage()).doesNotContain("sms-password", "91234567", "123456", "Your code is 123456");
+                    assertThat(result.failureMessage()).doesNotContain("sms-password", "91234567", "123456",
+                            "Your code is 123456");
                 })
                 .verifyComplete();
     }
@@ -140,7 +141,8 @@ class SmsSenderAdapterTest {
     void rejectsMissingRequiredConfigWhenEnabled() {
         SmsProperties properties = baseProperties();
         properties.setBaseUrl("");
-        SmsSenderAdapter adapter = adapterWith(properties, request -> Mono.just(ClientResponse.create(HttpStatus.OK).build()));
+        SmsSenderAdapter adapter = adapterWith(properties,
+                request -> Mono.just(ClientResponse.create(HttpStatus.OK).build()));
 
         StepVerifier.create(adapter.sendSms(new SmsMessage("91234567", "Hello Member", "HK", "req-123")))
                 .assertNext(result -> {
@@ -153,7 +155,8 @@ class SmsSenderAdapterTest {
 
     @Test
     void doesNotLogSmsPasswordFullPhoneOrContent() {
-        SmsSenderAdapter adapter = adapterWith(baseProperties(), request -> Mono.just(ClientResponse.create(HttpStatus.OK).build()));
+        SmsSenderAdapter adapter = adapterWith(baseProperties(),
+                request -> Mono.just(ClientResponse.create(HttpStatus.OK).build()));
 
         StepVerifier.create(adapter.sendSms(new SmsMessage("91234567", "Your code is 123456", "HK", "req-123")))
                 .assertNext(result -> assertThat(result.status()).isEqualTo(SenderStatus.ACCEPTED))
@@ -190,8 +193,6 @@ class SmsSenderAdapterTest {
         return properties;
     }
 
-    
-    
     private JsonNode readJson(String body) {
         try {
             if (body != null && body.startsWith("--")) {

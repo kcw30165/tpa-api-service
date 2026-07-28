@@ -32,8 +32,8 @@ class RefreshCaptchaUseCaseTest {
 
     private final CaptchaPolicy policy = new CaptchaPolicy(8, "ABC123", false, 123, 9);
     private final RecordingAuthWorkflowPolicyPort policyPort = new RecordingAuthWorkflowPolicyPort(policy);
-    private final RecordingCaptchaImageGeneratorPort imageGeneratorPort =
-            new RecordingCaptchaImageGeneratorPort(new GeneratedCaptcha("AbC12312", new CaptchaImage("base64-image", "image/png")));
+    private final RecordingCaptchaImageGeneratorPort imageGeneratorPort = new RecordingCaptchaImageGeneratorPort(
+            new GeneratedCaptcha("AbC12312", new CaptchaImage("base64-image", "image/png")));
     private final RecordingCaptchaAnswerHasherPort hasherPort = new RecordingCaptchaAnswerHasherPort();
     private final RecordingCaptchaChallengePort challengePort = new RecordingCaptchaChallengePort();
     private final SequenceCaptchaChallengeIdGenerator idGenerator = new SequenceCaptchaChallengeIdGenerator(
@@ -51,7 +51,9 @@ class RefreshCaptchaUseCaseTest {
     void refreshCaptchaCreatesNewChallengeWhenOldMissing() {
         challengePort.loadedChallenge = Optional.empty();
 
-        StepVerifier.create(useCase.refresh(new RefreshCaptchaChallengeCommand(new CaptchaChallengeId("cap_oldabcdefghijklmn"), "corr")))
+        StepVerifier
+                .create(useCase.refresh(
+                        new RefreshCaptchaChallengeCommand(new CaptchaChallengeId("cap_oldabcdefghijklmn"), "corr")))
                 .assertNext(result -> {
                     assertThat(result.captchaChallengeId()).isEqualTo(new CaptchaChallengeId("cap_abcdefghijklmnop"));
                     assertThat(result.image().imageBase64()).isEqualTo("base64-image");
@@ -77,8 +79,11 @@ class RefreshCaptchaUseCaseTest {
                 null,
                 null));
 
-        StepVerifier.create(useCase.refresh(new RefreshCaptchaChallengeCommand(new CaptchaChallengeId("cap_oldabcdefghijklmn"), "corr")))
-                .assertNext(result -> assertThat(result.captchaChallengeId()).isEqualTo(new CaptchaChallengeId("cap_abcdefghijklmnop")))
+        StepVerifier
+                .create(useCase.refresh(
+                        new RefreshCaptchaChallengeCommand(new CaptchaChallengeId("cap_oldabcdefghijklmn"), "corr")))
+                .assertNext(result -> assertThat(result.captchaChallengeId())
+                        .isEqualTo(new CaptchaChallengeId("cap_abcdefghijklmnop")))
                 .verifyComplete();
 
         assertThat(challengePort.markRefreshedCalled).isTrue();
@@ -99,7 +104,9 @@ class RefreshCaptchaUseCaseTest {
                 null,
                 null));
 
-        StepVerifier.create(useCase.refresh(new RefreshCaptchaChallengeCommand(new CaptchaChallengeId("cap_oldabcdefghijklmn"), "corr")))
+        StepVerifier
+                .create(useCase.refresh(
+                        new RefreshCaptchaChallengeCommand(new CaptchaChallengeId("cap_oldabcdefghijklmn"), "corr")))
                 .expectNextCount(1)
                 .verifyComplete();
 
@@ -113,7 +120,8 @@ class RefreshCaptchaUseCaseTest {
                     assertThat(result.captchaChallengeId()).isEqualTo(new CaptchaChallengeId("cap_abcdefghijklmnop"));
                     assertThat(result.image().mimeType()).isEqualTo("image/png");
                     assertThat(result.expiresInSeconds()).isEqualTo(123);
-                    assertThat(result.toString()).doesNotContain("AbC12312", "0123456789abcdef", "cap_abcdefghijklmnop");
+                    assertThat(result.toString()).doesNotContain("AbC12312", "0123456789abcdef",
+                            "cap_abcdefghijklmnop");
                 })
                 .verifyComplete();
     }
@@ -214,7 +222,8 @@ class RefreshCaptchaUseCaseTest {
         }
 
         @Override
-        public Mono<CaptchaChallenge> incrementFailedAttempt(CaptchaChallengeId captchaChallengeId, Instant attemptedAt) {
+        public Mono<CaptchaChallenge> incrementFailedAttempt(CaptchaChallengeId captchaChallengeId,
+                Instant attemptedAt) {
             throw new UnsupportedOperationException();
         }
 

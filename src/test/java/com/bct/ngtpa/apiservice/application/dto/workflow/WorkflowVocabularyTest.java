@@ -46,11 +46,13 @@ class WorkflowVocabularyTest {
     }
 
     @Test
-    void workflowNextStepDefinesRegistrationValues() {
+    void workflowNextStepDefinesSharedRegistrationAndLoginValues() {
         assertThat(WorkflowNextStep.values()).containsExactly(
+                WorkflowNextStep.SELECT_OTP_DESTINATION,
                 WorkflowNextStep.VERIFY_OTP,
                 WorkflowNextStep.USERNAME_CHECK,
                 WorkflowNextStep.SELECT_TRUST,
+                WorkflowNextStep.SELECT_ACCOUNT,
                 WorkflowNextStep.PASSWORD_SETUP,
                 WorkflowNextStep.REGISTRATION_SUCCESS,
                 WorkflowNextStep.RETURN_TO_LOGIN,
@@ -58,7 +60,6 @@ class WorkflowVocabularyTest {
                 WorkflowNextStep.RESTART_FLOW,
                 WorkflowNextStep.RESEND_OTP,
                 WorkflowNextStep.NONE);
-
     }
 
     @Test
@@ -81,10 +82,14 @@ class WorkflowVocabularyTest {
     @Test
     void registrationWorkflowPageConstantsMatchBffPagesIds() {
         assertThat(RegistrationWorkflowConstants.PAGE_REGISTRATION_START).isEqualTo("registration-start");
-        assertThat(RegistrationWorkflowConstants.PAGE_REGISTRATION_OTP_VERIFICATION).isEqualTo("registration-otp-verification");
-        assertThat(RegistrationWorkflowConstants.PAGE_REGISTRATION_TRUST_SELECTION).isEqualTo("registration-trust-selection");
-        assertThat(RegistrationWorkflowConstants.PAGE_REGISTRATION_USERNAME_CHECK).isEqualTo("registration-username-check");
-        assertThat(RegistrationWorkflowConstants.PAGE_REGISTRATION_PASSWORD_SETUP).isEqualTo("registration-password-setup");
+        assertThat(RegistrationWorkflowConstants.PAGE_REGISTRATION_OTP_VERIFICATION)
+                .isEqualTo("registration-otp-verification");
+        assertThat(RegistrationWorkflowConstants.PAGE_REGISTRATION_TRUST_SELECTION)
+                .isEqualTo("registration-trust-selection");
+        assertThat(RegistrationWorkflowConstants.PAGE_REGISTRATION_USERNAME_CHECK)
+                .isEqualTo("registration-username-check");
+        assertThat(RegistrationWorkflowConstants.PAGE_REGISTRATION_PASSWORD_SETUP)
+                .isEqualTo("registration-password-setup");
         assertThat(RegistrationWorkflowConstants.PAGE_REGISTRATION_SUCCESS).isEqualTo("registration-success");
         assertThat(RegistrationWorkflowConstants.SUCCESS_VARIANT_NO_REMAINING_TRUSTS).isEqualTo("noRemainingTrusts");
         assertThat(RegistrationWorkflowConstants.SUCCESS_VARIANT_HAS_REMAINING_TRUSTS).isEqualTo("hasRemainingTrusts");

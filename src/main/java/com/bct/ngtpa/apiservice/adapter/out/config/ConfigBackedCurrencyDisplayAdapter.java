@@ -47,8 +47,7 @@ public class ConfigBackedCurrencyDisplayAdapter implements CurrencyDisplayPort {
         var normalizedCode = code.trim();
         return new CurrencyDisplay(
                 resolve(normalizedCode, accountEnv, trustCode, schemeType, Locale.ENGLISH),
-                resolve(normalizedCode, accountEnv, trustCode, schemeType, ZH_HK_LOCALE)
-        );
+                resolve(normalizedCode, accountEnv, trustCode, schemeType, ZH_HK_LOCALE));
     }
 
     private String resolve(String code, String accountEnv, String trustCode, String schemeType, Locale locale) {

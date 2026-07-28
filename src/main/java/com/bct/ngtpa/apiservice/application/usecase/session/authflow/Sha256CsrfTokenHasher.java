@@ -12,7 +12,8 @@ public class Sha256CsrfTokenHasher implements CsrfTokenHasher {
             throw new IllegalArgumentException("CSRF token must not be blank");
         }
         try {
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(rawToken.getBytes(StandardCharsets.UTF_8)));
+            return HexFormat.of()
+                    .formatHex(MessageDigest.getInstance("SHA-256").digest(rawToken.getBytes(StandardCharsets.UTF_8)));
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException("CSRF hasher unavailable", exception);
         }
@@ -23,6 +24,7 @@ public class Sha256CsrfTokenHasher implements CsrfTokenHasher {
         if (rawToken == null || rawToken.isBlank() || tokenHash == null || tokenHash.isBlank()) {
             return false;
         }
-        return MessageDigest.isEqual(hash(rawToken).getBytes(StandardCharsets.UTF_8), tokenHash.getBytes(StandardCharsets.UTF_8));
+        return MessageDigest.isEqual(hash(rawToken).getBytes(StandardCharsets.UTF_8),
+                tokenHash.getBytes(StandardCharsets.UTF_8));
     }
 }

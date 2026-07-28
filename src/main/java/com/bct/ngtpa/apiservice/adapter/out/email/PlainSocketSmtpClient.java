@@ -17,15 +17,20 @@ import reactor.core.scheduler.Schedulers;
 /**
  * Plain SMTP client for unauthenticated internal SMTP relays.
  *
- * <p>This implementation is intentionally small and dependency-free because the
- * current BCT relay is a plain port-25 relay. It avoids logging message content,
+ * <p>
+ * This implementation is intentionally small and dependency-free because the
+ * current BCT relay is a plain port-25 relay. It avoids logging message
+ * content,
  * recipient, or credentials. Sensitive operational logging remains in
- * {@link SmtpEmailSenderAdapter}.</p>
+ * {@link SmtpEmailSenderAdapter}.
+ * </p>
  *
- * <p>Supported flow: EHLO/HELO, MAIL FROM, RCPT TO, DATA, QUIT. TLS and SMTP AUTH
+ * <p>
+ * Supported flow: EHLO/HELO, MAIL FROM, RCPT TO, DATA, QUIT. TLS and SMTP AUTH
  * are intentionally not implemented here. If a future relay requires TLS/AUTH,
  * replace this adapter with a managed mail implementation and add explicit mail
- * dependencies at that time.</p>
+ * dependencies at that time.
+ * </p>
  */
 public class PlainSocketSmtpClient implements SmtpClient {
 
@@ -48,8 +53,10 @@ public class PlainSocketSmtpClient implements SmtpClient {
             socket.connect(new java.net.InetSocketAddress(command.host(), command.port()), timeoutMillis);
             socket.setSoTimeout(timeoutMillis);
 
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
-                    BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8))) {
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
+                    BufferedWriter writer = new BufferedWriter(
+                            new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8))) {
                 expect(reader, 220);
 
                 String localHost = localHostName();

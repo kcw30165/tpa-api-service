@@ -9,13 +9,16 @@ import org.springframework.http.HttpStatus;
 /**
  * Shared validation for APIM response envelopes.
  *
- * <p>Global contract:
+ * <p>
+ * Global contract:
  * <ul>
- *   <li>{@code response} must be present.</li>
- *   <li>{@code err-message} must be present.</li>
- *   <li>{@code err-message == ""} means success and requires {@code data} to be present as an array.</li>
- *   <li>{@code data: []} is valid for a no-record success response.</li>
- *   <li>{@code err-message != ""} means APIM returned an error; {@code data} may be absent.</li>
+ * <li>{@code response} must be present.</li>
+ * <li>{@code err-message} must be present.</li>
+ * <li>{@code err-message == ""} means success and requires {@code data} to be
+ * present as an array.</li>
+ * <li>{@code data: []} is valid for a no-record success response.</li>
+ * <li>{@code err-message != ""} means APIM returned an error; {@code data} may
+ * be absent.</li>
  * </ul>
  */
 public final class ApimResponseValidator {
@@ -43,7 +46,8 @@ public final class ApimResponseValidator {
     }
 
     /**
-     * @deprecated Use {@link #requireSuccessData(ApimResponseEnvelope)} for clearer APIM success semantics.
+     * @deprecated Use {@link #requireSuccessData(ApimResponseEnvelope)} for clearer
+     *             APIM success semantics.
      */
     @Deprecated(forRemoval = false)
     public static <T> List<T> requireValidData(ApimResponseEnvelope<T> envelope) {
@@ -54,4 +58,3 @@ public final class ApimResponseValidator {
         return new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID, message);
     }
 }
-

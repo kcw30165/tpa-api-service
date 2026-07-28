@@ -11,7 +11,6 @@ import com.bct.ngtpa.apiservice.application.service.session.SessionIdGenerator;
 import com.bct.ngtpa.apiservice.application.service.session.SessionTtlCalculator;
 import java.time.Clock;
 import java.time.Instant;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import reactor.core.publisher.Mono;
@@ -22,10 +21,12 @@ public class AuthFlowSessionLifecycleService {
     private final SessionTtlCalculator sessionTtlCalculator;
     private final Clock clock;
 
-    public AuthFlowSessionLifecycleService(AuthFlowSessionPort authFlowSessionPort, SessionIdGenerator sessionIdGenerator, SessionTtlCalculator sessionTtlCalculator, Clock clock) {
+    public AuthFlowSessionLifecycleService(AuthFlowSessionPort authFlowSessionPort,
+            SessionIdGenerator sessionIdGenerator, SessionTtlCalculator sessionTtlCalculator, Clock clock) {
         this.authFlowSessionPort = Objects.requireNonNull(authFlowSessionPort, "authFlowSessionPort must not be null");
         this.sessionIdGenerator = Objects.requireNonNull(sessionIdGenerator, "sessionIdGenerator must not be null");
-        this.sessionTtlCalculator = Objects.requireNonNull(sessionTtlCalculator, "sessionTtlCalculator must not be null");
+        this.sessionTtlCalculator = Objects.requireNonNull(sessionTtlCalculator,
+                "sessionTtlCalculator must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
 
@@ -36,10 +37,13 @@ public class AuthFlowSessionLifecycleService {
         }
         return Mono.defer(() -> {
             Instant now = Instant.now(clock);
-            var sessionId = sessionIdGenerator.generate(new SessionIdGenerationCommand(command.sessionIdPrefix(), command.sessionIdEntropyBytes()));
+            var sessionId = sessionIdGenerator.generate(
+                    new SessionIdGenerationCommand(command.sessionIdPrefix(), command.sessionIdEntropyBytes()));
             var authFlowSessionId = new AuthFlowSessionId(sessionId.value());
             Instant expiresAt = sessionTtlCalculator.expiresAt(now, command.ttlPolicy());
-            var createCommand = new AuthFlowSessionCreateCommand(authFlowSessionId, command.scenario(), command.initialStatus(), now, expiresAt, command.data(), command.csrfTokenHash(), command.activeOtpChallengeId());
+            var createCommand = new AuthFlowSessionCreateCommand(authFlowSessionId, command.scenario(),
+                    command.initialStatus(), now, expiresAt, command.data(), command.csrfTokenHash(),
+                    command.activeOtpChallengeId());
             return authFlowSessionPort.create(createCommand)
                     .map(session -> new StartAuthFlowSessionResult(session, command.ttlPolicy().ttlSeconds()));
         });
@@ -52,23 +56,26 @@ public class AuthFlowSessionLifecycleService {
 
     public Mono<AuthFlowSession> updateStatus(UpdateAuthFlowStatusCommand command) {
         Objects.requireNonNull(command, "command must not be null");
-        return mutateUsable(command.authFlowSessionId(), session -> copy(session, command.newStatus(), session.csrfTokenHash(), session.activeOtpChallengeId(), session.data(), Instant.now(clock)));
+        return mutateUsable(command.authFlowSessionId(), session -> copy(session, command.newStatus(),
+                session.csrfTokenHash(), session.activeOtpChallengeId(), session.data(), Instant.now(clock)));
     }
 
     public Mono<AuthFlowSession> updateActiveOtpChallenge(UpdateAuthFlowOtpCommand command) {
         Objects.requireNonNull(command, "command must not be null");
-        return mutateUsable(command.authFlowSessionId(), session -> copy(session, session.status(), session.csrfTokenHash(), command.activeOtpChallengeId(), session.data(), Instant.now(clock)));
+        return mutateUsable(command.authFlowSessionId(), session -> copy(session, session.status(),
+                session.csrfTokenHash(), command.activeOtpChallengeId(), session.data(), Instant.now(clock)));
     }
 
     public Mono<AuthFlowSession> updateDestination(UpdateAuthFlowDestinationCommand command) {
         Objects.requireNonNull(command, "command must not be null");
         return mutateUsable(command.authFlowSessionId(), session -> {
             var currentData = session.data() == null ? AuthFlowSessionData.empty() : session.data();
-            var updatedData = new AuthFlowSessionData(command.contactType(), command.maskedDestination(), currentData.attributes());
-            return copy(session, session.status(), session.csrfTokenHash(), session.activeOtpChallengeId(), updatedData, Instant.now(clock));
+            var updatedData = new AuthFlowSessionData(command.contactType(), command.maskedDestination(),
+                    currentData.attributes());
+            return copy(session, session.status(), session.csrfTokenHash(), session.activeOtpChallengeId(), updatedData,
+                    Instant.now(clock));
         });
     }
-
 
     public Mono<AuthFlowSession> complete(CompleteAuthFlowSessionCommand command) {
         Objects.requireNonNull(command, "command must not be null");
@@ -88,7 +95,8 @@ public class AuthFlowSessionLifecycleService {
     private Mono<AuthFlowSession> mutateUsable(AuthFlowSessionId id, SessionMutation mutation) {
         Instant now = Instant.now(clock);
         return authFlowSessionPort.load(id)
-                .flatMap(optional -> optional.map(Mono::just).orElseGet(() -> Mono.error(new IllegalStateException("Auth flow session not available"))))
+                .flatMap(optional -> optional.map(Mono::just)
+                        .orElseGet(() -> Mono.error(new IllegalStateException("Auth flow session not available"))))
                 .flatMap(session -> {
                     if (session.isExpired(now) || session.isTerminal()) {
                         return Mono.error(new IllegalStateException("Auth flow session is not usable"));
@@ -98,8 +106,10 @@ public class AuthFlowSessionLifecycleService {
                 .flatMap(authFlowSessionPort::update);
     }
 
-    private static AuthFlowSession copy(AuthFlowSession session, AuthFlowStatus status, String csrfTokenHash, String activeOtpChallengeId, AuthFlowSessionData data, Instant updatedAt) {
-        return new AuthFlowSession(session.authFlowSessionId(), session.scenario(), status, csrfTokenHash, activeOtpChallengeId, data, session.createdAt(), updatedAt, session.expiresAt());
+    private static AuthFlowSession copy(AuthFlowSession session, AuthFlowStatus status, String csrfTokenHash,
+            String activeOtpChallengeId, AuthFlowSessionData data, Instant updatedAt) {
+        return new AuthFlowSession(session.authFlowSessionId(), session.scenario(), status, csrfTokenHash,
+                activeOtpChallengeId, data, session.createdAt(), updatedAt, session.expiresAt());
     }
 
     @FunctionalInterface

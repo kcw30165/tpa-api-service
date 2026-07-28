@@ -65,7 +65,8 @@ public class RedisRegistrationIdempotencyJsonMapper {
             snapshot = new RegistrationIdempotencyResponseSnapshot(
                     redisRecord.responseSnapshot().status(),
                     redisRecord.responseSnapshot().serializedBody(),
-                    redisRecord.responseSnapshot().safeHeaders() == null ? Map.of() : redisRecord.responseSnapshot().safeHeaders());
+                    redisRecord.responseSnapshot().safeHeaders() == null ? Map.of()
+                            : redisRecord.responseSnapshot().safeHeaders());
         }
         return new RegistrationIdempotencyRecord(
                 RegistrationIdempotencyAction.valueOf(redisRecord.action()),

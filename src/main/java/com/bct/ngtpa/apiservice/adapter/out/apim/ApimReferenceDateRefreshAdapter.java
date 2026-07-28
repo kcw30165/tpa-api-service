@@ -24,76 +24,80 @@ import java.time.format.DateTimeParseException;
 @RequiredArgsConstructor
 public class ApimReferenceDateRefreshAdapter implements ApimReferenceDateRefreshPort {
 
-    private static final String API_NAME = "/ws/NGTPA/v1/TRPGetWebSysDate";
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        private static final String API_NAME = "/ws/NGTPA/v1/TRPGetWebSysDate";
+        private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    private final ApimWebClientFacade apimWebClientFacade;
-    private final ApimCertificateService apimCertificateService;
-    private final ApimPayloadCryptoService apimPayloadCryptoService;
-    private final ApimProperties apimProperties;
+        private final ApimWebClientFacade apimWebClientFacade;
+        private final ApimCertificateService apimCertificateService;
+        private final ApimPayloadCryptoService apimPayloadCryptoService;
+        private final ApimProperties apimProperties;
 
-    @Override
-    @LogExecution(value = "apim.fetchReferenceDate", logArgs = true)
-    public Mono<LocalDate> fetchReferenceDate(String accountEnv) {
-        if (!apimProperties.getEncryption().isEnabled()) {
-            var request = apimPayloadCryptoService.encryptRequest(
-                    API_NAME, toApimRequest(accountEnv), GetWebSysDateApimRequest.class, null);
-            return apimWebClientFacade.post(API_NAME, request)
-                    .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
-                            API_NAME, body, GetWebSysDateApimDataItem.class, null))
-                    .map(this::toReferenceDate)
-                    .onErrorMap(ApimCryptoException.class, ex ->
-                            new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCodes.SYSTEM_UNEXPECTED,
-                                    ex.getMessage(), ex));
+        @Override
+        @LogExecution(value = "apim.fetchReferenceDate", logArgs = true)
+        public Mono<LocalDate> fetchReferenceDate(String accountEnv) {
+                if (!apimProperties.getEncryption().isEnabled()) {
+                        var request = apimPayloadCryptoService.encryptRequest(
+                                        API_NAME, toApimRequest(accountEnv), GetWebSysDateApimRequest.class, null);
+                        return apimWebClientFacade.post(API_NAME, request)
+                                        .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
+                                                        API_NAME, body, GetWebSysDateApimDataItem.class, null))
+                                        .map(this::toReferenceDate)
+                                        .onErrorMap(ApimCryptoException.class,
+                                                        ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR,
+                                                                        ErrorCodes.SYSTEM_UNEXPECTED,
+                                                                        ex.getMessage(), ex));
+                }
+
+                return apimCertificateService.getBctPublicKey()
+                                .flatMap(publicKey -> {
+                                        var request = apimPayloadCryptoService.encryptRequest(
+                                                        API_NAME, toApimRequest(accountEnv),
+                                                        GetWebSysDateApimRequest.class, publicKey);
+                                        return apimWebClientFacade.post(API_NAME, request)
+                                                        .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
+                                                                        API_NAME, body, GetWebSysDateApimDataItem.class,
+                                                                        publicKey))
+                                                        .map(this::toReferenceDate);
+                                })
+                                .onErrorMap(ApimCryptoException.class,
+                                                ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR,
+                                                                ErrorCodes.SYSTEM_UNEXPECTED,
+                                                                ex.getMessage(), ex));
         }
 
-        return apimCertificateService.getBctPublicKey()
-                .flatMap(publicKey -> {
-                    var request = apimPayloadCryptoService.encryptRequest(
-                            API_NAME, toApimRequest(accountEnv), GetWebSysDateApimRequest.class, publicKey);
-                    return apimWebClientFacade.post(API_NAME, request)
-                            .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
-                                    API_NAME, body, GetWebSysDateApimDataItem.class, publicKey))
-                            .map(this::toReferenceDate);
-                })
-                .onErrorMap(ApimCryptoException.class, ex ->
-                        new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCodes.SYSTEM_UNEXPECTED,
-                                ex.getMessage(), ex));
-    }
-
-    private GetWebSysDateApimRequest toApimRequest(String accountEnv) {
-        return GetWebSysDateApimRequest.builder()
-                .accountEnv(accountEnv)
-                .build();
-    }
-
-    private LocalDate toReferenceDate(ApimResponseEnvelope<GetWebSysDateApimDataItem> response) {
-        var payload = response != null ? response.getResponse() : null;
-        if (payload == null) {
-            throw new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID,
-                    "APIM response payload is missing.");
-        }
-        if (StringUtils.hasText(payload.getErrMessage())) {
-            throw new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID,
-                    payload.getErrMessage());
-        }
-        if (CollectionUtils.isEmpty(payload.getData())) {
-            throw new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID,
-                    "APIM response data is missing.");
+        private GetWebSysDateApimRequest toApimRequest(String accountEnv) {
+                return GetWebSysDateApimRequest.builder()
+                                .accountEnv(accountEnv)
+                                .build();
         }
 
-        GetWebSysDateApimDataItem firstItem = payload.getData().getFirst();
-        String sysDate = firstItem == null ? null : firstItem.getSysDate();
-        if (!StringUtils.hasText(sysDate)) {
-            throw new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID,
-                    "APIM sys-date is missing.");
-        }
+        private LocalDate toReferenceDate(ApimResponseEnvelope<GetWebSysDateApimDataItem> response) {
+                var payload = response != null ? response.getResponse() : null;
+                if (payload == null) {
+                        throw new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID,
+                                        "APIM response payload is missing.");
+                }
+                if (StringUtils.hasText(payload.getErrMessage())) {
+                        throw new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID,
+                                        payload.getErrMessage());
+                }
+                if (CollectionUtils.isEmpty(payload.getData())) {
+                        throw new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID,
+                                        "APIM response data is missing.");
+                }
 
-        try {
-            return LocalDate.parse(sysDate.trim(), DATE_FORMATTER);
-        } catch (DateTimeParseException ex) {
-            throw new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID,
-                    "APIM sys-date must use dd/MM/yyyy format.", ex);
+                GetWebSysDateApimDataItem firstItem = payload.getData().getFirst();
+                String sysDate = firstItem == null ? null : firstItem.getSysDate();
+                if (!StringUtils.hasText(sysDate)) {
+                        throw new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID,
+                                        "APIM sys-date is missing.");
+                }
+
+                try {
+                        return LocalDate.parse(sysDate.trim(), DATE_FORMATTER);
+                } catch (DateTimeParseException ex) {
+                        throw new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID,
+                                        "APIM sys-date must use dd/MM/yyyy format.", ex);
+                }
         }
-    }
 }
