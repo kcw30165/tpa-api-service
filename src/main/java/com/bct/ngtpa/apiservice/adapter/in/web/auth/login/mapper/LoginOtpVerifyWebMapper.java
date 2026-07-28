@@ -63,7 +63,13 @@ public final class LoginOtpVerifyWebMapper {
         List<LoginOtpAccountResponse> accounts = result == null
                 ? List.of()
                 : result.accounts().stream()
-                        .map(account -> new LoginOtpAccountResponse(account.accountRef().value()))
+                        .map(account -> new LoginOtpAccountResponse(
+                        account.accountRef().value(),
+                        account.policyNo(),
+                        account.certNo(),
+                        account.accountEnv(),
+                        account.trustCode(),
+                        account.schemeType()))
                         .toList();
         String csrfToken = exposeAuthenticatedCsrf && result != null
                 ? result.authenticatedCsrfToken()

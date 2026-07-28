@@ -1,1 +1,11 @@
-package com.bct.ngtpa.apiservice.adapter.in.web.auth.login.dto;public record LoginOtpAccountResponse(String accountRef){public LoginOtpAccountResponse{if(accountRef==null||accountRef.isBlank())throw new IllegalArgumentException("accountRef required");}}
+package com.bct.ngtpa.apiservice.adapter.in.web.auth.login.dto;
+
+/** Safe account-selection projection returned after successful Login OTP verification. */
+public record LoginOtpAccountResponse(
+        String accountRef,
+        String policyNo,
+        String certNo,
+        String accountEnv,
+        String trust,
+        String schemeType) {
+}

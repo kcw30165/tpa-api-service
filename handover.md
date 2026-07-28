@@ -1204,3 +1204,14 @@
 - Production behavior changed by this correction: no.
 - Evidence: target/evidence/0043-015-019-fix-domain-architecture-whitespace-sensitive-status-guard-targeted.log and target/0043-015-017-evidence/evidence.md
 - Commit message: test(auth): make session status guard whitespace neutral
+
+### 0043-016-001-expand-login-otp-account-selection-response
+- Status: completed
+- Task 0043 corrective subtask 016 progress: 1/3; two main scripts remain.
+- Expanded successful POST /api/v1/auth/login/otp/verify account-selection entries to expose accountRef, formatted policyNo, formatted certNo, accountEnv, trust, and schemeType.
+- The public trust field is mapped from the existing internal trustCode; no duplicate account lookup or model was introduced.
+- Raw policy/certificate identifiers, termination fields, actor context, and authenticated-session identity remain absent from the JSON response.
+- Preserved APIM account order, AccountRef assignment, authenticated-session establishment, portal_sid publication, and response-body CSRF transport.
+- Fail-first evidence: target/evidence/0043-016-001-expand-login-otp-account-selection-response-fail-first.log
+- Targeted evidence: target/evidence/0043-016-001-expand-login-otp-account-selection-response-targeted.log
+- Commit message: feat(auth): expose account details after login OTP verification
