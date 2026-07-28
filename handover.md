@@ -1223,3 +1223,15 @@
 - Contradictory known-error envelopes remain `UNAVAILABLE`.
 - Production Login behavior was not changed.
 - Commit message: `test(auth): align login business error architecture expectation`
+
+### 0043-016-007-final-login-apim-error-mapping-audit-and-evidence
+
+- Status: completed
+- Corrective subtask 016 progress: 3/3; zero main scripts remain.
+- Finalized TRPMemberLogin APIM-to-Java mappings for wrong password, unregistered username, locked account, and no-valid-account outcomes.
+- Confirmed compatible wrong-password mixed envelopes preserve fail-count internally; contradictory envelopes fail closed as unavailable.
+- Updated login-error-matrix.md to use the confirmed APIM codes and HTTP 401/423 contracts and removed the typoed downstream code.
+- Verified raw APIM/TAS error codes do not cross the public API boundary.
+- Focused and complete Maven suites passed.
+- Evidence: target/0043-016-007-evidence/evidence.md
+- Commit message: `test(auth): finalize login APIM error mapping evidence`
