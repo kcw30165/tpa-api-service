@@ -140,7 +140,8 @@ auth-workflows:
       otp-verify-ttl-seconds: ${LOGIN_OTP_VERIFY_IDEMPOTENCY_TTL_SECONDS:300}
       cancel-ttl-seconds: ${LOGIN_CANCEL_IDEMPOTENCY_TTL_SECONDS:300}
     session:
-      ttl-seconds: ${AUTH_WORKFLOWS_LOGIN_SESSION_TTL_SECONDS:900}
+      absolute-timeout-seconds: ${AUTH_WORKFLOWS_LOGIN_SESSION_ABSOLUTE_TIMEOUT_SECONDS:28800}
+      terminal-retention-seconds: ${AUTH_WORKFLOWS_LOGIN_SESSION_TERMINAL_RETENTION_SECONDS:300}
       idle-timeout-seconds: ${AUTH_WORKFLOWS_LOGIN_SESSION_IDLE_TIMEOUT_SECONDS:900}
       cookie:
         name: ${AUTH_WORKFLOWS_LOGIN_SESSION_COOKIE_NAME:portal_sid}

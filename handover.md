@@ -1115,3 +1115,41 @@
 - Malformed encrypted envelope content is normalized to a non-sensitive unprotect failure while configured-key validation remains explicit.
 - Evidence: target/evidence/0043-015-005-complete-hybrid-serialization-without-script-resume-test-compile.log and target/evidence/0043-015-005-complete-hybrid-serialization-without-script-resume-targeted.log
 - Commit message: fix(auth): complete hybrid session serialization directly
+
+### 0043-015-006-session-timeout-configuration-and-sliding-lifecycle
+- Status: completed
+- Subtask 015 main-script progress: 2/5; three main scripts remain.
+- Renamed auth-workflows.login.session.ttl-seconds to absolute-timeout-seconds with environment variable AUTH_WORKFLOWS_LOGIN_SESSION_ABSOLUTE_TIMEOUT_SECONDS.
+- Retained idle-timeout-seconds as the sliding inactivity timeout and added terminal-retention-seconds for later LOGGED_OUT/REVOKED/EXPIRED persistence.
+- Sliding touch remains idleExpiresAt=min(now+idleTimeout, absoluteExpiresAt), and Redis TTL remains the duration from now to the refreshed idle expiry.
+- No deprecated property alias was added; pre-auth AuthFlowSession, OTP, and captcha ttl-seconds properties remain unchanged.
+- Terminal status transitions are deliberately deferred to the next main script.
+- Evidence: target/evidence/0043-015-006-session-timeout-configuration-and-sliding-lifecycle-test-compile.log and target/evidence/0043-015-006-session-timeout-configuration-and-sliding-lifecycle-targeted.log
+- Commit message: refactor(auth): clarify authenticated session timeout policies
+
+### 0043-015-007-fix-retired-timeout-key-guard-scope
+- Status: completed
+- Classification: corrective static-guard scope fix for 015-006; subtask 015 main-script progress remains 2/5 with three main scripts remaining.
+- Root cause: the retired environment-name postcondition scanned src/test and matched the architecture test that intentionally asserted the old key is absent from application.yml.
+- Scoped retired-key source scans to src/main and split the architecture-test literal while preserving its runtime negative assertion.
+- Resumed and completed the authenticated-session timeout migration and its validation gates.
+- Production behavior changed by this correction: no.
+- Commit message: test(auth): scope retired session timeout key guard
+
+### 0043-015-008-fix-login-foundation-terminal-retention-fixture
+- Status: completed
+- Classification: stale Login foundation fixture after adding the required terminal-retention policy; subtask 015 main-script progress remains 2/5 with three main scripts remaining.
+- Added terminalRetentionSeconds=300 to Task0043LoginFoundationTest.validProperties so full login-policy validation reaches the intended assertions.
+- Production validation remains fail-fast and unchanged; no production default, compatibility setter, or constructor was added for the test.
+- Resumed and completed the authenticated-session timeout migration and its targeted/regression gates.
+- Production behavior changed by this correction: no.
+- Commit message: test(auth): complete authenticated session timeout fixture
+
+### 0043-015-009-fix-login-foundation-absolute-timeout-expectation
+- Status: completed
+- Classification: stale Login foundation error-message assertion after renaming the authenticated-session absolute lifetime property; subtask 015 main-script progress remains 2/5 with three main scripts remaining.
+- Updated the expected validation key from session.ttl-seconds to session.absolute-timeout-seconds.
+- Production validation and timeout semantics remain unchanged; no compatibility alias was added.
+- Resumed and completed the timeout migration and its targeted/regression gates.
+- Production behavior changed by this correction: no.
+- Commit message: test(auth): align login foundation with absolute timeout key

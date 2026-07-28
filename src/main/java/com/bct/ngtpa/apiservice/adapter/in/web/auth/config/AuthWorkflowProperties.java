@@ -87,8 +87,12 @@ public class AuthWorkflowProperties {
     @Getter
     @Setter
     public static class LoginSession {
-        private int ttlSeconds;
+        /** Fixed maximum authenticated-session lifetime from creation. */
+        private int absoluteTimeoutSeconds;
+        /** Sliding authenticated-session inactivity timeout. */
         private int idleTimeoutSeconds;
+        /** Redis retention for terminal LOGGED_OUT, REVOKED, and EXPIRED state. */
+        private int terminalRetentionSeconds;
         private final AuthenticatedCookie cookie = new AuthenticatedCookie();
     }
 
@@ -258,7 +262,8 @@ public class AuthWorkflowProperties {
         requirePositive(login.idempotency.otpSendTtlSeconds, "idempotency.otp-send-ttl-seconds");
         requirePositive(login.idempotency.otpResendTtlSeconds, "idempotency.otp-resend-ttl-seconds");
         requirePositive(login.idempotency.otpVerifyTtlSeconds, "idempotency.otp-verify-ttl-seconds");
-        requirePositive(login.session.ttlSeconds, "session.ttl-seconds");
+        requirePositive(login.session.absoluteTimeoutSeconds, "session.absolute-timeout-seconds");
+        requirePositive(login.session.terminalRetentionSeconds, "session.terminal-retention-seconds");
         requirePositive(login.session.idleTimeoutSeconds, "session.idle-timeout-seconds");
         requirePositive(login.account.identifierWidth, "account.identifier-width");
     }

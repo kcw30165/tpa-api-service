@@ -23,7 +23,7 @@ class AuthenticatedSessionTransitionConfigTest {
         var properties = new AuthWorkflowProperties();
         var login = new AuthWorkflowProperties.Login();
         login.getSession().setIdleTimeoutSeconds(1800);
-        login.getSession().setTtlSeconds(28800);
+        login.getSession().setAbsoluteTimeoutSeconds(28800);
         properties.setLogin(login);
 
         AuthenticatedSessionLifecycleService lifecycle = config.authenticatedSessionLifecycleService(
@@ -42,7 +42,7 @@ class AuthenticatedSessionTransitionConfigTest {
         var properties = new AuthWorkflowProperties();
         var login = new AuthWorkflowProperties.Login();
         login.getSession().setIdleTimeoutSeconds(1801);
-        login.getSession().setTtlSeconds(1800);
+        login.getSession().setAbsoluteTimeoutSeconds(1800);
         properties.setLogin(login);
 
         assertThatThrownBy(() -> config.authenticatedSessionLifecycleService(

@@ -41,10 +41,10 @@ class Task0043LoginFoundationTest {
         assertThat(properties.getLogin().getOtp().isResendLimitEnabled()).isFalse();
         assertThat(properties.getLogin().getOtp().getMaxVerifyAttempts()).isEqualTo(5);
 
-        properties.getLogin().getSession().setTtlSeconds(0);
+        properties.getLogin().getSession().setAbsoluteTimeoutSeconds(0);
         assertThatThrownBy(properties::validateLoginPolicy)
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("session.ttl-seconds");
+                .hasMessageContaining("session.absolute-timeout-seconds");
     }
 
     @Test
@@ -81,8 +81,9 @@ class Task0043LoginFoundationTest {
         login.getIdempotency().setOtpSendTtlSeconds(300);
         login.getIdempotency().setOtpResendTtlSeconds(300);
         login.getIdempotency().setOtpVerifyTtlSeconds(300);
-        login.getSession().setTtlSeconds(900);
+        login.getSession().setAbsoluteTimeoutSeconds(900);
         login.getSession().setIdleTimeoutSeconds(900);
+        login.getSession().setTerminalRetentionSeconds(300);
         login.getAccount().setIdentifierWidth(8);
         properties.setLogin(login);
         return properties;

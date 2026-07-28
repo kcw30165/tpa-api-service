@@ -78,11 +78,11 @@ public class AuthenticatedSessionConfig {
             throw new IllegalStateException(
                     "auth-workflows.login.session.idle-timeout-seconds must be greater than zero");
         }
-        if (session.getTtlSeconds() <= 0) {
+        if (session.getAbsoluteTimeoutSeconds() <= 0) {
             throw new IllegalStateException(
-                    "auth-workflows.login.session.ttl-seconds must be greater than zero");
+                    "auth-workflows.login.session.absolute-timeout-seconds must be greater than zero");
         }
-        if (session.getIdleTimeoutSeconds() > session.getTtlSeconds()) {
+        if (session.getIdleTimeoutSeconds() > session.getAbsoluteTimeoutSeconds()) {
             throw new IllegalStateException(
                     "auth-workflows.login.session.idle-timeout-seconds must not exceed ttl-seconds");
         }
@@ -91,7 +91,7 @@ public class AuthenticatedSessionConfig {
                 authenticatedSessionProtector,
                 authenticatedSessionIdGenerator,
                 Duration.ofSeconds(session.getIdleTimeoutSeconds()),
-                Duration.ofSeconds(session.getTtlSeconds()),
+                Duration.ofSeconds(session.getAbsoluteTimeoutSeconds()),
                 clock);
     }
 
