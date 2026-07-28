@@ -1276,3 +1276,10 @@
 - README.md and unrelated public account-projection behavior were not modified by this CSRF subtask.
 - Commit message: test(auth): finalize CSRF evidence against repository baseline
 - Evidence: target/0043-017-006-final-csrf-evidence-with-repository-baseline-evidence/evidence.md
+
+### 0043-017-007-remove-unused-legacy-csrf-abstraction
+- Status: completed.
+- Removed unused legacy CSRF abstraction and legacy-only tests.
+- Preserved broad P3 tests and active session-bound Login/Registration/authenticated-session CSRF behavior.
+- Commit message: refactor(security): remove unused legacy CSRF abstraction
+- Evidence: target/0043-017-007-remove-unused-legacy-csrf-abstraction-evidence/evidence.md

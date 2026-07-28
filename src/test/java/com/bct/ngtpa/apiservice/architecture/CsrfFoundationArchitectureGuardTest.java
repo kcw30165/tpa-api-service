@@ -28,8 +28,7 @@ class CsrfFoundationArchitectureGuardTest {
             var csrfSources = paths
                     .filter(Files::isRegularFile)
                     .filter(path -> path.toString().endsWith(".java"))
-                    .filter(path -> path.toString().contains("/csrf/")
-                            || path.getFileName().toString().equals("CsrfTokenPort.java"))
+                    .filter(path -> path.toString().contains("/csrf/"))
                     .toList();
 
             for (Path source : csrfSources) {
