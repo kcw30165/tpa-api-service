@@ -1215,3 +1215,11 @@
 - Fail-first evidence: target/evidence/0043-016-001-expand-login-otp-account-selection-response-fail-first.log
 - Targeted evidence: target/evidence/0043-016-001-expand-login-otp-account-selection-response-targeted.log
 - Commit message: feat(auth): expose account details after login OTP verification
+
+### 0043-016-006-fix-business-error-architecture-test-expectation
+
+- Aligned the Task 0043 business-error architecture guard with the implemented compatible mixed-envelope mapping.
+- Wrong-password plus exactly one `success=false` item preserves `fail-count` through `data.get(0).failCount()`.
+- Contradictory known-error envelopes remain `UNAVAILABLE`.
+- Production Login behavior was not changed.
+- Commit message: `test(auth): align login business error architecture expectation`
