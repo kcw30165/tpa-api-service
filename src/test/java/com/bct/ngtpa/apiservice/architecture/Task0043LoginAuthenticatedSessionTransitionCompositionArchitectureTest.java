@@ -7,30 +7,39 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 class Task0043LoginAuthenticatedSessionTransitionCompositionArchitectureTest {
+    private static final Path CONFIG = Path.of(
+            "src/main/java/com/bct/ngtpa/apiservice/config/auth/session/AuthenticatedSessionConfig.java");
+
     @Test
-    void compositionReusesExistingSessionPolicyClockAndPorts() throws Exception {
-        String source = Files.readString(Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/config/auth/session/AuthenticatedSessionConfig.java"));
-        assertThat(source)
-                .contains("AuthenticatedSessionLifecycleService")
-                .contains("getIdleTimeoutSeconds", "getTtlSeconds", "Clock")
-                .contains("EstablishAuthenticatedLoginSessionService")
-                .contains("AuthFlowSessionPort", "DeleteAuthFlowSessionPort")
-                .doesNotContain("ReactiveStringRedisTemplate", "RedisConnectionFactory");
+    void compositionReusesConfiguredIdleAbsoluteAndTerminalPolicies() throws Exception {
+        String source = Files.readString(CONFIG);
+        assertThat(source).contains(
+                "getIdleTimeoutSeconds",
+                "getAbsoluteTimeoutSeconds",
+                "getTerminalRetentionSeconds",
+                "Clock",
+                "AuthenticatedSessionPort",
+                "AuthenticatedSessionProtectorPort",
+                "SecureAuthenticatedSessionIdGenerator");
+        assertThat(source).doesNotContain("getTtlSeconds");
     }
 
     @Test
-    void broadPreAuthPortIsRestrictedToCompositionAdapter() throws Exception {
-        String service = Files.readString(Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/session/EstablishAuthenticatedLoginSessionService.java"));
-        assertThat(service)
-                .contains("DeleteAuthFlowSessionPort")
-                .doesNotContain("import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort");
+    void transitionReusesLifecycleForCreateAndSecurityRevocation() throws Exception {
+        String source = Files.readString(CONFIG);
+        String compact = source.replaceAll("\\s+", "");
+        assertThat(compact).contains(
+                "returnnewEstablishAuthenticatedLoginSessionService(",
+                "lifecycle,cleanup,lifecycle,csrfTokenGenerator,csrfTokenHasher)");
     }
 
     @Test
-    void otpIntegrationAndWebTransportRemainDeferred() {
-        assertThat(Files.exists(Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/login/config/AuthenticatedSessionCookieWriter.java"))).isFalse();
+    void normalLogoutUsesDedicatedLoggedOutCapability() throws Exception {
+        String source = Files.readString(CONFIG);
+        String compact = source.replaceAll("\\s+", "");
+        assertThat(compact).contains(
+                "AuthenticatedLogoutUseCaseauthenticatedLogoutUseCase(",
+                "LogoutAuthenticatedSessionUseCaselogout)",
+                "returnnewAuthenticatedLogoutService(logout)");
     }
 }

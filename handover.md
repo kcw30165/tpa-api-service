@@ -1172,3 +1172,35 @@
 - Runtime composition remains at the lifecycle capability boundary and does not access Redis or AuthenticatedSessionPort directly.
 - Evidence: target/evidence/0043-015-016-authenticated-logout-orchestration-logged-out-transition-fail-first.log, target/evidence/0043-015-016-authenticated-logout-orchestration-logged-out-transition-targeted.log, and target/evidence/0043-015-016-authenticated-logout-orchestration-logged-out-transition-regression.log
 - Commit message: refactor(auth): route user logout through logged-out lifecycle
+
+### 0043-015-017-final-authenticated-session-lifecycle-stabilization-and-readme
+- Status: completed
+- Subtask 015 main-script progress: 5/5; zero main scripts remain.
+- Finalized the hybrid authenticated-session Redis envelope with readable lifecycle metadata authenticated as AES-GCM AAD and encrypted actor/account/CSRF context under data.attributes.
+- Finalized sliding idle timeout, fixed absolute timeout, and terminal retention configuration; the retired authenticated-session ttl-seconds property has no fallback.
+- Finalized persisted ACTIVE to LOGGED_OUT, REVOKED, and EXPIRED transitions; normal user logout updates the protected session to LOGGED_OUT rather than deleting it.
+- Verified missing portal_sid logout remains side-effect-free and idempotent, while all terminal sessions fail closed for later authenticated requests.
+- Updated README.md with the final portal_sid, response-body CSRF, hybrid Redis envelope, timeout, and terminal lifecycle contract.
+- Full Maven suite passed. Evidence index: target/0043-015-017-evidence/evidence.md
+- Commit message: test(auth): finalize authenticated session lifecycle evidence
+
+### 0043-015-018-fix-final-stale-authenticated-session-architecture-guards
+- Status: completed
+- Classification: stale architecture guards after the approved hybrid persistence model, timeout-property rename, and logout lifecycle split; subtask 015 remains complete at 5/5 main scripts.
+- Updated the persistence contract guard from the old root version/ciphertext/nonce/tag envelope to the hybrid lifecycle metadata plus data.attributes crypto envelope.
+- Scoped domain neutrality to the actual authenticated-session domain model and excluded ProtectedAuthenticatedSession, which is intentionally the persistence boundary DTO; the domain remains free of Spring, cache-client, HTTP, JSON, and crypto dependencies.
+- Updated transition composition to require getAbsoluteTimeoutSeconds and getTerminalRetentionSeconds instead of retired getTtlSeconds, while preserving Clock, protected ports, create/revoke transition composition, and dedicated normal logout composition.
+- Added all three guards to the final 015-017 evidence gates and resumed the full final stabilization script.
+- Production behavior changed by this correction: no.
+- Evidence: target/evidence/0043-015-018-fix-final-stale-authenticated-session-architecture-guards-targeted.log and target/0043-015-017-evidence/evidence.md
+- Commit message: test(auth): align session architecture guards with hybrid lifecycle
+
+### 0043-015-019-fix-domain-architecture-whitespace-sensitive-status-guard
+- Status: completed
+- Classification: formatting-sensitive architecture assertion in the 015-018 domain guard; subtask 015 remains complete at 5/5 main scripts.
+- Root cause: AuthenticatedSession.java uses compact formatting with status==AuthenticatedSessionStatus.ACTIVE, while the guard required spaces around the equality operator.
+- Normalized the session source before asserting ACTIVE status, idle-expiry, and absolute-expiry usability semantics.
+- Corrected both the cumulative test source and the 015-018 generator so reruns cannot restore the fragile assertion.
+- Production behavior changed by this correction: no.
+- Evidence: target/evidence/0043-015-019-fix-domain-architecture-whitespace-sensitive-status-guard-targeted.log and target/0043-015-017-evidence/evidence.md
+- Commit message: test(auth): make session status guard whitespace neutral

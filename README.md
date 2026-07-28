@@ -2676,3 +2676,92 @@ X-Request-Id: <request-id>
 Logout uses the same `portal_sid` cookie and `X-XSRF-TOKEN` header. Logout clears `portal_sid`; there is no authenticated `XSRF-TOKEN` cookie to clear.
 
 The pre-authentication contract remains separate: `auth_flow_sid` is HttpOnly, the pre-auth CSRF token is returned in response data, and the frontend sends it through `X-XSRF-TOKEN` on later pre-auth requests.
+
+<!-- authenticated-session-lifecycle:start -->
+## Authenticated session lifecycle and Redis model
+
+After successful Login OTP verification, the BFF sets the browser-managed authenticated-session cookie and returns the freshly rotated CSRF token in the response body:
+
+```http
+Set-Cookie: portal_sid=sid_<opaque-value>; Path=/api; HttpOnly; Secure; SameSite=None
+```
+
+```json
+{
+  "result": {
+    "nextStep": "SELECT_ACCOUNT",
+    "data": {
+      "csrfToken": "<authenticated-csrf-token>",
+      "accounts": [
+        { "accountRef": "acc_<opaque-value>" }
+      ]
+    }
+  }
+}
+```
+
+Subsequent account-scoped requests use:
+
+```http
+Cookie: portal_sid=sid_<opaque-value>
+X-XSRF-TOKEN: <csrfToken-from-verification-response>
+Account-Ref: acc_<selected-account>
+X-Request-Id: <request-id>
+```
+
+### Hybrid Redis envelope
+
+Authenticated sessions use an `AuthFlowSession`-style hybrid Redis document. Lifecycle metadata remains readable for support and expiry diagnosis, while actor, account, and CSRF-hash context remains encrypted under `data.attributes`:
+
+```json
+{
+  "authenticatedSessionId": "sid_<opaque-value>",
+  "status": "ACTIVE",
+  "data": {
+    "attributes": {
+      "authenticatedContext.ciphertext": "<base64>",
+      "authenticatedContext.algorithm": "AES/GCM/NoPadding",
+      "authenticatedContext.nonce": "<base64>",
+      "authenticatedContext.authenticationTag": "<base64>",
+      "authenticatedContext.keyVersion": "<configured-version>"
+    }
+  },
+  "createdAt": "<ISO-8601 instant>",
+  "updatedAt": "<ISO-8601 instant>",
+  "idleExpiresAt": "<ISO-8601 instant>",
+  "absoluteExpiresAt": "<ISO-8601 instant>"
+}
+```
+
+The readable session ID, status, timestamps, algorithm, and key version are authenticated as deterministic AES-GCM additional authenticated data (AAD). Any undetected modification to that metadata causes authenticated decryption to fail. Sensitive values such as `actorUserId`, account mappings, policy/certificate identifiers, `Account-Ref`, and `csrfTokenHash` remain encrypted.
+
+### Timeout policy
+
+```yaml
+auth-workflows:
+  login:
+    session:
+      idle-timeout-seconds: ${AUTH_WORKFLOWS_LOGIN_SESSION_IDLE_TIMEOUT_SECONDS:900}
+      absolute-timeout-seconds: ${AUTH_WORKFLOWS_LOGIN_SESSION_ABSOLUTE_TIMEOUT_SECONDS:28800}
+      terminal-retention-seconds: ${AUTH_WORKFLOWS_LOGIN_SESSION_TERMINAL_RETENTION_SECONDS:300}
+```
+
+- `idle-timeout-seconds` is the sliding inactivity window. Each successful authenticated load updates `updatedAt` and sets `idleExpiresAt` to the earlier of `now + idle timeout` and `absoluteExpiresAt`.
+- `absolute-timeout-seconds` is the fixed maximum lifetime from session creation and is never extended by activity.
+- `terminal-retention-seconds` keeps `LOGGED_OUT`, `REVOKED`, and `EXPIRED` records briefly for idempotency and operational inspection. Redis removes the record naturally after that retention TTL.
+- The retired `auth-workflows.login.session.ttl-seconds` and `AUTH_WORKFLOWS_LOGIN_SESSION_TTL_SECONDS` settings are not supported.
+
+### Terminal states and logout
+
+The persisted authenticated-session lifecycle is:
+
+```text
+ACTIVE -> LOGGED_OUT  normal user logout
+ACTIVE -> REVOKED     security/admin invalidation or transition compensation
+ACTIVE -> EXPIRED     idle or absolute timeout
+```
+
+Normal logout updates and re-protects the existing session as `LOGGED_OUT`; normal logout does not delete the Redis key immediately. Security revocation remains a separate `REVOKED` transition. All terminal states are unusable for later authenticated requests and fail closed through the generic authentication-required response.
+
+`POST /api/v1/auth/logout` requires `portal_sid` and the authenticated `X-XSRF-TOKEN`. A missing or malformed cookie returns idempotent success without invoking the logout lifecycle or mutating Redis. Successful logout clears the `portal_sid` browser cookie.
+<!-- authenticated-session-lifecycle:end -->

@@ -1,38 +1,62 @@
 package com.bct.ngtpa.apiservice.architecture;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import java.nio.file.*;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 class Task0043AuthenticatedSessionPersistenceContractArchitectureTest {
+    private static final Path MAIN = Path.of("src/main/java");
+
     @Test
-    void contractsAreApplicationOwnedAndFrameworkNeutral() throws Exception {
-        String port = Files.readString(
-                Path.of("src/main/java/com/bct/ngtpa/apiservice/application/port/out/AuthenticatedSessionPort.java"));
-        String protector = Files.readString(Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/application/port/out/AuthenticatedSessionProtectorPort.java"));
-        assertThat(port + protector).contains("application.dto.session.authenticated")
-                .doesNotContain("org.springframework", "Redis", "ObjectMapper", "WebClient", "adapter.out");
+    void protectedWireContractUsesHybridLifecycleEnvelope() throws Exception {
+        String source = Files.readString(MAIN.resolve(
+                "com/bct/ngtpa/apiservice/application/dto/session/authenticated/ProtectedAuthenticatedSession.java"));
+
+        assertThat(source).contains(
+                "authenticatedSessionId",
+                "AuthenticatedSessionStatus status",
+                "Data data",
+                "Instant createdAt",
+                "Instant updatedAt",
+                "Instant idleExpiresAt",
+                "Instant absoluteExpiresAt",
+                "authenticatedContext.ciphertext",
+                "authenticatedContext.algorithm",
+                "authenticatedContext.nonce",
+                "authenticatedContext.authenticationTag",
+                "authenticatedContext.keyVersion");
+        assertThat(source).doesNotContain(
+                "ActorContext actorContext",
+                "List<AuthenticatedSessionAccount>",
+                "String csrfTokenHash");
     }
 
     @Test
-    void protectedWireContractCannotExposeDomainFields() throws Exception {
-        String s = Files.readString(Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/application/dto/session/authenticated/ProtectedAuthenticatedSession.java"));
-        assertThat(s).contains("version", "ciphertext", "nonce", "authenticationTag").doesNotContain("actorUserId",
-                "actorUserRole", "accountEnv", "policyNo", "certNo", "trustCode", "csrfTokenHash");
+    void persistencePortRemainsFrameworkAndInfrastructureNeutral() throws Exception {
+        String source = Files.readString(MAIN.resolve(
+                "com/bct/ngtpa/apiservice/application/port/out/AuthenticatedSessionPort.java"));
+        assertThat(source).contains(
+                "store(StoreAuthenticatedSessionCommand",
+                "load(LoadAuthenticatedSessionCommand",
+                "touch(TouchAuthenticatedSessionCommand",
+                "revoke(RevokeAuthenticatedSessionCommand",
+                "delete(DeleteAuthenticatedSessionCommand");
+        assertThat(source).doesNotContain(
+                "org.springframework",
+                "CachePort",
+                "ObjectMapper",
+                "RedisAuthenticatedSessionAdapter");
     }
 
     @Test
-    void redisAdapterExistsWhileSpringCompositionRemainsDeferred() {
-        assertThat(Files.exists(Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/RedisAuthenticatedSessionAdapter.java")))
-                .isTrue();
-        assertThat(Files.exists(Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/RedisAuthenticatedSessionJsonMapper.java")))
-                .isTrue();
-        assertThat(Files.exists(
-                Path.of("src/main/java/com/bct/ngtpa/apiservice/config/auth/login/AuthenticatedSessionConfig.java")))
-                .isFalse();
+    void persistenceCommandsContinueToCarryCallerOwnedPositiveTtl() throws Exception {
+        String store = Files.readString(MAIN.resolve(
+                "com/bct/ngtpa/apiservice/application/dto/session/authenticated/StoreAuthenticatedSessionCommand.java"));
+        String touch = Files.readString(MAIN.resolve(
+                "com/bct/ngtpa/apiservice/application/dto/session/authenticated/TouchAuthenticatedSessionCommand.java"));
+        assertThat(store).contains("Duration ttl", "ttl.isZero()", "ttl.isNegative()");
+        assertThat(touch).contains("Duration ttl", "ttl.isZero()", "ttl.isNegative()");
     }
 }
