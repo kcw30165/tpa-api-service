@@ -17,6 +17,7 @@ public final class LoginOtpSendWebMapper {
                                     r.resendCooldownSeconds(), r.retryAfterSeconds())),
                     List.of());
         String code = switch (r.status()) {
+            case CSRF_INVALID -> LoginErrorKey.CSRF_INVALID.value();
             case AUTH_FLOW_INVALID -> LoginErrorKey.AUTH_FLOW_INVALID.value();
             case INVALID_DESTINATION -> LoginErrorKey.OTP_DESTINATION_INVALID.value();
             case DELIVERY_FAILED -> LoginErrorKey.OTP_DELIVERY_FAILED.value();
@@ -29,12 +30,22 @@ public final class LoginOtpSendWebMapper {
                         : ApiStatus.VALIDATION_FAILED;
         return MutationResponse.failure(status,
                 new LoginWorkflowResultResponse<>(WorkflowNextStep.SELECT_OTP_DESTINATION, null),
-                List.of(ApiError.form(code, null, List.of("PAGE"), "BFF")));
+                List.of(ApiError.form(code, null, List.of("PAGE"),
+                        r.status() == SendLoginOtpStatus.CSRF_INVALID ? "SERVER" : "BFF")));
     }
 
     public MutationResponse<LoginWorkflowResultResponse<LoginOtpSendDataResponse>> missing(String code, String target) {
         return MutationResponse.failure(ApiStatus.VALIDATION_FAILED,
                 new LoginWorkflowResultResponse<>(WorkflowNextStep.SELECT_OTP_DESTINATION, null),
                 List.of(ApiError.form(code, null, List.of(target), "BFF")));
+    }
+
+
+    public MutationResponse<LoginWorkflowResultResponse<LoginOtpSendDataResponse>> csrfInvalid() {
+        return MutationResponse.failure(
+                ApiStatus.VALIDATION_FAILED,
+                new LoginWorkflowResultResponse<>(WorkflowNextStep.SELECT_OTP_DESTINATION, null),
+                List.of(ApiError.form(
+                        LoginErrorKey.CSRF_INVALID.value(), null, List.of("PAGE"), "SERVER")));
     }
 }

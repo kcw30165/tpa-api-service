@@ -19,6 +19,9 @@ public final class LoginHttpResponses {
         if (body.success())
             return HttpStatus.OK;
         String code = firstCode(body.errors());
+        if (code.equals(LoginErrorKey.CSRF_INVALID.value())
+                || code.equals(LoginErrorKey.ORIGIN_INVALID.value()))
+            return HttpStatus.FORBIDDEN;
         if (code.equals(SharedWorkflowErrorKey.IDEMPOTENCY_IN_PROGRESS.value())
                 || code.equals(SharedWorkflowErrorKey.IDEMPOTENCY_KEY_REUSED.value()))
             return HttpStatus.CONFLICT;

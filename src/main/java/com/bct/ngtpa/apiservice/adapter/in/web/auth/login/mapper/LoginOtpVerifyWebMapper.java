@@ -23,6 +23,7 @@ public final class LoginOtpVerifyWebMapper {
             case INVALID -> LoginErrorKey.OTP_INVALID.value();
             case EXPIRED -> LoginErrorKey.OTP_EXPIRED.value();
             case VERIFY_ATTEMPTS_EXCEEDED -> LoginErrorKey.OTP_VERIFY_ATTEMPTS_EXCEEDED.value();
+            case CSRF_INVALID -> LoginErrorKey.CSRF_INVALID.value();
             case AUTH_FLOW_INVALID -> LoginErrorKey.AUTH_FLOW_INVALID.value();
             case ACCOUNT_LIST_UNAVAILABLE -> LoginErrorKey.ACCOUNT_LIST_UNAVAILABLE.value();
             case ZERO_VALID_ACCOUNTS -> LoginErrorKey.NO_ACCESSIBLE_ACCOUNTS.value();
@@ -31,7 +32,9 @@ public final class LoginOtpVerifyWebMapper {
         List<LoginOtpActionResponse> actions = result.status() == VerifyLoginOtpStatus.VERIFY_ATTEMPTS_EXCEEDED
                 ? List.of(new LoginOtpActionResponse(WorkflowNextStep.RESTART_FLOW.toString()))
                 : List.of();
-        ApiStatus status = result.status() == VerifyLoginOtpStatus.SYSTEM_FAILED
+        ApiStatus status = result.status() == VerifyLoginOtpStatus.CSRF_INVALID
+                ? ApiStatus.VALIDATION_FAILED
+                : result.status() == VerifyLoginOtpStatus.SYSTEM_FAILED
                 ? ApiStatus.SYSTEM_ERROR
                 : result.status() == VerifyLoginOtpStatus.ACCOUNT_LIST_UNAVAILABLE
                         ? ApiStatus.DOWNSTREAM_ERROR
@@ -43,7 +46,7 @@ public final class LoginOtpVerifyWebMapper {
                         code,
                         null,
                         List.of(result.status() == VerifyLoginOtpStatus.INVALID ? "otpCode" : "PAGE"),
-                        "BFF")));
+                        result.status() == VerifyLoginOtpStatus.CSRF_INVALID ? "SERVER" : "BFF")));
     }
 
     public MutationResponse<LoginWorkflowResultResponse<LoginOtpVerifyDataResponse>> missing(
@@ -81,5 +84,14 @@ public final class LoginOtpVerifyWebMapper {
                         result == null ? null : result.remainingVerifyAttempts(),
                         actions,
                         accounts));
+    }
+
+
+    public MutationResponse<LoginWorkflowResultResponse<LoginOtpVerifyDataResponse>> csrfInvalid() {
+        return MutationResponse.failure(
+                ApiStatus.VALIDATION_FAILED,
+                payload(WorkflowNextStep.VERIFY_OTP, null, List.of(), false),
+                List.of(ApiError.form(
+                        LoginErrorKey.CSRF_INVALID.value(), null, List.of("PAGE"), "SERVER")));
     }
 }

@@ -1245,3 +1245,14 @@
 - Production behavior changed by this correction: no.
 - Evidence: target/evidence/0043-017-002-fix-authenticated-csrf-typed-failure-expectation-targeted.log and target/evidence/0043-017-002-fix-authenticated-csrf-typed-failure-expectation-regression.log
 - Commit message: test(auth): expect typed authenticated CSRF failure
+
+### 0043-017-003-login-and-logout-csrf-http-mappings
+
+- Status: completed.
+- Centralized CSRF verification remains owned by CsrfTokenValidationService; this stage adds flow-specific HTTP/error mappings.
+- Invalid or unavailable sessions remain HTTP 401 with err.security.authentication.required.
+- A usable Login pre-auth session with missing/incorrect CSRF now returns HTTP 403, VALIDATION_FAILED, err.login.csrf.invalid, source SERVER.
+- A usable authenticated session with missing/incorrect logout CSRF now returns HTTP 403, VALIDATION_FAILED, err.logout.csrf.invalid, source SERVER.
+- Registration's existing HTTP 403 err.registration.csrf.invalid behavior is preserved.
+- Commit message: fix(auth): map invalid CSRF to flow-specific HTTP 403
+- Evidence: target/0043-017-003-login-and-logout-csrf-http-mappings-evidence/evidence.md
