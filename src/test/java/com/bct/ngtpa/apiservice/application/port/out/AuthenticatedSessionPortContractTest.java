@@ -3,7 +3,6 @@ package com.bct.ngtpa.apiservice.application.port.out;
 import static org.assertj.core.api.Assertions.assertThat;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.*;
 import java.time.*;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 
@@ -21,7 +20,8 @@ class AuthenticatedSessionPortContractTest {
     @Test
     void persistenceCommandsRequireOpaqueIdentityAndPositiveTtl() {
         var id = new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx");
-        var payload = new ProtectedAuthenticatedSession("v1", "ciphertext", "nonce", "tag");
+        var payload = com.bct.ngtpa.apiservice.application.dto.session.authenticated.ProtectedAuthenticatedSessionTestFixtures
+                .envelope("v1", "ciphertext", "nonce", "tag");
         assertThat(new StoreAuthenticatedSessionCommand(id, payload, Duration.ofMinutes(30),
                 Instant.parse("2026-07-20T00:00:00Z"), "req").toString())
                 .doesNotContain(id.value(), "ciphertext", "nonce", "tag");

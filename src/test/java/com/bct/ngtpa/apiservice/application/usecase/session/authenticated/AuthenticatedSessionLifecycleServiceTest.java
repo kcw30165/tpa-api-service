@@ -94,7 +94,7 @@ class AuthenticatedSessionLifecycleServiceTest {
             AuthenticatedSessionProtectorPort protector = new AuthenticatedSessionProtectorPort() {
                 public ProtectedAuthenticatedSession protect(AuthenticatedSession s) {
                     loaded.set(s);
-                    return new ProtectedAuthenticatedSession("v1", "cipher", "nonce", "tag");
+                    return com.bct.ngtpa.apiservice.application.dto.session.authenticated.ProtectedAuthenticatedSessionTestFixtures.envelope("v1", "cipher", "nonce", "tag");
                 }
 
                 public AuthenticatedSession unprotect(ProtectedAuthenticatedSession p) {
@@ -110,7 +110,7 @@ class AuthenticatedSessionLifecycleServiceTest {
 
                 public Mono<Optional<ProtectedAuthenticatedSession>> load(LoadAuthenticatedSessionCommand c) {
                     return Mono.just(Optional.ofNullable(loaded.get())
-                            .map(x -> new ProtectedAuthenticatedSession("v1", "cipher", "nonce", "tag")));
+                            .map(x -> com.bct.ngtpa.apiservice.application.dto.session.authenticated.ProtectedAuthenticatedSessionTestFixtures.envelope("v1", "cipher", "nonce", "tag")));
                 }
 
                 public Mono<AuthenticatedSessionPersistenceResult> touch(TouchAuthenticatedSessionCommand c) {

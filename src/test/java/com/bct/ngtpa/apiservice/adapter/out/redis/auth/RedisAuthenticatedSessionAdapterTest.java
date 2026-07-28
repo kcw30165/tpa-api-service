@@ -16,7 +16,7 @@ class RedisAuthenticatedSessionAdapterTest {
     private final RedisAuthenticatedSessionAdapter adapter = new RedisAuthenticatedSessionAdapter(cache,
             new RedisCacheKeyFactory("ngtpa"), new RedisAuthenticatedSessionJsonMapper());
     private final AuthenticatedSessionId id = new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx");
-    private final ProtectedAuthenticatedSession payload = new ProtectedAuthenticatedSession("v1", "cipher-secret",
+    private final ProtectedAuthenticatedSession payload = com.bct.ngtpa.apiservice.application.dto.session.authenticated.ProtectedAuthenticatedSessionTestFixtures.envelope("v1", "cipher-secret",
             "nonce-secret", "tag-secret");
 
     @Test
@@ -45,7 +45,7 @@ class RedisAuthenticatedSessionAdapterTest {
 
     @Test
     void touchAtomicallyReplacesProtectedValueAndTtl() {
-        var next = new ProtectedAuthenticatedSession("v1", "cipher-next", "nonce-next", "tag-next");
+        var next = com.bct.ngtpa.apiservice.application.dto.session.authenticated.ProtectedAuthenticatedSessionTestFixtures.envelope("v1", "cipher-next", "nonce-next", "tag-next");
         StepVerifier
                 .create(adapter
                         .touch(new TouchAuthenticatedSessionCommand(id, next, Duration.ofMinutes(10), NOW, "req")))

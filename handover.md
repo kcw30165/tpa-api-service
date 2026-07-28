@@ -1101,3 +1101,17 @@
 - Full Maven suite passed; evidence: target/0043-014-009-evidence/evidence.md
 - README.md updated with the final browser-session and CSRF contract.
 - Commit message: test(auth): finalize body CSRF transport and documentation
+
+### 0043-015-001-hybrid-authenticated-session-envelope
+- Status: completed
+- Subtask 015 main-script progress: 1/5; four main scripts remain.
+- Introduced the hybrid authenticated-session Redis envelope with readable lifecycle metadata authenticated as AES-GCM AAD and encrypted sensitive context under data.attributes.
+- Commit message: refactor(auth): store authenticated lifecycle metadata in hybrid envelope
+
+### 0043-015-005-complete-hybrid-serialization-without-script-resume
+- Status: completed
+- Classification: state-independent corrective implementation; previous failed corrective scripts were not resumed.
+- Redis lifecycle metadata is serialized explicitly as ISO-8601 strings through an adapter-private wire model.
+- Malformed encrypted envelope content is normalized to a non-sensitive unprotect failure while configured-key validation remains explicit.
+- Evidence: target/evidence/0043-015-005-complete-hybrid-serialization-without-script-resume-test-compile.log and target/evidence/0043-015-005-complete-hybrid-serialization-without-script-resume-targeted.log
+- Commit message: fix(auth): complete hybrid session serialization directly
