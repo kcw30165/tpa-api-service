@@ -37,7 +37,7 @@ build/
 ### self tools ###
 set-java-home.sh
 .github/
-docs/
+doc/
 fix-ssl-maven.bat
 *.txt
 aa.md

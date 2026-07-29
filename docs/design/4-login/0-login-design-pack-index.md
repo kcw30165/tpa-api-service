@@ -1,0 +1,15 @@
+# Login Design Pack
+
+- [login-master-design.md](login-master-design.md)
+- [login-sequence-diagrams.md](login-sequence-diagrams.md)
+- [login-error-matrix.md](login-error-matrix.md)
+- [login-api-contract.md](login-api-contract.md)
+- [login-state-contract.md](login-state-contract.md)
+- [login-apim-contract.md](login-apim-contract.md)
+- [login-session-security-contract.md](login-session-security-contract.md)
+- [login-workflow-contract.md](login-workflow-contract.md)
+- [login-shared-foundation-design.md](login-shared-foundation-design.md)
+- [login-configuration-contract.md](login-configuration-contract.md)
+- [login-observability-audit-contract.md](login-observability-audit-contract.md)
+- [login-traceability-test-design.md](login-traceability-test-design.md)
+- [login-decisions-open-questions.md](login-decisions-open-questions.md)
