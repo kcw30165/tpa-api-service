@@ -23,7 +23,7 @@ class CopilotGuidanceContractTest {
                         .resolve("current-project-direction.instructions.md");
         private static final Path SKILLS_DIR = GITHUB_DIR.resolve("skills");
         private static final Path PROMPTS_DIR = GITHUB_DIR.resolve("prompts");
-        private static final Path ARCHIVE_DIR = Path.of("docs/development-log/copilot-prompts");
+        private static final Path ARCHIVE_DIR = Path.of("doc/development-log/copilot-prompts");
         private static final Path ARCHIVE_README = ARCHIVE_DIR.resolve("README.md");
 
         @Test

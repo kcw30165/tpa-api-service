@@ -1283,3 +1283,11 @@
 - Preserved broad P3 tests and active session-bound Login/Registration/authenticated-session CSRF behavior.
 - Commit message: refactor(security): remove unused legacy CSRF abstraction
 - Evidence: target/0043-017-007-remove-unused-legacy-csrf-abstraction-evidence/evidence.md
+
+### 0043-017-008-fix-account-details-response-test-contradiction
+
+- Status: completed.
+- Corrected a contradictory Login OTP account-response test assertion: trustCode remains required, while rawPolicyNo and rawCertNo remain prohibited.
+- Production DTO behavior was not changed.
+- Commit message: test(login): fix contradictory account response assertion
+- Evidence: target/0043-017-008-fix-account-details-response-test-contradiction-evidence/evidence.md

@@ -27,7 +27,7 @@ class LoginOtpVerifyAccountDetailsResponseTest {
                                 .contains("\"accountEnv\":\"DB\"")
                                 .contains("\"trustCode\":\"TR\"")
                                 .contains("\"schemeType\":\"OE\"")
-                                .doesNotContain("rawPolicyNo", "rawCertNo", "trustCode");
+                                .doesNotContain("rawPolicyNo", "rawCertNo");
         }
 
         @Test
