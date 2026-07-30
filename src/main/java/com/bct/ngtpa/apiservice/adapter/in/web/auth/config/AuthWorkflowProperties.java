@@ -4,8 +4,11 @@ import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @ConfigurationProperties(prefix = "auth-workflows")
 @Getter
@@ -14,6 +17,7 @@ public class AuthWorkflowProperties {
 
     private Registration registration;
     private Login login;
+    private ForgotPassword forgotPassword;
 
     @Getter
     @Setter
@@ -36,6 +40,44 @@ public class AuthWorkflowProperties {
         private final LoginSession session = new LoginSession();
         private final LoginAccount account = new LoginAccount();
         private final Message message = new Message();
+    }
+
+    @Getter
+    @Setter
+    public static class ForgotPassword {
+        private final ForgotPasswordUsername username = new ForgotPasswordUsername();
+        private Set<String> allowedPublicIdentityTypes = new LinkedHashSet<>();
+        private Map<String, String> tasToPublicIdentityTypeMapping = new LinkedHashMap<>();
+        private final Otp otp = new Otp();
+        private final ForgotPasswordIdempotency idempotency = new ForgotPasswordIdempotency();
+        private final ResetAuthorization resetAuthorization = new ResetAuthorization();
+    }
+
+    @Getter
+    @Setter
+    public static class ForgotPasswordUsername {
+        private int minLength;
+        private int maxLength;
+        private boolean trim = true;
+        private boolean caseInsensitive = true;
+        private String normalization = "ASCII_LOWERCASE";
+    }
+
+    @Getter
+    @Setter
+    public static class ForgotPasswordIdempotency {
+        private int startTtlSeconds;
+        private int detailsAndOtpTtlSeconds;
+        private int otpResendTtlSeconds;
+        private int otpVerifyTtlSeconds;
+        private int completeTtlSeconds;
+        private int cancelTtlSeconds;
+    }
+
+    @Getter
+    @Setter
+    public static class ResetAuthorization {
+        private int ttlSeconds;
     }
 
     @Getter
@@ -106,7 +148,6 @@ public class AuthWorkflowProperties {
         private boolean secure = true;
         private String sameSite = "None";
     }
-
 
     @Getter
     @Setter
@@ -287,4 +328,105 @@ public class AuthWorkflowProperties {
         }
     }
 
+    public void validateForgotPasswordPolicy() {
+        if (forgotPassword == null) {
+            throw new IllegalStateException("auth-workflows.forgot-password configuration is required");
+        }
+
+        requirePositive(forgotPassword.username.minLength,
+                "auth-workflows.forgot-password.username.min-length");
+        requireRange(forgotPassword.username.minLength, forgotPassword.username.maxLength,
+                "auth-workflows.forgot-password username length");
+
+        if (forgotPassword.allowedPublicIdentityTypes == null || forgotPassword.allowedPublicIdentityTypes.isEmpty()) {
+            throw new IllegalStateException(
+                    "auth-workflows.forgot-password.allowed-public-identity-types must not be empty");
+        }
+        if (forgotPassword.tasToPublicIdentityTypeMapping == null
+                || forgotPassword.tasToPublicIdentityTypeMapping.isEmpty()) {
+            throw new IllegalStateException(
+                    "auth-workflows.forgot-password.tas-to-public-identity-type-mapping must not be empty");
+        }
+
+        Set<String> allowedTypes = normalizeAll(forgotPassword.allowedPublicIdentityTypes);
+        for (var entry : forgotPassword.tasToPublicIdentityTypeMapping.entrySet()) {
+            String tasType = normalize(entry.getKey());
+            String publicType = normalize(entry.getValue());
+            if (tasType == null || publicType == null) {
+                throw new IllegalStateException(
+                        "auth-workflows.forgot-password.tas-to-public-identity-type-mapping must not contain blank keys or values");
+            }
+            if (!allowedTypes.contains(publicType)) {
+                throw new IllegalStateException(
+                        "auth-workflows.forgot-password.tas-to-public-identity-type-mapping contains unsupported public identity type: "
+                                + publicType);
+            }
+        }
+
+        validateForgotPasswordOtpPolicy(forgotPassword.otp);
+        requirePositive(forgotPassword.idempotency.startTtlSeconds,
+                "auth-workflows.forgot-password.idempotency.start-ttl-seconds");
+        requirePositive(forgotPassword.idempotency.detailsAndOtpTtlSeconds,
+                "auth-workflows.forgot-password.idempotency.details-and-otp-ttl-seconds");
+        requirePositive(forgotPassword.idempotency.otpResendTtlSeconds,
+                "auth-workflows.forgot-password.idempotency.otp-resend-ttl-seconds");
+        requirePositive(forgotPassword.idempotency.otpVerifyTtlSeconds,
+                "auth-workflows.forgot-password.idempotency.otp-verify-ttl-seconds");
+        requirePositive(forgotPassword.idempotency.completeTtlSeconds,
+                "auth-workflows.forgot-password.idempotency.complete-ttl-seconds");
+        requirePositive(forgotPassword.idempotency.cancelTtlSeconds,
+                "auth-workflows.forgot-password.idempotency.cancel-ttl-seconds");
+        requirePositive(forgotPassword.resetAuthorization.ttlSeconds,
+                "auth-workflows.forgot-password.reset-authorization.ttl-seconds");
+    }
+
+    private void validateForgotPasswordOtpPolicy(Otp otp) {
+        requirePositive(otp.length, "auth-workflows.forgot-password.otp.length");
+        requirePositive(otp.ttlSeconds, "auth-workflows.forgot-password.otp.ttl-seconds");
+        requireNonNegative(otp.resendCooldownSeconds,
+                "auth-workflows.forgot-password.otp.resend-cooldown-seconds");
+        requirePositive(otp.maxVerifyAttempts,
+                "auth-workflows.forgot-password.otp.max-verify-attempts");
+        if (otp.resendLimitEnabled) {
+            requirePositive(otp.maxResendAttempts,
+                    "auth-workflows.forgot-password.otp.max-resend-attempts");
+        }
+        requireTemplate(otp.smsTemplate, "auth-workflows.forgot-password.otp.sms-template");
+        if (otp.emailTemplate.subject == null || otp.emailTemplate.subject.isBlank()) {
+            throw new IllegalStateException(
+                    "auth-workflows.forgot-password.otp.email-template.subject must not be blank");
+        }
+        requireTemplate(otp.emailTemplate.body, "auth-workflows.forgot-password.otp.email-template.body");
+    }
+
+    private void requireTemplate(String template, String property) {
+        if (template == null || template.isBlank()) {
+            throw new IllegalStateException(property + " must not be blank");
+        }
+        for (String placeholder : List.of("{code}", "{ttlValue}", "{ttlUnit}")) {
+            if (!template.contains(placeholder)) {
+                throw new IllegalStateException(property + " must contain " + placeholder);
+            }
+        }
+    }
+
+    private Set<String> normalizeAll(Set<String> values) {
+        Set<String> normalized = new LinkedHashSet<>();
+        for (String value : values) {
+            String normalizedValue = normalize(value);
+            if (normalizedValue == null) {
+                throw new IllegalStateException(
+                        "auth-workflows.forgot-password.allowed-public-identity-types must not contain blank values");
+            }
+            normalized.add(normalizedValue);
+        }
+        return normalized;
+    }
+
+    private String normalize(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim().toUpperCase();
+    }
 }

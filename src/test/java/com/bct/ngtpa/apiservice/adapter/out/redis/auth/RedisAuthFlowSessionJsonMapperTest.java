@@ -68,6 +68,36 @@ class RedisAuthFlowSessionJsonMapperTest {
     }
 
     @Test
+    void readsExistingRedisJsonAfterAuthFlowStatusExpansion() {
+        var legacyJson = """
+                {
+                    \"authFlowSessionId\":\"afs_legacy\",
+                    \"scenario\":\"FORGOT_PASSWORD\",
+                    \"status\":\"OTP_SENT\",
+                    \"csrfTokenHash\":\"csrf_hash_value\",
+                    \"activeOtpChallengeId\":\"otp_legacy\",
+                    \"data\":{
+                        \"contactType\":\"EMAIL\",
+                        \"maskedDestination\":\"m****r@example.com\",
+                        \"attributes\":{
+                            \"forgotPasswordContextCiphertext\":\"ciphertext\"
+                        }
+                    },
+                    \"createdAt\":\"2026-06-29T00:00:00Z\",
+                    \"updatedAt\":\"2026-06-29T00:01:00Z\",
+                    \"expiresAt\":\"2026-06-29T00:30:00Z\"
+                }
+                """;
+
+        var session = mapper.fromJson(legacyJson);
+
+        assertThat(session.authFlowSessionId().value()).isEqualTo("afs_legacy");
+        assertThat(session.scenario()).isEqualTo(AuthFlowScenario.FORGOT_PASSWORD);
+        assertThat(session.status()).isEqualTo(AuthFlowStatus.OTP_SENT);
+        assertThat(session.data().attributes()).containsEntry("forgotPasswordContextCiphertext", "ciphertext");
+    }
+
+    @Test
     void authFlowStatusDoesNotUseAmbiguousFailureStates() {
         assertThat(java.util.Arrays.stream(AuthFlowStatus.values()).map(Enum::name))
                 .doesNotContain("FAILED", "UNKNOWN", "ERROR");

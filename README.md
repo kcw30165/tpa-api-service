@@ -189,11 +189,13 @@ mvn clean verify
 1. Activate the local profile from [src/main/resources/application-local.yml](src/main/resources/application-local.yml), for example with `SPRING_PROFILES_ACTIVE=local`.
 2. Provide local configuration through environment variables or a repository-root `.env` or `.env.properties` file. The base application configuration imports `optional:file:./.env[.properties]`.
 3. At minimum, configure the current startup-critical protection settings:
-  - `auth-workflows.login.context-protection.key-version`
-  - `auth-workflows.login.context-protection.secret`
-  - `auth-workflows.login.session.protection.base64-key`
-  - `auth-workflows.registration.context-protection.secret`
-4. Start the application:
+
+- `auth-workflows.login.context-protection.key-version`
+- `auth-workflows.login.context-protection.secret`
+- `auth-workflows.login.session.protection.base64-key`
+- `auth-workflows.registration.context-protection.secret`
+
+1. Start the application:
 
 ```bash
 mvn spring-boot:run
@@ -215,11 +217,12 @@ The attached startup log in this repository workspace confirms that leaving `aut
 | --- | --- | --- | --- |
 | `apim` | APIM base URL, OAuth client, encryption, retry, credential profiles | Yes | Required for APIM-backed calls |
 | `redis-cache` | Redis Sentinel, SSL bundle, timeout, key prefix | Usually | Enabled by default; disable explicitly for no-Redis local runs |
-| `auth-workflows` | Login and registration rules, OTP behavior, session cookie settings | Partly | Includes authenticated session cookie name `portal_sid` |
+| `auth-workflows` | Login, registration, and forgot-password rules, OTP behavior, session cookie settings | Partly | Includes authenticated session cookie name `portal_sid` |
 | `auth-flow-session` | Auth-flow cookie, CSRF, TTL, scenario settings | No | Drives `auth_flow_sid` and `XSRF-TOKEN` behavior |
 | `auth-workflows.login.context-protection` | Login pre-auth encryption settings | Yes | Required at startup |
 | `auth-workflows.login.session.protection` | Authenticated-session payload protection | Yes | Required at startup |
 | `auth-workflows.registration.context-protection` | Registration context and username-check protection | Yes | Required at startup |
+| `auth-workflows.forgot-password.context-protection` | Forgot-password continuation-context encryption settings | Yes | Declared for later workflow wiring; not startup-critical in Subtask 002 |
 | `config-service` | Config service HTTP client settings | Usually | Startup integration settings |
 | `sms` | SMS delivery settings for workflow messaging | Usually | Used by current auth workflows |
 | `cors` | Allowed origins, headers, and methods | No | Applied when origins are configured |

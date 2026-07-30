@@ -99,6 +99,50 @@ auth-flow-session:
       ttl-seconds: 900
 
 auth-workflows:
+  forgot-password:
+    username:
+      min-length: 4
+      max-length: 128
+      trim: true
+      case-insensitive: true
+      normalization: ASCII_LOWERCASE
+    context-protection:
+      enabled: true
+      key-version: ${FORGOT_PASSWORD_CONTEXT_KEY_VERSION:}
+      secret: ${FORGOT_PASSWORD_CONTEXT_SECRET:}
+    allowed-public-identity-types:
+      - GPN
+      - GPFS
+      - STAFF_NO
+      - ID
+    tas-to-public-identity-type-mapping:
+      GPN: GPN
+      GPFS: GPFS
+      ID: ID
+      STAFF: STAFF_NO
+    otp:
+      length: 6
+      numeric-only: true
+      ttl-seconds: 300
+      resend-cooldown-seconds: 60
+      max-verify-attempts: 5
+      resend-limit-enabled: true
+      max-resend-attempts: 5
+      invalidate-previous-on-resend: true
+      reset-verify-attempts-on-resend: true
+      sms-template: "Your BCT forgot password verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
+      email-template:
+        subject: "BCT forgot password verification code"
+        body: "Your BCT forgot password verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
+    idempotency:
+      start-ttl-seconds: 300
+      details-and-otp-ttl-seconds: 300
+      otp-resend-ttl-seconds: 300
+      otp-verify-ttl-seconds: 300
+      complete-ttl-seconds: 300
+      cancel-ttl-seconds: 300
+    reset-authorization:
+      ttl-seconds: 300
   login:
     message:
       destination-override:

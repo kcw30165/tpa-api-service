@@ -57,9 +57,13 @@ class P4BAuthFlowSessionFoundationIntegrationTest {
                 AuthFlowStatus.OTP_VERIFIED,
                 AuthFlowStatus.TRUST_SELECTION_READY,
                 AuthFlowStatus.USERNAME_VERIFIED,
+                AuthFlowStatus.IDENTITY_VERIFIED,
+                AuthFlowStatus.RESET_AUTHORIZED,
                 AuthFlowStatus.COMPLETING,
                 AuthFlowStatus.COMPLETED,
                 AuthFlowStatus.CANCELLED,
+                AuthFlowStatus.LOCKED,
+                AuthFlowStatus.UNKNOWN_OUTCOME_BLOCKED,
                 AuthFlowStatus.EXPIRED);
         assertThat(Arrays.stream(AuthFlowStatus.values()).map(Enum::name))
                 .doesNotContain("FAILED", "UNKNOWN", "ERROR");
