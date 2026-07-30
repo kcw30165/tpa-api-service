@@ -1,1 +1,9 @@
-package com.bct.ngtpa.apiservice.application.dto.session.authenticated;import java.util.Objects;public record AuthenticatedSessionPersistenceResult(AuthenticatedSessionPersistenceStatus status){public AuthenticatedSessionPersistenceResult{Objects.requireNonNull(status);}}
+package com.bct.ngtpa.apiservice.application.dto.session.authenticated;
+
+import java.util.Objects;
+
+public record AuthenticatedSessionPersistenceResult(AuthenticatedSessionPersistenceStatus status) {
+    public AuthenticatedSessionPersistenceResult {
+        Objects.requireNonNull(status);
+    }
+}
