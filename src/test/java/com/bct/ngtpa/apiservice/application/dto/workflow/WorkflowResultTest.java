@@ -27,14 +27,16 @@ class WorkflowResultTest {
                 WorkflowNextStep.NONE,
                 "payload",
                 null,
-                null,
                 null);
 
         assertThat(result.messages()).isEmpty();
         assertThat(result.errors()).isEmpty();
-        assertThatThrownBy(() -> result.messages().add(new WorkflowMessageDescriptor(WorkflowMessageType.INFO, "code", "message", "PAGE")))
+        assertThatThrownBy(() -> result.messages()
+                .add(new WorkflowMessageDescriptor(WorkflowMessageType.INFO, "code", "message", "PAGE")))
                 .isInstanceOf(UnsupportedOperationException.class);
-        assertThatThrownBy(() -> result.errors().add(new WorkflowErrorDescriptor(WorkflowErrorType.FORM, "code", "message", List.of(), WorkflowErrorSeverity.ERROR, "SERVER")))
+        assertThatThrownBy(() -> result.errors()
+                .add(new WorkflowErrorDescriptor(WorkflowErrorType.FORM, "code", "message", List.of(),
+                        WorkflowErrorSeverity.ERROR, "SERVER")))
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 
@@ -48,7 +50,8 @@ class WorkflowResultTest {
                 WorkflowErrorSeverity.ERROR,
                 "SERVER");
 
-        var result = WorkflowResult.failure(WorkflowResultStatus.VALIDATION_FAILED, WorkflowNextStep.RESTART_FLOW, List.of(error));
+        var result = WorkflowResult.failure(WorkflowResultStatus.VALIDATION_FAILED, WorkflowNextStep.RESTART_FLOW,
+                List.of(error));
 
         assertThat(result.isSuccessLike()).isFalse();
         assertThat(result.status()).isEqualTo(WorkflowResultStatus.VALIDATION_FAILED);
@@ -65,17 +68,6 @@ class WorkflowResultTest {
         assertThat(result.nextStep()).isEqualTo(WorkflowNextStep.WAIT);
         assertThat(result.isSuccessLike()).isTrue();
         assertThat(result.errors()).isEmpty();
-    }
-
-    @Test
-    void workflowResultCanCarryPageRefWithoutLocalizedContent() {
-        var pageRef = new WorkflowPageRef("registration-success", "hasRemainingTrusts");
-        var result = WorkflowResult.success(WorkflowNextStep.REGISTRATION_SUCCESS, "payload", pageRef);
-
-        assertThat(result.pageRef()).isEqualTo(pageRef);
-        assertThat(recordComponentNames(WorkflowPageRef.class))
-                .containsExactly("pageId", "variant")
-                .doesNotContain("title", "body", "actions", "labels", "messages", "localizedText");
     }
 
     @Test

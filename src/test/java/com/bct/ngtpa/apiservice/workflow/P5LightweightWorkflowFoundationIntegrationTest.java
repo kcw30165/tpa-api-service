@@ -6,8 +6,6 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowConstants;
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowPageSelections;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowFailureCategory;
@@ -15,9 +13,6 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowFailureClassifi
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowLogSeverity;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowMessageKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
-import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowPageSelection;
-import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResolvedPage;
-import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResolvedPageAction;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResult;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResultStatus;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowScenario;
@@ -25,11 +20,8 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowStableStateRule
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowStep;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowTransitionCheck;
 import java.lang.reflect.RecordComponent;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class P5LightweightWorkflowFoundationIntegrationTest {
@@ -172,60 +164,6 @@ class P5LightweightWorkflowFoundationIntegrationTest {
                 assertThat(Arrays.stream(WorkflowResultStatus.values()).map(Enum::name)).doesNotContain("FAILED",
                                 "UNKNOWN",
                                 "ERROR");
-        }
-
-        @Test
-        void p5WorkflowPageSelectionUsesPageIdAndVariantOnly() {
-                WorkflowPageSelection selection = RegistrationWorkflowPageSelections
-                                .registrationSuccessHasRemainingTrusts();
-
-                assertThat(selection.scenario()).isEqualTo(WorkflowScenario.REGISTRATION);
-                assertThat(selection.nextStep()).isEqualTo(WorkflowNextStep.REGISTRATION_SUCCESS);
-                assertThat(selection.pageRef().pageId()).isEqualTo("registration-success");
-                assertThat(selection.pageRef().variant()).isEqualTo("hasRemainingTrusts");
-                assertThat(recordComponentNames(WorkflowPageSelection.class))
-                                .containsExactly("scenario", "nextStep", "pageRef")
-                                .doesNotContain("title", "body", "actions", "label", "labels", "messages",
-                                                "localizedText");
-        }
-
-        @Test
-        void p5WorkflowResolvedPageUsesSingleLanguageShape() {
-                var page = new WorkflowResolvedPage(
-                                "registration-success",
-                                "hasRemainingTrusts",
-                                "Successful Registration",
-                                "Your registration is complete.",
-                                List.of(new WorkflowResolvedPageAction("returnToLogin", "PRIMARY", "Return to Login",
-                                                WorkflowNextStep.RETURN_TO_LOGIN)));
-
-                assertThat(page.title()).isInstanceOf(String.class);
-                assertThat(page.body()).isInstanceOf(String.class);
-                assertThat(page.actions().getFirst().label()).isInstanceOf(String.class);
-                assertThat(recordComponentNames(WorkflowResolvedPage.class))
-                                .doesNotContain("titleEn", "titleZh", "bodyEn", "bodyZh", "localizedText", "labels");
-                assertThat(page.getClass().getRecordComponents())
-                                .noneMatch(component -> component.getType().equals(Map.class));
-        }
-
-        @Test
-        void p5RegistrationWorkflowPageSelectionsMatchBffPagesIds() {
-                assertThat(RegistrationWorkflowPageSelections.registrationStart().pageRef().pageId())
-                                .isEqualTo(RegistrationWorkflowConstants.PAGE_REGISTRATION_START);
-                assertThat(RegistrationWorkflowPageSelections.registrationOtpVerification().pageRef().pageId())
-                                .isEqualTo(RegistrationWorkflowConstants.PAGE_REGISTRATION_OTP_VERIFICATION);
-                assertThat(RegistrationWorkflowPageSelections.registrationTrustSelection().pageRef().pageId())
-                                .isEqualTo(RegistrationWorkflowConstants.PAGE_REGISTRATION_TRUST_SELECTION);
-                assertThat(RegistrationWorkflowPageSelections.registrationUsernameCheck().pageRef().pageId())
-                                .isEqualTo(RegistrationWorkflowConstants.PAGE_REGISTRATION_USERNAME_CHECK);
-                assertThat(RegistrationWorkflowPageSelections.registrationPasswordSetup().pageRef().pageId())
-                                .isEqualTo(RegistrationWorkflowConstants.PAGE_REGISTRATION_PASSWORD_SETUP);
-                assertThat(RegistrationWorkflowPageSelections.registrationSuccessNoRemainingTrusts().pageRef()
-                                .variant())
-                                .isEqualTo("noRemainingTrusts");
-                assertThat(RegistrationWorkflowPageSelections.registrationSuccessHasRemainingTrusts().pageRef()
-                                .variant())
-                                .isEqualTo("hasRemainingTrusts");
         }
 
         private static void assertCodeKey(String value) {

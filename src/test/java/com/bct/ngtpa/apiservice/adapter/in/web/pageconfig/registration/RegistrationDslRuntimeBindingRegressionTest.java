@@ -118,12 +118,10 @@ class RegistrationDslRuntimeBindingRegressionTest {
                     "zh-HK");
             assertThat(username.targets()).containsExactly("username");
             assertThat(username.nextStep()).isEqualTo(WorkflowNextStep.USERNAME_CHECK);
-            assertThat(username.pageRef().pageId()).isEqualTo("registration-username-check");
             var alreadyRegistered = resolver.resolve(
                     RegistrationErrorKey.COMPLETE_MEMBER_ALREADY_REGISTERED.value(),
                     "en");
             assertThat(alreadyRegistered.nextStep()).isEqualTo(WorkflowNextStep.RETURN_TO_LOGIN);
-            assertThat(alreadyRegistered.pageRef().pageId()).isEqualTo("login");
         });
     }
 

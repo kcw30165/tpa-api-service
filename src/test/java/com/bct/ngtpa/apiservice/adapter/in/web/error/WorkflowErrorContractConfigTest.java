@@ -35,7 +35,6 @@ class WorkflowErrorContractConfigTest {
             var resolved=resolver.resolve(RegistrationErrorKey.USERNAME_ALREADY_REGISTERED.value(),"zh-HK");
             assertThat(resolved.targets()).containsExactly("username");
             assertThat(resolved.nextStep().name()).isEqualTo("USERNAME_CHECK");
-            assertThat(resolved.pageRef().pageId()).isEqualTo("registration-username-check");
         });
     }
     @Configuration(proxyBeanMethods=false)

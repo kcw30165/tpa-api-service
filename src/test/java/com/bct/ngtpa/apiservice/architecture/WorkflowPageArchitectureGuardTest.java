@@ -3,12 +3,6 @@ package com.bct.ngtpa.apiservice.architecture;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowPageSelections;
-import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowPageResolutionCommand;
-import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowPageSelection;
-import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResolvedPage;
-import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResolvedPageAction;
-import com.bct.ngtpa.apiservice.application.port.out.WorkflowContentResolverPort;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition;
@@ -18,22 +12,6 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 class WorkflowPageArchitectureGuardTest {
-
-    @Test
-    void workflowPageModelsDoNotDependOnAuthFlowSession() {
-        JavaClasses classes = new ClassFileImporter().importClasses(
-                WorkflowPageSelection.class,
-                WorkflowPageResolutionCommand.class,
-                WorkflowResolvedPage.class,
-                WorkflowResolvedPageAction.class,
-                RegistrationWorkflowPageSelections.class,
-                WorkflowContentResolverPort.class);
-
-        ArchRuleDefinition.noClasses()
-                .should().dependOnClassesThat().resideInAnyPackage(
-                        "..application.dto.session.authflow..")
-                .check(classes);
-    }
 
     @Test
     void workflowPageModelsDoNotIntroduceNewPageDsl() {
@@ -61,28 +39,6 @@ class WorkflowPageArchitectureGuardTest {
         assertClassAbsent("com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowResumeService");
         assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthFlowResumeController");
         assertThat(sourceContains("/api/v1/auth/flow/resume")).isFalse();
-    }
-
-    @Test
-    void workflowPageApplicationModelsHaveNoSpringAdapterRedisOrWebDependencies() {
-        JavaClasses classes = new ClassFileImporter().importClasses(
-                WorkflowPageSelection.class,
-                WorkflowPageResolutionCommand.class,
-                WorkflowResolvedPage.class,
-                WorkflowResolvedPageAction.class,
-                RegistrationWorkflowPageSelections.class,
-                WorkflowContentResolverPort.class);
-
-        ArchRuleDefinition.noClasses()
-                .should().dependOnClassesThat().resideInAnyPackage(
-                        "org.springframework..",
-                        "org.springframework.http..",
-                        "org.springframework.web..",
-                        "jakarta.servlet..",
-                        "com.bct.ngtpa.apiservice.adapter..",
-                        "io.lettuce..",
-                        "org.springframework.data.redis..")
-                .check(classes);
     }
 
     private static void assertClassAbsent(String className) {

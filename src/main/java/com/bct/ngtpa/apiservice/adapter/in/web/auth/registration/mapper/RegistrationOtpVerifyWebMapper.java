@@ -24,16 +24,16 @@ public class RegistrationOtpVerifyWebMapper {
     private static final String TARGET_PAGE = "PAGE";
     private static final String TARGET_OTP_CODE = "otpCode";
 
-        private final RegistrationWorkflowMutationResponseMapper workflowMutationResponseMapper;
+    private final RegistrationWorkflowMutationResponseMapper workflowMutationResponseMapper;
 
     public RegistrationOtpVerifyWebMapper(
             com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper workflowMutationResponseMapper) {
         this.workflowMutationResponseMapper = new RegistrationWorkflowMutationResponseMapper(Objects.requireNonNull(
                 workflowMutationResponseMapper,
-            "workflowMutationResponseMapper must not be null"));
+                "workflowMutationResponseMapper must not be null"));
     }
 
-        public MutationResponse<RegistrationWorkflowResultResponse<RegistrationOtpVerifyResponse>> toMutationResponse(
+    public MutationResponse<RegistrationWorkflowResultResponse<RegistrationOtpVerifyResponse>> toMutationResponse(
             VerifyRegistrationOtpResult result) {
         Objects.requireNonNull(result, "result must not be null");
         var response = workflowMutationResponseMapper.toMutationResponse(toWorkflowResult(result));
@@ -62,8 +62,7 @@ public class RegistrationOtpVerifyWebMapper {
 
     public MutationResponse<RegistrationWorkflowResultResponse<RegistrationOtpVerifyResponse>> missingIdempotencyKeyResponse() {
         return validationFailure(
-                com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey
-                        .IDEMPOTENCY_MISSING.value(),
+                com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value(),
                 "Idempotency-Key");
     }
 
@@ -79,7 +78,6 @@ public class RegistrationOtpVerifyWebMapper {
                 workflowStatus(result.status()),
                 result.nextStep(),
                 data(result),
-                null,
                 List.of(),
                 errors(result));
     }
@@ -183,7 +181,6 @@ public class RegistrationOtpVerifyWebMapper {
                 WorkflowResultStatus.VALIDATION_FAILED,
                 WorkflowNextStep.VERIFY_OTP,
                 null,
-            null,
                 List.of(),
                 List.of(error)));
     }
