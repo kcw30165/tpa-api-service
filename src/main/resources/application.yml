@@ -143,6 +143,10 @@ auth-workflows:
           sms: "您的 BCT 忘記密碼驗證碼為 {code}，有效期限為 {ttlValue} {ttlUnit}。"
           email-subject: "BCT 忘記密碼驗證碼"
           email-body: "您的 BCT 忘記密碼驗證碼為 {code}，有效期限為 {ttlValue} {ttlUnit}。"
+    details-and-otp:
+      mutation-lock-lease-seconds: ${FORGOT_PASSWORD_DETAILS_OTP_LOCK_LEASE_SECONDS:60}
+      mutation-lock-redis-allowance-seconds: ${FORGOT_PASSWORD_DETAILS_OTP_REDIS_ALLOWANCE_SECONDS:10}
+      mutation-lock-safety-margin-seconds: ${FORGOT_PASSWORD_DETAILS_OTP_SAFETY_MARGIN_SECONDS:10}
     idempotency:
       start-ttl-seconds: 300
       details-and-otp-ttl-seconds: 300

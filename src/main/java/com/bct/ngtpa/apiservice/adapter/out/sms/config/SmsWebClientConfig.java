@@ -34,4 +34,12 @@ public class SmsWebClientConfig {
     public SmsSenderPort smsSenderPort(WebClient smsWebClient, SmsProperties smsProperties) {
         return new SmsSenderAdapter(smsWebClient, smsProperties);
     }
+
+    @Bean
+    public com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryTimeoutBound smsMessageDeliveryTimeoutBound(
+            SmsProperties smsProperties) {
+        return new com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryTimeoutBound(
+                com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryChannel.SMS,
+                smsProperties.getTimeoutMillis());
+    }
 }

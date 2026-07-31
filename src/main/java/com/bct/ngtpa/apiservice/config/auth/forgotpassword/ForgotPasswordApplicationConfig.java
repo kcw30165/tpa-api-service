@@ -100,7 +100,8 @@ public class ForgotPasswordApplicationConfig {
 
     @Bean
     public com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpTemplates forgotPasswordOtpTemplates() {
-        return com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpTemplates.approved();
+        return com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpTemplates
+                .approved();
     }
 
     @Bean
@@ -116,4 +117,41 @@ public class ForgotPasswordApplicationConfig {
     private static String normalize(String value) {
         return value == null ? null : value.trim().toUpperCase(Locale.ROOT);
     }
+
+    @Bean
+    public com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordDetailsOtpLeasePolicy forgotPasswordDetailsOtpLeasePolicy(
+            AuthWorkflowProperties workflows,
+            com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties apim,
+            java.util.List<com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryTimeoutBound> deliveryTimeoutBounds,
+            com.bct.ngtpa.apiservice.adapter.out.redis.config.RedisCacheProperties redis) {
+        var d = workflows.getForgotPassword().getDetailsAndOtp();
+        int sender = deliveryTimeoutBounds.stream()
+                .mapToInt(com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryTimeoutBound::timeoutMillis)
+                .max()
+                .orElseThrow(() -> new IllegalStateException(
+                        "message delivery timeout bounds must be configured"));
+        return new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordDetailsOtpLeasePolicy(
+                d.getMutationLockLeaseSeconds(), d.getMutationLockRedisAllowanceSeconds(),
+                d.getMutationLockSafetyMarginSeconds(),
+                apim.getRetry().getBusinessCall().getMaxAttempts(), apim.getTimeoutMilliseconds(),
+                apim.getRetry().getBusinessCall().getBackoffMilliseconds(), sender, redis.getTimeoutMilliseconds());
+    }
+
+    @Bean
+    public com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordUnderLockDetailsVerifier forgotPasswordUnderLockDetailsVerifier(
+            com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordDetailsLookupPort p) {
+        return new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordUnderLockDetailsVerifier(
+                p);
+    }
+
+    @Bean
+    public com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.SecureForgotPasswordOtpCommitRefGenerator forgotPasswordOtpCommitRefGenerator() {
+        return new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.SecureForgotPasswordOtpCommitRefGenerator();
+    }
+
+    @Bean
+    public com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordDetailsOtpWebMapper forgotPasswordDetailsOtpWebMapper() {
+        return new com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordDetailsOtpWebMapper();
+    }
+
 }

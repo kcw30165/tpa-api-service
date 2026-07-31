@@ -50,6 +50,7 @@ public class AuthWorkflowProperties {
         private Map<String, String> tasToPublicIdentityTypeMapping = new LinkedHashMap<>();
         private final Otp otp = new Otp();
         private final ForgotPasswordIdempotency idempotency = new ForgotPasswordIdempotency();
+        private final ForgotPasswordDetailsAndOtp detailsAndOtp = new ForgotPasswordDetailsAndOtp();
         private final ResetAuthorization resetAuthorization = new ResetAuthorization();
     }
 
@@ -61,6 +62,14 @@ public class AuthWorkflowProperties {
         private boolean trim = true;
         private boolean caseInsensitive = true;
         private String normalization = "ASCII_LOWERCASE";
+    }
+
+    @Getter
+    @Setter
+    public static class ForgotPasswordDetailsAndOtp {
+        private int mutationLockLeaseSeconds;
+        private int mutationLockRedisAllowanceSeconds;
+        private int mutationLockSafetyMarginSeconds;
     }
 
     @Getter
