@@ -66,6 +66,23 @@ public class ForgotPasswordApplicationConfig {
                 forgotPasswordTasIdentityTypeMapping);
     }
 
+    @Bean
+    public com.bct.ngtpa.apiservice.application.port.in.VerifyForgotPasswordIdentityUseCase verifyForgotPasswordIdentityUseCase(
+            com.bct.ngtpa.apiservice.application.service.auth.forgotpassword.context.ForgotPasswordProtectedAuthFlowContextLoader loader,
+            ForgotPasswordAuthFlowContextProtectorPort protector,
+            com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort sessions,
+            com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionMutationLockPort locks,
+            com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionExpiryRefreshPort expiry,
+            Clock clock) {
+        return new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identity.VerifyForgotPasswordIdentityService(
+                loader, protector, sessions, locks, expiry, clock, java.time.Duration.ofSeconds(10));
+    }
+
+    @Bean
+    public com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordIdentityWebMapper forgotPasswordIdentityWebMapper() {
+        return new com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordIdentityWebMapper();
+    }
+
     private static RegistrationIdentityType toIdentityType(String publicType) {
         String normalized = normalize(publicType);
         return RegistrationIdentityType.valueOf("STAFF_NO".equals(normalized) ? "STAFFNO" : normalized);

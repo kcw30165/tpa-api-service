@@ -303,4 +303,11 @@ public class RedisAdapterConfig {
                 .commandTimeout(Duration.ofMillis(timeoutMs))
                 .build();
     }
+
+    @org.springframework.context.annotation.Bean
+    public com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionMutationLockPort authFlowSessionMutationLockPort(
+            org.springframework.data.redis.core.ReactiveStringRedisTemplate redis,
+            com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory keys) {
+        return new com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthFlowSessionMutationLockAdapter(redis, keys);
+    }
 }

@@ -133,7 +133,8 @@ public class AesGcmForgotPasswordAuthFlowContextProtectorAdapter
             String protectedDestination,
             String maskedDestination,
             AuthorizationPayload resetAuthorization,
-            String workflowVersion) {
+            String workflowVersion,
+            com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordProtectedPhase phase) {
         static Payload from(ForgotPasswordAuthFlowContext context) {
             return new Payload(
                     context.normalizedUsername(),
@@ -146,7 +147,8 @@ public class AesGcmForgotPasswordAuthFlowContextProtectorAdapter
                     context.protectedDestination(),
                     context.maskedDestination(),
                     AuthorizationPayload.from(context.resetAuthorization()),
-                    context.workflowVersion());
+                    context.workflowVersion(),
+                    context.phase());
         }
 
         ForgotPasswordAuthFlowContext toDomain() {
@@ -161,7 +163,8 @@ public class AesGcmForgotPasswordAuthFlowContextProtectorAdapter
                     protectedDestination,
                     maskedDestination,
                     resetAuthorization == null ? null : resetAuthorization.toDomain(),
-                    workflowVersion);
+                    workflowVersion,
+                    phase);
         }
     }
 }

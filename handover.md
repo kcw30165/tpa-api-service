@@ -1291,3 +1291,26 @@
 - Production DTO behavior was not changed.
 - Commit message: test(login): fix contradictory account response assertion
 - Evidence: target/0043-017-008-fix-account-details-response-test-contradiction-evidence/evidence.md
+
+## Subtask 004: Protected Identity Verification
+Commit message: feat(forgot-password): add protected identity verification
+
+Implemented:
+- Added encrypted protected phases USERNAME_VERIFIED and IDENTITY_VERIFIED.
+- Complete Subtask 003 contexts without phase default to USERNAME_VERIFIED; incomplete contexts fail closed and missing phase is never IDENTITY_VERIFIED.
+- Added POST /api/v1/auth/forgot-password/identity-check with auth_flow_sid, X-XSRF-TOKEN, Origin/Referer, X-Request-Id, and Accept-Language transport handling.
+- Added exact public identity mapping GPN, GPFS, STAFF_NO to STAFFNO, and ID, with trim-only identity-value comparison.
+- Added a capability-neutral Redis auth-flow mutation lock with atomic set-if-absent lease acquisition, opaque ownership token, and ownership-safe compare-and-delete release.
+- Identity Check acquires the lock before reload, fails closed without waiting, reloads session under lock, rejects repeated IDENTITY_VERIFIED transitions, persists protected IDENTITY_VERIFIED while shared status remains STARTED, refreshes expiry only after success, and releases in finally.
+- Existing AuthFlowSessionCompletionLockPort and completion behavior were not modified.
+
+Validation:
+- Fail-first: mvn -Dtest=ForgotPasswordIdentitySubtask004FailFirstTest test, expected missing-capability failure verified.
+- Focused: mvn -Dtest=ForgotPasswordIdentitySubtask004FailFirstTest,AesGcmForgotPasswordAuthFlowContextProtectorTest,StartForgotPasswordServiceTest,AuthForgotPasswordControllerTest,ForgotPasswordStartWebMapperTest,RedisAuthFlowSessionCompletionLockAdapterTest test, passed.
+- Regression: mvn -Dtest=AuthForgotPasswordControllerTest,StartForgotPasswordServiceTest,AesGcmForgotPasswordAuthFlowContextProtectorTest,DefaultForgotPasswordProtectedAuthFlowContextLoaderTest,SlidingForgotPasswordProtectedAuthFlowContextLoaderTest,RedisAuthFlowSessionAdapterTest,RedisAuthFlowSessionCompletionLockAdapterTest,AuthFlowSessionCsrfServiceTest,OriginRefererValidatorTest,AuthLoginControllerTest,AuthRegistrationControllerWorkflowContractTest,AuthRegistrationOtpResendControllerTest,AuthRegistrationOtpVerifyControllerTest,AuthRegistrationUsernameControllerTest test, passed.
+- Compile: mvn -DskipTests compile, passed.
+- Evidence: target/0061-subtask-004-evidence-20260731-144513
+
+Exclusions preserved: no TRPSearchRegedMember, DOB/contact/details verification, OTP work, reset authorization issuance, TRPResetPassword, password completion, Forgot Password page YAML, ActorContext change, Account-Ref requirement, pageId/pageRef, or Subtask 005 behavior.
+
+Stop point: Subtask 004 complete. Do not begin Subtask 005.
