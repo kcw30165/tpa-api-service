@@ -14,13 +14,13 @@ class MessageDeliveryModelTest {
     @Test
     void messageDeliveryTypeSupportsRegistrationAndLoginOtp() {
         assertThat(Arrays.stream(MessageDeliveryType.values()).map(Enum::name).toList())
-                .containsExactly("REGISTRATION_OTP", "LOGIN_OTP");
+                .containsExactly("REGISTRATION_OTP", "LOGIN_OTP", "FORGOT_PASSWORD_OTP");
     }
 
     @Test
     void messageDeliveryScenarioSupportsRegistrationAndLogin() {
         assertThat(Arrays.stream(MessageDeliveryScenario.values()).map(Enum::name).toList())
-                .containsExactly("REGISTRATION", "LOGIN");
+                .containsExactly("REGISTRATION", "LOGIN", "FORGOT_PASSWORD");
     }
 
     @Test

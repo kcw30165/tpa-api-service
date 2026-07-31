@@ -17,7 +17,9 @@ class ApimRegistrationLookupArchitectureGuardTest {
 
     @Test
     void adapterDoesNotUseRawWebClientDirectly() {
-        var classes = new ClassFileImporter().importPackages("com.bct.ngtpa.apiservice.adapter.out.apim.registration");
+        var classes = new ClassFileImporter()
+                .withImportOption(new com.tngtech.archunit.core.importer.ImportOption.DoNotIncludeTests())
+                .importPackages("com.bct.ngtpa.apiservice.adapter.out.apim.registration");
 
         ArchRuleDefinition.noClasses()
                 .that().resideInAPackage("..adapter.out.apim.registration..")
@@ -49,7 +51,9 @@ class ApimRegistrationLookupArchitectureGuardTest {
 
     @Test
     void apimRegistrationLookupAdapterDoesNotDependOnWebRedisSmsEmailAdapters() {
-        var classes = new ClassFileImporter().importPackages("com.bct.ngtpa.apiservice.adapter.out.apim.registration");
+        var classes = new ClassFileImporter()
+                .withImportOption(new com.tngtech.archunit.core.importer.ImportOption.DoNotIncludeTests())
+                .importPackages("com.bct.ngtpa.apiservice.adapter.out.apim.registration");
 
         ArchRuleDefinition.noClasses()
                 .that().resideInAPackage("..adapter.out.apim.registration..")

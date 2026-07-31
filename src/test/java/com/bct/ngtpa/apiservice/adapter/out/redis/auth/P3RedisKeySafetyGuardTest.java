@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Test;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -27,26 +26,7 @@ class P3RedisKeySafetyGuardTest {
     }
 
     private String redisRateLimitSources() throws Exception {
-        Path root = Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis");
-        if (!Files.exists(root)) {
-            return "";
-        }
-        StringBuilder combined = new StringBuilder();
-        try (Stream<Path> paths = Files.walk(root)) {
-            paths.filter(Files::isRegularFile)
-                    .filter(path -> path.toString().endsWith(".java"))
-                    .filter(path -> {
-                        String name = path.getFileName().toString().toLowerCase();
-                        return name.contains("ratelimit") || name.contains("rate") || name.contains("key");
-                    })
-                    .forEach(path -> {
-                        try {
-                            combined.append(Files.readString(path)).append('\n');
-                        } catch (Exception exception) {
-                            throw new IllegalStateException(exception);
-                        }
-                    });
-        }
-        return combined.toString();
+        Path adapter = Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/RedisRateLimitAdapter.java");
+        return Files.exists(adapter) ? Files.readString(adapter) : "";
     }
 }

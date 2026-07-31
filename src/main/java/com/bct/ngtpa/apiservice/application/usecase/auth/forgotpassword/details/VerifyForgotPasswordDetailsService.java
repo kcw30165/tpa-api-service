@@ -8,10 +8,8 @@ import com.bct.ngtpa.apiservice.application.port.out.*;
 import com.bct.ngtpa.apiservice.application.service.auth.forgotpassword.context.*;
 import java.time.*;
 import java.util.*;
-import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
-@Service
 public final class VerifyForgotPasswordDetailsService implements VerifyForgotPasswordDetailsUseCase {
     private final ForgotPasswordDetailsValidator validator = new ForgotPasswordDetailsValidator();
     private final AuthFlowSessionPort sessions;

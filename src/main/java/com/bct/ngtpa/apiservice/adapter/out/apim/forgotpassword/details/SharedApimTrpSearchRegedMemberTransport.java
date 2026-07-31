@@ -3,16 +3,12 @@ package com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.details;
 import com.bct.ngtpa.apiservice.adapter.out.apim.*;
 import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
-import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.details.dto.*;
 import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
-import com.bct.ngtpa.apiservice.exception.ApimException;
-import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import java.lang.reflect.Method;
 import java.security.PublicKey;
 import java.util.*;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
@@ -36,7 +32,7 @@ public final class SharedApimTrpSearchRegedMemberTransport implements TrpSearchR
         var context=new ApimCredentialResolutionContext(null,null,null,null,null,null,null,API_NAME,metadata);
         return facade.post(API_NAME,encrypted,context,ApimRetryEligibility.SAFE_BUSINESS_CALL)
                 .map(body->crypto.decryptResponseEnvelope(API_NAME,body,TrpSearchRegedMemberDataItem.class,key))
-                .map(this::envelope).onErrorMap(ApimCryptoException.class,e->new ApimException(HttpStatus.INTERNAL_SERVER_ERROR,ErrorCodes.SYSTEM_UNEXPECTED,"TRPSearchRegedMember response security failure",e));
+                .map(this::envelope);
     }
     private TrpSearchRegedMemberEnvelope envelope(ApimResponseEnvelope<TrpSearchRegedMemberDataItem> value) {
         Object response=invoke(value,"getResponse","response"), source=response==null?value:response;
