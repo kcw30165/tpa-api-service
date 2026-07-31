@@ -41,9 +41,12 @@ doc/
 fix-ssl-maven.bat
 *.txt
 aa.md
+.continue/
 **/*.log
 patches/
 .venv/
 .local/
 
 **/~$*.xlsx
+0061-handover.md
+handover.md

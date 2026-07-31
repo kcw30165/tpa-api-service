@@ -5,6 +5,7 @@ import java.util.Objects;
 
 public record ForgotPasswordAuthFlowContext(
         String normalizedUsername,
+        String customerId,
         String tasUserId,
         String publicIdentityType,
         boolean identityVerified,
@@ -17,6 +18,7 @@ public record ForgotPasswordAuthFlowContext(
 
     public ForgotPasswordAuthFlowContext {
         normalizedUsername = requireText(normalizedUsername, "normalizedUsername");
+        customerId = requireText(customerId, "customerId");
         tasUserId = requireText(tasUserId, "tasUserId");
         publicIdentityType = requireText(publicIdentityType, "publicIdentityType");
         workflowVersion = requireText(workflowVersion, "workflowVersion");
@@ -31,7 +33,7 @@ public record ForgotPasswordAuthFlowContext(
 
     @Override
     public String toString() {
-        return "ForgotPasswordAuthFlowContext[normalizedUsername=<redacted>, tasUserId=<redacted>, publicIdentityType="
+        return "ForgotPasswordAuthFlowContext[normalizedUsername=<redacted>, customerId=<redacted>, tasUserId=<redacted>, publicIdentityType="
                 + publicIdentityType
                 + ", identityVerified=" + identityVerified
                 + ", resetSubjectId=<redacted>, contactChannel=" + contactChannel

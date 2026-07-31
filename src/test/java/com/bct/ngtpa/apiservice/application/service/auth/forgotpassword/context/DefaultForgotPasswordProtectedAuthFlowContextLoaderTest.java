@@ -241,6 +241,7 @@ class DefaultForgotPasswordProtectedAuthFlowContextLoaderTest {
             }
             return new ForgotPasswordAuthFlowContext(
                     "member01",
+                    "cust-db01",
                     "tas-user-01",
                     "ID",
                     true,

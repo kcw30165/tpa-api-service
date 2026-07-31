@@ -124,6 +124,7 @@ public class AesGcmForgotPasswordAuthFlowContextProtectorAdapter
 
     private record Payload(
             String normalizedUsername,
+            String customerId,
             String tasUserId,
             String publicIdentityType,
             boolean identityVerified,
@@ -136,6 +137,7 @@ public class AesGcmForgotPasswordAuthFlowContextProtectorAdapter
         static Payload from(ForgotPasswordAuthFlowContext context) {
             return new Payload(
                     context.normalizedUsername(),
+                    context.customerId(),
                     context.tasUserId(),
                     context.publicIdentityType(),
                     context.identityVerified(),
@@ -150,6 +152,7 @@ public class AesGcmForgotPasswordAuthFlowContextProtectorAdapter
         ForgotPasswordAuthFlowContext toDomain() {
             return new ForgotPasswordAuthFlowContext(
                     normalizedUsername,
+                    customerId,
                     tasUserId,
                     publicIdentityType,
                     identityVerified,

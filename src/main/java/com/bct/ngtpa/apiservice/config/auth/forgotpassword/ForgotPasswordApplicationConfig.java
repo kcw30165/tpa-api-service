@@ -1,0 +1,77 @@
+package com.bct.ngtpa.apiservice.config.auth.forgotpassword;
+
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.session.config.AuthFlowSessionProperties;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationIdentityType;
+import com.bct.ngtpa.apiservice.application.dto.session.SessionConcurrencyMode;
+import com.bct.ngtpa.apiservice.application.dto.session.SessionConcurrencyPolicy;
+import com.bct.ngtpa.apiservice.application.dto.session.SessionOnNewFlowPolicy;
+import com.bct.ngtpa.apiservice.application.dto.session.SessionTtlPolicy;
+import com.bct.ngtpa.apiservice.application.port.in.CreateAuthFlowSessionCsrfUseCase;
+import com.bct.ngtpa.apiservice.application.port.in.StartForgotPasswordUseCase;
+import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort;
+import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordIdempotencyPort;
+import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordUsernameLookupPort;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordService;
+import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionConcurrencyService;
+import java.time.Clock;
+import java.util.LinkedHashMap;
+import java.util.Locale;
+import java.util.Map;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class ForgotPasswordApplicationConfig {
+    @Bean
+    public Map<String, RegistrationIdentityType> forgotPasswordTasIdentityTypeMapping(
+            AuthWorkflowProperties properties) {
+        properties.validateForgotPasswordPolicy();
+        Map<String, RegistrationIdentityType> mapping = new LinkedHashMap<>();
+        properties.getForgotPassword().getTasToPublicIdentityTypeMapping()
+                .forEach((tasType, publicType) -> mapping.put(normalize(tasType), toIdentityType(publicType)));
+        return Map.copyOf(mapping);
+    }
+
+    @Bean
+    public StartForgotPasswordUseCase startForgotPasswordUseCase(
+            ForgotPasswordIdempotencyPort idempotencyPort,
+            ForgotPasswordUsernameLookupPort lookupPort,
+            ForgotPasswordAuthFlowContextProtectorPort contextProtector,
+            AuthFlowSessionConcurrencyService concurrencyService,
+            CreateAuthFlowSessionCsrfUseCase csrfUseCase,
+            Clock clock,
+            AuthWorkflowProperties workflows,
+            AuthFlowSessionProperties sessionProperties,
+            Map<String, RegistrationIdentityType> forgotPasswordTasIdentityTypeMapping) {
+        workflows.validateForgotPasswordPolicy();
+        var scenario = sessionProperties.getScenarios().getForgotPassword();
+        var forgotPassword = workflows.getForgotPassword();
+        return new StartForgotPasswordService(
+                idempotencyPort,
+                lookupPort,
+                contextProtector,
+                concurrencyService,
+                csrfUseCase,
+                clock,
+                new SessionTtlPolicy(scenario.isEnabled(), scenario.isRequired(), scenario.getTtlSeconds()),
+                new SessionConcurrencyPolicy(
+                        SessionConcurrencyMode.valueOf(sessionProperties.getConcurrency().getMode().name()),
+                        SessionOnNewFlowPolicy.valueOf(sessionProperties.getConcurrency().getOnNewFlow().name())),
+                sessionProperties.getSessionId().getPrefix(),
+                sessionProperties.getSessionId().getEntropyBytes(),
+                forgotPassword.getUsername().isTrim(),
+                forgotPassword.getUsername().isCaseInsensitive(),
+                "ASCII_LOWERCASE".equalsIgnoreCase(forgotPassword.getUsername().getNormalization()),
+                forgotPasswordTasIdentityTypeMapping);
+    }
+
+    private static RegistrationIdentityType toIdentityType(String publicType) {
+        String normalized = normalize(publicType);
+        return RegistrationIdentityType.valueOf("STAFF_NO".equals(normalized) ? "STAFFNO" : normalized);
+    }
+
+    private static String normalize(String value) {
+        return value == null ? null : value.trim().toUpperCase(Locale.ROOT);
+    }
+}

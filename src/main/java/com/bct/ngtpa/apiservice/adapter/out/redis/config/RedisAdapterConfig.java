@@ -7,8 +7,12 @@ import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisCaptchaChallengeAdap
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisCaptchaChallengeJsonMapper;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRateLimitAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRegistrationIdempotencyAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.RedisForgotPasswordIdempotencyAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.RedisForgotPasswordIdempotencyJsonMapper;
+import com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.RedisForgotPasswordIdempotencyKeyFactory;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.login.RedisLoginCredentialIdempotencyAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.login.RedisLoginIdempotencyKeyFactory;
+import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.LoginCredentialIdempotencyPort;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRegistrationIdempotencyJsonMapper;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRegistrationIdempotencyKeyFactory;
@@ -151,6 +155,25 @@ public class RedisAdapterConfig {
                 keyFactory,
                 jsonMapper,
                 reactiveStringRedisTemplate);
+    }
+
+    @Bean
+    public RedisForgotPasswordIdempotencyKeyFactory redisForgotPasswordIdempotencyKeyFactory(
+            @Value("${redis-cache.key-prefix:ngtpa}") String keyPrefix) {
+        return new RedisForgotPasswordIdempotencyKeyFactory(keyPrefix);
+    }
+
+    @Bean
+    public RedisForgotPasswordIdempotencyJsonMapper redisForgotPasswordIdempotencyJsonMapper() {
+        return new RedisForgotPasswordIdempotencyJsonMapper();
+    }
+
+    @Bean
+    public ForgotPasswordIdempotencyPort forgotPasswordIdempotencyPort(
+            RedisForgotPasswordIdempotencyKeyFactory keyFactory,
+            RedisForgotPasswordIdempotencyJsonMapper jsonMapper,
+            ReactiveStringRedisTemplate reactiveStringRedisTemplate) {
+        return new RedisForgotPasswordIdempotencyAdapter(keyFactory, jsonMapper, reactiveStringRedisTemplate);
     }
 
     @Bean
