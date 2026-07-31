@@ -134,6 +134,15 @@ auth-workflows:
       email-template:
         subject: "BCT forgot password verification code"
         body: "Your BCT forgot password verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
+      localized-template:
+        en:
+          sms: "Your BCT forgot password verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
+          email-subject: "BCT forgot password verification code"
+          email-body: "Your BCT forgot password verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
+        zh_HK:
+          sms: "您的 BCT 忘記密碼驗證碼為 {code}，有效期限為 {ttlValue} {ttlUnit}。"
+          email-subject: "BCT 忘記密碼驗證碼"
+          email-body: "您的 BCT 忘記密碼驗證碼為 {code}，有效期限為 {ttlValue} {ttlUnit}。"
     idempotency:
       start-ttl-seconds: 300
       details-and-otp-ttl-seconds: 300

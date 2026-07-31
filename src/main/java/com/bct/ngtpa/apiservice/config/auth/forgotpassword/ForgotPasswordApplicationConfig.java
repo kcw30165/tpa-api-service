@@ -79,6 +79,20 @@ public class ForgotPasswordApplicationConfig {
     }
 
     @Bean
+    public com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpSessionBindingPort forgotPasswordOtpSessionBindingPort(
+            com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort sessions,
+            com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort challenges,
+            ForgotPasswordAuthFlowContextProtectorPort protector) {
+        return new com.bct.ngtpa.apiservice.adapter.out.session.forgotpassword.ForgotPasswordOtpSessionBindingAdapter(
+                sessions, challenges, protector);
+    }
+
+    @Bean
+    public com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpTemplates forgotPasswordOtpTemplates() {
+        return com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpTemplates.approved();
+    }
+
+    @Bean
     public com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordIdentityWebMapper forgotPasswordIdentityWebMapper() {
         return new com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordIdentityWebMapper();
     }
