@@ -11,7 +11,20 @@ public record ForgotPasswordIdempotencyRecord(
         ForgotPasswordIdempotencyReplaySnapshot replaySnapshot,
         Instant createdAt,
         Instant updatedAt,
-        Instant expiresAt) {
+        Instant expiresAt,
+        String pendingOpaqueCommitRef) {
+
+    public ForgotPasswordIdempotencyRecord(
+            ForgotPasswordIdempotencyAction action,
+            ForgotPasswordIdempotencyKey idempotencyKey,
+            ForgotPasswordRequestHash requestHash,
+            ForgotPasswordIdempotencyStatus status,
+            ForgotPasswordIdempotencyReplaySnapshot replaySnapshot,
+            Instant createdAt,
+            Instant updatedAt,
+            Instant expiresAt) {
+        this(action, idempotencyKey, requestHash, status, replaySnapshot, createdAt, updatedAt, expiresAt, null);
+    }
 
     public ForgotPasswordIdempotencyRecord {
         Objects.requireNonNull(action, "action must not be null");
@@ -36,6 +49,6 @@ public record ForgotPasswordIdempotencyRecord(
                 + ", createdAt=" + createdAt
                 + ", updatedAt=" + updatedAt
                 + ", expiresAt=" + expiresAt
-                + ", idempotencyKey=<redacted>, requestHash=<redacted>, replaySnapshot=<redacted>]";
+                + ", idempotencyKey=<redacted>, requestHash=<redacted>, replaySnapshot=<redacted>, pendingOpaqueCommitRef=<redacted>]";
     }
 }

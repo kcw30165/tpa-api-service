@@ -12,4 +12,11 @@ interface RedisForgotPasswordIdempotencyOperations {
     Mono<Optional<String>> get(String key);
 
     Mono<Void> delete(String key);
+    default Mono<String> attachPendingCommitRef(
+            String key,
+            String requestHash,
+            String opaqueCommitRef,
+            Duration ttl) {
+        return Mono.error(new UnsupportedOperationException("Pending commit reference operation is not configured"));
+    }
 }

@@ -3,6 +3,8 @@ package com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword;
 import java.time.Duration;
 import java.util.Optional;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
+import org.springframework.data.redis.core.script.RedisScript;
+import java.util.List;
 import reactor.core.publisher.Mono;
 
 class ReactiveRedisForgotPasswordIdempotencyOperations implements RedisForgotPasswordIdempotencyOperations {
@@ -25,6 +27,12 @@ class ReactiveRedisForgotPasswordIdempotencyOperations implements RedisForgotPas
     @Override
     public Mono<Optional<String>> get(String key) {
         return redisTemplate.opsForValue().get(key).map(Optional::of).defaultIfEmpty(Optional.empty());
+    }
+
+    @Override
+    public Mono<String> attachPendingCommitRef(String key,String requestHash,String ref,Duration ttl) {
+        String lua="local r=redis.call('GET',KEYS[1]); if not r then return redis.error_reply('MISSING') end; local o=cjson.decode(r); if o.status~='PROCESSING' or o.action~='DETAILS_AND_OTP' or o.requestHash~=ARGV[1] then return redis.error_reply('INVALID') end; if o.pendingOpaqueCommitRef and o.pendingOpaqueCommitRef~=cjson.null and o.pendingOpaqueCommitRef~='' then return r end; o.pendingOpaqueCommitRef=ARGV[2]; local n=cjson.encode(o); redis.call('SET',KEYS[1],n,'PX',ARGV[3]); return n";
+        return redisTemplate.execute(RedisScript.of(lua,String.class),List.of(key),List.of(requestHash,ref,String.valueOf(ttl.toMillis()))).next();
     }
 
     @Override

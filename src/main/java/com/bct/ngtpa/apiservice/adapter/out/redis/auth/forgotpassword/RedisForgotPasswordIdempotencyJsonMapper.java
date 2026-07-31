@@ -55,7 +55,8 @@ public final class RedisForgotPasswordIdempotencyJsonMapper {
                 snapshot,
                 record.createdAt().toString(),
                 record.updatedAt().toString(),
-                record.expiresAt().toString());
+                record.expiresAt().toString(),
+                record.pendingOpaqueCommitRef());
     }
 
     private static ForgotPasswordIdempotencyRecord fromRedisRecord(RedisForgotPasswordIdempotencyRecord record) {
@@ -74,7 +75,8 @@ public final class RedisForgotPasswordIdempotencyJsonMapper {
                 snapshot,
                 Instant.parse(record.createdAt()),
                 Instant.parse(record.updatedAt()),
-                Instant.parse(record.expiresAt()));
+                Instant.parse(record.expiresAt()),
+                record.pendingOpaqueCommitRef());
     }
 
     private static ObjectMapper defaultObjectMapper() {

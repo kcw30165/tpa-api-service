@@ -37,6 +37,16 @@ public final class RedisForgotPasswordIdempotencyAdapter implements ForgotPasswo
     }
 
     @Override
+    public Mono<com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordPendingCommitRefResult> attachPendingCommitRef(com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordPendingCommitRefCommand command) {
+        if (command.action() != ForgotPasswordIdempotencyAction.DETAILS_AND_OTP) return Mono.error(new IllegalStateException("Pending commit reference is details-only"));
+        String key=keyFactory.keyFor(command.action(),command.idempotencyKey());
+        return redis.attachPendingCommitRef(key,command.requestHash().value(),command.opaqueCommitRef(),command.ttl())
+                .map(jsonMapper::fromJson).map(r -> new com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordPendingCommitRefResult(
+                        r.pendingOpaqueCommitRef().equals(command.opaqueCommitRef()) ? com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordPendingCommitRefResult.Status.ATTACHED : com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordPendingCommitRefResult.Status.EXISTING,
+                        r.pendingOpaqueCommitRef())).onErrorMap(this::safeRedisFailureUnlessBusiness);
+    }
+
+    @Override
     public Mono<ForgotPasswordIdempotencyStartResult> startProcessing(ForgotPasswordIdempotencyStartCommand command) {
         String key = keyFactory.keyFor(command.action(), command.idempotencyKey());
         var record = new ForgotPasswordIdempotencyRecord(
@@ -47,7 +57,8 @@ public final class RedisForgotPasswordIdempotencyAdapter implements ForgotPasswo
                 null,
                 command.now(),
                 command.now(),
-                command.expiresAt());
+                command.expiresAt(),
+                null);
         return redis.setIfAbsent(key, jsonMapper.toJson(record), command.ttl())
                 .flatMap(created -> created
                         ? Mono.just(new ForgotPasswordIdempotencyStartResult(
@@ -74,7 +85,8 @@ public final class RedisForgotPasswordIdempotencyAdapter implements ForgotPasswo
                             command.replaySnapshot(),
                             existing.createdAt(),
                             command.completedAt(),
-                            command.completedAt().plus(command.ttl()));
+                            command.completedAt().plus(command.ttl()),
+                            existing.pendingOpaqueCommitRef());
                     return redis.set(key, jsonMapper.toJson(completed), command.ttl()).thenReturn(completed);
                 })
                 .onErrorMap(this::safeRedisFailureUnlessBusiness);
@@ -98,7 +110,8 @@ public final class RedisForgotPasswordIdempotencyAdapter implements ForgotPasswo
                             null,
                             existing.createdAt(),
                             command.failedAt(),
-                            command.failedAt().plus(command.ttl()));
+                            command.failedAt().plus(command.ttl()),
+                            existing.pendingOpaqueCommitRef());
                     return redis.set(key, jsonMapper.toJson(failed), command.ttl()).thenReturn(failed);
                 })
                 .onErrorMap(this::safeRedisFailureUnlessBusiness);
@@ -128,7 +141,8 @@ public final class RedisForgotPasswordIdempotencyAdapter implements ForgotPasswo
                             null,
                             existing.createdAt(),
                             command.recordedAt(),
-                            command.recordedAt().plus(command.ttl()));
+                            command.recordedAt().plus(command.ttl()),
+                            existing.pendingOpaqueCommitRef());
                     return redis.set(key, jsonMapper.toJson(unknown), command.ttl()).thenReturn(unknown);
                 })
                 .onErrorMap(this::safeRedisFailureUnlessBusiness);

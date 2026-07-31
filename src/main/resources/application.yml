@@ -150,6 +150,9 @@ auth-workflows:
       otp-verify-ttl-seconds: 300
       complete-ttl-seconds: 300
       cancel-ttl-seconds: 300
+    otp-commit:
+      expired-replay-grace-seconds: ${FORGOT_PASSWORD_OTP_EXPIRED_REPLAY_GRACE_SECONDS:300}
+      maximum-retention-seconds: ${FORGOT_PASSWORD_OTP_COMMIT_MAX_RETENTION_SECONDS:1800}
     reset-authorization:
       ttl-seconds: 300
   login:
