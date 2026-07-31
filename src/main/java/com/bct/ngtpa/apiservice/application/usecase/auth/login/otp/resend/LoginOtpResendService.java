@@ -98,7 +98,11 @@ public final class LoginOtpResendService implements ResendLoginOtpUseCase {
                                                                                                 .maskedDestination(),
                                                                                 r.expiresInSeconds(),
                                                                                 r.resendCooldownSeconds(), null))
-                                                : Mono.just(result(ResendLoginOtpStatus.DELIVERY_FAILED, x, null)));
+                                                : Mono.just(result(
+                                                                d.status() == MessageDeliveryStatus.UNKNOWN_OUTCOME
+                                                                                ? ResendLoginOtpStatus.UNKNOWN_OUTCOME
+                                                                                : ResendLoginOtpStatus.DELIVERY_FAILED,
+                                                                x, null)));
         }
 
         private OtpChannel channel(String value) {

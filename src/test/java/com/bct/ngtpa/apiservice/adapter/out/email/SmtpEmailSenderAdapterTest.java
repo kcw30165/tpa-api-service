@@ -103,8 +103,8 @@ class SmtpEmailSenderAdapterTest {
 
         StepVerifier.create(adapter.sendEmail(messageWithOtpBody()))
                 .assertNext(result -> {
-                    assertThat(result.status()).isEqualTo(SenderStatus.FAILED);
-                    assertThat(result.failureCode()).isEqualTo("EMAIL_REQUEST_ERROR");
+                    assertThat(result.status()).isEqualTo(SenderStatus.UNKNOWN_OUTCOME);
+                    assertThat(result.failureCode()).isEqualTo("EMAIL_REQUEST_OUTCOME_UNKNOWN");
                     assertThat(result.failureMessage()).doesNotContain(
                             "member@example.com", "Your code is 123456", "123456", "smtp-password");
                 })

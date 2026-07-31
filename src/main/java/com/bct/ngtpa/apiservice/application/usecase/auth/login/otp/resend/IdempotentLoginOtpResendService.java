@@ -46,6 +46,10 @@ public final class IdempotentLoginOtpResendService implements ResendLoginOtpUseC
                 return idempotency.complete(new LoginOtpSendCompleteCommand(LoginIdempotencyAction.OTP_RESEND,
                         c.idempotencyKey(), h, snap, clock.instant(), ttl)).thenReturn(r);
             }
+            if (r.status() == ResendLoginOtpStatus.UNKNOWN_OUTCOME) {
+                return idempotency.unknown(new LoginOtpSendTerminalCommand(LoginIdempotencyAction.OTP_RESEND,
+                        c.idempotencyKey(), h, "INDETERMINATE", clock.instant(), ttl)).thenReturn(r);
+            }
             return idempotency.fail(new LoginOtpSendTerminalCommand(LoginIdempotencyAction.OTP_RESEND,
                     c.idempotencyKey(), h, r.status().name(), clock.instant(), ttl)).thenReturn(r);
         }).onErrorResume(e -> idempotency

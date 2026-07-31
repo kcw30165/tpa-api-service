@@ -62,9 +62,9 @@ public class SmtpEmailSenderAdapter implements EmailSenderPort {
                             error.getClass().getSimpleName(),
                             safeErrorMessage(error));
                     return Mono.just(new SenderResult(
-                            SenderStatus.FAILED,
+                            SenderStatus.UNKNOWN_OUTCOME,
                             null,
-                            "EMAIL_REQUEST_ERROR",
+                            "EMAIL_REQUEST_OUTCOME_UNKNOWN",
                             EMAIL_PROVIDER_FAILURE_MESSAGE));
                 });
     }

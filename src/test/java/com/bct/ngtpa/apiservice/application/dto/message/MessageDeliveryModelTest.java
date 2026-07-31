@@ -30,9 +30,9 @@ class MessageDeliveryModelTest {
     }
 
     @Test
-    void messageDeliveryStatusSupportsAcceptedAndFailed() {
+    void messageDeliveryStatusSupportsAcceptedFailedAndUnknownOutcome() {
         assertThat(Arrays.stream(MessageDeliveryStatus.values()).map(Enum::name).toList())
-                .containsExactly("ACCEPTED", "FAILED");
+                .containsExactly("ACCEPTED", "FAILED", "UNKNOWN_OUTCOME");
     }
 
     @Test

@@ -47,7 +47,12 @@ class EmailDeliverySecurityGuardTest {
                         "Your code is 123456",
                         "noreply@example.com",
                         "req-123")))
-                .assertNext(result -> assertThat(result.status()).isEqualTo(SenderStatus.FAILED))
+                .assertNext(result -> {
+                    assertThat(result.status()).isEqualTo(SenderStatus.UNKNOWN_OUTCOME);
+                    assertThat(result.failureCode()).isEqualTo("EMAIL_REQUEST_OUTCOME_UNKNOWN");
+                    assertThat(result.failureMessage()).doesNotContain(
+                            "member@example.com", "Your code is 123456", "123456", "smtp-password");
+                })
                 .verifyComplete();
 
         String logOutput = logOutput();

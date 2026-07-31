@@ -103,9 +103,9 @@ public class SmsSenderAdapter implements SmsSenderPort {
                             safeErrorMessage(error));
 
                     return Mono.just(new SenderResult(
-                            SenderStatus.FAILED,
+                            SenderStatus.UNKNOWN_OUTCOME,
                             null,
-                            "SMS_REQUEST_ERROR",
+                            "SMS_REQUEST_OUTCOME_UNKNOWN",
                             SMS_PROVIDER_FAILURE_MESSAGE));
                 });
     }
