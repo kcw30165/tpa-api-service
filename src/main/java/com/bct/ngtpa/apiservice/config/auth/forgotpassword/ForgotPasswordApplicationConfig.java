@@ -154,4 +154,26 @@ public class ForgotPasswordApplicationConfig {
         return new com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordDetailsOtpWebMapper();
     }
 
+    @Bean
+    public com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendPolicy forgotPasswordOtpResendPolicy(
+            AuthWorkflowProperties properties) {
+        var otp = properties.getForgotPassword().getOtp();
+        return new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendPolicy(
+                otp.getResendCooldownSeconds(), otp.getMaxResendAttempts());
+    }
+
+    @Bean
+    public com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendEligibilityValidator forgotPasswordOtpResendEligibilityValidator(
+            com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendPolicy policy) {
+        return new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendEligibilityValidator(
+                policy);
+    }
+
+    @Bean
+    public com.bct.ngtpa.apiservice.application.port.in.EvaluateForgotPasswordOtpResendUseCase evaluateForgotPasswordOtpResendUseCase(
+            com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendEligibilityValidator validator) {
+        return new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendFoundationService(
+                validator);
+    }
+
 }

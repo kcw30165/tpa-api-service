@@ -330,3 +330,19 @@ Exclusions preserved:
 - No Subtask 006 or later behavior.
 
 Stop point: Subtask 005 complete. Subtask 006 has not started.
+
+### Subtask 006 implementation round 001: OTP Resend Foundation
+
+Commit message: feat(forgot-password): add otp resend foundation
+
+Added the non-web Forgot Password OTP resend foundation: configuration-driven 60-second cooldown and five-successful-resend limit; typed eligibility outcomes; caller-held-lock and lock-reloaded-session boundary; authoritative challenge/session/scenario/phase validation; replacement transition vocabulary for ACCEPTED, FAILED, and UNKNOWN_OUTCOME; safe request hashing; and classification of existing OTP_RESEND idempotency outcomes. Existing OTP status vocabulary is preserved; CREATED is the pre-verification challenge state and no ACTIVE status was introduced.
+
+Initial accepted issuance corresponds to successfulResendCount=0. A request made after five successful resends is rejected. Cooldown is measured from the latest explicitly accepted issuance. Expired challenges may remain resend-eligible when session, protected phase, challenge scenario, and session binding are valid.
+
+ACCEPTED replacement state makes the candidate authoritative and increments once; FAILED preserves the current authoritative challenge and count; UNKNOWN_OUTCOME blocks safely without increment. The foundation acquires no lock itself, uses no completion lock, generates no OTP, calls no sender, activates no live replacement, and exposes no public response.
+
+Validation: focused (ForgotPasswordOtpResendFoundationSubtask006001FailFirstTest,ForgotPasswordDetailsOtpOrchestrationSubtask005004FailFirstTest,ForgotPasswordDeliveryReplayProtectionSubtask005003FailFirstTest,ForgotPasswordInitialOtpBindingSubtask005002FailFirstTest,ForgotPasswordDetailsApimSubtask005001FailFirstTest), cumulative resend/challenge/session/idempotency/lock/CSRF regressions (MessageDeliveryUnknownOutcomeSubtask005aFailFirstTest,LoginOtpResendServiceTest,IdempotentLoginOtpResendServiceTest,RegistrationOtpResendServiceIntegrationTest,RedisOtpChallengeStateAdapterTest,RedisForgotPasswordIdempotencyAdapterTest,RedisAuthFlowSessionMutationLockAdapterTest,AuthFlowSessionCsrfServiceTest,AesGcmForgotPasswordAuthFlowContextProtectorTest), and canonical compile passed. Evidence: target/0061-subtask-006-001-otp-status-fix-evidence-20260801-080302.
+
+Exclusions preserved: no public Forgot Password resend endpoint, replacement generation/delivery, public mapping, OTP verification/consumption, reset authorization, TRPResetPassword, password completion, Subtask 007, or later behavior.
+
+Stop point: Subtask 006 is in progress. Next round: 006-002 OTP Resend Orchestration and Endpoint. Subtask 007 has not started.
