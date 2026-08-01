@@ -117,7 +117,7 @@ class LoginOtpAuthenticatedSessionTransitionTest {
         LoginAccountReferenceAssignmentService assignment = new LoginAccountReferenceAssignmentService(
                 () -> new LoginAccountRef("acc_abcdefghijklmnopqrstuvwx"), 8);
 
-        return new LoginOtpVerifyService(
+        return LoginOtpVerifyTestSupport.newService(
                 loader,
                 otp,
                 verified,

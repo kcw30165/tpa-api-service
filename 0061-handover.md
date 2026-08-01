@@ -491,3 +491,20 @@ Exclusions preserved:
 - No public Forgot Password resend endpoint, OTP replacement delivery, OTP verification, reset authorization, password completion, or Subtask 007 behavior.
 
 Stop point: split prerequisite round 001A-4 complete. Subtask 006 remains incomplete. Next prerequisite round: 001A-5 Login OTP_VERIFY idempotency and consumption proof. Round 006-002 remains blocked. Subtask 007 has not started.
+
+###### Subtask 006 prerequisite round 001A-5: Login OTP_VERIFY Idempotency and Consumption Proof
+
+Commit message: feat(login): add idempotent revision-aware otp verification
+
+Implemented the OTP_VERIFY canonical operation hash, server-generated handoff and verification-operation identities, caller-held mutation-lock and snapshot boundary, revision-aware Login-specific verification command/result vocabulary, at-most-once challenge consumption/attempt behavior, and consumption-proof contract. A first successful request retains the existing account lookup, Account-Ref assignment, authenticated-session creation, cookie timing, and account-selection result. A committed or ambiguous replay fails closed with sanitized SYSTEM_ERROR and does not repeat OTP verification or begin downstream Login continuation. No raw public response snapshot is persisted.
+
+Retention defaults are 600 seconds for OTP_VERIFY idempotency and 900 seconds for handoff, consumption proof, and reserved deletion proof, bounded to 300..1800 seconds with proof/handoff retention not shorter than idempotency. Login OTP verification no longer calls the shared unversioned verifyChallenge path.
+
+001A-3 commit: feat(auth): add revision-aware auth-flow session mutations
+001A-3 evidence: target/0061-subtask-005-004-timeout-boundary-resume-evidence-20260801-072821
+001A-4 commit: refactor(auth): migrate auth-flow session writers to revision-aware persistence
+001A-4 evidence: target/0061-subtask-006-001a-4-api-exception-status-fix-evidence-20260801-190931
+
+Exclusions preserved: no durable authenticated-login handoff state, idempotent authenticated-session creation, account recovery, cookie/result reconstruction, auth-flow cleanup/tombstone, public Forgot Password Resend endpoint, Forgot Password OTP verification, reset authorization, password submission, TRPResetPassword, Subtask 007, or 001A-6 behavior.
+
+Next round: 001A-6 authenticated-login handoff and recoverable cleanup. Round 006-002 remains blocked. Subtask 007 has not started.

@@ -499,7 +499,7 @@ class ContributionControllerTest {
                                 .expectHeader().valueEquals("X-Request-Id", "client-request-uuid")
                                 .expectBody()
                                 .jsonPath("$.success").isEqualTo(false)
-                                .jsonPath("$.status").isEqualTo("DOWNSTREAM_ERROR")
+                                .jsonPath("$.status").isEqualTo("SYSTEM_ERROR")
                                 .jsonPath("$.result").doesNotExist()
                                 .jsonPath("$.messages").isArray()
                                 .jsonPath("$.messages.length()").isEqualTo(0)
@@ -552,8 +552,7 @@ class ContributionControllerTest {
                                 .webFilter(requestHeaderContextWebFilter())
                                 .controllerAdvice(new ApiExceptionHandler(
                                                 testErrorMessageResolver(),
-                                                testLoggingSanitizer()
-                                            ))
+                                                testLoggingSanitizer()))
                                 .build();
                 if (withDefaultAccountRef) {
                         return client.mutate()

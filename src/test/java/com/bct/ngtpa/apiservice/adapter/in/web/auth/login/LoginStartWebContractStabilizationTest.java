@@ -30,7 +30,7 @@ class LoginStartWebContractStabilizationTest {
                                 "err.login.credentials.invalid", HttpStatus.UNAUTHORIZED);
                 assertMapping(StartLoginStatus.UNKNOWN_OUTCOME, ApiStatus.SYSTEM_ERROR,
                                 "err.login.session.creationFailed", HttpStatus.SERVICE_UNAVAILABLE);
-                assertMapping(StartLoginStatus.UNAVAILABLE, ApiStatus.DOWNSTREAM_ERROR,
+                assertMapping(StartLoginStatus.UNAVAILABLE, ApiStatus.SYSTEM_ERROR,
                                 "err.login.credentials.unavailable", HttpStatus.BAD_GATEWAY);
         }
 
@@ -47,7 +47,7 @@ class LoginStartWebContractStabilizationTest {
 
                 var unavailable = mapper.systemUnavailable();
                 assertThat(LoginHttpResponses.toResponse(unavailable).getStatusCode())
-                                .isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+                                .isEqualTo(HttpStatus.BAD_GATEWAY);
                 assertThat(unavailable.errors()).singleElement()
                                 .extracting(error -> error.code())
                                 .isEqualTo("err.workflow.system.unavailable");

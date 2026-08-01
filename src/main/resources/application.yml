@@ -200,6 +200,14 @@ auth-workflows:
       otp-resend-ttl-seconds: ${LOGIN_OTP_RESEND_IDEMPOTENCY_TTL_SECONDS:300}
       otp-verify-ttl-seconds: ${LOGIN_OTP_VERIFY_IDEMPOTENCY_TTL_SECONDS:300}
       cancel-ttl-seconds: ${LOGIN_CANCEL_IDEMPOTENCY_TTL_SECONDS:300}
+    # 0061 / 001A-5. Read-only replay never refreshes these TTLs.
+    otp-verify-recovery:
+      otp-verify-idempotency-ttl-seconds: 600
+      authenticated-login-handoff-retention-seconds: 900
+      otp-consumption-proof-retention-seconds: 900
+      auth-flow-deletion-proof-retention-seconds: 900
+      minimum-retention-seconds: 300
+      maximum-retention-seconds: 1800
     session:
       absolute-timeout-seconds: ${AUTH_WORKFLOWS_LOGIN_SESSION_ABSOLUTE_TIMEOUT_SECONDS:28800}
       terminal-retention-seconds: ${AUTH_WORKFLOWS_LOGIN_SESSION_TERMINAL_RETENTION_SECONDS:300}
