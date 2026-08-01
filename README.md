@@ -6,20 +6,19 @@ The service sits between frontend clients and downstream services such as APIM-b
 
 ## Tech Stack
 
-| Area | Current implementation |
-| --- | --- |
-| Language | Java 21 |
-| Application framework | Spring Boot 4.0.6 |
-| Dependency platform | Spring Cloud 2025.1.0 |
-| Inbound HTTP | Spring WebFlux |
-| Security | Spring Security, Spring OAuth2 Client |
-| Outbound HTTP | Spring WebClient-based adapters under APIM outbound packages |
-| Runtime state | Spring Data Redis with Lettuce |
-| Resilience | Spring Cloud CircuitBreaker with Resilience4j |
-| Crypto | Bouncy Castle 1.82 |
-| Binary export | Apache POI OOXML 5.4.1 |
-| Build | Maven |
-| Test stack | Spring Boot test starters, ArchUnit 1.3.0, JaCoCo 0.8.12 |
+| Area                  | Current implementation                                       |
+| --------------------- | ------------------------------------------------------------ |
+| Language              | Java 21                                                      |
+| Application framework | Spring Boot 4.0.6                                            |
+| Dependency platform   | Spring Cloud 2025.1.0                                        |
+| Inbound HTTP          | Spring WebFlux                                               |
+| Security              | Spring Security, Spring OAuth2 Client                        |
+| Outbound HTTP         | Spring WebClient-based adapters under APIM outbound packages |
+| Runtime state         | Spring Data Redis with Lettuce                               |
+| Crypto                | Bouncy Castle 1.82                                           |
+| Binary export         | Apache POI OOXML 5.4.1                                       |
+| Build                 | Maven                                                        |
+| Test stack            | Spring Boot test starters, ArchUnit 1.3.0, JaCoCo 0.8.12     |
 
 ## Architecture Overview
 
@@ -57,67 +56,67 @@ Base path: `/api/v1`
 
 ### Authentication and Session
 
-| Method | Path | Purpose | Requirement | Selected account |
-| --- | --- | --- | --- | --- |
-| POST | `/auth/captcha/challenge` | Create a captcha challenge | Pre-auth | No |
-| POST | `/auth/captcha/verify` | Verify captcha input | Pre-auth | No |
-| POST | `/auth/captcha/refresh` | Refresh the active captcha | Pre-auth | No |
-| POST | `/auth/login` | Start login and create auth-flow state | Pre-auth | No |
-| POST | `/auth/login/otp/send` | Send login OTP | Auth-flow cookie and CSRF | No |
-| POST | `/auth/login/otp/resend` | Resend login OTP | Auth-flow cookie and CSRF | No |
-| POST | `/auth/login/otp/verify` | Verify login OTP and establish authenticated session | Auth-flow cookie and CSRF | No |
-| POST | `/auth/login/cancel` | Cancel the current login flow | Auth-flow cookie and CSRF | No |
-| POST | `/auth/logout` | End the authenticated session | Authenticated session and CSRF | No |
+| Method | Path                        | Purpose                                              | Requirement                    | Selected account |
+| ------ | --------------------------- | ---------------------------------------------------- | ------------------------------ | ---------------- |
+| POST   | `/auth/captcha/challenge` | Create a captcha challenge                           | Pre-auth                       | No               |
+| POST   | `/auth/captcha/verify`    | Verify captcha input                                 | Pre-auth                       | No               |
+| POST   | `/auth/captcha/refresh`   | Refresh the active captcha                           | Pre-auth                       | No               |
+| POST   | `/auth/login`             | Start login and create auth-flow state               | Pre-auth                       | No               |
+| POST   | `/auth/login/otp/send`    | Send login OTP                                       | Auth-flow cookie and CSRF      | No               |
+| POST   | `/auth/login/otp/resend`  | Resend login OTP                                     | Auth-flow cookie and CSRF      | No               |
+| POST   | `/auth/login/otp/verify`  | Verify login OTP and establish authenticated session | Auth-flow cookie and CSRF      | No               |
+| POST   | `/auth/login/cancel`      | Cancel the current login flow                        | Auth-flow cookie and CSRF      | No               |
+| POST   | `/auth/logout`            | End the authenticated session                        | Authenticated session and CSRF | No               |
 
 Detailed design packs: [docs/design/login/finalized/0-login-design-pack-index.md](docs/design/login/finalized/0-login-design-pack-index.md), [docs/design/login/finalized/login-api-contract.md](docs/design/login/finalized/login-api-contract.md)
 
 ### Registration
 
-| Method | Path | Purpose | Requirement | Selected account |
-| --- | --- | --- | --- | --- |
-| POST | `/auth/registration/start` | Start registration and create auth-flow state | Pre-auth | No |
-| POST | `/auth/registration/username/check` | Check username availability | Auth-flow cookie and CSRF | No |
-| POST | `/auth/registration/otp/resend` | Resend registration OTP | Auth-flow cookie and CSRF | No |
-| POST | `/auth/registration/otp/verify` | Verify registration OTP | Auth-flow cookie and CSRF | No |
-| POST | `/auth/registration/complete` | Complete registration | Auth-flow cookie, CSRF, idempotency | No |
-| POST | `/auth/registration/cancel` | Cancel the current registration flow | Auth-flow cookie and CSRF | No |
+| Method | Path                                  | Purpose                                       | Requirement                         | Selected account |
+| ------ | ------------------------------------- | --------------------------------------------- | ----------------------------------- | ---------------- |
+| POST   | `/auth/registration/start`          | Start registration and create auth-flow state | Pre-auth                            | No               |
+| POST   | `/auth/registration/username/check` | Check username availability                   | Auth-flow cookie and CSRF           | No               |
+| POST   | `/auth/registration/otp/resend`     | Resend registration OTP                       | Auth-flow cookie and CSRF           | No               |
+| POST   | `/auth/registration/otp/verify`     | Verify registration OTP                       | Auth-flow cookie and CSRF           | No               |
+| POST   | `/auth/registration/complete`       | Complete registration                         | Auth-flow cookie, CSRF, idempotency | No               |
+| POST   | `/auth/registration/cancel`         | Cancel the current registration flow          | Auth-flow cookie and CSRF           | No               |
 
 Detailed contract: [docs/design/registration/finalized/registration-api-contract.md](docs/design/registration/finalized/registration-api-contract.md)
 
 ### Contributions
 
-| Method | Path | Purpose | Requirement | Selected account |
-| --- | --- | --- | --- | --- |
-| GET | `/contributions` | Return contribution summaries | Authenticated session, CSRF, `Account-Ref` | Yes |
-| GET | `/contributions/export` | Export contribution summaries as XLSX | Authenticated session, CSRF, `Account-Ref` | Yes |
+| Method | Path                      | Purpose                               | Requirement                                 | Selected account |
+| ------ | ------------------------- | ------------------------------------- | ------------------------------------------- | ---------------- |
+| GET    | `/contributions`        | Return contribution summaries         | Authenticated session, CSRF,`Account-Ref` | Yes              |
+| GET    | `/contributions/export` | Export contribution summaries as XLSX | Authenticated session, CSRF,`Account-Ref` | Yes              |
 
 ### Notifications
 
-| Method | Path | Purpose | Requirement | Selected account |
-| --- | --- | --- | --- | --- |
-| GET | `/notifications` | Return notifications | Authenticated session, CSRF, `Account-Ref` | Yes |
-| PATCH | `/notifications` | Update notification read status | Authenticated session, CSRF, `Account-Ref` | Yes |
+| Method | Path               | Purpose                         | Requirement                                 | Selected account |
+| ------ | ------------------ | ------------------------------- | ------------------------------------------- | ---------------- |
+| GET    | `/notifications` | Return notifications            | Authenticated session, CSRF,`Account-Ref` | Yes              |
+| PATCH  | `/notifications` | Update notification read status | Authenticated session, CSRF,`Account-Ref` | Yes              |
 
 ### Personal Information
 
-| Method | Path | Purpose | Requirement | Selected account |
-| --- | --- | --- | --- | --- |
-| GET | `/personal-information` | Return page-backed personal information data | Authenticated session, CSRF, `Account-Ref` | Yes |
-| PUT | `/personal-information` | Update personal information | Authenticated session, CSRF, `Account-Ref` | Yes |
+| Method | Path                      | Purpose                                      | Requirement                                 | Selected account |
+| ------ | ------------------------- | -------------------------------------------- | ------------------------------------------- | ---------------- |
+| GET    | `/personal-information` | Return page-backed personal information data | Authenticated session, CSRF,`Account-Ref` | Yes              |
+| PUT    | `/personal-information` | Update personal information                  | Authenticated session, CSRF,`Account-Ref` | Yes              |
 
 ### Reference Data
 
-| Method | Path | Purpose | Requirement | Selected account |
-| --- | --- | --- | --- | --- |
-| GET | `/reference-data/countries` | Return country and calling-code reference data | Pre-auth | No |
+| Method | Path                          | Purpose                                        | Requirement | Selected account |
+| ------ | ----------------------------- | ---------------------------------------------- | ----------- | ---------------- |
+| GET    | `/reference-data/countries` | Return country and calling-code reference data | Pre-auth    | No               |
 
 ### Internal Operations
 
-| Method | Path | Purpose | Requirement | Selected account |
-| --- | --- | --- | --- | --- |
-| POST | `/internal/reference-date/refresh` | Refresh one reference-date entry | Internal endpoint; authenticated when in-process auth is enabled | No |
-| GET | `/internal/reference-date/all` | List cached reference-date entries | Internal endpoint; authenticated when in-process auth is enabled | No |
-| DELETE | `/internal/reference-date/all` | Delete cached reference-date entries | Internal endpoint; authenticated when in-process auth is enabled | No |
+| Method | Path                                 | Purpose                              | Requirement                                                      | Selected account |
+| ------ | ------------------------------------ | ------------------------------------ | ---------------------------------------------------------------- | ---------------- |
+| POST   | `/internal/reference-date/refresh` | Refresh one reference-date entry     | Internal endpoint; authenticated when in-process auth is enabled | No               |
+| GET    | `/internal/reference-date/all`     | List cached reference-date entries   | Internal endpoint; authenticated when in-process auth is enabled | No               |
+| DELETE | `/internal/reference-date/all`     | Delete cached reference-date entries | Internal endpoint; authenticated when in-process auth is enabled | No               |
 
 Detailed contract: [docs/design/reference-date/reference-date-cache-admin.md](docs/design/reference-date/reference-date-cache-admin.md)
 
@@ -213,24 +212,24 @@ The attached startup log in this repository workspace confirms that leaving `aut
 
 ## Configuration
 
-| Prefix | Purpose | Secret management | Notes |
-| --- | --- | --- | --- |
-| `apim` | APIM base URL, OAuth client, encryption, retry, credential profiles | Yes | Required for APIM-backed calls |
-| `redis-cache` | Redis Sentinel, SSL bundle, timeout, key prefix | Usually | Enabled by default; disable explicitly for no-Redis local runs |
-| `auth-workflows` | Login, registration, and forgot-password rules, OTP behavior, session cookie settings | Partly | Includes authenticated session cookie name `portal_sid` |
-| `auth-flow-session` | Auth-flow cookie, CSRF, TTL, scenario settings | No | Drives `auth_flow_sid` and `XSRF-TOKEN` behavior |
-| `auth-workflows.login.context-protection` | Login pre-auth encryption settings | Yes | Required at startup |
-| `auth-workflows.login.session.protection` | Authenticated-session payload protection | Yes | Required at startup |
-| `auth-workflows.registration.context-protection` | Registration context and username-check protection | Yes | Required at startup |
-| `auth-workflows.forgot-password.context-protection` | Forgot-password continuation-context encryption settings | Yes | Declared for later workflow wiring; not startup-critical in Subtask 002 |
-| `config-service` | Config service HTTP client settings | Usually | Startup integration settings |
-| `sms` | SMS delivery settings for workflow messaging | Usually | Used by current auth workflows |
-| `cors` | Allowed origins, headers, and methods | No | Applied when origins are configured |
-| `request-logging` | Structured request logging and body-logging rules | No | Body logging is opt-in |
-| `logging-sanitizer` | Sensitive-field masking configuration | No | Masks tokens, secrets, identifiers, and key material |
-| `reference-date` | Reference-date cache TTL and refresh behavior | No | Used by internal reference-date operations |
-| `bff-pages` | Page schema and validation metadata | No | See page-schema DSL doc |
-| `temporary-portal-access-context` | Local/demo selected-account context data | No | Present in local configuration; not a substitute for runtime session state |
+| Prefix                                                | Purpose                                                                               | Secret management | Notes                                                                      |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------- | ----------------- | -------------------------------------------------------------------------- |
+| `apim`                                              | APIM base URL, OAuth client, encryption, retry, credential profiles                   | Yes               | Required for APIM-backed calls                                             |
+| `redis-cache`                                       | Redis Sentinel, SSL bundle, timeout, key prefix                                       | Usually           | Enabled by default; disable explicitly for no-Redis local runs             |
+| `auth-workflows`                                    | Login, registration, and forgot-password rules, OTP behavior, session cookie settings | Partly            | Includes authenticated session cookie name`portal_sid`                   |
+| `auth-flow-session`                                 | Auth-flow cookie, CSRF, TTL, scenario settings                                        | No                | Drives`auth_flow_sid` and `XSRF-TOKEN` behavior                        |
+| `auth-workflows.login.context-protection`           | Login pre-auth encryption settings                                                    | Yes               | Required at startup                                                        |
+| `auth-workflows.login.session.protection`           | Authenticated-session payload protection                                              | Yes               | Required at startup                                                        |
+| `auth-workflows.registration.context-protection`    | Registration context and username-check protection                                    | Yes               | Required at startup                                                        |
+| `auth-workflows.forgot-password.context-protection` | Forgot-password continuation-context encryption settings                              | Yes               | Declared for later workflow wiring; not startup-critical in Subtask 002    |
+| `config-service`                                    | Config service HTTP client settings                                                   | Usually           | Startup integration settings                                               |
+| `sms`                                               | SMS delivery settings for workflow messaging                                          | Usually           | Used by current auth workflows                                             |
+| `cors`                                              | Allowed origins, headers, and methods                                                 | No                | Applied when origins are configured                                        |
+| `request-logging`                                   | Structured request logging and body-logging rules                                     | No                | Body logging is opt-in                                                     |
+| `logging-sanitizer`                                 | Sensitive-field masking configuration                                                 | No                | Masks tokens, secrets, identifiers, and key material                       |
+| `reference-date`                                    | Reference-date cache TTL and refresh behavior                                         | No                | Used by internal reference-date operations                                 |
+| `bff-pages`                                         | Page schema and validation metadata                                                   | No                | See page-schema DSL doc                                                    |
+| `temporary-portal-access-context`                   | Local/demo selected-account context data                                              | No                | Present in local configuration; not a substitute for runtime session state |
 
 Page-schema reference: [docs/pageconfig/045-page-schema-validation-dsl.md](docs/pageconfig/045-page-schema-validation-dsl.md)
 

@@ -508,3 +508,16 @@ Retention defaults are 600 seconds for OTP_VERIFY idempotency and 900 seconds fo
 Exclusions preserved: no durable authenticated-login handoff state, idempotent authenticated-session creation, account recovery, cookie/result reconstruction, auth-flow cleanup/tombstone, public Forgot Password Resend endpoint, Forgot Password OTP verification, reset authorization, password submission, TRPResetPassword, Subtask 007, or 001A-6 behavior.
 
 Next round: 001A-6 authenticated-login handoff and recoverable cleanup. Round 006-002 remains blocked. Subtask 007 has not started.
+
+###### Subtask 006 prerequisite round 001A-6: Authenticated-login handoff and recoverable cleanup
+
+Status: fail-first contract established; production implementation not started.
+
+Baseline: `fa95e751aa0d951ddbbac582965ea57e80fb032c` (`feat(login): add idempotent revision-aware otp verification`).
+
+Required boundary: persist the authenticated-login handoff durably after OTP consumption, recover account/session continuation without re-verifying or re-consuming OTP, establish at most one authenticated session, retain a cleanup/deletion proof, reconstruct the approved account-selection result and cookie timing, and fail closed on ambiguous or conflicting state. Read-only recovery must not extend handoff or proof retention.
+
+Exclusions preserved: no Forgot Password OTP verification, reset authorization, password completion, TRPResetPassword, Subtask 007, or round 006-002 behavior.
+
+001A-6 contract correction: the initial filename-driven handoff contract is superseded. No production class name, package, Redis adapter, or lifecycle enum is approved merely by the first fail-first test. The active fail-first boundary is repository-grounded data flow: reuse `LoginOtpConsumptionProof`, `AuthenticatedLoginHandoffReference`, and `LoginOtpVerificationOperationReference`; forward the committed proof on first success; recover `ALREADY_COMMITTED` without another OTP verification; establish at most one authenticated session using the recovery identity; retain cleanup proof; and fail closed on conflicts. Production implementation remains unstarted.
+
