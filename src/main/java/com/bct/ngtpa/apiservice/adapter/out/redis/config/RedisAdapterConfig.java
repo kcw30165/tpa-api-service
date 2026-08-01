@@ -75,13 +75,40 @@ import java.util.stream.Collectors;
  * a Sentinel instance, or in test contexts that do not require a live Redis).
  */
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties(RedisCacheProperties.class)
+@EnableConfigurationProperties({
+        RedisCacheProperties.class,
+        com.bct.ngtpa.apiservice.adapter.out.redis.auth.compatibility.AuthFlowSessionPersistenceSchemaProperties.class
+})
 @ConditionalOnProperty(name = "redis-cache.enabled", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
 public class RedisAdapterConfig {
 
     private final RedisCacheProperties properties;
     private final SslBundles sslBundles;
+
+    @Bean
+    public com.bct.ngtpa.apiservice.adapter.out.redis.auth.compatibility.AuthFlowSessionPersistenceCompatibilityState
+            authFlowSessionPersistenceCompatibilityState() {
+        return new com.bct.ngtpa.apiservice.adapter.out.redis.auth.compatibility.AuthFlowSessionPersistenceCompatibilityState();
+    }
+
+    @Bean
+    public com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPersistenceCompatibilityPort
+            authFlowSessionPersistenceCompatibilityPort(
+                    ReactiveStringRedisTemplate redis,
+                    RedisCacheKeyFactory keyFactory) {
+        return new com.bct.ngtpa.apiservice.adapter.out.redis.auth.compatibility.RedisAuthFlowSessionPersistenceCompatibilityAdapter(
+                redis, keyFactory);
+    }
+
+    @Bean
+    public org.springframework.boot.ApplicationRunner authFlowSessionPersistenceCompatibilityStartupGate(
+            com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPersistenceCompatibilityPort port,
+            com.bct.ngtpa.apiservice.adapter.out.redis.auth.compatibility.AuthFlowSessionPersistenceSchemaProperties schema,
+            com.bct.ngtpa.apiservice.adapter.out.redis.auth.compatibility.AuthFlowSessionPersistenceCompatibilityState state) {
+        return new com.bct.ngtpa.apiservice.adapter.out.redis.auth.compatibility.AuthFlowSessionPersistenceCompatibilityStartupGate(
+                port, schema, state, Duration.ofMillis(properties.getTimeoutMilliseconds()));
+    }
 
     @Bean
     public LettuceConnectionFactory lettuceConnectionFactory() {

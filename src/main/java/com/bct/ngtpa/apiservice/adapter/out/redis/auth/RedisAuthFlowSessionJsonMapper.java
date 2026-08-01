@@ -1,6 +1,8 @@
 package com.bct.ngtpa.apiservice.adapter.out.redis.auth;
 
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision;
 import com.bct.ngtpa.apiservice.exception.CacheException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -25,6 +27,33 @@ public class RedisAuthFlowSessionJsonMapper {
             return objectMapper.writeValueAsString(RedisAuthFlowSessionRecord.from(session));
         } catch (RuntimeException | JsonProcessingException exception) {
             throw new CacheException("Auth flow session state serialization failed", exception);
+        }
+    }
+
+    public String toJson(AuthFlowSession session, SessionRevision revision) {
+        if (session == null || revision == null) {
+            throw new IllegalArgumentException("Auth flow session and revision must not be null");
+        }
+        try {
+            return objectMapper.writeValueAsString(RedisAuthFlowSessionRecord.from(session, revision));
+        } catch (RuntimeException | JsonProcessingException exception) {
+            throw new CacheException("Auth flow session state serialization failed", exception);
+        }
+    }
+
+    public java.util.Optional<AuthFlowSessionSnapshot> snapshotFromJson(String json) {
+        if (json == null || json.isBlank()) {
+            throw new IllegalArgumentException("Auth flow session JSON must not be blank");
+        }
+        try {
+            RedisAuthFlowSessionRecord record = objectMapper.readValue(json, RedisAuthFlowSessionRecord.class);
+            if (!record.sessionRevisionPresent()) {
+                return java.util.Optional.empty();
+            }
+            return java.util.Optional.of(new AuthFlowSessionSnapshot(
+                    record.toAuthFlowSession(), new SessionRevision(record.sessionRevision())));
+        } catch (RuntimeException | JsonProcessingException exception) {
+            throw new CacheException("Auth flow session snapshot deserialization failed", exception);
         }
     }
 

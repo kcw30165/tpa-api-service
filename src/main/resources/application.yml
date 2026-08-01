@@ -58,6 +58,7 @@ sms:
   timeout-millis: ${SMS_TIMEOUT_MILLIS:5000}
 
 auth-flow-session:
+  persistence-schema-version: 2
   session-id:
     prefix: afs
     entropy-bytes: 16

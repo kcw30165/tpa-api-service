@@ -346,3 +346,33 @@ Validation: focused (ForgotPasswordOtpResendFoundationSubtask006001FailFirstTest
 Exclusions preserved: no public Forgot Password resend endpoint, replacement generation/delivery, public mapping, OTP verification/consumption, reset authorization, TRPResetPassword, password completion, Subtask 007, or later behavior.
 
 Stop point: Subtask 006 is in progress. Next round: 006-002 OTP Resend Orchestration and Endpoint. Subtask 007 has not started.
+
+#### Subtask 006 prerequisite round 001A-1: Session revision schema foundation
+
+Commit message: feat(auth): add auth-flow session revision schema foundation
+
+Implemented:
+- Added framework-free application-owned SessionRevision, SessionRevisionGenerator, SecureSessionRevisionGenerator, and AuthFlowSessionSnapshot vocabulary.
+- SessionRevision uses 128 bits of SecureRandom entropy, remains opaque, and is redacted from toString output.
+- Extended RedisAuthFlowSessionRecord additively with optional sessionRevision while preserving deserialization of legacy records without the field.
+- Extended RedisAuthFlowSessionJsonMapper with revised-record serialization and snapshot loading; legacy domain loading remains unchanged and read-only loading does not generate a revision.
+- Added persistence schema version 2 configuration and a fixed capability-scoped Redis marker under the configured Redis prefix.
+- Added atomic absent-marker initialization through Redis set-if-absent, exact existing-version validation, immutable process compatibility state, and a fail-closed startup gate using the existing Sentinel-backed connection.
+- Marker version 2 does not itself migrate a legacy session or authorize a revision-aware mutation. Those operations remain for split round 001A-2 and later rounds.
+- Operational invariant: all revision-unaware writer pods must be drained before initializing schema version 2. After initialization, rollback to a revision-unaware writer is prohibited. The marker cannot stop an already-running old binary by itself.
+
+Validation:
+- Fail-first: missing revision and compatibility vocabulary confirmed.
+- Focused: SessionRevisionSchemaFoundationSubtask006001a1FailFirstTest,AuthFlowSessionPersistenceCompatibilityVocabularyTest,AuthFlowSessionPersistenceSchemaPropertiesTest,RedisAuthFlowSessionJsonMapperTest,RedisAuthFlowSessionKeyFactoryTest,RedisAdapterConfigConditionalTest passed.
+- Regression: RedisAuthFlowSessionAdapterTest,P4BAuthFlowSessionRedisSecurityGuardTest,RedisAuthFlowSessionArchitectureGuardTest,AuthFlowSessionPortContractShapeTest,AuthForgotPasswordControllerTest,AuthLoginControllerTest,AuthRegistrationControllerWorkflowContractTest,ForgotPasswordOtpResendFoundationSubtask006001FailFirstTest passed.
+- Full Maven suite, canonical compile, and git diff check passed.
+- Evidence: target/0061-subtask-006-001a-1-evidence-20260801-170629
+
+Exclusions preserved:
+- No revision-aware create/update/touch/complete/cancel/delete operation.
+- No legacy session revision initialization.
+- No production session-writer migration.
+- No Login OTP_VERIFY idempotency, consumption proof, or authenticated-login handoff.
+- No public Forgot Password resend endpoint, candidate staging, replacement OTP generation/delivery, OTP verification, reset authorization, password completion, or Subtask 007 behavior.
+
+Stop point: split prerequisite round 001A-1 complete. Subtask 006 remains incomplete. Next prerequisite round: 001A-2 revision-aware create/load and legacy initialization. Round 006-002 remains blocked. Subtask 007 has not started.
