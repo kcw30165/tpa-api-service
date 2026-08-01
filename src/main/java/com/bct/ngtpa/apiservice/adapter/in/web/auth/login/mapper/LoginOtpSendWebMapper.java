@@ -25,7 +25,7 @@ public final class LoginOtpSendWebMapper {
             case KEY_REUSED -> SharedWorkflowErrorKey.IDEMPOTENCY_KEY_REUSED.value();
             default -> SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value();
         };
-        ApiStatus status = r.status() == SendLoginOtpStatus.DELIVERY_FAILED ? ApiStatus.DOWNSTREAM_ERROR
+        ApiStatus status = r.status() == SendLoginOtpStatus.DELIVERY_FAILED ? ApiStatus.SYSTEM_ERROR
                 : r.status() == SendLoginOtpStatus.UNKNOWN_OUTCOME ? ApiStatus.SYSTEM_ERROR
                         : ApiStatus.VALIDATION_FAILED;
         return MutationResponse.failure(status,

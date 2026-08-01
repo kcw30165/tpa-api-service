@@ -47,7 +47,7 @@ public class RegistrationOtpResendWebMapper {
         if (result.status() == ResendRegistrationOtpResultStatus.MESSAGE_DELIVERY_FAILED) {
             return new MutationResponse<>(
                     false,
-                    ApiStatus.DOWNSTREAM_ERROR,
+                    ApiStatus.SYSTEM_ERROR,
                     response.result(),
                     response.messages(),
                     response.errors());

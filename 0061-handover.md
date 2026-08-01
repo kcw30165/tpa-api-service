@@ -460,3 +460,34 @@ Exclusions preserved:
 - No Forgot Password resend endpoint, candidate staging, replacement generation/delivery, OTP verification, reset authorization, password completion, or Subtask 007 behavior.
 
 Stop point: split prerequisite round 001A-3 complete. Subtask 006 remains incomplete. Next prerequisite round: 001A-4 production writer migration. Round 006-002 remains blocked. Subtask 007 has not started.
+
+##### Subtask 006 prerequisite round 001A-4: Production auth-flow session writer migration
+
+Commit message: 
+
+Implemented:
+- Migrated all audited production AuthFlowSessionPort mutation callers to revision-aware snapshot and conditional mutation boundaries.
+- Added an application-owned RevisionAwareAuthFlowSessionWriter with no ordinary set, evict, or unversioned fallback.
+- Lifecycle update, complete, cancel, and delete; CSRF rotation; registration username and completion state; expiry refresh; cancellation; Forgot Password identity transition; and Forgot Password OTP binding now reject stale snapshots instead of overwriting newer state.
+- Existing unversioned update, touch, complete, cancel, and delete entry points now fail closed and perform no Redis operation.
+- Read-only legacy load remains available. Revision-aware create, snapshot load, legacy initialization, replacement, and deletion remain the authoritative production persistence boundaries.
+- Concurrent revision conflicts return sanitized internal failures through existing workflow handling and do not retry irreversible workflow stages.
+
+Public API status hardening:
+- ApiStatus.DOWNSTREAM_ERROR is not exposed to FE and maps to SYSTEM_ERROR.
+- ApiStatus.DOWNSTREAM_REJECTED is not exposed to FE and maps to BUSINESS_REJECTED.
+- A permanent architecture guard verifies that public web production code does not emit either downstream status.
+
+Validation:
+- Fail-first production-writer guard detected legacy mutation callers before migration.
+- Focused:  passed.
+- Regression:  passed.
+- Full Maven suite, canonical compile, and git diff check passed.
+- Evidence: 
+
+Exclusions preserved:
+- No Login OTP_VERIFY persistence/idempotency/consumption-proof implementation.
+- No authenticated-login handoff or recoverable authenticated-session cleanup.
+- No public Forgot Password resend endpoint, OTP replacement delivery, OTP verification, reset authorization, password completion, or Subtask 007 behavior.
+
+Stop point: split prerequisite round 001A-4 complete. Subtask 006 remains incomplete. Next prerequisite round: 001A-5 Login OTP_VERIFY idempotency and consumption proof. Round 006-002 remains blocked. Subtask 007 has not started.

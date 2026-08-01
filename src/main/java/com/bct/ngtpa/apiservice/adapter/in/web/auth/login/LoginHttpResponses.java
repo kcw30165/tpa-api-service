@@ -39,9 +39,9 @@ public final class LoginHttpResponses {
             return HttpStatus.BAD_GATEWAY;
         if (code.equals(LoginErrorKey.SESSION_CREATION_FAILED.value()))
             return HttpStatus.SERVICE_UNAVAILABLE;
-        if (body.status() == ApiStatus.BUSINESS_REJECTED || body.status() == ApiStatus.DOWNSTREAM_REJECTED)
+        if (body.status() == ApiStatus.BUSINESS_REJECTED || body.status() == ApiStatus.BUSINESS_REJECTED)
             return HttpStatus.UNPROCESSABLE_ENTITY;
-        if (body.status() == ApiStatus.DOWNSTREAM_ERROR)
+        if (body.status() == ApiStatus.SYSTEM_ERROR)
             return HttpStatus.BAD_GATEWAY;
         if (body.status() == ApiStatus.SYSTEM_ERROR)
             return HttpStatus.SERVICE_UNAVAILABLE;

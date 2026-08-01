@@ -6,6 +6,8 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionData;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.RevisionedAuthFlowSessionMutationCommand;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationOutcome;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.service.session.SessionIdGenerator;
 import com.bct.ngtpa.apiservice.application.service.session.SessionTtlCalculator;
@@ -20,6 +22,7 @@ public class AuthFlowSessionLifecycleService {
     private final SessionIdGenerator sessionIdGenerator;
     private final SessionTtlCalculator sessionTtlCalculator;
     private final Clock clock;
+    private final RevisionAwareAuthFlowSessionWriter revisionWriter;
 
     public AuthFlowSessionLifecycleService(AuthFlowSessionPort authFlowSessionPort,
             SessionIdGenerator sessionIdGenerator, SessionTtlCalculator sessionTtlCalculator, Clock clock) {
@@ -28,6 +31,7 @@ public class AuthFlowSessionLifecycleService {
         this.sessionTtlCalculator = Objects.requireNonNull(sessionTtlCalculator,
                 "sessionTtlCalculator must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
+        this.revisionWriter = new RevisionAwareAuthFlowSessionWriter(authFlowSessionPort);
     }
 
     public Mono<StartAuthFlowSessionResult> start(StartAuthFlowSessionCommand command) {
@@ -79,31 +83,36 @@ public class AuthFlowSessionLifecycleService {
 
     public Mono<AuthFlowSession> complete(CompleteAuthFlowSessionCommand command) {
         Objects.requireNonNull(command, "command must not be null");
-        return authFlowSessionPort.complete(command.authFlowSessionId(), Instant.now(clock));
+        return revisionWriter.complete(command.authFlowSessionId(), Instant.now(clock));
     }
 
     public Mono<AuthFlowSession> cancel(CancelAuthFlowSessionCommand command) {
         Objects.requireNonNull(command, "command must not be null");
-        return authFlowSessionPort.cancel(command.authFlowSessionId(), Instant.now(clock));
+        return revisionWriter.cancel(command.authFlowSessionId(), Instant.now(clock));
     }
 
     public Mono<Void> delete(DeleteAuthFlowSessionCommand command) {
         Objects.requireNonNull(command, "command must not be null");
-        return authFlowSessionPort.delete(command.authFlowSessionId());
+        return revisionWriter.delete(command.authFlowSessionId());
     }
 
     private Mono<AuthFlowSession> mutateUsable(AuthFlowSessionId id, SessionMutation mutation) {
         Instant now = Instant.now(clock);
-        return authFlowSessionPort.load(id)
+        return authFlowSessionPort.loadSnapshot(id)
                 .flatMap(optional -> optional.map(Mono::just)
                         .orElseGet(() -> Mono.error(new IllegalStateException("Auth flow session not available"))))
-                .flatMap(session -> {
+                .flatMap(snapshot -> {
+                    AuthFlowSession session = snapshot.session();
                     if (session.isExpired(now) || session.isTerminal()) {
                         return Mono.error(new IllegalStateException("Auth flow session is not usable"));
                     }
-                    return Mono.just(mutation.apply(session));
+                    AuthFlowSession updated = mutation.apply(session);
+                    return authFlowSessionPort.updateRevisioned(
+                            new RevisionedAuthFlowSessionMutationCommand(snapshot, updated));
                 })
-                .flatMap(authFlowSessionPort::update);
+                .flatMap(result -> result.outcome() == AuthFlowSessionMutationOutcome.APPLIED
+                        ? Mono.just(result.snapshot().session())
+                        : Mono.error(new IllegalStateException("Auth flow session revision conflict")));
     }
 
     private static AuthFlowSession copy(AuthFlowSession session, AuthFlowStatus status, String csrfTokenHash,

@@ -119,7 +119,7 @@ public class RegistrationStartWebMapper {
         if (result != null && result.status() == StartRegistrationResultStatus.MESSAGE_DELIVERY_FAILED) {
             return new MutationResponse<>(
                     false,
-                    ApiStatus.DOWNSTREAM_ERROR,
+                    ApiStatus.SYSTEM_ERROR,
                     response.result(),
                     response.messages(),
                     response.errors());

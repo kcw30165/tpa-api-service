@@ -3,7 +3,6 @@ package com.bct.ngtpa.apiservice.adapter.out.redis.auth;
 import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionCreateCommand;
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionData;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot;
@@ -252,56 +251,27 @@ public class RedisAuthFlowSessionAdapter implements AuthFlowSessionPort {
 
     @Override
     public Mono<AuthFlowSession> update(AuthFlowSession session) {
-        return Mono.defer(() -> persist(session).thenReturn(session))
-                .onErrorMap(this::safeFailure);
+        return Mono.error(new UnsupportedOperationException("Unversioned auth-flow update is not supported"));
     }
 
     @Override
     public Mono<AuthFlowSession> touch(AuthFlowSessionId authFlowSessionId, Instant now) {
-        return mutateExisting(authFlowSessionId, now, (session, timestamp) -> new AuthFlowSession(
-                session.authFlowSessionId(),
-                session.scenario(),
-                session.status(),
-                session.csrfTokenHash(),
-                session.activeOtpChallengeId(),
-                session.data(),
-                session.createdAt(),
-                timestamp,
-                session.expiresAt()));
+        return Mono.error(new UnsupportedOperationException("Unversioned auth-flow touch is not supported"));
     }
 
     @Override
     public Mono<AuthFlowSession> complete(AuthFlowSessionId authFlowSessionId, Instant now) {
-        return mutateExisting(authFlowSessionId, now, (session, timestamp) -> new AuthFlowSession(
-                session.authFlowSessionId(),
-                session.scenario(),
-                AuthFlowStatus.COMPLETED,
-                session.csrfTokenHash(),
-                session.activeOtpChallengeId(),
-                session.data(),
-                session.createdAt(),
-                timestamp,
-                session.expiresAt()));
+        return Mono.error(new UnsupportedOperationException("Unversioned auth-flow complete is not supported"));
     }
 
     @Override
     public Mono<AuthFlowSession> cancel(AuthFlowSessionId authFlowSessionId, Instant now) {
-        return mutateExisting(authFlowSessionId, now, (session, timestamp) -> new AuthFlowSession(
-                session.authFlowSessionId(),
-                session.scenario(),
-                AuthFlowStatus.CANCELLED,
-                session.csrfTokenHash(),
-                session.activeOtpChallengeId(),
-                session.data(),
-                session.createdAt(),
-                timestamp,
-                session.expiresAt()));
+        return Mono.error(new UnsupportedOperationException("Unversioned auth-flow cancel is not supported"));
     }
 
     @Override
     public Mono<Void> delete(AuthFlowSessionId authFlowSessionId) {
-        return Mono.defer(() -> cachePort.evict(keyFor(authFlowSessionId)).then())
-                .onErrorMap(this::safeFailure);
+        return Mono.error(new UnsupportedOperationException("Unversioned auth-flow delete is not supported"));
     }
 
     private Mono<AuthFlowSession> mutateExisting(AuthFlowSessionId id, Instant now, SessionMutation mutation) {

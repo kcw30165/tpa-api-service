@@ -37,7 +37,7 @@ public final class LoginOtpVerifyWebMapper {
                 : result.status() == VerifyLoginOtpStatus.SYSTEM_FAILED
                 ? ApiStatus.SYSTEM_ERROR
                 : result.status() == VerifyLoginOtpStatus.ACCOUNT_LIST_UNAVAILABLE
-                        ? ApiStatus.DOWNSTREAM_ERROR
+                        ? ApiStatus.SYSTEM_ERROR
                         : ApiStatus.BUSINESS_REJECTED;
         return MutationResponse.failure(
                 status,

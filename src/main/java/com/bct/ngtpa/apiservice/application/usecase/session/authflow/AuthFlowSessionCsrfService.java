@@ -14,16 +14,19 @@ public class AuthFlowSessionCsrfService implements CreateAuthFlowSessionCsrfUseC
     private final CsrfTokenGenerator csrfTokenGenerator;
     private final CsrfTokenValidationService csrfTokenValidationService;
     private final CsrfTokenHasher tokenBindingHasher;
+    private final RevisionAwareAuthFlowSessionWriter revisionWriter;
 
     public AuthFlowSessionCsrfService(AuthFlowSessionPort authFlowSessionPort) {
         this(authFlowSessionPort, new SecureRandomCsrfTokenGenerator(), new Sha256CsrfTokenHasher());
     }
 
-    public AuthFlowSessionCsrfService(AuthFlowSessionPort authFlowSessionPort, CsrfTokenGenerator csrfTokenGenerator, CsrfTokenHasher csrfTokenHasher) {
+    public AuthFlowSessionCsrfService(AuthFlowSessionPort authFlowSessionPort, CsrfTokenGenerator csrfTokenGenerator,
+            CsrfTokenHasher csrfTokenHasher) {
         this.authFlowSessionPort = Objects.requireNonNull(authFlowSessionPort, "authFlowSessionPort must not be null");
         this.csrfTokenGenerator = Objects.requireNonNull(csrfTokenGenerator, "csrfTokenGenerator must not be null");
         this.tokenBindingHasher = Objects.requireNonNull(csrfTokenHasher, "csrfTokenHasher must not be null");
         this.csrfTokenValidationService = new CsrfTokenValidationService(tokenBindingHasher);
+        this.revisionWriter = new RevisionAwareAuthFlowSessionWriter(authFlowSessionPort);
     }
 
     @Override
@@ -62,7 +65,8 @@ public class AuthFlowSessionCsrfService implements CreateAuthFlowSessionCsrfUseC
                 });
     }
 
-    private Mono<CreateAuthFlowSessionCsrfResult> bindToken(AuthFlowSessionId authFlowSessionId, Instant now, int ttlSeconds) {
+    private Mono<CreateAuthFlowSessionCsrfResult> bindToken(AuthFlowSessionId authFlowSessionId, Instant now,
+            int ttlSeconds) {
         return authFlowSessionPort.load(authFlowSessionId)
                 .flatMap(optional -> optional
                         .map(Mono::just)
@@ -83,8 +87,9 @@ public class AuthFlowSessionCsrfService implements CreateAuthFlowSessionCsrfUseC
                             session.createdAt(),
                             now,
                             session.expiresAt());
-                    return authFlowSessionPort.update(updated)
-                            .thenReturn(new CreateAuthFlowSessionCsrfResult(rawToken, now.plusSeconds(ttlSeconds), ttlSeconds));
+                    return revisionWriter.updateExpected(session, updated)
+                            .thenReturn(new CreateAuthFlowSessionCsrfResult(rawToken, now.plusSeconds(ttlSeconds),
+                                    ttlSeconds));
                 });
     }
 

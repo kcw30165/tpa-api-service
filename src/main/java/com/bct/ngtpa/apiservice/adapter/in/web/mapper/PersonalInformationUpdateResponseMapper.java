@@ -74,8 +74,8 @@ public class PersonalInformationUpdateResponseMapper {
                 .map(UpdatePersonalInformationError::type)
                 .findFirst()
                 .map(type -> switch (type) {
-                    case "DOWNSTREAM_ERROR" -> ApiStatus.DOWNSTREAM_ERROR;
-                    case "DOWNSTREAM_REJECTED" -> ApiStatus.DOWNSTREAM_REJECTED;
+                    case "DOWNSTREAM_ERROR" -> ApiStatus.SYSTEM_ERROR;
+                    case "DOWNSTREAM_REJECTED" -> ApiStatus.BUSINESS_REJECTED;
                     default -> ApiStatus.VALIDATION_FAILED;
                 })
                 .orElse(ApiStatus.SYSTEM_ERROR);

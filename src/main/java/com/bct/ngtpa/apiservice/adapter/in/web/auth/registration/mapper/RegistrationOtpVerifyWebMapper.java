@@ -5,7 +5,6 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.Registratio
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationWorkflowResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowConstants;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType;
@@ -40,7 +39,7 @@ public class RegistrationOtpVerifyWebMapper {
         if (result.status() == VerifyRegistrationOtpResultStatus.TRUST_LOOKUP_FAILED) {
             return new MutationResponse<>(
                     false,
-                    ApiStatus.DOWNSTREAM_ERROR,
+                    ApiStatus.SYSTEM_ERROR,
                     response.result(),
                     response.messages(),
                     response.errors());

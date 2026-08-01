@@ -73,7 +73,7 @@ public class CompleteRegistrationWebMapper {
             case VALIDATION_FAILED, INVALID_AUTH_FLOW, CSRF_INVALID, INVALID_STATE,
                     IDEMPOTENCY_KEY_REUSED -> ApiStatus.VALIDATION_FAILED;
             case DOWNSTREAM_REJECTED -> ApiStatus.BUSINESS_REJECTED;
-            case DOWNSTREAM_FAILED, CONTINUATION_LOOKUP_FAILED -> ApiStatus.DOWNSTREAM_ERROR;
+            case DOWNSTREAM_FAILED, CONTINUATION_LOOKUP_FAILED -> ApiStatus.SYSTEM_ERROR;
             default -> ApiStatus.SYSTEM_ERROR;
         };
         List<ApiError> errors = result.errors().stream()

@@ -27,6 +27,13 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionDeleteResult;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationOutcome;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationResult;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.RevisionedAuthFlowSessionDeleteCommand;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.RevisionedAuthFlowSessionMutationCommand;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision;
 
 class AuthFlowSessionLifecycleServiceTest {
 
@@ -101,7 +108,9 @@ class AuthFlowSessionLifecycleServiceTest {
         var session = activeSession(AuthFlowStatus.STARTED);
         port.save(session);
 
-        StepVerifier.create(service.updateStatus(new UpdateAuthFlowStatusCommand(session.authFlowSessionId(), AuthFlowStatus.OTP_SENT, null)))
+        StepVerifier
+                .create(service.updateStatus(
+                        new UpdateAuthFlowStatusCommand(session.authFlowSessionId(), AuthFlowStatus.OTP_SENT, null)))
                 .assertNext(updated -> {
                     assertThat(updated.status()).isEqualTo(AuthFlowStatus.OTP_SENT);
                     assertThat(updated.updatedAt()).isEqualTo(NOW);
@@ -112,11 +121,14 @@ class AuthFlowSessionLifecycleServiceTest {
 
     @Test
     void updateStatusRejectsTerminalSessionMutation() {
-        for (AuthFlowStatus terminal : new AuthFlowStatus[]{AuthFlowStatus.COMPLETED, AuthFlowStatus.CANCELLED, AuthFlowStatus.EXPIRED}) {
+        for (AuthFlowStatus terminal : new AuthFlowStatus[] { AuthFlowStatus.COMPLETED, AuthFlowStatus.CANCELLED,
+                AuthFlowStatus.EXPIRED }) {
             port.clear();
             var session = activeSession(terminal);
             port.save(session);
-            StepVerifier.create(service.updateStatus(new UpdateAuthFlowStatusCommand(session.authFlowSessionId(), AuthFlowStatus.OTP_SENT, null)))
+            StepVerifier
+                    .create(service.updateStatus(new UpdateAuthFlowStatusCommand(session.authFlowSessionId(),
+                            AuthFlowStatus.OTP_SENT, null)))
                     .expectErrorSatisfies(error -> assertThat(error)
                             .isInstanceOf(IllegalStateException.class)
                             .hasMessage("Auth flow session is not usable"))
@@ -130,7 +142,9 @@ class AuthFlowSessionLifecycleServiceTest {
         var session = activeSession(AuthFlowStatus.OTP_SENT);
         port.save(session);
 
-        StepVerifier.create(service.updateActiveOtpChallenge(new UpdateAuthFlowOtpCommand(session.authFlowSessionId(), "otp_abc", null)))
+        StepVerifier
+                .create(service.updateActiveOtpChallenge(
+                        new UpdateAuthFlowOtpCommand(session.authFlowSessionId(), "otp_abc", null)))
                 .assertNext(updated -> {
                     assertThat(updated.activeOtpChallengeId()).isEqualTo("otp_abc");
                     assertThat(updated.updatedAt()).isEqualTo(NOW);
@@ -143,16 +157,17 @@ class AuthFlowSessionLifecycleServiceTest {
         var session = activeSession(AuthFlowStatus.OTP_SENT);
         port.save(session);
 
-        StepVerifier.create(service.updateDestination(new UpdateAuthFlowDestinationCommand(session.authFlowSessionId(), "EMAIL", "m****r@example.com", null)))
+        StepVerifier
+                .create(service.updateDestination(new UpdateAuthFlowDestinationCommand(session.authFlowSessionId(),
+                        "EMAIL", "m****r@example.com", null)))
                 .assertNext(updated -> {
                     assertThat(updated.data().contactType()).isEqualTo("EMAIL");
                     assertThat(updated.data().maskedDestination()).isEqualTo("m****r@example.com");
-                    assertThat(recordComponentNames(AuthFlowSessionData.class)).doesNotContain("email", "mobile", "contactValue", "rawDestination");
+                    assertThat(recordComponentNames(AuthFlowSessionData.class)).doesNotContain("email", "mobile",
+                            "contactValue", "rawDestination");
                 })
                 .verifyComplete();
     }
-
-
 
     @Test
     void completeMarksCompletedWithoutCreatingAuthenticatedSession() {
@@ -178,6 +193,11 @@ class AuthFlowSessionLifecycleServiceTest {
     @Test
     void deleteDelegatesToPort() {
         var id = new AuthFlowSessionId("afs_delete");
+
+        AuthFlowSession active = activeSession(AuthFlowStatus.STARTED);
+        port.save(new AuthFlowSession(id, active.scenario(), active.status(), active.csrfTokenHash(),
+                active.activeOtpChallengeId(), active.data(), active.createdAt(), active.updatedAt(),
+                active.expiresAt()));
 
         StepVerifier.create(service.delete(new DeleteAuthFlowSessionCommand(id, null))).verifyComplete();
         assertThat(port.deletedId).isEqualTo(id);
@@ -223,6 +243,7 @@ class AuthFlowSessionLifecycleServiceTest {
 
     private static final class CapturingSessionIdGenerator implements SessionIdGenerator {
         private SessionIdGenerationCommand lastCommand;
+
         @Override
         public SessionId generate(SessionIdGenerationCommand command) {
             this.lastCommand = command;
@@ -237,27 +258,108 @@ class AuthFlowSessionLifecycleServiceTest {
         private AuthFlowSessionId deletedId;
         private boolean cookieClearInstructionCreated;
 
-        void save(AuthFlowSession session) { sessions.put(session.authFlowSessionId().value(), session); }
-        void clear() { sessions.clear(); createCount = 0; updateCount = 0; deletedId = null; cookieClearInstructionCreated = false; }
-        @Override public Mono<AuthFlowSession> create(AuthFlowSessionCreateCommand command) {
+        void save(AuthFlowSession session) {
+            sessions.put(session.authFlowSessionId().value(), session);
+        }
+
+        void clear() {
+            sessions.clear();
+            createCount = 0;
+            updateCount = 0;
+            deletedId = null;
+            cookieClearInstructionCreated = false;
+        }
+
+        @Override
+        public Mono<AuthFlowSession> create(AuthFlowSessionCreateCommand command) {
             createCount++;
-            var session = new AuthFlowSession(command.authFlowSessionId(), command.scenario(), command.initialStatus(), command.csrfTokenHash(), command.activeOtpChallengeId(), command.data(), command.createdAt(), command.createdAt(), command.expiresAt());
+            var session = new AuthFlowSession(command.authFlowSessionId(), command.scenario(), command.initialStatus(),
+                    command.csrfTokenHash(), command.activeOtpChallengeId(), command.data(), command.createdAt(),
+                    command.createdAt(), command.expiresAt());
             save(session);
             return Mono.just(session);
         }
-        @Override public Mono<Optional<AuthFlowSession>> load(AuthFlowSessionId id) { return Mono.just(Optional.ofNullable(sessions.get(id.value()))); }
-        @Override public Mono<AuthFlowSession> update(AuthFlowSession session) { updateCount++; save(session); return Mono.just(session); }
-        @Override public Mono<AuthFlowSession> touch(AuthFlowSessionId id, Instant now) { return Mono.error(new UnsupportedOperationException()); }
-        @Override public Mono<AuthFlowSession> complete(AuthFlowSessionId id, Instant now) {
-            var existing = sessions.get(id.value());
-            var updated = new AuthFlowSession(existing.authFlowSessionId(), existing.scenario(), AuthFlowStatus.COMPLETED, existing.csrfTokenHash(), existing.activeOtpChallengeId(), existing.data(), existing.createdAt(), now, existing.expiresAt());
-            save(updated); return Mono.just(updated);
+
+        @Override
+        public Mono<Optional<AuthFlowSession>> load(AuthFlowSessionId id) {
+            return Mono.just(Optional.ofNullable(sessions.get(id.value())));
         }
-        @Override public Mono<AuthFlowSession> cancel(AuthFlowSessionId id, Instant now) {
-            var existing = sessions.get(id.value());
-            var updated = new AuthFlowSession(existing.authFlowSessionId(), existing.scenario(), AuthFlowStatus.CANCELLED, existing.csrfTokenHash(), existing.activeOtpChallengeId(), existing.data(), existing.createdAt(), now, existing.expiresAt());
-            save(updated); return Mono.just(updated);
+
+        @Override
+        public Mono<AuthFlowSession> update(AuthFlowSession session) {
+            updateCount++;
+            save(session);
+            return Mono.just(session);
         }
-        @Override public Mono<Void> delete(AuthFlowSessionId id) { deletedId = id; sessions.remove(id.value()); return Mono.empty(); }
+
+        @Override
+        public Mono<Optional<AuthFlowSessionSnapshot>> loadSnapshot(AuthFlowSessionId id) {
+            return load(id).map(optional -> optional.map(value -> new AuthFlowSessionSnapshot(
+                    value, new SessionRevision("00000000000000000000000000000000"))));
+        }
+
+        @Override
+        public Mono<AuthFlowSessionMutationResult> updateRevisioned(
+                RevisionedAuthFlowSessionMutationCommand command) {
+            updateCount++;
+            save(command.updated());
+            return Mono.just(new AuthFlowSessionMutationResult(AuthFlowSessionMutationOutcome.APPLIED,
+                    new AuthFlowSessionSnapshot(command.updated(),
+                            new SessionRevision("11111111111111111111111111111111"))));
+        }
+
+        @Override
+        public Mono<AuthFlowSessionMutationResult> completeRevisioned(AuthFlowSessionSnapshot expected, Instant now) {
+            return complete(expected.session().authFlowSessionId(), now)
+                    .map(updated -> new AuthFlowSessionMutationResult(AuthFlowSessionMutationOutcome.APPLIED,
+                            new AuthFlowSessionSnapshot(updated,
+                                    new SessionRevision("11111111111111111111111111111111"))));
+        }
+
+        @Override
+        public Mono<AuthFlowSessionMutationResult> cancelRevisioned(AuthFlowSessionSnapshot expected, Instant now) {
+            return cancel(expected.session().authFlowSessionId(), now)
+                    .map(updated -> new AuthFlowSessionMutationResult(AuthFlowSessionMutationOutcome.APPLIED,
+                            new AuthFlowSessionSnapshot(updated,
+                                    new SessionRevision("11111111111111111111111111111111"))));
+        }
+
+        @Override
+        public Mono<AuthFlowSessionDeleteResult> deleteRevisioned(RevisionedAuthFlowSessionDeleteCommand command) {
+            return delete(command.expected().session().authFlowSessionId()).thenReturn(
+                    new AuthFlowSessionDeleteResult(AuthFlowSessionMutationOutcome.APPLIED));
+        }
+
+        @Override
+        public Mono<AuthFlowSession> touch(AuthFlowSessionId id, Instant now) {
+            return Mono.error(new UnsupportedOperationException());
+        }
+
+        @Override
+        public Mono<AuthFlowSession> complete(AuthFlowSessionId id, Instant now) {
+            var existing = sessions.get(id.value());
+            var updated = new AuthFlowSession(existing.authFlowSessionId(), existing.scenario(),
+                    AuthFlowStatus.COMPLETED, existing.csrfTokenHash(), existing.activeOtpChallengeId(),
+                    existing.data(), existing.createdAt(), now, existing.expiresAt());
+            save(updated);
+            return Mono.just(updated);
+        }
+
+        @Override
+        public Mono<AuthFlowSession> cancel(AuthFlowSessionId id, Instant now) {
+            var existing = sessions.get(id.value());
+            var updated = new AuthFlowSession(existing.authFlowSessionId(), existing.scenario(),
+                    AuthFlowStatus.CANCELLED, existing.csrfTokenHash(), existing.activeOtpChallengeId(),
+                    existing.data(), existing.createdAt(), now, existing.expiresAt());
+            save(updated);
+            return Mono.just(updated);
+        }
+
+        @Override
+        public Mono<Void> delete(AuthFlowSessionId id) {
+            deletedId = id;
+            sessions.remove(id.value());
+            return Mono.empty();
+        }
     }
 }

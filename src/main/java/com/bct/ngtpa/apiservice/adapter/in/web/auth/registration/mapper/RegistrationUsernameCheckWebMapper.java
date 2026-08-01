@@ -63,7 +63,7 @@ public class RegistrationUsernameCheckWebMapper {
         }
         ApiStatus status = switch (result.status()) {
             case DOWNSTREAM_REJECTED -> ApiStatus.BUSINESS_REJECTED;
-            case DOWNSTREAM_FAILED -> ApiStatus.DOWNSTREAM_ERROR;
+            case DOWNSTREAM_FAILED -> ApiStatus.SYSTEM_ERROR;
             case SYSTEM_FAILED -> ApiStatus.SYSTEM_ERROR;
             default -> ApiStatus.VALIDATION_FAILED;
         };
