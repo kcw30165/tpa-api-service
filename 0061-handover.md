@@ -376,3 +376,59 @@ Exclusions preserved:
 - No public Forgot Password resend endpoint, candidate staging, replacement OTP generation/delivery, OTP verification, reset authorization, password completion, or Subtask 007 behavior.
 
 Stop point: split prerequisite round 001A-1 complete. Subtask 006 remains incomplete. Next prerequisite round: 001A-2 revision-aware create/load and legacy initialization. Round 006-002 remains blocked. Subtask 007 has not started.
+
+#### Subtask 006 prerequisite round 001A-2: Revision-aware create, snapshot load, and legacy initialization
+
+Commit message: `feat(auth): add revision-aware session creation and legacy initialization`
+
+Implemented:
+- Added source-compatible `createRevisioned`, `loadSnapshot`, and `initializeLegacyRevision` application boundaries.
+- Production session creation generates one cryptographically opaque `SessionRevision` and persists the complete auth-flow session plus its initial revision in the first single-record Redis write.
+- Existing `create` callers remain source-compatible and production creation delegates to the revision-aware path.
+- Read-only `load` remains backward-compatible for existing callers.
+- `loadSnapshot` returns only a genuinely persisted revision. It does not reconstruct, synthesize, or advance a revision.
+- Added caller-held mutation-lock proof to the legacy revision-initialization command.
+- Added narrow adapter-owned single-record Redis operations for revision-aware creation and legacy revision initialization through the existing Sentinel-backed reactive Redis connection.
+- Legacy initialization validates mutation-lock ownership, exact unchanged whole-record serialization, record presence, and a positive existing TTL before replacing the legacy record.
+- Legacy initialization changes no business session state and preserves the existing Redis TTL by reading `PTTL` and applying the replacement with `PSETEX` in the same Redis script.
+- Missing session, existing revision, changed legacy record, lost lock ownership, invalid TTL/corrupt state, storage ambiguity, and system failure fail closed through typed internal outcomes.
+- The implementation does not claim cross-record transactionality. The scripts introduced in this round are limited to one auth-flow session record, with the existing mutation-lock key checked only as ownership proof during legacy initialization.
+- Persistence schema version 2 compatibility must be established before production revision-aware creation, snapshot loading, or legacy initialization.
+- The deterministic test fixture uses an injected fixed `Clock`; production wiring continues to use `Clock.systemUTC()`.
+
+Validation:
+- Fail-first test confirmed the absence of the revision-aware create, snapshot-load, and legacy-initialization contracts before production changes.
+- Focused tests passed:
+  - `AuthFlowSessionRevisionCreateLoadLegacyInitSubtask006001a2FailFirstTest`
+  - `RedisAuthFlowSessionRevisionFoundationAdapterTest`
+  - `SessionRevisionSchemaFoundationSubtask006001a1FailFirstTest`
+  - `RedisAuthFlowSessionJsonMapperTest`
+  - `AuthFlowSessionPersistenceSchemaPropertiesTest`
+- Redis session, mutation-lock, completion-lock, schema/configuration, public-contract, and round 006-001 regressions passed.
+- Full `mvn test` passed.
+- Canonical `mvn -DskipTests compile` passed.
+- `git diff --check` passed.
+- The deterministic-clock repair evidence is retained under the generated `target/0061-subtask-006-001a-2-clock-fix-evidence-*` directory.
+- Final regression and full-suite results were confirmed before this handover finalization.
+
+Security and compatibility:
+- `SessionRevision`, mutation-lock ownership tokens, Redis keys, serialized session state, protected context, challenge identifiers, OTP data, account data, and PII are not exposed through public contracts or diagnostic `toString` output.
+- Revision values are not included in Redis keys.
+- Legacy records remain readable through the existing domain load path.
+- A revisionless legacy record is not treated as a wildcard revision and cannot be initialized without exact-state and mutation-lock validation.
+- All revision-unaware writer pods must remain drained after schema version 2 initialization. Rollback to a revision-unaware writer remains prohibited.
+
+Exclusions preserved:
+- No revision-aware generic update, touch, complete, cancel, or delete operation.
+- No migration of production auth-flow session mutation callers.
+- No Login `OTP_VERIFY` idempotency, OTP consumption proof, account assignment persistence, authenticated-login handoff, or recoverable auth-flow cleanup.
+- No public Forgot Password Resend endpoint.
+- No resend candidate staging, replacement OTP generation or delivery, Forgot Password OTP verification, reset authorization, password submission, `TRPResetPassword`, or password completion.
+- No Subtask 007 or later behavior.
+
+Stop point:
+- Split prerequisite round 001A-2 is complete.
+- Subtask 006 remains incomplete.
+- Next prerequisite round: 001A-3 revision-aware update, touch, complete, cancel, and delete.
+- Round 006-002 remains blocked until all prerequisite 001A rounds are complete.
+- Subtask 007 has not started.

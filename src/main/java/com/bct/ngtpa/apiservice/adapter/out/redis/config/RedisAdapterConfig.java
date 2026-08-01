@@ -229,11 +229,17 @@ public class RedisAdapterConfig {
     public AuthFlowSessionPort authFlowSessionPort(
             CachePort cachePort,
             RedisCacheKeyFactory redisCacheKeyFactory,
-            RedisAuthFlowSessionJsonMapper redisAuthFlowSessionJsonMapper) {
+            RedisAuthFlowSessionJsonMapper redisAuthFlowSessionJsonMapper,
+            ReactiveStringRedisTemplate reactiveStringRedisTemplate,
+            com.bct.ngtpa.apiservice.adapter.out.redis.auth.compatibility.AuthFlowSessionPersistenceCompatibilityState compatibilityState) {
         return new RedisAuthFlowSessionAdapter(
                 cachePort,
                 redisCacheKeyFactory,
-                redisAuthFlowSessionJsonMapper);
+                redisAuthFlowSessionJsonMapper,
+                new com.bct.ngtpa.apiservice.adapter.out.redis.auth.revision.ReactiveRevisionedAuthFlowSessionRedisOperations(
+                        reactiveStringRedisTemplate),
+                new com.bct.ngtpa.apiservice.application.dto.session.authflow.SecureSessionRevisionGenerator(),
+                compatibilityState);
     }
 
     @Bean

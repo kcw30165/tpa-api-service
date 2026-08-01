@@ -6,6 +6,15 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionData;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.InitializeLegacyAuthFlowSessionRevisionCommand;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.LegacyAuthFlowSessionRevisionInitializationOutcome;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.LegacyAuthFlowSessionRevisionInitializationResult;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevisionGenerator;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.SecureSessionRevisionGenerator;
+import com.bct.ngtpa.apiservice.adapter.out.redis.auth.compatibility.AuthFlowSessionPersistenceCompatibilityState;
+import com.bct.ngtpa.apiservice.adapter.out.redis.auth.revision.RevisionedAuthFlowSessionRedisOperations;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.CachePort;
 import com.bct.ngtpa.apiservice.exception.CacheException;
@@ -21,13 +30,17 @@ public class RedisAuthFlowSessionAdapter implements AuthFlowSessionPort {
     private final CachePort cachePort;
     private final RedisCacheKeyFactory keyFactory;
     private final RedisAuthFlowSessionJsonMapper jsonMapper;
+    private final RevisionedAuthFlowSessionRedisOperations revisionOperations;
+    private final SessionRevisionGenerator revisionGenerator;
+    private final AuthFlowSessionPersistenceCompatibilityState compatibilityState;
     private final Clock clock;
 
     public RedisAuthFlowSessionAdapter(
             CachePort cachePort,
             RedisCacheKeyFactory keyFactory,
             RedisAuthFlowSessionJsonMapper jsonMapper) {
-        this(cachePort, keyFactory, jsonMapper, Clock.systemUTC());
+        this(cachePort, keyFactory, jsonMapper, null, new SecureSessionRevisionGenerator(),
+                establishedCompatibilityState(), Clock.systemUTC());
     }
 
     RedisAuthFlowSessionAdapter(
@@ -35,26 +48,62 @@ public class RedisAuthFlowSessionAdapter implements AuthFlowSessionPort {
             RedisCacheKeyFactory keyFactory,
             RedisAuthFlowSessionJsonMapper jsonMapper,
             Clock clock) {
+        this(cachePort, keyFactory, jsonMapper, null, new SecureSessionRevisionGenerator(),
+                establishedCompatibilityState(), clock);
+    }
+
+    public RedisAuthFlowSessionAdapter(
+            CachePort cachePort,
+            RedisCacheKeyFactory keyFactory,
+            RedisAuthFlowSessionJsonMapper jsonMapper,
+            RevisionedAuthFlowSessionRedisOperations revisionOperations,
+            SessionRevisionGenerator revisionGenerator,
+            AuthFlowSessionPersistenceCompatibilityState compatibilityState) {
+        this(cachePort, keyFactory, jsonMapper, revisionOperations, revisionGenerator,
+                compatibilityState, Clock.systemUTC());
+    }
+
+    public RedisAuthFlowSessionAdapter(
+            CachePort cachePort,
+            RedisCacheKeyFactory keyFactory,
+            RedisAuthFlowSessionJsonMapper jsonMapper,
+            RevisionedAuthFlowSessionRedisOperations revisionOperations,
+            SessionRevisionGenerator revisionGenerator,
+            AuthFlowSessionPersistenceCompatibilityState compatibilityState,
+            Clock clock) {
         this.cachePort = Objects.requireNonNull(cachePort, "cachePort must not be null");
         this.keyFactory = Objects.requireNonNull(keyFactory, "keyFactory must not be null");
         this.jsonMapper = Objects.requireNonNull(jsonMapper, "jsonMapper must not be null");
+        this.revisionOperations = revisionOperations;
+        this.revisionGenerator = Objects.requireNonNull(revisionGenerator, "revisionGenerator must not be null");
+        this.compatibilityState = Objects.requireNonNull(compatibilityState, "compatibilityState must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
 
     @Override
     public Mono<AuthFlowSession> create(AuthFlowSessionCreateCommand command) {
+        return createRevisioned(command).map(AuthFlowSessionSnapshot::session);
+    }
+
+    @Override
+    public Mono<AuthFlowSessionSnapshot> createRevisioned(AuthFlowSessionCreateCommand command) {
         return Mono.defer(() -> {
+            compatibilityState.requireEstablished();
             AuthFlowSession session = new AuthFlowSession(
-                    command.authFlowSessionId(),
-                    command.scenario(),
-                    command.initialStatus(),
-                    command.csrfTokenHash(),
-                    command.activeOtpChallengeId(),
-                    command.data(),
-                    command.createdAt(),
-                    command.createdAt(),
-                    command.expiresAt());
-            return persist(session).thenReturn(session);
+                    command.authFlowSessionId(), command.scenario(), command.initialStatus(),
+                    command.csrfTokenHash(), command.activeOtpChallengeId(), command.data(),
+                    command.createdAt(), command.createdAt(), command.expiresAt());
+            SessionRevision revision = revisionGenerator.generate();
+            Duration ttl = ttlUntil(Instant.now(clock), session.expiresAt());
+            String json = jsonMapper.toJson(session, revision);
+            if (revisionOperations == null) {
+                return cachePort.set(keyFor(session.authFlowSessionId()), json, ttl)
+                        .thenReturn(new AuthFlowSessionSnapshot(session, revision));
+            }
+            return revisionOperations.createIfAbsent(keyFor(session.authFlowSessionId()), json, ttl)
+                    .flatMap(created -> created
+                            ? Mono.just(new AuthFlowSessionSnapshot(session, revision))
+                            : Mono.error(new IllegalStateException("Auth flow session already exists")));
         }).onErrorMap(this::safeFailure);
     }
 
@@ -63,6 +112,52 @@ public class RedisAuthFlowSessionAdapter implements AuthFlowSessionPort {
         return Mono.defer(() -> cachePort.get(keyFor(authFlowSessionId))
                 .map(optionalJson -> optionalJson.map(jsonMapper::fromJson)))
                 .onErrorMap(this::safeFailure);
+    }
+
+    @Override
+    public Mono<Optional<AuthFlowSessionSnapshot>> loadSnapshot(AuthFlowSessionId authFlowSessionId) {
+        return Mono.defer(() -> {
+            compatibilityState.requireEstablished();
+            return cachePort.get(keyFor(authFlowSessionId))
+                    .map(optionalJson -> optionalJson.flatMap(jsonMapper::snapshotFromJson));
+        }).onErrorMap(this::safeFailure);
+    }
+
+    @Override
+    public Mono<LegacyAuthFlowSessionRevisionInitializationResult> initializeLegacyRevision(
+            InitializeLegacyAuthFlowSessionRevisionCommand command) {
+        return Mono.defer(() -> {
+            compatibilityState.requireEstablished();
+            if (revisionOperations == null) {
+                return Mono.just(LegacyAuthFlowSessionRevisionInitializationResult.outcome(
+                        LegacyAuthFlowSessionRevisionInitializationOutcome.SYSTEM_FAILURE));
+            }
+            String sessionKey = keyFor(command.expectedLegacySession().authFlowSessionId());
+            return cachePort.get(sessionKey).flatMap(optionalJson -> {
+                if (optionalJson.isEmpty()) {
+                    return Mono.just(LegacyAuthFlowSessionRevisionInitializationResult.outcome(
+                            LegacyAuthFlowSessionRevisionInitializationOutcome.SESSION_NOT_FOUND));
+                }
+                String currentJson = optionalJson.orElseThrow();
+                if (jsonMapper.snapshotFromJson(currentJson).isPresent()) {
+                    return Mono.just(LegacyAuthFlowSessionRevisionInitializationResult.outcome(
+                            LegacyAuthFlowSessionRevisionInitializationOutcome.REVISION_ALREADY_PRESENT));
+                }
+                AuthFlowSession current = jsonMapper.fromJson(currentJson);
+                if (!current.equals(command.expectedLegacySession())) {
+                    return Mono.just(LegacyAuthFlowSessionRevisionInitializationResult.outcome(
+                            LegacyAuthFlowSessionRevisionInitializationOutcome.LEGACY_INITIALIZATION_CONFLICT));
+                }
+                SessionRevision revision = revisionGenerator.generate();
+                String revisedJson = jsonMapper.toJson(current, revision);
+                return revisionOperations.initializeLegacy(sessionKey,
+                                command.mutationLockHandle().lockKey(),
+                                command.mutationLockHandle().ownershipToken(),
+                                currentJson, revisedJson)
+                        .map(code -> initializationResult(code, current, revision));
+            });
+        }).onErrorReturn(LegacyAuthFlowSessionRevisionInitializationResult.outcome(
+                LegacyAuthFlowSessionRevisionInitializationOutcome.SYSTEM_FAILURE));
     }
 
     @Override
@@ -139,6 +234,29 @@ public class RedisAuthFlowSessionAdapter implements AuthFlowSessionPort {
         }
         Duration ttl = ttlUntil(ttlReferenceTime, session.expiresAt());
         return cachePort.set(keyFor(session.authFlowSessionId()), jsonMapper.toJson(session), ttl);
+    }
+
+    private static LegacyAuthFlowSessionRevisionInitializationResult initializationResult(
+            long code, AuthFlowSession session, SessionRevision revision) {
+        if (code == 1L) {
+            return new LegacyAuthFlowSessionRevisionInitializationResult(
+                    LegacyAuthFlowSessionRevisionInitializationOutcome.LEGACY_REVISION_INITIALIZED,
+                    new AuthFlowSessionSnapshot(session, revision));
+        }
+        var outcome = switch ((int) code) {
+            case -2 -> LegacyAuthFlowSessionRevisionInitializationOutcome.LOCK_OWNERSHIP_LOST;
+            case -1 -> LegacyAuthFlowSessionRevisionInitializationOutcome.SESSION_NOT_FOUND;
+            case 0 -> LegacyAuthFlowSessionRevisionInitializationOutcome.LEGACY_INITIALIZATION_CONFLICT;
+            case -3 -> LegacyAuthFlowSessionRevisionInitializationOutcome.CORRUPT_STATE;
+            default -> LegacyAuthFlowSessionRevisionInitializationOutcome.SYSTEM_FAILURE;
+        };
+        return LegacyAuthFlowSessionRevisionInitializationResult.outcome(outcome);
+    }
+
+    private static AuthFlowSessionPersistenceCompatibilityState establishedCompatibilityState() {
+        var state = new AuthFlowSessionPersistenceCompatibilityState();
+        state.establish();
+        return state;
     }
 
     private String keyFor(AuthFlowSessionId authFlowSessionId) {
