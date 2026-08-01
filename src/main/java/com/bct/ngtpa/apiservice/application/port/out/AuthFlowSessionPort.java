@@ -6,6 +6,10 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.InitializeLegacyAuthFlowSessionRevisionCommand;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.LegacyAuthFlowSessionRevisionInitializationResult;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.RevisionedAuthFlowSessionMutationCommand;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.RevisionedAuthFlowSessionDeleteCommand;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationResult;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionDeleteResult;
 import java.time.Instant;
 import java.util.Optional;
 import reactor.core.publisher.Mono;
@@ -26,6 +30,27 @@ public interface AuthFlowSessionPort {
     default Mono<LegacyAuthFlowSessionRevisionInitializationResult> initializeLegacyRevision(
             InitializeLegacyAuthFlowSessionRevisionCommand command) {
         return Mono.error(new UnsupportedOperationException("Legacy revision initialization is not implemented"));
+    }
+
+    default Mono<AuthFlowSessionMutationResult> updateRevisioned(
+            RevisionedAuthFlowSessionMutationCommand command) {
+        return Mono.error(new UnsupportedOperationException("Revision-aware update is not implemented"));
+    }
+
+    default Mono<AuthFlowSessionMutationResult> touchRevisioned(AuthFlowSessionSnapshot expected, Instant now) {
+        return Mono.error(new UnsupportedOperationException("Revision-aware touch is not implemented"));
+    }
+
+    default Mono<AuthFlowSessionMutationResult> completeRevisioned(AuthFlowSessionSnapshot expected, Instant now) {
+        return Mono.error(new UnsupportedOperationException("Revision-aware complete is not implemented"));
+    }
+
+    default Mono<AuthFlowSessionMutationResult> cancelRevisioned(AuthFlowSessionSnapshot expected, Instant now) {
+        return Mono.error(new UnsupportedOperationException("Revision-aware cancel is not implemented"));
+    }
+
+    default Mono<AuthFlowSessionDeleteResult> deleteRevisioned(RevisionedAuthFlowSessionDeleteCommand command) {
+        return Mono.error(new UnsupportedOperationException("Revision-aware delete is not implemented"));
     }
 
     Mono<AuthFlowSession> update(AuthFlowSession session);

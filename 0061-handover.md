@@ -432,3 +432,31 @@ Stop point:
 - Next prerequisite round: 001A-3 revision-aware update, touch, complete, cancel, and delete.
 - Round 006-002 remains blocked until all prerequisite 001A rounds are complete.
 - Subtask 007 has not started.
+
+#### Subtask 006 prerequisite round 001A-3: Revision-aware auth-flow session mutations
+
+Commit message: 
+
+Implemented:
+- Added application-owned revision-aware update and delete commands plus safe typed mutation outcomes.
+- Added central revision-aware update, touch, complete, cancel, and delete boundaries to AuthFlowSessionPort and RedisAuthFlowSessionAdapter.
+- Successful replace operations compare the exact expected serialized session, including the expected persisted SessionRevision, before applying one complete revised record with a fresh opaque revision.
+- Successful touch, complete, and cancel preserve all unrelated session fields and the existing expiry; the Redis operation preserves the current positive TTL atomically with replacement.
+- Successful deletion requires the exact expected revised record. Missing or stale state performs no deletion.
+- Stale revision, changed expected state, missing session, corrupt TTL, invalid terminal transition, schema incompatibility, and storage failure fail closed through bounded typed outcomes.
+- Added narrow adapter-owned single-record replace and delete Redis scripts. No cross-record transactionality is claimed.
+- Existing unversioned methods remain temporarily source-compatible for production caller migration in 001A-4. They are not approved for new code and are not used by the new revision-aware boundaries.
+
+Validation:
+- Fail-first mutation-contract test confirmed missing 001A-3 capability.
+- Focused: ForgotPasswordDeliveryReplayProtectionSubtask005003FailFirstTest,ForgotPasswordInitialOtpBindingSubtask005002FailFirstTest,StartForgotPasswordServiceTest,RedisForgotPasswordIdempotencyAdapterTest,ForgotPasswordIdempotencyContractTest,RedisOtpChallengeStateAdapterTest passed.
+- Regression: RedisAuthFlowSessionAdapterTest,RedisAuthFlowSessionMutationLockAdapterTest,RedisAuthFlowSessionCompletionLockAdapterTest,AuthFlowSessionLifecycleServiceTest,AuthFlowSessionCsrfServiceTest,AuthFlowSessionExpiryRefreshPersistenceTest,AuthFlowSessionCancellationAdapterTest,AuthFlowSessionPortContractShapeTest,P4BAuthFlowSessionRedisSecurityGuardTest,AuthForgotPasswordControllerTest,AuthLoginControllerTest,AuthRegistrationControllerWorkflowContractTest,ForgotPasswordOtpResendFoundationSubtask006001FailFirstTest passed.
+- Full Maven suite, canonical compile, and git diff check passed.
+- Evidence: target/0061-subtask-005-004-timeout-boundary-resume-evidence-20260801-072821
+
+Exclusions preserved:
+- No production session-writer migration or removal of legacy method usage. That is 001A-4.
+- No Login OTP_VERIFY idempotency, OTP consumption proof, authenticated-session handoff, or auth-flow cleanup orchestration.
+- No Forgot Password resend endpoint, candidate staging, replacement generation/delivery, OTP verification, reset authorization, password completion, or Subtask 007 behavior.
+
+Stop point: split prerequisite round 001A-3 complete. Subtask 006 remains incomplete. Next prerequisite round: 001A-4 production writer migration. Round 006-002 remains blocked. Subtask 007 has not started.

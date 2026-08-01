@@ -15,6 +15,10 @@ public final class ReactiveRevisionedAuthFlowSessionRedisOperations
             "redis/auth-flow-session/create-revisioned.lua");
     private static final DefaultRedisScript<Long> INITIALIZE = script(
             "redis/auth-flow-session/initialize-legacy-revision.lua");
+    private static final DefaultRedisScript<Long> REPLACE = script(
+            "redis/auth-flow-session/replace-revisioned.lua");
+    private static final DefaultRedisScript<Long> DELETE = script(
+            "redis/auth-flow-session/delete-revisioned.lua");
     private final ReactiveStringRedisTemplate redis;
 
     public ReactiveRevisionedAuthFlowSessionRedisOperations(ReactiveStringRedisTemplate redis) {
@@ -39,6 +43,23 @@ public final class ReactiveRevisionedAuthFlowSessionRedisOperations
                         List.of(token, expectedLegacyJson, revisedJson))
                 .next().defaultIfEmpty(-4L)
                 .onErrorMap(error -> new CacheException("Legacy auth-flow revision initialization failed", error));
+    }
+
+    @Override
+    public Mono<Long> replaceIfCurrent(String sessionKey, String expectedJson, String revisedJson) {
+        requireText(sessionKey, "sessionKey"); requireText(expectedJson, "expectedJson");
+        requireText(revisedJson, "revisedJson");
+        return redis.execute(REPLACE, List.of(sessionKey), List.of(expectedJson, revisedJson))
+                .next().defaultIfEmpty(-4L)
+                .onErrorMap(error -> new CacheException("Revisioned auth-flow session replace failed", error));
+    }
+
+    @Override
+    public Mono<Long> deleteIfCurrent(String sessionKey, String expectedJson) {
+        requireText(sessionKey, "sessionKey"); requireText(expectedJson, "expectedJson");
+        return redis.execute(DELETE, List.of(sessionKey), List.of(expectedJson))
+                .next().defaultIfEmpty(-4L)
+                .onErrorMap(error -> new CacheException("Revisioned auth-flow session delete failed", error));
     }
 
     private static DefaultRedisScript<Long> script(String path) {

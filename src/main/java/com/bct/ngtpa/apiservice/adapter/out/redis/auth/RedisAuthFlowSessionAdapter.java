@@ -13,6 +13,11 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.LegacyAuthFlowS
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevisionGenerator;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.SecureSessionRevisionGenerator;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.RevisionedAuthFlowSessionMutationCommand;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.RevisionedAuthFlowSessionDeleteCommand;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationOutcome;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationResult;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionDeleteResult;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.compatibility.AuthFlowSessionPersistenceCompatibilityState;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.revision.RevisionedAuthFlowSessionRedisOperations;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
@@ -158,6 +163,91 @@ public class RedisAuthFlowSessionAdapter implements AuthFlowSessionPort {
             });
         }).onErrorReturn(LegacyAuthFlowSessionRevisionInitializationResult.outcome(
                 LegacyAuthFlowSessionRevisionInitializationOutcome.SYSTEM_FAILURE));
+    }
+
+    @Override
+    public Mono<AuthFlowSessionMutationResult> updateRevisioned(
+            RevisionedAuthFlowSessionMutationCommand command) {
+        return revisionedReplace(command);
+    }
+
+    @Override
+    public Mono<AuthFlowSessionMutationResult> touchRevisioned(AuthFlowSessionSnapshot expected, Instant now) {
+        Objects.requireNonNull(now, "now must not be null");
+        AuthFlowSession session = expected.session();
+        return revisionedReplace(new RevisionedAuthFlowSessionMutationCommand(expected,
+                copy(session, session.status(), now)));
+    }
+
+    @Override
+    public Mono<AuthFlowSessionMutationResult> completeRevisioned(AuthFlowSessionSnapshot expected, Instant now) {
+        Objects.requireNonNull(now, "now must not be null");
+        if (expected.session().isTerminal()) {
+            return Mono.just(AuthFlowSessionMutationResult.outcome(
+                    AuthFlowSessionMutationOutcome.INVALID_TRANSITION));
+        }
+        return revisionedReplace(new RevisionedAuthFlowSessionMutationCommand(expected,
+                copy(expected.session(), AuthFlowStatus.COMPLETED, now)));
+    }
+
+    @Override
+    public Mono<AuthFlowSessionMutationResult> cancelRevisioned(AuthFlowSessionSnapshot expected, Instant now) {
+        Objects.requireNonNull(now, "now must not be null");
+        if (expected.session().isTerminal()) {
+            return Mono.just(AuthFlowSessionMutationResult.outcome(
+                    AuthFlowSessionMutationOutcome.INVALID_TRANSITION));
+        }
+        return revisionedReplace(new RevisionedAuthFlowSessionMutationCommand(expected,
+                copy(expected.session(), AuthFlowStatus.CANCELLED, now)));
+    }
+
+    @Override
+    public Mono<AuthFlowSessionDeleteResult> deleteRevisioned(RevisionedAuthFlowSessionDeleteCommand command) {
+        return Mono.defer(() -> {
+            compatibilityState.requireEstablished();
+            if (revisionOperations == null) {
+                return Mono.just(new AuthFlowSessionDeleteResult(AuthFlowSessionMutationOutcome.SYSTEM_FAILURE));
+            }
+            String expectedJson = jsonMapper.toJson(command.expected().session(), command.expected().revision());
+            return revisionOperations.deleteIfCurrent(keyFor(command.expected().session().authFlowSessionId()), expectedJson)
+                    .map(code -> new AuthFlowSessionDeleteResult(mapMutationCode(code)));
+        }).onErrorReturn(new AuthFlowSessionDeleteResult(AuthFlowSessionMutationOutcome.SYSTEM_FAILURE));
+    }
+
+    private Mono<AuthFlowSessionMutationResult> revisionedReplace(
+            RevisionedAuthFlowSessionMutationCommand command) {
+        return Mono.defer(() -> {
+            compatibilityState.requireEstablished();
+            if (revisionOperations == null) {
+                return Mono.just(AuthFlowSessionMutationResult.outcome(
+                        AuthFlowSessionMutationOutcome.SYSTEM_FAILURE));
+            }
+            String expectedJson = jsonMapper.toJson(command.expected().session(), command.expected().revision());
+            SessionRevision next = revisionGenerator.generate();
+            String revisedJson = jsonMapper.toJson(command.updated(), next);
+            return revisionOperations.replaceIfCurrent(
+                            keyFor(command.updated().authFlowSessionId()), expectedJson, revisedJson)
+                    .map(code -> code == 1L
+                            ? new AuthFlowSessionMutationResult(AuthFlowSessionMutationOutcome.APPLIED,
+                                    new AuthFlowSessionSnapshot(command.updated(), next))
+                            : AuthFlowSessionMutationResult.outcome(mapMutationCode(code)));
+        }).onErrorReturn(AuthFlowSessionMutationResult.outcome(AuthFlowSessionMutationOutcome.SYSTEM_FAILURE));
+    }
+
+    private static AuthFlowSessionMutationOutcome mapMutationCode(long code) {
+        return switch ((int) code) {
+            case 1 -> AuthFlowSessionMutationOutcome.APPLIED;
+            case -1 -> AuthFlowSessionMutationOutcome.SESSION_NOT_FOUND;
+            case 0 -> AuthFlowSessionMutationOutcome.SESSION_REVISION_CHANGED;
+            case -3 -> AuthFlowSessionMutationOutcome.CORRUPT_STATE;
+            default -> AuthFlowSessionMutationOutcome.SYSTEM_FAILURE;
+        };
+    }
+
+    private static AuthFlowSession copy(AuthFlowSession session, AuthFlowStatus status, Instant updatedAt) {
+        return new AuthFlowSession(session.authFlowSessionId(), session.scenario(), status,
+                session.csrfTokenHash(), session.activeOtpChallengeId(), session.data(),
+                session.createdAt(), updatedAt, session.expiresAt());
     }
 
     @Override

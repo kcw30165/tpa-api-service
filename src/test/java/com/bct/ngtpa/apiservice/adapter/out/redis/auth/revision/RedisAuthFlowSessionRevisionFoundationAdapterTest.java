@@ -63,6 +63,8 @@ class RedisAuthFlowSessionRevisionFoundationAdapterTest {
         final MemoryCache cache;int createCalls;long code=1;FakeOperations(MemoryCache c){cache=c;}
         public Mono<Boolean> createIfAbsent(String k,String j,Duration t){createCalls++;if(cache.value!=null)return Mono.just(false);cache.value=j;cache.ttl=t;return Mono.just(true);}
         public Mono<Long> initializeLegacy(String k,String lk,String token,String expected,String revised){if(code==1&&Objects.equals(cache.value,expected))cache.value=revised;return Mono.just(code);}
+        public Mono<Long> replaceIfCurrent(String k,String expected,String revised){if(code==1&&Objects.equals(cache.value,expected))cache.value=revised;return Mono.just(code);}
+        public Mono<Long> deleteIfCurrent(String k,String expected){if(code==1&&Objects.equals(cache.value,expected))cache.value=null;return Mono.just(code);}
     }
     private static final class MemoryCache implements CachePort{
         String value;Duration ttl;public Mono<Optional<String>> get(String k){return Mono.just(Optional.ofNullable(value));}
