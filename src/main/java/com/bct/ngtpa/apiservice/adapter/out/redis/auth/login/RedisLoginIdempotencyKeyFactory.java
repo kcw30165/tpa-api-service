@@ -11,7 +11,9 @@ public final class RedisLoginIdempotencyKeyFactory {
         this.prefix = prefix.endsWith(":") ? prefix.substring(0, prefix.length() - 1) : prefix;
     }
 
-    public String keyFor(LoginIdempotencyAction action, LoginIdempotencyKey key) {
-        return prefix + ":auth:idempotency:login:" + action.keyNamespace() + ":" + key.value();
+    public String keyFor(LoginIdempotencyAction action, LoginIdempotencyPersistenceId id) {
+        if (action == null || id == null)
+            throw new IllegalArgumentException("action and persistence identity required");
+        return prefix + ":auth:idempotency:login:" + action.keyNamespace() + ":" + id.value();
     }
 }

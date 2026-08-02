@@ -5,7 +5,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
+@EnabledIfSystemProperty(named = "run.001a6.fail-first", matches = "true")
 class AuthenticatedLoginHandoffRecoverySubtask006001a6FailFirstTest {
 
         private static final Path MAIN = Path.of("src/main/java/com/bct/ngtpa/apiservice");

@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.verify;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.account.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.otp.verify.*;
+import com.bct.ngtpa.apiservice.application.dto.auth.login.idempotency.LoginIdempotencyKey;
 import com.bct.ngtpa.apiservice.application.service.auth.login.otp.verify.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.*;
 import com.bct.ngtpa.apiservice.application.port.in.*;
@@ -82,59 +83,97 @@ public final class LoginOtpVerifyService implements VerifyLoginOtpUseCase {
                         LoginProtectedAuthFlowContextResult x) {
                 AuthFlowSessionId sid = new AuthFlowSessionId(c.authFlowSessionId());
                 String reservationHash = requestHasher.hash();
-                AuthenticatedLoginHandoffReference handoff = references.handoff();
-                LoginOtpVerificationOperationReference operation = references.operation();
-                return mutationLock.acquire(sid, lockLease).flatMap(lock -> {
-                        if (!lock.acquired()) {
+                LoginIdempotencyKey publicKey = new LoginIdempotencyKey(c.idempotencyKey());
+                Instant now = clock.instant();
+                var reserve = new ReserveLoginOtpVerifyCommand(publicKey, reservationHash,
+                                references.handoff(), references.operation(), now, now.plusSeconds(600));
+                return otpVerifyPersistence.reserveOrLoad(reserve).flatMap(reserved -> {
+                        if (reserved.outcome() == LoginOtpVerifyReservationOutcome.REQUEST_HASH_MISMATCH
+                                        || reserved.reservation() == null)
                                 return Mono.just(result(VerifyLoginOtpStatus.SYSTEM_FAILED, null, false));
-                        }
-                        Mono<VerifyLoginOtpResult> operationFlow = sessions.loadSnapshot(sid)
-                                        .flatMap(snapshot -> {
-                                                if (snapshot.isEmpty()) {
-                                                        return Mono.just(result(VerifyLoginOtpStatus.AUTH_FLOW_INVALID,
-                                                                        null, false));
-                                                }
-                                                var command = new RevisionedLoginOtpVerifyCommand(lock,
-                                                                snapshot.orElseThrow(),
-                                                                x.activeOtpChallengeId(), reservationHash, handoff,
-                                                                operation,
-                                                                new RedactedSubmittedOtp(c.otpCode()), clock.instant(),
-                                                                revisions.generate());
-                                                return otpVerifyPersistence.verify(command)
-                                                                .flatMap(r -> switch (r.outcome()) {
-                                                                        case VERIFIED_AND_CONSUMED -> verifiedSession
-                                                                                        .markVerified(c.authFlowSessionId(),
-                                                                                                        c.correlationId())
-                                                                                        .then(Mono.defer(
-                                                                                                        () -> continueToAccounts(c, x)));
-                                                                        case INVALID -> Mono.just(result(
-                                                                                        VerifyLoginOtpStatus.INVALID,
-                                                                                        r.remainingAttempts(), false));
-                                                                        case EXPIRED -> Mono.just(result(
-                                                                                        VerifyLoginOtpStatus.EXPIRED,
-                                                                                        null, false));
-                                                                        case LOCKED -> cancellation.cancel(sid,
-                                                                                        AuthFlowSessionCancellationReason.SECURITY_REJECTION,
-                                                                                        clock.instant())
-                                                                                        .thenReturn(result(
-                                                                                                        VerifyLoginOtpStatus.VERIFY_ATTEMPTS_EXCEEDED,
-                                                                                                        0, true));
-                                                                        case ALREADY_COMMITTED -> Mono.just(result(
-                                                                                        VerifyLoginOtpStatus.SYSTEM_FAILED,
-                                                                                        null, false));
-                                                                        default -> Mono.just(result(
-                                                                                        VerifyLoginOtpStatus.SYSTEM_FAILED,
-                                                                                        null, false));
-                                                                });
-                                        })
-                                        .switchIfEmpty(Mono
-                                                        .just(result(VerifyLoginOtpStatus.SYSTEM_FAILED, null, false)));
-                        return operationFlow
-                                        .materialize()
-                                        .flatMap(signal -> mutationLock.release(lock)
-                                                        .onErrorReturn(false)
-                                                        .thenReturn(signal))
-                                        .dematerialize();
+                        var reservation = reserved.reservation();
+                        if (reservation.proof() != null)
+                                return Mono.just(result(VerifyLoginOtpStatus.SYSTEM_FAILED, null, false));
+                        AuthenticatedLoginHandoffReference handoff = reservation.handoffReference();
+                        LoginOtpVerificationOperationReference operation = reservation.operationReference();
+                        return mutationLock.acquire(sid, lockLease).flatMap(lock -> {
+                                if (!lock.acquired()) {
+                                        return Mono.just(result(VerifyLoginOtpStatus.SYSTEM_FAILED, null, false));
+                                }
+                                Mono<VerifyLoginOtpResult> operationFlow = sessions.loadSnapshot(sid)
+                                                .flatMap(snapshot -> {
+                                                        if (snapshot.isEmpty()) {
+                                                                return Mono.just(result(
+                                                                                VerifyLoginOtpStatus.AUTH_FLOW_INVALID,
+                                                                                null, false));
+                                                        }
+                                                        var command = new RevisionedLoginOtpVerifyCommand(lock,
+                                                                        snapshot.orElseThrow(),
+                                                                        x.activeOtpChallengeId(), reservationHash,
+                                                                        handoff,
+                                                                        operation,
+                                                                        new RedactedSubmittedOtp(c.otpCode()),
+                                                                        clock.instant(),
+                                                                        revisions.generate());
+                                                        return otpVerifyPersistence.verify(command)
+                                                                        .flatMap(r -> switch (r.outcome()) {
+                                                                                case VERIFIED_AND_CONSUMED ->
+                                                                                        otpVerifyPersistence
+                                                                                                        .recordVerificationCommitted(
+                                                                                                                        new RecordLoginOtpVerifyCommittedCommand(
+                                                                                                                                        publicKey,
+                                                                                                                                        reservationHash,
+                                                                                                                                        r.proof(),
+                                                                                                                                        r.outcome(),
+                                                                                                                                        r.remainingAttempts()))
+                                                                                                        .then(verifiedSession
+                                                                                                                        .markVerified(c.authFlowSessionId(), c.correlationId()))
+                                                                                                        .then(Mono.defer(
+                                                                                                                        () -> continueToAccounts(c, x)));
+                                                                                case INVALID -> otpVerifyPersistence
+                                                                                                .recordConclusiveFailure(
+                                                                                                                publicKey,
+                                                                                                                reservationHash,
+                                                                                                                r.outcome(),
+                                                                                                                r.remainingAttempts())
+                                                                                                .thenReturn(result(
+                                                                                                                VerifyLoginOtpStatus.INVALID,
+                                                                                                                r.remainingAttempts(),
+                                                                                                                false));
+                                                                                case EXPIRED -> Mono.just(result(
+                                                                                                VerifyLoginOtpStatus.EXPIRED,
+                                                                                                null, false));
+                                                                                case LOCKED -> cancellation.cancel(sid,
+                                                                                                AuthFlowSessionCancellationReason.SECURITY_REJECTION,
+                                                                                                clock.instant())
+                                                                                                .thenReturn(result(
+                                                                                                                VerifyLoginOtpStatus.VERIFY_ATTEMPTS_EXCEEDED,
+                                                                                                                0,
+                                                                                                                true));
+                                                                                case ALREADY_COMMITTED ->
+                                                                                        otpVerifyPersistence
+                                                                                                        .loadConsumptionProof(
+                                                                                                                        publicKey,
+                                                                                                                        reservationHash)
+                                                                                                        .thenReturn(result(
+                                                                                                                        VerifyLoginOtpStatus.SYSTEM_FAILED,
+                                                                                                                        null,
+                                                                                                                        false));
+                                                                                default -> Mono.just(result(
+                                                                                                VerifyLoginOtpStatus.SYSTEM_FAILED,
+                                                                                                null, false));
+                                                                        });
+                                                })
+                                                .switchIfEmpty(Mono
+                                                                .just(result(VerifyLoginOtpStatus.SYSTEM_FAILED, null,
+                                                                                false)));
+                                return operationFlow
+                                                .materialize()
+                                                .flatMap(signal -> mutationLock.release(lock)
+                                                                .onErrorReturn(false)
+                                                                .thenReturn(signal))
+                                                .dematerialize();
+                        });
                 });
         }
 

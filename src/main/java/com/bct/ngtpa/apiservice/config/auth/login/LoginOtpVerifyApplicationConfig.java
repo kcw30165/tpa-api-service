@@ -3,6 +3,9 @@ package com.bct.ngtpa.apiservice.config.auth.login;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.mapper.LoginOtpVerifyWebMapper;
 import com.bct.ngtpa.apiservice.adapter.out.session.login.LoginOtpVerifiedSessionAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.login.otp.verify.RedisLoginOtpVerifyPersistenceAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.redis.auth.login.RedisLoginIdempotencyKeyFactory;
+import com.bct.ngtpa.apiservice.application.service.auth.login.idempotency.LoginIdempotencyPersistenceIdDeriver;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import com.bct.ngtpa.apiservice.application.service.auth.otp.OtpCodeHasher;
 import com.bct.ngtpa.apiservice.application.port.in.EstablishAuthenticatedLoginSessionUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.VerifyLoginOtpUseCase;
@@ -31,8 +34,11 @@ public class LoginOtpVerifyApplicationConfig {
     @Bean
     LoginOtpVerifyPersistencePort loginOtpVerifyPersistencePort(
             OtpChallengeStatePort challenges,
-            OtpCodeHasher otpCodeHasher) {
-        return new RedisLoginOtpVerifyPersistenceAdapter(challenges, otpCodeHasher);
+            OtpCodeHasher otpCodeHasher,
+            RedisLoginIdempotencyKeyFactory keyFactory,
+            LoginIdempotencyPersistenceIdDeriver derivation,
+            ReactiveStringRedisTemplate redis) {
+        return new RedisLoginOtpVerifyPersistenceAdapter(challenges, otpCodeHasher, keyFactory, derivation, redis);
     }
 
     @Bean

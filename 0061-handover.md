@@ -521,3 +521,15 @@ Exclusions preserved: no Forgot Password OTP verification, reset authorization, 
 
 001A-6 contract correction: the initial filename-driven handoff contract is superseded. No production class name, package, Redis adapter, or lifecycle enum is approved merely by the first fail-first test. The active fail-first boundary is repository-grounded data flow: reuse `LoginOtpConsumptionProof`, `AuthenticatedLoginHandoffReference`, and `LoginOtpVerificationOperationReference`; forward the committed proof on first success; recover `ALREADY_COMMITTED` without another OTP verification; establish at most one authenticated session using the recovery identity; retain cleanup proof; and fail closed on conflicts. Production implementation remains unstarted.
 
+###### Subtask 006 prerequisite repair round 001A-5R: Durable OTP_VERIFY Reservation and Proof Recovery
+
+Commit message: `fix(login): persist otp verification recovery state`
+
+Baseline: `fb05df73d8c413c000b5be63a17c0ad9336e8f5b`, with completed production baseline `fa95e751aa0d951ddbbac582965ea57e80fb032c`. The later baseline commit contains only the corrected 001A-6 fail-first contract.
+
+Repaired the incomplete Login OTP_VERIFY persistence boundary by adding a durable reservation before verification, stable server-generated `AuthenticatedLoginHandoffReference` and `LoginOtpVerificationOperationReference`, durable non-null `LoginOtpConsumptionProof` recovery, operation-bound conclusive attempt recording, unknown-outcome and future completion boundaries, and fail-closed same-key replay pending 001A-6.
+
+Hardened every shared Login idempotency action to use an action-scoped HMAC-SHA-256 `LoginIdempotencyPersistenceId`. Raw public Login Idempotency-Key values are no longer Redis key components or persisted Login idempotency record fields. No legacy raw-key fallback, dual lookup, or request-time migration is provided. Existing development records are disposable and may expire naturally or be removed through a capability-scoped development procedure. The public `Idempotency-Key` header contract is unchanged.
+
+Ordered persistence is reservation, reference attachment, challenge mutation, durable attempt/consumption proof, and reservation stage update. No cross-record atomicity is claimed. OTP success does not complete the authenticated-login operation. 001A-6 remains production-incomplete and resumes after this repair. Round 006-002 remains blocked. Subtask 007 has not started.
+

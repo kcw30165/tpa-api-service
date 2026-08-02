@@ -25,7 +25,7 @@ final class LoginOtpVerifyTestSupport {
         LoginOtpVerifyPersistencePort persistence = command -> legacyOtp.verifyChallenge(
                 new VerifyOtpChallengeCommand(command.expectedChallengeId(),
                         command.submittedOtp().revealForComparison(), command.verificationTime()))
-                .map(LoginOtpVerifyTestSupport::map);
+                .map(result -> map(command, result));
         AuthFlowSessionMutationLockPort lock = new AuthFlowSessionMutationLockPort() {
             public Mono<SessionLockHandle> acquire(AuthFlowSessionId id, Duration lease) {
                 return Mono.just(new SessionLockHandle(true, "test-lock", "test-owner"));
@@ -56,7 +56,9 @@ final class LoginOtpVerifyTestSupport {
                 transition, clock);
     }
 
-    private static LoginOtpVerifyPersistenceResult map(VerifyOtpChallengeResult result) {
+    private static LoginOtpVerifyPersistenceResult map(
+            RevisionedLoginOtpVerifyCommand command,
+            VerifyOtpChallengeResult result) {
         LoginOtpVerifyPersistenceOutcome outcome = switch (result.outcome()) {
             case VALID -> LoginOtpVerifyPersistenceOutcome.VERIFIED_AND_CONSUMED;
             case INVALID -> LoginOtpVerifyPersistenceOutcome.INVALID;
@@ -66,7 +68,15 @@ final class LoginOtpVerifyTestSupport {
             case NOT_FOUND -> LoginOtpVerifyPersistenceOutcome.CHALLENGE_NOT_FOUND;
             case INVALIDATED -> LoginOtpVerifyPersistenceOutcome.EXPECTED_STATE_CHANGED;
         };
-        return new LoginOtpVerifyPersistenceResult(outcome, result.remainingAttempts(), null);
+        LoginOtpConsumptionProof proof = result.outcome() == OtpVerificationOutcome.VALID
+                ? new LoginOtpConsumptionProof(
+                        command.reservationHash(),
+                        command.handoffReference(),
+                        command.operationReference(),
+                        "committed",
+                        command.verificationTime())
+                : null;
+        return new LoginOtpVerifyPersistenceResult(outcome, result.remainingAttempts(), proof);
     }
 
     private static AuthFlowSession session(AuthFlowSessionId id) {
