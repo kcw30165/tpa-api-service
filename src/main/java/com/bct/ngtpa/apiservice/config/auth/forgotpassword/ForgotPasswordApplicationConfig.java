@@ -10,6 +10,7 @@ import com.bct.ngtpa.apiservice.application.dto.session.SessionTtlPolicy;
 import com.bct.ngtpa.apiservice.application.port.in.CreateAuthFlowSessionCsrfUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.ResendForgotPasswordOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.StartForgotPasswordUseCase;
+import com.bct.ngtpa.apiservice.application.port.in.VerifyForgotPasswordOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordUsernameLookupPort;
@@ -22,6 +23,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.Forg
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitCoordinator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpReplayResolver;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpTemplates;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.verify.VerifyForgotPasswordOtpService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendRequestHashGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ResendForgotPasswordOtpService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionConcurrencyService;
@@ -169,6 +171,11 @@ public class ForgotPasswordApplicationConfig {
     }
 
         @Bean
+        public com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordOtpVerifyWebMapper forgotPasswordOtpVerifyWebMapper() {
+                return new com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordOtpVerifyWebMapper();
+        }
+
+        @Bean
         public com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordOtpResendWebMapper forgotPasswordOtpResendWebMapper() {
                 return new com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordOtpResendWebMapper();
         }
@@ -254,6 +261,31 @@ public class ForgotPasswordApplicationConfig {
                                 Duration.ofSeconds(properties.getForgotPassword().getIdempotency().getOtpResendTtlSeconds()),
                                 Duration.ofSeconds(10),
                                 corsProperties == null ? List.of() : corsProperties.getAllowedOrigins());
+        }
+
+        @Bean
+        public VerifyForgotPasswordOtpUseCase verifyForgotPasswordOtpUseCase(
+                        com.bct.ngtpa.apiservice.application.service.auth.forgotpassword.context.ForgotPasswordProtectedAuthFlowContextLoader loader,
+                        ForgotPasswordAuthFlowContextProtectorPort protector,
+                        com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort sessions,
+                        com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionMutationLockPort locks,
+                        com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionExpiryRefreshPort expiry,
+                        OtpChallengePort otp,
+                        ForgotPasswordIdempotencyPort idempotency,
+                        Clock clock,
+                        AuthWorkflowProperties properties) {
+                properties.validateForgotPasswordPolicy();
+                return new VerifyForgotPasswordOtpService(
+                                loader,
+                                protector,
+                                sessions,
+                                locks,
+                                expiry,
+                                otp,
+                                idempotency,
+                                clock,
+                                Duration.ofSeconds(10),
+                                Duration.ofSeconds(properties.getForgotPassword().getResetAuthorization().getTtlSeconds()));
         }
 
 }

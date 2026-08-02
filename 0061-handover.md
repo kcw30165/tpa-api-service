@@ -2,7 +2,7 @@
 
 ## Current status
 
-Gate 6 implementation is in progress.
+Gate 6 implementation is complete through Subtask 006.
 
 Completed implementation subtasks:
 
@@ -19,7 +19,7 @@ Completed implementation subtasks:
 
 Next authorized work:
 
-- Subtask 006: OTP Resend and Verification
+- Subtask 007: Password completion and finalization
 
 Subtask 007 has not started.
 
@@ -684,4 +684,30 @@ Validation results:
 
 Exclusions preserved: no Forgot Password OTP verification flow; no reset authorization consumption; no password submission or `TRPResetPassword`; no Subtask 007 behavior; no ActorContext change; and no `Account-Ref` requirement for Forgot Password resend.
 
-Stop point: Subtask 006 round 002 is complete. The next cumulative round is 006-003 Forgot Password OTP verification and downstream reset-authorization orchestration. Subtask 006 remains incomplete until that round lands. Subtask 007 has not started.
+### Subtask 006 implementation round 003: OTP Verification and Reset Authorization Orchestration
+
+Baseline: 48ce4b017a195542d1843a10fd4e6947cd0c2339 (`fix(auth): compose registration completion-lock release reactively`).
+
+Implemented cumulative verify scope for Forgot Password OTP:
+- Added `VerifyForgotPasswordOtpUseCase` and `VerifyForgotPasswordOtpService` as the Forgot Password-specific OTP verification path.
+- Added public `POST /api/v1/auth/forgot-password/otp/verify` in `AuthForgotPasswordOtpController` using `auth_flow_sid`, `X-XSRF-TOKEN`, `Origin`/`Referer`, `X-Request-Id`, `Accept-Language`, and `Idempotency-Key`, with a request body containing only `code`.
+- Added `ForgotPasswordOtpVerifyWebMapper` and the password-setup response DTO so successful verification returns the standard mutation envelope with `nextStep=PASSWORD_SETUP` and an empty data object.
+- Added server-side reset-authorization issuance only inside the protected Forgot Password context via `ForgotPasswordResetAuthorization`; no reset token, cookie, or other client-visible authorization artifact is published.
+- Added protected-context update support in `ForgotPasswordAuthFlowContext` and wired verify beans in `ForgotPasswordApplicationConfig`.
+
+Behavior and ownership notes:
+- Verification acquires the auth-flow mutation lock, reloads the authoritative session under the lock, requires `FORGOT_PASSWORD` plus shared `STARTED`, validates CSRF and `Origin`/`Referer`, and requires protected phase `OTP_SENT` with an active authoritative challenge.
+- Successful verification marks the shared auth-flow session `RESET_AUTHORIZED`, clears `activeOtpChallengeId`, persists the protected reset authorization encrypted in the existing Forgot Password context, and refreshes auth-flow expiry.
+- Completed idempotent replay reconstructs only the safe workflow outcome (`PASSWORD_SETUP` or the relevant OTP failure step) from forgot-password idempotency state; it does not expose session identifiers, CSRF material, OTP codes, or reset-authorization internals.
+- Invalid, expired, locked, invalidated, already-verified, or missing OTP challenges remain internal verification outcomes and map to the existing public workflow contract without exposing downstream or protected details.
+- The only browser security context remains `auth_flow_sid` plus `X-XSRF-TOKEN`; reset authorization stays bound to the existing server-side pre-auth session.
+
+Validation results:
+- Fail-first verify coverage was added first in `AuthForgotPasswordOtpVerifyControllerTest` and `VerifyForgotPasswordOtpServiceTest`.
+- Focused verify validation after implementation: `runTests` on `AuthForgotPasswordOtpVerifyControllerTest` and `VerifyForgotPasswordOtpServiceTest`: PASS.
+- Adjacent forgot-password regression validation: `runTests` on controller, protected-context loader, reset-authorization validator, protector, idempotency contract, resend architecture, and verify tests: PASS.
+- Full `mvn test`: PASS (user-confirmed after round 006-003 implementation).
+
+Exclusions preserved: no reset-authorization publication in the response body, cookie, or any other client-visible transport; no reset-authorization consumption; no password submission or `TRPResetPassword`; no final page/error YAML; no ActorContext change; and no `Account-Ref` requirement for Forgot Password verify.
+
+Stop point: Subtask 006 is complete through round 006-003. The next authorized work is Subtask 007 password completion and finalization. Subtask 007 has not started.

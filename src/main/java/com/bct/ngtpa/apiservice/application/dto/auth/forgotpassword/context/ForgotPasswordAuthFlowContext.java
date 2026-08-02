@@ -49,6 +49,12 @@ public record ForgotPasswordAuthFlowContext(
                 protectedDestination, maskedDestination, resetAuthorization, workflowVersion, next);
     }
 
+    public ForgotPasswordAuthFlowContext withResetAuthorization(ForgotPasswordResetAuthorization authorization) {
+        return new ForgotPasswordAuthFlowContext(normalizedUsername, customerId, tasUserId, publicIdentityType,
+                identityVerified, resetSubjectId, contactChannel, protectedDestination, maskedDestination,
+                authorization, workflowVersion, phase);
+    }
+
     private static String requireText(String value, String field) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(field + " must not be blank");
