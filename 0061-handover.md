@@ -511,7 +511,7 @@ Next round: 001A-6 authenticated-login handoff and recoverable cleanup. Round 00
 
 ###### Subtask 006 prerequisite round 001A-6: Authenticated-login handoff and recoverable cleanup
 
-Status: fail-first contract established; production implementation not started.
+Historical status at round opening: fail-first contract established; production implementation was not started at that point. Cumulative status is superseded by the completed 001A-6 implementation recorded below.
 
 Baseline: `fa95e751aa0d951ddbbac582965ea57e80fb032c` (`feat(login): add idempotent revision-aware otp verification`).
 
@@ -519,7 +519,7 @@ Required boundary: persist the authenticated-login handoff durably after OTP con
 
 Exclusions preserved: no Forgot Password OTP verification, reset authorization, password completion, TRPResetPassword, Subtask 007, or round 006-002 behavior.
 
-001A-6 contract correction: the initial filename-driven handoff contract is superseded. No production class name, package, Redis adapter, or lifecycle enum is approved merely by the first fail-first test. The active fail-first boundary is repository-grounded data flow: reuse `LoginOtpConsumptionProof`, `AuthenticatedLoginHandoffReference`, and `LoginOtpVerificationOperationReference`; forward the committed proof on first success; recover `ALREADY_COMMITTED` without another OTP verification; establish at most one authenticated session using the recovery identity; retain cleanup proof; and fail closed on conflicts. Production implementation remains unstarted.
+001A-6 contract correction: the initial filename-driven handoff contract is superseded. No production class name, package, Redis adapter, or lifecycle enum is approved merely by the first fail-first test. The active fail-first boundary is repository-grounded data flow: reuse `LoginOtpConsumptionProof`, `AuthenticatedLoginHandoffReference`, and `LoginOtpVerificationOperationReference`; forward the committed proof on first success; recover `ALREADY_COMMITTED` without another OTP verification; establish at most one authenticated session using the recovery identity; retain cleanup proof; and fail closed on conflicts. Historical note: production implementation was unstarted at this earlier checkpoint; this is superseded by the completed cumulative 001A-6 implementation below.
 
 ###### Subtask 006 prerequisite repair round 001A-5R: Durable OTP_VERIFY Reservation and Proof Recovery
 
@@ -627,3 +627,31 @@ Replaced the detached `CompleteRegistrationService#acquire(...)` completion-lock
 Validation included fail-first architecture coverage, focused Registration completion and completion-lock tests, Registration OTP/idempotency, Login, Forgot Password, prior 001A-7R, production-wide reactive terminal audit, full Maven suite, canonical compile, and diff checks. Evidence: `target/0061-subtask-006-001a-7r2-fix-004-evidence-20260802-065826`.
 
 Cumulative 001A-7 remains blocked until this repair is committed and validation is regenerated. Round 006-002 remains blocked and not started. Subtask 006 remains incomplete. Subtask 007 has not started.
+
+####### Subtask 006 prerequisite round 001A-7: Cumulative Validation and Handover
+
+Baseline: 48ce4b017a195542d1843a10fd4e6947cd0c2339 (`fix(auth): compose registration completion-lock release reactively`).
+
+Validated cumulative capabilities, including committed repairs 001A-7R and 001A-7R2:
+- 001A-1 through 001A-4 establish schema marker version 2, persisted opaque session revisions, lock-protected legacy initialization, conditional revision-aware lifecycle mutations, fail-closed unversioned mutations, and production writer migration.
+- 001A-5 and 001A-5R establish action-scoped HMAC Login idempotency persistence identities, durable OTP_VERIFY reservation, stable recovery references, conclusive attempt recording, and non-null consumption-proof recovery. Raw public Idempotency-Key values are not persistence identities.
+- 001A-6 establishes one reserved authenticated-session identity per handoff, commit-before-cleanup ordering, acknowledged cleanup proof before credential return, pre-auth-independent committed replay, authoritative encrypted account reconstruction, non-sliding replay load, and conditional authenticated CSRF-hash rotation with raw-token release only after persistence acknowledgement.
+
+Architecture, reactive repair preservation, and limitations:
+- AuthenticatedSessionPort retains its approved five-operation boundary; replay loading and conditional CSRF rotation remain in AuthenticatedLoginReplaySessionPort.
+- LoginOtpVerifyService depends on RecoverCommittedLoginUseCase; RecoverCommittedLoginService owns replay orchestration; Redis and narrow single-record conditional scripts remain adapter-owned. No cross-record Lua transaction is claimed.
+- Missing, expired, tampered, conflicting, ambiguous, or concurrently changed recovery state fails closed.
+- Schema version 2 rollout requires all revision-unaware writer pods to be drained; rollback to a revision-unaware writer remains prohibited.
+
+Validation results:
+- Grouped 001A-1/2, 001A-3/4, 001A-5/5R, opt-in 001A-6, and 001A-7R/001A-7R2 repair suites: PASS.
+- Login, Registration, and Forgot Password cumulative regressions: PASS.
+- Full `mvn test`: PASS.
+- Canonical `mvn -DskipTests compile`: PASS.
+- Architecture and security/public-boundary audits: PASS.
+- `git diff --check`: PASS.
+- Evidence directory: `target/0061-subtask-006-001a-7-evidence-20260802-074929`.
+
+Exclusions preserved: no public Forgot Password Resend endpoint; no resend candidate creation or delivery; no Forgot Password OTP verification; no reset authorization; no password submission, TRPResetPassword, or password completion; no final page/error YAML; no ActorContext change; no Account-Ref requirement for Forgot Password; and no Subtask 007 or later behavior.
+
+Prerequisite 001A is complete. The next authorized round is 006-002 OTP Resend Orchestration and Endpoint. Subtask 006 remains incomplete. Subtask 007 has not started.
