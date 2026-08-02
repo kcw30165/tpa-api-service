@@ -93,6 +93,11 @@ public final class VerifyForgotPasswordIdentityService implements VerifyForgotPa
                         .thenReturn(VerifyForgotPasswordIdentityResult.of(VerifyForgotPasswordIdentityStatus.VERIFIED));
             });
         }).onErrorReturn(VerifyForgotPasswordIdentityResult.of(VerifyForgotPasswordIdentityStatus.SYSTEM_FAILED));
-        return work.doFinally(signal -> locks.release(h).onErrorReturn(false).subscribe());
+        return Mono.usingWhen(
+                Mono.just(h),
+                ignored -> work,
+                ignored -> locks.release(h).onErrorReturn(false).then(),
+                (ignored, error) -> locks.release(h).onErrorReturn(false).then(),
+                ignored -> locks.release(h).onErrorReturn(false).then());
     }
 }

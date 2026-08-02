@@ -71,6 +71,11 @@ public final class VerifyForgotPasswordDetailsService implements VerifyForgotPas
                                 : ForgotPasswordDetailsResult.of(ForgotPasswordDetailsStatus.BUSINESS_REJECTED));
             });
         }).onErrorReturn(ForgotPasswordDetailsResult.of(ForgotPasswordDetailsStatus.SYSTEM_FAILED));
-        return work.doFinally(signal -> locks.release(h).onErrorReturn(false).subscribe());
+        return Mono.usingWhen(
+                Mono.just(h),
+                ignored -> work,
+                ignored -> locks.release(h).onErrorReturn(false).then(),
+                (ignored, error) -> locks.release(h).onErrorReturn(false).then(),
+                ignored -> locks.release(h).onErrorReturn(false).then());
     }
 }

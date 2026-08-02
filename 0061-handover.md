@@ -606,3 +606,13 @@ Replay does not re-run OTP verification, APIM account lookup, account validation
 001A-6 005-008 no-legacy guard repair 005: preserved the permanent first-request continuation trace `continueToAccounts(c, x)` next to the active proof-aware continuation call. The executable call remains `continueToAccounts(c, x, r.proof())`, so the original committed proof remains authoritative and no legacy OTP verification path is restored. The guard itself was not changed.
 
 001A-6 005-008 replay contract architecture alignment fix 006: aligned the opt-in replay contract with the approved architecture repair. The contract now verifies orchestration in `LoginOtpVerifyService`, durable recovery in `RecoverCommittedLoginService`, and conditional persistence through `AuthenticatedLoginReplaySessionPort`. It no longer requires replay methods on the protected five-operation `AuthenticatedSessionPort` or direct session persistence inside the Login OTP verification service.
+
+####### Subtask 006 prerequisite repair round 001A-7R: Reactive mutation-lock release stabilization
+
+Baseline: 48be523d6e80aa71d202b9eea7cda93bbfc36f4d (`feat(login): add durable authenticated-session handoff`).
+
+Replaced three fire-and-forget Forgot Password mutation-lock release subscriptions with cleanup composed into the returned Reactor publisher through `Mono.usingWhen`. Success, error, and cancellation now participate in asynchronous release without `subscribe()` or `block()`. Release errors remain sanitized; protected or irreversible work is not retried. No completion lock, nested lock, public contract, persistence model, or workflow behavior changed.
+
+Validation: fail-first defect reproduced; focused repair, Forgot Password, Login, and Registration regressions passed; full Maven suite and canonical compile passed; architecture, security/scope, and diff audits passed. Evidence: `target/0061-subtask-006-001a-7r-fix-001-evidence-20260802-061723`.
+
+Exclusions preserved: no public Forgot Password Resend endpoint; no resend generation/delivery; no Forgot Password OTP verification; no reset authorization; no password submission or TRPResetPassword; no ActorContext or Account-Ref change; no Subtask 007 behavior. Commit this repair, then regenerate cumulative 001A-7 against the repair commit. Round 006-002 remains blocked. Subtask 006 remains incomplete. Subtask 007 has not started.

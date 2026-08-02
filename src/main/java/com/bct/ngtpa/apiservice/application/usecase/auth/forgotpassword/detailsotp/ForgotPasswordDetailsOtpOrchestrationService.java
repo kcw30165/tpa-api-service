@@ -109,7 +109,12 @@ public final class ForgotPasswordDetailsOtpOrchestrationService implements Proce
                                     ForgotPasswordDetailsOtpResult.Status.BUSINESS_REJECTED, null, 0, 0,
                                     List.of("PAGE"))));
         }).onErrorReturn(ForgotPasswordDetailsOtpResult.system());
-        return work.doFinally(z -> locks.release(h).onErrorReturn(false).subscribe());
+        return Mono.usingWhen(
+                Mono.just(h),
+                ignored -> work,
+                ignored -> locks.release(h).onErrorReturn(false).then(),
+                (ignored, error) -> locks.release(h).onErrorReturn(false).then(),
+                ignored -> locks.release(h).onErrorReturn(false).then());
     }
 
     private Mono<ForgotPasswordDetailsOtpResult> issue(ForgotPasswordDetailsOtpCommand c,
