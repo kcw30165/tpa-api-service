@@ -53,7 +53,7 @@ public final class AuthenticatedSessionLifecycleService
             Instant absolute = now.plus(absoluteTtl);
             Instant idle = min(now.plus(idleTimeout), absolute);
             var session = new AuthenticatedSession(
-                    ids.generate(),
+                    command.requestedSessionId() == null ? ids.generate() : command.requestedSessionId(),
                     command.actorContext(),
                     command.accounts(),
                     AuthenticatedSessionStatus.ACTIVE,

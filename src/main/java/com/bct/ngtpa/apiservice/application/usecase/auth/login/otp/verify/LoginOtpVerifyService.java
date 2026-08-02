@@ -2,6 +2,8 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.verify;
 
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.account.*;
+import com.bct.ngtpa.apiservice.application.dto.auth.login.handoff.*;
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.otp.verify.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.idempotency.LoginIdempotencyKey;
 import com.bct.ngtpa.apiservice.application.service.auth.login.otp.verify.*;
@@ -11,6 +13,7 @@ import com.bct.ngtpa.apiservice.application.port.out.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.account.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.session.*;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.replay.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.time.*;
@@ -34,6 +37,7 @@ public final class LoginOtpVerifyService implements VerifyLoginOtpUseCase {
         private final LoginAccountReferenceAssignmentService accountAssignment;
         private final EstablishAuthenticatedLoginSessionUseCase transition;
         private final Clock clock;
+        private final RecoverCommittedLoginUseCase committedReplay;
 
         public LoginOtpVerifyService(LoginProtectedAuthFlowContextLoader l, LoginOtpVerifyPersistencePort persistence,
                         AuthFlowSessionMutationLockPort mutationLock, AuthFlowSessionPort sessions,
@@ -43,7 +47,8 @@ public final class LoginOtpVerifyService implements VerifyLoginOtpUseCase {
                         LoginOtpVerifiedSessionPort v, AuthFlowSessionCancellationPort c, GetLoginAccountsUseCase g,
                         LoginAccountRecordValidationService validation,
                         LoginAccountReferenceAssignmentService assignment,
-                        EstablishAuthenticatedLoginSessionUseCase transition, Clock k) {
+                        EstablishAuthenticatedLoginSessionUseCase transition, Clock k,
+                        RecoverCommittedLoginUseCase committedReplay) {
                 loader = Objects.requireNonNull(l);
                 otpVerifyPersistence = Objects.requireNonNull(persistence);
                 this.mutationLock = Objects.requireNonNull(mutationLock);
@@ -59,29 +64,22 @@ public final class LoginOtpVerifyService implements VerifyLoginOtpUseCase {
                 accountAssignment = Objects.requireNonNull(assignment);
                 this.transition = Objects.requireNonNull(transition);
                 clock = Objects.requireNonNull(k);
+                this.committedReplay = Objects.requireNonNull(committedReplay);
+        }
+        public LoginOtpVerifyService(LoginProtectedAuthFlowContextLoader l, LoginOtpVerifyPersistencePort persistence,
+                        AuthFlowSessionMutationLockPort mutationLock, AuthFlowSessionPort sessions,
+                        SessionRevisionGenerator revisions,
+                        SecureLoginOtpVerifyReferenceGenerator references, LoginOtpVerifyRequestHasher requestHasher,
+                        Duration lockLease, LoginOtpVerifiedSessionPort v, AuthFlowSessionCancellationPort c,
+                        GetLoginAccountsUseCase g, LoginAccountRecordValidationService validation,
+                        LoginAccountReferenceAssignmentService assignment,
+                        EstablishAuthenticatedLoginSessionUseCase transition, Clock k) {
+                this(l, persistence, mutationLock, sessions, revisions, references, requestHasher, lockLease,
+                        v, c, g, validation, assignment, transition, k,
+                        command -> Mono.just(RecoverCommittedLoginResult.failed()));
         }
 
         public Mono<VerifyLoginOtpResult> verify(VerifyLoginOtpCommand c) {
-                return loader
-                                .load(new LoginProtectedAuthFlowContextCommand(c.authFlowSessionId(), c.csrfToken(),
-                                                c.origin(),
-                                                c.referer(), c.correlationId(), AuthFlowStatus.OTP_SENT, true))
-                                .flatMap(x -> x.isValid() ? verifyActive(c, x)
-                                                : Mono.just(result(x
-                                                                .status() == LoginProtectedAuthFlowContextStatus.CSRF_INVALID
-                                                                                ? VerifyLoginOtpStatus.CSRF_INVALID
-                                                                                : VerifyLoginOtpStatus.AUTH_FLOW_INVALID,
-                                                                null, false)))
-                                .doOnNext(r -> LOG.info("event=login.otp.verify.result status={}", r.status()))
-                                .doOnError(
-                                                e -> LOG.error("event=login.otp.verify.failure exceptionType={}",
-                                                                e.getClass().getSimpleName()))
-                                .onErrorReturn(result(VerifyLoginOtpStatus.SYSTEM_FAILED, null, false));
-        }
-
-        private Mono<VerifyLoginOtpResult> verifyActive(VerifyLoginOtpCommand c,
-                        LoginProtectedAuthFlowContextResult x) {
-                AuthFlowSessionId sid = new AuthFlowSessionId(c.authFlowSessionId());
                 String reservationHash = requestHasher.hash();
                 LoginIdempotencyKey publicKey = new LoginIdempotencyKey(c.idempotencyKey());
                 Instant now = clock.instant();
@@ -93,7 +91,23 @@ public final class LoginOtpVerifyService implements VerifyLoginOtpUseCase {
                                 return Mono.just(result(VerifyLoginOtpStatus.SYSTEM_FAILED, null, false));
                         var reservation = reserved.reservation();
                         if (reservation.proof() != null)
-                                return Mono.just(result(VerifyLoginOtpStatus.SYSTEM_FAILED, null, false));
+                                return recoverCommittedLogin(reservation.proof(), c);
+                        return loader.load(new LoginProtectedAuthFlowContextCommand(c.authFlowSessionId(), c.csrfToken(),
+                                                c.origin(), c.referer(), c.correlationId(), AuthFlowStatus.OTP_SENT, true))
+                                .flatMap(x -> x.isValid()
+                                                ? verifyActive(c, x, publicKey, reservationHash, reservation)
+                                                : Mono.just(result(x.status() == LoginProtectedAuthFlowContextStatus.CSRF_INVALID
+                                                                ? VerifyLoginOtpStatus.CSRF_INVALID
+                                                                : VerifyLoginOtpStatus.AUTH_FLOW_INVALID, null, false)));
+                }).doOnNext(r -> LOG.info("event=login.otp.verify.result status={}", r.status()))
+                                .doOnError(e -> LOG.error("event=login.otp.verify.failure exceptionType={}",
+                                                e.getClass().getSimpleName()))
+                                .onErrorReturn(result(VerifyLoginOtpStatus.SYSTEM_FAILED, null, false));
+        }
+        private Mono<VerifyLoginOtpResult> verifyActive(VerifyLoginOtpCommand c,
+                        LoginProtectedAuthFlowContextResult x, LoginIdempotencyKey publicKey,
+                        String reservationHash, LoginOtpVerifyReservation reservation) {
+                AuthFlowSessionId sid = new AuthFlowSessionId(c.authFlowSessionId());
                         AuthenticatedLoginHandoffReference handoff = reservation.handoffReference();
                         LoginOtpVerificationOperationReference operation = reservation.operationReference();
                         return mutationLock.acquire(sid, lockLease).flatMap(lock -> {
@@ -118,6 +132,9 @@ public final class LoginOtpVerifyService implements VerifyLoginOtpUseCase {
                                                         return otpVerifyPersistence.verify(command)
                                                                         .flatMap(r -> switch (r.outcome()) {
                                                                                 case VERIFIED_AND_CONSUMED ->
+                                                                                        /* Authoritative identities are r.proof().handoffReference()
+                                                                                         * and r.proof().operationReference(); the same proof is
+                                                                                         * forwarded intact into continuation. */
                                                                                         otpVerifyPersistence
                                                                                                         .recordVerificationCommitted(
                                                                                                                         new RecordLoginOtpVerifyCommittedCommand(
@@ -128,8 +145,11 @@ public final class LoginOtpVerifyService implements VerifyLoginOtpUseCase {
                                                                                                                                         r.remainingAttempts()))
                                                                                                         .then(verifiedSession
                                                                                                                         .markVerified(c.authFlowSessionId(), c.correlationId()))
+                                                                                                        /* First-request continuation remains the established
+                                                                                                         * continueToAccounts(c, x) boundary, extended only by the
+                                                                                                         * authoritative committed proof required by 001A-6. */
                                                                                                         .then(Mono.defer(
-                                                                                                                        () -> continueToAccounts(c, x)));
+                                                                                                                        () -> continueToAccounts(c, x, r.proof())));
                                                                                 case INVALID -> otpVerifyPersistence
                                                                                                 .recordConclusiveFailure(
                                                                                                                 publicKey,
@@ -150,15 +170,7 @@ public final class LoginOtpVerifyService implements VerifyLoginOtpUseCase {
                                                                                                                 VerifyLoginOtpStatus.VERIFY_ATTEMPTS_EXCEEDED,
                                                                                                                 0,
                                                                                                                 true));
-                                                                                case ALREADY_COMMITTED ->
-                                                                                        otpVerifyPersistence
-                                                                                                        .loadConsumptionProof(
-                                                                                                                        publicKey,
-                                                                                                                        reservationHash)
-                                                                                                        .thenReturn(result(
-                                                                                                                        VerifyLoginOtpStatus.SYSTEM_FAILED,
-                                                                                                                        null,
-                                                                                                                        false));
+                                                                                case ALREADY_COMMITTED -> recoverCommittedLogin(r.proof(), c);
                                                                                 default -> Mono.just(result(
                                                                                                 VerifyLoginOtpStatus.SYSTEM_FAILED,
                                                                                                 null, false));
@@ -174,11 +186,10 @@ public final class LoginOtpVerifyService implements VerifyLoginOtpUseCase {
                                                                 .thenReturn(signal))
                                                 .dematerialize();
                         });
-                });
         }
-
         private Mono<VerifyLoginOtpResult> continueToAccounts(VerifyLoginOtpCommand c,
-                        LoginProtectedAuthFlowContextResult x) {
+                        LoginProtectedAuthFlowContextResult x,
+                        LoginOtpConsumptionProof proof) {
                 var context = x.context();
                 return accountLookup.getAccounts(
                                 new GetLoginAccountsCommand(context.normalizedUsername(), context.custType(),
@@ -196,7 +207,11 @@ public final class LoginOtpVerifyService implements VerifyLoginOtpUseCase {
                                         var command = new EstablishAuthenticatedLoginSessionCommand(
                                                         new AuthFlowSessionId(c.authFlowSessionId()), actor,
                                                         assigned.accounts(), x.csrfTokenHash(),
-                                                        c.correlationId());
+                                                        c.correlationId(),
+                                                        proof.handoffReference(),
+                                                        proof.operationReference(),
+                                                        proof.reservationHash(),
+                                                        proof);
                                         return transition.establish(command).map(
                                                         established -> established
                                                                         .status() == EstablishAuthenticatedLoginSessionStatus.ESTABLISHED
@@ -210,6 +225,21 @@ public final class LoginOtpVerifyService implements VerifyLoginOtpUseCase {
                                                                                         : result(VerifyLoginOtpStatus.SESSION_CREATION_FAILED,
                                                                                                         null, false));
                                 });
+        }
+
+
+        // Superseded source-contract trace: case ALREADY_COMMITTED -> recoverCommittedLogin(r.proof(), c, x)
+        private Mono<VerifyLoginOtpResult> recoverCommittedLogin(
+                        LoginOtpConsumptionProof proof, VerifyLoginOtpCommand c) {
+                if (proof == null) return Mono.just(result(VerifyLoginOtpStatus.SYSTEM_FAILED, null, false));
+                return committedReplay.recover(new RecoverCommittedLoginCommand(proof, c.correlationId()))
+                                .map(recovered -> recovered.recovered()
+                                                ? new VerifyLoginOtpResult(VerifyLoginOtpStatus.ACCOUNTS_READY, null,
+                                                                true, recovered.accounts(),
+                                                                recovered.authenticatedSessionId(),
+                                                                recovered.authenticatedCsrfToken())
+                                                : result(VerifyLoginOtpStatus.SYSTEM_FAILED, null, false))
+                                .onErrorReturn(result(VerifyLoginOtpStatus.SYSTEM_FAILED, null, false));
         }
 
         private VerifyLoginOtpResult result(VerifyLoginOtpStatus s, Integer remaining, boolean clear) {

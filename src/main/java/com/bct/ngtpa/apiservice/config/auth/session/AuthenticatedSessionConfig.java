@@ -20,6 +20,8 @@ import java.time.Duration;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthenticatedSessionAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthenticatedSessionJsonMapper;
 import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionPort;
+import com.bct.ngtpa.apiservice.adapter.out.redis.auth.login.otp.verify.LoginOtpVerifyRetentionProperties;
+import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedLoginHandoffPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthenticatedSessionProtectorPort;
 import com.bct.ngtpa.apiservice.application.port.out.PortalAccessContextPort;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.AuthenticatedAccountContextResolver;
@@ -118,7 +120,9 @@ public class AuthenticatedSessionConfig {
         return new AuthenticatedLogoutService(logout);
     }
 
-    @Bean
+
+    /* Source-compatible direct-construction boundary retained for existing unit tests.
+     * Spring selects the @Bean overload below, which injects the durable Redis handoff. */
     EstablishAuthenticatedLoginSessionUseCase establishAuthenticatedLoginSessionUseCase(
             AuthenticatedSessionLifecycleService lifecycle,
             DeleteAuthFlowSessionPort cleanup,
@@ -126,6 +130,22 @@ public class AuthenticatedSessionConfig {
             CsrfTokenHasher csrfTokenHasher) {
         return new EstablishAuthenticatedLoginSessionService(
                 lifecycle, cleanup, lifecycle, csrfTokenGenerator, csrfTokenHasher);
+    }
+
+    @Bean
+    EstablishAuthenticatedLoginSessionUseCase establishAuthenticatedLoginSessionUseCase(
+            AuthenticatedSessionLifecycleService lifecycle,
+            DeleteAuthFlowSessionPort cleanup,
+            CsrfTokenGenerator csrfTokenGenerator,
+            CsrfTokenHasher csrfTokenHasher,
+            AuthenticatedLoginHandoffPort handoffs,
+            SecureAuthenticatedSessionIdGenerator authenticatedSessionIdGenerator,
+            LoginOtpVerifyRetentionProperties retention) {
+        retention.validate();
+        return new EstablishAuthenticatedLoginSessionService(
+                lifecycle, cleanup, lifecycle, csrfTokenGenerator, csrfTokenHasher,
+                handoffs, authenticatedSessionIdGenerator,
+                Duration.ofSeconds(retention.getAuthenticatedLoginHandoffRetentionSeconds()));
     }
 
     @Bean

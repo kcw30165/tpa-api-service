@@ -64,4 +64,5 @@ public final class RedisAuthenticatedSessionAdapter implements AuthenticatedSess
             return t;
         return new CacheException("Authenticated session persistence operation failed", t);
     }
+
 }

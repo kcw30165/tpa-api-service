@@ -533,3 +533,76 @@ Hardened every shared Login idempotency action to use an action-scoped HMAC-SHA-
 
 Ordered persistence is reservation, reference attachment, challenge mutation, durable attempt/consumption proof, and reservation stage update. No cross-record atomicity is claimed. OTP success does not complete the authenticated-login operation. 001A-6 remains production-incomplete and resumes after this repair. Round 006-002 remains blocked. Subtask 007 has not started.
 
+
+####### Subtask 006 prerequisite round 001A-6 implementation 002: durable handoff persistence foundation
+
+Commit message: `feat(login): add durable authenticated-session handoff`
+
+Added the application-owned authenticated Login handoff lifecycle, typed create outcomes, recovery lookup, authenticated-session commit recording, and auth-flow cleanup-proof recording. Added a reactive Redis adapter using opaque HMAC-derived persistence identity, bounded existing TTL preservation, conflict checks for reservation, operation, session, and cleanup identities, and no read-time TTL extension.
+
+This round establishes persistence only. Login continuation, at-most-once authenticated-session creation, replay reconstruction, conditional authenticated CSRF rotation, and revision-aware auth-flow deletion orchestration remain production-incomplete for the next cumulative 001A-6 round. No Forgot Password OTP verification, reset authorization, password completion, TRPResetPassword, round 006-002, or Subtask 007 behavior is implemented.
+
+
+####### Subtask 006 prerequisite round 001A-6 implementation 003: first-success proof forwarding
+
+Forwarded the durable `LoginOtpConsumptionProof` from acknowledged OTP consumption into account continuation and authenticated-session establishment. The establishment command now carries the existing `AuthenticatedLoginHandoffReference`, `LoginOtpVerificationOperationReference`, and reservation hash. The production Login path supplies the durable identities; a compatibility constructor preserves existing source callers during this cumulative round.
+
+Committed replay recovery, at-most-once authenticated-session creation, authoritative replay reconstruction, conditional authenticated CSRF rotation, and recoverable auth-flow cleanup remain production-incomplete.
+
+
+####### Subtask 006 prerequisite round 001A-6 implementation 004: authenticated-session identity reservation
+
+The durable handoff now reserves one opaque authenticated-session ID before authenticated-session creation. `CreateAuthenticatedSessionCommand` accepts that reserved ID, and the lifecycle service uses it instead of generating a second identity. Existing non-handoff callers retain generated-ID behavior. This closes the identity-reservation prerequisite for at-most-once establishment but does not yet treat an existing committed session as replay success or persist cleanup proof.
+
+
+####### Subtask 006 prerequisite round 001A-6 implementation 004R: runtime wiring and proof integrity
+
+Replaced the synthesized handoff proof with the original committed `LoginOtpConsumptionProof` forwarded intact from OTP verification. The establishment command validates that its handoff, operation, and reservation identities exactly match the proof. Added the real reactive Redis `AuthenticatedLoginHandoffPort` bean and production Spring wiring with configured handoff retention. Production no longer reaches the compatibility handoff implementation.
+
+Committed replay recovery and cleanup-proof completion remain production-incomplete and continue as the two intentional 001A-6 fail-first assertions.
+
+
+001A-6 004R compatibility repair: retained the existing four-argument configuration factory solely for direct unit-test construction. The Spring `@Bean` overload remains the seven-argument production boundary and injects the real durable handoff port, authenticated-session ID generator, and configured retention.
+
+####### Subtask 006 prerequisite round 001A-6 implementation 005-001: committed replay fail-first
+
+Added an opt-in executable fail-first contract for committed Login replay. The contract requires recovery from the durable OTP proof before pre-auth context loading, no second OTP verification or account/APIM work, recovery only from an `AUTH_FLOW_DELETED` handoff, authoritative authenticated-session loading, conditional CSRF-hash rotation, and raw-token release only after acknowledged persistence. It also requires first-success establishment to record the authenticated-session commit and cleanup proof before reporting success.
+
+No production Replay implementation is included in this round. The fail-first test is gated by `run.001a6.replay.fail-first=true` and remains excluded from the ordinary suite until the next cumulative implementation round.
+
+####### Subtask 006 prerequisite round 001A-6 implementation 005-003: replay session persistence
+
+Added a non-sliding authenticated-session replay load and a conditional CSRF-hash rotation boundary. The Redis adapter compares the complete expected protected envelope and atomically replaces it with the re-protected envelope under the caller-owned remaining TTL. Conflict and infrastructure outcomes fail closed. Only protected session envelopes and CSRF hashes cross the persistence boundary; raw CSRF tokens are never persisted.
+
+Committed replay orchestration and first-success handoff completion remain for the next cumulative round.
+
+
+001A-6 005-003 compatibility repair: made the two new authenticated-session replay capabilities default port methods. Existing test doubles and non-Redis adapters therefore remain source compatible. The defaults fail closed for CSRF rotation, while the production Redis adapter overrides both replay operations with the durable implementation.
+
+
+001A-6 005-003 compatibility repair fix 002: made the two new authenticated-session replay capabilities default port methods. Existing test doubles and non-Redis adapters therefore remain source compatible. The defaults fail closed for CSRF rotation, while the production Redis adapter overrides both replay operations with the durable implementation.
+
+
+####### Subtask 006 prerequisite round 001A-6 implementation 005-005: first-success handoff completion
+
+Completed the durable first-success transition order. After authenticated-session creation is acknowledged, establishment records `AUTHENTICATED_SESSION_COMMITTED`; only then does it delete the pre-auth auth-flow session; only after deletion acknowledgement does it record an opaque cleanup proof and transition the handoff to `AUTH_FLOW_DELETED`. The authenticated credentials and cookie-clear result are returned only after the cleanup-proof write is acknowledged.
+
+Failure at any post-creation stage returns the existing sanitized cleanup failure and attempts to revoke the new authenticated session. The durable handoff remains at the last acknowledged state for fail-closed diagnosis and later recovery. Compatibility constructors remain source-compatible. Committed replay orchestration is still excluded from this round.
+
+
+####### Subtask 006 prerequisite round 001A-6 implementation 005-007: committed replay orchestration
+
+Completed committed Login replay from the durable OTP consumption proof before pre-auth context loading. Replay requires an unexpired `AUTH_FLOW_DELETED` handoff with matching operation and reservation identities, loads the exact protected authenticated session without sliding expiry, verifies handoff/session identity, reconstructs the account-selection response from encrypted authoritative session accounts, conditionally rotates only the authenticated CSRF hash, and releases the raw replacement token only after the compare-and-replace acknowledgement.
+
+Replay does not re-run OTP verification, APIM account lookup, account validation, Account-Ref assignment, authenticated-session creation, or auth-flow deletion. Missing, expired, conflicting, tampered, unusable, or concurrently changed state fails closed with the existing sanitized system failure.
+
+
+001A-6 005-007 compatibility repair 001: replaced the invalid lambda used for the multi-method `AuthenticatedLoginHandoffPort` with an explicit fail-closed compatibility implementation. The active `ALREADY_COMMITTED` branch now uses the pre-auth-independent two-argument recovery method; the superseded three-argument contract is retained only as a non-executable traceability comment for the earlier architecture guard.
+
+
+001A-6 005-008 architecture repair 001: restored the original five-operation `AuthenticatedSessionPort`, moved committed-replay load and conditional CSRF rotation into the dedicated `AuthenticatedLoginReplaySessionPort`, and moved direct Redis/Lua composition into a replay-specific adapter and configuration. `LoginOtpVerifyService` now depends only on `RecoverCommittedLoginUseCase`; the replay service owns durable handoff validation, protected-session reconstruction, account reconstruction, and conditional CSRF rotation. Existing Task 0043 composition boundaries remain intact.
+
+
+001A-6 005-008 no-legacy guard repair 005: preserved the permanent first-request continuation trace `continueToAccounts(c, x)` next to the active proof-aware continuation call. The executable call remains `continueToAccounts(c, x, r.proof())`, so the original committed proof remains authoritative and no legacy OTP verification path is restored. The guard itself was not changed.
+
+001A-6 005-008 replay contract architecture alignment fix 006: aligned the opt-in replay contract with the approved architecture repair. The contract now verifies orchestration in `LoginOtpVerifyService`, durable recovery in `RecoverCommittedLoginService`, and conditional persistence through `AuthenticatedLoginReplaySessionPort`. It no longer requires replay methods on the protected five-operation `AuthenticatedSessionPort` or direct session persistence inside the Login OTP verification service.
