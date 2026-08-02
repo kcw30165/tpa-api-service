@@ -2,7 +2,7 @@
 
 ## Current status
 
-Gate 6 implementation is complete through Subtask 006.
+Gate 6 implementation is complete through Subtask 006, including round 006-004 stabilization, traceability, regression, security, and evidence closeout.
 
 Completed implementation subtasks:
 
@@ -16,6 +16,11 @@ Completed implementation subtasks:
   - Round 005-002: Initial OTP foundation and session binding
   - Round 005-003: OTP delivery commit state and replay protection
   - Round 005-004: Details and initial OTP orchestration and stabilization
+- Subtask 006: Forgot Password OTP resend and verification
+  - Round 006-001: OTP resend foundation
+  - Round 006-002: OTP resend orchestration and endpoint
+  - Round 006-003: OTP verification and reset-authorization orchestration
+  - Round 006-004: stabilization, traceability, regression, security, and evidence closeout
 
 Next authorized work:
 
@@ -710,4 +715,37 @@ Validation results:
 
 Exclusions preserved: no reset-authorization publication in the response body, cookie, or any other client-visible transport; no reset-authorization consumption; no password submission or `TRPResetPassword`; no final page/error YAML; no ActorContext change; and no `Account-Ref` requirement for Forgot Password verify.
 
-Stop point: Subtask 006 is complete through round 006-003. The next authorized work is Subtask 007 password completion and finalization. Subtask 007 has not started.
+### Subtask 006 implementation round 004: Stabilization, traceability, regression, security, and evidence closeout
+
+Scope:
+
+- Closeout only. This round did not authorize or implement password submission, reset-authorization consumption, `TRPResetPassword`, Subtask 007 behavior, or any later Forgot Password flow surface.
+
+Implemented stabilization and traceability updates:
+
+- Corrected forgot-password OTP verify idempotency hashing so the canonical `OTP_VERIFY` request hash excludes both OTP value and auth-flow session identity.
+- Aligned forgot-password OTP verify under-lock reload to use the revisioned auth-flow snapshot path.
+- Added concrete forgot-password resend controller and service coverage for cookie/header mapping, idempotency-key enforcement, mutation-lock release, and missing-session fail-closed behavior.
+- Added forgot-password OTP reactive architecture guard coverage to preserve single mutation-lock acquisition, `Mono.usingWhen(...)` release, revisioned snapshot reload, and the absence of blocking or completion-lock usage in resend and verify orchestration.
+- Added resend web-mapper closeout coverage and retained the approved public contract shape with no secret, OTP, session, CSRF, pending-reference, or reset-authorization leakage.
+
+Validation results:
+
+- Focused resend controller, resend service, reactive architecture, verify controller, verify service, and verify idempotency-guard validation: PASS.
+- Discoverable forgot-password OTP cumulative batch for 006-001, 006-002, 006-003, and 006-004 closeout slices: PASS.
+- Narrow diagnostics on all touched production and test files: PASS.
+- `git diff --check`: PASS.
+- Full `mvn test`: PASS (user-confirmed manual run after 006-004 closeout).
+- Evidence directory: `target/0061-subtask-006-004-evidence-20260802-182952`.
+
+Exclusions preserved:
+
+- No reset-authorization publication or consumption.
+- No password submission.
+- No `TRPResetPassword`.
+- No final Forgot Password page or error YAML.
+- No ActorContext change.
+- No `Account-Ref` requirement for Forgot Password.
+- No Subtask 007 or later behavior.
+
+Stop point: Subtask 006 is complete through round 006-004. The next authorized work is Subtask 007 password completion and finalization. Subtask 007 has not started.

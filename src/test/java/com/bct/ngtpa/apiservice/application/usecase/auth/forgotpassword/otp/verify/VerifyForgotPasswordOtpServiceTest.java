@@ -11,7 +11,6 @@ import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyFailCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyKey;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyRecord;
-import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyReplaySnapshot;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyStartCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyStartOutcome;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyStartResult;
@@ -20,9 +19,6 @@ import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.CreateOtpChallengeCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.CreateOtpChallengeResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.InvalidateOtpChallengeCommand;
-import com.bct.ngtpa.apiservice.application.dto.auth.otp.OtpChannel;
-import com.bct.ngtpa.apiservice.application.dto.auth.otp.OtpScenario;
-import com.bct.ngtpa.apiservice.application.dto.auth.otp.OtpStatus;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.OtpVerificationOutcome;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.ReplaceOtpChallengeCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.ReplaceOtpChallengeResult;
@@ -40,7 +36,6 @@ import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
-import com.bct.ngtpa.apiservice.application.service.auth.forgotpassword.context.ForgotPasswordProtectedAuthFlowContextCommand;
 import com.bct.ngtpa.apiservice.application.service.auth.forgotpassword.context.ForgotPasswordProtectedAuthFlowContextLoader;
 import com.bct.ngtpa.apiservice.application.service.auth.forgotpassword.context.ForgotPasswordProtectedAuthFlowContextResult;
 import java.time.Clock;
@@ -48,7 +43,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
@@ -94,6 +88,35 @@ class VerifyForgotPasswordOtpServiceTest {
         assertThat(authorization.consumedAt()).isNull();
     }
 
+    @Test
+    void otpVerifyIdempotencyHashExcludesOtpAndSessionIdentity() {
+        var first = new Fixture("afs_fp_1", OtpVerificationOutcome.VALID, 4);
+        var second = new Fixture("afs_fp_2", OtpVerificationOutcome.VALID, 4);
+
+        verify(first, "afs_fp_1", "123456", "idem_shared");
+        verify(second, "afs_fp_2", "654321", "idem_shared");
+
+        assertThat(first.idempotency.lastStartCommand).isNotNull();
+        assertThat(second.idempotency.lastStartCommand).isNotNull();
+        assertThat(first.idempotency.lastStartCommand.requestHash())
+                .isEqualTo(second.idempotency.lastStartCommand.requestHash());
+    }
+
+    private static void verify(Fixture fixture, String sessionId, String code, String idempotencyKey) {
+        StepVerifier.create(fixture.service.verify(new VerifyForgotPasswordOtpCommand(
+                new AuthFlowSessionId(sessionId),
+                "csrf_abc",
+                code,
+                "https://portal.example",
+                "https://portal.example/page",
+                idempotencyKey,
+                "en",
+                "req_abc",
+                Duration.ofSeconds(300))))
+                .expectNextCount(1)
+                .verifyComplete();
+    }
+
     private static final class Fixture {
         final MutableProtector protector = new MutableProtector();
         final MutableSessions sessions = new MutableSessions();
@@ -106,6 +129,10 @@ class VerifyForgotPasswordOtpServiceTest {
         int failedCount;
 
         Fixture(OtpVerificationOutcome outcome, int remainingAttempts) {
+            this("afs_fp", outcome, remainingAttempts);
+        }
+
+        Fixture(String sessionId, OtpVerificationOutcome outcome, int remainingAttempts) {
             ForgotPasswordAuthFlowContext context = new ForgotPasswordAuthFlowContext(
                     "member01",
                     "cust-db01",
@@ -123,7 +150,7 @@ class VerifyForgotPasswordOtpServiceTest {
             protectedContext = context;
 
             AuthFlowSession session = new AuthFlowSession(
-                    new AuthFlowSessionId("afs_fp"),
+            new AuthFlowSessionId(sessionId),
                     AuthFlowScenario.FORGOT_PASSWORD,
                     AuthFlowStatus.STARTED,
                     "csrf_hash",
@@ -138,7 +165,7 @@ class VerifyForgotPasswordOtpServiceTest {
                     ForgotPasswordProtectedAuthFlowContextResult.valid("otp_active", protector.context));
             AuthFlowSessionMutationLockPort locks = new AuthFlowSessionMutationLockPort() {
                 @Override
-                public Mono<SessionLockHandle> acquire(AuthFlowSessionId sessionId, Duration lease) {
+                public Mono<SessionLockHandle> acquire(AuthFlowSessionId ignoredSessionId, Duration lease) {
                     return Mono.just(new SessionLockHandle(true, "lock-key", "owner"));
                 }
 
@@ -147,7 +174,7 @@ class VerifyForgotPasswordOtpServiceTest {
                     return Mono.just(true);
                 }
             };
-            AuthFlowSessionExpiryRefreshPort expiry = (sessionId, interactionAt) -> {
+            AuthFlowSessionExpiryRefreshPort expiry = (ignoredSessionId, interactionAt) -> {
                 refreshCount++;
                 return Mono.just(updatedSession == null ? sessions.session : updatedSession);
             };
@@ -241,8 +268,11 @@ class VerifyForgotPasswordOtpServiceTest {
         }
 
         private final class MutableIdempotency implements ForgotPasswordIdempotencyPort {
+            private ForgotPasswordIdempotencyStartCommand lastStartCommand;
+
             @Override
             public Mono<ForgotPasswordIdempotencyStartResult> startProcessing(ForgotPasswordIdempotencyStartCommand command) {
+                lastStartCommand = command;
                 return Mono.just(new ForgotPasswordIdempotencyStartResult(
                         ForgotPasswordIdempotencyStartOutcome.STARTED,
                         new ForgotPasswordIdempotencyRecord(

@@ -101,11 +101,11 @@ public final class VerifyForgotPasswordOtpService implements VerifyForgotPasswor
     }
 
     private Mono<VerifyForgotPasswordOtpResult> locked(VerifyForgotPasswordOtpCommand command, SessionLockHandle handle) {
-        Mono<VerifyForgotPasswordOtpResult> work = sessions.load(command.sessionId()).flatMap(optional -> {
+        Mono<VerifyForgotPasswordOtpResult> work = sessions.loadSnapshot(command.sessionId()).flatMap(optional -> {
             if (optional.isEmpty()) {
                 return Mono.just(result(VerifyForgotPasswordOtpStatus.AUTH_FLOW_INVALID, WorkflowNextStep.NONE));
             }
-            AuthFlowSession reloaded = optional.get();
+            AuthFlowSession reloaded = optional.get().session();
             Instant now = Instant.now(clock);
             if (reloaded.isExpired(now) || reloaded.isTerminal() || reloaded.scenario() != AuthFlowScenario.FORGOT_PASSWORD
                     || reloaded.status() != AuthFlowStatus.STARTED) {
@@ -147,7 +147,7 @@ public final class VerifyForgotPasswordOtpService implements VerifyForgotPasswor
             Instant now) {
         ForgotPasswordIdempotencyKey key = new ForgotPasswordIdempotencyKey(command.idempotencyKey().trim());
         ForgotPasswordRequestHash requestHash = new ForgotPasswordRequestHash(
-                sha256(session.authFlowSessionId().value() + "|" + command.code()));
+            sha256("FORGOT_PASSWORD\u0000OTP_VERIFY\u0000v1"));
 
         return idempotency.startProcessing(new ForgotPasswordIdempotencyStartCommand(
                 ForgotPasswordIdempotencyAction.OTP_VERIFY,
