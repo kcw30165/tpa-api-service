@@ -119,12 +119,16 @@ public class CompleteRegistrationService implements CompleteRegistrationUseCase 
             if (!handle.acquired())
                 return Mono.just(result(CompleteRegistrationResultStatus.DUPLICATE_IN_PROGRESS, WorkflowNextStep.WAIT,
                         false, false, List.of()));
-            return sessions.load(c.authFlowSessionId())
+            return Mono.usingWhen(
+                    Mono.just(handle),
+                    acquiredHandle -> sessions.load(c.authFlowSessionId())
                     .flatMap(o -> o.map(s -> invoke(c, rc, uc, s, hash)).orElseGet(() -> Mono.just(failure(
                             CompleteRegistrationResultStatus.INVALID_AUTH_FLOW, WorkflowNextStep.NONE,
                             com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey.AUTH_FLOW_INVALID
-                                    .value()))))
-                    .doFinally(signal -> locks.release(handle).subscribe());
+                                    .value())))),
+                    this::completionLockReleaseAfterSuccess,
+                    (acquiredHandle, protectedFailure) -> completionLockReleaseAfterError(acquiredHandle),
+                    this::completionLockReleaseAfterCancellation);
         });
     }
 
@@ -224,4 +228,32 @@ public class CompleteRegistrationService implements CompleteRegistrationUseCase 
             throw new IllegalStateException("Password hash unavailable");
         }
     }
+
+    private Mono<Void> completionLockReleaseAfterSuccess(
+            com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle handle) {
+        return locks.release(handle)
+                .switchIfEmpty(Mono.error(new IllegalStateException(
+                        "completion lock release outcome was unavailable")))
+                .flatMap(released -> released
+                        ? Mono.<Void>empty()
+                        : Mono.error(new IllegalStateException(
+                                "completion lock release was not acknowledged")))
+                .onErrorMap(failure -> new IllegalStateException(
+                        "completion lock release outcome was unknown", failure));
+    }
+
+    private Mono<Void> completionLockReleaseAfterError(
+            com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle handle) {
+        return locks.release(handle)
+                .onErrorResume(releaseFailure -> Mono.empty())
+                .then();
+    }
+
+    private Mono<Void> completionLockReleaseAfterCancellation(
+            com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle handle) {
+        return locks.release(handle)
+                .onErrorResume(releaseFailure -> Mono.empty())
+                .then();
+    }
+
 }

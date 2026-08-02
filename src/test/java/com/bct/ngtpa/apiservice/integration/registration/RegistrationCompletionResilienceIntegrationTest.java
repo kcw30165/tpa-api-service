@@ -83,7 +83,7 @@ class RegistrationCompletionResilienceIntegrationTest {
                                                 RegistrationIdempotencyStartOutcome.STARTED,
                                                 processingRecord)));
                 when(locks.acquire(eq(SID), any())).thenReturn(Mono.just(new SessionLockHandle(true, "lock", "owner")));
-                when(locks.release(any())).thenReturn(Mono.empty());
+                when(locks.release(any())).thenReturn(Mono.just(true));
                 when(completion.complete(any()))
                                 .thenReturn(Mono.just(RegistrationCompletionResult.registered("20260717", "120000")));
                 service = new CompleteRegistrationService(context, sessions, username, passwords, idempotency, hashes,

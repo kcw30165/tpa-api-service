@@ -616,3 +616,14 @@ Replaced three fire-and-forget Forgot Password mutation-lock release subscriptio
 Validation: fail-first defect reproduced; focused repair, Forgot Password, Login, and Registration regressions passed; full Maven suite and canonical compile passed; architecture, security/scope, and diff audits passed. Evidence: `target/0061-subtask-006-001a-7r-fix-001-evidence-20260802-061723`.
 
 Exclusions preserved: no public Forgot Password Resend endpoint; no resend generation/delivery; no Forgot Password OTP verification; no reset authorization; no password submission or TRPResetPassword; no ActorContext or Account-Ref change; no Subtask 007 behavior. Commit this repair, then regenerate cumulative 001A-7 against the repair commit. Round 006-002 remains blocked. Subtask 006 remains incomplete. Subtask 007 has not started.
+
+
+####### Subtask 006 prerequisite repair round 001A-7R2: Registration Completion-Lock Reactive Release Stabilization
+
+Baseline: 2fe9c7fd12c7e577990aa50189cdb77a7ed9a1d0 (`fix(auth): compose mutation-lock release reactively`).
+
+Replaced the detached `CompleteRegistrationService#acquire(...)` completion-lock release with `Mono.usingWhen` success, error, and cancellation cleanup using the original ownership-safe handle. Acquisition, contention, protected Registration ordering, idempotency, session transitions, and public behavior remain unchanged. Protected work is never retried. Protected-work errors remain primary if cleanup fails. Successful work waits for acknowledged release; false, empty, and ambiguous release fail closed.
+
+Validation included fail-first architecture coverage, focused Registration completion and completion-lock tests, Registration OTP/idempotency, Login, Forgot Password, prior 001A-7R, production-wide reactive terminal audit, full Maven suite, canonical compile, and diff checks. Evidence: `target/0061-subtask-006-001a-7r2-fix-004-evidence-20260802-065826`.
+
+Cumulative 001A-7 remains blocked until this repair is committed and validation is regenerated. Round 006-002 remains blocked and not started. Subtask 006 remains incomplete. Subtask 007 has not started.
