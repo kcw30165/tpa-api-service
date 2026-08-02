@@ -223,7 +223,8 @@ public final class VerifyForgotPasswordOtpService implements VerifyForgotPasswor
                 now,
                 now.plus(resetAuthorizationTtl),
                 null);
-        ForgotPasswordAuthFlowContext updatedContext = context.withResetAuthorization(authorization);
+        ForgotPasswordAuthFlowContext updatedContext = context.withResetAuthorization(authorization)
+            .withPhase(ForgotPasswordProtectedPhase.PASSWORD_SETUP);
         ForgotPasswordAuthFlowEncryptedContext encrypted = protector.protect(updatedContext);
         Map<String, String> attrs = new LinkedHashMap<>(reloaded.data().attributes());
         attrs.put(CONTEXT_CIPHERTEXT, encrypted.ciphertext());

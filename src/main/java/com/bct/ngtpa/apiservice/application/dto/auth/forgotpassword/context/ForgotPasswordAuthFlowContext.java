@@ -45,7 +45,8 @@ public record ForgotPasswordAuthFlowContext(
 
     public ForgotPasswordAuthFlowContext withPhase(ForgotPasswordProtectedPhase next) {
         return new ForgotPasswordAuthFlowContext(normalizedUsername, customerId, tasUserId, publicIdentityType,
-                next == ForgotPasswordProtectedPhase.IDENTITY_VERIFIED, resetSubjectId, contactChannel,
+                identityVerified || next == ForgotPasswordProtectedPhase.IDENTITY_VERIFIED,
+                resetSubjectId, contactChannel,
                 protectedDestination, maskedDestination, resetAuthorization, workflowVersion, next);
     }
 

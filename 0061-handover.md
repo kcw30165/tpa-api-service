@@ -26,7 +26,7 @@ Next authorized work:
 
 - Subtask 007: Password completion and finalization
 
-Subtask 007 has not started.
+Subtask 007 is complete.
 
 ## Subtask 001
 
@@ -748,4 +748,55 @@ Exclusions preserved:
 - No `Account-Ref` requirement for Forgot Password.
 - No Subtask 007 or later behavior.
 
-Stop point: Subtask 006 is complete through round 006-004. The next authorized work is Subtask 007 password completion and finalization. Subtask 007 has not started.
+Stop point: Subtask 006 is complete through round 006-004. The next authorized work is Subtask 007 password completion and finalization. Subtask 007 starts below.
+
+### Subtask 007 implementation round 001: Password completion and finalization
+
+Commit message:
+
+feat(forgot-password): complete password reset finalization flow
+
+Implemented:
+
+- Added the public `POST /api/v1/auth/forgot-password/complete` endpoint with `auth_flow_sid`, `X-XSRF-TOKEN`, `Origin`/`Referer`, `X-Request-Id`, `Accept-Language`, and `Idempotency-Key` handling, plus a request body containing only `password` and `confirmPassword`.
+- Added the completion application boundary with `CompleteForgotPasswordUseCase`, `CompleteForgotPasswordCommand`, `CompleteForgotPasswordResult`, and `CompleteForgotPasswordStatus`.
+- Added forgot-password-specific structural password validation that reuses the repository-approved registration `PasswordPolicy` contract through `AuthWorkflowPolicyPort` without coupling to registration web or APIM code.
+- Extended the protected Forgot Password phase vocabulary with `PASSWORD_SETUP` and updated OTP verification so successful OTP verification transitions the protected context into password setup before completion.
+- Added reset-authorization validation under the mutation lock using the existing protected-context validator and fail-closed session reload semantics.
+- Added COMPLETE idempotency reservation, replay, and unknown-outcome blocking using the forgot-password idempotency port and a constant request hash that excludes password material and auth-flow session identity.
+- Added one mutation-lock lifecycle for completion using the existing auth-flow mutation lock and revision-aware session reload under lock.
+- Added APIM `TRPResetPassword` integration under `adapter/out/apim/forgotpassword` with request mapping restricted to protected `cust-id` and submitted password, `X-Request-Id` propagation only, safe request `toString()` redaction, and exact success/rejection interpretation.
+- Recognized `err.tpa.password.invalid` as a replayable business rejection targeting `password` without authorization consumption or cookie clearing.
+- Recognized `err.tpa.member.not.found` as a terminal business rejection that closes the flow, clears pre-auth cookies, and returns `RETURN_TO_LOGIN`.
+- Persisted unknown downstream outcomes as irreversible COMPLETE unknown outcome state, blocked later retries across idempotency keys, preserved pre-auth cookies, and returned sanitized system-unavailable failure.
+- Added conditional reset-authorization consumption on success only.
+- Added revision-aware terminal finalization and replay support for completed and cleanup-pending outcomes using persisted replay snapshots.
+- Added cookie clearing on terminal success/member-not-found responses and preserved cookies for recoverable or unknown-outcome cases.
+
+Validation:
+
+- Failing test added or updated first: `ApimForgotPasswordCompletionAdapterTest`, `CompleteForgotPasswordServiceTest`, and `AuthForgotPasswordCompleteControllerTest`.
+- Expected failure reason: the repository had no `TRPResetPassword` adapter, no completion use case/controller slice, no `PASSWORD_SETUP` protected phase, and no forgot-password password-completion orchestration.
+- Targeted failure result: focused tests initially failed with missing symbols for `CompleteForgotPasswordService`, `CompleteForgotPasswordCommand`, `ForgotPasswordPasswordValidator`, and `PASSWORD_SETUP`; the first post-implementation happy-path service run then exposed a fixture defect with `INVALID_AUTH_FLOW` returned instead of `SUCCESS` until protected context attributes were populated correctly.
+- Production change made after failing test: implemented the APIM completion adapter, completion use case/service, password validator, completion controller/mapper/DTOs, config wiring, protected phase transition, replay handling, and unknown-outcome blocking.
+- Targeted test pass result: `runTests` on `ApimForgotPasswordCompletionAdapterTest`, `CompleteForgotPasswordServiceTest`, and `AuthForgotPasswordCompleteControllerTest`: PASS.
+- Broader validation result: `runTests` on `ApimForgotPasswordCompletionAdapterTest`, `VerifyForgotPasswordOtpServiceTest`, `CompleteForgotPasswordServiceTest`, and `AuthForgotPasswordCompleteControllerTest`: PASS with 14 passed and 0 failed.
+- Surefire report evidence:
+  - `com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.ApimForgotPasswordCompletionAdapterTest`: 3 tests, 0 failures, 0 errors.
+  - `com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.verify.VerifyForgotPasswordOtpServiceTest`: 2 tests, 0 failures, 0 errors.
+  - `com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.CompleteForgotPasswordServiceTest`: 5 tests, 0 failures, 0 errors.
+  - `com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthForgotPasswordCompleteControllerTest`: 3 tests, 0 failures, 0 errors.
+- Full `mvn test`: NOT RUN after Subtask 007; focused completion and adjacent forgot-password validation were run instead.
+- Canonical `mvn -DskipTests compile`: NOT RUN after Subtask 007 because the focused tests already compiled and exercised the touched slice.
+- Additional evidence note: `docs/auth/0061-subtask-007-forgot-password-completion.md`.
+
+Exclusions preserved:
+
+- No authenticated-session creation or automatic Login after reset.
+- No post-login Change Password flow.
+- No `Account-Ref` requirement for Forgot Password completion.
+- No `ActorContext` change.
+- No Subtask 008, Subtask 009, or Subtask 010 behavior.
+
+Stop point: Subtask 007 is complete. Later Forgot Password subtasks remain out of scope for this round.
+

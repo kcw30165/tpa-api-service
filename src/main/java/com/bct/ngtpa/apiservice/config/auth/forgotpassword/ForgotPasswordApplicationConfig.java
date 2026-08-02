@@ -8,16 +8,23 @@ import com.bct.ngtpa.apiservice.application.dto.session.SessionConcurrencyPolicy
 import com.bct.ngtpa.apiservice.application.dto.session.SessionOnNewFlowPolicy;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionTtlPolicy;
 import com.bct.ngtpa.apiservice.application.port.in.CreateAuthFlowSessionCsrfUseCase;
+import com.bct.ngtpa.apiservice.application.port.in.CompleteForgotPasswordUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.ResendForgotPasswordOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.StartForgotPasswordUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.VerifyForgotPasswordOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionMutationLockPort;
+import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
+import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordCompletionPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordUsernameLookupPort;
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordService;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.CompleteForgotPasswordService;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordPasswordValidator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordDestinationMasker;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordInitialOtpPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitCoordinator;
@@ -93,6 +100,32 @@ public class ForgotPasswordApplicationConfig {
         return new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identity.VerifyForgotPasswordIdentityService(
                 loader, protector, sessions, locks, expiry, clock, java.time.Duration.ofSeconds(10));
     }
+
+        @Bean
+        public CompleteForgotPasswordUseCase completeForgotPasswordUseCase(
+                        AuthFlowSessionPort sessions,
+                        AuthFlowSessionMutationLockPort locks,
+                        ForgotPasswordAuthFlowContextProtectorPort protector,
+                        ForgotPasswordCompletionPort completion,
+                        ForgotPasswordIdempotencyPort idempotency,
+                        AuthWorkflowPolicyPort policies,
+                        Clock clock,
+                        AuthWorkflowProperties properties,
+                        CorsProperties corsProperties) {
+                properties.validateForgotPasswordPolicy();
+                return new CompleteForgotPasswordService(
+                                sessions,
+                                locks,
+                                protector,
+                                completion,
+                                idempotency,
+                                new com.bct.ngtpa.apiservice.application.service.auth.forgotpassword.ForgotPasswordResetAuthorizationValidator(),
+                                new ForgotPasswordPasswordValidator(policies),
+                                clock,
+                                Duration.ofSeconds(properties.getForgotPassword().getIdempotency().getCompleteTtlSeconds()),
+                                Duration.ofSeconds(10),
+                                corsProperties == null ? List.of() : corsProperties.getAllowedOrigins());
+        }
 
     @Bean
     public com.bct.ngtpa.apiservice.application.port.in.VerifyForgotPasswordDetailsUseCase verifyForgotPasswordDetailsUseCase(
