@@ -38,7 +38,8 @@ public final class RedisForgotPasswordIdempotencyAdapter implements ForgotPasswo
 
     @Override
     public Mono<com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordPendingCommitRefResult> attachPendingCommitRef(com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordPendingCommitRefCommand command) {
-        if (command.action() != ForgotPasswordIdempotencyAction.DETAILS_AND_OTP) return Mono.error(new IllegalStateException("Pending commit reference is details-only"));
+        if (command.action() != ForgotPasswordIdempotencyAction.DETAILS_AND_OTP
+                && command.action() != ForgotPasswordIdempotencyAction.OTP_RESEND) return Mono.error(new IllegalStateException("Pending commit reference is not supported for this action"));
         String key=keyFactory.keyFor(command.action(),command.idempotencyKey());
         return redis.attachPendingCommitRef(key,command.requestHash().value(),command.opaqueCommitRef(),command.ttl())
                 .map(jsonMapper::fromJson).map(r -> new com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordPendingCommitRefResult(

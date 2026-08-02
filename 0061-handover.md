@@ -655,3 +655,33 @@ Validation results:
 Exclusions preserved: no public Forgot Password Resend endpoint; no resend candidate creation or delivery; no Forgot Password OTP verification; no reset authorization; no password submission, TRPResetPassword, or password completion; no final page/error YAML; no ActorContext change; no Account-Ref requirement for Forgot Password; and no Subtask 007 or later behavior.
 
 Prerequisite 001A is complete. The next authorized round is 006-002 OTP Resend Orchestration and Endpoint. Subtask 006 remains incomplete. Subtask 007 has not started.
+
+### Subtask 006 implementation round 002: OTP Resend Orchestration and Endpoint
+
+Baseline: 48ce4b017a195542d1843a10fd4e6947cd0c2339 (`fix(auth): compose registration completion-lock release reactively`).
+
+Implemented cumulative resend scope for Forgot Password OTP:
+- Added `ResendForgotPasswordOtpUseCase` and `ResendForgotPasswordOtpService` as the Forgot Password-specific resend orchestration path.
+- Added public `POST /api/v1/auth/forgot-password/otp/resend` in `AuthForgotPasswordOtpController` using `auth_flow_sid`, `X-XSRF-TOKEN`, `Origin`/`Referer`, `X-Request-Id`, `Accept-Language`, and `Idempotency-Key`, with no `Account-Ref` and no request body.
+- Added `ForgotPasswordOtpResendWebMapper` to normalize public mutation responses to the approved workflow/result contract and keep downstream delivery statuses internal.
+- Wired resend beans in `ForgotPasswordApplicationConfig` and enabled forgot-password idempotency pending commit references for `OTP_RESEND` in `RedisForgotPasswordIdempotencyAdapter`.
+
+Behavior and ownership notes:
+- Resend orchestration acquires one auth-flow mutation lock, reloads the authoritative session snapshot under the lock, validates CSRF and Origin/Referer against the reloaded session, then evaluates resend eligibility using the existing 006-001 foundation.
+- The current authoritative OTP challenge remains authoritative until message delivery is accepted. Resend creates a candidate challenge first, stages pending resend metadata in the auth-flow session, then transitions authority only after accepted delivery.
+- Failed delivery invalidates only the candidate challenge and clears pending resend metadata. Unknown delivery preserves the original authoritative challenge and moves the protected Forgot Password phase to `OTP_DELIVERY_UNKNOWN`.
+- Completed idempotent replay resolves from the persisted opaque resend commit reference and reconstructs the verify-OTP payload through `ForgotPasswordOtpReplayResolver` without re-sending.
+
+Validation results:
+- Fail-first architecture tests for the missing resend slice: PASS after implementation.
+- Focused resend validation: `runTests` on `ForgotPasswordOtpResendOrchestrationSubtask006002FailFirstTest` and `AuthForgotPasswordOtpResendEndpointArchitectureFailFirstTest`: PASS.
+- Narrow diagnostics on all touched production files: PASS after one local resend-service repair.
+- Adjacent broader validation from surefire reports: `RedisForgotPasswordIdempotencyAdapterTest`, `AuthForgotPasswordControllerTest`, and `ForgotPasswordWorkflowPropertiesValidationTest`: PASS.
+- Full `mvn test`: NOT RUN in this round.
+- Canonical `mvn -DskipTests compile`: NOT RUN in this round.
+- `git diff --check`: NOT conclusively captured in this round because the terminal reused prior Maven output.
+- Evidence directory: `target/0061-subtask-006-002-evidence-20260802-161431`.
+
+Exclusions preserved: no Forgot Password OTP verification flow; no reset authorization consumption; no password submission or `TRPResetPassword`; no Subtask 007 behavior; no ActorContext change; and no `Account-Ref` requirement for Forgot Password resend.
+
+Stop point: Subtask 006 round 002 is complete. The next cumulative round is 006-003 Forgot Password OTP verification and downstream reset-authorization orchestration. Subtask 006 remains incomplete until that round lands. Subtask 007 has not started.
