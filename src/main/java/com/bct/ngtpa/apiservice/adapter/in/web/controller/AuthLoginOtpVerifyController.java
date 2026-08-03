@@ -16,6 +16,9 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.verify.Verify
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.verify.VerifyLoginOtpStatus;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
+
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.CookieValue;
@@ -28,6 +31,7 @@ import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("/api/v1/auth/login/otp")
+@Slf4j
 public final class AuthLoginOtpVerifyController {
     private final VerifyLoginOtpUseCase useCase;
     private final LoginOtpVerifyWebMapper mapper;
@@ -85,6 +89,11 @@ public final class AuthLoginOtpVerifyController {
                     clean(language),
                     clean(requestId)))
                     .map(result -> {
+                        if (result.status() == VerifyLoginOtpStatus.SESSION_CREATION_FAILED
+                                || result.status() == VerifyLoginOtpStatus.SYSTEM_FAILED) {
+                            log.error("event=login.otp.verify.http.failure status={} requestId={}",
+                                    result.status(), clean(requestId));
+                        }
                         if (result.status() == VerifyLoginOtpStatus.ACCOUNTS_READY
                                 && result.authenticatedSessionId() != null
                                 && hasText(result.authenticatedCsrfToken())) {
@@ -97,8 +106,16 @@ public final class AuthLoginOtpVerifyController {
                             xsrfCookies.clearXsrfCookie(response);
                         }
                         return LoginHttpResponses.toResponse(mapper.toMutationResponse(result));
-                    });
+                    })
+                    .doOnError(error -> log.error(
+                            "event=login.otp.verify.http.exception exceptionType={} message={} requestId={}",
+                            error.getClass().getSimpleName(), error.getMessage(), clean(requestId), error));
         } catch (RuntimeException exception) {
+            log.error(
+                    "Synchronous login OTP verification failure: requestId={}",
+                    requestId,
+                    exception
+            );
             return missing(LoginErrorKey.REQUEST_INVALID.value(), "PAGE");
         }
     }

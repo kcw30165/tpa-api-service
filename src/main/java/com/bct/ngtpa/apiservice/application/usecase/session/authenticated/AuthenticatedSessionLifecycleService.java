@@ -7,6 +7,8 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.login.session.RevokeAut
 
 import java.time.*;
 import java.util.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 /**
@@ -19,6 +21,8 @@ public final class AuthenticatedSessionLifecycleService
         CreateAuthenticatedSessionUseCase,
         RevokeAuthenticatedSessionUseCase,
         LogoutAuthenticatedSessionUseCase {
+
+    private static final Logger LOG = LoggerFactory.getLogger(AuthenticatedSessionLifecycleService.class);
 
     private final AuthenticatedSessionPort port;
     private final AuthenticatedSessionProtectorPort protector;
@@ -68,7 +72,19 @@ public final class AuthenticatedSessionLifecycleService
                     Duration.between(now, idle),
                     now,
                     command.correlationId()))
-                    .thenReturn(AuthenticatedSessionLifecycleResult.active(session));
+                    .flatMap(persistence -> {
+                        if (persistence == null
+                                || persistence.status() != AuthenticatedSessionPersistenceStatus.STORED) {
+                            LOG.error("event=authenticated.session.create.rejected stage=redis-store persistenceStatus={} correlationId={}",
+                                    persistence == null ? null : persistence.status(), command.correlationId());
+                            return result(AuthenticatedSessionLifecycleStatus.FAILED);
+                        }
+                        return Mono.just(AuthenticatedSessionLifecycleResult.active(session));
+                    })
+                    .doOnError(error -> LOG.error(
+                            "event=authenticated.session.create.failure stage=redis-store exceptionType={} message={} correlationId={}",
+                            error.getClass().getSimpleName(), error.getMessage(), command.correlationId(), error))
+                    .onErrorResume(error -> result(AuthenticatedSessionLifecycleStatus.FAILED));
         });
     }
 

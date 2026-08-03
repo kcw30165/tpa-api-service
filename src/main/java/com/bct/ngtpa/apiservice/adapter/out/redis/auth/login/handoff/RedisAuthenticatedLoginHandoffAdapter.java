@@ -36,10 +36,13 @@ public final class RedisAuthenticatedLoginHandoffAdapter implements Authenticate
                 .flatMap(created -> created
                         ? Mono.just(new AuthenticatedLoginHandoffCreateResult(
                                 AuthenticatedLoginHandoffCreateOutcome.CREATED, h))
-                        : loadByHandoff(p.handoffReference()).map(existing -> new AuthenticatedLoginHandoffCreateResult(
-                                sameIdentity(existing, p) ? AuthenticatedLoginHandoffCreateOutcome.EXISTING
-                                        : AuthenticatedLoginHandoffCreateOutcome.CONFLICT,
-                                sameIdentity(existing, p) ? existing : null)));
+                        : loadByHandoff(p.handoffReference())
+                                .map(existing -> new AuthenticatedLoginHandoffCreateResult(
+                                        sameIdentity(existing, p) ? AuthenticatedLoginHandoffCreateOutcome.EXISTING
+                                                : AuthenticatedLoginHandoffCreateOutcome.CONFLICT,
+                                        sameIdentity(existing, p) ? existing : null))
+                                .onErrorReturn(new AuthenticatedLoginHandoffCreateResult(
+                                        AuthenticatedLoginHandoffCreateOutcome.CONFLICT, null)));
     }
 
     public Mono<AuthenticatedLoginHandoff> loadByHandoff(AuthenticatedLoginHandoffReference r) {

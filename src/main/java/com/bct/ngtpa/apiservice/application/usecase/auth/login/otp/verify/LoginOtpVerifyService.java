@@ -100,8 +100,8 @@ public final class LoginOtpVerifyService implements VerifyLoginOtpUseCase {
                                                                 ? VerifyLoginOtpStatus.CSRF_INVALID
                                                                 : VerifyLoginOtpStatus.AUTH_FLOW_INVALID, null, false)));
                 }).doOnNext(r -> LOG.info("event=login.otp.verify.result status={}", r.status()))
-                                .doOnError(e -> LOG.error("event=login.otp.verify.failure exceptionType={}",
-                                                e.getClass().getSimpleName()))
+                                .doOnError(e -> LOG.error("event=login.otp.verify.failure exceptionType={} message={} correlationId={}",
+                                                e.getClass().getSimpleName(), e.getMessage(), c.correlationId(), e))
                                 .onErrorReturn(result(VerifyLoginOtpStatus.SYSTEM_FAILED, null, false));
         }
         private Mono<VerifyLoginOtpResult> verifyActive(VerifyLoginOtpCommand c,
@@ -212,8 +212,14 @@ public final class LoginOtpVerifyService implements VerifyLoginOtpUseCase {
                                                         proof.operationReference(),
                                                         proof.reservationHash(),
                                                         proof);
-                                        return transition.establish(command).map(
-                                                        established -> established
+                                        return transition.establish(command)
+                                                        .doOnNext(established -> {
+                                                                if (established.status() != EstablishAuthenticatedLoginSessionStatus.ESTABLISHED) {
+                                                                        LOG.error("event=login.otp.verify.continuation.rejected stage=authenticated-session-establishment status={} accountCount={} correlationId={}",
+                                                                                established.status(), assigned.accounts().size(), c.correlationId());
+                                                                }
+                                                        })
+                                                        .map(established -> established
                                                                         .status() == EstablishAuthenticatedLoginSessionStatus.ESTABLISHED
                                                                                         ? new VerifyLoginOtpResult(
                                                                                                         VerifyLoginOtpStatus.ACCOUNTS_READY,

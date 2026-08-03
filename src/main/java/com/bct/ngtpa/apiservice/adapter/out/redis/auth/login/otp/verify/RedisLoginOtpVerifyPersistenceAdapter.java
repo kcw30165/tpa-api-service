@@ -8,6 +8,9 @@ import com.bct.ngtpa.apiservice.application.port.out.*;
 import com.bct.ngtpa.apiservice.application.service.auth.login.idempotency.LoginIdempotencyPersistenceIdDeriver;
 import com.bct.ngtpa.apiservice.application.service.auth.otp.OtpCodeHasher;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
 import java.time.*;
 import java.util.*;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
@@ -19,7 +22,9 @@ public final class RedisLoginOtpVerifyPersistenceAdapter implements LoginOtpVeri
     private final RedisLoginIdempotencyKeyFactory keys;
     private final LoginIdempotencyPersistenceIdDeriver ids;
     private final ReactiveStringRedisTemplate redis;
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper mapper = new ObjectMapper()
+        .registerModule(new JavaTimeModule())
+        .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
     public RedisLoginOtpVerifyPersistenceAdapter(OtpChallengeStatePort c, OtpCodeHasher h,
             RedisLoginIdempotencyKeyFactory k, LoginIdempotencyPersistenceIdDeriver i, ReactiveStringRedisTemplate r) {

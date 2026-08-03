@@ -12,10 +12,14 @@ import java.time.Instant;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 public final class EstablishAuthenticatedLoginSessionService
         implements EstablishAuthenticatedLoginSessionUseCase {
+    private static final Logger LOG = LoggerFactory.getLogger(
+            EstablishAuthenticatedLoginSessionService.class);
     private final CreateAuthenticatedSessionUseCase create;
     private final DeleteAuthFlowSessionPort cleanup;
     private final RevokeAuthenticatedSessionUseCase revoke;
@@ -62,6 +66,8 @@ public final class EstablishAuthenticatedLoginSessionService
         return Mono.defer(() -> {
             String rawAuthenticatedCsrfToken = csrfTokenGenerator.generate();
             if (rawAuthenticatedCsrfToken == null || rawAuthenticatedCsrfToken.isBlank()) {
+                LOG.error("event=authenticated.login.session.establish.rejected stage=csrf-token-generation reason=blank-token correlationId={}",
+                        command.correlationId());
                 return Mono.just(EstablishAuthenticatedLoginSessionResult.failed(
                         EstablishAuthenticatedLoginSessionStatus.SESSION_CREATION_FAILED));
             }
@@ -73,6 +79,8 @@ public final class EstablishAuthenticatedLoginSessionService
                     .flatMap(reserved -> {
                         if (reserved.outcome() != AuthenticatedLoginHandoffCreateOutcome.CREATED
                                 && reserved.outcome() != AuthenticatedLoginHandoffCreateOutcome.EXISTING) {
+                            LOG.error("event=authenticated.login.session.establish.rejected stage=handoff-reservation outcome={} correlationId={}",
+                                    reserved.outcome(), command.correlationId());
                             return Mono.just(EstablishAuthenticatedLoginSessionResult.failed(
                                     EstablishAuthenticatedLoginSessionStatus.SESSION_CREATION_FAILED));
                         }
@@ -87,6 +95,8 @@ public final class EstablishAuthenticatedLoginSessionService
                     .flatMap(created -> {
                         if (created.status() != AuthenticatedSessionLifecycleStatus.ACTIVE
                                 || created.session() == null) {
+                            LOG.error("event=authenticated.login.session.establish.rejected stage=session-persistence lifecycleStatus={} sessionPresent={} correlationId={}",
+                                    created.status(), created.session() != null, command.correlationId());
                             return Mono.just(EstablishAuthenticatedLoginSessionResult.failed(
                                     EstablishAuthenticatedLoginSessionStatus.SESSION_CREATION_FAILED));
                         }
@@ -118,8 +128,13 @@ public final class EstablishAuthenticatedLoginSessionService
                                                 EstablishAuthenticatedLoginSessionStatus.CLEANUP_FAILED)));
                     });
                     });
-        }).onErrorReturn(EstablishAuthenticatedLoginSessionResult.failed(
-                EstablishAuthenticatedLoginSessionStatus.SESSION_CREATION_FAILED));
+        }).doOnError(e -> LOG.error(
+                        "event=authenticated.login.session.establish.failure errorType={} message={}",
+                        e.getClass().getSimpleName(),
+                        e.getMessage(),
+                        e))
+                .onErrorReturn(EstablishAuthenticatedLoginSessionResult.failed(
+                        EstablishAuthenticatedLoginSessionStatus.SESSION_CREATION_FAILED));
     }
 
 
