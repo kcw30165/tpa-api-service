@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.config.auth.forgotpassword;
 
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionExpiryRefreshPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort;
+import com.bct.ngtpa.apiservice.application.port.out.SecurityAuditEventPort;
 import com.bct.ngtpa.apiservice.application.service.auth.forgotpassword.context.DefaultForgotPasswordProtectedAuthFlowContextLoader;
 import com.bct.ngtpa.apiservice.application.service.auth.forgotpassword.context.ForgotPasswordProtectedAuthFlowContextLoader;
 import com.bct.ngtpa.apiservice.application.service.auth.forgotpassword.context.SlidingForgotPasswordProtectedAuthFlowContextLoader;
@@ -21,6 +22,7 @@ public class ForgotPasswordProtectedAuthFlowContextLoaderConfig {
             AuthFlowSessionLifecycleService lifecycleService,
             AuthFlowSessionCsrfService csrfService,
             ForgotPasswordAuthFlowContextProtectorPort contextProtector,
+            SecurityAuditEventPort securityAuditEventPort,
             AuthFlowSessionExpiryRefreshPort expiryRefreshPort,
             Clock clock) {
         ForgotPasswordProtectedAuthFlowContextLoader delegate =
@@ -28,6 +30,7 @@ public class ForgotPasswordProtectedAuthFlowContextLoaderConfig {
                         lifecycleService,
                         csrfService,
                         contextProtector,
+                        securityAuditEventPort,
                         clock);
         return new SlidingForgotPasswordProtectedAuthFlowContextLoader(
                 delegate,

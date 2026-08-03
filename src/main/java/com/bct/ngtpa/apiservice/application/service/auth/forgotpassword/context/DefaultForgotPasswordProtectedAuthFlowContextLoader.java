@@ -2,10 +2,15 @@ package com.bct.ngtpa.apiservice.application.service.auth.forgotpassword.context
 
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContextAttributeNames;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowEncryptedContext;
+import com.bct.ngtpa.apiservice.application.dto.security.audit.SecurityAuditEvent;
+import com.bct.ngtpa.apiservice.application.dto.security.audit.SecurityAuditEventOutcome;
+import com.bct.ngtpa.apiservice.application.dto.security.audit.SecurityAuditEventSeverity;
+import com.bct.ngtpa.apiservice.application.dto.security.audit.SecurityAuditEventType;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionData;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort;
+import com.bct.ngtpa.apiservice.application.port.out.SecurityAuditEventPort;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionCsrfService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionCsrfValidationStatus;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionLifecycleService;
@@ -24,16 +29,21 @@ public class DefaultForgotPasswordProtectedAuthFlowContextLoader
     private final AuthFlowSessionLifecycleService lifecycleService;
     private final AuthFlowSessionCsrfService csrfService;
     private final ForgotPasswordAuthFlowContextProtectorPort contextProtector;
+    private final SecurityAuditEventPort securityAuditEventPort;
     private final Clock clock;
 
     public DefaultForgotPasswordProtectedAuthFlowContextLoader(
             AuthFlowSessionLifecycleService lifecycleService,
             AuthFlowSessionCsrfService csrfService,
             ForgotPasswordAuthFlowContextProtectorPort contextProtector,
+            SecurityAuditEventPort securityAuditEventPort,
             Clock clock) {
         this.lifecycleService = Objects.requireNonNull(lifecycleService, "lifecycleService must not be null");
         this.csrfService = Objects.requireNonNull(csrfService, "csrfService must not be null");
         this.contextProtector = Objects.requireNonNull(contextProtector, "contextProtector must not be null");
+        this.securityAuditEventPort = Objects.requireNonNull(
+                securityAuditEventPort,
+                "securityAuditEventPort must not be null");
         this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
 
@@ -60,15 +70,47 @@ public class DefaultForgotPasswordProtectedAuthFlowContextLoader
                 command.correlationId()))
                 .flatMap(validation -> {
                     if (!validation.valid()) {
-                        return Mono
-                                .just(ForgotPasswordProtectedAuthFlowContextResult.invalid(map(validation.status())));
+                    ForgotPasswordProtectedAuthFlowContextStatus status = map(validation.status());
+                    return publishSecurityRejection(command, now, status)
+                        .thenReturn(ForgotPasswordProtectedAuthFlowContextResult.invalid(status));
                     }
                     return pipeline;
                 })
                 .onErrorResume(RuntimeException.class,
-                        ignored -> Mono.just(ForgotPasswordProtectedAuthFlowContextResult.invalid(
-                                ForgotPasswordProtectedAuthFlowContextStatus.CSRF_INVALID)));
+                    ignored -> publishSecurityRejection(
+                        command,
+                        now,
+                        ForgotPasswordProtectedAuthFlowContextStatus.CSRF_INVALID)
+                        .thenReturn(ForgotPasswordProtectedAuthFlowContextResult.invalid(
+                            ForgotPasswordProtectedAuthFlowContextStatus.CSRF_INVALID)));
     }
+
+            private Mono<Void> publishSecurityRejection(
+                ForgotPasswordProtectedAuthFlowContextCommand command,
+                Instant occurredAt,
+                ForgotPasswordProtectedAuthFlowContextStatus status) {
+            return securityAuditEventPort.publish(new SecurityAuditEvent(
+                    eventType(status),
+                    SecurityAuditEventOutcome.REJECTED,
+                    SecurityAuditEventSeverity.WARN,
+                    AuthFlowScenario.FORGOT_PASSWORD.name(),
+                    "LOAD_PROTECTED_CONTEXT",
+                    status.name(),
+                    command.correlationId(),
+                    null,
+                    null,
+                    null,
+                    Map.of("csrfRequired", Boolean.toString(command.csrfRequired())),
+                    occurredAt))
+                .onErrorResume(ignored -> Mono.empty());
+            }
+
+            private SecurityAuditEventType eventType(ForgotPasswordProtectedAuthFlowContextStatus status) {
+            if (status == ForgotPasswordProtectedAuthFlowContextStatus.ORIGIN_REFERER_INVALID) {
+                return SecurityAuditEventType.ORIGIN_REFERER_REJECTED;
+            }
+            return SecurityAuditEventType.CSRF_VALIDATION_FAILED;
+            }
 
     private ForgotPasswordProtectedAuthFlowContextResult validateAndDecrypt(
             Optional<AuthFlowSession> optional,

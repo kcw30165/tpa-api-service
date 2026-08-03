@@ -28,7 +28,8 @@ public final class ForgotPasswordOtpSessionBindingAdapter implements ForgotPassw
         if (c == null || c.sessionId() == null || c.mutationLock() == null || !c.mutationLock().acquired()
                 || c.deliveryStatus() == null || c.now() == null)
             return rejected();
-        return sessions.load(c.sessionId()).flatMap(o -> o.isEmpty() ? rejected() : applyReloaded(o.get(), c))
+        return sessions.loadSnapshot(c.sessionId())
+            .flatMap(o -> o.isEmpty() ? rejected() : applyReloaded(o.get().session(), c))
                 .onErrorResume(e -> rejected());
     }
 

@@ -23,12 +23,11 @@ Completed implementation subtasks:
   - Round 006-004: stabilization, traceability, regression, security, and evidence closeout
 - Subtask 007: Password completion and finalization
 - Subtask 008: FE-owned presentation-boundary closeout
+- Subtask 009: Observability, Security, and Contract Tests
 
 Next authorized work:
 
-- Subtask 009
-
-Subtasks 007 and 008 are complete.
+- Subtask 010
 
 ## Subtask 001
 
@@ -158,7 +157,9 @@ Exclusions preserved: no TRPSearchRegedMember, DOB/contact/details verification,
 
 Stop point: Subtask 004 complete. Do not begin Subtask 005.
 
-## Subtask 005A completion: Message-delivery unknown-outcome foundation
+## Subtask 005: details and immediate otp
+
+### Subtask 005A completion: Message-delivery unknown-outcome foundation
 
 Commit message: feat(auth): distinguish unknown message delivery outcomes
 
@@ -338,6 +339,8 @@ Exclusions preserved:
 
 Stop point: Subtask 005 complete. Subtask 006 has not started.
 
+## Subtask 006: OTP resend and verification
+
 ### Subtask 006 implementation round 001: OTP Resend Foundation
 
 Commit message: feat(forgot-password): add otp resend foundation
@@ -359,6 +362,7 @@ Stop point: Subtask 006 is in progress. Next round: 006-002 OTP Resend Orchestra
 Commit message: feat(auth): add auth-flow session revision schema foundation
 
 Implemented:
+
 - Added framework-free application-owned SessionRevision, SessionRevisionGenerator, SecureSessionRevisionGenerator, and AuthFlowSessionSnapshot vocabulary.
 - SessionRevision uses 128 bits of SecureRandom entropy, remains opaque, and is redacted from toString output.
 - Extended RedisAuthFlowSessionRecord additively with optional sessionRevision while preserving deserialization of legacy records without the field.
@@ -369,6 +373,7 @@ Implemented:
 - Operational invariant: all revision-unaware writer pods must be drained before initializing schema version 2. After initialization, rollback to a revision-unaware writer is prohibited. The marker cannot stop an already-running old binary by itself.
 
 Validation:
+
 - Fail-first: missing revision and compatibility vocabulary confirmed.
 - Focused: SessionRevisionSchemaFoundationSubtask006001a1FailFirstTest,AuthFlowSessionPersistenceCompatibilityVocabularyTest,AuthFlowSessionPersistenceSchemaPropertiesTest,RedisAuthFlowSessionJsonMapperTest,RedisAuthFlowSessionKeyFactoryTest,RedisAdapterConfigConditionalTest passed.
 - Regression: RedisAuthFlowSessionAdapterTest,P4BAuthFlowSessionRedisSecurityGuardTest,RedisAuthFlowSessionArchitectureGuardTest,AuthFlowSessionPortContractShapeTest,AuthForgotPasswordControllerTest,AuthLoginControllerTest,AuthRegistrationControllerWorkflowContractTest,ForgotPasswordOtpResendFoundationSubtask006001FailFirstTest passed.
@@ -376,6 +381,7 @@ Validation:
 - Evidence: target/0061-subtask-006-001a-1-evidence-20260801-170629
 
 Exclusions preserved:
+
 - No revision-aware create/update/touch/complete/cancel/delete operation.
 - No legacy session revision initialization.
 - No production session-writer migration.
@@ -389,6 +395,7 @@ Stop point: split prerequisite round 001A-1 complete. Subtask 006 remains incomp
 Commit message: `feat(auth): add revision-aware session creation and legacy initialization`
 
 Implemented:
+
 - Added source-compatible `createRevisioned`, `loadSnapshot`, and `initializeLegacyRevision` application boundaries.
 - Production session creation generates one cryptographically opaque `SessionRevision` and persists the complete auth-flow session plus its initial revision in the first single-record Redis write.
 - Existing `create` callers remain source-compatible and production creation delegates to the revision-aware path.
@@ -404,6 +411,7 @@ Implemented:
 - The deterministic test fixture uses an injected fixed `Clock`; production wiring continues to use `Clock.systemUTC()`.
 
 Validation:
+
 - Fail-first test confirmed the absence of the revision-aware create, snapshot-load, and legacy-initialization contracts before production changes.
 - Focused tests passed:
   - `AuthFlowSessionRevisionCreateLoadLegacyInitSubtask006001a2FailFirstTest`
@@ -419,6 +427,7 @@ Validation:
 - Final regression and full-suite results were confirmed before this handover finalization.
 
 Security and compatibility:
+
 - `SessionRevision`, mutation-lock ownership tokens, Redis keys, serialized session state, protected context, challenge identifiers, OTP data, account data, and PII are not exposed through public contracts or diagnostic `toString` output.
 - Revision values are not included in Redis keys.
 - Legacy records remain readable through the existing domain load path.
@@ -426,6 +435,7 @@ Security and compatibility:
 - All revision-unaware writer pods must remain drained after schema version 2 initialization. Rollback to a revision-unaware writer remains prohibited.
 
 Exclusions preserved:
+
 - No revision-aware generic update, touch, complete, cancel, or delete operation.
 - No migration of production auth-flow session mutation callers.
 - No Login `OTP_VERIFY` idempotency, OTP consumption proof, account assignment persistence, authenticated-login handoff, or recoverable auth-flow cleanup.
@@ -434,6 +444,7 @@ Exclusions preserved:
 - No Subtask 007 or later behavior.
 
 Stop point:
+
 - Split prerequisite round 001A-2 is complete.
 - Subtask 006 remains incomplete.
 - Next prerequisite round: 001A-3 revision-aware update, touch, complete, cancel, and delete.
@@ -442,9 +453,10 @@ Stop point:
 
 #### Subtask 006 prerequisite round 001A-3: Revision-aware auth-flow session mutations
 
-Commit message: 
+Commit message:
 
 Implemented:
+
 - Added application-owned revision-aware update and delete commands plus safe typed mutation outcomes.
 - Added central revision-aware update, touch, complete, cancel, and delete boundaries to AuthFlowSessionPort and RedisAuthFlowSessionAdapter.
 - Successful replace operations compare the exact expected serialized session, including the expected persisted SessionRevision, before applying one complete revised record with a fresh opaque revision.
@@ -455,6 +467,7 @@ Implemented:
 - Existing unversioned methods remain temporarily source-compatible for production caller migration in 001A-4. They are not approved for new code and are not used by the new revision-aware boundaries.
 
 Validation:
+
 - Fail-first mutation-contract test confirmed missing 001A-3 capability.
 - Focused: ForgotPasswordDeliveryReplayProtectionSubtask005003FailFirstTest,ForgotPasswordInitialOtpBindingSubtask005002FailFirstTest,StartForgotPasswordServiceTest,RedisForgotPasswordIdempotencyAdapterTest,ForgotPasswordIdempotencyContractTest,RedisOtpChallengeStateAdapterTest passed.
 - Regression: RedisAuthFlowSessionAdapterTest,RedisAuthFlowSessionMutationLockAdapterTest,RedisAuthFlowSessionCompletionLockAdapterTest,AuthFlowSessionLifecycleServiceTest,AuthFlowSessionCsrfServiceTest,AuthFlowSessionExpiryRefreshPersistenceTest,AuthFlowSessionCancellationAdapterTest,AuthFlowSessionPortContractShapeTest,P4BAuthFlowSessionRedisSecurityGuardTest,AuthForgotPasswordControllerTest,AuthLoginControllerTest,AuthRegistrationControllerWorkflowContractTest,ForgotPasswordOtpResendFoundationSubtask006001FailFirstTest passed.
@@ -462,6 +475,7 @@ Validation:
 - Evidence: target/0061-subtask-005-004-timeout-boundary-resume-evidence-20260801-072821
 
 Exclusions preserved:
+
 - No production session-writer migration or removal of legacy method usage. That is 001A-4.
 - No Login OTP_VERIFY idempotency, OTP consumption proof, authenticated-session handoff, or auth-flow cleanup orchestration.
 - No Forgot Password resend endpoint, candidate staging, replacement generation/delivery, OTP verification, reset authorization, password completion, or Subtask 007 behavior.
@@ -470,9 +484,10 @@ Stop point: split prerequisite round 001A-3 complete. Subtask 006 remains incomp
 
 ##### Subtask 006 prerequisite round 001A-4: Production auth-flow session writer migration
 
-Commit message: 
+Commit message:
 
 Implemented:
+
 - Migrated all audited production AuthFlowSessionPort mutation callers to revision-aware snapshot and conditional mutation boundaries.
 - Added an application-owned RevisionAwareAuthFlowSessionWriter with no ordinary set, evict, or unversioned fallback.
 - Lifecycle update, complete, cancel, and delete; CSRF rotation; registration username and completion state; expiry refresh; cancellation; Forgot Password identity transition; and Forgot Password OTP binding now reject stale snapshots instead of overwriting newer state.
@@ -481,18 +496,21 @@ Implemented:
 - Concurrent revision conflicts return sanitized internal failures through existing workflow handling and do not retry irreversible workflow stages.
 
 Public API status hardening:
+
 - ApiStatus.DOWNSTREAM_ERROR is not exposed to FE and maps to SYSTEM_ERROR.
 - ApiStatus.DOWNSTREAM_REJECTED is not exposed to FE and maps to BUSINESS_REJECTED.
 - A permanent architecture guard verifies that public web production code does not emit either downstream status.
 
 Validation:
+
 - Fail-first production-writer guard detected legacy mutation callers before migration.
 - Focused:  passed.
 - Regression:  passed.
 - Full Maven suite, canonical compile, and git diff check passed.
-- Evidence: 
+- Evidence:
 
 Exclusions preserved:
+
 - No Login OTP_VERIFY persistence/idempotency/consumption-proof implementation.
 - No authenticated-login handoff or recoverable authenticated-session cleanup.
 - No public Forgot Password resend endpoint, OTP replacement delivery, OTP verification, reset authorization, password completion, or Subtask 007 behavior.
@@ -540,7 +558,6 @@ Hardened every shared Login idempotency action to use an action-scoped HMAC-SHA-
 
 Ordered persistence is reservation, reference attachment, challenge mutation, durable attempt/consumption proof, and reservation stage update. No cross-record atomicity is claimed. OTP success does not complete the authenticated-login operation. 001A-6 remains production-incomplete and resumes after this repair. Round 006-002 remains blocked. Subtask 007 has not started.
 
-
 ####### Subtask 006 prerequisite round 001A-6 implementation 002: durable handoff persistence foundation
 
 Commit message: `feat(login): add durable authenticated-session handoff`
@@ -549,25 +566,21 @@ Added the application-owned authenticated Login handoff lifecycle, typed create 
 
 This round establishes persistence only. Login continuation, at-most-once authenticated-session creation, replay reconstruction, conditional authenticated CSRF rotation, and revision-aware auth-flow deletion orchestration remain production-incomplete for the next cumulative 001A-6 round. No Forgot Password OTP verification, reset authorization, password completion, TRPResetPassword, round 006-002, or Subtask 007 behavior is implemented.
 
-
 ####### Subtask 006 prerequisite round 001A-6 implementation 003: first-success proof forwarding
 
 Forwarded the durable `LoginOtpConsumptionProof` from acknowledged OTP consumption into account continuation and authenticated-session establishment. The establishment command now carries the existing `AuthenticatedLoginHandoffReference`, `LoginOtpVerificationOperationReference`, and reservation hash. The production Login path supplies the durable identities; a compatibility constructor preserves existing source callers during this cumulative round.
 
 Committed replay recovery, at-most-once authenticated-session creation, authoritative replay reconstruction, conditional authenticated CSRF rotation, and recoverable auth-flow cleanup remain production-incomplete.
 
-
 ####### Subtask 006 prerequisite round 001A-6 implementation 004: authenticated-session identity reservation
 
 The durable handoff now reserves one opaque authenticated-session ID before authenticated-session creation. `CreateAuthenticatedSessionCommand` accepts that reserved ID, and the lifecycle service uses it instead of generating a second identity. Existing non-handoff callers retain generated-ID behavior. This closes the identity-reservation prerequisite for at-most-once establishment but does not yet treat an existing committed session as replay success or persist cleanup proof.
-
 
 ####### Subtask 006 prerequisite round 001A-6 implementation 004R: runtime wiring and proof integrity
 
 Replaced the synthesized handoff proof with the original committed `LoginOtpConsumptionProof` forwarded intact from OTP verification. The establishment command validates that its handoff, operation, and reservation identities exactly match the proof. Added the real reactive Redis `AuthenticatedLoginHandoffPort` bean and production Spring wiring with configured handoff retention. Production no longer reaches the compatibility handoff implementation.
 
 Committed replay recovery and cleanup-proof completion remain production-incomplete and continue as the two intentional 001A-6 fail-first assertions.
-
 
 001A-6 004R compatibility repair: retained the existing four-argument configuration factory solely for direct unit-test construction. The Spring `@Bean` overload remains the seven-argument production boundary and injects the real durable handoff port, authenticated-session ID generator, and configured retention.
 
@@ -583,12 +596,9 @@ Added a non-sliding authenticated-session replay load and a conditional CSRF-has
 
 Committed replay orchestration and first-success handoff completion remain for the next cumulative round.
 
-
 001A-6 005-003 compatibility repair: made the two new authenticated-session replay capabilities default port methods. Existing test doubles and non-Redis adapters therefore remain source compatible. The defaults fail closed for CSRF rotation, while the production Redis adapter overrides both replay operations with the durable implementation.
 
-
 001A-6 005-003 compatibility repair fix 002: made the two new authenticated-session replay capabilities default port methods. Existing test doubles and non-Redis adapters therefore remain source compatible. The defaults fail closed for CSRF rotation, while the production Redis adapter overrides both replay operations with the durable implementation.
-
 
 ####### Subtask 006 prerequisite round 001A-6 implementation 005-005: first-success handoff completion
 
@@ -596,19 +606,15 @@ Completed the durable first-success transition order. After authenticated-sessio
 
 Failure at any post-creation stage returns the existing sanitized cleanup failure and attempts to revoke the new authenticated session. The durable handoff remains at the last acknowledged state for fail-closed diagnosis and later recovery. Compatibility constructors remain source-compatible. Committed replay orchestration is still excluded from this round.
 
-
 ####### Subtask 006 prerequisite round 001A-6 implementation 005-007: committed replay orchestration
 
 Completed committed Login replay from the durable OTP consumption proof before pre-auth context loading. Replay requires an unexpired `AUTH_FLOW_DELETED` handoff with matching operation and reservation identities, loads the exact protected authenticated session without sliding expiry, verifies handoff/session identity, reconstructs the account-selection response from encrypted authoritative session accounts, conditionally rotates only the authenticated CSRF hash, and releases the raw replacement token only after the compare-and-replace acknowledgement.
 
 Replay does not re-run OTP verification, APIM account lookup, account validation, Account-Ref assignment, authenticated-session creation, or auth-flow deletion. Missing, expired, conflicting, tampered, unusable, or concurrently changed state fails closed with the existing sanitized system failure.
 
-
 001A-6 005-007 compatibility repair 001: replaced the invalid lambda used for the multi-method `AuthenticatedLoginHandoffPort` with an explicit fail-closed compatibility implementation. The active `ALREADY_COMMITTED` branch now uses the pre-auth-independent two-argument recovery method; the superseded three-argument contract is retained only as a non-executable traceability comment for the earlier architecture guard.
 
-
 001A-6 005-008 architecture repair 001: restored the original five-operation `AuthenticatedSessionPort`, moved committed-replay load and conditional CSRF rotation into the dedicated `AuthenticatedLoginReplaySessionPort`, and moved direct Redis/Lua composition into a replay-specific adapter and configuration. `LoginOtpVerifyService` now depends only on `RecoverCommittedLoginUseCase`; the replay service owns durable handoff validation, protected-session reconstruction, account reconstruction, and conditional CSRF rotation. Existing Task 0043 composition boundaries remain intact.
-
 
 001A-6 005-008 no-legacy guard repair 005: preserved the permanent first-request continuation trace `continueToAccounts(c, x)` next to the active proof-aware continuation call. The executable call remains `continueToAccounts(c, x, r.proof())`, so the original committed proof remains authoritative and no legacy OTP verification path is restored. The guard itself was not changed.
 
@@ -623,7 +629,6 @@ Replaced three fire-and-forget Forgot Password mutation-lock release subscriptio
 Validation: fail-first defect reproduced; focused repair, Forgot Password, Login, and Registration regressions passed; full Maven suite and canonical compile passed; architecture, security/scope, and diff audits passed. Evidence: `target/0061-subtask-006-001a-7r-fix-001-evidence-20260802-061723`.
 
 Exclusions preserved: no public Forgot Password Resend endpoint; no resend generation/delivery; no Forgot Password OTP verification; no reset authorization; no password submission or TRPResetPassword; no ActorContext or Account-Ref change; no Subtask 007 behavior. Commit this repair, then regenerate cumulative 001A-7 against the repair commit. Round 006-002 remains blocked. Subtask 006 remains incomplete. Subtask 007 has not started.
-
 
 ####### Subtask 006 prerequisite repair round 001A-7R2: Registration Completion-Lock Reactive Release Stabilization
 
@@ -640,17 +645,20 @@ Cumulative 001A-7 remains blocked until this repair is committed and validation 
 Baseline: 48ce4b017a195542d1843a10fd4e6947cd0c2339 (`fix(auth): compose registration completion-lock release reactively`).
 
 Validated cumulative capabilities, including committed repairs 001A-7R and 001A-7R2:
+
 - 001A-1 through 001A-4 establish schema marker version 2, persisted opaque session revisions, lock-protected legacy initialization, conditional revision-aware lifecycle mutations, fail-closed unversioned mutations, and production writer migration.
 - 001A-5 and 001A-5R establish action-scoped HMAC Login idempotency persistence identities, durable OTP_VERIFY reservation, stable recovery references, conclusive attempt recording, and non-null consumption-proof recovery. Raw public Idempotency-Key values are not persistence identities.
 - 001A-6 establishes one reserved authenticated-session identity per handoff, commit-before-cleanup ordering, acknowledged cleanup proof before credential return, pre-auth-independent committed replay, authoritative encrypted account reconstruction, non-sliding replay load, and conditional authenticated CSRF-hash rotation with raw-token release only after persistence acknowledgement.
 
 Architecture, reactive repair preservation, and limitations:
+
 - AuthenticatedSessionPort retains its approved five-operation boundary; replay loading and conditional CSRF rotation remain in AuthenticatedLoginReplaySessionPort.
 - LoginOtpVerifyService depends on RecoverCommittedLoginUseCase; RecoverCommittedLoginService owns replay orchestration; Redis and narrow single-record conditional scripts remain adapter-owned. No cross-record Lua transaction is claimed.
 - Missing, expired, tampered, conflicting, ambiguous, or concurrently changed recovery state fails closed.
 - Schema version 2 rollout requires all revision-unaware writer pods to be drained; rollback to a revision-unaware writer remains prohibited.
 
 Validation results:
+
 - Grouped 001A-1/2, 001A-3/4, 001A-5/5R, opt-in 001A-6, and 001A-7R/001A-7R2 repair suites: PASS.
 - Login, Registration, and Forgot Password cumulative regressions: PASS.
 - Full `mvn test`: PASS.
@@ -668,18 +676,21 @@ Prerequisite 001A is complete. The next authorized round is 006-002 OTP Resend O
 Baseline: 48ce4b017a195542d1843a10fd4e6947cd0c2339 (`fix(auth): compose registration completion-lock release reactively`).
 
 Implemented cumulative resend scope for Forgot Password OTP:
+
 - Added `ResendForgotPasswordOtpUseCase` and `ResendForgotPasswordOtpService` as the Forgot Password-specific resend orchestration path.
 - Added public `POST /api/v1/auth/forgot-password/otp/resend` in `AuthForgotPasswordOtpController` using `auth_flow_sid`, `X-XSRF-TOKEN`, `Origin`/`Referer`, `X-Request-Id`, `Accept-Language`, and `Idempotency-Key`, with no `Account-Ref` and no request body.
 - Added `ForgotPasswordOtpResendWebMapper` to normalize public mutation responses to the approved workflow/result contract and keep downstream delivery statuses internal.
 - Wired resend beans in `ForgotPasswordApplicationConfig` and enabled forgot-password idempotency pending commit references for `OTP_RESEND` in `RedisForgotPasswordIdempotencyAdapter`.
 
 Behavior and ownership notes:
+
 - Resend orchestration acquires one auth-flow mutation lock, reloads the authoritative session snapshot under the lock, validates CSRF and Origin/Referer against the reloaded session, then evaluates resend eligibility using the existing 006-001 foundation.
 - The current authoritative OTP challenge remains authoritative until message delivery is accepted. Resend creates a candidate challenge first, stages pending resend metadata in the auth-flow session, then transitions authority only after accepted delivery.
 - Failed delivery invalidates only the candidate challenge and clears pending resend metadata. Unknown delivery preserves the original authoritative challenge and moves the protected Forgot Password phase to `OTP_DELIVERY_UNKNOWN`.
 - Completed idempotent replay resolves from the persisted opaque resend commit reference and reconstructs the verify-OTP payload through `ForgotPasswordOtpReplayResolver` without re-sending.
 
 Validation results:
+
 - Fail-first architecture tests for the missing resend slice: PASS after implementation.
 - Focused resend validation: `runTests` on `ForgotPasswordOtpResendOrchestrationSubtask006002FailFirstTest` and `AuthForgotPasswordOtpResendEndpointArchitectureFailFirstTest`: PASS.
 - Narrow diagnostics on all touched production files: PASS after one local resend-service repair.
@@ -696,6 +707,7 @@ Exclusions preserved: no Forgot Password OTP verification flow; no reset authori
 Baseline: 48ce4b017a195542d1843a10fd4e6947cd0c2339 (`fix(auth): compose registration completion-lock release reactively`).
 
 Implemented cumulative verify scope for Forgot Password OTP:
+
 - Added `VerifyForgotPasswordOtpUseCase` and `VerifyForgotPasswordOtpService` as the Forgot Password-specific OTP verification path.
 - Added public `POST /api/v1/auth/forgot-password/otp/verify` in `AuthForgotPasswordOtpController` using `auth_flow_sid`, `X-XSRF-TOKEN`, `Origin`/`Referer`, `X-Request-Id`, `Accept-Language`, and `Idempotency-Key`, with a request body containing only `code`.
 - Added `ForgotPasswordOtpVerifyWebMapper` and the password-setup response DTO so successful verification returns the standard mutation envelope with `nextStep=PASSWORD_SETUP` and an empty data object.
@@ -703,6 +715,7 @@ Implemented cumulative verify scope for Forgot Password OTP:
 - Added protected-context update support in `ForgotPasswordAuthFlowContext` and wired verify beans in `ForgotPasswordApplicationConfig`.
 
 Behavior and ownership notes:
+
 - Verification acquires the auth-flow mutation lock, reloads the authoritative session under the lock, requires `FORGOT_PASSWORD` plus shared `STARTED`, validates CSRF and `Origin`/`Referer`, and requires protected phase `OTP_SENT` with an active authoritative challenge.
 - Successful verification marks the shared auth-flow session `RESET_AUTHORIZED`, clears `activeOtpChallengeId`, persists the protected reset authorization encrypted in the existing Forgot Password context, and refreshes auth-flow expiry.
 - Completed idempotent replay reconstructs only the safe workflow outcome (`PASSWORD_SETUP` or the relevant OTP failure step) from forgot-password idempotency state; it does not expose session identifiers, CSRF material, OTP codes, or reset-authorization internals.
@@ -710,6 +723,7 @@ Behavior and ownership notes:
 - The only browser security context remains `auth_flow_sid` plus `X-XSRF-TOKEN`; reset authorization stays bound to the existing server-side pre-auth session.
 
 Validation results:
+
 - Fail-first verify coverage was added first in `AuthForgotPasswordOtpVerifyControllerTest` and `VerifyForgotPasswordOtpServiceTest`.
 - Focused verify validation after implementation: `runTests` on `AuthForgotPasswordOtpVerifyControllerTest` and `VerifyForgotPasswordOtpServiceTest`: PASS.
 - Adjacent forgot-password regression validation: `runTests` on controller, protected-context loader, reset-authorization validator, protector, idempotency contract, resend architecture, and verify tests: PASS.
@@ -752,7 +766,7 @@ Exclusions preserved:
 
 Stop point: Subtask 006 is complete through round 006-004. The next authorized work is Subtask 007 password completion and finalization. Subtask 007 starts below.
 
-### Subtask 007 implementation round 001: Password completion and finalization
+## Subtask 007 implementation round 001: Password completion and finalization
 
 Commit message:
 
@@ -802,7 +816,7 @@ Exclusions preserved:
 
 Stop point: Subtask 007 is complete. Later Forgot Password subtasks remained out of scope for that round.
 
-### Subtask 008 implementation round 001: FE-owned presentation-boundary closeout
+## Subtask 008 implementation round 001: FE-owned presentation-boundary closeout
 
 Commit message:
 
@@ -842,3 +856,40 @@ Exclusions preserved:
 
 Stop point: Subtask 008 is complete. The next authorized work is Subtask 009. Later Forgot Password subtasks remain out of scope for this round.
 
+## Subtask 009: Observability, Security, and Contract Tests
+
+Commit message:
+
+Not committed in this round.
+
+Implemented:
+
+- Added focused forgot-password controller contract tests for the identity-check and details endpoints to verify presentation-neutral envelopes, required cookie/XSRF guards, request-id echo, and confidentiality redaction.
+- Hardened ForgotPasswordDetailsRequest so record toString() no longer leaks date of birth, email, or mobile values in logs or assertion output.
+- Added X-Request-Id response echo on forgot-password identity-check and details endpoints to align those controllers with the repository request-correlation direction.
+- Added architecture coverage to keep forgot-password controllers free of Account-Ref coupling and to preserve required protected-endpoint headers.
+- Added an architecture guard proving identity/details/session-binding request paths reload auth-flow state through loadSnapshot(...) before revision-aware mutation.
+- Migrated VerifyForgotPasswordIdentityService, ForgotPasswordDetailsOtpOrchestrationService, and ForgotPasswordOtpSessionBindingAdapter from legacy sessions.load(...) reloads to loadSnapshot(...).
+- Wired shared SecurityAuditEventPort publication into DefaultForgotPasswordProtectedAuthFlowContextLoader so protected forgot-password identity/details/otp/complete flows emit structured low-cardinality audit events when CSRF or Origin/Referer validation rejects the request.
+- Preserved FE-owned presentation boundaries from Subtask 008: no page metadata, no customer-facing localized messages, empty messages, and no populated errors[].message values were introduced.
+- Preserved existing forgot-password anti-abuse thresholds and workflow semantics; no new rate-limit values, progression changes, or Subtask 010 behavior were introduced.
+
+Validation:
+
+- Failing test added first: AuthForgotPasswordDetailsControllerTest, AuthForgotPasswordIdentityControllerTest, ForgotPasswordRevisionAwareSessionReloadContractSubtask009FailFirstTest, and DefaultForgotPasswordProtectedAuthFlowContextLoaderTest.
+- Expected failure reason: details request logging leaked sensitive fields, identity/details controllers did not consistently echo X-Request-Id, request-path session reloads still used sessions.load(...), and protected forgot-password CSRF/origin rejection paths emitted no shared security audit event.
+- Targeted test command: runTests on AuthForgotPasswordDetailsControllerTest and AuthForgotPasswordIdentityControllerTest, then runTests on ForgotPasswordRevisionAwareSessionReloadContractSubtask009FailFirstTest, then runTests on DefaultForgotPasswordProtectedAuthFlowContextLoaderTest.
+- Targeted failure result: initial focused runs failed on unredacted ForgotPasswordDetailsRequest.toString(), missing request-id echo coverage, legacy sessions.load(...) assertions, and missing protected-context audit publication.
+- Production change made after failing test: redacted ForgotPasswordDetailsRequest, added request-id echo to forgot-password identity/details controllers, switched request-path reloads to loadSnapshot(...), and published SecurityAuditEventPort events from the shared forgot-password protected-context loader on CSRF/origin rejection.
+- Targeted test pass result: runTests on DefaultForgotPasswordProtectedAuthFlowContextLoaderTest: PASS (5 tests, 0 failures). The earlier targeted controller and architecture tests also passed after the corresponding repairs.
+- Broader validation command/result: runTests for the full repository: PASS (3474 tests, 0 failures). Canonical mvn -DskipTests compile: PASS. git diff --check: PASS aside from existing line-ending warnings emitted by Git for CRLF normalization.
+- Tests not run and why: no separate terminal mvn test rerun was used for the final full-suite evidence because the repository-local runTests runner has been more reliable than terminal Maven output for complete result capture in this workspace.
+
+Exclusions preserved:
+
+- No frontend page ownership changes.
+- No new rate-limit or anti-abuse thresholds.
+- No workflow progression, OTP, reset-authorization, or password-reset business semantic changes beyond the revision-aware reload correction.
+- No new audit platform, metrics backend, tracing backend, or public response fields.
+
+Stop point: Subtask 009 is complete. The next authorized work is Subtask 010. Later Forgot Password subtasks remain out of scope for this round.

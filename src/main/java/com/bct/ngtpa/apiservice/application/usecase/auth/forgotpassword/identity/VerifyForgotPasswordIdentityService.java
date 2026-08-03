@@ -50,11 +50,11 @@ public final class VerifyForgotPasswordIdentityService implements VerifyForgotPa
 
     private Mono<VerifyForgotPasswordIdentityResult> locked(VerifyForgotPasswordIdentityCommand c,
             SessionLockHandle h) {
-        Mono<VerifyForgotPasswordIdentityResult> work = sessions.load(c.sessionId()).flatMap(o -> {
+        Mono<VerifyForgotPasswordIdentityResult> work = sessions.loadSnapshot(c.sessionId()).flatMap(o -> {
             if (o.isEmpty())
                 return Mono.just(
                         VerifyForgotPasswordIdentityResult.of(VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW));
-            AuthFlowSession reloaded = o.get();
+            AuthFlowSession reloaded = o.get().session();
             Instant now = Instant.now(clock);
             if (reloaded.isExpired(now) || reloaded.isTerminal()
                     || reloaded.scenario() != AuthFlowScenario.FORGOT_PASSWORD

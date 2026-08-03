@@ -8,6 +8,7 @@ import com.bct.ngtpa.apiservice.application.port.in.ProcessForgotPasswordDetails
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.*;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import org.springframework.http.*;
+import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
@@ -31,7 +32,9 @@ public final class AuthForgotPasswordDetailsController {
             @RequestHeader(name = "Referer", required = false) String referer,
             @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false) String requestId,
             @RequestHeader(name = "Accept-Language", required = false) String lang,
-            @RequestHeader(name = "Idempotency-Key", required = false) String key) {
+            @RequestHeader(name = "Idempotency-Key", required = false) String key,
+            ServerHttpResponse response) {
+        echoRequestId(response, requestId);
         if (b == null || blank(sid) || blank(csrf) || blank(key))
             return Mono
                     .just(ForgotPasswordHttpResponses.toResponse(mapper.map(ForgotPasswordDetailsOtpResult.system())));
@@ -48,5 +51,11 @@ public final class AuthForgotPasswordDetailsController {
 
     private boolean blank(String v) {
         return v == null || v.isBlank();
+    }
+
+    private void echoRequestId(ServerHttpResponse response, String requestId) {
+        if (!blank(requestId)) {
+            response.getHeaders().set(RequestCorrelation.REQUEST_ID_HEADER, requestId.trim());
+        }
     }
 }

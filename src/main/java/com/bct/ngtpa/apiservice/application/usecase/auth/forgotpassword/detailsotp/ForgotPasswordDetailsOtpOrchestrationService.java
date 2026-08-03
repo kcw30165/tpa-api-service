@@ -92,10 +92,10 @@ public final class ForgotPasswordDetailsOtpOrchestrationService implements Proce
             ForgotPasswordIdempotencyRecord r, String ref,
             com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle h) {
         var budget = new ForgotPasswordMutationLeaseBudget(policy.lease(), System::nanoTime);
-        Mono<ForgotPasswordDetailsOtpResult> work = sessions.load(c.sessionId()).flatMap(o -> {
+        Mono<ForgotPasswordDetailsOtpResult> work = sessions.loadSnapshot(c.sessionId()).flatMap(o -> {
             if (o.isEmpty())
                 return Mono.just(ForgotPasswordDetailsOtpResult.system());
-            AuthFlowSession s = o.get();
+            AuthFlowSession s = o.get().session();
             if (s.scenario() != AuthFlowScenario.FORGOT_PASSWORD || s.status() != AuthFlowStatus.STARTED
                     || s.isExpired(Instant.now(clock)))
                 return Mono.just(ForgotPasswordDetailsOtpResult.system());

@@ -5,6 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContextAttributeNames;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowEncryptedContext;
+import com.bct.ngtpa.apiservice.application.dto.security.audit.SecurityAuditEvent;
+import com.bct.ngtpa.apiservice.application.dto.security.audit.SecurityAuditEventOutcome;
+import com.bct.ngtpa.apiservice.application.dto.security.audit.SecurityAuditEventSeverity;
+import com.bct.ngtpa.apiservice.application.dto.security.audit.SecurityAuditEventType;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionIdGenerationCommand;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
@@ -14,17 +18,22 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort;
+import com.bct.ngtpa.apiservice.application.port.out.SecurityAuditEventPort;
 import com.bct.ngtpa.apiservice.application.service.session.SessionIdGenerator;
 import com.bct.ngtpa.apiservice.application.service.session.SessionTtlCalculator;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionCsrfService;
+import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionCsrfValidationStatus;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionLifecycleService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CreateAuthFlowSessionCsrfCommand;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenGenerator;
-import com.bct.ngtpa.apiservice.application.usecase.session.authflow.LoadAuthFlowSessionCommand;
+import com.bct.ngtpa.apiservice.application.usecase.session.authflow.ValidateAuthFlowSessionCsrfResult;
+import com.bct.ngtpa.apiservice.application.usecase.session.authflow.ValidateAuthFlowSessionCsrfCommand;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.Sha256CsrfTokenHasher;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -99,6 +108,43 @@ class DefaultForgotPasswordProtectedAuthFlowContextLoaderTest {
                 .assertNext(result -> assertThat(result.status())
                         .isEqualTo(ForgotPasswordProtectedAuthFlowContextStatus.CSRF_INVALID))
                 .verifyComplete();
+
+            assertThat(fixture.auditPort.events).singleElement().satisfies(event -> {
+                assertThat(event.type()).isEqualTo(SecurityAuditEventType.CSRF_VALIDATION_FAILED);
+                assertThat(event.outcome()).isEqualTo(SecurityAuditEventOutcome.REJECTED);
+                assertThat(event.severity()).isEqualTo(SecurityAuditEventSeverity.WARN);
+                assertThat(event.scenario()).isEqualTo("FORGOT_PASSWORD");
+                assertThat(event.action()).isEqualTo("LOAD_PROTECTED_CONTEXT");
+                assertThat(event.reasonCode()).isEqualTo(ForgotPasswordProtectedAuthFlowContextStatus.CSRF_INVALID.name());
+                assertThat(event.correlationId()).isEqualTo("corr-1");
+                assertThat(event.safeMetadata()).containsEntry("csrfRequired", "true");
+            });
+            }
+
+            @Test
+            void rejectsInvalidOriginRefererWhenRequiredAndPublishesAuditEvent() {
+                var fixture = new Fixture(
+                    session(AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.IDENTITY_VERIFIED, false),
+                    new StubAuthFlowSessionCsrfService(AuthFlowSessionCsrfValidationStatus.ORIGIN_REFERER_INVALID));
+
+            StepVerifier.create(fixture.loader.load(new ForgotPasswordProtectedAuthFlowContextCommand(
+                new AuthFlowSessionId("afs_fp"), "csrf-token", "https://portal.example", "https://evil.example",
+                "corr-1", Set.of(AuthFlowStatus.IDENTITY_VERIFIED), true)))
+                .assertNext(result -> assertThat(result.status())
+                    .isEqualTo(ForgotPasswordProtectedAuthFlowContextStatus.ORIGIN_REFERER_INVALID))
+                .verifyComplete();
+
+            assertThat(fixture.auditPort.events).singleElement().satisfies(event -> {
+                assertThat(event.type()).isEqualTo(SecurityAuditEventType.ORIGIN_REFERER_REJECTED);
+                assertThat(event.outcome()).isEqualTo(SecurityAuditEventOutcome.REJECTED);
+                assertThat(event.severity()).isEqualTo(SecurityAuditEventSeverity.WARN);
+                assertThat(event.scenario()).isEqualTo("FORGOT_PASSWORD");
+                assertThat(event.action()).isEqualTo("LOAD_PROTECTED_CONTEXT");
+                assertThat(event.reasonCode())
+                    .isEqualTo(ForgotPasswordProtectedAuthFlowContextStatus.ORIGIN_REFERER_INVALID.name());
+                assertThat(event.correlationId()).isEqualTo("corr-1");
+                assertThat(event.safeMetadata()).containsEntry("csrfRequired", "true");
+            });
     }
 
     private void assertRejected(AuthFlowSession session, Set<AuthFlowStatus> statuses, boolean csrfRequired,
@@ -140,16 +186,23 @@ class DefaultForgotPasswordProtectedAuthFlowContextLoaderTest {
         private final FakeAuthFlowSessionPort port;
         private final AuthFlowSessionCsrfService csrfService;
         private final FakeContextProtector protector = new FakeContextProtector();
+        private final RecordingSecurityAuditEventPort auditPort = new RecordingSecurityAuditEventPort();
         private final DefaultForgotPasswordProtectedAuthFlowContextLoader loader;
 
         private Fixture(AuthFlowSession session) {
+            this(session, null);
+        }
+
+        private Fixture(AuthFlowSession session, AuthFlowSessionCsrfService overrideCsrfService) {
             this.port = new FakeAuthFlowSessionPort(session);
             var lifecycle = new AuthFlowSessionLifecycleService(port, new FixedSessionIdGenerator(),
                     new SessionTtlCalculator(), CLOCK);
-            this.csrfService = new AuthFlowSessionCsrfService(port, new FixedCsrfTokenGenerator(),
+            this.csrfService = overrideCsrfService != null
+                ? overrideCsrfService
+                : new AuthFlowSessionCsrfService(port, new FixedCsrfTokenGenerator(),
                     new Sha256CsrfTokenHasher());
             this.loader = new DefaultForgotPasswordProtectedAuthFlowContextLoader(
-                    lifecycle, csrfService, protector, CLOCK);
+                    lifecycle, csrfService, protector, auditPort, CLOCK);
         }
 
         private void createCsrf() {
@@ -222,6 +275,30 @@ class DefaultForgotPasswordProtectedAuthFlowContextLoaderTest {
         @Override
         public String generate() {
             return "csrf-token";
+        }
+    }
+
+    private static final class StubAuthFlowSessionCsrfService extends AuthFlowSessionCsrfService {
+        private final AuthFlowSessionCsrfValidationStatus status;
+
+        private StubAuthFlowSessionCsrfService(AuthFlowSessionCsrfValidationStatus status) {
+            super(new FakeAuthFlowSessionPort(null), new FixedCsrfTokenGenerator(), new Sha256CsrfTokenHasher());
+            this.status = status;
+        }
+
+        @Override
+        public Mono<ValidateAuthFlowSessionCsrfResult> validateForSession(ValidateAuthFlowSessionCsrfCommand command) {
+            return Mono.just(new ValidateAuthFlowSessionCsrfResult(status, false));
+        }
+    }
+
+    private static final class RecordingSecurityAuditEventPort implements SecurityAuditEventPort {
+        private final List<SecurityAuditEvent> events = new ArrayList<>();
+
+        @Override
+        public Mono<Void> publish(SecurityAuditEvent event) {
+            events.add(event);
+            return Mono.empty();
         }
     }
 

@@ -7,6 +7,7 @@ import com.bct.ngtpa.apiservice.application.port.in.VerifyForgotPasswordIdentity
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identity.*;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import org.springframework.http.*;
+import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
@@ -29,7 +30,9 @@ public final class AuthForgotPasswordIdentityController {
             @RequestHeader(name = "Origin", required = false) String origin,
             @RequestHeader(name = "Referer", required = false) String referer,
             @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false) String requestId,
-            @RequestHeader(name = "Accept-Language", required = false) String language) {
+            @RequestHeader(name = "Accept-Language", required = false) String language,
+            ServerHttpResponse response) {
+        echoRequestId(response, requestId);
         if (sid == null || sid.isBlank() || csrf == null || csrf.isBlank())
             return Mono.just(ForgotPasswordHttpResponses.toResponse(mapper.response(
                     VerifyForgotPasswordIdentityResult.of(VerifyForgotPasswordIdentityStatus.SYSTEM_FAILED))));
@@ -39,6 +42,12 @@ public final class AuthForgotPasswordIdentityController {
         } catch (RuntimeException e) {
             return Mono.just(ForgotPasswordHttpResponses.toResponse(mapper.response(
                     VerifyForgotPasswordIdentityResult.of(VerifyForgotPasswordIdentityStatus.SYSTEM_FAILED))));
+        }
+    }
+
+    private void echoRequestId(ServerHttpResponse response, String requestId) {
+        if (requestId != null && !requestId.isBlank()) {
+            response.getHeaders().set(RequestCorrelation.REQUEST_ID_HEADER, requestId.trim());
         }
     }
 }
