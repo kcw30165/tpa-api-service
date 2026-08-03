@@ -74,7 +74,7 @@ public final class ForgotPasswordCompleteWebMapper {
                         error.type().name(),
                         error.code(),
                         null,
-                        error.targets(),
+                        sanitizeTargets(error.targets()),
                         error.severity().name(),
                         error.source()))
                 .toList();
@@ -82,11 +82,11 @@ public final class ForgotPasswordCompleteWebMapper {
     }
 
     public MutationResponse<ForgotPasswordWorkflowResultResponse<ForgotPasswordCompleteDataResponse>> missingAuthFlowCookie() {
-        return failure(ApiStatus.VALIDATION_FAILED, WorkflowNextStep.NONE, "err.forgot-password.authFlow.invalid", "PAGE");
+        return failure(ApiStatus.VALIDATION_FAILED, WorkflowNextStep.NONE, "err.forgot-password.authFlow.invalid", null);
     }
 
     public MutationResponse<ForgotPasswordWorkflowResultResponse<ForgotPasswordCompleteDataResponse>> missingCsrfToken() {
-        return failure(ApiStatus.VALIDATION_FAILED, WorkflowNextStep.NONE, "err.forgot-password.csrf.invalid", "PAGE");
+        return failure(ApiStatus.VALIDATION_FAILED, WorkflowNextStep.NONE, "err.forgot-password.csrf.invalid", null);
     }
 
     public MutationResponse<ForgotPasswordWorkflowResultResponse<ForgotPasswordCompleteDataResponse>> missingIdempotencyKey() {
@@ -94,11 +94,11 @@ public final class ForgotPasswordCompleteWebMapper {
     }
 
     public MutationResponse<ForgotPasswordWorkflowResultResponse<ForgotPasswordCompleteDataResponse>> invalidRequest() {
-        return failure(ApiStatus.VALIDATION_FAILED, WorkflowNextStep.PASSWORD_SETUP, "err.forgot-password.complete.requestInvalid", "PAGE");
+        return failure(ApiStatus.VALIDATION_FAILED, WorkflowNextStep.PASSWORD_SETUP, "err.forgot-password.complete.requestInvalid", null);
     }
 
     public MutationResponse<ForgotPasswordWorkflowResultResponse<ForgotPasswordCompleteDataResponse>> systemUnavailable() {
-        return failure(ApiStatus.SYSTEM_ERROR, WorkflowNextStep.NONE, "err.system.unavailable", "PAGE");
+        return failure(ApiStatus.SYSTEM_ERROR, WorkflowNextStep.NONE, "err.system.unavailable", null);
     }
 
     private MutationResponse<ForgotPasswordWorkflowResultResponse<ForgotPasswordCompleteDataResponse>> failure(
@@ -109,7 +109,17 @@ public final class ForgotPasswordCompleteWebMapper {
         return MutationResponse.failure(
                 status,
                 new ForgotPasswordWorkflowResultResponse<>(nextStep, new ForgotPasswordCompleteDataResponse()),
-                List.of(ApiError.form(code, null, List.of(target), "BFF")));
+                List.of(ApiError.form(code, null, sanitizeTargets(target == null ? List.of() : List.of(target)), "BFF")));
+    }
+
+    private List<String> sanitizeTargets(List<String> targets) {
+        return targets == null ? List.of()
+                : targets.stream()
+                        .filter(Objects::nonNull)
+                        .map(String::trim)
+                        .filter(target -> !target.isEmpty())
+                        .filter(target -> !target.equalsIgnoreCase("PAGE"))
+                        .toList();
     }
 
     private String clean(String value) {

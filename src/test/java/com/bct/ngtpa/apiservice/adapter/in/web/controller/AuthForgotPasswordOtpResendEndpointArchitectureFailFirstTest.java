@@ -40,4 +40,17 @@ class AuthForgotPasswordOtpResendEndpointArchitectureFailFirstTest {
         assertThat(text).contains("ResendForgotPasswordOtpUseCase");
         assertThat(text).contains("ForgotPasswordOtpResendWebMapper");
     }
+
+    @Test
+    void forgotPasswordApplicationConfigWiresDetailsOtpUseCase() throws Exception {
+        Path config = Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/config/auth/forgotpassword/ForgotPasswordApplicationConfig.java");
+
+        String text = Files.readString(config);
+        assertThat(text).contains("ProcessForgotPasswordDetailsOtpUseCase");
+        assertThat(text).contains("ForgotPasswordDetailsOtpOrchestrationService");
+        assertThat(text).contains("ForgotPasswordOtpCommitCoordinator");
+        assertThat(text).contains("ForgotPasswordOtpReplayResolver");
+        assertThat(text).contains("ForgotPasswordOtpCommitRetentionPolicy");
+    }
 }

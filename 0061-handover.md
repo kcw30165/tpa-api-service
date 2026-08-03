@@ -2,7 +2,7 @@
 
 ## Current status
 
-Gate 6 implementation is complete through Subtask 006, including round 006-004 stabilization, traceability, regression, security, and evidence closeout.
+Gate 6 implementation is complete through Subtask 008, including Subtask 007 password completion/finalization and Subtask 008 FE-owned presentation-boundary closeout.
 
 Completed implementation subtasks:
 
@@ -21,12 +21,14 @@ Completed implementation subtasks:
   - Round 006-002: OTP resend orchestration and endpoint
   - Round 006-003: OTP verification and reset-authorization orchestration
   - Round 006-004: stabilization, traceability, regression, security, and evidence closeout
+- Subtask 007: Password completion and finalization
+- Subtask 008: FE-owned presentation-boundary closeout
 
 Next authorized work:
 
-- Subtask 007: Password completion and finalization
+- Subtask 009
 
-Subtask 007 is complete.
+Subtasks 007 and 008 are complete.
 
 ## Subtask 001
 
@@ -798,5 +800,45 @@ Exclusions preserved:
 - No `ActorContext` change.
 - No Subtask 008, Subtask 009, or Subtask 010 behavior.
 
-Stop point: Subtask 007 is complete. Later Forgot Password subtasks remain out of scope for this round.
+Stop point: Subtask 007 is complete. Later Forgot Password subtasks remained out of scope for that round.
+
+### Subtask 008 implementation round 001: FE-owned presentation-boundary closeout
+
+Commit message:
+
+Not committed in this round.
+
+Implemented:
+
+- Preserved the authoritative boundary that all pages, page metadata, labels, headings, descriptions, instructions, button text, customer-facing messages, and localization remain FE-owned.
+- Hardened forgot-password public web mappers so BFF responses expose only machine-readable statuses, HTTP-mapped statuses, next steps, error codes, exact FE field targets where applicable, approved action identifiers, and previously approved endpoint data.
+- Removed public forgot-password use of synthetic page-level error targets such as `PAGE`; global forgot-password failures now return an empty `errors[].targets` list, while exact field targets such as `username`, `identityType`, `identityValue`, `email`, `code`, and `password` remain intact.
+- Ensured forgot-password `messages` remain empty across the covered mutation responses.
+- Ensured forgot-password `errors[].message` remains null or absent at the public boundary and no localized display text is emitted from the BFF.
+- Preserved `Accept-Language` only for approved non-response behavior such as downstream handling and OTP delivery/template behavior; it does not alter public forgot-password status, nextStep, targets, codes, actions, or response structure.
+- Preserved Login and Registration contracts and made no changes to workflow progression, OTP behavior, idempotency semantics, reset authorization, locking, revision handling, `TRPResetPassword`, or unknown-outcome behavior.
+
+Validation:
+
+- Failing test added first: `ForgotPasswordPublicResponseContractSubtask008FailFirstTest`.
+- Expected failure reason: forgot-password web mappers still exposed forbidden `PAGE` targets and the start-flow mapping could surface customer-facing display text in public errors.
+- Targeted failure result: the new Subtask 008 contract test failed first on a leaked non-null public error message; the first repair rerun then exposed one local null-target sanitization bug, which was fixed before proceeding.
+- Production change made after failing test: sanitized forgot-password web-error mapping so global targets are empty, `errors[].message` remains null, and only exact FE field targets remain where already approved.
+- Targeted test pass result: `runTests` on `ForgotPasswordPublicResponseContractSubtask008FailFirstTest`: PASS (3 tests, 0 failures).
+- Focused forgot-password web regression result: `runTests` on `ForgotPasswordPublicResponseContractSubtask008FailFirstTest`, `ForgotPasswordStartWebMapperTest`, `ForgotPasswordOtpResendWebMapperTest`, `AuthForgotPasswordControllerTest`, `AuthForgotPasswordOtpResendControllerTest`, `AuthForgotPasswordOtpVerifyControllerTest`, and `AuthForgotPasswordCompleteControllerTest`: PASS (32 tests, 0 failures).
+- Forgot-password architecture guard result: `runTests` on `ForgotPasswordOtpReactiveArchitectureGuardTest`, `ForgotPasswordOtpVerifyIdempotencyHashArchitectureGuardTest`, and `AuthForgotPasswordOtpResendEndpointArchitectureFailFirstTest`: PASS (9 tests, 0 failures).
+- Full `mvn test`: PASS (manual user-confirmed run after Subtask 008; the prior broader Maven suite run also completed with 2845 tests, 0 failures, 0 errors, 12 skipped).
+- Surefire inspection after broader validation found no `Failures` or `Errors` entries in `target/surefire-reports/*.txt`.
+- Canonical `mvn -DskipTests compile`: PASS.
+- `git diff --check`: PASS.
+
+Exclusions preserved:
+
+- No frontend code.
+- No page YAML or customer-facing translations.
+- No forgot-password page, `pageId`, `pageRef`, labels, descriptions, button text, or localized display content in public BFF responses.
+- No workflow, OTP, idempotency, reset-authorization, locking, revision, `TRPResetPassword`, or unknown-outcome semantic changes.
+- No Subtask 009 or Subtask 010 behavior.
+
+Stop point: Subtask 008 is complete. The next authorized work is Subtask 009. Later Forgot Password subtasks remain out of scope for this round.
 

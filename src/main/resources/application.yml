@@ -200,6 +200,7 @@ auth-workflows:
       otp-resend-ttl-seconds: ${LOGIN_OTP_RESEND_IDEMPOTENCY_TTL_SECONDS:300}
       otp-verify-ttl-seconds: ${LOGIN_OTP_VERIFY_IDEMPOTENCY_TTL_SECONDS:300}
       cancel-ttl-seconds: ${LOGIN_CANCEL_IDEMPOTENCY_TTL_SECONDS:300}
+      persistence-hmac-secret: ${AUTH_WORKFLOWS_LOGIN_IDEMPOTENCY_PERSISTENCE_HMAC_SECRET:}
     # 0061 / 001A-5. Read-only replay never refreshes these TTLs.
     otp-verify-recovery:
       otp-verify-idempotency-ttl-seconds: 600

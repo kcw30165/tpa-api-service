@@ -16,6 +16,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.St
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordResultStatus;
 import java.time.Duration;
 import java.util.List;
+import java.util.Objects;
 
 public final class ForgotPasswordStartWebMapper {
     private final Duration idempotencyTtl;
@@ -58,7 +59,7 @@ public final class ForgotPasswordStartWebMapper {
             case USERNAME_NOT_FOUND ->
                 failure(ApiStatus.BUSINESS_REJECTED, WorkflowNextStep.ENTER_USERNAME, result.errors());
             case DUPLICATE_IN_PROGRESS -> failure(ApiStatus.BUSINESS_REJECTED, WorkflowNextStep.WAIT,
-                    List.of(new StartForgotPasswordError(SharedWorkflowErrorKey.IDEMPOTENCY_IN_PROGRESS.value(), "PAGE",
+                    List.of(new StartForgotPasswordError(SharedWorkflowErrorKey.IDEMPOTENCY_IN_PROGRESS.value(), null,
                             null)));
             case IDEMPOTENCY_KEY_REUSED -> failure(ApiStatus.VALIDATION_FAILED, WorkflowNextStep.NONE,
                     List.of(new StartForgotPasswordError(SharedWorkflowErrorKey.IDEMPOTENCY_KEY_REUSED.value(),
@@ -68,7 +69,7 @@ public final class ForgotPasswordStartWebMapper {
                 failure(ApiStatus.SYSTEM_ERROR, WorkflowNextStep.NONE,
                         result.errors().isEmpty()
                                 ? List.of(new StartForgotPasswordError(
-                                        SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value(), "PAGE", null))
+                                        SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value(), null, null))
                                 : result.errors());
         };
     }
@@ -81,12 +82,12 @@ public final class ForgotPasswordStartWebMapper {
 
     public MutationResponse<ForgotPasswordWorkflowResultResponse<ForgotPasswordStartDataResponse>> invalidRequest() {
         return failure(ApiStatus.VALIDATION_FAILED, WorkflowNextStep.NONE,
-                List.of(new StartForgotPasswordError("err.forgotpassword.start.requestInvalid", "PAGE", null)));
+                                List.of(new StartForgotPasswordError("err.forgotpassword.start.requestInvalid", null, null)));
     }
 
     public MutationResponse<ForgotPasswordWorkflowResultResponse<ForgotPasswordStartDataResponse>> systemUnavailable() {
         return failure(ApiStatus.SYSTEM_ERROR, WorkflowNextStep.NONE,
-                List.of(new StartForgotPasswordError(SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value(), "PAGE", null)));
+                                List.of(new StartForgotPasswordError(SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value(), null, null)));
     }
 
     private MutationResponse<ForgotPasswordWorkflowResultResponse<ForgotPasswordStartDataResponse>> failure(
@@ -99,16 +100,21 @@ public final class ForgotPasswordStartWebMapper {
                 new ForgotPasswordWorkflowResultResponse<>(nextStep, null),
                 errors == null ? List.of()
                         : errors.stream()
-                                .map(error -> ApiError.form(error.code(), safePublicMessage(status, error),
-                                        List.of(error.target()),
+                                .map(error -> ApiError.form(error.code(), null,
+                                        sanitizeTargets(error),
                                         "BFF"))
                                 .toList());
     }
 
-    private String safePublicMessage(ApiStatus status, StartForgotPasswordError error) {
-        if (error == null) {
-            return null;
+    private List<String> sanitizeTargets(StartForgotPasswordError error) {
+                if (error == null || error.target() == null) {
+            return List.of();
         }
-        return status == ApiStatus.SYSTEM_ERROR ? null : error.message();
+                return List.of(error.target()).stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(target -> !target.isEmpty())
+                .filter(target -> !target.equalsIgnoreCase("PAGE"))
+                .toList();
     }
 }

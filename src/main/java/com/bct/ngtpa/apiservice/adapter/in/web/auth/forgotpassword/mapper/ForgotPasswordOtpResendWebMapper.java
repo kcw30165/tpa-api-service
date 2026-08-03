@@ -19,15 +19,15 @@ public final class ForgotPasswordOtpResendWebMapper {
                     payload(WorkflowNextStep.VERIFY_OTP, result), List.of());
             case COOLDOWN_ACTIVE -> MutationResponse.failure(ApiStatus.BUSINESS_REJECTED,
                     payload(WorkflowNextStep.VERIFY_OTP, result),
-                    List.of(ApiError.form("err.forgot-password.otp.resend.cooldown", null, List.of("PAGE"),
+                    List.of(ApiError.form("err.forgot-password.otp.resend.cooldown", null, List.of(),
                             "BFF")));
             case RESEND_LIMIT_REACHED -> MutationResponse.failure(ApiStatus.BUSINESS_REJECTED,
                     payload(WorkflowNextStep.VERIFY_OTP, result),
-                    List.of(ApiError.form("err.forgot-password.otp.resend.limitReached", null, List.of("PAGE"),
+                    List.of(ApiError.form("err.forgot-password.otp.resend.limitReached", null, List.of(),
                             "BFF")));
             case EXPIRED -> MutationResponse.failure(ApiStatus.BUSINESS_REJECTED,
                     new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.RESEND_OTP, null),
-                    List.of(ApiError.form("err.forgot-password.otp.expired", null, List.of("PAGE"), "BFF")));
+                    List.of(ApiError.form("err.forgot-password.otp.expired", null, List.of(), "BFF")));
             case IDEMPOTENCY_KEY_REUSED -> MutationResponse.failure(ApiStatus.VALIDATION_FAILED,
                     new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.NONE, null),
                     List.of(ApiError.form(SharedWorkflowErrorKey.IDEMPOTENCY_KEY_REUSED.value(), null,
@@ -47,7 +47,7 @@ public final class ForgotPasswordOtpResendWebMapper {
     public MutationResponse<ForgotPasswordWorkflowResultResponse<ForgotPasswordOtpDataResponse>> systemUnavailable() {
         return MutationResponse.failure(ApiStatus.SYSTEM_ERROR,
                 new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.NONE, null),
-                List.of(ApiError.form("err.system.unavailable", null, List.of("PAGE"), "BFF")));
+                                List.of(ApiError.form("err.system.unavailable", null, List.of(), "BFF")));
     }
 
     private ForgotPasswordWorkflowResultResponse<ForgotPasswordOtpDataResponse> payload(WorkflowNextStep nextStep,

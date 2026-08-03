@@ -33,7 +33,7 @@ class ForgotPasswordStartWebMapperTest {
         assertThat(response.errors()).singleElement().satisfies(error -> {
             assertThat(error.code()).isEqualTo("err.workflow.system.unavailable");
             assertThat(error.message()).isNull();
-            assertThat(error.targets()).containsExactly("PAGE");
+            assertThat(error.targets()).isEmpty();
         });
     }
 

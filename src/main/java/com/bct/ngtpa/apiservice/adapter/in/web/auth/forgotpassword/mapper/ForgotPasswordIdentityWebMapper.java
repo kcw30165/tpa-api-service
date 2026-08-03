@@ -1,3 +1,59 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.*;import com.bct.ngtpa.apiservice.adapter.in.web.response.*;import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identity.*;import java.util.*;
-public final class ForgotPasswordIdentityWebMapper {public VerifyForgotPasswordIdentityCommand command(ForgotPasswordIdentityCheckRequest r,String sid,String csrf,String origin,String referer,String requestId){return new VerifyForgotPasswordIdentityCommand(new AuthFlowSessionId(sid),csrf,origin,referer,requestId,r==null?null:r.identityType(),r==null?null:r.identityValue());}public MutationResponse<ForgotPasswordWorkflowResultResponse<Map<String,Object>>> response(VerifyForgotPasswordIdentityResult r){if(r.status()==VerifyForgotPasswordIdentityStatus.VERIFIED)return MutationResponse.success(ApiStatus.SUCCESS,new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.ENTER_DETAILS,Map.of()),List.of());if(r.status()==VerifyForgotPasswordIdentityStatus.INVALID_TYPE)return MutationResponse.failure(ApiStatus.VALIDATION_FAILED,null,List.of(ApiError.form("err.forgot-password.incorrect.idType",null,List.of("identityType"),"BFF")));if(r.status()==VerifyForgotPasswordIdentityStatus.INCORRECT_ID)return MutationResponse.failure(ApiStatus.BUSINESS_REJECTED,null,List.of(ApiError.form("err.forgot-password.incorrect.id",null,List.of("identityValue"),"BFF")));return MutationResponse.failure(ApiStatus.SYSTEM_ERROR,null,List.of(ApiError.form("err.system.unavailable",null,List.of("PAGE"),"BFF")));}}
+
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordIdentityCheckRequest;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordWorkflowResultResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identity.VerifyForgotPasswordIdentityCommand;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identity.VerifyForgotPasswordIdentityResult;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identity.VerifyForgotPasswordIdentityStatus;
+import java.util.List;
+import java.util.Map;
+
+public final class ForgotPasswordIdentityWebMapper {
+	public VerifyForgotPasswordIdentityCommand command(
+			ForgotPasswordIdentityCheckRequest request,
+			String sessionId,
+			String csrfToken,
+			String origin,
+			String referer,
+			String requestId) {
+		return new VerifyForgotPasswordIdentityCommand(
+				new AuthFlowSessionId(sessionId),
+				csrfToken,
+				origin,
+				referer,
+				requestId,
+				request == null ? null : request.identityType(),
+				request == null ? null : request.identityValue());
+	}
+
+	public MutationResponse<ForgotPasswordWorkflowResultResponse<Map<String, Object>>> response(
+			VerifyForgotPasswordIdentityResult result) {
+		if (result.status() == VerifyForgotPasswordIdentityStatus.VERIFIED) {
+			return MutationResponse.success(
+					ApiStatus.SUCCESS,
+					new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.ENTER_DETAILS, Map.of()),
+					List.of());
+		}
+		if (result.status() == VerifyForgotPasswordIdentityStatus.INVALID_TYPE) {
+			return MutationResponse.failure(
+					ApiStatus.VALIDATION_FAILED,
+					null,
+					List.of(ApiError.form("err.forgot-password.incorrect.idType", null, List.of("identityType"), "BFF")));
+		}
+		if (result.status() == VerifyForgotPasswordIdentityStatus.INCORRECT_ID) {
+			return MutationResponse.failure(
+					ApiStatus.BUSINESS_REJECTED,
+					null,
+					List.of(ApiError.form("err.forgot-password.incorrect.id", null, List.of("identityValue"), "BFF")));
+		}
+		return MutationResponse.failure(
+				ApiStatus.SYSTEM_ERROR,
+				null,
+				List.of(ApiError.form("err.system.unavailable", null, List.of(), "BFF")));
+	}
+}

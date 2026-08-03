@@ -18,7 +18,7 @@ public final class ForgotPasswordDetailsOtpWebMapper {
         if (r.status() == ForgotPasswordDetailsOtpResult.Status.EXPIRED)
             return MutationResponse.failure(ApiStatus.BUSINESS_REJECTED,
                     new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.RESEND_OTP, null),
-                    List.of(new ApiError("FORM", "err.forgot-password.otp.expired", null, List.of("PAGE"), "ERROR",
+                    List.of(new ApiError("FORM", "err.forgot-password.otp.expired", null, List.of(), "ERROR",
                             "BFF")));
         if (r.status() == ForgotPasswordDetailsOtpResult.Status.VALIDATION_FAILED)
             return MutationResponse.failure(ApiStatus.VALIDATION_FAILED,
@@ -26,8 +26,8 @@ public final class ForgotPasswordDetailsOtpWebMapper {
                             "BFF")));
         if (r.status() == ForgotPasswordDetailsOtpResult.Status.BUSINESS_REJECTED)
             return MutationResponse.failure(ApiStatus.BUSINESS_REJECTED,
-                    List.of(new ApiError("FORM", "err.tpa.member.not.found", null, List.of("PAGE"), "ERROR", "BFF")));
+                                        List.of(new ApiError("FORM", "err.tpa.member.not.found", null, List.of(), "ERROR", "BFF")));
         return MutationResponse.failure(ApiStatus.SYSTEM_ERROR,
-                List.of(new ApiError("SYSTEM", "err.system.unavailable", null, List.of("PAGE"), "ERROR", "BFF")));
+                                List.of(new ApiError("SYSTEM", "err.system.unavailable", null, List.of(), "ERROR", "BFF")));
     }
 }

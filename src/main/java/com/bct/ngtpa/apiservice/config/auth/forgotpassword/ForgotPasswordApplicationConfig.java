@@ -9,6 +9,7 @@ import com.bct.ngtpa.apiservice.application.dto.session.SessionOnNewFlowPolicy;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionTtlPolicy;
 import com.bct.ngtpa.apiservice.application.port.in.CreateAuthFlowSessionCsrfUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.CompleteForgotPasswordUseCase;
+import com.bct.ngtpa.apiservice.application.port.in.ProcessForgotPasswordDetailsOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.ResendForgotPasswordOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.StartForgotPasswordUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.VerifyForgotPasswordOtpUseCase;
@@ -18,6 +19,7 @@ import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionMutationLock
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordCompletionPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordIdempotencyPort;
+import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpSessionBindingPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordUsernameLookupPort;
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
@@ -25,11 +27,16 @@ import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.CompleteForgotPasswordService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordPasswordValidator;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordDetailsOtpLeasePolicy;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordDetailsOtpOrchestrationService;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordUnderLockDetailsVerifier;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitRetentionPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordDestinationMasker;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordInitialOtpPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitCoordinator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpReplayResolver;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpTemplates;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.SecureForgotPasswordOtpCommitRefGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.verify.VerifyForgotPasswordOtpService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendRequestHashGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ResendForgotPasswordOtpService;
@@ -41,6 +48,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.List;
 import com.bct.ngtpa.apiservice.infrastructure.security.CorsProperties;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -197,6 +205,68 @@ public class ForgotPasswordApplicationConfig {
     public com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.SecureForgotPasswordOtpCommitRefGenerator forgotPasswordOtpCommitRefGenerator() {
         return new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.SecureForgotPasswordOtpCommitRefGenerator();
     }
+
+        @Bean
+        public ForgotPasswordOtpCommitRetentionPolicy forgotPasswordOtpCommitRetentionPolicy(
+                        @Value("${auth-workflows.forgot-password.otp-commit.expired-replay-grace-seconds:300}") int expiredReplayGraceSeconds,
+                        @Value("${auth-workflows.forgot-password.otp-commit.maximum-retention-seconds:1800}") int maximumRetentionSeconds) {
+                return new ForgotPasswordOtpCommitRetentionPolicy(
+                                Duration.ofSeconds(expiredReplayGraceSeconds),
+                                Duration.ofSeconds(maximumRetentionSeconds));
+        }
+
+        @Bean
+        public ForgotPasswordOtpCommitCoordinator forgotPasswordOtpCommitCoordinator(
+                        ForgotPasswordIdempotencyPort idempotency,
+                        com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpCommitStatePort commitStates,
+                        ForgotPasswordOtpCommitRetentionPolicy retentionPolicy) {
+                return new ForgotPasswordOtpCommitCoordinator(idempotency, commitStates, retentionPolicy);
+        }
+
+        @Bean
+        public ForgotPasswordOtpReplayResolver forgotPasswordOtpReplayResolver(
+                        com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpCommitStatePort commitStates,
+                        AuthFlowSessionPort sessions,
+                        OtpChallengeStatePort challenges,
+                        Clock clock) {
+                return new ForgotPasswordOtpReplayResolver(commitStates, sessions, challenges, clock);
+        }
+
+        @Bean
+        public ProcessForgotPasswordDetailsOtpUseCase processForgotPasswordDetailsOtpUseCase(
+                        ForgotPasswordIdempotencyPort idempotency,
+                        SecureForgotPasswordOtpCommitRefGenerator refs,
+                        AuthFlowSessionMutationLockPort locks,
+                        AuthFlowSessionPort sessions,
+                        ForgotPasswordAuthFlowContextProtectorPort protector,
+                        ForgotPasswordUnderLockDetailsVerifier details,
+                        OtpChallengePort otp,
+                        MessageDeliveryPort delivery,
+                        ForgotPasswordDestinationMasker masker,
+                        ForgotPasswordOtpSessionBindingPort binding,
+                        ForgotPasswordOtpCommitCoordinator commits,
+                        ForgotPasswordOtpReplayResolver replay,
+                        ForgotPasswordDetailsOtpLeasePolicy policy,
+                        Clock clock,
+                        AuthWorkflowProperties properties) {
+                properties.validateForgotPasswordPolicy();
+                return new ForgotPasswordDetailsOtpOrchestrationService(
+                                idempotency,
+                                refs,
+                                locks,
+                                sessions,
+                                protector,
+                                details,
+                                otp,
+                                delivery,
+                                masker,
+                                binding,
+                                commits,
+                                replay,
+                                policy,
+                                clock,
+                                Duration.ofSeconds(properties.getForgotPassword().getIdempotency().getDetailsAndOtpTtlSeconds()));
+        }
 
     @Bean
     public com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordDetailsOtpWebMapper forgotPasswordDetailsOtpWebMapper() {

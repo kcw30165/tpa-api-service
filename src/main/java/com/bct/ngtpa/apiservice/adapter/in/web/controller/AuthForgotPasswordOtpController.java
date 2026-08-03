@@ -15,6 +15,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.rese
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.verify.VerifyForgotPasswordOtpCommand;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import java.time.Duration;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.CookieValue;
@@ -38,6 +39,7 @@ public final class AuthForgotPasswordOtpController {
         this(useCase, mapper, null, null);
     }
 
+    @Autowired
     public AuthForgotPasswordOtpController(ResendForgotPasswordOtpUseCase useCase,
             ForgotPasswordOtpResendWebMapper mapper,
             VerifyForgotPasswordOtpUseCase verifyUseCase,
