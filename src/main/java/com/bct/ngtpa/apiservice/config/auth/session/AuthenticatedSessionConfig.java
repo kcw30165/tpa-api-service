@@ -15,6 +15,7 @@ import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.Valida
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.SecureAuthenticatedSessionIdGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenHasher;
+import com.bct.ngtpa.apiservice.application.usecase.session.authflow.RevisionAwareAuthFlowSessionWriter;
 import java.time.Clock;
 import java.time.Duration;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthenticatedSessionAdapter;
@@ -110,8 +111,21 @@ public class AuthenticatedSessionConfig {
     }
 
     @Bean
-    DeleteAuthFlowSessionPort deleteAuthFlowSessionPort(AuthFlowSessionPort authFlowSessionPort) {
-        return authFlowSessionPort::delete;
+    DeleteAuthFlowSessionPort deleteAuthFlowSessionPort(
+            AuthFlowSessionPort authFlowSessionPort,
+            Clock clock) {
+        RevisionAwareAuthFlowSessionWriter writer = new RevisionAwareAuthFlowSessionWriter(authFlowSessionPort);
+        return authFlowSessionId -> writer.complete(authFlowSessionId, clock.instant()).then();
+    }
+
+    /* Source-compatible direct-construction boundary retained for existing tests.
+     * Production Spring wiring continues to use the injected Clock overload. */
+    DeleteAuthFlowSessionPort deleteAuthFlowSessionPort(
+            AuthFlowSessionPort authFlowSessionPort) {
+        RevisionAwareAuthFlowSessionWriter writer =
+                new RevisionAwareAuthFlowSessionWriter(authFlowSessionPort);
+        return authFlowSessionId ->
+                writer.complete(authFlowSessionId, Clock.systemUTC().instant()).then();
     }
 
     @Bean
@@ -120,9 +134,12 @@ public class AuthenticatedSessionConfig {
         return new AuthenticatedLogoutService(logout);
     }
 
-
-    /* Source-compatible direct-construction boundary retained for existing unit tests.
-     * Spring selects the @Bean overload below, which injects the durable Redis handoff. */
+    /*
+     * Source-compatible direct-construction boundary retained for existing unit
+     * tests.
+     * Spring selects the @Bean overload below, which injects the durable Redis
+     * handoff.
+     */
     EstablishAuthenticatedLoginSessionUseCase establishAuthenticatedLoginSessionUseCase(
             AuthenticatedSessionLifecycleService lifecycle,
             DeleteAuthFlowSessionPort cleanup,

@@ -41,7 +41,7 @@ import reactor.core.publisher.Mono;
 public final class StartForgotPasswordService implements StartForgotPasswordUseCase {
     private static final String WORKFLOW_VERSION = "v1";
     private static final String ERROR_USERNAME_NOT_FOUND = "err.forgotpassword.username.notFound";
-    private static final String ERROR_SYSTEM_UNAVAILABLE = "err.workflow.system.unavailable";
+    private static final String ERROR_SYSTEM_UNAVAILABLE = "err.forgotpassword.system.unavailable";
 
     private final ForgotPasswordIdempotencyPort idempotencyPort;
     private final ForgotPasswordUsernameLookupPort lookupPort;
