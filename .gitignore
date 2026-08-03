@@ -49,6 +49,6 @@ patches/
 
 **/~$*.xlsx
 *.sh
-.clinerules/
+.cline/
 handover.md
 generate-0061-subtask-005-002-evidence-bundle.sh
