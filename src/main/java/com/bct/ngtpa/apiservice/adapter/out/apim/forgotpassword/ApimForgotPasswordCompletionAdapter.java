@@ -25,7 +25,7 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
 @Component
-public final class ApimForgotPasswordCompletionAdapter implements ForgotPasswordCompletionPort {
+public class ApimForgotPasswordCompletionAdapter implements ForgotPasswordCompletionPort {
     static final String API_NAME = "/ws/NGTPA/v1/TRPResetPassword";
 
     private final ApimWebClientFacade facade;
