@@ -16,7 +16,7 @@ import reactor.test.StepVerifier;
 
 class ScenarioSpecificMessageDestinationOverrideTest {
     @Test
-    void nonProductionLoginUsesLoginOverrideWhileRegistrationRemainsUnchangedAtGenericBoundary() {
+        void nonProductionLoginAndForgotPasswordUseScenarioOverrideWhileRegistrationRemainsUnchangedAtGenericBoundary() {
         var properties = properties();
         var sms = new AtomicReference<String>();
         var email = new AtomicReference<String>();
@@ -37,6 +37,11 @@ class ScenarioSpecificMessageDestinationOverrideTest {
                         .deliver(command(MessageDeliveryScenario.LOGIN, MessageDeliveryChannel.EMAIL, "real-login")))
                 .expectNextCount(1).verifyComplete();
         assertThat(email.get()).isEqualTo("login@example.test");
+        StepVerifier
+                .create(port.deliver(
+                        command(MessageDeliveryScenario.FORGOT_PASSWORD, MessageDeliveryChannel.SMS, "real-forgot")))
+                .expectNextCount(1).verifyComplete();
+        assertThat(sms.get()).isEqualTo("forgot-mobile");
         StepVerifier
                 .create(port.deliver(
                         command(MessageDeliveryScenario.REGISTRATION, MessageDeliveryChannel.SMS, "real-registration")))
@@ -78,6 +83,10 @@ class ScenarioSpecificMessageDestinationOverrideTest {
         l.getMessage().getDestinationOverride().setMobile("login-mobile");
         l.getMessage().getDestinationOverride().setEmail("login@example.test");
         p.setLogin(l);
+                var f = new AuthWorkflowProperties.ForgotPassword();
+                f.getMessage().getDestinationOverride().setMobile("forgot-mobile");
+                f.getMessage().getDestinationOverride().setEmail("forgot@example.test");
+                p.setForgotPassword(f);
         return p;
     }
 

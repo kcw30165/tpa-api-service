@@ -17,6 +17,10 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class MessageDeliveryRuntimeConfig {
+    private static final String LOGIN_OVERRIDE_PREFIX = "auth-workflows.login.message.destination-override";
+    private static final String FORGOT_PASSWORD_OVERRIDE_PREFIX =
+            "auth-workflows.forgot-password.message.destination-override";
+
     @Bean
     @ConditionalOnMissingBean(MessageDeliveryPort.class)
     public MessageDeliveryPort messageDeliveryPort(
@@ -27,30 +31,56 @@ public class MessageDeliveryRuntimeConfig {
             AuthWorkflowProperties properties) {
         MessageDeliveryPort delegate = new MessageDeliveryAdapter(
                 smsSenderPort, emailSenderPort, messageTemplateRenderer);
-        return command -> delegate.deliver(loginOverride(command, environmentPolicy, properties));
+        return command -> delegate.deliver(scenarioOverride(command, environmentPolicy, properties));
     }
 
-    private MessageDeliveryCommand loginOverride(
+    private MessageDeliveryCommand scenarioOverride(
             MessageDeliveryCommand command,
             DeploymentEnvironmentPolicy environmentPolicy,
             AuthWorkflowProperties properties) {
-        if (command.scenario() != MessageDeliveryScenario.LOGIN
-                || environmentPolicy.isProductionLikeDeployment()) {
+        if (environmentPolicy.isProductionLikeDeployment()) {
             return command;
         }
-        if (properties.getLogin() == null) {
-            throw new IllegalStateException("auth-workflows.login configuration is required");
+        AuthWorkflowProperties.DestinationOverride override = switch (command.scenario()) {
+            case LOGIN -> requiredLoginOverride(properties);
+            case FORGOT_PASSWORD -> requiredForgotPasswordOverride(properties);
+            default -> null;
+        };
+        if (override == null) {
+            return command;
         }
-        AuthWorkflowProperties.DestinationOverride override =
-                properties.getLogin().getMessage().getDestinationOverride();
-        override.validateRequiredDestinations();
         String recipient = command.channel() == MessageDeliveryChannel.EMAIL
-                ? override.requiredEmail()
-                : override.requiredMobile();
+                ? override.requiredEmail(prefix(command.scenario()))
+                : override.requiredMobile(prefix(command.scenario()));
         return new MessageDeliveryCommand(
                 command.messageType(), command.scenario(), command.channel(), recipient,
                 command.subject(), command.body(), command.templateCode(), command.templateVariables(),
                 command.locale(), command.correlationId());
+    }
+
+    private AuthWorkflowProperties.DestinationOverride requiredLoginOverride(AuthWorkflowProperties properties) {
+        if (properties.getLogin() == null) {
+            throw new IllegalStateException("auth-workflows.login configuration is required");
+        }
+        AuthWorkflowProperties.DestinationOverride override = properties.getLogin().getMessage().getDestinationOverride();
+        override.validateRequiredDestinations(LOGIN_OVERRIDE_PREFIX);
+        return override;
+    }
+
+    private AuthWorkflowProperties.DestinationOverride requiredForgotPasswordOverride(AuthWorkflowProperties properties) {
+        if (properties.getForgotPassword() == null) {
+            throw new IllegalStateException("auth-workflows.forgot-password configuration is required");
+        }
+        AuthWorkflowProperties.DestinationOverride override =
+                properties.getForgotPassword().getMessage().getDestinationOverride();
+        override.validateRequiredDestinations(FORGOT_PASSWORD_OVERRIDE_PREFIX);
+        return override;
+    }
+
+    private String prefix(MessageDeliveryScenario scenario) {
+        return scenario == MessageDeliveryScenario.FORGOT_PASSWORD
+                ? FORGOT_PASSWORD_OVERRIDE_PREFIX
+                : LOGIN_OVERRIDE_PREFIX;
     }
 
     @Bean

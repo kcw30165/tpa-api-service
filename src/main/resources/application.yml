@@ -101,6 +101,10 @@ auth-flow-session:
 
 auth-workflows:
   forgot-password:
+    message:
+      destination-override:
+        mobile: ${FORGOT_PASSWORD_MESSAGE_OVERRIDE_MOBILE:}
+        email: ${FORGOT_PASSWORD_MESSAGE_OVERRIDE_EMAIL:}
     username:
       min-length: 4
       max-length: 128

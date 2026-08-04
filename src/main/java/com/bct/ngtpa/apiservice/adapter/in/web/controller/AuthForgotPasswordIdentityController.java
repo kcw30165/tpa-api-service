@@ -13,7 +13,7 @@ import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("/api/v1/auth/forgot-password")
-public final class AuthForgotPasswordIdentityController {
+public class AuthForgotPasswordIdentityController {
     private final VerifyForgotPasswordIdentityUseCase useCase;
     private final ForgotPasswordIdentityWebMapper mapper;
 

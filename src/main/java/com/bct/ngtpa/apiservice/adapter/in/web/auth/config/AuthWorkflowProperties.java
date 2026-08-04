@@ -48,6 +48,7 @@ public class AuthWorkflowProperties {
         private final ForgotPasswordUsername username = new ForgotPasswordUsername();
         private Set<String> allowedPublicIdentityTypes = new LinkedHashSet<>();
         private Map<String, String> tasToPublicIdentityTypeMapping = new LinkedHashMap<>();
+        private final Message message = new Message();
         private final Otp otp = new Otp();
         private final ForgotPasswordIdempotency idempotency = new ForgotPasswordIdempotency();
         private final ForgotPasswordDetailsAndOtp detailsAndOtp = new ForgotPasswordDetailsAndOtp();
@@ -217,10 +218,15 @@ public class AuthWorkflowProperties {
     @Getter
     @Setter
     public static class DestinationOverride {
+        private static final String REGISTRATION_PREFIX = "auth-workflows.registration.message.destination-override";
         private String mobile;
         private String email;
 
         public void validateRequiredDestinations() {
+            validateRequiredDestinations(REGISTRATION_PREFIX);
+        }
+
+        public void validateRequiredDestinations(String propertyPrefix) {
             boolean mobileMissing = mobile == null || mobile.isBlank();
             boolean emailMissing = email == null || email.isBlank();
             if (!mobileMissing && !emailMissing) {
@@ -234,22 +240,30 @@ public class AuthWorkflowProperties {
                 missingProperties = mobileMissing ? "mobile" : "email";
             }
             throw new IllegalStateException(
-                    "auth-workflows.registration.message.destination-override "
+                    propertyPrefix + " "
                             + "requires non-blank " + missingProperties + " configuration");
         }
 
         public String requiredMobile() {
-            return requiredDestination(mobile, "mobile");
+            return requiredMobile(REGISTRATION_PREFIX);
+        }
+
+        public String requiredMobile(String propertyPrefix) {
+            return requiredDestination(mobile, "mobile", propertyPrefix);
         }
 
         public String requiredEmail() {
-            return requiredDestination(email, "email");
+            return requiredEmail(REGISTRATION_PREFIX);
         }
 
-        private String requiredDestination(String destination, String propertyName) {
+        public String requiredEmail(String propertyPrefix) {
+            return requiredDestination(email, "email", propertyPrefix);
+        }
+
+        private String requiredDestination(String destination, String propertyName, String propertyPrefix) {
             if (destination == null || destination.isBlank()) {
                 throw new IllegalStateException(
-                        "auth-workflows.registration.message.destination-override."
+                        propertyPrefix + "."
                                 + propertyName + " must not be blank");
             }
             return destination.trim();

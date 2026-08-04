@@ -10,10 +10,12 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identity.VerifyForgotPasswordIdentityCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identity.VerifyForgotPasswordIdentityResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identity.VerifyForgotPasswordIdentityStatus;
+import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
+
 import java.util.List;
 import java.util.Map;
 
-public final class ForgotPasswordIdentityWebMapper {
+public class ForgotPasswordIdentityWebMapper {
 	public VerifyForgotPasswordIdentityCommand command(
 			ForgotPasswordIdentityCheckRequest request,
 			String sessionId,
@@ -31,6 +33,7 @@ public final class ForgotPasswordIdentityWebMapper {
 				request == null ? null : request.identityValue());
 	}
 
+	@LogExecution(value = "adapter.in.web.auth.forgotpassword.mapper", logArgs = true)
 	public MutationResponse<ForgotPasswordWorkflowResultResponse<Map<String, Object>>> response(
 			VerifyForgotPasswordIdentityResult result) {
 		if (result.status() == VerifyForgotPasswordIdentityStatus.VERIFIED) {
@@ -43,7 +46,8 @@ public final class ForgotPasswordIdentityWebMapper {
 			return MutationResponse.failure(
 					ApiStatus.VALIDATION_FAILED,
 					null,
-					List.of(ApiError.form("err.forgot-password.incorrect.idType", null, List.of("identityType"), "BFF")));
+					List.of(ApiError.form("err.forgot-password.incorrect.idType", null, List.of("identityType"),
+							"BFF")));
 		}
 		if (result.status() == VerifyForgotPasswordIdentityStatus.INCORRECT_ID) {
 			return MutationResponse.failure(

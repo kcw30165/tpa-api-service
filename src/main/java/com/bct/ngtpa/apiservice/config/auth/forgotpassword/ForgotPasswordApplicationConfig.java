@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.config.auth.forgotpassword;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordIdentityWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.session.config.AuthFlowSessionProperties;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionConcurrencyMode;
@@ -8,6 +9,7 @@ import com.bct.ngtpa.apiservice.application.dto.session.SessionConcurrencyPolicy
 import com.bct.ngtpa.apiservice.application.dto.session.SessionOnNewFlowPolicy;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionTtlPolicy;
 import com.bct.ngtpa.apiservice.application.port.in.CreateAuthFlowSessionCsrfUseCase;
+import com.bct.ngtpa.apiservice.application.port.in.EvaluateForgotPasswordOtpResendUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.CompleteForgotPasswordUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.ProcessForgotPasswordDetailsOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.ResendForgotPasswordOtpUseCase;
@@ -38,6 +40,9 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.Forg
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpTemplates;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.SecureForgotPasswordOtpCommitRefGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.verify.VerifyForgotPasswordOtpService;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendEligibilityValidator;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendFoundationService;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendRequestHashGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ResendForgotPasswordOtpService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionConcurrencyService;
@@ -156,14 +161,14 @@ public class ForgotPasswordApplicationConfig {
     }
 
     @Bean
-    public com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpTemplates forgotPasswordOtpTemplates() {
-        return com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpTemplates
+    public ForgotPasswordOtpTemplates forgotPasswordOtpTemplates() {
+        return ForgotPasswordOtpTemplates
                 .approved();
     }
 
     @Bean
-    public com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordIdentityWebMapper forgotPasswordIdentityWebMapper() {
-        return new com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordIdentityWebMapper();
+    public ForgotPasswordIdentityWebMapper forgotPasswordIdentityWebMapper() {
+        return new ForgotPasswordIdentityWebMapper();
     }
 
     private static RegistrationIdentityType toIdentityType(String publicType) {
@@ -202,8 +207,8 @@ public class ForgotPasswordApplicationConfig {
     }
 
     @Bean
-    public com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.SecureForgotPasswordOtpCommitRefGenerator forgotPasswordOtpCommitRefGenerator() {
-        return new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.SecureForgotPasswordOtpCommitRefGenerator();
+    public SecureForgotPasswordOtpCommitRefGenerator forgotPasswordOtpCommitRefGenerator() {
+        return new SecureForgotPasswordOtpCommitRefGenerator();
     }
 
         @Bean
@@ -284,24 +289,24 @@ public class ForgotPasswordApplicationConfig {
         }
 
     @Bean
-    public com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendPolicy forgotPasswordOtpResendPolicy(
+    public ForgotPasswordOtpResendPolicy forgotPasswordOtpResendPolicy(
             AuthWorkflowProperties properties) {
         var otp = properties.getForgotPassword().getOtp();
-        return new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendPolicy(
+        return new ForgotPasswordOtpResendPolicy(
                 otp.getResendCooldownSeconds(), otp.getMaxResendAttempts());
     }
 
     @Bean
-    public com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendEligibilityValidator forgotPasswordOtpResendEligibilityValidator(
-            com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendPolicy policy) {
-        return new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendEligibilityValidator(
+    public ForgotPasswordOtpResendEligibilityValidator forgotPasswordOtpResendEligibilityValidator(
+            ForgotPasswordOtpResendPolicy policy) {
+        return new ForgotPasswordOtpResendEligibilityValidator(
                 policy);
     }
 
     @Bean
-    public com.bct.ngtpa.apiservice.application.port.in.EvaluateForgotPasswordOtpResendUseCase evaluateForgotPasswordOtpResendUseCase(
-            com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendEligibilityValidator validator) {
-        return new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendFoundationService(
+    public EvaluateForgotPasswordOtpResendUseCase evaluateForgotPasswordOtpResendUseCase(
+           ForgotPasswordOtpResendEligibilityValidator validator) {
+        return new ForgotPasswordOtpResendFoundationService(
                 validator);
     }
 
@@ -326,11 +331,11 @@ public class ForgotPasswordApplicationConfig {
         @Bean
         public ResendForgotPasswordOtpUseCase resendForgotPasswordOtpUseCase(
                         ForgotPasswordIdempotencyPort idempotency,
-                        com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.SecureForgotPasswordOtpCommitRefGenerator refs,
-                        com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionMutationLockPort locks,
-                        com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort sessions,
+                        SecureForgotPasswordOtpCommitRefGenerator refs,
+                        AuthFlowSessionMutationLockPort locks,
+                        AuthFlowSessionPort sessions,
                         ForgotPasswordAuthFlowContextProtectorPort protector,
-                        com.bct.ngtpa.apiservice.application.port.in.EvaluateForgotPasswordOtpResendUseCase foundation,
+                        EvaluateForgotPasswordOtpResendUseCase foundation,
                         OtpChallengePort otp,
                         OtpChallengeStatePort challengeState,
                         MessageDeliveryPort delivery,
