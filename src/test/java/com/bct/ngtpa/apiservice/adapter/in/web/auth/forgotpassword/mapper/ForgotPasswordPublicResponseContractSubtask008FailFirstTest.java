@@ -77,7 +77,7 @@ class ForgotPasswordPublicResponseContractSubtask008FailFirstTest {
                         VerifyForgotPasswordIdentityStatus.SYSTEM_FAILED)),
                 ApiStatus.SYSTEM_ERROR,
                 null,
-                "err.system.unavailable",
+                "err.forgot-password.system.unavailable",
                 List.of());
 
         assertMachineReadable(

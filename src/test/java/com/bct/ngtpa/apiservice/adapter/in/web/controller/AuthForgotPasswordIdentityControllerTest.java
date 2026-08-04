@@ -54,7 +54,7 @@ class AuthForgotPasswordIdentityControllerTest {
                         "req-1", "en", new MockServerHttpResponse())
                 .block());
 
-        assertThat(json).contains("err.system.unavailable");
+        assertThat(json).contains("err.forgot-password.system.unavailable");
         assertThat(useCase.called).isFalse();
     }
 
