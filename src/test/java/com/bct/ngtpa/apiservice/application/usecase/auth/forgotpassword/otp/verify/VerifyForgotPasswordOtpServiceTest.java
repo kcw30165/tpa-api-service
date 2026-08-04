@@ -102,6 +102,81 @@ class VerifyForgotPasswordOtpServiceTest {
                 .isEqualTo(second.idempotency.lastStartCommand.requestHash());
     }
 
+    @Test
+    void verifiedOtpAcceptsLegacySessionWithoutResetSubjectIdAndBackfillsItFromTasUserId() {
+        var fixture = new Fixture(OtpVerificationOutcome.VALID, 4);
+        fixture.protector.context = new ForgotPasswordAuthFlowContext(
+                "member01",
+                "cust-db01",
+                "tas-user-01",
+                "ID",
+                true,
+                null,
+                "EMAIL",
+                "member@example.com",
+                "m****r@example.com",
+                null,
+                "v1",
+                ForgotPasswordProtectedPhase.OTP_SENT);
+
+        StepVerifier.create(fixture.service.verify(new VerifyForgotPasswordOtpCommand(
+                new AuthFlowSessionId("afs_fp"),
+                "csrf_abc",
+                "123456",
+                "https://portal.example",
+                "https://portal.example/page",
+                "idem_legacy",
+                "en",
+                "req_abc",
+                Duration.ofSeconds(300))))
+                .assertNext(result -> assertThat(result.status()).isEqualTo(VerifyForgotPasswordOtpStatus.VERIFIED))
+                .verifyComplete();
+
+        assertThat(fixture.protectedContext.resetSubjectId()).isEqualTo("tas-user-01");
+        assertThat(fixture.protectedContext.resetAuthorization()).isNotNull();
+        assertThat(fixture.protectedContext.resetAuthorization().resetSubjectId()).isEqualTo("tas-user-01");
+    }
+
+    @Test
+    void verifiedOtpUsesReloadedSessionAfterSlidingLoaderRefreshesRevision() {
+        var fixture = new Fixture(OtpVerificationOutcome.VALID, 4, true);
+
+        StepVerifier.create(fixture.service.verify(new VerifyForgotPasswordOtpCommand(
+                new AuthFlowSessionId("afs_fp"),
+                "csrf_abc",
+                "123456",
+                "https://portal.example",
+                "https://portal.example/page",
+                "idem_refresh",
+                "en",
+                "req_abc",
+                Duration.ofSeconds(300))))
+                .assertNext(result -> assertThat(result.status()).isEqualTo(VerifyForgotPasswordOtpStatus.VERIFIED))
+                .verifyComplete();
+
+        assertThat(fixture.updatedSession).isNotNull();
+        assertThat(fixture.updatedSession.status()).isEqualTo(AuthFlowStatus.RESET_AUTHORIZED);
+    }
+
+    @Test
+    void missingSessionRemainsAuthFlowInvalid() {
+        var fixture = new Fixture(OtpVerificationOutcome.VALID, 4);
+        fixture.sessions.session = null;
+
+        StepVerifier.create(fixture.service.verify(new VerifyForgotPasswordOtpCommand(
+                new AuthFlowSessionId("afs_missing"),
+                "csrf_abc",
+                "123456",
+                "https://portal.example",
+                "https://portal.example/page",
+                "idem_missing",
+                "en",
+                "req_abc",
+                Duration.ofSeconds(300))))
+                .assertNext(result -> assertThat(result.status()).isEqualTo(VerifyForgotPasswordOtpStatus.AUTH_FLOW_INVALID))
+                .verifyComplete();
+    }
+
     private static void verify(Fixture fixture, String sessionId, String code, String idempotencyKey) {
         StepVerifier.create(fixture.service.verify(new VerifyForgotPasswordOtpCommand(
                 new AuthFlowSessionId(sessionId),
@@ -127,12 +202,23 @@ class VerifyForgotPasswordOtpServiceTest {
         int refreshCount;
         int completedCount;
         int failedCount;
+        int revision = 1;
+        boolean loaderTouchesSession;
 
         Fixture(OtpVerificationOutcome outcome, int remainingAttempts) {
-            this("afs_fp", outcome, remainingAttempts);
+            this("afs_fp", outcome, remainingAttempts, false);
+        }
+
+        Fixture(OtpVerificationOutcome outcome, int remainingAttempts, boolean loaderTouchesSession) {
+            this("afs_fp", outcome, remainingAttempts, loaderTouchesSession);
         }
 
         Fixture(String sessionId, OtpVerificationOutcome outcome, int remainingAttempts) {
+            this(sessionId, outcome, remainingAttempts, false);
+        }
+
+        Fixture(String sessionId, OtpVerificationOutcome outcome, int remainingAttempts, boolean loaderTouchesSession) {
+            this.loaderTouchesSession = loaderTouchesSession;
             ForgotPasswordAuthFlowContext context = new ForgotPasswordAuthFlowContext(
                     "member01",
                     "cust-db01",
@@ -161,8 +247,12 @@ class VerifyForgotPasswordOtpServiceTest {
                     NOW.plusSeconds(1800));
             sessions.session = session;
 
-            ForgotPasswordProtectedAuthFlowContextLoader loader = command -> Mono.just(
-                    ForgotPasswordProtectedAuthFlowContextResult.valid("otp_active", protector.context));
+            ForgotPasswordProtectedAuthFlowContextLoader loader = command -> {
+                if (this.loaderTouchesSession) {
+                    sessions.touchForTest(NOW.plusSeconds(5));
+                }
+                return Mono.just(ForgotPasswordProtectedAuthFlowContextResult.valid("otp_active", protector.context));
+            };
             AuthFlowSessionMutationLockPort locks = new AuthFlowSessionMutationLockPort() {
                 @Override
                 public Mono<SessionLockHandle> acquire(AuthFlowSessionId ignoredSessionId, Duration lease) {
@@ -218,16 +308,18 @@ class VerifyForgotPasswordOtpServiceTest {
 
             @Override
             public Mono<Optional<AuthFlowSession>> load(AuthFlowSessionId authFlowSessionId) {
-                return Mono.just(Optional.of(session));
+                return Mono.just(Optional.ofNullable(session));
             }
 
             @Override
             public Mono<Optional<com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot>> loadSnapshot(
                     AuthFlowSessionId authFlowSessionId) {
-                return Mono.just(Optional.of(new com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot(
+                return session == null
+                    ? Mono.just(Optional.empty())
+                    : Mono.just(Optional.of(new com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot(
                         session,
                         new com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision(
-                                "11111111111111111111111111111111"))));
+                            String.format("%032d", revision)))));
             }
 
             @Override
@@ -235,13 +327,28 @@ class VerifyForgotPasswordOtpServiceTest {
                     com.bct.ngtpa.apiservice.application.dto.session.authflow.RevisionedAuthFlowSessionMutationCommand command) {
                 updatedSession = command.updated();
                 session = updatedSession;
+                revision++;
                 return Mono.just(new com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationResult(
                         com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationOutcome.APPLIED,
                         new com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot(
                                 updatedSession,
                                 new com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision(
-                                        "22222222222222222222222222222222"))));
+                            String.format("%032d", revision)))));
             }
+
+                private void touchForTest(Instant now) {
+                session = new AuthFlowSession(
+                    session.authFlowSessionId(),
+                    session.scenario(),
+                    session.status(),
+                    session.csrfTokenHash(),
+                    session.activeOtpChallengeId(),
+                    session.data(),
+                    session.createdAt(),
+                    now,
+                    now.plusSeconds(1800));
+                revision++;
+                }
 
             @Override
             public Mono<AuthFlowSession> create(

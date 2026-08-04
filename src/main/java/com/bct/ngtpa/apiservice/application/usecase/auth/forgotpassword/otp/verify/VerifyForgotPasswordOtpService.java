@@ -101,35 +101,60 @@ public final class VerifyForgotPasswordOtpService implements VerifyForgotPasswor
     }
 
     private Mono<VerifyForgotPasswordOtpResult> locked(VerifyForgotPasswordOtpCommand command, SessionLockHandle handle) {
-        Mono<VerifyForgotPasswordOtpResult> work = sessions.loadSnapshot(command.sessionId()).flatMap(optional -> {
-            if (optional.isEmpty()) {
-                return Mono.just(result(VerifyForgotPasswordOtpStatus.AUTH_FLOW_INVALID, WorkflowNextStep.NONE));
-            }
-            AuthFlowSession reloaded = optional.get().session();
-            Instant now = Instant.now(clock);
-            if (reloaded.isExpired(now) || reloaded.isTerminal() || reloaded.scenario() != AuthFlowScenario.FORGOT_PASSWORD
-                    || reloaded.status() != AuthFlowStatus.STARTED) {
-                return Mono.just(result(VerifyForgotPasswordOtpStatus.AUTH_FLOW_INVALID, WorkflowNextStep.NONE));
-            }
-            return loader.load(new ForgotPasswordProtectedAuthFlowContextCommand(
-                    command.sessionId(),
-                    command.csrfToken(),
-                    command.origin(),
-                    command.referer(),
-                    command.requestId(),
-                    Set.of(AuthFlowStatus.STARTED),
-                    true)).flatMap(loaded -> {
-                        if (!loaded.isValid()) {
-                            return Mono.just(mapLoaderFailure(loaded.status()));
-                        }
-                        ForgotPasswordAuthFlowContext context = loaded.context();
-                        if (context.phase() != ForgotPasswordProtectedPhase.OTP_SENT || blank(loaded.activeOtpChallengeId())
-                                || blank(context.resetSubjectId())) {
-                            return Mono.just(result(VerifyForgotPasswordOtpStatus.AUTH_FLOW_INVALID, WorkflowNextStep.NONE));
-                        }
-                        return processIdempotent(command, reloaded, loaded.activeOtpChallengeId(), context, now);
-                    });
-        }).onErrorReturn(result(VerifyForgotPasswordOtpStatus.SYSTEM_FAILED, WorkflowNextStep.NONE));
+        Mono<VerifyForgotPasswordOtpResult> work = sessions.loadSnapshot(command.sessionId())
+                .flatMap(initialOptional -> {
+                    if (initialOptional.isEmpty()) {
+                        return Mono.just(result(VerifyForgotPasswordOtpStatus.AUTH_FLOW_INVALID, WorkflowNextStep.NONE));
+                    }
+                    AuthFlowSession initial = initialOptional.get().session();
+                    Instant initialNow = Instant.now(clock);
+                    if (initial.isExpired(initialNow)
+                            || initial.isTerminal()
+                            || initial.scenario() != AuthFlowScenario.FORGOT_PASSWORD
+                            || initial.status() != AuthFlowStatus.STARTED) {
+                        return Mono.just(result(VerifyForgotPasswordOtpStatus.AUTH_FLOW_INVALID, WorkflowNextStep.NONE));
+                    }
+                    return loader.load(new ForgotPasswordProtectedAuthFlowContextCommand(
+                            command.sessionId(),
+                            command.csrfToken(),
+                            command.origin(),
+                            command.referer(),
+                            command.requestId(),
+                            Set.of(AuthFlowStatus.STARTED),
+                            true)).flatMap(loaded -> {
+                                if (!loaded.isValid()) {
+                                    return Mono.just(mapLoaderFailure(loaded.status()));
+                                }
+                                ForgotPasswordAuthFlowContext context = loaded.context();
+                                String resetSubjectId = effectiveResetSubjectId(context);
+                                if (context.phase() != ForgotPasswordProtectedPhase.OTP_SENT || blank(loaded.activeOtpChallengeId())
+                                        || blank(resetSubjectId)) {
+                                    return Mono.just(result(VerifyForgotPasswordOtpStatus.AUTH_FLOW_INVALID, WorkflowNextStep.NONE));
+                                }
+                                Instant now = Instant.now(clock);
+                                return sessions.loadSnapshot(command.sessionId())
+                                        .flatMap(currentOptional -> {
+                                            if (currentOptional.isEmpty()) {
+                                                return Mono.just(result(VerifyForgotPasswordOtpStatus.AUTH_FLOW_INVALID, WorkflowNextStep.NONE));
+                                            }
+                                            AuthFlowSession current = currentOptional.get().session();
+                                            if (current.isExpired(now)
+                                                    || current.isTerminal()
+                                                    || current.scenario() != AuthFlowScenario.FORGOT_PASSWORD
+                                                    || current.status() != AuthFlowStatus.STARTED
+                                                    || blank(current.activeOtpChallengeId())) {
+                                                return Mono.just(result(VerifyForgotPasswordOtpStatus.AUTH_FLOW_INVALID, WorkflowNextStep.NONE));
+                                            }
+                                            return processIdempotent(
+                                                    command,
+                                                    current,
+                                                    current.activeOtpChallengeId(),
+                                                    normalizeResetSubjectId(context, resetSubjectId),
+                                                    now);
+                                        });
+                            });
+                })
+                .onErrorReturn(result(VerifyForgotPasswordOtpStatus.SYSTEM_FAILED, WorkflowNextStep.NONE));
 
         return Mono.usingWhen(
                 Mono.just(handle),
@@ -216,15 +241,17 @@ public final class VerifyForgotPasswordOtpService implements VerifyForgotPasswor
             ForgotPasswordIdempotencyKey key,
             ForgotPasswordRequestHash requestHash,
             Instant now) {
+        String resetSubjectId = effectiveResetSubjectId(context);
         ForgotPasswordResetAuthorization authorization = new ForgotPasswordResetAuthorization(
                 opaqueRef("fpra"),
                 reloaded.authFlowSessionId().value(),
-                context.resetSubjectId(),
+                resetSubjectId,
                 now,
                 now.plus(resetAuthorizationTtl),
                 null);
-        ForgotPasswordAuthFlowContext updatedContext = context.withResetAuthorization(authorization)
-            .withPhase(ForgotPasswordProtectedPhase.PASSWORD_SETUP);
+        ForgotPasswordAuthFlowContext updatedContext = normalizeResetSubjectId(context, resetSubjectId)
+                .withResetAuthorization(authorization)
+                .withPhase(ForgotPasswordProtectedPhase.PASSWORD_SETUP);
         ForgotPasswordAuthFlowEncryptedContext encrypted = protector.protect(updatedContext);
         Map<String, String> attrs = new LinkedHashMap<>(reloaded.data().attributes());
         attrs.put(CONTEXT_CIPHERTEXT, encrypted.ciphertext());
@@ -308,6 +335,37 @@ public final class VerifyForgotPasswordOtpService implements VerifyForgotPasswor
 
     private boolean blank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private String effectiveResetSubjectId(ForgotPasswordAuthFlowContext context) {
+        if (context == null) {
+            return null;
+        }
+        if (!blank(context.resetSubjectId())) {
+            return context.resetSubjectId().trim();
+        }
+        return blank(context.tasUserId()) ? null : context.tasUserId().trim();
+    }
+
+    private ForgotPasswordAuthFlowContext normalizeResetSubjectId(
+            ForgotPasswordAuthFlowContext context,
+            String resetSubjectId) {
+        if (context == null || blank(resetSubjectId) || resetSubjectId.equals(context.resetSubjectId())) {
+            return context;
+        }
+        return new ForgotPasswordAuthFlowContext(
+                context.normalizedUsername(),
+                context.customerId(),
+                context.tasUserId(),
+                context.publicIdentityType(),
+                context.identityVerified(),
+                resetSubjectId,
+                context.contactChannel(),
+                context.protectedDestination(),
+                context.maskedDestination(),
+                context.resetAuthorization(),
+                context.workflowVersion(),
+                context.phase());
     }
 
     private String opaqueRef(String prefix) {
