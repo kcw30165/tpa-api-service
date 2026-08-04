@@ -29,7 +29,10 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionCreateCommand;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionData;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationOutcome;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationResult;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
+import com.bct.ngtpa.apiservice.application.dto.workflow.ForgotPasswordErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort;
@@ -168,6 +171,29 @@ class StartForgotPasswordServiceTest {
                 .verifyComplete();
     }
 
+    @Test
+    void revisionConflictWhileReplacingExistingSessionReturnsRestartFlowAndFailsIdempotency() {
+        var fixture = new Fixture();
+        fixture.seedReplaySession("afs_existing", "old-csrf-token");
+        fixture.sessions.cancelRevisionOutcome = AuthFlowSessionMutationOutcome.SESSION_REVISION_CHANGED;
+
+        StepVerifier.create(fixture.service.start(command("afs_existing")))
+                .assertNext(result -> {
+                    assertThat(result.status()).isEqualTo(StartForgotPasswordResultStatus.AUTH_FLOW_INVALID);
+                    assertThat(result.nextStep()).isEqualTo(WorkflowNextStep.RESTART_FLOW);
+                    assertThat(result.authFlowSessionId()).isNull();
+                    assertThat(result.csrfToken()).isNull();
+                    assertThat(result.errors()).singleElement().satisfies(error -> {
+                        assertThat(error.code()).isEqualTo(ForgotPasswordErrorKey.AUTH_FLOW_INVALID.value());
+                        assertThat(error.target()).isEqualTo("PAGE");
+                    });
+                })
+                .verifyComplete();
+
+        assertThat(fixture.idempotency.failed).isTrue();
+        assertThat(fixture.sessions.creates).isZero();
+    }
+
     private StartForgotPasswordCommand command(String existingAuthFlowSessionId) {
         return new StartForgotPasswordCommand(
                 new ForgotPasswordIdempotencyKey("idem-fp-1"),
@@ -235,6 +261,7 @@ class StartForgotPasswordServiceTest {
         private ForgotPasswordIdempotencyStartOutcome outcome = ForgotPasswordIdempotencyStartOutcome.STARTED;
         private ForgotPasswordIdempotencyRecord record = processingRecord();
         private boolean completed;
+        private boolean failed;
 
         @Override
         public Mono<ForgotPasswordIdempotencyStartResult> startProcessing(
@@ -252,6 +279,7 @@ class StartForgotPasswordServiceTest {
 
         @Override
         public Mono<ForgotPasswordIdempotencyRecord> markFailed(ForgotPasswordIdempotencyFailCommand command) {
+            failed = true;
             return Mono.just(processingRecord());
         }
 
@@ -329,6 +357,7 @@ class StartForgotPasswordServiceTest {
     private static final class FakeAuthFlowSessionPort implements AuthFlowSessionPort {
         private final Map<String, AuthFlowSession> sessions = new LinkedHashMap<>();
         private int creates;
+        private AuthFlowSessionMutationOutcome cancelRevisionOutcome = AuthFlowSessionMutationOutcome.APPLIED;
 
         @Override
         public Mono<AuthFlowSession> create(AuthFlowSessionCreateCommand command) {
@@ -383,6 +412,16 @@ class StartForgotPasswordServiceTest {
                     current.expiresAt());
             sessions.put(authFlowSessionId.value(), cancelled);
             return Mono.just(cancelled);
+        }
+
+        @Override
+        public Mono<AuthFlowSessionMutationResult> cancelRevisioned(
+                com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot expected,
+                Instant now) {
+            if (cancelRevisionOutcome != AuthFlowSessionMutationOutcome.APPLIED) {
+                return Mono.just(AuthFlowSessionMutationResult.outcome(cancelRevisionOutcome));
+            }
+            return AuthFlowSessionPort.super.cancelRevisioned(expected, now);
         }
 
         @Override

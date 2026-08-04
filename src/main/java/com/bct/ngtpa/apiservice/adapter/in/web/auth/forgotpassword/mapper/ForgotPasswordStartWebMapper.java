@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPas
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
+import com.bct.ngtpa.apiservice.application.dto.workflow.ForgotPasswordErrorKey;
 import com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowPublicApiStatusNormalizer;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
@@ -58,6 +59,11 @@ public final class ForgotPasswordStartWebMapper {
                     List.of());
             case USERNAME_NOT_FOUND ->
                 failure(ApiStatus.BUSINESS_REJECTED, WorkflowNextStep.ENTER_USERNAME, result.errors());
+            case AUTH_FLOW_INVALID -> failure(ApiStatus.VALIDATION_FAILED, WorkflowNextStep.RESTART_FLOW,
+                    result.errors().isEmpty()
+                            ? List.of(new StartForgotPasswordError(ForgotPasswordErrorKey.AUTH_FLOW_INVALID.value(),
+                                    "PAGE", null))
+                            : result.errors());
             case DUPLICATE_IN_PROGRESS -> failure(ApiStatus.BUSINESS_REJECTED, WorkflowNextStep.WAIT,
                     List.of(new StartForgotPasswordError(SharedWorkflowErrorKey.IDEMPOTENCY_IN_PROGRESS.value(), null,
                             null)));

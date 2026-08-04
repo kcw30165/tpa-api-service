@@ -78,6 +78,9 @@ public class AuthForgotPasswordController {
                         if (result.status() == StartForgotPasswordResultStatus.STARTED
                                 || result.status() == StartForgotPasswordResultStatus.COMPLETED_REPLAY) {
                             cookieWriter.writeAuthFlowCookie(response, result.authFlowSessionId());
+                        } else if (result.status() == StartForgotPasswordResultStatus.AUTH_FLOW_INVALID) {
+                            cookieWriter.clearAuthFlowCookie(response);
+                            xsrfCookies.clearXsrfCookie(response);
                         }
                         return ForgotPasswordHttpResponses.toResponse(
                                 startMapper.toMutationResponse(result, acceptLanguage));

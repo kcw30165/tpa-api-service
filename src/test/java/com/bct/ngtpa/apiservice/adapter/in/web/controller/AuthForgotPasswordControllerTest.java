@@ -11,6 +11,8 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlow
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.XsrfCookieWriter;
 import com.bct.ngtpa.apiservice.application.port.in.StartForgotPasswordUseCase;
+import com.bct.ngtpa.apiservice.application.dto.workflow.ForgotPasswordErrorKey;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordError;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordResult;
@@ -94,6 +96,38 @@ class AuthForgotPasswordControllerTest {
 
         assertThat(response.getCookies().getFirst("auth_flow_sid")).isNull();
     }
+
+        @Test
+        void authFlowInvalidClearsStaleCookiesAndReturnsRestartFlow() {
+                StartForgotPasswordUseCase useCase = value -> Mono.just(new StartForgotPasswordResult(
+                                StartForgotPasswordResultStatus.AUTH_FLOW_INVALID,
+                                WorkflowNextStep.RESTART_FLOW,
+                                null,
+                                null,
+                                List.of(new StartForgotPasswordError(ForgotPasswordErrorKey.AUTH_FLOW_INVALID.value(), "PAGE", null)),
+                                null));
+                var controller = controller(useCase, AuthFlowCookieWriter.defaultWriter());
+                var response = new MockServerHttpResponse();
+
+                StepVerifier.create(controller.startForgotPassword(
+                                new ForgotPasswordStartRequest("Member01"),
+                                "fp_key_opaque",
+                                "req-1",
+                                "en",
+                                "afs-stale",
+                                response))
+                                .assertNext(entity -> {
+                                        assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                                        assertThat(entity.getBody().result().nextStep()).isEqualTo(WorkflowNextStep.RESTART_FLOW);
+                                        assertThat(entity.getBody().errors()).singleElement()
+                                                        .extracting(error -> error.code())
+                                                        .isEqualTo(ForgotPasswordErrorKey.AUTH_FLOW_INVALID.value());
+                                })
+                                .verifyComplete();
+
+                assertThat(response.getCookies().getFirst("auth_flow_sid").getValue()).isEmpty();
+                assertThat(response.getCookies().getFirst("XSRF-TOKEN").getValue()).isEmpty();
+        }
 
     private static AuthForgotPasswordController controller(
             StartForgotPasswordUseCase startUseCase,

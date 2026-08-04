@@ -16,6 +16,7 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenari
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionData;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
+import com.bct.ngtpa.apiservice.application.dto.workflow.ForgotPasswordErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.in.StartForgotPasswordUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.CreateAuthFlowSessionCsrfUseCase;
@@ -199,6 +200,9 @@ public final class StartForgotPasswordService implements StartForgotPasswordUseC
                     LOGGER.error(
                             "event=forgot-password.start.failed requestId={} stage=session-replacement-or-csrf exceptionType={}",
                             command.correlationId(), error.getClass().getName(), error);
+                    if (isSessionReplacementConflict(error)) {
+                        return fail(command, requestHash).thenReturn(authFlowInvalid());
+                    }
                     return fail(command, requestHash).thenReturn(systemFailed());
                 });
     }
@@ -264,6 +268,16 @@ public final class StartForgotPasswordService implements StartForgotPasswordUseC
                 null);
     }
 
+    private StartForgotPasswordResult authFlowInvalid() {
+        return new StartForgotPasswordResult(
+                StartForgotPasswordResultStatus.AUTH_FLOW_INVALID,
+                WorkflowNextStep.RESTART_FLOW,
+                null,
+                null,
+                List.of(new StartForgotPasswordError(ForgotPasswordErrorKey.AUTH_FLOW_INVALID.value(), "PAGE", null)),
+                null);
+    }
+
     private StartForgotPasswordResult systemFailed() {
         return new StartForgotPasswordResult(
                 StartForgotPasswordResultStatus.SYSTEM_FAILED,
@@ -276,6 +290,18 @@ public final class StartForgotPasswordService implements StartForgotPasswordUseC
 
     private StartForgotPasswordResult simple(StartForgotPasswordResultStatus status) {
         return new StartForgotPasswordResult(status, WorkflowNextStep.NONE, null, null, List.of(), null);
+    }
+
+    private boolean isSessionReplacementConflict(Throwable error) {
+        Throwable current = error;
+        while (current != null) {
+            if (current instanceof IllegalStateException
+                    && "Auth flow session revision conflict".equals(current.getMessage())) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     private AuthFlowSessionId authFlowSessionId(String value) {
