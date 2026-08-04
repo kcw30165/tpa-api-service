@@ -13,7 +13,6 @@ import com.bct.ngtpa.apiservice.application.port.in.ProcessForgotPasswordDetails
 import com.bct.ngtpa.apiservice.application.port.out.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.*;
-import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -21,7 +20,7 @@ import java.time.*;
 import java.util.*;
 import reactor.core.publisher.Mono;
 
-public class ForgotPasswordDetailsOtpOrchestrationService implements ProcessForgotPasswordDetailsOtpUseCase {
+public final class ForgotPasswordDetailsOtpOrchestrationService implements ProcessForgotPasswordDetailsOtpUseCase {
         private static final Logger LOGGER = LoggerFactory
                         .getLogger(ForgotPasswordDetailsOtpOrchestrationService.class);
         private static final ForgotPasswordOtpTemplates OTP_TEMPLATES = ForgotPasswordOtpTemplates.approved();
@@ -66,8 +65,7 @@ public class ForgotPasswordDetailsOtpOrchestrationService implements ProcessForg
                 clock = k;
                 idemTtl = ttl;
         }
-
-        @LogExecution(value = "forgot-password.details-otp", logArgs = true, logResult = true)
+        
         public Mono<ForgotPasswordDetailsOtpResult> process(ForgotPasswordDetailsOtpCommand c) {
                 var v = validator.validate(c.dateOfBirth(), c.email(), c.mobile());
                 if (!v.valid())

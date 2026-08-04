@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordCompleteRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordCompleteWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordDetailsOtpWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordIdentityWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.XsrfCookieWriter;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
@@ -14,6 +17,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Method;
+import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
@@ -25,7 +29,7 @@ class AuthForgotPasswordCompleteControllerTest {
 
     @Test
     void completionEndpointExists() throws Exception {
-        Method method = AuthForgotPasswordCompleteController.class.getDeclaredMethod(
+        Method method = AuthForgotPasswordController.class.getDeclaredMethod(
                 "complete",
                 ForgotPasswordCompleteRequest.class,
                 String.class,
@@ -93,8 +97,14 @@ class AuthForgotPasswordCompleteControllerTest {
         }
     }
 
-    private static AuthForgotPasswordCompleteController controller(CompleteForgotPasswordUseCase useCase) {
-        return new AuthForgotPasswordCompleteController(
+    private static AuthForgotPasswordController controller(CompleteForgotPasswordUseCase useCase) {
+        return new AuthForgotPasswordController(
+                command -> Mono.error(new AssertionError("start use case must not be called")),
+                new ForgotPasswordStartWebMapper(Duration.ofMinutes(5)),
+                command -> Mono.error(new AssertionError("identity use case must not be called")),
+                new ForgotPasswordIdentityWebMapper(),
+                command -> Mono.error(new AssertionError("details use case must not be called")),
+                new ForgotPasswordDetailsOtpWebMapper(),
                 useCase,
                 new ForgotPasswordCompleteWebMapper(),
                 AuthFlowCookieWriter.defaultWriter(),

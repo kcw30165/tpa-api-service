@@ -3,7 +3,12 @@ package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordIdentityCheckRequest;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordCompleteWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordDetailsOtpWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordIdentityWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordStartWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.XsrfCookieWriter;
 import com.bct.ngtpa.apiservice.application.port.in.VerifyForgotPasswordIdentityUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identity.VerifyForgotPasswordIdentityCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identity.VerifyForgotPasswordIdentityResult;
@@ -11,6 +16,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identity
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Method;
+import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
@@ -22,7 +28,7 @@ class AuthForgotPasswordIdentityControllerTest {
 
     @Test
     void identityCheckEndpointExists() throws Exception {
-        Method method = AuthForgotPasswordIdentityController.class.getDeclaredMethod(
+        Method method = AuthForgotPasswordController.class.getDeclaredMethod(
                 "check",
                 ForgotPasswordIdentityCheckRequest.class,
                 String.class,
@@ -41,7 +47,7 @@ class AuthForgotPasswordIdentityControllerTest {
     @Test
     void identityCheckRequiresCookieAndXsrfBeforeCallingUseCase() throws Exception {
         var useCase = new RecordingUseCase();
-        var controller = new AuthForgotPasswordIdentityController(useCase, new ForgotPasswordIdentityWebMapper());
+        var controller = controller(useCase);
 
         String json = objectMapper.writeValueAsString(controller
                 .check(new ForgotPasswordIdentityCheckRequest("ID", "A1234567"), null, null, null, null,
@@ -55,7 +61,7 @@ class AuthForgotPasswordIdentityControllerTest {
     @Test
     void identityCheckEchoesRequestIdAndDoesNotExposeAccountRefOrRawIdentityValue() {
         var useCase = new RecordingUseCase();
-        var controller = new AuthForgotPasswordIdentityController(useCase, new ForgotPasswordIdentityWebMapper());
+        var controller = controller(useCase);
         var response = new MockServerHttpResponse();
 
         JsonNode json = objectMapper.valueToTree(controller
@@ -91,5 +97,19 @@ class AuthForgotPasswordIdentityControllerTest {
             this.command = command;
             return Mono.just(VerifyForgotPasswordIdentityResult.of(VerifyForgotPasswordIdentityStatus.VERIFIED));
         }
+    }
+
+    private static AuthForgotPasswordController controller(VerifyForgotPasswordIdentityUseCase identityCheckUseCase) {
+        return new AuthForgotPasswordController(
+                command -> Mono.error(new AssertionError("start use case must not be called")),
+                new ForgotPasswordStartWebMapper(Duration.ofMinutes(5)),
+                identityCheckUseCase,
+                new ForgotPasswordIdentityWebMapper(),
+                command -> Mono.error(new AssertionError("details use case must not be called")),
+                new ForgotPasswordDetailsOtpWebMapper(),
+                command -> Mono.error(new AssertionError("complete use case must not be called")),
+                new ForgotPasswordCompleteWebMapper(),
+                AuthFlowCookieWriter.defaultWriter(),
+                new XsrfCookieWriter(new com.bct.ngtpa.apiservice.adapter.in.web.session.config.AuthFlowSessionProperties()));
     }
 }
