@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowEncryptedContext;
+import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordProtectedPhase;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyAction;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyCompleteCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyFailCommand;
@@ -19,6 +20,10 @@ import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.CreateOtpChallengeCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.CreateOtpChallengeResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.InvalidateOtpChallengeCommand;
+import com.bct.ngtpa.apiservice.application.dto.auth.otp.OtpChallenge;
+import com.bct.ngtpa.apiservice.application.dto.auth.otp.OtpChannel;
+import com.bct.ngtpa.apiservice.application.dto.auth.otp.OtpScenario;
+import com.bct.ngtpa.apiservice.application.dto.auth.otp.OtpStatus;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.ReplaceOtpChallengeCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.ReplaceOtpChallengeResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.VerifyOtpChallengeCommand;
@@ -28,7 +33,12 @@ import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryResult;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionCreateCommand;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionData;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision;
 import com.bct.ngtpa.apiservice.application.port.in.EvaluateForgotPasswordOtpResendUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionMutationLockPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
@@ -45,10 +55,12 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.Forg
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpReplayResolver;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpTemplates;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.SecureForgotPasswordOtpCommitRefGenerator;
+import com.bct.ngtpa.apiservice.application.usecase.session.authflow.Sha256CsrfTokenHasher;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
@@ -62,12 +74,14 @@ class ResendForgotPasswordOtpServiceTest {
         var fixture = new Fixture();
         fixture.idempotency.outcome = ForgotPasswordIdempotencyStartOutcome.KEY_REUSED_WITH_DIFFERENT_REQUEST;
 
-        StepVerifier.create(fixture.service.resend(command()))
+        StepVerifier.create(fixture.service().resend(command()))
                 .assertNext(result -> {
                     assertThat(result.status()).isEqualTo(ResendForgotPasswordOtpStatus.IDEMPOTENCY_KEY_REUSED);
                     assertThat(result.maskedDestination()).isNull();
                     assertThat(result.expiresInSeconds()).isNull();
-                    assertThat(result.resendAvailableInSeconds()).isNull();
+                    assertThat(result.resendCooldownSeconds()).isNull();
+                    assertThat(result.remainingResendAttempts()).isNull();
+                    assertThat(result.retryAfterSeconds()).isNull();
                 })
                 .verifyComplete();
 
@@ -85,12 +99,14 @@ class ResendForgotPasswordOtpServiceTest {
         var fixture = new Fixture();
         fixture.sessions.snapshot = Optional.empty();
 
-        StepVerifier.create(fixture.service.resend(command()))
+        StepVerifier.create(fixture.service().resend(command()))
                 .assertNext(result -> {
                     assertThat(result.status()).isEqualTo(ResendForgotPasswordOtpStatus.AUTH_FLOW_INVALID);
                     assertThat(result.maskedDestination()).isNull();
                     assertThat(result.expiresInSeconds()).isNull();
-                    assertThat(result.resendAvailableInSeconds()).isNull();
+                    assertThat(result.resendCooldownSeconds()).isNull();
+                    assertThat(result.remainingResendAttempts()).isNull();
+                    assertThat(result.retryAfterSeconds()).isNull();
                 })
                 .verifyComplete();
 
@@ -99,6 +115,142 @@ class ResendForgotPasswordOtpServiceTest {
         assertThat(fixture.locks.releaseCount).isEqualTo(1);
         assertThat(fixture.sessions.loadSnapshotCount).isEqualTo(1);
     }
+
+        @Test
+        void missingChallengeLastSentAtFallsBackToCreatedAtAndReturnsCooldown() {
+        var fixture = new Fixture();
+        fixture.foundation = new ForgotPasswordOtpResendFoundationService(
+            new ForgotPasswordOtpResendEligibilityValidator(
+                new ForgotPasswordOtpResendPolicy(
+                    ForgotPasswordInitialOtpPolicy.approved().resendCooldownSeconds(),
+                    ForgotPasswordInitialOtpPolicy.approved().maxResendAttempts())));
+        fixture.protector.context = new ForgotPasswordAuthFlowContext(
+            "member",
+            "customer-1",
+            "tas-1",
+            "HKID",
+            true,
+            "subject-1",
+            "email",
+            "member@example.com",
+                "m*****@example.com",
+            null,
+            "v1",
+            ForgotPasswordProtectedPhase.OTP_SENT);
+        fixture.sessions.snapshot = Optional.of(new AuthFlowSessionSnapshot(
+            new AuthFlowSession(
+                new AuthFlowSessionId("afs_fp"),
+                AuthFlowScenario.FORGOT_PASSWORD,
+                AuthFlowStatus.OTP_SENT,
+                new Sha256CsrfTokenHasher().hash("csrf_abc"),
+                "otp-1",
+                new AuthFlowSessionData(
+                    "email",
+                    "m*****@example.com",
+                    Map.of(
+                        "forgotPasswordOtpSuccessfulResendCount", "1",
+                        "forgotPasswordContextCiphertext", "ciphertext",
+                        "forgotPasswordContextKeyVersion", "v1",
+                        "forgotPasswordContextAlgorithm", "AES_GCM_V1")),
+                NOW.minusSeconds(300),
+                NOW.minusSeconds(37),
+                NOW.plusSeconds(300)),
+            new SessionRevision("00000000000000000000000000000001")));
+        fixture.challenges.challenge = Optional.of(new OtpChallenge(
+            "otp-1",
+            OtpScenario.FORGOT_PASSWORD,
+            "afs_fp",
+            OtpChannel.EMAIL,
+                "b6e346dee08f8e8cf029179eb5177b5c2fc1a6e8ba01ab8ff4e1b8d56e89298c",
+            "code",
+            OtpStatus.CREATED,
+            0,
+            5,
+            1,
+            5,
+            NOW.minusSeconds(37),
+            NOW.plusSeconds(263),
+            null,
+            null,
+            null));
+
+        StepVerifier.create(fixture.service().resend(command()))
+            .assertNext(result -> {
+                assertThat(result.status()).isEqualTo(ResendForgotPasswordOtpStatus.COOLDOWN_ACTIVE);
+                    assertThat(result.maskedDestination()).isEqualTo("m*****@example.com");
+                assertThat(result.expiresInSeconds()).isEqualTo(263);
+                assertThat(result.resendCooldownSeconds()).isNull();
+                assertThat(result.remainingResendAttempts()).isEqualTo(4);
+                assertThat(result.retryAfterSeconds()).isEqualTo(23);
+            })
+            .verifyComplete();
+        }
+
+        @Test
+        void duplicateInProgressWithStalePendingMarkersReplaysCurrentOtpState() {
+        var fixture = new Fixture();
+        fixture.idempotency.outcome = ForgotPasswordIdempotencyStartOutcome.DUPLICATE_IN_PROGRESS;
+        fixture.idempotency.pendingOpaqueCommitRef = "pending-1";
+        fixture.protector.context = new ForgotPasswordAuthFlowContext(
+            "member",
+            "customer-1",
+            "tas-1",
+            "HKID",
+            true,
+            "subject-1",
+            "email",
+            "member@example.com",
+            "m*****@example.com",
+            null,
+            "v1",
+            ForgotPasswordProtectedPhase.OTP_SENT);
+        fixture.sessions.snapshot = Optional.of(new AuthFlowSessionSnapshot(
+            new AuthFlowSession(
+                new AuthFlowSessionId("afs_fp"),
+                AuthFlowScenario.FORGOT_PASSWORD,
+                AuthFlowStatus.OTP_SENT,
+                new Sha256CsrfTokenHasher().hash("csrf_abc"),
+                "otp-1",
+                new AuthFlowSessionData(
+                    "email",
+                    "m*****@example.com",
+                    Map.of(
+                        "forgotPasswordOtpSuccessfulResendCount", "1",
+                        "forgotPasswordContextCiphertext", "ciphertext",
+                        "forgotPasswordContextKeyVersion", "v1",
+                        "forgotPasswordContextAlgorithm", "AES_GCM_V1")),
+                NOW.minusSeconds(300),
+                NOW.minusSeconds(37),
+                NOW.plusSeconds(300)),
+            new SessionRevision("00000000000000000000000000000001")));
+        fixture.challenges.challenge = Optional.of(new OtpChallenge(
+            "otp-1",
+            OtpScenario.FORGOT_PASSWORD,
+            "afs_fp",
+            OtpChannel.EMAIL,
+            "b6e346dee08f8e8cf029179eb5177b5c2fc1a6e8ba01ab8ff4e1b8d56e89298c",
+            "code",
+            OtpStatus.CREATED,
+            0,
+            5,
+            1,
+            5,
+            NOW.minusSeconds(37),
+            NOW.plusSeconds(263),
+            NOW.minusSeconds(37),
+            null,
+            null));
+
+        StepVerifier.create(fixture.service().resend(command()))
+            .assertNext(result -> {
+                assertThat(result.status()).isEqualTo(ResendForgotPasswordOtpStatus.COMPLETED_REPLAY);
+                assertThat(result.maskedDestination()).isEqualTo("m*****@example.com");
+                assertThat(result.expiresInSeconds()).isEqualTo(263);
+                assertThat(result.remainingResendAttempts()).isEqualTo(4);
+                assertThat(result.retryAfterSeconds()).isEqualTo(23);
+            })
+            .verifyComplete();
+        }
 
     private static ResendForgotPasswordOtpCommand command() {
         return new ResendForgotPasswordOtpCommand(
@@ -115,26 +267,33 @@ class ResendForgotPasswordOtpServiceTest {
         final MutableIdempotency idempotency = new MutableIdempotency();
         final MutableLocks locks = new MutableLocks();
         final MutableSessions sessions = new MutableSessions();
-        final ResendForgotPasswordOtpService service = new ResendForgotPasswordOtpService(
+        final MutableProtector protector = new MutableProtector();
+        final MutableOtpChallengeStatePort challenges = new MutableOtpChallengeStatePort();
+        EvaluateForgotPasswordOtpResendUseCase foundation =
+            command -> Mono.error(new AssertionError("foundation must not be called"));
+
+        ResendForgotPasswordOtpService service() {
+            return new ResendForgotPasswordOtpService(
                 idempotency,
                 new SecureForgotPasswordOtpCommitRefGenerator(),
                 locks,
                 sessions,
-                new MutableProtector(),
-                command -> Mono.error(new AssertionError("foundation must not be called")),
+                protector,
+                foundation,
                 new UnsupportedOtpChallengePort(),
-                new UnsupportedOtpChallengeStatePort(),
+                challenges,
                 new UnsupportedMessageDeliveryPort(),
                 new ForgotPasswordDestinationMasker(),
                 new ForgotPasswordOtpCommitCoordinator(
-                        idempotency,
-                        new UnsupportedCommitStatePort(),
-                        new ForgotPasswordOtpCommitRetentionPolicy(Duration.ofMinutes(5), Duration.ofHours(1))),
+                    idempotency,
+                    new UnsupportedCommitStatePort(),
+                    new ForgotPasswordOtpCommitRetentionPolicy(Duration.ofMinutes(5), Duration.ofHours(1))),
                 new ForgotPasswordOtpReplayResolver(
-                        new UnsupportedCommitStatePort(),
-                        sessions,
-                        new UnsupportedOtpChallengeStatePort(),
-                        Clock.fixed(NOW, ZoneOffset.UTC)),
+                    new UnsupportedCommitStatePort(),
+                    sessions,
+                    challenges,
+                    Clock.fixed(NOW, ZoneOffset.UTC),
+                    ForgotPasswordInitialOtpPolicy.approved().resendCooldownSeconds()),
                 ForgotPasswordOtpTemplates.approved(),
                 ForgotPasswordInitialOtpPolicy.approved(),
                 new ForgotPasswordOtpResendRequestHashGenerator(),
@@ -142,12 +301,14 @@ class ResendForgotPasswordOtpServiceTest {
                 Duration.ofMinutes(10),
                 Duration.ofSeconds(30),
                 java.util.List.of("https://portal.example"));
+        }
     }
 
     private static final class MutableIdempotency implements ForgotPasswordIdempotencyPort {
         private ForgotPasswordIdempotencyStartOutcome outcome = ForgotPasswordIdempotencyStartOutcome.STARTED;
         private ForgotPasswordIdempotencyStartCommand lastStartCommand;
         private int attachPendingCount;
+        private String pendingOpaqueCommitRef;
 
         @Override
         public Mono<ForgotPasswordIdempotencyStartResult> startProcessing(ForgotPasswordIdempotencyStartCommand command) {
@@ -200,7 +361,7 @@ class ResendForgotPasswordOtpServiceTest {
                     command.now(),
                     command.now(),
                     command.expiresAt(),
-                    pendingRef);
+                    pendingOpaqueCommitRef != null ? pendingOpaqueCommitRef : pendingRef);
         }
     }
 
@@ -244,6 +405,8 @@ class ResendForgotPasswordOtpServiceTest {
     }
 
     private static final class MutableProtector implements ForgotPasswordAuthFlowContextProtectorPort {
+        private ForgotPasswordAuthFlowContext context;
+
         @Override
         public ForgotPasswordAuthFlowEncryptedContext protect(ForgotPasswordAuthFlowContext context) {
             throw new AssertionError("protect must not be called");
@@ -251,7 +414,10 @@ class ResendForgotPasswordOtpServiceTest {
 
         @Override
         public ForgotPasswordAuthFlowContext unprotect(ForgotPasswordAuthFlowEncryptedContext encryptedContext) {
-            throw new AssertionError("unprotect must not be called");
+            if (context == null) {
+                throw new AssertionError("unprotect context must be configured");
+            }
+            return context;
         }
     }
 
@@ -277,19 +443,21 @@ class ResendForgotPasswordOtpServiceTest {
         }
     }
 
-    private static final class UnsupportedOtpChallengeStatePort implements OtpChallengeStatePort {
+    private static final class MutableOtpChallengeStatePort implements OtpChallengeStatePort {
+        private Optional<OtpChallenge> challenge = Optional.empty();
+
         @Override
-        public Mono<Void> save(com.bct.ngtpa.apiservice.application.dto.auth.otp.OtpChallenge challenge) {
+        public Mono<Void> save(OtpChallenge challenge) {
             return Mono.error(new AssertionError("save must not be called"));
         }
 
         @Override
-        public Mono<Optional<com.bct.ngtpa.apiservice.application.dto.auth.otp.OtpChallenge>> findById(String otpChallengeId) {
-            return Mono.error(new AssertionError("findById must not be called"));
+        public Mono<Optional<OtpChallenge>> findById(String otpChallengeId) {
+            return Mono.just(challenge.filter(candidate -> candidate.otpChallengeId().equals(otpChallengeId)));
         }
 
         @Override
-        public Mono<Void> update(com.bct.ngtpa.apiservice.application.dto.auth.otp.OtpChallenge challenge) {
+        public Mono<Void> update(OtpChallenge challenge) {
             return Mono.error(new AssertionError("update must not be called"));
         }
 

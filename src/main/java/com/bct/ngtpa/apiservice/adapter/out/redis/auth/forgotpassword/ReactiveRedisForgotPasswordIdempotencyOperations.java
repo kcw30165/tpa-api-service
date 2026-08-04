@@ -30,9 +30,9 @@ class ReactiveRedisForgotPasswordIdempotencyOperations implements RedisForgotPas
     }
 
     @Override
-    public Mono<String> attachPendingCommitRef(String key,String requestHash,String ref,Duration ttl) {
-        String lua="local r=redis.call('GET',KEYS[1]); if not r then return redis.error_reply('MISSING') end; local o=cjson.decode(r); if o.status~='PROCESSING' or o.action~='DETAILS_AND_OTP' or o.requestHash~=ARGV[1] then return redis.error_reply('INVALID') end; if o.pendingOpaqueCommitRef and o.pendingOpaqueCommitRef~=cjson.null and o.pendingOpaqueCommitRef~='' then return r end; o.pendingOpaqueCommitRef=ARGV[2]; local n=cjson.encode(o); redis.call('SET',KEYS[1],n,'PX',ARGV[3]); return n";
-        return redisTemplate.execute(RedisScript.of(lua,String.class),List.of(key),List.of(requestHash,ref,String.valueOf(ttl.toMillis()))).next();
+    public Mono<String> attachPendingCommitRef(String key,String action,String requestHash,String ref,Duration ttl) {
+        String lua="local r=redis.call('GET',KEYS[1]); if not r then return redis.error_reply('MISSING') end; local o=cjson.decode(r); if o.status~='PROCESSING' or o.action~=ARGV[1] or o.requestHash~=ARGV[2] then return redis.error_reply('INVALID') end; if o.pendingOpaqueCommitRef and o.pendingOpaqueCommitRef~=cjson.null and o.pendingOpaqueCommitRef~='' then return r end; o.pendingOpaqueCommitRef=ARGV[3]; local n=cjson.encode(o); redis.call('SET',KEYS[1],n,'PX',ARGV[4]); return n";
+        return redisTemplate.execute(RedisScript.of(lua,String.class),List.of(key),List.of(action,requestHash,ref,String.valueOf(ttl.toMillis()))).next();
     }
 
     @Override

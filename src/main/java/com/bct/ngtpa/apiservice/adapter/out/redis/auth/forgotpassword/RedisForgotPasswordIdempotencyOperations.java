@@ -14,6 +14,7 @@ interface RedisForgotPasswordIdempotencyOperations {
     Mono<Void> delete(String key);
     default Mono<String> attachPendingCommitRef(
             String key,
+            String action,
             String requestHash,
             String opaqueCommitRef,
             Duration ttl) {

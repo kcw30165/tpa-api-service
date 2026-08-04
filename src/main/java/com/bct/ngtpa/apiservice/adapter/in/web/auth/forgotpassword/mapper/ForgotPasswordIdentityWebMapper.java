@@ -58,6 +58,6 @@ public class ForgotPasswordIdentityWebMapper {
 		return MutationResponse.failure(
 				ApiStatus.SYSTEM_ERROR,
 				null,
-				List.of(ApiError.form("err.system.unavailable", null, List.of(), "BFF")));
+				List.of(ApiError.form("err.forgot-password.system.unavailable", null, List.of(), "BFF")));
 	}
 }

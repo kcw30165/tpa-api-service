@@ -108,7 +108,9 @@ class ForgotPasswordPublicResponseContractSubtask008FailFirstTest {
                 resendMapper.toMutationResponse(new ResendForgotPasswordOtpResult(
                         ResendForgotPasswordOtpStatus.COOLDOWN_ACTIVE,
                         "m****r@example.com",
-                        300,
+                        null,
+                        null,
+                        4,
                         25)),
                 ApiStatus.BUSINESS_REJECTED,
                 WorkflowNextStep.VERIFY_OTP,

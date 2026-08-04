@@ -109,7 +109,9 @@ class AuthForgotPasswordOtpResendControllerTest {
         assertThat(json.at("/body/result/nextStep").asText()).isEqualTo("VERIFY_OTP");
         assertThat(json.at("/body/result/data/maskedDestination").asText()).isEqualTo("m****r@example.com");
         assertThat(json.at("/body/result/data/expiresInSeconds").asInt()).isEqualTo(300);
-        assertThat(json.at("/body/result/data/resendAvailableInSeconds").asInt()).isEqualTo(60);
+        assertThat(json.at("/body/result/data/resendCooldownSeconds").asInt()).isEqualTo(60);
+        assertThat(json.at("/body/result/data/remainingResendAttempts").asInt()).isEqualTo(4);
+        assertThat(json.at("/body/result/data/retryAfterSeconds").isNull()).isTrue();
         assertThat(json.toString()).doesNotContain(
                 "afs_abc",
                 "csrf_abc",
@@ -133,7 +135,9 @@ class AuthForgotPasswordOtpResendControllerTest {
                     ResendForgotPasswordOtpStatus.RESENT,
                     "m****r@example.com",
                     300,
-                    60));
+                    60,
+                    4,
+                    null));
         }
     }
 

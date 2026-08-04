@@ -32,9 +32,21 @@ class ForgotPasswordOtpResendFoundationSubtask006001FailFirstTest {
     @Test
     void otpSentBoundChallengeIsEligibleEvenWhenExpired() {
         var result = validator
-                .validate(input(ForgotPasswordProtectedPhase.OTP_SENT, challenge(now.minusSeconds(1)), 0));
+                                .validate(input(ForgotPasswordProtectedPhase.OTP_SENT, challenge(now.minusSeconds(1)), 0));
         assertThat(result.status()).isEqualTo(ForgotPasswordOtpResendEligibilityStatus.ELIGIBLE);
     }
+
+        @Test
+        void otpSentSessionInCooldownReturnsCooldownInsteadOfSessionInvalid() {
+                var result = validator.validate(input(
+                        ForgotPasswordProtectedPhase.OTP_SENT,
+                        challenge(now.plusSeconds(240), now),
+                        1));
+
+                assertThat(result.status()).isEqualTo(ForgotPasswordOtpResendEligibilityStatus.COOLDOWN_ACTIVE);
+                assertThat(result.retryAfterSeconds()).isEqualTo(60);
+                assertThat(result.successfulResendCount()).isEqualTo(1);
+        }
 
     @Test
     void blockedAndInvalidStatesFailClosed() {
@@ -62,12 +74,16 @@ class ForgotPasswordOtpResendFoundationSubtask006001FailFirstTest {
 
     private ForgotPasswordOtpResendEligibilityInput input(ForgotPasswordProtectedPhase phase, OtpChallenge c,
             int count) {
-        return new ForgotPasswordOtpResendEligibilityInput(AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.STARTED,
+        return new ForgotPasswordOtpResendEligibilityInput(AuthFlowScenario.FORGOT_PASSWORD, AuthFlowStatus.OTP_SENT,
                 "afs-1", c, phase, count, now);
     }
 
     private OtpChallenge challenge(Instant expires) {
+                return challenge(expires, now.minusSeconds(60));
+        }
+
+        private OtpChallenge challenge(Instant expires, Instant lastSentAt) {
         return new OtpChallenge("otp-1", OtpScenario.FORGOT_PASSWORD, "afs-1", OtpChannel.SMS, "hash", "code",
-                OtpStatus.CREATED, 0, 5, 0, 5, now.minusSeconds(300), expires, now.minusSeconds(60), null, null);
+                                OtpStatus.CREATED, 0, 5, 0, 5, now.minusSeconds(300), expires, lastSentAt, null, null);
     }
 }

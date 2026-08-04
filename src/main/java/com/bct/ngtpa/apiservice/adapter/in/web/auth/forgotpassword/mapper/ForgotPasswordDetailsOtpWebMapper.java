@@ -19,7 +19,9 @@ public final class ForgotPasswordDetailsOtpWebMapper {
                                         new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.VERIFY_OTP,
                                                         new ForgotPasswordOtpDataResponse(r.maskedDestination(),
                                                                         r.expiresInSeconds(),
-                                                                        r.resendAvailableInSeconds())),
+                                                                        r.resendAvailableInSeconds(),
+                                                                        null,
+                                                                        null)),
                                         List.of());
                 if (r.status() == ForgotPasswordDetailsOtpResult.Status.EXPIRED)
                         return MutationResponse.failure(ApiStatus.BUSINESS_REJECTED,

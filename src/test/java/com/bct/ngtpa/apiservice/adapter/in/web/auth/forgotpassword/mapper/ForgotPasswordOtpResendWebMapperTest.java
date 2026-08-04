@@ -6,10 +6,12 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ResendForgotPasswordOtpResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ResendForgotPasswordOtpStatus;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 class ForgotPasswordOtpResendWebMapperTest {
     private final ForgotPasswordOtpResendWebMapper mapper = new ForgotPasswordOtpResendWebMapper();
+        private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
     void mapsSuccessReplayAndCooldownToApprovedWorkflowShape() {
@@ -17,16 +19,22 @@ class ForgotPasswordOtpResendWebMapperTest {
                 ResendForgotPasswordOtpStatus.RESENT,
                 "m****r@example.com",
                 300,
-                60));
+                60,
+                4,
+                null));
         var replay = mapper.toMutationResponse(new ResendForgotPasswordOtpResult(
                 ResendForgotPasswordOtpStatus.COMPLETED_REPLAY,
                 "m****r@example.com",
                 300,
+                null,
+                4,
                 60));
         var cooldown = mapper.toMutationResponse(new ResendForgotPasswordOtpResult(
                 ResendForgotPasswordOtpStatus.COOLDOWN_ACTIVE,
                 "m****r@example.com",
                 300,
+                null,
+                4,
                 25));
 
         assertThat(resent.status()).isEqualTo(ApiStatus.SUCCESS);
@@ -45,15 +53,21 @@ class ForgotPasswordOtpResendWebMapperTest {
                 ResendForgotPasswordOtpStatus.RESEND_LIMIT_REACHED,
                 "m****r@example.com",
                 null,
+                null,
+                0,
                 null));
         var reused = mapper.toMutationResponse(new ResendForgotPasswordOtpResult(
                 ResendForgotPasswordOtpStatus.IDEMPOTENCY_KEY_REUSED,
+                null,
+                null,
                 null,
                 null,
                 null));
         var unavailable = mapper.toMutationResponse(new ResendForgotPasswordOtpResult(
                 ResendForgotPasswordOtpStatus.UNKNOWN_OUTCOME,
                 "m****r@example.com",
+                null,
+                null,
                 null,
                 null));
 
@@ -68,4 +82,25 @@ class ForgotPasswordOtpResendWebMapperTest {
                 .isEqualTo("err.system.unavailable");
         assertThat(unavailable.toString()).doesNotContain("m****r@example.com");
     }
+
+        @Test
+        void cooldownResponseExposesRegistrationStyleRetryAndRemainingAttemptFields() throws Exception {
+                var response = mapper.toMutationResponse(new ResendForgotPasswordOtpResult(
+                                ResendForgotPasswordOtpStatus.COOLDOWN_ACTIVE,
+                                "m****r@example.com",
+                                null,
+                                null,
+                                4,
+                                23));
+
+                var json = objectMapper.valueToTree(response);
+
+                assertThat(response.status()).isEqualTo(ApiStatus.BUSINESS_REJECTED);
+                assertThat(response.result().nextStep()).isEqualTo(WorkflowNextStep.VERIFY_OTP);
+                assertThat(json.at("/result/data/maskedDestination").asText()).isEqualTo("m****r@example.com");
+                assertThat(json.at("/result/data/expiresInSeconds").isNull()).isTrue();
+                assertThat(json.at("/result/data/resendCooldownSeconds").isNull()).isTrue();
+                assertThat(json.at("/result/data/remainingResendAttempts").asInt()).isEqualTo(4);
+                assertThat(json.at("/result/data/retryAfterSeconds").asInt()).isEqualTo(23);
+        }
 }

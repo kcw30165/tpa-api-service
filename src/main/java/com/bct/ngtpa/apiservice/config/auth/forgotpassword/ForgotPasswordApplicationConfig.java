@@ -233,8 +233,14 @@ public class ForgotPasswordApplicationConfig {
                         com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpCommitStatePort commitStates,
                         AuthFlowSessionPort sessions,
                         OtpChallengeStatePort challenges,
-                        Clock clock) {
-                return new ForgotPasswordOtpReplayResolver(commitStates, sessions, challenges, clock);
+                        Clock clock,
+                        ForgotPasswordInitialOtpPolicy otpPolicy) {
+                return new ForgotPasswordOtpReplayResolver(
+                                commitStates,
+                                sessions,
+                                challenges,
+                                clock,
+                                otpPolicy.resendCooldownSeconds());
         }
 
         @Bean

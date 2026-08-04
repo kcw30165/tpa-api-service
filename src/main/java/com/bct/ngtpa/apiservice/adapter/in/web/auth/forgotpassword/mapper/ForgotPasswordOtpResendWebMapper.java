@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordOtpDataResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordWorkflowResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.*;
+import com.bct.ngtpa.apiservice.application.dto.workflow.ForgotPasswordErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.*;
@@ -34,10 +35,10 @@ public final class ForgotPasswordOtpResendWebMapper {
                             List.of("Idempotency-Key"), "BFF")));
             case SECURITY_REJECTED -> MutationResponse.failure(ApiStatus.VALIDATION_FAILED,
                     new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.VERIFY_OTP, null),
-                    List.of(ApiError.form("err.forgot-password.security.invalid", null, List.of("PAGE"), "SERVER")));
+                    List.of(ApiError.form(ForgotPasswordErrorKey.SECURITY_INVALID.value(), null, List.of("PAGE"), "SERVER")));
             case AUTH_FLOW_INVALID -> MutationResponse.failure(ApiStatus.VALIDATION_FAILED,
                     new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.RESTART_FLOW, null),
-                    List.of(ApiError.form("err.forgot-password.authFlow.invalid", null, List.of("PAGE"), "SERVER")));
+                    List.of(ApiError.form(ForgotPasswordErrorKey.AUTH_FLOW_INVALID.value(), null, List.of("PAGE"), "SERVER")));
             case DELIVERY_FAILED, UNKNOWN_OUTCOME, SYSTEM_FAILED -> systemUnavailable();
         };
     }
@@ -59,7 +60,9 @@ public final class ForgotPasswordOtpResendWebMapper {
             ResendForgotPasswordOtpResult result) {
         return new ForgotPasswordWorkflowResultResponse<>(nextStep,
                 new ForgotPasswordOtpDataResponse(result.maskedDestination(),
-                        result.expiresInSeconds() == null ? 0 : result.expiresInSeconds(),
-                        result.resendAvailableInSeconds() == null ? 0 : result.resendAvailableInSeconds()));
+                        result.expiresInSeconds(),
+                        result.resendCooldownSeconds(),
+                        result.remainingResendAttempts(),
+                        result.retryAfterSeconds()));
     }
 }

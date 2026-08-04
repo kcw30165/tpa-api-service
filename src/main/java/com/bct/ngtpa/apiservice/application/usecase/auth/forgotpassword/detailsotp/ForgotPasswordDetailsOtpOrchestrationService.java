@@ -224,7 +224,7 @@ public final class ForgotPasswordDetailsOtpOrchestrationService implements Proce
         private ForgotPasswordDetailsOtpResult fromReplay(ForgotPasswordOtpReplayResult r) {
                 if (r.status() == ForgotPasswordOtpReplayResult.Status.ACTIVE)
                         return new ForgotPasswordDetailsOtpResult(ForgotPasswordDetailsOtpResult.Status.SUCCESS,
-                                        r.maskedDestination(), r.expiresInSeconds(), r.resendAvailableInSeconds(),
+                                        r.maskedDestination(), r.expiresInSeconds(), r.retryAfterSeconds(),
                                         List.of());
                 if (r.status() == ForgotPasswordOtpReplayResult.Status.EXPIRED)
                         return new ForgotPasswordDetailsOtpResult(ForgotPasswordDetailsOtpResult.Status.EXPIRED, null,

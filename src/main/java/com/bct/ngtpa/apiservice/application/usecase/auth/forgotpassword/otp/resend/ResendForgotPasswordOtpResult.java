@@ -4,11 +4,15 @@ public record ResendForgotPasswordOtpResult(
         ResendForgotPasswordOtpStatus status,
         String maskedDestination,
         Integer expiresInSeconds,
-        Integer resendAvailableInSeconds) {
+    Integer resendCooldownSeconds,
+    Integer remainingResendAttempts,
+    Integer retryAfterSeconds) {
     @Override
     public String toString() {
         return "ResendForgotPasswordOtpResult[status=" + status
                 + ", maskedDestination=<redacted>, expiresInSeconds=" + expiresInSeconds
-                + ", resendAvailableInSeconds=" + resendAvailableInSeconds + "]";
+        + ", resendCooldownSeconds=" + resendCooldownSeconds
+        + ", remainingResendAttempts=" + remainingResendAttempts
+        + ", retryAfterSeconds=" + retryAfterSeconds + "]";
     }
 }
