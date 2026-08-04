@@ -151,7 +151,7 @@ class ForgotPasswordDetailsOtpOrchestrationSubtask005004FailFirstTest {
             new AuthFlowSession(
                 sessionId,
                 AuthFlowScenario.FORGOT_PASSWORD,
-                AuthFlowStatus.STARTED,
+                AuthFlowStatus.IDENTITY_VERIFIED,
                 "csrf-hash",
                 null,
                 new AuthFlowSessionData(null, null,

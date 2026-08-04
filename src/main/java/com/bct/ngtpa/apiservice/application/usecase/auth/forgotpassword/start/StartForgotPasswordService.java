@@ -195,7 +195,12 @@ public final class StartForgotPasswordService implements StartForgotPasswordUseC
                                         started.session().authFlowSessionId().value(),
                                         csrf.rawToken(),
                                         null))))
-                .onErrorResume(ignored -> fail(command, requestHash).thenReturn(systemFailed()));
+                .onErrorResume(error -> {
+                    LOGGER.error(
+                            "event=forgot-password.start.failed requestId={} stage=session-replacement-or-csrf exceptionType={}",
+                            command.correlationId(), error.getClass().getName(), error);
+                    return fail(command, requestHash).thenReturn(systemFailed());
+                });
     }
 
     private Mono<StartForgotPasswordResult> replay(
@@ -217,7 +222,12 @@ public final class StartForgotPasswordService implements StartForgotPasswordUseC
                         sessionId.value(),
                         csrf.rawToken(),
                         snapshot))
-                .onErrorResume(ignored -> fail(command, requestHash).thenReturn(systemFailed()));
+                .onErrorResume(error -> {
+                    LOGGER.error(
+                            "event=forgot-password.start.failed requestId={} stage=session-replacement-or-csrf exceptionType={}",
+                            command.correlationId(), error.getClass().getName(), error);
+                    return fail(command, requestHash).thenReturn(systemFailed());
+                });
     }
 
     private Mono<Void> fail(StartForgotPasswordCommand command, ForgotPasswordRequestHash requestHash) {

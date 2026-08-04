@@ -110,7 +110,7 @@ public final class ForgotPasswordDetailsOtpOrchestrationService implements Proce
                         if (o.isEmpty())
                                 return Mono.just(systemResult());
                         AuthFlowSession s = o.get().session();
-                        if (s.scenario() != AuthFlowScenario.FORGOT_PASSWORD || s.status() != AuthFlowStatus.STARTED
+                        if (s.scenario() != AuthFlowScenario.FORGOT_PASSWORD || s.status() != AuthFlowStatus.IDENTITY_VERIFIED
                                         || s.isExpired(Instant.now(clock)))
                                 return Mono.just(systemResult());
                         ForgotPasswordAuthFlowContext ctx = decrypt(s);

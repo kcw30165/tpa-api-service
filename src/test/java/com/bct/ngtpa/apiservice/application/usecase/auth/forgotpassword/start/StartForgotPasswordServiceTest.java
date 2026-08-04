@@ -104,6 +104,28 @@ class StartForgotPasswordServiceTest {
     }
 
     @Test
+    void newIdempotencyStartReplacesExistingActiveFlowAndReturnsNewSession() {
+        var fixture = new Fixture();
+        fixture.seedReplaySession("afs_existing", "old-csrf-token");
+
+        StepVerifier.create(fixture.service.start(command("afs_existing")))
+                .assertNext(result -> {
+                    assertThat(result.status()).isEqualTo(StartForgotPasswordResultStatus.STARTED);
+                    assertThat(result.authFlowSessionId()).isEqualTo("afs_fp_1");
+                    assertThat(result.authFlowSessionId()).isNotEqualTo("afs_existing");
+                    assertThat(result.csrfToken()).isEqualTo("csrf-token-1");
+                })
+                .verifyComplete();
+
+        assertThat(fixture.sessions.session(new AuthFlowSessionId("afs_existing")).status())
+                .isEqualTo(AuthFlowStatus.CANCELLED);
+        assertThat(fixture.sessions.session(new AuthFlowSessionId("afs_fp_1")).status())
+                .isEqualTo(AuthFlowStatus.STARTED);
+        assertThat(fixture.sessions.creates).isEqualTo(1);
+        assertThat(fixture.idempotency.completed).isTrue();
+    }
+
+    @Test
     void completedReplayDoesNotCallLookupOrCreateAnotherSessionAndReturnsFreshCsrf() {
         var fixture = new Fixture();
         fixture.seedReplaySession("afs_existing", "stale-csrf-token");
