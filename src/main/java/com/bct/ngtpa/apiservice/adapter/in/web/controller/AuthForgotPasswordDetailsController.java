@@ -24,7 +24,7 @@ public final class AuthForgotPasswordDetailsController {
         mapper = m;
     }
 
-    @PostMapping("/details")
+    @PostMapping({"/details-check", "/details"})
     public Mono<ResponseEntity<?>> details(@RequestBody(required = false) ForgotPasswordDetailsRequest b,
             @CookieValue(name = "auth_flow_sid", required = false) String sid,
             @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrf,

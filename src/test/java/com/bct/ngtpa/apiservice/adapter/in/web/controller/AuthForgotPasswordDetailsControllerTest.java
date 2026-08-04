@@ -35,7 +35,8 @@ class AuthForgotPasswordDetailsControllerTest {
 
         PostMapping mapping = method.getAnnotation(PostMapping.class);
         assertThat(mapping).isNotNull();
-        assertThat(mapping.value()).contains("/details");
+        assertThat(mapping.value())
+                .contains("/details-check", "/details");
     }
 
     @Test
