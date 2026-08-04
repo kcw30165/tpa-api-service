@@ -238,7 +238,7 @@ class VerifyForgotPasswordOtpServiceTest {
             AuthFlowSession session = new AuthFlowSession(
             new AuthFlowSessionId(sessionId),
                     AuthFlowScenario.FORGOT_PASSWORD,
-                    AuthFlowStatus.STARTED,
+                    AuthFlowStatus.OTP_SENT,
                     "csrf_hash",
                     "otp_active",
                     new AuthFlowSessionData("EMAIL", "m****r@example.com", new LinkedHashMap<>()),

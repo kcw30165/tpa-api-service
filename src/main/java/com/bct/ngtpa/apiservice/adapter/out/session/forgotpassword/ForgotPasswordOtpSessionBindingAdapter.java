@@ -34,7 +34,7 @@ public final class ForgotPasswordOtpSessionBindingAdapter implements ForgotPassw
     }
 
     private Mono<ForgotPasswordOtpBindingResult> applyReloaded(AuthFlowSession s, ForgotPasswordOtpBindingCommand c) {
-        if (s.scenario() != AuthFlowScenario.FORGOT_PASSWORD || s.status() != AuthFlowStatus.STARTED
+        if (s.scenario() != AuthFlowScenario.FORGOT_PASSWORD || s.status() != AuthFlowStatus.IDENTITY_VERIFIED
                 || s.isExpired(c.now()) || s.isTerminal())
             return rejected();
         var context = decrypt(s);
@@ -97,7 +97,7 @@ public final class ForgotPasswordOtpSessionBindingAdapter implements ForgotPassw
         var data = new AuthFlowSessionData(context.contactChannel(), context.maskedDestination(), a);
         return new com.bct.ngtpa.apiservice.application.usecase.session.authflow.RevisionAwareAuthFlowSessionWriter(
                 sessions)
-                .updateExpected(s, new AuthFlowSession(s.authFlowSessionId(), s.scenario(), AuthFlowStatus.STARTED,
+                .updateExpected(s, new AuthFlowSession(s.authFlowSessionId(), s.scenario(), AuthFlowStatus.OTP_SENT,
                         s.csrfTokenHash(), challenge, data, s.createdAt(), now, s.expiresAt()))
                 .then();
     }

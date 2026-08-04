@@ -111,7 +111,7 @@ public final class VerifyForgotPasswordOtpService implements VerifyForgotPasswor
                     if (initial.isExpired(initialNow)
                             || initial.isTerminal()
                             || initial.scenario() != AuthFlowScenario.FORGOT_PASSWORD
-                            || initial.status() != AuthFlowStatus.STARTED) {
+                            || initial.status() != AuthFlowStatus.OTP_SENT) {
                         return Mono.just(result(VerifyForgotPasswordOtpStatus.AUTH_FLOW_INVALID, WorkflowNextStep.NONE));
                     }
                     return loader.load(new ForgotPasswordProtectedAuthFlowContextCommand(
@@ -120,7 +120,7 @@ public final class VerifyForgotPasswordOtpService implements VerifyForgotPasswor
                             command.origin(),
                             command.referer(),
                             command.requestId(),
-                            Set.of(AuthFlowStatus.STARTED),
+                            Set.of(AuthFlowStatus.OTP_SENT),
                             true)).flatMap(loaded -> {
                                 if (!loaded.isValid()) {
                                     return Mono.just(mapLoaderFailure(loaded.status()));
@@ -141,7 +141,7 @@ public final class VerifyForgotPasswordOtpService implements VerifyForgotPasswor
                                             if (current.isExpired(now)
                                                     || current.isTerminal()
                                                     || current.scenario() != AuthFlowScenario.FORGOT_PASSWORD
-                                                    || current.status() != AuthFlowStatus.STARTED
+                                                    || current.status() != AuthFlowStatus.OTP_SENT
                                                     || blank(current.activeOtpChallengeId())) {
                                                 return Mono.just(result(VerifyForgotPasswordOtpStatus.AUTH_FLOW_INVALID, WorkflowNextStep.NONE));
                                             }

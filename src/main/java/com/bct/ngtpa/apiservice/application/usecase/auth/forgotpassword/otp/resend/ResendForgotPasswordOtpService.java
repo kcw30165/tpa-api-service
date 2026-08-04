@@ -153,7 +153,7 @@ public final class ResendForgotPasswordOtpService implements ResendForgotPasswor
                         "00000000000000000000000000000000"))))
                 .flatMap(snapshot -> {
                     AuthFlowSession session = snapshot.session();
-                    if (session.scenario() != AuthFlowScenario.FORGOT_PASSWORD || session.status() != AuthFlowStatus.STARTED
+                    if (session.scenario() != AuthFlowScenario.FORGOT_PASSWORD || session.status() != AuthFlowStatus.OTP_SENT
                             || session.isTerminal() || session.isExpired(Instant.now(clock))) {
                         return Mono.just(new ResendForgotPasswordOtpResult(ResendForgotPasswordOtpStatus.SYSTEM_FAILED,
                                 null, null, null));
@@ -228,7 +228,7 @@ public final class ResendForgotPasswordOtpService implements ResendForgotPasswor
             AuthFlowSessionSnapshot snapshot) {
         AuthFlowSession session = snapshot.session();
         Instant now = Instant.now(clock);
-        if (session.scenario() != AuthFlowScenario.FORGOT_PASSWORD || session.status() != AuthFlowStatus.STARTED
+        if (session.scenario() != AuthFlowScenario.FORGOT_PASSWORD || session.status() != AuthFlowStatus.OTP_SENT
                 || session.isTerminal() || session.isExpired(now)) {
             return Mono.just(ValidatedState.invalid(ForgotPasswordOtpResendEligibilityStatus.SESSION_INVALID));
         }
@@ -440,7 +440,7 @@ public final class ResendForgotPasswordOtpService implements ResendForgotPasswor
         AuthFlowSession updated = new AuthFlowSession(
                 session.authFlowSessionId(),
                 session.scenario(),
-                AuthFlowStatus.STARTED,
+                AuthFlowStatus.OTP_SENT,
                 session.csrfTokenHash(),
                 activeChallengeId,
                 new AuthFlowSessionData(context.contactChannel(), context.maskedDestination(), attrs),

@@ -48,10 +48,10 @@ public final class VerifyForgotPasswordDetailsService implements VerifyForgotPas
             var session = optional.get();
             Instant now = Instant.now(clock);
             if (session.isExpired(now) || session.isTerminal() || session.scenario() != AuthFlowScenario.FORGOT_PASSWORD
-                    || session.status() != AuthFlowStatus.STARTED)
+                    || session.status() != AuthFlowStatus.IDENTITY_VERIFIED)
                 return Mono.just(ForgotPasswordDetailsResult.of(ForgotPasswordDetailsStatus.INVALID_AUTH_FLOW));
             var load = new ForgotPasswordProtectedAuthFlowContextCommand(c.sessionId(), c.csrfToken(), c.origin(),
-                    c.referer(), c.requestId(), Set.of(AuthFlowStatus.STARTED), true);
+                    c.referer(), c.requestId(), Set.of(AuthFlowStatus.IDENTITY_VERIFIED), true);
             return loader.load(load).flatMap(result -> {
                 if (!result.isValid())
                     return Mono.just(ForgotPasswordDetailsResult.of(

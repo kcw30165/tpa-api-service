@@ -97,7 +97,7 @@ public final class VerifyForgotPasswordIdentityService implements VerifyForgotPa
                     attrs.put(CONTEXT_KEY_VERSION, encrypted.keyVersion());
                     attrs.put(CONTEXT_ALGORITHM, encrypted.algorithm());
                     AuthFlowSession updated = new AuthFlowSession(current.authFlowSessionId(), current.scenario(),
-                            AuthFlowStatus.STARTED, current.csrfTokenHash(), current.activeOtpChallengeId(),
+                            AuthFlowStatus.IDENTITY_VERIFIED, current.csrfTokenHash(), current.activeOtpChallengeId(),
                             new AuthFlowSessionData(current.data().contactType(), current.data().maskedDestination(),
                                     attrs),
                             current.createdAt(), now, current.expiresAt());
