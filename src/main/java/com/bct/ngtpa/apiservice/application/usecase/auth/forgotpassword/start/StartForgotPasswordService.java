@@ -36,9 +36,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 public final class StartForgotPasswordService implements StartForgotPasswordUseCase {
+    private static final Logger LOGGER = LoggerFactory.getLogger(StartForgotPasswordService.class);
     private static final String WORKFLOW_VERSION = "v1";
     private static final String ERROR_USERNAME_NOT_FOUND = "err.forgotpassword.username.notFound";
     private static final String ERROR_SYSTEM_UNAVAILABLE = "err.forgotpassword.system.unavailable";
@@ -127,7 +130,12 @@ public final class StartForgotPasswordService implements StartForgotPasswordUseC
                     case NOT_FOUND -> fail(command, requestHash).thenReturn(notFound());
                     case SYSTEM_FAILED -> fail(command, requestHash).thenReturn(systemFailed());
                 })
-                .onErrorResume(ignored -> fail(command, requestHash).thenReturn(systemFailed()));
+                .onErrorResume(error -> {
+                    LOGGER.error(
+                            "event=forgot-password.start.failed requestId={} stage=username-lookup exceptionType={}",
+                            command.correlationId(), error.getClass().getName(), error);
+                    return fail(command, requestHash).thenReturn(systemFailed());
+                });
     }
 
     private Mono<StartForgotPasswordResult> createStartedResult(

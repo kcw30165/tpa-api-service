@@ -129,7 +129,7 @@ class AuthWorkflowPropertiesBindingTest {
             assertEquals("GPFS", properties.getForgotPassword().getTasToPublicIdentityTypeMapping().get("GPFS"));
             assertEquals("ID", properties.getForgotPassword().getTasToPublicIdentityTypeMapping().get("ID"));
             assertEquals("STAFF_NO",
-                    properties.getForgotPassword().getTasToPublicIdentityTypeMapping().get("STAFF"));
+                    properties.getForgotPassword().getTasToPublicIdentityTypeMapping().get("STAFFNO"));
 
             var otp = properties.getForgotPassword().getOtp();
             assertEquals(6, otp.getLength());

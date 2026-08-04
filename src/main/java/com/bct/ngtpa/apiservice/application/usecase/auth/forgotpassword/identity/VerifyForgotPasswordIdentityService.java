@@ -78,19 +78,34 @@ public final class VerifyForgotPasswordIdentityService implements VerifyForgotPa
                         context.tasUserId()))
                     return Mono.just(
                             VerifyForgotPasswordIdentityResult.of(VerifyForgotPasswordIdentityStatus.INCORRECT_ID));
-                var encrypted = protector.protect(context.withPhase(ForgotPasswordProtectedPhase.IDENTITY_VERIFIED));
-                var attrs = new LinkedHashMap<>(reloaded.data().attributes());
-                attrs.put(CONTEXT_CIPHERTEXT, encrypted.ciphertext());
-                attrs.put(CONTEXT_KEY_VERSION, encrypted.keyVersion());
-                attrs.put(CONTEXT_ALGORITHM, encrypted.algorithm());
-                AuthFlowSession updated = new AuthFlowSession(reloaded.authFlowSessionId(), reloaded.scenario(),
-                        AuthFlowStatus.STARTED, reloaded.csrfTokenHash(), reloaded.activeOtpChallengeId(),
-                        new AuthFlowSessionData(reloaded.data().contactType(), reloaded.data().maskedDestination(),
-                                attrs),
-                        reloaded.createdAt(), now, reloaded.expiresAt());
-                return new com.bct.ngtpa.apiservice.application.usecase.session.authflow.RevisionAwareAuthFlowSessionWriter(
-                        sessions).updateExpected(reloaded, updated).then(expiry.refresh(c.sessionId(), now))
-                        .thenReturn(VerifyForgotPasswordIdentityResult.of(VerifyForgotPasswordIdentityStatus.VERIFIED));
+                var verifiedContext = context.withPhase(ForgotPasswordProtectedPhase.IDENTITY_VERIFIED);
+                return sessions.loadSnapshot(c.sessionId()).flatMap(latest -> {
+                    if (latest.isEmpty()) {
+                        return Mono.just(VerifyForgotPasswordIdentityResult
+                                .of(VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW));
+                    }
+                    AuthFlowSession current = latest.get().session();
+                    if (current.isExpired(now) || current.isTerminal()
+                            || current.scenario() != AuthFlowScenario.FORGOT_PASSWORD
+                            || current.status() != AuthFlowStatus.STARTED) {
+                        return Mono.just(VerifyForgotPasswordIdentityResult
+                                .of(VerifyForgotPasswordIdentityStatus.INVALID_AUTH_FLOW));
+                    }
+                    var encrypted = protector.protect(verifiedContext);
+                    var attrs = new LinkedHashMap<>(current.data().attributes());
+                    attrs.put(CONTEXT_CIPHERTEXT, encrypted.ciphertext());
+                    attrs.put(CONTEXT_KEY_VERSION, encrypted.keyVersion());
+                    attrs.put(CONTEXT_ALGORITHM, encrypted.algorithm());
+                    AuthFlowSession updated = new AuthFlowSession(current.authFlowSessionId(), current.scenario(),
+                            AuthFlowStatus.STARTED, current.csrfTokenHash(), current.activeOtpChallengeId(),
+                            new AuthFlowSessionData(current.data().contactType(), current.data().maskedDestination(),
+                                    attrs),
+                            current.createdAt(), now, current.expiresAt());
+                    return new com.bct.ngtpa.apiservice.application.usecase.session.authflow.RevisionAwareAuthFlowSessionWriter(
+                            sessions).updateExpected(current, updated)
+                            .thenReturn(VerifyForgotPasswordIdentityResult
+                                    .of(VerifyForgotPasswordIdentityStatus.VERIFIED));
+                });
             });
         }).onErrorReturn(VerifyForgotPasswordIdentityResult.of(VerifyForgotPasswordIdentityStatus.SYSTEM_FAILED));
         return Mono.usingWhen(

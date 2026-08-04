@@ -14,14 +14,14 @@ class TrpChkCustIdForgotPasswordResultMapperTest {
             Map.of(
                     "GPN", RegistrationIdentityType.GPN,
                     "GPFS", RegistrationIdentityType.GPFS,
-                    "STAFF", RegistrationIdentityType.STAFFNO,
+                    "STAFFNO", RegistrationIdentityType.STAFFNO,
                     "ID", RegistrationIdentityType.ID));
 
     @Test
     void mapsIsExistTrueWithRequiredFieldsToConfirmedLookup() {
         var result = mapper.toResult(new TrpChkCustIdApimEnvelope(
                 "",
-                java.util.List.of(new TrpChkCustIdApimDataItem("db01", true, "DBA", "3010008", "STAFF"))));
+                java.util.List.of(new TrpChkCustIdApimDataItem("db01", true, "DBA", "3010008", "STAFFNO"))));
 
         assertThat(result.status()).isEqualTo(ForgotPasswordUsernameLookupStatus.CONFIRMED);
         assertThat(result.customerId()).isEqualTo("db01");

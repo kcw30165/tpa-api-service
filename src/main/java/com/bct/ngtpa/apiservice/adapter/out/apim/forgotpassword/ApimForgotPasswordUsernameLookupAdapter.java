@@ -9,11 +9,14 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.Fo
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordUsernameLookupCommand;
 import java.util.Map;
 import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
 @Component
 public class ApimForgotPasswordUsernameLookupAdapter implements ForgotPasswordUsernameLookupPort {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ApimForgotPasswordUsernameLookupAdapter.class);
     private final SharedApimTrpChkCustIdTransport transport;
     private final TrpChkCustIdForgotPasswordResultMapper resultMapper;
 
@@ -28,6 +31,12 @@ public class ApimForgotPasswordUsernameLookupAdapter implements ForgotPasswordUs
     public Mono<ForgotPasswordUsernameLookupResult> lookup(StartForgotPasswordUsernameLookupCommand command) {
         Objects.requireNonNull(command, "command must not be null");
         return transport.post(new TrpChkCustIdApimRequest(command.normalizedUsername()), command.correlationId())
-                .map(resultMapper::toResult);
+                .map(resultMapper::toResult)
+                .doOnNext(result -> LOGGER.info(
+                        "event=forgot-password.username-lookup.completed requestId={} status={}",
+                        command.correlationId(), result.status()))
+                .doOnError(error -> LOGGER.error(
+                        "event=forgot-password.username-lookup.failed requestId={} exceptionType={}",
+                        command.correlationId(), error.getClass().getName(), error));
     }
 }

@@ -120,7 +120,7 @@ auth-workflows:
       GPN: GPN
       GPFS: GPFS
       ID: ID
-      STAFF: STAFF_NO
+      STAFFNO: STAFF_NO
     otp:
       length: 6
       numeric-only: true
