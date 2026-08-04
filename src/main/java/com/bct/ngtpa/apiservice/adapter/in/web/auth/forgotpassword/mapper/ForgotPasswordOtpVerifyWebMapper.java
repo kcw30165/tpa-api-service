@@ -21,20 +21,23 @@ public final class ForgotPasswordOtpVerifyWebMapper {
                     ApiStatus.SUCCESS,
                     new ForgotPasswordWorkflowResultResponse<>(
                             WorkflowNextStep.PASSWORD_SETUP,
-                            new ForgotPasswordPasswordSetupDataResponse()),
+                            new ForgotPasswordPasswordSetupDataResponse(result.remainingVerifyAttempts())),
                     List.of());
             case OTP_INVALID -> MutationResponse.failure(
                     ApiStatus.VALIDATION_FAILED,
-                    new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.VERIFY_OTP, null),
+                    new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.VERIFY_OTP,
+                            new ForgotPasswordPasswordSetupDataResponse(result.remainingVerifyAttempts())),
                     List.of(ApiError.form("err.forgot-password.otp.invalid", null, List.of("code"), "BFF")));
             case OTP_EXPIRED -> MutationResponse.failure(
                     ApiStatus.BUSINESS_REJECTED,
-                    new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.RESEND_OTP, null),
-                    List.of(ApiError.form("err.forgot-password.otp.expired", null, List.of(), "BFF")));
+                    new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.RESEND_OTP,
+                            new ForgotPasswordPasswordSetupDataResponse(result.remainingVerifyAttempts())),
+                    List.of(ApiError.form("err.forgot-password.otp.expired", null, List.of(), "SERVER")));
             case OTP_LOCKED -> MutationResponse.failure(
                     ApiStatus.BUSINESS_REJECTED,
-                    new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.RESTART_FLOW, null),
-                    List.of(ApiError.form("err.forgot-password.otp.maxAttemptsReached", null, List.of(), "BFF")));
+                    new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.RESTART_FLOW,
+                            new ForgotPasswordPasswordSetupDataResponse(0)),
+                    List.of(ApiError.form("err.forgot-password.otp.maxAttemptsReached", null, List.of(), "SERVER")));
             case AUTH_FLOW_INVALID -> MutationResponse.failure(
                     ApiStatus.VALIDATION_FAILED,
                     new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.NONE, null),

@@ -3,6 +3,9 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
+import com.bct.ngtpa.apiservice.application.dto.workflow.ForgotPasswordErrorKey;
+import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
+
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,9 +26,16 @@ public final class ForgotPasswordHttpResponses {
             return HttpStatus.OK;
         }
         String code = firstCode(body.errors());
-        if ("err.workflow.idempotency.inProgress".equals(code)
-                || "err.workflow.idempotency.keyReused".equals(code)) {
+        if (SharedWorkflowErrorKey.IDEMPOTENCY_IN_PROGRESS.equals(code)
+                || SharedWorkflowErrorKey.IDEMPOTENCY_KEY_REUSED.equals(code)) {
             return HttpStatus.CONFLICT;
+        }
+        if (ForgotPasswordErrorKey.SECURITY_INVALID.equals(code)
+                || ForgotPasswordErrorKey.CSRF_INVALID.equals(code)) {
+            return HttpStatus.FORBIDDEN;
+        }
+        if (ForgotPasswordErrorKey.OTP_MAX_ATTEMPTS_REACHED.equals(code)) {
+            return HttpStatus.TOO_MANY_REQUESTS;
         }
         if (body.status() == ApiStatus.BUSINESS_REJECTED) {
             return HttpStatus.UNPROCESSABLE_ENTITY;
@@ -37,8 +47,8 @@ public final class ForgotPasswordHttpResponses {
     }
 
     private static String firstCode(List<ApiError> errors) {
-        return errors == null || errors.isEmpty() || errors.get(0) == null || errors.get(0).code() == null
+        return errors == null || errors.isEmpty() || errors.getFirst().code() == null || errors.getFirst().code() == null
                 ? ""
-                : errors.get(0).code();
+                : errors.getFirst().code();
     }
 }

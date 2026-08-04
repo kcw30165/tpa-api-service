@@ -214,7 +214,8 @@ public final class VerifyForgotPasswordOtpService implements VerifyForgotPasswor
                             command.idempotencyTtl(),
                             OUTCOME_EXPIRED,
                             VerifyForgotPasswordOtpStatus.OTP_EXPIRED,
-                            WorkflowNextStep.RESEND_OTP);
+                            WorkflowNextStep.RESEND_OTP,
+                            result.remainingAttempts());
                     case LOCKED -> completeReplay(
                             key,
                             requestHash,
@@ -222,7 +223,8 @@ public final class VerifyForgotPasswordOtpService implements VerifyForgotPasswor
                             command.idempotencyTtl(),
                             OUTCOME_LOCKED,
                             VerifyForgotPasswordOtpStatus.OTP_LOCKED,
-                            WorkflowNextStep.RESTART_FLOW);
+                            WorkflowNextStep.RESTART_FLOW,
+                            0);
                     case INVALID, INVALIDATED, ALREADY_VERIFIED, NOT_FOUND -> completeReplay(
                             key,
                             requestHash,
@@ -230,7 +232,8 @@ public final class VerifyForgotPasswordOtpService implements VerifyForgotPasswor
                             command.idempotencyTtl(),
                             OUTCOME_INVALID,
                             VerifyForgotPasswordOtpStatus.OTP_INVALID,
-                            WorkflowNextStep.VERIFY_OTP);
+                            WorkflowNextStep.VERIFY_OTP,
+                            result.remainingAttempts());
                 });
     }
 
@@ -290,14 +293,15 @@ public final class VerifyForgotPasswordOtpService implements VerifyForgotPasswor
             Duration ttl,
             String outcomeCode,
             VerifyForgotPasswordOtpStatus status,
-            WorkflowNextStep nextStep) {
+            WorkflowNextStep nextStep,
+            Integer remainingVerifyAttempts) {
         return idempotency.markCompleted(new ForgotPasswordIdempotencyCompleteCommand(
                 ForgotPasswordIdempotencyAction.OTP_VERIFY,
                 key,
                 requestHash,
                 replaySnapshot(outcomeCode, opaqueRef("fpvr")),
                 now,
-                ttl)).thenReturn(result(status, nextStep));
+                ttl)).thenReturn(result(status, nextStep, remainingVerifyAttempts));
     }
 
     private VerifyForgotPasswordOtpResult fromReplay(ForgotPasswordIdempotencyReplaySnapshot snapshot) {
@@ -326,7 +330,14 @@ public final class VerifyForgotPasswordOtpService implements VerifyForgotPasswor
     }
 
     private VerifyForgotPasswordOtpResult result(VerifyForgotPasswordOtpStatus status, WorkflowNextStep nextStep) {
-        return new VerifyForgotPasswordOtpResult(status, nextStep);
+        return result(status, nextStep, null);
+    }
+
+    private VerifyForgotPasswordOtpResult result(
+            VerifyForgotPasswordOtpStatus status,
+            WorkflowNextStep nextStep,
+            Integer remainingVerifyAttempts) {
+        return new VerifyForgotPasswordOtpResult(status, nextStep, remainingVerifyAttempts);
     }
 
     private boolean validOtp(String code) {

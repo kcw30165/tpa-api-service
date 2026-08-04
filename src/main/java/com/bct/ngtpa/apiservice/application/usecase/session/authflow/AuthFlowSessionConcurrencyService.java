@@ -5,6 +5,9 @@ import com.bct.ngtpa.apiservice.application.dto.session.SessionOnNewFlowPolicy;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
 import java.util.Objects;
 import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
+
+import java.time.Duration;
 
 public class AuthFlowSessionConcurrencyService {
     private final AuthFlowSessionLifecycleService lifecycleService;
@@ -33,9 +36,27 @@ public class AuthFlowSessionConcurrencyService {
                     if (existing.isTerminal()) {
                         return startNew(command, AuthFlowConcurrencyDecision.CREATED_NEW_EXISTING_ALREADY_TERMINAL);
                     }
-                    return lifecycleService.cancel(new CancelAuthFlowSessionCommand(existing.authFlowSessionId(), "REPLACE_EXISTING", command.correlationId()))
+                    return cancelForReplacement(existing, command)
                             .then(startNew(command, AuthFlowConcurrencyDecision.REPLACED_EXISTING));
                 });
+    }
+
+
+    private Mono<AuthFlowSession> cancelForReplacement(
+            AuthFlowSession existing,
+            StartAuthFlowSessionWithConcurrencyCommand command) {
+        return Mono.defer(() -> lifecycleService.cancel(new CancelAuthFlowSessionCommand(
+                        existing.authFlowSessionId(),
+                        "REPLACE_EXISTING",
+                        command.correlationId())))
+                .retryWhen(Retry.backoff(2, Duration.ofMillis(10))
+                        .maxBackoff(Duration.ofMillis(50))
+                        .filter(this::revisionConflict));
+    }
+
+    private boolean revisionConflict(Throwable error) {
+        return error instanceof IllegalStateException
+                && "Auth flow session revision conflict".equals(error.getMessage());
     }
 
     private Mono<StartAuthFlowSessionWithConcurrencyResult> startNew(

@@ -23,6 +23,8 @@ import java.util.*;
 import reactor.core.publisher.Mono;
 
 public final class ResendForgotPasswordOtpService implements ResendForgotPasswordOtpUseCase {
+    private static final org.slf4j.Logger LOGGER =
+            org.slf4j.LoggerFactory.getLogger(ResendForgotPasswordOtpService.class);
     private static final String EXPIRES_AT = "forgotPasswordOtpExpiresAt";
     private static final String RESEND_AT = "forgotPasswordOtpResendAvailableAt";
     private static final String RESEND_COUNT = "forgotPasswordOtpSuccessfulResendCount";

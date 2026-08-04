@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPas
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordPasswordSetupDataResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordOtpResendWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordOtpVerifyWebMapper;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.in.VerifyForgotPasswordOtpUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.verify.VerifyForgotPasswordOtpCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.verify.VerifyForgotPasswordOtpResult;
@@ -161,7 +162,7 @@ class AuthForgotPasswordOtpVerifyControllerTest {
             this.command = command;
             return Mono.just(new VerifyForgotPasswordOtpResult(
                     VerifyForgotPasswordOtpStatus.VERIFIED,
-                    com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep.PASSWORD_SETUP));
+                    WorkflowNextStep.PASSWORD_SETUP));
         }
     }
 

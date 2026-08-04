@@ -32,8 +32,13 @@ public final class ForgotPasswordOtpResendWebMapper {
                     new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.NONE, null),
                     List.of(ApiError.form(SharedWorkflowErrorKey.IDEMPOTENCY_KEY_REUSED.value(), null,
                             List.of("Idempotency-Key"), "BFF")));
-            case DELIVERY_FAILED, UNKNOWN_OUTCOME, AUTH_FLOW_INVALID, SECURITY_REJECTED, SYSTEM_FAILED ->
-                systemUnavailable();
+            case SECURITY_REJECTED -> MutationResponse.failure(ApiStatus.VALIDATION_FAILED,
+                    new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.VERIFY_OTP, null),
+                    List.of(ApiError.form("err.forgot-password.security.invalid", null, List.of("PAGE"), "SERVER")));
+            case AUTH_FLOW_INVALID -> MutationResponse.failure(ApiStatus.VALIDATION_FAILED,
+                    new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.RESTART_FLOW, null),
+                    List.of(ApiError.form("err.forgot-password.authFlow.invalid", null, List.of("PAGE"), "SERVER")));
+            case DELIVERY_FAILED, UNKNOWN_OUTCOME, SYSTEM_FAILED -> systemUnavailable();
         };
     }
 
