@@ -5,6 +5,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPas
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
+import com.bct.ngtpa.apiservice.application.dto.workflow.ForgotPasswordErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.verify.VerifyForgotPasswordOtpResult;
@@ -27,25 +28,25 @@ public final class ForgotPasswordOtpVerifyWebMapper {
                     ApiStatus.VALIDATION_FAILED,
                     new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.VERIFY_OTP,
                             new ForgotPasswordPasswordSetupDataResponse(result.remainingVerifyAttempts())),
-                    List.of(ApiError.form("err.forgot-password.otp.invalid", null, List.of("code"), "BFF")));
+                    List.of(ApiError.form(ForgotPasswordErrorKey.OTP_INVALID.value(), null, List.of("code"), "BFF")));
             case OTP_EXPIRED -> MutationResponse.failure(
                     ApiStatus.BUSINESS_REJECTED,
                     new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.RESEND_OTP,
                             new ForgotPasswordPasswordSetupDataResponse(result.remainingVerifyAttempts())),
-                    List.of(ApiError.form("err.forgot-password.otp.expired", null, List.of(), "SERVER")));
+                    List.of(ApiError.form(ForgotPasswordErrorKey.OTP_EXPIRED.value(), null, List.of(), "SERVER")));
             case OTP_LOCKED -> MutationResponse.failure(
                     ApiStatus.BUSINESS_REJECTED,
                     new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.RESTART_FLOW,
                             new ForgotPasswordPasswordSetupDataResponse(0)),
-                    List.of(ApiError.form("err.forgot-password.otp.maxAttemptsReached", null, List.of(), "SERVER")));
+                    List.of(ApiError.form(ForgotPasswordErrorKey.OTP_MAX_ATTEMPTS_REACHED.value(), null, List.of(), "SERVER")));
             case AUTH_FLOW_INVALID -> MutationResponse.failure(
                     ApiStatus.VALIDATION_FAILED,
                     new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.NONE, null),
-                    List.of(ApiError.form("err.forgot-password.authFlow.invalid", null, List.of(), "BFF")));
+                    List.of(ApiError.form(ForgotPasswordErrorKey.AUTH_FLOW_INVALID.value(), null, List.of(), "BFF")));
             case CSRF_INVALID -> MutationResponse.failure(
                     ApiStatus.VALIDATION_FAILED,
                     new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.NONE, null),
-                    List.of(ApiError.form("err.forgot-password.csrf.invalid", null, List.of(), "BFF")));
+                    List.of(ApiError.form(ForgotPasswordErrorKey.CSRF_INVALID.value(), null, List.of(), "BFF")));
             case DUPLICATE_IN_PROGRESS -> MutationResponse.failure(
                     ApiStatus.BUSINESS_REJECTED,
                     new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.WAIT, null),
@@ -64,14 +65,14 @@ public final class ForgotPasswordOtpVerifyWebMapper {
         return MutationResponse.failure(
                 ApiStatus.VALIDATION_FAILED,
                 new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.NONE, null),
-                                List.of(ApiError.form("err.forgot-password.authFlow.invalid", null, List.of(), "BFF")));
+                                List.of(ApiError.form(ForgotPasswordErrorKey.AUTH_FLOW_INVALID.value(), null, List.of(), "BFF")));
     }
 
     public MutationResponse<ForgotPasswordWorkflowResultResponse<ForgotPasswordPasswordSetupDataResponse>> missingCsrfToken() {
         return MutationResponse.failure(
                 ApiStatus.VALIDATION_FAILED,
                 new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.NONE, null),
-                                List.of(ApiError.form("err.forgot-password.csrf.invalid", null, List.of(), "BFF")));
+                                List.of(ApiError.form(ForgotPasswordErrorKey.CSRF_INVALID.value(), null, List.of(), "BFF")));
     }
 
     public MutationResponse<ForgotPasswordWorkflowResultResponse<ForgotPasswordPasswordSetupDataResponse>> missingIdempotencyKey() {
@@ -86,13 +87,13 @@ public final class ForgotPasswordOtpVerifyWebMapper {
         return MutationResponse.failure(
                 ApiStatus.VALIDATION_FAILED,
                 new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.VERIFY_OTP, null),
-                List.of(ApiError.form("err.forgot-password.otp.invalid", null, List.of("code"), "BFF")));
+                List.of(ApiError.form(ForgotPasswordErrorKey.OTP_INVALID.value(), null, List.of("code"), "BFF")));
     }
 
     public MutationResponse<ForgotPasswordWorkflowResultResponse<ForgotPasswordPasswordSetupDataResponse>> systemUnavailable() {
         return MutationResponse.failure(
                 ApiStatus.SYSTEM_ERROR,
                 new ForgotPasswordWorkflowResultResponse<>(WorkflowNextStep.NONE, null),
-                                List.of(ApiError.form("err.system.unavailable", null, List.of(), "BFF")));
+                                List.of(ApiError.form(ForgotPasswordErrorKey.SYSTEM_UNAVAILABLE.value(), null, List.of(), "BFF")));
     }
 }

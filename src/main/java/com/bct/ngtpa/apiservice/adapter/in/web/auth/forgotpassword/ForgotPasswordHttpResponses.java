@@ -6,10 +6,13 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.workflow.ForgotPasswordErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+@Slf4j
 public final class ForgotPasswordHttpResponses {
     private ForgotPasswordHttpResponses() {
     }
@@ -26,15 +29,16 @@ public final class ForgotPasswordHttpResponses {
             return HttpStatus.OK;
         }
         String code = firstCode(body.errors());
-        if (SharedWorkflowErrorKey.IDEMPOTENCY_IN_PROGRESS.equals(code)
-                || SharedWorkflowErrorKey.IDEMPOTENCY_KEY_REUSED.equals(code)) {
+        log.debug("Mapping error code {} to HTTP status", code);
+        if (SharedWorkflowErrorKey.IDEMPOTENCY_IN_PROGRESS.value().equals(code)
+                || SharedWorkflowErrorKey.IDEMPOTENCY_KEY_REUSED.value().equals(code)) {
             return HttpStatus.CONFLICT;
         }
-        if (ForgotPasswordErrorKey.SECURITY_INVALID.equals(code)
-                || ForgotPasswordErrorKey.CSRF_INVALID.equals(code)) {
+        if (ForgotPasswordErrorKey.SECURITY_INVALID.value().equals(code)
+                || ForgotPasswordErrorKey.CSRF_INVALID.value().equals(code)) {
             return HttpStatus.FORBIDDEN;
         }
-        if (ForgotPasswordErrorKey.OTP_MAX_ATTEMPTS_REACHED.equals(code)) {
+        if (ForgotPasswordErrorKey.OTP_MAX_ATTEMPTS_REACHED.value().equals(code)) {
             return HttpStatus.TOO_MANY_REQUESTS;
         }
         if (body.status() == ApiStatus.BUSINESS_REJECTED) {
@@ -47,8 +51,11 @@ public final class ForgotPasswordHttpResponses {
     }
 
     private static String firstCode(List<ApiError> errors) {
-        return errors == null || errors.isEmpty() || errors.getFirst().code() == null || errors.getFirst().code() == null
-                ? ""
-                : errors.getFirst().code();
+        return errors == null
+                || errors.isEmpty()
+                || errors.getFirst() == null
+                || errors.getFirst().code() == null
+                        ? ""
+                        : errors.getFirst().code();
     }
 }
