@@ -11,7 +11,14 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  */
 public record TrpChkCustIdApimDataItem(
         @JsonProperty("cust-id") String customerId,
-        @JsonProperty("isExist") Boolean isExist) {
+        @JsonProperty("isExist") Boolean isExist,
+        @JsonProperty("scheme-code") String schemeCode,
+        @JsonProperty("user-id") String userId,
+        @JsonProperty("id-type") String idType) {
+
+    public TrpChkCustIdApimDataItem(String customerId, Boolean isExist) {
+        this(customerId, isExist, null, null, null);
+    }
 
     public boolean exists() {
         return Boolean.TRUE.equals(isExist);
@@ -19,6 +26,7 @@ public record TrpChkCustIdApimDataItem(
 
     @Override
     public String toString() {
-        return "TrpChkCustIdApimDataItem[customerId=<redacted>, isExist=" + isExist + "]";
+        return "TrpChkCustIdApimDataItem[customerId=<redacted>, isExist=" + isExist
+                + ", schemeCode=" + schemeCode + ", userId=<redacted>, idType=" + idType + "]";
     }
 }

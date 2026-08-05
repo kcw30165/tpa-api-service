@@ -23,8 +23,10 @@ public class RegistrationCompletionSessionService {
             a.remove(RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_ALGORITHM);
             data = new AuthFlowSessionData(data.contactType(), data.maskedDestination(), a);
         }
-        return sessions.update(
-                new AuthFlowSession(session.authFlowSessionId(), session.scenario(), status, session.csrfTokenHash(),
-                        session.activeOtpChallengeId(), data, session.createdAt(), now, session.expiresAt()));
+        return new com.bct.ngtpa.apiservice.application.usecase.session.authflow.RevisionAwareAuthFlowSessionWriter(
+                sessions).updateExpected(session,
+                        new AuthFlowSession(session.authFlowSessionId(), session.scenario(), status,
+                                session.csrfTokenHash(),
+                                session.activeOtpChallengeId(), data, session.createdAt(), now, session.expiresAt()));
     }
 }

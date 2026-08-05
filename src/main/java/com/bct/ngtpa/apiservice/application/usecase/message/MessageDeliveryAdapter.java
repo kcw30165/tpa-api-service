@@ -18,8 +18,10 @@ import java.util.Objects;
 import reactor.core.publisher.Mono;
 
 public class MessageDeliveryAdapter implements MessageDeliveryPort {
-    private static final String SENDER_RESULT_MISSING = "SENDER_RESULT_MISSING";
-    private static final String SENDER_RESULT_MISSING_MESSAGE = "Sender result is missing";
+    private static final String DELIVERY_REJECTED = "MESSAGE_DELIVERY_REJECTED";
+    private static final String DELIVERY_REJECTED_MESSAGE = "Message delivery was not accepted";
+    private static final String DELIVERY_OUTCOME_UNKNOWN = "MESSAGE_DELIVERY_OUTCOME_UNKNOWN";
+    private static final String DELIVERY_OUTCOME_UNKNOWN_MESSAGE = "Message delivery outcome is unknown";
     private final SmsSenderPort smsSenderPort;
     private final EmailSenderPort emailSenderPort;
     private final MessageTemplateRenderer messageTemplateRenderer;
@@ -40,13 +42,23 @@ public class MessageDeliveryAdapter implements MessageDeliveryPort {
     @Override
     public Mono<MessageDeliveryResult> deliver(MessageDeliveryCommand command) {
         return Mono.defer(() -> {
-            validate(command);
-            return switch (command.channel()) {
-                case SMS -> smsSenderPort.sendSms(toSmsMessage(command))
-                        .map(result -> toDeliveryResult(MessageDeliveryChannel.SMS, result));
-                case EMAIL -> emailSenderPort.sendEmail(toEmailMessage(command))
-                        .map(result -> toDeliveryResult(MessageDeliveryChannel.EMAIL, result));
-            };
+            MessageDeliveryChannel channel = command == null ? null : command.channel();
+            try {
+                validate(command);
+                Mono<SenderResult> invocation = switch (channel) {
+                    case SMS -> smsSenderPort.sendSms(toSmsMessage(command));
+                    case EMAIL -> emailSenderPort.sendEmail(toEmailMessage(command));
+                };
+                if (invocation == null) {
+                    return Mono.just(unknown(channel));
+                }
+                return invocation
+                        .map(result -> toDeliveryResult(channel, result))
+                        .switchIfEmpty(Mono.fromSupplier(() -> unknown(channel)))
+                        .onErrorResume(error -> Mono.just(unknown(channel)));
+            } catch (RuntimeException preInvocationFailure) {
+                return Mono.just(failed(channel));
+            }
         });
     }
 
@@ -69,16 +81,24 @@ public class MessageDeliveryAdapter implements MessageDeliveryPort {
     }
 
     private MessageDeliveryResult toDeliveryResult(MessageDeliveryChannel channel, SenderResult result) {
-        if (result == null) {
-            return new MessageDeliveryResult(MessageDeliveryStatus.FAILED, channel, null,
-                    SENDER_RESULT_MISSING, SENDER_RESULT_MISSING_MESSAGE);
+        if (result == null || result.status() == null || result.status() == SenderStatus.UNKNOWN_OUTCOME) {
+            return unknown(channel);
         }
-        return new MessageDeliveryResult(mapStatus(result.status()), channel, result.providerMessageId(),
-                result.failureCode(), result.failureMessage());
+        if (result.status() == SenderStatus.ACCEPTED) {
+            return new MessageDeliveryResult(MessageDeliveryStatus.ACCEPTED, channel,
+                    result.providerMessageId(), null, null);
+        }
+        return failed(channel);
     }
 
-    private MessageDeliveryStatus mapStatus(SenderStatus status) {
-        return status == SenderStatus.ACCEPTED ? MessageDeliveryStatus.ACCEPTED : MessageDeliveryStatus.FAILED;
+    private MessageDeliveryResult failed(MessageDeliveryChannel channel) {
+        return new MessageDeliveryResult(MessageDeliveryStatus.FAILED, channel, null,
+                DELIVERY_REJECTED, DELIVERY_REJECTED_MESSAGE);
+    }
+
+    private MessageDeliveryResult unknown(MessageDeliveryChannel channel) {
+        return new MessageDeliveryResult(MessageDeliveryStatus.UNKNOWN_OUTCOME, channel, null,
+                DELIVERY_OUTCOME_UNKNOWN, DELIVERY_OUTCOME_UNKNOWN_MESSAGE);
     }
 
     private void validate(MessageDeliveryCommand command) {

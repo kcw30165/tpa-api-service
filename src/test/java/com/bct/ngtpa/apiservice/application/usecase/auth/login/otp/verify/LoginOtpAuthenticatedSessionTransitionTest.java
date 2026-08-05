@@ -117,7 +117,7 @@ class LoginOtpAuthenticatedSessionTransitionTest {
         LoginAccountReferenceAssignmentService assignment = new LoginAccountReferenceAssignmentService(
                 () -> new LoginAccountRef("acc_abcdefghijklmnopqrstuvwx"), 8);
 
-        return new LoginOtpVerifyService(
+        return LoginOtpVerifyTestSupport.newService(
                 loader,
                 otp,
                 verified,
@@ -131,6 +131,6 @@ class LoginOtpAuthenticatedSessionTransitionTest {
 
     private VerifyLoginOtpCommand command() {
         return new VerifyLoginOtpCommand(
-                "afs_opaque", "csrf", "123456", "idem", "https://portal", null, "en", "req");
+                "afs_opaque", "csrf", "123456","idem_idem", "https://portal", null, "en", "req");
     }
 }

@@ -19,8 +19,16 @@ class AuthFlowSessionExpiryRefreshAdapterTest {
         var now = Instant.parse("2026-07-14T00:00:00Z");
         var s = new AuthFlowSession(id, AuthFlowScenario.REGISTRATION, AuthFlowStatus.USERNAME_VERIFIED, "h", null,
                 AuthFlowSessionData.empty(), now.minusSeconds(10), now.minusSeconds(5), now.plusSeconds(5));
+        var revision = new SessionRevision("11111111111111111111111111111111");
         when(port.load(id)).thenReturn(Mono.just(Optional.of(s)));
-        when(port.update(any())).thenAnswer(i -> Mono.just(i.getArgument(0)));
+        when(port.loadSnapshot(id)).thenReturn(Mono.just(Optional.of(new AuthFlowSessionSnapshot(s, revision))));
+        when(port.updateRevisioned(any())).thenAnswer(invocation -> {
+            RevisionedAuthFlowSessionMutationCommand command = invocation.getArgument(0);
+            return Mono.just(new AuthFlowSessionMutationResult(
+                    AuthFlowSessionMutationOutcome.APPLIED,
+                    new AuthFlowSessionSnapshot(command.updated(),
+                            new SessionRevision("22222222222222222222222222222222"))));
+        });
         var p = new AuthFlowSessionProperties();
         p.getScenarios().getRegistration().setTtlSeconds(1800);
         StepVerifier.create(new AuthFlowSessionExpiryRefreshAdapter(port, p).refresh(id, now)).assertNext(x -> {
@@ -40,6 +48,7 @@ class AuthFlowSessionExpiryRefreshAdapterTest {
         StepVerifier
                 .create(new AuthFlowSessionExpiryRefreshAdapter(port, new AuthFlowSessionProperties()).refresh(id, now))
                 .expectError(IllegalStateException.class).verify();
-        verify(port, never()).update(any());
+        verify(port, never()).loadSnapshot(any());
+        verify(port, never()).updateRevisioned(any());
     }
 }

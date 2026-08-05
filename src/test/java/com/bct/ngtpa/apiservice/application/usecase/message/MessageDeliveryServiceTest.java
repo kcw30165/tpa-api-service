@@ -102,52 +102,77 @@ class MessageDeliveryServiceTest {
                         MessageDeliveryStatus.FAILED,
                         MessageDeliveryChannel.EMAIL,
                         null,
-                        "SMTP_DOWN",
-                        "SMTP server unavailable")))
+                        "MESSAGE_DELIVERY_REJECTED",
+                        "Message delivery was not accepted")))
                 .verifyComplete();
     }
 
     @Test
-    void rejectsNullCommand() {
+    void nullCommandReturnsConfirmedLocalFailureWithoutInvokingSender() {
+        AtomicInteger senderCalls = new AtomicInteger();
         MessageDeliveryAdapter service = new MessageDeliveryAdapter(
-                new FakeSmsSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, null, null, null))),
-                new FakeEmailSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, null, null, null))));
+                new FakeSmsSenderPort(message -> {
+                    senderCalls.incrementAndGet();
+                    return Mono.error(new AssertionError("sender must not run"));
+                }),
+                new FakeEmailSenderPort(message -> {
+                    senderCalls.incrementAndGet();
+                    return Mono.error(new AssertionError("sender must not run"));
+                }));
 
         StepVerifier.create(service.deliver(null))
-                .expectErrorSatisfies(error -> {
-                    assertThat(error).isInstanceOf(IllegalArgumentException.class);
-                    assertThat(error).hasMessage("command must not be null");
+                .assertNext(result -> {
+                    assertThat(result.status()).isEqualTo(MessageDeliveryStatus.FAILED);
+                    assertThat(result.failureCode()).isEqualTo("MESSAGE_DELIVERY_REJECTED");
+                    assertThat(result.failureMessage()).isEqualTo("Message delivery was not accepted");
                 })
-                .verify();
+                .verifyComplete();
+        assertThat(senderCalls).hasValue(0);
     }
 
     @ParameterizedTest
     @MethodSource("invalidCommands")
-    void rejectsMissingRequiredCommandFields(MessageDeliveryCommand command, String expectedMessage) {
+    void missingRequiredCommandFieldsReturnConfirmedLocalFailureWithoutInvokingSender(
+            MessageDeliveryCommand command, String ignoredExpectedMessage) {
+        AtomicInteger senderCalls = new AtomicInteger();
         MessageDeliveryAdapter service = new MessageDeliveryAdapter(
-                new FakeSmsSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, null, null, null))),
-                new FakeEmailSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, null, null, null))));
+                new FakeSmsSenderPort(message -> {
+                    senderCalls.incrementAndGet();
+                    return Mono.error(new AssertionError("sender must not run"));
+                }),
+                new FakeEmailSenderPort(message -> {
+                    senderCalls.incrementAndGet();
+                    return Mono.error(new AssertionError("sender must not run"));
+                }));
 
         StepVerifier.create(service.deliver(command))
-                .expectErrorSatisfies(error -> {
-                    assertThat(error).isInstanceOf(IllegalArgumentException.class);
-                    assertThat(error).hasMessage(expectedMessage);
+                .assertNext(result -> {
+                    assertThat(result.status()).isEqualTo(MessageDeliveryStatus.FAILED);
+                    assertThat(result.failureCode()).isEqualTo("MESSAGE_DELIVERY_REJECTED");
+                    assertThat(result.failureMessage()).isEqualTo("Message delivery was not accepted");
                 })
-                .verify();
+                .verifyComplete();
+        assertThat(senderCalls).hasValue(0);
     }
 
     @Test
-    void rejectsEmailWithoutSubject() {
+    void emailWithoutSubjectReturnsConfirmedLocalFailureWithoutInvokingSender() {
+        AtomicInteger senderCalls = new AtomicInteger();
         MessageDeliveryAdapter service = new MessageDeliveryAdapter(
-                new FakeSmsSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, null, null, null))),
-                new FakeEmailSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, null, null, null))));
+                new FakeSmsSenderPort(message -> Mono.error(new AssertionError("SMS sender must not run"))),
+                new FakeEmailSenderPort(message -> {
+                    senderCalls.incrementAndGet();
+                    return Mono.error(new AssertionError("email sender must not run"));
+                }));
 
         StepVerifier.create(service.deliver(emailCommand("   ")))
-                .expectErrorSatisfies(error -> {
-                    assertThat(error).isInstanceOf(IllegalArgumentException.class);
-                    assertThat(error).hasMessage("subject must not be blank for EMAIL");
+                .assertNext(result -> {
+                    assertThat(result.status()).isEqualTo(MessageDeliveryStatus.FAILED);
+                    assertThat(result.channel()).isEqualTo(MessageDeliveryChannel.EMAIL);
+                    assertThat(result.failureCode()).isEqualTo("MESSAGE_DELIVERY_REJECTED");
                 })
-                .verify();
+                .verifyComplete();
+        assertThat(senderCalls).hasValue(0);
     }
 
     @Test
@@ -162,19 +187,27 @@ class MessageDeliveryServiceTest {
     }
 
     @Test
-    void senderErrorIsPropagatedSafely() {
-        RuntimeException failure = new RuntimeException("downstream failed");
+    void senderErrorReturnsSanitizedUnknownOutcomeWithoutAutomaticRetry() {
+        AtomicInteger senderCalls = new AtomicInteger();
+        RuntimeException failure = new RuntimeException(
+                "provider leaked 91234567 and Your code is 123456");
         MessageDeliveryAdapter service = new MessageDeliveryAdapter(
-                new FakeSmsSenderPort(message -> Mono.error(failure)),
-                new FakeEmailSenderPort(message -> Mono.just(new SenderResult(SenderStatus.ACCEPTED, "email-123", null, null))));
+                new FakeSmsSenderPort(message -> {
+                    senderCalls.incrementAndGet();
+                    return Mono.error(failure);
+                }),
+                new FakeEmailSenderPort(message -> Mono.error(new AssertionError("email sender must not run"))));
 
         StepVerifier.create(service.deliver(smsCommand(null)))
-                .expectErrorSatisfies(error -> {
-                    assertThat(error).isSameAs(failure);
-                    assertThat(error.getMessage()).doesNotContain("91234567");
-                    assertThat(error.getMessage()).doesNotContain("Your code is 123456");
+                .assertNext(result -> {
+                    assertThat(result.status()).isEqualTo(MessageDeliveryStatus.UNKNOWN_OUTCOME);
+                    assertThat(result.failureCode()).isEqualTo("MESSAGE_DELIVERY_OUTCOME_UNKNOWN");
+                    assertThat(result.failureMessage()).isEqualTo("Message delivery outcome is unknown");
+                    assertThat(result.toString()).doesNotContain(
+                            "91234567", "Your code is 123456", "provider leaked");
                 })
-                .verify();
+                .verifyComplete();
+        assertThat(senderCalls).hasValue(1);
     }
 
     private static Stream<Arguments> invalidCommands() {

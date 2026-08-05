@@ -36,6 +36,11 @@ import java.util.Optional;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 import org.junit.jupiter.api.Test;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationOutcome;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationResult;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.RevisionedAuthFlowSessionMutationCommand;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision;
 
 class CheckRegistrationUsernameServiceTest {
     private static final Instant NOW = Instant.parse("2026-07-10T00:00:00Z");
@@ -48,7 +53,8 @@ class CheckRegistrationUsernameServiceTest {
         var service = service(sessions, availability, new FakeClassifier("err.registration.username.isRegistered"));
 
         StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "abc1@")))
-                .assertNext(result -> assertThat(result.status()).isEqualTo(CheckRegistrationUsernameResultStatus.INVALID_AUTH_FLOW))
+                .assertNext(result -> assertThat(result.status())
+                        .isEqualTo(CheckRegistrationUsernameResultStatus.INVALID_AUTH_FLOW))
                 .verifyComplete();
 
         assertThat(availability.calls).isZero();
@@ -62,7 +68,8 @@ class CheckRegistrationUsernameServiceTest {
         var service = service(sessions, availability, new FakeClassifier("err.registration.username.isRegistered"));
 
         StepVerifier.create(service.check(command("wrong-csrf", selectedTrust("TL", "ENV1"), "abc1@")))
-                .assertNext(result -> assertThat(result.status()).isEqualTo(CheckRegistrationUsernameResultStatus.CSRF_INVALID))
+                .assertNext(result -> assertThat(result.status())
+                        .isEqualTo(CheckRegistrationUsernameResultStatus.CSRF_INVALID))
                 .verifyComplete();
 
         assertThat(availability.calls).isZero();
@@ -101,7 +108,7 @@ class CheckRegistrationUsernameServiceTest {
 
         assertThat(availability.calls).isOne();
         assertThat(sessions.updated.status()).isEqualTo(AuthFlowStatus.USERNAME_VERIFIED);
-                assertThat(sessions.updated.data().attributes())
+        assertThat(sessions.updated.data().attributes())
                 .containsKeys(RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_CIPHERTEXT,
                         RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_KEY_VERSION,
                         RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_ALGORITHM);
@@ -115,11 +122,12 @@ class CheckRegistrationUsernameServiceTest {
         var service = service(sessions, availability, new FakeClassifier("err.registration.username.isRegistered"));
 
         StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "abc1@")))
-                .assertNext(result -> assertThat(result.status()).isEqualTo(CheckRegistrationUsernameResultStatus.USERNAME_AVAILABLE))
+                .assertNext(result -> assertThat(result.status())
+                        .isEqualTo(CheckRegistrationUsernameResultStatus.USERNAME_AVAILABLE))
                 .verifyComplete();
 
         assertThat(sessions.updated.status()).isEqualTo(AuthFlowStatus.USERNAME_VERIFIED);
-                assertThat(sessions.updated.data().attributes().toString()).doesNotContain("abc1@");
+        assertThat(sessions.updated.data().attributes().toString()).doesNotContain("abc1@");
     }
 
     @Test
@@ -131,14 +139,16 @@ class CheckRegistrationUsernameServiceTest {
         StepVerifier.create(service.check(command("csrf", null, "abc1@")))
                 .assertNext(result -> {
                     assertThat(result.status()).isEqualTo(CheckRegistrationUsernameResultStatus.VALIDATION_FAILED);
-                    assertThat(result.errors().getFirst().code()).isEqualTo(RegistrationErrorKey.TRUST_SELECTION_INVALID.value());
+                    assertThat(result.errors().getFirst().code())
+                            .isEqualTo(RegistrationErrorKey.TRUST_SELECTION_INVALID.value());
                 })
                 .verifyComplete();
 
         StepVerifier.create(service.check(command("csrf", selectedTrust(" ", "ENV1"), "abc1@")))
                 .assertNext(result -> {
                     assertThat(result.status()).isEqualTo(CheckRegistrationUsernameResultStatus.VALIDATION_FAILED);
-                    assertThat(result.errors().getFirst().code()).isEqualTo(RegistrationErrorKey.TRUST_SELECTION_INVALID.value());
+                    assertThat(result.errors().getFirst().code())
+                            .isEqualTo(RegistrationErrorKey.TRUST_SELECTION_INVALID.value());
                 })
                 .verifyComplete();
 
@@ -154,7 +164,8 @@ class CheckRegistrationUsernameServiceTest {
         StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "abcd")))
                 .assertNext(result -> {
                     assertThat(result.status()).isEqualTo(CheckRegistrationUsernameResultStatus.VALIDATION_FAILED);
-                    assertThat(result.errors().getFirst().code()).isEqualTo(RegistrationErrorKey.USERNAME_POLICY_INVALID.value());
+                    assertThat(result.errors().getFirst().code())
+                            .isEqualTo(RegistrationErrorKey.USERNAME_POLICY_INVALID.value());
                 })
                 .verifyComplete();
 
@@ -168,7 +179,8 @@ class CheckRegistrationUsernameServiceTest {
         var service = service(sessions, availability, new FakeClassifier("err.registration.username.isRegistered"));
 
         StepVerifier.create(service.check(command("csrf", selectedTrust(" TL ", " ENV1 "), " abc1@ ")))
-                .assertNext(result -> assertThat(result.status()).isEqualTo(CheckRegistrationUsernameResultStatus.USERNAME_AVAILABLE))
+                .assertNext(result -> assertThat(result.status())
+                        .isEqualTo(CheckRegistrationUsernameResultStatus.USERNAME_AVAILABLE))
                 .verifyComplete();
 
         assertThat(availability.lastCommand.selectedTrust().trustCode()).isEqualTo("TL");
@@ -179,7 +191,8 @@ class CheckRegistrationUsernameServiceTest {
     @Test
     void mapsDownstreamBusinessRejectionThroughClassifierAndDoesNotStoreUsernameCheck() {
         var sessions = FakeSessions.with(session(AuthFlowStatus.OTP_VERIFIED, "csrf", null));
-        var availability = new FakeAvailability(RegistrationUsernameAvailabilityResult.rejected("err.tpa.username.taken"));
+        var availability = new FakeAvailability(
+                RegistrationUsernameAvailabilityResult.rejected("err.tpa.username.taken"));
         var classifier = new FakeClassifier("err.registration.username.isRegistered");
         var service = service(sessions, availability, classifier);
 
@@ -207,7 +220,8 @@ class CheckRegistrationUsernameServiceTest {
         var service = service(sessions, availability, classifier);
 
         StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "abc1@")))
-                .assertNext(result -> assertThat(result.status()).isEqualTo(CheckRegistrationUsernameResultStatus.DOWNSTREAM_FAILED))
+                .assertNext(result -> assertThat(result.status())
+                        .isEqualTo(CheckRegistrationUsernameResultStatus.DOWNSTREAM_FAILED))
                 .verifyComplete();
 
         assertThat(classifier.calls).isZero();
@@ -236,15 +250,17 @@ class CheckRegistrationUsernameServiceTest {
     void failedReplacementWhileUsernameVerifiedKeepsPreviousUsernameCheck() {
         var existing = new UsernameCheckState(new SelectedTrust("TL", "ENV1"), "old1@", NOW.minusSeconds(60), null);
         var sessions = FakeSessions.with(session(AuthFlowStatus.USERNAME_VERIFIED, "csrf", existing));
-        var availability = new FakeAvailability(RegistrationUsernameAvailabilityResult.rejected("err.tpa.username.taken"));
+        var availability = new FakeAvailability(
+                RegistrationUsernameAvailabilityResult.rejected("err.tpa.username.taken"));
         var service = service(sessions, availability, new FakeClassifier("err.registration.username.isRegistered"));
 
         StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "new1@")))
-                .assertNext(result -> assertThat(result.status()).isEqualTo(CheckRegistrationUsernameResultStatus.DOWNSTREAM_REJECTED))
+                .assertNext(result -> assertThat(result.status())
+                        .isEqualTo(CheckRegistrationUsernameResultStatus.DOWNSTREAM_REJECTED))
                 .verifyComplete();
 
         assertThat(sessions.updated).isNull();
-            }
+    }
 
     @Test
     void rejectsMutationFromCompleting() {
@@ -254,15 +270,18 @@ class CheckRegistrationUsernameServiceTest {
         var service = service(sessions, availability, new FakeClassifier("err.registration.username.isRegistered"));
 
         StepVerifier.create(service.check(command("csrf", selectedTrust("TL", "ENV1"), "new1@")))
-                .assertNext(result -> assertThat(result.status()).isEqualTo(CheckRegistrationUsernameResultStatus.INVALID_STATE))
+                .assertNext(result -> assertThat(result.status())
+                        .isEqualTo(CheckRegistrationUsernameResultStatus.INVALID_STATE))
                 .verifyComplete();
 
         assertThat(availability.calls).isZero();
         assertThat(sessions.updated).isNull();
     }
 
-    private CheckRegistrationUsernameService service(FakeSessions sessions, FakeAvailability availability, FakeClassifier classifier) {
-        return new CheckRegistrationUsernameService(sessions, expiryRefresh(sessions), availability, new FakePolicy(), classifier, new FakeUsernameCheckProtector(), CLOCK);
+    private CheckRegistrationUsernameService service(FakeSessions sessions, FakeAvailability availability,
+            FakeClassifier classifier) {
+        return new CheckRegistrationUsernameService(sessions, expiryRefresh(sessions), availability, new FakePolicy(),
+                classifier, new FakeUsernameCheckProtector(), CLOCK);
     }
 
     private AuthFlowSessionExpiryRefreshPort expiryRefresh(FakeSessions sessions) {
@@ -271,7 +290,7 @@ class CheckRegistrationUsernameServiceTest {
                 return Mono.error(new IllegalStateException("Auth flow session missing"));
             }
             AuthFlowSession current = sessions.session;
-            return Mono.just(new AuthFlowSession(
+            AuthFlowSession refreshed = new AuthFlowSession(
                     current.authFlowSessionId(),
                     current.scenario(),
                     current.status(),
@@ -280,12 +299,16 @@ class CheckRegistrationUsernameServiceTest {
                     current.data(),
                     current.createdAt(),
                     interactionAt,
-                    interactionAt.plusSeconds(1800)));
+                    interactionAt.plusSeconds(1800));
+            sessions.session = refreshed;
+            return Mono.just(refreshed);
         };
     }
 
-    private CheckRegistrationUsernameCommand command(String csrf, RegistrationSelectedTrust selectedTrust, String username) {
-        return new CheckRegistrationUsernameCommand(new AuthFlowSessionId("afs_secret"), csrf, selectedTrust, username, "https://portal.test", "https://portal.test/register", "en", "req-1");
+    private CheckRegistrationUsernameCommand command(String csrf, RegistrationSelectedTrust selectedTrust,
+            String username) {
+        return new CheckRegistrationUsernameCommand(new AuthFlowSessionId("afs_secret"), csrf, selectedTrust, username,
+                "https://portal.test", "https://portal.test/register", "en", "req-1");
     }
 
     private RegistrationSelectedTrust selectedTrust(String trustCode, String accountEnv) {
@@ -312,8 +335,7 @@ class CheckRegistrationUsernameServiceTest {
         if (usernameCheck == null) {
             return java.util.Map.of();
         }
-        RegistrationUsernameCheckEncryptedState encrypted =
-                new FakeUsernameCheckProtector().protect(usernameCheck);
+        RegistrationUsernameCheckEncryptedState encrypted = new FakeUsernameCheckProtector().protect(usernameCheck);
         return java.util.Map.of(
                 RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_CIPHERTEXT, encrypted.ciphertext(),
                 RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_KEY_VERSION, encrypted.keyVersion(),
@@ -332,33 +354,103 @@ class CheckRegistrationUsernameServiceTest {
     private static final class FakeSessions implements AuthFlowSessionPort {
         AuthFlowSession session;
         AuthFlowSession updated;
-        static FakeSessions empty() { return new FakeSessions(null); }
-        static FakeSessions with(AuthFlowSession session) { return new FakeSessions(session); }
-        FakeSessions(AuthFlowSession session) { this.session = session; }
-        @Override public Mono<AuthFlowSession> create(AuthFlowSessionCreateCommand command) { return Mono.error(new UnsupportedOperationException()); }
-        @Override public Mono<Optional<AuthFlowSession>> load(AuthFlowSessionId authFlowSessionId) { return Mono.just(Optional.ofNullable(session)); }
-        @Override public Mono<AuthFlowSession> update(AuthFlowSession session) { this.updated = session; this.session = session; return Mono.just(session); }
-        @Override public Mono<AuthFlowSession> touch(AuthFlowSessionId authFlowSessionId, Instant now) { return Mono.error(new UnsupportedOperationException()); }
-        @Override public Mono<AuthFlowSession> complete(AuthFlowSessionId authFlowSessionId, Instant now) { return Mono.error(new UnsupportedOperationException()); }
-        @Override public Mono<AuthFlowSession> cancel(AuthFlowSessionId authFlowSessionId, Instant now) { return Mono.error(new UnsupportedOperationException()); }
-        @Override public Mono<Void> delete(AuthFlowSessionId authFlowSessionId) { return Mono.empty(); }
+
+        static FakeSessions empty() {
+            return new FakeSessions(null);
+        }
+
+        static FakeSessions with(AuthFlowSession session) {
+            return new FakeSessions(session);
+        }
+
+        FakeSessions(AuthFlowSession session) {
+            this.session = session;
+        }
+
+        @Override
+        public Mono<AuthFlowSession> create(AuthFlowSessionCreateCommand command) {
+            return Mono.error(new UnsupportedOperationException());
+        }
+
+        @Override
+        public Mono<Optional<AuthFlowSession>> load(AuthFlowSessionId authFlowSessionId) {
+            return Mono.just(Optional.ofNullable(session));
+        }
+
+        @Override
+        public Mono<AuthFlowSession> update(AuthFlowSession session) {
+            this.updated = session;
+            this.session = session;
+            return Mono.just(session);
+        }
+
+        @Override
+        public Mono<Optional<AuthFlowSessionSnapshot>> loadSnapshot(AuthFlowSessionId id) {
+            return Mono.just(Optional.ofNullable(session).map(value -> new AuthFlowSessionSnapshot(
+                    value, new SessionRevision("00000000000000000000000000000000"))));
+        }
+
+        @Override
+        public Mono<AuthFlowSessionMutationResult> updateRevisioned(
+                RevisionedAuthFlowSessionMutationCommand command) {
+            this.updated = command.updated();
+            this.session = command.updated();
+            return Mono.just(new AuthFlowSessionMutationResult(AuthFlowSessionMutationOutcome.APPLIED,
+                    new AuthFlowSessionSnapshot(command.updated(),
+                            new SessionRevision("11111111111111111111111111111111"))));
+        }
+
+        @Override
+        public Mono<AuthFlowSession> touch(AuthFlowSessionId authFlowSessionId, Instant now) {
+            return Mono.error(new UnsupportedOperationException());
+        }
+
+        @Override
+        public Mono<AuthFlowSession> complete(AuthFlowSessionId authFlowSessionId, Instant now) {
+            return Mono.error(new UnsupportedOperationException());
+        }
+
+        @Override
+        public Mono<AuthFlowSession> cancel(AuthFlowSessionId authFlowSessionId, Instant now) {
+            return Mono.error(new UnsupportedOperationException());
+        }
+
+        @Override
+        public Mono<Void> delete(AuthFlowSessionId authFlowSessionId) {
+            return Mono.empty();
+        }
     }
 
     private static final class FakeAvailability implements RegistrationUsernameAvailabilityPort {
         final RegistrationUsernameAvailabilityResult result;
         int calls;
         RegistrationUsernameAvailabilityCommand lastCommand;
-        FakeAvailability(RegistrationUsernameAvailabilityResult result) { this.result = result; }
-        @Override public Mono<RegistrationUsernameAvailabilityResult> checkAvailability(RegistrationUsernameAvailabilityCommand command) { calls++; lastCommand = command; return Mono.just(result); }
+
+        FakeAvailability(RegistrationUsernameAvailabilityResult result) {
+            this.result = result;
+        }
+
+        @Override
+        public Mono<RegistrationUsernameAvailabilityResult> checkAvailability(
+                RegistrationUsernameAvailabilityCommand command) {
+            calls++;
+            lastCommand = command;
+            return Mono.just(result);
+        }
     }
 
     private static final class FakePolicy implements AuthWorkflowPolicyPort {
-        @Override public RegistrationAuthWorkflowPolicy registrationPolicy() {
-            return new RegistrationAuthWorkflowPolicy(null, null, null, new UsernamePolicy(4, 128, true, true, true, true, "!@#$%^&*()_-"), null);
+        @Override
+        public RegistrationAuthWorkflowPolicy registrationPolicy() {
+            return new RegistrationAuthWorkflowPolicy(null, null, null,
+                    new UsernamePolicy(4, 128, true, true, true, true, "!@#$%^&*()_-"), null);
         }
-        @Override public java.util.Optional<String> resolveIdentityTypeSearchScope(String identityType) { return java.util.Optional.empty(); }
-    }
 
+        @Override
+        public java.util.Optional<String> resolveIdentityTypeSearchScope(String identityType) {
+            return java.util.Optional.empty();
+        }
+    }
 
     private static final class FakeUsernameCheckProtector implements RegistrationUsernameCheckProtectorPort {
         @Override
@@ -376,11 +468,17 @@ class CheckRegistrationUsernameServiceTest {
         final String responseCode;
         int calls;
         DownstreamErrorClassificationRequest lastRequest;
-        FakeClassifier(String responseCode) { this.responseCode = responseCode; }
-        @Override public DownstreamErrorClassification classify(DownstreamErrorClassificationRequest request) {
+
+        FakeClassifier(String responseCode) {
+            this.responseCode = responseCode;
+        }
+
+        @Override
+        public DownstreamErrorClassification classify(DownstreamErrorClassificationRequest request) {
             calls++;
             lastRequest = request;
-            return new DownstreamErrorClassification("DOWNSTREAM_REJECTION", "ERROR", responseCode, 422, "PAGE", false, null, true);
+            return new DownstreamErrorClassification("DOWNSTREAM_REJECTION", "ERROR", responseCode, 422, "PAGE", false,
+                    null, true);
         }
     }
 }

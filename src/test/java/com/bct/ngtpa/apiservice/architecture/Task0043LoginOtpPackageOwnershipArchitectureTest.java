@@ -8,14 +8,12 @@ import org.junit.jupiter.api.Test;
 
 class Task0043LoginOtpPackageOwnershipArchitectureTest {
         @Test
-        void loginHasNoDedicatedOtpDtoTreeOrChannelVocabulary() throws Exception {
-                Path forbidden = Path.of(
+        void dedicatedVerificationDtosAreScopedAndChannelVocabularyRemainsShared() throws Exception {
+                Path otpRoot = Path.of(
                                 "src/main/java/com/bct/ngtpa/apiservice/application/dto/auth/login/otp");
-                if (Files.exists(forbidden)) {
-                        try (var files = Files.walk(forbidden)) {
-                                assertThat(files.filter(path -> path.toString().endsWith(".java")).toList())
-                                                .isEmpty();
-                        }
+                try (var entries = Files.list(otpRoot)) {
+                        assertThat(entries.map(path -> path.getFileName().toString()).toList())
+                                        .containsExactly("verify");
                 }
                 assertThat(Files.exists(Path.of(
                                 "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/otp/SendLoginOtpCommand.java")))

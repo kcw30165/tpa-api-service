@@ -58,6 +58,7 @@ sms:
   timeout-millis: ${SMS_TIMEOUT_MILLIS:5000}
 
 auth-flow-session:
+  persistence-schema-version: 2
   session-id:
     prefix: afs
     entropy-bytes: 16
@@ -99,6 +100,70 @@ auth-flow-session:
       ttl-seconds: 900
 
 auth-workflows:
+  forgot-password:
+    message:
+      destination-override:
+        mobile: ${FORGOT_PASSWORD_MESSAGE_OVERRIDE_MOBILE:}
+        email: ${FORGOT_PASSWORD_MESSAGE_OVERRIDE_EMAIL:}
+    username:
+      min-length: 4
+      max-length: 128
+      trim: true
+      case-insensitive: true
+      normalization: ASCII_LOWERCASE
+    context-protection:
+      enabled: true
+      key-version: ${FORGOT_PASSWORD_CONTEXT_KEY_VERSION:}
+      secret: ${FORGOT_PASSWORD_CONTEXT_SECRET:}
+    allowed-public-identity-types:
+      - GPN
+      - GPFS
+      - STAFF_NO
+      - ID
+    tas-to-public-identity-type-mapping:
+      GPN: GPN
+      GPFS: GPFS
+      ID: ID
+      STAFFNO: STAFF_NO
+    otp:
+      length: 6
+      numeric-only: true
+      ttl-seconds: 300
+      resend-cooldown-seconds: 60
+      max-verify-attempts: 5
+      resend-limit-enabled: true
+      max-resend-attempts: 5
+      invalidate-previous-on-resend: true
+      reset-verify-attempts-on-resend: true
+      sms-template: "Your BCT forgot password verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
+      email-template:
+        subject: "BCT forgot password verification code"
+        body: "Your BCT forgot password verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
+      localized-template:
+        en:
+          sms: "Your BCT forgot password verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
+          email-subject: "BCT forgot password verification code"
+          email-body: "Your BCT forgot password verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
+        zh_HK:
+          sms: "您的 BCT 忘記密碼驗證碼為 {code}，有效期限為 {ttlValue} {ttlUnit}。"
+          email-subject: "BCT 忘記密碼驗證碼"
+          email-body: "您的 BCT 忘記密碼驗證碼為 {code}，有效期限為 {ttlValue} {ttlUnit}。"
+    details-and-otp:
+      mutation-lock-lease-seconds: ${FORGOT_PASSWORD_DETAILS_OTP_LOCK_LEASE_SECONDS:60}
+      mutation-lock-redis-allowance-seconds: ${FORGOT_PASSWORD_DETAILS_OTP_REDIS_ALLOWANCE_SECONDS:10}
+      mutation-lock-safety-margin-seconds: ${FORGOT_PASSWORD_DETAILS_OTP_SAFETY_MARGIN_SECONDS:10}
+    idempotency:
+      start-ttl-seconds: 300
+      details-and-otp-ttl-seconds: 300
+      otp-resend-ttl-seconds: 300
+      otp-verify-ttl-seconds: 300
+      complete-ttl-seconds: 300
+      cancel-ttl-seconds: 300
+    otp-commit:
+      expired-replay-grace-seconds: ${FORGOT_PASSWORD_OTP_EXPIRED_REPLAY_GRACE_SECONDS:300}
+      maximum-retention-seconds: ${FORGOT_PASSWORD_OTP_COMMIT_MAX_RETENTION_SECONDS:1800}
+    reset-authorization:
+      ttl-seconds: 300
   login:
     message:
       destination-override:
@@ -139,6 +204,15 @@ auth-workflows:
       otp-resend-ttl-seconds: ${LOGIN_OTP_RESEND_IDEMPOTENCY_TTL_SECONDS:300}
       otp-verify-ttl-seconds: ${LOGIN_OTP_VERIFY_IDEMPOTENCY_TTL_SECONDS:300}
       cancel-ttl-seconds: ${LOGIN_CANCEL_IDEMPOTENCY_TTL_SECONDS:300}
+      persistence-hmac-secret: ${AUTH_WORKFLOWS_LOGIN_IDEMPOTENCY_PERSISTENCE_HMAC_SECRET:}
+    # 0061 / 001A-5. Read-only replay never refreshes these TTLs.
+    otp-verify-recovery:
+      otp-verify-idempotency-ttl-seconds: 600
+      authenticated-login-handoff-retention-seconds: 900
+      otp-consumption-proof-retention-seconds: 900
+      auth-flow-deletion-proof-retention-seconds: 900
+      minimum-retention-seconds: 300
+      maximum-retention-seconds: 1800
     session:
       absolute-timeout-seconds: ${AUTH_WORKFLOWS_LOGIN_SESSION_ABSOLUTE_TIMEOUT_SECONDS:28800}
       terminal-retention-seconds: ${AUTH_WORKFLOWS_LOGIN_SESSION_TERMINAL_RETENTION_SECONDS:300}

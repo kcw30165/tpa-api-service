@@ -65,7 +65,7 @@ class LoginOtpVerifyServiceTest {
                 statusUpdates.incrementAndGet();
                 return Mono.empty();
             };
-            service = new LoginOtpVerifyService(loader, otp, verified, cancel,
+            service = LoginOtpVerifyTestSupport.newService(loader, otp, verified, cancel,
                     new com.bct.ngtpa.apiservice.application.usecase.auth.login.account.GetLoginAccountsUseCase(
                             c -> Mono.just(
                                     com.bct.ngtpa.apiservice.application.dto.auth.login.account.LoginAccountAuthorizationResult

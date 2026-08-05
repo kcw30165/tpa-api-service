@@ -6,6 +6,7 @@ public final class WorkflowTerminalStepPolicy {
 
     public static boolean isTerminalNextStep(WorkflowNextStep nextStep) {
         return nextStep == WorkflowNextStep.REGISTRATION_SUCCESS
+                || nextStep == WorkflowNextStep.PASSWORD_RESET_SUCCESS
                 || nextStep == WorkflowNextStep.RETURN_TO_LOGIN;
     }
 

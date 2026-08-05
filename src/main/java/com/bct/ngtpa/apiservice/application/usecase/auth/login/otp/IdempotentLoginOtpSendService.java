@@ -49,6 +49,13 @@ public final class IdempotentLoginOtpSendService implements SendLoginOtpUseCase 
                                                                 hash, snap, clock.instant(), ttl))
                                                 .thenReturn(r);
                         }
+                        if (r.status() == SendLoginOtpStatus.UNKNOWN_OUTCOME) {
+                                return idempotency.unknown(
+                                                new LoginOtpSendTerminalCommand(LoginIdempotencyAction.OTP_SEND,
+                                                                c.idempotencyKey(), hash,
+                                                                "INDETERMINATE", clock.instant(), ttl))
+                                                .thenReturn(r);
+                        }
                         return idempotency.fail(
                                         new LoginOtpSendTerminalCommand(LoginIdempotencyAction.OTP_SEND,
                                                         c.idempotencyKey(), hash,

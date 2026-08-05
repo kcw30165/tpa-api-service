@@ -33,14 +33,14 @@ public class RegistrationStartWebMapper {
 
     public RegistrationStartWebMapper(Duration defaultIdempotencyTtl) {
         this(defaultIdempotencyTtl,
-            new WorkflowMutationResponseMapper());
+                new WorkflowMutationResponseMapper());
     }
 
     public RegistrationStartWebMapper(
             Duration defaultIdempotencyTtl,
             Object ignoredMessageResolver) {
         this(defaultIdempotencyTtl,
-            new WorkflowMutationResponseMapper());
+                new WorkflowMutationResponseMapper());
     }
 
     RegistrationStartWebMapper(
@@ -57,6 +57,7 @@ public class RegistrationStartWebMapper {
         this.workflowMutationResponseMapper = new RegistrationWorkflowMutationResponseMapper(
                 java.util.Objects.requireNonNull(workflowMutationResponseMapper));
     }
+
     public StartRegistrationCommand toCommand(
             RegistrationStartRequest request,
             String idempotencyKey,
@@ -118,7 +119,7 @@ public class RegistrationStartWebMapper {
         if (result != null && result.status() == StartRegistrationResultStatus.MESSAGE_DELIVERY_FAILED) {
             return new MutationResponse<>(
                     false,
-                    ApiStatus.DOWNSTREAM_ERROR,
+                    ApiStatus.SYSTEM_ERROR,
                     response.result(),
                     response.messages(),
                     response.errors());
@@ -146,7 +147,6 @@ public class RegistrationStartWebMapper {
                         WorkflowResultStatus.VALIDATION_FAILED,
                         WorkflowNextStep.NONE,
                         null,
-                        null,
                         List.of(),
                         List.of(error)));
     }
@@ -161,7 +161,6 @@ public class RegistrationStartWebMapper {
             return new WorkflowResult<>(
                     WorkflowResultStatus.SYSTEM_FAILED,
                     WorkflowNextStep.NONE,
-                    null,
                     null,
                     List.of(),
                     List.of(new WorkflowErrorDescriptor(
@@ -180,7 +179,6 @@ public class RegistrationStartWebMapper {
                 workflowStatus,
                 result.nextStep(),
                 response,
-            null,
                 List.of(),
                 result.errors().stream()
                         .map(error -> toWorkflowError(error, result.status(), acceptLanguage))

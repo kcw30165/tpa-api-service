@@ -67,7 +67,7 @@ class AuthRegistrationUsernameControllerTest {
                 new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block());
 
         assertThat(json.get("success").asBoolean()).isFalse();
-        assertThat(json.at("/errors/0/code").asText()).isEqualTo("err.registration.csrf.invalid");
+        assertThat(json.at("/errors/0/code").asText()).isEqualTo("err.security.authentication.required");
         assertThat(useCase.called).isFalse();
     }
 
@@ -90,7 +90,8 @@ class AuthRegistrationUsernameControllerTest {
         var useCase = new RecordingUseCase(successResult());
         var controller = controller(useCase);
 
-        controller.checkUsername(validRequest(), "afs_abc", "csrf_abc", "req_abc", "en", "https://portal.example", "https://portal.example/start",
+        controller.checkUsername(validRequest(), "afs_abc", "csrf_abc", "req_abc", "en", "https://portal.example",
+                "https://portal.example/start",
                 new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block();
 
         assertThat(useCase.called).isTrue();
@@ -103,7 +104,8 @@ class AuthRegistrationUsernameControllerTest {
         assertThat(useCase.command.correlationId()).isEqualTo("req_abc");
         assertThat(useCase.command.origin()).isEqualTo("https://portal.example");
         assertThat(useCase.command.referer()).isEqualTo("https://portal.example/start");
-        assertThat(commandComponents()).doesNotContain("idempotencyKey", "idempotencyTtl", "policyNo", "certNo", "password", "confirmPassword");
+        assertThat(commandComponents()).doesNotContain("idempotencyKey", "idempotencyTtl", "policyNo", "certNo",
+                "password", "confirmPassword");
     }
 
     @Test
@@ -175,14 +177,16 @@ class AuthRegistrationUsernameControllerTest {
                 new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block());
 
         assertThat(json.get("success").asBoolean()).isFalse();
-        assertThat(json.get("status").asText()).isEqualTo("DOWNSTREAM_ERROR");
+        assertThat(json.get("status").asText()).isEqualTo("SYSTEM_ERROR");
         assertThat(json.at("/result/nextStep").asText()).isEqualTo("USERNAME_CHECK");
-        assertThat(json.toString()).doesNotContain("err.registration.username.checkFailed", "err.registration.username.isRegistered");
+        assertThat(json.toString()).doesNotContain("err.registration.username.checkFailed",
+                "err.registration.username.isRegistered");
     }
 
     @Test
     void extraIdempotencyHeaderCannotAffectControllerSignatureOrCommand() {
-        assertThat(commandComponents()).doesNotContain("idempotencyKey", "RegistrationIdempotencyKey", "idempotencyTtl");
+        assertThat(commandComponents()).doesNotContain("idempotencyKey", "RegistrationIdempotencyKey",
+                "idempotencyTtl");
     }
 
     private JsonNode json(Object value) throws Exception {
@@ -197,19 +201,23 @@ class AuthRegistrationUsernameControllerTest {
     }
 
     private static WorkflowErrorDescriptor error(String code) {
-        return new WorkflowErrorDescriptor(WorkflowErrorType.FORM, code, null, List.of("PAGE"), WorkflowErrorSeverity.ERROR, "SERVER");
+        return new WorkflowErrorDescriptor(WorkflowErrorType.FORM, code, null, List.of("PAGE"),
+                WorkflowErrorSeverity.ERROR, "SERVER");
     }
 
     private static CheckRegistrationUsernameResult successResult() {
-        return new CheckRegistrationUsernameResult(CheckRegistrationUsernameResultStatus.USERNAME_AVAILABLE, WorkflowNextStep.PASSWORD_SETUP, List.of(), List.of());
+        return new CheckRegistrationUsernameResult(CheckRegistrationUsernameResultStatus.USERNAME_AVAILABLE,
+                WorkflowNextStep.PASSWORD_SETUP, List.of(), List.of());
     }
 
     private static List<String> commandComponents() {
-        return Arrays.stream(CheckRegistrationUsernameCommand.class.getRecordComponents()).map(RecordComponent::getName).toList();
+        return Arrays.stream(CheckRegistrationUsernameCommand.class.getRecordComponents()).map(RecordComponent::getName)
+                .toList();
     }
 
     private static AuthRegistrationUsernameController controller(CheckRegistrationUsernameUseCase useCase) {
-        return new AuthRegistrationUsernameController(com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter.defaultWriter(),
+        return new AuthRegistrationUsernameController(
+                com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter.defaultWriter(),
                 useCase, new RegistrationUsernameCheckWebMapper());
     }
 
@@ -217,8 +225,13 @@ class AuthRegistrationUsernameControllerTest {
         final CheckRegistrationUsernameResult result;
         boolean called;
         CheckRegistrationUsernameCommand command;
-        RecordingUseCase(CheckRegistrationUsernameResult result) { this.result = result; }
-        @Override public Mono<CheckRegistrationUsernameResult> check(CheckRegistrationUsernameCommand command) {
+
+        RecordingUseCase(CheckRegistrationUsernameResult result) {
+            this.result = result;
+        }
+
+        @Override
+        public Mono<CheckRegistrationUsernameResult> check(CheckRegistrationUsernameCommand command) {
             called = true;
             this.command = command;
             return Mono.just(result);

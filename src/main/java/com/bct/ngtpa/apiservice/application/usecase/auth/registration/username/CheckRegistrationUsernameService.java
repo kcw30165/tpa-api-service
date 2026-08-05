@@ -205,7 +205,9 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
                 session.createdAt(),
                 now,
                 session.expiresAt());
-        return authFlowSessionPort.update(updated).thenReturn(success());
+        return new com.bct.ngtpa.apiservice.application.usecase.session.authflow.RevisionAwareAuthFlowSessionWriter(
+                authFlowSessionPort)
+                .updateExpected(session, updated).thenReturn(success());
     }
 
     private CheckRegistrationUsernameResult downstreamRejected(String downstreamErrorCode) {

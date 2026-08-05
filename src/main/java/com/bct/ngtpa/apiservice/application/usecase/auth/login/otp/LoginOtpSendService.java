@@ -72,7 +72,13 @@ public final class LoginOtpSendService implements SendLoginOtpUseCase {
                     destination.channel() == OtpChannel.EMAIL ? policy.emailSubject() : null, policy.messageTemplate(),
                     null, templateVariables(challenge.rawCode()), command.acceptLanguage(), command.correlationId());
             return messages.deliver(delivery).flatMap(outcome -> {
-                if (outcome.status() != MessageDeliveryStatus.ACCEPTED)
+                if (outcome.status() == MessageDeliveryStatus.UNKNOWN_OUTCOME)
+                    return otp
+                            .invalidateChallenge(new InvalidateOtpChallengeCommand(challenge.otpChallengeId(),
+                                    OtpChallengeInvalidationReason.DELIVERY_FAILED, clock.instant()))
+                            .thenReturn(
+                                    new SendLoginOtpResult(SendLoginOtpStatus.UNKNOWN_OUTCOME, null, null, null, null));
+                if (outcome.status() == MessageDeliveryStatus.FAILED)
                     return otp
                             .invalidateChallenge(new InvalidateOtpChallengeCommand(challenge.otpChallengeId(),
                                     OtpChallengeInvalidationReason.DELIVERY_FAILED, clock.instant()))

@@ -25,4 +25,12 @@ public class EmailSenderConfig {
     public EmailSenderPort emailSenderPort(SmtpClient smtpClient, EmailProperties emailProperties) {
         return new SmtpEmailSenderAdapter(smtpClient, emailProperties);
     }
+
+    @Bean
+    public com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryTimeoutBound emailMessageDeliveryTimeoutBound(
+            EmailProperties emailProperties) {
+        return new com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryTimeoutBound(
+                com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryChannel.EMAIL,
+                emailProperties.getSmtp().getTimeoutMillis());
+    }
 }

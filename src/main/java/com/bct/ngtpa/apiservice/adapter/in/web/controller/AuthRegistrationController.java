@@ -13,6 +13,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.CompleteReg
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartWorkflowDataResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationWorkflowResultResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.CsrfHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
@@ -76,8 +77,7 @@ public class AuthRegistrationController {
                     RegistrationErrorKey.AUTH_FLOW_INVALID.value(), "PAGE", acceptLanguage)));
         }
         if (!hasText(csrfToken)) {
-            return Mono.just(RegistrationHttpResponses.toResponse(completeRegistrationWebMapper.missing(
-                    RegistrationErrorKey.CSRF_INVALID.value(), "PAGE", acceptLanguage)));
+            return CsrfHttpResponses.missingToken();
         }
         if (!hasText(idempotencyKey)) {
             return Mono.just(RegistrationHttpResponses.toResponse(completeRegistrationWebMapper.missing(
@@ -133,8 +133,7 @@ public class AuthRegistrationController {
                     RegistrationHttpResponses.toResponse(cancelRegistrationWebMapper.missingSession(acceptLanguage)));
         }
         if (!hasText(csrfToken)) {
-            return Mono.just(
-                    RegistrationHttpResponses.toResponse(cancelRegistrationWebMapper.missingCsrf(acceptLanguage)));
+            return CsrfHttpResponses.missingToken();
         }
         try {
             return cancelRegistrationUseCase.cancel(cancelRegistrationWebMapper.toCommand(

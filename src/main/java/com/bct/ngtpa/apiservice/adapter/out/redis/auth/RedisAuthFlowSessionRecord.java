@@ -5,6 +5,7 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionData;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision;
 import java.time.Instant;
 import java.util.Map;
 
@@ -17,7 +18,8 @@ record RedisAuthFlowSessionRecord(
         Data data,
         String createdAt,
         String updatedAt,
-        String expiresAt) {
+        String expiresAt,
+        String sessionRevision) {
 
     static RedisAuthFlowSessionRecord from(AuthFlowSession session) {
         return new RedisAuthFlowSessionRecord(
@@ -29,7 +31,20 @@ record RedisAuthFlowSessionRecord(
                 Data.from(session.data()),
                 instantToString(session.createdAt()),
                 instantToString(session.updatedAt()),
-                instantToString(session.expiresAt()));
+                instantToString(session.expiresAt()),
+                null);
+    }
+
+    static RedisAuthFlowSessionRecord from(AuthFlowSession session, SessionRevision revision) {
+        RedisAuthFlowSessionRecord legacy = from(session);
+        return new RedisAuthFlowSessionRecord(
+                legacy.authFlowSessionId(), legacy.scenario(), legacy.status(),
+                legacy.csrfTokenHash(), legacy.activeOtpChallengeId(), legacy.data(),
+                legacy.createdAt(), legacy.updatedAt(), legacy.expiresAt(), revision.value());
+    }
+
+    boolean sessionRevisionPresent() {
+        return sessionRevision != null && !sessionRevision.isBlank();
     }
 
     AuthFlowSession toAuthFlowSession() {

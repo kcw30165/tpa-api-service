@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.captcha.GeneratedCaptcha;
 import com.bct.ngtpa.apiservice.application.port.out.CaptchaImageGeneratorPort;
 import java.awt.Color;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
@@ -54,19 +55,65 @@ public final class JavaCaptchaImageGeneratorAdapter implements CaptchaImageGener
 
             drawNoise(graphics, width);
 
-            graphics.setFont(new Font(pickFontName(), Font.BOLD, 36 + secureRandom.nextInt(5)));
-            int baseline = 44 + secureRandom.nextInt(12);
-            int x = 12;
-            for (int index = 0; index < answer.length(); index++) {
-                graphics.setColor(randomDark());
-                graphics.drawString(String.valueOf(answer.charAt(index)), x, baseline + secureRandom.nextInt(7) - 3);
-                x += 18 + secureRandom.nextInt(10);
-            }
+            drawAnswer(graphics, answer, width);
 
             return new CaptchaImage(encodePng(image), MIME_TYPE);
         } finally {
             graphics.dispose();
         }
+    }
+
+    private void drawAnswer(Graphics2D graphics, String answer, int width) {
+        int horizontalPadding = 10;
+        int cellWidth = Math.max(1, (width - (horizontalPadding * 2)) / answer.length());
+        Font font = fittedFont(graphics, answer, cellWidth);
+        graphics.setFont(font);
+        FontMetrics metrics = graphics.getFontMetrics(font);
+
+        int top = Math.max(0, (IMAGE_HEIGHT - metrics.getHeight()) / 2);
+        int baseline = top + metrics.getAscent();
+        int verticalSlack = Math.max(0, IMAGE_HEIGHT - metrics.getHeight());
+        int maxVerticalJitter = Math.min(3, verticalSlack / 2);
+
+        for (int index = 0; index < answer.length(); index++) {
+            char character = answer.charAt(index);
+            int glyphWidth = metrics.charWidth(character);
+            int cellStart = horizontalPadding + (index * cellWidth);
+            int centeredX = cellStart + Math.max(0, (cellWidth - glyphWidth) / 2);
+            int horizontalSlack = Math.max(0, cellWidth - glyphWidth);
+            int maxHorizontalJitter = Math.min(2, horizontalSlack / 2);
+            int x = centeredX + boundedJitter(maxHorizontalJitter);
+            int y = baseline + boundedJitter(maxVerticalJitter);
+
+            graphics.setColor(randomDark());
+            graphics.drawString(String.valueOf(character), x, y);
+        }
+    }
+
+    private Font fittedFont(Graphics2D graphics, String answer, int cellWidth) {
+        int fontSize = 36 + secureRandom.nextInt(5);
+        Font font = new Font(pickFontName(), Font.BOLD, fontSize);
+        while (fontSize > 20 && !fitsEveryCharacter(graphics.getFontMetrics(font), answer, cellWidth)) {
+            font = font.deriveFont((float) --fontSize);
+        }
+        return font;
+    }
+
+    private boolean fitsEveryCharacter(FontMetrics metrics, String answer, int cellWidth) {
+        int requiredHeight = metrics.getAscent() + metrics.getDescent();
+        if (requiredHeight > IMAGE_HEIGHT - 8) {
+            return false;
+        }
+        for (int index = 0; index < answer.length(); index++) {
+            if (metrics.charWidth(answer.charAt(index)) > cellWidth - 2) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private int boundedJitter(int maximum) {
+        return maximum == 0 ? 0 : secureRandom.nextInt((maximum * 2) + 1) - maximum;
     }
 
     private void drawNoise(Graphics2D graphics, int width) {

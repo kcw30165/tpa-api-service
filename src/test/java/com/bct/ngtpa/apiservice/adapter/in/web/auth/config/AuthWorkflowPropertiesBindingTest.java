@@ -71,7 +71,8 @@ class AuthWorkflowPropertiesBindingTest {
             assertTrue(registration.getUsername().isCaseInsensitive());
             assertTrue(registration.getUsername().isRequiredDigit());
             assertFalse(registration.getUsername().isRequiredSpecial());
-            // assertEquals("!@#$%^&*()_-", registration.getUsername().getAllowedSpecialChars());
+            // assertEquals("!@#$%^&*()_-",
+            // registration.getUsername().getAllowedSpecialChars());
 
             assertNotNull(registration.getPassword());
             assertEquals(8, registration.getPassword().getMinLength());
@@ -93,7 +94,6 @@ class AuthWorkflowPropertiesBindingTest {
                 });
     }
 
-
     @Test
     void authWorkflowPropertiesBindsOtpLifecyclePolicy() {
         contextRunner.run(context -> {
@@ -109,6 +109,56 @@ class AuthWorkflowPropertiesBindingTest {
         });
     }
 
+    @Test
+    void bindsForgotPasswordDefaultsFromApplicationYaml() {
+        contextRunner.run(context -> {
+            var properties = context.getBean(AuthWorkflowProperties.class);
+
+            assertNotNull(properties.getForgotPassword());
+            assertEquals(4, properties.getForgotPassword().getUsername().getMinLength());
+            assertEquals(128, properties.getForgotPassword().getUsername().getMaxLength());
+            assertTrue(properties.getForgotPassword().getUsername().isTrim());
+            assertTrue(properties.getForgotPassword().getUsername().isCaseInsensitive());
+
+            assertEquals(4, properties.getForgotPassword().getAllowedPublicIdentityTypes().size());
+            assertTrue(properties.getForgotPassword().getAllowedPublicIdentityTypes().contains("GPN"));
+            assertTrue(properties.getForgotPassword().getAllowedPublicIdentityTypes().contains("GPFS"));
+            assertTrue(properties.getForgotPassword().getAllowedPublicIdentityTypes().contains("STAFF_NO"));
+            assertTrue(properties.getForgotPassword().getAllowedPublicIdentityTypes().contains("ID"));
+            assertEquals("GPN", properties.getForgotPassword().getTasToPublicIdentityTypeMapping().get("GPN"));
+            assertEquals("GPFS", properties.getForgotPassword().getTasToPublicIdentityTypeMapping().get("GPFS"));
+            assertEquals("ID", properties.getForgotPassword().getTasToPublicIdentityTypeMapping().get("ID"));
+            assertEquals("STAFF_NO",
+                    properties.getForgotPassword().getTasToPublicIdentityTypeMapping().get("STAFFNO"));
+
+            var otp = properties.getForgotPassword().getOtp();
+            assertEquals(6, otp.getLength());
+            assertTrue(otp.isNumericOnly());
+            assertEquals(300, otp.getTtlSeconds());
+            assertEquals(60, otp.getResendCooldownSeconds());
+            assertEquals(5, otp.getMaxVerifyAttempts());
+            assertTrue(otp.isResendLimitEnabled());
+            assertEquals(5, otp.getMaxResendAttempts());
+            assertTrue(otp.isInvalidatePreviousOnResend());
+            assertTrue(otp.isResetVerifyAttemptsOnResend());
+            assertEquals("Your BCT forgot password verification code is {code}. It is valid for {ttlValue} {ttlUnit}.",
+                    otp.getSmsTemplate());
+            assertEquals("BCT forgot password verification code",
+                    otp.getEmailTemplate().getSubject());
+            assertEquals("Your BCT forgot password verification code is {code}. It is valid for {ttlValue} {ttlUnit}.",
+                    otp.getEmailTemplate().getBody());
+
+            var idempotency = properties.getForgotPassword().getIdempotency();
+            assertEquals(300, idempotency.getStartTtlSeconds());
+            assertEquals(300, idempotency.getDetailsAndOtpTtlSeconds());
+            assertEquals(300, idempotency.getOtpResendTtlSeconds());
+            assertEquals(300, idempotency.getOtpVerifyTtlSeconds());
+            assertEquals(300, idempotency.getCompleteTtlSeconds());
+            assertEquals(300, idempotency.getCancelTtlSeconds());
+
+            assertEquals(300, properties.getForgotPassword().getResetAuthorization().getTtlSeconds());
+        });
+    }
 
     @Configuration(proxyBeanMethods = false)
     @EnableConfigurationProperties(AuthWorkflowProperties.class)

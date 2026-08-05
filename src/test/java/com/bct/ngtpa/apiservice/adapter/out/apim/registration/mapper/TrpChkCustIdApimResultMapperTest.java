@@ -13,6 +13,30 @@ class TrpChkCustIdApimResultMapperTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
+    void deserializesExpandedForgotPasswordPayloadAdditively() throws Exception {
+        var item = objectMapper.readValue(
+                "{\"cust-id\":\"db01\",\"isExist\":true,\"scheme-code\":\"DBA\",\"user-id\":\"3010008\",\"id-type\":\"STAFF\"}",
+                TrpChkCustIdApimDataItem.class);
+
+        assertThat(item.customerId()).isEqualTo("db01");
+        assertThat(item.isExist()).isTrue();
+        assertThat(item.schemeCode()).isEqualTo("DBA");
+        assertThat(item.userId()).isEqualTo("3010008");
+        assertThat(item.idType()).isEqualTo("STAFF");
+    }
+
+    @Test
+    void legacyJsonStillDeserializesWhenExpandedFieldsAreAbsent() throws Exception {
+        var item = objectMapper.readValue("{\"cust-id\":\"db01\",\"isExist\":false}", TrpChkCustIdApimDataItem.class);
+
+        assertThat(item.customerId()).isEqualTo("db01");
+        assertThat(item.isExist()).isFalse();
+        assertThat(item.schemeCode()).isNull();
+        assertThat(item.userId()).isNull();
+        assertThat(item.idType()).isNull();
+    }
+
+    @Test
     void mapsIsExistFalseToAvailable() throws Exception {
         var item = objectMapper.readValue("{\"cust-id\":\"db01\",\"isExist\":false}", TrpChkCustIdApimDataItem.class);
 

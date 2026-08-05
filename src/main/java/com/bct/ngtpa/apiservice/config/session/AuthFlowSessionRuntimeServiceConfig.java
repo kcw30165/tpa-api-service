@@ -6,6 +6,8 @@ import com.bct.ngtpa.apiservice.adapter.in.web.session.config.AuthFlowSessionPro
 import com.bct.ngtpa.apiservice.adapter.out.session.AuthFlowSessionExpiryRefreshAdapter;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionExpiryRefreshPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.SecureSessionRevisionGenerator;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevisionGenerator;
 import com.bct.ngtpa.apiservice.application.service.session.SecureSessionIdGenerator;
 import com.bct.ngtpa.apiservice.application.service.session.SessionIdGenerator;
 import com.bct.ngtpa.apiservice.application.service.session.SessionTtlCalculator;
@@ -33,6 +35,12 @@ public class AuthFlowSessionRuntimeServiceConfig {
     @ConditionalOnMissingBean
     public SessionTtlCalculator sessionTtlCalculator() {
         return new SessionTtlCalculator();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public SessionRevisionGenerator sessionRevisionGenerator() {
+        return new SecureSessionRevisionGenerator();
     }
 
     @Bean

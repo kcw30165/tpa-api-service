@@ -46,7 +46,7 @@ public final class LoginStartWebMapper {
             case UNKNOWN_OUTCOME ->
                 failure(ApiStatus.SYSTEM_ERROR, LoginErrorKey.SESSION_CREATION_FAILED.value(), "BFF");
             case UNAVAILABLE ->
-                failure(ApiStatus.DOWNSTREAM_ERROR, LoginErrorKey.CREDENTIALS_UNAVAILABLE.value(), "DOWNSTREAM");
+                failure(ApiStatus.SYSTEM_ERROR, LoginErrorKey.CREDENTIALS_UNAVAILABLE.value(), "DOWNSTREAM");
         };
     }
 

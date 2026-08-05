@@ -1,1 +1,15 @@
-package com.bct.ngtpa.apiservice.application.dto.session.authenticated;import java.util.Objects;public record DeleteAuthenticatedSessionCommand(AuthenticatedSessionId authenticatedSessionId,String correlationId){public DeleteAuthenticatedSessionCommand{Objects.requireNonNull(authenticatedSessionId);correlationId=correlationId==null||correlationId.isBlank()?null:correlationId.trim();}@Override public String toString(){return "DeleteAuthenticatedSessionCommand[id=<redacted>, correlationId="+correlationId+"]";}}
+package com.bct.ngtpa.apiservice.application.dto.session.authenticated;
+
+import java.util.Objects;
+
+public record DeleteAuthenticatedSessionCommand(AuthenticatedSessionId authenticatedSessionId, String correlationId) {
+    public DeleteAuthenticatedSessionCommand {
+        Objects.requireNonNull(authenticatedSessionId);
+        correlationId = correlationId == null || correlationId.isBlank() ? null : correlationId.trim();
+    }
+
+    @Override
+    public String toString() {
+        return "DeleteAuthenticatedSessionCommand[id=<redacted>, correlationId=" + correlationId + "]";
+    }
+}

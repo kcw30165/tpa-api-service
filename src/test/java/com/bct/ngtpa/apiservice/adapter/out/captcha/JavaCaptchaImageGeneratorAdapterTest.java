@@ -5,7 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.bct.ngtpa.apiservice.application.dto.auth.CaptchaPolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.GeneratedCaptcha;
 import java.lang.reflect.RecordComponent;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.security.SecureRandom;
+import javax.imageio.ImageIO;
 import java.util.Arrays;
 import java.util.Base64;
 import org.junit.jupiter.api.Test;
@@ -28,6 +31,35 @@ class JavaCaptchaImageGeneratorAdapterTest {
 
         byte[] png = Base64.getDecoder().decode(captcha.image().imageBase64());
         assertThat(Arrays.copyOf(png, PNG_SIGNATURE.length)).containsExactly(PNG_SIGNATURE);
+    }
+
+    @Test
+    void captchaImageUsesExpectedDimensionsForConfiguredLength() throws Exception {
+        GeneratedCaptcha captcha = new JavaCaptchaImageGeneratorAdapter(
+                new SecureRandomCaptchaTextGenerator(new SecureRandom()), new SecureRandom())
+                .generate(new CaptchaPolicy(7, "WM", true, 300, 5))
+                .block();
+
+        BufferedImage image = decode(captcha);
+
+        assertThat(image.getWidth()).isEqualTo(168);
+        assertThat(image.getHeight()).isEqualTo(72);
+    }
+
+    @Test
+    void captchaTextLayoutUsesFontMetricsAndBoundedCells() throws Exception {
+        String source = java.nio.file.Files.readString(java.nio.file.Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/out/captcha/JavaCaptchaImageGeneratorAdapter.java"));
+
+        assertThat(source)
+                .contains("FontMetrics", "cellWidth", "glyphWidth", "fittedFont", "boundedJitter")
+                .doesNotContain("x += 18 + secureRandom.nextInt(10)",
+                        "baseline = 44 + secureRandom.nextInt(12)");
+    }
+
+    private BufferedImage decode(GeneratedCaptcha captcha) throws Exception {
+        byte[] png = Base64.getDecoder().decode(captcha.image().imageBase64());
+        return ImageIO.read(new ByteArrayInputStream(png));
     }
 
     @Test

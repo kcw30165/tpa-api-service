@@ -86,7 +86,7 @@ public class ApiExceptionHandler {
                 SOURCE_SERVER);
         return buildMutationErrorResponse(
                 ex.getStatusCode(),
-                ApiStatus.DOWNSTREAM_ERROR,
+                ApiStatus.SYSTEM_ERROR,
                 List.of(error),
                 exchange,
                 ex,
@@ -263,7 +263,7 @@ public class ApiExceptionHandler {
                 SOURCE_SERVER);
         return buildMutationErrorResponse(
                 HttpStatus.SERVICE_UNAVAILABLE,
-                ApiStatus.DOWNSTREAM_ERROR,
+                ApiStatus.SYSTEM_ERROR,
                 List.of(error),
                 exchange,
                 ex,

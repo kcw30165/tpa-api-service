@@ -27,6 +27,7 @@ public final class LoginOtpVerifyWebMapper {
             case AUTH_FLOW_INVALID -> LoginErrorKey.AUTH_FLOW_INVALID.value();
             case ACCOUNT_LIST_UNAVAILABLE -> LoginErrorKey.ACCOUNT_LIST_UNAVAILABLE.value();
             case ZERO_VALID_ACCOUNTS -> LoginErrorKey.NO_ACCESSIBLE_ACCOUNTS.value();
+            case SESSION_CREATION_FAILED -> LoginErrorKey.SESSION_CREATION_FAILED.value();
             default -> SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value();
         };
         List<LoginOtpActionResponse> actions = result.status() == VerifyLoginOtpStatus.VERIFY_ATTEMPTS_EXCEEDED
@@ -35,10 +36,10 @@ public final class LoginOtpVerifyWebMapper {
         ApiStatus status = result.status() == VerifyLoginOtpStatus.CSRF_INVALID
                 ? ApiStatus.VALIDATION_FAILED
                 : result.status() == VerifyLoginOtpStatus.SYSTEM_FAILED
+                        || result.status() == VerifyLoginOtpStatus.ACCOUNT_LIST_UNAVAILABLE
+                        || result.status() == VerifyLoginOtpStatus.SESSION_CREATION_FAILED
                 ? ApiStatus.SYSTEM_ERROR
-                : result.status() == VerifyLoginOtpStatus.ACCOUNT_LIST_UNAVAILABLE
-                        ? ApiStatus.DOWNSTREAM_ERROR
-                        : ApiStatus.BUSINESS_REJECTED;
+                : ApiStatus.BUSINESS_REJECTED;
         return MutationResponse.failure(
                 status,
                 payload(next, result, actions, false),

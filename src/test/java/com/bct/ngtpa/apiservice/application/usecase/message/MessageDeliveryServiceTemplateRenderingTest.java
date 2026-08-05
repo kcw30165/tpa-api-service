@@ -67,11 +67,12 @@ class MessageDeliveryServiceTemplateRenderingTest {
         MessageDeliveryAdapter service = new MessageDeliveryAdapter(smsSenderPort, emailSenderPort);
 
         StepVerifier.create(service.deliver(smsCommand("Hello {name}", Map.of())))
-                .expectErrorSatisfies(error -> {
-                    assertThat(error).isInstanceOf(IllegalArgumentException.class);
-                    assertThat(error.getMessage()).contains("name");
+                .assertNext(result -> {
+                    assertThat(result.status()).isEqualTo(MessageDeliveryStatus.FAILED);
+                    assertThat(result.failureCode()).isEqualTo("MESSAGE_DELIVERY_REJECTED");
+                    assertThat(result.failureMessage()).isEqualTo("Message delivery was not accepted");
                 })
-                .verify();
+                .verifyComplete();
 
         assertThat(smsSenderPort.invocationCount.get()).isZero();
         assertThat(emailSenderPort.invocationCount.get()).isZero();
@@ -84,13 +85,12 @@ class MessageDeliveryServiceTemplateRenderingTest {
         MessageDeliveryAdapter service = new MessageDeliveryAdapter(smsSenderPort, emailSenderPort);
 
         StepVerifier.create(service.deliver(smsCommand("Reference {code}", Map.of())))
-                .expectErrorSatisfies(error -> {
-                    assertThat(error).isInstanceOf(IllegalArgumentException.class);
-                    assertThat(error.getMessage()).contains("code");
-                    assertThat(error.getMessage()).doesNotContain("91234567");
-                    assertThat(error.getMessage()).doesNotContain("Reference {code}");
+                .assertNext(result -> {
+                    assertThat(result.status()).isEqualTo(MessageDeliveryStatus.FAILED);
+                    assertThat(result.failureCode()).isEqualTo("MESSAGE_DELIVERY_REJECTED");
+                    assertThat(result.toString()).doesNotContain("91234567", "Reference {code}", "code");
                 })
-                .verify();
+                .verifyComplete();
 
         assertThat(smsSenderPort.invocationCount.get()).isZero();
         assertThat(emailSenderPort.invocationCount.get()).isZero();

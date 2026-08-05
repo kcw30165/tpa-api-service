@@ -25,7 +25,7 @@ class OtpChallengeModelTest {
     @Test
     void otpScenarioSupportsRegistrationAndLogin() {
         assertThat(Arrays.stream(OtpScenario.values()).map(Enum::name).toList())
-                .containsExactly("REGISTRATION", "LOGIN");
+                .containsExactly("REGISTRATION", "LOGIN", "FORGOT_PASSWORD");
     }
 
     @Test

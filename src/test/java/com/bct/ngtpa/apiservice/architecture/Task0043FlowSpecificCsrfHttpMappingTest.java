@@ -44,13 +44,42 @@ class Task0043FlowSpecificCsrfHttpMappingTest {
     }
 
     @Test
-    void invalidCsrfRemainsSideEffectFreeAtTheWebMappingBoundary() throws Exception {
-        String sendController = Files.readString(Path.of(
+    void missingCsrfReturnsUnauthorizedAtTheWebBoundary() throws Exception {
+        String loginSend = Files.readString(Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthLoginOtpController.java"));
-        String verifyController = Files.readString(Path.of(
+        String loginVerify = Files.readString(Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthLoginOtpVerifyController.java"));
+        String loginCancel = Files.readString(Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthLoginCancelController.java"));
+        String registration = Files.readString(Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationController.java"));
+        String registrationOtp = Files.readString(Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationOtpController.java"));
+        String registrationUsername = Files.readString(Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationUsernameController.java"));
+        String forgotPassword = Files.readString(Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordController.java"));
+        String forgotPasswordOtp = Files.readString(Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordOtpController.java"));
 
-        assertThat(sendController).contains("mapper.csrfInvalid()", "resendMapper.csrfInvalid()");
-        assertThat(verifyController).contains("mapper.csrfInvalid()");
+        assertThat(loginSend).contains("CsrfHttpResponses.missingToken()");
+        assertThat(loginVerify).contains("CsrfHttpResponses.missingToken()");
+        assertThat(loginCancel).contains("CsrfHttpResponses.missingToken()");
+        assertThat(registration).contains("CsrfHttpResponses.missingToken()");
+        assertThat(registrationOtp).contains("CsrfHttpResponses.missingToken()");
+        assertThat(registrationUsername).contains("CsrfHttpResponses.missingToken()");
+        assertThat(forgotPassword).contains("CsrfHttpResponses.missingToken()");
+        assertThat(forgotPasswordOtp).contains("CsrfHttpResponses.missingToken()");
+    }
+
+    @Test
+    void sharedMissingCsrfHelperReturnsUnauthorizedWithAuthenticationRequired() throws Exception {
+        String helper = Files.readString(Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/response/CsrfHttpResponses.java"));
+
+        assertThat(helper).contains(
+                "HttpStatus.UNAUTHORIZED",
+                "err.security.authentication.required",
+                "BUSINESS_REJECTED");
     }
 }

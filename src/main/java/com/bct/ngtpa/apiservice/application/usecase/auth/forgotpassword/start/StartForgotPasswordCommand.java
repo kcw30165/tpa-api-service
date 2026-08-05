@@ -1,0 +1,28 @@
+package com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start;
+
+import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyKey;
+import java.time.Duration;
+import java.util.Objects;
+
+public record StartForgotPasswordCommand(
+        ForgotPasswordIdempotencyKey idempotencyKey,
+        String username,
+        String existingAuthFlowSessionId,
+        String acceptLanguage,
+        String correlationId,
+        Duration idempotencyTtl) {
+    public StartForgotPasswordCommand {
+        Objects.requireNonNull(idempotencyKey, "idempotencyKey must not be null");
+        if (username == null || username.isBlank()) {
+            throw new IllegalArgumentException("username must not be blank");
+        }
+        Objects.requireNonNull(correlationId, "correlationId must not be null");
+        Objects.requireNonNull(idempotencyTtl, "idempotencyTtl must not be null");
+    }
+
+    @Override
+    public String toString() {
+        return "StartForgotPasswordCommand[idempotencyKey=<redacted>, username=<redacted>, existingAuthFlowSessionId=<redacted>, acceptLanguage="
+                + acceptLanguage + ", correlationId=" + correlationId + ", idempotencyTtl=" + idempotencyTtl + "]";
+    }
+}

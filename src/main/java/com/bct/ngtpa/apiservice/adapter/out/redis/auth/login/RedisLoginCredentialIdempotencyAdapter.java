@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.out.redis.auth.login;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.login.idempotency.*;
 import com.bct.ngtpa.apiservice.application.port.out.LoginCredentialIdempotencyPort;
+import com.bct.ngtpa.apiservice.application.service.auth.login.idempotency.LoginIdempotencyPersistenceIdDeriver;
 import com.fasterxml.jackson.databind.*;
 import java.time.*;
 import java.util.*;
@@ -10,19 +11,21 @@ import reactor.core.publisher.Mono;
 
 public final class RedisLoginCredentialIdempotencyAdapter implements LoginCredentialIdempotencyPort {
     private final RedisLoginIdempotencyKeyFactory keys;
+    private final LoginIdempotencyPersistenceIdDeriver ids;
     private final ReactiveStringRedisTemplate redis;
     private final ObjectMapper mapper = new ObjectMapper();
 
-    public RedisLoginCredentialIdempotencyAdapter(RedisLoginIdempotencyKeyFactory keys,
-            ReactiveStringRedisTemplate redis) {
-        this.keys = keys;
-        this.redis = redis;
+    public RedisLoginCredentialIdempotencyAdapter(RedisLoginIdempotencyKeyFactory k,
+            LoginIdempotencyPersistenceIdDeriver ids, ReactiveStringRedisTemplate r) {
+        keys = k;
+        this.ids = ids;
+        redis = r;
     }
 
     public Mono<LoginIdempotencyStartResult> startProcessing(LoginIdempotencyStartCommand c) {
-        var r = new LoginIdempotencyRecord(c.action(), c.idempotencyKey(), c.requestHash(),
-                LoginIdempotencyStatus.PROCESSING, null, c.now(), c.now(), c.expiresAt());
-        String k = keys.keyFor(c.action(), c.idempotencyKey());
+        var r = new LoginIdempotencyRecord(c.action(), c.requestHash(), LoginIdempotencyStatus.PROCESSING, null,
+                c.now(), c.now(), c.expiresAt());
+        String k = key(c.action(), c.idempotencyKey());
         return redis.opsForValue().setIfAbsent(k, json(r), c.ttl())
                 .flatMap(created -> created
                         ? Mono.just(new LoginIdempotencyStartResult(LoginIdempotencyStartOutcome.STARTED, r))
@@ -47,23 +50,29 @@ public final class RedisLoginCredentialIdempotencyAdapter implements LoginCreden
     }
 
     public Mono<Optional<LoginIdempotencyRecord>> load(LoginIdempotencyAction a, LoginIdempotencyKey k) {
-        return redis.opsForValue().get(keys.keyFor(a, k)).map(v -> Optional.of(fromJson(v)))
-                .defaultIfEmpty(Optional.empty());
+        return redis.opsForValue().get(key(a, k)).map(v -> Optional.of(fromJson(v))).defaultIfEmpty(Optional.empty());
     }
 
     public Mono<Void> delete(LoginIdempotencyAction a, LoginIdempotencyKey k) {
-        return redis.delete(keys.keyFor(a, k)).then();
+        return redis.delete(key(a, k)).then();
+    }
+
+    private String key(LoginIdempotencyAction a, LoginIdempotencyKey k) {
+        return keys.keyFor(a, ids.derive(a, k));
     }
 
     private Mono<LoginIdempotencyRecord> mutate(LoginIdempotencyAction a, LoginIdempotencyKey k,
-            LoginCredentialRequestHash h, Instant at, Duration ttl, LoginIdempotencyStatus s,
+            LoginCredentialRequestHash h, Instant at, Duration ttl, LoginIdempotencyStatus st,
             LoginIdempotencyReplaySnapshot snap) {
         return load(a, k).flatMap(o -> {
             var old = o.orElseThrow(() -> new IllegalStateException("Login idempotency record missing"));
             if (!old.requestHash().equals(h))
                 return Mono.error(new IllegalStateException("Login idempotency request hash mismatch"));
-            var n = new LoginIdempotencyRecord(a, k, h, s, snap, old.createdAt(), at, at.plus(ttl));
-            return redis.opsForValue().set(keys.keyFor(a, k), json(n), ttl).thenReturn(n);
+            var n = new LoginIdempotencyRecord(a, h, st, snap, old.createdAt(), at, old.expiresAt());
+            Duration remaining = Duration.between(at, old.expiresAt());
+            if (remaining.isZero() || remaining.isNegative())
+                return Mono.error(new IllegalStateException("Login idempotency record expired"));
+            return redis.opsForValue().set(key(a, k), json(n), remaining).thenReturn(n);
         });
     }
 
@@ -80,9 +89,8 @@ public final class RedisLoginCredentialIdempotencyAdapter implements LoginCreden
 
     private String json(LoginIdempotencyRecord r) {
         try {
-            return mapper.writeValueAsString(new Wire(r.action().name(), r.idempotencyKey().value(),
-                    r.requestHash().value(), r.status().name(), r.replaySnapshot(), r.createdAt().toString(),
-                    r.updatedAt().toString(), r.expiresAt().toString()));
+            return mapper.writeValueAsString(new Wire(r.action().name(), r.requestHash().value(), r.status().name(),
+                    r.replaySnapshot(), r.createdAt().toString(), r.updatedAt().toString(), r.expiresAt().toString()));
         } catch (Exception e) {
             throw new IllegalStateException("Unable to serialize login idempotency record");
         }
@@ -91,7 +99,7 @@ public final class RedisLoginCredentialIdempotencyAdapter implements LoginCreden
     private LoginIdempotencyRecord fromJson(String v) {
         try {
             Wire w = mapper.readValue(v, Wire.class);
-            return new LoginIdempotencyRecord(LoginIdempotencyAction.valueOf(w.action), new LoginIdempotencyKey(w.key),
+            return new LoginIdempotencyRecord(LoginIdempotencyAction.valueOf(w.action),
                     new LoginCredentialRequestHash(w.hash), LoginIdempotencyStatus.valueOf(w.status), w.snapshot,
                     Instant.parse(w.created), Instant.parse(w.updated), Instant.parse(w.expires));
         } catch (Exception e) {
@@ -99,7 +107,7 @@ public final class RedisLoginCredentialIdempotencyAdapter implements LoginCreden
         }
     }
 
-    private record Wire(String action, String key, String hash, String status, LoginIdempotencyReplaySnapshot snapshot,
+    private record Wire(String action, String hash, String status, LoginIdempotencyReplaySnapshot snapshot,
             String created, String updated, String expires) {
     }
 }

@@ -318,7 +318,7 @@ class RegistrationUsernameLifecycleIntegrationTest {
                 return Mono.error(new IllegalStateException("Auth flow session missing"));
             }
             AuthFlowSession current = sessions.session;
-            return Mono.just(new AuthFlowSession(
+            AuthFlowSession refreshed = new AuthFlowSession(
                     current.authFlowSessionId(),
                     current.scenario(),
                     current.status(),
@@ -327,7 +327,9 @@ class RegistrationUsernameLifecycleIntegrationTest {
                     current.data(),
                     current.createdAt(),
                     interactionAt,
-                    interactionAt.plusSeconds(1800)));
+                    interactionAt.plusSeconds(1800));
+            sessions.session = refreshed;
+            return Mono.just(refreshed);
         };
     }
 

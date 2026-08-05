@@ -124,7 +124,7 @@ class MessageDeliveryFoundationIntegrationTest {
                         "req-123")))
                 .assertNext(result -> {
                     assertThat(result.status()).isEqualTo(MessageDeliveryStatus.FAILED);
-                    assertThat(result.failureCode()).isEqualTo("PROVIDER_DOWN");
+                    assertThat(result.failureCode()).isEqualTo("MESSAGE_DELIVERY_REJECTED");
                     assertSafeFailure(result);
                 })
                 .verifyComplete();

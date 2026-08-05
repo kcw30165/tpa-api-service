@@ -47,7 +47,8 @@ public class AuthFlowSessionExpiryRefreshAdapter implements AuthFlowSessionExpir
                             session.createdAt(),
                             interactionAt,
                             interactionAt.plusSeconds(ttlSeconds));
-                    return sessions.update(updated);
+                    return new com.bct.ngtpa.apiservice.application.usecase.session.authflow.RevisionAwareAuthFlowSessionWriter(sessions)
+                            .updateExpected(session, updated);
                 });
     }
 

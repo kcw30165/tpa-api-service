@@ -7,8 +7,14 @@ import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisCaptchaChallengeAdap
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisCaptchaChallengeJsonMapper;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRateLimitAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRegistrationIdempotencyAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.RedisForgotPasswordIdempotencyAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.RedisForgotPasswordIdempotencyJsonMapper;
+import com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.RedisForgotPasswordIdempotencyKeyFactory;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.login.RedisLoginCredentialIdempotencyAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.login.RedisLoginIdempotencyKeyFactory;
+import com.bct.ngtpa.apiservice.application.service.auth.login.idempotency.*;
+import com.bct.ngtpa.apiservice.infrastructure.security.idempotency.HmacLoginIdempotencyPersistenceIdDeriver;
+import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.LoginCredentialIdempotencyPort;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRegistrationIdempotencyJsonMapper;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRegistrationIdempotencyKeyFactory;
@@ -71,13 +77,38 @@ import java.util.stream.Collectors;
  * a Sentinel instance, or in test contexts that do not require a live Redis).
  */
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties(RedisCacheProperties.class)
+@EnableConfigurationProperties({
+        RedisCacheProperties.class,
+        com.bct.ngtpa.apiservice.adapter.out.redis.auth.compatibility.AuthFlowSessionPersistenceSchemaProperties.class
+})
 @ConditionalOnProperty(name = "redis-cache.enabled", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
 public class RedisAdapterConfig {
 
     private final RedisCacheProperties properties;
     private final SslBundles sslBundles;
+
+    @Bean
+    public com.bct.ngtpa.apiservice.adapter.out.redis.auth.compatibility.AuthFlowSessionPersistenceCompatibilityState authFlowSessionPersistenceCompatibilityState() {
+        return new com.bct.ngtpa.apiservice.adapter.out.redis.auth.compatibility.AuthFlowSessionPersistenceCompatibilityState();
+    }
+
+    @Bean
+    public com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPersistenceCompatibilityPort authFlowSessionPersistenceCompatibilityPort(
+            ReactiveStringRedisTemplate redis,
+            RedisCacheKeyFactory keyFactory) {
+        return new com.bct.ngtpa.apiservice.adapter.out.redis.auth.compatibility.RedisAuthFlowSessionPersistenceCompatibilityAdapter(
+                redis, keyFactory);
+    }
+
+    @Bean
+    public org.springframework.boot.ApplicationRunner authFlowSessionPersistenceCompatibilityStartupGate(
+            com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPersistenceCompatibilityPort port,
+            com.bct.ngtpa.apiservice.adapter.out.redis.auth.compatibility.AuthFlowSessionPersistenceSchemaProperties schema,
+            com.bct.ngtpa.apiservice.adapter.out.redis.auth.compatibility.AuthFlowSessionPersistenceCompatibilityState state) {
+        return new com.bct.ngtpa.apiservice.adapter.out.redis.auth.compatibility.AuthFlowSessionPersistenceCompatibilityStartupGate(
+                port, schema, state, Duration.ofMillis(properties.getTimeoutMilliseconds()));
+    }
 
     @Bean
     public LettuceConnectionFactory lettuceConnectionFactory() {
@@ -125,10 +156,26 @@ public class RedisAdapterConfig {
     }
 
     @Bean
+    public LoginIdempotencyPersistenceIdDeriver loginIdempotencyPersistenceIdDeriver(
+            @Value("${auth-workflows.login.idempotency.persistence-hmac-secret:}") String configuredSecret) {
+        if (configuredSecret == null || configuredSecret.isBlank() || configuredSecret.contains("change-me"))
+            throw new IllegalStateException(
+                    "auth-workflows.login.idempotency.persistence-hmac-secret is missing or invalid");
+        byte[] secret;
+        try {
+            secret = java.util.Base64.getDecoder().decode(configuredSecret);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("auth-workflows.login.idempotency.persistence-hmac-secret is malformed");
+        }
+        return new HmacLoginIdempotencyPersistenceIdDeriver(secret);
+    }
+
+    @Bean
     public LoginCredentialIdempotencyPort loginCredentialIdempotencyPort(
             RedisLoginIdempotencyKeyFactory keyFactory,
+            LoginIdempotencyPersistenceIdDeriver derivation,
             ReactiveStringRedisTemplate redisTemplate) {
-        return new RedisLoginCredentialIdempotencyAdapter(keyFactory, redisTemplate);
+        return new RedisLoginCredentialIdempotencyAdapter(keyFactory, derivation, redisTemplate);
     }
 
     @Bean
@@ -154,6 +201,46 @@ public class RedisAdapterConfig {
     }
 
     @Bean
+    public RedisForgotPasswordIdempotencyKeyFactory redisForgotPasswordIdempotencyKeyFactory(
+            @Value("${redis-cache.key-prefix:ngtpa}") String keyPrefix) {
+        return new RedisForgotPasswordIdempotencyKeyFactory(keyPrefix);
+    }
+
+    @Bean
+    public com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.RedisForgotPasswordOtpCommitStateKeyFactory redisForgotPasswordOtpCommitStateKeyFactory(
+            @Value("${redis-cache.key-prefix:ngtpa}") String prefix) {
+        return new com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.RedisForgotPasswordOtpCommitStateKeyFactory(
+                prefix);
+    }
+
+    @Bean
+    public com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.RedisForgotPasswordOtpCommitStateJsonMapper redisForgotPasswordOtpCommitStateJsonMapper() {
+        return new com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.RedisForgotPasswordOtpCommitStateJsonMapper();
+    }
+
+    @Bean
+    public com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpCommitStatePort forgotPasswordOtpCommitStatePort(
+            com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.RedisForgotPasswordOtpCommitStateKeyFactory k,
+            com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.RedisForgotPasswordOtpCommitStateJsonMapper m,
+            ReactiveStringRedisTemplate r) {
+        return new com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.RedisForgotPasswordOtpCommitStateAdapter(
+                k, m, r);
+    }
+
+    @Bean
+    public RedisForgotPasswordIdempotencyJsonMapper redisForgotPasswordIdempotencyJsonMapper() {
+        return new RedisForgotPasswordIdempotencyJsonMapper();
+    }
+
+    @Bean
+    public ForgotPasswordIdempotencyPort forgotPasswordIdempotencyPort(
+            RedisForgotPasswordIdempotencyKeyFactory keyFactory,
+            RedisForgotPasswordIdempotencyJsonMapper jsonMapper,
+            ReactiveStringRedisTemplate reactiveStringRedisTemplate) {
+        return new RedisForgotPasswordIdempotencyAdapter(keyFactory, jsonMapper, reactiveStringRedisTemplate);
+    }
+
+    @Bean
     @ConditionalOnMissingBean
     public RedisAuthFlowSessionJsonMapper redisAuthFlowSessionJsonMapper() {
         return new RedisAuthFlowSessionJsonMapper();
@@ -174,11 +261,17 @@ public class RedisAdapterConfig {
     public AuthFlowSessionPort authFlowSessionPort(
             CachePort cachePort,
             RedisCacheKeyFactory redisCacheKeyFactory,
-            RedisAuthFlowSessionJsonMapper redisAuthFlowSessionJsonMapper) {
+            RedisAuthFlowSessionJsonMapper redisAuthFlowSessionJsonMapper,
+            ReactiveStringRedisTemplate reactiveStringRedisTemplate,
+            com.bct.ngtpa.apiservice.adapter.out.redis.auth.compatibility.AuthFlowSessionPersistenceCompatibilityState compatibilityState) {
         return new RedisAuthFlowSessionAdapter(
                 cachePort,
                 redisCacheKeyFactory,
-                redisAuthFlowSessionJsonMapper);
+                redisAuthFlowSessionJsonMapper,
+                new com.bct.ngtpa.apiservice.adapter.out.redis.auth.revision.ReactiveRevisionedAuthFlowSessionRedisOperations(
+                        reactiveStringRedisTemplate),
+                new com.bct.ngtpa.apiservice.application.dto.session.authflow.SecureSessionRevisionGenerator(),
+                compatibilityState);
     }
 
     @Bean
@@ -279,5 +372,12 @@ public class RedisAdapterConfig {
                 .clientOptions(clientOptions)
                 .commandTimeout(Duration.ofMillis(timeoutMs))
                 .build();
+    }
+
+    @org.springframework.context.annotation.Bean
+    public com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionMutationLockPort authFlowSessionMutationLockPort(
+            org.springframework.data.redis.core.ReactiveStringRedisTemplate redis,
+            com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory keys) {
+        return new com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisAuthFlowSessionMutationLockAdapter(redis, keys);
     }
 }

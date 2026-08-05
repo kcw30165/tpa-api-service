@@ -42,7 +42,12 @@ class SmsDeliverySecurityGuardTest {
                 "provider leaked sms-password 91234567 Your code is 123456")));
 
         StepVerifier.create(adapter.sendSms(new SmsMessage("91234567", "Your code is 123456", "HK", "req-123")))
-                .assertNext(result -> assertThat(result.status()).isEqualTo(SenderStatus.FAILED))
+                .assertNext(result -> {
+                    assertThat(result.status()).isEqualTo(SenderStatus.UNKNOWN_OUTCOME);
+                    assertThat(result.failureCode()).isEqualTo("SMS_REQUEST_OUTCOME_UNKNOWN");
+                    assertThat(result.failureMessage()).doesNotContain(
+                            "sms-password", "91234567", "123456", "Your code is 123456");
+                })
                 .verifyComplete();
 
         String logOutput = logOutput();

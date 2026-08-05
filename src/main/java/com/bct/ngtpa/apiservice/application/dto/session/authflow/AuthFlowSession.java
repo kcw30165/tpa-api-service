@@ -30,11 +30,17 @@ public record AuthFlowSession(
     }
 
     public boolean isTerminal() {
-        return status == AuthFlowStatus.COMPLETED || status == AuthFlowStatus.CANCELLED || status == AuthFlowStatus.EXPIRED;
+        return status == AuthFlowStatus.COMPLETED
+                || status == AuthFlowStatus.CANCELLED
+                || status == AuthFlowStatus.LOCKED
+                || status == AuthFlowStatus.UNKNOWN_OUTCOME_BLOCKED
+                || status == AuthFlowStatus.EXPIRED;
     }
 
     @Override
     public String toString() {
-        return "AuthFlowSession[authFlowSessionId=<redacted>, scenario=" + scenario + ", status=" + status + ", csrfTokenHash=<redacted>, activeOtpChallengeId=<redacted>, data=" + data + ", createdAt=" + createdAt + ", updatedAt=" + updatedAt + ", expiresAt=" + expiresAt + "]";
+        return "AuthFlowSession[authFlowSessionId=<redacted>, scenario=" + scenario + ", status=" + status
+                + ", csrfTokenHash=<redacted>, activeOtpChallengeId=<redacted>, data=" + data + ", createdAt="
+                + createdAt + ", updatedAt=" + updatedAt + ", expiresAt=" + expiresAt + "]";
     }
 }

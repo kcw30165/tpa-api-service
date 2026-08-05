@@ -43,7 +43,8 @@ public class AuthFlowSessionCancellationAdapter implements AuthFlowSessionCancel
                             if (session.isTerminal()) {
                                 return Mono.just(result(SessionCancellationStatus.ALREADY_TERMINAL));
                             }
-                            return authFlowSessionPort.cancel(sessionId, cancelledAt)
+                            return new com.bct.ngtpa.apiservice.application.usecase.session.authflow.RevisionAwareAuthFlowSessionWriter(authFlowSessionPort)
+                                    .cancel(sessionId, cancelledAt)
                                     .map(ignored -> result(SessionCancellationStatus.CANCELLED));
                         })
                         .orElseGet(() -> Mono.just(result(SessionCancellationStatus.NOT_FOUND))));

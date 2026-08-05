@@ -47,8 +47,7 @@ class ApiExceptionHandlerMutationResponseContractTest {
 
         private final ApiExceptionHandler handler = new ApiExceptionHandler(
                         errorMessageResolver(),
-                        loggingSanitizer()
-                    );
+                        loggingSanitizer());
 
         @Test
         void invalidNotificationRequestUsesMutationFailureEnvelope() {
@@ -223,7 +222,7 @@ class ApiExceptionHandlerMutationResponseContractTest {
                 assertMutationFailure(
                                 response,
                                 HttpStatus.BAD_GATEWAY,
-                                ApiStatus.DOWNSTREAM_ERROR,
+                                ApiStatus.SYSTEM_ERROR,
                                 "DOWNSTREAM_SYSTEM",
                                 ErrorCodes.APIM_UPSTREAM_FAILURE,
                                 List.of(),

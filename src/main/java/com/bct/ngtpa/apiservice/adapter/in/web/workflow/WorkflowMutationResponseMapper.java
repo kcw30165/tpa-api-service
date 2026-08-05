@@ -16,7 +16,7 @@ public class WorkflowMutationResponseMapper {
 
     public <T> MutationResponse<WorkflowResultPayload<T>> toMutationResponse(WorkflowResult<T> result) {
         Objects.requireNonNull(result, "result must not be null");
-        var payload = new WorkflowResultPayload<>(result.nextStep(), result.payload(), result.pageRef());
+        var payload = new WorkflowResultPayload<>(result.nextStep(), result.payload());
         var apiStatus = toApiStatus(result.status());
         var messages = result.messages().stream().map(this::toApiMessage).toList();
         var errors = result.errors().stream().map(this::toApiError).toList();

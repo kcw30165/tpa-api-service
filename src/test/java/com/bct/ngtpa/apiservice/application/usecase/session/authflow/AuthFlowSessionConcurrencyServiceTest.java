@@ -75,7 +75,11 @@ class AuthFlowSessionConcurrencyServiceTest {
                         .isEqualTo(AuthFlowConcurrencyDecision.REPLACED_EXISTING))
                 .verifyComplete();
 
-        assertThat(port.events).containsExactly("load:afs_existing", "cancel:afs_existing", "create:afs_generated_1");
+        assertThat(port.events).containsExactly(
+                "load:afs_existing",
+                "load:afs_existing",
+                "cancel:afs_existing",
+                "create:afs_generated_1");
         assertThat(port.sessions.get("afs_existing").status()).isEqualTo(AuthFlowStatus.CANCELLED);
         assertThat(port.createCount).isEqualTo(1);
         assertThat(port.cancelCount).isEqualTo(1);

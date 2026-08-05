@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.env.YamlPropertySourceLoader;
@@ -19,28 +20,52 @@ class WorkflowErrorContractConfigTest {
                     new YamlPropertySourceLoader().load("registration-errors",
                             new ClassPathResource("application-registration-errors.yml"))
                             .forEach(source -> context.getEnvironment().getPropertySources().addLast(source));
-                } catch (java.io.IOException exception) { throw new IllegalStateException(exception); }
+                } catch (java.io.IOException exception) {
+                    throw new IllegalStateException(exception);
+                }
             });
-    @Test void everyTypedKeyHasCompleteYamlDefinition() {
+
+    @Test
+    void everyTypedKeyHasCompleteYamlDefinition() {
         runner.run(context -> {
-            var properties=context.getBean(WorkflowErrorContractProperties.class);
+            var properties = context.getBean(WorkflowErrorContractProperties.class);
             WorkflowErrorContractValidator.validate(properties);
-            for(var key:RegistrationErrorKey.values()) assertThat(properties.definitionsByCode()).containsKey(key.value());
-            for(var key:SharedWorkflowErrorKey.values()) assertThat(properties.definitionsByCode()).containsKey(key.value());
+            for (var key : RegistrationErrorKey.values())
+                assertThat(properties.definitionsByCode()).containsKey(key.value());
+            for (var key : SharedWorkflowErrorKey.values())
+                assertThat(properties.definitionsByCode()).containsKey(key.value());
         });
     }
-    @Test void resolvesMessageTargetsNextStepAndPageRefFromYaml() {
+
+    @Test
+    void resolvesMessageTargetsNextStepAndPageRefFromYaml() {
         runner.run(context -> {
-            var resolver=new WorkflowErrorContractResolver(context.getBean(WorkflowErrorContractProperties.class));
-            var resolved=resolver.resolve(RegistrationErrorKey.USERNAME_ALREADY_REGISTERED.value(),"zh-HK");
+            var resolver = new WorkflowErrorContractResolver(context.getBean(WorkflowErrorContractProperties.class));
+            var resolved = resolver.resolve(RegistrationErrorKey.USERNAME_ALREADY_REGISTERED.value(), "zh-HK");
             assertThat(resolved.targets()).containsExactly("username");
             assertThat(resolved.nextStep().name()).isEqualTo("USERNAME_CHECK");
-            assertThat(resolved.pageRef().pageId()).isEqualTo("registration-username-check");
         });
     }
-    @Configuration(proxyBeanMethods=false)
+
+    @Test
+    void addingUnusedForgotPasswordNextStepsDoesNotRequireFakeLegacyNavigationEntries() {
+        runner.run(context -> {
+            var properties = context.getBean(WorkflowErrorContractProperties.class);
+
+            assertThat(properties.getNavigation())
+                    .doesNotContainKeys(
+                            WorkflowNextStep.ENTER_USERNAME,
+                            WorkflowNextStep.ENTER_ID,
+                            WorkflowNextStep.ENTER_DETAILS,
+                            WorkflowNextStep.PASSWORD_RESET_SUCCESS);
+            WorkflowErrorContractValidator.validate(properties);
+        });
+    }
+
+    @Configuration(proxyBeanMethods = false)
     @EnableConfigurationProperties(WorkflowErrorContractProperties.class)
-    static class TestConfig {}
+    static class TestConfig {
+    }
 
     @Test
     void rejectsDuplicatePublicErrorCodes() {

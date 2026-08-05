@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.dto.LoginOtpSendReques
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.mapper.LoginOtpResendWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.mapper.LoginOtpSendWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.dto.LoginWorkflowResultResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.CsrfHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.SendLoginOtpCommand;
 import com.bct.ngtpa.apiservice.application.dto.workflow.*;
@@ -48,7 +49,7 @@ public final class AuthLoginOtpController {
         if (!text(session))
             return just(LoginErrorKey.AUTH_FLOW_INVALID.value(), "PAGE");
         if (!text(csrf))
-            return Mono.just(LoginHttpResponses.toResponse(mapper.csrfInvalid()));
+            return CsrfHttpResponses.missingToken();
         if (!text(idem))
             return just(SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value(), "Idempotency-Key");
         if (!text(requestId))
@@ -81,7 +82,7 @@ public final class AuthLoginOtpController {
         if (!text(session))
             return resendJust(LoginErrorKey.AUTH_FLOW_INVALID.value(), "PAGE");
         if (!text(csrf))
-            return Mono.just(LoginHttpResponses.toResponse(resendMapper.csrfInvalid()));
+            return CsrfHttpResponses.missingToken();
         if (!text(idem))
             return resendJust(SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value(), "Idempotency-Key");
         if (!text(requestId))

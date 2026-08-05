@@ -21,6 +21,7 @@ public class RegistrationOtpResendWebMapper {
     private static final String SOURCE_SERVER = "SERVER";
 
     private final RegistrationWorkflowMutationResponseMapper workflowMutationResponseMapper;
+
     public RegistrationOtpResendWebMapper(
             WorkflowMutationResponseMapper workflowMutationResponseMapper) {
         this(workflowMutationResponseMapper, null);
@@ -35,23 +36,24 @@ public class RegistrationOtpResendWebMapper {
                         : workflowMutationResponseMapper);
     }
 
-    public MutationResponse<RegistrationWorkflowResultResponse<RegistrationOtpResendResponse>> toMutationResponse(ResendRegistrationOtpResult result) {
+    public MutationResponse<RegistrationWorkflowResultResponse<RegistrationOtpResendResponse>> toMutationResponse(
+            ResendRegistrationOtpResult result) {
         return toMutationResponse(result, null);
     }
 
-    public MutationResponse<RegistrationWorkflowResultResponse<RegistrationOtpResendResponse>> toMutationResponse(ResendRegistrationOtpResult result, String language) {
+    public MutationResponse<RegistrationWorkflowResultResponse<RegistrationOtpResendResponse>> toMutationResponse(
+            ResendRegistrationOtpResult result, String language) {
         var response = workflowMutationResponseMapper.toMutationResponse(toWorkflowResult(result, language));
         if (result.status() == ResendRegistrationOtpResultStatus.MESSAGE_DELIVERY_FAILED) {
             return new MutationResponse<>(
                     false,
-                    ApiStatus.DOWNSTREAM_ERROR,
+                    ApiStatus.SYSTEM_ERROR,
                     response.result(),
                     response.messages(),
                     response.errors());
         }
         return response;
     }
-
 
     private WorkflowResult<RegistrationOtpResendResponse> toWorkflowResult(
             ResendRegistrationOtpResult result,
@@ -60,9 +62,8 @@ public class RegistrationOtpResendWebMapper {
                 workflowStatus(result.status()),
                 result.nextStep(),
                 data(result),
-            null,
                 List.of(),
-            errors(result));
+                errors(result));
     }
 
     private WorkflowResultStatus workflowStatus(ResendRegistrationOtpResultStatus status) {
@@ -145,12 +146,14 @@ public class RegistrationOtpResendWebMapper {
             case COOLDOWN_ACTIVE -> RegistrationOtpResendErrorKeys.REGISTRATION_OTP_COOLDOWN_ACTIVE;
             case SEND_RATE_LIMITED -> RegistrationOtpResendErrorKeys.REGISTRATION_OTP_SEND_RATE_LIMITED;
             case MAX_RESEND_ATTEMPTS_REACHED -> RegistrationOtpResendErrorKeys.REGISTRATION_OTP_MAX_ATTEMPTS_REACHED;
-            case MESSAGE_DELIVERY_FAILED, SYSTEM_FAILED -> RegistrationOtpResendErrorKeys.REGISTRATION_MESSAGE_DELIVERY_FAILED;
+            case MESSAGE_DELIVERY_FAILED, SYSTEM_FAILED ->
+                RegistrationOtpResendErrorKeys.REGISTRATION_MESSAGE_DELIVERY_FAILED;
             default -> RegistrationOtpResendErrorKeys.REGISTRATION_OTP_RESEND_FAILED;
         };
     }
 
-    private MutationResponse<RegistrationWorkflowResultResponse<RegistrationOtpResendResponse>> errorResponse(String code) {
+    private MutationResponse<RegistrationWorkflowResultResponse<RegistrationOtpResendResponse>> errorResponse(
+            String code) {
         var error = new WorkflowErrorDescriptor(
                 WorkflowErrorType.FORM,
                 code,
@@ -161,7 +164,6 @@ public class RegistrationOtpResendWebMapper {
         return workflowMutationResponseMapper.toMutationResponse(new WorkflowResult<>(
                 WorkflowResultStatus.VALIDATION_FAILED,
                 WorkflowNextStep.VERIFY_OTP,
-                null,
                 null,
                 List.of(),
                 List.of(error)));

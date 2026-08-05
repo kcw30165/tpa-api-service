@@ -10,9 +10,9 @@ import org.junit.jupiter.api.Test;
 class SenderMessageModelTest {
 
     @Test
-    void senderStatusSupportsAcceptedAndFailed() {
+    void senderStatusSupportsAcceptedFailedAndUnknownOutcome() {
         assertThat(Arrays.stream(SenderStatus.values()).map(Enum::name).toList())
-                .containsExactly("ACCEPTED", "FAILED");
+                .containsExactly("ACCEPTED", "FAILED", "UNKNOWN_OUTCOME");
     }
 
     @Test

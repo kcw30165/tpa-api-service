@@ -17,6 +17,7 @@ class Task0043ScenarioSpecificMessageDestinationOverrideArchitectureTest {
     void yamlSeparatesRegistrationAndLoginOverrideBranches() throws Exception {
         String y = Files.readString(Path.of("src/main/resources/application.yml"));
         assertThat(y).contains("REGISTRATION_MESSAGE_OVERRIDE_MOBILE", "REGISTRATION_MESSAGE_OVERRIDE_EMAIL",
-                "LOGIN_MESSAGE_OVERRIDE_MOBILE", "LOGIN_MESSAGE_OVERRIDE_EMAIL");
+                "LOGIN_MESSAGE_OVERRIDE_MOBILE", "LOGIN_MESSAGE_OVERRIDE_EMAIL",
+                "FORGOT_PASSWORD_MESSAGE_OVERRIDE_MOBILE", "FORGOT_PASSWORD_MESSAGE_OVERRIDE_EMAIL");
     }
 }
