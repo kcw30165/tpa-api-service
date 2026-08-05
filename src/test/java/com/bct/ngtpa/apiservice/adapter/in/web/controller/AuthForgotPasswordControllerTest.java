@@ -37,7 +37,7 @@ class AuthForgotPasswordControllerTest {
                     StartForgotPasswordResultStatus.STARTED,
                     com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep.ENTER_ID,
                     "csrf_secret",
-                    "STAFF",
+                    "STAFF_NO",
                     "afs_secret",
                     List.of(),
                     null));
@@ -58,7 +58,7 @@ class AuthForgotPasswordControllerTest {
                 .assertNext(entity -> {
                     assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK);
                     assertThat(entity.getBody().result().data().csrfToken()).isEqualTo("csrf_secret");
-                    assertThat(entity.getBody().result().data().identityType()).isEqualTo("STAFF");
+                    assertThat(entity.getBody().result().data().identityType()).isEqualTo("STAFF_NO");
                     assertThat(entity.toString()).doesNotContain("afs_secret", "Member01");
                 })
                 .verifyComplete();

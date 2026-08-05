@@ -35,7 +35,7 @@ class ForgotPasswordIdempotencyContractTest {
                 new ForgotPasswordIdempotencyKey("idem-safe"),
                 new ForgotPasswordRequestHash("hash-safe"),
                 ForgotPasswordIdempotencyStatus.COMPLETED,
-                new ForgotPasswordIdempotencyReplaySnapshot("SUCCESS", "opaque-ref", Map.of("X-Request-Id", "req-1"), "STAFF"),
+                new ForgotPasswordIdempotencyReplaySnapshot("SUCCESS", "opaque-ref", Map.of("X-Request-Id", "req-1"), "STAFF_NO"),
                 Instant.parse("2026-07-30T00:00:00Z"),
                 Instant.parse("2026-07-30T00:00:01Z"),
                 Instant.parse("2026-07-30T00:05:00Z"));
