@@ -1016,3 +1016,81 @@ Strict TDD fail-first flow does not apply to Subtask 010 itself because this rou
 ## Conclusion
 
 Feature 0061 Gate 6 is closed for the validated repository state captured by `target/0061-subtask-010-evidence-20260803-153344`. Any further forgot-password change should start as a new explicitly authorized scope rather than extending this closeout round.
+
+## Forgot Password Cancel (remaining Feature 0061 capability)
+
+### Baseline
+
+- Baseline commit: `c86ff515f41ddf342ceb79b01fd3f4ee44d7ff18` (`fix(auth): route forgot-password OTP resend FAILED_EXISTING through classifier`).
+- Working tree was tracked-dirty at task open with only Forgot Password OTP-resend changes already confirmed by the user as the cumulative current work; the user committed them before implementation began. The implementation described here is layered on `c86ff515`.
+
+### Rules and skills applied
+
+- `.cline/rules/00-repository-guardrails.md`, `05-windows-git-bash-maven.md`, `06-tool-call-failure-recovery.md`, `10-current-project-direction.md`, `11-application.md`, `17-infrastructure.md`, `18-security-logging.md`, `19-shared-contracts.md`, `20-testing.md`, `21-web-adapter.md`.
+- Skills: `project-direction-review` (loaded first), `clean-architecture-java-bff`, and `spring-webflux-testing`.
+- No `.github/instructions` authority was used; no obsolete historical prompt was reused.
+
+### Implemented capability
+
+- Public endpoint: `POST /api/v1/auth/forgot-password/cancel` added to the existing `AuthForgotPasswordController` (no new controller).
+- Transport: `auth_flow_sid` cookie, `X-XSRF-TOKEN`, `Origin`, `Referer`, `X-Request-Id`, `Accept-Language`. No `Account-Ref`, no request body, no `Idempotency-Key`, no `lang` query parameter.
+- Application slice: `CancelForgotPasswordUseCase`, `CancelForgotPasswordCommand` (redacted `toString`), `CancelForgotPasswordResult` (no `nextStep` field; status, clearAuthFlowCookie, clearXsrfCookie, errors), `CancelForgotPasswordStatus` (CANCELLED, SESSION_NOT_FOUND, ALREADY_CANCELLED, ALREADY_TERMINAL, INVALID_AUTH_FLOW, CSRF_INVALID, SYSTEM_FAILED), and `CancelForgotPasswordService`.
+- Web slice: `ForgotPasswordCancelWebMapper` (public response shaping; always `RETURN_TO_LOGIN`; sanitized targets; no populated `errors[].message`; empty `messages`) and `ForgotPasswordCancelDataResponse` (empty data object).
+- Wiring: `ForgotPasswordApplicationConfig` registers the cancel use-case bean (injects `AuthFlowSessionPort`, `AuthFlowSessionCsrfService`, `OtpChallengePort`, `AuthFlowSessionCancellationPort`, `Clock`, `CorsProperties`) and the web-mapper bean.
+- OTP invalidation: additive `OtpChallengeInvalidationReason.USER_CANCELLED_FORGOT_PASSWORD`.
+
+### Session and revision behavior
+
+- Loads authoritative persisted session state through `AuthFlowSessionPort.load`.
+- Requires `AuthFlowScenario.FORGOT_PASSWORD`; otherwise `INVALID_AUTH_FLOW` (400, `err.forgot-password.authFlow.invalid`).
+- Missing session, already-cancelled, and expired/terminal states are publicly successful cleanup outcomes (200, `SUCCESS`, `RETURN_TO_LOGIN`, cookies cleared), matching the committed shared cancellation contract.
+- Stale revision, concurrent state change, and ambiguous persistence fail closed as `SYSTEM_FAILED` (503, `err.system.unavailable`), no cookie clearing, no retry.
+- Cancellation persists through the existing revision-aware cancellation boundary (`AuthFlowSessionCancellationAdapter` -> `RevisionAwareAuthFlowSessionWriter.cancel` -> `AuthFlowSessionPort.cancelRevisioned` single-record compare-and-replace). No unversioned auth-flow mutation.
+
+### Concurrency and lock decision
+
+- No mutation lock is required. The shared cancellation boundary is already atomic and revision-aware (single-record conditional replace with fresh opaque revision). No completion lock is used; no nested lock is used. `CancelForgotPasswordService` absorbs persistence errors as sanitized `SYSTEM_FAILED`.
+
+### CSRF, Origin/Referer, and cookie behavior
+
+- CSRF validated through `AuthFlowSessionCsrfService.validateForSession` (hash comparison) and Origin/Referer through `OriginRefererValidator` with `CorsProperties.allowedOrigins`, matching the existing forgot-password protected-endpoint mechanism. Missing/invalid CSRF and disallowed Origin/Referer return `CSRF_INVALID` (403, `err.forgot-password.csrf.invalid`).
+- Missing `auth_flow_sid` (controller guard) returns successful cleanup (`RETURN_TO_LOGIN`, both pre-auth cookies cleared).
+- Only approved clean outcomes clear both `auth_flow_sid` and `XSRF-TOKEN` cookies (verified through cookie writer calls driven by `clearAuthFlowCookie`/`clearXsrfCookie`).
+
+### Public response contract and status mapping
+
+- Response envelope: `MutationResponse<ForgotPasswordWorkflowResultResponse<ForgotPasswordCancelDataResponse>>` (success, status, result{messages, errors}) with `nextStep=RETURN_TO_LOGIN` and empty data.
+- `SESSION_NOT_FOUND`, `ALREADY_CANCELLED`, and `ALREADY_TERMINAL` are internal statuses only and never surface as `nextStep`.
+- HTTP mapping follows the existing `ForgotPasswordHttpResponses`: success->200, `err.forgot-password.csrf.invalid`->403, `err.forgot-password.authFlow.invalid`->400, `err.system.unavailable`->503.
+- No protected/internal data in the public body: no auth-flow session ID, SessionRevision, Redis key, lock token, CSRF hash, OTP, username, contact, account, downstream status, pageId, or pageRef.
+
+### Reactive behavior
+
+- Request path remains fully reactive; no `.block()`, `.blockOptional()`, `.subscribe()`, `toFuture().get()`, `Thread.sleep()`, or detached `doOn*/doFinally` publisher launch. The only production-wide terminal-operation match remains the startup-only `AuthFlowSessionPersistenceCompatibilityStartupGate` (documented controlled bootstrap behavior).
+
+### Fail-first TDD evidence
+
+- Fail-first tests added before production code: `CancelForgotPasswordServiceTest`, `ForgotPasswordCancelWebMapperTest`, `AuthForgotPasswordCancelControllerTest`, `ForgotPasswordCancelArchitectureGuardTest`.
+- Expected failure (recorded): `BUILD FAILURE` with 20 `cannot find symbol` errors referencing ONLY the missing Cancel production symbols (no fixture, syntax, or unrelated errors).
+- Focused post-implementation suite: `CancelForgotPasswordServiceTest`, `ForgotPasswordCancelWebMapperTest`, `AuthForgotPasswordCancelControllerTest`, `ForgotPasswordCancelArchitectureGuardTest` -> 30 tests, 0 failures, 0 errors, BUILD SUCCESS.
+- Production-wide fixes after test failure: two test-fixture defects corrected in the focused suite (AtomicReference `.get()` comparison and a formatter-tolerant mapper-region anchor); no production behavior was changed to satisfy a test.
+
+### Cumulative regressions
+
+- Forgot Password controllers (start, identity, details, OTP verify, complete, and new cancel), shared cancellation adapter, revision-aware Redis mutations, CSRF/Origin, protected-context protector, and Login/Registration cancellation suites: PASS.
+- Full `mvn test`: PASS (Tests run: 2919, Failures: 0, Errors: 0, Skipped: 12), BUILD SUCCESS.
+- `git diff --check`: PASS (only pre-existing CRLF normalization warnings).
+- `clean verify`: NOT RUN to completion because `maven-clean-plugin` failed twice to delete `target/surefire-reports` (Windows file lock). This was an environmental lock on a directory held by the previously launched background suite; it is not a code/test failure. The authoritative full `mvn test` above already executed the complete verification set.
+
+### Preserved exclusions
+
+- No change to Login behavior, Registration behavior, APIM/TAS contracts, ActorContext, Account-Ref behavior, retry policies, OTP policies, Redis schema, session revision design, or any other completed Forgot Password capability (Start, Identity, Details, OTP issuance/resend/verify, reset authorization, complete, and all 001A maintenance rounds).
+- No `Idempotency-Key` was added to Cancel; the pre-existing `ForgotPasswordIdempotencyAction.CANCEL` / `cancel-ttl-seconds` scaffolding remains configured but unused by the naturally idempotent cancellation contract.
+
+### Evidence
+
+- `target/0061-forgot-password-cancel-evidence-20260805-101622` (canonical authoring workspace). Contains the full-suite log, focused-cancel log, cumulative-regression log, fail-first-service log, baseline/status/diff/name-status snapshots.
+
+### Final Feature 0061 status
+
+- All approved Feature 0061 Forgot Password capabilities are now implemented, including the previously missing Cancel operation. Proposed commit message: `feat(forgot-password): add cancellation flow`.

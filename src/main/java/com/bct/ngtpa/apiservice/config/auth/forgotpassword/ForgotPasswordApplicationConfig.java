@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.config.auth.forgotpassword;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordCancelWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordIdentityWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.session.config.AuthFlowSessionProperties;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationIdentityType;
@@ -8,6 +9,7 @@ import com.bct.ngtpa.apiservice.application.dto.session.SessionConcurrencyMode;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionConcurrencyPolicy;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionOnNewFlowPolicy;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionTtlPolicy;
+import com.bct.ngtpa.apiservice.application.port.in.CancelForgotPasswordUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.CreateAuthFlowSessionCsrfUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.EvaluateForgotPasswordOtpResendUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.CompleteForgotPasswordUseCase;
@@ -15,6 +17,7 @@ import com.bct.ngtpa.apiservice.application.port.in.ProcessForgotPasswordDetails
 import com.bct.ngtpa.apiservice.application.port.in.ResendForgotPasswordOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.StartForgotPasswordUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.VerifyForgotPasswordOtpUseCase;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionCancellationPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionMutationLockPort;
@@ -26,6 +29,7 @@ import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordUsernameLooku
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.cancel.CancelForgotPasswordService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.CompleteForgotPasswordService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordPasswordValidator;
@@ -47,6 +51,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.rese
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendRequestHashGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ResendForgotPasswordOtpService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionConcurrencyService;
+import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionCsrfService;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.LinkedHashMap;
@@ -340,6 +345,28 @@ public class ForgotPasswordApplicationConfig {
         @Bean
         public ForgotPasswordOtpResendRequestHashGenerator forgotPasswordOtpResendRequestHashGenerator() {
                 return new ForgotPasswordOtpResendRequestHashGenerator();
+        }
+
+        @Bean
+        public ForgotPasswordCancelWebMapper forgotPasswordCancelWebMapper() {
+                return new ForgotPasswordCancelWebMapper();
+        }
+
+        @Bean
+        public CancelForgotPasswordUseCase cancelForgotPasswordUseCase(
+                        AuthFlowSessionPort sessions,
+                        AuthFlowSessionCsrfService csrfService,
+                        OtpChallengePort otpChallenges,
+                        AuthFlowSessionCancellationPort cancellationPort,
+                        Clock clock,
+                        CorsProperties corsProperties) {
+                return new CancelForgotPasswordService(
+                                sessions,
+                                csrfService,
+                                otpChallenges,
+                                cancellationPort,
+                                clock,
+                                corsProperties == null ? List.of() : corsProperties.getAllowedOrigins());
         }
 
         @Bean

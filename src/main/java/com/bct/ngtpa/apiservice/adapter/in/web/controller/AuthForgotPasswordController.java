@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.ForgotPasswordHttpResponses;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordCancelDataResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordCompleteDataResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordCompleteRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordDetailsRequest;
@@ -8,6 +9,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPas
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordStartDataResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordStartRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordWorkflowResultResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordCancelWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordCompleteWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordDetailsOtpWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordIdentityWebMapper;
@@ -16,6 +18,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlow
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.XsrfCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
+import com.bct.ngtpa.apiservice.application.port.in.CancelForgotPasswordUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.CompleteForgotPasswordUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.ProcessForgotPasswordDetailsOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.StartForgotPasswordUseCase;
@@ -49,6 +52,8 @@ public class AuthForgotPasswordController {
     private final ForgotPasswordDetailsOtpWebMapper detailsCheckMapper;
     private final CompleteForgotPasswordUseCase completeUseCase;
     private final ForgotPasswordCompleteWebMapper completeMapper;
+    private final CancelForgotPasswordUseCase cancelUseCase;
+    private final ForgotPasswordCancelWebMapper cancelMapper;
     private final AuthFlowCookieWriter cookieWriter;
     private final XsrfCookieWriter xsrfCookies;
 
@@ -138,6 +143,47 @@ public class AuthForgotPasswordController {
             return Mono
                     .just(ForgotPasswordHttpResponses
                             .toResponse(detailsCheckMapper.map(ForgotPasswordDetailsOtpResult.system())));
+        }
+    }
+
+    @PostMapping(path = "/cancel", produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
+    public Mono<ResponseEntity<MutationResponse<ForgotPasswordWorkflowResultResponse<ForgotPasswordCancelDataResponse>>>> cancel(
+            @CookieValue(name = "auth_flow_sid", required = false) String sessionId,
+            @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrfToken,
+            @RequestHeader(name = "Origin", required = false) String origin,
+            @RequestHeader(name = "Referer", required = false) String referer,
+            @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false) String requestId,
+            @RequestHeader(name = "Accept-Language", required = false) String language,
+            ServerHttpResponse response) {
+        echoRequestId(response, requestId);
+        if (!hasText(sessionId)) {
+            cookieWriter.clearAuthFlowCookie(response);
+            xsrfCookies.clearXsrfCookie(response);
+            return Mono.just(ForgotPasswordHttpResponses.toResponse(cancelMapper.missingSession()));
+        }
+        if (!hasText(csrfToken)) {
+            return Mono.just(ForgotPasswordHttpResponses.toResponse(cancelMapper.missingCsrf()));
+        }
+        try {
+            return cancelUseCase.cancel(cancelMapper.toCommand(
+                    sessionId,
+                    csrfToken,
+                    origin,
+                    referer,
+                    requestId))
+                    .map(result -> {
+                        if (result.clearAuthFlowCookie()) {
+                            cookieWriter.clearAuthFlowCookie(response);
+                        }
+                        if (result.clearXsrfCookie()) {
+                            xsrfCookies.clearXsrfCookie(response);
+                        }
+                        return ForgotPasswordHttpResponses.toResponse(cancelMapper.toResponse(result));
+                    })
+                    .onErrorResume(error -> Mono
+                            .just(ForgotPasswordHttpResponses.toResponse(cancelMapper.systemUnavailable())));
+        } catch (RuntimeException exception) {
+            return Mono.just(ForgotPasswordHttpResponses.toResponse(cancelMapper.csrfInvalid()));
         }
     }
 
