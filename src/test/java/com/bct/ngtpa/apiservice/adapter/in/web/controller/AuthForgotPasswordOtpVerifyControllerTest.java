@@ -76,7 +76,7 @@ class AuthForgotPasswordOtpVerifyControllerTest {
                         null, new MockServerHttpResponse())
                 .block());
 
-        assertThat(json).contains("err.forgot-password.csrf.invalid");
+        assertThat(json).contains("err.security.authentication.required");
         assertThat(useCase.called).isFalse();
     }
 

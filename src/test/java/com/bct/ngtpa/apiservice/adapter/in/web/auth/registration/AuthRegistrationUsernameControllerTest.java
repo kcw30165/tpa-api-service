@@ -67,7 +67,7 @@ class AuthRegistrationUsernameControllerTest {
                 new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block());
 
         assertThat(json.get("success").asBoolean()).isFalse();
-        assertThat(json.at("/errors/0/code").asText()).isEqualTo("err.registration.csrf.invalid");
+        assertThat(json.at("/errors/0/code").asText()).isEqualTo("err.security.authentication.required");
         assertThat(useCase.called).isFalse();
     }
 

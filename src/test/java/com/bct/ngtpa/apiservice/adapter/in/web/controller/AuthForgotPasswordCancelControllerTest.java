@@ -71,7 +71,7 @@ class AuthForgotPasswordCancelControllerTest {
     }
 
     @Test
-    void missingCsrfReturnsForbiddenWithoutCookieClearing() {
+    void missingCsrfReturnsUnauthorizedWithoutCookieClearing() {
         var controller = controller(new RecordingUseCase(new CancelForgotPasswordResult(
                 CancelForgotPasswordStatus.CANCELLED, true, true, List.of())));
         var response = new MockServerHttpResponse();
@@ -79,13 +79,13 @@ class AuthForgotPasswordCancelControllerTest {
         StepVerifier.create(controller.cancel(
                 "afs_abc", null, "https://portal.example", "https://portal.example/fp", "req_abc", "en", response))
                 .assertNext(entity -> {
-                    assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+                    assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
                     assertThat(entity.getBody().success()).isFalse();
-                    assertThat(entity.getBody().status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
-                    assertThat(entity.getBody().result().nextStep()).isEqualTo(WorkflowNextStep.RETURN_TO_LOGIN);
+                    assertThat(entity.getBody().status()).isEqualTo(ApiStatus.BUSINESS_REJECTED);
+                    assertThat(entity.getBody().result()).isNull();
                     assertThat(entity.getBody().errors()).singleElement()
                             .extracting(error -> error.code())
-                            .isEqualTo("err.forgot-password.csrf.invalid");
+                            .isEqualTo("err.security.authentication.required");
                 })
                 .verifyComplete();
 

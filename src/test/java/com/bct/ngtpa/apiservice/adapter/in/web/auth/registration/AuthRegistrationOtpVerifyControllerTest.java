@@ -64,7 +64,7 @@ class AuthRegistrationOtpVerifyControllerTest {
                 .verifyOtp(new RegistrationOtpVerifyRequest("123456"), "afs", null, "idem", "req", "en", null, null,
                 new org.springframework.mock.http.server.reactive.MockServerHttpResponse())
                 .block());
-        assertThat(json).contains("err.registration.csrf.invalid");
+        assertThat(json).contains("err.security.authentication.required");
         assertThat(useCase.called).isFalse();
     }
 

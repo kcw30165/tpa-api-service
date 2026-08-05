@@ -67,7 +67,7 @@ class P7RegistrationOtpIntegrationTest {
                                 .contains("registration.authFlow.invalid");
                 assertThat(json(resend.resendOtp("afs", null, "idem", "req", "en", null, null,
                 new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block()))
-                                .contains("registration.csrf.invalid");
+                                .contains("security.authentication.required");
                 assertThat(json(resend.resendOtp("afs", "csrf", null, "req", "en", null, null,
                 new org.springframework.mock.http.server.reactive.MockServerHttpResponse()).block()))
                                 .contains("workflow.idempotency.missing");
@@ -84,7 +84,7 @@ class P7RegistrationOtpIntegrationTest {
                                 .verifyOtp(new RegistrationOtpVerifyRequest("123456"), "afs", null, "idem", "req", "en",
                                                 null, null,
                 new org.springframework.mock.http.server.reactive.MockServerHttpResponse())
-                                .block())).contains("registration.csrf.invalid");
+                                .block())).contains("security.authentication.required");
                 assertThat(json(verify
                                 .verifyOtp(new RegistrationOtpVerifyRequest("123456"), "afs", "csrf", null, "req", "en",
                                                 null, null,

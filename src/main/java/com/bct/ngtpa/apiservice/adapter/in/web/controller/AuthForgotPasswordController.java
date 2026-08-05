@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPas
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordCompleteRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordDetailsRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordIdentityCheckRequest;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordOtpDataResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordStartDataResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordStartRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordWorkflowResultResponse;
@@ -16,6 +17,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.Forgot
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.XsrfCookieWriter;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.CsrfHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.port.in.CancelForgotPasswordUseCase;
@@ -29,6 +31,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identity
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identity.VerifyForgotPasswordIdentityStatus;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordResultStatus;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -98,7 +101,8 @@ public class AuthForgotPasswordController {
     }
 
     @PostMapping("/identity-check")
-    public Mono<ResponseEntity<?>> check(@RequestBody(required = false) ForgotPasswordIdentityCheckRequest body,
+    public Mono<ResponseEntity<MutationResponse<ForgotPasswordWorkflowResultResponse<Map<String, Object>>>>> check(
+            @RequestBody(required = false) ForgotPasswordIdentityCheckRequest body,
             @CookieValue(name = "auth_flow_sid", required = false) String sid,
             @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrf,
             @RequestHeader(name = "Origin", required = false) String origin,
@@ -107,9 +111,11 @@ public class AuthForgotPasswordController {
             @RequestHeader(name = "Accept-Language", required = false) String language,
             ServerHttpResponse response) {
         echoRequestId(response, requestId);
-        if (!hasText(sid) || !hasText(csrf))
+        if (!hasText(sid))
             return Mono.just(ForgotPasswordHttpResponses.toResponse(identityCheckMapper.response(
                     VerifyForgotPasswordIdentityResult.of(VerifyForgotPasswordIdentityStatus.SYSTEM_FAILED))));
+        if (!hasText(csrf))
+            return CsrfHttpResponses.missingToken();
         try {
             return identityCheckUseCase.verify(identityCheckMapper.command(body, sid, csrf, origin, referer, requestId))
                     .map(r -> ForgotPasswordHttpResponses.toResponse(identityCheckMapper.response(r)));
@@ -120,7 +126,8 @@ public class AuthForgotPasswordController {
     }
 
     @PostMapping({ "/details-check", "/details" })
-    public Mono<ResponseEntity<?>> details(@RequestBody(required = false) ForgotPasswordDetailsRequest b,
+    public Mono<ResponseEntity<MutationResponse<ForgotPasswordWorkflowResultResponse<ForgotPasswordOtpDataResponse>>>> details(
+            @RequestBody(required = false) ForgotPasswordDetailsRequest b,
             @CookieValue(name = "auth_flow_sid", required = false) String sid,
             @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrf,
             @RequestHeader(name = "Origin", required = false) String origin,
@@ -130,10 +137,12 @@ public class AuthForgotPasswordController {
             @RequestHeader(name = "Idempotency-Key", required = false) String key,
             ServerHttpResponse response) {
         echoRequestId(response, requestId);
-        if (b == null || !hasText(sid) || !hasText(csrf) || !hasText(key))
+        if (b == null || !hasText(sid) || !hasText(key))
             return Mono
                     .just(ForgotPasswordHttpResponses
                             .toResponse(detailsCheckMapper.map(ForgotPasswordDetailsOtpResult.system())));
+        if (!hasText(csrf))
+            return CsrfHttpResponses.missingToken();
         try {
             return detailsCheckUseCase
                     .process(new ForgotPasswordDetailsOtpCommand(new AuthFlowSessionId(sid), csrf, origin, referer,
@@ -162,7 +171,7 @@ public class AuthForgotPasswordController {
             return Mono.just(ForgotPasswordHttpResponses.toResponse(cancelMapper.missingSession()));
         }
         if (!hasText(csrfToken)) {
-            return Mono.just(ForgotPasswordHttpResponses.toResponse(cancelMapper.missingCsrf()));
+            return CsrfHttpResponses.missingToken();
         }
         try {
             return cancelUseCase.cancel(cancelMapper.toCommand(
@@ -203,7 +212,7 @@ public class AuthForgotPasswordController {
             return Mono.just(ForgotPasswordHttpResponses.toResponse(completeMapper.missingAuthFlowCookie()));
         }
         if (!hasText(csrfToken)) {
-            return Mono.just(ForgotPasswordHttpResponses.toResponse(completeMapper.missingCsrfToken()));
+            return CsrfHttpResponses.missingToken();
         }
         if (!hasText(idempotencyKey)) {
             return Mono.just(ForgotPasswordHttpResponses.toResponse(completeMapper.missingIdempotencyKey()));

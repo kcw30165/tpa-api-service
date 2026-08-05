@@ -7,6 +7,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPas
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordWorkflowResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordOtpResendWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordOtpVerifyWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.CsrfHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.port.in.ResendForgotPasswordOtpUseCase;
@@ -64,8 +65,11 @@ public final class AuthForgotPasswordOtpController {
         if (!hasText(idempotencyKey)) {
             return Mono.just(ForgotPasswordHttpResponses.toResponse(mapper.missingIdempotencyKey()));
         }
-        if (!hasText(sessionId) || !hasText(csrfToken)) {
+        if (!hasText(sessionId)) {
             return Mono.just(ForgotPasswordHttpResponses.toResponse(mapper.systemUnavailable()));
+        }
+        if (!hasText(csrfToken)) {
+            return CsrfHttpResponses.missingToken();
         }
         try {
             return useCase.resend(new ResendForgotPasswordOtpCommand(
@@ -101,7 +105,7 @@ public final class AuthForgotPasswordOtpController {
             return Mono.just(ForgotPasswordHttpResponses.toResponse(verifyMapper.missingAuthFlowCookie()));
         }
         if (!hasText(csrfToken)) {
-            return Mono.just(ForgotPasswordHttpResponses.toResponse(verifyMapper.missingCsrfToken()));
+            return CsrfHttpResponses.missingToken();
         }
         if (!hasText(idempotencyKey)) {
             return Mono.just(ForgotPasswordHttpResponses.toResponse(verifyMapper.missingIdempotencyKey()));

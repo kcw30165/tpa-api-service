@@ -60,7 +60,7 @@ class AuthForgotPasswordOtpResendControllerTest {
                 .resend("afs", null, null, null, "req", "en", "idem", new MockServerHttpResponse())
                 .block());
 
-        assertThat(json).contains("err.system.unavailable");
+        assertThat(json).contains("err.security.authentication.required");
         assertThat(useCase.called).isFalse();
     }
 

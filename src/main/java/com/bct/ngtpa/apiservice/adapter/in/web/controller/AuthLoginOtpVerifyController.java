@@ -8,6 +8,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.mapper.LoginOtpVerifyW
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.XsrfCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieWriter;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.CsrfHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.workflow.LoginErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
@@ -70,7 +71,7 @@ public final class AuthLoginOtpVerifyController {
             return missing(LoginErrorKey.AUTH_FLOW_INVALID.value(), "PAGE");
         }
         if (!hasText(csrf)) {
-            return Mono.just(LoginHttpResponses.toResponse(mapper.csrfInvalid()));
+            return CsrfHttpResponses.missingToken();
         }
         if (!hasText(idempotencyKey)) {
             return missing(SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value(), "Idempotency-Key");

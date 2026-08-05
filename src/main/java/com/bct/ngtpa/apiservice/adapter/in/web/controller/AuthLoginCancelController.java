@@ -4,6 +4,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.*;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.cancel.*;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.dto.LoginWorkflowResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.*;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.CsrfHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.port.in.CancelLoginUseCase;
@@ -43,7 +44,7 @@ public final class AuthLoginCancelController {
             return Mono.just(LoginHttpResponses.toResponse(mapper.missingSession()));
         }
         if (!text(csrf))
-            return Mono.just(LoginHttpResponses.toResponse(mapper.missingCsrf()));
+            return CsrfHttpResponses.missingToken();
         try {
             return useCase.cancel(new CancelLoginCommand(new AuthFlowSessionId(session.trim()), csrf.trim(),
                     clean(origin), clean(referer), clean(requestId))).map(r -> {

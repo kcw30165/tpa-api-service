@@ -10,6 +10,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.Registratio
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationOtpResendWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationOtpVerifyWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.RegistrationIdempotencyProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.CsrfHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
@@ -56,8 +57,7 @@ public class AuthRegistrationOtpController {
                     RegistrationHttpResponses.toResponse(registrationOtpResendMapper.missingAuthFlowCookieResponse()));
         }
         if (!hasText(csrfToken)) {
-            return Mono
-                    .just(RegistrationHttpResponses.toResponse(registrationOtpResendMapper.missingCsrfTokenResponse()));
+            return CsrfHttpResponses.missingToken();
         }
         if (!hasText(idempotencyKey)) {
             return Mono.just(
@@ -109,8 +109,7 @@ public class AuthRegistrationOtpController {
                     RegistrationHttpResponses.toResponse(registrationOtpVerifyMapper.missingAuthFlowCookieResponse()));
         }
         if (!hasText(csrfToken)) {
-            return Mono
-                    .just(RegistrationHttpResponses.toResponse(registrationOtpVerifyMapper.missingCsrfTokenResponse()));
+            return CsrfHttpResponses.missingToken();
         }
         if (!hasText(idempotencyKey)) {
             return Mono.just(

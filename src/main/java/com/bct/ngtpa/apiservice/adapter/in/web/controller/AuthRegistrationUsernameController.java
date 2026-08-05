@@ -9,6 +9,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.Registratio
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationUsernameCheckWebMapper;
 import com.bct.ngtpa.apiservice.application.port.in.CheckRegistrationUsernameUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.CheckRegistrationUsernameCommand;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.CsrfHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -44,8 +45,7 @@ public class AuthRegistrationUsernameController {
                     .toResponse(registrationUsernameCheckWebMapper.missingAuthFlowCookieResponse()));
         }
         if (!hasText(csrfToken)) {
-            return Mono.just(RegistrationHttpResponses
-                    .toResponse(registrationUsernameCheckWebMapper.missingCsrfTokenResponse()));
+            return CsrfHttpResponses.missingToken();
         }
         if (request == null) {
             return Mono.just(RegistrationHttpResponses
