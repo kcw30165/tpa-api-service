@@ -95,6 +95,28 @@ class ResendForgotPasswordOtpServiceTest {
     }
 
     @Test
+    void failedExistingReturnsPreviousFailedRecoveryOutcome() {
+        var fixture = new Fixture();
+        fixture.idempotency.outcome = ForgotPasswordIdempotencyStartOutcome.FAILED_EXISTING;
+
+        StepVerifier.create(fixture.service().resend(command()))
+                .assertNext(result -> {
+                    assertThat(result.status()).isEqualTo(ResendForgotPasswordOtpStatus.PREVIOUS_FAILED);
+                    assertThat(result.maskedDestination()).isNull();
+                    assertThat(result.expiresInSeconds()).isNull();
+                    assertThat(result.resendCooldownSeconds()).isNull();
+                    assertThat(result.remainingResendAttempts()).isNull();
+                    assertThat(result.retryAfterSeconds()).isNull();
+                })
+                .verifyComplete();
+
+        assertThat(fixture.idempotency.attachPendingCount).isZero();
+        assertThat(fixture.locks.acquireCount).isZero();
+        assertThat(fixture.locks.releaseCount).isZero();
+        assertThat(fixture.sessions.loadSnapshotCount).isZero();
+    }
+
+    @Test
     void missingSessionReturnsAuthFlowInvalidAndReleasesLock() {
         var fixture = new Fixture();
         fixture.sessions.snapshot = Optional.empty();
@@ -278,9 +300,10 @@ class ResendForgotPasswordOtpServiceTest {
                 new SecureForgotPasswordOtpCommitRefGenerator(),
                 locks,
                 sessions,
-                protector,
-                foundation,
-                new UnsupportedOtpChallengePort(),
+protector,
+foundation,
+new ForgotPasswordOtpResendIdempotencyClassifier(),
+new UnsupportedOtpChallengePort(),
                 challenges,
                 new UnsupportedMessageDeliveryPort(),
                 new ForgotPasswordDestinationMasker(),

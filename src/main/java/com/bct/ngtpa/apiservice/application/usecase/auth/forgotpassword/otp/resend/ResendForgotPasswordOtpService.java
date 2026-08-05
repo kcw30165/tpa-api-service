@@ -38,6 +38,7 @@ public final class ResendForgotPasswordOtpService implements ResendForgotPasswor
     private final AuthFlowSessionPort sessions;
     private final ForgotPasswordAuthFlowContextProtectorPort protector;
     private final EvaluateForgotPasswordOtpResendUseCase foundation;
+    private final ForgotPasswordOtpResendIdempotencyClassifier classifier;
     private final OtpChallengePort otp;
     private final OtpChallengeStatePort challengeState;
     private final MessageDeliveryPort delivery;
@@ -61,6 +62,7 @@ public final class ResendForgotPasswordOtpService implements ResendForgotPasswor
             AuthFlowSessionPort sessions,
             ForgotPasswordAuthFlowContextProtectorPort protector,
             EvaluateForgotPasswordOtpResendUseCase foundation,
+            ForgotPasswordOtpResendIdempotencyClassifier classifier,
             OtpChallengePort otp,
             OtpChallengeStatePort challengeState,
             MessageDeliveryPort delivery,
@@ -80,6 +82,7 @@ public final class ResendForgotPasswordOtpService implements ResendForgotPasswor
         this.sessions = Objects.requireNonNull(sessions);
         this.protector = Objects.requireNonNull(protector);
         this.foundation = Objects.requireNonNull(foundation);
+        this.classifier = Objects.requireNonNull(classifier);
         this.otp = Objects.requireNonNull(otp);
         this.challengeState = Objects.requireNonNull(challengeState);
         this.delivery = Objects.requireNonNull(delivery);
@@ -108,16 +111,18 @@ public final class ResendForgotPasswordOtpService implements ResendForgotPasswor
                 hash,
                 now,
                 now.plus(idempotencyTtl),
-                idempotencyTtl)).flatMap(start -> switch (start.outcome()) {
-                    case STARTED -> startNew(command, start.record(), hash, now);
-                    case COMPLETED_REPLAY -> resolveCommittedReplay(start.record());
-                    case DUPLICATE_IN_PROGRESS -> resolveInProgress(command.sessionId(), start.record());
-                    case KEY_REUSED_WITH_DIFFERENT_REQUEST -> Mono.just(new ResendForgotPasswordOtpResult(
+                idempotencyTtl)).flatMap(start -> switch (classifier.classify(start.outcome())) {
+                    case ELIGIBLE -> startNew(command, start.record(), hash, now);
+                    case IDEMPOTENCY_COMPLETED_REPLAY -> resolveCommittedReplay(start.record());
+                    case IDEMPOTENCY_IN_PROGRESS -> resolveInProgress(command.sessionId(), start.record());
+                    case IDEMPOTENCY_KEY_REUSED -> Mono.just(new ResendForgotPasswordOtpResult(
                             ResendForgotPasswordOtpStatus.IDEMPOTENCY_KEY_REUSED, null, null, null, null, null));
-                    case FAILED_EXISTING -> Mono.just(new ResendForgotPasswordOtpResult(
-                            ResendForgotPasswordOtpStatus.DELIVERY_FAILED, null, null, null, null, null));
-                    case UNKNOWN_OUTCOME_EXISTING -> Mono.just(new ResendForgotPasswordOtpResult(
+                    case PREVIOUS_FAILED -> Mono.just(new ResendForgotPasswordOtpResult(
+                            ResendForgotPasswordOtpStatus.PREVIOUS_FAILED, null, null, null, null, null));
+                    case UNKNOWN_OUTCOME_BLOCKED -> Mono.just(new ResendForgotPasswordOtpResult(
                             ResendForgotPasswordOtpStatus.UNKNOWN_OUTCOME, null, null, null, null, null));
+                    default -> Mono.just(new ResendForgotPasswordOtpResult(
+                            ResendForgotPasswordOtpStatus.SYSTEM_FAILED, null, null, null, null, null));
                 }).onErrorResume(error -> {
                     LOGGER.error("Resend forgot password OTP failed with system error", error);
                     return Mono.just(new ResendForgotPasswordOtpResult(ResendForgotPasswordOtpStatus.SYSTEM_FAILED,

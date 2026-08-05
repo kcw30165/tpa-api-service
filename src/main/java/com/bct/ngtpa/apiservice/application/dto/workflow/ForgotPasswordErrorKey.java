@@ -14,6 +14,7 @@ public enum ForgotPasswordErrorKey {
 
     OTP_RESEND_COOLDOWN("err.forgot-password.otp.resend.cooldown"),
     OTP_RESEND_LIMIT_REACHED("err.forgot-password.otp.resend.limitReached"),
+    OTP_RESEND_PREVIOUS_FAILED("err.forgot-password.otp.resend.previousFailed"),
 
     SYSTEM_UNAVAILABLE("err.system.unavailable");
 

@@ -48,6 +48,23 @@ class ForgotPasswordOtpResendWebMapperTest {
     }
 
     @Test
+    void mapsPreviousFailedToBusinessRejectedRetryableOutcome() {
+        var previousFailed = mapper.toMutationResponse(new ResendForgotPasswordOtpResult(
+                ResendForgotPasswordOtpStatus.PREVIOUS_FAILED,
+                "m****r@example.com",
+                null,
+                null,
+                null,
+                null));
+
+        assertThat(previousFailed.status()).isEqualTo(ApiStatus.BUSINESS_REJECTED);
+        assertThat(previousFailed.result().nextStep()).isEqualTo(WorkflowNextStep.RESEND_OTP);
+        assertThat(previousFailed.errors()).singleElement().extracting(error -> error.code())
+                .isEqualTo("err.forgot-password.otp.resend.previousFailed");
+        assertThat(previousFailed.toString()).doesNotContain("err.system.unavailable");
+    }
+
+    @Test
     void mapsLimitReuseAndSystemStatusesWithoutLeakingInternalData() {
         var limitReached = mapper.toMutationResponse(new ResendForgotPasswordOtpResult(
                 ResendForgotPasswordOtpStatus.RESEND_LIMIT_REACHED,

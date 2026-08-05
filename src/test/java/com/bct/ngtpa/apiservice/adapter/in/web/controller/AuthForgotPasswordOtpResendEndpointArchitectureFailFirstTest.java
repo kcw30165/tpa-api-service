@@ -26,7 +26,7 @@ class AuthForgotPasswordOtpResendEndpointArchitectureFailFirstTest {
         assertThat(controllerText).doesNotContain("Account-Ref");
 
         assertThat(mapperText).contains("WorkflowNextStep.VERIFY_OTP");
-        assertThat(mapperText).contains("err.forgot-password.otp.expired");
+        assertThat(mapperText).contains("ForgotPasswordErrorKey.OTP_EXPIRED");
         assertThat(mapperText).doesNotContain("DOWNSTREAM_REJECTED");
         assertThat(mapperText).doesNotContain("DOWNSTREAM_ERROR");
     }
