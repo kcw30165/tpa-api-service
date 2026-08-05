@@ -189,12 +189,12 @@ public final class StartForgotPasswordService implements StartForgotPasswordUseC
                                         StartForgotPasswordResultStatus.STARTED.name(),
                                         started.session().authFlowSessionId().value(),
                                         Map.of(),
-                                        lookupResult.tasIdType()),
+                                        publicIdentityType),
                                 Instant.now(clock),
                                 command.idempotencyTtl()))
                                 .thenReturn(success(
                                         StartForgotPasswordResultStatus.STARTED,
-                                        lookupResult.tasIdType(),
+                                        publicIdentityType,
                                         started.session().authFlowSessionId().value(),
                                         csrf.rawToken(),
                                         null))))

@@ -63,7 +63,7 @@ public final class TrpChkCustIdForgotPasswordResultMapper {
 
         LOGGER.info("event=forgot-password.username-lookup.confirmed tasIdentityType={} publicIdentityType={}",
                 tasIdentityType, identityType == RegistrationIdentityType.STAFFNO ? "STAFF_NO" : identityType.name());
-        return ForgotPasswordUsernameLookupResult.confirmed(customerId, userId, identityType, tasIdentityType);
+        return ForgotPasswordUsernameLookupResult.confirmed(customerId, userId, identityType);
     }
 
     private String normalize(String value) {

@@ -75,7 +75,7 @@ class StartForgotPasswordServiceTest {
                     assertThat(result.status()).isEqualTo(StartForgotPasswordResultStatus.STARTED);
                     assertThat(result.nextStep()).isEqualTo(WorkflowNextStep.ENTER_ID);
                     assertThat(result.csrfToken()).isEqualTo("csrf-token-1");
-                    assertThat(result.identityType()).isEqualTo("STAFF");
+                    assertThat(result.identityType()).isEqualTo("STAFF_NO");
                     assertThat(result.authFlowSessionId()).isEqualTo("afs_fp_1");
                     assertThat(result.errors()).isEmpty();
                     assertThat(result.toString()).doesNotContain("member01", "tas-user-01", "cust-db01",
@@ -142,7 +142,7 @@ class StartForgotPasswordServiceTest {
                     assertThat(result.nextStep()).isEqualTo(WorkflowNextStep.ENTER_ID);
                     assertThat(result.authFlowSessionId()).isEqualTo("afs_existing");
                     assertThat(result.csrfToken()).isEqualTo("csrf-token-1");
-                    assertThat(result.identityType()).isEqualTo("STAFF");
+                    assertThat(result.identityType()).isEqualTo("STAFF_NO");
                 })
                 .verifyComplete();
 
@@ -321,7 +321,7 @@ class StartForgotPasswordServiceTest {
                     new ForgotPasswordIdempotencyKey("idem-fp-1"),
                     new ForgotPasswordRequestHash("hash-fp-1"),
                     ForgotPasswordIdempotencyStatus.COMPLETED,
-                    new ForgotPasswordIdempotencyReplaySnapshot("STARTED", authFlowSessionId, Map.of(), "STAFF"),
+                    new ForgotPasswordIdempotencyReplaySnapshot("STARTED", authFlowSessionId, Map.of(), "STAFF_NO"),
                     CLOCK.instant(),
                     CLOCK.instant(),
                     CLOCK.instant().plusSeconds(300));
@@ -337,8 +337,7 @@ class StartForgotPasswordServiceTest {
             return Mono.just(ForgotPasswordUsernameLookupResult.confirmed(
                     "cust-db01",
                     "tas-user-01",
-                    RegistrationIdentityType.STAFFNO,
-                    "STAFF"));
+                    RegistrationIdentityType.STAFFNO));
         }
     }
 

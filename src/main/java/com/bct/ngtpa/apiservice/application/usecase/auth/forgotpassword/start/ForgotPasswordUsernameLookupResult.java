@@ -6,26 +6,22 @@ public record ForgotPasswordUsernameLookupResult(
         ForgotPasswordUsernameLookupStatus status,
         String customerId,
         String userId,
-        RegistrationIdentityType identityType,
-        String tasIdType) {
+        RegistrationIdentityType identityType) {
 
     public static ForgotPasswordUsernameLookupResult confirmed(
             String customerId,
             String userId,
-            RegistrationIdentityType identityType,
-            String tasIdType) {
+            RegistrationIdentityType identityType) {
         return new ForgotPasswordUsernameLookupResult(
                 ForgotPasswordUsernameLookupStatus.CONFIRMED,
                 customerId,
                 userId,
-                identityType,
-                tasIdType);
+                identityType);
     }
 
     public static ForgotPasswordUsernameLookupResult notFound() {
         return new ForgotPasswordUsernameLookupResult(
                 ForgotPasswordUsernameLookupStatus.NOT_FOUND,
-                null,
                 null,
                 null,
                 null);
@@ -36,14 +32,12 @@ public record ForgotPasswordUsernameLookupResult(
                 ForgotPasswordUsernameLookupStatus.SYSTEM_FAILED,
                 null,
                 null,
-                null,
                 null);
     }
 
     @Override
     public String toString() {
         return "ForgotPasswordUsernameLookupResult[status=" + status
-                + ", customerId=<redacted>, userId=<redacted>, identityType=" + identityType
-                + ", tasIdType=<redacted>]";
+                + ", customerId=<redacted>, userId=<redacted>, identityType=" + identityType + "]";
     }
 }
