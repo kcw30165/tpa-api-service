@@ -46,6 +46,7 @@ class ForgotPasswordPublicResponseContractSubtask008FailFirstTest {
                                 WorkflowNextStep.ENTER_USERNAME,
                                 null,
                                 null,
+                                null,
                                 List.of(new StartForgotPasswordError(
                                         "err.forgotpassword.username.notFound",
                                         "username",
@@ -167,6 +168,7 @@ class ForgotPasswordPublicResponseContractSubtask008FailFirstTest {
         var result = new StartForgotPasswordResult(
                 StartForgotPasswordResultStatus.USERNAME_NOT_FOUND,
                 WorkflowNextStep.ENTER_USERNAME,
+                null,
                 null,
                 null,
                 List.of(new StartForgotPasswordError(

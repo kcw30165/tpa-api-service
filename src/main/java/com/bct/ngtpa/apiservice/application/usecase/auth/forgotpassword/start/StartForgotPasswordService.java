@@ -181,18 +181,20 @@ public final class StartForgotPasswordService implements StartForgotPasswordUseC
                         now,
                         started.expiresInSeconds(),
                         command.correlationId()))
-                        .flatMap(csrf -> idempotencyPort.markCompleted(new ForgotPasswordIdempotencyCompleteCommand(
+                .flatMap(csrf -> idempotencyPort.markCompleted(new ForgotPasswordIdempotencyCompleteCommand(
                                 ForgotPasswordIdempotencyAction.START,
                                 command.idempotencyKey(),
                                 requestHash,
                                 new ForgotPasswordIdempotencyReplaySnapshot(
                                         StartForgotPasswordResultStatus.STARTED.name(),
                                         started.session().authFlowSessionId().value(),
-                                        Map.of()),
+                                        Map.of(),
+                                        lookupResult.tasIdType()),
                                 Instant.now(clock),
                                 command.idempotencyTtl()))
                                 .thenReturn(success(
                                         StartForgotPasswordResultStatus.STARTED,
+                                        lookupResult.tasIdType(),
                                         started.session().authFlowSessionId().value(),
                                         csrf.rawToken(),
                                         null))))
@@ -223,6 +225,7 @@ public final class StartForgotPasswordService implements StartForgotPasswordUseC
                 command.correlationId()))
                 .map(csrf -> success(
                         StartForgotPasswordResultStatus.COMPLETED_REPLAY,
+                        snapshot == null ? null : snapshot.identityType(),
                         sessionId.value(),
                         csrf.rawToken(),
                         snapshot))
@@ -246,6 +249,7 @@ public final class StartForgotPasswordService implements StartForgotPasswordUseC
 
     private StartForgotPasswordResult success(
             StartForgotPasswordResultStatus status,
+            String identityType,
             String authFlowSessionId,
             String csrfToken,
             ForgotPasswordIdempotencyReplaySnapshot replaySnapshot) {
@@ -253,6 +257,7 @@ public final class StartForgotPasswordService implements StartForgotPasswordUseC
                 status,
                 WorkflowNextStep.ENTER_ID,
                 csrfToken,
+                identityType,
                 authFlowSessionId,
                 List.of(),
                 replaySnapshot);
@@ -262,6 +267,7 @@ public final class StartForgotPasswordService implements StartForgotPasswordUseC
         return new StartForgotPasswordResult(
                 StartForgotPasswordResultStatus.USERNAME_NOT_FOUND,
                 WorkflowNextStep.ENTER_USERNAME,
+                null,
                 null,
                 null,
                 List.of(new StartForgotPasswordError(ERROR_USERNAME_NOT_FOUND, "username", null)),
@@ -274,6 +280,7 @@ public final class StartForgotPasswordService implements StartForgotPasswordUseC
                 WorkflowNextStep.RESTART_FLOW,
                 null,
                 null,
+                null,
                 List.of(new StartForgotPasswordError(ForgotPasswordErrorKey.AUTH_FLOW_INVALID.value(), "PAGE", null)),
                 null);
     }
@@ -284,12 +291,13 @@ public final class StartForgotPasswordService implements StartForgotPasswordUseC
                 WorkflowNextStep.NONE,
                 null,
                 null,
+                null,
                 List.of(new StartForgotPasswordError(ERROR_SYSTEM_UNAVAILABLE, "PAGE", null)),
                 null);
     }
 
     private StartForgotPasswordResult simple(StartForgotPasswordResultStatus status) {
-        return new StartForgotPasswordResult(status, WorkflowNextStep.NONE, null, null, List.of(), null);
+        return new StartForgotPasswordResult(status, WorkflowNextStep.NONE, null, null, null, List.of(), null);
     }
 
     private boolean isSessionReplacementConflict(Throwable error) {

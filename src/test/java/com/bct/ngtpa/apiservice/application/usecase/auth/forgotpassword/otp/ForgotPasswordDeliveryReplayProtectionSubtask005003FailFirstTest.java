@@ -27,7 +27,8 @@ class ForgotPasswordDeliveryReplayProtectionSubtask005003FailFirstTest {
     @Test
     void replaySnapshotRemainsOpaqueOnly() {
         assertThat(Arrays.stream(ForgotPasswordIdempotencyReplaySnapshot.class.getRecordComponents())
-                .map(RecordComponent::getName)).containsExactly("outcomeCode", "opaqueCommitRef", "safeHeaders");
+                .map(RecordComponent::getName))
+                .containsExactly("outcomeCode", "opaqueCommitRef", "safeHeaders", "identityType");
     }
 
     @Test

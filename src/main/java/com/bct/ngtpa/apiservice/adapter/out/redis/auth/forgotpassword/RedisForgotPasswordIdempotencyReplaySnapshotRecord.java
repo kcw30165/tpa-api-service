@@ -5,5 +5,6 @@ import java.util.Map;
 record RedisForgotPasswordIdempotencyReplaySnapshotRecord(
         String outcomeCode,
         String opaqueCommitRef,
-        Map<String, String> safeHeaders) {
+        Map<String, String> safeHeaders,
+        String identityType) {
 }
