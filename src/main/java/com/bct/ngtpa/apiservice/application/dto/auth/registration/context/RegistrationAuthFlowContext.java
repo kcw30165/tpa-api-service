@@ -1,11 +1,12 @@
 package com.bct.ngtpa.apiservice.application.dto.auth.registration.context;
 
+import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
-import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationIdentityType;
+
 import java.util.Objects;
 
 public record RegistrationAuthFlowContext(
-        RegistrationIdentityType identityType,
+        MemberIdentityType identityType,
         String identityValue,
         String dateOfBirth,
         RegistrationContactType contactType,

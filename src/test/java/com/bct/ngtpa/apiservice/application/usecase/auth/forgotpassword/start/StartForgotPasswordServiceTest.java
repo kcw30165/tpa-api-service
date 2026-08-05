@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContextAttributeNames;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowEncryptedContext;
@@ -17,7 +18,6 @@ import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyStatus;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyUnknownOutcomeCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordRequestHash;
-import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionConcurrencyMode;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionConcurrencyPolicy;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionId;
@@ -239,10 +239,10 @@ class StartForgotPasswordServiceTest {
                     true,
                     true,
                     Map.of(
-                            "GPN", RegistrationIdentityType.GPN,
-                            "GPFS", RegistrationIdentityType.GPFS,
-                            "STAFF", RegistrationIdentityType.STAFFNO,
-                            "ID", RegistrationIdentityType.ID));
+                            "GPN", MemberIdentityType.GPN,
+                            "GPFS", MemberIdentityType.GPFS,
+                            "STAFF", MemberIdentityType.STAFFNO,
+                            "ID", MemberIdentityType.ID));
         }
 
         private void seedReplaySession(String authFlowSessionId, String csrfToken) {
@@ -337,7 +337,7 @@ class StartForgotPasswordServiceTest {
             return Mono.just(ForgotPasswordUsernameLookupResult.confirmed(
                     "cust-db01",
                     "tas-user-01",
-                    RegistrationIdentityType.STAFFNO));
+                    MemberIdentityType.STAFFNO));
         }
     }
 

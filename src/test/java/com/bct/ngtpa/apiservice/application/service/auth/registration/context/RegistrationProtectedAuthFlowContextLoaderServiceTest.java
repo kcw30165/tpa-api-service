@@ -2,8 +2,8 @@ package com.bct.ngtpa.apiservice.application.service.auth.registration.context;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
-import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContextAttributeNames;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowEncryptedContext;
@@ -49,7 +49,7 @@ class RegistrationProtectedAuthFlowContextLoaderServiceTest {
                     assertThat(result.status()).isEqualTo(RegistrationProtectedAuthFlowContextStatus.VALID);
                     assertThat(result.activeOtpChallengeId()).isEqualTo("otp_abc");
                     assertThat(result.maskedDestination()).isEqualTo("m****r@example.com");
-                    assertThat(result.registrationContext().identityType()).isEqualTo(RegistrationIdentityType.ID);
+                    assertThat(result.registrationContext().identityType()).isEqualTo(MemberIdentityType.ID);
                     assertThat(result.toString()).doesNotContain("3024102", "member@example.com", "otp_abc");
                 })
                 .verifyComplete();
@@ -153,7 +153,7 @@ class RegistrationProtectedAuthFlowContextLoaderServiceTest {
         @Override
         public RegistrationAuthFlowContext unprotect(RegistrationAuthFlowEncryptedContext encryptedContext) {
             unprotectCalled = true;
-            return new RegistrationAuthFlowContext(RegistrationIdentityType.ID, "3024102", "04/04/1982",
+            return new RegistrationAuthFlowContext(MemberIdentityType.ID, "3024102", "04/04/1982",
                     RegistrationContactType.EMAIL, "member@example.com");
         }
     }

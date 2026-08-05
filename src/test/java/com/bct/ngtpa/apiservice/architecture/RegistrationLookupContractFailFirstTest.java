@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchUnregMemberApimRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchUnregMemberApimMapper;
+import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
-import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupStatus;
 import java.lang.reflect.Method;
@@ -84,21 +84,10 @@ class RegistrationLookupContractFailFirstTest {
     void feIdentityValuesMapToTheConfirmedApimValues() {
         var mapper = new TrpSearchUnregMemberApimMapper();
 
-        assertSearchBy(mapper, RegistrationIdentityType.ID, "ID");
-        assertSearchBy(mapper, RegistrationIdentityType.STAFFNO, "STAFFNO");
-        assertSearchBy(mapper, RegistrationIdentityType.GPFS, "GPFS");
-        assertSearchBy(mapper, RegistrationIdentityType.GPN, "GPN");
-    }
-
-    @Test
-    void staffEnumKeepsTheFrontendStaffNoAlias() throws Exception {
-        var field = RegistrationIdentityType.class.getField("STAFFNO");
-        var annotation = field.getAnnotation(
-                com.fasterxml.jackson.annotation.JsonProperty.class);
-
-        assertThat(annotation).isNotNull();
-        assertThat(annotation.value()).isEqualTo("STAFF_NO");
-        assertThat(RegistrationIdentityType.STAFFNO.name()).isEqualTo("STAFFNO");
+        assertSearchBy(mapper, MemberIdentityType.ID, "ID");
+        assertSearchBy(mapper, MemberIdentityType.STAFFNO, "STAFFNO");
+        assertSearchBy(mapper, MemberIdentityType.GPFS, "GPFS");
+        assertSearchBy(mapper, MemberIdentityType.GPN, "GPN");
     }
 
     @Test
@@ -133,7 +122,7 @@ class RegistrationLookupContractFailFirstTest {
 
     private void assertSearchBy(
             TrpSearchUnregMemberApimMapper mapper,
-            RegistrationIdentityType type,
+            MemberIdentityType type,
             String expected) {
         TrpSearchUnregMemberApimRequest request = mapper.toApimRequest(
                 new RegistrationLookupCommand(

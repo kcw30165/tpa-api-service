@@ -2,8 +2,10 @@ package com.bct.ngtpa.apiservice.application.dto.auth.registration;
 
 import java.util.Objects;
 
+import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
+
 public record RegistrationLookupCommand(
-        RegistrationIdentityType identityType,
+        MemberIdentityType identityType,
         String identityValue,
         String dateOfBirth,
         RegistrationContactType contactType,

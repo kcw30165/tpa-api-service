@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.TrpChkCustIdApimEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpChkCustIdApimDataItem;
-import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationIdentityType;
+import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.ForgotPasswordUsernameLookupStatus;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -12,10 +12,10 @@ import org.junit.jupiter.api.Test;
 class TrpChkCustIdForgotPasswordResultMapperTest {
     private final TrpChkCustIdForgotPasswordResultMapper mapper = new TrpChkCustIdForgotPasswordResultMapper(
             Map.of(
-                    "GPN", RegistrationIdentityType.GPN,
-                    "GPFS", RegistrationIdentityType.GPFS,
-                    "STAFFNO", RegistrationIdentityType.STAFFNO,
-                    "ID", RegistrationIdentityType.ID));
+                    "GPN", MemberIdentityType.GPN,
+                    "GPFS", MemberIdentityType.GPFS,
+                    "STAFFNO", MemberIdentityType.STAFFNO,
+                    "ID", MemberIdentityType.ID));
 
     @Test
     void mapsIsExistTrueWithRequiredFieldsToConfirmedLookup() {
@@ -26,7 +26,7 @@ class TrpChkCustIdForgotPasswordResultMapperTest {
         assertThat(result.status()).isEqualTo(ForgotPasswordUsernameLookupStatus.CONFIRMED);
         assertThat(result.customerId()).isEqualTo("db01");
         assertThat(result.userId()).isEqualTo("3010008");
-        assertThat(result.identityType()).isEqualTo(RegistrationIdentityType.STAFFNO);
+        assertThat(result.identityType()).isEqualTo(MemberIdentityType.STAFFNO);
         assertThat(result.toString()).doesNotContain("db01", "3010008");
     }
 
@@ -37,7 +37,7 @@ class TrpChkCustIdForgotPasswordResultMapperTest {
                 java.util.List.of(new TrpChkCustIdApimDataItem("db01", true, null, "3010008", "ID"))));
 
         assertThat(result.status()).isEqualTo(ForgotPasswordUsernameLookupStatus.CONFIRMED);
-        assertThat(result.identityType()).isEqualTo(RegistrationIdentityType.ID);
+        assertThat(result.identityType()).isEqualTo(MemberIdentityType.ID);
     }
 
     @Test

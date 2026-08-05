@@ -9,6 +9,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.*;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.ApimRegistrationLookupAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.*;
+import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.*;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
 import com.bct.ngtpa.apiservice.application.port.out.FailureEventPort;
@@ -54,10 +55,10 @@ class RegistrationLookupProductionPathIntegrationTest {
                         "STAFF_NO", "12345678", "31/01/1980",
                         "member@example.com", null, "cap_123456"));
         assertThat(validation.valid()).isTrue();
-        assertThat(validation.command().identityType()).isEqualTo(RegistrationIdentityType.STAFFNO);
+        assertThat(validation.command().identityType()).isEqualTo(MemberIdentityType.STAFFNO);
 
         respond("", List.of(validItem()));
-        adapter.searchUnregisteredMember(command(RegistrationIdentityType.STAFFNO)).block();
+        adapter.searchUnregisteredMember(command(MemberIdentityType.STAFFNO)).block();
 
         ArgumentCaptor<Object> request = ArgumentCaptor.forClass(Object.class);
         verify(webClient).post(eq("/ws/NGTPA/v1/TRPSearchUnregMember"), request.capture());
@@ -123,7 +124,7 @@ class RegistrationLookupProductionPathIntegrationTest {
     }
 
     private void expectFailure(RegistrationLookupDownstreamException.Reason reason, String requestId) {
-        StepVerifier.create(adapter.searchUnregisteredMember(command(RegistrationIdentityType.GPFS))
+        StepVerifier.create(adapter.searchUnregisteredMember(command(MemberIdentityType.GPFS))
                 .contextWrite(Context.of(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, requestId)))
                 .expectErrorSatisfies(error -> {
                     assertThat(error).isInstanceOf(RegistrationLookupDownstreamException.class);
@@ -137,7 +138,7 @@ class RegistrationLookupProductionPathIntegrationTest {
         verify(webClient, times(1)).post(eq("/ws/NGTPA/v1/TRPSearchUnregMember"), any());
     }
 
-    private RegistrationLookupCommand command(RegistrationIdentityType type) {
+    private RegistrationLookupCommand command(MemberIdentityType type) {
         return new RegistrationLookupCommand(
                 type, "1234567890", "31/01/1980",
                 RegistrationContactType.EMAIL, "member@example.com");

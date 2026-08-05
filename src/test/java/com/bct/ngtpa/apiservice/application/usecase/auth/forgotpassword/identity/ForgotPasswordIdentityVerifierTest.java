@@ -2,8 +2,9 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identit
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationIdentityType;
 import org.junit.jupiter.api.Test;
+
+import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 
 class ForgotPasswordIdentityVerifierTest {
 
@@ -12,7 +13,7 @@ class ForgotPasswordIdentityVerifierTest {
     @Test
     void mapsFrontendStaffNumberType() {
         assertThat(verifier.mapPublicIdentityType("STAFF_NO"))
-                .isEqualTo(RegistrationIdentityType.STAFFNO);
+                .isEqualTo(MemberIdentityType.STAFFNO);
     }
 
     @Test

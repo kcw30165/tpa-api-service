@@ -3,8 +3,9 @@ package com.bct.ngtpa.apiservice.application.dto.auth.registration.context;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
-import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationIdentityType;
+
 import org.junit.jupiter.api.Test;
 
 class RegistrationAuthFlowContextModelTest {
@@ -12,17 +13,17 @@ class RegistrationAuthFlowContextModelTest {
     @Test
     void registrationAuthFlowContextRequiresRequiredFields() {
         var context = new RegistrationAuthFlowContext(
-                RegistrationIdentityType.ID,
+                MemberIdentityType.ID,
                 "3024102",
                 "04/04/1982",
                 RegistrationContactType.EMAIL,
                 "SHMW.ZIVIXV@HCGLT.NLA");
 
-        assertThat(context.identityType()).isEqualTo(RegistrationIdentityType.ID);
+        assertThat(context.identityType()).isEqualTo(MemberIdentityType.ID);
         assertThat(context.contactType()).isEqualTo(RegistrationContactType.EMAIL);
         assertThatThrownBy(() -> new RegistrationAuthFlowContext(null, "3024102", "04/04/1982", RegistrationContactType.EMAIL, "x@y.test"))
                 .isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> new RegistrationAuthFlowContext(RegistrationIdentityType.ID, " ", "04/04/1982", RegistrationContactType.EMAIL, "x@y.test"))
+        assertThatThrownBy(() -> new RegistrationAuthFlowContext(MemberIdentityType.ID, " ", "04/04/1982", RegistrationContactType.EMAIL, "x@y.test"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("identityValue");
     }
@@ -30,7 +31,7 @@ class RegistrationAuthFlowContextModelTest {
     @Test
     void registrationAuthFlowContextToStringRedactsPii() {
         var context = new RegistrationAuthFlowContext(
-                RegistrationIdentityType.ID,
+                MemberIdentityType.ID,
                 "3024102",
                 "04/04/1982",
                 RegistrationContactType.EMAIL,

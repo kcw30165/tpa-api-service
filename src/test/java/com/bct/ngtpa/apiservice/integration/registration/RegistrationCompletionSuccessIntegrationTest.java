@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
@@ -44,7 +45,7 @@ class RegistrationCompletionSuccessIntegrationTest {
                 when(context.load(any())).thenReturn(Mono.just(RegistrationProtectedAuthFlowContextResult.valid(
                                 "otp-safe",
                                 "m***@example.com",
-                                new RegistrationAuthFlowContext(RegistrationIdentityType.ID, "user-safe",
+                                new RegistrationAuthFlowContext(MemberIdentityType.ID, "user-safe",
                                                 "01/01/1980", RegistrationContactType.EMAIL, "member@example.com"))));
                 when(expiry.refresh(eq(SID), any())).thenAnswer(i -> Mono.just(state));
                 when(sessions.load(SID)).thenAnswer(i -> Mono.just(Optional.of(state)));

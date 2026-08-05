@@ -1,6 +1,6 @@
 package com.bct.ngtpa.apiservice.application.service.auth.registration;
 
-import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationIdentityType;
+import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationStartCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationStartContact;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationStartInput;
@@ -20,7 +20,7 @@ public class RegistrationStartValidator {
 
     public RegistrationStartValidationResult validate(RegistrationStartInput input) {
         List<RegistrationStartValidationError> errors = new ArrayList<>();
-        RegistrationIdentityType identityType = parseIdentityType(input == null ? null : input.identityType(), errors);
+        MemberIdentityType identityType = parseIdentityType(input == null ? null : input.identityType(), errors);
         String identityValue = normalize(input == null ? null : input.identityValue());
         String dateOfBirth = normalize(input == null ? null : input.dateOfBirth());
         String email = RegistrationContactDeriver.normalizeEmail(input == null ? null : input.email());
@@ -70,7 +70,7 @@ public class RegistrationStartValidator {
                 captchaChallengeId));
     }
 
-    private static RegistrationIdentityType parseIdentityType(String raw, List<RegistrationStartValidationError> errors) {
+    private static MemberIdentityType parseIdentityType(String raw, List<RegistrationStartValidationError> errors) {
         String value = normalize(raw);
         if (value.isBlank()) {
             errors.add(error(RegistrationErrorKey.REGISTRATION_IDENTITYTYPE_INVALID, "identityType"));
@@ -78,8 +78,8 @@ public class RegistrationStartValidator {
         }
         try {
             return "STAFF_NO".equals(value)
-                    ? RegistrationIdentityType.STAFFNO
-                    : RegistrationIdentityType.valueOf(value);
+                    ? MemberIdentityType.STAFFNO
+                    : MemberIdentityType.valueOf(value);
         } catch (IllegalArgumentException exception) {
             errors.add(error(RegistrationErrorKey.REGISTRATION_IDENTITYTYPE_INVALID, "identityType"));
             return null;

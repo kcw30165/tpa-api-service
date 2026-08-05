@@ -1,7 +1,8 @@
 package com.bct.ngtpa.apiservice.application.service.auth.registration;
 
-import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationIdentityType;
 import java.util.regex.Pattern;
+
+import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 
 final class RegistrationIdentityValueValidator {
     private static final Pattern GPN = Pattern.compile("^[0-9]{8}$");
@@ -12,7 +13,7 @@ final class RegistrationIdentityValueValidator {
     private RegistrationIdentityValueValidator() {
     }
 
-    static boolean isValid(RegistrationIdentityType type, String value) {
+    static boolean isValid(MemberIdentityType type, String value) {
         if (type == null || value == null || value.trim().isBlank()) {
             return false;
         }

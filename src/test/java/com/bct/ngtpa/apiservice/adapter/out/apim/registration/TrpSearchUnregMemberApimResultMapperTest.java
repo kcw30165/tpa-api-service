@@ -5,8 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchUnregMemberApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchUnregMemberApimResultMapper;
+import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
-import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupDownstreamException;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupStatus;
@@ -93,7 +93,7 @@ class TrpSearchUnregMemberApimResultMapperTest {
 
     private static RegistrationLookupCommand emailCommand() {
         return new RegistrationLookupCommand(
-                RegistrationIdentityType.ID,
+                MemberIdentityType.ID,
                 "A1234567",
                 "01/01/1970",
                 RegistrationContactType.EMAIL,
@@ -102,7 +102,7 @@ class TrpSearchUnregMemberApimResultMapperTest {
 
     private static RegistrationLookupCommand mobileCommand() {
         return new RegistrationLookupCommand(
-                RegistrationIdentityType.ID,
+                MemberIdentityType.ID,
                 "A1234567",
                 "01/01/1970",
                 RegistrationContactType.MOBILE,

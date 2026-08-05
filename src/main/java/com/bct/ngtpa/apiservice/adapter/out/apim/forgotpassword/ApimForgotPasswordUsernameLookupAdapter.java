@@ -3,7 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.mapper.TrpChkCustIdForgotPasswordResultMapper;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.SharedApimTrpChkCustIdTransport;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpChkCustIdApimRequest;
-import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationIdentityType;
+import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordUsernameLookupPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.ForgotPasswordUsernameLookupResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordUsernameLookupCommand;
@@ -22,7 +22,7 @@ public class ApimForgotPasswordUsernameLookupAdapter implements ForgotPasswordUs
 
     public ApimForgotPasswordUsernameLookupAdapter(
             SharedApimTrpChkCustIdTransport transport,
-            Map<String, RegistrationIdentityType> tasToPublicIdentityTypeMapping) {
+            Map<String, MemberIdentityType> tasToPublicIdentityTypeMapping) {
         this.transport = Objects.requireNonNull(transport, "transport must not be null");
         this.resultMapper = new TrpChkCustIdForgotPasswordResultMapper(tasToPublicIdentityTypeMapping);
     }
