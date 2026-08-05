@@ -57,6 +57,7 @@ class RedisForgotPasswordIdempotencyAdapterTest {
                     assertThat(result.outcome()).isEqualTo(ForgotPasswordIdempotencyStartOutcome.COMPLETED_REPLAY);
                     assertThat(result.record().replaySnapshot()).isNotNull();
                     assertThat(result.record().replaySnapshot().safeHeaders()).containsEntry("X-Request-Id", "req-1");
+                    assertThat(result.record().replaySnapshot().identityType()).isEqualTo("STAFF");
                 })
                 .verifyComplete();
 
@@ -134,7 +135,7 @@ class RedisForgotPasswordIdempotencyAdapterTest {
                 ForgotPasswordIdempotencyAction.START,
                 new ForgotPasswordIdempotencyKey("idem_fp_123"),
                 new ForgotPasswordRequestHash(hash),
-                new ForgotPasswordIdempotencyReplaySnapshot("STARTED", "afs_existing", Map.of("X-Request-Id", "req-1")),
+                new ForgotPasswordIdempotencyReplaySnapshot("STARTED", "afs_existing", Map.of("X-Request-Id", "req-1"), "STAFF"),
                 NOW.plusSeconds(10),
                 Duration.ofMinutes(10));
     }

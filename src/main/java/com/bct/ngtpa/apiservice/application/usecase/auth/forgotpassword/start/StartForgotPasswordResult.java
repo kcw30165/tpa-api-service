@@ -9,6 +9,7 @@ public record StartForgotPasswordResult(
         StartForgotPasswordResultStatus status,
         WorkflowNextStep nextStep,
         String csrfToken,
+        String identityType,
         String authFlowSessionId,
         List<StartForgotPasswordError> errors,
         ForgotPasswordIdempotencyReplaySnapshot replaySnapshot) {
@@ -21,7 +22,8 @@ public record StartForgotPasswordResult(
     @Override
     public String toString() {
         return "StartForgotPasswordResult[status=" + status + ", nextStep=" + nextStep
-                + ", csrfToken=<redacted>, authFlowSessionId=<redacted>, errors=" + errors
+                + ", csrfToken=<redacted>, identityType=" + identityType
+                + ", authFlowSessionId=<redacted>, errors=" + errors
                 + ", replaySnapshot=<redacted>]";
     }
 }

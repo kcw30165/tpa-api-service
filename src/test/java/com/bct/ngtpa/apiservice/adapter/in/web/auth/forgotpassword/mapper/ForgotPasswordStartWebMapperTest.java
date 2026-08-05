@@ -23,6 +23,7 @@ class ForgotPasswordStartWebMapperTest {
                         WorkflowNextStep.NONE,
                         null,
                         null,
+                        null,
                         List.of(new StartForgotPasswordError(
                                 "err.workflow.system.unavailable",
                                 "PAGE",
@@ -46,6 +47,7 @@ class ForgotPasswordStartWebMapperTest {
                         WorkflowNextStep.ENTER_USERNAME,
                         null,
                         null,
+                        null,
                         List.of(new StartForgotPasswordError("err.forgotpassword.username.notFound", "username", null)),
                         null),
                 "en");
@@ -65,6 +67,7 @@ class ForgotPasswordStartWebMapperTest {
                 new StartForgotPasswordResult(
                         StartForgotPasswordResultStatus.AUTH_FLOW_INVALID,
                         WorkflowNextStep.RESTART_FLOW,
+                        null,
                         null,
                         null,
                         List.of(new StartForgotPasswordError(

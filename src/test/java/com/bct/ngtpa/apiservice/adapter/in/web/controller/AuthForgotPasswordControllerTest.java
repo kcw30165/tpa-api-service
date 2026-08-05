@@ -37,6 +37,7 @@ class AuthForgotPasswordControllerTest {
                     StartForgotPasswordResultStatus.STARTED,
                     com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep.ENTER_ID,
                     "csrf_secret",
+                    "STAFF",
                     "afs_secret",
                     List.of(),
                     null));
@@ -57,6 +58,7 @@ class AuthForgotPasswordControllerTest {
                 .assertNext(entity -> {
                     assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK);
                     assertThat(entity.getBody().result().data().csrfToken()).isEqualTo("csrf_secret");
+                    assertThat(entity.getBody().result().data().identityType()).isEqualTo("STAFF");
                     assertThat(entity.toString()).doesNotContain("afs_secret", "Member01");
                 })
                 .verifyComplete();
@@ -71,6 +73,7 @@ class AuthForgotPasswordControllerTest {
         StartForgotPasswordUseCase useCase = value -> Mono.just(new StartForgotPasswordResult(
                 StartForgotPasswordResultStatus.USERNAME_NOT_FOUND,
                 com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep.ENTER_USERNAME,
+                null,
                 null,
                 null,
                 List.of(new StartForgotPasswordError("err.forgotpassword.username.notFound", "username", null)),
@@ -103,6 +106,7 @@ class AuthForgotPasswordControllerTest {
                 StartForgotPasswordUseCase useCase = value -> Mono.just(new StartForgotPasswordResult(
                                 StartForgotPasswordResultStatus.AUTH_FLOW_INVALID,
                                 WorkflowNextStep.RESTART_FLOW,
+                                null,
                                 null,
                                 null,
                                 List.of(new StartForgotPasswordError(ForgotPasswordErrorKey.AUTH_FLOW_INVALID.value(), "PAGE", null)),

@@ -45,7 +45,8 @@ public final class RedisForgotPasswordIdempotencyJsonMapper {
             snapshot = new RedisForgotPasswordIdempotencyReplaySnapshotRecord(
                     record.replaySnapshot().outcomeCode(),
                     record.replaySnapshot().opaqueCommitRef(),
-                    record.replaySnapshot().safeHeaders());
+                    record.replaySnapshot().safeHeaders(),
+                    record.replaySnapshot().identityType());
         }
         return new RedisForgotPasswordIdempotencyRecord(
                 record.action().name(),
@@ -65,7 +66,8 @@ public final class RedisForgotPasswordIdempotencyJsonMapper {
             snapshot = new ForgotPasswordIdempotencyReplaySnapshot(
                     record.replaySnapshot().outcomeCode(),
                     record.replaySnapshot().opaqueCommitRef(),
-                    record.replaySnapshot().safeHeaders() == null ? Map.of() : record.replaySnapshot().safeHeaders());
+                    record.replaySnapshot().safeHeaders() == null ? Map.of() : record.replaySnapshot().safeHeaders(),
+                    record.replaySnapshot().identityType());
         }
         return new ForgotPasswordIdempotencyRecord(
                 ForgotPasswordIdempotencyAction.valueOf(record.action()),

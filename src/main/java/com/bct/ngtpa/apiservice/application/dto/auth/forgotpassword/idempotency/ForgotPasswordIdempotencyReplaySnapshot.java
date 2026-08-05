@@ -9,7 +9,8 @@ import java.util.Set;
 public record ForgotPasswordIdempotencyReplaySnapshot(
         String outcomeCode,
         String opaqueCommitRef,
-        Map<String, String> safeHeaders) {
+        Map<String, String> safeHeaders,
+        String identityType) {
     private static final Set<String> BLOCKED_HEADERS = Set.of(
             "set-cookie",
             "cookie",
@@ -24,6 +25,14 @@ public record ForgotPasswordIdempotencyReplaySnapshot(
         }
         opaqueCommitRef = requireText(opaqueCommitRef, "opaqueCommitRef");
         safeHeaders = sanitizeHeaders(safeHeaders);
+        identityType = identityType == null || identityType.isBlank() ? null : identityType.trim();
+    }
+
+    public ForgotPasswordIdempotencyReplaySnapshot(
+            String outcomeCode,
+            String opaqueCommitRef,
+            Map<String, String> safeHeaders) {
+        this(outcomeCode, opaqueCommitRef, safeHeaders, null);
     }
 
     private static String requireText(String value, String field) {
@@ -62,6 +71,7 @@ public record ForgotPasswordIdempotencyReplaySnapshot(
     @Override
     public String toString() {
         return "ForgotPasswordIdempotencyReplaySnapshot[outcomeCode=" + outcomeCode
-                + ", opaqueCommitRef=<redacted>, safeHeaderCount=" + safeHeaders.size() + "]";
+                + ", opaqueCommitRef=<redacted>, safeHeaderCount=" + safeHeaders.size()
+                + ", identityType=" + (identityType == null ? "null" : "<redacted>") + "]";
     }
 }
