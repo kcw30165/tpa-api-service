@@ -135,10 +135,6 @@ auth-workflows:
       max-resend-attempts: 5
       invalidate-previous-on-resend: true
       reset-verify-attempts-on-resend: true
-      sms-template: "Your BCT forgot password verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
-      email-template:
-        subject: "BCT forgot password verification code"
-        body: "Your BCT forgot password verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
       localized-template:
         en:
           sms: "Your BCT forgot password verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
