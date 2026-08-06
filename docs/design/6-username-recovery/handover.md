@@ -2,11 +2,66 @@
 
 ## Current stage
 
-Task 001 (`IdempotencyHttpResponses` + `SystemHttpResponses`) is implemented and
-tested (uncommitted). The remaining shared helpers (`CookieHttpResponses`,
-`RequestHeaderHttpResponses`, `WorkflowHttpResponses`) and the full Username
-Recovery feature are not yet implemented. No existing auth workflow has been
-refactored.
+Task 002 (`HttpStatusClassification` + `HttpStatusClassificationOverride`) is
+implemented and tested (uncommitted).
+
+### Completed tasks
+
+| Task | Description | Status | Commit |
+|------|-------------|--------|--------|
+| 001 | `IdempotencyHttpResponses` + `SystemHttpResponses` | committed | `3e95814d` |
+| 002 | `HttpStatusClassification` + `HttpStatusClassificationOverride` | implemented, uncommitted | — |
+
+The remaining shared helpers (`CookieHttpResponses`, `RequestHeaderHttpResponses`,
+`WorkflowHttpResponses`) and the full Username Recovery feature are not yet
+implemented. No existing auth workflow has been refactored.
+
+## Task 002 completion
+
+### Requirements covered
+
+- **R002-01:** Exhaustive typed switch mapping all 11 `ApiStatus` values to `HttpStatus`. PASS.
+- **R002-02:** No default branch; every `ApiStatus` value explicitly handled. PASS.
+- **R002-03:** `DOWNSTREAM_REJECTED` and `DOWNSTREAM_ERROR` fail closed with `IllegalArgumentException`. PASS.
+- **R002-04:** Override enum contains exactly `CONFLICT` (409), `TOO_MANY_REQUESTS` (429), `FORBIDDEN` (403). PASS.
+- **R002-05:** `classify()` returns `HttpStatus` only; no response construction, logging, or side effects. PASS.
+- **R002-06:** Shared-versus-feature ownership boundary preserved; no feature types imported. PASS.
+- **R002-07:** No error-code strings, `WorkflowErrorKey`, `SharedWorkflowErrorKey`, or Username Recovery types. PASS.
+- **R002-08:** Stateless utility pattern matches existing `IdempotencyHttpResponses`/`SystemHttpResponses` style. PASS.
+
+### New files
+
+```
+src/main/java/…/web/response/HttpStatusClassification.java           (62 lines)
+src/main/java/…/web/response/HttpStatusClassificationOverride.java   (29 lines)
+src/test/java/…/web/response/HttpStatusClassificationTest.java       (106 lines)
+src/test/java/…/web/response/HttpStatusClassificationOverrideTest.java (48 lines)
+```
+
+### Validation performed
+
+| Validation | Result |
+|------------|--------|
+| Fail-first focused tests | exit 1 (compilation failure — production types absent) |
+| Focused tests (post-impl) | exit 0, 18 tests, 0 failures |
+| Cumulative shared-response regressions | exit 0, 26 tests, 0 failures |
+| Compile validation | exit 0, BUILD SUCCESS |
+| Architecture guard (PublicDownstreamStatusIsolationGuardTest) | exit 0, 3 tests, 0 failures |
+| `git diff --check` | clean (no whitespace errors) |
+| Full `mvn test` | NOT_RUN (not an approved milestone) |
+
+### Evidence directory
+
+```
+target/evidence/username-recovery/002-http-status-classification-20260806-230424/
+```
+
+### Status
+
+- Implementation complete, all files uncommitted.
+- No existing file modified; only the four approved new files.
+- `stash@{0}` preserved and untouched.
+- Baseline HEAD: `3e95814d` (unchanged; no commits made).
 
 ## Canonical workflow state
 
@@ -38,6 +93,8 @@ IdempotencyHttpResponses
 RequestHeaderHttpResponses
 WorkflowHttpResponses
 SystemHttpResponses
+HttpStatusClassification
+HttpStatusClassificationOverride
 ```
 
 ### Shared ownership
@@ -98,5 +155,5 @@ Other documents remain unchanged because this decision adds an implementation ar
 
 ## Next step
 
-Proceed to Task 002 (`http-status-classification`) after commit authorization
-is granted. Do not start Task 002 before commit.
+Proceed to Task 003 (`username-recovery-workflow-http-responses`) after Task 002
+commit authorization is granted. Do not start Task 003 before commit.
