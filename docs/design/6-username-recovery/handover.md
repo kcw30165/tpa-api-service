@@ -2,7 +2,11 @@
 
 ## Current stage
 
-The Username Recovery design baseline now includes an incremental generic HTTP-response foundation. No implementation has started, and no existing auth workflow is being refactored in this phase.
+Task 001 (`IdempotencyHttpResponses` + `SystemHttpResponses`) is implemented and
+tested (uncommitted). The remaining shared helpers (`CookieHttpResponses`,
+`RequestHeaderHttpResponses`, `WorkflowHttpResponses`) and the full Username
+Recovery feature are not yet implemented. No existing auth workflow has been
+refactored.
 
 ## Canonical workflow state
 
@@ -94,4 +98,5 @@ Other documents remain unchanged because this decision adds an implementation ar
 
 ## Next step
 
-Plan implementation subtasks beginning with generic HTTP-response helper tests and the Username Recovery web-contract harness.
+Proceed to Task 002 (`http-status-classification`) after commit authorization
+is granted. Do not start Task 002 before commit.
