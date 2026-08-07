@@ -2,9 +2,9 @@
 
 ## Current stage
 
-Task 004 (`WorkflowHttpResponses`) is implemented, tested, and reviewed
-(uncommitted). All four shared HTTP response helper tasks (001–004) are complete
-and ready for commit authorization.
+Task 005 (`UsernameRecoveryErrorKey`) is implemented and reviewed
+(uncommitted). Tasks 002–005 are uncommitted and ready for commit
+authorization.
 
 The full Username Recovery feature is not yet implemented. No existing auth
 workflow has been refactored.
@@ -17,6 +17,7 @@ workflow has been refactored.
 | 002 | `HttpStatusClassification` + `HttpStatusClassificationOverride` | implemented, uncommitted | — |
 | 003 | `CookieHttpResponses` + `RequestHeaderHttpResponses` | implemented, reviewed, uncommitted | — |
 | 004 | `WorkflowHttpResponses` | implemented, reviewed, uncommitted | — |
+| 005 | `UsernameRecoveryErrorKey` | implemented, reviewed, uncommitted | — |
 
 ## Task 003 completion
 
@@ -241,10 +242,75 @@ target/evidence/username-recovery/004-workflow-http-helpers-20260807-094159/
 
 All 20 evidence files (001–020) present and consistent with review findings.
 
+## Task 005 completion
+
+### Review verdict
+
+**PASS** — Independent DeepSeek V4 Pro review completed 2026-08-07. All
+checkpoints verified: branch and baseline HEAD match, exactly two-file
+allowlist, fail-first TDD (test-compile failure → production class → 7 tests
+green), seven approved error keys with complete design traceability, no missing
+or unapproved keys, no shared-key duplication, `WorkflowErrorKey` +
+`WorkflowKeyValidator` convention followed, no messages/HTTP status/ApiStatus/
+next-steps/DTOs/behavior embedded, no reflection/raw maps/unchecked casts/silent
+catches/logging, `git diff --check` clean, Maven Java 21.0.2.
+
+Non-blocking observations:
+1. Evidence file numbering groups related artifacts under shared prefixes
+   (`002-fail-first-*`) instead of the contract's sequential numbering — all
+   content is semantically complete.
+2. `ForgotPasswordErrorKey` uses an older pattern (no `WorkflowErrorKey`,
+   no `WorkflowKeyValidator`); `UsernameRecoveryErrorKey` correctly follows
+   the current `LoginErrorKey`/`RegistrationErrorKey`/`LogoutErrorKey` pattern.
+
+### Requirements covered
+
+- **R005-01:** Typed `UsernameRecoveryErrorKey` enum implements `WorkflowErrorKey` with exact two-file allowlist. PASS.
+- **R005-02:** Seven approved feature-specific error keys: `AUTH_FLOW_INVALID`, `CSRF_INVALID`, `REGISTRATION_REQUIRED`, `REQUEST_ALREADY_REQUESTED`, `SCHEME_REF_INVALID`, `VERIFICATION_FAILED`, `WORKFLOW_COMPLETED`. PASS.
+- **R005-03:** `VERIFICATION_FAILED` uses the exact design code string `err.usernamerecovery.verification.failed`. Remaining six correctly derived from design semantic descriptions using established naming convention. PASS.
+- **R005-04:** No shared idempotency/system/CSRF/transport keys duplicated. PASS.
+- **R005-05:** Uses `WorkflowKeyValidator.validate()` in constructor matching `LoginErrorKey`/`RegistrationErrorKey`/`LogoutErrorKey` pattern. PASS.
+- **R005-06:** No messages, HTTP statuses, `ApiStatus`, next steps, DTOs, APIM codes, or behavior embedded. PASS.
+- **R005-07:** No reflection, raw maps, unchecked casts, silent catches, or logging. PASS.
+- **R005-08:** Fail-first TDD: test written → compile failure → production enum created → 7 tests green. PASS.
+- **R005-09:** Every constant traced to approved design source; no unreferenced or placeholder key. PASS.
+
+### New files
+
+```
+src/main/java/…/workflow/UsernameRecoveryErrorKey.java       (23 lines)
+src/test/java/…/workflow/UsernameRecoveryErrorKeyTest.java   (111 lines)
+```
+
+### Validation performed
+
+| Validation | Result |
+|------------|--------|
+| Fail-first (focused) | exit 1 (test-compile: `package UsernameRecoveryErrorKey does not exist`) |
+| Focused (post-impl) | exit 0, 7 tests, 0 failures |
+| Cumulative regression (5 key suites) | exit 0, 24 tests, 0 failures |
+| `WorkflowKeyConventionTest` | exit 0, 7 tests, 0 failures |
+| `WorkflowKeyValidatorLoginErrorPrefixTest` | exit 0, 2 tests, 0 failures |
+| `WorkflowKeyValidatorRegistrationErrorPrefixTest` | exit 0, 3 tests, 0 failures |
+| `WorkflowKeyArchitectureGuardTest` | exit 0, 5 tests, 0 failures |
+| Key traceability audit | all 7 constants traced to design sources |
+| Architecture audit | Clean Architecture compliance, no forbidden patterns |
+| Security/contract audit | no secrets, no logging, safe validation messages |
+| `git diff --check` | clean (exit 0, no whitespace errors) |
+| Full `mvn test` | NOT_RUN (not an approved milestone) |
+
+### Evidence directory
+
+```
+target/evidence/username-recovery/005-username-recovery-error-keys-20260807-111310/
+```
+
+All evidence artifacts present and consistent with review findings.
+
 ## Next step
 
-Task 004 is implemented and reviewed (PASS_WITH_NONBLOCKING_NOTES). Proceed to
-commit authorization for Tasks 002, 003, and 004 (all uncommitted shared HTTP
-response helpers). Task 005 (`username-recovery-error-keys`) is
-`PROPOSED_NOT_AUTHORIZED`. Do not start Task 005 before commit and explicit
-authorization.
+Task 005 is implemented and reviewed (PASS). The following tasks are uncommitted
+and await Nick's commit authorization: Tasks 002, 003, 004, and 005.
+
+Task 006 (`domain-models`) is `PROPOSED_NOT_AUTHORIZED`. Do not start Task 006
+before commit and explicit authorization.
