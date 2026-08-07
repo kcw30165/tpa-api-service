@@ -2,8 +2,8 @@
 
 ## Current stage
 
-Task 002 (`HttpStatusClassification` + `HttpStatusClassificationOverride`) is
-implemented and tested (uncommitted).
+Task 003 (`CookieHttpResponses` + `RequestHeaderHttpResponses`) is
+implemented, tested, and reviewed (uncommitted).
 
 ### Completed tasks
 
@@ -11,49 +11,65 @@ implemented and tested (uncommitted).
 |------|-------------|--------|--------|
 | 001 | `IdempotencyHttpResponses` + `SystemHttpResponses` | committed | `3e95814d` |
 | 002 | `HttpStatusClassification` + `HttpStatusClassificationOverride` | implemented, uncommitted | — |
+| 003 | `CookieHttpResponses` + `RequestHeaderHttpResponses` | implemented, reviewed, uncommitted | — |
 
-The remaining shared helpers (`CookieHttpResponses`, `RequestHeaderHttpResponses`,
-`WorkflowHttpResponses`) and the full Username Recovery feature are not yet
-implemented. No existing auth workflow has been refactored.
+The remaining shared helper (`WorkflowHttpResponses`) and the full Username
+Recovery feature are not yet implemented. No existing auth workflow has been
+refactored.
 
-## Task 002 completion
+## Task 003 completion
+
+### Review verdict
+
+**PASS** — Independent DeepSeek V4 Pro review completed 2026-08-07. All
+checkpoints verified: fail-first TDD, changed-file allowlist, no
+`err.usernamerecovery.*` codes, no workflow-next-step semantics, no
+`Set-Cookie` output, no `missingRequestId()` duplication, no unsafe
+error-code string API, no reflection/raw maps/silent catches, no
+modification to Tasks 001/002/004 or existing auth workflows.
 
 ### Requirements covered
 
-- **R002-01:** Exhaustive typed switch mapping all 11 `ApiStatus` values to `HttpStatus`. PASS.
-- **R002-02:** No default branch; every `ApiStatus` value explicitly handled. PASS.
-- **R002-03:** `DOWNSTREAM_REJECTED` and `DOWNSTREAM_ERROR` fail closed with `IllegalArgumentException`. PASS.
-- **R002-04:** Override enum contains exactly `CONFLICT` (409), `TOO_MANY_REQUESTS` (429), `FORBIDDEN` (403). PASS.
-- **R002-05:** `classify()` returns `HttpStatus` only; no response construction, logging, or side effects. PASS.
-- **R002-06:** Shared-versus-feature ownership boundary preserved; no feature types imported. PASS.
-- **R002-07:** No error-code strings, `WorkflowErrorKey`, `SharedWorkflowErrorKey`, or Username Recovery types. PASS.
-- **R002-08:** Stateless utility pattern matches existing `IdempotencyHttpResponses`/`SystemHttpResponses` style. PASS.
+- **R003-01:** `CookieHttpResponses.missingCookie()` returns 401 UNAUTHORIZED + BUSINESS_REJECTED + `err.security.authentication.required` — identical generic pre-auth transport artifact pattern to `CsrfHttpResponses`. PASS.
+- **R003-02:** No `err.usernamerecovery.*` codes; uses only approved `ErrorCodes` constants. PASS.
+- **R003-03:** No `Set-Cookie` header; test confirms empty headers. PASS.
+- **R003-04:** No call to `AuthFlowCookieWriter`. PASS.
+- **R003-05:** `RequestHeaderHttpResponses.missingRequiredHeader(String target)` returns 400 BAD_REQUEST + VALIDATION_FAILED + `err.request.validation.failed` + caller-supplied header target. PASS.
+- **R003-06:** No `missingRequestId()` — `RequiredRequestIdWebFilter` owns this. PASS.
+- **R003-07:** No `missingSchemeRef()` — feature-owned semantics excluded. PASS.
+- **R003-08:** No Username Recovery next steps (`SELECT_ACCOUNT`, `RESTART_FLOW`, `RETURN_TO_LOGIN`). PASS.
+- **R003-09:** Uses typed `ApiError.field()` factory; no arbitrary error-code string API. PASS.
+- **R003-10:** No reflection, raw maps, unchecked casts, silent catches, or sensitive logging. PASS.
+- **R003-11:** Fail-first TDD: test written → compile failure → production class → test green. PASS.
+- **R003-12:** Generic `MutationResponse<T>` typing preserved. PASS.
 
 ### New files
 
 ```
-src/main/java/…/web/response/HttpStatusClassification.java           (62 lines)
-src/main/java/…/web/response/HttpStatusClassificationOverride.java   (29 lines)
-src/test/java/…/web/response/HttpStatusClassificationTest.java       (106 lines)
-src/test/java/…/web/response/HttpStatusClassificationOverrideTest.java (48 lines)
+src/main/java/…/web/response/CookieHttpResponses.java              (45 lines)
+src/main/java/…/web/response/RequestHeaderHttpResponses.java       (52 lines)
+src/test/java/…/web/response/CookieHttpResponsesTest.java          (80 lines)
+src/test/java/…/web/response/RequestHeaderHttpResponsesTest.java   (77 lines)
 ```
 
 ### Validation performed
 
 | Validation | Result |
 |------------|--------|
-| Fail-first focused tests | exit 1 (compilation failure — production types absent) |
-| Focused tests (post-impl) | exit 0, 18 tests, 0 failures |
-| Cumulative shared-response regressions | exit 0, 26 tests, 0 failures |
-| Compile validation | exit 0, BUILD SUCCESS |
-| Architecture guard (PublicDownstreamStatusIsolationGuardTest) | exit 0, 3 tests, 0 failures |
+| Cookie fail-first | exit 1 (compilation failure — production class absent) |
+| Cookie focused (post-impl) | exit 0, 4 tests, 0 failures |
+| Header fail-first | exit 1 (compilation failure — production class absent) |
+| Header focused (post-impl) | exit 0, 4 tests, 0 failures |
+| Cumulative shared-response regressions (6 classes) | exit 0, 29 tests, 0 failures |
+| Architecture guard tests (4 classes) | exit 0, 14 tests, 0 failures |
+| Security/contract grep audits | no forbidden patterns found |
 | `git diff --check` | clean (no whitespace errors) |
 | Full `mvn test` | NOT_RUN (not an approved milestone) |
 
 ### Evidence directory
 
 ```
-target/evidence/username-recovery/002-http-status-classification-20260806-230424/
+target/evidence/username-recovery/003-cookie-requestheader-http-helpers-20260807-011812/
 ```
 
 ### Status
@@ -61,7 +77,7 @@ target/evidence/username-recovery/002-http-status-classification-20260806-230424
 - Implementation complete, all files uncommitted.
 - No existing file modified; only the four approved new files.
 - `stash@{0}` preserved and untouched.
-- Baseline HEAD: `3e95814d` (unchanged; no commits made).
+- Baseline HEAD: `fb9d436c1c19afc6d82e1a9f943f71adeded5397` (unchanged; no commits made).
 
 ## Canonical workflow state
 
@@ -155,5 +171,7 @@ Other documents remain unchanged because this decision adds an implementation ar
 
 ## Next step
 
-Proceed to Task 003 (`username-recovery-workflow-http-responses`) after Task 002
-commit authorization is granted. Do not start Task 003 before commit.
+Task 003 is implemented and reviewed (PASS). Proceed to commit authorization
+for Tasks 002 and 003, then to Task 004 (`WorkflowHttpResponses`) —
+`PROPOSED_NOT_AUTHORIZED`. Do not start Task 004 before commit and explicit
+authorization.
