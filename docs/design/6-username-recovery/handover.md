@@ -2,8 +2,12 @@
 
 ## Current stage
 
-Task 003 (`CookieHttpResponses` + `RequestHeaderHttpResponses`) is
-implemented, tested, and reviewed (uncommitted).
+Task 004 (`WorkflowHttpResponses`) is implemented, tested, and reviewed
+(uncommitted). All four shared HTTP response helper tasks (001–004) are complete
+and ready for commit authorization.
+
+The full Username Recovery feature is not yet implemented. No existing auth
+workflow has been refactored.
 
 ### Completed tasks
 
@@ -12,10 +16,7 @@ implemented, tested, and reviewed (uncommitted).
 | 001 | `IdempotencyHttpResponses` + `SystemHttpResponses` | committed | `3e95814d` |
 | 002 | `HttpStatusClassification` + `HttpStatusClassificationOverride` | implemented, uncommitted | — |
 | 003 | `CookieHttpResponses` + `RequestHeaderHttpResponses` | implemented, reviewed, uncommitted | — |
-
-The remaining shared helper (`WorkflowHttpResponses`) and the full Username
-Recovery feature are not yet implemented. No existing auth workflow has been
-refactored.
+| 004 | `WorkflowHttpResponses` | implemented, reviewed, uncommitted | — |
 
 ## Task 003 completion
 
@@ -169,9 +170,81 @@ A future refactor must preserve current public contracts, compare old/new HTTP m
 
 Other documents remain unchanged because this decision adds an implementation architecture foundation without changing the approved public API, APIM contract, session semantics, or sequence flow.
 
+## Task 004 completion
+
+### Review verdict
+
+**PASS_WITH_NONBLOCKING_NOTES** — Independent DeepSeek V4 Pro review completed
+2026-08-07. All checkpoints verified: fail-first TDD, changed-file allowlist (2
+files), typed classification via Task 002 policy, exact body identity and
+generic `<T>` preservation, no first-error/error-string inference, no
+reflection/raw maps/unchecked casts/silent catches, no Username Recovery feature
+codes or Scheme-Ref semantics, no modifications to Tasks 001–003 or existing
+auth workflows, `git diff --check` clean, Maven Java 21.
+
+Non-blocking observation: fail-first test had a secondary compilation error in a
+private helper (`HttpStatus` vs `HttpStatusCode` return type) fixed alongside
+production implementation. Primary expected failure (missing class) was
+correctly captured. Trivial one-line fix; noted for TDD discipline only.
+
+### Requirements covered
+
+- **R004-01:** Typed `MutationResponse<T>` to `ResponseEntity` translation via
+  `HttpStatusClassification.classify(body.status())`. PASS.
+- **R004-02:** Supports override variant via
+  `HttpStatusClassification.classify(body.status(), override)`. PASS.
+- **R004-03:** Success-like statuses (SUCCESS, UPDATED, SUBMITTED, NO_CHANGE,
+  PENDING_APPROVAL, PARTIAL_SUCCESS) map to 200 OK. PASS.
+- **R004-04:** VALIDATION_FAILED → 400 BAD_REQUEST; BUSINESS_REJECTED → 422
+  UNPROCESSABLE_ENTITY; SYSTEM_ERROR → 503 SERVICE_UNAVAILABLE. PASS.
+- **R004-05:** Downstream unnormalized statuses
+  (DOWNSTREAM_REJECTED/DOWNSTREAM_ERROR) fail closed with
+  IllegalArgumentException. PASS.
+- **R004-06:** Typed overrides (CONFLICT → 409, TOO_MANY_REQUESTS → 429,
+  FORBIDDEN → 403) applied after normalization proof. PASS.
+- **R004-07:** Exact body identity preserved (isSameAs). PASS.
+- **R004-08:** Generic `<T>` type preserved across all paths. PASS.
+- **R004-09:** No headers added (typed policy carries none). PASS.
+- **R004-10:** Null inputs rejected with NullPointerException. PASS.
+- **R004-11:** Stateless final class, private constructor, static methods, no
+  Spring stereotype. PASS.
+- **R004-12:** No first-error or error-string status inference (never accesses
+  body.errors()). PASS.
+- **R004-13:** No reflection, raw maps, unchecked casts, arbitrary payload
+  inspection, or silent catches. PASS.
+- **R004-14:** No Username Recovery dependency (zero imports or string
+  references). PASS.
+
+### New files
+
+```
+src/main/java/…/web/response/WorkflowHttpResponses.java              (59 lines)
+src/test/java/…/web/response/WorkflowHttpResponsesTest.java         (176 lines)
+```
+
+### Validation performed
+
+| Validation | Result |
+|------------|--------|
+| Fail-first (focused) | exit 1 (compilation failure — production class absent) |
+| Focused (post-impl) | exit 0, 17 tests, 0 failures |
+| Cumulative shared-response regressions (8 suites) | exit 0, 51 tests, 0 failures |
+| Security/contract grep audits | no forbidden patterns found |
+| `git diff --check` | clean (exit 0, no whitespace errors) |
+| Full `mvn test` | NOT_RUN (not an approved milestone) |
+
+### Evidence directory
+
+```
+target/evidence/username-recovery/004-workflow-http-helpers-20260807-094159/
+```
+
+All 20 evidence files (001–020) present and consistent with review findings.
+
 ## Next step
 
-Task 003 is implemented and reviewed (PASS). Proceed to commit authorization
-for Tasks 002 and 003, then to Task 004 (`WorkflowHttpResponses`) —
-`PROPOSED_NOT_AUTHORIZED`. Do not start Task 004 before commit and explicit
+Task 004 is implemented and reviewed (PASS_WITH_NONBLOCKING_NOTES). Proceed to
+commit authorization for Tasks 002, 003, and 004 (all uncommitted shared HTTP
+response helpers). Task 005 (`username-recovery-error-keys`) is
+`PROPOSED_NOT_AUTHORIZED`. Do not start Task 005 before commit and explicit
 authorization.
