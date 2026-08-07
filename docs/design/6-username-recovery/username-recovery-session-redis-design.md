@@ -24,13 +24,13 @@ ACTIVE or PARTIALLY_REQUESTED
   -> EXPIRED
 ```
 
-`COMPLETED` means all registered candidates have delivery state `ACCEPTED`.
+`COMPLETED` means all registered candidates are `REQUESTED`.
 
 Completion check:
 
 ```text
 registeredCandidates is nonempty
-AND every registered candidate is ACCEPTED
+AND every registered candidate is REQUESTED
 ```
 
 For a result containing no registered candidate, prefer not to create a recovery session. If framework consistency requires one, create it directly as `COMPLETED`.
@@ -70,7 +70,7 @@ After sender acceptance:
 
 1. reacquire the session mutation boundary;
 2. confirm reservation ownership/idempotency operation;
-3. mark selected candidate `ACCEPTED`;
+3. mark selected candidate `REQUESTED`;
 4. count registered candidates and accepted registered candidates;
 5. set status to `COMPLETED` if counts match;
 6. persist candidate state, session status, revision, and replay snapshot consistently.
