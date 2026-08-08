@@ -2,16 +2,16 @@
 
 ## Current stage
 
-Task 014, **Redis Idempotency Adapter**, is implemented and independently reviewed as **PASS**. Its 13 production/test/resource files remain uncommitted pending the approved production commit.
+Task 015, **CSRF and Protected Session Integration**, is implemented, repaired, and independently reviewed as **PASS**. Its nine application/test files remain uncommitted pending the approved production commit.
 
-Tasks 001 through 013 are treated as committed predecessors. The verified Task 013 baseline for Task 014 is:
+Tasks 001 through 014 are committed predecessors. The verified Task 014 baseline for Task 015 is:
 
 ```text
-ecd06eef8035adf1e760e13fb1c7e1cd0f9e79fc
-feat(username-recovery): add idempotency persistence port
+029a66d6e9d5344c8904f73b37078d4eeaaaf78b
+feat(username-recovery): add Redis idempotency persistence
 ```
 
-Task 015 has not started. The full Username Recovery feature is not yet complete. Existing Login, Registration, Forgot Password, Captcha, and Logout workflows have not been migrated to the new Username Recovery response foundation.
+Task 016 has not started. The full Username Recovery feature is not yet complete. Existing Login, Registration, Forgot Password, Captcha, and Logout workflows have not been migrated to the new Username Recovery response foundation.
 
 ## Completed implementation sequence
 
@@ -30,7 +30,8 @@ Task 015 has not started. The full Username Recovery feature is not yet complete
 | 011 | Session persistence outbound ports | Committed after review repair |
 | 012 | Redis protected-session adapter | Committed after review repair |
 | 013 | Idempotency persistence outbound port | Committed after ownership-reference repair |
-| 014 | Redis idempotency adapter | **Approved, uncommitted** |
+| 014 | Redis idempotency adapter | Committed |
+| 015 | CSRF and protected-session reservation integration | **Approved after review repair, uncommitted** |
 
 ## Canonical workflow decisions
 
@@ -154,6 +155,68 @@ Feature Lua policy:
 - The transition script is justified because shared auth-flow scripts use whole-value CAS and session scripts use revision CAS, while idempotency completion must verify action, key, fingerprint, operation reference, and `IN_PROGRESS` state.
 - The transition preserves remaining expiry using `PTTL` to `PSETEX` and never extends retention.
 
+## Task 015 CSRF and protected-session boundary
+
+Task 015 adds an application-only reservation boundary with no Redis, HTTP, cookie, APIM, configuration, or delivery dependency.
+
+The integration:
+
+- loads through `UsernameRecoverySessionPort` using typed load outcomes;
+- rejects absent and expired sessions without mutation;
+- rejects terminal workflows before CSRF or candidate mutation;
+- accepts the raw CSRF token only as a service method parameter;
+- validates through the existing constant-time CSRF abstraction;
+- never stores the raw token in commands, results, fields, logs, exceptions, or string output;
+- resolves the opaque Scheme-Ref only inside the loaded session;
+- distinguishes invalid Scheme-Ref, registration required, already requested, and otherwise unavailable candidates;
+- reserves through the committed aggregate transition;
+- persists through expected-revision compare-and-set;
+- distinguishes revision conflict from persistence failure;
+- performs no automatic CAS retry.
+
+The review repair changed the result to a minimal outcome-only projection. `UsernameRecoveryReservationResult` no longer exposes the protected session or any accessor to session ID, CSRF hash, Scheme-Ref, username, destination, or sender reference.
+
+The review repair also removed the global exception-normalization behavior. Expected persistence errors are mapped at the session-port boundary to `SYSTEM_FAILED`, while unexpected programming defects remain eligible to reach the central exception boundary.
+
+### Task 015 review result
+
+**Verdict: PASS after review repair**
+
+Evidence directory:
+
+```text
+target/evidence/username-recovery/015-csrf-session-integration-20260808-225320/
+```
+
+Approved changed-file boundary:
+
+- 4 new production application files;
+- 4 new focused application test files;
+- 1 new architecture guard test;
+- no existing Java, Redis/Lua, APIM, configuration, YAML, web, or controller files modified.
+
+Validation:
+
+```text
+Initial focused suite:                  PASSED, 31 tests
+Initial cumulative regression:          PASSED, 192 tests
+Review-fix focused stage:               PASSED, Maven exit 0
+Review-fix cumulative regression stage: PASSED, Maven exit 0
+git diff --check:                       clean before repair review
+```
+
+Task 015 was validated using the controlled PowerShell Maven worker. Both repair stages completed with atomic `PASSED` results and Maven exit code `0`.
+
+### Approved Task 015 commit
+
+Stage only the nine approved Task 015 files and commit with:
+
+```text
+feat(username-recovery): integrate CSRF session reservation
+```
+
+After committing, verify the full Task 015 hash and use it as the `trackedBaselineHead` for Task 016.
+
 ## Task 014 review result
 
 **Verdict: PASS**
@@ -208,11 +271,13 @@ After committing, verify the full Task 014 hash and use that hash as the `tracke
 
 ## Next task
 
-Task 015 is expected to cover the next bounded Username Recovery security/session integration scope from the canonical implementation map. It must not begin until:
+Task 016 is the bounded configuration extension for Username Recovery. It must not begin until:
 
-1. Task 014 is committed and verified;
-2. coordinator state is updated with the full Task 014 hash;
-3. the Task 015 task package is installed and explicitly authorized.
+1. Task 015 is committed and verified;
+2. coordinator state records the full Task 015 hash;
+3. the Task 016 package is installed and explicitly authorized.
+
+Task 016 must add the Username Recovery configuration shape and delivery scenario integration without implementing start/request/cancel use cases or web endpoints.
 
 ## Deferred work and risks
 
