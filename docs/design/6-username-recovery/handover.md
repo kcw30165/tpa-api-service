@@ -2,107 +2,62 @@
 
 ## Current stage
 
-Task 005 (`UsernameRecoveryErrorKey`) is implemented and reviewed
-(uncommitted). Tasks 002–005 are uncommitted and ready for commit
-authorization.
+Task 014, **Redis Idempotency Adapter**, is implemented and independently reviewed as **PASS**. Its 13 production/test/resource files remain uncommitted pending the approved production commit.
 
-The full Username Recovery feature is not yet implemented. No existing auth
-workflow has been refactored.
+Tasks 001 through 013 are treated as committed predecessors. The verified Task 013 baseline for Task 014 is:
 
-### Completed tasks
-
-| Task | Description | Status | Commit |
-|------|-------------|--------|--------|
-| 001 | `IdempotencyHttpResponses` + `SystemHttpResponses` | committed | `3e95814d` |
-| 002 | `HttpStatusClassification` + `HttpStatusClassificationOverride` | implemented, uncommitted | — |
-| 003 | `CookieHttpResponses` + `RequestHeaderHttpResponses` | implemented, reviewed, uncommitted | — |
-| 004 | `WorkflowHttpResponses` | implemented, reviewed, uncommitted | — |
-| 005 | `UsernameRecoveryErrorKey` | implemented, reviewed, uncommitted | — |
-
-## Task 003 completion
-
-### Review verdict
-
-**PASS** — Independent DeepSeek V4 Pro review completed 2026-08-07. All
-checkpoints verified: fail-first TDD, changed-file allowlist, no
-`err.usernamerecovery.*` codes, no workflow-next-step semantics, no
-`Set-Cookie` output, no `missingRequestId()` duplication, no unsafe
-error-code string API, no reflection/raw maps/silent catches, no
-modification to Tasks 001/002/004 or existing auth workflows.
-
-### Requirements covered
-
-- **R003-01:** `CookieHttpResponses.missingCookie()` returns 401 UNAUTHORIZED + BUSINESS_REJECTED + `err.security.authentication.required` — identical generic pre-auth transport artifact pattern to `CsrfHttpResponses`. PASS.
-- **R003-02:** No `err.usernamerecovery.*` codes; uses only approved `ErrorCodes` constants. PASS.
-- **R003-03:** No `Set-Cookie` header; test confirms empty headers. PASS.
-- **R003-04:** No call to `AuthFlowCookieWriter`. PASS.
-- **R003-05:** `RequestHeaderHttpResponses.missingRequiredHeader(String target)` returns 400 BAD_REQUEST + VALIDATION_FAILED + `err.request.validation.failed` + caller-supplied header target. PASS.
-- **R003-06:** No `missingRequestId()` — `RequiredRequestIdWebFilter` owns this. PASS.
-- **R003-07:** No `missingSchemeRef()` — feature-owned semantics excluded. PASS.
-- **R003-08:** No Username Recovery next steps (`SELECT_ACCOUNT`, `RESTART_FLOW`, `RETURN_TO_LOGIN`). PASS.
-- **R003-09:** Uses typed `ApiError.field()` factory; no arbitrary error-code string API. PASS.
-- **R003-10:** No reflection, raw maps, unchecked casts, silent catches, or sensitive logging. PASS.
-- **R003-11:** Fail-first TDD: test written → compile failure → production class → test green. PASS.
-- **R003-12:** Generic `MutationResponse<T>` typing preserved. PASS.
-
-### New files
-
-```
-src/main/java/…/web/response/CookieHttpResponses.java              (45 lines)
-src/main/java/…/web/response/RequestHeaderHttpResponses.java       (52 lines)
-src/test/java/…/web/response/CookieHttpResponsesTest.java          (80 lines)
-src/test/java/…/web/response/RequestHeaderHttpResponsesTest.java   (77 lines)
+```text
+ecd06eef8035adf1e760e13fb1c7e1cd0f9e79fc
+feat(username-recovery): add idempotency persistence port
 ```
 
-### Validation performed
+Task 015 has not started. The full Username Recovery feature is not yet complete. Existing Login, Registration, Forgot Password, Captcha, and Logout workflows have not been migrated to the new Username Recovery response foundation.
 
-| Validation | Result |
-|------------|--------|
-| Cookie fail-first | exit 1 (compilation failure — production class absent) |
-| Cookie focused (post-impl) | exit 0, 4 tests, 0 failures |
-| Header fail-first | exit 1 (compilation failure — production class absent) |
-| Header focused (post-impl) | exit 0, 4 tests, 0 failures |
-| Cumulative shared-response regressions (6 classes) | exit 0, 29 tests, 0 failures |
-| Architecture guard tests (4 classes) | exit 0, 14 tests, 0 failures |
-| Security/contract grep audits | no forbidden patterns found |
-| `git diff --check` | clean (no whitespace errors) |
-| Full `mvn test` | NOT_RUN (not an approved milestone) |
+## Completed implementation sequence
 
-### Evidence directory
+| Task | Scope | Current state |
+|---|---|---|
+| 001 | Shared idempotency and system HTTP responses | Committed |
+| 002 | HTTP status classification and override | Committed |
+| 003 | Cookie and required-header HTTP responses | Committed |
+| 004 | Typed workflow HTTP response translation | Committed |
+| 005 | Username Recovery error keys | Committed |
+| 006 | Username Recovery domain models | Committed |
+| 007 | Application commands and results | Committed |
+| 008 | APIM transport DTOs and mapping boundary | Committed |
+| 009 | TRPSearchMember APIM adapter and lookup port | Committed |
+| 010 | Protected session domain model | Committed |
+| 011 | Session persistence outbound ports | Committed after review repair |
+| 012 | Redis protected-session adapter | Committed after review repair |
+| 013 | Idempotency persistence outbound port | Committed after ownership-reference repair |
+| 014 | Redis idempotency adapter | **Approved, uncommitted** |
 
-```
-target/evidence/username-recovery/003-cookie-requestheader-http-helpers-20260807-011812/
-```
+## Canonical workflow decisions
 
-### Status
+- Username Recovery is a pre-login workflow and does not use OTP.
+- A recovered username is sent through the configured delivery channel. It is never returned to Angular or rendered in the browser.
+- Public `STAFF_NO` maps to shared `MemberIdentityType.STAFFNO` and APIM `STAFFNO`.
+- Captcha is verified through the shared captcha API. `/username-recovery/start` receives only `captchaChallengeId` and atomically consumes `VERIFIED` to `CONSUMED`.
+- At least one registered scheme is required to create a recovery session.
+- Zero registered schemes create no session, CSRF token, or cookie and return `RESTART_FLOW`.
+- FE receives only opaque `schemeRef`, `accountEnv`, `trustCode`, and registration state.
+- Sender `ACCEPTED` becomes candidate `REQUESTED` only after the required persistence transition.
+- Remaining unrequested registered candidates return `SELECT_ACCOUNT`.
+- The final registered candidate changes the workflow to `COMPLETED` and returns `RETURN_TO_LOGIN`.
+- Unregistered candidates never block completion.
+- Non-production delivery uses dedicated Username Recovery destination overrides and fails closed if the applicable override is missing.
+- The protected session retains the TAS-verified destination. The effective delivery destination is resolved immediately before delivery.
+- No exception is silently discarded. Expected conditions use typed outcomes; infrastructure failures propagate through sanitized persistence/application failures; uncertain delivery remains `UNKNOWN_OUTCOME`.
 
-- Implementation complete, all files uncommitted.
-- No existing file modified; only the four approved new files.
-- `stash@{0}` preserved and untouched.
-- Baseline HEAD: `fb9d436c1c19afc6d82e1a9f943f71adeded5397` (unchanged; no commits made).
+## Generic HTTP-response boundary
 
-## Canonical workflow state
-
-- No OTP and no username disclosure to FE.
-- Shared `MemberIdentityType`; `STAFF_NO -> STAFFNO -> APIM STAFFNO`.
-- Captcha is verified separately; start atomically consumes `VERIFIED`.
-- At least one registered scheme is required to create a session.
-- Zero registered schemes create no session/cookie and return `RESTART_FLOW`.
-- Sender `ACCEPTED` maps candidate to `REQUESTED`.
-- Remaining usernames return `SELECT_ACCOUNT`.
-- Final request returns `RETURN_TO_LOGIN` with result status `COMPLETED`.
-- Non-production recipient override is mandatory and fails closed.
-- No silent exceptions. Mapped exceptions become internal `SYSTEM_FAILED` and public `SYSTEM_ERROR`; `UNKNOWN_OUTCOME` remains separate.
-
-## Generic HTTP-response decision
-
-Username Recovery is the first workflow to use shared helpers under:
+Username Recovery is the first workflow to use the shared response foundation under:
 
 ```text
 com.bct.ngtpa.apiservice.adapter.in.web.response
 ```
 
-Planned components:
+Shared components include:
 
 ```text
 CsrfHttpResponses
@@ -115,202 +70,155 @@ HttpStatusClassification
 HttpStatusClassificationOverride
 ```
 
-### Shared ownership
+Shared helpers own common transport responses and HTTP translation. Username Recovery continues to own Scheme-Ref eligibility, registered/unregistered behavior, workflow lifecycle, feature error keys, next steps, schemes, masked effective destination, and completion payloads.
 
-- missing CSRF, cookie, idempotency key, request ID, and required generic headers;
-- common idempotency conflict/replay transport semantics;
-- typed `MutationResponse<T>` to HTTP response translation;
-- common success, validation, business, conflict, rate-limit, and system statuses;
-- typed `Retry-After` support;
-- generic public system failure.
+Do not introduce an all-purpose `UsernameRecoveryHttpResponses` duplicate. Do not migrate existing workflow response classes as part of Username Recovery.
 
-### Username Recovery ownership
+## Task 009 APIM boundary
 
-- Scheme-Ref ownership/eligibility;
-- registered/unregistered outcomes;
-- candidate `REQUESTED`;
-- `ACTIVE`, `PARTIALLY_REQUESTED`, `COMPLETED`;
-- `SELECT_ACCOUNT`, `RESTART_FLOW`, `RETURN_TO_LOGIN`;
-- feature codes, schemes, masked effective destination, and completion payload.
+- `UsernameRecoveryLookupPort` exposes application/domain outcomes only.
+- `TrpSearchMemberAdapter` reuses the shared APIM facade, certificate, crypto, credential, envelope, request-ID, timeout, and retry infrastructure.
+- Only `X-Request-Id` is propagated to APIM.
+- Registered records require a nonblank TAS customer ID/username; unregistered records must not carry one.
+- Duplicate `accountEnv + trustCode`, malformed success data, invalid dates, or contract violations become internal system failures.
+- `DOWNSTREAM_REJECTED` is never exposed publicly.
 
-### Controller policy
+## Tasks 010 to 012 protected-session boundary
 
-Username Recovery controllers delegate generic response construction and HTTP translation. They do not duplicate status logic, build common failure envelopes inline, create an all-purpose feature HTTP translator, silently catch exceptions, or map arbitrary exceptions to invalid requests.
+### Domain and port
+
+The protected session model retains only workflow data needed after matching:
+
+- session/scenario identity;
+- lifecycle status and revision;
+- CSRF hash, never the raw CSRF token;
+- verified destination and channel;
+- language, creation, and expiry timestamps;
+- candidates with opaque Scheme-Ref, account environment, trust code, registration state, registered username, and delivery state.
+
+The model excludes identity value, DOB, policy number, certificate number, scheme type, termination data, captcha answer, HTTP data, cookie data, and APIM DTOs.
+
+Session persistence uses typed create/load/update/delete outcomes. Compare-and-set updates require:
 
 ```text
-CookieHttpResponses: response envelope/status
-AuthFlowCookieWriter: cookie creation/clearing
+updated revision = expected revision + 1
 ```
 
-## Deferred migration
+### Redis session adapter
 
-The following remain unchanged:
+- Create derives TTL from `expiresAt` and does not overwrite an existing record.
+- Load distinguishes loaded, absent, and infrastructure failure.
+- Update performs atomic expected-revision CAS and preserves remaining TTL.
+- Delete is idempotent by session ID.
+- Infrastructure and serialization exceptions propagate as sanitized `CacheException` failures.
+- Shared `redis/auth-flow-session/create-revisioned.lua` is reused for create.
+- Feature-specific `username-recovery-session/update.lua` remains because the shared replacement script requires whole-value CAS while the port supplies expected revision.
+- Feature-specific `username-recovery-session/delete.lua` remains because shared deletion requires an expected whole value while the port requires idempotent deletion by session ID.
 
-- `LoginHttpResponses`;
-- `RegistrationHttpResponses`;
-- `ForgotPasswordHttpResponses`;
-- current Login, Registration, Forgot Password, Captcha, and Logout controllers/mappers.
+## Tasks 013 and 014 idempotency boundary
 
-A future refactor must preserve current public contracts, compare old/new HTTP mappings, run full cumulative auth regressions, and remove feature-specific translators only after equivalence is demonstrated.
+### Application contract
 
-## Implementation tests to add
+The Username Recovery idempotency contract supports:
 
-- exact helper statuses, API statuses, codes, targets, sources, messages, and errors;
-- generic/reactive typing;
-- controller delegation for cookie, CSRF, idempotency, request ID, and Scheme-Ref;
-- common HTTP mappings and typed `Retry-After` without reflection;
-- `SYSTEM_FAILED -> SystemHttpResponses -> SYSTEM_ERROR`;
-- no raw maps, unchecked casts, silent catches, or sensitive logging;
-- architecture guard preventing an all-purpose `UsernameRecoveryHttpResponses` duplicate.
+- actions `START`, `REQUEST`, and `CANCEL`;
+- an opaque idempotency key;
+- an opaque SHA-256 semantic fingerprint;
+- an opaque operation reference proving reservation ownership;
+- `IN_PROGRESS`, `COMPLETED`, and stable `UNKNOWN_OUTCOME` records;
+- completed replay snapshots;
+- bounded expiry;
+- reserve, resolve, complete, and record-unknown-outcome operations.
 
-## Documents updated
+Only `RESERVED` carries a reservation. A persisted idempotency record includes the operation reference so completion and unknown-outcome transitions can prove ownership atomically.
 
-- `username-recovery-solution-design.md`
-- `README.md`
-- `handover.md`
+### Redis idempotency adapter
 
-Other documents remain unchanged because this decision adds an implementation architecture foundation without changing the approved public API, APIM contract, session semantics, or sequence flow.
+Task 014 implements:
 
-## Task 004 completion
+- native Redis SET-NX reservation with TTL;
+- exactly one owner for an absent action/key record;
+- same key plus same fingerprint classification by stored state;
+- same key plus a different fingerprint as key-reused conflict, including when stored state is unknown outcome;
+- native GET resolution, with `Optional.empty()` only for genuine absence;
+- atomic ownership-checked completion and unknown-outcome transitions;
+- completion replay-snapshot persistence;
+- stable unknown outcome with no replay snapshot;
+- sanitized `CacheException` propagation for Redis, serialization, and script failures.
 
-### Review verdict
+Feature Lua policy:
 
-**PASS_WITH_NONBLOCKING_NOTES** — Independent DeepSeek V4 Pro review completed
-2026-08-07. All checkpoints verified: fail-first TDD, changed-file allowlist (2
-files), typed classification via Task 002 policy, exact body identity and
-generic `<T>` preservation, no first-error/error-string inference, no
-reflection/raw maps/unchecked casts/silent catches, no Username Recovery feature
-codes or Scheme-Ref semantics, no modifications to Tasks 001–003 or existing
-auth workflows, `git diff --check` clean, Maven Java 21.
+- No feature `reserve.lua` is needed because reservation uses the established native SET-NX convention.
+- No feature `resolve.lua` is needed because resolution uses native GET.
+- One feature script remains: `redis/username-recovery-idempotency/transition.lua`.
+- The transition script is justified because shared auth-flow scripts use whole-value CAS and session scripts use revision CAS, while idempotency completion must verify action, key, fingerprint, operation reference, and `IN_PROGRESS` state.
+- The transition preserves remaining expiry using `PTTL` to `PSETEX` and never extends retention.
 
-Non-blocking observation: fail-first test had a secondary compilation error in a
-private helper (`HttpStatus` vs `HttpStatusCode` return type) fixed alongside
-production implementation. Primary expected failure (missing class) was
-correctly captured. Trivial one-line fix; noted for TDD discipline only.
+## Task 014 review result
 
-### Requirements covered
+**Verdict: PASS**
 
-- **R004-01:** Typed `MutationResponse<T>` to `ResponseEntity` translation via
-  `HttpStatusClassification.classify(body.status())`. PASS.
-- **R004-02:** Supports override variant via
-  `HttpStatusClassification.classify(body.status(), override)`. PASS.
-- **R004-03:** Success-like statuses (SUCCESS, UPDATED, SUBMITTED, NO_CHANGE,
-  PENDING_APPROVAL, PARTIAL_SUCCESS) map to 200 OK. PASS.
-- **R004-04:** VALIDATION_FAILED → 400 BAD_REQUEST; BUSINESS_REJECTED → 422
-  UNPROCESSABLE_ENTITY; SYSTEM_ERROR → 503 SERVICE_UNAVAILABLE. PASS.
-- **R004-05:** Downstream unnormalized statuses
-  (DOWNSTREAM_REJECTED/DOWNSTREAM_ERROR) fail closed with
-  IllegalArgumentException. PASS.
-- **R004-06:** Typed overrides (CONFLICT → 409, TOO_MANY_REQUESTS → 429,
-  FORBIDDEN → 403) applied after normalization proof. PASS.
-- **R004-07:** Exact body identity preserved (isSameAs). PASS.
-- **R004-08:** Generic `<T>` type preserved across all paths. PASS.
-- **R004-09:** No headers added (typed policy carries none). PASS.
-- **R004-10:** Null inputs rejected with NullPointerException. PASS.
-- **R004-11:** Stateless final class, private constructor, static methods, no
-  Spring stereotype. PASS.
-- **R004-12:** No first-error or error-string status inference (never accesses
-  body.errors()). PASS.
-- **R004-13:** No reflection, raw maps, unchecked casts, arbitrary payload
-  inspection, or silent catches. PASS.
-- **R004-14:** No Username Recovery dependency (zero imports or string
-  references). PASS.
+Evidence directory:
 
-### New files
-
-```
-src/main/java/…/web/response/WorkflowHttpResponses.java              (59 lines)
-src/test/java/…/web/response/WorkflowHttpResponsesTest.java         (176 lines)
+```text
+target/evidence/username-recovery/014-redis-idempotency-adapter-20260808-212329/
 ```
 
-### Validation performed
+Approved changed-file boundary:
 
-| Validation | Result |
-|------------|--------|
-| Fail-first (focused) | exit 1 (compilation failure — production class absent) |
-| Focused (post-impl) | exit 0, 17 tests, 0 failures |
-| Cumulative shared-response regressions (8 suites) | exit 0, 51 tests, 0 failures |
-| Security/contract grep audits | no forbidden patterns found |
-| `git diff --check` | clean (exit 0, no whitespace errors) |
-| Full `mvn test` | NOT_RUN (not an approved milestone) |
+- 4 new production Java files;
+- 1 new Lua resource;
+- 8 new focused test files;
+- no existing tracked Java, configuration, YAML, application-port, domain, use-case, or web files modified.
 
-### Evidence directory
+Validation:
 
-```
-target/evidence/username-recovery/004-workflow-http-helpers-20260807-094159/
-```
-
-All 20 evidence files (001–020) present and consistent with review findings.
-
-## Task 005 completion
-
-### Review verdict
-
-**PASS** — Independent DeepSeek V4 Pro review completed 2026-08-07. All
-checkpoints verified: branch and baseline HEAD match, exactly two-file
-allowlist, fail-first TDD (test-compile failure → production class → 7 tests
-green), seven approved error keys with complete design traceability, no missing
-or unapproved keys, no shared-key duplication, `WorkflowErrorKey` +
-`WorkflowKeyValidator` convention followed, no messages/HTTP status/ApiStatus/
-next-steps/DTOs/behavior embedded, no reflection/raw maps/unchecked casts/silent
-catches/logging, `git diff --check` clean, Maven Java 21.0.2.
-
-Non-blocking observations:
-1. Evidence file numbering groups related artifacts under shared prefixes
-   (`002-fail-first-*`) instead of the contract's sequential numbering — all
-   content is semantically complete.
-2. `ForgotPasswordErrorKey` uses an older pattern (no `WorkflowErrorKey`,
-   no `WorkflowKeyValidator`); `UsernameRecoveryErrorKey` correctly follows
-   the current `LoginErrorKey`/`RegistrationErrorKey`/`LogoutErrorKey` pattern.
-
-### Requirements covered
-
-- **R005-01:** Typed `UsernameRecoveryErrorKey` enum implements `WorkflowErrorKey` with exact two-file allowlist. PASS.
-- **R005-02:** Seven approved feature-specific error keys: `AUTH_FLOW_INVALID`, `CSRF_INVALID`, `REGISTRATION_REQUIRED`, `REQUEST_ALREADY_REQUESTED`, `SCHEME_REF_INVALID`, `VERIFICATION_FAILED`, `WORKFLOW_COMPLETED`. PASS.
-- **R005-03:** `VERIFICATION_FAILED` uses the exact design code string `err.usernamerecovery.verification.failed`. Remaining six correctly derived from design semantic descriptions using established naming convention. PASS.
-- **R005-04:** No shared idempotency/system/CSRF/transport keys duplicated. PASS.
-- **R005-05:** Uses `WorkflowKeyValidator.validate()` in constructor matching `LoginErrorKey`/`RegistrationErrorKey`/`LogoutErrorKey` pattern. PASS.
-- **R005-06:** No messages, HTTP statuses, `ApiStatus`, next steps, DTOs, APIM codes, or behavior embedded. PASS.
-- **R005-07:** No reflection, raw maps, unchecked casts, silent catches, or logging. PASS.
-- **R005-08:** Fail-first TDD: test written → compile failure → production enum created → 7 tests green. PASS.
-- **R005-09:** Every constant traced to approved design source; no unreferenced or placeholder key. PASS.
-
-### New files
-
-```
-src/main/java/…/workflow/UsernameRecoveryErrorKey.java       (23 lines)
-src/test/java/…/workflow/UsernameRecoveryErrorKeyTest.java   (111 lines)
+```text
+Task 014 focused suite: 52 tests, 0 failures, 0 errors, 0 skipped
+Task 014 regressions:   136 tests, 0 failures
+git diff --check:       clean
+Maven:                  3.9.15
+Java:                   21
 ```
 
-### Validation performed
+Audits passed for minimal persistence, sensitive-value redaction, framework boundaries, sanitized exception messages, ownership verification, TTL preservation, shared-script compatibility, and exact changed-file allowlist.
 
-| Validation | Result |
-|------------|--------|
-| Fail-first (focused) | exit 1 (test-compile: `package UsernameRecoveryErrorKey does not exist`) |
-| Focused (post-impl) | exit 0, 7 tests, 0 failures |
-| Cumulative regression (5 key suites) | exit 0, 24 tests, 0 failures |
-| `WorkflowKeyConventionTest` | exit 0, 7 tests, 0 failures |
-| `WorkflowKeyValidatorLoginErrorPrefixTest` | exit 0, 2 tests, 0 failures |
-| `WorkflowKeyValidatorRegistrationErrorPrefixTest` | exit 0, 3 tests, 0 failures |
-| `WorkflowKeyArchitectureGuardTest` | exit 0, 5 tests, 0 failures |
-| Key traceability audit | all 7 constants traced to design sources |
-| Architecture audit | Clean Architecture compliance, no forbidden patterns |
-| Security/contract audit | no secrets, no logging, safe validation messages |
-| `git diff --check` | clean (exit 0, no whitespace errors) |
-| Full `mvn test` | NOT_RUN (not an approved milestone) |
+Not run by design:
 
-### Evidence directory
+- full `mvn test`;
+- `mvn clean verify`;
+- Failsafe integration tests;
+- tests against a real Redis instance;
+- web/controller/security tests;
+- Task 015 work.
 
-```
-target/evidence/username-recovery/005-username-recovery-error-keys-20260807-111310/
+These remain milestone or later-task validations.
+
+## Approved Task 014 commit
+
+Stage only the 13 approved Task 014 files and commit with:
+
+```text
+feat(username-recovery): add Redis idempotency persistence
 ```
 
-All evidence artifacts present and consistent with review findings.
+Do not commit `.cline/**`, `target/evidence/**`, generated review exports, or temporary compatibility files.
 
-## Next step
+After committing, verify the full Task 014 hash and use that hash as the `trackedBaselineHead` for Task 015.
 
-Task 005 is implemented and reviewed (PASS). The following tasks are uncommitted
-and await Nick's commit authorization: Tasks 002, 003, 004, and 005.
+## Next task
 
-Task 006 (`domain-models`) is `PROPOSED_NOT_AUTHORIZED`. Do not start Task 006
-before commit and explicit authorization.
+Task 015 is expected to cover the next bounded Username Recovery security/session integration scope from the canonical implementation map. It must not begin until:
+
+1. Task 014 is committed and verified;
+2. coordinator state is updated with the full Task 014 hash;
+3. the Task 015 task package is installed and explicitly authorized.
+
+## Deferred work and risks
+
+- Real Redis execution of `transition.lua` remains unproven in Task 014 because Redis interactions were mocked. Cover this at the next approved integration or milestone gate.
+- Full-suite and clean-verify validation remain milestone gates.
+- Application orchestration must preserve the distinction between ordinary system failure and `UNKNOWN_OUTCOME` to prevent duplicate sending.
+- Replay snapshots must contain only the approved safe response projection and must never contain username, raw destination, identity, DOB, CSRF, cookie, Scheme-Ref secrets, or raw exception data.
+- Existing Login, Registration, Forgot Password, Captcha, and Logout response implementations remain unchanged until a separately approved refactor proves public-contract equivalence.
+- `stash@{0}` remains protected and must not be inspected, applied, popped, dropped, or cleared without explicit authorization.
