@@ -2,21 +2,27 @@
 
 ## Current stage
 
-Canonical Task 021, **Cancel Username Recovery Use Case**, has completed its contract-sufficiency audit with:
+Task 021, **Cancel Username Recovery Use Case**, is implemented, independently reviewed, repaired directly, and approved after final focused and cumulative validation.
+
+Final review-fix evidence:
 
 ```text
-TASK_021_CONTRACT_SUFFICIENT
+target/evidence/username-recovery/021-cancel-use-case-20260810-002721/
+task021-review-fix-focused-6: PASSED, Maven exit 0
+task021-review-fix-cumulative-6: PASSED, Maven exit 0
 ```
 
-Task 021 implementation is ready to be authorized on the exact committed and verified Task 020 baseline recorded in `.cline/username-recovery-state.md`. No Task 021 production or test files have been created yet, no Maven stage was launched during the audit, and Task 022 has not started.
-
-Audit evidence:
+Task 021 must be committed with:
 
 ```text
-target/evidence/username-recovery/021-cancel-use-case-audit-20260809-235220/
+feat(username-recovery): implement cancel use case
 ```
 
-The full Username Recovery feature remains incomplete. Existing Login, Registration, Forgot Password, Captcha, and Logout response implementations remain outside the Username Recovery migration boundary.
+After that commit, the exact full Task 021 hash becomes the authoritative `trackedBaselineHead` for Task 022.
+
+Canonical Task 022, **Username Recovery Web DTOs and Web Mappers**, has a complete `.cline` package and is proposed for an audit-only sufficiency session. Task 022 implementation is not authorized until the audit result is reviewed. Tasks 023 through 025 have not started.
+
+The full Username Recovery feature remains incomplete. Existing Login, Registration, Forgot Password, Captcha, and Logout response implementations remain outside the migration boundary.
 
 ## Completed implementation sequence
 
@@ -46,50 +52,48 @@ The full Username Recovery feature remains incomplete. Existing Login, Registrat
 | 019 | Start Username Recovery use case | Committed and verified after review fix |
 | 020A | Effective destination resolution | Committed and verified |
 | 020 | Request Username Recovery use case | Committed and verified after review fix |
-| 021 | Cancel Username Recovery use case | Contract sufficient, implementation not yet committed |
-| 022 | Web DTOs and web mappers | Not started |
+| 021 | Cancel Username Recovery use case | Approved after direct review fixes; commit pending/current |
+| 022 | Web DTOs and web mappers | Package ready; audit not yet reviewed |
 | 023 | Feature web mappers | Not started |
 | 024 | Controllers | Not started |
 | 025 | Integration and stabilization | Not started |
 
-## Verified recent baseline chain
+## Authoritative baseline
 
-```text
-7a6e0361eb9515b3251473a141d5034f113d313d
-feat(username-recovery): implement start use case
-
-7e7a515215c7184155d6ab57af6fa83ba408beb1
-feat(username-recovery): add effective destination resolution
-```
-
-The exact full Task 020 commit hash and current `trackedBaselineHead` are authoritative in:
+The exact full Task 021 commit hash must be recorded in:
 
 ```text
 .cline/username-recovery-state.md
 ```
 
-Task 021 must start only when that exact Task 020 baseline is clean and matches `HEAD`.
+Task 022 audit and implementation must verify:
+
+```text
+HEAD == trackedBaselineHead
+previousTask = 021-cancel-use-case
+previousTaskStatus = COMMITTED_AND_VERIFIED
+previousTaskCommitSubject = feat(username-recovery): implement cancel use case
+```
+
+Never infer the baseline from abbreviated history or evidence timestamps.
 
 ## Canonical workflow decisions
 
-- Username Recovery is a pre-login workflow and does not use OTP.
-- A recovered username is sent through the configured delivery channel and is never returned to Angular or rendered in the browser.
-- Public `STAFF_NO` maps to shared `MemberIdentityType.STAFFNO` and APIM `STAFFNO`.
-- Captcha is verified through the shared captcha API. `/username-recovery/start` receives only `captchaChallengeId` and atomically consumes `VERIFIED` to `CONSUMED`.
-- At least one registered scheme is required to create a recovery session.
-- Zero registered schemes create no session, CSRF token, or cookie and return `RESTART_FLOW`.
-- FE receives only opaque `schemeRef`, `accountEnv`, `trustCode`, and registration state.
+- Username Recovery is pre-login and does not use OTP.
+- A recovered username is delivered only through the configured sender and is never returned to Angular.
+- Public `STAFF_NO` maps at the web boundary to shared `MemberIdentityType.STAFFNO` and APIM `STAFFNO`.
+- `/start` receives `captchaChallengeId` only and atomically consumes a `VERIFIED` captcha.
+- Zero registered schemes create no protected session, CSRF token, or cookie and return `RESTART_FLOW`.
+- FE receives only opaque Scheme-Ref, account environment, trust code, and registration state.
 - Sender `ACCEPTED` becomes candidate `REQUESTED` only after the required persistence transition.
-- Remaining unrequested registered candidates return `SELECT_ACCOUNT`.
 - The final registered candidate changes the workflow to `COMPLETED` and returns `RETURN_TO_LOGIN`.
-- Unregistered candidates never block completion.
-- Non-production delivery uses dedicated Username Recovery destination overrides and fails closed if the applicable override is missing.
-- The protected session retains the TAS-verified destination. The effective delivery destination is resolved immediately before delivery.
-- No exception is silently discarded. Expected conditions use typed outcomes; infrastructure failures propagate through sanitized persistence/application failures; uncertain delivery remains `UNKNOWN_OUTCOME`.
+- Non-production delivery uses dedicated Username Recovery overrides and fails closed when the applicable override is missing.
+- The protected session retains the TAS-verified destination; the effective destination is resolved immediately before delivery.
+- Expected conditions use typed outcomes. Unexpected programming defects remain eligible for the central exception boundary. Delivery uncertainty remains `UNKNOWN_OUTCOME`.
 
-## Generic HTTP-response boundary
+## Shared HTTP-response boundary
 
-Username Recovery uses the shared response foundation under:
+Username Recovery uses shared transport helpers under:
 
 ```text
 com.bct.ngtpa.apiservice.adapter.in.web.response
@@ -108,135 +112,130 @@ HttpStatusClassification
 HttpStatusClassificationOverride
 ```
 
-Shared helpers own common transport responses and HTTP translation. Username Recovery owns Scheme-Ref eligibility, registered/unregistered behavior, workflow lifecycle, feature error keys, next steps, schemes, masked effective destination, and completion payloads.
+Shared helpers own transport responses and HTTP translation. Username Recovery owns feature next steps, error keys, Scheme-Ref behavior, scheme projections, workflow status, and masked effective-destination payloads.
 
-Do not introduce an all-purpose `UsernameRecoveryHttpResponses` duplicate. Do not migrate existing workflow response classes as part of Username Recovery.
+Do not introduce an all-purpose `UsernameRecoveryHttpResponses` duplicate. Existing Login, Registration, Forgot Password, Captcha, and Logout response classes remain unchanged.
 
-## Protected-session and idempotency boundaries
+## Protected session, idempotency, and replay
 
-The protected session retains only data needed after matching:
+The protected session stores only workflow data needed after matching:
 
-- session/scenario identity;
-- lifecycle status and revision;
-- CSRF hash, never the raw token;
+- scenario, status, revision, language, timestamps;
+- CSRF hash, never raw CSRF;
 - verified destination and channel;
-- language, creation, and expiry timestamps;
-- candidates with opaque Scheme-Ref, account environment, trust code, registration state, registered username, and delivery state.
+- minimal candidates with opaque Scheme-Ref, environment, trust code, registration state, registered username, and delivery state.
 
-The model excludes identity value, DOB, policy number, certificate number, scheme type, termination data, captcha answer, HTTP data, cookie data, and APIM DTOs.
+The session excludes raw identity, DOB, policy/certificate/scheme termination data, captcha answer, cookie, and APIM DTOs.
 
-Session persistence provides typed create/load/update/delete outcomes. Compare-and-set updates require:
+Idempotency supports `START`, `REQUEST`, and `CANCEL`, opaque keys/fingerprints/operation references, `IN_PROGRESS`, `COMPLETED`, stable `UNKNOWN_OUTCOME`, ownership-checked transitions, and bounded expiry.
 
-```text
-updated revision = expected revision + 1
-```
+Replay snapshots must never contain username, raw destination, identity, DOB, raw CSRF, CSRF hash, cookie, Scheme-Ref secret, idempotency key, fingerprint, operation reference, or raw exception text.
 
-The idempotency contract supports:
+## Task 019 Start summary
 
-- actions `START`, `REQUEST`, and `CANCEL`;
-- opaque client keys, semantic fingerprints, and operation references;
-- `IN_PROGRESS`, `COMPLETED`, and stable `UNKNOWN_OUTCOME` records;
-- ownership-checked completion and unknown-outcome transitions;
-- safe completed replay snapshots;
-- bounded expiry without TTL extension.
+Task 019 implements validation, semantic START fingerprinting including language, captcha consumption, lookup, zero-registered handling, protected-session creation, Scheme-Refs, hashed CSRF, and secure completed replay with CSRF rotation through expected-revision CAS.
 
-Replay snapshots must never contain username, raw destination, identity, DOB, raw CSRF, CSRF hash, cookie, Scheme-Ref secrets, idempotency key, fingerprint, operation reference, or raw exception data.
+Raw CSRF is never persisted. Replay revision conflict remains distinct. Unexpected Java `Error` values propagate to the central boundary.
 
-## Task 019 Start use case
-
-Task 019 implements:
-
-- Registration-compatible validation;
-- semantic START fingerprinting, including normalized language;
-- idempotency reservation and classification;
-- verified captcha consumption before lookup;
-- APIM lookup and matched/not-found/zero-registered handling;
-- protected-session creation with hashed CSRF and opaque Scheme-Refs;
-- secure completed replay with CSRF rotation through expected-revision CAS;
-- no raw CSRF persistence;
-- distinct replay revision conflict;
-- propagation of unexpected programming defects to the central boundary.
-
-Task 019 review-fix validation passed both focused and cumulative Maven stages with exit code `0`.
-
-## Repair 020A effective destination boundary
-
-Repair 020A adds a framework-free application outbound contract and configuration-layer implementation for resolving the actual delivery destination:
-
-- PROD and DR return the verified member destination;
-- all other environments use the dedicated Username Recovery override;
-- missing or blank applicable overrides fail closed;
-- Login and Forgot Password overrides are not reused;
-- the protected session's verified destination remains unchanged;
-- the application receives the effective destination only for delivery and masking;
-- the existing `MessageDeliveryRuntimeConfig` remains defense in depth.
-
-Repair 020A validation passed 26 focused tests and a 577-test cumulative regression.
-
-## Task 020 Request use case
+## Task 020 Request summary
 
 Task 020 implements:
 
-- semantic REQUEST fingerprinting over session and Scheme-Ref semantics;
-- idempotency reservation and completed replay without resend;
-- origin/referer and raw-CSRF validation through the richer application boundary;
+- semantic REQUEST fingerprinting and idempotency classification;
+- origin/referer and raw-CSRF validation through the richer application method;
 - candidate reservation through expected-revision CAS;
 - effective-destination resolution through Repair 020A;
-- localized Username Recovery delivery commands;
+- localized username delivery with opaque correlation metadata;
 - at-most-once sender invocation;
-- `ACCEPTED`, definite `FAILED`, and `UNKNOWN_OUTCOME` classification;
+- accepted, definite failure, and stable unknown-outcome handling;
 - session-first persistence of `REQUESTED` and workflow status;
-- stable idempotency unknown outcome after uncertain sender or post-acceptance persistence failure;
-- masked effective destination in the result;
-- no automatic sender or CAS retry.
+- completed replay without resend;
+- masked effective destination only.
 
-The final review repair additionally ensures:
+The final direct review fix ensures pre-sender destination-resolution failure is settled as definite failure, reactive delivery failure becomes stable unknown outcome, and the candidate is never stranded in `RESERVED`.
 
-- pre-sender effective-destination failure persists a definite failure instead of stranding the candidate in `RESERVED`;
-- reactive delivery failure is treated conservatively as stable `UNKNOWN_OUTCOME`;
-- the delivery command carries the opaque reservation operation reference as sanitized correlation metadata.
+## Task 021 Cancel final behavior
 
-Final Task 020 focused and cumulative review-fix stages passed with Maven exit code `0`.
+Task 021 implements:
 
-## Task 021 Cancel sufficiency decision
+- a committed inbound-port method that fails closed when raw security context is unavailable;
+- a richer application method receiving raw CSRF and origin/referer as transient parameters;
+- CANCEL semantic fingerprinting and idempotency classification;
+- absent-session idempotent success without CSRF or origin/referer requirements;
+- live-session origin/referer and CSRF validation before deletion;
+- definitive `DELETED`/`ALREADY_ABSENT` success;
+- stable unknown outcome after uncertain load, deletion, or completion;
+- exactly one unknown-outcome settlement attempt;
+- completed replay without another load or deletion;
+- replay validation for action, key, status, and constant versioned descriptor;
+- no cookie or HTTP behavior in the application layer;
+- Java `Error` propagation and no automatic retry.
 
-The Task 021 audit concluded that existing contracts are sufficient without a predecessor repair.
+Approved Task 021 changed-file boundary:
 
-Approved conclusions:
+```text
+4 new production application files
+5 new test files
+0 predecessor production files modified
+```
 
-1. A genuinely absent session returns idempotent cancellation success without requiring CSRF.
-2. A present live session requires valid CSRF before mutation or deletion.
-3. Session deletion has definitive `DELETED`, `ALREADY_ABSENT`, and failure outcomes.
-4. Uncertain deletion must become stable `UNKNOWN_OUTCOME` without false success or automatic retry.
-5. Completed replay returns cancellation success without deleting again.
-6. The completed replay snapshot can be a constant versioned descriptor containing no sensitive value.
-7. A different key after uncertain deletion is safe only when a fresh session load proves genuine absence; uncertainty must not be bypassed by assumption.
-8. No predecessor repair is required.
+Final validation:
 
-Task 021 remains application-only. Cookie clearing and exact-path `Set-Cookie` behavior belong to later web/controller work.
+```text
+task021-review-fix-focused-6: PASSED, Maven exit 0
+task021-review-fix-cumulative-6: PASSED, Maven exit 0
+```
+
+## Task 022 boundary
+
+Task 022 owns only web DTOs and stateless web mappers.
+
+Required public Start request fields:
+
+```text
+identityType
+identityValue
+dateOfBirth
+email
+mobile
+captchaChallengeId
+```
+
+`/request` and `/cancel` have empty request bodies. Do not invent body DTOs for their header/cookie inputs.
+
+Task 022 must provide safe public projections for:
+
+- Start: CSRF token, expiry, schemes, and approved next step;
+- Request: workflow status, Scheme-Ref, masked destination, destination type, acceptance flag, and next step;
+- Cancel: `RETURN_TO_LOGIN` with null data.
+
+Task 022 must not:
+
+- choose HTTP status;
+- create `ResponseEntity` or controller flows;
+- read headers/cookies from request objects;
+- write or clear cookies;
+- catch application exceptions;
+- create `UsernameRecoveryHttpResponses`;
+- modify application/domain contracts;
+- implement Task 023 response policies or Task 024 controllers.
+
+Public DTOs must never contain username, raw destination, session ID, cookie, CSRF hash, identity value, DOB outside the inbound request, idempotency values, operation references, or exception details.
 
 ## Next action
 
-1. Authorize Task 021 implementation in `.cline/username-recovery-state.md` on the exact committed Task 020 baseline.
-2. Start a fresh session with:
-
-```bash
-cline \
-  --tui \
-  --auto-approve true \
-  --model deepseek-v4-flash \
-  "$(cat .cline/prompts/implement-username-recovery-task021.md)"
-```
-
-3. Use exactly one new Task 021 implementation evidence directory.
-4. Do not start Task 022 until Task 021 is independently reviewed and committed.
+1. Commit Task 021 if not already committed and record its full hash.
+2. Install the Task 022 package.
+3. Set coordinator state to `TASK_022_AUDIT_AUTHORIZED` using the exact Task 021 hash.
+4. Start a fresh Task 022 audit session.
+5. Do not run the Task 022 implementation prompt until the audit result is independently reviewed.
+6. Do not start Task 023.
 
 ## Deferred work and risks
 
-- Real Redis execution of feature Lua remains unproven where earlier adapter tests used mocks; cover it at the approved integration or milestone gate.
 - Full `mvn test` and `mvn clean verify` remain milestone gates.
-- Task 021 must not report successful cancellation after uncertain deletion.
-- Task 021 must not require CSRF to replay an already completed cancellation.
-- Cookie clearing remains a web/controller responsibility.
-- Existing Login, Registration, Forgot Password, Captcha, and Logout response implementations remain unchanged until a separately approved refactor proves public-contract equivalence.
+- Real Redis execution of feature Lua remains unproven where earlier tests used mocks.
+- Task 022 must keep Task 023 HTTP-response policy and Task 024 controller/cookie concerns out of DTOs and mappers.
+- Cookie clearing must use the exact Username Recovery path in later controller work.
+- Existing workflow response implementations remain unchanged until a separate cross-workflow refactor proves contract equivalence.
 - `stash@{0}` remains protected and must not be inspected, applied, popped, dropped, or cleared without explicit authorization.
