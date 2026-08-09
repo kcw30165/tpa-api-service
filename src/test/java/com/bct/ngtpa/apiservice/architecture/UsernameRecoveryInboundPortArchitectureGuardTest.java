@@ -14,10 +14,14 @@ import org.junit.jupiter.api.Test;
 /**
  * Architecture guard for the Task 017 Username Recovery inbound use-case ports.
  *
- * <p>Verifies that the three new ports stay framework-free, expose interfaces only, and have no
- * implementation classes in this task. The ports may depend only on the committed application
- * DTO package and Reactor; Spring, servlet, web, adapter, configuration, infrastructure, and Redis
- * types must never cross the inbound boundary.
+ * <p>Verifies that the three ports stay framework-free and expose interfaces only. The ports may
+ * depend only on the committed application DTO package and Reactor; Spring, servlet, web, adapter,
+ * configuration, infrastructure, and Redis types must never cross the inbound boundary.
+ *
+ * <p>Canonical application services (Tasks 019, 020, and 021) are expected to implement these
+ * ports. This guard therefore permits application-layer implementations while requiring every
+ * implementation to reside in the application layer and to stay free of web, adapter, Redis,
+ * servlet, HTTP, and Spring infrastructure dependencies.
  */
 class UsernameRecoveryInboundPortArchitectureGuardTest {
 
@@ -57,18 +61,45 @@ class UsernameRecoveryInboundPortArchitectureGuardTest {
     }
 
     @Test
-    void usernameRecoveryInboundPortsHaveNoImplementationClassesInThisTask() {
+    void usernameRecoveryInboundPortImplementationsResideInTheApplicationLayer() {
+        var classes = new ClassFileImporter()
+                .withImportOption(new ImportOption.DoNotIncludeTests())
+                .importPackages("com.bct.ngtpa.apiservice");
+
+        ArchRule rule = classes()
+                .that().implement(StartUsernameRecoveryUseCase.class)
+                .or().implement(RequestUsernameRecoveryUseCase.class)
+                .or().implement(CancelUsernameRecoveryUseCase.class)
+                .and().areNotInterfaces()
+                .should().resideInAPackage("..application..")
+                .as("Username Recovery inbound-port implementations must reside in the application layer")
+                .allowEmptyShould(true);
+        rule.check(classes);
+    }
+
+    @Test
+    void usernameRecoveryInboundPortImplementationsStayFrameworkAndAdapterFree() {
         var classes = new ClassFileImporter()
                 .withImportOption(new ImportOption.DoNotIncludeTests())
                 .importPackages("com.bct.ngtpa.apiservice");
 
         ArchRule rule = noClasses()
-                .that().resideInAnyPackage("com.bct.ngtpa.apiservice..")
+                .that().implement(StartUsernameRecoveryUseCase.class)
+                .or().implement(RequestUsernameRecoveryUseCase.class)
+                .or().implement(CancelUsernameRecoveryUseCase.class)
                 .and().areNotInterfaces()
-                .should().implement(StartUsernameRecoveryUseCase.class)
-                .orShould().implement(RequestUsernameRecoveryUseCase.class)
-                .orShould().implement(CancelUsernameRecoveryUseCase.class)
-                .as("Task 017 must not introduce Username Recovery inbound-port implementations");
+                .should().dependOnClassesThat().resideInAnyPackage(
+                        "org.springframework..",
+                        "jakarta.servlet..",
+                        "com.bct.ngtpa.apiservice.adapter..",
+                        "com.bct.ngtpa.apiservice.config..",
+                        "com.bct.ngtpa.apiservice.infrastructure..",
+                        "io.lettuce..",
+                        "org.springframework.data.redis..",
+                        "org.springframework.web..",
+                        "org.springframework.http..")
+                .as("Username Recovery inbound-port implementations must stay framework-free and adapter-free")
+                .allowEmptyShould(true);
         rule.check(classes);
     }
 }
