@@ -160,6 +160,18 @@ class AuthWorkflowPropertiesBindingTest {
         });
     }
 
+    @Test
+    void bindsUsernameRecoveryDefaultsFromApplicationYaml() {
+        contextRunner.run(context -> {
+            var properties = context.getBean(AuthWorkflowProperties.class);
+
+            assertNotNull(properties.getUsernameRecovery());
+            assertEquals(600, properties.getUsernameRecovery().getSession().getTtlSeconds());
+            assertNotNull(properties.getUsernameRecovery().getMessage());
+            assertNotNull(properties.getUsernameRecovery().getMessage().getDestinationOverride());
+        });
+    }
+
     @Configuration(proxyBeanMethods = false)
     @EnableConfigurationProperties(AuthWorkflowProperties.class)
     static class TestConfig {

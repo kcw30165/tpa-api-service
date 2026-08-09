@@ -2,16 +2,16 @@
 
 ## Current stage
 
-Task 015, **CSRF and Protected Session Integration**, is implemented, repaired, and independently reviewed as **PASS**. Its nine application/test files remain uncommitted pending the approved production commit.
+Task 016, **Username Recovery Configuration Extension**, is implemented, repaired, and independently reviewed as **PASS**. Its approved configuration, message-model, runtime, YAML, and test changes remain uncommitted pending the production commit.
 
-Tasks 001 through 014 are committed predecessors. The verified Task 014 baseline for Task 015 is:
+Tasks 001 through 015 are committed predecessors. The verified Task 015 baseline for Task 016 is:
 
 ```text
-029a66d6e9d5344c8904f73b37078d4eeaaaf78b
-feat(username-recovery): add Redis idempotency persistence
+3f7f914b9f286cb7725026b6085e62e59d258f9d
+feat(username-recovery): integrate CSRF session reservation
 ```
 
-Task 016 has not started. The full Username Recovery feature is not yet complete. Existing Login, Registration, Forgot Password, Captcha, and Logout workflows have not been migrated to the new Username Recovery response foundation.
+Task 017 has not started. The full Username Recovery feature is not yet complete. Existing Login, Registration, Forgot Password, Captcha, and Logout workflows have not been migrated to the new Username Recovery response foundation.
 
 ## Completed implementation sequence
 
@@ -31,7 +31,8 @@ Task 016 has not started. The full Username Recovery feature is not yet complete
 | 012 | Redis protected-session adapter | Committed after review repair |
 | 013 | Idempotency persistence outbound port | Committed after ownership-reference repair |
 | 014 | Redis idempotency adapter | Committed |
-| 015 | CSRF and protected-session reservation integration | **Approved after review repair, uncommitted** |
+| 015 | CSRF and protected-session reservation integration | Committed after review repair |
+| 016 | Username Recovery configuration extension | **Approved after review repair, uncommitted** |
 
 ## Canonical workflow decisions
 
@@ -217,6 +218,61 @@ feat(username-recovery): integrate CSRF session reservation
 
 After committing, verify the full Task 015 hash and use it as the `trackedBaselineHead` for Task 016.
 
+## Task 016 configuration and delivery boundary
+
+Task 016 extends established shared configuration and message-delivery policy without implementing Username Recovery use cases or web endpoints.
+
+The approved configuration provides:
+
+- `auth-workflows.username-recovery.session.ttl-seconds` with the canonical default of 600 seconds and positive validation;
+- generic auth-flow Username Recovery scenario TTL aligned to 600 seconds;
+- dedicated email and mobile destination overrides backed by `USERNAME_RECOVERY_MESSAGE_OVERRIDE_EMAIL` and `USERNAME_RECOVERY_MESSAGE_OVERRIDE_MOBILE`;
+- dedicated Username Recovery email subject, email body, and SMS body configuration;
+- required `{username}` placeholders in delivery bodies;
+- `MessageDeliveryScenario.USERNAME_RECOVERY`;
+- `MessageDeliveryType.USERNAME_RECOVERY`, avoiding any OTP classification;
+- centralized non-production recipient replacement in `MessageDeliveryRuntimeConfig`;
+- PROD and DR use of the verified member destination;
+- fail-closed dedicated overrides for blank, local, DEV, SIT, UAT, QA, unknown, and every other non-production profile;
+- preservation of scenario, channel, message type, subject/body, template variables, locale, and correlation metadata while changing only the recipient;
+- property-name-only configuration errors with no destination or configured-value disclosure.
+
+The review repair corrected two issues:
+
+1. Username Recovery delivery no longer masquerades as `LOGIN_OTP`; it uses its own non-OTP message type and dedicated templates.
+2. The generic auth-flow Username Recovery TTL was aligned from 900 seconds to the canonical 600 seconds.
+
+### Task 016 review result
+
+**Verdict: PASS after review repair**
+
+Evidence directory:
+
+```text
+target/evidence/username-recovery/016-config-extension-20260809-001249/
+```
+
+Validation:
+
+```text
+Initial focused suite:                  PASSED, 30 tests
+Initial repaired cumulative suite:      PASSED, 76 tests
+Review-fix focused stage:               PASSED, Maven exit 0
+Review-fix cumulative stage:            PASSED, Maven exit 0
+```
+
+The original task evidence also records and preserves invalid/failed stages resulting from a Maven argument construction defect, a focused-test type error, and the expected enum contract update. Every repair used a unique stage and the final focused and cumulative states are green.
+
+### Approved Task 016 commit
+
+Stage only the reviewed Task 016 production/configuration and directly corresponding test files, plus this cumulative handover, and commit with:
+
+```text
+feat(username-recovery): add workflow configuration
+```
+
+After committing, verify the full Task 016 hash and use it as Task 017's `trackedBaselineHead`.
+
 ## Task 014 review result
 
 **Verdict: PASS**
@@ -271,13 +327,9 @@ After committing, verify the full Task 014 hash and use that hash as the `tracke
 
 ## Next task
 
-Task 016 is the bounded configuration extension for Username Recovery. It must not begin until:
+Task 017 is the bounded inbound-port contract task for start, request, and cancel. It must not begin until Task 016 is committed and verified, coordinator state records the full Task 016 hash, and the Task 017 package is explicitly authorized.
 
-1. Task 015 is committed and verified;
-2. coordinator state records the full Task 015 hash;
-3. the Task 016 package is installed and explicitly authorized.
-
-Task 016 must add the Username Recovery configuration shape and delivery scenario integration without implementing start/request/cancel use cases or web endpoints.
+Task 017 must expose application-facing use-case contracts only. It must not implement orchestration, adapters, controllers, Redis, APIM, message delivery, or web mapping.
 
 ## Deferred work and risks
 
