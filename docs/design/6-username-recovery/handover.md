@@ -273,6 +273,53 @@ feat(username-recovery): add workflow configuration
 
 After committing, verify the full Task 016 hash and use it as Task 017's `trackedBaselineHead`.
 
+## Task 018 outbound-port reconciliation
+
+Task 018 reconciled the canonical outbound-port task with the `UsernameRecoveryLookupPort` introduced early during Task 009.
+
+The reviewed boundary confirms:
+
+- exactly one production `UsernameRecoveryLookupPort` exists;
+- exactly one production implementation exists, `TrpSearchMemberAdapter`;
+- the port exposes `Mono<UsernameRecoveryLookupResult> search(UsernameRecoveryLookupCommand)`;
+- only Reactor and application DTOs cross the port;
+- APIM, HTTP, Redis, Spring, raw maps, and generic `Object` values do not cross the boundary;
+- lookup outcomes remain `MATCHED`, `NOT_FOUND`, `CONTRACT_INVALID`, `UNAVAILABLE`, and `UNKNOWN_OUTCOME`;
+- `DOWNSTREAM_REJECTED` and APIM error details never enter the application boundary;
+- candidate and command string output remains redacted;
+- no production modification or duplicate port was required.
+
+### Task 018 review result
+
+**Verdict: PASS, `EXISTING_BOUNDARY_CONFIRMED`**
+
+Evidence directory:
+
+```text
+target/evidence/username-recovery/018-outbound-ports-20260809-095751/
+```
+
+Validation:
+
+```text
+Reconciliation repair stage: PASSED, 16 tests
+Existing lookup/APIM stage:   PASSED, 64 tests
+Architecture regression:     PASSED, 26 tests
+Consolidated:                 106 tests, 0 failures/errors/skips
+```
+
+The initial reconciliation stage failed only because the new test used an unsupported ArchUnit API. The test-only defect was repaired with a unique stage and no production code was changed.
+
+### Approved Task 018 commit
+
+Stage only the three new reconciliation tests and this handover, then commit with:
+
+```text
+test(username-recovery): close lookup outbound port boundary
+```
+
+After committing, verify the full Task 018 commit and use it as Task 019's `trackedBaselineHead`.
+
 ## Task 014 review result
 
 **Verdict: PASS**
@@ -327,9 +374,9 @@ After committing, verify the full Task 014 hash and use that hash as the `tracke
 
 ## Next task
 
-Task 017 is the bounded inbound-port contract task for start, request, and cancel. It must not begin until Task 016 is committed and verified, coordinator state records the full Task 016 hash, and the Task 017 package is explicitly authorized.
+Task 019 is the canonical `start-use-case` task from the implementation map. It implements `StartUsernameRecoveryService` only after Task 018 is committed and verified.
 
-Task 017 must expose application-facing use-case contracts only. It must not implement orchestration, adapters, controllers, Redis, APIM, message delivery, or web mapping.
+Task 019 must not implement Request or Cancel orchestration, web controllers, cookies, or HTTP mapping.
 
 ## Deferred work and risks
 
