@@ -2,16 +2,21 @@
 
 ## Current stage
 
-Task 016, **Username Recovery Configuration Extension**, is implemented, repaired, and independently reviewed as **PASS**. Its approved configuration, message-model, runtime, YAML, and test changes remain uncommitted pending the production commit.
-
-Tasks 001 through 015 are committed predecessors. The verified Task 015 baseline for Task 016 is:
+Canonical Task 021, **Cancel Username Recovery Use Case**, has completed its contract-sufficiency audit with:
 
 ```text
-3f7f914b9f286cb7725026b6085e62e59d258f9d
-feat(username-recovery): integrate CSRF session reservation
+TASK_021_CONTRACT_SUFFICIENT
 ```
 
-Task 017 has not started. The full Username Recovery feature is not yet complete. Existing Login, Registration, Forgot Password, Captcha, and Logout workflows have not been migrated to the new Username Recovery response foundation.
+Task 021 implementation is ready to be authorized on the exact committed and verified Task 020 baseline recorded in `.cline/username-recovery-state.md`. No Task 021 production or test files have been created yet, no Maven stage was launched during the audit, and Task 022 has not started.
+
+Audit evidence:
+
+```text
+target/evidence/username-recovery/021-cancel-use-case-audit-20260809-235220/
+```
+
+The full Username Recovery feature remains incomplete. Existing Login, Registration, Forgot Password, Captcha, and Logout response implementations remain outside the Username Recovery migration boundary.
 
 ## Completed implementation sequence
 
@@ -32,12 +37,43 @@ Task 017 has not started. The full Username Recovery feature is not yet complete
 | 013 | Idempotency persistence outbound port | Committed after ownership-reference repair |
 | 014 | Redis idempotency adapter | Committed |
 | 015 | CSRF and protected-session reservation integration | Committed after review repair |
-| 016 | Username Recovery configuration extension | **Approved after review repair, uncommitted** |
+| 016 | Username Recovery configuration extension | Committed after review repair |
+| 017 | Inbound use-case ports | Committed |
+| 018 | Lookup outbound-port reconciliation | Committed and verified |
+| 018A | Command-context contract repair | Committed and verified |
+| 019A | Inbound-port architecture guard reconciliation | Committed and verified |
+| 019B | Secure Start replay contract | Committed and verified |
+| 019 | Start Username Recovery use case | Committed and verified after review fix |
+| 020A | Effective destination resolution | Committed and verified |
+| 020 | Request Username Recovery use case | Committed and verified after review fix |
+| 021 | Cancel Username Recovery use case | Contract sufficient, implementation not yet committed |
+| 022 | Web DTOs and web mappers | Not started |
+| 023 | Feature web mappers | Not started |
+| 024 | Controllers | Not started |
+| 025 | Integration and stabilization | Not started |
+
+## Verified recent baseline chain
+
+```text
+7a6e0361eb9515b3251473a141d5034f113d313d
+feat(username-recovery): implement start use case
+
+7e7a515215c7184155d6ab57af6fa83ba408beb1
+feat(username-recovery): add effective destination resolution
+```
+
+The exact full Task 020 commit hash and current `trackedBaselineHead` are authoritative in:
+
+```text
+.cline/username-recovery-state.md
+```
+
+Task 021 must start only when that exact Task 020 baseline is clean and matches `HEAD`.
 
 ## Canonical workflow decisions
 
 - Username Recovery is a pre-login workflow and does not use OTP.
-- A recovered username is sent through the configured delivery channel. It is never returned to Angular or rendered in the browser.
+- A recovered username is sent through the configured delivery channel and is never returned to Angular or rendered in the browser.
 - Public `STAFF_NO` maps to shared `MemberIdentityType.STAFFNO` and APIM `STAFFNO`.
 - Captcha is verified through the shared captcha API. `/username-recovery/start` receives only `captchaChallengeId` and atomically consumes `VERIFIED` to `CONSUMED`.
 - At least one registered scheme is required to create a recovery session.
@@ -53,7 +89,7 @@ Task 017 has not started. The full Username Recovery feature is not yet complete
 
 ## Generic HTTP-response boundary
 
-Username Recovery is the first workflow to use the shared response foundation under:
+Username Recovery uses the shared response foundation under:
 
 ```text
 com.bct.ngtpa.apiservice.adapter.in.web.response
@@ -72,317 +108,135 @@ HttpStatusClassification
 HttpStatusClassificationOverride
 ```
 
-Shared helpers own common transport responses and HTTP translation. Username Recovery continues to own Scheme-Ref eligibility, registered/unregistered behavior, workflow lifecycle, feature error keys, next steps, schemes, masked effective destination, and completion payloads.
+Shared helpers own common transport responses and HTTP translation. Username Recovery owns Scheme-Ref eligibility, registered/unregistered behavior, workflow lifecycle, feature error keys, next steps, schemes, masked effective destination, and completion payloads.
 
 Do not introduce an all-purpose `UsernameRecoveryHttpResponses` duplicate. Do not migrate existing workflow response classes as part of Username Recovery.
 
-## Task 009 APIM boundary
+## Protected-session and idempotency boundaries
 
-- `UsernameRecoveryLookupPort` exposes application/domain outcomes only.
-- `TrpSearchMemberAdapter` reuses the shared APIM facade, certificate, crypto, credential, envelope, request-ID, timeout, and retry infrastructure.
-- Only `X-Request-Id` is propagated to APIM.
-- Registered records require a nonblank TAS customer ID/username; unregistered records must not carry one.
-- Duplicate `accountEnv + trustCode`, malformed success data, invalid dates, or contract violations become internal system failures.
-- `DOWNSTREAM_REJECTED` is never exposed publicly.
-
-## Tasks 010 to 012 protected-session boundary
-
-### Domain and port
-
-The protected session model retains only workflow data needed after matching:
+The protected session retains only data needed after matching:
 
 - session/scenario identity;
 - lifecycle status and revision;
-- CSRF hash, never the raw CSRF token;
+- CSRF hash, never the raw token;
 - verified destination and channel;
 - language, creation, and expiry timestamps;
 - candidates with opaque Scheme-Ref, account environment, trust code, registration state, registered username, and delivery state.
 
 The model excludes identity value, DOB, policy number, certificate number, scheme type, termination data, captcha answer, HTTP data, cookie data, and APIM DTOs.
 
-Session persistence uses typed create/load/update/delete outcomes. Compare-and-set updates require:
+Session persistence provides typed create/load/update/delete outcomes. Compare-and-set updates require:
 
 ```text
 updated revision = expected revision + 1
 ```
 
-### Redis session adapter
-
-- Create derives TTL from `expiresAt` and does not overwrite an existing record.
-- Load distinguishes loaded, absent, and infrastructure failure.
-- Update performs atomic expected-revision CAS and preserves remaining TTL.
-- Delete is idempotent by session ID.
-- Infrastructure and serialization exceptions propagate as sanitized `CacheException` failures.
-- Shared `redis/auth-flow-session/create-revisioned.lua` is reused for create.
-- Feature-specific `username-recovery-session/update.lua` remains because the shared replacement script requires whole-value CAS while the port supplies expected revision.
-- Feature-specific `username-recovery-session/delete.lua` remains because shared deletion requires an expected whole value while the port requires idempotent deletion by session ID.
-
-## Tasks 013 and 014 idempotency boundary
-
-### Application contract
-
-The Username Recovery idempotency contract supports:
+The idempotency contract supports:
 
 - actions `START`, `REQUEST`, and `CANCEL`;
-- an opaque idempotency key;
-- an opaque SHA-256 semantic fingerprint;
-- an opaque operation reference proving reservation ownership;
+- opaque client keys, semantic fingerprints, and operation references;
 - `IN_PROGRESS`, `COMPLETED`, and stable `UNKNOWN_OUTCOME` records;
-- completed replay snapshots;
-- bounded expiry;
-- reserve, resolve, complete, and record-unknown-outcome operations.
+- ownership-checked completion and unknown-outcome transitions;
+- safe completed replay snapshots;
+- bounded expiry without TTL extension.
 
-Only `RESERVED` carries a reservation. A persisted idempotency record includes the operation reference so completion and unknown-outcome transitions can prove ownership atomically.
+Replay snapshots must never contain username, raw destination, identity, DOB, raw CSRF, CSRF hash, cookie, Scheme-Ref secrets, idempotency key, fingerprint, operation reference, or raw exception data.
 
-### Redis idempotency adapter
+## Task 019 Start use case
 
-Task 014 implements:
+Task 019 implements:
 
-- native Redis SET-NX reservation with TTL;
-- exactly one owner for an absent action/key record;
-- same key plus same fingerprint classification by stored state;
-- same key plus a different fingerprint as key-reused conflict, including when stored state is unknown outcome;
-- native GET resolution, with `Optional.empty()` only for genuine absence;
-- atomic ownership-checked completion and unknown-outcome transitions;
-- completion replay-snapshot persistence;
-- stable unknown outcome with no replay snapshot;
-- sanitized `CacheException` propagation for Redis, serialization, and script failures.
+- Registration-compatible validation;
+- semantic START fingerprinting, including normalized language;
+- idempotency reservation and classification;
+- verified captcha consumption before lookup;
+- APIM lookup and matched/not-found/zero-registered handling;
+- protected-session creation with hashed CSRF and opaque Scheme-Refs;
+- secure completed replay with CSRF rotation through expected-revision CAS;
+- no raw CSRF persistence;
+- distinct replay revision conflict;
+- propagation of unexpected programming defects to the central boundary.
 
-Feature Lua policy:
+Task 019 review-fix validation passed both focused and cumulative Maven stages with exit code `0`.
 
-- No feature `reserve.lua` is needed because reservation uses the established native SET-NX convention.
-- No feature `resolve.lua` is needed because resolution uses native GET.
-- One feature script remains: `redis/username-recovery-idempotency/transition.lua`.
-- The transition script is justified because shared auth-flow scripts use whole-value CAS and session scripts use revision CAS, while idempotency completion must verify action, key, fingerprint, operation reference, and `IN_PROGRESS` state.
-- The transition preserves remaining expiry using `PTTL` to `PSETEX` and never extends retention.
+## Repair 020A effective destination boundary
 
-## Task 015 CSRF and protected-session boundary
+Repair 020A adds a framework-free application outbound contract and configuration-layer implementation for resolving the actual delivery destination:
 
-Task 015 adds an application-only reservation boundary with no Redis, HTTP, cookie, APIM, configuration, or delivery dependency.
+- PROD and DR return the verified member destination;
+- all other environments use the dedicated Username Recovery override;
+- missing or blank applicable overrides fail closed;
+- Login and Forgot Password overrides are not reused;
+- the protected session's verified destination remains unchanged;
+- the application receives the effective destination only for delivery and masking;
+- the existing `MessageDeliveryRuntimeConfig` remains defense in depth.
 
-The integration:
+Repair 020A validation passed 26 focused tests and a 577-test cumulative regression.
 
-- loads through `UsernameRecoverySessionPort` using typed load outcomes;
-- rejects absent and expired sessions without mutation;
-- rejects terminal workflows before CSRF or candidate mutation;
-- accepts the raw CSRF token only as a service method parameter;
-- validates through the existing constant-time CSRF abstraction;
-- never stores the raw token in commands, results, fields, logs, exceptions, or string output;
-- resolves the opaque Scheme-Ref only inside the loaded session;
-- distinguishes invalid Scheme-Ref, registration required, already requested, and otherwise unavailable candidates;
-- reserves through the committed aggregate transition;
-- persists through expected-revision compare-and-set;
-- distinguishes revision conflict from persistence failure;
-- performs no automatic CAS retry.
+## Task 020 Request use case
 
-The review repair changed the result to a minimal outcome-only projection. `UsernameRecoveryReservationResult` no longer exposes the protected session or any accessor to session ID, CSRF hash, Scheme-Ref, username, destination, or sender reference.
+Task 020 implements:
 
-The review repair also removed the global exception-normalization behavior. Expected persistence errors are mapped at the session-port boundary to `SYSTEM_FAILED`, while unexpected programming defects remain eligible to reach the central exception boundary.
+- semantic REQUEST fingerprinting over session and Scheme-Ref semantics;
+- idempotency reservation and completed replay without resend;
+- origin/referer and raw-CSRF validation through the richer application boundary;
+- candidate reservation through expected-revision CAS;
+- effective-destination resolution through Repair 020A;
+- localized Username Recovery delivery commands;
+- at-most-once sender invocation;
+- `ACCEPTED`, definite `FAILED`, and `UNKNOWN_OUTCOME` classification;
+- session-first persistence of `REQUESTED` and workflow status;
+- stable idempotency unknown outcome after uncertain sender or post-acceptance persistence failure;
+- masked effective destination in the result;
+- no automatic sender or CAS retry.
 
-### Task 015 review result
+The final review repair additionally ensures:
 
-**Verdict: PASS after review repair**
+- pre-sender effective-destination failure persists a definite failure instead of stranding the candidate in `RESERVED`;
+- reactive delivery failure is treated conservatively as stable `UNKNOWN_OUTCOME`;
+- the delivery command carries the opaque reservation operation reference as sanitized correlation metadata.
 
-Evidence directory:
+Final Task 020 focused and cumulative review-fix stages passed with Maven exit code `0`.
 
-```text
-target/evidence/username-recovery/015-csrf-session-integration-20260808-225320/
+## Task 021 Cancel sufficiency decision
+
+The Task 021 audit concluded that existing contracts are sufficient without a predecessor repair.
+
+Approved conclusions:
+
+1. A genuinely absent session returns idempotent cancellation success without requiring CSRF.
+2. A present live session requires valid CSRF before mutation or deletion.
+3. Session deletion has definitive `DELETED`, `ALREADY_ABSENT`, and failure outcomes.
+4. Uncertain deletion must become stable `UNKNOWN_OUTCOME` without false success or automatic retry.
+5. Completed replay returns cancellation success without deleting again.
+6. The completed replay snapshot can be a constant versioned descriptor containing no sensitive value.
+7. A different key after uncertain deletion is safe only when a fresh session load proves genuine absence; uncertainty must not be bypassed by assumption.
+8. No predecessor repair is required.
+
+Task 021 remains application-only. Cookie clearing and exact-path `Set-Cookie` behavior belong to later web/controller work.
+
+## Next action
+
+1. Authorize Task 021 implementation in `.cline/username-recovery-state.md` on the exact committed Task 020 baseline.
+2. Start a fresh session with:
+
+```bash
+cline \
+  --tui \
+  --auto-approve true \
+  --model deepseek-v4-flash \
+  "$(cat .cline/prompts/implement-username-recovery-task021.md)"
 ```
 
-Approved changed-file boundary:
-
-- 4 new production application files;
-- 4 new focused application test files;
-- 1 new architecture guard test;
-- no existing Java, Redis/Lua, APIM, configuration, YAML, web, or controller files modified.
-
-Validation:
-
-```text
-Initial focused suite:                  PASSED, 31 tests
-Initial cumulative regression:          PASSED, 192 tests
-Review-fix focused stage:               PASSED, Maven exit 0
-Review-fix cumulative regression stage: PASSED, Maven exit 0
-git diff --check:                       clean before repair review
-```
-
-Task 015 was validated using the controlled PowerShell Maven worker. Both repair stages completed with atomic `PASSED` results and Maven exit code `0`.
-
-### Approved Task 015 commit
-
-Stage only the nine approved Task 015 files and commit with:
-
-```text
-feat(username-recovery): integrate CSRF session reservation
-```
-
-After committing, verify the full Task 015 hash and use it as the `trackedBaselineHead` for Task 016.
-
-## Task 016 configuration and delivery boundary
-
-Task 016 extends established shared configuration and message-delivery policy without implementing Username Recovery use cases or web endpoints.
-
-The approved configuration provides:
-
-- `auth-workflows.username-recovery.session.ttl-seconds` with the canonical default of 600 seconds and positive validation;
-- generic auth-flow Username Recovery scenario TTL aligned to 600 seconds;
-- dedicated email and mobile destination overrides backed by `USERNAME_RECOVERY_MESSAGE_OVERRIDE_EMAIL` and `USERNAME_RECOVERY_MESSAGE_OVERRIDE_MOBILE`;
-- dedicated Username Recovery email subject, email body, and SMS body configuration;
-- required `{username}` placeholders in delivery bodies;
-- `MessageDeliveryScenario.USERNAME_RECOVERY`;
-- `MessageDeliveryType.USERNAME_RECOVERY`, avoiding any OTP classification;
-- centralized non-production recipient replacement in `MessageDeliveryRuntimeConfig`;
-- PROD and DR use of the verified member destination;
-- fail-closed dedicated overrides for blank, local, DEV, SIT, UAT, QA, unknown, and every other non-production profile;
-- preservation of scenario, channel, message type, subject/body, template variables, locale, and correlation metadata while changing only the recipient;
-- property-name-only configuration errors with no destination or configured-value disclosure.
-
-The review repair corrected two issues:
-
-1. Username Recovery delivery no longer masquerades as `LOGIN_OTP`; it uses its own non-OTP message type and dedicated templates.
-2. The generic auth-flow Username Recovery TTL was aligned from 900 seconds to the canonical 600 seconds.
-
-### Task 016 review result
-
-**Verdict: PASS after review repair**
-
-Evidence directory:
-
-```text
-target/evidence/username-recovery/016-config-extension-20260809-001249/
-```
-
-Validation:
-
-```text
-Initial focused suite:                  PASSED, 30 tests
-Initial repaired cumulative suite:      PASSED, 76 tests
-Review-fix focused stage:               PASSED, Maven exit 0
-Review-fix cumulative stage:            PASSED, Maven exit 0
-```
-
-The original task evidence also records and preserves invalid/failed stages resulting from a Maven argument construction defect, a focused-test type error, and the expected enum contract update. Every repair used a unique stage and the final focused and cumulative states are green.
-
-### Approved Task 016 commit
-
-Stage only the reviewed Task 016 production/configuration and directly corresponding test files, plus this cumulative handover, and commit with:
-
-```text
-feat(username-recovery): add workflow configuration
-```
-
-After committing, verify the full Task 016 hash and use it as Task 017's `trackedBaselineHead`.
-
-## Task 018 outbound-port reconciliation
-
-Task 018 reconciled the canonical outbound-port task with the `UsernameRecoveryLookupPort` introduced early during Task 009.
-
-The reviewed boundary confirms:
-
-- exactly one production `UsernameRecoveryLookupPort` exists;
-- exactly one production implementation exists, `TrpSearchMemberAdapter`;
-- the port exposes `Mono<UsernameRecoveryLookupResult> search(UsernameRecoveryLookupCommand)`;
-- only Reactor and application DTOs cross the port;
-- APIM, HTTP, Redis, Spring, raw maps, and generic `Object` values do not cross the boundary;
-- lookup outcomes remain `MATCHED`, `NOT_FOUND`, `CONTRACT_INVALID`, `UNAVAILABLE`, and `UNKNOWN_OUTCOME`;
-- `DOWNSTREAM_REJECTED` and APIM error details never enter the application boundary;
-- candidate and command string output remains redacted;
-- no production modification or duplicate port was required.
-
-### Task 018 review result
-
-**Verdict: PASS, `EXISTING_BOUNDARY_CONFIRMED`**
-
-Evidence directory:
-
-```text
-target/evidence/username-recovery/018-outbound-ports-20260809-095751/
-```
-
-Validation:
-
-```text
-Reconciliation repair stage: PASSED, 16 tests
-Existing lookup/APIM stage:   PASSED, 64 tests
-Architecture regression:     PASSED, 26 tests
-Consolidated:                 106 tests, 0 failures/errors/skips
-```
-
-The initial reconciliation stage failed only because the new test used an unsupported ArchUnit API. The test-only defect was repaired with a unique stage and no production code was changed.
-
-### Approved Task 018 commit
-
-Stage only the three new reconciliation tests and this handover, then commit with:
-
-```text
-test(username-recovery): close lookup outbound port boundary
-```
-
-After committing, verify the full Task 018 commit and use it as Task 019's `trackedBaselineHead`.
-
-## Task 014 review result
-
-**Verdict: PASS**
-
-Evidence directory:
-
-```text
-target/evidence/username-recovery/014-redis-idempotency-adapter-20260808-212329/
-```
-
-Approved changed-file boundary:
-
-- 4 new production Java files;
-- 1 new Lua resource;
-- 8 new focused test files;
-- no existing tracked Java, configuration, YAML, application-port, domain, use-case, or web files modified.
-
-Validation:
-
-```text
-Task 014 focused suite: 52 tests, 0 failures, 0 errors, 0 skipped
-Task 014 regressions:   136 tests, 0 failures
-git diff --check:       clean
-Maven:                  3.9.15
-Java:                   21
-```
-
-Audits passed for minimal persistence, sensitive-value redaction, framework boundaries, sanitized exception messages, ownership verification, TTL preservation, shared-script compatibility, and exact changed-file allowlist.
-
-Not run by design:
-
-- full `mvn test`;
-- `mvn clean verify`;
-- Failsafe integration tests;
-- tests against a real Redis instance;
-- web/controller/security tests;
-- Task 015 work.
-
-These remain milestone or later-task validations.
-
-## Approved Task 014 commit
-
-Stage only the 13 approved Task 014 files and commit with:
-
-```text
-feat(username-recovery): add Redis idempotency persistence
-```
-
-Do not commit `.cline/**`, `target/evidence/**`, generated review exports, or temporary compatibility files.
-
-After committing, verify the full Task 014 hash and use that hash as the `trackedBaselineHead` for Task 015.
-
-## Next task
-
-Task 019 is the canonical `start-use-case` task from the implementation map. It implements `StartUsernameRecoveryService` only after Task 018 is committed and verified.
-
-Task 019 must not implement Request or Cancel orchestration, web controllers, cookies, or HTTP mapping.
+3. Use exactly one new Task 021 implementation evidence directory.
+4. Do not start Task 022 until Task 021 is independently reviewed and committed.
 
 ## Deferred work and risks
 
-- Real Redis execution of `transition.lua` remains unproven in Task 014 because Redis interactions were mocked. Cover this at the next approved integration or milestone gate.
-- Full-suite and clean-verify validation remain milestone gates.
-- Application orchestration must preserve the distinction between ordinary system failure and `UNKNOWN_OUTCOME` to prevent duplicate sending.
-- Replay snapshots must contain only the approved safe response projection and must never contain username, raw destination, identity, DOB, CSRF, cookie, Scheme-Ref secrets, or raw exception data.
+- Real Redis execution of feature Lua remains unproven where earlier adapter tests used mocks; cover it at the approved integration or milestone gate.
+- Full `mvn test` and `mvn clean verify` remain milestone gates.
+- Task 021 must not report successful cancellation after uncertain deletion.
+- Task 021 must not require CSRF to replay an already completed cancellation.
+- Cookie clearing remains a web/controller responsibility.
 - Existing Login, Registration, Forgot Password, Captcha, and Logout response implementations remain unchanged until a separately approved refactor proves public-contract equivalence.
 - `stash@{0}` remains protected and must not be inspected, applied, popped, dropped, or cleared without explicit authorization.
