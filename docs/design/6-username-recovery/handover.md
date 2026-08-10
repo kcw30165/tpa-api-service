@@ -2,44 +2,43 @@
 
 ## Current stage
 
-Repair 024A, **Username Recovery Controller Prerequisites**, has completed implementation and independent review.
+Canonical Task 024, **Username Recovery Controllers**, has completed implementation, review repair, and independent review.
 
-Review decision:
+Final decision:
 
 ```text
-REPAIR_024A_APPROVED
-TASK_024_PREREQUISITES_SATISFIED
-TASK_024_IMPLEMENTATION_REMAINS_NOT_AUTHORIZED
+TASK_024_APPROVED
+TASK_024_COMMIT_AUTHORIZED
+TASK_025_PROPOSED_NOT_AUTHORIZED
 ```
 
 Implementation evidence:
 
 ```text
-target/evidence/username-recovery/024A-controller-prerequisites-20260810-180714/
+target/evidence/username-recovery/024-controllers-20260810-210043/
 ```
 
-Final validation:
+Final review-fix validation:
 
 ```text
-compile repair stage: PASSED, Maven exit 0
-focused repair stage: PASSED, Maven exit 0
-cumulative regression: PASSED, Maven exit 0
-297 cumulative tests, 0 failures, 0 errors
+task024-review-fix-fail-first:
+  EXPECTED_FAILURE_CAPTURED, Maven exit 1
+  5 malformed/null conversion cases failed as intended
+
+task024-review-fix-focused:
+  PASSED, Maven exit 0
+  49 tests, 0 failures, 0 errors, 0 skipped
+
+task024-review-fix-cumulative:
+  PASSED, Maven exit 0
+  1394 tests, 0 failures, 0 errors, 0 skipped
 ```
 
-The approved Repair 024A boundary contains six production files and eight tests/guards. No controller was implemented. Public Username Recovery JSON remains unchanged, and the new transport-only session reference is not copied into web DTOs.
+Task 024 adds one thin reactive controller, three direct controller/contract/security test classes, one controller architecture guard, and an approved update to the Repair 024A prerequisite guard. The controller exposes the three canonical POST endpoints and delegates application behavior through committed inbound ports, Task 022 mappers, Task 023 response policies, shared HTTP helpers, and the Repair 024A cookie instructions.
 
-Repair 024A now provides:
+The review repair places transport conversion inside narrow `Mono.defer` boundaries. Null or malformed Start bodies, identity types, session IDs, and Scheme-Refs map to approved typed responses. The repair does not use broad reactive exception handling and does not convert unexpected application defects or Java `Error` values into validation failures.
 
-1. a transport-safe `AuthFlowSessionId` in successful Start results;
-2. valid Start replay reconstruction using the live session ID and freshly rotated raw CSRF token;
-3. a Spring-free Username Recovery cookie writer producing framework-free cookie instructions;
-4. exact Username Recovery auth-flow and XSRF cookie policies at `/api/v1/auth/username-recovery`, TTL 600, SameSite Strict;
-5. richer Request and Cancel inbound-port methods with transient raw CSRF, Origin, and Referer;
-6. fail-closed single-argument compatibility methods;
-7. Spring composition for the existing services, Redis ports, mappers, policies, and cookie collaborator.
-
-Canonical Task 024 remains blocked until Repair 024A is committed, the handover/coordinator state is updated, and the Task 024 implementation authorization is explicitly issued. Task 025 has not started.
+Task 024 may now be committed. Task 025 has not started and remains unauthorized until its complete package and sufficiency audit are prepared.
 
 ## Completed implementation sequence
 
@@ -73,8 +72,8 @@ Canonical Task 024 remains blocked until Repair 024A is committed, the handover/
 | 022A | Use-case architecture guard scoping | Committed and verified |
 | 022 | Web DTOs and web mappers | Committed and verified after Repair 022A |
 | 023 | Feature web response policies | Committed, approved, and full-test milestone passed |
-| 024 | Controllers | Blocked pending Repair 024A commit |
-| 024A | Controller prerequisites | Implemented and approved; commit pending |
+| 024 | Controllers | Implemented, repaired, approved; commit authorized |
+| 024A | Controller prerequisites | Committed and verified |
 | 025 | Integration and stabilization | Not started |
 
 ## Authoritative baseline chain
@@ -590,15 +589,101 @@ Task 024 must not:
 
 Retry-After headers, `Set-Cookie`, and exact-path cookie clearing remain Task 024 transport concerns.
 
+## Task 024 controller result
+
+### Endpoints
+
+```text
+POST /api/v1/auth/username-recovery/start
+POST /api/v1/auth/username-recovery/request
+POST /api/v1/auth/username-recovery/cancel
+```
+
+`/start` binds the committed six-field body plus language, request ID, and Idempotency-Key. `/request` and `/cancel` remain empty-body endpoints and bind the auth-flow cookie and required security/transport headers.
+
+### Thin-controller delegation
+
+The controller depends on:
+
+```text
+StartUsernameRecoveryUseCase
+RequestUsernameRecoveryUseCase
+CancelUsernameRecoveryUseCase
+Task 022 web mappers
+Task 023 response policies
+WorkflowHttpResponses
+shared missing-artifact helpers
+UsernameRecoveryCookieWriter
+HttpSessionCookieAdapter
+```
+
+It does not depend on concrete services, Redis, APIM, message delivery, configuration internals, or another workflow controller.
+
+### Cookie behavior
+
+- Start `SESSION_CREATED` writes `auth_flow_sid` and `XSRF-TOKEN` at `/api/v1/auth/username-recovery` with TTL 600 and SameSite Strict.
+- All other Start outcomes write no cookie.
+- Request does not write or refresh cookies.
+- Cancel `SUCCESS` clears both cookies at the exact path.
+- Cancel system/security failure does not clear cookies.
+
+### Shared transport behavior
+
+- missing auth-flow cookie uses `CookieHttpResponses` and returns 401;
+- missing CSRF uses `CsrfHttpResponses` and returns 401;
+- missing Idempotency-Key uses `IdempotencyHttpResponses` and returns 400;
+- missing Scheme-Ref uses `RequestHeaderHttpResponses` and returns 400;
+- completed typed policies are translated through `WorkflowHttpResponses` with an optional classification override;
+- no error string is inspected to select HTTP status.
+
+### Review repair
+
+Five fail-first cases proved synchronous conversion escaped the prior reactive boundary:
+
+```text
+null Start body
+unsupported Start identity type
+malformed Request session ID
+malformed nonblank Request Scheme-Ref
+malformed Cancel session ID
+```
+
+The final implementation defers conversion before constructing commands and catches only the known conversion exceptions in that narrow scope. It maps malformed session IDs and Scheme-Refs through committed typed policies without inspecting exception messages. Unexpected use-case `RuntimeException` and Java `Error` values remain eligible for the central exception boundary.
+
+### Validation
+
+```text
+initial focused pass: 38 tests
+post-guard focused pass: 43 tests
+initial cumulative repaired pass: 1388 tests
+review-fix focused pass: 49 tests
+review-fix cumulative pass: 1394 tests
+final failures/errors/skips: 0/0/0
+```
+
+Approved changed-file boundary:
+
+```text
+1 production controller
+5 test/architecture files
+6 files total
+```
+
+Proposed commit:
+
+```text
+feat(username-recovery): add controllers
+```
+
 ## Next action
 
-1. Stage and commit the fourteen approved Repair 024A files only.
-2. Capture the full Repair 024A commit hash and subject.
+1. Stage and commit the six approved Task 024 files only.
+2. Capture the full Task 024 commit hash and subject.
 3. Replace the repository handover with this generated file and commit it separately.
-4. Update `.cline/username-recovery-state.md` to mark Repair 024A committed and verified.
-5. Re-authorize canonical Task 024 implementation against the exact clean post-Repair-024A baseline.
-6. Start Task 024 in a fresh Cline Usage-Billing session using `deepseek/deepseek-v4-flash`.
-7. Do not start Task 025.
+4. Close Task 024 in `.cline/username-recovery-state.md` using the exact Task 024 implementation hash and current clean baseline.
+5. Generate the complete Task 025 integration/stabilization package.
+6. Authorize only the Task 025 sufficiency audit.
+7. Do not begin Task 025 implementation or run `mvn clean verify` before the audit is independently reviewed.
 
 ## Deferred work and risks
 
