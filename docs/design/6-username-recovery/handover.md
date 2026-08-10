@@ -2,36 +2,38 @@
 
 ## Current stage
 
-Canonical Task 023, **Username Recovery Feature Web Mappers**, has completed implementation and independent review.
+Canonical Task 023, **Username Recovery Feature Web Mappers**, is committed and independently approved. The repaired full-test milestone has now passed, so the gate before Task 024 is satisfied.
 
-Review decision:
-
-```text
-TASK_023_APPROVED
-```
-
-Task 023 implements an exhaustive, typed feature response-policy boundary around the committed Task 022 projections. The implementation is additive and remains uncommitted until the approved commit step is completed.
-
-Validation evidence:
+Final milestone decision:
 
 ```text
-target/evidence/username-recovery/023-feature-web-mappers-20260810-123040/
-
-task023-focused-pass-repair3: PASSED, Maven exit 0, 40 tests
-task023-cumulative-regression: PASSED, Maven exit 0, 581 tests
+TASK_023_FULL_TEST_GATE_PASSED
+TASK_024_PACKAGE_AND_AUDIT_MAY_PROCEED
+TASK_024_IMPLEMENTATION_NOT_YET_AUTHORIZED
 ```
 
-The complete Maven milestone remains pending. A full `mvn test` was not run during Task 023 because it is the separately controlled gate between Tasks 023 and 024. `mvn clean verify` remains deferred until after Task 025.
-
-The intended Task 023 commit subject is:
+Final milestone evidence:
 
 ```text
-feat(username-recovery): add feature response policies
+target/evidence/username-recovery/023-full-test-gate-20260810-144429/
+
+task023-full-test-repair-focused:
+  PASSED, Maven exit 0
+  completed 2026-08-10T15:00:52.0564922+08:00
+
+task023-full-test-gate-repair-1:
+  PASSED, Maven exit 0
+  completed 2026-08-10T15:10:01.3687515+08:00
 ```
 
-The exact full Task 023 commit hash becomes authoritative only after that commit and must then be recorded in `.cline/username-recovery-state.md`.
+The failed original full-test stage remains preserved. Before the passing rerun, stale documentation-contract tests were removed by repository-owner action and two bounded test repairs were applied:
 
-Task 024, **Username Recovery Controllers**, has not started. Do not authorize Task 024 implementation until Task 023 is committed, the full-test milestone passes, and the complete Task 024 package and controller-boundary sufficiency audit are reviewed.
+1. `AuthFlowSessionPropertiesBindingTest` now expects the canonical Username Recovery TTL of 600 seconds rather than 900.
+2. `Task0043AuthenticationFoundationArchitectureGuardTest.loginMustNotOwnWebClientInfrastructure` is scoped as a Login-only guard. The rule therefore proves that classes in `..adapter.out.apim.login..` do not directly depend on WebClient, APIM OAuth, certificate, or crypto implementation packages. The rule does not prove the same property for Forgot Password or Username Recovery.
+
+The narrowed guard intent must remain explicit. A future cross-workflow APIM architecture rule, if desired, must be introduced separately and must evaluate `TrpSearchMemberAdapter` directly rather than relying on the Login-only rule.
+
+Task 024, **Username Recovery Controllers**, may now move to package generation and an audit-only controller-boundary sufficiency session. Task 024 implementation remains blocked until that audit is independently reviewed.
 
 ## Completed implementation sequence
 
@@ -64,8 +66,8 @@ Task 024, **Username Recovery Controllers**, has not started. Do not authorize T
 | 021 | Cancel Username Recovery use case | Committed and verified after direct review fixes |
 | 022A | Use-case architecture guard scoping | Committed and verified |
 | 022 | Web DTOs and web mappers | Committed and verified after Repair 022A |
-| 023 | Feature web response policies | Approved; commit and full-test milestone pending |
-| 024 | Controllers | Not started |
+| 023 | Feature web response policies | Committed, approved, and full-test milestone passed |
+| 024 | Controllers | Package/audit next; implementation not authorized |
 | 025 | Integration and stabilization | Not started |
 
 ## Authoritative baseline chain
@@ -409,16 +411,19 @@ feat(username-recovery): add feature response policies
 
 ## Full-test milestone
 
-A full Maven test gate is required after Task 023 and before Task 024.
+The repaired full Maven test gate passed.
 
-The milestone must:
+```text
+task023-full-test-repair-focused
+PASSED, Maven exit 0
 
-- run the complete `mvn test` suite through the checked-in controlled PowerShell stage scripts;
-- use one new, explicit evidence directory or an approved milestone evidence directory;
-- preserve the Task 023 focused and cumulative evidence unchanged;
-- capture the atomic result and Maven exit code;
-- prohibit background polling loops, sleeps, PID inference, duplicate launches, and automatic retry;
-- keep Task 024 blocked until the full suite passes and is reviewed.
+task023-full-test-gate-repair-1
+PASSED, Maven exit 0
+```
+
+The passing full-suite stage ran from 2026-08-10 15:03:14 +08:00 to 15:10:01 +08:00. The prior failed stages and reports remain preserved in the same evidence directory.
+
+The milestone repairs are test/governance changes only. They do not modify Task 023 production behavior. The Login architecture guard is intentionally Login-only after repair and must not be cited as coverage for Forgot Password or Username Recovery APIM adapters.
 
 `mvn clean verify` remains deferred until after Task 025.
 
@@ -462,15 +467,13 @@ Retry-After headers, `Set-Cookie`, and exact-path cookie clearing remain Task 02
 
 ## Next action
 
-1. Stage and commit the eleven approved Task 023 files only.
-2. Capture the full Task 023 commit hash and subject.
-3. Replace the repository handover with this file and commit it separately.
-4. Update `.cline/username-recovery-state.md` to close Task 023 and propose the full-test milestone.
-5. Run and review the full `mvn test` milestone.
-6. Generate the complete Task 024 package.
-7. Authorize only the Task 024 controller-boundary sufficiency audit after the milestone passes.
-8. Do not start Task 024 implementation before that audit is reviewed.
-9. Do not start Task 025.
+1. Commit the two validated milestone-repair test files separately.
+2. Commit this generated handover separately.
+3. Close the full-test milestone in `.cline/username-recovery-state.md` and set Task 024 to audit-only proposed state.
+4. Generate the complete Task 024 controller package.
+5. Authorize only the Task 024 controller-boundary sufficiency audit.
+6. Do not start Task 024 implementation until the audit is independently reviewed.
+7. Do not start Task 025.
 
 ## Deferred work and risks
 
