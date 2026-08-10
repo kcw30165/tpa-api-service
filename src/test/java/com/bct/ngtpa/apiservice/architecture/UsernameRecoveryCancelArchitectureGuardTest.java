@@ -52,6 +52,7 @@ class UsernameRecoveryCancelArchitectureGuardTest {
                 .that().resideInAnyPackage(CANCEL_PACKAGE)
                 .and().haveSimpleNameStartingWith("CancelUsernameRecovery")
                 .or().haveSimpleNameStartingWith("UsernameRecoveryCancel")
+                .and().resideInAnyPackage(CANCEL_PACKAGE)
                 .should().dependOnClassesThat().resideInAnyPackage(
                         "org.springframework..",
                         "org.springframework.http..",
@@ -76,6 +77,7 @@ class UsernameRecoveryCancelArchitectureGuardTest {
                 .that().resideInAnyPackage(CANCEL_PACKAGE)
                 .and().haveSimpleNameStartingWith("CancelUsernameRecovery")
                 .or().haveSimpleNameStartingWith("UsernameRecoveryCancel")
+                .and().resideInAnyPackage(CANCEL_PACKAGE)
                 .should().dependOnClassesThat().resideInAnyPackage(
                         "com.bct.ngtpa.apiservice.adapter.in.web..")
                 .orShould().dependOnClassesThat().haveSimpleName("ApiStatus")

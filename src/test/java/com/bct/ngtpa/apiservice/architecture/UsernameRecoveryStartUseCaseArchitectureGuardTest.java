@@ -52,6 +52,7 @@ class UsernameRecoveryStartUseCaseArchitectureGuardTest {
                 .that().resideInAnyPackage(START_PACKAGE)
                 .and().haveSimpleNameStartingWith("StartUsernameRecovery")
                 .or().haveSimpleNameStartingWith("UsernameRecoveryStart")
+                .and().resideInAnyPackage(START_PACKAGE)
                 .should().dependOnClassesThat().resideInAnyPackage(
                         "org.springframework..",
                         "org.springframework.http..",
@@ -76,6 +77,7 @@ class UsernameRecoveryStartUseCaseArchitectureGuardTest {
                 .that().resideInAnyPackage(START_PACKAGE)
                 .and().haveSimpleNameStartingWith("StartUsernameRecovery")
                 .or().haveSimpleNameStartingWith("UsernameRecoveryStart")
+                .and().resideInAnyPackage(START_PACKAGE)
                 .should().dependOnClassesThat().resideInAnyPackage(
                         "com.bct.ngtpa.apiservice.adapter.in.web..")
                 .orShould().dependOnClassesThat().haveSimpleName("ApiStatus")
