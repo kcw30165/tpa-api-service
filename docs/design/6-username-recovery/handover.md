@@ -2,31 +2,44 @@
 
 ## Current stage
 
-Canonical Task 024, **Username Recovery Controllers**, completed its audit-only sufficiency review and is blocked by committed predecessor gaps.
+Repair 024A, **Username Recovery Controller Prerequisites**, has completed implementation and independent review.
 
-Audit decision:
-
-```text
-TASK_024_ESCALATION_CONFIRMED
-REPAIR_024A_REQUIRED
-TASK_024_IMPLEMENTATION_REMAINS_BLOCKED
-```
-
-Audit evidence:
+Review decision:
 
 ```text
-target/evidence/username-recovery/024-controllers-audit-20260810-155807/
+REPAIR_024A_APPROVED
+TASK_024_PREREQUISITES_SATISFIED
+TASK_024_IMPLEMENTATION_REMAINS_NOT_AUTHORIZED
 ```
 
-The audit confirmed that endpoint paths, body/header mapping, shared 401 helpers, Task 023 policy translation, typed status handling, unknown-outcome behavior, defect propagation, and controller naming are expressible. The following prerequisites are not yet expressible from committed contracts:
+Implementation evidence:
 
-1. `UsernameRecoveryStartResult` does not expose the generated auth-flow session ID needed to publish `auth_flow_sid`.
-2. The committed pre-auth XSRF writer can clear but cannot write the XSRF cookie.
-3. Shared cookie values use `/api/v1/auth`, SameSite `None`, and Max-Age 1800 instead of the Username Recovery path `/api/v1/auth/username-recovery`, SameSite `Strict`, and TTL 600.
-4. richer Request and Cancel methods exist only on concrete services rather than inbound ports.
-5. no Spring composition currently provides the Username Recovery services, Task 022 mappers, Task 023 policies, and scenario-specific cookie writer.
+```text
+target/evidence/username-recovery/024A-controller-prerequisites-20260810-180714/
+```
 
-Repair 024A, **Controller Prerequisites**, now has a complete package and is proposed for audit-only authorization. Repair 024A implementation is not authorized until its sufficiency audit is independently reviewed. Canonical Task 024 and Task 025 remain blocked.
+Final validation:
+
+```text
+compile repair stage: PASSED, Maven exit 0
+focused repair stage: PASSED, Maven exit 0
+cumulative regression: PASSED, Maven exit 0
+297 cumulative tests, 0 failures, 0 errors
+```
+
+The approved Repair 024A boundary contains six production files and eight tests/guards. No controller was implemented. Public Username Recovery JSON remains unchanged, and the new transport-only session reference is not copied into web DTOs.
+
+Repair 024A now provides:
+
+1. a transport-safe `AuthFlowSessionId` in successful Start results;
+2. valid Start replay reconstruction using the live session ID and freshly rotated raw CSRF token;
+3. a Spring-free Username Recovery cookie writer producing framework-free cookie instructions;
+4. exact Username Recovery auth-flow and XSRF cookie policies at `/api/v1/auth/username-recovery`, TTL 600, SameSite Strict;
+5. richer Request and Cancel inbound-port methods with transient raw CSRF, Origin, and Referer;
+6. fail-closed single-argument compatibility methods;
+7. Spring composition for the existing services, Redis ports, mappers, policies, and cookie collaborator.
+
+Canonical Task 024 remains blocked until Repair 024A is committed, the handover/coordinator state is updated, and the Task 024 implementation authorization is explicitly issued. Task 025 has not started.
 
 ## Completed implementation sequence
 
@@ -59,9 +72,9 @@ Repair 024A, **Controller Prerequisites**, now has a complete package and is pro
 | 021 | Cancel Username Recovery use case | Committed and verified after direct review fixes |
 | 022A | Use-case architecture guard scoping | Committed and verified |
 | 022 | Web DTOs and web mappers | Committed and verified after Repair 022A |
-| 023 | Feature web response policies | Approved; commit and full-test milestone pending |
-| 024 | Controllers | Not started |
-| 024A | Controller prerequisites | Package ready; audit not yet reviewed |
+| 023 | Feature web response policies | Committed, approved, and full-test milestone passed |
+| 024 | Controllers | Blocked pending Repair 024A commit |
+| 024A | Controller prerequisites | Implemented and approved; commit pending |
 | 025 | Integration and stabilization | Not started |
 
 ## Authoritative baseline chain
@@ -451,6 +464,94 @@ Repair 024A must not implement controllers, expose session ID in JSON, add raw C
 
 The Repair 024A audit must prove that completed Start replay can provide a valid live session reference for cookie publication. If replay cannot do so without storing a forbidden session ID or returning a stale reference, the repair must stop with `ESCALATION_REQUIRED` rather than fabricate a cookie value.
 
+## Repair 024A implementation result
+
+### Transport-safe Start session reference
+
+`UsernameRecoveryStartResult` now carries `AuthFlowSessionId` as a server/transport-only component. The four-argument compatibility constructor remains available for legacy non-transport fixtures. Real `SESSION_CREATED` results produced by `StartUsernameRecoveryService` contain the exact generated or replay-loaded session ID.
+
+The public Task 022 mapper continues to project only:
+
+```text
+csrfToken
+expiresInSeconds
+schemes
+```
+
+Serialization tests confirm that `authFlowSessionId`, session IDs, cookies, CSRF hashes, usernames, and raw destinations do not enter public JSON. `toString()` redacts both the session ID and raw CSRF token.
+
+### Replay preservation
+
+The existing completed Start replay continues to decode the real protected session ID, load the live session, reject invalid terminal/expired states, rotate the CSRF hash through expected-revision CAS, and return a fresh raw token without extending TTL. Repair 024A adds the live session ID to the application result only. It does not add raw CSRF or new secret material to replay snapshots.
+
+### Cookie policy
+
+`UsernameRecoveryCookieWriter` is Spring-free and produces `SessionCookieInstruction` values. Task 024 will apply those instructions through `HttpSessionCookieAdapter`.
+
+Canonical policies:
+
+```text
+auth_flow_sid
+  path: /api/v1/auth/username-recovery
+  maxAge: 600
+  httpOnly: true
+  secure: true by default
+  sameSite: Strict
+  domain: omitted
+
+XSRF-TOKEN
+  path: /api/v1/auth/username-recovery
+  maxAge: 600
+  httpOnly: false
+  secure: true by default
+  sameSite: Strict
+  domain: omitted
+```
+
+Clear instructions use the same exact path with Max-Age 0. Existing shared Login, Registration, Forgot Password, Captcha, and Logout cookie configuration and writers are unchanged.
+
+### Richer inbound ports
+
+`RequestUsernameRecoveryUseCase` and `CancelUsernameRecoveryUseCase` now expose the richer four-argument method as the single abstract method:
+
+```text
+command
+rawCsrfToken
+origin
+referer
+```
+
+The old single-argument method remains as a fail-closed default returning `SECURITY_CONTEXT_REQUIRED`. Raw CSRF, Origin, and Referer remain transient and are not added to command records.
+
+### Spring composition
+
+`UsernameRecoveryFeatureConfig` composes the Redis-backed session/idempotency ports, CSRF validation/reservation services, Start/Request/Cancel use cases, Task 022 mappers, Task 023 response policies, and the Spring-free cookie writer. Beans use conditional creation to avoid duplicate definitions. No controller bean is introduced.
+
+### Validation and audit
+
+The Repair 024A validation includes compile, focused, and cumulative stages. The cumulative regression ran 297 tests with zero failures and zero errors. Architecture checks confirm:
+
+- no Username Recovery controller was added;
+- the cookie writer remains Spring-free;
+- inbound ports are framework-free interfaces;
+- raw security context is absent from commands;
+- public DTOs contain no session/cookie/security fields;
+- configuration respects clean-architecture package rules.
+
+Approved changed-file boundary:
+
+```text
+6 production files
+8 tests/guards
+14 files total
+```
+
+Proposed commit:
+
+```text
+feat(username-recovery): add controller prerequisites
+```
+
 ## Task 024 boundary
 
 Task 024 will own thin controllers for:
@@ -491,12 +592,12 @@ Retry-After headers, `Set-Cookie`, and exact-path cookie clearing remain Task 02
 
 ## Next action
 
-1. Install and commit the Repair 024A package in `.cline`.
-2. Commit this generated handover separately.
-3. Set coordinator state to `REPAIR_024A_AUDIT_AUTHORIZED` using the exact current clean baseline.
-4. Run the Repair 024A sufficiency audit in a fresh Cline session.
-5. Do not run the Repair 024A implementation prompt until the audit is independently reviewed.
-6. Do not run the canonical Task 024 implementation prompt.
+1. Stage and commit the fourteen approved Repair 024A files only.
+2. Capture the full Repair 024A commit hash and subject.
+3. Replace the repository handover with this generated file and commit it separately.
+4. Update `.cline/username-recovery-state.md` to mark Repair 024A committed and verified.
+5. Re-authorize canonical Task 024 implementation against the exact clean post-Repair-024A baseline.
+6. Start Task 024 in a fresh Cline Usage-Billing session using `deepseek/deepseek-v4-flash`.
 7. Do not start Task 025.
 
 ## Deferred work and risks
