@@ -28,7 +28,9 @@ import org.junit.jupiter.api.Test;
  * Repair 024A controller-prerequisite architecture guard.
  *
  * <p>
- * Locks: no Username Recovery controller class is added by this repair; the
+ * Locks: the Task 024 {@code AuthUsernameRecoveryController} is present as a
+ * concrete thin controller with no dependency on concrete services, Redis,
+ * APIM, configuration internals, or other workflow controllers; the
  * {@link UsernameRecoveryCookieWriter} stays Spring-free and
  * instruction-producing; the richer
  * Request/Cancel inbound-port signatures are the single abstract methods with
@@ -48,18 +50,29 @@ class UsernameRecoveryControllerPrerequisiteArchitectureGuardTest {
                         "rawCsrfToken", "csrfToken", "origin", "referer");
 
         @Test
-        void noUsernameRecoveryControllerClassIsAdded() {
+        void usernameRecoveryControllerIsConcreteThinTask024Controller() {
                 var classes = new ClassFileImporter()
                                 .withImportOption(new ImportOption.DoNotIncludeTests())
                                 .importPackages("com.bct.ngtpa.apiservice");
 
                 ArchRule rule = classes()
-                                .that().resideInAPackage("..adapter.in.web..")
-                                .and().haveSimpleNameContaining("UsernameRecovery")
-                                .and().haveSimpleNameEndingWith("Controller")
-                                .should().beInterfaces()
-                                .allowEmptyShould(true)
-                                .as("Repair 024A must not implement any Task 024 Username Recovery controller");
+                                .that().resideInAPackage("..adapter.in.web.controller..")
+                                .and().haveSimpleName("AuthUsernameRecoveryController")
+                                .should().notBeInterfaces()
+                                .andShould().onlyDependOnClassesThat().resideInAnyPackage(
+                                                "com.bct.ngtpa.apiservice.adapter.in.web.controller..",
+                                                "com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery..",
+                                                "com.bct.ngtpa.apiservice.adapter.in.web.response..",
+                                                "com.bct.ngtpa.apiservice.adapter.in.web.session.cookie..",
+                                                "com.bct.ngtpa.apiservice.application.port.in..",
+                                                "com.bct.ngtpa.apiservice.application.dto..",
+                                                "com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery..",
+                                                "com.bct.ngtpa.apiservice.domain.model..",
+                                                "com.bct.ngtpa.apiservice.shared..",
+                                                "org.springframework..",
+                                                "reactor..",
+                                                "java..")
+                                .as("AuthUsernameRecoveryController is the concrete thin Task 024 controller");
                 rule.check(classes);
         }
 
