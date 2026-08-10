@@ -15,7 +15,7 @@ class PortalAccessContextTest {
 
         assertEquals("user-01", actor.actorUserId());
         // assertEquals("STAFFNO", actor.actorUserType());
-        assertEquals("RM", actor.actorUserRole());
+        assertEquals(ActorUserRole.ROLE_USER, actor.actorUserRole());
     }
 
 

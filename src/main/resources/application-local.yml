@@ -124,57 +124,6 @@ currency-mapping:
     NZD.OG: NZD
     INR.OG: INR
 
-temporary-portal-access-context:
-  default-session-id: DEMO-SESSION-001
-  sessions:
-    DEMO-SESSION-001:
-      actor:
-        actor-user-id: 3002798
-        actor-user-role: ROLE_USER
-      accounts:
-        ACC-1:
-          account-env: JP
-          policy-no: "00000000217"
-          cert-no: "95"
-          trust-code: JPM
-          scheme-type: OE
-          term-status:
-          term-completion-date:
-        ACC-2:
-          account-env: DB
-          policy-no: "00000008802"
-          cert-no: "2"
-          trust-code:
-          scheme-type:
-          term-status:
-          term-completion-date:
-    DEMO-SESSION-002:
-      actor:
-        actor-user-id: "5226523"
-        actor-user-role: ROLE_USER
-      accounts:
-        ACC-3:
-          account-env: DB
-          policy-no: "00000008802"
-          cert-no: "301"
-          trust-code:
-          scheme-type:
-          term-status:
-          term-completion-date:
-    DEMO-SESSION-003:
-      actor:
-        actor-user-id: "3002798"
-        actor-user-role: ROLE_USER
-      accounts:
-        ACC-4:
-          account-env: DB
-          policy-no: "00000008802"
-          cert-no: "1499"
-          trust-code:
-          scheme-type:
-          term-status:
-          term-completion-date:
-
 request-logging:
   body-logging:
     enabled: true

@@ -111,14 +111,14 @@ class PortalAccessContextArchitectureGuardTest {
     void temporarySessionYamlShapeRemainsDocumentedInLocalConfig() throws Exception {
         String source = Files.readString(Path.of("src/main/resources/application-local.yml"));
 
-        assertTrue(source.contains("temporary-portal-access-context:"),
-                "local config should keep the temporary portal access context block");
-        assertTrue(source.contains("default-session-id:"),
-                "temporary config should simulate Redis with a session-id layer");
-        assertTrue(source.contains("sessions:"),
-                "temporary config should use sessions above accounts");
-        assertTrue(source.contains("accounts:"),
-                "temporary config should keep Account-Ref entries under the session");
+        assertFalse(source.contains("temporary-portal-access-context:"),
+                "local config should not keep the temporary portal access context block");
+        assertFalse(source.contains("default-session-id:"),
+                "temporary config block must be removed");
+        assertFalse(source.contains("sessions:"),
+                "temporary sessions block must be removed");
+        assertFalse(source.contains("accounts:"),
+                "temporary accounts block must be removed");
         assertFalse(source.contains("temporary-portal-access-context:\nprofiles:"),
                 "local config should not use the old accountRef-only profiles root");
     }

@@ -36,13 +36,8 @@ class TemporaryPortalAccessContextHeaderSessionGuardTest {
     }
 
     @Test
-    void temporaryAdapterDoesNotUseConfiguredDefaultSessionIdForSessionSelection() throws Exception {
-        String source = Files.readString(Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/out/security/TemporaryPortalAccessContextAdapter.java"));
-
-        assertTrue(source.contains("resolvePortalAccessContext(String accountRef, String sessionId)"));
-        assertTrue(source.contains("resolveFromSessionShape(normalizedAccountRef, sessionId)"));
-        assertTrue(source.contains("resolveHeaderSessionId"));
-        assertFalse(source.contains("getDefaultSessionId()"));
-        assertFalse(source.contains("resolveDefaultSessionId"));
+    void temporaryAdapterIsRemoved() throws Exception {
+        java.nio.file.Path p = Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/out/security/TemporaryPortalAccessContextAdapter.java");
+        assertFalse(Files.exists(p), "TemporaryPortalAccessContextAdapter must be removed in Stage 003");
     }
 }

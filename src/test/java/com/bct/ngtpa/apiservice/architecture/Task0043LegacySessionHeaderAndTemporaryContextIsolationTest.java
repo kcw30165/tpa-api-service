@@ -28,11 +28,11 @@ class Task0043LegacySessionHeaderAndTemporaryContextIsolationTest {
 
     @Test
     void temporaryYamlAdapterIsNotAProductionSpringComponent() throws Exception {
-        String temporary = Files.readString(Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/out/security/TemporaryPortalAccessContextAdapter.java"));
+        java.nio.file.Path temp = Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/out/security/TemporaryPortalAccessContextAdapter.java");
         String config = Files.readString(Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/config/auth/session/AuthenticatedSessionConfig.java"));
-        assertThat(temporary).doesNotContain("@Component", "org.springframework.stereotype.Component");
+        org.junit.jupiter.api.Assertions.assertFalse(Files.exists(temp), "TemporaryPortalAccessContextAdapter must not exist in production source");
         assertThat(config).contains("@Primary", "AuthenticatedAccountContextResolver");
     }
 }

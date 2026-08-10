@@ -255,7 +255,6 @@ The attached startup log in this repository workspace confirms that leaving `aut
 | `logging-sanitizer`                                 | Sensitive-field masking configuration                                                 | No                | Masks tokens, secrets, identifiers, and key material                       |
 | `reference-date`                                    | Reference-date cache TTL and refresh behavior                                         | No                | Used by internal reference-date operations                                 |
 | `bff-pages`                                         | Page schema and validation metadata                                                   | No                | See page-schema DSL doc                                                    |
-| `temporary-portal-access-context`                   | Local/demo selected-account context data                                              | No                | Present in local configuration; not a substitute for runtime session state |
 
 Page-schema reference: [docs/pageconfig/045-page-schema-validation-dsl.md](docs/pageconfig/045-page-schema-validation-dsl.md)
 
