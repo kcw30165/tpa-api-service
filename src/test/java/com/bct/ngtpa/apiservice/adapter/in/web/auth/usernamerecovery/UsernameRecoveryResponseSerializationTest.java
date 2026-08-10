@@ -91,4 +91,21 @@ class UsernameRecoveryResponseSerializationTest {
                 .contains("\"data\":null")
                 .doesNotContain("{}");
     }
+
+    @Test
+    void startWorkflowResponseNeverLeaksSessionCookieOrCsrfHashMaterial() throws Exception {
+        var data = new UsernameRecoveryStartDataResponse(
+                "csrf-value",
+                600,
+                List.of(new UsernameRecoverySchemeResponse("sch_opaque-1", "DB", "DBA", true)));
+
+        String json = objectMapper.writeValueAsString(
+                new UsernameRecoveryWorkflowResultResponse<>(WorkflowNextStep.SELECT_ACCOUNT, data));
+
+        assertThat(json)
+                .contains("\"csrfToken\":\"csrf-value\"")
+                .doesNotContain(
+                        "authFlowSessionId", "sessionId", "auth_flow_sid", "XSRF-TOKEN",
+                        "csrfHash", "username", "cookie", "rawDestination", "requestId");
+    }
 }

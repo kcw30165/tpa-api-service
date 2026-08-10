@@ -472,6 +472,41 @@ class StartUsernameRecoveryServiceTest {
         assertThat(lookupPort.searchCalls).isEqualTo(1);
     }
 
+    @Test
+    void sessionCreatedResultCarriesExactGeneratedAuthFlowSessionId() {
+        StepVerifier.create(service.start(emailCommand(EMAIL)))
+                .assertNext(result -> {
+                    assertThat(result.outcome()).isEqualTo(
+                            UsernameRecoveryStartResult.Outcome.SESSION_CREATED);
+                    assertThat(result.authFlowSessionId()).isNotNull();
+                    assertThat(sessionPort.stored).isNotNull();
+                    assertThat(result.authFlowSessionId().value())
+                            .isEqualTo(sessionPort.stored.sessionId().value());
+                    assertThat(result.csrfToken()).isNotBlank();
+                })
+                .verifyComplete();
+
+        assertThat(sessionPort.createCalls).isEqualTo(1);
+    }
+
+    @Test
+    void nonSessionOutcomesCarryNoSessionIdOrRawCsrf() {
+        lookupPort.result = new UsernameRecoveryLookupResult(
+                UsernameRecoveryLookupResult.Status.NOT_FOUND, List.of());
+
+        StepVerifier.create(service.start(emailCommand(EMAIL)))
+                .assertNext(result -> {
+                    assertThat(result.outcome()).isEqualTo(
+                            UsernameRecoveryStartResult.Outcome.MEMBER_NOT_FOUND);
+                    assertThat(result.authFlowSessionId()).isNull();
+                    assertThat(result.csrfToken()).isNull();
+                    assertThat(result.expiresInSeconds()).isNull();
+                })
+                .verifyComplete();
+
+        assertThat(sessionPort.createCalls).isZero();
+    }
+
 
 
     @Test

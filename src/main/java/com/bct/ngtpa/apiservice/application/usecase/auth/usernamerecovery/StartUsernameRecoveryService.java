@@ -8,6 +8,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRe
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoverySchemeProjection;
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryStartCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryStartResult;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.port.in.StartUsernameRecoveryUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyAction;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyFingerprint;
@@ -447,7 +448,11 @@ public class StartUsernameRecoveryService implements StartUsernameRecoveryUseCas
         long remainingSeconds = Duration.between(now, session.expiresAt()).toSeconds();
         int expiresInSeconds = (int) Math.max(1, remainingSeconds);
         return new UsernameRecoveryStartResult(
-                UsernameRecoveryStartResult.Outcome.SESSION_CREATED, rawToken, expiresInSeconds, projections);
+                UsernameRecoveryStartResult.Outcome.SESSION_CREATED,
+                new AuthFlowSessionId(session.sessionId().value()),
+                rawToken,
+                expiresInSeconds,
+                projections);
     }
 
     private UsernameRecoverySessionId generateSessionId() {

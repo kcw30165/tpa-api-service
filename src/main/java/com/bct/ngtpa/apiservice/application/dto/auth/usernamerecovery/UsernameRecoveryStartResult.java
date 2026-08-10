@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery;
 
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import java.util.List;
 import java.util.Objects;
 
@@ -17,10 +18,17 @@ import java.util.Objects;
  * at least one registered projection, and a session-bound schemeRef on every projection.
  * {@code ZERO_REGISTERED} requires at least one unregistered projection with a null schemeRef and
  * carries no session data. {@code MEMBER_NOT_FOUND} carries no session data and no schemes.
- * {@link #toString()} never discloses the CSRF token.
+ * {@link #toString()} never discloses the CSRF token or the auth-flow session id.
+ *
+ * <p>The {@code authFlowSessionId} component (Repair 024A) is server/transport-only: it never
+ * enters the public projection or the replay snapshots, and the four-argument convenience
+ * constructor keeps it null. The SESSION_CREATED non-null session-id invariant is enforced at the
+ * service construction site ({@code StartUsernameRecoveryService.sessionCreatedResult}), not in
+ * this record constructor.
  */
 public record UsernameRecoveryStartResult(
         Outcome outcome,
+        AuthFlowSessionId authFlowSessionId,
         String csrfToken,
         Integer expiresInSeconds,
         List<UsernameRecoverySchemeProjection> schemes) {
@@ -53,12 +61,13 @@ public record UsernameRecoveryStartResult(
                 }
             }
             case MEMBER_NOT_FOUND -> {
-                if (!schemes.isEmpty() || csrfToken != null || expiresInSeconds != null) {
+                if (authFlowSessionId != null || !schemes.isEmpty() || csrfToken != null
+                        || expiresInSeconds != null) {
                     throw new IllegalArgumentException("member-not-found result must not carry session data or schemes");
                 }
             }
             case ZERO_REGISTERED -> {
-                if (csrfToken != null || expiresInSeconds != null) {
+                if (authFlowSessionId != null || csrfToken != null || expiresInSeconds != null) {
                     throw new IllegalArgumentException("zero-registered result must not carry session data");
                 }
                 if (schemes.isEmpty()) {
@@ -74,10 +83,18 @@ public record UsernameRecoveryStartResult(
         }
     }
 
+    public UsernameRecoveryStartResult(
+            Outcome outcome,
+            String csrfToken,
+            Integer expiresInSeconds,
+            List<UsernameRecoverySchemeProjection> schemes) {
+        this(outcome, null, csrfToken, expiresInSeconds, schemes);
+    }
+
     @Override
     public String toString() {
         return "UsernameRecoveryStartResult[outcome=" + outcome
-                + ", csrfToken=<redacted>, expiresInSeconds=" + expiresInSeconds
+                + ", authFlowSessionId=<redacted>, csrfToken=<redacted>, expiresInSeconds=" + expiresInSeconds
                 + ", schemeCount=" + schemes.size() + "]";
     }
 }

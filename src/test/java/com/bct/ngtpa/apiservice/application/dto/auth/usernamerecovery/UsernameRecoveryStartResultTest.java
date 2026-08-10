@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySchemeRef;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -134,15 +135,67 @@ class UsernameRecoveryStartResultTest {
     }
 
     @Test
+    void sessionCreatedCanCarryAuthFlowSessionId() {
+        var sessionId = new AuthFlowSessionId("afs_opaque-1");
+        var result = new UsernameRecoveryStartResult(
+                UsernameRecoveryStartResult.Outcome.SESSION_CREATED,
+                sessionId,
+                "csrf-value",
+                600,
+                List.of(registeredProjection(), unregisteredProjection()));
+
+        assertThat(result.outcome()).isEqualTo(UsernameRecoveryStartResult.Outcome.SESSION_CREATED);
+        assertThat(result.authFlowSessionId()).isEqualTo(sessionId);
+        assertThat(result.csrfToken()).isEqualTo("csrf-value");
+        assertThat(result.expiresInSeconds()).isEqualTo(600);
+        assertThat(result.schemes()).hasSize(2);
+    }
+
+    @Test
+    void fourArgumentConvenienceConstructorKeepsNullAuthFlowSessionId() {
+        var result = new UsernameRecoveryStartResult(
+                UsernameRecoveryStartResult.Outcome.SESSION_CREATED,
+                "csrf-value",
+                600,
+                List.of(registeredProjection(), unregisteredProjection()));
+
+        assertThat(result.outcome()).isEqualTo(UsernameRecoveryStartResult.Outcome.SESSION_CREATED);
+        assertThat(result.authFlowSessionId()).isNull();
+        assertThat(result.csrfToken()).isEqualTo("csrf-value");
+    }
+
+    @Test
+    void nonSessionOutcomesRejectAuthFlowSessionId() {
+        assertThatThrownBy(() -> new UsernameRecoveryStartResult(
+                UsernameRecoveryStartResult.Outcome.MEMBER_NOT_FOUND,
+                new AuthFlowSessionId("afs_opaque-1"),
+                null,
+                null,
+                List.of()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("member-not-found result must not carry session data or schemes");
+        assertThatThrownBy(() -> new UsernameRecoveryStartResult(
+                UsernameRecoveryStartResult.Outcome.ZERO_REGISTERED,
+                new AuthFlowSessionId("afs_opaque-1"),
+                null,
+                null,
+                List.of(unregisteredProjection())))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("zero-registered result must not carry session data");
+    }
+
+    @Test
     void toStringDoesNotDiscloseCsrfToken() {
         var result = new UsernameRecoveryStartResult(
                 UsernameRecoveryStartResult.Outcome.SESSION_CREATED,
+                new AuthFlowSessionId("afs_session-secret"),
                 "csrf-secret",
                 600,
                 List.of(registeredProjection()));
 
         assertThat(result.toString())
                 .doesNotContain("csrf-secret")
+                .doesNotContain("afs_session-secret")
                 .contains("outcome=SESSION_CREATED", "expiresInSeconds=600", "schemeCount=1");
     }
 }
