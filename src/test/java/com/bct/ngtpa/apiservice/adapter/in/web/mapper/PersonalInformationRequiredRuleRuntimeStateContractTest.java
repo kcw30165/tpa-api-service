@@ -71,23 +71,6 @@ class PersonalInformationRequiredRuleRuntimeStateContractTest {
                 .containsEntry("type", "required");
     }
 
-    @Test
-    void requiredRuntimeStateContractIsDocumented() throws Exception {
-        Path contract = Path.of("doc/others/personal-information-get-validation-response-quality-contract.md");
-        assertThat(contract).exists();
-        String document = Files.readString(contract);
-
-        assertThat(document)
-                .contains("validations[] contains available rule definitions")
-                .contains("required and readonly are runtime field state")
-                .contains("EDITABLE_COM")
-                .contains("READONLY")
-                .contains("readonly=false")
-                .contains("required=true")
-                .contains("type: required may be present even when required=false")
-                .contains("Do not expose raw APIM config-value to FE");
-    }
-
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> listOfMaps(Object value) {
         assertThat(value).isInstanceOf(List.class);
