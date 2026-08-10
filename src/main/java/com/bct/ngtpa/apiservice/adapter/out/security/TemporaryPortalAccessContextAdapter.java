@@ -73,10 +73,15 @@ public class TemporaryPortalAccessContextAdapter implements PortalAccessContextP
         }
         TemporaryPortalAccessContextProperties.SessionActor actor = session.getActor();
         TermStatus termStatus = mapTermStatus(account.getTermStatus(), accountRef, account.getAccountEnv());
+        if (actor == null || actor.getActorUserRole() == null) {
+            return Mono.<PortalAccessContext>error(new PortalAccessContextResolutionException(
+                    ErrorCodes.MEMBER_CONTEXT_INVALID,
+                    "Temporary portal access context actor or actorUserRole is missing for session: " + sessionId));
+        }
         return Mono.just(new PortalAccessContext(
                 new ActorContext(
-                        actor == null ? null : actor.getActorUserId(),
-                        actor == null ? null : actor.getActorUserRole()),
+                        actor.getActorUserId(),
+                        actor.getActorUserRole()),
                 new AccountContext(
                         accountRef,
                         account.getAccountEnv(),
@@ -100,6 +105,11 @@ public class TemporaryPortalAccessContextAdapter implements PortalAccessContextP
                     "No temporary portal access context profile configured for accountRef: " + accountRef));
         }
         TermStatus termStatus = mapTermStatus(profile.getTermStatus(), accountRef, profile.getAccountEnv());
+        if (profile.getActorUserRole() == null) {
+            return Mono.<PortalAccessContext>error(new PortalAccessContextResolutionException(
+                    ErrorCodes.MEMBER_CONTEXT_INVALID,
+                    "Temporary portal access context profile missing actorUserRole for accountRef: " + accountRef));
+        }
         return Mono.just(new PortalAccessContext(
                 new ActorContext(profile.getActorUserId(), profile.getActorUserRole()),
                 new AccountContext(

@@ -101,7 +101,7 @@ class ApimUpdatePersonalInformationAdapterTest {
                 policyNo,
                 certNo,
                 "actor-user",
-                "MEMBER",
+                com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER,
                 true,
                 Map.of("email", "member@example.com"));
     }

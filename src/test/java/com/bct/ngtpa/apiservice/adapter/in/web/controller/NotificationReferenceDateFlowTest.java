@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.adapter.out.configserver.ReferenceDateProperties
 import com.bct.ngtpa.apiservice.adapter.out.referencedate.ReferenceDateAdapter;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.GetNotificationsCommand;
 import com.bct.ngtpa.apiservice.application.dto.NotificationListResult;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
@@ -92,7 +93,7 @@ class NotificationReferenceDateFlowTest {
             @Override
             public Mono<PortalAccessContext> current() {
                 return Mono.just(new PortalAccessContext(
-                        new ActorContext("USER-1", "MEMBER"),
+                        new ActorContext("USER-1", ActorUserRole.ROLE_USER),
                         new AccountContext("ACC-1", "JP", "POL-1", "CERT-1", "TRUST", "SCHEME", null, null)));
             }
 

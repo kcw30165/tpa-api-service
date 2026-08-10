@@ -130,7 +130,7 @@ temporary-portal-access-context:
     DEMO-SESSION-001:
       actor:
         actor-user-id: 3002798
-        actor-user-role: MEMBER
+        actor-user-role: ROLE_USER
       accounts:
         ACC-1:
           account-env: JP
@@ -151,7 +151,7 @@ temporary-portal-access-context:
     DEMO-SESSION-002:
       actor:
         actor-user-id: "5226523"
-        actor-user-role: MEMBER
+        actor-user-role: ROLE_USER
       accounts:
         ACC-3:
           account-env: DB
@@ -164,7 +164,7 @@ temporary-portal-access-context:
     DEMO-SESSION-003:
       actor:
         actor-user-id: "3002798"
-        actor-user-role: MEMBER
+        actor-user-role: ROLE_USER
       accounts:
         ACC-4:
           account-env: DB

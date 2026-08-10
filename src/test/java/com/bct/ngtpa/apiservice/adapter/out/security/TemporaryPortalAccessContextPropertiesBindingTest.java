@@ -7,8 +7,11 @@ import org.springframework.boot.context.properties.source.MapConfigurationProper
 
 import java.util.Map;
 
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class TemporaryPortalAccessContextPropertiesBindingTest {
 
@@ -17,7 +20,7 @@ class TemporaryPortalAccessContextPropertiesBindingTest {
         var props = Map.ofEntries(
             Map.entry("temporary-portal-access-context.profiles.notifications.actor-user-id", "actor_user_notifications"),
             Map.entry("temporary-portal-access-context.profiles.notifications.actor-user-type", "MEMBER"),
-            Map.entry("temporary-portal-access-context.profiles.notifications.actor-user-role", "SELF"),
+                        Map.entry("temporary-portal-access-context.profiles.notifications.actor-user-role", "ROLE_USER"),
             Map.entry("temporary-portal-access-context.profiles.notifications.account-env", "JP"),
             Map.entry("temporary-portal-access-context.profiles.notifications.policy-no", "policyNo_for_notifications"),
             Map.entry("temporary-portal-access-context.profiles.notifications.cert-no", "certNo_for_notifications"),
@@ -33,7 +36,7 @@ class TemporaryPortalAccessContextPropertiesBindingTest {
         assertNotNull(profile, "notifications profile must be present");
         assertEquals("actor_user_notifications", profile.getActorUserId());
         assertEquals("MEMBER", profile.getActorUserType());
-        assertEquals("SELF", profile.getActorUserRole());
+        assertEquals(ActorUserRole.ROLE_USER, profile.getActorUserRole());
         assertEquals("JP", profile.getAccountEnv());
         assertEquals("policyNo_for_notifications", profile.getPolicyNo());
         assertEquals("certNo_for_notifications", profile.getCertNo());
@@ -48,7 +51,7 @@ class TemporaryPortalAccessContextPropertiesBindingTest {
         var props = Map.ofEntries(
             Map.entry("temporary-portal-access-context.profiles.contributions.actor-user-id", "actor_user_contributions"),
             Map.entry("temporary-portal-access-context.profiles.contributions.actor-user-type", "MEMBER"),
-            Map.entry("temporary-portal-access-context.profiles.contributions.actor-user-role", "SELF"),
+                        Map.entry("temporary-portal-access-context.profiles.contributions.actor-user-role", "ROLE_USER"),
             Map.entry("temporary-portal-access-context.profiles.contributions.account-env", "JP"),
             Map.entry("temporary-portal-access-context.profiles.contributions.policy-no", "policyNo_for_contributions"),
             Map.entry("temporary-portal-access-context.profiles.contributions.cert-no", "certNo_for_contributions"),
@@ -64,7 +67,7 @@ class TemporaryPortalAccessContextPropertiesBindingTest {
         assertNotNull(profile, "contributions profile must be present");
         assertEquals("actor_user_contributions", profile.getActorUserId());
         assertEquals("MEMBER", profile.getActorUserType());
-        assertEquals("SELF", profile.getActorUserRole());
+        assertEquals(ActorUserRole.ROLE_USER, profile.getActorUserRole());
         assertEquals("JP", profile.getAccountEnv());
         assertEquals("policyNo_for_contributions", profile.getPolicyNo());
         assertEquals("certNo_for_contributions", profile.getCertNo());
@@ -104,7 +107,7 @@ class TemporaryPortalAccessContextPropertiesBindingTest {
 
         assertNotNull(profile);
         assertEquals("", profile.getActorUserType());
-        assertEquals("", profile.getActorUserRole());
+        assertNull(profile.getActorUserRole());
         assertEquals("", profile.getAccountEnv());
         assertEquals("", profile.getCertNo());
         assertEquals("", profile.getTrustCode());
@@ -145,7 +148,7 @@ class TemporaryPortalAccessContextPropertiesBindingTest {
         assertEquals("SESSION-001", bound.getDefaultSessionId());
         assertNotNull(session, "SESSION-001 must be bound");
         assertEquals("actor-session-001", session.getActor().getActorUserId());
-        assertEquals("MEMBER", session.getActor().getActorUserRole());
+        assertEquals(ActorUserRole.ROLE_USER, session.getActor().getActorUserRole());
         assertEquals(2, session.getAccounts().size());
         assertEquals("JP", session.getAccounts().get("ACC-1").getAccountEnv());
         assertEquals("00000000217", session.getAccounts().get("ACC-1").getPolicyNo());
@@ -169,7 +172,7 @@ class TemporaryPortalAccessContextPropertiesBindingTest {
 
         assertNotNull(account);
         assertEquals("", bound.getDefaultSessionId());
-        assertEquals("", bound.getSessions().get("SESSION-001").getActor().getActorUserRole());
+        assertNull(bound.getSessions().get("SESSION-001").getActor().getActorUserRole());
         assertEquals("", account.getAccountEnv());
         assertEquals("policyNo", account.getPolicyNo());
         assertEquals("", account.getCertNo());

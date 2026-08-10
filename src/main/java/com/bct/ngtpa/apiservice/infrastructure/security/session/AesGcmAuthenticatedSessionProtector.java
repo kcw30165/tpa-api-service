@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.infrastructure.security.session;
 
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedAccountRef;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSession;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionAccount;
@@ -165,7 +166,7 @@ public final class AesGcmAuthenticatedSessionProtector implements AuthenticatedS
     /** Sensitive context only. Lifecycle metadata deliberately stays outside ciphertext. */
     private record SensitiveContext(
             String actorUserId,
-            String actorUserRole,
+            ActorUserRole actorUserRole,
             List<WireAccount> accounts,
             String csrfTokenHash) {
         static SensitiveContext from(AuthenticatedSession session) {

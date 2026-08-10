@@ -82,7 +82,7 @@ class EstablishAuthenticatedLoginSessionServiceTest {
     private EstablishAuthenticatedLoginSessionCommand command() {
         var account = new LoginSessionAccount(new LoginAccountRef("acc_abcdefghijklmnopqrstuvwx"), "DB", "8802",
                 "00000008802", "1", "0001", "DBA", "OE", null, null);
-        return new EstablishAuthenticatedLoginSessionCommand(AFS, new ActorContext("member", "USER"), List.of(account),
+        return new EstablishAuthenticatedLoginSessionCommand(AFS, new ActorContext("member", ActorUserRole.ROLE_USER), List.of(account),
                 "csrf_hash", "req");
     }
 }

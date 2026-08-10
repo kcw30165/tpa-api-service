@@ -4,6 +4,8 @@ import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -38,7 +40,7 @@ public class TemporaryPortalAccessContextProperties {
     @Setter
     public static class SessionActor {
         private String actorUserId = "";
-        private String actorUserRole = "";
+        private ActorUserRole actorUserRole;
     }
 
     @Getter
@@ -58,7 +60,7 @@ public class TemporaryPortalAccessContextProperties {
     public static class Profile {
         private String actorUserId = "";
         private String actorUserType = "";
-        private String actorUserRole = "";
+        private ActorUserRole actorUserRole;
         private String accountEnv = "";
         private String policyNo = "";
         private String certNo = "";

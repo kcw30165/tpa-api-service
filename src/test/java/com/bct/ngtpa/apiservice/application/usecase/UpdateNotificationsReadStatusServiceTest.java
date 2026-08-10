@@ -12,6 +12,7 @@ import com.bct.ngtpa.apiservice.application.port.out.ApimNotificationReadStatusP
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -59,7 +60,7 @@ class UpdateNotificationsReadStatusServiceTest {
 
     private static PortalAccessContext context(String accountRef) {
         return new PortalAccessContext(
-                new ActorContext("user-1", "SELF"),
+                new ActorContext("user-1", ActorUserRole.ROLE_USER),
                 new AccountContext(accountRef, "JP", "policy-1", "cert-1", "JPM", "OE", TermStatus.BLANK, null));
     }
 }

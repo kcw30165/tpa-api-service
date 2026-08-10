@@ -14,7 +14,7 @@ class UpdateNotificationsReadStatusDtoTest {
     @Test
     void commandKeepsNotificationIdsNullWhenInputIsNull() {
         UpdateNotificationsReadStatusCommand command = new UpdateNotificationsReadStatusCommand(
-                "SIT", "EMP", null, "P1", "C1", "U1", "04/05/2026", MessageStatus.READ);
+                "SIT", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER, null, "P1", "C1", "U1", "04/05/2026", MessageStatus.READ);
 
         assertEquals(null, command.notificationIds());
     }
@@ -24,7 +24,7 @@ class UpdateNotificationsReadStatusDtoTest {
         List<String> ids = new ArrayList<>(List.of("n1", "n2"));
 
         UpdateNotificationsReadStatusCommand command = new UpdateNotificationsReadStatusCommand(
-                "SIT", "EMP", ids, "P1", "C1", "U1", "04/05/2026", MessageStatus.READ);
+                "SIT", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER, ids, "P1", "C1", "U1", "04/05/2026", MessageStatus.READ);
         ids.add("n3");
 
         assertEquals(List.of("n1", "n2"), command.notificationIds());

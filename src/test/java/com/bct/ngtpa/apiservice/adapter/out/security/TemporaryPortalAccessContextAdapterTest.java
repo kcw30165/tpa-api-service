@@ -6,6 +6,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.exception.PortalAccessContextResolutionException;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,7 +49,7 @@ class TemporaryPortalAccessContextAdapterTest {
                 .assertNext(ctx -> {
                     assertEquals("actorUserId_for_notifications", ctx.actor().actorUserId());
                     // assertEquals("MEMBER", ctx.actor().actorUserType());
-                    assertEquals("SELF", ctx.actor().actorUserRole());
+                    assertEquals(ActorUserRole.ROLE_USER, ctx.actor().actorUserRole());
                     assertEquals("JP", ctx.account().accountEnv());
                     assertEquals("policyNo_for_notifications", ctx.account().policyNo());
                     assertEquals("certNo_for_notifications", ctx.account().certNo());
@@ -69,7 +70,7 @@ class TemporaryPortalAccessContextAdapterTest {
                 .assertNext(ctx -> {
                     assertEquals("actorUserId_for_contributions", ctx.actor().actorUserId());
                     // assertEquals("MEMBER", ctx.actor().actorUserType());
-                    assertEquals("SELF", ctx.actor().actorUserRole());
+                    assertEquals(ActorUserRole.ROLE_USER, ctx.actor().actorUserRole());
                     assertEquals("JP", ctx.account().accountEnv());
                     assertEquals("policyNo_for_contributions", ctx.account().policyNo());
                     assertEquals("certNo_for_contributions", ctx.account().certNo());
@@ -87,7 +88,7 @@ class TemporaryPortalAccessContextAdapterTest {
         var accountRefProfile = new TemporaryPortalAccessContextProperties.Profile();
         accountRefProfile.setActorUserId("actorUserId_for_acc_123");
         accountRefProfile.setActorUserType("MEMBER");
-        accountRefProfile.setActorUserRole("SELF");
+        accountRefProfile.setActorUserRole(ActorUserRole.ROLE_USER);
         accountRefProfile.setAccountEnv("JP");
         accountRefProfile.setPolicyNo("policyNo_for_acc_123");
         accountRefProfile.setCertNo("certNo_for_acc_123");
@@ -229,7 +230,7 @@ class TemporaryPortalAccessContextAdapterTest {
         StepVerifier.create(adapter.resolvePortalAccessContext("notifications"))
                 .assertNext(ctx -> {
                     // assertEquals("", ctx.actor().actorUserType());
-                    assertEquals("", ctx.actor().actorUserRole());
+                    assertNull(ctx.actor().actorUserRole());
                     assertEquals("", ctx.account().accountEnv());
                     assertEquals("", ctx.account().certNo());
                     assertEquals("", ctx.account().trustCode());
@@ -248,7 +249,7 @@ class TemporaryPortalAccessContextAdapterTest {
         var notifProfile = new TemporaryPortalAccessContextProperties.Profile();
         notifProfile.setActorUserId("actorUserId_for_notifications");
         notifProfile.setActorUserType("MEMBER");
-        notifProfile.setActorUserRole("SELF");
+        notifProfile.setActorUserRole(ActorUserRole.ROLE_USER);
         notifProfile.setAccountEnv("JP");
         notifProfile.setPolicyNo("policyNo_for_notifications");
         notifProfile.setCertNo("certNo_for_notifications");
@@ -260,7 +261,7 @@ class TemporaryPortalAccessContextAdapterTest {
         var contribProfile = new TemporaryPortalAccessContextProperties.Profile();
         contribProfile.setActorUserId("actorUserId_for_contributions");
         contribProfile.setActorUserType("MEMBER");
-        contribProfile.setActorUserRole("SELF");
+        contribProfile.setActorUserRole(ActorUserRole.ROLE_USER);
         contribProfile.setAccountEnv("JP");
         contribProfile.setPolicyNo("policyNo_for_contributions");
         contribProfile.setCertNo("certNo_for_contributions");
@@ -300,7 +301,7 @@ class TemporaryPortalAccessContextAdapterTest {
         var profile = new TemporaryPortalAccessContextProperties.Profile();
         profile.setActorUserId("actorUserId");
         profile.setActorUserType("MEMBER");
-        profile.setActorUserRole("SELF");
+        profile.setActorUserRole(ActorUserRole.ROLE_USER);
         profile.setAccountEnv(accountEnv);
         profile.setPolicyNo("policyNo_secret");
         profile.setCertNo("certNo_secret");
@@ -318,7 +319,7 @@ class TemporaryPortalAccessContextAdapterTest {
         StepVerifier.create(adapter.resolvePortalAccessContext("ACC-1", "SESSION-001"))
                 .assertNext(ctx -> {
                     assertEquals("actorUserId_for_session", ctx.actor().actorUserId());
-                    assertEquals("MEMBER", ctx.actor().actorUserRole());
+                    assertEquals(ActorUserRole.ROLE_USER, ctx.actor().actorUserRole());
                     assertEquals("ACC-1", ctx.account().accountRef());
                     assertEquals("JP", ctx.account().accountEnv());
                     assertEquals("00000000217", ctx.account().policyNo());
@@ -364,7 +365,7 @@ class TemporaryPortalAccessContextAdapterTest {
     private static TemporaryPortalAccessContextAdapter adapterWithSessionShape() {
         var actor = new TemporaryPortalAccessContextProperties.SessionActor();
         actor.setActorUserId("actorUserId_for_session");
-        actor.setActorUserRole("MEMBER");
+        actor.setActorUserRole(ActorUserRole.ROLE_USER);
 
         var acc1 = new TemporaryPortalAccessContextProperties.AccountProfile();
         acc1.setAccountEnv("JP");

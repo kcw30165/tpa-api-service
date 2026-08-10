@@ -18,6 +18,7 @@ import com.bct.ngtpa.apiservice.domain.model.ContributionEntry;
 import com.bct.ngtpa.apiservice.domain.model.ContributionLabels;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSource;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryDataset;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 
@@ -37,7 +38,7 @@ class GetContributionSummaryServiceTest {
     private static final LocalDate REFERENCE_DATE = LocalDate.of(2026, 3, 31);
 
     private static final PortalAccessContext CONTRIBUTIONS_CONTEXT = new PortalAccessContext(
-            new ActorContext("userId_for_contributions", "SELF"),
+            new ActorContext("userId_for_contributions", ActorUserRole.ROLE_USER),
             new AccountContext(
                     "contributions",
                     "JP",

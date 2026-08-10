@@ -65,7 +65,7 @@ public class ApimNotificationReadStatusAdapter implements ApimNotificationReadSt
         return UpdateNotificationReadStatusApimRequest.builder()
                 .certNo(command.certNo())
                 .accountEnv(command.accountEnv())
-                .mbrType(command.mbrType())
+                .mbrType(command.mbrType() == null ? null : command.mbrType().name())
                 .msgCodeLong(String.join(",", command.notificationIds()))
                 .policyNo(command.policyNo())
                 .refDate(command.refDate())

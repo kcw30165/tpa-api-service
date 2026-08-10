@@ -20,6 +20,7 @@ import com.bct.ngtpa.apiservice.application.dto.session.authenticated.Authentica
 import com.bct.ngtpa.apiservice.application.port.in.EstablishAuthenticatedLoginSessionUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionCancellationPort;
 import com.bct.ngtpa.apiservice.application.port.out.LoginAccountAuthorizationPort;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.port.out.LoginOtpVerifiedSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.LoginProtectedAuthFlowContextLoader;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
@@ -59,7 +60,7 @@ class LoginOtpAuthenticatedSessionTransitionTest {
                 })
                 .verifyComplete();
 
-        assertThat(transitionCommand.get().actorContext()).isEqualTo(new ActorContext("member", "USER"));
+        assertThat(transitionCommand.get().actorContext()).isEqualTo(new ActorContext("member", ActorUserRole.ROLE_USER));
         assertThat(transitionCommand.get().csrfTokenHash()).isEqualTo("csrf_hash");
         assertThat(transitionCommand.get().accounts()).hasSize(1);
     }
@@ -81,7 +82,7 @@ class LoginOtpAuthenticatedSessionTransitionTest {
 
     private LoginOtpVerifyService service(EstablishAuthenticatedLoginSessionUseCase transition) {
         LoginPreAuthContext context = new LoginPreAuthContext(
-                "member", "MEMBER", "USER", Map.of(), Instant.EPOCH, "v1");
+                "member", "MEMBER", "ROLE_USER", Map.of(), Instant.EPOCH, "v1");
         LoginProtectedAuthFlowContextLoader loader = command -> Mono.just(
                 LoginProtectedAuthFlowContextResult.valid(context, "otp_active", null, "csrf_hash"));
         OtpChallengePort otp = new OtpChallengePort() {

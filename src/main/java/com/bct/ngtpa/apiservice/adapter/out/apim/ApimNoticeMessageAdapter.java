@@ -84,7 +84,7 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
                 .userId(command.userId())
                 .refDate(command.refDate())
                 .accountEnv(command.accountEnv())
-                .mbrType(command.mbrType())
+                .mbrType(command.mbrType() == null ? null : command.mbrType().name())
                 .build();
     }
 

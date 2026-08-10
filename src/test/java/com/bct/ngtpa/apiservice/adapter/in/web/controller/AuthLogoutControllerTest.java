@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowPropertie
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.logout.AuthenticatedLogoutWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieWriter;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.logout.*;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.ValidateAuthenticatedSessionUseCase;
@@ -113,7 +114,7 @@ class AuthLogoutControllerTest {
     private AuthenticatedSession session() {
         return new AuthenticatedSession(
                 new AuthenticatedSessionId(SID),
-                new ActorContext("member", "SELF"),
+                new ActorContext("member", ActorUserRole.ROLE_USER),
                 List.of(), AuthenticatedSessionStatus.ACTIVE, "csrf_hash",
                 Instant.EPOCH, Instant.EPOCH,
                 Instant.EPOCH.plusSeconds(300), Instant.EPOCH.plusSeconds(900));

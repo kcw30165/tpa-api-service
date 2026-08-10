@@ -95,14 +95,14 @@ class PortalAccessContextWebFilterTest {
 
     private AuthenticatedSession authenticatedSession() {
         return new AuthenticatedSession(
-                new AuthenticatedSessionId(SID), new ActorContext("actor", "USER"), List.of(),
+                        new AuthenticatedSessionId(SID), new ActorContext("actor", ActorUserRole.ROLE_USER), List.of(),
                 AuthenticatedSessionStatus.ACTIVE, "csrf_hash",
                 Instant.EPOCH, Instant.EPOCH,
                 Instant.EPOCH.plusSeconds(300), Instant.EPOCH.plusSeconds(900));
     }
 
     private PortalAccessContext context(String accountRef) {
-        return new PortalAccessContext(new ActorContext("actor", "USER"),
+        return new PortalAccessContext(new ActorContext("actor", ActorUserRole.ROLE_USER),
                 new AccountContext(accountRef, "JP", "00000008802", "0001", "JPM", "OE", null, null));
     }
 }

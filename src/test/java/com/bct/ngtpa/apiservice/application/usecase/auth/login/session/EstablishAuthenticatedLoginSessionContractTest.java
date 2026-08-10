@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.account.LoginAccountRef;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.account.LoginSessionAccount;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
@@ -17,7 +18,7 @@ class EstablishAuthenticatedLoginSessionContractTest {
     void commandCarriesVerifiedActorAccountsPreAuthIdentityAndCsrfHash() {
         var command = new EstablishAuthenticatedLoginSessionCommand(
                 new AuthFlowSessionId("afs_opaque"),
-                new ActorContext("member01", "USER"),
+                new ActorContext("member01", ActorUserRole.ROLE_USER),
                 List.of(account()),
                 "csrf_hash",
                 "req-1");
@@ -34,10 +35,10 @@ class EstablishAuthenticatedLoginSessionContractTest {
                 new AuthFlowSessionId("afs_opaque"), null, List.of(account()), "csrf_hash", "req"))
                 .isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> new EstablishAuthenticatedLoginSessionCommand(
-                new AuthFlowSessionId("afs_opaque"), new ActorContext("member01", "USER"), List.of(), "csrf_hash", "req"))
+                        new AuthFlowSessionId("afs_opaque"), new ActorContext("member01", ActorUserRole.ROLE_USER), List.of(), "csrf_hash", "req"))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new EstablishAuthenticatedLoginSessionCommand(
-                new AuthFlowSessionId("afs_opaque"), new ActorContext("member01", "USER"), List.of(account()), " ", "req"))
+                        new AuthFlowSessionId("afs_opaque"), new ActorContext("member01", ActorUserRole.ROLE_USER), List.of(account()), " ", "req"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

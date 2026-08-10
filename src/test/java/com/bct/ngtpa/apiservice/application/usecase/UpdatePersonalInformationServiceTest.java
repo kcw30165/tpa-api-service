@@ -11,6 +11,7 @@ import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationCommand
 import com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationResult;
 import com.bct.ngtpa.apiservice.application.port.out.ApimUpdatePersonalInformationPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -52,13 +53,13 @@ class UpdatePersonalInformationServiceTest {
         assertEquals("POL-001", capturedCommand.get().policyNo());
         assertEquals("CERT-001", capturedCommand.get().certNo());
         assertEquals("actor-user", capturedCommand.get().userId());
-        assertEquals("MEMBER", capturedCommand.get().userRole());
+        assertEquals(ActorUserRole.ROLE_USER, capturedCommand.get().userRole());
         assertEquals(updateFields, capturedCommand.get().updateFields());
     }
 
     private static PortalAccessContext context() {
         return new PortalAccessContext(
-                new ActorContext("actor-user", "MEMBER"),
+                new ActorContext("actor-user", ActorUserRole.ROLE_USER),
                 new AccountContext(
                         "ACC-123",
                         "JP",

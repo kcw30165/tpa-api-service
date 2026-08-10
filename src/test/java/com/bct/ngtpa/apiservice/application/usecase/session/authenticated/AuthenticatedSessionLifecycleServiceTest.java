@@ -18,7 +18,7 @@ class AuthenticatedSessionLifecycleServiceTest {
     @Test
     void createGeneratesOpaqueIdProtectsAndStoresWithEarlierIdleTtl() {
         var f = new Fixture();
-        var cmd = new CreateAuthenticatedSessionCommand(new ActorContext("member", "USER"), List.of(account()),
+        var cmd = new CreateAuthenticatedSessionCommand(new ActorContext("member", ActorUserRole.ROLE_USER), List.of(account()),
                 "csrf_hash", "req");
         StepVerifier.create(f.service.create(cmd)).assertNext(r -> {
             assertThat(r.status()).isEqualTo(AuthenticatedSessionLifecycleStatus.ACTIVE);
@@ -97,7 +97,7 @@ class AuthenticatedSessionLifecycleServiceTest {
 
     private static AuthenticatedSession session(Instant last, Instant idle, Instant absolute,
             AuthenticatedSessionStatus status) {
-        return new AuthenticatedSession(ID, new ActorContext("member", "USER"), List.of(account()), status, "csrf_hash",
+        return new AuthenticatedSession(ID, new ActorContext("member", ActorUserRole.ROLE_USER), List.of(account()), status, "csrf_hash",
                 NOW.minusSeconds(200), last, idle, absolute);
     }
 

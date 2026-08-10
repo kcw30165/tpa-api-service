@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
@@ -96,7 +97,7 @@ class AesGcmAuthenticatedSessionProtectorTest {
         Instant now = Instant.parse("2026-07-20T00:00:00Z");
         return new AuthenticatedSession(
                 new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx"),
-                new ActorContext("member01", "USER"),
+                new ActorContext("member01", ActorUserRole.ROLE_USER),
                 List.of(new AuthenticatedSessionAccount(
                         new AuthenticatedAccountRef("acc_abcdefghijklmnopqrstuvwx"),
                         "DB", "00000008802", "0001", "DBA", "OE", null, null)),
