@@ -2,38 +2,31 @@
 
 ## Current stage
 
-Canonical Task 023, **Username Recovery Feature Web Mappers**, is committed and independently approved. The repaired full-test milestone has now passed, so the gate before Task 024 is satisfied.
+Canonical Task 024, **Username Recovery Controllers**, completed its audit-only sufficiency review and is blocked by committed predecessor gaps.
 
-Final milestone decision:
-
-```text
-TASK_023_FULL_TEST_GATE_PASSED
-TASK_024_PACKAGE_AND_AUDIT_MAY_PROCEED
-TASK_024_IMPLEMENTATION_NOT_YET_AUTHORIZED
-```
-
-Final milestone evidence:
+Audit decision:
 
 ```text
-target/evidence/username-recovery/023-full-test-gate-20260810-144429/
-
-task023-full-test-repair-focused:
-  PASSED, Maven exit 0
-  completed 2026-08-10T15:00:52.0564922+08:00
-
-task023-full-test-gate-repair-1:
-  PASSED, Maven exit 0
-  completed 2026-08-10T15:10:01.3687515+08:00
+TASK_024_ESCALATION_CONFIRMED
+REPAIR_024A_REQUIRED
+TASK_024_IMPLEMENTATION_REMAINS_BLOCKED
 ```
 
-The failed original full-test stage remains preserved. Before the passing rerun, stale documentation-contract tests were removed by repository-owner action and two bounded test repairs were applied:
+Audit evidence:
 
-1. `AuthFlowSessionPropertiesBindingTest` now expects the canonical Username Recovery TTL of 600 seconds rather than 900.
-2. `Task0043AuthenticationFoundationArchitectureGuardTest.loginMustNotOwnWebClientInfrastructure` is scoped as a Login-only guard. The rule therefore proves that classes in `..adapter.out.apim.login..` do not directly depend on WebClient, APIM OAuth, certificate, or crypto implementation packages. The rule does not prove the same property for Forgot Password or Username Recovery.
+```text
+target/evidence/username-recovery/024-controllers-audit-20260810-155807/
+```
 
-The narrowed guard intent must remain explicit. A future cross-workflow APIM architecture rule, if desired, must be introduced separately and must evaluate `TrpSearchMemberAdapter` directly rather than relying on the Login-only rule.
+The audit confirmed that endpoint paths, body/header mapping, shared 401 helpers, Task 023 policy translation, typed status handling, unknown-outcome behavior, defect propagation, and controller naming are expressible. The following prerequisites are not yet expressible from committed contracts:
 
-Task 024, **Username Recovery Controllers**, may now move to package generation and an audit-only controller-boundary sufficiency session. Task 024 implementation remains blocked until that audit is independently reviewed.
+1. `UsernameRecoveryStartResult` does not expose the generated auth-flow session ID needed to publish `auth_flow_sid`.
+2. The committed pre-auth XSRF writer can clear but cannot write the XSRF cookie.
+3. Shared cookie values use `/api/v1/auth`, SameSite `None`, and Max-Age 1800 instead of the Username Recovery path `/api/v1/auth/username-recovery`, SameSite `Strict`, and TTL 600.
+4. richer Request and Cancel methods exist only on concrete services rather than inbound ports.
+5. no Spring composition currently provides the Username Recovery services, Task 022 mappers, Task 023 policies, and scenario-specific cookie writer.
+
+Repair 024A, **Controller Prerequisites**, now has a complete package and is proposed for audit-only authorization. Repair 024A implementation is not authorized until its sufficiency audit is independently reviewed. Canonical Task 024 and Task 025 remain blocked.
 
 ## Completed implementation sequence
 
@@ -66,8 +59,9 @@ Task 024, **Username Recovery Controllers**, may now move to package generation 
 | 021 | Cancel Username Recovery use case | Committed and verified after direct review fixes |
 | 022A | Use-case architecture guard scoping | Committed and verified |
 | 022 | Web DTOs and web mappers | Committed and verified after Repair 022A |
-| 023 | Feature web response policies | Committed, approved, and full-test milestone passed |
-| 024 | Controllers | Package/audit next; implementation not authorized |
+| 023 | Feature web response policies | Approved; commit and full-test milestone pending |
+| 024 | Controllers | Not started |
+| 024A | Controller prerequisites | Package ready; audit not yet reviewed |
 | 025 | Integration and stabilization | Not started |
 
 ## Authoritative baseline chain
@@ -411,21 +405,51 @@ feat(username-recovery): add feature response policies
 
 ## Full-test milestone
 
-The repaired full Maven test gate passed.
+A full Maven test gate is required after Task 023 and before Task 024.
 
-```text
-task023-full-test-repair-focused
-PASSED, Maven exit 0
+The milestone must:
 
-task023-full-test-gate-repair-1
-PASSED, Maven exit 0
-```
-
-The passing full-suite stage ran from 2026-08-10 15:03:14 +08:00 to 15:10:01 +08:00. The prior failed stages and reports remain preserved in the same evidence directory.
-
-The milestone repairs are test/governance changes only. They do not modify Task 023 production behavior. The Login architecture guard is intentionally Login-only after repair and must not be cited as coverage for Forgot Password or Username Recovery APIM adapters.
+- run the complete `mvn test` suite through the checked-in controlled PowerShell stage scripts;
+- use one new, explicit evidence directory or an approved milestone evidence directory;
+- preserve the Task 023 focused and cumulative evidence unchanged;
+- capture the atomic result and Maven exit code;
+- prohibit background polling loops, sleeps, PID inference, duplicate launches, and automatic retry;
+- keep Task 024 blocked until the full suite passes and is reviewed.
 
 `mvn clean verify` remains deferred until after Task 025.
+
+## Task 024 audit escalation and Repair 024A boundary
+
+The Task 024 audit concluded `ESCALATION_REQUIRED` without modifying source or running Maven.
+
+### Confirmed sufficient areas
+
+- three POST endpoint paths and body shapes;
+- empty-body Request and Cancel;
+- `STAFF_NO -> STAFFNO` through the committed mapper;
+- missing cookie/CSRF through shared 401 helpers;
+- missing Idempotency-Key and Scheme-Ref through shared helpers;
+- Task 023 policy translation through typed body and optional override;
+- 403, 409, 422, and 503 behavior without error-string inspection;
+- stable unknown outcome with `WAIT` and no blind resend;
+- unexpected runtime defects and Java `Error` propagation;
+- one-controller or three-controller repository conventions;
+- no predecessor controller-name guard conflict.
+
+### Repair 024A ownership
+
+Repair 024A owns only:
+
+1. a typed, transport-safe `AuthFlowSessionId` in the Start application result while preserving unchanged public JSON and replay secrecy;
+2. a Username Recovery-specific auth-flow and XSRF cookie writer/policy using exact path, Strict SameSite, TTL 600, approved Secure behavior, and exact-path clearing;
+3. richer Request and Cancel inbound-port methods carrying raw CSRF, Origin, and Referer transiently outside commands;
+4. Spring composition for committed services, Task 022 mappers, Task 023 policies, and the scenario-specific cookie writer.
+
+Repair 024A must not implement controllers, expose session ID in JSON, add raw CSRF to commands, persist raw CSRF/session ID in replay snapshots, or change cookie behavior for other workflows.
+
+### Replay caution
+
+The Repair 024A audit must prove that completed Start replay can provide a valid live session reference for cookie publication. If replay cannot do so without storing a forbidden session ID or returning a stale reference, the repair must stop with `ESCALATION_REQUIRED` rather than fabricate a cookie value.
 
 ## Task 024 boundary
 
@@ -467,15 +491,19 @@ Retry-After headers, `Set-Cookie`, and exact-path cookie clearing remain Task 02
 
 ## Next action
 
-1. Commit the two validated milestone-repair test files separately.
+1. Install and commit the Repair 024A package in `.cline`.
 2. Commit this generated handover separately.
-3. Close the full-test milestone in `.cline/username-recovery-state.md` and set Task 024 to audit-only proposed state.
-4. Generate the complete Task 024 controller package.
-5. Authorize only the Task 024 controller-boundary sufficiency audit.
-6. Do not start Task 024 implementation until the audit is independently reviewed.
+3. Set coordinator state to `REPAIR_024A_AUDIT_AUTHORIZED` using the exact current clean baseline.
+4. Run the Repair 024A sufficiency audit in a fresh Cline session.
+5. Do not run the Repair 024A implementation prompt until the audit is independently reviewed.
+6. Do not run the canonical Task 024 implementation prompt.
 7. Do not start Task 025.
 
 ## Deferred work and risks
+
+- Task 024 remains blocked until Repair 024A is implemented, reviewed, committed, and cumulatively validated.
+- Start replay must not gain a persisted session ID or raw CSRF merely to support cookie publication.
+- Username Recovery cookie changes must be scenario-specific and must not alter other workflows.
 
 - Full `mvn test` is still required before Task 024.
 - Full `mvn clean verify` remains the final milestone after Task 025.
