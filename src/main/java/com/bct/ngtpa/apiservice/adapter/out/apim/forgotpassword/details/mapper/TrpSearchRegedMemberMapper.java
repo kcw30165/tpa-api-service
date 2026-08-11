@@ -48,7 +48,8 @@ public final class TrpSearchRegedMemberMapper {
         if (!matched)
             throw new ForgotPasswordDetailsDownstreamException(
                     ForgotPasswordDetailsDownstreamException.Reason.CONTACT_MISMATCH);
-        return new ForgotPasswordDetailsLookupResult(ForgotPasswordDetailsLookupStatus.MATCHED);
+        String env = textOrEmpty(item.env());
+        return new ForgotPasswordDetailsLookupResult(ForgotPasswordDetailsLookupStatus.MATCHED, env.isBlank() ? null : env);
     }
 
     private static boolean hasText(String v) {

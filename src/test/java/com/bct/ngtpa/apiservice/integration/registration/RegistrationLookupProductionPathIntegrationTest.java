@@ -40,7 +40,7 @@ class RegistrationLookupProductionPathIntegrationTest {
         org.mockito.Mockito.reset(webClient, certificates, crypto);
         failures.events.clear();
         properties.getEncryption().setEnabled(false);
-        when(webClient.post(eq("/ws/NGTPA/v1/TRPSearchUnregMember"), any()))
+        when(webClient.post(eq("/ws/NGTPA/v1/TRPSearchUnregMember"), any(), any(), any(), any()))
                 .thenReturn(Mono.just("controlled-apim-body"));
         when(crypto.encryptRequest(eq("/ws/NGTPA/v1/TRPSearchUnregMember"), any(),
                 eq(TrpSearchUnregMemberApimRequest.class), isNull()))
@@ -61,7 +61,7 @@ class RegistrationLookupProductionPathIntegrationTest {
         adapter.searchUnregisteredMember(command(MemberIdentityType.STAFFNO)).block();
 
         ArgumentCaptor<Object> request = ArgumentCaptor.forClass(Object.class);
-        verify(webClient).post(eq("/ws/NGTPA/v1/TRPSearchUnregMember"), request.capture());
+        verify(webClient).post(eq("/ws/NGTPA/v1/TRPSearchUnregMember"), request.capture(), any(), any(), any());
         assertThat(request.getValue()).isInstanceOf(TrpSearchUnregMemberApimRequest.class);
         var apimRequest = (TrpSearchUnregMemberApimRequest) request.getValue();
         assertThat(apimRequest.searchBy()).isEqualTo("STAFFNO");
@@ -135,7 +135,7 @@ class RegistrationLookupProductionPathIntegrationTest {
                 .verify();
         assertThat(failures.events).singleElement()
                 .satisfies(event -> assertThat(event.requestId()).isEqualTo(requestId));
-        verify(webClient, times(1)).post(eq("/ws/NGTPA/v1/TRPSearchUnregMember"), any());
+        verify(webClient, times(1)).post(eq("/ws/NGTPA/v1/TRPSearchUnregMember"), any(), any(), any(), any());
     }
 
     private RegistrationLookupCommand command(MemberIdentityType type) {

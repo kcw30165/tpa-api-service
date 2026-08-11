@@ -157,9 +157,11 @@ public class ForgotPasswordApplicationConfig {
                         com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionMutationLockPort locks,
                         com.bct.ngtpa.apiservice.application.service.auth.forgotpassword.context.ForgotPasswordProtectedAuthFlowContextLoader loader,
                         com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordDetailsLookupPort lookup,
+                        com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionLifecycleService lifecycleService,
+                        com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort protector,
                         Clock clock) {
                 return new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.VerifyForgotPasswordDetailsService(
-                                sessions, locks, loader, lookup, clock);
+                                sessions, locks, loader, lookup, lifecycleService, protector, clock);
         }
 
         @Bean

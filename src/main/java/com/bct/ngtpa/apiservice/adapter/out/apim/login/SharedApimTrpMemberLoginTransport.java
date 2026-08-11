@@ -5,6 +5,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.ApimPayloadCryptoService;
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimWebClientFacade;
 import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
+import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.login.config.TrpMemberLoginProperties;
@@ -59,7 +60,7 @@ public final class SharedApimTrpMemberLoginTransport implements TrpMemberLoginTr
                                 TrpMemberLoginApimRequest.class,
                                 publicKey);
                 var context = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, null);
-                return facade.post(path, encryptedRequest, context, ApimRetryEligibility.SAFE_BUSINESS_CALL)
+                return facade.post(path, encryptedRequest, ApimDatabaseScope.NON_ACCOUNT, context, ApimRetryEligibility.SAFE_BUSINESS_CALL)
                                 .map(body -> crypto.decryptResponseEnvelope(
                                                 path,
                                                 body,

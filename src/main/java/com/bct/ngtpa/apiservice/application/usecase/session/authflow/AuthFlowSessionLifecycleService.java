@@ -81,6 +81,16 @@ public class AuthFlowSessionLifecycleService {
         });
     }
 
+    public Mono<AuthFlowSession> updateAttributes(UpdateAuthFlowAttributesCommand command) {
+        Objects.requireNonNull(command, "command must not be null");
+        return mutateUsable(command.authFlowSessionId(), session -> {
+            var currentData = session.data() == null ? AuthFlowSessionData.empty() : session.data();
+            var updatedData = new AuthFlowSessionData(currentData.contactType(), currentData.maskedDestination(), command.attributes());
+            return copy(session, session.status(), session.csrfTokenHash(), session.activeOtpChallengeId(), updatedData,
+                    Instant.now(clock));
+        });
+    }
+
     public Mono<AuthFlowSession> complete(CompleteAuthFlowSessionCommand command) {
         Objects.requireNonNull(command, "command must not be null");
         return revisionWriter.complete(command.authFlowSessionId(), Instant.now(clock));
