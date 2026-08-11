@@ -59,7 +59,7 @@ public final class SharedApimTrpChkCustIdTransport implements TrpChkCustIdTransp
                 ? Map.of()
                 : Map.of("requestId", correlationId);
         var context = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, null);
-        return facade.post(API_NAME, encryptedRequest, context, ApimRetryEligibility.SAFE_BUSINESS_CALL)
+        return facade.post(API_NAME, encryptedRequest, com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT, context, ApimRetryEligibility.SAFE_BUSINESS_CALL)
                 .map(body -> crypto.decryptResponseEnvelope(API_NAME, body, TrpChkCustIdApimDataItem.class, publicKey))
                 .map(this::toEnvelopePreservingBusinessErrMessage)
                 .onErrorMap(ApimCryptoException.class, this::toApimException)

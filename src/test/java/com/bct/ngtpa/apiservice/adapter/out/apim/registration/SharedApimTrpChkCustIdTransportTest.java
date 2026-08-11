@@ -68,6 +68,7 @@ class SharedApimTrpChkCustIdTransportTest {
         public Mono<String> post(
                 String path,
                 Object requestBody,
+                com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope scope,
                 ApimCredentialResolutionContext resolutionContext,
                 ApimRetryEligibility retryEligibility) {
             this.path = path;

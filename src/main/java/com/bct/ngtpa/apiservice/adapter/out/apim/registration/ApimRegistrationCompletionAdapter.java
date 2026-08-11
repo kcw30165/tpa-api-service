@@ -55,19 +55,20 @@ public class ApimRegistrationCompletionAdapter implements RegistrationCompletion
         if (testTransport != null)
             return testTransport.postRegMember(API_NAME, request).map(resultMapper::toResult);
         if (!properties.getEncryption().isEnabled())
-            return post(request, null);
-        return certificates.getBctPublicKey().flatMap(key -> post(request, key));
+            return post(request, null, command.accountEnv());
+        return certificates.getBctPublicKey().flatMap(key -> post(request, key, command.accountEnv()));
     }
 
     private Mono<RegistrationCompletionResult> post(
             TrpRegMemberApimRequest request,
-            PublicKey publicKey) {
+            PublicKey publicKey,
+            String accountEnv) {
         var encryptedRequest = crypto.encryptRequest(
                 API_NAME,
                 request,
                 TrpRegMemberApimRequest.class,
                 publicKey);
-        return facade.post(API_NAME, encryptedRequest)
+        return facade.post(API_NAME, encryptedRequest, com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.ACCOUNT_ENV, new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER, accountEnv), com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility.IDEMPOTENT_MUTATION)
                 .map(body -> crypto.decryptResponseEnvelope(
                         API_NAME,
                         body,
