@@ -44,8 +44,6 @@ cf335ddf40056db5938c1d7966936cd9d537572e
 feat(username-recovery): add workflow state redis mapping
 ```
 
-Repair 025B-1 added the workflow-state Redis record, JSON mapper, key factory, and direct tests.
-
 ### Repair 025B-2A
 
 ```text
@@ -53,68 +51,73 @@ Repair 025B-1 added the workflow-state Redis record, JSON mapper, key factory, a
 refactor(username-recovery): carry expiry in workflow state create command
 ```
 
-Repair 025B-2A introduced `UsernameRecoveryWorkflowStateCreateCommand`, carrying the generic envelope expiry across the persistence boundary without adding expiry or TTL to the sidecar aggregate.
+### Repair 025B-2B
 
-## Approved implementation, pending commit: Repair 025B-2B
+```text
+32cff70efd24a4a03cee6e32d40790b88005952b
+feat(username-recovery): add workflow state redis create and load
+```
 
-Repair 025B-2B implements Redis create-if-absent and load behavior for the workflow-state sidecar.
+Repair 025B-2B added deterministic create-if-absent and load behavior, bounded initial TTL, and safe persistence failure mapping.
+
+## Approved implementation, pending commit: Repair 025B-3
+
+Repair 025B-3 implements atomic workflow-state revision compare-and-set update while preserving the remaining Redis TTL.
 
 Changed boundary:
 
 ```text
-Production:
-  RedisUsernameRecoveryWorkflowStateAdapter.java
-  UsernameRecoveryWorkflowStateMutationOutcome.java
-  UsernameRecoveryWorkflowStateMutationResult.java
-
-Tests:
-  RedisUsernameRecoveryWorkflowStateCreateLoadTest.java
-  RedisUsernameRecoveryWorkflowStateFailurePolicyTest.java
+M  RedisUsernameRecoveryWorkflowStateAdapter.java
+M  RedisUsernameRecoveryWorkflowStateFailurePolicyTest.java
+A  RedisUsernameRecoveryWorkflowStateUpdateTest.java
 ```
 
-Implemented behavior:
+Implementation behavior:
 
-- computes initial sidecar TTL from the adapter clock to the envelope expiry transported by the create command;
-- rejects zero or negative TTL before Redis access;
-- creates the sidecar atomically through the existing create-if-absent Redis script;
-- maps successful creation to `CREATED` with state;
-- maps an existing sidecar to deterministic `STATE_ALREADY_EXISTS` without state;
-- maps empty and unknown script outcomes to typed `SYSTEM_FAILURE`;
-- loads valid JSON as `LOADED` and missing keys as `STATE_NOT_FOUND`;
-- preserves safe mapper and Redis failure messages;
-- leaves update and delete fail-closed pending later repairs.
+- reuses `redis/username-recovery-session/update.lua` without modification;
+- compares the stored numeric workflow-state revision with the expected revision;
+- writes the complete revised workflow-state JSON only when CAS succeeds;
+- preserves the existing remaining TTL through `PTTL` and `PSETEX`;
+- maps script code `1` to `APPLIED` with updated state;
+- maps `0` to `REVISION_CONFLICT`;
+- maps `-1` and `-3` to `STATE_NOT_FOUND`;
+- maps empty or unexpected codes to `SYSTEM_FAILURE`;
+- maps Redis, Lua, and corrupt-record failures to safe `CacheException` messages;
+- leaves delete fail-closed pending Repair 025B-4.
 
 Evidence directory:
 
 ```text
-target/evidence/username-recovery/025B-2B-20260811-181015/
+target/evidence/username-recovery/025B-3-20260811-182820/
 ```
 
 Validation:
 
 ```text
-Focused:   8 tests, 0 failures, 0 errors, 0 skipped
-Cumulative: 59 tests, 0 failures, 0 errors, 0 skipped
+Focused:    8 tests, 0 failures, 0 errors, 0 skipped
+Cumulative: 57 tests, 0 failures, 0 errors, 0 skipped
 CleanArchitectureDependencyTest: 23 tests passed
-git diff --check: no whitespace errors
+Focused Maven exit code: 0
+Cumulative Maven exit code: 0
+git diff --check: no whitespace errors; line-ending warnings only
 ```
 
 Proposed commit:
 
 ```text
-feat(username-recovery): add workflow state redis create and load
+feat(username-recovery): add workflow state redis cas update
 ```
 
 ## Next bounded task
 
-After the Repair 025B-2B commit is verified, prepare **025B-3: workflow-state Redis CAS update and TTL preservation** using the prepared-writer execution model.
+After Repair 025B-3 is committed and verified, prepare **Repair 025B-4: workflow-state Redis delete and persistence closure** using the prepared-writer execution model.
 
-025B-4, 025C, 025D, and canonical Task 025 remain unauthorized.
+Repair 025C, Repair 025D, and canonical Task 025 remain unauthorized.
 
 ## Execution policy
 
-- M365 Copilot prepares exact implementation manifests and deterministic writer scripts.
-- DeepSeek V4 Flash performs preflight, executes the prepared change, validates, and reports.
+- M365 Copilot prepares exact manifests and deterministic writer scripts.
+- DeepSeek V4 Flash performs preflight, executes prepared changes, validates, and reports.
 - No task restatement, broad discovery, or source drafting in reasoning.
 - First mutation within 5 minutes and first Maven stage within 15 minutes.
 - Active-agent limit is 30 minutes excluding Maven.
