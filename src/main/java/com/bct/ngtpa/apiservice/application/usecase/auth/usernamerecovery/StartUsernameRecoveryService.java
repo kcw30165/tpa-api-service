@@ -15,6 +15,7 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.RevisionedAuthFlowSessionDeleteCommand;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.RevisionedAuthFlowSessionMutationCommand;
 import com.bct.ngtpa.apiservice.application.dto.session.usernamerecovery.UsernameRecoveryWorkflowState;
 import com.bct.ngtpa.apiservice.application.dto.session.usernamerecovery.UsernameRecoveryWorkflowStateRevision;
 import com.bct.ngtpa.apiservice.application.port.in.StartUsernameRecoveryUseCase;
@@ -28,9 +29,6 @@ import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotency
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyRecord.ReplaySnapshot;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyReservation;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryLookupPort;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionLoadResult;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionMutationCommand;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateCreateCommand;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateMutationOutcome;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStatePort;
@@ -40,13 +38,9 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.Userna
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenHasher;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryCandidate;
-import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryCsrfHash;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryDeliveryState;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySchemeRef;
-import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySession;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySessionCandidate;
-import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySessionId;
-import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySessionRevision;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryWorkflowStatus;
 import java.security.SecureRandom;
 import java.time.Clock;
@@ -98,7 +92,6 @@ public class StartUsernameRecoveryService implements StartUsernameRecoveryUseCas
     private final UsernameRecoveryIdempotencyPort idempotencyPort;
     private final RegistrationCaptchaGateService captchaGateService;
     private final UsernameRecoveryLookupPort lookupPort;
-    private final UsernameRecoverySessionPort sessionPort;
     private final AuthFlowSessionPort authFlowSessionPort;
     private final UsernameRecoveryWorkflowStatePort workflowStatePort;
     private final CsrfTokenGenerator csrfTokenGenerator;
@@ -115,7 +108,6 @@ public class StartUsernameRecoveryService implements StartUsernameRecoveryUseCas
             UsernameRecoveryIdempotencyPort idempotencyPort,
             RegistrationCaptchaGateService captchaGateService,
             UsernameRecoveryLookupPort lookupPort,
-            UsernameRecoverySessionPort sessionPort,
             AuthFlowSessionPort authFlowSessionPort,
             UsernameRecoveryWorkflowStatePort workflowStatePort,
             CsrfTokenGenerator csrfTokenGenerator,
@@ -129,7 +121,6 @@ public class StartUsernameRecoveryService implements StartUsernameRecoveryUseCas
         this.captchaGateService = Objects.requireNonNull(
                 captchaGateService, "captchaGateService must not be null");
         this.lookupPort = Objects.requireNonNull(lookupPort, "lookupPort must not be null");
-        this.sessionPort = Objects.requireNonNull(sessionPort, "sessionPort must not be null");
         this.authFlowSessionPort = Objects.requireNonNull(
                 authFlowSessionPort, "authFlowSessionPort must not be null");
         this.workflowStatePort = Objects.requireNonNull(
@@ -367,7 +358,7 @@ public class StartUsernameRecoveryService implements StartUsernameRecoveryUseCas
             Duration ttl,
             ModelBDraft draft) {
         ReplaySnapshot snapshot = UsernameRecoveryStartReplayCodec.encode(
-                new UsernameRecoverySessionId(draft.state().authFlowSessionId().value()));
+                draft.state().authFlowSessionId());
         UsernameRecoveryIdempotencyPort.CompleteCommand completeCommand =
                 new UsernameRecoveryIdempotencyPort.CompleteCommand(
                         UsernameRecoveryIdempotencyAction.START,
@@ -425,7 +416,7 @@ public class StartUsernameRecoveryService implements StartUsernameRecoveryUseCas
                     UsernameRecoveryStartReplayCodec.DecodeResult sessionDecode =
                             UsernameRecoveryStartReplayCodec.decode(snapshot);
                     if (sessionDecode.decoded()) {
-                        return replaySessionCreated(sessionDecode.sessionId(), now);
+                        return replaySessionCreated(sessionDecode.authFlowSessionId(), now);
                     }
                     UsernameRecoveryStartReplaySnapshot.DecodeResult nonSessionDecode =
                             UsernameRecoveryStartReplaySnapshot.decode(snapshot);
@@ -437,54 +428,78 @@ public class StartUsernameRecoveryService implements StartUsernameRecoveryUseCas
     }
 
     private Mono<UsernameRecoveryStartResult> replaySessionCreated(
-            UsernameRecoverySessionId sessionId, Instant now) {
-        return sessionPort.load(sessionId)
+            AuthFlowSessionId authFlowSessionId, Instant now) {
+        return authFlowSessionPort.loadSnapshot(authFlowSessionId)
                 .onErrorMap(Exception.class, StartPersistenceException::new)
-                .flatMap(loadResult -> switch (loadResult.outcome()) {
-                    case LOADED -> rotateAndRebuild(loadResult.session(), now);
-                    case SESSION_NOT_FOUND -> Mono.error(UsernameRecoveryStartException.systemFailure());
-                    case SYSTEM_FAILURE -> Mono.error(UsernameRecoveryStartException.systemFailure());
-                    default -> throw new IllegalStateException(
-                            "unexpected session load outcome: " + loadResult.outcome());
+                .flatMap(optional -> optional
+                        .map(snapshot -> replayWithEnvelope(snapshot, now))
+                        .orElseGet(() -> Mono.error(UsernameRecoveryStartException.systemFailure())));
+    }
+
+    private Mono<UsernameRecoveryStartResult> replayWithEnvelope(
+            AuthFlowSessionSnapshot envelopeSnapshot, Instant now) {
+        var envelope = envelopeSnapshot.session();
+        if (envelope.scenario() != AuthFlowScenario.USERNAME_RECOVERY
+                || envelope.status() != AuthFlowStatus.STARTED
+                || envelope.isExpired(now)
+                || envelope.isTerminal()) {
+            return Mono.error(UsernameRecoveryStartException.systemFailure());
+        }
+        return workflowStatePort.load(envelope.authFlowSessionId())
+                .onErrorMap(Exception.class, StartPersistenceException::new)
+                .flatMap(loadResult -> {
+                    if (loadResult.outcome() != UsernameRecoveryWorkflowStateMutationOutcome.LOADED) {
+                        return Mono.error(UsernameRecoveryStartException.systemFailure());
+                    }
+                    UsernameRecoveryWorkflowState state = loadResult.state();
+                    if (!state.authFlowSessionId().equals(envelope.authFlowSessionId())
+                            || (state.status() != UsernameRecoveryWorkflowStatus.ACTIVE
+                                    && state.status() != UsernameRecoveryWorkflowStatus.PARTIALLY_REQUESTED)) {
+                        return Mono.error(UsernameRecoveryStartException.systemFailure());
+                    }
+                    return rotateEnvelopeCsrf(envelopeSnapshot, state, now);
                 });
     }
 
-    private Mono<UsernameRecoveryStartResult> rotateAndRebuild(
-            UsernameRecoverySession session, Instant now) {
-        if (!session.expiresAt().isAfter(now)) {
-            return Mono.error(UsernameRecoveryStartException.systemFailure());
-        }
-        if (session.isTerminal()) {
-            return Mono.error(UsernameRecoveryStartException.systemFailure());
-        }
+    private Mono<UsernameRecoveryStartResult> rotateEnvelopeCsrf(
+            AuthFlowSessionSnapshot envelopeSnapshot,
+            UsernameRecoveryWorkflowState state,
+            Instant now) {
         String rawToken = csrfTokenGenerator.generate();
-        UsernameRecoveryCsrfHash newHash = new UsernameRecoveryCsrfHash(csrfTokenHasher.hash(rawToken));
-        UsernameRecoverySession updated = new UsernameRecoverySession(
-                session.sessionId(),
-                session.scenario(),
-                session.status(),
-                session.revision().next(),
-                newHash,
-                session.destination(),
-                session.language(),
-                session.createdAt(),
-                session.expiresAt(),
-                session.candidates());
-        UsernameRecoverySessionMutationCommand mutation = new UsernameRecoverySessionMutationCommand(
-                session.sessionId(), session.revision(), updated);
-        return sessionPort.update(mutation)
+        var current = envelopeSnapshot.session();
+        var updated = new com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession(
+                current.authFlowSessionId(), current.scenario(), current.status(),
+                csrfTokenHasher.hash(rawToken), current.activeOtpChallengeId(), current.data(),
+                current.createdAt(), now, current.expiresAt());
+        return authFlowSessionPort.updateRevisioned(
+                        new RevisionedAuthFlowSessionMutationCommand(envelopeSnapshot, updated))
                 .onErrorMap(Exception.class, StartPersistenceException::new)
                 .flatMap(result -> switch (result.outcome()) {
-                    case APPLIED -> Mono.just(sessionCreatedResult(updated, rawToken, now));
-                    case SESSION_NOT_FOUND, SYSTEM_FAILURE ->
-                            Mono.error(UsernameRecoveryStartException.systemFailure());
-                    case REVISION_CONFLICT ->
+                    case APPLIED -> Mono.just(replayedModelBResult(result.snapshot(), state, rawToken, now));
+                    case SESSION_REVISION_CHANGED, EXPECTED_STATE_CHANGED ->
                             Mono.error(UsernameRecoveryStartException.replayRevisionConflict());
-                    default -> throw new IllegalStateException(
-                            "unexpected session update outcome: " + result.outcome());
+                    default -> Mono.error(UsernameRecoveryStartException.systemFailure());
                 });
     }
 
+    private UsernameRecoveryStartResult replayedModelBResult(
+            AuthFlowSessionSnapshot envelopeSnapshot,
+            UsernameRecoveryWorkflowState state,
+            String rawToken,
+            Instant now) {
+        List<UsernameRecoverySchemeProjection> projections = state.candidates().stream()
+                .map(candidate -> new UsernameRecoverySchemeProjection(
+                        candidate.schemeRef(), candidate.accountEnv(), candidate.trustCode(),
+                        candidate.registered()))
+                .toList();
+        long remainingSeconds = Duration.between(now, envelopeSnapshot.session().expiresAt()).toSeconds();
+        return new UsernameRecoveryStartResult(
+                UsernameRecoveryStartResult.Outcome.SESSION_CREATED,
+                envelopeSnapshot.session().authFlowSessionId(),
+                rawToken,
+                (int) Math.max(1, remainingSeconds),
+                projections);
+    }
 
     private UsernameRecoveryStartResult modelBSessionCreatedResult(
             ModelBDraft draft, Instant now) {
@@ -499,23 +514,6 @@ public class StartUsernameRecoveryService implements StartUsernameRecoveryUseCas
                 draft.state().authFlowSessionId(),
                 draft.rawToken(),
                 (int) Math.max(1, remainingSeconds),
-                projections);
-    }
-
-    private UsernameRecoveryStartResult sessionCreatedResult(
-            UsernameRecoverySession session, String rawToken, Instant now) {
-        List<UsernameRecoverySchemeProjection> projections = session.candidates().stream()
-                .map(candidate -> new UsernameRecoverySchemeProjection(
-                        candidate.schemeRef(), candidate.accountEnv(), candidate.trustCode(),
-                        candidate.registered()))
-                .toList();
-        long remainingSeconds = Duration.between(now, session.expiresAt()).toSeconds();
-        int expiresInSeconds = (int) Math.max(1, remainingSeconds);
-        return new UsernameRecoveryStartResult(
-                UsernameRecoveryStartResult.Outcome.SESSION_CREATED,
-                new AuthFlowSessionId(session.sessionId().value()),
-                rawToken,
-                expiresInSeconds,
                 projections);
     }
 

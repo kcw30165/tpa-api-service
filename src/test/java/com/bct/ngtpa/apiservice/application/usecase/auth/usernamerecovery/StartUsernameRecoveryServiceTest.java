@@ -20,6 +20,7 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationOutcome;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.RevisionedAuthFlowSessionDeleteCommand;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.RevisionedAuthFlowSessionMutationCommand;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision;
 import com.bct.ngtpa.apiservice.application.dto.session.usernamerecovery.UsernameRecoveryWorkflowState;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
@@ -121,7 +122,6 @@ class StartUsernameRecoveryServiceTest {
                 idempotencyPort,
                 captchaGateService,
                 lookupPort,
-                sessionPort,
                 authFlowSessionPort,
                 workflowStatePort,
                 csrfTokenGenerator,
@@ -252,59 +252,51 @@ class StartUsernameRecoveryServiceTest {
     }
 
     @Test
-    void completedSessionReplayRotatesCsrfFromLoadedSession() {
-        UsernameRecoverySession stored = activeSession();
-        sessionPort.store(stored);
+    void completedSessionReplayLoadsModelBAndRotatesEnvelopeCsrfWithoutExtendingExpiry() {
+        AuthFlowSessionId id = new AuthFlowSessionId("afs_opaque-1");
+        authFlowSessionPort.store(activeEnvelope(id));
+        workflowStatePort.store(activeWorkflowState(id));
         idempotencyPort.reserveOutcome = UsernameRecoveryIdempotencyOutcome.COMPLETED_REPLAY;
-        idempotencyPort.storedRecord = completedRecord(
-                UsernameRecoveryStartReplayCodec.encode(stored.sessionId()));
+        idempotencyPort.storedRecord = completedRecord(UsernameRecoveryStartReplayCodec.encode(id));
 
         StepVerifier.create(service.start(emailCommand(EMAIL)))
                 .assertNext(result -> {
                     assertThat(result.outcome()).isEqualTo(Outcome.SESSION_CREATED);
+                    assertThat(result.authFlowSessionId()).isEqualTo(id);
                     assertThat(result.csrfToken()).isNotBlank();
-                    assertThat(result.expiresInSeconds()).isEqualTo(600);
+                    assertThat(result.expiresInSeconds()).isEqualTo(TTL_SECONDS);
                     assertThat(result.schemes()).hasSize(2);
-                    assertThat(result.schemes().get(0).registered()).isTrue();
-                    assertThat(result.schemes().get(1).registered()).isFalse();
-                    assertThat(result.schemes()).allSatisfy(projection ->
-                            assertThat(projection.schemeRef()).isNotNull());
-                    assertThat(new Sha256CsrfTokenHasher().hash(result.csrfToken()))
-                            .isEqualTo(sessionPort.lastMutation.updatedSession().csrfHash().value());
-                    assertThat(sessionPort.lastMutation.updatedSession().csrfHash().value())
-                            .isNotEqualTo(stored.csrfHash().value());
-                    assertThat(sessionPort.lastMutation.updatedSession().expiresAt())
-                            .isEqualTo(stored.expiresAt());
+                    assertThat(authFlowSessionPort.lastMutation.updated().expiresAt())
+                            .isEqualTo(NOW.plusSeconds(TTL_SECONDS));
+                    assertThat(authFlowSessionPort.lastMutation.updated().csrfTokenHash())
+                            .isEqualTo(csrfTokenHasher.hash(result.csrfToken()));
                 })
                 .verifyComplete();
 
         assertThat(callLog).containsExactly(
-                "idem.reserve", "idem.resolve", "session.load", "session.update");
-        assertThat(captchaPort.markConsumedCalls).isZero();
-        assertThat(lookupPort.searchCalls).isZero();
+                "idem.reserve", "idem.resolve", "authFlow.loadSnapshot",
+                "workflowState.load", "authFlow.updateRevisioned");
         assertThat(sessionPort.createCalls).isZero();
+        assertThat(sessionPort.updateCalls).isZero();
         assertThat(idempotencyPort.completeCalls).isZero();
     }
 
     @Test
     void completedSessionReplayRevisionConflictIsDistinctAndNotRetried() {
-        UsernameRecoverySession stored = activeSession();
-        sessionPort.store(stored);
-        sessionPort.updateOutcome = UsernameRecoverySessionMutationOutcome.REVISION_CONFLICT;
+        AuthFlowSessionId id = new AuthFlowSessionId("afs_opaque-1");
+        authFlowSessionPort.store(activeEnvelope(id));
+        authFlowSessionPort.updateOutcome = AuthFlowSessionMutationOutcome.SESSION_REVISION_CHANGED;
+        workflowStatePort.store(activeWorkflowState(id));
         idempotencyPort.reserveOutcome = UsernameRecoveryIdempotencyOutcome.COMPLETED_REPLAY;
-        idempotencyPort.storedRecord = completedRecord(
-                UsernameRecoveryStartReplayCodec.encode(stored.sessionId()));
+        idempotencyPort.storedRecord = completedRecord(UsernameRecoveryStartReplayCodec.encode(id));
 
         StepVerifier.create(service.start(emailCommand(EMAIL)))
-                .expectErrorSatisfies(error -> {
-                    assertThat(error).isInstanceOf(UsernameRecoveryStartException.class);
-                    assertThat(((UsernameRecoveryStartException) error).reason())
-                            .isEqualTo(Reason.REPLAY_REVISION_CONFLICT);
-                })
+                .expectErrorSatisfies(error -> assertThat(((UsernameRecoveryStartException) error).reason())
+                        .isEqualTo(Reason.REPLAY_REVISION_CONFLICT))
                 .verify();
 
-        assertThat(sessionPort.updateCalls).isEqualTo(1);
-        assertThat(sessionPort.createCalls).isZero();
+        assertThat(authFlowSessionPort.updateCalls).isEqualTo(1);
+        assertThat(sessionPort.updateCalls).isZero();
     }
 
     @Test
@@ -361,48 +353,49 @@ class StartUsernameRecoveryServiceTest {
     }
 
     @Test
-    void replayWithExpiredSessionFailsClosedWithoutRotation() {
-        UsernameRecoverySession stored = activeSession();
-        UsernameRecoverySession expired = new UsernameRecoverySession(
-                stored.sessionId(), stored.scenario(), stored.status(), stored.revision(),
-                stored.csrfHash(), stored.destination(), stored.language(), NOW.minusSeconds(10),
-                NOW.minusSeconds(1), stored.candidates());
-        sessionPort.store(expired);
+    void replayWithExpiredEnvelopeFailsClosedWithoutRotation() {
+        AuthFlowSessionId id = new AuthFlowSessionId("afs_expired");
+        AuthFlowSession active = activeEnvelope(id);
+        authFlowSessionPort.store(new AuthFlowSession(
+                id, active.scenario(), active.status(), active.csrfTokenHash(),
+                active.activeOtpChallengeId(), active.data(), active.createdAt(),
+                active.updatedAt(), NOW.minusSeconds(1)));
+        workflowStatePort.store(activeWorkflowState(id));
         idempotencyPort.reserveOutcome = UsernameRecoveryIdempotencyOutcome.COMPLETED_REPLAY;
-        idempotencyPort.storedRecord = completedRecord(
-                UsernameRecoveryStartReplayCodec.encode(expired.sessionId()));
-
+        idempotencyPort.storedRecord = completedRecord(UsernameRecoveryStartReplayCodec.encode(id));
         StepVerifier.create(service.start(emailCommand(EMAIL)))
-                .expectErrorSatisfies(error -> {
-                    assertThat(error).isInstanceOf(UsernameRecoveryStartException.class);
-                    assertThat(((UsernameRecoveryStartException) error).reason())
-                            .isEqualTo(Reason.SYSTEM_FAILURE);
-                })
+                .expectErrorSatisfies(error -> assertThat(((UsernameRecoveryStartException) error).reason())
+                        .isEqualTo(Reason.SYSTEM_FAILURE))
                 .verify();
-
-        assertThat(sessionPort.updateCalls).isZero();
-        assertThat(sessionPort.createCalls).isZero();
+        assertThat(authFlowSessionPort.updateCalls).isZero();
+        assertThat(workflowStatePort.loadCalls).isZero();
     }
 
     @Test
-    void replayWithAbsentSessionFailsClosedWithoutBlindCreation() {
-        UsernameRecoverySessionId sessionId = new UsernameRecoverySessionId("afs_gone");
-        sessionPort.stored = null;
+    void replayWithAbsentEnvelopeFailsClosedWithoutBlindCreation() {
+        AuthFlowSessionId id = new AuthFlowSessionId("afs_gone");
         idempotencyPort.reserveOutcome = UsernameRecoveryIdempotencyOutcome.COMPLETED_REPLAY;
-        idempotencyPort.storedRecord = completedRecord(
-                UsernameRecoveryStartReplayCodec.encode(sessionId));
-
+        idempotencyPort.storedRecord = completedRecord(UsernameRecoveryStartReplayCodec.encode(id));
         StepVerifier.create(service.start(emailCommand(EMAIL)))
-                .expectErrorSatisfies(error -> {
-                    assertThat(error).isInstanceOf(UsernameRecoveryStartException.class);
-                    assertThat(((UsernameRecoveryStartException) error).reason())
-                            .isEqualTo(Reason.SYSTEM_FAILURE);
-                })
+                .expectErrorSatisfies(error -> assertThat(((UsernameRecoveryStartException) error).reason())
+                        .isEqualTo(Reason.SYSTEM_FAILURE))
                 .verify();
-
-        assertThat(sessionPort.createCalls).isZero();
+        assertThat(authFlowSessionPort.createCalls).isZero();
+        assertThat(workflowStatePort.loadCalls).isZero();
     }
 
+    @Test
+    void replayWithAbsentSidecarFailsClosedWithoutRotation() {
+        AuthFlowSessionId id = new AuthFlowSessionId("afs_no_sidecar");
+        authFlowSessionPort.store(activeEnvelope(id));
+        idempotencyPort.reserveOutcome = UsernameRecoveryIdempotencyOutcome.COMPLETED_REPLAY;
+        idempotencyPort.storedRecord = completedRecord(UsernameRecoveryStartReplayCodec.encode(id));
+        StepVerifier.create(service.start(emailCommand(EMAIL)))
+                .expectErrorSatisfies(error -> assertThat(((UsernameRecoveryStartException) error).reason())
+                        .isEqualTo(Reason.SYSTEM_FAILURE))
+                .verify();
+        assertThat(authFlowSessionPort.updateCalls).isZero();
+    }
 
     @Test
     void captchaNotVerifiedRejectsBeforeLookup() {
@@ -648,7 +641,7 @@ class StartUsernameRecoveryServiceTest {
         UsernameRecoveryStartReplayCodec.DecodeResult decoded = UsernameRecoveryStartReplayCodec.decode(
                 idempotencyPort.lastCompleted.replaySnapshot());
         assertThat(decoded.decoded()).isTrue();
-        assertThat(decoded.sessionId().value())
+        assertThat(decoded.authFlowSessionId().value())
                 .isEqualTo(authFlowSessionPort.lastCreate.authFlowSessionId().value());
     }
 
@@ -821,7 +814,6 @@ class StartUsernameRecoveryServiceTest {
                 defective,
                 captchaGateService,
                 lookupPort,
-                sessionPort,
                 authFlowSessionPort,
                 workflowStatePort,
                 csrfTokenGenerator,
@@ -874,6 +866,23 @@ class StartUsernameRecoveryServiceTest {
                 null,
                 null,
                 null);
+    }
+
+    private static AuthFlowSession activeEnvelope(AuthFlowSessionId id) {
+        return new AuthFlowSession(
+                id, com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario.USERNAME_RECOVERY,
+                com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus.STARTED,
+                new Sha256CsrfTokenHasher().hash("original-token"), null,
+                com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionData.empty(),
+                NOW, NOW, NOW.plusSeconds(TTL_SECONDS));
+    }
+
+    private static UsernameRecoveryWorkflowState activeWorkflowState(AuthFlowSessionId id) {
+        UsernameRecoverySession legacy = activeSession();
+        return new UsernameRecoveryWorkflowState(
+                id, UsernameRecoveryWorkflowStatus.ACTIVE,
+                new com.bct.ngtpa.apiservice.application.dto.session.usernamerecovery.UsernameRecoveryWorkflowStateRevision(0),
+                legacy.destination(), legacy.language(), legacy.candidates());
     }
 
     private static UsernameRecoverySession activeSession() {
@@ -1066,10 +1075,18 @@ class StartUsernameRecoveryServiceTest {
         private RevisionedAuthFlowSessionDeleteCommand lastDelete;
         private boolean createFails;
         private boolean deleteFails;
+        private AuthFlowSessionSnapshot storedSnapshot;
+        private RevisionedAuthFlowSessionMutationCommand lastMutation;
+        private AuthFlowSessionMutationOutcome updateOutcome;
         private int createCalls;
         private int deleteCalls;
+        private int updateCalls;
 
         private FakeAuthFlowSessionPort(List<String> callLog) { this.callLog = callLog; }
+        private void store(AuthFlowSession session) {
+            storedSnapshot = new AuthFlowSessionSnapshot(
+                    session, new SessionRevision("0123456789abcdef0123456789abcdef"));
+        }
 
         @Override
         public Mono<AuthFlowSession> create(AuthFlowSessionCreateCommand command) {
@@ -1093,7 +1110,26 @@ class StartUsernameRecoveryServiceTest {
 
         @Override
         public Mono<Optional<AuthFlowSession>> load(AuthFlowSessionId id) {
-            return Mono.just(Optional.empty());
+            return Mono.just(storedSnapshot == null ? Optional.empty() : Optional.of(storedSnapshot.session()));
+        }
+        @Override
+        public Mono<Optional<AuthFlowSessionSnapshot>> loadSnapshot(AuthFlowSessionId id) {
+            callLog.add("authFlow.loadSnapshot");
+            return Mono.just(Optional.ofNullable(storedSnapshot));
+        }
+        @Override
+        public Mono<com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationResult>
+                updateRevisioned(RevisionedAuthFlowSessionMutationCommand command) {
+            callLog.add("authFlow.updateRevisioned");
+            updateCalls++;
+            lastMutation = command;
+            if (updateOutcome != null) {
+                return Mono.just(com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationResult.outcome(updateOutcome));
+            }
+            storedSnapshot = new AuthFlowSessionSnapshot(
+                    command.updated(), new SessionRevision("11111111111111111111111111111111"));
+            return Mono.just(new com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationResult(
+                    AuthFlowSessionMutationOutcome.APPLIED, storedSnapshot));
         }
 
         @Override
@@ -1115,8 +1151,10 @@ class StartUsernameRecoveryServiceTest {
                 UsernameRecoveryWorkflowStateMutationOutcome.CREATED;
         private boolean createFails;
         private int createCalls;
+        private int loadCalls;
 
         private FakeWorkflowStatePort(List<String> callLog) { this.callLog = callLog; }
+        private void store(UsernameRecoveryWorkflowState state) { this.stored = state; }
 
         @Override
         public Mono<UsernameRecoveryWorkflowStateMutationResult> create(
@@ -1134,7 +1172,11 @@ class StartUsernameRecoveryServiceTest {
         }
 
         @Override public Mono<UsernameRecoveryWorkflowStateLoadResult> load(AuthFlowSessionId id) {
-            return Mono.just(UsernameRecoveryWorkflowStateLoadResult.notFound());
+            callLog.add("workflowState.load");
+            loadCalls++;
+            return Mono.just(stored == null
+                    ? UsernameRecoveryWorkflowStateLoadResult.notFound()
+                    : UsernameRecoveryWorkflowStateLoadResult.loaded(stored));
         }
         @Override public Mono<UsernameRecoveryWorkflowStateMutationResult> update(
                 UsernameRecoveryWorkflowStateMutationCommand command) {

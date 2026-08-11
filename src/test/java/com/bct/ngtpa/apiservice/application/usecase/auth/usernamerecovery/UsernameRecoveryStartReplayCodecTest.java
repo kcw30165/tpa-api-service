@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyRecord;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryStartReplayCodec.DecodeResult;
-import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySessionId;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -25,20 +25,20 @@ import org.junit.jupiter.api.Test;
  */
 class UsernameRecoveryStartReplayCodecTest {
 
-    private static final UsernameRecoverySessionId SESSION_ID =
-            new UsernameRecoverySessionId("afs_opaque-1");
+    private static final AuthFlowSessionId AUTH_FLOW_SESSION_ID =
+            new AuthFlowSessionId("afs_opaque-1");
 
     @Test
     void encodePersistsOnlyNonSecretDescriptorAndSessionId() {
         UsernameRecoveryIdempotencyRecord.ReplaySnapshot snapshot =
-                UsernameRecoveryStartReplayCodec.encode(SESSION_ID);
+                UsernameRecoveryStartReplayCodec.encode(AUTH_FLOW_SESSION_ID);
 
         assertThat(snapshot.value()).isEqualTo("ur-start-session-created:v1:afs_opaque-1");
     }
 
     @Test
     void encodedSnapshotContainsNoCsrfPayloadField() {
-        String value = UsernameRecoveryStartReplayCodec.encode(SESSION_ID).value();
+        String value = UsernameRecoveryStartReplayCodec.encode(AUTH_FLOW_SESSION_ID).value();
 
         assertThat(value)
                 .matches("ur-start-session-created:v1:[A-Za-z0-9_-]+")
@@ -54,10 +54,10 @@ class UsernameRecoveryStartReplayCodecTest {
     @Test
     void decodeRoundTripsEncodedSnapshot() {
         DecodeResult result = UsernameRecoveryStartReplayCodec.decode(
-                UsernameRecoveryStartReplayCodec.encode(SESSION_ID));
+                UsernameRecoveryStartReplayCodec.encode(AUTH_FLOW_SESSION_ID));
 
         assertThat(result.decoded()).isTrue();
-        assertThat(result.sessionId()).isEqualTo(SESSION_ID);
+        assertThat(result.authFlowSessionId()).isEqualTo(AUTH_FLOW_SESSION_ID);
     }
 
     @Test
@@ -65,7 +65,7 @@ class UsernameRecoveryStartReplayCodecTest {
         DecodeResult result = UsernameRecoveryStartReplayCodec.decode(null);
 
         assertThat(result.decoded()).isFalse();
-        assertThat(result.sessionId()).isNull();
+        assertThat(result.authFlowSessionId()).isNull();
     }
 
     // A blank snapshot is unrepresentable by the committed contract: the ReplaySnapshot
@@ -129,7 +129,7 @@ class UsernameRecoveryStartReplayCodecTest {
     @Test
     void encodedSnapshotToStringIsRedacted() {
         UsernameRecoveryIdempotencyRecord.ReplaySnapshot snapshot =
-                UsernameRecoveryStartReplayCodec.encode(SESSION_ID);
+                UsernameRecoveryStartReplayCodec.encode(AUTH_FLOW_SESSION_ID);
 
         assertThat(snapshot.toString()).isEqualTo("ReplaySnapshot[redacted]");
         assertThat(snapshot.toString()).doesNotContain("afs_opaque-1");
@@ -138,7 +138,7 @@ class UsernameRecoveryStartReplayCodecTest {
     @Test
     void decodedResultToStringNeverDisclosesSessionId() {
         DecodeResult decoded = UsernameRecoveryStartReplayCodec.decode(
-                UsernameRecoveryStartReplayCodec.encode(SESSION_ID));
+                UsernameRecoveryStartReplayCodec.encode(AUTH_FLOW_SESSION_ID));
 
         assertThat(decoded.toString())
                 .contains("DECODED")
@@ -153,7 +153,7 @@ class UsernameRecoveryStartReplayCodecTest {
 
     @Test
     void malformedResultMustNotCarrySessionId() {
-        assertThatThrownBy(() -> new DecodeResult(DecodeResult.Status.MALFORMED, SESSION_ID))
+        assertThatThrownBy(() -> new DecodeResult(DecodeResult.Status.MALFORMED, AUTH_FLOW_SESSION_ID))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
