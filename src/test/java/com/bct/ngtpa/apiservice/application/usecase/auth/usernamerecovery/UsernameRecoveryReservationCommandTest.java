@@ -3,48 +3,44 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySchemeRef;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySessionId;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 
 /**
- * Verifies the Username Recovery reservation command: required typed inputs, rejection of null
- * components, and safe redaction of the session id and opaque Scheme-Ref.
+ * Verifies the Username Recovery reservation command under the Model B canonical identity:
+ * required typed inputs, rejection of null components, safe redaction, and the transitional
+ * legacy bridge that keeps committed callers compiling until Repairs 025B/025C migrate them.
  *
- * <p>Design references: {@code docs/design/6-username-recovery/username-recovery-api-contract-design.md}
- * section 5 (request targets a single session-bound opaque Scheme-Ref; CSRF token is transported
- * separately and is never part of the command) and section 8 (UR-REQ-002 CSRF, UR-REQ-003 Scheme-Ref)
- * and {@code docs/design/6-username-recovery/username-recovery-session-redis-design.md} section 6
- * (request is bound to the auth-flow session).
- *
- * <p>Invariants: {@code sessionId}, {@code schemeRef}, and the authoritative {@code now} instant are
- * all required. The command never carries the raw CSRF token. {@link #toString()} never discloses
- * the session id or the opaque Scheme-Ref.
+ * <p>Model B decision {@code MODEL_B_GENERIC_ENVELOPE_TYPED_SIDECAR}: the command's canonical
+ * session identifier is {@link AuthFlowSessionId}; the legacy {@code sessionId} component was
+ * replaced. Raw CSRF remains outside the command; Scheme-Ref and timestamp behavior are unchanged.
  */
 class UsernameRecoveryReservationCommandTest {
 
-    private static final UsernameRecoverySessionId SESSION_ID =
-            new UsernameRecoverySessionId("afs_opaque-1");
+    private static final AuthFlowSessionId SESSION_ID = new AuthFlowSessionId("afs_opaque-1");
     private static final UsernameRecoverySchemeRef SCHEME_REF =
             new UsernameRecoverySchemeRef("sch_opaque-1");
     private static final Instant NOW = Instant.parse("2026-01-01T00:05:00Z");
 
     @Test
-    void retainsTypedCommandComponents() {
+    void retainsCanonicalTypedCommandComponents() {
         UsernameRecoveryReservationCommand command =
                 new UsernameRecoveryReservationCommand(SESSION_ID, SCHEME_REF, NOW);
 
-        assertThat(command.sessionId()).isEqualTo(SESSION_ID);
+        assertThat(command.authFlowSessionId()).isEqualTo(SESSION_ID);
         assertThat(command.schemeRef()).isEqualTo(SCHEME_REF);
         assertThat(command.now()).isEqualTo(NOW);
     }
 
     @Test
-    void rejectsNullSessionId() {
-        assertThatThrownBy(() -> new UsernameRecoveryReservationCommand(null, SCHEME_REF, NOW))
+    void rejectsNullAuthFlowSessionId() {
+        AuthFlowSessionId missing = null;
+        assertThatThrownBy(() -> new UsernameRecoveryReservationCommand(missing, SCHEME_REF, NOW))
                 .isInstanceOf(NullPointerException.class)
-                .hasMessage("sessionId must not be null");
+                .hasMessage("authFlowSessionId must not be null");
     }
 
     @Test
@@ -62,7 +58,7 @@ class UsernameRecoveryReservationCommandTest {
     }
 
     @Test
-    void toStringRedactsSessionIdAndSchemeRef() {
+    void toStringRedactsAuthFlowSessionIdAndSchemeRef() {
         UsernameRecoveryReservationCommand command =
                 new UsernameRecoveryReservationCommand(SESSION_ID, SCHEME_REF, NOW);
 
@@ -70,5 +66,22 @@ class UsernameRecoveryReservationCommandTest {
                 .doesNotContain("afs_opaque-1")
                 .doesNotContain("sch_opaque-1")
                 .contains("<redacted>");
+    }
+
+    @Test
+    void transitionalLegacyConstructorPreservesCanonicalValue() {
+        UsernameRecoverySessionId legacy = new UsernameRecoverySessionId("afs_opaque-1");
+        UsernameRecoveryReservationCommand command =
+                new UsernameRecoveryReservationCommand(legacy, SCHEME_REF, NOW);
+
+        assertThat(command.authFlowSessionId().value()).isEqualTo("afs_opaque-1");
+    }
+
+    @Test
+    void transitionalSessionIdAccessorDerivesLegacyIdentifierFromCanonicalValue() {
+        UsernameRecoveryReservationCommand command =
+                new UsernameRecoveryReservationCommand(SESSION_ID, SCHEME_REF, NOW);
+
+        assertThat(command.sessionId().value()).isEqualTo("afs_opaque-1");
     }
 }
