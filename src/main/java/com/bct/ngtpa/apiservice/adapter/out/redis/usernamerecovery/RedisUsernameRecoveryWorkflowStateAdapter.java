@@ -28,6 +28,7 @@ public class RedisUsernameRecoveryWorkflowStateAdapter
 
         private static final DefaultRedisScript<Long> CREATE = script("redis/auth-flow-session/create-revisioned.lua");
         private static final DefaultRedisScript<Long> UPDATE = script("redis/username-recovery-session/update.lua");
+        private static final DefaultRedisScript<Long> DELETE = script("redis/username-recovery-session/delete.lua");
 
         private final ReactiveStringRedisTemplate redis;
         private final RedisCacheKeyFactory keyFactory;
@@ -109,8 +110,18 @@ public class RedisUsernameRecoveryWorkflowStateAdapter
         @Override
         public Mono<UsernameRecoveryWorkflowStateDeleteResult> delete(
                         AuthFlowSessionId authFlowSessionId) {
-                return Mono.error(new UnsupportedOperationException(
-                                "Workflow-state delete is not implemented in this repair"));
+                return Mono.defer(() -> {
+                                Objects.requireNonNull(
+                                                authFlowSessionId, "authFlowSessionId must not be null");
+                                return redis.execute(
+                                                DELETE,
+                                                List.of(keyFor(authFlowSessionId)),
+                                                List.of())
+                                                .next()
+                                                .map(RedisUsernameRecoveryWorkflowStateAdapter::mapDeleteCode)
+                                                .defaultIfEmpty(systemFailureDelete());
+                        })
+                                .onErrorMap(error -> persistenceFailure("delete", error));
         }
 
         private String keyFor(AuthFlowSessionId authFlowSessionId) {
@@ -147,6 +158,24 @@ public class RedisUsernameRecoveryWorkflowStateAdapter
                                         UsernameRecoveryWorkflowStateMutationOutcome.STATE_NOT_FOUND);
                         default -> systemFailure();
                 };
+        }
+
+        private static UsernameRecoveryWorkflowStateDeleteResult mapDeleteCode(Long code) {
+                if (code == null) {
+                        return systemFailureDelete();
+                }
+                return switch (code.intValue()) {
+                        case 1 -> new UsernameRecoveryWorkflowStateDeleteResult(
+                                        UsernameRecoveryWorkflowStateMutationOutcome.DELETED);
+                        case -1 -> new UsernameRecoveryWorkflowStateDeleteResult(
+                                        UsernameRecoveryWorkflowStateMutationOutcome.ALREADY_ABSENT);
+                        default -> systemFailureDelete();
+                };
+        }
+
+        private static UsernameRecoveryWorkflowStateDeleteResult systemFailureDelete() {
+                return new UsernameRecoveryWorkflowStateDeleteResult(
+                                UsernameRecoveryWorkflowStateMutationOutcome.SYSTEM_FAILURE);
         }
 
         private static UsernameRecoveryWorkflowStateMutationResult systemFailure() {

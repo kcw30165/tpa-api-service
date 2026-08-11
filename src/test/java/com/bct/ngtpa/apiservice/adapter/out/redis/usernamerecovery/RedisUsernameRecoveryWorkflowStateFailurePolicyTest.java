@@ -90,11 +90,13 @@ class RedisUsernameRecoveryWorkflowStateFailurePolicyTest {
         }
 
         @Test
-        void deleteFailsClosedBeforeRedisAccess() {
+        void emptyDeleteResultRemainsTypedSystemFailure() {
+                when(redis.execute(any(RedisScript.class), anyList(), anyList()))
+                                .thenReturn(Flux.empty());
                 StepVerifier.create(adapter.delete(state().authFlowSessionId()))
-                                .expectError(UnsupportedOperationException.class)
-                                .verify();
-                verifyNoInteractions(redis);
+                                .assertNext(result -> assertThat(result.outcome()).isEqualTo(
+                                                UsernameRecoveryWorkflowStateMutationOutcome.SYSTEM_FAILURE))
+                                .verifyComplete();
         }
 
         private static UsernameRecoveryWorkflowState state() {
