@@ -18,11 +18,13 @@ import com.bct.ngtpa.apiservice.application.dto.session.SessionCookieSameSite;
 import com.bct.ngtpa.apiservice.application.port.in.CancelUsernameRecoveryUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.RequestUsernameRecoveryUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.StartUsernameRecoveryUseCase;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryEffectiveDestinationPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryLookupPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionPort;
+import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStatePort;
 import com.bct.ngtpa.apiservice.application.service.auth.captcha.RegistrationCaptchaGateService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.CancelUsernameRecoveryService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.RequestUsernameRecoveryService;
@@ -142,6 +144,8 @@ public class UsernameRecoveryFeatureConfig {
             RegistrationCaptchaGateService captchaGateService,
             UsernameRecoveryLookupPort lookupPort,
             UsernameRecoverySessionPort sessionPort,
+            AuthFlowSessionPort authFlowSessionPort,
+            UsernameRecoveryWorkflowStatePort workflowStatePort,
             CsrfTokenGenerator csrfTokenGenerator,
             CsrfTokenHasher csrfTokenHasher,
             Clock clock,
@@ -153,6 +157,8 @@ public class UsernameRecoveryFeatureConfig {
                 captchaGateService,
                 lookupPort,
                 sessionPort,
+                authFlowSessionPort,
+                workflowStatePort,
                 csrfTokenGenerator,
                 csrfTokenHasher,
                 clock,

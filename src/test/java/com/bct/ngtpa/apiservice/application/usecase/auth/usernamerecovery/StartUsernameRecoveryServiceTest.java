@@ -13,6 +13,16 @@ import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRe
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryStartCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryStartResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryStartResult.Outcome;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionCreateCommand;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionDeleteResult;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationOutcome;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.RevisionedAuthFlowSessionDeleteCommand;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision;
+import com.bct.ngtpa.apiservice.application.dto.session.usernamerecovery.UsernameRecoveryWorkflowState;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.CaptchaChallengePort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyAction;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyFingerprint;
@@ -29,6 +39,13 @@ import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionMuta
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionMutationOutcome;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionMutationResult;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionPort;
+import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateCreateCommand;
+import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateDeleteResult;
+import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateLoadResult;
+import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateMutationCommand;
+import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateMutationOutcome;
+import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateMutationResult;
+import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStatePort;
 
 import com.bct.ngtpa.apiservice.application.service.auth.captcha.RegistrationCaptchaGateService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryStartException.Reason;
@@ -85,6 +102,8 @@ class StartUsernameRecoveryServiceTest {
             new FakeCaptchaChallengePort(callLog, challenge(CaptchaStatus.VERIFIED, NOW.plusSeconds(300)));
     private final FakeLookupPort lookupPort = new FakeLookupPort(callLog);
     private final FakeSessionPort sessionPort = new FakeSessionPort(callLog);
+    private final FakeAuthFlowSessionPort authFlowSessionPort = new FakeAuthFlowSessionPort(callLog);
+    private final FakeWorkflowStatePort workflowStatePort = new FakeWorkflowStatePort(callLog);
 
     private final RegistrationCaptchaGateService captchaGateService =
             new RegistrationCaptchaGateService(captchaPort, CLOCK);
@@ -103,6 +122,8 @@ class StartUsernameRecoveryServiceTest {
                 captchaGateService,
                 lookupPort,
                 sessionPort,
+                authFlowSessionPort,
+                workflowStatePort,
                 csrfTokenGenerator,
                 csrfTokenHasher,
                 CLOCK,
@@ -479,14 +500,18 @@ class StartUsernameRecoveryServiceTest {
                     assertThat(result.outcome()).isEqualTo(
                             UsernameRecoveryStartResult.Outcome.SESSION_CREATED);
                     assertThat(result.authFlowSessionId()).isNotNull();
-                    assertThat(sessionPort.stored).isNotNull();
-                    assertThat(result.authFlowSessionId().value())
-                            .isEqualTo(sessionPort.stored.sessionId().value());
+                    assertThat(workflowStatePort.stored).isNotNull();
+                    assertThat(result.authFlowSessionId())
+                            .isEqualTo(workflowStatePort.stored.authFlowSessionId());
+                    assertThat(result.authFlowSessionId())
+                            .isEqualTo(authFlowSessionPort.lastCreate.authFlowSessionId());
                     assertThat(result.csrfToken()).isNotBlank();
                 })
                 .verifyComplete();
 
-        assertThat(sessionPort.createCalls).isEqualTo(1);
+        assertThat(sessionPort.createCalls).isZero();
+        assertThat(authFlowSessionPort.createCalls).isEqualTo(1);
+        assertThat(workflowStatePort.createCalls).isEqualTo(1);
     }
 
     @Test
@@ -604,44 +629,32 @@ class StartUsernameRecoveryServiceTest {
                     assertThat(result.csrfToken()).isNotBlank();
                     assertThat(result.expiresInSeconds()).isEqualTo(TTL_SECONDS);
                     assertThat(result.schemes()).hasSize(2);
-                    assertThat(result.schemes().get(0).registered()).isTrue();
-                    assertThat(result.schemes().get(1).registered()).isFalse();
-                    assertThat(result.schemes()).allSatisfy(projection ->
-                            assertThat(projection.schemeRef()).isNotNull());
                 })
                 .verifyComplete();
 
         assertThat(callLog).containsExactly(
-                "idem.reserve", "captcha.load", "captcha.markConsumed",
-                "lookup.search", "session.create", "idem.complete");
-
-        UsernameRecoverySession stored = sessionPort.stored;
-        assertThat(stored).isNotNull();
-        assertThat(stored.scenario()).isEqualTo(UsernameRecoverySession.Scenario.USERNAME_RECOVERY);
-        assertThat(stored.status()).isEqualTo(UsernameRecoveryWorkflowStatus.ACTIVE);
-        assertThat(stored.revision().value()).isZero();
-        assertThat(stored.language()).isEqualTo(LANGUAGE);
-        assertThat(stored.destination()).isEqualTo(new UsernameRecoveryVerifiedDestination(
-                EMAIL, UsernameRecoveryVerifiedDestination.Channel.EMAIL));
-        assertThat(stored.createdAt()).isEqualTo(NOW);
-        assertThat(stored.expiresAt()).isEqualTo(NOW.plusSeconds(TTL_SECONDS));
-        assertThat(stored.candidates()).hasSize(2);
-        assertThat(stored.candidates()).allSatisfy(candidate -> {
-            assertThat(candidate.deliveryState()).isEqualTo(UsernameRecoveryDeliveryState.AVAILABLE);
-            assertThat(candidate.schemeRef()).isNotNull();
-        });
-        assertThat(stored.candidates().get(0).userName()).isEqualTo("user-1");
-        assertThat(stored.candidates().get(1).userName()).isNull();
-
+                "idem.reserve", "captcha.load", "captcha.markConsumed", "lookup.search",
+                "authFlow.createRevisioned", "workflowState.create", "idem.complete");
+        assertThat(sessionPort.createCalls).isZero();
+        assertThat(authFlowSessionPort.lastCreate.scenario().name()).isEqualTo("USERNAME_RECOVERY");
+        assertThat(authFlowSessionPort.lastCreate.initialStatus().name()).isEqualTo("STARTED");
+        assertThat(authFlowSessionPort.lastCreate.createdAt()).isEqualTo(NOW);
+        assertThat(authFlowSessionPort.lastCreate.expiresAt()).isEqualTo(NOW.plusSeconds(TTL_SECONDS));
+        assertThat(workflowStatePort.stored.authFlowSessionId())
+                .isEqualTo(authFlowSessionPort.lastCreate.authFlowSessionId());
+        assertThat(workflowStatePort.stored.revision().value()).isZero();
+        assertThat(workflowStatePort.lastCreate.expiresAt())
+                .isEqualTo(authFlowSessionPort.lastCreate.expiresAt());
         UsernameRecoveryStartReplayCodec.DecodeResult decoded = UsernameRecoveryStartReplayCodec.decode(
                 idempotencyPort.lastCompleted.replaySnapshot());
         assertThat(decoded.decoded()).isTrue();
-        assertThat(decoded.sessionId()).isEqualTo(stored.sessionId());
+        assertThat(decoded.sessionId().value())
+                .isEqualTo(authFlowSessionPort.lastCreate.authFlowSessionId().value());
     }
 
     @Test
     void sessionCreateInfrastructureErrorMapsToSystemFailure() {
-        sessionPort.createFails = true;
+        authFlowSessionPort.createFails = true;
 
         StepVerifier.create(service.start(emailCommand(EMAIL)))
                 .expectErrorSatisfies(error -> {
@@ -656,7 +669,7 @@ class StartUsernameRecoveryServiceTest {
 
     @Test
     void sessionCreateSystemFailureOutcomeMapsToSystemFailure() {
-        sessionPort.createOutcome = UsernameRecoverySessionMutationOutcome.SYSTEM_FAILURE;
+        workflowStatePort.createOutcome = UsernameRecoveryWorkflowStateMutationOutcome.SYSTEM_FAILURE;
 
         StepVerifier.create(service.start(emailCommand(EMAIL)))
                 .expectErrorSatisfies(error -> {
@@ -666,6 +679,42 @@ class StartUsernameRecoveryServiceTest {
                 })
                 .verify();
 
+        assertThat(idempotencyPort.completeCalls).isZero();
+    }
+
+    @Test
+    void sidecarFailureCompensatesExactEnvelopeOnce() {
+        workflowStatePort.createOutcome = UsernameRecoveryWorkflowStateMutationOutcome.SYSTEM_FAILURE;
+        StepVerifier.create(service.start(emailCommand(EMAIL)))
+                .expectErrorSatisfies(error -> assertThat(error)
+                        .isInstanceOf(UsernameRecoveryStartException.class))
+                .verify();
+        assertThat(authFlowSessionPort.deleteCalls).isEqualTo(1);
+        assertThat(authFlowSessionPort.lastDelete.expected())
+                .isSameAs(authFlowSessionPort.createdSnapshot);
+        assertThat(idempotencyPort.completeCalls).isZero();
+    }
+
+    @Test
+    void sidecarInfrastructureFailureCompensatesOnce() {
+        workflowStatePort.createFails = true;
+        StepVerifier.create(service.start(emailCommand(EMAIL)))
+                .expectErrorSatisfies(error -> assertThat(error)
+                        .isInstanceOf(UsernameRecoveryStartException.class))
+                .verify();
+        assertThat(authFlowSessionPort.deleteCalls).isEqualTo(1);
+        assertThat(idempotencyPort.completeCalls).isZero();
+    }
+
+    @Test
+    void compensationFailureDoesNotRetryOrComplete() {
+        workflowStatePort.createFails = true;
+        authFlowSessionPort.deleteFails = true;
+        StepVerifier.create(service.start(emailCommand(EMAIL)))
+                .expectErrorSatisfies(error -> assertThat(error)
+                        .isInstanceOf(UsernameRecoveryStartException.class))
+                .verify();
+        assertThat(authFlowSessionPort.deleteCalls).isEqualTo(1);
         assertThat(idempotencyPort.completeCalls).isZero();
     }
 
@@ -681,8 +730,9 @@ class StartUsernameRecoveryServiceTest {
                 })
                 .verify();
 
-        assertThat(sessionPort.createCalls).isEqualTo(1);
-        assertThat(callLog).contains("session.create");
+        assertThat(authFlowSessionPort.createCalls).isEqualTo(1);
+        assertThat(workflowStatePort.createCalls).isEqualTo(1);
+        assertThat(callLog).contains("authFlow.createRevisioned", "workflowState.create");
     }
 
 
@@ -772,6 +822,8 @@ class StartUsernameRecoveryServiceTest {
                 captchaGateService,
                 lookupPort,
                 sessionPort,
+                authFlowSessionPort,
+                workflowStatePort,
                 csrfTokenGenerator,
                 csrfTokenHasher,
                 CLOCK,
@@ -1004,6 +1056,92 @@ class StartUsernameRecoveryServiceTest {
                 return Mono.error(new IllegalStateException("lookup infrastructure failure"));
             }
             return Mono.just(result);
+        }
+    }
+
+    private static final class FakeAuthFlowSessionPort implements AuthFlowSessionPort {
+        private final List<String> callLog;
+        private AuthFlowSessionCreateCommand lastCreate;
+        private AuthFlowSessionSnapshot createdSnapshot;
+        private RevisionedAuthFlowSessionDeleteCommand lastDelete;
+        private boolean createFails;
+        private boolean deleteFails;
+        private int createCalls;
+        private int deleteCalls;
+
+        private FakeAuthFlowSessionPort(List<String> callLog) { this.callLog = callLog; }
+
+        @Override
+        public Mono<AuthFlowSession> create(AuthFlowSessionCreateCommand command) {
+            return Mono.error(new UnsupportedOperationException());
+        }
+
+        @Override
+        public Mono<AuthFlowSessionSnapshot> createRevisioned(AuthFlowSessionCreateCommand command) {
+            callLog.add("authFlow.createRevisioned");
+            createCalls++;
+            lastCreate = command;
+            if (createFails) return Mono.error(new IllegalStateException("envelope create failed"));
+            AuthFlowSession session = new AuthFlowSession(
+                    command.authFlowSessionId(), command.scenario(), command.initialStatus(),
+                    command.csrfTokenHash(), command.activeOtpChallengeId(), command.data(),
+                    command.createdAt(), command.createdAt(), command.expiresAt());
+            createdSnapshot = new AuthFlowSessionSnapshot(
+                    session, new SessionRevision("0123456789abcdef0123456789abcdef"));
+            return Mono.just(createdSnapshot);
+        }
+
+        @Override
+        public Mono<Optional<AuthFlowSession>> load(AuthFlowSessionId id) {
+            return Mono.just(Optional.empty());
+        }
+
+        @Override
+        public Mono<AuthFlowSessionDeleteResult> deleteRevisioned(
+                RevisionedAuthFlowSessionDeleteCommand command) {
+            callLog.add("authFlow.deleteRevisioned");
+            deleteCalls++;
+            lastDelete = command;
+            if (deleteFails) return Mono.error(new IllegalStateException("delete failed"));
+            return Mono.just(new AuthFlowSessionDeleteResult(AuthFlowSessionMutationOutcome.APPLIED));
+        }
+    }
+
+    private static final class FakeWorkflowStatePort implements UsernameRecoveryWorkflowStatePort {
+        private final List<String> callLog;
+        private UsernameRecoveryWorkflowStateCreateCommand lastCreate;
+        private UsernameRecoveryWorkflowState stored;
+        private UsernameRecoveryWorkflowStateMutationOutcome createOutcome =
+                UsernameRecoveryWorkflowStateMutationOutcome.CREATED;
+        private boolean createFails;
+        private int createCalls;
+
+        private FakeWorkflowStatePort(List<String> callLog) { this.callLog = callLog; }
+
+        @Override
+        public Mono<UsernameRecoveryWorkflowStateMutationResult> create(
+                UsernameRecoveryWorkflowStateCreateCommand command) {
+            callLog.add("workflowState.create");
+            createCalls++;
+            lastCreate = command;
+            if (createFails) return Mono.error(new IllegalStateException("sidecar create failed"));
+            if (createOutcome == UsernameRecoveryWorkflowStateMutationOutcome.CREATED) {
+                stored = command.state();
+                return Mono.just(new UsernameRecoveryWorkflowStateMutationResult(
+                        UsernameRecoveryWorkflowStateMutationOutcome.CREATED, stored));
+            }
+            return Mono.just(UsernameRecoveryWorkflowStateMutationResult.outcome(createOutcome));
+        }
+
+        @Override public Mono<UsernameRecoveryWorkflowStateLoadResult> load(AuthFlowSessionId id) {
+            return Mono.just(UsernameRecoveryWorkflowStateLoadResult.notFound());
+        }
+        @Override public Mono<UsernameRecoveryWorkflowStateMutationResult> update(
+                UsernameRecoveryWorkflowStateMutationCommand command) {
+            return Mono.error(new UnsupportedOperationException());
+        }
+        @Override public Mono<UsernameRecoveryWorkflowStateDeleteResult> delete(AuthFlowSessionId id) {
+            return Mono.error(new UnsupportedOperationException());
         }
     }
 

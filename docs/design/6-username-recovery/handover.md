@@ -30,103 +30,89 @@ UsernameRecoveryWorkflowState sidecar
 
 ## Completed and committed
 
-### Repair 025A
-
 ```text
 21f5c414ea1295483de6380b091c6853fb8a1641
 refactor(username-recovery): add workflow state sidecar contract
-```
 
-### Repair 025B-1
-
-```text
 cf335ddf40056db5938c1d7966936cd9d537572e
 feat(username-recovery): add workflow state redis mapping
-```
 
-### Repair 025B-2A
-
-```text
 7a142957e6815d490eb586924c249671099d108b
 refactor(username-recovery): carry expiry in workflow state create command
-```
 
-### Repair 025B-2B
-
-```text
 32cff70efd24a4a03cee6e32d40790b88005952b
 feat(username-recovery): add workflow state redis create and load
-```
 
-### Repair 025B-3
-
-```text
 53c354a7a23f62b88fdf47f1e185cdcef7473c92
 feat(username-recovery): add workflow state redis cas update
+
+4a7e6f2d6d10c5f6309d644e8f281b4e198f56ac
+feat(username-recovery): complete workflow state redis persistence
 ```
 
-## Approved implementation, pending commit: Repair 025B-4
+Repair 025B is complete.
 
-Repair 025B-4 completes workflow-state Redis persistence with idempotent delete behavior.
+## Approved implementation, pending commit: Repair 025C-1
+
+Repair 025C-1 migrates only new registered-candidate Start creation to Model B.
 
 Changed boundary:
 
 ```text
-M  RedisUsernameRecoveryWorkflowStateAdapter.java
-M  RedisUsernameRecoveryWorkflowStateFailurePolicyTest.java
-A  RedisUsernameRecoveryWorkflowStateDeleteTest.java
+M  StartUsernameRecoveryService.java
+M  UsernameRecoveryFeatureConfig.java
+M  StartUsernameRecoveryServiceTest.java
 ```
-
-The committed `UsernameRecoveryWorkflowStateDeleteResult` already satisfied the required non-null, delete-outcome, and safe `toString()` contract, so no production diff was necessary for that type.
 
 Implemented behavior:
 
-- reuses `redis/username-recovery-session/delete.lua` without modification;
-- deletes the workflow-state sidecar by canonical `AuthFlowSessionId`;
-- maps script result `1` to `DELETED`;
-- maps `-1` to idempotent `ALREADY_ABSENT`;
-- maps empty and unexpected script results to `SYSTEM_FAILURE`;
-- maps Redis and Lua failures to safe `CacheException` messages;
-- exposes no Redis key, session ID, Scheme-Ref, username, stored JSON, or raw Redis detail;
-- closes the persistence adapter with create, load, CAS update with TTL preservation, and idempotent delete.
+- generates one canonical `AuthFlowSessionId`;
+- creates the revision-aware generic `AuthFlowSession` envelope first;
+- creates the `UsernameRecoveryWorkflowState` sidecar second with the same ID and expiry;
+- keeps CSRF hash, lifecycle, expiry, and generic revision in the envelope;
+- keeps destination, language, candidates, Scheme-Refs, and workflow revision in the sidecar;
+- completes idempotency only after both records exist;
+- does not create a legacy Username Recovery session for a new Start;
+- compensates sidecar creation failure exactly once using revision-aware envelope deletion;
+- retains legacy Start replay and CSRF rotation temporarily for Repair 025C-2.
 
 Evidence directory:
 
 ```text
-target/evidence/username-recovery/025B-4-20260811-184532/
+target/evidence/username-recovery/025C-1-20260811-212007/
 ```
 
 Validation:
 
 ```text
-Focused:    9 tests, 0 failures, 0 errors, 0 skipped
-Cumulative: 63 tests, 0 failures, 0 errors, 0 skipped
-CleanArchitectureDependencyTest: 23 tests passed
+Focused:    43 tests, 0 failures, 0 errors, 0 skipped
+Cumulative: 85 tests, 0 failures, 0 errors, 0 skipped
 Focused Maven exit code: 0
 Cumulative Maven exit code: 0
-git diff --check: no whitespace errors; line-ending warnings only
+git diff --check: exit code 0
 ```
+
+Non-blocking repository warnings remain for Mockito dynamic-agent loading, internal/deprecated APIs, JaCoCo execution-data mismatch, and line endings.
 
 Proposed commit:
 
 ```text
-feat(username-recovery): complete workflow state redis persistence
+refactor(username-recovery): create start envelope and workflow sidecar
 ```
 
 ## Next bounded task
 
-After Repair 025B-4 is committed and verified, Repair 025B is complete. Prepare **Repair 025C-1: Start envelope and sidecar creation**, using a physically verified source bundle and the prepared-writer execution model.
+After Repair 025C-1 is committed and verified, prepare **Repair 025C-2: Start replay envelope and sidecar migration** using a physically verified source bundle and a deterministic prepared writer.
 
-Repair 025C-2 and later rounds, Repair 025D, and canonical Task 025 remain unauthorized.
+Repair 025C-2 is not yet authorized. Request, Cancel, Repair 025D, and canonical Task 025 remain unauthorized.
 
 ## Execution policy
 
 - M365 Copilot prepares exact manifests and deterministic writer scripts.
-- DeepSeek V4 Flash performs preflight, executes prepared changes, validates, and reports.
-- No task restatement, broad discovery, or source drafting in reasoning.
-- First mutation within 5 minutes and first Maven stage within 15 minutes.
-- Active-agent limit is 30 minutes excluding Maven.
-- One corrective attempt per distinct issue.
-- A second failure requires `ESCALATION_REQUIRED`.
+- DeepSeek executes prepared changes only; Maven validation may be run outside Cline when its command timeout is incompatible with synchronous evidence execution.
+- No task restatement, broad discovery, or source drafting in agent reasoning.
+- One corrective attempt per distinct issue; a second failure requires `ESCALATION_REQUIRED`.
+- Maven must run synchronously through `.cline/scripts/run-maven-evidence.ps1`.
+- Native stderr warnings must not override Maven's actual exit code.
 - Do not restore quarantined Task 025 drafts.
 - Do not run full `mvn test` or `mvn clean verify` before the final approved milestone.
