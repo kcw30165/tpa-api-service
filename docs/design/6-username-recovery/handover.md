@@ -50,3 +50,27 @@ quarantined Task 025 drafts authorized for restore: false
 ```
 
 Repair 025A may now be packaged and authorized. Repair 025B, 025C, 025D, and canonical 025 remain unauthorized.
+## Repair 025A completion
+
+Repair 025A was independently approved and committed as:
+
+```text
+21f5c414ea1295483de6380b091c6853fb8a1641
+refactor(username-recovery): add workflow state sidecar contract
+```
+
+The protected `UsernameRecoveryWorkflowState` sidecar and revision are located in `application.dto.session.usernamerecovery`, use canonical `AuthFlowSessionId`, and pass focused 60/60 and cumulative 68/68 tests including all clean-architecture rules.
+
+## Current bounded task
+
+Repair 025B is split into small rounds. Only **025B-1**, Redis record, JSON mapper, and key factory, is authorized. The Redis adapter, CAS/TTL behavior, orchestration migration, legacy removal, and canonical Task 025 remain blocked.
+
+Execution budget for 025B-1:
+
+```text
+10 minutes broad discovery
+20 minutes to first compile
+45 minutes active agent time excluding Maven
+one corrective attempt per issue
+```
+
