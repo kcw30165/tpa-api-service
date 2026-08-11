@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.out.apim.credential;
 import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import org.junit.jupiter.api.Test;
 import reactor.test.StepVerifier;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 
 import java.util.List;
 
@@ -11,18 +12,18 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class DefaultApimCredentialProfileResolverTest {
 
     @Test
-    void returnsLegacyDefaultWhenNoProfilesConfigured() {
+    void nonAccountMissingProfileFails() {
         ApimProperties props = new ApimProperties();
+        // no routing.nonAccountProfileId and no profiles configured -> resolution must fail
         DefaultApimCredentialProfileResolver resolver = new DefaultApimCredentialProfileResolver(props);
 
-        ApimCredentialProfile profile = resolver.resolve(new ApimCredentialResolutionContext(null, null, null, null, null, null, null, null, null)).block();
-
-        assertEquals(props.getOauth().getClientId(), profile.clientId());
-        assertEquals(props.getEncryption().getApiKey(), profile.apiKey());
+        StepVerifier.create(resolver.resolve(ApimDatabaseScope.NON_ACCOUNT, new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, null)))
+                .expectErrorMatches(ex -> ex instanceof com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException)
+                .verify();
     }
 
     @Test
-    void returnsConfiguredDefaultProfileWhenPresent() {
+    void resolvesConfiguredNonAccountProfileWhenPresent() {
         ApimProperties props = new ApimProperties();
         ApimProperties.CredentialProfiles.Profile p = new ApimProperties.CredentialProfiles.Profile();
         p.setProfileId("p1");
@@ -30,11 +31,12 @@ class DefaultApimCredentialProfileResolverTest {
         p.setClientSecret("csecret");
         p.setApiKey("akey");
         props.getCredentialProfiles().setProfiles(List.of(p));
-        props.getCredentialProfiles().setDefaultProfileId("p1");
+        // configure routing to reference the profile
+        props.getRouting().setNonAccountProfileId("p1");
 
         DefaultApimCredentialProfileResolver resolver = new DefaultApimCredentialProfileResolver(props);
 
-        ApimCredentialProfile profile = resolver.resolve(new ApimCredentialResolutionContext(null, null, null, null, null, null, null, null, null)).block();
+        ApimCredentialProfile profile = resolver.resolve(ApimDatabaseScope.NON_ACCOUNT, new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, null)).block();
 
         assertEquals("p1", profile.profileId());
         assertEquals("cid", profile.clientId());
@@ -42,40 +44,32 @@ class DefaultApimCredentialProfileResolverTest {
     }
 
     @Test
-    void returnsLegacyDefaultWhenProfilesCollectionIsNull() {
+    void missingProfilesCollectionStillFailsResolution() {
         ApimProperties props = new ApimProperties();
         props.getCredentialProfiles().setProfiles(null);
+        props.getRouting().setNonAccountProfileId("p1");
 
         DefaultApimCredentialProfileResolver resolver = new DefaultApimCredentialProfileResolver(props);
 
-        ApimCredentialProfile profile = resolver.resolve(new ApimCredentialResolutionContext(null, null, null, null, null, null, null, null, null)).block();
-
-        assertEquals(props.getCredentialProfiles().getDefaultProfileId(), profile.profileId());
-        assertEquals(props.getOauth().getClientId(), profile.clientId());
+        StepVerifier.create(resolver.resolve(ApimDatabaseScope.NON_ACCOUNT, new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, null)))
+                .expectErrorMatches(ex -> ex instanceof com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException)
+                .verify();
     }
 
     @Test
-    void fallsBackToFirstConfiguredProfileWhenDefaultIsMissing() {
+    void unmappedAccountEnvFailsForAccountScope() {
         ApimProperties props = new ApimProperties();
-        ApimProperties.CredentialProfiles.Profile first = new ApimProperties.CredentialProfiles.Profile();
-        first.setProfileId(null);
-        first.setClientId("cid-first");
-        first.setApiKey("akey-first");
-
-        ApimProperties.CredentialProfiles.Profile second = new ApimProperties.CredentialProfiles.Profile();
-        second.setProfileId("p2");
-        second.setClientId("cid-second");
-        second.setApiKey("akey-second");
-
-        props.getCredentialProfiles().setProfiles(List.of(first, second));
-        props.getCredentialProfiles().setDefaultProfileId("missing");
+        ApimProperties.CredentialProfiles.Profile p = new ApimProperties.CredentialProfiles.Profile();
+        p.setProfileId("p2");
+        p.setClientId("cid-second");
+        p.setApiKey("akey-second");
+        props.getCredentialProfiles().setProfiles(List.of(p));
+        // no mapping for JR env -> resolution should fail for ACCOUNT_ENV scope
 
         DefaultApimCredentialProfileResolver resolver = new DefaultApimCredentialProfileResolver(props);
 
-        ApimCredentialProfile profile = resolver.resolve(new ApimCredentialResolutionContext(null, null, null, null, null, null, null, null, null)).block();
-
-        assertEquals(null, profile.profileId());
-        assertEquals("cid-first", profile.clientId());
-        assertEquals("akey-first", profile.apiKey());
+        StepVerifier.create(resolver.resolve(ApimDatabaseScope.ACCOUNT_ENV, new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, "JR")))
+                .expectErrorMatches(ex -> ex instanceof com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException)
+                .verify();
     }
 }

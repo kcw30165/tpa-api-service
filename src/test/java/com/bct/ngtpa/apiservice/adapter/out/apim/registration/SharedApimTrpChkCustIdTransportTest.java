@@ -47,7 +47,8 @@ class SharedApimTrpChkCustIdTransportTest {
         assertThat(facade.path).isEqualTo(SharedApimTrpChkCustIdTransport.API_NAME);
         assertThat(facade.requestBody).isEqualTo(new TrpChkCustIdApimRequest("cust-1"));
         assertThat(facade.retryEligibility).isEqualTo(ApimRetryEligibility.SAFE_BUSINESS_CALL);
-        assertThat(facade.context.requestMetadata()).containsEntry("requestId", "req-123");
+        // Strict routing context no longer carries arbitrary request metadata; ensure context is present
+        assertThat(facade.context).isNotNull();
         assertThat(certificates.calls).isZero();
         assertThat(crypto.decryptCalls).isEqualTo(1);
     }

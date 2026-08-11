@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.details;
 import com.bct.ngtpa.apiservice.adapter.out.apim.*;
 import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.details.dto.*;
 import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
@@ -29,7 +30,7 @@ public final class SharedApimTrpSearchRegedMemberTransport implements TrpSearchR
     private Mono<TrpSearchRegedMemberEnvelope> post(TrpSearchRegedMemberRequest request, String requestId, PublicKey key) {
         Object encrypted=crypto.encryptRequest(API_NAME,request,TrpSearchRegedMemberRequest.class,key);
         Map<String,String> metadata=requestId==null||requestId.isBlank()?Map.of():Map.of("requestId",requestId);
-        var context=new ApimCredentialResolutionContext(null,null,null,null,null,null,null,API_NAME,metadata);
+        var context = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, null);
         return facade.post(API_NAME,encrypted,context,ApimRetryEligibility.SAFE_BUSINESS_CALL)
                 .map(body->crypto.decryptResponseEnvelope(API_NAME,body,TrpSearchRegedMemberDataItem.class,key))
                 .map(this::envelope);

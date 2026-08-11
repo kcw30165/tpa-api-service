@@ -5,6 +5,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.ApimPayloadCryptoService;
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimWebClientFacade;
 import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpChkCustIdApimDataItem;
@@ -57,7 +58,7 @@ public final class SharedApimTrpChkCustIdTransport implements TrpChkCustIdTransp
         Map<String, String> metadata = correlationId == null || correlationId.isBlank()
                 ? Map.of()
                 : Map.of("requestId", correlationId);
-        var context = new ApimCredentialResolutionContext(null, null, null, null, null, null, null, API_NAME, metadata);
+        var context = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, null);
         return facade.post(API_NAME, encryptedRequest, context, ApimRetryEligibility.SAFE_BUSINESS_CALL)
                 .map(body -> crypto.decryptResponseEnvelope(API_NAME, body, TrpChkCustIdApimDataItem.class, publicKey))
                 .map(this::toEnvelopePreservingBusinessErrMessage)

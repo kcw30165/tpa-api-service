@@ -32,6 +32,7 @@ class ApimBusinessCallRetryIntegrationTest {
         StepVerifier.create(facade.post(
                         "/api/safe",
                         Map.of("x", "y"),
+                        com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT,
                         context("/api/safe"),
                         ApimRetryEligibility.SAFE_BUSINESS_CALL))
                 .expectNext("{\"ok\":true}")
@@ -49,6 +50,7 @@ class ApimBusinessCallRetryIntegrationTest {
         StepVerifier.create(facade.post(
                         "/api/safe",
                         Map.of(),
+                        com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT,
                         context("/api/safe"),
                         ApimRetryEligibility.SAFE_BUSINESS_CALL))
                 .expectError(ApimException.class)
@@ -66,6 +68,7 @@ class ApimBusinessCallRetryIntegrationTest {
         StepVerifier.create(facade.post(
                         "/api/mutation",
                         Map.of(),
+                        com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT,
                         context("/api/mutation"),
                         ApimRetryEligibility.NON_RETRYABLE))
                 .expectError(ApimException.class)
@@ -83,6 +86,7 @@ class ApimBusinessCallRetryIntegrationTest {
         StepVerifier.create(facade.post(
                         "/api/safe",
                         Map.of(),
+                        com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT,
                         context("/api/safe"),
                         ApimRetryEligibility.SAFE_BUSINESS_CALL))
                 .expectError(ApimException.class)
@@ -97,7 +101,7 @@ class ApimBusinessCallRetryIntegrationTest {
         ApimWebClientFacade facade = facade(calls, ignored ->
                 ClientResponse.create(HttpStatus.SERVICE_UNAVAILABLE).body("unavailable").build());
 
-        StepVerifier.create(facade.post("/api/existing", Map.of(), context("/api/existing")))
+        StepVerifier.create(facade.post("/api/existing", Map.of(), com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT, context("/api/existing"), null))
                 .expectError(ApimException.class)
                 .verify();
 
@@ -124,7 +128,19 @@ class ApimBusinessCallRetryIntegrationTest {
                 WebClient.create(),
                 builder,
                 new ObjectMapper(),
-                ignored -> Mono.just(profile),
+                new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfileResolver() {
+                    @Override
+                    public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile> resolve(com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext ctx) {
+                        // Legacy single-arg resolver unsupported in strict tests — fail closed
+                        return reactor.core.publisher.Mono.error(new com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException("single-arg resolver unsupported in test"));
+                    }
+
+                    @Override
+                    public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile> resolve(com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope scope, com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext ctx) {
+                        return reactor.core.publisher.Mono.just(profile);
+                    }
+                },
+
                 tokenService,
                 new ApimCertificateService(builder, properties, null),
                 properties);
@@ -133,6 +149,6 @@ class ApimBusinessCallRetryIntegrationTest {
     private com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext context(
             String operation) {
         return new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(
-                null, null, null, null, null, null, null, operation, Map.of());
+                com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER, null);
     }
 }

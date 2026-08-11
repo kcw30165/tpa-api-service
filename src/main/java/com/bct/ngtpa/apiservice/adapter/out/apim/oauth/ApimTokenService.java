@@ -56,36 +56,40 @@ public class ApimTokenService {
     }
 
     private Mono<ApimTokenCacheEntry> fetchToken(ApimCredentialProfile profile) {
-        String tokenUri = profile.tokenUri() != null ? profile.tokenUri() : apimProperties.getOauth().getTokenUri();
-        int skewSeconds = apimProperties.getOauth().getTokenRenewalSkewSeconds();
+            // Do not fallback to global oauth.tokenUri: require per-profile value
+            if (profile.tokenUri() == null || profile.tokenUri().isBlank()) {
+                return Mono.error(new com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException("tokenUri missing for profile=" + profile.profileId()));
+            }
+            String tokenUri = profile.tokenUri();
+            int skewSeconds = apimProperties.getOauth().getTokenRenewalSkewSeconds();
 
-        WebClient client = webClientBuilder.build();
-        log.info("Fetching fresh APIM access token for profileId={}", profile.profileId());
+            WebClient client = webClientBuilder.build();
+            log.info("Fetching fresh APIM access token for profileId={}", profile.profileId());
 
-        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
-        form.add("grant_type", "client_credentials");
-        form.add("client_id", profile.clientId());
-        form.add("client_secret", profile.clientSecret());
+            MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+            form.add("grant_type", "client_credentials");
+            form.add("client_id", profile.clientId());
+            form.add("client_secret", profile.clientSecret());
 
-        return client.post()
-                .uri(tokenUri)
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .body(BodyInserters.fromFormData(form))
-                .retrieve()
-                .bodyToMono(TokenResponse.class)
-                .map(tr -> {
-                    long now = Instant.now().toEpochMilli();
-                    long expiresAt = now + (tr.expiresIn * 1000L) - (skewSeconds * 1000L);
-                    if (expiresAt <= now) {
-                        expiresAt = now + (tr.expiresIn * 1000L);
-                    }
-                    ApimTokenCacheEntry entry = new ApimTokenCacheEntry(profile.profileId(), tr.accessToken,
-                            tr.tokenType, expiresAt, tr.refreshToken);
-                    return entry;
-                })
-                .doOnError(ex -> log.warn("Failed to fetch APIM token for profileId={}, error={}", profile.profileId(),
-                        ex.toString()));
-    }
+            return client.post()
+                    .uri(tokenUri)
+                    .header("Content-Type", "application/x-www-form-urlencoded")
+                    .body(BodyInserters.fromFormData(form))
+                    .retrieve()
+                    .bodyToMono(TokenResponse.class)
+                    .map(tr -> {
+                        long now = Instant.now().toEpochMilli();
+                        long expiresAt = now + (tr.expiresIn * 1000L) - (skewSeconds * 1000L);
+                        if (expiresAt <= now) {
+                            expiresAt = now + (tr.expiresIn * 1000L);
+                        }
+                        ApimTokenCacheEntry entry = new ApimTokenCacheEntry(profile.profileId(), tr.accessToken,
+                                tr.tokenType, expiresAt, tr.refreshToken);
+                        return entry;
+                    })
+                    .doOnError(ex -> log.warn("Failed to fetch APIM token for profileId={}, error={}", profile.profileId(),
+                            ex.toString()));
+        }
 
     // Token response DTO
     private static class TokenResponse {

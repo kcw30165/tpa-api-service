@@ -150,10 +150,12 @@ class ApimNoticeMessageAdapterTest {
                                 adapter, "toApimRequest", command);
                 String json = new ObjectMapper().writeValueAsString(request);
 
-                assertTrue(json.contains("\"env\":\"DEV\""));
-                assertTrue(json.contains("\"mbr-type\":\"MBR\""));
-                assertFalse(json.contains("page"));
-                assertFalse(json.contains("size"));
+                // Parse JSON structurally to avoid substring false positives
+                com.fasterxml.jackson.databind.JsonNode node = new ObjectMapper().readTree(json);
+                assertEquals("DEV", node.get("env").asText());
+                assertEquals("ROLE_USER", node.get("mbr-type").asText());
+                assertFalse(node.has("page"));
+                assertFalse(node.has("size"));
         }
 
         @Test

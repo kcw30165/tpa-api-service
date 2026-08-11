@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.out.apim.login.account;
 import com.bct.ngtpa.apiservice.adapter.out.apim.*;
 import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.login.account.config.TrpGetAccountListProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.login.account.dto.*;
@@ -41,8 +42,7 @@ public final class SharedApimTrpGetAccountListTransport implements TrpGetAccount
         String operation = properties.getOperationName().trim();
         Object encrypted = crypto.encryptRequest(path, request, TrpGetAccountListApimRequest.class, key);
         Map<String, String> metadata = correlationId == null ? Map.of() : Map.of("requestId", correlationId);
-        var context = new ApimCredentialResolutionContext(null, null, null, null, null, null, null, operation,
-                metadata);
+        var context = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, null);
         return facade.post(path, encrypted, context, ApimRetryEligibility.SAFE_BUSINESS_CALL)
                 .map(body -> crypto.decryptResponseEnvelope(path, body, TrpGetAccountListApimDataItem.class, key));
     }

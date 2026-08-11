@@ -14,7 +14,14 @@ public class TrustBasedApimCredentialProfileResolver implements ApimCredentialPr
 
     @Override
     public Mono<ApimCredentialProfile> resolve(ApimCredentialResolutionContext context) {
-        log.warn("TrustBasedApimCredentialProfileResolver is a placeholder and should not be used in production.");
+        // Strict resolver requires explicit scope; this placeholder must not be used.
+        return Mono.error(new com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException(
+                "TrustBasedApimCredentialProfileResolver unsupported in strict routing"));
+    }
+
+    // Keep legacy signature for source-compat but do not enable it.
+    public Mono<ApimCredentialProfile> resolve(ApimDatabaseScope scope, ApimCredentialResolutionContext context) {
+        log.warn("TrustBasedApimCredentialProfileResolver (legacy signature) should not be used in production.");
         return Mono.empty();
     }
 }

@@ -1,6 +1,8 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.credential;
 
 import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
+import com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -8,8 +10,7 @@ import org.springframework.context.annotation.Primary;
 import reactor.core.publisher.Mono;
 
 /**
- * Default resolver: returns the configured default profile.
- * TODO: replace with trust-based mapping when mapping rules are confirmed.
+ * Strict resolver: resolves by explicit routing configuration per Stage 004.
  */
 @Service
 @Primary
@@ -20,39 +21,58 @@ public class DefaultApimCredentialProfileResolver implements ApimCredentialProfi
     private final ApimProperties apimProperties;
 
     @Override
-    public Mono<ApimCredentialProfile> resolve(ApimCredentialResolutionContext context) {
+    public Mono<ApimCredentialProfile> resolve(ApimDatabaseScope scope, ApimCredentialResolutionContext context) {
+        if (scope == null || context == null) {
+            return Mono.error(new ApimProfileResolutionException("scope and context are required"));
+        }
+        if (context.actorUserRole() == null) {
+            return Mono.error(new ApimProfileResolutionException("actorUserRole is required"));
+        }
+        if (context.actorUserRole() != ActorUserRole.ROLE_USER && context.actorUserRole() != ActorUserRole.ROLE_INPUT) {
+            return Mono.error(new ApimProfileResolutionException("actor role unsupported"));
+        }
+
+        ApimProperties.Routing routing = apimProperties.getRouting();
+        switch (scope) {
+            case NON_ACCOUNT -> {
+                String nonAccountProfileId = routing.getNonAccountProfileId();
+                if (nonAccountProfileId == null || nonAccountProfileId.isBlank()) {
+                    return Mono.error(new ApimProfileResolutionException("non-account profile not configured"));
+                }
+                return findProfileById(nonAccountProfileId);
+            }
+            case ACCOUNT_ENV -> {
+                String env = context.accountEnv();
+                if (env == null || env.isBlank()) {
+                    return Mono.error(new ApimProfileResolutionException("accountEnv is required for ACCOUNT_ENV scope"));
+                }
+                String normalized = env.trim().toUpperCase(java.util.Locale.ROOT);
+                String mappedProfile = routing.getAccountEnvProfileMappings().get(normalized);
+                if (mappedProfile == null) {
+                    return Mono.error(new ApimProfileResolutionException("no mapping for accountEnv"));
+                }
+                return findProfileById(mappedProfile);
+            }
+            default -> {
+                return Mono.error(new ApimProfileResolutionException("unsupported scope"));
+            }
+        }
+    }
+
+    private Mono<ApimCredentialProfile> findProfileById(String profileId) {
+        if (profileId == null || profileId.isBlank()) {
+            return Mono.error(new ApimProfileResolutionException("blank profileId"));
+        }
         ApimProperties.CredentialProfiles cp = apimProperties.getCredentialProfiles();
-        // Prefer explicit profiles if configured
-        if (cp.getProfiles() != null && !cp.getProfiles().isEmpty()) {
-            String defaultId = cp.getDefaultProfileId();
+        if (cp.getProfiles() != null) {
             for (ApimProperties.CredentialProfiles.Profile p : cp.getProfiles()) {
-                if (p.getProfileId() != null && p.getProfileId().equals(defaultId)) {
-                    // Do not log secrets
+                if (profileId.equals(p.getProfileId())) {
                     log.debug("Resolved APIM profileId={}", p.getProfileId());
                     return Mono.just(toRecord(p));
                 }
             }
-            // If defaultProfileId not found, return first profile
-            ApimProperties.CredentialProfiles.Profile first = cp.getProfiles().get(0);
-            log.warn("Configured defaultProfileId={} not found; using first profileId={}", cp.getDefaultProfileId(),
-                    first.getProfileId());
-            return Mono.just(toRecord(first));
         }
-
-        // Legacy single-profile fallback
-        ApimProperties.Oauth o = apimProperties.getOauth();
-        ApimProperties.Encryption e = apimProperties.getEncryption();
-        ApimCredentialProfile profile = new ApimCredentialProfile(
-                cp.getDefaultProfileId(),
-                o.getClientId(),
-                o.getClientSecret(),
-                e.getApiKey(),
-                o.getTokenUri(),
-                apimProperties.getBaseUrl(),
-                o.getScope(),
-                e.getCertificatePath());
-        log.debug("Resolved legacy default APIM profileId={}", profile.profileId());
-        return Mono.just(profile);
+        return Mono.error(new ApimProfileResolutionException("referenced profile not found"));
     }
 
     private ApimCredentialProfile toRecord(ApimProperties.CredentialProfiles.Profile p) {
@@ -65,5 +85,10 @@ public class DefaultApimCredentialProfileResolver implements ApimCredentialProfi
                 p.getBaseUrl(),
                 p.getScope(),
                 p.getCertificatePath());
+    }
+
+    @Override
+    public Mono<ApimCredentialProfile> resolve(ApimCredentialResolutionContext context) {
+        return Mono.error(new ApimProfileResolutionException("legacy resolve(context) is unsupported; explicit scope required"));
     }
 }
