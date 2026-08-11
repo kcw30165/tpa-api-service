@@ -20,6 +20,7 @@ public record UsernameRecoveryWorkflowStateMutationResult(
             throw new IllegalArgumentException("non-applied outcome must not carry a state");
         }
         if (!applied
+                && outcome != UsernameRecoveryWorkflowStateMutationOutcome.STATE_ALREADY_EXISTS
                 && outcome != UsernameRecoveryWorkflowStateMutationOutcome.STATE_NOT_FOUND
                 && outcome != UsernameRecoveryWorkflowStateMutationOutcome.REVISION_CONFLICT
                 && outcome != UsernameRecoveryWorkflowStateMutationOutcome.SYSTEM_FAILURE) {
