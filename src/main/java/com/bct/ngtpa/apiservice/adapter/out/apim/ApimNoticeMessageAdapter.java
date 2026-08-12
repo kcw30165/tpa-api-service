@@ -64,15 +64,18 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
                             ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
         }
 
-        return apimCertificateService.getBctPublicKey()
-                .flatMap(publicKey -> {
-                    var request = apimPayloadCryptoService.encryptRequest(
-                            API_NAME, toApimRequest(command), GetMessageBoardApimRequest.class, publicKey);
-                    return apimWebClientFacade.post(API_NAME, request, (StringUtils.hasText(command.accountEnv()) ? com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.ACCOUNT_ENV : com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT), new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER, command.accountEnv()), com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility.SAFE_BUSINESS_CALL)
-                            .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
-                                    API_NAME, body, GetMessageBoardDataItem.class, publicKey))
-                            .map(this::toNotificationListResult);
-                })
+        var scope = StringUtils.hasText(command.accountEnv()) ? com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.ACCOUNT_ENV : com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT;
+        var ctx = new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER, command.accountEnv());
+        return apimWebClientFacade.resolveProfile(scope, ctx)
+                .flatMap(profile -> apimCertificateService.getPublicKey(profile)
+                        .flatMap(publicKey -> {
+                            var request = apimPayloadCryptoService.encryptRequest(
+                                    API_NAME, toApimRequest(command), GetMessageBoardApimRequest.class, publicKey);
+                            return apimWebClientFacade.post(API_NAME, request, profile, com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility.SAFE_BUSINESS_CALL)
+                                    .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
+                                            API_NAME, body, GetMessageBoardDataItem.class, publicKey))
+                                    .map(this::toNotificationListResult);
+                        }))
                 .onErrorMap(ApimCryptoException.class, ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR,
                         ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
     }

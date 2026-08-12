@@ -86,12 +86,18 @@ public class ApimForgotPasswordCompletionAdapter implements ForgotPasswordComple
                     null);
         }
 
-        return certificates.getBctPublicKey()
-                .flatMap(key -> post(
-                        command.customerId(),
-                        command.accountEnv(),
-                        request,
-                        key));
+        var ctx = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, command.accountEnv());
+        return facade.resolveProfile(ApimDatabaseScope.ACCOUNT_ENV, ctx)
+                .flatMap(profile -> certificates.getPublicKey(profile)
+                        .flatMap(key -> {
+                            var encryptedRequest = crypto.encryptRequest(API_NAME, request, TrpResetPasswordApimRequest.class, key);
+                            return facade.post(API_NAME, encryptedRequest, profile, ApimRetryEligibility.IDEMPOTENT_MUTATION)
+                                    .map(body -> crypto.decryptResponseEnvelope(API_NAME, body, TrpResetPasswordApimDataItem.class, key))
+                                    .map(this::toEnvelope)
+                                    .map(envelope -> resultMapper.toResult(envelope, command.customerId()))
+                                    .onErrorResume(ApimCryptoFailureClassifier::isCryptoFailure, exception -> Mono.just(ForgotPasswordCompletionResult.unknownOutcome()))
+                                    .onErrorMap(this::safeFailure);
+                        }));
     }
 
     private Mono<ForgotPasswordCompletionResult> post(

@@ -297,6 +297,56 @@ auth-workflows:
       complete-ttl-seconds: 300
 
 apim:
+  routing:
+    non-account-profile-id: apim-non-account
+
+    account-env-profile-mappings:
+      DB: db
+      JP: jp
+      TB: tb
+
+  credential-profiles:
+    profiles:
+      - profile-id: apim-non-account
+        base-url: ${APIM_BASEURL:}
+        token-uri: ${APIM_TOKEN_URI:}
+        client-id: ${APIM_NON_ACCOUNT_CLIENT_ID:}
+        client-secret: ${APIM_NON_ACCOUNT_CLIENT_SECRET:}
+        scope:
+          - ${APIM_CLIENT_SCOPE:}
+        api-key: ${APIM_NON_ACCOUNT_API_KEY:}
+        certificate-path: ${APIM_CERTIFICATE_PATH:}
+
+      - profile-id: db
+        base-url: ${APIM_BASEURL:}
+        token-uri: ${APIM_TOKEN_URI:}
+        client-id: ${APIM_DB_CLIENT_ID:}
+        client-secret: ${APIM_DB_CLIENT_SECRET:}
+        scope:
+          - ${APIM_CLIENT_SCOPE:}
+        api-key: ${APIM_DB_API_KEY:}
+        certificate-path: ${APIM_CERTIFICATE_PATH:}
+
+      - profile-id: jp
+        base-url: ${APIM_BASEURL:}
+        token-uri: ${APIM_TOKEN_URI:}
+        client-id: ${APIM_JP_CLIENT_ID:}
+        client-secret: ${APIM_JP_CLIENT_SECRET:}
+        scope:
+          - ${APIM_CLIENT_SCOPE:}
+        api-key: ${APIM_JP_API_KEY:}
+        certificate-path: ${APIM_CERTIFICATE_PATH:}
+
+      - profile-id: tb
+        base-url: ${APIM_BASEURL:}
+        token-uri: ${APIM_TOKEN_URI:}
+        client-id: ${APIM_TB_CLIENT_ID:}
+        client-secret: ${APIM_TB_CLIENT_SECRET:}
+        scope:
+          - ${APIM_CLIENT_SCOPE:}
+        api-key: ${APIM_TB_API_KEY:}
+        certificate-path: ${APIM_CERTIFICATE_PATH:}
+
   login:
     get-account-list:
       path: /ws/NGTPA/v1/TRPGetAccountList

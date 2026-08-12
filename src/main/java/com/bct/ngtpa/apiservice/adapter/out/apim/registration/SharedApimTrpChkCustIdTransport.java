@@ -5,6 +5,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.ApimPayloadCryptoService;
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimWebClientFacade;
 import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
+import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
@@ -45,20 +46,43 @@ public final class SharedApimTrpChkCustIdTransport implements TrpChkCustIdTransp
     @Override
     public Mono<TrpChkCustIdApimEnvelope> post(TrpChkCustIdApimRequest request, String correlationId) {
         Objects.requireNonNull(request, "request must not be null");
-        return apimProperties.getEncryption().isEnabled()
-                ? certificates.getBctPublicKey().flatMap(key -> postEncrypted(request, correlationId, key))
-                : postEncrypted(request, correlationId, null);
+        if (!apimProperties.getEncryption().isEnabled()) {
+            return postEncrypted(request, correlationId, null, null);
+        }
+        var ctx = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, null);
+        return facade.resolveProfile(com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT, ctx)
+                        .flatMap(profile -> certificates.getPublicKey(profile)
+                        .flatMap(publicKey -> {
+                            Object encryptedRequest = crypto.encryptRequest(API_NAME, request, TrpChkCustIdApimRequest.class, publicKey);
+                            return facade.post(API_NAME, encryptedRequest, profile, ApimRetryEligibility.SAFE_BUSINESS_CALL)
+                                    .map(body -> crypto.decryptResponseEnvelope(API_NAME, body, TrpChkCustIdApimDataItem.class, publicKey))
+                                    .map(this::toEnvelopePreservingBusinessErrMessage)
+                                    .onErrorMap(ApimCryptoException.class, this::toApimException)
+                                    .doOnError(error -> LOGGER.error(
+                                            "event=forgot-password.username-lookup.transport-failed requestId={} exceptionType={}",
+                                            correlationId, error.getClass().getName(), error));
+                        }));
     }
 
     private Mono<TrpChkCustIdApimEnvelope> postEncrypted(
             TrpChkCustIdApimRequest request,
             String correlationId,
-            PublicKey publicKey) {
+            PublicKey publicKey,
+            ApimCredentialProfile profile) {
         Object encryptedRequest = crypto.encryptRequest(API_NAME, request, TrpChkCustIdApimRequest.class, publicKey);
         Map<String, String> metadata = correlationId == null || correlationId.isBlank()
                 ? Map.of()
                 : Map.of("requestId", correlationId);
         var context = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, null);
+        if (profile != null) {
+            return facade.post(API_NAME, encryptedRequest, profile, ApimRetryEligibility.SAFE_BUSINESS_CALL)
+                    .map(body -> crypto.decryptResponseEnvelope(API_NAME, body, TrpChkCustIdApimDataItem.class, publicKey))
+                    .map(this::toEnvelopePreservingBusinessErrMessage)
+                    .onErrorMap(ApimCryptoException.class, this::toApimException)
+                    .doOnError(error -> LOGGER.error(
+                            "event=forgot-password.username-lookup.transport-failed requestId={} exceptionType={}",
+                            correlationId, error.getClass().getName(), error));
+        }
         return facade.post(API_NAME, encryptedRequest, com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT, context, ApimRetryEligibility.SAFE_BUSINESS_CALL)
                 .map(body -> crypto.decryptResponseEnvelope(API_NAME, body, TrpChkCustIdApimDataItem.class, publicKey))
                 .map(this::toEnvelopePreservingBusinessErrMessage)

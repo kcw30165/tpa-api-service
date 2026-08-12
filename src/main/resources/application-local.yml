@@ -157,4 +157,4 @@ config-service:
 auth-workflows:
   registration:
     pre-start-challenge:
-      enabled: false
+      enabled: false  

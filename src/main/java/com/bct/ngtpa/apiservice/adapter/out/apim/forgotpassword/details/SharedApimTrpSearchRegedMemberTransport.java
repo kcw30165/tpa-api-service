@@ -30,24 +30,18 @@ public final class SharedApimTrpSearchRegedMemberTransport implements TrpSearchR
 
     public Mono<TrpSearchRegedMemberEnvelope> post(TrpSearchRegedMemberRequest request, String requestId) {
         Objects.requireNonNull(request);
-        return properties.getEncryption().isEnabled()
-                ? certificates.getBctPublicKey().flatMap(k -> post(request, requestId, k))
-                : post(request, requestId, null);
-    }
-
-    private Mono<TrpSearchRegedMemberEnvelope> post(TrpSearchRegedMemberRequest request, String requestId,
-            PublicKey key) {
-        Object encrypted = crypto.encryptRequest(API_NAME, request, TrpSearchRegedMemberRequest.class, key);
-        Map<String, String> metadata = requestId == null || requestId.isBlank() ? Map.of()
-                : Map.of("requestId", requestId);
-        var resolutionContext = new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(
-                ActorUserRole.ROLE_USER, null);
-        return facade
-                .post(API_NAME, encrypted,
-                        com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT,
-                        resolutionContext, ApimRetryEligibility.SAFE_BUSINESS_CALL)
-                .map(body -> crypto.decryptResponseEnvelope(API_NAME, body, TrpSearchRegedMemberDataItem.class, key))
-                .map(this::envelope);
+        if (!properties.getEncryption().isEnabled()) {
+            return post(request, requestId);
+        }
+        var ctx = new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, null);
+        return facade.resolveProfile(com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT, ctx)
+                .flatMap(profile -> certificates.getPublicKey(profile)
+                        .flatMap(key -> {
+                            Object encrypted = crypto.encryptRequest(API_NAME, request, TrpSearchRegedMemberRequest.class, key);
+                            return facade.post(API_NAME, encrypted, profile, ApimRetryEligibility.SAFE_BUSINESS_CALL)
+                                    .map(body -> crypto.decryptResponseEnvelope(API_NAME, body, TrpSearchRegedMemberDataItem.class, key))
+                                    .map(this::envelope);
+                        }));
     }
 
     private TrpSearchRegedMemberEnvelope envelope(ApimResponseEnvelope<TrpSearchRegedMemberDataItem> value) {

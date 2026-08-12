@@ -45,18 +45,20 @@ public class ApimUpdatePersonalInformationAdapter implements ApimUpdatePersonalI
                                                                         ex));
                 }
 
-                return apimCertificateService.getBctPublicKey()
+                var ctx = new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER, command.accountEnv());
+                return apimWebClientFacade.resolveProfile(com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.ACCOUNT_ENV, ctx)
+                        .flatMap(profile -> apimCertificateService.getPublicKey(profile)
                                 .flatMap(publicKey -> {
                                         var request = apimPayloadCryptoService.encryptRequest(
                                                         API_NAME, toApimRequest(command),
                                                         UpdateMemberInfoApimRequest.class, publicKey);
-                                        return apimWebClientFacade.post(API_NAME, request, com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.ACCOUNT_ENV, new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER, command.accountEnv()), com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility.IDEMPOTENT_MUTATION)
+                                        return apimWebClientFacade.post(API_NAME, request, profile, com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility.IDEMPOTENT_MUTATION)
                                                         .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
                                                                         API_NAME, body,
                                                                         UpdateMemberInfoApimDataItem.class, publicKey))
                                                         .map(response -> toResults(response, command));
-                                })
-                                .onErrorMap(ApimCryptoException.class,
+                                }))
+                        .onErrorMap(ApimCryptoException.class,
                                                 ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR,
                                                                 ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
         }

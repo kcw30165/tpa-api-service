@@ -26,6 +26,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+import java.security.PublicKey;
+import java.util.function.BiFunction;
 
 import java.util.Map;
 
@@ -95,24 +97,60 @@ public class ApimWebClientFacade {
                 ? ApimRetryEligibility.NON_RETRYABLE
                 : retryEligibility;
         apimProperties.validateRetryPolicy();
-        return profileResolver.resolve(scope, resolutionContext)
-                        .switchIfEmpty(Mono.defer(() -> {
-                            // Facade-owned structured ERROR event for missing profile
-                            logProfileResolutionFailure(scope, resolutionContext, null, "profile resolver returned empty");
-                            return Mono.error(new com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException("APIM profile not found for given routing context"));
-                        }))
-                        .onErrorMap(err -> {
-                            // Facade-owned structured ERROR event for resolver errors
-                            logProfileResolutionFailure(scope, resolutionContext, null, err == null ? "unknown" : err.getMessage());
-                            return err instanceof com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException ? err
-                                    : new com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException("APIM profile resolution failed", err);
-                        })
+        return resolveProfile(scope, resolutionContext)
                         .flatMap(profile -> sendBusinessAttempt(
                                 profile,
                                 path,
                                 requestBody,
                                 eligibility,
                                 1));
+    }
+
+    /**
+     * Resolve profile using facade-owned resolution logic (centralised logging and errors).
+     */
+    public Mono<ApimCredentialProfile> resolveProfile(ApimDatabaseScope scope, ApimCredentialResolutionContext resolutionContext) {
+        return profileResolver.resolve(scope, resolutionContext)
+                .switchIfEmpty(Mono.defer(() -> {
+                    logProfileResolutionFailure(scope, resolutionContext, null, "profile resolver returned empty");
+                    return Mono.error(new com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException("APIM profile not found for given routing context"));
+                }))
+                .onErrorMap(err -> {
+                    logProfileResolutionFailure(scope, resolutionContext, null, err == null ? "unknown" : err.getMessage());
+                    return err instanceof com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException ? err
+                            : new com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException("APIM profile resolution failed", err);
+                });
+    }
+
+    /**
+     * Allow callers to supply an already-resolved profile. This preserves single-resolution-per-call
+     * semantics and is used by callers that need to perform per-profile encryption using the profile's certificate.
+     */
+    public Mono<String> post(String path, Object requestBody, ApimCredentialProfile profile, ApimRetryEligibility retryEligibility) {
+        ApimRetryEligibility eligibility = retryEligibility == null
+                ? ApimRetryEligibility.NON_RETRYABLE
+                : retryEligibility;
+        apimProperties.validateRetryPolicy();
+        return sendBusinessAttempt(profile, path, requestBody, eligibility, 1);
+    }
+
+    /**
+     * Post with facade-owned encryption function. Facade resolves the profile, fetches the profile certificate,
+     * invokes the encryptFn to obtain a fresh encrypted payload for each attempt, and transmits while preserving
+     * same-profile routing for token, certificate, headers and retries.
+     */
+    public Mono<String> postEncrypted(
+            String path,
+            java.util.function.BiFunction<ApimCredentialProfile, java.security.PublicKey, Object> encryptFn,
+            ApimDatabaseScope scope,
+            ApimCredentialResolutionContext resolutionContext,
+            ApimRetryEligibility retryEligibility) {
+        ApimRetryEligibility eligibility = retryEligibility == null
+                ? ApimRetryEligibility.NON_RETRYABLE
+                : retryEligibility;
+        apimProperties.validateRetryPolicy();
+        return resolveProfile(scope, resolutionContext)
+                .flatMap(profile -> sendBusinessAttemptEncrypted(profile, path, encryptFn, eligibility, 1));
     }
 
     private Mono<String> sendBusinessAttempt(
@@ -144,6 +182,48 @@ public class ApimWebClientFacade {
                             profile,
                             path,
                             requestBody,
+                            retryEligibility,
+                            attempt + 1));
+                });
+    }
+
+    private Mono<String> sendBusinessAttemptEncrypted(
+            ApimCredentialProfile profile,
+            String path,
+            java.util.function.BiFunction<ApimCredentialProfile, java.security.PublicKey, Object> encryptFn,
+            ApimRetryEligibility retryEligibility,
+            int attempt) {
+        // For encrypted attempts we ensure the profile's certificate is fetched and the payload is
+        // generated fresh for each attempt. We reuse the same profile across retries.
+        return apimCertificateService.getPublicKey(profile)
+                .flatMap(pk -> {
+                    Object encryptedRequest = encryptFn.apply(profile, pk);
+                    RetryContext ctx = new RetryContext();
+                    ctx.encryptionFunction = encryptFn;
+                    return sendWithProfile(profile, path, encryptedRequest, ctx);
+                })
+                .onErrorResume(error -> {
+                    int maxAttempts = apimProperties.getRetry().getBusinessCall().getMaxAttempts();
+                    if (!retryEligibility.retryEligible()
+                            || attempt >= maxAttempts
+                            || !isTransientBusinessFailure(error)) {
+                        return Mono.error(error);
+                    }
+                    long backoffMilliseconds = apimProperties.getRetry()
+                            .getBusinessCall()
+                            .getBackoffMilliseconds();
+                    log.warn(
+                            "Retrying transient encrypted APIM business call path={} attempt={}/{}",
+                            path,
+                            attempt + 1,
+                            maxAttempts);
+                    Mono<Long> delay = backoffMilliseconds == 0
+                            ? Mono.just(0L)
+                            : Mono.delay(Duration.ofMillis(backoffMilliseconds));
+                    return delay.then(sendBusinessAttemptEncrypted(
+                            profile,
+                            path,
+                            encryptFn,
                             retryEligibility,
                             attempt + 1));
                 });
@@ -225,8 +305,17 @@ public class ApimWebClientFacade {
                             if (!retryContext.certificateRetry) {
                                 retryContext.certificateRetry = true;
                                 apimCertificateService.evictCertificate(profile.profileId());
-                                // Let caller (adapter) be responsible for re-encryption; retry the same payload
-                                // once
+                                // If we have an encryption function attached to the retry context, obtain
+                                // a fresh public key and regenerate the encrypted payload before retrying.
+                                if (retryContext.encryptionFunction != null) {
+                                    return apimCertificateService.refreshPublicKey(profile)
+                                            .flatMap(newPk -> {
+                                                Object newRequest = retryContext.encryptionFunction.apply(profile, newPk);
+                                                return sendWithProfile(profile, path, newRequest, retryContext);
+                                            });
+                                }
+                                // Fallback: retry the same payload once (legacy behaviour preserved if
+                                // caller did not opt into facade-owned encryption)
                                 return sendWithProfile(profile, path, requestBody, retryContext);
                             }
                         }
@@ -277,6 +366,7 @@ public class ApimWebClientFacade {
     private static final class RetryContext {
         boolean tokenRetry = false;
         boolean certificateRetry = false;
+        java.util.function.BiFunction<ApimCredentialProfile, java.security.PublicKey, Object> encryptionFunction = null;
     }
 
     private void logProfileResolutionFailure(ApimDatabaseScope scope, ApimCredentialResolutionContext ctx, String profileId, String reason) {
