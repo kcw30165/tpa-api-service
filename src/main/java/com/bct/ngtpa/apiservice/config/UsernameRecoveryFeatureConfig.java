@@ -199,7 +199,8 @@ public class UsernameRecoveryFeatureConfig {
     public CancelUsernameRecoveryUseCase cancelUsernameRecoveryUseCase(
             UsernameRecoveryCancelFingerprintGenerator fingerprintGenerator,
             UsernameRecoveryIdempotencyPort idempotencyPort,
-            UsernameRecoverySessionPort sessionPort,
+            AuthFlowSessionPort authFlowSessionPort,
+            UsernameRecoveryWorkflowStatePort workflowStatePort,
             CsrfTokenValidationService csrfTokenValidationService,
             CorsProperties corsProperties,
             Clock clock,
@@ -207,7 +208,8 @@ public class UsernameRecoveryFeatureConfig {
         return new CancelUsernameRecoveryService(
                 fingerprintGenerator,
                 idempotencyPort,
-                sessionPort,
+                authFlowSessionPort,
+                workflowStatePort,
                 csrfTokenValidationService,
                 corsProperties.getAllowedOrigins(),
                 clock,

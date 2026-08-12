@@ -43,6 +43,15 @@ class UsernameRecoveryCancelArchitectureGuardTest {
     }
 
     @Test
+    void cancelServiceDoesNotDependOnLegacySessionBoundary() throws Exception {
+        String source = java.nio.file.Files.readString(java.nio.file.Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/usernamerecovery/CancelUsernameRecoveryService.java"));
+        org.assertj.core.api.Assertions.assertThat(source)
+                .doesNotContain("UsernameRecoverySessionPort", "UsernameRecoverySession", "UsernameRecoverySessionId")
+                .contains("AuthFlowSessionPort", "UsernameRecoveryWorkflowStatePort", "deleteRevisioned");
+    }
+
+    @Test
     void cancelApplicationLayerHasNoSpringAdapterRedisOrWebDependencies() {
         var classes = new ClassFileImporter()
                 .withImportOption(new ImportOption.DoNotIncludeTests())
