@@ -73,4 +73,6 @@ Accepted follow-up observations (non-blocking for Repair 025D1):
 5. Remove stale transitional-bridge documentation and reconcile legacy-usage guard comments with the actual allowlist.
 6. Improve validation evidence by eliminating JaCoCo class/execution-data mismatch and retaining future-JDK tooling warnings as non-blocking technical debt.
 
+Resulting approval commit hash: `82145dc66a5b4edddc8f3ffacae655418ed7c282` (subject `feat(username-recovery): finalize repair 025D1 workflow state migration`).
+
 Next recommended work item: Repair 025D-2 - remove the old legacy Username Recovery session Lua scripts and complete the remaining legacy-boundary cleanup and architecture closure (old legacy Lua files remain for 025D-2).
