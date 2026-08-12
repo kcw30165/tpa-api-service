@@ -78,8 +78,6 @@ class UsernameRecoveryFeatureConfigTest {
                         () -> new RegistrationCaptchaGateService(captchaPort, clock))
                 .withBean(UsernameRecoveryLookupPort.class, () -> mock(UsernameRecoveryLookupPort.class))
                 .withBean(AuthFlowSessionPort.class, () -> mock(AuthFlowSessionPort.class))
-                .withBean(UsernameRecoveryWorkflowStatePort.class,
-                        () -> mock(UsernameRecoveryWorkflowStatePort.class))
                 .withBean(MessageDeliveryPort.class, () -> mock(MessageDeliveryPort.class))
                 .withBean(UsernameRecoveryEffectiveDestinationPort.class,
                         () -> mock(UsernameRecoveryEffectiveDestinationPort.class))
@@ -95,6 +93,8 @@ class UsernameRecoveryFeatureConfigTest {
             assertThat(context.getBean(RequestUsernameRecoveryUseCase.class)).isNotNull();
             assertThat(context.getBean(CancelUsernameRecoveryUseCase.class)).isNotNull();
             assertThat(context.getBean(UsernameRecoveryIdempotencyPort.class)).isNotNull();
+            assertThat(context.getBean(UsernameRecoveryWorkflowStatePort.class)).isInstanceOf(
+                    com.bct.ngtpa.apiservice.adapter.out.redis.usernamerecovery.RedisUsernameRecoveryWorkflowStateAdapter.class);
             assertThat(context.getBean(UsernameRecoveryReservationService.class)).isNotNull();
             assertThat(context.getBean(CsrfTokenValidationService.class)).isNotNull();
             assertThat(context.getBean(UsernameRecoveryStartWebMapper.class)).isNotNull();

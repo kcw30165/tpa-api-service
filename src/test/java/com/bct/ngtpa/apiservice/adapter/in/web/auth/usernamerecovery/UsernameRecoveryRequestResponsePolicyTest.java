@@ -84,6 +84,7 @@ class UsernameRecoveryRequestResponsePolicyTest {
         assertThat(responsePolicy.httpOverride()).isNull();
         assertThat(classifiedHttp(body.status(), responsePolicy.httpOverride())).isEqualTo(200);
     }
+    
     @Test
     void everyNonAcceptedRequestResultMapsToExactTypedPolicy() {
         for (Outcome outcome : nonAcceptedOutcomes()) {

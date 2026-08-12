@@ -11,6 +11,8 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRec
 import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
 import com.bct.ngtpa.apiservice.adapter.out.redis.usernamerecovery.RedisUsernameRecoveryIdempotencyAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.usernamerecovery.RedisUsernameRecoveryIdempotencyJsonMapper;
+import com.bct.ngtpa.apiservice.adapter.out.redis.usernamerecovery.RedisUsernameRecoveryWorkflowStateAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.redis.usernamerecovery.RedisUsernameRecoveryWorkflowStateJsonMapper;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionCookiePolicy;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionCookieSameSite;
 import com.bct.ngtpa.apiservice.application.port.in.CancelUsernameRecoveryUseCase;
@@ -78,6 +80,21 @@ public class UsernameRecoveryFeatureConfig {
             RedisCacheKeyFactory keyFactory,
             RedisUsernameRecoveryIdempotencyJsonMapper jsonMapper) {
         return new RedisUsernameRecoveryIdempotencyAdapter(redis, keyFactory, jsonMapper);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public RedisUsernameRecoveryWorkflowStateJsonMapper redisUsernameRecoveryWorkflowStateJsonMapper() {
+        return new RedisUsernameRecoveryWorkflowStateJsonMapper();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(UsernameRecoveryWorkflowStatePort.class)
+    public UsernameRecoveryWorkflowStatePort usernameRecoveryWorkflowStatePort(
+            ReactiveStringRedisTemplate redis,
+            RedisCacheKeyFactory keyFactory,
+            RedisUsernameRecoveryWorkflowStateJsonMapper jsonMapper) {
+        return new RedisUsernameRecoveryWorkflowStateAdapter(redis, keyFactory, jsonMapper);
     }
 
     @Bean

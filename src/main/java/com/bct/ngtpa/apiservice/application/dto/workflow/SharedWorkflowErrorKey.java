@@ -7,7 +7,7 @@ public enum SharedWorkflowErrorKey implements WorkflowErrorKey {
     IDEMPOTENCY_KEY_REUSED("err.workflow.idempotency.keyReused"),
     DOWNSTREAM_BUSINESS_REJECTED("err.workflow.downstream.businessRejected"),
     DOWNSTREAM_UNAVAILABLE("err.workflow.downstream.unavailable"),
-    SYSTEM_UNAVAILABLE("err.system.unavailable");
+    SYSTEM_UNAVAILABLE("err.workflow.system.unavailable");
     private final String value;
     SharedWorkflowErrorKey(String value) { this.value = value; }
     @Override
