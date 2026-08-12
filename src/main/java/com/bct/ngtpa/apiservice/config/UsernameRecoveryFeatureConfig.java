@@ -106,9 +106,11 @@ public class UsernameRecoveryFeatureConfig {
     @Bean
     @ConditionalOnMissingBean
     public UsernameRecoveryReservationService usernameRecoveryReservationService(
-            UsernameRecoverySessionPort sessionPort,
+            AuthFlowSessionPort authFlowSessionPort,
+            UsernameRecoveryWorkflowStatePort workflowStatePort,
             CsrfTokenValidationService csrfTokenValidationService) {
-        return new UsernameRecoveryReservationService(sessionPort, csrfTokenValidationService);
+        return new UsernameRecoveryReservationService(
+                authFlowSessionPort, workflowStatePort, csrfTokenValidationService);
     }
 
     @Bean
@@ -171,6 +173,7 @@ public class UsernameRecoveryFeatureConfig {
             UsernameRecoveryReservationService reservationService,
             UsernameRecoveryEffectiveDestinationPort effectiveDestinationPort,
             UsernameRecoverySessionPort sessionPort,
+            UsernameRecoveryWorkflowStatePort workflowStatePort,
             MessageDeliveryPort messageDeliveryPort,
             CorsProperties corsProperties,
             Clock clock,
@@ -181,6 +184,7 @@ public class UsernameRecoveryFeatureConfig {
                 reservationService,
                 effectiveDestinationPort,
                 sessionPort,
+                workflowStatePort,
                 messageDeliveryPort,
                 corsProperties.getAllowedOrigins(),
                 clock,

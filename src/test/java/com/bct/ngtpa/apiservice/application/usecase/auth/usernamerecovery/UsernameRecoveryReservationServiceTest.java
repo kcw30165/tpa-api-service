@@ -2,478 +2,278 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionDeleteResult;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionLoadResult;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionMutationCommand;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionMutationOutcome;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionMutationResult;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionPort;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionData;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision;
+import com.bct.ngtpa.apiservice.application.dto.session.usernamerecovery.UsernameRecoveryWorkflowState;
+import com.bct.ngtpa.apiservice.application.dto.session.usernamerecovery.UsernameRecoveryWorkflowStateRevision;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
+import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateDeleteResult;
+import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateLoadResult;
+import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateMutationCommand;
+import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateMutationOutcome;
+import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateMutationResult;
+import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStatePort;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenValidationService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.Sha256CsrfTokenHasher;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryCandidate;
-import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryCsrfHash;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryDeliveryState;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySchemeRef;
-import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySession;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySessionCandidate;
-import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySessionId;
-import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySessionRevision;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryVerifiedDestination;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryWorkflowStatus;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-/**
- * Verifies the Username Recovery candidate reservation boundary: typed session load and expiry,
- * CSRF verification without raw-token retention, Scheme-Ref ownership and eligibility, pure
- * aggregate reservation, expected-revision compare-and-set persistence, and distinct conflict and
- * infrastructure-failure mapping.
- *
- * <p>Design references: {@code docs/design/6-username-recovery/username-recovery-api-contract-design.md}
- * section 8 (UR-REQ-001..011) and section 7 (HTTP mapping rules) and
- * {@code docs/design/6-username-recovery/username-recovery-session-redis-design.md} sections 2-4
- * (candidate reservation before sender acceptance; revision persisted consistently).
- */
 class UsernameRecoveryReservationServiceTest {
-
-    private static final UsernameRecoverySessionId SESSION_ID =
-            new UsernameRecoverySessionId("afs_opaque-1");
     private static final Instant NOW = Instant.parse("2026-01-01T00:05:00Z");
-    private static final Instant CREATED_AT = Instant.parse("2026-01-01T00:00:00Z");
-    private static final Instant EXPIRES_AT = Instant.parse("2026-01-01T00:10:00Z");
-    private static final Instant REQUESTED_AT = Instant.parse("2026-01-01T00:04:00Z");
-    private static final String RAW_TOKEN = "raw-csrf-token-abc";
-    private static final UsernameRecoveryCsrfHash CSRF_HASH =
-            new UsernameRecoveryCsrfHash(new Sha256CsrfTokenHasher().hash(RAW_TOKEN));
-    private static final UsernameRecoveryVerifiedDestination DESTINATION =
-            new UsernameRecoveryVerifiedDestination(
-                    "p****c@example.com", UsernameRecoveryVerifiedDestination.Channel.EMAIL);
-
-    private final FakeSessionPort port = new FakeSessionPort();
-    private final UsernameRecoveryReservationService service =
-            new UsernameRecoveryReservationService(
-                    port, new CsrfTokenValidationService(new Sha256CsrfTokenHasher()));
+    private static final AuthFlowSessionId ID = new AuthFlowSessionId("afs_opaque-1");
+    private static final UsernameRecoverySchemeRef SCHEME = new UsernameRecoverySchemeRef("sch_1");
+    private static final String TOKEN = "raw-csrf-token-abc";
+    private final Sha256CsrfTokenHasher hasher = new Sha256CsrfTokenHasher();
+    private final FakeAuthFlowPort envelopes = new FakeAuthFlowPort();
+    private final FakeWorkflowPort workflows = new FakeWorkflowPort();
+    private UsernameRecoveryReservationService service;
 
     @BeforeEach
-    void resetPort() {
-        port.clear();
-    }
-
-    private static UsernameRecoverySessionCandidate registered(
-            String scheme, String env, String trust, UsernameRecoveryDeliveryState state) {
-        return new UsernameRecoverySessionCandidate(
-                new UsernameRecoveryCandidate(
-                        new UsernameRecoverySchemeRef(scheme), env, trust, true, "user-" + scheme, state),
-                null,
-                null);
-    }
-
-    private static UsernameRecoverySessionCandidate requestedRegistered(
-            String scheme, String env, String trust) {
-        return new UsernameRecoverySessionCandidate(
-                new UsernameRecoveryCandidate(
-                        new UsernameRecoverySchemeRef(scheme),
-                        env,
-                        trust,
-                        true,
-                        "user-" + scheme,
-                        UsernameRecoveryDeliveryState.REQUESTED),
-                REQUESTED_AT,
-                "sender-ref-" + scheme);
-    }
-
-    private static UsernameRecoverySessionCandidate unregistered(
-            String scheme, String env, String trust) {
-        return new UsernameRecoverySessionCandidate(
-                new UsernameRecoveryCandidate(
-                        new UsernameRecoverySchemeRef(scheme),
-                        env,
-                        trust,
-                        false,
-                        null,
-                        UsernameRecoveryDeliveryState.AVAILABLE),
-                null,
-                null);
-    }
-
-    private static UsernameRecoverySession session(
-            UsernameRecoveryWorkflowStatus status,
-            UsernameRecoverySessionRevision revision,
-            Instant expiresAt,
-            UsernameRecoverySessionCandidate... candidates) {
-        return new UsernameRecoverySession(
-                SESSION_ID,
-                UsernameRecoverySession.Scenario.USERNAME_RECOVERY,
-                status,
-                revision,
-                CSRF_HASH,
-                DESTINATION,
-                Locale.ENGLISH,
-                CREATED_AT,
-                expiresAt,
-                List.of(candidates));
-    }
-
-    private static UsernameRecoverySession active() {
-        return session(
-                UsernameRecoveryWorkflowStatus.ACTIVE,
-                new UsernameRecoverySessionRevision(0),
-                EXPIRES_AT,
-                registered("sch_1", "DB", "DBA", UsernameRecoveryDeliveryState.AVAILABLE));
-    }
-
-    private static UsernameRecoveryReservationCommand command(String schemeRef) {
-        return new UsernameRecoveryReservationCommand(
-                SESSION_ID, new UsernameRecoverySchemeRef(schemeRef), NOW);
+    void setUp() {
+        envelopes.snapshot = snapshot(AuthFlowScenario.USERNAME_RECOVERY, AuthFlowStatus.STARTED,
+                NOW.plusSeconds(300), hasher.hash(TOKEN));
+        workflows.state = state(UsernameRecoveryWorkflowStatus.ACTIVE,
+                UsernameRecoveryDeliveryState.AVAILABLE, ID);
+        service = new UsernameRecoveryReservationService(
+                envelopes, workflows, new CsrfTokenValidationService(hasher));
     }
 
     @Test
-    void reservesEligibleRegisteredCandidateWithExpectedRevisionCas() {
-        port.store(active());
-
-        StepVerifier.create(service.reserve(command("sch_1"), RAW_TOKEN))
-                .assertNext(result -> {
-                    assertThat(result.outcome()).isEqualTo(UsernameRecoveryReservationOutcome.RESERVED);
-                    assertThat(result.toString())
-                            .isEqualTo("UsernameRecoveryReservationResult[outcome=RESERVED]");
-                })
-                .verifyComplete();
-
-        assertThat(port.updateCount).isEqualTo(1);
-        assertThat(port.lastMutation().expectedRevision().value()).isEqualTo(0);
-        assertThat(port.lastMutation().updatedSession().revision().value()).isEqualTo(1);
-        assertThat(port.stored().candidates().get(0).deliveryState())
+    void reservesThroughEnvelopeAndSidecarCas() {
+        assertOutcome(command(SCHEME), TOKEN, UsernameRecoveryReservationOutcome.RESERVED);
+        assertThat(envelopes.loads).isEqualTo(1);
+        assertThat(workflows.loads).isEqualTo(1);
+        assertThat(workflows.updates).isEqualTo(1);
+        assertThat(workflows.lastMutation.expectedRevision().value()).isZero();
+        assertThat(workflows.lastMutation.updatedState().revision().value()).isEqualTo(1);
+        assertThat(workflows.state.candidates().get(0).deliveryState())
                 .isEqualTo(UsernameRecoveryDeliveryState.RESERVED);
     }
 
     @Test
-    void absentSessionMapsToTypedAbsentOutcome() {
-        StepVerifier.create(service.reserve(command("sch_1"), RAW_TOKEN))
-                .assertNext(result -> assertThat(result.outcome())
-                        .isEqualTo(UsernameRecoveryReservationOutcome.SESSION_ABSENT))
-                .verifyComplete();
-        assertThat(port.updateCount).isZero();
+    void missingEnvelopeAndSidecarMapToAbsent() {
+        envelopes.snapshot = null;
+        assertOutcome(command(SCHEME), TOKEN, UsernameRecoveryReservationOutcome.SESSION_ABSENT);
+        assertThat(workflows.loads).isZero();
+        envelopes.snapshot = snapshot(AuthFlowScenario.USERNAME_RECOVERY, AuthFlowStatus.STARTED,
+                NOW.plusSeconds(300), hasher.hash(TOKEN));
+        workflows.state = null;
+        assertOutcome(command(SCHEME), TOKEN, UsernameRecoveryReservationOutcome.SESSION_ABSENT);
     }
 
     @Test
-    void expiredSessionMapsToExpiredOutcomeWithoutMutation() {
-        port.store(session(
-                UsernameRecoveryWorkflowStatus.ACTIVE,
-                new UsernameRecoverySessionRevision(0),
+    void expiredEnvelopeMapsToExpiredWithoutSidecarAccess() {
+        envelopes.snapshot = snapshot(AuthFlowScenario.USERNAME_RECOVERY, AuthFlowStatus.STARTED,
+                NOW, hasher.hash(TOKEN));
+        assertOutcome(command(SCHEME), TOKEN, UsernameRecoveryReservationOutcome.SESSION_EXPIRED);
+        assertThat(workflows.loads).isZero();
+    }
+
+    @Test
+    void wrongScenarioAndInvalidLifecycleFailClosed() {
+        envelopes.snapshot = snapshot(AuthFlowScenario.LOGIN, AuthFlowStatus.STARTED,
+                NOW.plusSeconds(300), hasher.hash(TOKEN));
+        assertOutcome(command(SCHEME), TOKEN, UsernameRecoveryReservationOutcome.SESSION_ABSENT);
+        envelopes.snapshot = snapshot(AuthFlowScenario.USERNAME_RECOVERY, AuthFlowStatus.COMPLETED,
+                NOW.plusSeconds(300), hasher.hash(TOKEN));
+        assertOutcome(command(SCHEME), TOKEN, UsernameRecoveryReservationOutcome.WORKFLOW_TERMINAL);
+        envelopes.snapshot = snapshot(AuthFlowScenario.USERNAME_RECOVERY, AuthFlowStatus.OTP_SENT,
+                NOW.plusSeconds(300), hasher.hash(TOKEN));
+        assertOutcome(command(SCHEME), TOKEN, UsernameRecoveryReservationOutcome.WORKFLOW_TERMINAL);
+        assertThat(workflows.loads).isZero();
+    }
+
+    @Test
+    void csrfFailureOccursBeforeSidecarAccess() {
+        assertOutcome(command(SCHEME), "wrong", UsernameRecoveryReservationOutcome.CSRF_INVALID);
+        assertThat(workflows.loads).isZero();
+    }
+
+    @Test
+    void identityMismatchAndTerminalSidecarFailClosed() {
+        workflows.state = state(UsernameRecoveryWorkflowStatus.ACTIVE,
+                UsernameRecoveryDeliveryState.AVAILABLE, new AuthFlowSessionId("afs_other"));
+        assertOutcome(command(SCHEME), TOKEN, UsernameRecoveryReservationOutcome.SYSTEM_FAILED);
+        workflows.state = state(UsernameRecoveryWorkflowStatus.COMPLETED,
+                UsernameRecoveryDeliveryState.REQUESTED, ID);
+        assertOutcome(command(SCHEME), TOKEN, UsernameRecoveryReservationOutcome.WORKFLOW_TERMINAL);
+        assertThat(workflows.updates).isZero();
+    }
+
+    @Test
+    void candidateEligibilityMappingsRemainTyped() {
+        assertOutcome(command(new UsernameRecoverySchemeRef("sch_missing")), TOKEN,
+                UsernameRecoveryReservationOutcome.SCHEME_REF_INVALID);
+        workflows.state = stateWithRegistration(false, UsernameRecoveryDeliveryState.AVAILABLE);
+        assertOutcome(command(SCHEME), TOKEN, UsernameRecoveryReservationOutcome.REGISTRATION_REQUIRED);
+        workflows.state = partiallyRequestedState();
+        assertOutcome(command(SCHEME), TOKEN, UsernameRecoveryReservationOutcome.ALREADY_REQUESTED);
+        workflows.state = state(UsernameRecoveryWorkflowStatus.ACTIVE,
+                UsernameRecoveryDeliveryState.RESERVED, ID);
+        assertOutcome(command(SCHEME), TOKEN, UsernameRecoveryReservationOutcome.CANDIDATE_NOT_AVAILABLE);
+    }
+
+    @Test
+    void sidecarMutationOutcomesRemainDistinctAndAreNotRetried() {
+        workflows.updateOutcome = UsernameRecoveryWorkflowStateMutationOutcome.REVISION_CONFLICT;
+        assertOutcome(command(SCHEME), TOKEN, UsernameRecoveryReservationOutcome.REVISION_CONFLICT);
+        assertThat(workflows.updates).isEqualTo(1);
+        workflows.updates = 0;
+        workflows.updateOutcome = UsernameRecoveryWorkflowStateMutationOutcome.STATE_NOT_FOUND;
+        assertOutcome(command(SCHEME), TOKEN, UsernameRecoveryReservationOutcome.SESSION_ABSENT);
+        assertThat(workflows.updates).isEqualTo(1);
+    }
+
+    @Test
+    void infrastructureFailuresMapToSystemFailure() {
+        envelopes.fail = true;
+        assertOutcome(command(SCHEME), TOKEN, UsernameRecoveryReservationOutcome.SYSTEM_FAILED);
+        envelopes.fail = false;
+        workflows.loadFail = true;
+        assertOutcome(command(SCHEME), TOKEN, UsernameRecoveryReservationOutcome.SYSTEM_FAILED);
+        workflows.loadFail = false;
+        workflows.updateFail = true;
+        assertOutcome(command(SCHEME), TOKEN, UsernameRecoveryReservationOutcome.SYSTEM_FAILED);
+    }
+
+    private void assertOutcome(UsernameRecoveryReservationCommand command, String token,
+            UsernameRecoveryReservationOutcome expected) {
+        StepVerifier.create(service.reserve(command, token))
+                .assertNext(result -> assertThat(result.outcome()).isEqualTo(expected))
+                .verifyComplete();
+    }
+
+    private static UsernameRecoveryReservationCommand command(UsernameRecoverySchemeRef scheme) {
+        return new UsernameRecoveryReservationCommand(ID, scheme, NOW);
+    }
+
+    private AuthFlowSessionSnapshot snapshot(AuthFlowScenario scenario, AuthFlowStatus status,
+            Instant expiry, String hash) {
+        AuthFlowSession session = new AuthFlowSession(ID, scenario, status, hash, null,
+                AuthFlowSessionData.empty(), NOW.minusSeconds(60), NOW.minusSeconds(60), expiry);
+        return new AuthFlowSessionSnapshot(session,
+                new SessionRevision("0123456789abcdef0123456789abcdef"));
+    }
+
+    private static UsernameRecoveryWorkflowState state(UsernameRecoveryWorkflowStatus status,
+            UsernameRecoveryDeliveryState delivery, AuthFlowSessionId id) {
+        return new UsernameRecoveryWorkflowState(id, status,
+                new UsernameRecoveryWorkflowStateRevision(0),
+                new UsernameRecoveryVerifiedDestination("p****c@example.com",
+                        UsernameRecoveryVerifiedDestination.Channel.EMAIL),
+                Locale.ENGLISH,
+                List.of(new UsernameRecoverySessionCandidate(
+                        new UsernameRecoveryCandidate(SCHEME, "DB", "DBA", true,
+                                "user-sch", delivery),
+                        delivery == UsernameRecoveryDeliveryState.REQUESTED ? NOW : null,
+                        delivery == UsernameRecoveryDeliveryState.REQUESTED ? "sender-ref" : null)));
+    }
+
+    private static UsernameRecoveryWorkflowState partiallyRequestedState() {
+        UsernameRecoverySessionCandidate requested = new UsernameRecoverySessionCandidate(
+                new UsernameRecoveryCandidate(SCHEME, "DB", "DBA", true,
+                        "user-sch", UsernameRecoveryDeliveryState.REQUESTED),
                 NOW,
-                registered("sch_1", "DB", "DBA", UsernameRecoveryDeliveryState.AVAILABLE)));
-
-        StepVerifier.create(service.reserve(command("sch_1"), RAW_TOKEN))
-                .assertNext(result -> assertThat(result.outcome())
-                        .isEqualTo(UsernameRecoveryReservationOutcome.SESSION_EXPIRED))
-                .verifyComplete();
-        assertThat(port.updateCount).isZero();
-    }
-
-    @Test
-    void missingOrBlankCsrfTokenMapsToCsrfInvalidWithoutMutation() {
-        port.store(active());
-
-        StepVerifier.create(service.reserve(command("sch_1"), null))
-                .assertNext(result -> assertThat(result.outcome())
-                        .isEqualTo(UsernameRecoveryReservationOutcome.CSRF_INVALID))
-                .verifyComplete();
-        StepVerifier.create(service.reserve(command("sch_1"), " "))
-                .assertNext(result -> assertThat(result.outcome())
-                        .isEqualTo(UsernameRecoveryReservationOutcome.CSRF_INVALID))
-                .verifyComplete();
-        assertThat(port.updateCount).isZero();
-    }
-
-    @Test
-    void mismatchedCsrfTokenMapsToCsrfInvalidWithoutMutation() {
-        port.store(active());
-
-        StepVerifier.create(service.reserve(command("sch_1"), "wrong-token"))
-                .assertNext(result -> assertThat(result.outcome())
-                        .isEqualTo(UsernameRecoveryReservationOutcome.CSRF_INVALID))
-                .verifyComplete();
-        assertThat(port.updateCount).isZero();
-    }
-
-    @Test
-    void fabricatedSchemeRefMapsToSchemeRefInvalidWithoutMutation() {
-        port.store(active());
-
-        StepVerifier.create(service.reserve(command("sch_fabricated"), RAW_TOKEN))
-                .assertNext(result -> assertThat(result.outcome())
-                        .isEqualTo(UsernameRecoveryReservationOutcome.SCHEME_REF_INVALID))
-                .verifyComplete();
-        assertThat(port.updateCount).isZero();
-    }
-
-    @Test
-    void unregisteredCandidateMapsToRegistrationRequiredWithoutMutation() {
-        port.store(session(
-                UsernameRecoveryWorkflowStatus.ACTIVE,
-                new UsernameRecoverySessionRevision(0),
-                EXPIRES_AT,
-                registered("sch_1", "DB", "DBA", UsernameRecoveryDeliveryState.AVAILABLE),
-                unregistered("sch_2", "DB", "DBB")));
-
-        StepVerifier.create(service.reserve(command("sch_2"), RAW_TOKEN))
-                .assertNext(result -> assertThat(result.outcome())
-                        .isEqualTo(UsernameRecoveryReservationOutcome.REGISTRATION_REQUIRED))
-                .verifyComplete();
-        assertThat(port.updateCount).isZero();
-    }
-
-    @Test
-    void requestedCandidateMapsToAlreadyRequestedWithoutMutation() {
-        port.store(session(
+                "sender-ref");
+        UsernameRecoverySessionCandidate available = new UsernameRecoverySessionCandidate(
+                new UsernameRecoveryCandidate(new UsernameRecoverySchemeRef("sch_available"),
+                        "HK", "HKA", true, "user-other",
+                        UsernameRecoveryDeliveryState.AVAILABLE),
+                null,
+                null);
+        return new UsernameRecoveryWorkflowState(ID,
                 UsernameRecoveryWorkflowStatus.PARTIALLY_REQUESTED,
-                new UsernameRecoverySessionRevision(0),
-                EXPIRES_AT,
-                requestedRegistered("sch_1", "DB", "DBA"),
-                registered("sch_2", "DB", "DBB", UsernameRecoveryDeliveryState.AVAILABLE)));
-
-        StepVerifier.create(service.reserve(command("sch_1"), RAW_TOKEN))
-                .assertNext(result -> assertThat(result.outcome())
-                        .isEqualTo(UsernameRecoveryReservationOutcome.ALREADY_REQUESTED))
-                .verifyComplete();
-        assertThat(port.updateCount).isZero();
+                new UsernameRecoveryWorkflowStateRevision(0),
+                new UsernameRecoveryVerifiedDestination("p****c@example.com",
+                        UsernameRecoveryVerifiedDestination.Channel.EMAIL),
+                Locale.ENGLISH,
+                List.of(requested, available));
     }
 
-    @Test
-    void terminalSessionsMapToWorkflowTerminalWithoutMutation() {
-        List<UsernameRecoveryWorkflowStatus> terminal = List.of(
-                UsernameRecoveryWorkflowStatus.COMPLETED,
-                UsernameRecoveryWorkflowStatus.CANCELLED,
-                UsernameRecoveryWorkflowStatus.EXPIRED);
-        for (UsernameRecoveryWorkflowStatus status : terminal) {
-            port.clear();
-            UsernameRecoverySessionCandidate candidate = status == UsernameRecoveryWorkflowStatus.COMPLETED
-                    ? requestedRegistered("sch_1", "DB", "DBA")
-                    : registered("sch_1", "DB", "DBA", UsernameRecoveryDeliveryState.AVAILABLE);
-            port.store(session(status, new UsernameRecoverySessionRevision(0), EXPIRES_AT, candidate));
+    private static UsernameRecoveryWorkflowState stateWithRegistration(
+            boolean registered, UsernameRecoveryDeliveryState delivery) {
+        return new UsernameRecoveryWorkflowState(ID, UsernameRecoveryWorkflowStatus.ACTIVE,
+                new UsernameRecoveryWorkflowStateRevision(0),
+                new UsernameRecoveryVerifiedDestination("p****c@example.com",
+                        UsernameRecoveryVerifiedDestination.Channel.EMAIL),
+                Locale.ENGLISH,
+                List.of(
+                        new UsernameRecoverySessionCandidate(
+                                new UsernameRecoveryCandidate(SCHEME, "DB", "DBA", registered,
+                                        registered ? "user-sch" : null, delivery), null, null),
+                        new UsernameRecoverySessionCandidate(
+                                new UsernameRecoveryCandidate(new UsernameRecoverySchemeRef("sch_registered"),
+                                        "HK", "HKA", true, "user-other",
+                                        UsernameRecoveryDeliveryState.AVAILABLE), null, null)));
+    }
 
-            StepVerifier.create(service.reserve(command("sch_1"), RAW_TOKEN))
-                    .assertNext(result -> assertThat(result.outcome())
-                            .isEqualTo(UsernameRecoveryReservationOutcome.WORKFLOW_TERMINAL))
-                    .verifyComplete();
-            assertThat(port.updateCount).isZero();
+    private static final class FakeAuthFlowPort implements AuthFlowSessionPort {
+        private AuthFlowSessionSnapshot snapshot;
+        private boolean fail;
+        private int loads;
+        @Override public Mono<Optional<AuthFlowSessionSnapshot>> loadSnapshot(AuthFlowSessionId id) {
+            loads++;
+            return fail ? Mono.error(new IllegalStateException("load failed"))
+                    : Mono.just(Optional.ofNullable(snapshot));
+        }
+        @Override public Mono<AuthFlowSession> create(
+                com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionCreateCommand c) {
+            return Mono.error(new UnsupportedOperationException());
+        }
+        @Override public Mono<Optional<AuthFlowSession>> load(AuthFlowSessionId id) {
+            return Mono.just(Optional.ofNullable(snapshot).map(AuthFlowSessionSnapshot::session));
         }
     }
 
-    @Test
-    void reservedFailedAndUnknownOutcomeCandidatesMapToCandidateNotAvailable() {
-        for (UsernameRecoveryDeliveryState state : List.of(
-                UsernameRecoveryDeliveryState.RESERVED,
-                UsernameRecoveryDeliveryState.FAILED,
-                UsernameRecoveryDeliveryState.UNKNOWN_OUTCOME)) {
-            port.clear();
-            port.store(session(
-                    UsernameRecoveryWorkflowStatus.ACTIVE,
-                    new UsernameRecoverySessionRevision(0),
-                    EXPIRES_AT,
-                    registered("sch_1", "DB", "DBA", state)));
-
-            StepVerifier.create(service.reserve(command("sch_1"), RAW_TOKEN))
-                    .assertNext(result -> assertThat(result.outcome())
-                            .isEqualTo(UsernameRecoveryReservationOutcome.CANDIDATE_NOT_AVAILABLE))
-                    .verifyComplete();
-            assertThat(port.updateCount).isZero();
+    private static final class FakeWorkflowPort implements UsernameRecoveryWorkflowStatePort {
+        private UsernameRecoveryWorkflowState state;
+        private UsernameRecoveryWorkflowStateMutationOutcome updateOutcome =
+                UsernameRecoveryWorkflowStateMutationOutcome.APPLIED;
+        private boolean loadFail;
+        private boolean updateFail;
+        private int loads;
+        private int updates;
+        private UsernameRecoveryWorkflowStateMutationCommand lastMutation;
+        @Override public Mono<UsernameRecoveryWorkflowStateLoadResult> load(AuthFlowSessionId id) {
+            loads++;
+            if (loadFail) return Mono.error(new IllegalStateException("load failed"));
+            return Mono.just(state == null ? UsernameRecoveryWorkflowStateLoadResult.notFound()
+                    : UsernameRecoveryWorkflowStateLoadResult.loaded(state));
         }
-    }
-
-    @Test
-    void revisionConflictMapsToDistinctConcurrencyOutcome() {
-        port.store(active());
-        port.updateOutcomeOverride = UsernameRecoverySessionMutationOutcome.REVISION_CONFLICT;
-
-        StepVerifier.create(service.reserve(command("sch_1"), RAW_TOKEN))
-                .assertNext(result -> assertThat(result.outcome())
-                        .isEqualTo(UsernameRecoveryReservationOutcome.REVISION_CONFLICT))
-                .verifyComplete();
-        assertThat(port.updateCount).isEqualTo(1);
-    }
-
-    @Test
-    void sessionNotFoundOnUpdateMapsToAbsentOutcome() {
-        port.store(active());
-        port.updateOutcomeOverride = UsernameRecoverySessionMutationOutcome.SESSION_NOT_FOUND;
-
-        StepVerifier.create(service.reserve(command("sch_1"), RAW_TOKEN))
-                .assertNext(result -> assertThat(result.outcome())
-                        .isEqualTo(UsernameRecoveryReservationOutcome.SESSION_ABSENT))
-                .verifyComplete();
-    }
-
-    @Test
-    void loadSystemFailureOutcomeMapsToSystemFailed() {
-        port.store(active());
-        port.loadOutcomeOverride = UsernameRecoverySessionMutationOutcome.SYSTEM_FAILURE;
-
-        StepVerifier.create(service.reserve(command("sch_1"), RAW_TOKEN))
-                .assertNext(result -> assertThat(result.outcome())
-                        .isEqualTo(UsernameRecoveryReservationOutcome.SYSTEM_FAILED))
-                .verifyComplete();
-        assertThat(port.updateCount).isZero();
-    }
-
-    @Test
-    void loadInfrastructureErrorMapsToSystemFailed() {
-        port.store(active());
-        port.loadFails = true;
-
-        StepVerifier.create(service.reserve(command("sch_1"), RAW_TOKEN))
-                .assertNext(result -> assertThat(result.outcome())
-                        .isEqualTo(UsernameRecoveryReservationOutcome.SYSTEM_FAILED))
-                .verifyComplete();
-        assertThat(port.updateCount).isZero();
-    }
-
-    @Test
-    void updateSystemFailureOutcomeMapsToSystemFailed() {
-        port.store(active());
-        port.updateOutcomeOverride = UsernameRecoverySessionMutationOutcome.SYSTEM_FAILURE;
-
-        StepVerifier.create(service.reserve(command("sch_1"), RAW_TOKEN))
-                .assertNext(result -> assertThat(result.outcome())
-                        .isEqualTo(UsernameRecoveryReservationOutcome.SYSTEM_FAILED))
-                .verifyComplete();
-    }
-
-    @Test
-    void updateInfrastructureErrorMapsToSystemFailed() {
-        port.store(active());
-        port.updateFails = true;
-
-        StepVerifier.create(service.reserve(command("sch_1"), RAW_TOKEN))
-                .assertNext(result -> assertThat(result.outcome())
-                        .isEqualTo(UsernameRecoveryReservationOutcome.SYSTEM_FAILED))
-                .verifyComplete();
-    }
-
-    @Test
-    void rawTokenNeverRetainedInResultsOrCapturedMutation() {
-        port.store(active());
-
-        StepVerifier.create(service.reserve(command("sch_1"), RAW_TOKEN))
-                .assertNext(result -> {
-                    assertThat(result.outcome()).isEqualTo(UsernameRecoveryReservationOutcome.RESERVED);
-                    assertThat(result.toString()).doesNotContain(RAW_TOKEN);
-                    assertThat(UsernameRecoveryReservationResult.class.getRecordComponents())
-                            .extracting(java.lang.reflect.RecordComponent::getName)
-                            .containsExactly("outcome");
-                })
-                .verifyComplete();
-
-        assertThat(command("sch_1").toString())
-                .doesNotContain(RAW_TOKEN)
-                .doesNotContain("afs_opaque-1")
-                .doesNotContain("sch_1");
-        assertThat(port.lastMutation().toString())
-                .doesNotContain(RAW_TOKEN)
-                .doesNotContain("afs_opaque-1")
-                .doesNotContain("sch_1")
-                .doesNotContain("user-")
-                .doesNotContain("p****c@example.com");
-    }
-
-    @Test
-    void unexpectedProgrammingDefectPropagatesToCentralBoundary() {
-        UsernameRecoverySessionPort defective = new UsernameRecoverySessionPort() {
-            public Mono<UsernameRecoverySessionMutationResult> create(UsernameRecoverySession s) { return Mono.error(new AssertionError("defect")); }
-            public Mono<UsernameRecoverySessionLoadResult> load(UsernameRecoverySessionId id) { throw new AssertionError("defect"); }
-            public Mono<UsernameRecoverySessionMutationResult> update(UsernameRecoverySessionMutationCommand c) { return Mono.error(new AssertionError("defect")); }
-            public Mono<UsernameRecoverySessionDeleteResult> delete(UsernameRecoverySessionId id) { return Mono.error(new AssertionError("defect")); }
-        };
-        UsernameRecoveryReservationService defectiveService = new UsernameRecoveryReservationService(
-                defective, new CsrfTokenValidationService(new Sha256CsrfTokenHasher()));
-        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
-                defectiveService.reserve(command("sch_1"), RAW_TOKEN))
-                .isInstanceOf(AssertionError.class)
-                .hasMessage("defect");
-    }
-
-    private static final class FakeSessionPort implements UsernameRecoverySessionPort {
-
-        private UsernameRecoverySession stored;
-        private boolean loadFails;
-        private boolean updateFails;
-        private UsernameRecoverySessionMutationOutcome loadOutcomeOverride;
-        private UsernameRecoverySessionMutationOutcome updateOutcomeOverride;
-        private UsernameRecoverySessionMutationCommand lastMutation;
-        private int updateCount;
-
-        void store(UsernameRecoverySession session) {
-            this.stored = session;
-        }
-
-        void clear() {
-            stored = null;
-            loadFails = false;
-            updateFails = false;
-            loadOutcomeOverride = null;
-            updateOutcomeOverride = null;
-            lastMutation = null;
-            updateCount = 0;
-        }
-
-        UsernameRecoverySession stored() {
-            return stored;
-        }
-
-        UsernameRecoverySessionMutationCommand lastMutation() {
-            return lastMutation;
-        }
-
-        @Override
-        public Mono<UsernameRecoverySessionMutationResult> create(UsernameRecoverySession session) {
-            return Mono.error(new UnsupportedOperationException("create is not part of reservation"));
-        }
-
-        @Override
-        public Mono<UsernameRecoverySessionLoadResult> load(UsernameRecoverySessionId sessionId) {
-            if (loadFails) {
-                return Mono.error(new IllegalStateException("load infrastructure failure"));
-            }
-            if (loadOutcomeOverride == UsernameRecoverySessionMutationOutcome.SYSTEM_FAILURE) {
-                return Mono.just(UsernameRecoverySessionLoadResult.systemFailure());
-            }
-            if (stored == null) {
-                return Mono.just(UsernameRecoverySessionLoadResult.notFound());
-            }
-            return Mono.just(UsernameRecoverySessionLoadResult.loaded(stored));
-        }
-
-        @Override
-        public Mono<UsernameRecoverySessionMutationResult> update(UsernameRecoverySessionMutationCommand command) {
-            updateCount++;
+        @Override public Mono<UsernameRecoveryWorkflowStateMutationResult> update(
+                UsernameRecoveryWorkflowStateMutationCommand command) {
+            updates++;
             lastMutation = command;
-            if (updateFails) {
-                return Mono.error(new IllegalStateException("update infrastructure failure"));
+            if (updateFail) return Mono.error(new IllegalStateException("update failed"));
+            if (updateOutcome == UsernameRecoveryWorkflowStateMutationOutcome.APPLIED) {
+                state = command.updatedState();
+                return Mono.just(new UsernameRecoveryWorkflowStateMutationResult(updateOutcome, state));
             }
-            if (updateOutcomeOverride != null) {
-                return Mono.just(UsernameRecoverySessionMutationResult.outcome(updateOutcomeOverride));
-            }
-            if (stored == null) {
-                return Mono.just(UsernameRecoverySessionMutationResult.outcome(
-                        UsernameRecoverySessionMutationOutcome.SESSION_NOT_FOUND));
-            }
-            if (!stored.revision().equals(command.expectedRevision())) {
-                return Mono.just(UsernameRecoverySessionMutationResult.outcome(
-                        UsernameRecoverySessionMutationOutcome.REVISION_CONFLICT));
-            }
-            stored = command.updatedSession();
-            return Mono.just(new UsernameRecoverySessionMutationResult(
-                    UsernameRecoverySessionMutationOutcome.APPLIED, stored));
+            return Mono.just(UsernameRecoveryWorkflowStateMutationResult.outcome(updateOutcome));
         }
-
-        @Override
-        public Mono<UsernameRecoverySessionDeleteResult> delete(UsernameRecoverySessionId sessionId) {
-            return Mono.error(new UnsupportedOperationException("delete is not part of reservation"));
+        @Override public Mono<UsernameRecoveryWorkflowStateMutationResult> create(
+                com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateCreateCommand c) {
+            return Mono.error(new UnsupportedOperationException());
+        }
+        @Override public Mono<UsernameRecoveryWorkflowStateDeleteResult> delete(AuthFlowSessionId id) {
+            return Mono.error(new UnsupportedOperationException());
         }
     }
 }

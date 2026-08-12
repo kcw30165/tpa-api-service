@@ -17,12 +17,14 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.port.in.CancelUsernameRecoveryUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.RequestUsernameRecoveryUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.StartUsernameRecoveryUseCase;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.CaptchaChallengePort;
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryEffectiveDestinationPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryLookupPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionPort;
+import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStatePort;
 import com.bct.ngtpa.apiservice.application.service.auth.captcha.RegistrationCaptchaGateService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryReservationService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenGenerator;
@@ -76,6 +78,9 @@ class UsernameRecoveryFeatureConfigTest {
                 .withBean(RegistrationCaptchaGateService.class,
                         () -> new RegistrationCaptchaGateService(captchaPort, clock))
                 .withBean(UsernameRecoveryLookupPort.class, () -> mock(UsernameRecoveryLookupPort.class))
+                .withBean(AuthFlowSessionPort.class, () -> mock(AuthFlowSessionPort.class))
+                .withBean(UsernameRecoveryWorkflowStatePort.class,
+                        () -> mock(UsernameRecoveryWorkflowStatePort.class))
                 .withBean(MessageDeliveryPort.class, () -> mock(MessageDeliveryPort.class))
                 .withBean(UsernameRecoveryEffectiveDestinationPort.class,
                         () -> mock(UsernameRecoveryEffectiveDestinationPort.class))

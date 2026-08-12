@@ -1,138 +1,126 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery;
 
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionLoadResult;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionMutationCommand;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionMutationOutcome;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionMutationResult;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionPort;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
+import com.bct.ngtpa.apiservice.application.dto.session.usernamerecovery.UsernameRecoveryWorkflowState;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
+import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateLoadResult;
+import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateMutationCommand;
+import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateMutationResult;
+import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStatePort;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenValidationResult;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenValidationService;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryDeliveryState;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySchemeRef;
-import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySession;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySessionCandidate;
+import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryWorkflowStatus;
 import java.util.Objects;
 import java.util.Optional;
 import reactor.core.publisher.Mono;
 
-/**
- * Application-layer integration that safely loads and reserves a protected Username Recovery
- * session candidate through the committed {@link UsernameRecoverySessionPort}.
- *
- * <p>Design references: {@code docs/design/6-username-recovery/username-recovery-session-redis-design.md}
- * sections 2-4 (candidate reservation precedes sender acceptance; revision persisted consistently)
- * and {@code docs/design/6-username-recovery/username-recovery-api-contract-design.md} sections 7-8
- * (UR-REQ-001 missing/invalid/expired session, UR-REQ-002 CSRF, UR-REQ-003 Scheme-Ref,
- * UR-REQ-004 registration, UR-REQ-008 already requested, UR-REQ-009 completed workflow, and the
- * distinct revision-conflict and system-failure mappings).
- *
- * <p>Behavioral contract:
- *
- * <ul>
- *   <li>Loads the session by typed {@code UsernameRecoverySessionId} through the committed port
- *       only; an absent record maps to {@link UsernameRecoveryReservationOutcome#SESSION_ABSENT},
- *       an expired record to {@link UsernameRecoveryReservationOutcome#SESSION_EXPIRED}, and
- *       infrastructure errors to {@link UsernameRecoveryReservationOutcome#SYSTEM_FAILED}.</li>
- *   <li>Verifies the presented raw CSRF token against the stored hash through the established
- *       constant-time shared abstraction ({@link CsrfTokenValidationService}); the raw token is
- *       accepted only at the {@link #reserve} method boundary and is never stored in a record,
- *       field, log, exception, or {@code toString()}.</li>
- *   <li>Resolves the opaque Scheme-Ref only against candidates inside the loaded session and
- *       rejects fabricated/cross-session refs, unregistered, already-requested, and otherwise
- *       ineligible candidates with typed outcomes before any mutation.</li>
- *   <li>Reserves an eligible registered candidate through the Task 010 aggregate's pure
- *       {@code reserve} transition and persists the transition with expected-revision
- *       compare-and-set semantics; revision conflicts map distinctly and are never auto-retried.</li>
- * </ul>
- */
-public class UsernameRecoveryReservationService {
-
-    private final UsernameRecoverySessionPort sessionPort;
+/** Model B reservation boundary for the Username Recovery workflow-state sidecar. */
+public final class UsernameRecoveryReservationService {
+    private final AuthFlowSessionPort authFlowSessionPort;
+    private final UsernameRecoveryWorkflowStatePort workflowStatePort;
     private final CsrfTokenValidationService csrfTokenValidationService;
 
     public UsernameRecoveryReservationService(
-            UsernameRecoverySessionPort sessionPort,
+            AuthFlowSessionPort authFlowSessionPort,
+            UsernameRecoveryWorkflowStatePort workflowStatePort,
             CsrfTokenValidationService csrfTokenValidationService) {
-        this.sessionPort = Objects.requireNonNull(sessionPort, "sessionPort must not be null");
-        this.csrfTokenValidationService =
-                Objects.requireNonNull(csrfTokenValidationService,
-                        "csrfTokenValidationService must not be null");
+        this.authFlowSessionPort = Objects.requireNonNull(authFlowSessionPort,
+                "authFlowSessionPort must not be null");
+        this.workflowStatePort = Objects.requireNonNull(workflowStatePort,
+                "workflowStatePort must not be null");
+        this.csrfTokenValidationService = Objects.requireNonNull(csrfTokenValidationService,
+                "csrfTokenValidationService must not be null");
     }
 
-    /**
-     * Loads the typed session, verifies expiry and CSRF, resolves Scheme-Ref ownership and
-     * eligibility, reserves through the aggregate, and persists with expected-revision CAS.
-     *
-     * <p>The raw CSRF token is a method-boundary parameter only: it is passed directly to the
-     * committed constant-time validation abstraction and is never retained.
-     */
     public Mono<UsernameRecoveryReservationResult> reserve(
             UsernameRecoveryReservationCommand command, String rawCsrfToken) {
         Objects.requireNonNull(command, "command must not be null");
-        return sessionPort.load(command.sessionId())
-                .onErrorMap(error -> new UsernameRecoverySessionPersistenceException(error))
-                .flatMap(loadResult -> handleLoad(command, rawCsrfToken, loadResult))
-                .onErrorResume(UsernameRecoverySessionPersistenceException.class,
+        return authFlowSessionPort.loadSnapshot(command.authFlowSessionId())
+                .onErrorMap(RuntimeException.class, ReservationPersistenceException::new)
+                .flatMap(optional -> optional
+                        .map(snapshot -> validateEnvelope(command, rawCsrfToken, snapshot))
+                        .orElseGet(() -> Mono.just(UsernameRecoveryReservationResult.absent())))
+                .onErrorResume(ReservationPersistenceException.class,
                         error -> Mono.just(UsernameRecoveryReservationResult.systemFailed()));
     }
 
-    private Mono<UsernameRecoveryReservationResult> handleLoad(
+    private Mono<UsernameRecoveryReservationResult> validateEnvelope(
             UsernameRecoveryReservationCommand command,
             String rawCsrfToken,
-            UsernameRecoverySessionLoadResult loadResult) {
-        return switch (loadResult.outcome()) {
-            case LOADED -> validateLoaded(command, rawCsrfToken, loadResult.session());
-            case SESSION_NOT_FOUND -> Mono.just(UsernameRecoveryReservationResult.absent());
-            case SYSTEM_FAILURE -> Mono.just(UsernameRecoveryReservationResult.systemFailed());
-            default -> throw new IllegalStateException(
-                    "unexpected session load outcome: " + loadResult.outcome());
-        };
-    }
-
-    private Mono<UsernameRecoveryReservationResult> validateLoaded(
-            UsernameRecoveryReservationCommand command,
-            String rawCsrfToken,
-            UsernameRecoverySession session) {
-        if (!session.expiresAt().isAfter(command.now())) {
+            AuthFlowSessionSnapshot snapshot) {
+        AuthFlowSession envelope = snapshot.session();
+        if (envelope.scenario() != AuthFlowScenario.USERNAME_RECOVERY) {
+            return Mono.just(UsernameRecoveryReservationResult.absent());
+        }
+        if (envelope.isExpired(command.now())) {
             return Mono.just(UsernameRecoveryReservationResult.expired());
         }
-        if (session.isTerminal()) {
+        if (envelope.isTerminal() || envelope.status() != AuthFlowStatus.STARTED) {
             return Mono.just(UsernameRecoveryReservationResult.terminal());
         }
-        Optional<UsernameRecoveryReservationResult> csrf = verifyCsrf(rawCsrfToken, session);
+        Optional<UsernameRecoveryReservationResult> csrf = verifyCsrf(
+                rawCsrfToken, envelope.csrfTokenHash());
         if (csrf.isPresent()) {
             return Mono.just(csrf.get());
         }
-        Optional<UsernameRecoveryReservationResult> eligibility =
-                checkEligibility(session, command.schemeRef());
-        if (eligibility.isPresent()) {
-            return Mono.just(eligibility.get());
-        }
-        UsernameRecoverySession reserved = session.reserve(command.schemeRef());
-        return persistReservation(session, reserved);
+        return workflowStatePort.load(command.authFlowSessionId())
+                .onErrorMap(RuntimeException.class, ReservationPersistenceException::new)
+                .flatMap(loadResult -> handleWorkflowLoad(command, loadResult));
     }
 
     private Optional<UsernameRecoveryReservationResult> verifyCsrf(
-            String rawCsrfToken, UsernameRecoverySession session) {
-        CsrfTokenValidationResult validation;
+            String rawCsrfToken, String storedHash) {
         try {
-            validation = csrfTokenValidationService.validate(
-                    rawCsrfToken, session.csrfHash().value());
+            CsrfTokenValidationResult result = csrfTokenValidationService.validate(rawCsrfToken, storedHash);
+            return result.valid() ? Optional.empty()
+                    : Optional.of(UsernameRecoveryReservationResult.csrfInvalid());
         } catch (RuntimeException exception) {
             return Optional.of(UsernameRecoveryReservationResult.systemFailed());
         }
-        if (!validation.valid()) {
-            return Optional.of(UsernameRecoveryReservationResult.csrfInvalid());
+    }
+
+    private Mono<UsernameRecoveryReservationResult> handleWorkflowLoad(
+            UsernameRecoveryReservationCommand command,
+            UsernameRecoveryWorkflowStateLoadResult loadResult) {
+        return switch (loadResult.outcome()) {
+            case LOADED -> validateWorkflow(command, loadResult.state());
+            case STATE_NOT_FOUND -> Mono.just(UsernameRecoveryReservationResult.absent());
+            case SYSTEM_FAILURE -> Mono.just(UsernameRecoveryReservationResult.systemFailed());
+            default -> throw new IllegalStateException(
+                    "unexpected workflow-state load outcome: " + loadResult.outcome());
+        };
+    }
+
+    private Mono<UsernameRecoveryReservationResult> validateWorkflow(
+            UsernameRecoveryReservationCommand command,
+            UsernameRecoveryWorkflowState state) {
+        if (!command.authFlowSessionId().equals(state.authFlowSessionId())) {
+            return Mono.just(UsernameRecoveryReservationResult.systemFailed());
         }
-        return Optional.empty();
+        if (state.status() != UsernameRecoveryWorkflowStatus.ACTIVE
+                && state.status() != UsernameRecoveryWorkflowStatus.PARTIALLY_REQUESTED) {
+            return Mono.just(UsernameRecoveryReservationResult.terminal());
+        }
+        Optional<UsernameRecoveryReservationResult> eligibility =
+                checkEligibility(state, command.schemeRef());
+        if (eligibility.isPresent()) {
+            return Mono.just(eligibility.get());
+        }
+        UsernameRecoveryWorkflowState reserved = state.reserve(command.schemeRef());
+        return persistReservation(state, reserved);
     }
 
     private Optional<UsernameRecoveryReservationResult> checkEligibility(
-            UsernameRecoverySession session, UsernameRecoverySchemeRef schemeRef) {
-        UsernameRecoverySessionCandidate candidate = session.candidates().stream()
-                .filter(c -> c.schemeRef().equals(schemeRef))
-                .findFirst()
-                .orElse(null);
+            UsernameRecoveryWorkflowState state, UsernameRecoverySchemeRef schemeRef) {
+        UsernameRecoverySessionCandidate candidate = state.candidates().stream()
+                .filter(value -> value.schemeRef().equals(schemeRef))
+                .findFirst().orElse(null);
         if (candidate == null) {
             return Optional.of(UsernameRecoveryReservationResult.schemeRefInvalid());
         }
@@ -149,24 +137,31 @@ public class UsernameRecoveryReservationService {
     }
 
     private Mono<UsernameRecoveryReservationResult> persistReservation(
-            UsernameRecoverySession loaded, UsernameRecoverySession reserved) {
-        UsernameRecoverySessionMutationCommand mutation = new UsernameRecoverySessionMutationCommand(
-                loaded.sessionId(), loaded.revision(), reserved);
-        return sessionPort.update(mutation)
-                .onErrorMap(error -> new UsernameRecoverySessionPersistenceException(error))
-                .map(result -> switch (result.outcome()) {
-                    case APPLIED -> UsernameRecoveryReservationResult.reserved();
-                    case SESSION_NOT_FOUND -> UsernameRecoveryReservationResult.absent();
-                    case REVISION_CONFLICT -> UsernameRecoveryReservationResult.revisionConflict();
-                    case SYSTEM_FAILURE -> UsernameRecoveryReservationResult.systemFailed();
-                    default -> throw new IllegalStateException(
-                            "unexpected session update outcome: " + result.outcome());
-                });
+            UsernameRecoveryWorkflowState loaded,
+            UsernameRecoveryWorkflowState reserved) {
+        UsernameRecoveryWorkflowStateMutationCommand mutation =
+                new UsernameRecoveryWorkflowStateMutationCommand(
+                        loaded.authFlowSessionId(), loaded.revision(), reserved);
+        return workflowStatePort.update(mutation)
+                .onErrorMap(RuntimeException.class, ReservationPersistenceException::new)
+                .map(this::mapMutation);
     }
-    private static final class UsernameRecoverySessionPersistenceException
-            extends RuntimeException {
-        private UsernameRecoverySessionPersistenceException(Throwable cause) {
-            super("Username recovery session persistence failed", cause);
+
+    private UsernameRecoveryReservationResult mapMutation(
+            UsernameRecoveryWorkflowStateMutationResult result) {
+        return switch (result.outcome()) {
+            case APPLIED -> UsernameRecoveryReservationResult.reserved();
+            case STATE_NOT_FOUND -> UsernameRecoveryReservationResult.absent();
+            case REVISION_CONFLICT -> UsernameRecoveryReservationResult.revisionConflict();
+            case SYSTEM_FAILURE -> UsernameRecoveryReservationResult.systemFailed();
+            default -> throw new IllegalStateException(
+                    "unexpected workflow-state update outcome: " + result.outcome());
+        };
+    }
+
+    private static final class ReservationPersistenceException extends RuntimeException {
+        private ReservationPersistenceException(Throwable cause) {
+            super("Username recovery reservation persistence failed", cause);
         }
     }
 }
