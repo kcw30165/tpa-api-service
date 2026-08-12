@@ -33,12 +33,6 @@ import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotency
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyRecord;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyReservation;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionDeleteResult;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionLoadResult;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionMutationCommand;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionMutationOutcome;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionMutationResult;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateDeleteResult;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateLoadResult;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateMutationCommand;
@@ -49,13 +43,9 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.Userna
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenValidationService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.Sha256CsrfTokenHasher;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryCandidate;
-import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryCsrfHash;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryDeliveryState;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySchemeRef;
-import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySession;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySessionCandidate;
-import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySessionId;
-import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySessionRevision;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryVerifiedDestination;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryWorkflowStatus;
 import java.time.Clock;
@@ -103,7 +93,6 @@ class RequestUsernameRecoveryServiceTest {
 
         private final List<String> callLog = new ArrayList<>();
         private final FakeIdempotencyPort idempotencyPort = new FakeIdempotencyPort(callLog);
-        private final FakeSessionPort sessionPort = new FakeSessionPort(callLog);
         private final FakeAuthFlowPort envelopes = new FakeAuthFlowPort();
         private final FakeWorkflowPort workflows = new FakeWorkflowPort();
         private final FakeEffectiveDestinationPort effectiveDestinationPort = new FakeEffectiveDestinationPort();
@@ -114,7 +103,7 @@ class RequestUsernameRecoveryServiceTest {
 
         @BeforeEach
         void setUp() {
-                storeScenario(activeSession());
+                storeScenario(activeWorkflowState());
                 reservationService = new UsernameRecoveryReservationService(
                                 envelopes, workflows, new CsrfTokenValidationService(new Sha256CsrfTokenHasher()));
                 service = newService(List.of());
@@ -294,7 +283,6 @@ class RequestUsernameRecoveryServiceTest {
 
         @Test
         void sessionAbsentMapsToTypedSessionAbsentWithoutDelivery() {
-                sessionPort.stored = null;
                 envelopes.snapshot = null;
                 workflows.state = null;
 
@@ -311,11 +299,13 @@ class RequestUsernameRecoveryServiceTest {
 
         @Test
         void sessionExpiredMapsToTypedSessionExpiredWithoutDelivery() {
-                UsernameRecoverySession stored = activeSession();
-                storeScenario(new UsernameRecoverySession(
-                                stored.sessionId(), stored.scenario(), stored.status(), stored.revision(),
-                                stored.csrfHash(), stored.destination(), stored.language(),
-                                NOW.minusSeconds(10), NOW.minusSeconds(1), stored.candidates()));
+                UsernameRecoveryWorkflowState stored = activeWorkflowState();
+                envelopes.snapshot = replayEnvelope(
+                                stored.authFlowSessionId().value(),
+                                AuthFlowScenario.USERNAME_RECOVERY,
+                                AuthFlowStatus.STARTED,
+                                NOW.minusSeconds(1));
+                workflows.state = stored;
 
                 StepVerifier.create(service.request(command(), CSRF, null, null))
                                 .expectErrorSatisfies(error -> {
@@ -396,7 +386,6 @@ class RequestUsernameRecoveryServiceTest {
                                 .verifyComplete();
 
                 assertThat(messageDeliveryPort.deliverCalls).isZero();
-                assertThat(sessionPort.updateCalls).isZero();
         }
 
         @Test
@@ -650,13 +639,11 @@ class RequestUsernameRecoveryServiceTest {
                                 .verifyComplete();
 
                 assertThat(messageDeliveryPort.lastCommand.recipient()).isEqualTo("override@example.test");
-                assertThat(sessionPort.stored.destination().value()).isEqualTo("pepperc@ah.ozk");
         }
 
         private void arrangeReplay(
                         AuthFlowSessionSnapshot envelope,
                         UsernameRecoveryWorkflowState sidecar) {
-                sessionPort.stored = null;
                 envelopes.snapshot = envelope;
                 workflows.state = sidecar;
                 idempotencyPort.reserveOutcome = UsernameRecoveryIdempotencyOutcome.COMPLETED_REPLAY;
@@ -815,7 +802,6 @@ class RequestUsernameRecoveryServiceTest {
                                 .verifyComplete();
 
                 assertThat(messageDeliveryPort.deliverCalls).isZero();
-                assertThat(sessionPort.updateCalls).isZero();
                 assertThat(idempotencyPort.completeCalls).isZero();
         }
 
@@ -887,12 +873,12 @@ class RequestUsernameRecoveryServiceTest {
 
         @Test
         void replayWithUnconclusiveCandidateFailsClosedAsSystemFailure() {
-                UsernameRecoverySession stored = sessionWithCandidateState(
+                UsernameRecoveryWorkflowState stored = sessionWithCandidateState(
                                 UsernameRecoveryDeliveryState.RESERVED, UsernameRecoveryWorkflowStatus.ACTIVE);
                 storeScenario(stored);
                 idempotencyPort.reserveOutcome = UsernameRecoveryIdempotencyOutcome.COMPLETED_REPLAY;
                 idempotencyPort.storedRecord = completedRecord(
-                                UsernameRecoveryRequestReplayCodec.encode(new AuthFlowSessionId(stored.sessionId().value())));
+                                UsernameRecoveryRequestReplayCodec.encode(stored.authFlowSessionId()));
 
                 StepVerifier.create(service.request(command(), CSRF, null, null))
                                 .expectErrorSatisfies(error -> {
@@ -907,7 +893,7 @@ class RequestUsernameRecoveryServiceTest {
 
         @Test
         void differentKeyAfterRequestedReturnsAlreadyRequestedWithoutResending() {
-                UsernameRecoverySession stored = sessionWithCandidateState(
+                UsernameRecoveryWorkflowState stored = sessionWithCandidateState(
                                 UsernameRecoveryDeliveryState.REQUESTED,
                                 UsernameRecoveryWorkflowStatus.PARTIALLY_REQUESTED);
                 storeScenario(stored);
@@ -931,117 +917,61 @@ class RequestUsernameRecoveryServiceTest {
                                 IDEM_KEY);
         }
 
-        private static UsernameRecoverySession activeSession() {
-                UsernameRecoverySessionId sessionId = new UsernameRecoverySessionId(SESSION_ID);
-                UsernameRecoverySchemeRef registeredRef = new UsernameRecoverySchemeRef(REGISTERED_REF);
-                UsernameRecoverySchemeRef unregisteredRef = new UsernameRecoverySchemeRef(UNREGISTERED_REF);
-                List<UsernameRecoverySessionCandidate> candidates = List.of(
-                                new UsernameRecoverySessionCandidate(
-                                                new UsernameRecoveryCandidate(registeredRef, "DB", "DBA", true,
-                                                                "user-1",
-                                                                UsernameRecoveryDeliveryState.AVAILABLE),
-                                                null, null),
-                                new UsernameRecoverySessionCandidate(
-                                                new UsernameRecoveryCandidate(unregisteredRef, "DB", "DBB", false, null,
-                                                                UsernameRecoveryDeliveryState.AVAILABLE),
-                                                null, null));
-                return new UsernameRecoverySession(
-                                sessionId,
-                                UsernameRecoverySession.Scenario.USERNAME_RECOVERY,
+        private static UsernameRecoveryWorkflowState activeWorkflowState() {
+                return workflowState(
                                 UsernameRecoveryWorkflowStatus.ACTIVE,
-                                new UsernameRecoverySessionRevision(0),
-                                new UsernameRecoveryCsrfHash(new Sha256CsrfTokenHasher().hash(CSRF)),
-                                new UsernameRecoveryVerifiedDestination("pepperc@ah.ozk",
-                                                UsernameRecoveryVerifiedDestination.Channel.EMAIL),
-                                Locale.ENGLISH,
-                                NOW,
-                                NOW.plusSeconds(TTL_SECONDS),
-                                candidates);
+                                List.of(candidate(REGISTERED_REF, "DBA", true, "user-1",
+                                                UsernameRecoveryDeliveryState.AVAILABLE),
+                                                candidate(UNREGISTERED_REF, "DBB", false, null,
+                                                                UsernameRecoveryDeliveryState.AVAILABLE)));
         }
-
-        private static UsernameRecoverySession singleRegisteredSession() {
-                UsernameRecoverySessionId sessionId = new UsernameRecoverySessionId(SESSION_ID);
-                UsernameRecoverySchemeRef registeredRef = new UsernameRecoverySchemeRef(REGISTERED_REF);
-                List<UsernameRecoverySessionCandidate> candidates = List.of(
-                                new UsernameRecoverySessionCandidate(
-                                                new UsernameRecoveryCandidate(registeredRef, "DB", "DBA", true,
-                                                                "user-1",
-                                                                UsernameRecoveryDeliveryState.AVAILABLE),
-                                                null, null));
-                return new UsernameRecoverySession(
-                                sessionId,
-                                UsernameRecoverySession.Scenario.USERNAME_RECOVERY,
+        private static UsernameRecoveryWorkflowState singleRegisteredSession() {
+                return workflowState(
                                 UsernameRecoveryWorkflowStatus.ACTIVE,
-                                new UsernameRecoverySessionRevision(0),
-                                new UsernameRecoveryCsrfHash(new Sha256CsrfTokenHasher().hash(CSRF)),
-                                new UsernameRecoveryVerifiedDestination("pepperc@ah.ozk",
-                                                UsernameRecoveryVerifiedDestination.Channel.EMAIL),
-                                Locale.ENGLISH,
-                                NOW,
-                                NOW.plusSeconds(TTL_SECONDS),
-                                candidates);
+                                List.of(candidate(REGISTERED_REF, "DBA", true, "user-1",
+                                                UsernameRecoveryDeliveryState.AVAILABLE)));
         }
-
-        private static UsernameRecoverySession twoRegisteredSession() {
-                UsernameRecoverySessionId sessionId = new UsernameRecoverySessionId(SESSION_ID);
-                UsernameRecoverySchemeRef firstRef = new UsernameRecoverySchemeRef(REGISTERED_REF);
-                UsernameRecoverySchemeRef secondRef = new UsernameRecoverySchemeRef("sch_opaque-3");
-                List<UsernameRecoverySessionCandidate> candidates = List.of(
-                                new UsernameRecoverySessionCandidate(
-                                                new UsernameRecoveryCandidate(firstRef, "DB", "DBA", true, "user-1",
-                                                                UsernameRecoveryDeliveryState.AVAILABLE),
-                                                null, null),
-                                new UsernameRecoverySessionCandidate(
-                                                new UsernameRecoveryCandidate(secondRef, "DB", "DBC", true, "user-2",
-                                                                UsernameRecoveryDeliveryState.AVAILABLE),
-                                                null, null));
-                return new UsernameRecoverySession(
-                                sessionId,
-                                UsernameRecoverySession.Scenario.USERNAME_RECOVERY,
+        private static UsernameRecoveryWorkflowState twoRegisteredSession() {
+                return workflowState(
                                 UsernameRecoveryWorkflowStatus.ACTIVE,
-                                new UsernameRecoverySessionRevision(0),
-                                new UsernameRecoveryCsrfHash(new Sha256CsrfTokenHasher().hash(CSRF)),
-                                new UsernameRecoveryVerifiedDestination("pepperc@ah.ozk",
-                                                UsernameRecoveryVerifiedDestination.Channel.EMAIL),
-                                Locale.ENGLISH,
-                                NOW,
-                                NOW.plusSeconds(TTL_SECONDS),
-                                candidates);
+                                List.of(candidate(REGISTERED_REF, "DBA", true, "user-1",
+                                                UsernameRecoveryDeliveryState.AVAILABLE),
+                                                candidate("sch_opaque-3", "DBC", true, "user-2",
+                                                                UsernameRecoveryDeliveryState.AVAILABLE)));
         }
-
-        private static UsernameRecoverySession sessionWithCandidateState(
+        private static UsernameRecoveryWorkflowState sessionWithCandidateState(
                         UsernameRecoveryDeliveryState state, UsernameRecoveryWorkflowStatus status) {
-                UsernameRecoverySessionId sessionId = new UsernameRecoverySessionId(SESSION_ID);
-                UsernameRecoverySchemeRef targetRef = new UsernameRecoverySchemeRef(REGISTERED_REF);
-                UsernameRecoverySchemeRef secondRef = new UsernameRecoverySchemeRef("sch_opaque-3");
-                boolean targetRequested = state == UsernameRecoveryDeliveryState.REQUESTED;
                 boolean secondRequested = status == UsernameRecoveryWorkflowStatus.COMPLETED;
-                List<UsernameRecoverySessionCandidate> candidates = List.of(
-                                new UsernameRecoverySessionCandidate(
-                                                new UsernameRecoveryCandidate(targetRef, "DB", "DBA", true, "user-1",
-                                                                state),
-                                                targetRequested ? NOW : null,
-                                                targetRequested ? "op_sender_1" : null),
-                                new UsernameRecoverySessionCandidate(
-                                                new UsernameRecoveryCandidate(secondRef, "DB", "DBC", true, "user-2",
-                                                                secondRequested ? UsernameRecoveryDeliveryState.REQUESTED
-                                                                                : UsernameRecoveryDeliveryState.AVAILABLE),
-                                                secondRequested ? NOW : null,
-                                                secondRequested ? "op_sender_2" : null));
-                return new UsernameRecoverySession(
-                                sessionId,
-                                UsernameRecoverySession.Scenario.USERNAME_RECOVERY,
+                return workflowState(
                                 status,
-                                new UsernameRecoverySessionRevision(0),
-                                new UsernameRecoveryCsrfHash(new Sha256CsrfTokenHasher().hash(CSRF)),
-                                new UsernameRecoveryVerifiedDestination("pepperc@ah.ozk",
-                                                UsernameRecoveryVerifiedDestination.Channel.EMAIL),
-                                Locale.ENGLISH,
-                                NOW,
-                                NOW.plusSeconds(TTL_SECONDS),
-                                candidates);
+                                List.of(candidate(REGISTERED_REF, "DBA", true, "user-1", state),
+                                                candidate("sch_opaque-3", "DBC", true, "user-2",
+                                                                secondRequested
+                                                                                ? UsernameRecoveryDeliveryState.REQUESTED
+                                                                                : UsernameRecoveryDeliveryState.AVAILABLE)));
         }
-
+        private static UsernameRecoverySessionCandidate candidate(
+                        String schemeRef, String trustCode, boolean registered, String userName,
+                        UsernameRecoveryDeliveryState state) {
+                boolean requested = state == UsernameRecoveryDeliveryState.REQUESTED;
+                return new UsernameRecoverySessionCandidate(
+                                new UsernameRecoveryCandidate(
+                                                new UsernameRecoverySchemeRef(schemeRef), "DB", trustCode,
+                                                registered, userName, state),
+                                requested ? NOW : null,
+                                requested ? "op_sender_" + trustCode : null);
+        }
+        private static UsernameRecoveryWorkflowState workflowState(
+                        UsernameRecoveryWorkflowStatus status,
+                        List<UsernameRecoverySessionCandidate> candidates) {
+                return new UsernameRecoveryWorkflowState(
+                                new AuthFlowSessionId(SESSION_ID), status,
+                                new UsernameRecoveryWorkflowStateRevision(0),
+                                new UsernameRecoveryVerifiedDestination(
+                                                "pepperc@ah.ozk",
+                                                UsernameRecoveryVerifiedDestination.Channel.EMAIL),
+                                Locale.ENGLISH, candidates);
+        }
         private static UsernameRecoveryIdempotencyRecord completedRecord(
                         UsernameRecoveryIdempotencyRecord.ReplaySnapshot snapshot) {
                 return new UsernameRecoveryIdempotencyRecord(
@@ -1057,46 +987,16 @@ class RequestUsernameRecoveryServiceTest {
                                 NOW.plusSeconds(TTL_SECONDS));
         }
 
-        private void storeScenario(UsernameRecoverySession legacy) {
-                sessionPort.store(legacy);
-                envelopes.snapshot = modelBEnvelope(legacy);
-                workflows.state = modelBSidecar(legacy);
-        }
-
-        private AuthFlowSessionSnapshot modelBEnvelope(UsernameRecoverySession legacy) {
-                if (legacy == null) {
-                        return null;
-                }
-                AuthFlowStatus envelopeStatus = legacy.status() == UsernameRecoveryWorkflowStatus.COMPLETED
-                                ? AuthFlowStatus.COMPLETED
-                                : AuthFlowStatus.STARTED;
-                AuthFlowSession envelope = new AuthFlowSession(
-                                new AuthFlowSessionId(legacy.sessionId().value()),
+        private void storeScenario(UsernameRecoveryWorkflowState state) {
+                workflows.state = state;
+                envelopes.snapshot = state == null ? null : replayEnvelope(
+                                state.authFlowSessionId().value(),
                                 AuthFlowScenario.USERNAME_RECOVERY,
-                                envelopeStatus,
-                                legacy.csrfHash().value(),
-                                null,
-                                AuthFlowSessionData.empty(),
-                                legacy.createdAt(),
-                                legacy.createdAt(),
-                                legacy.expiresAt());
-                return new AuthFlowSessionSnapshot(
-                                envelope, new SessionRevision("0123456789abcdef0123456789abcdef"));
+                                state.status() == UsernameRecoveryWorkflowStatus.COMPLETED
+                                                ? AuthFlowStatus.COMPLETED
+                                                : AuthFlowStatus.STARTED,
+                                NOW.plusSeconds(TTL_SECONDS));
         }
-
-        private UsernameRecoveryWorkflowState modelBSidecar(UsernameRecoverySession legacy) {
-                if (legacy == null) {
-                        return null;
-                }
-                return new UsernameRecoveryWorkflowState(
-                                new AuthFlowSessionId(legacy.sessionId().value()),
-                                legacy.status(),
-                                new UsernameRecoveryWorkflowStateRevision(legacy.revision().value()),
-                                legacy.destination(),
-                                legacy.language(),
-                                legacy.candidates());
-        }
-
         private static final class FakeIdempotencyPort implements UsernameRecoveryIdempotencyPort {
 
                 private final List<String> callLog;
@@ -1168,67 +1068,6 @@ class RequestUsernameRecoveryServiceTest {
                                         command.operationReference(),
                                         UsernameRecoveryIdempotencyRecord.Status.UNKNOWN_OUTCOME,
                                         null, command.now(), command.now(), command.now().plus(command.ttl())));
-                }
-        }
-
-        private static final class FakeSessionPort implements UsernameRecoverySessionPort {
-
-                private final List<String> callLog;
-                private UsernameRecoverySession stored;
-                private int forceUpdateOutcomeAtCall = -1;
-                private UsernameRecoverySessionMutationOutcome forcedUpdateOutcome;
-                private int updateCalls;
-                private boolean loadFails;
-
-                private FakeSessionPort(List<String> callLog) {
-                        this.callLog = callLog;
-                }
-
-                void store(UsernameRecoverySession session) {
-                        this.stored = session;
-                }
-
-                @Override
-                public Mono<UsernameRecoverySessionMutationResult> create(UsernameRecoverySession session) {
-                        throw new UnsupportedOperationException("request flow never creates sessions");
-                }
-
-                @Override
-                public Mono<UsernameRecoverySessionLoadResult> load(UsernameRecoverySessionId sessionId) {
-                        callLog.add("session.load");
-                        if (loadFails) {
-                                return Mono.error(new IllegalStateException("session load infrastructure failure"));
-                        }
-                        if (stored == null) {
-                                return Mono.just(UsernameRecoverySessionLoadResult.notFound());
-                        }
-                        return Mono.just(UsernameRecoverySessionLoadResult.loaded(stored));
-                }
-
-                @Override
-                public Mono<UsernameRecoverySessionMutationResult> update(
-                                UsernameRecoverySessionMutationCommand command) {
-                        callLog.add("session.update");
-                        updateCalls++;
-                        if (updateCalls == forceUpdateOutcomeAtCall) {
-                                return Mono.just(UsernameRecoverySessionMutationResult.outcome(forcedUpdateOutcome));
-                        }
-                        if (stored == null) {
-                                return Mono.just(UsernameRecoverySessionMutationResult.outcome(
-                                                UsernameRecoverySessionMutationOutcome.SESSION_NOT_FOUND));
-                        }
-                        if (!stored.revision().equals(command.expectedRevision())) {
-                                return Mono.just(UsernameRecoverySessionMutationResult.outcome(
-                                                UsernameRecoverySessionMutationOutcome.REVISION_CONFLICT));
-                        }
-                        stored = command.updatedSession();
-                        return Mono.just(new UsernameRecoverySessionMutationResult(
-                                        UsernameRecoverySessionMutationOutcome.APPLIED, stored));
-                }
-
-                @Override
-                public Mono<UsernameRecoverySessionDeleteResult> delete(UsernameRecoverySessionId sessionId) {
-                        throw new UnsupportedOperationException("request flow never deletes sessions");
                 }
         }
 

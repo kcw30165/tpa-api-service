@@ -23,7 +23,6 @@ import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryEffectiveDestinationPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryLookupPort;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStatePort;
 import com.bct.ngtpa.apiservice.application.service.auth.captcha.RegistrationCaptchaGateService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryReservationService;
@@ -46,7 +45,7 @@ import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
  * {@link UsernameRecoveryFeatureConfig}
  * creates every required Username Recovery service, mapper, policy, cookie
  * collaborator, and
- * Redis port bean with no circular dependency and no duplicate bean, and its
+ * canonical port beans with no circular dependency and no duplicate bean, and its
  * cookie writer uses
  * the exact UR policy (name, path, TTL default 600, HttpOnly per cookie,
  * Secure, SameSite Strict).
@@ -95,7 +94,6 @@ class UsernameRecoveryFeatureConfigTest {
             assertThat(context.getBean(StartUsernameRecoveryUseCase.class)).isNotNull();
             assertThat(context.getBean(RequestUsernameRecoveryUseCase.class)).isNotNull();
             assertThat(context.getBean(CancelUsernameRecoveryUseCase.class)).isNotNull();
-            assertThat(context.getBean(UsernameRecoverySessionPort.class)).isNotNull();
             assertThat(context.getBean(UsernameRecoveryIdempotencyPort.class)).isNotNull();
             assertThat(context.getBean(UsernameRecoveryReservationService.class)).isNotNull();
             assertThat(context.getBean(CsrfTokenValidationService.class)).isNotNull();

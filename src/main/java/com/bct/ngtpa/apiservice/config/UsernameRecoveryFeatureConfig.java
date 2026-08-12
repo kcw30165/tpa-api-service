@@ -11,8 +11,6 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRec
 import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
 import com.bct.ngtpa.apiservice.adapter.out.redis.usernamerecovery.RedisUsernameRecoveryIdempotencyAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.usernamerecovery.RedisUsernameRecoveryIdempotencyJsonMapper;
-import com.bct.ngtpa.apiservice.adapter.out.redis.usernamerecovery.RedisUsernameRecoverySessionAdapter;
-import com.bct.ngtpa.apiservice.adapter.out.redis.usernamerecovery.RedisUsernameRecoverySessionJsonMapper;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionCookiePolicy;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionCookieSameSite;
 import com.bct.ngtpa.apiservice.application.port.in.CancelUsernameRecoveryUseCase;
@@ -23,7 +21,6 @@ import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryEffectiveDestinationPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryLookupPort;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStatePort;
 import com.bct.ngtpa.apiservice.application.service.auth.captcha.RegistrationCaptchaGateService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.CancelUsernameRecoveryService;
@@ -48,8 +45,9 @@ import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 /**
  * Repair 024A Spring composition for the Username Recovery controller prerequisites.
  *
- * <p>Wires the currently-unwired Username Recovery runtime beans: the Redis-backed session and
- * idempotency ports, the CSRF validation/reservation services, the three use-case services, the
+ * <p>Wires the Username Recovery runtime beans around the generic auth-flow envelope, typed
+ * workflow-state sidecar, Redis-backed idempotency port, CSRF validation/reservation services,
+ * the three use-case services, the
  * stateless web mappers and response policies, and the Spring-free
  * {@link UsernameRecoveryCookieWriter} with the exact UR cookie policy (path
  * {@code /api/v1/auth/username-recovery}, Max-Age = UR session TTL, HttpOnly per cookie, Secure
@@ -69,23 +67,8 @@ public class UsernameRecoveryFeatureConfig {
 
     @Bean
     @ConditionalOnMissingBean
-    public RedisUsernameRecoverySessionJsonMapper redisUsernameRecoverySessionJsonMapper() {
-        return new RedisUsernameRecoverySessionJsonMapper();
-    }
-
-    @Bean
-    @ConditionalOnMissingBean
     public RedisUsernameRecoveryIdempotencyJsonMapper redisUsernameRecoveryIdempotencyJsonMapper() {
         return new RedisUsernameRecoveryIdempotencyJsonMapper();
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(UsernameRecoverySessionPort.class)
-    public UsernameRecoverySessionPort usernameRecoverySessionPort(
-            ReactiveStringRedisTemplate redis,
-            RedisCacheKeyFactory keyFactory,
-            RedisUsernameRecoverySessionJsonMapper jsonMapper) {
-        return new RedisUsernameRecoverySessionAdapter(redis, keyFactory, jsonMapper);
     }
 
     @Bean

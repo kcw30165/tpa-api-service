@@ -34,12 +34,6 @@ import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotency
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyRecord;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyReservation;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryLookupPort;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionDeleteResult;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionLoadResult;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionMutationCommand;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionMutationOutcome;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionMutationResult;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateCreateCommand;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateDeleteResult;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateLoadResult;
@@ -55,13 +49,9 @@ import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenHa
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.SecureRandomCsrfTokenGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.Sha256CsrfTokenHasher;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryCandidate;
-import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryCsrfHash;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryDeliveryState;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySchemeRef;
-import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySession;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySessionCandidate;
-import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySessionId;
-import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySessionRevision;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryVerifiedDestination;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryWorkflowStatus;
 import java.time.Clock;
@@ -102,7 +92,6 @@ class StartUsernameRecoveryServiceTest {
     private final FakeCaptchaChallengePort captchaPort =
             new FakeCaptchaChallengePort(callLog, challenge(CaptchaStatus.VERIFIED, NOW.plusSeconds(300)));
     private final FakeLookupPort lookupPort = new FakeLookupPort(callLog);
-    private final FakeSessionPort sessionPort = new FakeSessionPort(callLog);
     private final FakeAuthFlowSessionPort authFlowSessionPort = new FakeAuthFlowSessionPort(callLog);
     private final FakeWorkflowStatePort workflowStatePort = new FakeWorkflowStatePort(callLog);
 
@@ -276,8 +265,6 @@ class StartUsernameRecoveryServiceTest {
         assertThat(callLog).containsExactly(
                 "idem.reserve", "idem.resolve", "authFlow.loadSnapshot",
                 "workflowState.load", "authFlow.updateRevisioned");
-        assertThat(sessionPort.createCalls).isZero();
-        assertThat(sessionPort.updateCalls).isZero();
         assertThat(idempotencyPort.completeCalls).isZero();
     }
 
@@ -296,7 +283,6 @@ class StartUsernameRecoveryServiceTest {
                 .verify();
 
         assertThat(authFlowSessionPort.updateCalls).isEqualTo(1);
-        assertThat(sessionPort.updateCalls).isZero();
     }
 
     @Test
@@ -314,7 +300,6 @@ class StartUsernameRecoveryServiceTest {
         assertThat(callLog).containsExactly("idem.reserve", "idem.resolve");
         assertThat(captchaPort.markConsumedCalls).isZero();
         assertThat(lookupPort.searchCalls).isZero();
-        assertThat(sessionPort.createCalls).isZero();
     }
 
     @Test
@@ -332,7 +317,6 @@ class StartUsernameRecoveryServiceTest {
                 .verify();
 
         assertThat(callLog).containsExactly("idem.reserve", "idem.resolve");
-        assertThat(sessionPort.createCalls).isZero();
     }
 
     @Test
@@ -349,7 +333,6 @@ class StartUsernameRecoveryServiceTest {
                 .verify();
 
         assertThat(callLog).containsExactly("idem.reserve", "idem.resolve");
-        assertThat(sessionPort.createCalls).isZero();
     }
 
     @Test
@@ -501,8 +484,6 @@ class StartUsernameRecoveryServiceTest {
                     assertThat(result.csrfToken()).isNotBlank();
                 })
                 .verifyComplete();
-
-        assertThat(sessionPort.createCalls).isZero();
         assertThat(authFlowSessionPort.createCalls).isEqualTo(1);
         assertThat(workflowStatePort.createCalls).isEqualTo(1);
     }
@@ -521,8 +502,6 @@ class StartUsernameRecoveryServiceTest {
                     assertThat(result.expiresInSeconds()).isNull();
                 })
                 .verifyComplete();
-
-        assertThat(sessionPort.createCalls).isZero();
     }
 
 
@@ -543,7 +522,6 @@ class StartUsernameRecoveryServiceTest {
 
         assertThat(callLog).containsExactly(
                 "idem.reserve", "captcha.load", "captcha.markConsumed", "lookup.search", "idem.complete");
-        assertThat(sessionPort.createCalls).isZero();
         UsernameRecoveryStartReplaySnapshot.DecodeResult decoded = UsernameRecoveryStartReplaySnapshot.decode(
                 idempotencyPort.lastCompleted.replaySnapshot());
         assertThat(decoded.decoded()).isTrue();
@@ -569,7 +547,6 @@ class StartUsernameRecoveryServiceTest {
 
         assertThat(callLog).containsExactly(
                 "idem.reserve", "captcha.load", "captcha.markConsumed", "lookup.search", "idem.complete");
-        assertThat(sessionPort.createCalls).isZero();
         UsernameRecoveryStartReplaySnapshot.DecodeResult decoded = UsernameRecoveryStartReplaySnapshot.decode(
                 idempotencyPort.lastCompleted.replaySnapshot());
         assertThat(decoded.decoded()).isTrue();
@@ -593,7 +570,6 @@ class StartUsernameRecoveryServiceTest {
         assertThat(callLog).containsExactly(
                 "idem.reserve", "captcha.load", "captcha.markConsumed", "lookup.search");
         assertThat(idempotencyPort.completeCalls).isZero();
-        assertThat(sessionPort.createCalls).isZero();
     }
 
     @Test
@@ -628,7 +604,6 @@ class StartUsernameRecoveryServiceTest {
         assertThat(callLog).containsExactly(
                 "idem.reserve", "captcha.load", "captcha.markConsumed", "lookup.search",
                 "authFlow.createRevisioned", "workflowState.create", "idem.complete");
-        assertThat(sessionPort.createCalls).isZero();
         assertThat(authFlowSessionPort.lastCreate.scenario().name()).isEqualTo("USERNAME_RECOVERY");
         assertThat(authFlowSessionPort.lastCreate.initialStatus().name()).isEqualTo("STARTED");
         assertThat(authFlowSessionPort.lastCreate.createdAt()).isEqualTo(NOW);
@@ -742,8 +717,6 @@ class StartUsernameRecoveryServiceTest {
                             .isEqualTo(Reason.SYSTEM_FAILURE);
                 })
                 .verify();
-
-        assertThat(sessionPort.createCalls).isZero();
     }
 
     @Test
@@ -878,15 +851,6 @@ class StartUsernameRecoveryServiceTest {
     }
 
     private static UsernameRecoveryWorkflowState activeWorkflowState(AuthFlowSessionId id) {
-        UsernameRecoverySession legacy = activeSession();
-        return new UsernameRecoveryWorkflowState(
-                id, UsernameRecoveryWorkflowStatus.ACTIVE,
-                new com.bct.ngtpa.apiservice.application.dto.session.usernamerecovery.UsernameRecoveryWorkflowStateRevision(0),
-                legacy.destination(), legacy.language(), legacy.candidates());
-    }
-
-    private static UsernameRecoverySession activeSession() {
-        UsernameRecoverySessionId sessionId = new UsernameRecoverySessionId("afs_opaque-1");
         UsernameRecoverySchemeRef registeredRef = new UsernameRecoverySchemeRef("sch_opaque-1");
         UsernameRecoverySchemeRef unregisteredRef = new UsernameRecoverySchemeRef("sch_opaque-2");
         List<UsernameRecoverySessionCandidate> candidates = List.of(
@@ -896,19 +860,13 @@ class StartUsernameRecoveryServiceTest {
                 new UsernameRecoverySessionCandidate(
                         new UsernameRecoveryCandidate(unregisteredRef, "DB", "DBB", false, null,
                                 UsernameRecoveryDeliveryState.AVAILABLE), null, null));
-        return new UsernameRecoverySession(
-                sessionId,
-                UsernameRecoverySession.Scenario.USERNAME_RECOVERY,
-                UsernameRecoveryWorkflowStatus.ACTIVE,
-                new UsernameRecoverySessionRevision(0),
-                new UsernameRecoveryCsrfHash(new Sha256CsrfTokenHasher().hash("original-token")),
-                new UsernameRecoveryVerifiedDestination(EMAIL, UsernameRecoveryVerifiedDestination.Channel.EMAIL),
-                LANGUAGE,
-                NOW,
-                NOW.plusSeconds(TTL_SECONDS),
-                candidates);
+        return new UsernameRecoveryWorkflowState(
+                id, UsernameRecoveryWorkflowStatus.ACTIVE,
+                new com.bct.ngtpa.apiservice.application.dto.session.usernamerecovery.UsernameRecoveryWorkflowStateRevision(0),
+                new UsernameRecoveryVerifiedDestination(
+                        EMAIL, UsernameRecoveryVerifiedDestination.Channel.EMAIL),
+                LANGUAGE, candidates);
     }
-
     private static UsernameRecoveryIdempotencyRecord completedRecord(
             UsernameRecoveryIdempotencyRecord.ReplaySnapshot snapshot) {
         return new UsernameRecoveryIdempotencyRecord(
@@ -1187,76 +1145,4 @@ class StartUsernameRecoveryServiceTest {
         }
     }
 
-    private static final class FakeSessionPort implements UsernameRecoverySessionPort {
-
-        private final List<String> callLog;
-        private UsernameRecoverySession stored;
-        private boolean createFails;
-        private UsernameRecoverySessionMutationOutcome createOutcome;
-        private UsernameRecoverySessionMutationCommand lastMutation;
-        private UsernameRecoverySessionMutationOutcome updateOutcome;
-        private int createCalls;
-        private int updateCalls;
-
-        private FakeSessionPort(List<String> callLog) {
-            this.callLog = callLog;
-        }
-
-        void store(UsernameRecoverySession session) {
-            this.stored = session;
-        }
-
-        @Override
-        public Mono<UsernameRecoverySessionMutationResult> create(UsernameRecoverySession session) {
-            callLog.add("session.create");
-            createCalls++;
-            if (createFails) {
-                return Mono.error(new IllegalStateException("session create infrastructure failure"));
-            }
-            if (createOutcome == UsernameRecoverySessionMutationOutcome.SYSTEM_FAILURE) {
-                return Mono.just(UsernameRecoverySessionMutationResult.outcome(
-                        UsernameRecoverySessionMutationOutcome.SYSTEM_FAILURE));
-            }
-            stored = session;
-            return Mono.just(new UsernameRecoverySessionMutationResult(
-                    UsernameRecoverySessionMutationOutcome.CREATED, session));
-        }
-
-        @Override
-        public Mono<UsernameRecoverySessionLoadResult> load(UsernameRecoverySessionId sessionId) {
-            callLog.add("session.load");
-            if (stored == null) {
-                return Mono.just(UsernameRecoverySessionLoadResult.notFound());
-            }
-            return Mono.just(UsernameRecoverySessionLoadResult.loaded(stored));
-        }
-
-        @Override
-        public Mono<UsernameRecoverySessionMutationResult> update(UsernameRecoverySessionMutationCommand command) {
-            callLog.add("session.update");
-            updateCalls++;
-            lastMutation = command;
-            if (updateOutcome != null) {
-                return Mono.just(UsernameRecoverySessionMutationResult.outcome(updateOutcome));
-            }
-            if (stored == null) {
-                return Mono.just(UsernameRecoverySessionMutationResult.outcome(
-                        UsernameRecoverySessionMutationOutcome.SESSION_NOT_FOUND));
-            }
-            if (!stored.revision().equals(command.expectedRevision())) {
-                return Mono.just(UsernameRecoverySessionMutationResult.outcome(
-                        UsernameRecoverySessionMutationOutcome.REVISION_CONFLICT));
-            }
-            stored = command.updatedSession();
-            return Mono.just(new UsernameRecoverySessionMutationResult(
-                    UsernameRecoverySessionMutationOutcome.APPLIED, stored));
-        }
-
-        @Override
-        public Mono<UsernameRecoverySessionDeleteResult> delete(UsernameRecoverySessionId sessionId) {
-            throw new UnsupportedOperationException("start does not delete sessions");
-        }
-    }
-
 }
-

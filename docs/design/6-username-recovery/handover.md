@@ -76,3 +76,14 @@ Accepted follow-up observations (non-blocking for Repair 025D1):
 Resulting approval commit hash: `82145dc66a5b4edddc8f3ffacae655418ed7c282` (subject `feat(username-recovery): finalize repair 025D1 workflow state migration`).
 
 Next recommended work item: Repair 025D-2 - remove the old legacy Username Recovery session Lua scripts and complete the remaining legacy-boundary cleanup and architecture closure (old legacy Lua files remain for 025D-2).
+
+## Repair 025D-2 Implementation: Remove Legacy Username Recovery Session Stack
+
+- **Implementation date:** 2026-08-12
+- **Baseline:** `features/feature-impl-username-recovery` at `9b73fcbe82fa3e559d8529ec76d0a3a9e12c211d`.
+- **Objective:** physically remove the obsolete Username Recovery-specific session aggregate, persistence ports, Redis adapter/mapping/key stack, legacy Lua resources, and tests owned only by that stack.
+- **Canonical runtime preserved:** generic `AuthFlowSessionPort` envelope plus typed `UsernameRecoveryWorkflowStatePort` sidecar, including revision CAS, remaining-TTL preservation, idempotency, CSRF, origin/referer, request, start, cancel, replay, and delivery behavior.
+- **Configuration change:** `UsernameRecoveryFeatureConfig` no longer creates the obsolete legacy session mapper or port bean. The feature remains composed from canonical auth-flow, workflow-state, and idempotency ports.
+- **Architecture closure:** `UsernameRecoveryLegacySessionUsageGuardTest` now asserts physical absence of every removed production source/resource path and contains no legacy usage allowlist.
+- **Validation:** performed by the checked-in Repair 025D-2 validation workflow under `target/evidence/username-recovery/025D-2/`; independent review is required before commit.
+- **Recommended commit:** `refactor(username-recovery): remove legacy session stack`.
