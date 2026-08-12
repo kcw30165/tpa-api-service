@@ -398,6 +398,31 @@ mvn test
 mvn -DskipTests package
 ```
 
+## Stage 008C Registration Username Check Runtime Repair
+
+- Summary: Fixed two production defects discovered during local runtime: (1) registration username check was routed using NON_ACCOUNT profile; (2) APIM TRPChkCustId blank/empty err-message with no data was treated as success.
+
+- Changes made:
+  - adapter/out/apim/registration/SharedApimTrpChkCustIdTransport.java: added postWithAccountEnv(...) helper which resolves profile using ApimDatabaseScope.ACCOUNT_ENV and ApimCredentialResolutionContext(accountEnv). Implemented stricter response invariants and throw ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID) for malformed upstream payloads.
+  - adapter/out/apim/registration/ApimRegistrationUsernameAvailabilityAdapter.java: use SharedApimTrpChkCustIdTransport.postWithAccountEnv when command.selectedTrust.accountEnv is present; fall back to generic transport for test harnesses.
+
+- Runtime findings and validation:
+  - Main compile and test-compile: SUCCESS
+  - Focused adapter and controller tests covering username-check: ALL PASSED
+  - Existing registration and workflow tests exercised; no in-scope regressions identified.
+
+- Routing root cause:
+  - Shared transport defaulted to NON_ACCOUNT resolver (line using ApimDatabaseScope.NON_ACCOUNT) causing registration username check to call non-account profile despite protected selectedTrust.accountEnv being available.
+
+- Response validation root cause:
+  - toEnvelopePreservingBusinessErrMessage accepted blank err-message as success when data was absent; missing explicit data validation allowed malformed payloads to be treated as success.
+
+- Manual reproduction and result:
+  - POST /api/v1/auth/registration/username/check with protected selectedTrust.accountEnv=DB and APIM returning {"response":{"err-message":""}} now results in HTTP 502 and public SYSTEM_ERROR (err.apim.response.invalid).
+
+- Handover: include this section in cumulative handover; no commit created (work applied locally).
+
+
 The workstream may be changed from `IMPLEMENTATION_COMPLETE_PENDING_EXTERNAL_INTEGRATION` to `COMPLETE` only when:
 
 ```text
