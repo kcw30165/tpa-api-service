@@ -100,3 +100,22 @@ Next recommended work item: Repair 025D-2 - remove the old legacy Username Recov
 - **Validation evidence:** written under the exact timestamped `target/evidence/username-recovery/025D-3-yyyyMMdd-HHmmss/` directory created by the package workflow.
 - **Recommended commit:** `test(username-recovery): close session migration architecture`.
 
+## 025-1 Start and public-contract integration tests passed
+
+## 025-2 implementation
+
+Installed UsernameRecoveryRequestCancelPublicContractIntegrationTest covering:
+
+- accepted Request envelope, security-context forwarding, masking and non-disclosure
+- missing Scheme-Ref transport rejection
+- typed Request CSRF failure
+- successful Cancel cookie clearing and RETURN_TO_LOGIN
+- Cancel system failure without cookie clearing
+
+## Preservation
+
+Production code is unchanged. Existing 025-1 tests are unchanged. The new class exercises the real controller, Request/Cancel mappers, response policies, workflow HTTP classification, cookie writer and HTTP cookie adapter.
+
+## Evidence
+
+target/evidence/20260812-210249-username-recovery-025-2-request-cancel
