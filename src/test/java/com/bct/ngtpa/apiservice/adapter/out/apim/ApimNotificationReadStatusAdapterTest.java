@@ -218,12 +218,14 @@ class ApimNotificationReadStatusAdapterTest {
         private int postInvocationCount;
 
         private CapturingApimWebClientFacade(String responseBody) {
-            super(null, OBJECT_MAPPER);
+            super(null, null, OBJECT_MAPPER, null, null, null, new ApimProperties());
             this.responseBody = responseBody;
         }
 
         @Override
-        public Mono<String> post(String path, Object requestBody) {
+        public Mono<String> post(String path, Object requestBody, com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope scope,
+                                 com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext resolutionContext,
+                                 com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility retryEligibility) {
             this.capturedPath = path;
             this.capturedRequest = (UpdateNotificationReadStatusApimRequest) requestBody;
             this.postInvocationCount++;

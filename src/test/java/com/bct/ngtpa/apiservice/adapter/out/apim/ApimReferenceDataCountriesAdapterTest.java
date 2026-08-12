@@ -26,6 +26,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.reactive.function.client.ClientRequest;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
+import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 class ApimReferenceDataCountriesAdapterTest {
@@ -154,11 +155,20 @@ class ApimReferenceDataCountriesAdapterTest {
         private Object capturedRequestBody;
 
         private CapturingApimWebClientFacade() {
-            super(null, new ObjectMapper());
+            super(WebClient.create(), WebClient.builder(), new ObjectMapper(),
+                    new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfileResolver() {
+                        @Override
+                        public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile> resolve(com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope scope, com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext ctx) {
+                            return reactor.core.publisher.Mono.empty();
+                        }
+                    },
+                    new com.bct.ngtpa.apiservice.adapter.out.apim.oauth.ApimTokenService(WebClient.builder(), new ApimProperties()),
+                    new ApimCertificateService(WebClient.builder(), new ApimProperties(), null),
+                    new ApimProperties());
         }
 
         @Override
-        public Mono<String> post(String path, Object requestBody) {
+        public Mono<String> post(String path, Object requestBody, com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope scope, com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext resolutionContext, com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility retryEligibility) {
             this.capturedPath = path;
             this.capturedRequestBody = requestBody;
             return Mono.just("ignored");

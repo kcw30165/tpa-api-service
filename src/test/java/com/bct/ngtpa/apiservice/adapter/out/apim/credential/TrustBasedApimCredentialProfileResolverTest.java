@@ -1,19 +1,17 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.credential;
 
 import org.junit.jupiter.api.Test;
-import reactor.test.StepVerifier;
-import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
+import static org.junit.jupiter.api.Assertions.fail;
 
 class TrustBasedApimCredentialProfileResolverTest {
 
     @Test
-    void resolveFailsWithUnsupportedError() {
-        TrustBasedApimCredentialProfileResolver resolver = new TrustBasedApimCredentialProfileResolver();
-        ApimCredentialResolutionContext context = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, "SIT");
-
-        StepVerifier.create(resolver.resolve(context))
-                .expectErrorMatches(ex -> ex instanceof com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException
-                        && ex.getMessage().contains("unsupported"))
-                .verify();
+    void trustBasedResolverClassAbsent() {
+        try {
+            Class.forName("com.bct.ngtpa.apiservice.adapter.out.apim.credential.TrustBasedApimCredentialProfileResolver");
+            fail("TrustBasedApimCredentialProfileResolver must be removed from production sources");
+        } catch (ClassNotFoundException e) {
+            // expected — class removed as part of strict routing migration
+        }
     }
 }

@@ -44,7 +44,7 @@ public class ApimContributionSummaryAdapter implements ApimContributionSummaryPo
                         var request = apimPayloadCryptoService.encryptRequest(
                                         API_NAME, toApimRequest(command), GetContributionSummaryApimRequest.class,
                                         null);
-                        return apimWebClientFacade.post(API_NAME, request)
+                        return apimWebClientFacade.post(API_NAME, request, com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT, new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER, null), com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility.SAFE_BUSINESS_CALL)
                                         .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
                                                         API_NAME, body, GetContributionSummaryDataItem.class, null))
                                         .map(this::toContributionSummaryDataset)
@@ -59,7 +59,7 @@ public class ApimContributionSummaryAdapter implements ApimContributionSummaryPo
                                         var request = apimPayloadCryptoService.encryptRequest(
                                                         API_NAME, toApimRequest(command),
                                                         GetContributionSummaryApimRequest.class, publicKey);
-                                        return apimWebClientFacade.post(API_NAME, request)
+                                        return apimWebClientFacade.post(API_NAME, request, com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT, new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER, null), com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility.SAFE_BUSINESS_CALL)
                                                         .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
                                                                         API_NAME, body,
                                                                         GetContributionSummaryDataItem.class,

@@ -60,7 +60,7 @@ class SharedApimTrpChkCustIdTransportTest {
         private ApimRetryEligibility retryEligibility;
 
         private CapturingApimWebClientFacade() {
-            super(WebClient.create(), WebClient.builder(), new ObjectMapper(), ignored -> Mono.empty(), null, null,
+            super(WebClient.create(), WebClient.builder(), new ObjectMapper(), (scope, ctx) -> Mono.empty(), null, null,
                     new ApimProperties());
         }
 

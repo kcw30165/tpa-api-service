@@ -70,10 +70,6 @@ class ApimWebClientFacadeRetryTest {
         ApimCredentialProfile profile = new ApimCredentialProfile("p1", "cid", "secret", "akey", null, "http://localhost", List.of(), null);
         ApimCredentialProfileResolver resolver = new ApimCredentialProfileResolver() {
             @Override
-            public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile> resolve(com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext context) {
-                return reactor.core.publisher.Mono.just(profile);
-            }
-            @Override
             public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile> resolve(com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope scope, com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext context) {
                 return reactor.core.publisher.Mono.just(profile);
             }
@@ -111,16 +107,7 @@ class ApimWebClientFacadeRetryTest {
         };
 
         ApimCredentialProfile profile = new ApimCredentialProfile("p1", "cid", "secret", "akey", null, "http://localhost", List.of(), null);
-        ApimCredentialProfileResolver resolver = new ApimCredentialProfileResolver() {
-            @Override
-            public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile> resolve(com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext context) {
-                return reactor.core.publisher.Mono.just(profile);
-            }
-            @Override
-            public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile> resolve(com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope scope, com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext context) {
-                return reactor.core.publisher.Mono.just(profile);
-            }
-        };
+        ApimCredentialProfileResolver resolver = (scope, ctx) -> reactor.core.publisher.Mono.just(profile);
         ApimCertificateService certificateService = new ApimCertificateService(builder, props, null);
 
         ApimWebClientFacade facade = new ApimWebClientFacade(WebClient.create(), builder, new ObjectMapper(), resolver, tokenService, certificateService, props) {
@@ -171,16 +158,7 @@ class ApimWebClientFacadeRetryTest {
         };
 
         ApimCredentialProfile profile = new ApimCredentialProfile("p1", "cid", "secret", "akey", null, "http://localhost", List.of(), null);
-        ApimCredentialProfileResolver resolver = new ApimCredentialProfileResolver() {
-            @Override
-            public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile> resolve(com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext context) {
-                return reactor.core.publisher.Mono.just(profile);
-            }
-            @Override
-            public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile> resolve(com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope scope, com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext context) {
-                return reactor.core.publisher.Mono.just(profile);
-            }
-        };
+        ApimCredentialProfileResolver resolver = (scope, ctx) -> reactor.core.publisher.Mono.just(profile);
         ApimCertificateService certificateService = new ApimCertificateService(builder, props, null);
 
         ApimWebClientFacade facade = new ApimWebClientFacade(WebClient.create(), builder, new ObjectMapper(), resolver, tokenService, certificateService, props);
@@ -210,16 +188,7 @@ class ApimWebClientFacadeRetryTest {
         ApimProperties props = new ApimProperties();
         ApimTokenService tokenService = fixedTokenService(builder, props, "tok");
         ApimCredentialProfile profile = new ApimCredentialProfile("p1", "cid", "secret", "akey", null, "http://localhost", List.of(), null);
-        ApimCredentialProfileResolver resolver = new ApimCredentialProfileResolver() {
-            @Override
-            public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile> resolve(com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext context) {
-                return reactor.core.publisher.Mono.just(profile);
-            }
-            @Override
-            public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile> resolve(com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope scope, com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext context) {
-                return reactor.core.publisher.Mono.just(profile);
-            }
-        };
+        ApimCredentialProfileResolver resolver = (scope, ctx) -> reactor.core.publisher.Mono.just(profile);
         ApimCertificateService certificateService = trackingCertificateService(builder, props, evictions);
 
         ApimWebClientFacade facade = new ApimWebClientFacade(
@@ -374,20 +343,11 @@ class ApimWebClientFacadeRetryTest {
     }
 
     private static ApimCredentialProfileResolver captureResolver(ApimCredentialProfile profile) {
-        return new ApimCredentialProfileResolver() {
-            @Override
-            public Mono<ApimCredentialProfile> resolve(ApimCredentialResolutionContext context) {
-                // operationName is no longer part of ApimCredentialResolutionContext in strict routing
-                // just assert context is present and return the profile
-                org.junit.jupiter.api.Assertions.assertNotNull(context);
-                return Mono.just(profile);
-            }
-
-            @Override
-            public Mono<ApimCredentialProfile> resolve(com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope scope, ApimCredentialResolutionContext context) {
-                org.junit.jupiter.api.Assertions.assertNotNull(context);
-                return Mono.just(profile);
-            }
+        return (scope, context) -> {
+            // operationName is no longer part of ApimCredentialResolutionContext in strict routing
+            // just assert context is present and return the profile
+            org.junit.jupiter.api.Assertions.assertNotNull(context);
+            return Mono.just(profile);
         };
     }
 }

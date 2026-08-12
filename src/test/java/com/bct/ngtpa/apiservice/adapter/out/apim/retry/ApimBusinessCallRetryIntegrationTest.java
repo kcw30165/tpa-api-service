@@ -128,18 +128,7 @@ class ApimBusinessCallRetryIntegrationTest {
                 WebClient.create(),
                 builder,
                 new ObjectMapper(),
-                new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfileResolver() {
-                    @Override
-                    public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile> resolve(com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext ctx) {
-                        // Legacy single-arg resolver unsupported in strict tests — fail closed
-                        return reactor.core.publisher.Mono.error(new com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException("single-arg resolver unsupported in test"));
-                    }
-
-                    @Override
-                    public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile> resolve(com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope scope, com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext ctx) {
-                        return reactor.core.publisher.Mono.just(profile);
-                    }
-                },
+                (scope, ctx) -> reactor.core.publisher.Mono.just(profile),
 
                 tokenService,
                 new ApimCertificateService(builder, properties, null),

@@ -40,7 +40,6 @@ set-java-home.sh
 doc/
 fix-ssl-maven.bat
 *.txt
-aa.md
 .continue/
 **/*.log
 patches/
@@ -50,5 +49,4 @@ patches/
 **/~$*.xlsx
 *.sh
 .cline/
-## handover.md
 generate-0061-subtask-005-002-evidence-bundle.sh

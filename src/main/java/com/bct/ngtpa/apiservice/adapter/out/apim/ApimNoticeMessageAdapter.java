@@ -56,7 +56,7 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
         if (!apimProperties.getEncryption().isEnabled()) {
             var request = apimPayloadCryptoService.encryptRequest(
                     API_NAME, toApimRequest(command), GetMessageBoardApimRequest.class, null);
-            return apimWebClientFacade.post(API_NAME, request)
+            return apimWebClientFacade.post(API_NAME, request, (StringUtils.hasText(command.accountEnv()) ? com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.ACCOUNT_ENV : com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT), new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER, command.accountEnv()), com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility.SAFE_BUSINESS_CALL)
                     .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
                             API_NAME, body, GetMessageBoardDataItem.class, null))
                     .map(this::toNotificationListResult)
@@ -68,7 +68,7 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
                 .flatMap(publicKey -> {
                     var request = apimPayloadCryptoService.encryptRequest(
                             API_NAME, toApimRequest(command), GetMessageBoardApimRequest.class, publicKey);
-                    return apimWebClientFacade.post(API_NAME, request)
+                    return apimWebClientFacade.post(API_NAME, request, (StringUtils.hasText(command.accountEnv()) ? com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.ACCOUNT_ENV : com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT), new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER, command.accountEnv()), com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility.SAFE_BUSINESS_CALL)
                             .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
                                     API_NAME, body, GetMessageBoardDataItem.class, publicKey))
                             .map(this::toNotificationListResult);

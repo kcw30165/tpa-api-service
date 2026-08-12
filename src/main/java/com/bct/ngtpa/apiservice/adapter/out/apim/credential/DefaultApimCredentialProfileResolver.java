@@ -87,8 +87,4 @@ public class DefaultApimCredentialProfileResolver implements ApimCredentialProfi
                 p.getCertificatePath());
     }
 
-    @Override
-    public Mono<ApimCredentialProfile> resolve(ApimCredentialResolutionContext context) {
-        return Mono.error(new ApimProfileResolutionException("legacy resolve(context) is unsupported; explicit scope required"));
-    }
 }

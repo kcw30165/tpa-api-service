@@ -31,7 +31,7 @@ public class ApimReferenceDataCountriesAdapter implements ApimReferenceDataCount
                 GetCountryListApimRequest.class,
                 null);
 
-        return apimWebClientFacade.post(API_NAME, request)
+        return apimWebClientFacade.post(API_NAME, request, com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT, new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER, null), com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility.SAFE_BUSINESS_CALL)
                 .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
                         API_NAME,
                         body,

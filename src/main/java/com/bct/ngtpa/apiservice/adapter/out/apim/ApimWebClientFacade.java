@@ -85,31 +85,6 @@ public class ApimWebClientFacade {
                 new LoggingSanitizer(objectMapper, new LoggingSanitizerProperties()));
     }
 
-    public Mono<String> post(String path, Object requestBody) {
-        // Legacy bridge: fail closed under strict routing until callers migrate.
-        return Mono.error(new com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException(
-                "legacy overload unsupported: explicit scope and minimal context required"));
-    }
-
-    @LogExecution(value = "apim.post", logArgs = true)
-    public Mono<String> post(String path, Object requestBody, ApimCredentialResolutionContext resolutionContext) {
-        // Legacy bridge: fail closed under strict routing until callers migrate.
-        return Mono.error(new com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException(
-                "legacy overload unsupported: explicit scope and minimal context required"));
-    }
-
-    // Legacy bridge for 4-arg callers (path, body, resolutionContext, retryEligibility).
-    // Keep as fail-closed to preserve compile-time compatibility for Stage 005-007 callers.
-    public Mono<String> post(
-            String path,
-            Object requestBody,
-            ApimCredentialResolutionContext resolutionContext,
-            ApimRetryEligibility retryEligibility) {
-        // Fail closed: require explicit scope for strict routing
-        return Mono.error(new com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException(
-                "legacy overload unsupported: explicit scope required"));
-    }
-
     public Mono<String> post(
             String path,
             Object requestBody,
@@ -302,20 +277,6 @@ public class ApimWebClientFacade {
     private static final class RetryContext {
         boolean tokenRetry = false;
         boolean certificateRetry = false;
-    }
-
-    // Legacy compatibility constructor used by tests and simple subclasses.
-    public ApimWebClientFacade(WebClient apimWebClient, ObjectMapper objectMapper) {
-        this.apimWebClient = apimWebClient;
-        this.webClientBuilder = WebClient.builder();
-        this.objectMapper = objectMapper;
-        this.profileResolver = ctx -> Mono.empty();
-        this.apimTokenService = new com.bct.ngtpa.apiservice.adapter.out.apim.oauth.ApimTokenService(
-                WebClient.builder(), new ApimProperties());
-        this.apimCertificateService = new ApimCertificateService(WebClient.builder(), new ApimProperties(), null);
-        this.apimProperties = new ApimProperties();
-        this.apimAppCertificateService = null;
-        this.loggingSanitizer = new LoggingSanitizer(objectMapper, new LoggingSanitizerProperties());
     }
 
     private void logProfileResolutionFailure(ApimDatabaseScope scope, ApimCredentialResolutionContext ctx, String profileId, String reason) {
