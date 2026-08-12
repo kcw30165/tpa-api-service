@@ -10,11 +10,11 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Verifies the Username Recovery reservation command under the Model B canonical identity:
- * required typed inputs, rejection of null components, safe redaction, and the transitional
- * legacy bridge that keeps committed callers compiling until Repairs 025B/025C migrate them.
+ * required typed inputs, rejection of null components, safe redaction, and the closed migration boundary that permits only the canonical
+ * auth-flow identifier.
  *
  * <p>Model B decision {@code MODEL_B_GENERIC_ENVELOPE_TYPED_SIDECAR}: the command's canonical
- * session identifier is {@link AuthFlowSessionId}; the legacy {@code sessionId} component was
+ * session identifier is {@link AuthFlowSessionId}; the removed legacy identifier component was
  * replaced. Raw CSRF remains outside the command; Scheme-Ref and timestamp behavior are unchanged.
  */
 class UsernameRecoveryReservationCommandTest {

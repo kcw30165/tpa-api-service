@@ -83,7 +83,7 @@ Implementation follows fail-first TDD and the existing auth-workflow test conven
 
 ### Redis and security
 
-- `RedisUsernameRecoverySessionJsonMapperTest`
+- `RedisUsernameRecoveryWorkflowStateJsonMapperTest`
 - `RedisUsernameRecoveryIdempotencyAdapterTest`
 - `UsernameRecoveryProtectedContextTest`
 - `UsernameRecoverySchemeRefGeneratorTest`

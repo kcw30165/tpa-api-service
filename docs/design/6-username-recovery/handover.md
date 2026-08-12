@@ -87,3 +87,16 @@ Next recommended work item: Repair 025D-2 - remove the old legacy Username Recov
 - **Architecture closure:** `UsernameRecoveryLegacySessionUsageGuardTest` now asserts physical absence of every removed production source/resource path and contains no legacy usage allowlist.
 - **Validation:** performed by the checked-in Repair 025D-2 validation workflow under `target/evidence/username-recovery/025D-2/`; independent review is required before commit.
 - **Recommended commit:** `refactor(username-recovery): remove legacy session stack`.
+
+## Repair 025D-3 Implementation: Architecture Guards and Migration Closure
+
+- **Implementation date:** 2026-08-12.
+- **Baseline:** `88b580b33ab3174a1900f73fb52a2f75ba0f114c` (`refactor(username-recovery): remove legacy session stack`).
+- **Objective:** close migration-era source, test, resource, traceability, and documentation boundaries before Stage 025 integration testing.
+- **Architecture closure:** a dedicated migration-closure guard prevents restoration of the reservation bridge marker, deleted legacy Lua resource reference, and deleted legacy JSON-mapper test name.
+- **Canonical state:** Username Recovery uses the generic `AuthFlowSessionPort` envelope and typed `UsernameRecoveryWorkflowStatePort` sidecar. The removed feature-specific session aggregate and Redis stack are not compatibility options.
+- **Scope boundary:** generic auth-flow legacy-revision support used by other authentication features is outside Repair 025D-3 and remains unchanged.
+- **Next task:** `025-1 Start and public-contract integration tests`.
+- **Validation evidence:** written under the exact timestamped `target/evidence/username-recovery/025D-3-yyyyMMdd-HHmmss/` directory created by the package workflow.
+- **Recommended commit:** `test(username-recovery): close session migration architecture`.
+

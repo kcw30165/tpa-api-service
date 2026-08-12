@@ -20,8 +20,8 @@ import org.springframework.core.io.ClassPathResource;
  *
  * <p>Pins: reserve reuses the generic native SET-NX convention (no feature Lua);
  * the single retained feature script (transition.lua) exists only because the shared
- * auth-flow-session scripts use whole-value CAS and the username-recovery-session
- * script is revision-based (physically incompatible); the adapter implements the typed
+ * auth-flow-session scripts use whole-value CAS and the workflow-state sidecar script
+ * is revision-based (physically incompatible); the adapter implements the typed
  * reactive port; application/domain never depend on the adapter; Redis keys stay
  * opaque and feature-scoped.
  */
@@ -39,7 +39,7 @@ class RedisUsernameRecoveryIdempotencyArchitectureGuardTest {
     void transitionRetainsFeatureScriptBecauseSharedScriptsArePhysicallyIncompatible()
             throws IOException {
         var sharedReplace = resource("redis/auth-flow-session/replace-revisioned.lua");
-        var sessionUpdate = resource("redis/username-recovery-session/update.lua");
+        var workflowStateUpdate = resource("redis/username-recovery-workflow-state/update.lua");
         var feature = resource("redis/username-recovery-idempotency/transition.lua");
 
         // Shared auth-flow-session replacement is a WHOLE-VALUE CAS: it requires the
@@ -47,9 +47,9 @@ class RedisUsernameRecoveryIdempotencyArchitectureGuardTest {
         assertThat(sharedReplace)
                 .contains("current ~= ARGV[1]")
                 .doesNotContain("decoded.action");
-        // Shared username-recovery-session update is revision-field based; idempotency
+        // Username Recovery workflow-state update is revision-field based; idempotency
         // records have no revision field.
-        assertThat(sessionUpdate)
+        assertThat(workflowStateUpdate)
                 .contains("decoded.revision")
                 .doesNotContain("decoded.operationReference");
 

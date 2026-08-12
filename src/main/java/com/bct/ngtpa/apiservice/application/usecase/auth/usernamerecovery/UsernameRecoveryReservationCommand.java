@@ -13,16 +13,8 @@ import java.util.Objects;
  * envelope and the workflow-state sidecar. The legacy {@code sessionId} component was replaced by
  * {@code authFlowSessionId}.
  *
- * <p>Transitional bridge (REMOVE_AFTER_025D): the deprecated constructor and {@link #sessionId()}
- * accessor keep the committed reservation service and Request orchestration compiling until
- * Repairs 025B/025C migrate them to the canonical identifier; no new callers may be added. Both
- * identifiers validate the same safe pattern, so the value maps 1:1 without loss.
- *
- * <p>Invariants: {@code authFlowSessionId}, {@code schemeRef}, and the authoritative current
- * instant {@code now} are all required. The raw CSRF token is deliberately not part of this
- * command: it is accepted only at the {@link UsernameRecoveryReservationService#reserve} method
- * boundary and is never stored in any record, field, log, exception, or {@code toString()}.
- * {@link #toString()} never discloses the session id or the opaque Scheme-Ref.
+ * <p>The command exposes only the canonical {@link AuthFlowSessionId}. Migration compatibility
+ * constructors and accessors were removed in Repair 025D-1 and must not be reintroduced.
  */
 public record UsernameRecoveryReservationCommand(
         AuthFlowSessionId authFlowSessionId,
