@@ -36,7 +36,6 @@ import com.bct.ngtpa.apiservice.application.service.security.csrf.OriginRefererV
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryDeliveryState;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySchemeRef;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySessionCandidate;
-import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySessionId;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryVerifiedDestination;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryWorkflowStatus;
 import java.security.SecureRandom;
@@ -247,7 +246,7 @@ public final class RequestUsernameRecoveryService implements RequestUsernameReco
                         return Mono.error(UsernameRecoveryRequestException.securityInvalid());
                 }
                 UsernameRecoveryReservationCommand reservationCommand = new UsernameRecoveryReservationCommand(
-                                sessionIdOf(command), command.schemeRef(), now);
+                                command.authFlowSessionId(), command.schemeRef(), now);
                 return reservationService.reserve(reservationCommand, rawCsrfToken)
                                 .onErrorMap(Exception.class, RequestPersistenceException::new)
                                 .flatMap(result -> switch (result.outcome()) {
@@ -683,9 +682,6 @@ public final class RequestUsernameRecoveryService implements RequestUsernameReco
                                                 destinationType(effective.channel())));
         }
 
-        private UsernameRecoverySessionId sessionIdOf(UsernameRecoveryRequestCommand command) {
-                return new UsernameRecoverySessionId(command.authFlowSessionId().value());
-        }
 
         private UsernameRecoverySessionCandidate findCandidate(
                         UsernameRecoveryWorkflowState state, UsernameRecoverySchemeRef schemeRef) {

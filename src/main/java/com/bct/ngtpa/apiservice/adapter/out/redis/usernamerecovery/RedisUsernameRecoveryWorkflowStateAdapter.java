@@ -27,8 +27,8 @@ public class RedisUsernameRecoveryWorkflowStateAdapter
                 implements UsernameRecoveryWorkflowStatePort {
 
         private static final DefaultRedisScript<Long> CREATE = script("redis/auth-flow-session/create-revisioned.lua");
-        private static final DefaultRedisScript<Long> UPDATE = script("redis/username-recovery-session/update.lua");
-        private static final DefaultRedisScript<Long> DELETE = script("redis/username-recovery-session/delete.lua");
+        private static final DefaultRedisScript<Long> UPDATE = script("redis/username-recovery-workflow-state/update.lua");
+        private static final DefaultRedisScript<Long> DELETE = script("redis/username-recovery-workflow-state/delete.lua");
 
         private final ReactiveStringRedisTemplate redis;
         private final RedisCacheKeyFactory keyFactory;

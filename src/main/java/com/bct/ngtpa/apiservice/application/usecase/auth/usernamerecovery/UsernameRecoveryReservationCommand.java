@@ -2,7 +2,6 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery;
 
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySchemeRef;
-import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySessionId;
 import java.time.Instant;
 import java.util.Objects;
 
@@ -36,24 +35,6 @@ public record UsernameRecoveryReservationCommand(
         Objects.requireNonNull(now, "now must not be null");
     }
 
-    /**
-     * Transitional constructor preserving the canonical value from the legacy identifier.
-     * REMOVE_AFTER_025D: Repairs 025B/025C migrate the committed callers.
-     */
-    @Deprecated
-    public UsernameRecoveryReservationCommand(
-            UsernameRecoverySessionId sessionId, UsernameRecoverySchemeRef schemeRef, Instant now) {
-        this(new AuthFlowSessionId(sessionId.value()), schemeRef, now);
-    }
-
-    /**
-     * Transitional accessor deriving the legacy identifier for the committed reservation service.
-     * REMOVE_AFTER_025D: Repairs 025B/025C migrate the service to the canonical identifier.
-     */
-    @Deprecated
-    public UsernameRecoverySessionId sessionId() {
-        return new UsernameRecoverySessionId(authFlowSessionId.value());
-    }
 
     @Override
     public String toString() {

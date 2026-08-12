@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySchemeRef;
-import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySessionId;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 
@@ -68,20 +67,4 @@ class UsernameRecoveryReservationCommandTest {
                 .contains("<redacted>");
     }
 
-    @Test
-    void transitionalLegacyConstructorPreservesCanonicalValue() {
-        UsernameRecoverySessionId legacy = new UsernameRecoverySessionId("afs_opaque-1");
-        UsernameRecoveryReservationCommand command =
-                new UsernameRecoveryReservationCommand(legacy, SCHEME_REF, NOW);
-
-        assertThat(command.authFlowSessionId().value()).isEqualTo("afs_opaque-1");
-    }
-
-    @Test
-    void transitionalSessionIdAccessorDerivesLegacyIdentifierFromCanonicalValue() {
-        UsernameRecoveryReservationCommand command =
-                new UsernameRecoveryReservationCommand(SESSION_ID, SCHEME_REF, NOW);
-
-        assertThat(command.sessionId().value()).isEqualTo("afs_opaque-1");
-    }
 }

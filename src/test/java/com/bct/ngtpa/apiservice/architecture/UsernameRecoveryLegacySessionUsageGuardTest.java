@@ -45,10 +45,6 @@ class UsernameRecoveryLegacySessionUsageGuardTest {
                     + "UsernameRecoverySessionMutationCommand.java",
             "src/main/java/com/bct/ngtpa/apiservice/application/port/out/"
                     + "UsernameRecoverySessionPort.java",
-            "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/usernamerecovery/"
-                    + "RequestUsernameRecoveryService.java",
-            "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/usernamerecovery/"
-                    + "UsernameRecoveryReservationCommand.java",
             "src/main/java/com/bct/ngtpa/apiservice/domain/model/UsernameRecoverySession.java",
             "src/main/java/com/bct/ngtpa/apiservice/domain/model/UsernameRecoverySessionId.java");
 
