@@ -13,6 +13,10 @@ import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryStatus;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryType;
 import com.bct.ngtpa.apiservice.application.port.in.RequestUsernameRecoveryUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryEffectiveDestinationPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyAction;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyFingerprint;
@@ -28,11 +32,9 @@ import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowSta
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateMutationCommand;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateMutationOutcome;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStatePort;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoverySessionPort;
 import com.bct.ngtpa.apiservice.application.service.security.csrf.OriginRefererValidator;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryDeliveryState;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySchemeRef;
-import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySession;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySessionCandidate;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySessionId;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryVerifiedDestination;
@@ -92,7 +94,7 @@ public final class RequestUsernameRecoveryService implements RequestUsernameReco
         private final UsernameRecoveryIdempotencyPort idempotencyPort;
         private final UsernameRecoveryReservationService reservationService;
         private final UsernameRecoveryEffectiveDestinationPort effectiveDestinationPort;
-        private final UsernameRecoverySessionPort sessionPort;
+        private final AuthFlowSessionPort authFlowSessionPort;
         private final UsernameRecoveryWorkflowStatePort workflowStatePort;
         private final MessageDeliveryPort messageDeliveryPort;
         private final OriginRefererValidator originRefererValidator;
@@ -110,7 +112,7 @@ public final class RequestUsernameRecoveryService implements RequestUsernameReco
                         UsernameRecoveryIdempotencyPort idempotencyPort,
                         UsernameRecoveryReservationService reservationService,
                         UsernameRecoveryEffectiveDestinationPort effectiveDestinationPort,
-                        UsernameRecoverySessionPort sessionPort,
+                        AuthFlowSessionPort authFlowSessionPort,
                         UsernameRecoveryWorkflowStatePort workflowStatePort,
                         MessageDeliveryPort messageDeliveryPort,
                         List<String> allowedOrigins,
@@ -126,7 +128,7 @@ public final class RequestUsernameRecoveryService implements RequestUsernameReco
                                 "reservationService must not be null");
                 this.effectiveDestinationPort = Objects.requireNonNull(
                                 effectiveDestinationPort, "effectiveDestinationPort must not be null");
-                this.sessionPort = Objects.requireNonNull(sessionPort, "sessionPort must not be null");
+                this.authFlowSessionPort = Objects.requireNonNull(authFlowSessionPort, "authFlowSessionPort must not be null");
                 this.workflowStatePort = Objects.requireNonNull(
                                 workflowStatePort, "workflowStatePort must not be null");
                 this.messageDeliveryPort = Objects.requireNonNull(messageDeliveryPort,
@@ -346,16 +348,6 @@ public final class RequestUsernameRecoveryService implements RequestUsernameReco
                                 .onErrorMap(Exception.class, EffectiveDestinationPersistenceException::new);
         }
 
-        /**
-         * Transitional completed-replay resolver. REMOVE_AFTER_025C3C when Request replay
-         * loads the Model B envelope and sidecar instead of the legacy session.
-         */
-        private Mono<UsernameRecoveryEffectiveDestinationResult> resolveEffectiveDestination(
-                        UsernameRecoverySession session) {
-                return effectiveDestinationPort.resolve(
-                                new UsernameRecoveryEffectiveDestinationCommand(session.destination()))
-                                .onErrorMap(Exception.class, EffectiveDestinationPersistenceException::new);
-        }
 
         private Mono<UsernameRecoveryRequestResult> invokeSender(
                         UsernameRecoveryWorkflowState state,
@@ -467,8 +459,7 @@ public final class RequestUsernameRecoveryService implements RequestUsernameReco
                         Duration ttl,
                         UsernameRecoveryEffectiveDestinationResult effective,
                         String maskedDestination) {
-                ReplaySnapshot snapshot = UsernameRecoveryRequestReplayCodec.encode(
-                                new UsernameRecoverySessionId(requested.authFlowSessionId().value()));
+                ReplaySnapshot snapshot = UsernameRecoveryRequestReplayCodec.encode(requested.authFlowSessionId());
                 UsernameRecoveryIdempotencyPort.CompleteCommand completeCommand =
                                 new UsernameRecoveryIdempotencyPort.CompleteCommand(
                                                 UsernameRecoveryIdempotencyAction.REQUEST,
@@ -521,8 +512,7 @@ public final class RequestUsernameRecoveryService implements RequestUsernameReco
                         UsernameRecoveryIdempotencyReservation reservation,
                         Instant now,
                         Duration ttl) {
-                ReplaySnapshot snapshot = UsernameRecoveryRequestReplayCodec.encode(
-                                new UsernameRecoverySessionId(failed.authFlowSessionId().value()));
+                ReplaySnapshot snapshot = UsernameRecoveryRequestReplayCodec.encode(failed.authFlowSessionId());
                 UsernameRecoveryIdempotencyPort.CompleteCommand completeCommand =
                                 new UsernameRecoveryIdempotencyPort.CompleteCommand(
                                                 UsernameRecoveryIdempotencyAction.REQUEST,
@@ -619,46 +609,57 @@ public final class RequestUsernameRecoveryService implements RequestUsernameReco
                 return idempotencyPort.resolve(UsernameRecoveryIdempotencyAction.REQUEST, idempotencyKey)
                                 .onErrorMap(Exception.class, RequestPersistenceException::new)
                                 .flatMap(optional -> {
-                                        if (optional.isEmpty()) {
+                                        if (optional.isEmpty() || optional.get().replaySnapshot() == null) {
                                                 return Mono.error(UsernameRecoveryRequestException.systemFailure());
                                         }
-                                        ReplaySnapshot snapshot = optional.get().replaySnapshot();
-                                        if (snapshot == null) {
+                                        UsernameRecoveryRequestReplayCodec.DecodeResult decoded =
+                                                        UsernameRecoveryRequestReplayCodec.decode(optional.get().replaySnapshot());
+                                        if (!decoded.decoded()
+                                                        || !decoded.authFlowSessionId().equals(command.authFlowSessionId())) {
                                                 return Mono.error(UsernameRecoveryRequestException.systemFailure());
                                         }
-                                        UsernameRecoveryRequestReplayCodec.DecodeResult decoded = UsernameRecoveryRequestReplayCodec
-                                                        .decode(snapshot);
-                                        if (!decoded.decoded()) {
-                                                return Mono.error(UsernameRecoveryRequestException.systemFailure());
-                                        }
-                                        return sessionPort.load(decoded.sessionId())
+                                        return authFlowSessionPort.loadSnapshot(decoded.authFlowSessionId())
                                                         .onErrorMap(Exception.class, RequestPersistenceException::new)
-                                                        .flatMap(loadResult -> switch (loadResult.outcome()) {
-                                                                case LOADED -> rebuildReplay(loadResult.session(),
-                                                                                command, now);
-                                                                case SESSION_NOT_FOUND ->
-                                                                        Mono.error(UsernameRecoveryRequestException
-                                                                                        .systemFailure());
-                                                                case SYSTEM_FAILURE ->
-                                                                        Mono.error(UsernameRecoveryRequestException
-                                                                                        .systemFailure());
-                                                                default -> throw new IllegalStateException(
-                                                                                "unexpected session load outcome: "
-                                                                                                + loadResult.outcome());
-                                                        });
+                                                        .flatMap(optionalEnvelope -> optionalEnvelope
+                                                                        .map(envelope -> validateReplayEnvelope(envelope, command, now))
+                                                                        .orElseGet(() -> Mono.error(
+                                                                                        UsernameRecoveryRequestException.systemFailure())));
+                                });
+        }
+
+        private Mono<UsernameRecoveryRequestResult> validateReplayEnvelope(
+                        AuthFlowSessionSnapshot envelope,
+                        UsernameRecoveryRequestCommand command,
+                        Instant now) {
+                if (!envelope.session().authFlowSessionId().equals(command.authFlowSessionId())
+                                || envelope.session().scenario() != AuthFlowScenario.USERNAME_RECOVERY
+                                || envelope.session().isExpired(now)
+                                || envelope.session().status() != AuthFlowStatus.STARTED) {
+                        return Mono.error(UsernameRecoveryRequestException.systemFailure());
+                }
+                return workflowStatePort.load(command.authFlowSessionId())
+                                .onErrorMap(Exception.class, RequestPersistenceException::new)
+                                .flatMap(load -> switch (load.outcome()) {
+                                        case LOADED -> rebuildReplay(load.state(), command);
+                                        case STATE_NOT_FOUND, SYSTEM_FAILURE ->
+                                                Mono.error(UsernameRecoveryRequestException.systemFailure());
+                                        default -> throw new IllegalStateException(
+                                                        "unexpected workflow-state load outcome: " + load.outcome());
                                 });
         }
 
         private Mono<UsernameRecoveryRequestResult> rebuildReplay(
-                        UsernameRecoverySession session,
-                        UsernameRecoveryRequestCommand command,
-                        Instant now) {
-                UsernameRecoverySessionCandidate candidate = findCandidate(session, command.schemeRef());
+                        UsernameRecoveryWorkflowState state,
+                        UsernameRecoveryRequestCommand command) {
+                if (!state.authFlowSessionId().equals(command.authFlowSessionId())) {
+                        return Mono.error(UsernameRecoveryRequestException.systemFailure());
+                }
+                UsernameRecoverySessionCandidate candidate = findCandidate(state, command.schemeRef());
                 if (candidate == null || !candidate.registered()) {
                         return Mono.error(UsernameRecoveryRequestException.systemFailure());
                 }
                 return switch (candidate.deliveryState()) {
-                        case REQUESTED -> rebuildAcceptedReplay(session, command, now);
+                        case REQUESTED -> rebuildAcceptedReplay(state, command);
                         case FAILED -> Mono.just(new UsernameRecoveryRequestResult(
                                         UsernameRecoveryRequestResult.Outcome.SYSTEM_FAILED, null, null, null, null));
                         case UNKNOWN_OUTCOME -> Mono.just(new UsernameRecoveryRequestResult(
@@ -668,32 +669,20 @@ public final class RequestUsernameRecoveryService implements RequestUsernameReco
         }
 
         private Mono<UsernameRecoveryRequestResult> rebuildAcceptedReplay(
-                        UsernameRecoverySession session,
-                        UsernameRecoveryRequestCommand command,
-                        Instant now) {
-                if (session.isExpired(now)
-                                || (session.status() != UsernameRecoveryWorkflowStatus.PARTIALLY_REQUESTED
-                                                && session.status() != UsernameRecoveryWorkflowStatus.COMPLETED)) {
+                        UsernameRecoveryWorkflowState state,
+                        UsernameRecoveryRequestCommand command) {
+                if (state.status() != UsernameRecoveryWorkflowStatus.PARTIALLY_REQUESTED
+                                && state.status() != UsernameRecoveryWorkflowStatus.COMPLETED) {
                         return Mono.error(UsernameRecoveryRequestException.systemFailure());
                 }
-                return resolveEffectiveDestination(session)
+                return resolveEffectiveDestination(state)
                                 .map(effective -> new UsernameRecoveryRequestResult(
                                                 UsernameRecoveryRequestResult.Outcome.REQUEST_ACCEPTED,
-                                                session.status(),
-                                                command.schemeRef(),
+                                                state.status(), command.schemeRef(),
                                                 destinationMasker.mask(effective.channel(), effective.destination()),
                                                 destinationType(effective.channel())));
         }
 
-        /**
-         * Converts the shared auth-flow session id carried by the committed Request
-         * command into the
-         * Username Recovery domain session id. Both value objects enforce the same safe
-         * opaque pattern
-         * ({@code ^[A-Za-z0-9_-]+$}), so the conversion is value-preserving and fails
-         * closed on an
-         * unsafe value.
-         */
         private UsernameRecoverySessionId sessionIdOf(UsernameRecoveryRequestCommand command) {
                 return new UsernameRecoverySessionId(command.authFlowSessionId().value());
         }
@@ -706,13 +695,6 @@ public final class RequestUsernameRecoveryService implements RequestUsernameReco
                                 .orElse(null);
         }
 
-        private UsernameRecoverySessionCandidate findCandidate(
-                        UsernameRecoverySession session, UsernameRecoverySchemeRef schemeRef) {
-                return session.candidates().stream()
-                                .filter(candidate -> candidate.schemeRef().equals(schemeRef))
-                                .findFirst()
-                                .orElse(null);
-        }
 
         private UsernameRecoveryDestinationType destinationType(
                         UsernameRecoveryVerifiedDestination.Channel channel) {

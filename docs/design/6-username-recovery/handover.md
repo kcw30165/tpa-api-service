@@ -24,3 +24,9 @@ Repair 025C-3B1 extends Model B reservation into Request delivery settlement. Ne
 - Repair 025C-3C: completed Request replay migration and legacy Request session dependency removal.
 - Repair 025C-4: Cancel migration.
 - Repair 025D: remaining legacy cleanup and architecture closure.
+
+## Repair 025C-3C Request replay Model B migration
+
+Completed Request replay now decodes the canonical `AuthFlowSessionId`, loads and validates the generic `AuthFlowSession` envelope, then loads the independent `UsernameRecoveryWorkflowState` sidecar. Replay reconstructs accepted, failed, and unknown outcomes without delivery, mutation, retry, or TTL extension. Request no longer uses `UsernameRecoverySessionPort` or the legacy aggregate for completed replay. `UsernameRecoverySessionId` remains only as the temporary reservation-command bridge, and Cancel continues to use the legacy session boundary until its separately authorized migration.
+
+Validation passed the focused Request suite, cumulative Username Recovery regression suite, architecture guards, and `git diff --check`. Independent replay fixtures cover missing or mismatched envelope and sidecar state, wrong scenario, expiry, terminal envelope status, accepted replay, failed replay, unknown-outcome replay, and fail-closed inconclusive state.

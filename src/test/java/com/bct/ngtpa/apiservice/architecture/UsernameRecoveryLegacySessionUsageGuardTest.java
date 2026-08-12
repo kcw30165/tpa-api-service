@@ -50,15 +50,7 @@ class UsernameRecoveryLegacySessionUsageGuardTest {
             "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/usernamerecovery/"
                     + "RequestUsernameRecoveryService.java",
             "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/usernamerecovery/"
-                    + "StartUsernameRecoveryService.java",
-            "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/usernamerecovery/"
-                    + "UsernameRecoveryRequestReplayCodec.java",
-            "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/usernamerecovery/"
                     + "UsernameRecoveryReservationCommand.java",
-            "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/usernamerecovery/"
-                    + "UsernameRecoveryReservationService.java",
-            "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/usernamerecovery/"
-                    + "UsernameRecoveryStartReplayCodec.java",
             "src/main/java/com/bct/ngtpa/apiservice/domain/model/UsernameRecoverySession.java",
             "src/main/java/com/bct/ngtpa/apiservice/domain/model/UsernameRecoverySessionId.java");
 

@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery;
 
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyRecord;
-import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySessionId;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import java.util.Objects;
 
 /**
@@ -36,14 +36,14 @@ public final class UsernameRecoveryRequestReplayCodec {
     /**
      * Encodes the protected session id into the non-secret completed REQUEST replay snapshot.
      *
-     * @param sessionId the protected session identifier; never null
-     * @return the opaque replay snapshot whose value is exactly {@code ur-request:v1:<sessionId>}
+     * @param authFlowSessionId the protected session identifier; never null
+     * @return the opaque replay snapshot whose value is exactly {@code ur-request:v1:<authFlowSessionId>}
      */
     public static UsernameRecoveryIdempotencyRecord.ReplaySnapshot encode(
-            UsernameRecoverySessionId sessionId) {
-        Objects.requireNonNull(sessionId, "sessionId must not be null");
+            AuthFlowSessionId authFlowSessionId) {
+        Objects.requireNonNull(authFlowSessionId, "authFlowSessionId must not be null");
         return new UsernameRecoveryIdempotencyRecord.ReplaySnapshot(
-                PREFIX + sessionId.value());
+                PREFIX + authFlowSessionId.value());
     }
 
     /**
@@ -51,7 +51,7 @@ public final class UsernameRecoveryRequestReplayCodec {
      *
      * @param snapshot the persisted replay snapshot; null is treated as malformed
      * @return {@link DecodeResult#decoded()} with the session id for exactly the
-     *         {@code ur-request:v1:<sessionId>} shape, or a typed {@code MALFORMED} result for null,
+     *         {@code ur-request:v1:<authFlowSessionId>} shape, or a typed {@code MALFORMED} result for null,
      *         blank, unrelated, unsupported-version, missing-version, missing-session-id,
      *         unsafe-session-id, or trailing-garbage values
      */
@@ -65,7 +65,7 @@ public final class UsernameRecoveryRequestReplayCodec {
         }
         try {
             return DecodeResult.decoded(
-                    new UsernameRecoverySessionId(value.substring(PREFIX.length())));
+                    new AuthFlowSessionId(value.substring(PREFIX.length())));
         } catch (IllegalArgumentException exception) {
             // Only the session-id validation failure is malformed input; unexpected runtime
             // defects must propagate instead of being silently converted into MALFORMED.
@@ -77,7 +77,7 @@ public final class UsernameRecoveryRequestReplayCodec {
      * Typed decode outcome: {@code DECODED} carries the session id; {@code MALFORMED} carries
      * none. {@link #toString()} never discloses the session id.
      */
-    public record DecodeResult(Status status, UsernameRecoverySessionId sessionId) {
+    public record DecodeResult(Status status, AuthFlowSessionId authFlowSessionId) {
 
         public enum Status {
             DECODED,
@@ -87,16 +87,16 @@ public final class UsernameRecoveryRequestReplayCodec {
         public DecodeResult {
             Objects.requireNonNull(status, "status must not be null");
             boolean decoded = status == Status.DECODED;
-            if (decoded && sessionId == null) {
-                throw new IllegalArgumentException("decoded result requires a sessionId");
+            if (decoded && authFlowSessionId == null) {
+                throw new IllegalArgumentException("decoded result requires a authFlowSessionId");
             }
-            if (!decoded && sessionId != null) {
-                throw new IllegalArgumentException("malformed result must not carry a sessionId");
+            if (!decoded && authFlowSessionId != null) {
+                throw new IllegalArgumentException("malformed result must not carry a authFlowSessionId");
             }
         }
 
-        public static DecodeResult decoded(UsernameRecoverySessionId sessionId) {
-            return new DecodeResult(Status.DECODED, sessionId);
+        public static DecodeResult decoded(AuthFlowSessionId authFlowSessionId) {
+            return new DecodeResult(Status.DECODED, authFlowSessionId);
         }
 
         public static DecodeResult malformed() {
@@ -109,8 +109,8 @@ public final class UsernameRecoveryRequestReplayCodec {
 
         @Override
         public String toString() {
-            return "DecodeResult[status=" + status + ", sessionId="
-                    + (sessionId == null ? null : "<redacted>") + "]";
+            return "DecodeResult[status=" + status + ", authFlowSessionId="
+                    + (authFlowSessionId == null ? null : "<redacted>") + "]";
         }
     }
 }

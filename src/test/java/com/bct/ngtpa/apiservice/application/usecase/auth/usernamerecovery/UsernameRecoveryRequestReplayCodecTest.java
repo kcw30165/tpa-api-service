@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyRecord;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryRequestReplayCodec.DecodeResult;
-import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySessionId;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -18,8 +18,8 @@ import org.junit.jupiter.api.Test;
  */
 class UsernameRecoveryRequestReplayCodecTest {
 
-    private static final UsernameRecoverySessionId SESSION_ID =
-            new UsernameRecoverySessionId("afs_opaque-1");
+    private static final AuthFlowSessionId SESSION_ID =
+            new AuthFlowSessionId("afs_opaque-1");
 
     @Test
     void encodePersistsOnlyNonSecretDescriptorAndSessionId() {
@@ -51,7 +51,7 @@ class UsernameRecoveryRequestReplayCodecTest {
                 UsernameRecoveryRequestReplayCodec.encode(SESSION_ID));
 
         assertThat(result.decoded()).isTrue();
-        assertThat(result.sessionId()).isEqualTo(SESSION_ID);
+        assertThat(result.authFlowSessionId()).isEqualTo(SESSION_ID);
     }
 
     @Test
@@ -59,7 +59,7 @@ class UsernameRecoveryRequestReplayCodecTest {
         DecodeResult result = UsernameRecoveryRequestReplayCodec.decode(null);
 
         assertThat(result.decoded()).isFalse();
-        assertThat(result.sessionId()).isNull();
+        assertThat(result.authFlowSessionId()).isNull();
     }
 
     @Test
