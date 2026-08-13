@@ -53,7 +53,17 @@ public final class UsernameRecoveryReservationService {
                 .flatMap(optional -> optional
                         .map(snapshot -> validateEnvelope(command, rawCsrfToken, snapshot))
                         .orElseGet(() -> Mono.just(UsernameRecoveryReservationResult.absent())))
-                .onErrorResume(ReservationPersistenceException.class,
+                .doOnError(
+                        ReservationPersistenceException.class,
+                        error -> log.error(
+                                "event=username-recovery.reservation.persistence-failed errorType={} causeType={}",
+                                error.getClass().getSimpleName(),
+                                error.getCause() == null
+                                        ? "none"
+                                        : error.getCause().getClass().getSimpleName(),
+                                error))
+                .onErrorResume(
+                        ReservationPersistenceException.class,
                         error -> Mono.just(UsernameRecoveryReservationResult.systemFailed()));
     }
 
@@ -77,6 +87,9 @@ public final class UsernameRecoveryReservationService {
             return Mono.just(csrf.get());
         }
         return workflowStatePort.load(command.authFlowSessionId())
+                .doOnNext(loadResult -> log.debug(
+                        "event=username-recovery.reservation.workflow-load outcome={}",
+                        loadResult.outcome()))
                 .onErrorMap(RuntimeException.class, ReservationPersistenceException::new)
                 .flatMap(loadResult -> handleWorkflowLoad(command, loadResult));
     }
@@ -84,15 +97,18 @@ public final class UsernameRecoveryReservationService {
     private Optional<UsernameRecoveryReservationResult> verifyCsrf(
             String rawCsrfToken, String storedHash) {
         try {
-            log.info("RAW=[" + rawCsrfToken + "]");
-            log.info("HASH=[" + storedHash + "]");
-
-            CsrfTokenValidationResult result = csrfTokenValidationService.validate(rawCsrfToken, storedHash);
-
-            log.info("VALID=[" + result.valid() + "]");
+            CsrfTokenValidationResult result =
+                    csrfTokenValidationService.validate(rawCsrfToken, storedHash);
+            log.debug(
+                    "event=username-recovery.csrf.validation-completed valid={}",
+                    result.valid());
             return result.valid() ? Optional.empty()
                     : Optional.of(UsernameRecoveryReservationResult.csrfInvalid());
         } catch (RuntimeException exception) {
+            log.error(
+                    "event=username-recovery.csrf.validation-failed errorType={}",
+                    exception.getClass().getSimpleName(),
+                    exception);
             return Optional.of(UsernameRecoveryReservationResult.systemFailed());
         }
     }
@@ -153,6 +169,10 @@ public final class UsernameRecoveryReservationService {
         UsernameRecoveryWorkflowStateMutationCommand mutation = new UsernameRecoveryWorkflowStateMutationCommand(
                 loaded.authFlowSessionId(), loaded.revision(), reserved);
         return workflowStatePort.update(mutation)
+                .doOnNext(result -> log.debug(
+                        "event=username-recovery.reservation.workflow-update outcome={} expectedRevision={}",
+                        result.outcome(),
+                        loaded.revision().value()))
                 .onErrorMap(RuntimeException.class, ReservationPersistenceException::new)
                 .map(this::mapMutation);
     }
