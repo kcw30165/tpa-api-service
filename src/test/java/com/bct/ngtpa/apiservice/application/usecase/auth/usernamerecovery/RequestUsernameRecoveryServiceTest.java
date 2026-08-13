@@ -626,7 +626,7 @@ class RequestUsernameRecoveryServiceTest {
         }
 
         @Test
-        void nonProductionEffectiveOverrideIsMaskedAndUsedAsRecipient() {
+        void nonProductionEffectiveOverrideIsUsedOnlyAsRecipientAndOriginalIsMasked() {
                 effectiveDestinationPort.result = new UsernameRecoveryEffectiveDestinationResult(
                                 "override@example.test", UsernameRecoveryVerifiedDestination.Channel.EMAIL);
 
@@ -634,7 +634,7 @@ class RequestUsernameRecoveryServiceTest {
                                 .assertNext(result -> {
                                         assertThat(result.outcome()).isEqualTo(
                                                         UsernameRecoveryRequestResult.Outcome.REQUEST_ACCEPTED);
-                                        assertThat(result.maskedDestination()).isEqualTo("o****e@example.test");
+                                        assertThat(result.maskedDestination()).isEqualTo("p****c@ah.ozk");
                                 })
                                 .verifyComplete();
 
@@ -803,6 +803,32 @@ class RequestUsernameRecoveryServiceTest {
 
                 assertThat(messageDeliveryPort.deliverCalls).isZero();
                 assertThat(idempotencyPort.completeCalls).isZero();
+        }
+
+        @Test
+        void completedReplayMasksOriginalDestinationWithoutConsultingCurrentOverride() {
+                effectiveDestinationPort.result = new UsernameRecoveryEffectiveDestinationResult(
+                                "changed-override@example.test",
+                                UsernameRecoveryVerifiedDestination.Channel.EMAIL);
+                effectiveDestinationPort.fails = true;
+                arrangeReplay(
+                                replayEnvelope(SESSION_ID, AuthFlowScenario.USERNAME_RECOVERY,
+                                                AuthFlowStatus.STARTED, NOW.plusSeconds(TTL_SECONDS)),
+                                replaySidecar(SESSION_ID, UsernameRecoveryDeliveryState.REQUESTED,
+                                                UsernameRecoveryWorkflowStatus.PARTIALLY_REQUESTED));
+
+                StepVerifier.create(service.request(command(), CSRF, null, null))
+                                .assertNext(result -> {
+                                        assertThat(result.outcome()).isEqualTo(
+                                                        UsernameRecoveryRequestResult.Outcome.REQUEST_ACCEPTED);
+                                        assertThat(result.maskedDestination()).isEqualTo("p****c@ah.ozk");
+                                        assertThat(result.destinationType())
+                                                        .isEqualTo(UsernameRecoveryDestinationType.EMAIL);
+                                })
+                                .verifyComplete();
+
+                assertThat(messageDeliveryPort.deliverCalls).isZero();
+                assertThat(effectiveDestinationPort.resolveCalls).isZero();
         }
 
         @Test
@@ -1077,10 +1103,12 @@ class RequestUsernameRecoveryServiceTest {
                 private UsernameRecoveryEffectiveDestinationResult result = new UsernameRecoveryEffectiveDestinationResult(
                                 "pepperc@ah.ozk", UsernameRecoveryVerifiedDestination.Channel.EMAIL);
                 private boolean fails;
+                private int resolveCalls;
 
                 @Override
                 public Mono<UsernameRecoveryEffectiveDestinationResult> resolve(
                                 UsernameRecoveryEffectiveDestinationCommand command) {
+                        resolveCalls++;
                         if (fails) {
                                 return Mono.error(
                                                 new IllegalStateException("effective destination resolution failure"));

@@ -15,8 +15,8 @@ import reactor.core.publisher.Mono;
  *
  * <p>The port is reactive and exposes only application contracts. Implementations own the
  * deployment classification and dedicated override configuration; the request use case remains
- * free of environment-specific destination logic and uses the resolved effective destination only
- * to build the masked destination for FE.
+ * free of environment-specific destination logic and uses the resolved effective destination only for physical delivery. Public masking is
+ * derived independently from the original verified destination in protected workflow state.
  */
 public interface UsernameRecoveryEffectiveDestinationPort {
 

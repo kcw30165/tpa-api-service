@@ -380,7 +380,7 @@ public final class RequestUsernameRecoveryService implements RequestUsernameReco
                         UsernameRecoveryIdempotencyReservation reservation,
                         Instant now,
                         Duration ttl) {
-                String maskedDestination = destinationMasker.mask(effective.channel(), effective.destination());
+                String maskedDestination = maskOriginalDestination(state);
                 MessageDeliveryCommand deliveryCommand = buildDeliveryCommand(
                                 state, candidate, effective, reservation.operationReference().value());
                 log.debug(
@@ -715,14 +715,18 @@ public final class RequestUsernameRecoveryService implements RequestUsernameReco
                                 && state.status() != UsernameRecoveryWorkflowStatus.COMPLETED) {
                         return Mono.error(UsernameRecoveryRequestException.systemFailure());
                 }
-                return resolveEffectiveDestination(state)
-                                .map(effective -> new UsernameRecoveryRequestResult(
-                                                UsernameRecoveryRequestResult.Outcome.REQUEST_ACCEPTED,
-                                                state.status(), command.schemeRef(),
-                                                destinationMasker.mask(effective.channel(), effective.destination()),
-                                                destinationType(effective.channel())));
+                return Mono.just(new UsernameRecoveryRequestResult(
+                                UsernameRecoveryRequestResult.Outcome.REQUEST_ACCEPTED,
+                                state.status(), command.schemeRef(),
+                                maskOriginalDestination(state),
+                                destinationType(state.destination().channel())));
         }
 
+
+        private String maskOriginalDestination(UsernameRecoveryWorkflowState state) {
+                UsernameRecoveryVerifiedDestination original = state.destination();
+                return destinationMasker.mask(original.channel(), original.value());
+        }
 
         private UsernameRecoverySessionCandidate findCandidate(
                         UsernameRecoveryWorkflowState state, UsernameRecoverySchemeRef schemeRef) {

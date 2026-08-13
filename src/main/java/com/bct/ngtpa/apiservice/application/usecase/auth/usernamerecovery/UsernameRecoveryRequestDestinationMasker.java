@@ -4,13 +4,13 @@ import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryVerifiedDestination
 import java.util.Objects;
 
 /**
- * Masks the effective Username Recovery delivery destination for FE display only.
+ * Masks the original verified Username Recovery destination for FE display only.
  *
  * <p>Design references: {@code docs/design/6-username-recovery/username-recovery-api-contract-design.md}
  * section 5 (request result {@code maskedDestination} example {@code p****c@ah.ozk}) and
  * {@code docs/design/6-username-recovery/username-recovery-nonprod-destination-override-design.md}
  * section 6 (the public response must never return the destination in full; the request use case
- * masks the effective value before exposing it).
+ * masks the original verified value before exposing it; a delivery override is transport-only).
  *
  * <p>Email keeps the first and last local-part characters around {@code ****}; mobile keeps only
  * the last four digits (reusing the shared Login/Forgot Password convention). The raw value never
