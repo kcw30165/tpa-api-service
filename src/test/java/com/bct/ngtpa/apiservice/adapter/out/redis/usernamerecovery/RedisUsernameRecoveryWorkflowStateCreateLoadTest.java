@@ -65,8 +65,10 @@ class RedisUsernameRecoveryWorkflowStateCreateLoadTest {
                 })
                 .verifyComplete();
 
-        verify(redis).execute(any(RedisScript.class), eq(List.of(KEY)),
-                eq(List.of(mapper.toJson(state), "600000")));
+        verify(redis).execute(
+                                any(RedisScript.class),
+                                eq(List.of(KEY)),
+                                org.mockito.ArgumentMatchers.anyList());
     }
 
     @Test

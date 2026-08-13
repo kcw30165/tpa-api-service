@@ -182,7 +182,7 @@ class UsernameRecoveryRequestCancelPublicContractIntegrationTest {
                 .jsonPath("$.success").isEqualTo(false)
                 .jsonPath("$.status").isEqualTo("SYSTEM_ERROR")
                 .jsonPath("$.result.nextStep").isEqualTo("RETURN_TO_LOGIN")
-                .jsonPath("$.errors[0].code").isEqualTo("err..workflow.system.unavailable");
+                .jsonPath("$.errors[0].code").isEqualTo("err.workflow.system.unavailable");
     }
 
     private static WebTestClient client(

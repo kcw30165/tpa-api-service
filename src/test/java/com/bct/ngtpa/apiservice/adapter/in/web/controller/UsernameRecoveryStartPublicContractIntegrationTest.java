@@ -183,7 +183,7 @@ class UsernameRecoveryStartPublicContractIntegrationTest {
                 .expectBody()
                 .jsonPath("$.success").isEqualTo(false)
                 .jsonPath("$.status").isEqualTo("SYSTEM_ERROR")
-                .jsonPath("$.errors[0].code").isEqualTo("err..workflow.system.unavailable")
+                .jsonPath("$.errors[0].code").isEqualTo("err.workflow.system.unavailable")
                 .jsonPath("$.errors[0].message").doesNotExist()
                 .consumeWith(result -> assertThat(new String(result.getResponseBody()))
                         .doesNotContain("redis-secret-failure"));

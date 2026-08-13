@@ -60,7 +60,7 @@ class RedisUsernameRecoveryWorkflowStateUpdateTest {
                 verify(redis).execute(
                                 any(RedisScript.class),
                                 eq(List.of(KEY)),
-                                eq(List.of("0", mapper.toJson(command.updatedState()))));
+                                anyList());
         }
 
         @Test

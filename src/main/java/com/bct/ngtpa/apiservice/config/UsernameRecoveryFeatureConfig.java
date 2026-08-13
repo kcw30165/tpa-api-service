@@ -9,6 +9,8 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRec
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryStartResponsePolicy;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
+import com.bct.ngtpa.apiservice.adapter.out.security.usernamerecovery.AesGcmUsernameRecoveryWorkflowStateProtectorAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.security.usernamerecovery.UsernameRecoveryWorkflowStateProtectionProperties;
 import com.bct.ngtpa.apiservice.adapter.out.redis.usernamerecovery.RedisUsernameRecoveryIdempotencyAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.usernamerecovery.RedisUsernameRecoveryIdempotencyJsonMapper;
 import com.bct.ngtpa.apiservice.adapter.out.redis.usernamerecovery.RedisUsernameRecoveryWorkflowStateAdapter;
@@ -24,6 +26,7 @@ import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryEffectiveDe
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryLookupPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStatePort;
+import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateProtectorPort;
 import com.bct.ngtpa.apiservice.application.service.auth.captcha.RegistrationCaptchaGateService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.CancelUsernameRecoveryService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.RequestUsernameRecoveryService;
@@ -84,8 +87,26 @@ public class UsernameRecoveryFeatureConfig {
 
     @Bean
     @ConditionalOnMissingBean
-    public RedisUsernameRecoveryWorkflowStateJsonMapper redisUsernameRecoveryWorkflowStateJsonMapper() {
-        return new RedisUsernameRecoveryWorkflowStateJsonMapper();
+    public UsernameRecoveryWorkflowStateProtectionProperties usernameRecoveryWorkflowStateProtectionProperties(
+            @Value("${auth-workflows.username-recovery.context-protection.enabled:true}") boolean enabled,
+            @Value("${auth-workflows.username-recovery.context-protection.key-version:${USERNAME_RECOVERY_CONTEXT_KEY_VERSION:v1}}") String keyVersion,
+            @Value("${auth-workflows.username-recovery.context-protection.secret:${USERNAME_RECOVERY_CONTEXT_SECRET:}}") String secret) {
+        return new UsernameRecoveryWorkflowStateProtectionProperties(enabled, keyVersion, secret);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(UsernameRecoveryWorkflowStateProtectorPort.class)
+    public UsernameRecoveryWorkflowStateProtectorPort usernameRecoveryWorkflowStateProtectorPort(
+            UsernameRecoveryWorkflowStateProtectionProperties properties) {
+        return new AesGcmUsernameRecoveryWorkflowStateProtectorAdapter(
+                properties.keyVersion(), properties.secret());
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public RedisUsernameRecoveryWorkflowStateJsonMapper redisUsernameRecoveryWorkflowStateJsonMapper(
+            UsernameRecoveryWorkflowStateProtectorPort protector) {
+        return new RedisUsernameRecoveryWorkflowStateJsonMapper(protector);
     }
 
     @Bean
