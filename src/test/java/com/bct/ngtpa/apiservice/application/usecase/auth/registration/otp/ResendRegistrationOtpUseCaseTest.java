@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
@@ -191,7 +192,7 @@ class ResendRegistrationOtpUseCaseTest {
                 "otp_old",
                 "m****r@example.com",
                 new RegistrationAuthFlowContext(
-                        RegistrationIdentityType.ID,
+                        MemberIdentityType.ID,
                         "3024102",
                         "04/04/1982",
                         RegistrationContactType.EMAIL,

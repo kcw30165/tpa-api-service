@@ -147,7 +147,7 @@ class AuthFlowSessionPropertiesBindingTest {
             assertScenario(scenarios.getRegistration(), true, true, 1800);
             assertScenario(scenarios.getLogin(), true, true, 900);
             assertScenario(scenarios.getForgotPassword(), true, true, 1800);
-            assertScenario(scenarios.getUsernameRecovery(), true, false, 900);
+            assertScenario(scenarios.getUsernameRecovery(), true, false, 600);
         });
     }
 

@@ -1,5 +1,6 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start;
 
+import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContextAttributeNames;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyAction;
@@ -9,7 +10,6 @@ import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyStartCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyStartOutcome;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordRequestHash;
-import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionConcurrencyPolicy;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionTtlPolicy;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
@@ -60,7 +60,7 @@ public final class StartForgotPasswordService implements StartForgotPasswordUseC
     private final boolean trimUsername;
     private final boolean caseInsensitiveUsername;
     private final boolean asciiLowercase;
-    private final Map<String, RegistrationIdentityType> tasIdentityTypeMapping;
+    private final Map<String, MemberIdentityType> tasIdentityTypeMapping;
 
     public StartForgotPasswordService(
             ForgotPasswordIdempotencyPort idempotencyPort,
@@ -76,7 +76,7 @@ public final class StartForgotPasswordService implements StartForgotPasswordUseC
             boolean trimUsername,
             boolean caseInsensitiveUsername,
             boolean asciiLowercase,
-            Map<String, RegistrationIdentityType> tasIdentityTypeMapping) {
+            Map<String, MemberIdentityType> tasIdentityTypeMapping) {
         this.idempotencyPort = Objects.requireNonNull(idempotencyPort, "idempotencyPort must not be null");
         this.lookupPort = Objects.requireNonNull(lookupPort, "lookupPort must not be null");
         this.contextProtector = Objects.requireNonNull(contextProtector, "contextProtector must not be null");
@@ -345,7 +345,7 @@ public final class StartForgotPasswordService implements StartForgotPasswordUseC
         }
     }
 
-    private String publicIdentityType(RegistrationIdentityType identityType) {
-        return identityType == RegistrationIdentityType.STAFFNO ? "STAFF_NO" : identityType.name();
+    private String publicIdentityType(MemberIdentityType identityType) {
+        return identityType == MemberIdentityType.STAFFNO ? "STAFF_NO" : identityType.name();
     }
 }

@@ -8,9 +8,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
-import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionCancellationPort;
@@ -131,7 +131,7 @@ class CompleteRegistrationExpiryOrderingTest {
 
         private RegistrationAuthFlowContext registrationContext() {
                 return new RegistrationAuthFlowContext(
-                                RegistrationIdentityType.GPFS,
+                                MemberIdentityType.GPFS,
                                 "identity-safe",
                                 "31/01/1980",
                                 RegistrationContactType.EMAIL,

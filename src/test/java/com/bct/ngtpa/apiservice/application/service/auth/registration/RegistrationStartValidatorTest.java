@@ -2,8 +2,8 @@ package com.bct.ngtpa.apiservice.application.service.auth.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
-import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationStartInput;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 
@@ -122,7 +122,7 @@ class RegistrationStartValidatorTest {
 
         assertThat(result.valid()).isTrue();
         assertThat(result.errors()).isEmpty();
-        assertThat(result.command().identityType()).isEqualTo(RegistrationIdentityType.GPFS);
+        assertThat(result.command().identityType()).isEqualTo(MemberIdentityType.GPFS);
         assertThat(result.command().dateOfBirth()).isEqualTo("31/01/1980");
         assertThat(result.command().contactType()).isEqualTo(RegistrationContactType.EMAIL);
         assertThat(result.command().maskedDestination()).isNotBlank();

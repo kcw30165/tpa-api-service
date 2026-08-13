@@ -5,21 +5,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
+import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
+
 class RegistrationStartModelTest {
 
     @Test
     void registrationIdentityTypeDefinesAllowedValues() {
-        assertThat(RegistrationIdentityType.values()).containsExactly(
-                RegistrationIdentityType.GPN,
-                RegistrationIdentityType.GPFS,
-                RegistrationIdentityType.STAFFNO,
-                RegistrationIdentityType.ID);
+        assertThat(MemberIdentityType.values()).containsExactly(
+                MemberIdentityType.GPN,
+                MemberIdentityType.GPFS,
+                MemberIdentityType.STAFFNO,
+                MemberIdentityType.ID);
     }
 
     @Test
     void modelsToStringDoNotExposePii() {
         var command = new RegistrationStartCommand(
-                RegistrationIdentityType.ID,
+                MemberIdentityType.ID,
                 "A1234567",
                 "15/01/1980",
                 RegistrationContactType.EMAIL,

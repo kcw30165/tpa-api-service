@@ -3,8 +3,8 @@ package com.bct.ngtpa.apiservice.adapter.out.security.registration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
-import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
 import org.junit.jupiter.api.Test;
 
@@ -55,7 +55,7 @@ class AesGcmRegistrationAuthFlowContextProtectorTest {
 
     private static RegistrationAuthFlowContext context() {
         return new RegistrationAuthFlowContext(
-                RegistrationIdentityType.ID,
+                MemberIdentityType.ID,
                 "3024102",
                 "04/04/1982",
                 RegistrationContactType.EMAIL,

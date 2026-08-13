@@ -5,8 +5,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
-import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContextAttributeNames;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowEncryptedContext;
@@ -146,7 +146,7 @@ class DefaultRegistrationProtectedAuthFlowContextLoaderCompletionTest {
 
         private RegistrationAuthFlowContext context() {
                 return new RegistrationAuthFlowContext(
-                                RegistrationIdentityType.GPFS,
+                                MemberIdentityType.GPFS,
                                 "identity-safe",
                                 "31/01/1980",
                                 RegistrationContactType.EMAIL,

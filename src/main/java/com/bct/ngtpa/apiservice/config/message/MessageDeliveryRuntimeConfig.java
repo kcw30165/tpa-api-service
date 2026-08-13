@@ -20,6 +20,8 @@ public class MessageDeliveryRuntimeConfig {
     private static final String LOGIN_OVERRIDE_PREFIX = "auth-workflows.login.message.destination-override";
     private static final String FORGOT_PASSWORD_OVERRIDE_PREFIX =
             "auth-workflows.forgot-password.message.destination-override";
+    private static final String USERNAME_RECOVERY_OVERRIDE_PREFIX =
+            "auth-workflows.username-recovery.message.destination-override";
 
     @Bean
     @ConditionalOnMissingBean(MessageDeliveryPort.class)
@@ -44,6 +46,7 @@ public class MessageDeliveryRuntimeConfig {
         AuthWorkflowProperties.DestinationOverride override = switch (command.scenario()) {
             case LOGIN -> requiredLoginOverride(properties);
             case FORGOT_PASSWORD -> requiredForgotPasswordOverride(properties);
+            case USERNAME_RECOVERY -> requiredUsernameRecoveryOverride(properties);
             default -> null;
         };
         if (override == null) {
@@ -77,10 +80,24 @@ public class MessageDeliveryRuntimeConfig {
         return override;
     }
 
+    private AuthWorkflowProperties.DestinationOverride requiredUsernameRecoveryOverride(
+            AuthWorkflowProperties properties) {
+        if (properties.getUsernameRecovery() == null) {
+            throw new IllegalStateException("auth-workflows.username-recovery configuration is required");
+        }
+        AuthWorkflowProperties.DestinationOverride override =
+                properties.getUsernameRecovery().getMessage().getDestinationOverride();
+        override.validateRequiredDestinations(USERNAME_RECOVERY_OVERRIDE_PREFIX);
+        return override;
+    }
+
     private String prefix(MessageDeliveryScenario scenario) {
-        return scenario == MessageDeliveryScenario.FORGOT_PASSWORD
-                ? FORGOT_PASSWORD_OVERRIDE_PREFIX
-                : LOGIN_OVERRIDE_PREFIX;
+        return switch (scenario) {
+            case LOGIN -> LOGIN_OVERRIDE_PREFIX;
+            case FORGOT_PASSWORD -> FORGOT_PASSWORD_OVERRIDE_PREFIX;
+            case USERNAME_RECOVERY -> USERNAME_RECOVERY_OVERRIDE_PREFIX;
+            default -> LOGIN_OVERRIDE_PREFIX;
+        };
     }
 
     @Bean

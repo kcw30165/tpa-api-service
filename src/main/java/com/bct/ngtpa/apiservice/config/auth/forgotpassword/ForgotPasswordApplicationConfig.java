@@ -4,7 +4,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowPropertie
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordCancelWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordIdentityWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.session.config.AuthFlowSessionProperties;
-import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationIdentityType;
+import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionConcurrencyMode;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionConcurrencyPolicy;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionOnNewFlowPolicy;
@@ -66,10 +66,10 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class ForgotPasswordApplicationConfig {
         @Bean
-        public Map<String, RegistrationIdentityType> forgotPasswordTasIdentityTypeMapping(
+        public Map<String, MemberIdentityType> forgotPasswordTasIdentityTypeMapping(
                         AuthWorkflowProperties properties) {
                 properties.validateForgotPasswordPolicy();
-                Map<String, RegistrationIdentityType> mapping = new LinkedHashMap<>();
+                Map<String, MemberIdentityType> mapping = new LinkedHashMap<>();
                 properties.getForgotPassword().getTasToPublicIdentityTypeMapping()
                                 .forEach((tasType, publicType) -> mapping.put(normalize(tasType),
                                                 toIdentityType(publicType)));
@@ -86,7 +86,7 @@ public class ForgotPasswordApplicationConfig {
                         Clock clock,
                         AuthWorkflowProperties workflows,
                         AuthFlowSessionProperties sessionProperties,
-                        Map<String, RegistrationIdentityType> forgotPasswordTasIdentityTypeMapping) {
+                        Map<String, MemberIdentityType> forgotPasswordTasIdentityTypeMapping) {
                 workflows.validateForgotPasswordPolicy();
                 var scenario = sessionProperties.getScenarios().getForgotPassword();
                 var forgotPassword = workflows.getForgotPassword();
@@ -182,9 +182,9 @@ public class ForgotPasswordApplicationConfig {
                 return new ForgotPasswordIdentityWebMapper();
         }
 
-        private static RegistrationIdentityType toIdentityType(String publicType) {
+        private static MemberIdentityType toIdentityType(String publicType) {
                 String normalized = normalize(publicType);
-                return RegistrationIdentityType.valueOf("STAFF_NO".equals(normalized) ? "STAFFNO" : normalized);
+                return MemberIdentityType.valueOf("STAFF_NO".equals(normalized) ? "STAFFNO" : normalized);
         }
 
         private static String normalize(String value) {

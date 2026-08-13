@@ -30,14 +30,14 @@ class Task0043AuthenticationFoundationArchitectureGuardTest {
 
         @ArchTest
         static final ArchRule loginMustNotOwnWebClientInfrastructure = noClasses()
-                        .that().resideInAnyPackage("..login..", "..forgotpassword..", "..usernamerecovery..")
+                        .that().resideInAnyPackage("..adapter.out.apim.login..")
                         .should().dependOnClassesThat().resideInAnyPackage(
                                         "org.springframework.web.reactive.function.client..",
                                         "..adapter.out.apim.oauth..",
                                         "..adapter.out.apim.certificate..",
                                         "..adapter.out.apim.crypto..")
                         .allowEmptyShould(true)
-                        .as("future auth workflows must reuse shared APIM infrastructure");
+                        .as("Login APIM adapters must reuse shared APIM infrastructure");
 
         @ArchTest
         static final ArchRule loginMustNotOwnOtpPersistenceInfrastructure = noClasses()

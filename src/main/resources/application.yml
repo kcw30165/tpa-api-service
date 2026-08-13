@@ -97,7 +97,7 @@ auth-flow-session:
     username-recovery:
       enabled: true
       required: false
-      ttl-seconds: 900
+      ttl-seconds: 600
 
 auth-workflows:
   forgot-password:
@@ -135,10 +135,6 @@ auth-workflows:
       max-resend-attempts: 5
       invalidate-previous-on-resend: true
       reset-verify-attempts-on-resend: true
-      sms-template: "Your BCT forgot password verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
-      email-template:
-        subject: "BCT forgot password verification code"
-        body: "Your BCT forgot password verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
       localized-template:
         en:
           sms: "Your BCT forgot password verification code is {code}. It is valid for {ttlValue} {ttlUnit}."
@@ -240,6 +236,17 @@ auth-workflows:
     account:
       identifier-width: ${LOGIN_ACCOUNT_IDENTIFIER_WIDTH:8}
       identifier-pad-character: "0"
+  username-recovery:
+    session:
+      ttl-seconds: 600
+    message:
+      destination-override:
+        mobile: ${USERNAME_RECOVERY_MESSAGE_OVERRIDE_MOBILE:}
+        email: ${USERNAME_RECOVERY_MESSAGE_OVERRIDE_EMAIL:}
+    template:
+      email-subject: ${USERNAME_RECOVERY_EMAIL_SUBJECT:BCT username recovery}
+      email-body: ${USERNAME_RECOVERY_EMAIL_BODY:Your BCT username is {username}.}
+      sms-body: ${USERNAME_RECOVERY_SMS_BODY:Your BCT username is {username}.}
   registration:
     pre-start-challenge:
       enabled: true

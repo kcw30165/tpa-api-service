@@ -1,17 +1,17 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start;
 
-import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationIdentityType;
+import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 
 public record ForgotPasswordUsernameLookupResult(
         ForgotPasswordUsernameLookupStatus status,
         String customerId,
         String userId,
-        RegistrationIdentityType identityType) {
+        MemberIdentityType identityType) {
 
     public static ForgotPasswordUsernameLookupResult confirmed(
             String customerId,
             String userId,
-            RegistrationIdentityType identityType) {
+            MemberIdentityType identityType) {
         return new ForgotPasswordUsernameLookupResult(
                 ForgotPasswordUsernameLookupStatus.CONFIRMED,
                 customerId,

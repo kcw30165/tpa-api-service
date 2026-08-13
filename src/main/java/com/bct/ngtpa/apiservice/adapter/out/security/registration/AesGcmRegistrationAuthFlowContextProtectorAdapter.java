@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.out.security.registration;
 
+import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
-import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowEncryptedContext;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationAuthFlowContextProtectorPort;
@@ -85,7 +85,7 @@ public class AesGcmRegistrationAuthFlowContextProtectorAdapter implements Regist
             byte[] plaintext = cipher.doFinal(encrypted);
             Payload payload = objectMapper.readValue(plaintext, Payload.class);
             return new RegistrationAuthFlowContext(
-                    RegistrationIdentityType.valueOf(payload.identityType()),
+                    MemberIdentityType.valueOf(payload.identityType()),
                     payload.identityValue(),
                     payload.dateOfBirth(),
                     RegistrationContactType.valueOf(payload.contactType()),

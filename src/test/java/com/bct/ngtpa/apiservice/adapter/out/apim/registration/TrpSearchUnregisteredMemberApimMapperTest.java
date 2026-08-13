@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchUnregMemberApimRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchUnregMemberApimMapper;
+import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
-import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupCommand;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -16,7 +16,7 @@ class TrpSearchUnregMemberApimMapperTest {
     @Test
     void apimRequestMapsEmailContact() {
         var request = mapper.toApimRequest(new RegistrationLookupCommand(
-                RegistrationIdentityType.GPFS,
+                MemberIdentityType.GPFS,
                 "1234567890",
                 "31/01/1980",
                 RegistrationContactType.EMAIL,
@@ -32,7 +32,7 @@ class TrpSearchUnregMemberApimMapperTest {
     @Test
     void apimRequestMapsMobileContact() {
         var request = mapper.toApimRequest(new RegistrationLookupCommand(
-                RegistrationIdentityType.ID,
+                MemberIdentityType.ID,
                 "A1234567",
                 "15/01/1980",
                 RegistrationContactType.MOBILE,
@@ -47,7 +47,7 @@ class TrpSearchUnregMemberApimMapperTest {
 
     @Test
     void apimRequestUsesIdentityTypeDirectly() {
-        for (RegistrationIdentityType type : RegistrationIdentityType.values()) {
+        for (MemberIdentityType type : MemberIdentityType.values()) {
             var request = mapper.toApimRequest(new RegistrationLookupCommand(
                     type,
                     "SAFEVALUE",

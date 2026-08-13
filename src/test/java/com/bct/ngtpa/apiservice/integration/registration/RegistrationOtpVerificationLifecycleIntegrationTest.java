@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.integration.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
@@ -211,7 +212,7 @@ class RegistrationOtpVerificationLifecycleIntegrationTest {
         private RegistrationProtectedAuthFlowContextResult valid() {
             return RegistrationProtectedAuthFlowContextResult.valid(activeOtpId,
                     "m****r@example.com", new RegistrationAuthFlowContext(
-                            RegistrationIdentityType.ID, "3024102", "04/04/1982",
+                            MemberIdentityType.ID, "3024102", "04/04/1982",
                             RegistrationContactType.EMAIL, "member@example.com"));
         }
 

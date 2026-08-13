@@ -2,7 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.mapper;
 
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.TrpChkCustIdApimEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpChkCustIdApimDataItem;
-import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationIdentityType;
+import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.ForgotPasswordUsernameLookupResult;
 import java.util.List;
 import java.util.Map;
@@ -14,9 +14,9 @@ public final class TrpChkCustIdForgotPasswordResultMapper {
     private static final Logger LOGGER = LoggerFactory.getLogger(TrpChkCustIdForgotPasswordResultMapper.class);
     private static final String USERNAME_NOT_FOUND = "err.tpa.cust.id.not.registered";
 
-    private final Map<String, RegistrationIdentityType> tasIdentityTypeMapping;
+    private final Map<String, MemberIdentityType> tasIdentityTypeMapping;
 
-    public TrpChkCustIdForgotPasswordResultMapper(Map<String, RegistrationIdentityType> tasIdentityTypeMapping) {
+    public TrpChkCustIdForgotPasswordResultMapper(Map<String, MemberIdentityType> tasIdentityTypeMapping) {
         this.tasIdentityTypeMapping = Map.copyOf(Objects.requireNonNull(
                 tasIdentityTypeMapping,
                 "tasIdentityTypeMapping must not be null"));
@@ -54,7 +54,7 @@ public final class TrpChkCustIdForgotPasswordResultMapper {
             return ForgotPasswordUsernameLookupResult.systemFailed();
         }
 
-        RegistrationIdentityType identityType = tasIdentityTypeMapping.get(tasIdentityType);
+        MemberIdentityType identityType = tasIdentityTypeMapping.get(tasIdentityType);
         if (identityType == null) {
             LOGGER.error("event=forgot-password.username-lookup.invalid-response reason=unmapped-id-type tasIdentityType={} configuredTypes={}",
                     tasIdentityType, tasIdentityTypeMapping.keySet());
@@ -62,7 +62,7 @@ public final class TrpChkCustIdForgotPasswordResultMapper {
         }
 
         LOGGER.info("event=forgot-password.username-lookup.confirmed tasIdentityType={} publicIdentityType={}",
-                tasIdentityType, identityType == RegistrationIdentityType.STAFFNO ? "STAFF_NO" : identityType.name());
+                tasIdentityType, identityType == MemberIdentityType.STAFFNO ? "STAFF_NO" : identityType.name());
         return ForgotPasswordUsernameLookupResult.confirmed(customerId, userId, identityType);
     }
 
