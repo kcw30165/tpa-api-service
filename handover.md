@@ -1,38 +1,29 @@
-# Username Recovery Handover
+# Username Recovery Single-Envelope Migration Handover
 
-## Completed fixes
+## Approved target
 
-### Protected sidecar persistence
+One revisioned `AuthFlowSession` Redis record owns identity, lifecycle, CSRF, expiry, TTL, and concurrency. Feature-sensitive Username Recovery state is encrypted inside `AuthFlowSessionData.attributes`.
 
-- Complete workflow payload protected with AES-GCM.
-- Redis retains only opaque identity, revision, key version, algorithm, and ciphertext.
+## Stage A completed
 
-### Retained cancellation lifecycle
+- Added `UsernameRecoveryAuthFlowContext` without session identity or independent revision.
+- Added capability-specific encrypted context and attribute names under `usernameRecoveryContext.*`.
+- Added AES-GCM protection bound by AAD to capability, key version, and auth-flow session ID.
+- Added framework-free envelope binding/load support.
+- Added round-trip, randomized IV, tamper, wrong-key, session-rebinding, missing-context, and envelope-field preservation tests.
+- Stage A is additive. Existing sidecar runtime behavior remains unchanged until Stage B.
 
-- Envelope and sidecar transition to `CANCELLED` through independent revision-aware CAS operations.
-- Normal cancellation deletes neither record and preserves expiry.
+## Remaining stages
 
-### Original verified destination masking
+1. Stage B: Start flow writes the protected context directly into the newly created envelope and stops creating the sidecar.
+2. Stage C: Reservation and request mutate context and envelope lifecycle through one envelope CAS.
+3. Stage D: Cancellation and replay use only the envelope.
+4. Stage E: Remove sidecar ports, adapters, scripts, configuration, and tests; add one-record architecture guards.
 
-- Non-production override is used only as the physical recipient.
-- Live and replay responses mask the original verified destination.
+## Invariants
 
-### Final-request envelope completion
-
-- A completed sidecar triggers revision-aware auth-flow envelope completion.
-- Partial workflows leave the envelope `STARTED`.
-- Completion preserves the original expiry and remaining Redis TTL.
-- Idempotency completion is deferred until envelope completion succeeds.
-- Envelope completion uncertainty records stable `UNKNOWN_OUTCOME`, does not complete idempotency, and never resends.
-- Replay validates envelope/sidecar lifecycle consistency.
-
-## Runtime configuration
-
-```bash
-export USERNAME_RECOVERY_CONTEXT_SECRET="replace-with-a-secret-of-at-least-32-characters"
-export USERNAME_RECOVERY_CONTEXT_KEY_VERSION="v1"
-```
-
-## Known baseline failures
-
-Three unrelated controller architecture failures may remain for existing controller logging and exception-message inspection.
+- No dual write after Stage B cutover.
+- No plaintext or sidecar fallback.
+- One `sessionRevision`, one `expiresAt`, one Redis TTL.
+- Final candidate request and envelope completion occur in one CAS.
+- Non-production override remains transport-only.
