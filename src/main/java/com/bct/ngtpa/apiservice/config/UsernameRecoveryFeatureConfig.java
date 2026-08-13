@@ -10,6 +10,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRec
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
 import com.bct.ngtpa.apiservice.adapter.out.security.usernamerecovery.AesGcmUsernameRecoveryWorkflowStateProtectorAdapter;
+import com.bct.ngtpa.apiservice.adapter.out.security.usernamerecovery.AesGcmUsernameRecoveryAuthFlowContextProtectorAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.security.usernamerecovery.UsernameRecoveryWorkflowStateProtectionProperties;
 import com.bct.ngtpa.apiservice.adapter.out.redis.usernamerecovery.RedisUsernameRecoveryIdempotencyAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.usernamerecovery.RedisUsernameRecoveryIdempotencyJsonMapper;
@@ -26,6 +27,8 @@ import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryEffectiveDe
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryLookupPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStatePort;
+import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryAuthFlowContextProtectorPort;
+import com.bct.ngtpa.apiservice.application.service.auth.usernamerecovery.context.UsernameRecoveryAuthFlowContextBinding;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateProtectorPort;
 import com.bct.ngtpa.apiservice.application.service.auth.captcha.RegistrationCaptchaGateService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.CancelUsernameRecoveryService;
@@ -48,21 +51,31 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 
 /**
- * Repair 024A Spring composition for the Username Recovery controller prerequisites.
+ * Repair 024A Spring composition for the Username Recovery controller
+ * prerequisites.
  *
- * <p>Wires the Username Recovery runtime beans around the generic auth-flow envelope, typed
- * workflow-state sidecar, Redis-backed idempotency port, CSRF validation/reservation services,
+ * <p>
+ * Wires the Username Recovery runtime beans around the generic auth-flow
+ * envelope, typed
+ * workflow-state sidecar, Redis-backed idempotency port, CSRF
+ * validation/reservation services,
  * the three use-case services, the
  * stateless web mappers and response policies, and the Spring-free
  * {@link UsernameRecoveryCookieWriter} with the exact UR cookie policy (path
- * {@code /api/v1/auth/username-recovery}, Max-Age = UR session TTL, HttpOnly per cookie, Secure
- * from {@code USERNAME_RECOVERY_COOKIE_SECURE} defaulting to {@code true}, SameSite Strict, no
- * Domain). Every bean is declared {@code @ConditionalOnMissingBean} so a later task (024/025) may
+ * {@code /api/v1/auth/username-recovery}, Max-Age = UR session TTL, HttpOnly
+ * per cookie, Secure
+ * from {@code USERNAME_RECOVERY_COOKIE_SECURE} defaulting to {@code true},
+ * SameSite Strict, no
+ * Domain). Every bean is declared {@code @ConditionalOnMissingBean} so a later
+ * task (024/025) may
  * override any single bean without a duplicate-definition failure.
  *
- * <p>Location note: this class lives in the global {@code config} package because it legitimately
+ * <p>
+ * Location note: this class lives in the global {@code config} package because
+ * it legitimately
  * composes {@code adapter.out} Redis adapters; the committed
- * {@code adapter.in must not depend on adapter.out} architecture rule prevents placing it under
+ * {@code adapter.in must not depend on adapter.out} architecture rule prevents
+ * placing it under
  * {@code adapter/in/web/auth/config}.
  */
 @Configuration
@@ -92,6 +105,21 @@ public class UsernameRecoveryFeatureConfig {
             @Value("${auth-workflows.username-recovery.context-protection.key-version:${USERNAME_RECOVERY_CONTEXT_KEY_VERSION:v1}}") String keyVersion,
             @Value("${auth-workflows.username-recovery.context-protection.secret:${USERNAME_RECOVERY_CONTEXT_SECRET:}}") String secret) {
         return new UsernameRecoveryWorkflowStateProtectionProperties(enabled, keyVersion, secret);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(UsernameRecoveryAuthFlowContextProtectorPort.class)
+    public UsernameRecoveryAuthFlowContextProtectorPort usernameRecoveryAuthFlowContextProtectorPort(
+            UsernameRecoveryWorkflowStateProtectionProperties properties) {
+        return new AesGcmUsernameRecoveryAuthFlowContextProtectorAdapter(
+                properties.keyVersion(), properties.secret());
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public UsernameRecoveryAuthFlowContextBinding usernameRecoveryAuthFlowContextBinding(
+            UsernameRecoveryAuthFlowContextProtectorPort protector) {
+        return new UsernameRecoveryAuthFlowContextBinding(protector);
     }
 
     @Bean
@@ -167,7 +195,7 @@ public class UsernameRecoveryFeatureConfig {
             RegistrationCaptchaGateService captchaGateService,
             UsernameRecoveryLookupPort lookupPort,
             AuthFlowSessionPort authFlowSessionPort,
-            UsernameRecoveryWorkflowStatePort workflowStatePort,
+            UsernameRecoveryAuthFlowContextBinding contextBinding,
             CsrfTokenGenerator csrfTokenGenerator,
             CsrfTokenHasher csrfTokenHasher,
             Clock clock,
@@ -179,7 +207,7 @@ public class UsernameRecoveryFeatureConfig {
                 captchaGateService,
                 lookupPort,
                 authFlowSessionPort,
-                workflowStatePort,
+                contextBinding,
                 csrfTokenGenerator,
                 csrfTokenHasher,
                 clock,

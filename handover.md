@@ -1,29 +1,20 @@
 # Username Recovery Single-Envelope Migration Handover
 
-## Approved target
-
-One revisioned `AuthFlowSession` Redis record owns identity, lifecycle, CSRF, expiry, TTL, and concurrency. Feature-sensitive Username Recovery state is encrypted inside `AuthFlowSessionData.attributes`.
-
 ## Stage A completed
 
-- Added `UsernameRecoveryAuthFlowContext` without session identity or independent revision.
-- Added capability-specific encrypted context and attribute names under `usernameRecoveryContext.*`.
-- Added AES-GCM protection bound by AAD to capability, key version, and auth-flow session ID.
-- Added framework-free envelope binding/load support.
-- Added round-trip, randomized IV, tamper, wrong-key, session-rebinding, missing-context, and envelope-field preservation tests.
-- Stage A is additive. Existing sidecar runtime behavior remains unchanged until Stage B.
+Capability-specific protected context, AES-GCM protection, attribute namespace, and framework-free envelope binding are implemented and tested.
 
-## Remaining stages
+## Stage B completed
 
-1. Stage B: Start flow writes the protected context directly into the newly created envelope and stops creating the sidecar.
-2. Stage C: Reservation and request mutate context and envelope lifecycle through one envelope CAS.
-3. Stage D: Cancellation and replay use only the envelope.
-4. Stage E: Remove sidecar ports, adapters, scripts, configuration, and tests; add one-record architecture guards.
+- START creates one revisioned auth-flow envelope containing the encrypted Username Recovery context.
+- START creates no workflow-state sidecar and has no sidecar dependency.
+- START replay reads only the protected envelope context and rotates CSRF through envelope CAS without extending expiry.
+- Expired protected envelopes fail closed before context loading or CSRF rotation.
+- Old sidecar-only START replay fails closed.
+- Reservation, request, and cancellation retain temporary sidecar dependencies until Stages C and D.
 
-## Invariants
+## Remaining
 
-- No dual write after Stage B cutover.
-- No plaintext or sidecar fallback.
-- One `sessionRevision`, one `expiresAt`, one Redis TTL.
-- Final candidate request and envelope completion occur in one CAS.
-- Non-production override remains transport-only.
+- Stage C: reservation and request use one envelope CAS, including atomic final-candidate and `COMPLETED` transition.
+- Stage D: cancellation and replay use only the envelope.
+- Stage E: remove sidecar infrastructure and add one-record architecture guards.
