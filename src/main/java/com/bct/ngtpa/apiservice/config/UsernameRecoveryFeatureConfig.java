@@ -56,7 +56,7 @@ import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
  * <p>
  * Wires the Username Recovery runtime beans around the generic auth-flow
  * envelope, typed
- * workflow-state sidecar, Redis-backed idempotency port, CSRF
+ * protected auth-flow context, Redis-backed idempotency port, CSRF
  * validation/reservation services,
  * the three use-case services, the
  * stateless web mappers and response policies, and the Spring-free
@@ -239,7 +239,7 @@ public class UsernameRecoveryFeatureConfig {
             UsernameRecoveryCancelFingerprintGenerator fingerprintGenerator,
             UsernameRecoveryIdempotencyPort idempotencyPort,
             AuthFlowSessionPort authFlowSessionPort,
-            UsernameRecoveryWorkflowStatePort workflowStatePort,
+            UsernameRecoveryAuthFlowContextBinding contextBinding,
             CsrfTokenValidationService csrfTokenValidationService,
             CorsProperties corsProperties,
             Clock clock,
@@ -248,7 +248,7 @@ public class UsernameRecoveryFeatureConfig {
                 fingerprintGenerator,
                 idempotencyPort,
                 authFlowSessionPort,
-                workflowStatePort,
+                contextBinding,
                 csrfTokenValidationService,
                 corsProperties.getAllowedOrigins(),
                 clock,

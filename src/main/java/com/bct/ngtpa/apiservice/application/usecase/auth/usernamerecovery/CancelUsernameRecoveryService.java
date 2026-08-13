@@ -3,8 +3,9 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery;
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryCancelCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryCancelResult;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationOutcome;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
 import com.bct.ngtpa.apiservice.application.port.in.CancelUsernameRecoveryUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyAction;
@@ -15,14 +16,9 @@ import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotency
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyRecord;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyRecord.ReplaySnapshot;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyReservation;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateLoadResult;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateMutationCommand;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateMutationOutcome;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStatePort;
+import com.bct.ngtpa.apiservice.application.service.auth.usernamerecovery.context.UsernameRecoveryAuthFlowContextBinding;
 import com.bct.ngtpa.apiservice.application.service.security.csrf.OriginRefererValidator;
-import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenValidationResult;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenValidationService;
-import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryWorkflowStatus;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Duration;
@@ -32,12 +28,12 @@ import java.util.List;
 import java.util.Objects;
 import reactor.core.publisher.Mono;
 
-/** Model B cancellation orchestration retaining terminal records until their existing TTL expires. */
+/** Single-envelope cancellation retaining the protected context until the original TTL expires. */
 public final class CancelUsernameRecoveryService implements CancelUsernameRecoveryUseCase {
     private final UsernameRecoveryCancelFingerprintGenerator fingerprintGenerator;
     private final UsernameRecoveryIdempotencyPort idempotencyPort;
     private final AuthFlowSessionPort authFlowSessionPort;
-    private final UsernameRecoveryWorkflowStatePort workflowStatePort;
+    private final UsernameRecoveryAuthFlowContextBinding contextBinding;
     private final OriginRefererValidator originRefererValidator = new OriginRefererValidator();
     private final CsrfTokenValidationService csrfTokenValidationService;
     private final List<String> allowedOrigins;
@@ -49,18 +45,18 @@ public final class CancelUsernameRecoveryService implements CancelUsernameRecove
             UsernameRecoveryCancelFingerprintGenerator fingerprintGenerator,
             UsernameRecoveryIdempotencyPort idempotencyPort,
             AuthFlowSessionPort authFlowSessionPort,
-            UsernameRecoveryWorkflowStatePort workflowStatePort,
+            UsernameRecoveryAuthFlowContextBinding contextBinding,
             CsrfTokenValidationService csrfTokenValidationService,
             List<String> allowedOrigins,
             Clock clock,
             int ttlSeconds) {
-        this.fingerprintGenerator = Objects.requireNonNull(fingerprintGenerator, "fingerprintGenerator must not be null");
-        this.idempotencyPort = Objects.requireNonNull(idempotencyPort, "idempotencyPort must not be null");
-        this.authFlowSessionPort = Objects.requireNonNull(authFlowSessionPort, "authFlowSessionPort must not be null");
-        this.workflowStatePort = Objects.requireNonNull(workflowStatePort, "workflowStatePort must not be null");
-        this.csrfTokenValidationService = Objects.requireNonNull(csrfTokenValidationService, "csrfTokenValidationService must not be null");
+        this.fingerprintGenerator = Objects.requireNonNull(fingerprintGenerator);
+        this.idempotencyPort = Objects.requireNonNull(idempotencyPort);
+        this.authFlowSessionPort = Objects.requireNonNull(authFlowSessionPort);
+        this.contextBinding = Objects.requireNonNull(contextBinding);
+        this.csrfTokenValidationService = Objects.requireNonNull(csrfTokenValidationService);
         this.allowedOrigins = allowedOrigins == null ? List.of() : List.copyOf(allowedOrigins);
-        this.clock = Objects.requireNonNull(clock, "clock must not be null");
+        this.clock = Objects.requireNonNull(clock);
         if (ttlSeconds <= 0) throw new IllegalArgumentException("ttlSeconds must be positive");
         this.ttlSeconds = ttlSeconds;
     }
@@ -78,32 +74,24 @@ public final class CancelUsernameRecoveryService implements CancelUsernameRecove
         catch (IllegalArgumentException error) { return Mono.error(UsernameRecoveryCancelException.validationFailed()); }
         var fingerprint = fingerprintGenerator.derive(command);
         var now = clock.instant();
-        var operation = generateOperationReference();
         var ttl = Duration.ofSeconds(ttlSeconds);
         var reserve = new UsernameRecoveryIdempotencyPort.ReserveCommand(
-                UsernameRecoveryIdempotencyAction.CANCEL, key, fingerprint, operation, now, ttl);
+                UsernameRecoveryIdempotencyAction.CANCEL, key, fingerprint,
+                generateOperationReference(), now, ttl);
         return idempotencyPort.reserve(reserve)
                 .onErrorMap(Exception.class, CancelPersistenceException::new)
-                .flatMap(result -> handleReservation(command, rawCsrfToken, origin, referer,
-                        key, fingerprint, now, ttl, result))
+                .flatMap(result -> switch (result.outcome()) {
+                    case RESERVED -> proceed(command, rawCsrfToken, origin, referer, key, fingerprint,
+                            result.reservation(), now, ttl);
+                    case COMPLETED_REPLAY -> replay(key, command, now);
+                    case DUPLICATE_IN_PROGRESS -> Mono.error(UsernameRecoveryCancelException.idempotencyInProgress());
+                    case KEY_REUSED_WITH_DIFFERENT_REQUEST -> Mono.error(UsernameRecoveryCancelException.keyReused());
+                    case UNKNOWN_OUTCOME_EXISTING -> Mono.error(UsernameRecoveryCancelException.unknownOutcomeExisting());
+                    case SYSTEM_FAILURE -> Mono.error(UsernameRecoveryCancelException.systemFailure());
+                    default -> throw new IllegalStateException("unexpected idempotency reserve outcome: " + result.outcome());
+                })
                 .onErrorResume(CancelPersistenceException.class,
                         error -> Mono.error(UsernameRecoveryCancelException.systemFailure(error)));
-    }
-
-    private Mono<UsernameRecoveryCancelResult> handleReservation(
-            UsernameRecoveryCancelCommand command, String rawCsrfToken, String origin, String referer,
-            UsernameRecoveryIdempotencyKey key, UsernameRecoveryIdempotencyFingerprint fingerprint,
-            Instant now, Duration ttl, UsernameRecoveryIdempotencyPort.ReservationResult result) {
-        return switch (result.outcome()) {
-            case RESERVED -> proceed(command, rawCsrfToken, origin, referer, key, fingerprint,
-                    result.reservation(), now, ttl);
-            case COMPLETED_REPLAY -> replay(key);
-            case DUPLICATE_IN_PROGRESS -> Mono.error(UsernameRecoveryCancelException.idempotencyInProgress());
-            case KEY_REUSED_WITH_DIFFERENT_REQUEST -> Mono.error(UsernameRecoveryCancelException.keyReused());
-            case UNKNOWN_OUTCOME_EXISTING -> Mono.error(UsernameRecoveryCancelException.unknownOutcomeExisting());
-            case SYSTEM_FAILURE -> Mono.error(UsernameRecoveryCancelException.systemFailure());
-            default -> throw new IllegalStateException("unexpected idempotency reserve outcome: " + result.outcome());
-        };
     }
 
     private Mono<UsernameRecoveryCancelResult> proceed(
@@ -111,13 +99,11 @@ public final class CancelUsernameRecoveryService implements CancelUsernameRecove
             UsernameRecoveryIdempotencyKey key, UsernameRecoveryIdempotencyFingerprint fingerprint,
             UsernameRecoveryIdempotencyReservation reservation, Instant now, Duration ttl) {
         return authFlowSessionPort.loadSnapshot(command.authFlowSessionId())
-                .onErrorResume(Exception.class, error -> Mono.error(new CancelPersistenceException(error)))
+                .onErrorMap(Exception.class, CancelPersistenceException::new)
                 .flatMap(optional -> optional
-                        .<Mono<UsernameRecoveryCancelResult>>map(snapshot -> handleEnvelope(snapshot,
-                                command, rawCsrfToken, origin, referer, key, fingerprint,
-                                reservation, now, ttl))
-                        .orElseGet(() -> completeIdempotency(
-                                key, fingerprint, reservation, now, ttl)))
+                        .map(snapshot -> handleEnvelope(snapshot, command, rawCsrfToken, origin, referer,
+                                key, fingerprint, reservation, now, ttl))
+                        .orElseGet(() -> completeIdempotency(key, fingerprint, reservation, now, ttl)))
                 .onErrorResume(CancelPersistenceException.class,
                         error -> recordUnknownOutcome(key, fingerprint, reservation, now, ttl));
     }
@@ -132,77 +118,71 @@ public final class CancelUsernameRecoveryService implements CancelUsernameRecove
                 || session.scenario() != AuthFlowScenario.USERNAME_RECOVERY) {
             return Mono.error(UsernameRecoveryCancelException.systemFailure());
         }
-        if (!session.isExpired(now) && !session.isTerminal()) {
-            if (!originRefererAllowed(origin, referer)) {
-                return Mono.error(UsernameRecoveryCancelException.securityInvalid());
-            }
-            final CsrfTokenValidationResult validation;
-            try {
-                validation = csrfTokenValidationService.validate(rawCsrfToken, session.csrfTokenHash());
-            } catch (Exception error) {
-                return Mono.error(UsernameRecoveryCancelException.systemFailure());
-            }
-            if (!validation.valid()) {
-                return Mono.error(UsernameRecoveryCancelException.securityInvalid());
-            }
-        }
-        if (session.status() == com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus.CANCELLED) {
-            return cancelSidecarAndSettle(command, key, fingerprint, reservation, now, ttl);
-        }
-        if (session.isExpired(now) || session.isTerminal()) {
+        if (session.isExpired(now)) {
             return completeIdempotency(key, fingerprint, reservation, now, ttl);
         }
-        return authFlowSessionPort.cancelRevisioned(snapshot, now)
-                .onErrorMap(Exception.class, CancelPersistenceException::new)
+        if (session.status() == AuthFlowStatus.CANCELLED) {
+            return validateRetainedContext(session)
+                    .then(completeIdempotency(key, fingerprint, reservation, now, ttl));
+        }
+        if (session.isTerminal()) {
+            return completeIdempotency(key, fingerprint, reservation, now, ttl);
+        }
+        if (!originRefererAllowed(origin, referer)) {
+            return Mono.error(UsernameRecoveryCancelException.securityInvalid());
+        }
+        try {
+            if (!csrfTokenValidationService.validate(rawCsrfToken, session.csrfTokenHash()).valid()) {
+                return Mono.error(UsernameRecoveryCancelException.securityInvalid());
+            }
+        } catch (RuntimeException error) {
+            return Mono.error(UsernameRecoveryCancelException.systemFailure(error));
+        }
+        return validateRetainedContext(session)
+                .then(Mono.defer(() -> authFlowSessionPort.cancelRevisioned(snapshot, now)
+                        .onErrorMap(Exception.class, CancelPersistenceException::new)))
                 .flatMap(result -> result.outcome() == AuthFlowSessionMutationOutcome.APPLIED
-                        ? cancelSidecarAndSettle(command, key, fingerprint, reservation, now, ttl)
+                        ? validateCancelledResult(result.snapshot(), session, key, fingerprint,
+                                reservation, now, ttl)
                         : Mono.error(new CancelPersistenceException(
-                                new IllegalStateException("auth-flow cancel outcome uncertain"))));
+                                new IllegalStateException("auth-flow cancel outcome uncertain: " + result.outcome()))));
     }
 
-    private Mono<UsernameRecoveryCancelResult> cancelSidecarAndSettle(
-            UsernameRecoveryCancelCommand command, UsernameRecoveryIdempotencyKey key,
-            UsernameRecoveryIdempotencyFingerprint fingerprint,
-            UsernameRecoveryIdempotencyReservation reservation, Instant now, Duration ttl) {
-        return workflowStatePort.load(command.authFlowSessionId())
-                .onErrorMap(Exception.class, CancelPersistenceException::new)
-                .flatMap(load -> switch (load.outcome()) {
-                    case STATE_NOT_FOUND -> completeIdempotency(key, fingerprint, reservation, now, ttl);
-                    case LOADED -> cancelLoadedSidecar(load, key, fingerprint, reservation, now, ttl);
-                    case SYSTEM_FAILURE -> Mono.error(new CancelPersistenceException(
-                            new IllegalStateException("workflow-state load failed")));
-                    default -> Mono.error(new CancelPersistenceException(
-                            new IllegalStateException("workflow-state load outcome uncertain")));
-                });
+    private Mono<Void> validateRetainedContext(
+            com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession session) {
+        try {
+            contextBinding.load(session);
+            return Mono.empty();
+        } catch (RuntimeException error) {
+            return Mono.error(new CancelPersistenceException(error));
+        }
     }
 
-    private Mono<UsernameRecoveryCancelResult> cancelLoadedSidecar(
-            UsernameRecoveryWorkflowStateLoadResult load,
+    private Mono<UsernameRecoveryCancelResult> validateCancelledResult(
+            AuthFlowSessionSnapshot cancelled,
+            com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession original,
             UsernameRecoveryIdempotencyKey key,
             UsernameRecoveryIdempotencyFingerprint fingerprint,
-            UsernameRecoveryIdempotencyReservation reservation, Instant now, Duration ttl) {
-        var current = load.state();
-        if (current.status() == UsernameRecoveryWorkflowStatus.CANCELLED
-                || current.status() == UsernameRecoveryWorkflowStatus.COMPLETED
-                || current.status() == UsernameRecoveryWorkflowStatus.EXPIRED) {
-            return completeIdempotency(key, fingerprint, reservation, now, ttl);
+            UsernameRecoveryIdempotencyReservation reservation,
+            Instant now, Duration ttl) {
+        var session = cancelled == null ? null : cancelled.session();
+        if (session == null || session.status() != AuthFlowStatus.CANCELLED
+                || !session.createdAt().equals(original.createdAt())
+                || !session.expiresAt().equals(original.expiresAt())
+                || !session.data().equals(original.data())) {
+            return Mono.error(new CancelPersistenceException(
+                    new IllegalStateException("cancelled envelope did not retain protected state and expiry")));
         }
-        var mutation = new UsernameRecoveryWorkflowStateMutationCommand(
-                current.authFlowSessionId(), current.revision(), current.markCancelled());
-        return workflowStatePort.update(mutation)
-                .onErrorMap(Exception.class, CancelPersistenceException::new)
-                .flatMap(result -> result.outcome() == UsernameRecoveryWorkflowStateMutationOutcome.APPLIED
-                        ? completeIdempotency(key, fingerprint, reservation, now, ttl)
-                        : Mono.error(new CancelPersistenceException(
-                                new IllegalStateException("workflow-state cancel outcome uncertain"))));
+        return completeIdempotency(key, fingerprint, reservation, now, ttl);
     }
+
     private Mono<UsernameRecoveryCancelResult> completeIdempotency(
             UsernameRecoveryIdempotencyKey key, UsernameRecoveryIdempotencyFingerprint fingerprint,
             UsernameRecoveryIdempotencyReservation reservation, Instant now, Duration ttl) {
-        ReplaySnapshot snapshot = UsernameRecoveryCancelReplayCodec.encode();
+        ReplaySnapshot replay = UsernameRecoveryCancelReplayCodec.encode();
         var command = new UsernameRecoveryIdempotencyPort.CompleteCommand(
                 UsernameRecoveryIdempotencyAction.CANCEL, key, fingerprint,
-                reservation.operationReference(), snapshot, now, ttl);
+                reservation.operationReference(), replay, now, ttl);
         return idempotencyPort.complete(command)
                 .onErrorMap(Exception.class, CancelPersistenceException::new)
                 .map(record -> new UsernameRecoveryCancelResult(UsernameRecoveryCancelResult.Outcome.SUCCESS));
@@ -219,7 +199,8 @@ public final class CancelUsernameRecoveryService implements CancelUsernameRecove
                 .map(record -> new UsernameRecoveryCancelResult(UsernameRecoveryCancelResult.Outcome.SYSTEM_FAILED));
     }
 
-    private Mono<UsernameRecoveryCancelResult> replay(UsernameRecoveryIdempotencyKey key) {
+    private Mono<UsernameRecoveryCancelResult> replay(
+            UsernameRecoveryIdempotencyKey key, UsernameRecoveryCancelCommand command, Instant now) {
         return idempotencyPort.resolve(UsernameRecoveryIdempotencyAction.CANCEL, key)
                 .onErrorMap(Exception.class, CancelPersistenceException::new)
                 .flatMap(optional -> {
@@ -232,7 +213,25 @@ public final class CancelUsernameRecoveryService implements CancelUsernameRecove
                             || !UsernameRecoveryCancelReplayCodec.decode(record.replaySnapshot()).decoded()) {
                         return Mono.error(UsernameRecoveryCancelException.systemFailure());
                     }
-                    return Mono.just(new UsernameRecoveryCancelResult(UsernameRecoveryCancelResult.Outcome.SUCCESS));
+                    return authFlowSessionPort.loadSnapshot(command.authFlowSessionId())
+                            .onErrorMap(Exception.class, CancelPersistenceException::new)
+                            .flatMap(envelope -> {
+                                if (envelope.isEmpty()) {
+                                    return Mono.just(new UsernameRecoveryCancelResult(
+                                            UsernameRecoveryCancelResult.Outcome.SUCCESS));
+                                }
+                                var session = envelope.get().session();
+                                if (session.scenario() != AuthFlowScenario.USERNAME_RECOVERY
+                                        || session.isExpired(now)) {
+                                    return Mono.error(UsernameRecoveryCancelException.systemFailure());
+                                }
+                                if (session.status() != AuthFlowStatus.CANCELLED) {
+                                    return Mono.error(UsernameRecoveryCancelException.systemFailure());
+                                }
+                                return validateRetainedContext(session)
+                                        .thenReturn(new UsernameRecoveryCancelResult(
+                                                UsernameRecoveryCancelResult.Outcome.SUCCESS));
+                            });
                 });
     }
 
@@ -241,14 +240,10 @@ public final class CancelUsernameRecoveryService implements CancelUsernameRecove
     }
 
     private UsernameRecoveryIdempotencyOperationReference generateOperationReference() {
-        return new UsernameRecoveryIdempotencyOperationReference(
-                "op_" + Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes(18)));
-    }
-
-    private byte[] randomBytes(int length) {
-        byte[] bytes = new byte[length];
+        byte[] bytes = new byte[18];
         secureRandom.nextBytes(bytes);
-        return bytes;
+        return new UsernameRecoveryIdempotencyOperationReference(
+                "op_" + Base64.getUrlEncoder().withoutPadding().encodeToString(bytes));
     }
 
     private static final class CancelPersistenceException extends RuntimeException {

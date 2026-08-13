@@ -43,7 +43,7 @@ class UsernameRecoveryCancelArchitectureGuardTest {
     }
 
     @Test
-    void cancelServiceUsesRetainedRevisionAwareModelBBoundaries() throws Exception {
+    void cancelServiceUsesSingleEnvelopeProtectedContextBoundary() throws Exception {
         String source = java.nio.file.Files.readString(java.nio.file.Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/usernamerecovery/CancelUsernameRecoveryService.java"));
         org.assertj.core.api.Assertions.assertThat(source)
@@ -51,13 +51,14 @@ class UsernameRecoveryCancelArchitectureGuardTest {
                         "UsernameRecoverySessionPort",
                         "UsernameRecoverySession",
                         "UsernameRecoverySessionId",
-                        "deleteRevisioned",
-                        "workflowStatePort.delete")
+                        "UsernameRecoveryWorkflowStatePort",
+                        "workflowStatePort",
+                        "deleteRevisioned")
                 .contains(
                         "AuthFlowSessionPort",
-                        "UsernameRecoveryWorkflowStatePort",
+                        "UsernameRecoveryAuthFlowContextBinding",
                         "cancelRevisioned",
-                        "markCancelled");
+                        "validateRetainedContext");
     }
 
     @Test
