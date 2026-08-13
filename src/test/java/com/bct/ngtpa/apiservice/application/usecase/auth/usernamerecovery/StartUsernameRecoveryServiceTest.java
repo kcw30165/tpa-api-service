@@ -23,7 +23,6 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.RevisionedAuthFlowSessionMutationCommand;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision;
-import com.bct.ngtpa.apiservice.application.dto.session.usernamerecovery.UsernameRecoveryWorkflowState;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.CaptchaChallengePort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyAction;
@@ -794,13 +793,6 @@ class StartUsernameRecoveryServiceTest {
 
         private AuthFlowSession activeEnvelopeWithContext(AuthFlowSessionId id) {
                 AuthFlowSession base = activeEnvelope(id);
-                UsernameRecoveryWorkflowState legacy = activeWorkflowState(id);
-                UsernameRecoveryAuthFlowContext context = new UsernameRecoveryAuthFlowContext(
-                                legacy.status(), legacy.destination(), legacy.language(), legacy.candidates());
-                return contextBinding.bind(base, context, NOW);
-        }
-
-        private static UsernameRecoveryWorkflowState activeWorkflowState(AuthFlowSessionId id) {
                 UsernameRecoverySchemeRef registeredRef = new UsernameRecoverySchemeRef("sch_opaque-1");
                 UsernameRecoverySchemeRef unregisteredRef = new UsernameRecoverySchemeRef("sch_opaque-2");
                 List<UsernameRecoverySessionCandidate> candidates = List.of(
@@ -810,16 +802,15 @@ class StartUsernameRecoveryServiceTest {
                                                                 UsernameRecoveryDeliveryState.AVAILABLE),
                                                 null, null),
                                 new UsernameRecoverySessionCandidate(
-                                                new UsernameRecoveryCandidate(unregisteredRef, "DB", "DBB", false, null,
-                                                                UsernameRecoveryDeliveryState.AVAILABLE),
+                                                new UsernameRecoveryCandidate(unregisteredRef, "DB", "DBB", false,
+                                                                null, UsernameRecoveryDeliveryState.AVAILABLE),
                                                 null, null));
-                return new UsernameRecoveryWorkflowState(
-                                id, UsernameRecoveryWorkflowStatus.ACTIVE,
-                                new com.bct.ngtpa.apiservice.application.dto.session.usernamerecovery.UsernameRecoveryWorkflowStateRevision(
-                                                0),
+                UsernameRecoveryAuthFlowContext context = new UsernameRecoveryAuthFlowContext(
+                                UsernameRecoveryWorkflowStatus.ACTIVE,
                                 new UsernameRecoveryVerifiedDestination(
                                                 EMAIL, UsernameRecoveryVerifiedDestination.Channel.EMAIL),
                                 LANGUAGE, candidates);
+                return contextBinding.bind(base, context, NOW);
         }
 
         private static UsernameRecoveryIdempotencyRecord completedRecord(

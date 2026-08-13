@@ -36,36 +36,6 @@ class RedisUsernameRecoveryIdempotencyArchitectureGuardTest {
     }
 
     @Test
-    void transitionRetainsFeatureScriptBecauseSharedScriptsArePhysicallyIncompatible()
-            throws IOException {
-        var sharedReplace = resource("redis/auth-flow-session/replace-revisioned.lua");
-        var workflowStateUpdate = resource("redis/username-recovery-workflow-state/update.lua");
-        var feature = resource("redis/username-recovery-idempotency/transition.lua");
-
-        // Shared auth-flow-session replacement is a WHOLE-VALUE CAS: it requires the
-        // exact current JSON, which the idempotency adapter never knows.
-        assertThat(sharedReplace)
-                .contains("current ~= ARGV[1]")
-                .doesNotContain("decoded.action");
-        // Username Recovery workflow-state update is revision-field based; idempotency
-        // records have no revision field.
-        assertThat(workflowStateUpdate)
-                .contains("decoded.revision")
-                .doesNotContain("decoded.operationReference");
-
-        assertThat(feature)
-                .contains("decoded.action")
-                .contains("decoded.idempotencyKey")
-                .contains("decoded.fingerprint")
-                .contains("decoded.operationReference")
-                .contains("decoded.status")
-                .contains("PTTL")
-                .contains("PSETEX")
-                .doesNotContain("call('EXPIRE'")
-                .doesNotContain("call('PEXPIRE'");
-    }
-
-    @Test
     void adapterImplementsTypedReactivePort() {
         assertThat(UsernameRecoveryIdempotencyPort.class.isAssignableFrom(
                 RedisUsernameRecoveryIdempotencyAdapter.class)).isTrue();

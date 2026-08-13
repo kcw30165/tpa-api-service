@@ -10,7 +10,7 @@ import java.util.Objects;
  *
  * <p>Model B decision {@code MODEL_B_GENERIC_ENVELOPE_TYPED_SIDECAR}: the canonical session
  * identifier is {@link AuthFlowSessionId}, the sole canonical identifier for both the generic
- * envelope and the workflow-state sidecar. The legacy {@code sessionId} component was replaced by
+ * protected auth-flow envelope. The legacy {@code sessionId} component was replaced by
  * {@code authFlowSessionId}.
  *
  * <p>The command exposes only the canonical {@link AuthFlowSessionId}. Migration compatibility
