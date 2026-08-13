@@ -126,12 +126,12 @@ public final class UsernameRecoveryRequestResponsePolicy {
                             UsernameRecoveryWorkflowMapping.SOURCE_BFF)),
                     null);
             case REVISION_CONFLICT -> failure(
-                    ApiStatus.BUSINESS_REJECTED,
-                    WorkflowNextStep.NONE,
-                    List.of(UsernameRecoveryWorkflowMapping.businessError(
-                            SharedWorkflowErrorKey.IDEMPOTENCY_KEY_REUSED.value(),
+                    ApiStatus.VALIDATION_FAILED,
+                    WorkflowNextStep.RESTART_FLOW,
+                    List.of(UsernameRecoveryWorkflowMapping.formError(
+                            UsernameRecoveryErrorKey.AUTH_FLOW_INVALID.value(),
                             List.of(),
-                            UsernameRecoveryWorkflowMapping.SOURCE_BFF)),
+                            UsernameRecoveryWorkflowMapping.SOURCE_SERVER)),
                     HttpStatusClassificationOverride.CONFLICT);
             case SYSTEM_FAILURE -> systemFailure(WorkflowNextStep.SELECT_ACCOUNT);
         };
