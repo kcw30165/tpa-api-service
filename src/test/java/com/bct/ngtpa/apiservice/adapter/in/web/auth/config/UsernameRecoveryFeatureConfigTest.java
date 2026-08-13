@@ -24,8 +24,9 @@ import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryEffectiveDe
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryLookupPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStatePort;
+import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryAuthFlowContextProtectorPort;
 import com.bct.ngtpa.apiservice.application.service.auth.captcha.RegistrationCaptchaGateService;
-import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryReservationService;
+import com.bct.ngtpa.apiservice.application.service.auth.usernamerecovery.context.UsernameRecoveryAuthFlowContextBinding;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenHasher;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenValidationService;
@@ -93,9 +94,14 @@ class UsernameRecoveryFeatureConfigTest {
             assertThat(context.getBean(RequestUsernameRecoveryUseCase.class)).isNotNull();
             assertThat(context.getBean(CancelUsernameRecoveryUseCase.class)).isNotNull();
             assertThat(context.getBean(UsernameRecoveryIdempotencyPort.class)).isNotNull();
+            // Temporary Stage D dependency: Cancel still owns the sidecar until its migration.
             assertThat(context.getBean(UsernameRecoveryWorkflowStatePort.class)).isInstanceOf(
                     com.bct.ngtpa.apiservice.adapter.out.redis.usernamerecovery.RedisUsernameRecoveryWorkflowStateAdapter.class);
-            assertThat(context.getBean(UsernameRecoveryReservationService.class)).isNotNull();
+            assertThat(context.getBean(UsernameRecoveryAuthFlowContextBinding.class)).isNotNull();
+            assertThat(context.getBean(UsernameRecoveryAuthFlowContextProtectorPort.class)).isNotNull();
+            assertThat(context.getBeansOfType(
+                    com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.RequestUsernameRecoveryService.class))
+                    .hasSize(1);
             assertThat(context.getBean(CsrfTokenValidationService.class)).isNotNull();
             assertThat(context.getBean(UsernameRecoveryStartWebMapper.class)).isNotNull();
             assertThat(context.getBean(UsernameRecoveryRequestWebMapper.class)).isNotNull();

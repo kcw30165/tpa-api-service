@@ -7,6 +7,9 @@ import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRe
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryEffectiveDestinationResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryRequestCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryRequestResult;
+import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.context.UsernameRecoveryAuthFlowContext;
+import com.bct.ngtpa.apiservice.application.service.auth.usernamerecovery.context.UsernameRecoveryAuthFlowContextBinding;
+import com.bct.ngtpa.apiservice.adapter.out.security.usernamerecovery.AesGcmUsernameRecoveryAuthFlowContextProtectorAdapter;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryChannel;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryCommand;
 import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryResult;
@@ -19,9 +22,9 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionSnapshot;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationOutcome;
+import com.bct.ngtpa.apiservice.application.dto.session.authflow.RevisionedAuthFlowSessionMutationCommand;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision;
-import com.bct.ngtpa.apiservice.application.dto.session.usernamerecovery.UsernameRecoveryWorkflowState;
-import com.bct.ngtpa.apiservice.application.dto.session.usernamerecovery.UsernameRecoveryWorkflowStateRevision;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryEffectiveDestinationPort;
@@ -33,12 +36,6 @@ import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotency
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyRecord;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyReservation;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateDeleteResult;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateLoadResult;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateMutationCommand;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateMutationOutcome;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateMutationResult;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStatePort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryRequestException.Reason;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenValidationService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.Sha256CsrfTokenHasher;
@@ -90,22 +87,25 @@ class RequestUsernameRecoveryServiceTest {
         private static final String EMAIL_SUBJECT = "BCT username recovery";
         private static final String EMAIL_BODY = "Your BCT username is {username}.";
         private static final String SMS_BODY = "Your BCT username is {username}.";
+        private static final String CONTEXT_SECRET = "0123456789abcdef0123456789abcdef";
 
         private final List<String> callLog = new ArrayList<>();
         private final FakeIdempotencyPort idempotencyPort = new FakeIdempotencyPort(callLog);
         private final FakeAuthFlowPort envelopes = new FakeAuthFlowPort();
-        private final FakeWorkflowPort workflows = new FakeWorkflowPort();
         private final FakeEffectiveDestinationPort effectiveDestinationPort = new FakeEffectiveDestinationPort();
         private final FakeMessageDeliveryPort messageDeliveryPort = new FakeMessageDeliveryPort();
+        private final UsernameRecoveryAuthFlowContextBinding contextBinding =
+                        new UsernameRecoveryAuthFlowContextBinding(
+                                        new AesGcmUsernameRecoveryAuthFlowContextProtectorAdapter(
+                                                        "v1", CONTEXT_SECRET));
+        private final CsrfTokenValidationService csrfService =
+                        new CsrfTokenValidationService(new Sha256CsrfTokenHasher());
 
-        private UsernameRecoveryReservationService reservationService;
         private RequestUsernameRecoveryService service;
 
         @BeforeEach
         void setUp() {
-                storeScenario(activeWorkflowState());
-                reservationService = new UsernameRecoveryReservationService(
-                                envelopes, workflows, new CsrfTokenValidationService(new Sha256CsrfTokenHasher()));
+                storeScenario(activeContext());
                 service = newService(List.of());
         }
 
@@ -113,10 +113,10 @@ class RequestUsernameRecoveryServiceTest {
                 return new RequestUsernameRecoveryService(
                                 new UsernameRecoveryRequestFingerprintGenerator(),
                                 idempotencyPort,
-                                reservationService,
+                                contextBinding,
+                                csrfService,
                                 effectiveDestinationPort,
                                 envelopes,
-                                workflows,
                                 messageDeliveryPort,
                                 allowedOrigins,
                                 CLOCK,
@@ -284,7 +284,6 @@ class RequestUsernameRecoveryServiceTest {
         @Test
         void sessionAbsentMapsToTypedSessionAbsentWithoutDelivery() {
                 envelopes.snapshot = null;
-                workflows.state = null;
 
                 StepVerifier.create(service.request(command(), CSRF, null, null))
                                 .expectErrorSatisfies(error -> {
@@ -299,13 +298,14 @@ class RequestUsernameRecoveryServiceTest {
 
         @Test
         void sessionExpiredMapsToTypedSessionExpiredWithoutDelivery() {
-                UsernameRecoveryWorkflowState stored = activeWorkflowState();
-                envelopes.snapshot = replayEnvelope(
-                                stored.authFlowSessionId().value(),
+                UsernameRecoveryAuthFlowContext stored = activeContext();
+                AuthFlowSessionSnapshot expired = replayEnvelope(
+                                SESSION_ID,
                                 AuthFlowScenario.USERNAME_RECOVERY,
                                 AuthFlowStatus.STARTED,
                                 NOW.minusSeconds(1));
-                workflows.state = stored;
+                AuthFlowSession protectedExpired = contextBinding.bind(expired.session(), stored, NOW);
+                envelopes.snapshot = new AuthFlowSessionSnapshot(protectedExpired, expired.revision());
 
                 StepVerifier.create(service.request(command(), CSRF, null, null))
                                 .expectErrorSatisfies(error -> {
@@ -363,7 +363,7 @@ class RequestUsernameRecoveryServiceTest {
 
         @Test
         void alreadyRequestedCandidateReturnsTypedResultWithoutResending() {
-                storeScenario(sessionWithCandidateState(
+                storeScenario(contextWithCandidateState(
                                 UsernameRecoveryDeliveryState.REQUESTED,
                                 UsernameRecoveryWorkflowStatus.PARTIALLY_REQUESTED));
 
@@ -377,7 +377,7 @@ class RequestUsernameRecoveryServiceTest {
 
         @Test
         void completedWorkflowReturnsTypedCompletedResultWithoutMutation() {
-                storeScenario(sessionWithCandidateState(
+                storeScenario(contextWithCandidateState(
                                 UsernameRecoveryDeliveryState.REQUESTED, UsernameRecoveryWorkflowStatus.COMPLETED));
 
                 StepVerifier.create(service.request(command(), CSRF, null, null))
@@ -390,7 +390,7 @@ class RequestUsernameRecoveryServiceTest {
 
         @Test
         void reservationRevisionConflictMapsToTypedSignalWithoutDelivery() {
-                workflows.updateOutcome = UsernameRecoveryWorkflowStateMutationOutcome.REVISION_CONFLICT;
+                envelopes.updateOutcome = AuthFlowSessionMutationOutcome.SESSION_REVISION_CHANGED;
 
                 StepVerifier.create(service.request(command(), CSRF, null, null))
                                 .expectErrorSatisfies(error -> {
@@ -405,7 +405,7 @@ class RequestUsernameRecoveryServiceTest {
 
         @Test
         void candidateReservedByAnotherKeyMapsToCandidateNotAvailableWithoutDelivery() {
-                storeScenario(sessionWithCandidateState(
+                storeScenario(contextWithCandidateState(
                                 UsernameRecoveryDeliveryState.RESERVED, UsernameRecoveryWorkflowStatus.ACTIVE));
 
                 StepVerifier.create(service.request(command(), CSRF, null, null))
@@ -421,7 +421,7 @@ class RequestUsernameRecoveryServiceTest {
 
         @Test
         void acceptedDeliveryReservesMarksRequestedPersistsAndCompletes() {
-                storeScenario(twoRegisteredSession());
+                storeScenario(twoRegisteredContext());
 
                 StepVerifier.create(service.request(command(), CSRF, null, null))
                                 .assertNext(result -> {
@@ -443,21 +443,20 @@ class RequestUsernameRecoveryServiceTest {
                                 .isEqualTo(UsernameRecoveryRequestReplayCodec.encode(
                                                 new AuthFlowSessionId(SESSION_ID)));
 
-                UsernameRecoveryWorkflowState stored = workflows.state;
+                UsernameRecoveryAuthFlowContext stored = contextBinding.load(envelopes.snapshot.session());
                 UsernameRecoverySessionCandidate requested = stored.candidates().stream()
                                 .filter(c -> c.schemeRef().value().equals(REGISTERED_REF))
                                 .findFirst().orElseThrow();
                 assertThat(requested.deliveryState()).isEqualTo(UsernameRecoveryDeliveryState.REQUESTED);
                 assertThat(requested.requestedAt()).isEqualTo(NOW);
                 assertThat(requested.senderReference()).isEqualTo("provider-msg-1");
-                assertThat(stored.status()).isEqualTo(UsernameRecoveryWorkflowStatus.PARTIALLY_REQUESTED);
+                assertThat(stored.workflowStatus()).isEqualTo(UsernameRecoveryWorkflowStatus.PARTIALLY_REQUESTED);
                 assertThat(envelopes.snapshot.session().status()).isEqualTo(AuthFlowStatus.STARTED);
-                assertThat(envelopes.completeCalls).isZero();
         }
 
         @Test
         void acceptedDeliveryCompletesWorkflowWhenAllRegisteredCandidatesAreRequested() {
-                storeScenario(singleRegisteredSession());
+                storeScenario(singleRegisteredContext());
 
                 StepVerifier.create(service.request(command(), CSRF, null, null))
                                 .assertNext(result -> {
@@ -468,17 +467,17 @@ class RequestUsernameRecoveryServiceTest {
                                 })
                                 .verifyComplete();
 
-                assertThat(workflows.state.status()).isEqualTo(UsernameRecoveryWorkflowStatus.COMPLETED);
+                assertThat(contextBinding.load(envelopes.snapshot.session()).workflowStatus()).isEqualTo(UsernameRecoveryWorkflowStatus.COMPLETED);
                 assertThat(envelopes.snapshot.session().status()).isEqualTo(AuthFlowStatus.COMPLETED);
                 assertThat(envelopes.snapshot.session().expiresAt()).isEqualTo(NOW.plusSeconds(TTL_SECONDS));
-                assertThat(envelopes.completeCalls).isEqualTo(1);
                 assertThat(messageDeliveryPort.deliverCalls).isEqualTo(1);
         }
 
         @Test
         void finalEnvelopeCompletionConflictRecordsUnknownOutcomeWithoutResend() {
-                storeScenario(singleRegisteredSession());
-                envelopes.completeOutcome = com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationOutcome.SESSION_REVISION_CHANGED;
+                storeScenario(singleRegisteredContext());
+                envelopes.forceUpdateOutcomeAtCall = 2;
+                envelopes.forcedUpdateOutcome = com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationOutcome.SESSION_REVISION_CHANGED;
 
                 StepVerifier.create(service.request(command(), CSRF, null, null))
                                 .expectNext(new UsernameRecoveryRequestResult(
@@ -486,9 +485,9 @@ class RequestUsernameRecoveryServiceTest {
                                                 null, null, null, null))
                                 .verifyComplete();
 
-                assertThat(workflows.state.status()).isEqualTo(UsernameRecoveryWorkflowStatus.COMPLETED);
+                assertThat(contextBinding.load(envelopes.snapshot.session()).candidates().get(0).deliveryState())
+                                .isEqualTo(UsernameRecoveryDeliveryState.RESERVED);
                 assertThat(envelopes.snapshot.session().status()).isEqualTo(AuthFlowStatus.STARTED);
-                assertThat(envelopes.completeCalls).isEqualTo(1);
                 assertThat(messageDeliveryPort.deliverCalls).isEqualTo(1);
                 assertThat(idempotencyPort.completeCalls).isZero();
                 assertThat(idempotencyPort.unknownOutcomeCalls).isEqualTo(1);
@@ -522,7 +521,7 @@ class RequestUsernameRecoveryServiceTest {
                                                 .isEqualTo(UsernameRecoveryRequestResult.Outcome.REQUEST_ACCEPTED))
                                 .verifyComplete();
 
-                UsernameRecoverySessionCandidate requested = workflows.state.candidates().stream()
+                UsernameRecoverySessionCandidate requested = contextBinding.load(envelopes.snapshot.session()).candidates().stream()
                                 .filter(c -> c.schemeRef().value().equals(REGISTERED_REF))
                                 .findFirst().orElseThrow();
                 assertThat(requested.senderReference()).isNotBlank();
@@ -540,7 +539,7 @@ class RequestUsernameRecoveryServiceTest {
                                                 .isEqualTo(UsernameRecoveryRequestResult.Outcome.SYSTEM_FAILED))
                                 .verifyComplete();
 
-                UsernameRecoverySessionCandidate failed = workflows.state.candidates().stream()
+                UsernameRecoverySessionCandidate failed = contextBinding.load(envelopes.snapshot.session()).candidates().stream()
                                 .filter(c -> c.schemeRef().value().equals(REGISTERED_REF))
                                 .findFirst().orElseThrow();
                 assertThat(failed.deliveryState()).isEqualTo(UsernameRecoveryDeliveryState.FAILED);
@@ -559,7 +558,7 @@ class RequestUsernameRecoveryServiceTest {
                                                 .isEqualTo(UsernameRecoveryRequestResult.Outcome.UNKNOWN_OUTCOME))
                                 .verifyComplete();
 
-                UsernameRecoverySessionCandidate unknown = workflows.state.candidates().stream()
+                UsernameRecoverySessionCandidate unknown = contextBinding.load(envelopes.snapshot.session()).candidates().stream()
                                 .filter(c -> c.schemeRef().value().equals(REGISTERED_REF))
                                 .findFirst().orElseThrow();
                 assertThat(unknown.deliveryState()).isEqualTo(UsernameRecoveryDeliveryState.UNKNOWN_OUTCOME);
@@ -570,8 +569,8 @@ class RequestUsernameRecoveryServiceTest {
 
         @Test
         void sessionCasConflictAfterAcceptanceRecordsStableUnknownOutcomeWithoutResend() {
-                workflows.forceUpdateOutcomeAtCall = 2;
-                workflows.forcedUpdateOutcome = UsernameRecoveryWorkflowStateMutationOutcome.REVISION_CONFLICT;
+                envelopes.forceUpdateOutcomeAtCall = 2;
+                envelopes.forcedUpdateOutcome = AuthFlowSessionMutationOutcome.SESSION_REVISION_CHANGED;
 
                 StepVerifier.create(service.request(command(), CSRF, null, null))
                                 .assertNext(result -> assertThat(result.outcome())
@@ -594,7 +593,7 @@ class RequestUsernameRecoveryServiceTest {
 
                 assertThat(messageDeliveryPort.deliverCalls).isEqualTo(1);
                 assertThat(idempotencyPort.unknownOutcomeCalls).isEqualTo(1);
-                assertThat(workflows.state.candidates().stream()
+                assertThat(contextBinding.load(envelopes.snapshot.session()).candidates().stream()
                                 .filter(c -> c.schemeRef().value().equals(REGISTERED_REF))
                                 .findFirst().orElseThrow().deliveryState())
                                 .isEqualTo(UsernameRecoveryDeliveryState.REQUESTED);
@@ -627,7 +626,7 @@ class RequestUsernameRecoveryServiceTest {
                                 .verifyComplete();
                 assertThat(messageDeliveryPort.deliverCalls).isZero();
                 assertThat(idempotencyPort.completeCalls).isEqualTo(1);
-                assertThat(workflows.state.candidates().stream()
+                assertThat(contextBinding.load(envelopes.snapshot.session()).candidates().stream()
                                 .filter(c -> c.schemeRef().value().equals(REGISTERED_REF))
                                 .findFirst().orElseThrow().deliveryState())
                                 .isEqualTo(UsernameRecoveryDeliveryState.FAILED);
@@ -643,7 +642,7 @@ class RequestUsernameRecoveryServiceTest {
                 assertThat(messageDeliveryPort.deliverCalls).isEqualTo(1);
                 assertThat(idempotencyPort.unknownOutcomeCalls).isEqualTo(1);
                 assertThat(idempotencyPort.completeCalls).isZero();
-                assertThat(workflows.state.candidates().stream()
+                assertThat(contextBinding.load(envelopes.snapshot.session()).candidates().stream()
                                 .filter(c -> c.schemeRef().value().equals(REGISTERED_REF))
                                 .findFirst().orElseThrow().deliveryState())
                                 .isEqualTo(UsernameRecoveryDeliveryState.UNKNOWN_OUTCOME);
@@ -667,9 +666,13 @@ class RequestUsernameRecoveryServiceTest {
 
         private void arrangeReplay(
                         AuthFlowSessionSnapshot envelope,
-                        UsernameRecoveryWorkflowState sidecar) {
-                envelopes.snapshot = envelope;
-                workflows.state = sidecar;
+                        UsernameRecoveryAuthFlowContext context) {
+                if (envelope != null && context != null) {
+                        AuthFlowSession bound = contextBinding.bind(envelope.session(), context, NOW);
+                        envelopes.snapshot = new AuthFlowSessionSnapshot(bound, envelope.revision());
+                } else {
+                        envelopes.snapshot = envelope;
+                }
                 idempotencyPort.reserveOutcome = UsernameRecoveryIdempotencyOutcome.COMPLETED_REPLAY;
                 idempotencyPort.storedRecord = completedRecord(
                                 UsernameRecoveryRequestReplayCodec.encode(new AuthFlowSessionId(SESSION_ID)));
@@ -689,7 +692,7 @@ class RequestUsernameRecoveryServiceTest {
                                 new SessionRevision("0123456789abcdef0123456789abcdef"));
         }
 
-        private UsernameRecoveryWorkflowState replaySidecar(
+        private UsernameRecoveryAuthFlowContext replayContext(
                         String id,
                         UsernameRecoveryDeliveryState deliveryState,
                         UsernameRecoveryWorkflowStatus status) {
@@ -705,9 +708,8 @@ class RequestUsernameRecoveryServiceTest {
                                                 new UsernameRecoverySchemeRef("sch_opaque-3"), "DB", "DBC", true,
                                                 "user-2", UsernameRecoveryDeliveryState.AVAILABLE),
                                 null, null);
-                return new UsernameRecoveryWorkflowState(
-                                new AuthFlowSessionId(id), status,
-                                new UsernameRecoveryWorkflowStateRevision(0),
+                return new UsernameRecoveryAuthFlowContext(
+                                status,
                                 new UsernameRecoveryVerifiedDestination(
                                                 "pepperc@ah.ozk",
                                                 UsernameRecoveryVerifiedDestination.Channel.EMAIL),
@@ -723,7 +725,7 @@ class RequestUsernameRecoveryServiceTest {
                                 })
                                 .verify();
                 assertThat(messageDeliveryPort.deliverCalls).isZero();
-                assertThat(workflows.updates).isZero();
+                assertThat(envelopes.updates).isZero();
                 assertThat(idempotencyPort.completeCalls).isZero();
                 assertThat(idempotencyPort.unknownOutcomeCalls).isZero();
         }
@@ -733,7 +735,7 @@ class RequestUsernameRecoveryServiceTest {
                 arrangeReplay(
                                 replayEnvelope("afs_other", AuthFlowScenario.USERNAME_RECOVERY,
                                                 AuthFlowStatus.STARTED, NOW.plusSeconds(TTL_SECONDS)),
-                                replaySidecar(SESSION_ID, UsernameRecoveryDeliveryState.REQUESTED,
+                                replayContext(SESSION_ID, UsernameRecoveryDeliveryState.REQUESTED,
                                                 UsernameRecoveryWorkflowStatus.PARTIALLY_REQUESTED));
                 assertReplaySystemFailureWithoutSideEffects();
         }
@@ -743,7 +745,7 @@ class RequestUsernameRecoveryServiceTest {
                 arrangeReplay(
                                 replayEnvelope(SESSION_ID, AuthFlowScenario.LOGIN,
                                                 AuthFlowStatus.STARTED, NOW.plusSeconds(TTL_SECONDS)),
-                                replaySidecar(SESSION_ID, UsernameRecoveryDeliveryState.REQUESTED,
+                                replayContext(SESSION_ID, UsernameRecoveryDeliveryState.REQUESTED,
                                                 UsernameRecoveryWorkflowStatus.PARTIALLY_REQUESTED));
                 assertReplaySystemFailureWithoutSideEffects();
         }
@@ -753,7 +755,7 @@ class RequestUsernameRecoveryServiceTest {
                 arrangeReplay(
                                 replayEnvelope(SESSION_ID, AuthFlowScenario.USERNAME_RECOVERY,
                                                 AuthFlowStatus.STARTED, NOW.minusSeconds(1)),
-                                replaySidecar(SESSION_ID, UsernameRecoveryDeliveryState.REQUESTED,
+                                replayContext(SESSION_ID, UsernameRecoveryDeliveryState.REQUESTED,
                                                 UsernameRecoveryWorkflowStatus.PARTIALLY_REQUESTED));
                 assertReplaySystemFailureWithoutSideEffects();
         }
@@ -763,13 +765,13 @@ class RequestUsernameRecoveryServiceTest {
                 arrangeReplay(
                                 replayEnvelope(SESSION_ID, AuthFlowScenario.USERNAME_RECOVERY,
                                                 AuthFlowStatus.COMPLETED, NOW.plusSeconds(TTL_SECONDS)),
-                                replaySidecar(SESSION_ID, UsernameRecoveryDeliveryState.REQUESTED,
+                                replayContext(SESSION_ID, UsernameRecoveryDeliveryState.REQUESTED,
                                                 UsernameRecoveryWorkflowStatus.PARTIALLY_REQUESTED));
                 assertReplaySystemFailureWithoutSideEffects();
         }
 
         @Test
-        void replayWithMissingSidecarFailsClosedWithoutSideEffects() {
+        void replayWithMissingProtectedContextFailsClosedWithoutSideEffects() {
                 arrangeReplay(
                                 replayEnvelope(SESSION_ID, AuthFlowScenario.USERNAME_RECOVERY,
                                                 AuthFlowStatus.STARTED, NOW.plusSeconds(TTL_SECONDS)),
@@ -778,12 +780,29 @@ class RequestUsernameRecoveryServiceTest {
         }
 
         @Test
-        void replayWithSidecarIdentityMismatchFailsClosedWithoutSideEffects() {
-                arrangeReplay(
-                                replayEnvelope(SESSION_ID, AuthFlowScenario.USERNAME_RECOVERY,
-                                                AuthFlowStatus.STARTED, NOW.plusSeconds(TTL_SECONDS)),
-                                replaySidecar("afs_other", UsernameRecoveryDeliveryState.REQUESTED,
-                                                UsernameRecoveryWorkflowStatus.PARTIALLY_REQUESTED));
+        void replayWithCiphertextReboundFromDifferentEnvelopeFailsClosedWithoutSideEffects() {
+                AuthFlowSessionSnapshot source = replayEnvelope(
+                                "afs_other", AuthFlowScenario.USERNAME_RECOVERY,
+                                AuthFlowStatus.STARTED, NOW.plusSeconds(TTL_SECONDS));
+                AuthFlowSession protectedSource = contextBinding.bind(
+                                source.session(),
+                                replayContext("afs_other", UsernameRecoveryDeliveryState.REQUESTED,
+                                                UsernameRecoveryWorkflowStatus.PARTIALLY_REQUESTED),
+                                NOW);
+                AuthFlowSessionSnapshot target = replayEnvelope(
+                                SESSION_ID, AuthFlowScenario.USERNAME_RECOVERY,
+                                AuthFlowStatus.STARTED, NOW.plusSeconds(TTL_SECONDS));
+                AuthFlowSession rebound = new AuthFlowSession(
+                                target.session().authFlowSessionId(), target.session().scenario(),
+                                target.session().status(), target.session().csrfTokenHash(),
+                                target.session().activeOtpChallengeId(), protectedSource.data(),
+                                target.session().createdAt(), target.session().updatedAt(),
+                                target.session().expiresAt());
+                envelopes.snapshot = new AuthFlowSessionSnapshot(rebound, target.revision());
+                idempotencyPort.reserveOutcome = UsernameRecoveryIdempotencyOutcome.COMPLETED_REPLAY;
+                idempotencyPort.storedRecord = completedRecord(
+                                UsernameRecoveryRequestReplayCodec.encode(new AuthFlowSessionId(SESSION_ID)));
+
                 assertReplaySystemFailureWithoutSideEffects();
         }
 
@@ -792,14 +811,14 @@ class RequestUsernameRecoveryServiceTest {
                 arrangeReplay(
                                 replayEnvelope(SESSION_ID, AuthFlowScenario.USERNAME_RECOVERY,
                                                 AuthFlowStatus.STARTED, NOW.plusSeconds(TTL_SECONDS)),
-                                replaySidecar(SESSION_ID, UsernameRecoveryDeliveryState.UNKNOWN_OUTCOME,
+                                replayContext(SESSION_ID, UsernameRecoveryDeliveryState.UNKNOWN_OUTCOME,
                                                 UsernameRecoveryWorkflowStatus.ACTIVE));
                 StepVerifier.create(service.request(command(), CSRF, null, null))
                                 .assertNext(result -> assertThat(result.outcome())
                                                 .isEqualTo(UsernameRecoveryRequestResult.Outcome.UNKNOWN_OUTCOME))
                                 .verifyComplete();
                 assertThat(messageDeliveryPort.deliverCalls).isZero();
-                assertThat(workflows.updates).isZero();
+                assertThat(envelopes.updates).isZero();
                 assertThat(idempotencyPort.completeCalls).isZero();
         }
 
@@ -808,7 +827,7 @@ class RequestUsernameRecoveryServiceTest {
                 arrangeReplay(
                                 replayEnvelope(SESSION_ID, AuthFlowScenario.USERNAME_RECOVERY,
                                                 AuthFlowStatus.STARTED, NOW.plusSeconds(TTL_SECONDS)),
-                                replaySidecar(SESSION_ID, UsernameRecoveryDeliveryState.REQUESTED,
+                                replayContext(SESSION_ID, UsernameRecoveryDeliveryState.REQUESTED,
                                                 UsernameRecoveryWorkflowStatus.PARTIALLY_REQUESTED));
 
                 StepVerifier.create(service.request(command(), CSRF, null, null))
@@ -838,7 +857,7 @@ class RequestUsernameRecoveryServiceTest {
                 arrangeReplay(
                                 replayEnvelope(SESSION_ID, AuthFlowScenario.USERNAME_RECOVERY,
                                                 AuthFlowStatus.STARTED, NOW.plusSeconds(TTL_SECONDS)),
-                                replaySidecar(SESSION_ID, UsernameRecoveryDeliveryState.REQUESTED,
+                                replayContext(SESSION_ID, UsernameRecoveryDeliveryState.REQUESTED,
                                                 UsernameRecoveryWorkflowStatus.PARTIALLY_REQUESTED));
 
                 StepVerifier.create(service.request(command(), CSRF, null, null))
@@ -860,7 +879,7 @@ class RequestUsernameRecoveryServiceTest {
                 arrangeReplay(
                                 replayEnvelope(SESSION_ID, AuthFlowScenario.USERNAME_RECOVERY,
                                                 AuthFlowStatus.STARTED, NOW.plusSeconds(TTL_SECONDS)),
-                                replaySidecar(SESSION_ID, UsernameRecoveryDeliveryState.FAILED,
+                                replayContext(SESSION_ID, UsernameRecoveryDeliveryState.FAILED,
                                                 UsernameRecoveryWorkflowStatus.ACTIVE));
 
                 StepVerifier.create(service.request(command(), CSRF, null, null))
@@ -907,7 +926,7 @@ class RequestUsernameRecoveryServiceTest {
         @Test
         void replayWithAbsentSessionFailsClosedAsSystemFailureWithoutBlindCreation() {
                 arrangeReplay(null,
-                                replaySidecar(SESSION_ID, UsernameRecoveryDeliveryState.REQUESTED,
+                                replayContext(SESSION_ID, UsernameRecoveryDeliveryState.REQUESTED,
                                                 UsernameRecoveryWorkflowStatus.PARTIALLY_REQUESTED));
 
                 StepVerifier.create(service.request(command(), CSRF, null, null))
@@ -923,12 +942,12 @@ class RequestUsernameRecoveryServiceTest {
 
         @Test
         void replayWithUnconclusiveCandidateFailsClosedAsSystemFailure() {
-                UsernameRecoveryWorkflowState stored = sessionWithCandidateState(
+                UsernameRecoveryAuthFlowContext stored = contextWithCandidateState(
                                 UsernameRecoveryDeliveryState.RESERVED, UsernameRecoveryWorkflowStatus.ACTIVE);
                 storeScenario(stored);
                 idempotencyPort.reserveOutcome = UsernameRecoveryIdempotencyOutcome.COMPLETED_REPLAY;
                 idempotencyPort.storedRecord = completedRecord(
-                                UsernameRecoveryRequestReplayCodec.encode(stored.authFlowSessionId()));
+                                UsernameRecoveryRequestReplayCodec.encode(new AuthFlowSessionId(SESSION_ID)));
 
                 StepVerifier.create(service.request(command(), CSRF, null, null))
                                 .expectErrorSatisfies(error -> {
@@ -943,7 +962,7 @@ class RequestUsernameRecoveryServiceTest {
 
         @Test
         void differentKeyAfterRequestedReturnsAlreadyRequestedWithoutResending() {
-                UsernameRecoveryWorkflowState stored = sessionWithCandidateState(
+                UsernameRecoveryAuthFlowContext stored = contextWithCandidateState(
                                 UsernameRecoveryDeliveryState.REQUESTED,
                                 UsernameRecoveryWorkflowStatus.PARTIALLY_REQUESTED);
                 storeScenario(stored);
@@ -967,32 +986,32 @@ class RequestUsernameRecoveryServiceTest {
                                 IDEM_KEY);
         }
 
-        private static UsernameRecoveryWorkflowState activeWorkflowState() {
-                return workflowState(
+        private static UsernameRecoveryAuthFlowContext activeContext() {
+                return authFlowContext(
                                 UsernameRecoveryWorkflowStatus.ACTIVE,
                                 List.of(candidate(REGISTERED_REF, "DBA", true, "user-1",
                                                 UsernameRecoveryDeliveryState.AVAILABLE),
                                                 candidate(UNREGISTERED_REF, "DBB", false, null,
                                                                 UsernameRecoveryDeliveryState.AVAILABLE)));
         }
-        private static UsernameRecoveryWorkflowState singleRegisteredSession() {
-                return workflowState(
+        private static UsernameRecoveryAuthFlowContext singleRegisteredContext() {
+                return authFlowContext(
                                 UsernameRecoveryWorkflowStatus.ACTIVE,
                                 List.of(candidate(REGISTERED_REF, "DBA", true, "user-1",
                                                 UsernameRecoveryDeliveryState.AVAILABLE)));
         }
-        private static UsernameRecoveryWorkflowState twoRegisteredSession() {
-                return workflowState(
+        private static UsernameRecoveryAuthFlowContext twoRegisteredContext() {
+                return authFlowContext(
                                 UsernameRecoveryWorkflowStatus.ACTIVE,
                                 List.of(candidate(REGISTERED_REF, "DBA", true, "user-1",
                                                 UsernameRecoveryDeliveryState.AVAILABLE),
                                                 candidate("sch_opaque-3", "DBC", true, "user-2",
                                                                 UsernameRecoveryDeliveryState.AVAILABLE)));
         }
-        private static UsernameRecoveryWorkflowState sessionWithCandidateState(
+        private static UsernameRecoveryAuthFlowContext contextWithCandidateState(
                         UsernameRecoveryDeliveryState state, UsernameRecoveryWorkflowStatus status) {
                 boolean secondRequested = status == UsernameRecoveryWorkflowStatus.COMPLETED;
-                return workflowState(
+                return authFlowContext(
                                 status,
                                 List.of(candidate(REGISTERED_REF, "DBA", true, "user-1", state),
                                                 candidate("sch_opaque-3", "DBC", true, "user-2",
@@ -1011,12 +1030,11 @@ class RequestUsernameRecoveryServiceTest {
                                 requested ? NOW : null,
                                 requested ? "op_sender_" + trustCode : null);
         }
-        private static UsernameRecoveryWorkflowState workflowState(
+        private static UsernameRecoveryAuthFlowContext authFlowContext(
                         UsernameRecoveryWorkflowStatus status,
                         List<UsernameRecoverySessionCandidate> candidates) {
-                return new UsernameRecoveryWorkflowState(
-                                new AuthFlowSessionId(SESSION_ID), status,
-                                new UsernameRecoveryWorkflowStateRevision(0),
+                return new UsernameRecoveryAuthFlowContext(
+                                status,
                                 new UsernameRecoveryVerifiedDestination(
                                                 "pepperc@ah.ozk",
                                                 UsernameRecoveryVerifiedDestination.Channel.EMAIL),
@@ -1037,15 +1055,18 @@ class RequestUsernameRecoveryServiceTest {
                                 NOW.plusSeconds(TTL_SECONDS));
         }
 
-        private void storeScenario(UsernameRecoveryWorkflowState state) {
-                workflows.state = state;
-                envelopes.snapshot = state == null ? null : replayEnvelope(
-                                state.authFlowSessionId().value(),
-                                AuthFlowScenario.USERNAME_RECOVERY,
-                                state.status() == UsernameRecoveryWorkflowStatus.COMPLETED
-                                                ? AuthFlowStatus.COMPLETED
-                                                : AuthFlowStatus.STARTED,
+        private void storeScenario(UsernameRecoveryAuthFlowContext context) {
+                if (context == null) {
+                        envelopes.snapshot = null;
+                        return;
+                }
+                AuthFlowStatus status = context.workflowStatus() == UsernameRecoveryWorkflowStatus.COMPLETED
+                                ? AuthFlowStatus.COMPLETED : AuthFlowStatus.STARTED;
+                AuthFlowSessionSnapshot plain = replayEnvelope(
+                                SESSION_ID, AuthFlowScenario.USERNAME_RECOVERY, status,
                                 NOW.plusSeconds(TTL_SECONDS));
+                AuthFlowSession bound = contextBinding.bind(plain.session(), context, NOW);
+                envelopes.snapshot = new AuthFlowSessionSnapshot(bound, plain.revision());
         }
         private static final class FakeIdempotencyPort implements UsernameRecoveryIdempotencyPort {
 
@@ -1166,6 +1187,10 @@ class RequestUsernameRecoveryServiceTest {
                 private boolean fail;
                 private int loads;
                 private int completeCalls;
+                private int updates;
+                private int forceUpdateOutcomeAtCall = -1;
+                private AuthFlowSessionMutationOutcome forcedUpdateOutcome;
+                private AuthFlowSessionMutationOutcome updateOutcome = AuthFlowSessionMutationOutcome.APPLIED;
                 private com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationOutcome completeOutcome =
                                 com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationOutcome.APPLIED;
 
@@ -1176,6 +1201,21 @@ class RequestUsernameRecoveryServiceTest {
                                 return Mono.error(new IllegalStateException("load failed"));
                         }
                         return Mono.just(Optional.ofNullable(snapshot));
+                }
+
+                @Override
+                public Mono<com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationResult>
+                                updateRevisioned(RevisionedAuthFlowSessionMutationCommand command) {
+                        updates++;
+                        AuthFlowSessionMutationOutcome outcome = updates == forceUpdateOutcomeAtCall
+                                        ? forcedUpdateOutcome : updateOutcome;
+                        if (outcome != AuthFlowSessionMutationOutcome.APPLIED) {
+                                return Mono.just(com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationResult.outcome(outcome));
+                        }
+                        snapshot = new AuthFlowSessionSnapshot(command.updated(),
+                                        new SessionRevision(String.format("%032d", updates + 1)));
+                        return Mono.just(new com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationResult(
+                                        AuthFlowSessionMutationOutcome.APPLIED, snapshot));
                 }
 
                 @Override
@@ -1208,56 +1248,6 @@ class RequestUsernameRecoveryServiceTest {
                 @Override
                 public Mono<Optional<AuthFlowSession>> load(AuthFlowSessionId id) {
                         return Mono.just(Optional.ofNullable(snapshot).map(AuthFlowSessionSnapshot::session));
-                }
-        }
-
-        private final class FakeWorkflowPort implements UsernameRecoveryWorkflowStatePort {
-                private UsernameRecoveryWorkflowState state;
-                private UsernameRecoveryWorkflowStateMutationOutcome updateOutcome = UsernameRecoveryWorkflowStateMutationOutcome.APPLIED;
-                private boolean loadFail;
-                private boolean updateFail;
-                private int forceUpdateOutcomeAtCall = -1;
-                private UsernameRecoveryWorkflowStateMutationOutcome forcedUpdateOutcome;
-                private int loads;
-                private int updates;
-                private UsernameRecoveryWorkflowStateMutationCommand lastMutation;
-
-                @Override
-                public Mono<UsernameRecoveryWorkflowStateLoadResult> load(AuthFlowSessionId id) {
-                        loads++;
-                        if (loadFail)
-                                return Mono.error(new IllegalStateException("load failed"));
-                        return Mono.just(state == null ? UsernameRecoveryWorkflowStateLoadResult.notFound()
-                                        : UsernameRecoveryWorkflowStateLoadResult.loaded(state));
-                }
-
-                @Override
-                public Mono<UsernameRecoveryWorkflowStateMutationResult> update(
-                                UsernameRecoveryWorkflowStateMutationCommand command) {
-                        updates++;
-                        lastMutation = command;
-                        if (updateFail)
-                                return Mono.error(new IllegalStateException("update failed"));
-                        if (updates == forceUpdateOutcomeAtCall) {
-                                return Mono.just(UsernameRecoveryWorkflowStateMutationResult.outcome(
-                                                forcedUpdateOutcome));
-                        }
-                        if (updateOutcome == UsernameRecoveryWorkflowStateMutationOutcome.APPLIED) {
-                                state = command.updatedState();
-                                return Mono.just(new UsernameRecoveryWorkflowStateMutationResult(updateOutcome, state));
-                        }
-                        return Mono.just(UsernameRecoveryWorkflowStateMutationResult.outcome(updateOutcome));
-                }
-
-                @Override
-                public Mono<UsernameRecoveryWorkflowStateMutationResult> create(
-                                com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryWorkflowStateCreateCommand c) {
-                        return Mono.error(new UnsupportedOperationException());
-                }
-
-                @Override
-                public Mono<UsernameRecoveryWorkflowStateDeleteResult> delete(AuthFlowSessionId id) {
-                        return Mono.error(new UnsupportedOperationException());
                 }
         }
 

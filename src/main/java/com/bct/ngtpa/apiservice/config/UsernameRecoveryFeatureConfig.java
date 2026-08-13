@@ -36,7 +36,6 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.Reques
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.StartUsernameRecoveryService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryCancelFingerprintGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryRequestFingerprintGenerator;
-import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryReservationService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryStartFingerprintGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryStartValidator;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenGenerator;
@@ -152,15 +151,6 @@ public class UsernameRecoveryFeatureConfig {
         return new CsrfTokenValidationService(csrfTokenHasher);
     }
 
-    @Bean
-    @ConditionalOnMissingBean
-    public UsernameRecoveryReservationService usernameRecoveryReservationService(
-            AuthFlowSessionPort authFlowSessionPort,
-            UsernameRecoveryWorkflowStatePort workflowStatePort,
-            CsrfTokenValidationService csrfTokenValidationService) {
-        return new UsernameRecoveryReservationService(
-                authFlowSessionPort, workflowStatePort, csrfTokenValidationService);
-    }
 
     @Bean
     @ConditionalOnMissingBean
@@ -219,10 +209,10 @@ public class UsernameRecoveryFeatureConfig {
     public RequestUsernameRecoveryUseCase requestUsernameRecoveryUseCase(
             UsernameRecoveryRequestFingerprintGenerator fingerprintGenerator,
             UsernameRecoveryIdempotencyPort idempotencyPort,
-            UsernameRecoveryReservationService reservationService,
+            UsernameRecoveryAuthFlowContextBinding contextBinding,
+            CsrfTokenValidationService csrfTokenValidationService,
             UsernameRecoveryEffectiveDestinationPort effectiveDestinationPort,
             AuthFlowSessionPort authFlowSessionPort,
-            UsernameRecoveryWorkflowStatePort workflowStatePort,
             MessageDeliveryPort messageDeliveryPort,
             CorsProperties corsProperties,
             Clock clock,
@@ -230,10 +220,10 @@ public class UsernameRecoveryFeatureConfig {
         return new RequestUsernameRecoveryService(
                 fingerprintGenerator,
                 idempotencyPort,
-                reservationService,
+                contextBinding,
+                csrfTokenValidationService,
                 effectiveDestinationPort,
                 authFlowSessionPort,
-                workflowStatePort,
                 messageDeliveryPort,
                 corsProperties.getAllowedOrigins(),
                 clock,
