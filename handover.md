@@ -1,17 +1,29 @@
-# Username Recovery XSRF Cookie Removal Handover
+# Username Recovery Handover
 
-## Repair
-- Restored valid Start and Cancel reactive controller pipelines after the damaged broad-regex edit.
-- UsernameRecoveryCookieWriter now supports auth_flow_sid only.
-- Start sets exactly auth_flow_sid while returning csrfToken in the response body.
-- Request and Cancel continue to accept X-XSRF-TOKEN and validate against the server-side session hash.
-- Cancel clears exactly auth_flow_sid.
-- Updated affected unit and public-contract integration tests.
+## Completed
 
-## Preserved cumulative state
-- Redis UsernameRecoveryWorkflowStatePort bean registration remains in UsernameRecoveryFeatureConfig.
-- Username Recovery public system errors remain scoped to err.system.unavailable.
-- Shared workflow error keys remain unchanged.
+### Protected sidecar persistence
 
-## Evidence
-target/evidence/20260812-224300-username-recovery-xsrf-removal-repair
+- Complete workflow payload protected with AES-GCM.
+- Minimal Redis wrapper retains opaque identity, revision, key version, algorithm, and ciphertext.
+- Existing Redis CAS and remaining TTL behavior is preserved.
+
+### Retained cancellation lifecycle
+
+- Live envelope transitions to `AuthFlowStatus.CANCELLED` through revision-aware CAS.
+- Encrypted sidecar transitions through feature projection `markCancelled()` to `UsernameRecoveryWorkflowStatus.CANCELLED`.
+- Generic envelope lifecycle ownership is preserved because the sidecar exposes no generic `cancel()` method.
+- Normal cancellation physically deletes neither record.
+- Existing expiry and remaining Redis TTL are unchanged.
+- Candidate delivery facts remain unchanged.
+- Already-cancelled records reconcile idempotently.
+- CAS uncertainty records a stable unknown cancellation outcome.
+- Start-flow compensation deletion remains unaffected.
+
+## Deferred
+
+Return the original verified masked destination while applying a non-production override only to physical delivery.
+
+## Known baseline failures
+
+Three unrelated controller architecture failures remain for existing controller logging and exception-message inspection.

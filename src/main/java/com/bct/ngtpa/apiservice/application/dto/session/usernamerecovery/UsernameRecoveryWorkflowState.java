@@ -27,8 +27,7 @@ import java.util.Objects;
  *
  * <p>Canonical identity: {@link AuthFlowSessionId} is the sole canonical identifier for both the
  * generic envelope and this sidecar. The sidecar deliberately contains no scenario, CSRF hash,
- * created/updated/expiry timestamps, cookie data, or generic lifecycle revision, and exposes no
- * lifecycle behavior ({@code isExpired}, {@code isTerminal}, {@code cancel}, {@code expire}).
+ * created/updated/expiry timestamps, cookie data, or generic lifecycle revision, and exposes only feature-owned lifecycle projection behavior such as {@link #markCancelled()}.
  *
  * <p>Invariants: non-null canonical {@code authFlowSessionId}; non-null status, revision,
  * destination, language, and immutable candidates; at least one candidate; at least one registered
@@ -144,6 +143,17 @@ public record UsernameRecoveryWorkflowState(
                 index,
                 current.withState(UsernameRecoveryDeliveryState.FAILED, null, null),
                 status);
+    }
+
+    /** Terminates an open workflow while preserving every candidate delivery fact. */
+    public UsernameRecoveryWorkflowState markCancelled() {
+        if (status == UsernameRecoveryWorkflowStatus.CANCELLED) {
+            return this;
+        }
+        requireOpenForMutation();
+        return new UsernameRecoveryWorkflowState(
+                authFlowSessionId, UsernameRecoveryWorkflowStatus.CANCELLED, revision.next(),
+                destination, language, candidates);
     }
 
     public UsernameRecoveryWorkflowState markUnknownOutcome(UsernameRecoverySchemeRef schemeRef) {

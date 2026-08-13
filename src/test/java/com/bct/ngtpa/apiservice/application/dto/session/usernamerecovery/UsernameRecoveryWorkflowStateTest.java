@@ -285,7 +285,44 @@ class UsernameRecoveryWorkflowStateTest {
 
         assertThat(methodNames)
                 .doesNotContain("isExpired", "isTerminal", "cancel", "expire")
-                .contains("reserve", "markRequested", "markFailed", "markUnknownOutcome");
+                .contains("reserve", "markRequested", "markFailed", "markUnknownOutcome",
+                        "markCancelled");
+    }
+
+    @Test
+    void markCancelledPreservesCandidateFactsAndAdvancesRevisionOnce() {
+        UsernameRecoverySessionCandidate candidate =
+                registered("sch_1", "DB", "DBA", UsernameRecoveryDeliveryState.RESERVED);
+        UsernameRecoveryWorkflowState value = state(
+                UsernameRecoveryWorkflowStatus.ACTIVE, ZERO, candidate);
+
+        UsernameRecoveryWorkflowState cancelled = value.markCancelled();
+
+        assertThat(cancelled.status()).isEqualTo(UsernameRecoveryWorkflowStatus.CANCELLED);
+        assertThat(cancelled.revision().value()).isEqualTo(1);
+        assertThat(cancelled.candidates()).containsExactly(candidate);
+        assertThat(cancelled.destination()).isEqualTo(DESTINATION);
+        assertThat(cancelled.language()).isEqualTo(LANGUAGE);
+        assertThat(cancelled.authFlowSessionId()).isEqualTo(SESSION_ID);
+        assertThat(cancelled.markCancelled()).isSameAs(cancelled);
+        assertThat(cancelled.markCancelled().revision().value()).isEqualTo(1);
+    }
+
+    @Test
+    void markCancelledSupportsPartiallyRequestedAndRejectsCompleted() {
+        UsernameRecoveryWorkflowState partially = state(
+                UsernameRecoveryWorkflowStatus.PARTIALLY_REQUESTED, ZERO,
+                requestedRegistered("sch_1", "DB", "DBA"),
+                registered("sch_2", "HK", "HKA", UsernameRecoveryDeliveryState.AVAILABLE));
+        assertThat(partially.markCancelled().status())
+                .isEqualTo(UsernameRecoveryWorkflowStatus.CANCELLED);
+
+        UsernameRecoveryWorkflowState completed = state(
+                UsernameRecoveryWorkflowStatus.COMPLETED, ZERO,
+                requestedRegistered("sch_1", "DB", "DBA"));
+        assertThatThrownBy(completed::markCancelled)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("workflow state is terminal");
     }
 
     @Test

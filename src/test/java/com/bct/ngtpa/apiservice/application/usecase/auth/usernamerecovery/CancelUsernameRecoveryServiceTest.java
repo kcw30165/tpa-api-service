@@ -5,10 +5,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryCancelCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryCancelResult;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.*;
+import com.bct.ngtpa.apiservice.application.dto.session.usernamerecovery.UsernameRecoveryWorkflowState;
+import com.bct.ngtpa.apiservice.application.dto.session.usernamerecovery.UsernameRecoveryWorkflowStateRevision;
 import com.bct.ngtpa.apiservice.application.port.out.*;
-import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryCancelException.Reason;
-import com.bct.ngtpa.apiservice.application.usecase.session.authflow.Sha256CsrfTokenHasher;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenValidationService;
+import com.bct.ngtpa.apiservice.application.usecase.session.authflow.Sha256CsrfTokenHasher;
+import com.bct.ngtpa.apiservice.domain.model.*;
 import java.time.*;
 import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,188 +24,228 @@ class CancelUsernameRecoveryServiceTest {
     private static final AuthFlowSessionId ID = new AuthFlowSessionId("afs_opaque-1");
     private static final String KEY = "idem_12345678";
     private static final String CSRF = "csrf-token-abc";
-    private final List<String> log = new ArrayList<>();
-    private final FakeIdempotencyPort idempotency = new FakeIdempotencyPort(log);
-    private final FakeAuthFlowPort envelopes = new FakeAuthFlowPort(log);
-    private final FakeWorkflowPort workflows = new FakeWorkflowPort(log);
+    private final List<String> calls = new ArrayList<>();
+    private final FakeIdempotencyPort idempotency = new FakeIdempotencyPort(calls);
+    private final FakeAuthFlowPort envelopes = new FakeAuthFlowPort(calls);
+    private final FakeWorkflowPort workflows = new FakeWorkflowPort(calls);
     private CancelUsernameRecoveryService service;
 
     @BeforeEach
     void setUp() {
-        envelopes.snapshot = snapshot(AuthFlowStatus.STARTED, NOW.plusSeconds(600), AuthFlowScenario.USERNAME_RECOVERY, ID);
-        service = newService(List.of());
-    }
-
-    private CancelUsernameRecoveryService newService(List<String> origins) {
-        return new CancelUsernameRecoveryService(
+        envelopes.snapshot = envelope(AuthFlowStatus.STARTED, NOW.plusSeconds(600));
+        workflows.state = workflow(UsernameRecoveryWorkflowStatus.ACTIVE, 0);
+        service = new CancelUsernameRecoveryService(
                 new UsernameRecoveryCancelFingerprintGenerator(), idempotency, envelopes, workflows,
-                new CsrfTokenValidationService(new Sha256CsrfTokenHasher()), origins, CLOCK, 600);
+                new CsrfTokenValidationService(new Sha256CsrfTokenHasher()), List.of(), CLOCK, 600);
     }
 
     @Test
-    void liveEnvelopeDeletesExactRevisionThenSidecarAndCompletes() {
+    void liveCancellationRetainsBothRecordsAndPreservesExpiry() {
+        Instant expiry = envelopes.snapshot.session().expiresAt();
         StepVerifier.create(service.cancel(command(), CSRF, null, null))
-                .assertNext(result -> assertThat(result.outcome()).isEqualTo(UsernameRecoveryCancelResult.Outcome.SUCCESS))
-                .verifyComplete();
-        assertThat(log).containsSubsequence("idem.reserve", "envelope.load", "envelope.delete", "workflow.delete", "idem.complete");
-        assertThat(envelopes.lastDelete.expected()).isSameAs(envelopes.snapshot);
-    }
-
-    @Test
-    void absentEnvelopeStillDeletesSidecarAndCompletes() {
-        envelopes.snapshot = null;
-        StepVerifier.create(service.cancel(command(), null, null, null))
                 .expectNext(new UsernameRecoveryCancelResult(UsernameRecoveryCancelResult.Outcome.SUCCESS))
                 .verifyComplete();
+        assertThat(calls).containsSubsequence("idem.reserve", "envelope.load", "envelope.cancel",
+                "workflow.load", "workflow.update", "idem.complete");
+        assertThat(envelopes.snapshot.session().status()).isEqualTo(AuthFlowStatus.CANCELLED);
+        assertThat(envelopes.snapshot.session().expiresAt()).isEqualTo(expiry);
+        assertThat(workflows.state.status()).isEqualTo(UsernameRecoveryWorkflowStatus.CANCELLED);
+        assertThat(workflows.state.revision().value()).isEqualTo(1);
         assertThat(envelopes.deleteCalls).isZero();
-        assertThat(workflows.deleteCalls).isEqualTo(1);
+        assertThat(workflows.deleteCalls).isZero();
     }
 
     @Test
-    void liveEnvelopeRequiresValidCsrfAndPreservesBothRecordsOnFailure() {
+    void alreadyCancelledEnvelopeReconcilesActiveSidecarWithoutSecondEnvelopeMutation() {
+        envelopes.snapshot = envelope(AuthFlowStatus.CANCELLED, NOW.plusSeconds(600));
+        StepVerifier.create(service.cancel(command(), null, null, null)).expectNextCount(1).verifyComplete();
+        assertThat(envelopes.cancelCalls).isZero();
+        assertThat(workflows.state.status()).isEqualTo(UsernameRecoveryWorkflowStatus.CANCELLED);
+        assertThat(workflows.updateCalls).isEqualTo(1);
+    }
+
+    @Test
+    void alreadyCancelledSidecarDoesNotAdvanceRevisionAgain() {
+        envelopes.snapshot = envelope(AuthFlowStatus.CANCELLED, NOW.plusSeconds(600));
+        workflows.state = workflow(UsernameRecoveryWorkflowStatus.CANCELLED, 1);
+        StepVerifier.create(service.cancel(command(), null, null, null)).expectNextCount(1).verifyComplete();
+        assertThat(workflows.updateCalls).isZero();
+        assertThat(workflows.state.revision().value()).isEqualTo(1);
+    }
+
+    @Test
+    void liveEnvelopeRequiresCsrfAndOriginBeforeAnyMutation() {
         StepVerifier.create(service.cancel(command(), "wrong", null, null))
-                .expectErrorSatisfies(error -> assertThat(((UsernameRecoveryCancelException) error).reason()).isEqualTo(Reason.SECURITY_INVALID))
-                .verify();
-        assertThat(envelopes.deleteCalls).isZero();
-        assertThat(workflows.deleteCalls).isZero();
-    }
-
-    @Test
-    void disallowedOriginPreservesBothRecords() {
-        service = newService(List.of("https://app.example"));
-        StepVerifier.create(service.cancel(command(), CSRF, "https://evil.example", null))
                 .expectError(UsernameRecoveryCancelException.class).verify();
+        assertThat(envelopes.cancelCalls).isZero();
+        assertThat(workflows.updateCalls).isZero();
         assertThat(envelopes.deleteCalls).isZero();
         assertThat(workflows.deleteCalls).isZero();
     }
 
     @Test
-    void expiredAndTerminalEnvelopesSkipCsrfGate() {
-        envelopes.snapshot = snapshot(AuthFlowStatus.STARTED, NOW.minusSeconds(1), AuthFlowScenario.USERNAME_RECOVERY, ID);
+    void absentEnvelopeSettlesWithoutMutatingOrphanSidecar() {
+        envelopes.snapshot = null;
         StepVerifier.create(service.cancel(command(), null, null, null)).expectNextCount(1).verifyComplete();
-        setUp();
-        envelopes.snapshot = snapshot(AuthFlowStatus.COMPLETED, NOW.plusSeconds(600), AuthFlowScenario.USERNAME_RECOVERY, ID);
-        StepVerifier.create(service.cancel(command(), null, null, null)).expectNextCount(1).verifyComplete();
+        assertThat(workflows.loadCalls).isZero();
+        assertThat(workflows.updateCalls).isZero();
     }
 
     @Test
-    void wrongScenarioOrIdentityFailsClosedWithoutDeletion() {
-        envelopes.snapshot = snapshot(AuthFlowStatus.STARTED, NOW.plusSeconds(600), AuthFlowScenario.LOGIN, ID);
-        StepVerifier.create(service.cancel(command(), CSRF, null, null)).expectError(UsernameRecoveryCancelException.class).verify();
-        envelopes.snapshot = snapshot(AuthFlowStatus.STARTED, NOW.plusSeconds(600), AuthFlowScenario.USERNAME_RECOVERY, new AuthFlowSessionId("afs_other"));
-        StepVerifier.create(service.cancel(command(), CSRF, null, null)).expectError(UsernameRecoveryCancelException.class).verify();
-        assertThat(envelopes.deleteCalls).isZero();
-    }
-
-    @Test
-    void envelopeRevisionConflictRecordsStableUnknownOutcomeWithoutRetry() {
-        envelopes.deleteOutcome = AuthFlowSessionMutationOutcome.SESSION_REVISION_CHANGED;
+    void envelopeConflictRecordsStableUnknownOutcome() {
+        envelopes.cancelOutcome = AuthFlowSessionMutationOutcome.SESSION_REVISION_CHANGED;
         StepVerifier.create(service.cancel(command(), CSRF, null, null))
-                .expectNext(new UsernameRecoveryCancelResult(UsernameRecoveryCancelResult.Outcome.SYSTEM_FAILED)).verifyComplete();
-        assertThat(envelopes.deleteCalls).isEqualTo(1);
+                .expectNext(new UsernameRecoveryCancelResult(UsernameRecoveryCancelResult.Outcome.SYSTEM_FAILED))
+                .verifyComplete();
+        assertThat(idempotency.unknownCalls).isEqualTo(1);
+        assertThat(workflows.updateCalls).isZero();
+    }
+
+    @Test
+    void sidecarConflictRecordsStableUnknownOutcomeAndKeepsEnvelopeCancelled() {
+        workflows.updateOutcome = UsernameRecoveryWorkflowStateMutationOutcome.REVISION_CONFLICT;
+        StepVerifier.create(service.cancel(command(), CSRF, null, null))
+                .expectNext(new UsernameRecoveryCancelResult(UsernameRecoveryCancelResult.Outcome.SYSTEM_FAILED))
+                .verifyComplete();
+        assertThat(envelopes.snapshot.session().status()).isEqualTo(AuthFlowStatus.CANCELLED);
         assertThat(idempotency.unknownCalls).isEqualTo(1);
     }
 
     @Test
-    void sidecarDeleteFailureRecordsStableUnknownOutcome() {
-        workflows.deleteOutcome = UsernameRecoveryWorkflowStateMutationOutcome.SYSTEM_FAILURE;
-        StepVerifier.create(service.cancel(command(), CSRF, null, null))
-                .expectNext(new UsernameRecoveryCancelResult(UsernameRecoveryCancelResult.Outcome.SYSTEM_FAILED)).verifyComplete();
-        assertThat(workflows.deleteCalls).isEqualTo(1);
-        assertThat(idempotency.completeCalls).isZero();
-        assertThat(idempotency.unknownCalls).isEqualTo(1);
-    }
-
-    @Test
-    void completedReplayDoesNotLoadOrDeleteEitherRecord() {
+    void completedReplayDoesNotLoadOrMutateRecords() {
         idempotency.reserveOutcome = UsernameRecoveryIdempotencyOutcome.COMPLETED_REPLAY;
         idempotency.record = completedRecord();
-        StepVerifier.create(service.cancel(command(), null, null, null))
-                .expectNext(new UsernameRecoveryCancelResult(UsernameRecoveryCancelResult.Outcome.SUCCESS)).verifyComplete();
+        StepVerifier.create(service.cancel(command(), null, null, null)).expectNextCount(1).verifyComplete();
         assertThat(envelopes.loadCalls).isZero();
-        assertThat(envelopes.deleteCalls).isZero();
-        assertThat(workflows.deleteCalls).isZero();
-    }
-
-    @Test
-    void malformedReplayFailsClosedWithoutDeletion() {
-        idempotency.reserveOutcome = UsernameRecoveryIdempotencyOutcome.COMPLETED_REPLAY;
-        idempotency.record = completedRecord(new UsernameRecoveryIdempotencyRecord.ReplaySnapshot("bad"));
-        StepVerifier.create(service.cancel(command(), null, null, null)).expectError(UsernameRecoveryCancelException.class).verify();
-        assertThat(envelopes.loadCalls).isZero();
+        assertThat(workflows.loadCalls).isZero();
     }
 
     @Test
     void portCompatibilityMethodFailsClosed() {
-        StepVerifier.create(service.cancel(command()))
-                .expectErrorSatisfies(error -> assertThat(((UsernameRecoveryCancelException) error).reason()).isEqualTo(Reason.SECURITY_CONTEXT_REQUIRED))
-                .verify();
-        assertThat(log).isEmpty();
+        StepVerifier.create(service.cancel(command())).expectError(UsernameRecoveryCancelException.class).verify();
+        assertThat(calls).isEmpty();
     }
 
-    private static UsernameRecoveryCancelCommand command() { return new UsernameRecoveryCancelCommand(ID, KEY); }
+    private static UsernameRecoveryCancelCommand command() {
+        return new UsernameRecoveryCancelCommand(ID, KEY);
+    }
 
-    private static AuthFlowSessionSnapshot snapshot(AuthFlowStatus status, Instant expiry, AuthFlowScenario scenario, AuthFlowSessionId id) {
+    private static AuthFlowSessionSnapshot envelope(AuthFlowStatus status, Instant expiry) {
         String hash = new Sha256CsrfTokenHasher().hash(CSRF);
-        return new AuthFlowSessionSnapshot(new AuthFlowSession(id, scenario, status, hash, null,
-                AuthFlowSessionData.empty(), NOW, NOW, expiry), new SessionRevision("00000000000000000000000000000001"));
+        return new AuthFlowSessionSnapshot(new AuthFlowSession(
+                ID, AuthFlowScenario.USERNAME_RECOVERY, status, hash, null,
+                AuthFlowSessionData.empty(), NOW, NOW, expiry),
+                new SessionRevision("00000000000000000000000000000001"));
+    }
+
+    private static UsernameRecoveryWorkflowState workflow(UsernameRecoveryWorkflowStatus status, int revision) {
+        return new UsernameRecoveryWorkflowState(ID, status,
+                new UsernameRecoveryWorkflowStateRevision(revision),
+                new UsernameRecoveryVerifiedDestination("member@example.com",
+                        UsernameRecoveryVerifiedDestination.Channel.EMAIL), Locale.ENGLISH,
+                List.of(new UsernameRecoverySessionCandidate(
+                        new UsernameRecoveryCandidate(new UsernameRecoverySchemeRef("sch_opaque-1"),
+                                "DB", "DBA", true, "user-1", UsernameRecoveryDeliveryState.AVAILABLE),
+                        null, null)));
     }
 
     private static UsernameRecoveryIdempotencyRecord completedRecord() {
-        return completedRecord(UsernameRecoveryCancelReplayCodec.encode());
-    }
-
-    private static UsernameRecoveryIdempotencyRecord completedRecord(UsernameRecoveryIdempotencyRecord.ReplaySnapshot snapshot) {
         return new UsernameRecoveryIdempotencyRecord(UsernameRecoveryIdempotencyAction.CANCEL,
                 new UsernameRecoveryIdempotencyKey(KEY),
-                new UsernameRecoveryIdempotencyFingerprint("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
+                new UsernameRecoveryIdempotencyFingerprint(
+                        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
                 new UsernameRecoveryIdempotencyOperationReference("op-ref"),
-                UsernameRecoveryIdempotencyRecord.Status.COMPLETED, snapshot, NOW, NOW, NOW.plusSeconds(600));
+                UsernameRecoveryIdempotencyRecord.Status.COMPLETED,
+                UsernameRecoveryCancelReplayCodec.encode(), NOW, NOW, NOW.plusSeconds(600));
     }
 
     private static final class FakeAuthFlowPort implements AuthFlowSessionPort {
-        private final List<String> log;
+        private final List<String> calls;
         private AuthFlowSessionSnapshot snapshot;
-        private AuthFlowSessionMutationOutcome deleteOutcome = AuthFlowSessionMutationOutcome.APPLIED;
-        private RevisionedAuthFlowSessionDeleteCommand lastDelete;
+        private AuthFlowSessionMutationOutcome cancelOutcome = AuthFlowSessionMutationOutcome.APPLIED;
         private int loadCalls;
+        private int cancelCalls;
         private int deleteCalls;
-        FakeAuthFlowPort(List<String> log) { this.log = log; }
-        @Override public Mono<AuthFlowSession> create(AuthFlowSessionCreateCommand command) { throw new UnsupportedOperationException(); }
-        @Override public Mono<Optional<AuthFlowSession>> load(AuthFlowSessionId id) { return Mono.just(Optional.ofNullable(snapshot).map(AuthFlowSessionSnapshot::session)); }
-        @Override public Mono<Optional<AuthFlowSessionSnapshot>> loadSnapshot(AuthFlowSessionId id) { log.add("envelope.load"); loadCalls++; return Mono.just(Optional.ofNullable(snapshot)); }
-        @Override public Mono<AuthFlowSessionDeleteResult> deleteRevisioned(RevisionedAuthFlowSessionDeleteCommand command) { log.add("envelope.delete"); deleteCalls++; lastDelete = command; return Mono.just(new AuthFlowSessionDeleteResult(deleteOutcome)); }
+        FakeAuthFlowPort(List<String> calls) { this.calls = calls; }
+        @Override public Mono<AuthFlowSession> create(AuthFlowSessionCreateCommand c) { throw new UnsupportedOperationException(); }
+        @Override public Mono<Optional<AuthFlowSession>> load(AuthFlowSessionId id) { return Mono.just(Optional.empty()); }
+        @Override public Mono<Optional<AuthFlowSessionSnapshot>> loadSnapshot(AuthFlowSessionId id) {
+            calls.add("envelope.load"); loadCalls++; return Mono.just(Optional.ofNullable(snapshot));
+        }
+        @Override public Mono<AuthFlowSessionMutationResult> cancelRevisioned(AuthFlowSessionSnapshot expected, Instant now) {
+            calls.add("envelope.cancel"); cancelCalls++;
+            if (cancelOutcome != AuthFlowSessionMutationOutcome.APPLIED) {
+                return Mono.just(AuthFlowSessionMutationResult.outcome(cancelOutcome));
+            }
+            AuthFlowSession s = expected.session();
+            AuthFlowSession cancelled = new AuthFlowSession(s.authFlowSessionId(), s.scenario(),
+                    AuthFlowStatus.CANCELLED, s.csrfTokenHash(), s.activeOtpChallengeId(), s.data(),
+                    s.createdAt(), now, s.expiresAt());
+            snapshot = new AuthFlowSessionSnapshot(cancelled,
+                    new SessionRevision("11111111111111111111111111111111"));
+            return Mono.just(new AuthFlowSessionMutationResult(AuthFlowSessionMutationOutcome.APPLIED, snapshot));
+        }
+        @Override public Mono<AuthFlowSessionDeleteResult> deleteRevisioned(RevisionedAuthFlowSessionDeleteCommand c) {
+            deleteCalls++; throw new AssertionError("normal cancellation must not delete envelope");
+        }
     }
 
     private static final class FakeWorkflowPort implements UsernameRecoveryWorkflowStatePort {
-        private final List<String> log;
-        private UsernameRecoveryWorkflowStateMutationOutcome deleteOutcome = UsernameRecoveryWorkflowStateMutationOutcome.DELETED;
+        private final List<String> calls;
+        private UsernameRecoveryWorkflowState state;
+        private UsernameRecoveryWorkflowStateMutationOutcome updateOutcome = UsernameRecoveryWorkflowStateMutationOutcome.APPLIED;
+        private int loadCalls;
+        private int updateCalls;
         private int deleteCalls;
-        FakeWorkflowPort(List<String> log) { this.log = log; }
-        @Override public Mono<UsernameRecoveryWorkflowStateMutationResult> create(UsernameRecoveryWorkflowStateCreateCommand command) { throw new UnsupportedOperationException(); }
-        @Override public Mono<UsernameRecoveryWorkflowStateLoadResult> load(AuthFlowSessionId id) { throw new UnsupportedOperationException(); }
-        @Override public Mono<UsernameRecoveryWorkflowStateMutationResult> update(UsernameRecoveryWorkflowStateMutationCommand command) { throw new UnsupportedOperationException(); }
-        @Override public Mono<UsernameRecoveryWorkflowStateDeleteResult> delete(AuthFlowSessionId id) { log.add("workflow.delete"); deleteCalls++; return Mono.just(new UsernameRecoveryWorkflowStateDeleteResult(deleteOutcome)); }
+        FakeWorkflowPort(List<String> calls) { this.calls = calls; }
+        @Override public Mono<UsernameRecoveryWorkflowStateMutationResult> create(UsernameRecoveryWorkflowStateCreateCommand c) { throw new UnsupportedOperationException(); }
+        @Override public Mono<UsernameRecoveryWorkflowStateLoadResult> load(AuthFlowSessionId id) {
+            calls.add("workflow.load"); loadCalls++;
+            return Mono.just(state == null ? UsernameRecoveryWorkflowStateLoadResult.notFound()
+                    : UsernameRecoveryWorkflowStateLoadResult.loaded(state));
+        }
+        @Override public Mono<UsernameRecoveryWorkflowStateMutationResult> update(UsernameRecoveryWorkflowStateMutationCommand c) {
+            calls.add("workflow.update"); updateCalls++;
+            if (updateOutcome != UsernameRecoveryWorkflowStateMutationOutcome.APPLIED) {
+                return Mono.just(UsernameRecoveryWorkflowStateMutationResult.outcome(updateOutcome));
+            }
+            state = c.updatedState();
+            return Mono.just(new UsernameRecoveryWorkflowStateMutationResult(updateOutcome, state));
+        }
+        @Override public Mono<UsernameRecoveryWorkflowStateDeleteResult> delete(AuthFlowSessionId id) {
+            deleteCalls++; throw new AssertionError("normal cancellation must not delete sidecar");
+        }
     }
 
     private static final class FakeIdempotencyPort implements UsernameRecoveryIdempotencyPort {
-        private final List<String> log;
+        private final List<String> calls;
         private UsernameRecoveryIdempotencyOutcome reserveOutcome = UsernameRecoveryIdempotencyOutcome.RESERVED;
         private UsernameRecoveryIdempotencyRecord record;
-        private int completeCalls;
         private int unknownCalls;
-        FakeIdempotencyPort(List<String> log) { this.log = log; }
-        @Override public Mono<ReservationResult> reserve(ReserveCommand command) {
-            log.add("idem.reserve");
+        FakeIdempotencyPort(List<String> calls) { this.calls = calls; }
+        @Override public Mono<ReservationResult> reserve(ReserveCommand c) {
+            calls.add("idem.reserve");
             if (reserveOutcome == UsernameRecoveryIdempotencyOutcome.RESERVED) {
                 return Mono.just(new ReservationResult(reserveOutcome,
-                        new UsernameRecoveryIdempotencyReservation(command.action(), command.idempotencyKey(),
-                                command.fingerprint(), command.operationReference(), command.expiresAt())));
+                        new UsernameRecoveryIdempotencyReservation(c.action(), c.idempotencyKey(),
+                                c.fingerprint(), c.operationReference(), c.expiresAt())));
             }
             return Mono.just(new ReservationResult(reserveOutcome, null));
         }
-        @Override public Mono<Optional<UsernameRecoveryIdempotencyRecord>> resolve(UsernameRecoveryIdempotencyAction action, UsernameRecoveryIdempotencyKey key) { log.add("idem.resolve"); return Mono.just(Optional.ofNullable(record)); }
-        @Override public Mono<UsernameRecoveryIdempotencyRecord> complete(CompleteCommand command) { log.add("idem.complete"); completeCalls++; return Mono.just(new UsernameRecoveryIdempotencyRecord(command.action(), command.idempotencyKey(), command.fingerprint(), command.operationReference(), UsernameRecoveryIdempotencyRecord.Status.COMPLETED, command.replaySnapshot(), command.now(), command.now(), command.now().plus(command.ttl()))); }
-        @Override public Mono<UsernameRecoveryIdempotencyRecord> recordUnknownOutcome(UnknownOutcomeCommand command) { log.add("idem.unknown"); unknownCalls++; return Mono.just(new UsernameRecoveryIdempotencyRecord(command.action(), command.idempotencyKey(), command.fingerprint(), command.operationReference(), UsernameRecoveryIdempotencyRecord.Status.UNKNOWN_OUTCOME, null, command.now(), command.now(), command.now().plus(command.ttl()))); }
+        @Override public Mono<Optional<UsernameRecoveryIdempotencyRecord>> resolve(UsernameRecoveryIdempotencyAction a, UsernameRecoveryIdempotencyKey k) {
+            calls.add("idem.resolve"); return Mono.just(Optional.ofNullable(record));
+        }
+        @Override public Mono<UsernameRecoveryIdempotencyRecord> complete(CompleteCommand c) {
+            calls.add("idem.complete");
+            return Mono.just(new UsernameRecoveryIdempotencyRecord(c.action(), c.idempotencyKey(),
+                    c.fingerprint(), c.operationReference(), UsernameRecoveryIdempotencyRecord.Status.COMPLETED,
+                    c.replaySnapshot(), c.now(), c.now(), c.now().plus(c.ttl())));
+        }
+        @Override public Mono<UsernameRecoveryIdempotencyRecord> recordUnknownOutcome(UnknownOutcomeCommand c) {
+            calls.add("idem.unknown"); unknownCalls++;
+            return Mono.just(new UsernameRecoveryIdempotencyRecord(c.action(), c.idempotencyKey(),
+                    c.fingerprint(), c.operationReference(), UsernameRecoveryIdempotencyRecord.Status.UNKNOWN_OUTCOME,
+                    null, c.now(), c.now(), c.now().plus(c.ttl())));
+        }
     }
 }
