@@ -24,7 +24,7 @@ The service sits between frontend clients and downstream services such as APIM-b
 
 The repository follows a clean or hexagonal structure. Current code keeps controllers and web mappers under inbound adapters, orchestration and ports under application packages, pure models under domain packages, external transport concerns under outbound adapters, and Spring wiring under config and infrastructure packages.
 
-APIM transport details stay inside outbound APIM adapters. Redis-backed runtime state, auth-flow state, authenticated-session state, and cache administration stay inside outbound Redis adapters. Controllers resolve request context and delegate to use cases instead of embedding downstream transport logic.
+APIM transport details stay inside outbound APIM adapters. Redis-backed runtime state, revisioned auth-flow envelopes, authenticated-session state, idempotency records, and cache administration stay inside outbound Redis adapters. Username Recovery keeps its protected workflow context inside a single revisioned auth-flow envelope rather than a separate workflow-state sidecar. Controllers resolve request context and delegate to use cases instead of embedding downstream transport logic.
 
 ```text
 src/main/java/com/bct/ngtpa/apiservice/
@@ -45,6 +45,7 @@ docs/
 ## Implemented Capabilities
 
 - Authentication workflows: captcha, login start, login OTP send or resend, OTP verification, login cancel, logout
+- Username Recovery: start, username delivery request, cancellation, idempotent replay, and protected single-envelope workflow state
 - Registration workflows: start, username check, OTP resend or verify, complete, cancel
 - Selected-account business APIs: contribution summaries, contribution export, notifications, personal information
 - Reference data: countries
@@ -69,6 +70,28 @@ Base path: `/api/v1`
 | POST   | `/auth/logout`            | End the authenticated session                        | Authenticated session and CSRF | No               |
 
 Detailed design packs: [docs/design/login/finalized/0-login-design-pack-index.md](docs/design/login/finalized/0-login-design-pack-index.md), [docs/design/login/finalized/login-api-contract.md](docs/design/login/finalized/login-api-contract.md)
+
+
+## Username Recovery
+
+Username Recovery uses one protected, revisioned auth-flow envelope. The encrypted `UsernameRecoveryAuthFlowContext` stores the verified destination, language, candidate projections, delivery states, and workflow status. START creates the envelope, Request uses revision-aware envelope updates for reservation and delivery outcomes, and Cancel changes the envelope lifecycle to `CANCELLED` while retaining the protected context and original expiry. There is no separate Username Recovery workflow-state Redis sidecar.
+
+| Method | Path | Purpose | Requirement | Selected account |
+|---|---|---|---|---|
+| POST | `/auth/username-recovery/start` | Verify recovery prerequisites and create the protected auth-flow envelope | Pre-auth, captcha, idempotency | No |
+| POST | `/auth/username-recovery/request` | Request delivery of a selected registered username | Auth-flow cookie, CSRF, idempotency | No |
+| POST | `/auth/username-recovery/cancel` | Cancel the current Username Recovery flow | Auth-flow cookie, CSRF, idempotency | No |
+
+Key runtime properties:
+
+- `auth-workflows.username-recovery.context-protection.enabled`
+- `auth-workflows.username-recovery.context-protection.key-version`
+- `auth-workflows.username-recovery.context-protection.secret`
+- `auth-workflows.username-recovery.session.ttl-seconds`
+- `USERNAME_RECOVERY_COOKIE_SECURE`
+
+The context-protection secret must be environment-specific and contain at least 32 characters. Do not commit a real secret.
+
 
 ### Registration
 
@@ -174,13 +197,13 @@ Detailed contract: [docs/design/reference-date/reference-date-cache-admin.md](do
 
 ## Build and Test
 
-Ensure `JAVA_HOME` points to a JDK 21 installation, then use the repository's Maven convention:
+Ensure `JAVA_HOME` points to a JDK 21 installation. Maven builder parallelism uses `-T 1C`; JUnit classes and methods should remain sequential unless a test suite is explicitly proven parallel-safe.
 
 ```bash
-mvn clean compile -DskipTests
-mvn test
-mvn -Dtest=ContributionControllerTest test
-mvn clean verify
+mvn -T 1C clean compile -DskipTests
+mvn -T 1C -Djunit.jupiter.execution.parallel.enabled=false test
+mvn -T 1C -Djunit.jupiter.execution.parallel.enabled=false -Dtest=ContributionControllerTest test
+mvn -T 1C -Djunit.jupiter.execution.parallel.enabled=false clean verify
 ```
 
 ## Run Locally
@@ -193,11 +216,13 @@ mvn clean verify
 - `auth-workflows.login.context-protection.secret`
 - `auth-workflows.login.session.protection.base64-key`
 - `auth-workflows.registration.context-protection.secret`
+- `auth-workflows.username-recovery.context-protection.key-version`
+- `auth-workflows.username-recovery.context-protection.secret`
 
 1. Start the application:
 
 ```bash
-mvn spring-boot:run
+mvn -T 1C -DskipTests -Dspring-boot.run.profiles=local spring-boot:run
 ```
 
 Current default port is `8888`.
@@ -221,6 +246,7 @@ The attached startup log in this repository workspace confirms that leaving `aut
 | `auth-workflows.login.context-protection`           | Login pre-auth encryption settings                                                    | Yes               | Required at startup                                                        |
 | `auth-workflows.login.session.protection`           | Authenticated-session payload protection                                              | Yes               | Required at startup                                                        |
 | `auth-workflows.registration.context-protection`    | Registration context and username-check protection                                    | Yes               | Required at startup                                                        |
+| `auth-workflows.username-recovery.context-protection` | Username Recovery protected auth-flow context | Yes | Required for Username Recovery runtime composition; workflow state is stored only in the auth-flow envelope |
 | `auth-workflows.forgot-password.context-protection` | Forgot-password continuation-context encryption settings                              | Yes               | Declared for later workflow wiring; not startup-critical in Subtask 002    |
 | `config-service`                                    | Config service HTTP client settings                                                   | Usually           | Startup integration settings                                               |
 | `sms`                                               | SMS delivery settings for workflow messaging                                          | Usually           | Used by current auth workflows                                             |
@@ -254,6 +280,7 @@ Page-schema reference: [docs/pageconfig/045-page-schema-validation-dsl.md](docs/
 - [docs/design/login/finalized/login-api-contract.md](docs/design/login/finalized/login-api-contract.md) — detailed login workflow contract baseline
 - [docs/design/registration/finalized/registration-api-contract.md](docs/design/registration/finalized/registration-api-contract.md) — detailed registration workflow contract baseline
 - [docs/design/reference-date/reference-date-cache-admin.md](docs/design/reference-date/reference-date-cache-admin.md) — internal reference-date cache admin contract
+- [docs/implementation/username-recovery-single-envelope-migration.md](docs/implementation/username-recovery-single-envelope-migration.md) — Username Recovery single-envelope migration and sidecar-removal record
 - [docs/pageconfig/045-page-schema-validation-dsl.md](docs/pageconfig/045-page-schema-validation-dsl.md) — page schema and validation DSL reference
 
 ## Documentation Maintenance
