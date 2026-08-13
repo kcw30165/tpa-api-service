@@ -265,14 +265,7 @@ public class UsernameRecoveryFeatureConfig {
                 true,
                 secure,
                 SessionCookieSameSite.STRICT);
-        SessionCookiePolicy xsrfPolicy = new SessionCookiePolicy(
-                "XSRF-TOKEN",
-                USERNAME_RECOVERY_COOKIE_PATH,
-                ttlSeconds,
-                false,
-                secure,
-                SessionCookieSameSite.STRICT);
-        return new UsernameRecoveryCookieWriter(authFlowPolicy, xsrfPolicy);
+        return new UsernameRecoveryCookieWriter(authFlowPolicy);
     }
 
     private static int usernameRecoverySessionTtlSeconds(AuthWorkflowProperties properties) {

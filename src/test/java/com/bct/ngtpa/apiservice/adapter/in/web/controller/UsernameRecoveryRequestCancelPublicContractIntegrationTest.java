@@ -140,20 +140,15 @@ class UsernameRecoveryRequestCancelPublicContractIntegrationTest {
                 .expectStatus().isOk()
                 .expectHeader().valueEquals("X-Request-Id", "req-contract-2-cancel")
                 .expectHeader().values(HttpHeaders.SET_COOKIE, values -> {
-                    assertThat(values).anySatisfy(cookie -> assertThat(cookie)
+                    assertThat(values).hasSize(1);
+                    assertThat(values.get(0))
                             .contains("auth_flow_sid=")
                             .contains("Path=" + COOKIE_PATH)
                             .contains("Max-Age=0")
                             .contains("HttpOnly")
                             .contains("Secure")
-                            .contains("SameSite=Strict"));
-                    assertThat(values).anySatisfy(cookie -> assertThat(cookie)
-                            .contains("XSRF-TOKEN=")
-                            .contains("Path=" + COOKIE_PATH)
-                            .contains("Max-Age=0")
-                            .doesNotContain("HttpOnly")
-                            .contains("Secure")
-                            .contains("SameSite=Strict"));
+                            .contains("SameSite=Strict")
+                            .doesNotContain("XSRF-TOKEN");
                 })
                 .expectBody()
                 .jsonPath("$.success").isEqualTo(true)
@@ -187,20 +182,18 @@ class UsernameRecoveryRequestCancelPublicContractIntegrationTest {
                 .jsonPath("$.success").isEqualTo(false)
                 .jsonPath("$.status").isEqualTo("SYSTEM_ERROR")
                 .jsonPath("$.result.nextStep").isEqualTo("RETURN_TO_LOGIN")
-                .jsonPath("$.errors[0].code").isEqualTo("err.system.unavailable");
+                .jsonPath("$.errors[0].code").isEqualTo("err..workflow.system.unavailable");
     }
 
     private static WebTestClient client(
             RequestUsernameRecoveryUseCase request, CancelUsernameRecoveryUseCase cancel) {
         SessionCookiePolicy authFlow = new SessionCookiePolicy(
                 "auth_flow_sid", COOKIE_PATH, 600, true, true, SessionCookieSameSite.STRICT);
-        SessionCookiePolicy xsrf = new SessionCookiePolicy(
-                "XSRF-TOKEN", COOKIE_PATH, 600, false, true, SessionCookieSameSite.STRICT);
         AuthUsernameRecoveryController controller = new AuthUsernameRecoveryController(
                 neverStart(), new UsernameRecoveryStartWebMapper(), new UsernameRecoveryStartResponsePolicy(),
                 request, new UsernameRecoveryRequestWebMapper(), new UsernameRecoveryRequestResponsePolicy(),
                 cancel, new UsernameRecoveryCancelWebMapper(), new UsernameRecoveryCancelResponsePolicy(),
-                new UsernameRecoveryCookieWriter(authFlow, xsrf));
+                new UsernameRecoveryCookieWriter(authFlow));
         return WebTestClient.bindToController(controller).build();
     }
 

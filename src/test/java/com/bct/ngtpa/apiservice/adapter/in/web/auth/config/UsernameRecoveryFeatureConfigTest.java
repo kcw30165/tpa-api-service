@@ -121,15 +121,7 @@ class UsernameRecoveryFeatureConfigTest {
             assertThat(authFlow.policy().secure()).isTrue();
             assertThat(authFlow.policy().sameSite()).isEqualTo(SessionCookieSameSite.STRICT);
 
-            var xsrf = writer.xsrfCookie("raw-csrf-token");
-            assertThat(xsrf.policy().name()).isEqualTo("XSRF-TOKEN");
-            assertThat(xsrf.policy().path()).isEqualTo("/api/v1/auth/username-recovery");
-            assertThat(xsrf.policy().maxAgeSeconds()).isEqualTo(600);
-            assertThat(xsrf.policy().httpOnly()).isFalse();
-            assertThat(xsrf.policy().sameSite()).isEqualTo(SessionCookieSameSite.STRICT);
-
             assertThat(writer.clearAuthFlowCookie().operation()).isEqualTo(SessionCookieOperation.CLEAR);
-            assertThat(writer.clearXsrfCookie().operation()).isEqualTo(SessionCookieOperation.CLEAR);
         });
     }
 

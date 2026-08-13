@@ -154,8 +154,6 @@ class UsernameRecoveryControllerSecurityTest {
             CancelUsernameRecoveryUseCase cancel) {
         SessionCookiePolicy authFlowPolicy = new SessionCookiePolicy(
                 "auth_flow_sid", COOKIE_PATH, 600, true, true, SessionCookieSameSite.STRICT);
-        SessionCookiePolicy xsrfPolicy = new SessionCookiePolicy(
-                "XSRF-TOKEN", COOKIE_PATH, 600, false, true, SessionCookieSameSite.STRICT);
         return new AuthUsernameRecoveryController(
                 start,
                 new UsernameRecoveryStartWebMapper(),
@@ -166,6 +164,6 @@ class UsernameRecoveryControllerSecurityTest {
                 cancel,
                 new UsernameRecoveryCancelWebMapper(),
                 new UsernameRecoveryCancelResponsePolicy(),
-                new UsernameRecoveryCookieWriter(authFlowPolicy, xsrfPolicy));
+                new UsernameRecoveryCookieWriter(authFlowPolicy));
     }
 }

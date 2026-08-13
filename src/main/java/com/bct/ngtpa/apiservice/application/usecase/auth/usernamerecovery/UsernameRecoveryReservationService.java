@@ -16,11 +16,18 @@ import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryDeliveryState;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySchemeRef;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySessionCandidate;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoveryWorkflowStatus;
+
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.Objects;
 import java.util.Optional;
 import reactor.core.publisher.Mono;
 
-/** Model B reservation boundary for the Username Recovery workflow-state sidecar. */
+/**
+ * Model B reservation boundary for the Username Recovery workflow-state
+ * sidecar.
+ */
+@Slf4j
 public final class UsernameRecoveryReservationService {
     private final AuthFlowSessionPort authFlowSessionPort;
     private final UsernameRecoveryWorkflowStatePort workflowStatePort;
@@ -77,7 +84,12 @@ public final class UsernameRecoveryReservationService {
     private Optional<UsernameRecoveryReservationResult> verifyCsrf(
             String rawCsrfToken, String storedHash) {
         try {
+            log.info("RAW=[" + rawCsrfToken + "]");
+            log.info("HASH=[" + storedHash + "]");
+
             CsrfTokenValidationResult result = csrfTokenValidationService.validate(rawCsrfToken, storedHash);
+
+            log.info("VALID=[" + result.valid() + "]");
             return result.valid() ? Optional.empty()
                     : Optional.of(UsernameRecoveryReservationResult.csrfInvalid());
         } catch (RuntimeException exception) {
@@ -107,8 +119,7 @@ public final class UsernameRecoveryReservationService {
                 && state.status() != UsernameRecoveryWorkflowStatus.PARTIALLY_REQUESTED) {
             return Mono.just(UsernameRecoveryReservationResult.terminal());
         }
-        Optional<UsernameRecoveryReservationResult> eligibility =
-                checkEligibility(state, command.schemeRef());
+        Optional<UsernameRecoveryReservationResult> eligibility = checkEligibility(state, command.schemeRef());
         if (eligibility.isPresent()) {
             return Mono.just(eligibility.get());
         }
@@ -139,9 +150,8 @@ public final class UsernameRecoveryReservationService {
     private Mono<UsernameRecoveryReservationResult> persistReservation(
             UsernameRecoveryWorkflowState loaded,
             UsernameRecoveryWorkflowState reserved) {
-        UsernameRecoveryWorkflowStateMutationCommand mutation =
-                new UsernameRecoveryWorkflowStateMutationCommand(
-                        loaded.authFlowSessionId(), loaded.revision(), reserved);
+        UsernameRecoveryWorkflowStateMutationCommand mutation = new UsernameRecoveryWorkflowStateMutationCommand(
+                loaded.authFlowSessionId(), loaded.revision(), reserved);
         return workflowStatePort.update(mutation)
                 .onErrorMap(RuntimeException.class, ReservationPersistenceException::new)
                 .map(this::mapMutation);

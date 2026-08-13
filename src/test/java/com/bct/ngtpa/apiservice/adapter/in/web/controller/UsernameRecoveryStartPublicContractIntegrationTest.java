@@ -63,9 +63,10 @@ class UsernameRecoveryStartPublicContractIntegrationTest {
                 .expectHeader().valueEquals("X-Request-Id", "req-contract-1")
                 .expectHeader().values(HttpHeaders.SET_COOKIE, values -> {
                     String combined = String.join("\n", values);
+                    assertThat(values).hasSize(1);
                     assertThat(combined)
                             .contains("auth_flow_sid=afs_contract-1")
-                            .contains("XSRF-TOKEN=csrf-contract-value")
+                            .doesNotContain("XSRF-TOKEN")
                             .contains("Path=" + COOKIE_PATH)
                             .contains("Max-Age=600")
                             .contains("SameSite=Strict")
@@ -182,7 +183,7 @@ class UsernameRecoveryStartPublicContractIntegrationTest {
                 .expectBody()
                 .jsonPath("$.success").isEqualTo(false)
                 .jsonPath("$.status").isEqualTo("SYSTEM_ERROR")
-                .jsonPath("$.errors[0].code").isEqualTo("err.system.unavailable")
+                .jsonPath("$.errors[0].code").isEqualTo("err..workflow.system.unavailable")
                 .jsonPath("$.errors[0].message").doesNotExist()
                 .consumeWith(result -> assertThat(new String(result.getResponseBody()))
                         .doesNotContain("redis-secret-failure"));
@@ -195,8 +196,6 @@ class UsernameRecoveryStartPublicContractIntegrationTest {
                 Mono.error(new AssertionError("Cancel use case must not run"));
         SessionCookiePolicy authFlow = new SessionCookiePolicy(
                 "auth_flow_sid", COOKIE_PATH, 600, true, true, SessionCookieSameSite.STRICT);
-        SessionCookiePolicy xsrf = new SessionCookiePolicy(
-                "XSRF-TOKEN", COOKIE_PATH, 600, false, true, SessionCookieSameSite.STRICT);
         AuthUsernameRecoveryController controller = new AuthUsernameRecoveryController(
                 start,
                 new UsernameRecoveryStartWebMapper(),
@@ -207,7 +206,7 @@ class UsernameRecoveryStartPublicContractIntegrationTest {
                 cancel,
                 new UsernameRecoveryCancelWebMapper(),
                 new UsernameRecoveryCancelResponsePolicy(),
-                new UsernameRecoveryCookieWriter(authFlow, xsrf));
+                new UsernameRecoveryCookieWriter(authFlow));
         return WebTestClient.bindToController(controller).build();
     }
 

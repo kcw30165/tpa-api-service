@@ -80,13 +80,7 @@ class AuthUsernameRecoveryControllerTest {
             assertThat(cookie.isSecure()).isTrue();
             assertThat(cookie.getSameSite()).isEqualTo("Strict");
         });
-        assertThat(response.getCookies().getFirst("XSRF-TOKEN")).satisfies(cookie -> {
-            assertThat(cookie.getValue()).isEqualTo("csrf-value");
-            assertThat(cookie.getPath()).isEqualTo(COOKIE_PATH);
-            assertThat(cookie.isHttpOnly()).isFalse();
-            assertThat(cookie.isSecure()).isTrue();
-            assertThat(cookie.getSameSite()).isEqualTo("Strict");
-        });
+        assertThat(response.getCookies().getFirst("XSRF-TOKEN")).isNull();
         assertThat(response.getHeaders().getFirst("X-Request-Id")).isEqualTo("req_abc");
     }
 
@@ -375,11 +369,7 @@ class AuthUsernameRecoveryControllerTest {
             assertThat(cookie.getPath()).isEqualTo(COOKIE_PATH);
             assertThat(cookie.getMaxAge().getSeconds()).isZero();
         });
-        assertThat(response.getCookies().getFirst("XSRF-TOKEN")).satisfies(cookie -> {
-            assertThat(cookie.getValue()).isEmpty();
-            assertThat(cookie.getPath()).isEqualTo(COOKIE_PATH);
-            assertThat(cookie.getMaxAge().getSeconds()).isZero();
-        });
+        assertThat(response.getCookies().getFirst("XSRF-TOKEN")).isNull();
         assertThat(response.getHeaders().getFirst("X-Request-Id")).isEqualTo("req_125");
     }
 
@@ -575,8 +565,6 @@ class AuthUsernameRecoveryControllerTest {
             CancelUsernameRecoveryUseCase cancel) {
         SessionCookiePolicy authFlowPolicy = new SessionCookiePolicy(
                 "auth_flow_sid", COOKIE_PATH, (int) TTL.getSeconds(), true, true, SessionCookieSameSite.STRICT);
-        SessionCookiePolicy xsrfPolicy = new SessionCookiePolicy(
-                "XSRF-TOKEN", COOKIE_PATH, (int) TTL.getSeconds(), false, true, SessionCookieSameSite.STRICT);
         return new AuthUsernameRecoveryController(
                 start,
                 new UsernameRecoveryStartWebMapper(),
@@ -587,7 +575,7 @@ class AuthUsernameRecoveryControllerTest {
                 cancel,
                 new UsernameRecoveryCancelWebMapper(),
                 new UsernameRecoveryCancelResponsePolicy(),
-                new UsernameRecoveryCookieWriter(authFlowPolicy, xsrfPolicy));
+                new UsernameRecoveryCookieWriter(authFlowPolicy));
     }
 
     private static final class RecordingStartUseCase implements StartUsernameRecoveryUseCase {

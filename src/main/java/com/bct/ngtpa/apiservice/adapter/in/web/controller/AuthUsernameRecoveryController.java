@@ -34,6 +34,9 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.Userna
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryStartException;
 import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySchemeRef;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
+
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -63,6 +66,7 @@ import reactor.core.publisher.Mono;
  * typed Start/Request/Cancel application exceptions are translated into Task 023 policies;
  * unexpected defects propagate to the central exception boundary.
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/auth/username-recovery")
 public final class AuthUsernameRecoveryController {
@@ -130,7 +134,6 @@ public final class AuthUsernameRecoveryController {
                                 if (result.outcome() == UsernameRecoveryStartResult.Outcome.SESSION_CREATED) {
                                     cookieAdapter.apply(response,
                                             cookieWriter.authFlowCookie(result.authFlowSessionId()));
-                                    cookieAdapter.apply(response, cookieWriter.xsrfCookie(result.csrfToken()));
                                 }
                                 return startPolicy.toPolicy(result, startMapper);
                             })
@@ -169,6 +172,7 @@ public final class AuthUsernameRecoveryController {
                     try {
                         command = convertRequest(sessionId, schemeRef, idempotencyKey);
                     } catch (UsernameRecoveryRequestException exception) {
+                        log.warn("username recovery request conversion failed: {}", exception.getMessage());
                         return Mono.just(requestPolicy.toPolicy(exception));
                     } catch (InvalidSchemeRefSignal exception) {
                         return Mono.just(requestPolicy.toPolicy(invalidSchemeRefResult(), requestMapper));
@@ -214,7 +218,6 @@ public final class AuthUsernameRecoveryController {
                             .map(result -> {
                                 if (result.outcome() == UsernameRecoveryCancelResult.Outcome.SUCCESS) {
                                     cookieAdapter.apply(response, cookieWriter.clearAuthFlowCookie());
-                                    cookieAdapter.apply(response, cookieWriter.clearXsrfCookie());
                                 }
                                 return cancelPolicy.toPolicy(result, cancelMapper);
                             })
