@@ -46,6 +46,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 
 /**
@@ -87,6 +88,7 @@ import reactor.core.publisher.Mono;
  * automatically and the
  * session CAS is never retried automatically.
  */
+@Slf4j
 public final class RequestUsernameRecoveryService implements RequestUsernameRecoveryUseCase {
 
         private final UsernameRecoveryRequestFingerprintGenerator fingerprintGenerator;
@@ -201,6 +203,13 @@ public final class RequestUsernameRecoveryService implements RequestUsernameReco
                                                 now,
                                                 ttl,
                                                 reservation))
+                                .doOnError(RequestPersistenceException.class, error -> log.error(
+                                                "event=username-recovery.request.persistence-failed errorType={} causeType={}",
+                                                error.getClass().getSimpleName(),
+                                                error.getCause() == null
+                                                                ? "none"
+                                                                : error.getCause().getClass().getSimpleName(),
+                                                error))
                                 .onErrorResume(RequestPersistenceException.class,
                                                 error -> Mono.error(
                                                                 UsernameRecoveryRequestException.systemFailure(error)));
@@ -248,6 +257,9 @@ public final class RequestUsernameRecoveryService implements RequestUsernameReco
                 UsernameRecoveryReservationCommand reservationCommand = new UsernameRecoveryReservationCommand(
                                 command.authFlowSessionId(), command.schemeRef(), now);
                 return reservationService.reserve(reservationCommand, rawCsrfToken)
+                                .doOnNext(result -> log.debug(
+                                                "event=username-recovery.request.reservation-completed outcome={}",
+                                                result.outcome()))
                                 .onErrorMap(Exception.class, RequestPersistenceException::new)
                                 .flatMap(result -> switch (result.outcome()) {
                                         case RESERVED ->
@@ -294,6 +306,9 @@ public final class RequestUsernameRecoveryService implements RequestUsernameReco
                         Instant now,
                         Duration ttl) {
                 return workflowStatePort.load(command.authFlowSessionId())
+                                .doOnNext(loadResult -> log.debug(
+                                                "event=username-recovery.request.delivery-workflow-load outcome={}",
+                                                loadResult.outcome()))
                                 .onErrorMap(Exception.class, RequestPersistenceException::new)
                                 .flatMap(loadResult -> switch (loadResult.outcome()) {
                                         case LOADED -> deliverFromLoadedWorkflow(loadResult.state(), command,
@@ -344,6 +359,13 @@ public final class RequestUsernameRecoveryService implements RequestUsernameReco
                         UsernameRecoveryWorkflowState state) {
                 return effectiveDestinationPort.resolve(
                                 new UsernameRecoveryEffectiveDestinationCommand(state.destination()))
+                                .doOnNext(result -> log.debug(
+                                                "event=username-recovery.request.effective-destination-resolved channel={}",
+                                                result.channel()))
+                                .doOnError(error -> log.error(
+                                                "event=username-recovery.request.effective-destination-failed errorType={}",
+                                                error.getClass().getSimpleName(),
+                                                error))
                                 .onErrorMap(Exception.class, EffectiveDestinationPersistenceException::new);
         }
 
@@ -361,7 +383,18 @@ public final class RequestUsernameRecoveryService implements RequestUsernameReco
                 String maskedDestination = destinationMasker.mask(effective.channel(), effective.destination());
                 MessageDeliveryCommand deliveryCommand = buildDeliveryCommand(
                                 state, candidate, effective, reservation.operationReference().value());
+                log.debug(
+                                "event=username-recovery.request.delivery-start channel={}",
+                                deliveryCommand.channel());
                 return messageDeliveryPort.deliver(deliveryCommand)
+                                .doOnNext(deliveryResult -> log.debug(
+                                                "event=username-recovery.request.delivery-completed status={} channel={}",
+                                                deliveryResult == null ? null : deliveryResult.status(),
+                                                deliveryResult == null ? null : deliveryResult.channel()))
+                                .doOnError(error -> log.error(
+                                                "event=username-recovery.request.delivery-failed errorType={}",
+                                                error.getClass().getSimpleName(),
+                                                error))
                                 .onErrorMap(Exception.class, RequestPersistenceException::new)
                                 .flatMap(deliveryResult -> handleDeliveryOutcome(state, command, idempotencyKey,
                                                 fingerprint, reservation, now, ttl, effective, maskedDestination,
@@ -559,6 +592,14 @@ public final class RequestUsernameRecoveryService implements RequestUsernameReco
                                 new UsernameRecoveryWorkflowStateMutationCommand(
                                                 current.authFlowSessionId(), current.revision(), updated);
                 return workflowStatePort.update(mutation)
+                                .doOnNext(result -> log.debug(
+                                                "event=username-recovery.request.workflow-update outcome={} expectedRevision={}",
+                                                result.outcome(),
+                                                current.revision().value()))
+                                .doOnError(error -> log.error(
+                                                "event=username-recovery.request.workflow-update-failed errorType={}",
+                                                error.getClass().getSimpleName(),
+                                                error))
                                 .onErrorMap(Exception.class, RequestPersistenceException::new);
         }
 
