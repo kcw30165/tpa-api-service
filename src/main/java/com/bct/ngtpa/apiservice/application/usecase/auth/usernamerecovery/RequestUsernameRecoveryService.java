@@ -501,8 +501,13 @@ public final class RequestUsernameRecoveryService implements RequestUsernameReco
                                                 snapshot,
                                                 now,
                                                 ttl);
-                return idempotencyPort.complete(completeCommand)
-                                .onErrorMap(Exception.class, RequestPersistenceException::new)
+                Mono<Void> envelopeCompletion = requested.status()
+                                == UsernameRecoveryWorkflowStatus.COMPLETED
+                                                ? completeEnvelopeAfterFinalRequest(requested, now)
+                                                : Mono.empty();
+                return envelopeCompletion
+                                .then(Mono.defer(() -> idempotencyPort.complete(completeCommand)
+                                                .onErrorMap(Exception.class, RequestPersistenceException::new)))
                                 .map(record -> new UsernameRecoveryRequestResult(
                                                 UsernameRecoveryRequestResult.Outcome.REQUEST_ACCEPTED,
                                                 requested.status(),
@@ -512,6 +517,48 @@ public final class RequestUsernameRecoveryService implements RequestUsernameReco
                                 .onErrorResume(RequestPersistenceException.class,
                                                 error -> recordUnknownAfterAcceptance(command, idempotencyKey,
                                                                 fingerprint, reservation, now, ttl));
+        }
+
+        private Mono<Void> completeEnvelopeAfterFinalRequest(
+                        UsernameRecoveryWorkflowState requested, Instant now) {
+                return authFlowSessionPort.loadSnapshot(requested.authFlowSessionId())
+                                .onErrorMap(Exception.class, RequestPersistenceException::new)
+                                .flatMap(optional -> optional
+                                                .map(snapshot -> completeLoadedEnvelope(snapshot, requested, now))
+                                                .orElseGet(() -> Mono.error(new RequestPersistenceException(
+                                                                new IllegalStateException(
+                                                                                "auth-flow envelope not found after final request")))))
+                                .then();
+        }
+
+        private Mono<Void> completeLoadedEnvelope(
+                        AuthFlowSessionSnapshot snapshot,
+                        UsernameRecoveryWorkflowState requested,
+                        Instant now) {
+                var session = snapshot.session();
+                if (!session.authFlowSessionId().equals(requested.authFlowSessionId())
+                                || session.scenario() != AuthFlowScenario.USERNAME_RECOVERY
+                                || session.isExpired(now)) {
+                        return Mono.error(new RequestPersistenceException(
+                                        new IllegalStateException(
+                                                        "auth-flow envelope invalid after final request")));
+                }
+                if (session.status() == AuthFlowStatus.COMPLETED) {
+                        return Mono.empty();
+                }
+                if (session.isTerminal() || session.status() != AuthFlowStatus.STARTED) {
+                        return Mono.error(new RequestPersistenceException(
+                                        new IllegalStateException(
+                                                        "auth-flow envelope cannot complete after final request")));
+                }
+                return authFlowSessionPort.completeRevisioned(snapshot, now)
+                                .onErrorMap(Exception.class, RequestPersistenceException::new)
+                                .flatMap(result -> result.outcome()
+                                                == com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationOutcome.APPLIED
+                                                                ? Mono.empty()
+                                                                : Mono.error(new RequestPersistenceException(
+                                                                                new IllegalStateException(
+                                                                                                "auth-flow envelope completion outcome uncertain"))));
         }
 
         private Mono<UsernameRecoveryRequestResult> persistDefiniteFailure(
@@ -674,13 +721,14 @@ public final class RequestUsernameRecoveryService implements RequestUsernameReco
                 if (!envelope.session().authFlowSessionId().equals(command.authFlowSessionId())
                                 || envelope.session().scenario() != AuthFlowScenario.USERNAME_RECOVERY
                                 || envelope.session().isExpired(now)
-                                || envelope.session().status() != AuthFlowStatus.STARTED) {
+                                || (envelope.session().status() != AuthFlowStatus.STARTED
+                                                && envelope.session().status() != AuthFlowStatus.COMPLETED)) {
                         return Mono.error(UsernameRecoveryRequestException.systemFailure());
                 }
                 return workflowStatePort.load(command.authFlowSessionId())
                                 .onErrorMap(Exception.class, RequestPersistenceException::new)
                                 .flatMap(load -> switch (load.outcome()) {
-                                        case LOADED -> rebuildReplay(load.state(), command);
+                                        case LOADED -> rebuildReplay(envelope, load.state(), command);
                                         case STATE_NOT_FOUND, SYSTEM_FAILURE ->
                                                 Mono.error(UsernameRecoveryRequestException.systemFailure());
                                         default -> throw new IllegalStateException(
@@ -689,9 +737,11 @@ public final class RequestUsernameRecoveryService implements RequestUsernameReco
         }
 
         private Mono<UsernameRecoveryRequestResult> rebuildReplay(
+                        AuthFlowSessionSnapshot envelope,
                         UsernameRecoveryWorkflowState state,
                         UsernameRecoveryRequestCommand command) {
-                if (!state.authFlowSessionId().equals(command.authFlowSessionId())) {
+                if (!state.authFlowSessionId().equals(command.authFlowSessionId())
+                                || !replayStatusesConsistent(envelope.session().status(), state.status())) {
                         return Mono.error(UsernameRecoveryRequestException.systemFailure());
                 }
                 UsernameRecoverySessionCandidate candidate = findCandidate(state, command.schemeRef());
@@ -706,6 +756,14 @@ public final class RequestUsernameRecoveryService implements RequestUsernameReco
                                         UsernameRecoveryRequestResult.Outcome.UNKNOWN_OUTCOME, null, null, null, null));
                         default -> Mono.error(UsernameRecoveryRequestException.systemFailure());
                 };
+        }
+
+        private boolean replayStatusesConsistent(
+                        AuthFlowStatus envelopeStatus,
+                        UsernameRecoveryWorkflowStatus workflowStatus) {
+                return workflowStatus == UsernameRecoveryWorkflowStatus.COMPLETED
+                                ? envelopeStatus == AuthFlowStatus.COMPLETED
+                                : envelopeStatus == AuthFlowStatus.STARTED;
         }
 
         private Mono<UsernameRecoveryRequestResult> rebuildAcceptedReplay(

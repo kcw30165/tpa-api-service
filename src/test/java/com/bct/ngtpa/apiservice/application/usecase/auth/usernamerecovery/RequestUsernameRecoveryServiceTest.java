@@ -451,6 +451,8 @@ class RequestUsernameRecoveryServiceTest {
                 assertThat(requested.requestedAt()).isEqualTo(NOW);
                 assertThat(requested.senderReference()).isEqualTo("provider-msg-1");
                 assertThat(stored.status()).isEqualTo(UsernameRecoveryWorkflowStatus.PARTIALLY_REQUESTED);
+                assertThat(envelopes.snapshot.session().status()).isEqualTo(AuthFlowStatus.STARTED);
+                assertThat(envelopes.completeCalls).isZero();
         }
 
         @Test
@@ -467,7 +469,29 @@ class RequestUsernameRecoveryServiceTest {
                                 .verifyComplete();
 
                 assertThat(workflows.state.status()).isEqualTo(UsernameRecoveryWorkflowStatus.COMPLETED);
+                assertThat(envelopes.snapshot.session().status()).isEqualTo(AuthFlowStatus.COMPLETED);
+                assertThat(envelopes.snapshot.session().expiresAt()).isEqualTo(NOW.plusSeconds(TTL_SECONDS));
+                assertThat(envelopes.completeCalls).isEqualTo(1);
                 assertThat(messageDeliveryPort.deliverCalls).isEqualTo(1);
+        }
+
+        @Test
+        void finalEnvelopeCompletionConflictRecordsUnknownOutcomeWithoutResend() {
+                storeScenario(singleRegisteredSession());
+                envelopes.completeOutcome = com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationOutcome.SESSION_REVISION_CHANGED;
+
+                StepVerifier.create(service.request(command(), CSRF, null, null))
+                                .expectNext(new UsernameRecoveryRequestResult(
+                                                UsernameRecoveryRequestResult.Outcome.UNKNOWN_OUTCOME,
+                                                null, null, null, null))
+                                .verifyComplete();
+
+                assertThat(workflows.state.status()).isEqualTo(UsernameRecoveryWorkflowStatus.COMPLETED);
+                assertThat(envelopes.snapshot.session().status()).isEqualTo(AuthFlowStatus.STARTED);
+                assertThat(envelopes.completeCalls).isEqualTo(1);
+                assertThat(messageDeliveryPort.deliverCalls).isEqualTo(1);
+                assertThat(idempotencyPort.completeCalls).isZero();
+                assertThat(idempotencyPort.unknownOutcomeCalls).isEqualTo(1);
         }
 
         @Test
@@ -1141,6 +1165,9 @@ class RequestUsernameRecoveryServiceTest {
                 private AuthFlowSessionSnapshot snapshot;
                 private boolean fail;
                 private int loads;
+                private int completeCalls;
+                private com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationOutcome completeOutcome =
+                                com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationOutcome.APPLIED;
 
                 @Override
                 public Mono<Optional<AuthFlowSessionSnapshot>> loadSnapshot(AuthFlowSessionId id) {
@@ -1149,6 +1176,27 @@ class RequestUsernameRecoveryServiceTest {
                                 return Mono.error(new IllegalStateException("load failed"));
                         }
                         return Mono.just(Optional.ofNullable(snapshot));
+                }
+
+                @Override
+                public Mono<com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationResult>
+                                completeRevisioned(AuthFlowSessionSnapshot expected, Instant now) {
+                        completeCalls++;
+                        if (completeOutcome
+                                        != com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationOutcome.APPLIED) {
+                                return Mono.just(com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationResult.outcome(
+                                                completeOutcome));
+                        }
+                        AuthFlowSession current = expected.session();
+                        AuthFlowSession completed = new AuthFlowSession(
+                                        current.authFlowSessionId(), current.scenario(), AuthFlowStatus.COMPLETED,
+                                        current.csrfTokenHash(), current.activeOtpChallengeId(), current.data(),
+                                        current.createdAt(), now, current.expiresAt());
+                        snapshot = new AuthFlowSessionSnapshot(completed,
+                                        new SessionRevision("11111111111111111111111111111111"));
+                        return Mono.just(new com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationResult(
+                                        com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionMutationOutcome.APPLIED,
+                                        snapshot));
                 }
 
                 @Override

@@ -5,21 +5,26 @@
 ### Protected sidecar persistence
 
 - Complete workflow payload protected with AES-GCM.
-- Minimal Redis wrapper retains opaque identity, revision, key version, algorithm, and ciphertext.
-- Existing Redis CAS and remaining TTL behavior is preserved.
+- Redis retains only opaque identity, revision, key version, algorithm, and ciphertext.
 
 ### Retained cancellation lifecycle
 
-- Auth-flow envelope and encrypted sidecar transition to `CANCELLED` through independent revision-aware CAS operations.
-- Normal cancellation physically deletes neither record and does not extend expiry.
-- Candidate delivery facts remain unchanged.
+- Envelope and sidecar transition to `CANCELLED` through independent revision-aware CAS operations.
+- Normal cancellation deletes neither record and preserves expiry.
 
 ### Original verified destination masking
 
-- The effective destination override is used only as the physical email/SMS recipient.
-- Initial accepted responses mask the original verified destination from protected workflow state.
-- Completed idempotency replay masks the original verified destination and does not resolve the current override.
-- Destination type derives from the original verified channel.
+- Non-production override is used only as the physical recipient.
+- Live and replay responses mask the original verified destination.
+
+### Final-request envelope completion
+
+- A completed sidecar triggers revision-aware auth-flow envelope completion.
+- Partial workflows leave the envelope `STARTED`.
+- Completion preserves the original expiry and remaining Redis TTL.
+- Idempotency completion is deferred until envelope completion succeeds.
+- Envelope completion uncertainty records stable `UNKNOWN_OUTCOME`, does not complete idempotency, and never resends.
+- Replay validates envelope/sidecar lifecycle consistency.
 
 ## Runtime configuration
 
