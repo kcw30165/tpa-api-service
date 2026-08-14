@@ -143,18 +143,18 @@ public class ApimProperties {
             if (p.getTokenUri() == null || p.getTokenUri().isBlank()) {
                 throw new IllegalStateException("apim.credential-profiles.profile.tokenUri must be set for profile " + p.getProfileId());
             }
-            if (p.getClientId() == null || p.getClientId().isBlank()) {
-                throw new IllegalStateException("apim.credential-profiles.profile.clientId must be set for profile " + p.getProfileId());
-            }
-            if (p.getClientSecret() == null || p.getClientSecret().isBlank()) {
-                throw new IllegalStateException("apim.credential-profiles.profile.clientSecret must be set for profile " + p.getProfileId());
-            }
+            // if (p.getClientId() == null || p.getClientId().isBlank()) {
+            //     throw new IllegalStateException("apim.credential-profiles.profile.clientId must be set for profile " + p.getProfileId());
+            // }
+            // if (p.getClientSecret() == null || p.getClientSecret().isBlank()) {
+            //     throw new IllegalStateException("apim.credential-profiles.profile.clientSecret must be set for profile " + p.getProfileId());
+            // }
             if (p.getScope() == null || p.getScope().isEmpty()) {
                 throw new IllegalStateException("apim.credential-profiles.profile.scope must be set for profile " + p.getProfileId());
             }
-            if (p.getApiKey() == null || p.getApiKey().isBlank()) {
-                throw new IllegalStateException("apim.credential-profiles.profile.apiKey must be set for profile " + p.getProfileId());
-            }
+            // if (p.getApiKey() == null || p.getApiKey().isBlank()) {
+            //     throw new IllegalStateException("apim.credential-profiles.profile.apiKey must be set for profile " + p.getProfileId());
+            // }
             if (p.getCertificatePath() == null || p.getCertificatePath().isBlank()) {
                 throw new IllegalStateException("apim.credential-profiles.profile.certificatePath must be set for profile " + p.getProfileId());
             }

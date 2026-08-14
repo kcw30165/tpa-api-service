@@ -84,9 +84,9 @@ public class ApimForgotPasswordCompletionAdapter implements ForgotPasswordComple
                     request,
                     null);
         }
-
-        var ctx = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, command.accountEnv());
-        return facade.resolveProfile(ApimDatabaseScope.ACCOUNT_ENV, ctx)
+        
+        var ctx = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, null);
+        return facade.resolveProfile(ApimDatabaseScope.NON_ACCOUNT, ctx)
                 .flatMap(profile -> certificates.getPublicKey(profile)
                         .flatMap(key -> {
                             var encryptedRequest = crypto.encryptRequest(API_NAME, request, TrpResetPasswordApimRequest.class, key);

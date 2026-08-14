@@ -2,6 +2,8 @@ package com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.details;
 
 import com.bct.ngtpa.apiservice.adapter.out.apim.*;
 import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
+import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
+import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.details.dto.*;
@@ -33,8 +35,8 @@ public final class SharedApimTrpSearchRegedMemberTransport implements TrpSearchR
         if (!properties.getEncryption().isEnabled()) {
             return post(request, requestId);
         }
-        var ctx = new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, null);
-        return facade.resolveProfile(com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT, ctx)
+        var ctx = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, null);
+        return facade.resolveProfile(ApimDatabaseScope.NON_ACCOUNT, ctx)
                 .flatMap(profile -> certificates.getPublicKey(profile)
                         .flatMap(key -> {
                             Object encrypted = crypto.encryptRequest(API_NAME, request, TrpSearchRegedMemberRequest.class, key);
