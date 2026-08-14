@@ -10,7 +10,8 @@ public class ActorUserRoleTest {
         String[] expected = new String[]{
                 "ROLE_INPUT",
                 "ROLE_APPROVE",
-                "ROLE_USER",
+                "ROLE_USER_MBR",
+                "ROLE_USER_EPR",
                 "ROLE_AGENT",
                 "ROLE_ITADMIN",
                 "ROLE_CCD",
@@ -26,7 +27,7 @@ public class ActorUserRoleTest {
     @Test
     void valueOf_accepts_canonical_and_rejects_legacy() {
         // canonical accepted
-        assertEquals(ActorUserRole.ROLE_USER, ActorUserRole.valueOf("ROLE_USER"));
+        assertEquals(ActorUserRole.ROLE_USER_MBR, ActorUserRole.valueOf("ROLE_USER_MBR"));
 
         // legacy values should not map; valueOf should throw IllegalArgumentException
         assertThrows(IllegalArgumentException.class, () -> ActorUserRole.valueOf("MEMBER"));

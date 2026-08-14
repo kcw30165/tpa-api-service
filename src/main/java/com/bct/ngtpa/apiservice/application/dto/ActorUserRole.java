@@ -7,7 +7,8 @@ package com.bct.ngtpa.apiservice.application.dto;
 public enum ActorUserRole {
     ROLE_INPUT,
     ROLE_APPROVE,
-    ROLE_USER,
+    ROLE_USER_MBR,
+    ROLE_USER_EPR,
     ROLE_AGENT,
     ROLE_ITADMIN,
     ROLE_CCD,
