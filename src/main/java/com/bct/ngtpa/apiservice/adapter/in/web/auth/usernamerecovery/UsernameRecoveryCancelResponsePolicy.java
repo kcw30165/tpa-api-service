@@ -79,10 +79,10 @@ public final class UsernameRecoveryCancelResponsePolicy {
                     HttpStatusClassificationOverride.CONFLICT);
             case UNKNOWN_OUTCOME_EXISTING -> systemFailure(WorkflowNextStep.RETURN_TO_LOGIN);
             case REVISION_CONFLICT -> failure(
-                    ApiStatus.BUSINESS_REJECTED,
+                    ApiStatus.VALIDATION_FAILED,
                     WorkflowNextStep.RETURN_TO_LOGIN,
                     List.of(UsernameRecoveryWorkflowMapping.businessError(
-                            SharedWorkflowErrorKey.IDEMPOTENCY_KEY_REUSED.value(),
+                            UsernameRecoveryErrorKey.AUTH_FLOW_INVALID.value(),
                             List.of(),
                             UsernameRecoveryWorkflowMapping.SOURCE_BFF)),
                     HttpStatusClassificationOverride.CONFLICT);

@@ -307,9 +307,9 @@ class UsernameRecoveryRequestResponsePolicyTest {
                     UsernameRecoveryErrorKey.REGISTRATION_REQUIRED.value(),
                     List.of(), "BFF", null, 422);
             case REVISION_CONFLICT -> new Expected(
-                    ApiStatus.BUSINESS_REJECTED, WorkflowNextStep.NONE,
-                    SharedWorkflowErrorKey.IDEMPOTENCY_KEY_REUSED.value(),
-                    List.of(), "BFF", HttpStatusClassificationOverride.CONFLICT, 409);
+                    ApiStatus.VALIDATION_FAILED, WorkflowNextStep.RESTART_FLOW,
+                    UsernameRecoveryErrorKey.AUTH_FLOW_INVALID.value(),
+                    List.of(), "SERVER", HttpStatusClassificationOverride.CONFLICT, 409);
             case SYSTEM_FAILURE -> new Expected(
                     ApiStatus.SYSTEM_ERROR, WorkflowNextStep.SELECT_ACCOUNT,
                     SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value(),
