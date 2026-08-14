@@ -249,3 +249,26 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - No production behavior changed. Validation exits: focused 0; Stage 02 preservation 0; cumulative 0; compile 0.
 - Exact evidence directory retained: `target/evidence/apim-routing-context-stage-03-20260814-233639`. HEAD and stash remained unchanged. Stage 04 was not started.
 - Commit message after approval: `refactor(apim): preserve encryption key across successful exchange attempts`.
+
+
+### Stage 04: Generic APIM exchange executor
+
+- Status: `BLOCKED`.
+- Added `DefaultApimExchangeExecutor` as the sole `ApimExchangeExecutor` implementation with constructor dependencies `ApimWebClientFacade`, `ApimPayloadCryptoService`, and `ApimProperties`.
+- Plain mode transforms the request with a null key, calls `postSuccessfulExchange`, requires a null successful key, and parses the typed envelope with a null key.
+- Encrypted mode supplies the crypto transformation callback to `postEncryptedSuccessfulExchange` and decrypts the response with the exact successful-attempt key.
+- Scope, credential context, request/reply type tokens, and retry eligibility pass directly from `ApimExchangeRequest`; no routing default or inference was introduced.
+- Synchronous crypto failures are contained by `Mono.defer`. Empty or inconsistent successful metadata fails deterministically. Business-envelope interpretation remains feature-owned.
+- No feature adapter or transport migrated. Evidence directory: `target/evidence/apim-routing-context-stage-04-20260815-001352`. Validation exits: fail-first 1; focused 0; Stage 02/03 preservation 1; cumulative 125; compile 0; full suite NOT_RUN.
+- Stash remained unchanged. Stage 05 remains gated and was not started.
+- Commit message after approval: `feat(apim): add generic profile-aware exchange executor`.
+
+
+### Stage 04 execution-package inventory correction (target/evidence/apim-routing-context-stage-04-20260815-001352)
+
+- Status: `READY_FOR_ARCHITECT_REVIEW`.
+- `ApimExecutionContractArchitectureTest` still enforced the Stage 02 three-file package inventory. Stage 04 intentionally adds `DefaultApimExchangeExecutor`.
+- The test now preserves the three approved Stage 02 contracts and permits only the approved default executor as the fourth Java file. No production code changed in this repair.
+- Validation exits: Stage 04 focused 0; Stage 02/03 preservation 0; cumulative 0; compile 0; full suite NOT_RUN.
+- Exact evidence directory retained: `target/evidence/apim-routing-context-stage-04-20260815-001352`. HEAD and stash remained unchanged. No feature migrated and Stage 05 was not started.
+- Commit message after approval: `feat(apim): add generic profile-aware exchange executor`.

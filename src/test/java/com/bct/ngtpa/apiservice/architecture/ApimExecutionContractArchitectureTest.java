@@ -8,7 +8,11 @@ import org.junit.jupiter.api.Test;
 
 class ApimExecutionContractArchitectureTest {
     private static final Path ROOT = Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/execution");
-    private static final List<String> FILES = List.of("ApimExchangeRequest.java", "ApimExchangeExecutor.java", "ApimSuccessfulExchange.java");
+    private static final List<String> FILES = List.of(
+            "ApimExchangeRequest.java",
+            "ApimExchangeExecutor.java",
+            "ApimSuccessfulExchange.java",
+            "DefaultApimExchangeExecutor.java");
 
     @Test void contractsHaveNoInboundSessionReactorApplicationOrFeatureDependencies() throws Exception {
         String source = all();
@@ -28,7 +32,7 @@ class ApimExecutionContractArchitectureTest {
         assertThat(source).contains("String responseBody", "ApimCredentialProfile profile", "PublicKey responseVerificationKey");
         assertThat(source).doesNotContain("token", "apiKey", "clientSecret", "certificateText", "session", "businessResult");
     }
-    @Test void stageDefinesExactlyThreeProductionContracts() throws Exception {
+    @Test void stagePreservesThreeApprovedContractsAndAddsOnlyDefaultExecutor() throws Exception {
         try (var stream = Files.list(ROOT)) {
             assertThat(stream.filter(p -> p.toString().endsWith(".java")).map(p -> p.getFileName().toString()).toList())
                     .containsExactlyInAnyOrderElementsOf(FILES);
