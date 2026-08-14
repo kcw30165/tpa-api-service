@@ -191,3 +191,18 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - Fourth-repair focused exit: 0; cumulative exit: 0; compile exit: 0; full suite: NOT_RUN.
 - No production implementation changed. Stage 02 was not started.
 - Commit message after architect approval: `test(apim): characterize profile-aware encrypted execution`.
+
+
+### Stage 02: Generic APIM execution contract
+
+- Status: `READY_FOR_ARCHITECT_REVIEW`.
+- Production contracts added under `adapter.out.apim.execution`: `ApimExchangeRequest<R,D>`, `ApimExchangeExecutor`, and `ApimSuccessfulExchange`.
+- Executor signature: `<R,D> Mono<ApimResponseEnvelope<D>> postEnvelope(ApimExchangeRequest<R,D> request)`. No implementation or Spring bean was added.
+- Request signature fields: path, plain request, request type, response data type, database scope, credential resolution context, and operation-specific retry eligibility.
+- Request invariants: nonblank path; nonnull and type-compatible request; nonnull response type, scope, context, actor role, and retry eligibility; `ACCOUNT_ENV` requires nonblank accountEnv; `NON_ACCOUNT` preserves any supplied accountEnv; no scope, role, or retry default.
+- Successful metadata signature: response body, resolved credential profile, and successful-attempt response verification key. Token, API key, certificate text, request payload, session data, and business result are not exposed. Null key remains uninterpreted for non-encrypted exchange handling in Stage 03/04.
+- Non-goals preserved: no executor implementation; no facade, crypto, certificate, resolver, retry, adapter, transport, controller, service, use-case, command, configuration, or wiring change; stale-payload behavior remains characterized; no feature migration.
+- Evidence directory: `target/evidence/apim-routing-context-stage-02-20260814-230802`.
+- Validation exits: fail-first 1; Stage 02 focused 0; Stage 01 preservation 0; cumulative 0; compile 0; full suite NOT_RUN.
+- Stash remained unchanged. Stage 03 remains gated by architect approval and was not started.
+- Commit message after approval: `feat(apim): define generic profile-aware exchange contract`.
