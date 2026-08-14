@@ -49,7 +49,7 @@ public final class SharedApimTrpChkCustIdTransport implements TrpChkCustIdTransp
         if (!apimProperties.getEncryption().isEnabled()) {
             return postEncrypted(request, correlationId, null, null);
         }
-        var ctx = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, null);
+        var ctx = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER_MBR, null);
         return facade.resolveProfile(com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT, ctx)
                         .flatMap(profile -> certificates.getPublicKey(profile)
                         .flatMap(publicKey -> {
@@ -73,7 +73,7 @@ public final class SharedApimTrpChkCustIdTransport implements TrpChkCustIdTransp
         Map<String, String> metadata = correlationId == null || correlationId.isBlank()
                 ? Map.of()
                 : Map.of("requestId", correlationId);
-        var context = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, null);
+        var context = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER_MBR, null);
         if (profile != null) {
             return facade.post(API_NAME, encryptedRequest, profile, ApimRetryEligibility.SAFE_BUSINESS_CALL)
                     .map(body -> crypto.decryptResponseEnvelope(API_NAME, body, TrpChkCustIdApimDataItem.class, publicKey))
@@ -103,7 +103,7 @@ public final class SharedApimTrpChkCustIdTransport implements TrpChkCustIdTransp
             String correlationId,
             String accountEnv) {
         Objects.requireNonNull(accountEnv, "accountEnv must not be null");
-        var ctx = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, accountEnv);
+        var ctx = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER_MBR, accountEnv);
         return facade.resolveProfile(com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.ACCOUNT_ENV, ctx)
                 .flatMap(profile -> certificates.getPublicKey(profile)
                 .flatMap(publicKey -> {

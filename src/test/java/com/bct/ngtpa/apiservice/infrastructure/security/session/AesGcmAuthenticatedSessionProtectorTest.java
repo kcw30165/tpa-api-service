@@ -97,7 +97,7 @@ class AesGcmAuthenticatedSessionProtectorTest {
         Instant now = Instant.parse("2026-07-20T00:00:00Z");
         return new AuthenticatedSession(
                 new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx"),
-                new ActorContext("member01", ActorUserRole.ROLE_USER),
+                new ActorContext("member01", ActorUserRole.ROLE_USER_MBR),
                 List.of(new AuthenticatedSessionAccount(
                         new AuthenticatedAccountRef("acc_abcdefghijklmnopqrstuvwx"),
                         "DB", "00000008802", "0001", "DBA", "OE", null, null)),

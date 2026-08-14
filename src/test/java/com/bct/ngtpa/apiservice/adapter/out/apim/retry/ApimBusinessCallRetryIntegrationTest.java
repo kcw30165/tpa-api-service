@@ -138,6 +138,6 @@ class ApimBusinessCallRetryIntegrationTest {
     private com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext context(
             String operation) {
         return new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(
-                com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER, null);
+                com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, null);
     }
 }

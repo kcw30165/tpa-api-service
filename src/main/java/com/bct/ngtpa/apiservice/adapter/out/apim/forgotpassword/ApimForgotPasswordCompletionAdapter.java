@@ -85,7 +85,7 @@ public class ApimForgotPasswordCompletionAdapter implements ForgotPasswordComple
                     null);
         }
         
-        var ctx = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, null);
+        var ctx = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER_MBR, null);
         return facade.resolveProfile(ApimDatabaseScope.NON_ACCOUNT, ctx)
                 .flatMap(profile -> certificates.getPublicKey(profile)
                         .flatMap(key -> {
@@ -116,7 +116,7 @@ public class ApimForgotPasswordCompletionAdapter implements ForgotPasswordComple
                 encryptedRequest,
                 ApimDatabaseScope.ACCOUNT_ENV,
                 new ApimCredentialResolutionContext(
-                        ActorUserRole.ROLE_USER,
+                        ActorUserRole.ROLE_USER_MBR,
                         accountEnv),
                 ApimRetryEligibility.IDEMPOTENT_MUTATION)
                 .map(body -> crypto.decryptResponseEnvelope(

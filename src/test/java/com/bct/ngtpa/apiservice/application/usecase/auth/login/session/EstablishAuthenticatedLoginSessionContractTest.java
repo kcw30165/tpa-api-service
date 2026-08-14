@@ -18,7 +18,7 @@ class EstablishAuthenticatedLoginSessionContractTest {
     void commandCarriesVerifiedActorAccountsPreAuthIdentityAndCsrfHash() {
         var command = new EstablishAuthenticatedLoginSessionCommand(
                 new AuthFlowSessionId("afs_opaque"),
-                new ActorContext("member01", ActorUserRole.ROLE_USER),
+                new ActorContext("member01", ActorUserRole.ROLE_USER_MBR),
                 List.of(account()),
                 "csrf_hash",
                 "req-1");
@@ -35,10 +35,10 @@ class EstablishAuthenticatedLoginSessionContractTest {
                 new AuthFlowSessionId("afs_opaque"), null, List.of(account()), "csrf_hash", "req"))
                 .isInstanceOf(NullPointerException.class);
         assertThatThrownBy(() -> new EstablishAuthenticatedLoginSessionCommand(
-                        new AuthFlowSessionId("afs_opaque"), new ActorContext("member01", ActorUserRole.ROLE_USER), List.of(), "csrf_hash", "req"))
+                        new AuthFlowSessionId("afs_opaque"), new ActorContext("member01", ActorUserRole.ROLE_USER_MBR), List.of(), "csrf_hash", "req"))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new EstablishAuthenticatedLoginSessionCommand(
-                        new AuthFlowSessionId("afs_opaque"), new ActorContext("member01", ActorUserRole.ROLE_USER), List.of(account()), " ", "req"))
+                        new AuthFlowSessionId("afs_opaque"), new ActorContext("member01", ActorUserRole.ROLE_USER_MBR), List.of(account()), " ", "req"))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

@@ -93,7 +93,7 @@ class NotificationReferenceDateFlowTest {
             @Override
             public Mono<PortalAccessContext> current() {
                 return Mono.just(new PortalAccessContext(
-                        new ActorContext("USER-1", ActorUserRole.ROLE_USER),
+                        new ActorContext("USER-1", ActorUserRole.ROLE_USER_MBR),
                         new AccountContext("ACC-1", "JP", "POL-1", "CERT-1", "TRUST", "SCHEME", null, null)));
             }
 

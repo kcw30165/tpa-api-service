@@ -53,13 +53,13 @@ class UpdatePersonalInformationServiceTest {
         assertEquals("POL-001", capturedCommand.get().policyNo());
         assertEquals("CERT-001", capturedCommand.get().certNo());
         assertEquals("actor-user", capturedCommand.get().userId());
-        assertEquals(ActorUserRole.ROLE_USER, capturedCommand.get().userRole());
+        assertEquals(ActorUserRole.ROLE_USER_MBR, capturedCommand.get().userRole());
         assertEquals(updateFields, capturedCommand.get().updateFields());
     }
 
     private static PortalAccessContext context() {
         return new PortalAccessContext(
-                new ActorContext("actor-user", ActorUserRole.ROLE_USER),
+                new ActorContext("actor-user", ActorUserRole.ROLE_USER_MBR),
                 new AccountContext(
                         "ACC-123",
                         "JP",

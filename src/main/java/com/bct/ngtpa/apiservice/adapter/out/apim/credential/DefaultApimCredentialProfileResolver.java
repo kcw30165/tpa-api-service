@@ -28,7 +28,7 @@ public class DefaultApimCredentialProfileResolver implements ApimCredentialProfi
         if (context.actorUserRole() == null) {
             return Mono.error(new ApimProfileResolutionException("actorUserRole is required"));
         }
-        if (context.actorUserRole() != ActorUserRole.ROLE_USER && context.actorUserRole() != ActorUserRole.ROLE_INPUT) {
+        if (context.actorUserRole() != ActorUserRole.ROLE_USER_MBR && context.actorUserRole() != ActorUserRole.ROLE_INPUT) {
             return Mono.error(new ApimProfileResolutionException("actor role unsupported"));
         }
 

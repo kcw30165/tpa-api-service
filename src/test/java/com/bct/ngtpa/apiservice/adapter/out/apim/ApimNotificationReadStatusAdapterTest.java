@@ -186,7 +186,7 @@ class ApimNotificationReadStatusAdapterTest {
     private static UpdateNotificationsReadStatusCommand command() {
         return new UpdateNotificationsReadStatusCommand(
                 "DEV",
-                com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER,
+                com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR,
                 List.of("msgCode1", "msgCode2"),
                 "",
           "2",

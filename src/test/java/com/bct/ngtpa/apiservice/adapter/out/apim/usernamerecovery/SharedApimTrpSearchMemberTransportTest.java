@@ -78,7 +78,7 @@ class SharedApimTrpSearchMemberTransportTest {
                                 eq(ApimDatabaseScope.NON_ACCOUNT),
                                 contextCaptor.capture(),
                                 eq(ApimRetryEligibility.SAFE_BUSINESS_CALL));
-                assertThat(contextCaptor.getValue().actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER);
+                assertThat(contextCaptor.getValue().actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_MBR);
                 assertThat(contextCaptor.getValue().accountEnv()).isNull();
                 verify(facade, never()).resolveProfile(any(), any());
                 verify(certificates, never()).getPublicKey(any(ApimCredentialProfile.class));
@@ -126,7 +126,7 @@ class SharedApimTrpSearchMemberTransportTest {
                                 .forClass(ApimCredentialResolutionContext.class);
                 verify(facade, times(1)).resolveProfile(
                                 eq(ApimDatabaseScope.NON_ACCOUNT), contextCaptor.capture());
-                assertThat(contextCaptor.getValue().actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER);
+                assertThat(contextCaptor.getValue().actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_MBR);
                 assertThat(contextCaptor.getValue().accountEnv()).isNull();
                 verify(certificates, times(1)).getPublicKey(profile);
                 verify(facade, times(1)).post(

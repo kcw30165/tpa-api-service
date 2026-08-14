@@ -16,7 +16,7 @@ class AuthenticatedSessionValidationServiceTest {
         var hasher = new Sha256CsrfTokenHasher();
         var session = new AuthenticatedSession(
                 new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx"),
-                new ActorContext("member", ActorUserRole.ROLE_USER), List.of(), AuthenticatedSessionStatus.ACTIVE,
+                new ActorContext("member", ActorUserRole.ROLE_USER_MBR), List.of(), AuthenticatedSessionStatus.ACTIVE,
                 hasher.hash("csrf_value"), Instant.EPOCH, Instant.EPOCH,
                 Instant.EPOCH.plusSeconds(300), Instant.EPOCH.plusSeconds(900));
         var service = new AuthenticatedSessionValidationService(

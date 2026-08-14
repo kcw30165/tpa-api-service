@@ -48,7 +48,7 @@ class AuthenticatedCsrfRotationTest {
                 null);
         var command = new EstablishAuthenticatedLoginSessionCommand(
                 new AuthFlowSessionId("afs_opaque"),
-                new ActorContext("member", ActorUserRole.ROLE_USER),
+                new ActorContext("member", ActorUserRole.ROLE_USER_MBR),
                 List.of(account),
                 "pre_auth_csrf_hash_must_not_be_reused",
                 "req");

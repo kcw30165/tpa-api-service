@@ -40,7 +40,7 @@ public class ApimNotificationReadStatusAdapter implements ApimNotificationReadSt
         if (!apimProperties.getEncryption().isEnabled()) {
             var request = apimPayloadCryptoService.encryptRequest(
                     API_NAME, toApimRequest(command), UpdateNotificationReadStatusApimRequest.class, null);
-            return apimWebClientFacade.post(API_NAME, request, com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.ACCOUNT_ENV, new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER, command.accountEnv()), com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility.IDEMPOTENT_MUTATION)
+            return apimWebClientFacade.post(API_NAME, request, com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.ACCOUNT_ENV, new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, command.accountEnv()), com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility.IDEMPOTENT_MUTATION)
                     .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
                             API_NAME, body, UpdateNotificationReadStatusApimDataItem.class, null))
                     .map(response -> toResult(response, command.targetStatus()))
@@ -48,7 +48,7 @@ public class ApimNotificationReadStatusAdapter implements ApimNotificationReadSt
                             ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
         }
 
-        var ctx = new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER, command.accountEnv());
+        var ctx = new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, command.accountEnv());
         return apimWebClientFacade.resolveProfile(com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.ACCOUNT_ENV, ctx)
                 .flatMap(profile -> apimCertificateService.getPublicKey(profile)
                         .flatMap(publicKey -> {

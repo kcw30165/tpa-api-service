@@ -40,7 +40,7 @@ public final class SharedApimTrpSearchMemberTransport implements TrpSearchMember
             com.bct.ngtpa.apiservice.adapter.out.apim.usernamerecovery.dto.TrpSearchMemberApimRequest request,
             String correlationId) {
         String path = API_NAME;
-        var ctx = new ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER, null);
+        var ctx = new ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, null);
         if (!apim.getEncryption().isEnabled()) {
             // non-encrypted path: let facade resolve profile for NON_ACCOUNT
             return facade.post(path, request, ApimDatabaseScope.NON_ACCOUNT, ctx, ApimRetryEligibility.SAFE_BUSINESS_CALL)

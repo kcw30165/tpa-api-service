@@ -43,7 +43,7 @@ public final class SharedApimTrpMemberLoginTransport implements TrpMemberLoginTr
                 if (!apimProperties.getEncryption().isEnabled()) {
                         return postEncrypted(request, null);
                 }
-                var ctx = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, null);
+                var ctx = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER_MBR, null);
                 String path = requireText(loginProperties.getPath(), "apim.login.member-login.path");
                 return facade.resolveProfile(ApimDatabaseScope.NON_ACCOUNT, ctx)
                         .flatMap(profile -> certificates.getPublicKey(profile)
@@ -74,7 +74,7 @@ public final class SharedApimTrpMemberLoginTransport implements TrpMemberLoginTr
                                 request,
                                 TrpMemberLoginApimRequest.class,
                                 publicKey);
-                var context = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, null);
+                var context = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER_MBR, null);
                 return facade.post(path, encryptedRequest, ApimDatabaseScope.NON_ACCOUNT, context, ApimRetryEligibility.SAFE_BUSINESS_CALL)
                                 .map(body -> crypto.decryptResponseEnvelope(
                                                 path,

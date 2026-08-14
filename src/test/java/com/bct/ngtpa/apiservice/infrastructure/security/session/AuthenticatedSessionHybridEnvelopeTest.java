@@ -59,7 +59,7 @@ class AuthenticatedSessionHybridEnvelopeTest {
         private AuthenticatedSession session() {
                 return new AuthenticatedSession(
                                 new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx"),
-                                new ActorContext("member01", ActorUserRole.ROLE_USER),
+                                new ActorContext("member01", ActorUserRole.ROLE_USER_MBR),
                                 List.of(new AuthenticatedSessionAccount(
                                                 new AuthenticatedAccountRef("acc_abcdefghijklmnopqrstuvwx"),
                                                 "DB", "00000008802", "0001", "trust", "scheme", null, null)),

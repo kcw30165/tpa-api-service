@@ -35,7 +35,7 @@ public class ApimUpdatePersonalInformationAdapter implements ApimUpdatePersonalI
                 if (!apimProperties.getEncryption().isEnabled()) {
                         var request = apimPayloadCryptoService.encryptRequest(
                                         API_NAME, toApimRequest(command), UpdateMemberInfoApimRequest.class, null);
-                        return apimWebClientFacade.post(API_NAME, request, com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.ACCOUNT_ENV, new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER, command.accountEnv()), com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility.IDEMPOTENT_MUTATION)
+                        return apimWebClientFacade.post(API_NAME, request, com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.ACCOUNT_ENV, new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, command.accountEnv()), com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility.IDEMPOTENT_MUTATION)
                                         .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
                                                         API_NAME, body, UpdateMemberInfoApimDataItem.class, null))
                                         .map(response -> toResults(response, command))
@@ -45,7 +45,7 @@ public class ApimUpdatePersonalInformationAdapter implements ApimUpdatePersonalI
                                                                         ex));
                 }
 
-                var ctx = new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER, command.accountEnv());
+                var ctx = new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, command.accountEnv());
                 return apimWebClientFacade.resolveProfile(com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.ACCOUNT_ENV, ctx)
                         .flatMap(profile -> apimCertificateService.getPublicKey(profile)
                                 .flatMap(publicKey -> {

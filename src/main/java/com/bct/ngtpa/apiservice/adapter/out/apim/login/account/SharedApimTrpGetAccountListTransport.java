@@ -36,7 +36,7 @@ public final class SharedApimTrpGetAccountListTransport implements TrpGetAccount
         if (!apim.getEncryption().isEnabled()) {
             return postEncrypted(request, correlationId, null, null);
         }
-        var ctx = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, null);
+        var ctx = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER_MBR, null);
         String path = properties.getPath().trim();
         return facade.resolveProfile(ApimDatabaseScope.NON_ACCOUNT, ctx)
                         .flatMap(profile -> certificates.getPublicKey(profile)
@@ -53,7 +53,7 @@ public final class SharedApimTrpGetAccountListTransport implements TrpGetAccount
         String operation = properties.getOperationName().trim();
         Object encrypted = crypto.encryptRequest(path, request, TrpGetAccountListApimRequest.class, key);
         Map<String, String> metadata = correlationId == null ? Map.of() : Map.of("requestId", correlationId);
-        var context = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, null);
+        var context = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER_MBR, null);
         if (profile != null) {
             return facade.post(path, encrypted, profile, ApimRetryEligibility.SAFE_BUSINESS_CALL)
                     .map(body -> crypto.decryptResponseEnvelope(path, body, TrpGetAccountListApimDataItem.class, key));

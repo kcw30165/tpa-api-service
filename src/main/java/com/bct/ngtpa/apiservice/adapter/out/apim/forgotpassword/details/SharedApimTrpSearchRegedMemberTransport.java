@@ -35,7 +35,7 @@ public final class SharedApimTrpSearchRegedMemberTransport implements TrpSearchR
         if (!properties.getEncryption().isEnabled()) {
             return post(request, requestId);
         }
-        var ctx = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, null);
+        var ctx = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER_MBR, null);
         return facade.resolveProfile(ApimDatabaseScope.NON_ACCOUNT, ctx)
                 .flatMap(profile -> certificates.getPublicKey(profile)
                         .flatMap(key -> {

@@ -23,7 +23,7 @@ import reactor.test.StepVerifier;
 class AuthenticatedPortalAccessContextWebFilterTest {
     private static final String SID = "sid_abcdefghijklmnopqrstuvwx";
     private static final PortalAccessContext CONTEXT = new PortalAccessContext(
-            new ActorContext("actor", ActorUserRole.ROLE_USER),
+            new ActorContext("actor", ActorUserRole.ROLE_USER_MBR),
             new AccountContext("acc_abcdefghijklmnopqrstuvwx", "DB", "00000008802", "0001", "DBA", "OE", null, null));
 
     @Test

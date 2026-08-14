@@ -143,7 +143,7 @@ class ApimNoticeMessageAdapterTest {
         @Test
         void doesNotIncludePageOrSizeInApimRequestPayload() throws Exception {
                 GetNotificationsCommand command = new GetNotificationsCommand(
-                                "DEV", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER, 1, 99999, "dd/MM/yyyy HH:mm", "Asia/Hong_Kong", "P1", "C1", "U1",
+                                "DEV", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, 1, 99999, "dd/MM/yyyy HH:mm", "Asia/Hong_Kong", "P1", "C1", "U1",
                                 "29/04/2026");
 
                 GetMessageBoardApimRequest request = (GetMessageBoardApimRequest) ReflectionTestUtils.invokeMethod(
@@ -153,7 +153,7 @@ class ApimNoticeMessageAdapterTest {
                 // Parse JSON structurally to avoid substring false positives
                 com.fasterxml.jackson.databind.JsonNode node = new ObjectMapper().readTree(json);
                 assertEquals("DEV", node.get("env").asText());
-                assertEquals("ROLE_USER", node.get("mbr-type").asText());
+                assertEquals("ROLE_USER_MBR", node.get("mbr-type").asText());
                 assertFalse(node.has("page"));
                 assertFalse(node.has("size"));
         }
@@ -161,7 +161,7 @@ class ApimNoticeMessageAdapterTest {
         @Test
         void mapsCommandAccountEnvToApimJsonEnvField() throws Exception {
                 GetNotificationsCommand command = new GetNotificationsCommand(
-                                "UAT", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER, 1, 99999, "dd/MM/yyyy HH:mm", "Asia/Hong_Kong", "P1", "C1", "U1",
+                                "UAT", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, 1, 99999, "dd/MM/yyyy HH:mm", "Asia/Hong_Kong", "P1", "C1", "U1",
                                 "29/04/2026");
 
                 GetMessageBoardApimRequest request = (GetMessageBoardApimRequest) ReflectionTestUtils.invokeMethod(
@@ -237,7 +237,7 @@ class ApimNoticeMessageAdapterTest {
         }
 
         private static GetNotificationsCommand command() {
-                return new GetNotificationsCommand("DEV", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER, 1, 99999, "dd/MM/yyyy HH:mm", "Asia/Hong_Kong", "P1",
+                return new GetNotificationsCommand("DEV", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, 1, 99999, "dd/MM/yyyy HH:mm", "Asia/Hong_Kong", "P1",
                                 "C1", "U1", "29/04/2026");
         }
 

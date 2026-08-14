@@ -17,7 +17,7 @@ class DefaultApimCredentialProfileResolverTest {
         // no routing.nonAccountProfileId and no profiles configured -> resolution must fail
         DefaultApimCredentialProfileResolver resolver = new DefaultApimCredentialProfileResolver(props);
 
-        StepVerifier.create(resolver.resolve(ApimDatabaseScope.NON_ACCOUNT, new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, null)))
+        StepVerifier.create(resolver.resolve(ApimDatabaseScope.NON_ACCOUNT, new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER_MBR, null)))
                 .expectErrorMatches(ex -> ex instanceof com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException)
                 .verify();
     }
@@ -36,7 +36,7 @@ class DefaultApimCredentialProfileResolverTest {
 
         DefaultApimCredentialProfileResolver resolver = new DefaultApimCredentialProfileResolver(props);
 
-        ApimCredentialProfile profile = resolver.resolve(ApimDatabaseScope.NON_ACCOUNT, new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, null)).block();
+        ApimCredentialProfile profile = resolver.resolve(ApimDatabaseScope.NON_ACCOUNT, new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER_MBR, null)).block();
 
         assertEquals("p1", profile.profileId());
         assertEquals("cid", profile.clientId());
@@ -51,7 +51,7 @@ class DefaultApimCredentialProfileResolverTest {
 
         DefaultApimCredentialProfileResolver resolver = new DefaultApimCredentialProfileResolver(props);
 
-        StepVerifier.create(resolver.resolve(ApimDatabaseScope.NON_ACCOUNT, new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, null)))
+        StepVerifier.create(resolver.resolve(ApimDatabaseScope.NON_ACCOUNT, new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER_MBR, null)))
                 .expectErrorMatches(ex -> ex instanceof com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException)
                 .verify();
     }
@@ -68,7 +68,7 @@ class DefaultApimCredentialProfileResolverTest {
 
         DefaultApimCredentialProfileResolver resolver = new DefaultApimCredentialProfileResolver(props);
 
-        StepVerifier.create(resolver.resolve(ApimDatabaseScope.ACCOUNT_ENV, new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER, "JR")))
+        StepVerifier.create(resolver.resolve(ApimDatabaseScope.ACCOUNT_ENV, new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER_MBR, "JR")))
                 .expectErrorMatches(ex -> ex instanceof com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException)
                 .verify();
     }

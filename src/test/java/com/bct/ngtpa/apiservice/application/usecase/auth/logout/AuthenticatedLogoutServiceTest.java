@@ -80,7 +80,7 @@ class AuthenticatedLogoutServiceTest {
         Instant now = Instant.parse("2026-07-28T00:00:00Z");
         return new AuthenticatedSession(
                 SID,
-                new ActorContext("member", ActorUserRole.ROLE_USER),
+                new ActorContext("member", ActorUserRole.ROLE_USER_MBR),
                 List.of(),
                 AuthenticatedSessionStatus.LOGGED_OUT,
                 "csrf_hash",

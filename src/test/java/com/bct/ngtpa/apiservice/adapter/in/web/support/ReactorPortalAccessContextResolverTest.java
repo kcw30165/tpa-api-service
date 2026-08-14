@@ -85,7 +85,7 @@ class ReactorCurrentPortalAccessContextResolverTest {
             String trustCode,
             String schemeType) {
         return new PortalAccessContext(
-                new ActorContext("actor-001", ActorUserRole.ROLE_USER),
+                new ActorContext("actor-001", ActorUserRole.ROLE_USER_MBR),
                 new AccountContext(
                         accountRef,
                         accountEnv,

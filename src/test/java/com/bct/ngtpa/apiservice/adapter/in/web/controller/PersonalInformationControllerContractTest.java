@@ -136,7 +136,7 @@ class PersonalInformationControllerContractTest {
 
     private static PortalAccessContext context(String accountRef) {
         return new PortalAccessContext(
-                new ActorContext("user-1", ActorUserRole.ROLE_USER),
+                new ActorContext("user-1", ActorUserRole.ROLE_USER_MBR),
                 new AccountContext(accountRef, "JP", "policy-1", "cert-1", "JPM", "OE", TermStatus.BLANK, null));
     }
     

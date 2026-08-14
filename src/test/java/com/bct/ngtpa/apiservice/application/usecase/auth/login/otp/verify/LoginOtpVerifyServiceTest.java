@@ -54,7 +54,7 @@ class LoginOtpVerifyServiceTest {
         Fixture(OtpVerificationOutcome outcome, int remaining) {
             LoginProtectedAuthFlowContextLoader loader = c -> Mono.just(LoginProtectedAuthFlowContextResult.valid(
                     new com.bct.ngtpa.apiservice.application.dto.auth.login.preauth.LoginPreAuthContext("member", "MBR",
-                            com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER.name(), java.util.Map.of(), java.time.Instant.parse("2026-07-20T00:00:00Z"), "v1"),
+                            com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR.name(), java.util.Map.of(), java.time.Instant.parse("2026-07-20T00:00:00Z"), "v1"),
                     "otp_active", null, "csrf_hash"));
             OtpChallengePort otp = new StubOtp(outcome, remaining);
             AuthFlowSessionCancellationPort cancel = (id, reason, now) -> {

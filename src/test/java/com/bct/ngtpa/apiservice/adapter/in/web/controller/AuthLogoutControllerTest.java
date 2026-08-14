@@ -114,7 +114,7 @@ class AuthLogoutControllerTest {
     private AuthenticatedSession session() {
         return new AuthenticatedSession(
                 new AuthenticatedSessionId(SID),
-                new ActorContext("member", ActorUserRole.ROLE_USER),
+                new ActorContext("member", ActorUserRole.ROLE_USER_MBR),
                 List.of(), AuthenticatedSessionStatus.ACTIVE, "csrf_hash",
                 Instant.EPOCH, Instant.EPOCH,
                 Instant.EPOCH.plusSeconds(300), Instant.EPOCH.plusSeconds(900));

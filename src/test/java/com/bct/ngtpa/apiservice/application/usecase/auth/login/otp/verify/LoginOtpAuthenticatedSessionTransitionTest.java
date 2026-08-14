@@ -60,7 +60,7 @@ class LoginOtpAuthenticatedSessionTransitionTest {
                 })
                 .verifyComplete();
 
-        assertThat(transitionCommand.get().actorContext()).isEqualTo(new ActorContext("member", ActorUserRole.ROLE_USER));
+        assertThat(transitionCommand.get().actorContext()).isEqualTo(new ActorContext("member", ActorUserRole.ROLE_USER_MBR));
         assertThat(transitionCommand.get().csrfTokenHash()).isEqualTo("csrf_hash");
         assertThat(transitionCommand.get().accounts()).hasSize(1);
     }
@@ -82,7 +82,7 @@ class LoginOtpAuthenticatedSessionTransitionTest {
 
     private LoginOtpVerifyService service(EstablishAuthenticatedLoginSessionUseCase transition) {
         LoginPreAuthContext context = new LoginPreAuthContext(
-                "member", "MEMBER", "ROLE_USER", Map.of(), Instant.EPOCH, "v1");
+                "member", "MEMBER", "ROLE_USER_MBR", Map.of(), Instant.EPOCH, "v1");
         LoginProtectedAuthFlowContextLoader loader = command -> Mono.just(
                 LoginProtectedAuthFlowContextResult.valid(context, "otp_active", null, "csrf_hash"));
         OtpChallengePort otp = new OtpChallengePort() {

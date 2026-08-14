@@ -20,7 +20,7 @@ class AuthenticatedAccountContextResolverTest {
         var resolver = resolver(active());
         StepVerifier.create(resolver.resolvePortalAccessContext(REF, SID)).assertNext(c -> {
             assertThat(c.actor().actorUserId()).isEqualTo("member");
-            assertThat(c.actor().actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER);
+            assertThat(c.actor().actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_MBR);
             assertThat(c.account().accountRef()).isEqualTo(REF);
             assertThat(c.account().policyNo()).isEqualTo("00000008802");
             assertThat(c.account().termStatus()).isEqualTo(TermStatus.T);
@@ -53,7 +53,7 @@ class AuthenticatedAccountContextResolverTest {
     private AuthenticatedSessionLifecycleResult active() {
         var account = new AuthenticatedSessionAccount(new AuthenticatedAccountRef(REF), "DB", "00000008802", "0001",
                 "DBA", "OE", "T", LocalDate.of(2026, 7, 20));
-        var session = new AuthenticatedSession(new AuthenticatedSessionId(SID), new ActorContext("member", ActorUserRole.ROLE_USER),
+        var session = new AuthenticatedSession(new AuthenticatedSessionId(SID), new ActorContext("member", ActorUserRole.ROLE_USER_MBR),
                 List.of(account), AuthenticatedSessionStatus.ACTIVE, "csrf_hash", NOW, NOW, NOW.plusSeconds(1800),
                 NOW.plusSeconds(28800));
         return AuthenticatedSessionLifecycleResult.active(session);
