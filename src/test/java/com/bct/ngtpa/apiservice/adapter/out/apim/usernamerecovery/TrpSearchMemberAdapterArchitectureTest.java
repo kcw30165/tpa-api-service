@@ -15,16 +15,16 @@ class TrpSearchMemberAdapterArchitectureTest {
 
         assertThat(source).contains(
                 "implements UsernameRecoveryLookupPort",
+                "TrpSearchMemberTransport",
+                "TrpSearchMemberApimMapper",
+                "TrpSearchMemberApimResultMapper",
+                "RequestCorrelation.REQUEST_ID_CONTEXT_KEY");
+        assertThat(source).doesNotContain(
                 "ApimWebClientFacade",
                 "ApimCertificateService",
                 "ApimPayloadCryptoService",
                 "ApimRetryEligibility.SAFE_BUSINESS_CALL",
                 "ApimCredentialResolutionContext",
-                "ApimResponseEnvelope",
-                "TrpSearchMemberApimMapper",
-                "TrpSearchMemberApimResultMapper",
-                "RequestCorrelation.REQUEST_ID_CONTEXT_KEY");
-        assertThat(source).doesNotContain(
                 "WebClient.builder",
                 "WebClient.create",
                 "new Cipher",
@@ -44,4 +44,13 @@ class TrpSearchMemberAdapterArchitectureTest {
         assertThat(source).doesNotContain(
                 "ApimResponseEnvelope", "TrpSearchMemberApimDataItem", "WebClient", "HttpStatus");
     }
+    @Test
+    void transportImplementationIsRegisteredAsSpringBean() throws Exception {
+        String source = Files.readString(Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/usernamerecovery/SharedApimTrpSearchMemberTransport.java"));
+        assertThat(source).contains(
+                "@Component",
+                "implements TrpSearchMemberTransport");
+    }
+
 }

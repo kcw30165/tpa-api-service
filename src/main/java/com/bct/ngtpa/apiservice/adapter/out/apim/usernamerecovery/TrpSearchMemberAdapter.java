@@ -1,13 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.usernamerecovery;
 
-import com.bct.ngtpa.apiservice.adapter.out.apim.ApimCertificateService;
-import com.bct.ngtpa.apiservice.adapter.out.apim.ApimPayloadCryptoService;
-import com.bct.ngtpa.apiservice.adapter.out.apim.ApimWebClientFacade;
-import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
-import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
 import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
-import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
 import com.bct.ngtpa.apiservice.adapter.out.apim.usernamerecovery.dto.TrpSearchMemberApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.usernamerecovery.dto.TrpSearchMemberApimRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.usernamerecovery.mapper.TrpSearchMemberApimMapper;
@@ -17,9 +11,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRe
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryLookupPort;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
-import java.security.PublicKey;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeoutException;
 import org.springframework.stereotype.Component;
@@ -32,12 +24,12 @@ import reactor.core.publisher.Mono;
  * <p>Design references: {@code docs/design/6-username-recovery/username-recovery-apim-integration-design.md}
  * section 8 (downstream mapping matrix) and section 9 (transport and security; reuse
  * certificate, encryption, request ID, timeout, logging, and retry components; retry only
- * according to {@link ApimRetryEligibility}).
+ * according to the transport-owned retry policy).
  *
- * <p>The adapter reuses the shared {@link ApimWebClientFacade} transport, certificate, crypto,
- * credential resolution, and generic {@link ApimResponseEnvelope} infrastructure. Only
- * {@code X-Request-Id} is propagated, resolved from the Reactor Context and carried through
- * {@link ApimCredentialResolutionContext} request metadata. Mapper outcomes {@code MATCHED},
+ * <p>The adapter delegates the raw APIM exchange to {@link TrpSearchMemberTransport} and owns
+ * only application request/result mapping and operation-specific failure normalization. Only
+ * {@code X-Request-Id} is read from the Reactor Context and passed to the transport separately
+ * from credential resolution. Mapper outcomes {@code MATCHED},
  * {@code NOT_FOUND}, and {@code CONTRACT_INVALID} pass through; timeout/connection/5xx,
  * decryption, and invalid-envelope failures normalize to {@code UNAVAILABLE}; an unclassifiable
  * nonblank APIM err-message (represented by {@link TrpSearchMemberApimDownstreamException})
@@ -48,21 +40,13 @@ import reactor.core.publisher.Mono;
 @Component
 public final class TrpSearchMemberAdapter implements UsernameRecoveryLookupPort {
 
-    private static final String API_NAME = "/ws/NGTPA/v1/TRPSearchMember";
 
-    private final ApimWebClientFacade facade;
-    private final ApimCertificateService certificates;
-    private final ApimPayloadCryptoService crypto;
-    private final ApimProperties apimProperties;
+    private final TrpSearchMemberTransport transport;
     private final TrpSearchMemberApimMapper requestMapper;
     private final TrpSearchMemberApimResultMapper resultMapper;
 
-    public TrpSearchMemberAdapter(ApimWebClientFacade facade, ApimCertificateService certificates,
-            ApimPayloadCryptoService crypto, ApimProperties apimProperties) {
-        this.facade = Objects.requireNonNull(facade, "facade must not be null");
-        this.certificates = Objects.requireNonNull(certificates, "certificates must not be null");
-        this.crypto = Objects.requireNonNull(crypto, "crypto must not be null");
-        this.apimProperties = Objects.requireNonNull(apimProperties, "apimProperties must not be null");
+    public TrpSearchMemberAdapter(TrpSearchMemberTransport transport) {
+        this.transport = Objects.requireNonNull(transport, "transport must not be null");
         this.requestMapper = new TrpSearchMemberApimMapper();
         this.resultMapper = new TrpSearchMemberApimResultMapper();
     }
@@ -73,7 +57,7 @@ public final class TrpSearchMemberAdapter implements UsernameRecoveryLookupPort 
         TrpSearchMemberApimRequest request = requestMapper.toApimRequest(command);
         return Mono.deferContextual(contextView -> {
                     String requestId = contextView.getOrDefault(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, null);
-                    return post(request, requestId);
+                    return transport.post(request, requestId);
                 })
                 .map(this::toResult)
                 .onErrorResume(TrpSearchMemberApimDownstreamException.class,
@@ -82,25 +66,6 @@ public final class TrpSearchMemberAdapter implements UsernameRecoveryLookupPort 
                 .onErrorResume(ApimCryptoException.class, exception -> Mono.just(unavailable()))
                 .onErrorResume(WebClientRequestException.class, exception -> Mono.just(unavailable()))
                 .onErrorResume(TimeoutException.class, exception -> Mono.just(unavailable()));
-    }
-
-    private Mono<ApimResponseEnvelope<TrpSearchMemberApimDataItem>> post(
-            TrpSearchMemberApimRequest request, String requestId) {
-        return apimProperties.getEncryption().isEnabled()
-                ? certificates.getBctPublicKey().flatMap(key -> postEncrypted(request, requestId, key))
-                : postEncrypted(request, requestId, null);
-    }
-
-    private Mono<ApimResponseEnvelope<TrpSearchMemberApimDataItem>> postEncrypted(
-            TrpSearchMemberApimRequest request, String requestId, PublicKey key) {
-        Object encrypted = crypto.encryptRequest(API_NAME, request, TrpSearchMemberApimRequest.class, key);
-        Map<String, String> metadata = requestId == null || requestId.isBlank()
-                ? Map.of()
-                : Map.of("requestId", requestId);
-        var context = new ApimCredentialResolutionContext(
-                null, null, null, null, null, null, null, API_NAME, metadata);
-        return facade.post(API_NAME, encrypted, context, ApimRetryEligibility.SAFE_BUSINESS_CALL)
-                .map(body -> crypto.decryptResponseEnvelope(API_NAME, body, TrpSearchMemberApimDataItem.class, key));
     }
 
     private UsernameRecoveryLookupResult toResult(ApimResponseEnvelope<TrpSearchMemberApimDataItem> envelope) {

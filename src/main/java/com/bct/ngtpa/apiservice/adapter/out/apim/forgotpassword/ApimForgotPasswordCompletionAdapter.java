@@ -13,7 +13,6 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.dto.TrpResetPass
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.mapper.TrpResetPasswordApimMapper;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.mapper.TrpResetPasswordApimResultMapper;
 import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
-import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordCompletionPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompletionCommand;
