@@ -32,3 +32,162 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - Prompt 00 made documentation changes only. No production or test implementation was authorized or performed. Stage 01 was not started.
 - Prompt 00 final status: `READY_FOR_ARCHITECT_REVIEW`.
 - Suggested commit message after architect approval: `docs(architecture): document APIM routing modernization baseline`.
+
+### Stage 01: Baseline and characterization (20260814-221445)
+
+- Status: BLOCKED.
+- Scope: test-only characterization; no production implementation changed.
+- Tests added: ApimLegacyStalePayloadCharacterizationTest, ApimRoutingLedgerCharacterizationTest, ApimExecutionBoundaryCharacterizationTest, AuthenticatedAmbientContextDependencyCharacterizationTest.
+- Current behavior characterized: explicit profile routing, token/certificate recovery branches, operation retry classifications, API-name crypto field boundary, 15-operation routing ledger, and current ambient request-context dependencies.
+- Known defect preserved: invalid_public_key without an attached encryption function retries the same encrypted payload; correction remains Stage 03.
+- Successful-attempt key gap preserved: the current facade returns response body only and does not expose the successful attempt public key.
+- Confirmed decisions represented: Forgot Password username lookup NON_ACCOUNT, Forgot Password completion NON_ACCOUNT target, TRPRegMember protected-state ACCOUNT_ENV, Notifications ACCOUNT_ENV target, and country-list current NON_ACCOUNT mismatch versus authenticated ACCOUNT_ENV target.
+- Unconfirmed operation targets remain unchanged.
+- Mutation finding: application idempotency precedes transport execution; current IDEMPOTENT_MUTATION classifications are recorded without claiming downstream idempotence.
+- Evidence directory: target/evidence/apim-routing-context-stage-01-20260814-221445.
+- Fail-first exit: 1; focused exit: 1; cumulative exit: 125; compile exit: 0; full suite: NOT_RUN.
+- No src/main, APIM configuration, profile routing configuration, retry configuration, encryption behavior, session behavior, controller behavior, application service behavior, or feature adapter behavior was changed.
+- Next gate: architect approval before Stage 02. Stage 02 was not started.
+- Commit message after approval: test(apim): characterize profile-aware encrypted execution.
+
+### Stage 01 correction: notification APIM test profile fixtures
+
+- Status: BLOCKED.
+- Classification: stale test fixtures after strict profile resolution became mandatory in encrypted Notifications adapter paths.
+- Root cause:  and  passed a null ; encrypted adapter tests now call  before certificate access, producing NullPointerException before their intended assertions.
+- Correction: supplied test-only profile resolvers returning mocked  values in the two existing facade test doubles.
+- Production behavior changed: no.
+- Original fail-first characterization evidence remains valid in [INFO] Scanning for projects...
+[INFO] 
+[INFO] ----------------------< com.bct:ngtpa-api-server >----------------------
+[INFO] Building ngtpa-api-server 0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- jacoco:0.8.12:prepare-agent (default) @ ngtpa-api-server ---
+[INFO] argLine set to -javaagent:D:\\Maven\\repository\\org\\jacoco\\org.jacoco.agent\\0.8.12\\org.jacoco.agent-0.8.12-runtime.jar=destfile=D:\\Projects\\ORSO\\ngtpa\\api-service-worktrees\\apim-profiles\\target\\jacoco.exec
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ ngtpa-api-server ---
+[INFO] Copying 7 resources from src\main\resources to target\classes
+[INFO] Copying 5 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ ngtpa-api-server ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 1360 source files with javac [debug parameters release 21] to target\classes
+[INFO] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/forgotpassword/ForgotPasswordHttpResponses.java: Some input files use or override a deprecated API.
+[INFO] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/forgotpassword/ForgotPasswordHttpResponses.java: Recompile with -Xlint:deprecation for details.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ ngtpa-api-server ---
+[INFO] Copying 5 resources from src\test\resources to target\test-classes
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ ngtpa-api-server ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 837 source files with javac [debug parameters release 21] to target\test-classes
+[WARNING] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimAdapterReflectionBranchProbeTest.java:[14,16] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimWebClientFacadePrivateBranchTest.java:[11,16] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimAdapterReflectionBranchProbeTest.java:[14,16] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimWebClientFacadePrivateBranchTest.java:[11,16] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimAdapterReflectionBranchProbeTest.java:[14,16] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimWebClientFacadePrivateBranchTest.java:[11,16] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimAdapterReflectionBranchProbeTest.java:[14,16] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimWebClientFacadePrivateBranchTest.java:[11,16] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimAdapterReflectionBranchProbeTest.java:[14,16] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimWebClientFacadePrivateBranchTest.java:[11,16] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimAdapterReflectionBranchProbeTest.java:[325,20] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimAdapterReflectionBranchProbeTest.java:[325,20] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimAdapterReflectionBranchProbeTest.java:[325,20] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimAdapterReflectionBranchProbeTest.java:[325,20] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimAdapterReflectionBranchProbeTest.java:[325,20] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimAdapterReflectionBranchProbeTest.java:[326,23] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimAdapterReflectionBranchProbeTest.java:[328,17] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimWebClientFacadePrivateBranchTest.java:[48,20] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimWebClientFacadePrivateBranchTest.java:[48,20] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimWebClientFacadePrivateBranchTest.java:[48,20] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimWebClientFacadePrivateBranchTest.java:[48,20] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimWebClientFacadePrivateBranchTest.java:[48,20] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimWebClientFacadePrivateBranchTest.java:[49,23] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimWebClientFacadePrivateBranchTest.java:[51,17] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[INFO] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordControllerTest.java: Some input files use or override a deprecated API.
+[INFO] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordControllerTest.java: Recompile with -Xlint:deprecation for details.
+[INFO] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimPayloadCryptoServiceTest.java: Some input files use unchecked or unsafe operations.
+[INFO] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimPayloadCryptoServiceTest.java: Recompile with -Xlint:unchecked for details.
+[INFO] 
+[INFO] --- surefire:3.5.5:test (default-test) @ ngtpa-api-server ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running com.bct.ngtpa.apiservice.adapter.out.apim.ApimLegacyStalePayloadCharacterizationTest
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.280 s -- in com.bct.ngtpa.apiservice.adapter.out.apim.ApimLegacyStalePayloadCharacterizationTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] 
+[INFO] --- jacoco:0.8.12:report (report) @ ngtpa-api-server ---
+[INFO] Loading execution data file D:\Projects\ORSO\ngtpa\api-service-worktrees\apim-profiles\target\jacoco.exec
+[INFO] Analyzed bundle 'ngtpa-api-server' with 1307 classes
+[WARNING] Classes in bundle 'ngtpa-api-server' do not match with execution data. For report generation the same class files must be used as at runtime.
+[WARNING] Execution data for class com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationLookupAdapter does not match.
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  01:00 min
+[INFO] Finished at: 2026-08-14T22:27:35+08:00
+[INFO] ------------------------------------------------------------------------ through .
+- Repair evidence remains in the same exact Stage 01 directory: .
+- Repair focused exit: 1; cumulative exit: 125; compile exit: 0; full suite: NOT_RUN.
+- Stage 02 was not started.
+- Commit message after architect approval: test(apim): characterize profile-aware encrypted execution.
+
+### Stage 01 correction: valid APIM profile fixtures
+
+- Status: BLOCKED.
+- Classification: incomplete first test-fixture correction; production behavior remained unchanged.
+- Root cause: a mocked  returned null ;  uses  as a  key, so the encrypted tests still failed before certificate behavior.
+- Correction: replaced each mocked profile with a valid concrete test profile carrying nonblank profileId, client, token URI, base URL, and certificate path.
+- Exact retained evidence directory: .
+- Original Prompt 01 fail-first remains preserved in files 010 through 012.
+- Second-repair focused exit: 1; cumulative exit: 125; compile exit: 0; full suite: NOT_RUN.
+- No production implementation changed. Stage 02 was not started.
+- Commit message after architect approval: test(apim): characterize profile-aware encrypted execution.
+
+### Stage 01 correction: valid APIM profile fixtures
+
+- Status: BLOCKED.
+- Classification: incomplete first test-fixture correction; production behavior remained unchanged.
+- Root cause: a mocked  returned null ;  uses  as a  key, so the encrypted tests still failed before certificate behavior.
+- Correction: replaced each mocked profile with a valid concrete test profile carrying nonblank profileId, client, token URI, base URL, and certificate path.
+- Exact retained evidence directory: .
+- Original Prompt 01 fail-first remains preserved in files 010 through 012.
+- Second-repair focused exit: 1; cumulative exit: 125; compile exit: 0; full suite: NOT_RUN.
+- No production implementation changed. Stage 02 was not started.
+- Commit message after architect approval: test(apim): characterize profile-aware encrypted execution.
+
+
+### Stage 01 correction: profile-aware certificate test doubles
+
+- Status: BLOCKED.
+- Classification: stale certificate test doubles after profile-aware certificate routing.
+- Root cause: the six Notifications certificate doubles overrode `getBctPublicKey()`, while production now invokes `getPublicKey(ApimCredentialProfile)`. The inherited method attempted real certificate fetching with a null WebClient builder.
+- Correction: all six certificate doubles now override the profile-aware method and retain their original fixed, rejecting, or failing behavior.
+- Exact retained evidence directory: `target/evidence/apim-routing-context-stage-01-20260814-221445`.
+- Original Prompt 01 fail-first remains preserved in files 010 through 012.
+- Third-repair focused exit: 1; cumulative exit: 125; compile exit: 0; full suite: NOT_RUN.
+- No production implementation changed. Stage 02 was not started.
+- Commit message after architect approval: `test(apim): characterize profile-aware encrypted execution`.
+
+
+### Stage 01 correction: resolved-profile facade test doubles
+
+- Status: READY_FOR_ARCHITECT_REVIEW.
+- Classification: stale facade test doubles after resolved-profile encrypted execution.
+- Root cause: encrypted Notifications paths call `post(path, body, profile, retryEligibility)`, while the facade doubles only overrode the scope/context overload. The inherited profile overload reached a null token service.
+- Correction: both facade doubles now override the resolved-profile overload and retain their original request capture and fixed-response behavior.
+- Exact retained evidence directory: `target/evidence/apim-routing-context-stage-01-20260814-221445`.
+- Original Prompt 01 fail-first remains preserved in files 010 through 012.
+- Fourth-repair focused exit: 0; cumulative exit: 0; compile exit: 0; full suite: NOT_RUN.
+- No production implementation changed. Stage 02 was not started.
+- Commit message after architect approval: `test(apim): characterize profile-aware encrypted execution`.

@@ -271,7 +271,12 @@ class ApimNoticeMessageAdapterTest {
                 private int postInvocationCount;
 
                 private FixedBodyApimWebClientFacade() {
-                        super(null, null, new ObjectMapper(), null, null, null, new ApimProperties());
+                        super(null, null, new ObjectMapper(),
+                                (scope, context) -> Mono.just(new
+                                                com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile(
+                                                        "test-profile", "client", "secret", "api-key",
+                                                        "https://token.test", "https://apim.test", List.of(), "/certificate")),
+                                null, null, new ApimProperties());
                 }
 
                 @Override
@@ -283,7 +288,17 @@ class ApimNoticeMessageAdapterTest {
                         this.postInvocationCount++;
                         return Mono.just("ignored");
                 }
-        }
+        
+                @Override
+                public Mono<String> post(String path, Object requestBody,
+                                com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile profile,
+                                com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility retryEligibility) {
+                        this.capturedPath = path;
+                        this.capturedRequest = requestBody;
+                        this.postInvocationCount++;
+                        return Mono.just("ignored");
+                }
+}
 
         private static final class FixedEnvelopePayloadCryptoService extends ApimPayloadCryptoService {
                 private final ApimResponseEnvelope<GetMessageBoardDataItem> envelope;
@@ -320,7 +335,8 @@ class ApimNoticeMessageAdapterTest {
                 }
 
                 @Override
-                public Mono<PublicKey> getBctPublicKey() {
+                public Mono<PublicKey> getPublicKey(
+                        com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile profile) {
                         invocationCount++;
                         return Mono.just(publicKey);
                 }
@@ -332,7 +348,8 @@ class ApimNoticeMessageAdapterTest {
                 }
 
                 @Override
-                public Mono<PublicKey> getBctPublicKey() {
+                public Mono<PublicKey> getPublicKey(
+                        com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile profile) {
                         return Mono.error(new AssertionError(
                                         "Certificate lookup should not run when encryption is disabled."));
                 }
@@ -344,7 +361,8 @@ class ApimNoticeMessageAdapterTest {
                 }
 
                 @Override
-                public Mono<PublicKey> getBctPublicKey() {
+                public Mono<PublicKey> getPublicKey(
+                        com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile profile) {
                         return Mono.error(new ApimCryptoException("Certificate crypto error"));
                 }
         }
