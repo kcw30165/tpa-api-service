@@ -6,32 +6,23 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
-/**
- * Passing characterization of a known legacy defect. Stage 03 owns correction.
- * This test must be replaced when stale encrypted-payload retry is removed.
- */
+/** Historical Stage 01 defect guard, inverted in Stage 03 to prove stale body retry is removed. */
 class ApimLegacyStalePayloadCharacterizationTest {
-    private static final Path FACADE = Path.of(
-            "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimWebClientFacade.java");
-
     @Test
-    void invalidPublicKeyWithoutEncryptionFunctionRetriesTheSamePayloadAsLegacyDefect() throws Exception {
-        String source = normalized(Files.readString(FACADE));
-        assertThat(source).contains(
-                "if (retryContext.encryptionFunction != null)",
-                "Object newRequest = retryContext.encryptionFunction.apply(profile, newPk)",
-                "Fallback: retry the same payload once",
-                "return sendWithProfile(profile, path, requestBody, retryContext)");
+    void bodyOnlyInvalidPublicKeyPathNoLongerRetriesTheSameEncryptedPayload() throws Exception {
+        String source = Files.readString(Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimWebClientFacade.java"));
+        assertThat(source).doesNotContain("Fallback: retry the same payload once");
+        assertThat(source).contains("A body-only call cannot safely regenerate encrypted ciphertext",
+                "Do not retry stale requestBody after certificate invalidation");
     }
 
     @Test
-    void successfulAttemptPublicKeyIsNotExposedByCurrentFacadeContract() throws Exception {
-        String source = normalized(Files.readString(FACADE));
-        assertThat(source).contains("public Mono<String> postEncrypted(");
-        assertThat(source).doesNotContain("record SuccessfulAttempt", "successfulAttemptPublicKey");
-    }
-
-    private String normalized(String value) {
-        return value.replaceAll("\\s+", " ");
+    void correctedEncryptedPathRefreshesKeyRegeneratesRequestAndCarriesSuccessfulKey() throws Exception {
+        String source = Files.readString(Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimWebClientFacade.java"));
+        assertThat(source).contains("retryContext.responseVerificationKey = newPk",
+                "retryContext.encryptionFunction.apply(profile, newPk)",
+                "context.responseVerificationKey");
     }
 }

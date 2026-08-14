@@ -171,36 +171,7 @@ class ApimWebClientFacadeRetryTest {
     }
 
     @Test
-    void invalidPublicKeyEvictsCertificateAndRetriesOnce() {
-        AtomicInteger serverCalls = new AtomicInteger();
-        AtomicInteger evictions = new AtomicInteger();
-
-        ExchangeFunction ef = req -> {
-            if (serverCalls.getAndIncrement() == 0) {
-                return Mono.just(ClientResponse.create(HttpStatus.BAD_REQUEST)
-                        .body("{\"error\":\"invalid_public_key\"}")
-                        .build());
-            }
-            return Mono.just(ClientResponse.create(HttpStatus.OK).body("{\"ok\":true}").build());
-        };
-
-        WebClient.Builder builder = WebClient.builder().exchangeFunction(ef);
-        ApimProperties props = new ApimProperties();
-        ApimTokenService tokenService = fixedTokenService(builder, props, "tok");
-        ApimCredentialProfile profile = new ApimCredentialProfile("p1", "cid", "secret", "akey", null, "http://localhost", List.of(), null);
-        ApimCredentialProfileResolver resolver = (scope, ctx) -> reactor.core.publisher.Mono.just(profile);
-        ApimCertificateService certificateService = trackingCertificateService(builder, props, evictions);
-
-        ApimWebClientFacade facade = new ApimWebClientFacade(
-                WebClient.create(), builder, new ObjectMapper(), resolver, tokenService, certificateService, props);
-
-        assertEquals("{\"ok\":true}", facade.post("/api/test", Map.of("x", "y"), com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT, new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, null), null).block());
-        assertEquals(2, serverCalls.get());
-        assertEquals(1, evictions.get());
-    }
-
-    @Test
-    void invalidPublicKeyRetriesOnlyOnceThenPropagatesError() {
+    void invalidPublicKeyBodyOnlyPathEvictsCertificateWithoutRetryingStalePayload() {
         AtomicInteger serverCalls = new AtomicInteger();
         AtomicInteger evictions = new AtomicInteger();
 
@@ -213,29 +184,69 @@ class ApimWebClientFacadeRetryTest {
 
         WebClient.Builder builder = WebClient.builder().exchangeFunction(ef);
         ApimProperties props = new ApimProperties();
-        ApimCredentialProfile profile = new ApimCredentialProfile("p1", "cid", "secret", "akey", null, "http://localhost", List.of(), null);
+        ApimTokenService tokenService = fixedTokenService(builder, props, "tok");
+        ApimCredentialProfile profile = new ApimCredentialProfile(
+                "p1", "client", "secret", "api-key",
+                "https://token.test", "https://apim.test", java.util.List.of(), "/certificate");
+        ApimCredentialProfileResolver resolver = captureResolver(profile);
+        ApimCertificateService certificateService = trackingCertificateService(builder, props, evictions);
 
         ApimWebClientFacade facade = new ApimWebClientFacade(
-                WebClient.create(),
-                builder,
-                new ObjectMapper(),
-                captureResolver(profile),
-                fixedTokenService(builder, props, "tok"),
-                trackingCertificateService(builder, props, evictions),
-                props);
+                WebClient.create(), builder, new ObjectMapper(), resolver, tokenService, certificateService, props);
 
-        StepVerifier.create(facade.post("/api/test", Map.of("x", "y"), com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT, new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, null), null))
+        StepVerifier.create(facade.post("/api/test", Map.of("x", "y"),
+                        com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT,
+                        new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(
+                                com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, null), null))
                 .expectErrorSatisfies(ex -> {
                     assertEquals(ApimException.class, ex.getClass());
-                    assertEquals(
-                            "APIM request failed with status=400 body={\"error\":\"invalid_public_key\"}",
+                    assertEquals("APIM request failed with status=400 body={\"error\":\"invalid_public_key\"}",
                             ex.getMessage());
                 })
                 .verify();
 
-        assertEquals(2, serverCalls.get());
+        assertEquals(1, serverCalls.get());
         assertEquals(1, evictions.get());
     }
+
+
+    @Test
+    void repeatedInvalidPublicKeyOnBodyOnlyPathPropagatesAfterFirstResponseWithoutRetry() {
+        AtomicInteger serverCalls = new AtomicInteger();
+        AtomicInteger evictions = new AtomicInteger();
+
+        ExchangeFunction ef = req -> {
+            serverCalls.incrementAndGet();
+            return Mono.just(ClientResponse.create(HttpStatus.BAD_REQUEST)
+                    .body("{\"error\":\"invalid_public_key\"}")
+                    .build());
+        };
+
+        WebClient.Builder builder = WebClient.builder().exchangeFunction(ef);
+        ApimProperties props = new ApimProperties();
+        ApimCredentialProfile profile = new ApimCredentialProfile(
+                "p1", "client", "secret", "api-key",
+                "https://token.test", "https://apim.test", java.util.List.of(), "/certificate");
+        ApimWebClientFacade facade = new ApimWebClientFacade(
+                WebClient.create(), builder, new ObjectMapper(), captureResolver(profile),
+                fixedTokenService(builder, props, "tok"),
+                trackingCertificateService(builder, props, evictions), props);
+
+        StepVerifier.create(facade.post("/api/test", Map.of("x", "y"),
+                        com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT,
+                        new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(
+                                com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, null), null))
+                .expectErrorSatisfies(ex -> {
+                    assertEquals(ApimException.class, ex.getClass());
+                    assertEquals("APIM request failed with status=400 body={\"error\":\"invalid_public_key\"}",
+                            ex.getMessage());
+                })
+                .verify();
+
+        assertEquals(1, serverCalls.get());
+        assertEquals(1, evictions.get());
+    }
+
 
     @Test
     void nonRetryableErrorsPropagateImmediately() {

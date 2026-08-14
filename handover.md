@@ -206,3 +206,46 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - Validation exits: fail-first 1; Stage 02 focused 0; Stage 01 preservation 0; cumulative 0; compile 0; full suite NOT_RUN.
 - Stash remained unchanged. Stage 03 remains gated by architect approval and was not started.
 - Commit message after approval: `feat(apim): define generic profile-aware exchange contract`.
+
+
+### Stage 03: Successful-attempt key consistency
+
+- Status: `BLOCKED`.
+- New facade APIs: `Mono<ApimSuccessfulExchange> postSuccessfulExchange(String,Object,ApimDatabaseScope,ApimCredentialResolutionContext,ApimRetryEligibility)` and `Mono<ApimSuccessfulExchange> postEncryptedSuccessfulExchange(String,BiFunction<ApimCredentialProfile,PublicKey,Object>,ApimDatabaseScope,ApimCredentialResolutionContext,ApimRetryEligibility)`.
+- Successful encrypted metadata carries the one resolved profile and exact public key used to encrypt the successful HTTP attempt. Plain successful metadata carries the profile and null key.
+- `invalid_public_key` on corrected encrypted execution evicts the profile certificate, refreshes the key, regenerates ciphertext, retries once on the same profile, and returns the refreshed successful key.
+- Body-only resolved-profile execution no longer retries unchanged ciphertext because no regeneration function exists.
+- Token recovery retains the same profile, ciphertext, and verification key. Encrypted business retry creates a fresh encrypted attempt and returns its key.
+- Existing public `Mono<String>` methods remain and safely delegate to successful-exchange methods where applicable. No feature adapter or transport was migrated.
+- Evidence directory: `target/evidence/apim-routing-context-stage-03-20260814-233639`. Validation exits: fail-first 1; focused 1; Stage 02 preservation 0; cumulative 125; compile 0; full suite NOT_RUN.
+- Stash remained unchanged. Stage 04 remains gated and was not started.
+- Commit message after approval: `refactor(apim): preserve encryption key across successful exchange attempts`.
+
+
+### Stage 03 validation rerun correction (target/evidence/apim-routing-context-stage-03-20260814-233639)
+
+- Status: `BLOCKED`.
+- The original Stage 03 focused output was invalid because a generated test contained a stray character and failed test compilation. The user corrected the test typo; no production behavior was changed by that correction.
+- Validation-only rerun results: focused 1; Stage 02 preservation 125; cumulative APIM regressions 125; compile 0; full suite NOT_RUN.
+- Exact evidence directory retained: `target/evidence/apim-routing-context-stage-03-20260814-233639`.
+- The rerun script changed no production or test code. HEAD and stash state stayed unchanged. Stage 04 was not started.
+- Commit message after architect approval: `refactor(apim): preserve encryption key across successful exchange attempts`.
+
+
+### Stage 03 obsolete body-only retry test correction (target/evidence/apim-routing-context-stage-03-20260814-233639)
+
+- Status: `BLOCKED`.
+- Two existing facade retry tests still expected Stage 01 body-only `invalid_public_key` retry behavior. Stage 03 intentionally removes that unsafe retry.
+- The tests now require one HTTP attempt, one certificate eviction, no unchanged-payload retry, and normalized APIM failure propagation.
+- Validation exits: focused 1; Stage 02 preservation 125; cumulative 125; compile 0.
+- Exact evidence directory: `target/evidence/apim-routing-context-stage-03-20260814-233639`. No additional production change was made. Stage 04 was not started.
+- Commit message after approval: `refactor(apim): preserve encryption key across successful exchange attempts`.
+
+
+### Stage 03 inline credential-profile fixture correction (target/evidence/apim-routing-context-stage-03-20260814-233639)
+
+- Status: `READY_FOR_ARCHITECT_REVIEW`.
+- The preceding narrow retry-test update referenced an undefined `validProfile(String)` helper. Exactly two calls were replaced with explicit `ApimCredentialProfile` test fixtures.
+- No production behavior changed. Validation exits: focused 0; Stage 02 preservation 0; cumulative 0; compile 0.
+- Exact evidence directory retained: `target/evidence/apim-routing-context-stage-03-20260814-233639`. HEAD and stash remained unchanged. Stage 04 was not started.
+- Commit message after approval: `refactor(apim): preserve encryption key across successful exchange attempts`.
