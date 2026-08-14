@@ -177,8 +177,8 @@ class UsernameRecoveryCancelResponsePolicyTest {
                     SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value(),
                     List.of(), "SERVER", null, 503);
             case REVISION_CONFLICT -> new Expected(
-                    ApiStatus.BUSINESS_REJECTED, WorkflowNextStep.RETURN_TO_LOGIN,
-                    SharedWorkflowErrorKey.IDEMPOTENCY_KEY_REUSED.value(),
+                    ApiStatus.VALIDATION_FAILED, WorkflowNextStep.RETURN_TO_LOGIN,
+                    UsernameRecoveryErrorKey.AUTH_FLOW_INVALID.value(),
                     List.of(), "BFF", HttpStatusClassificationOverride.CONFLICT, 409);
             case SYSTEM_FAILURE -> new Expected(
                     ApiStatus.SYSTEM_ERROR, WorkflowNextStep.RETURN_TO_LOGIN,

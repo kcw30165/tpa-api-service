@@ -28,11 +28,8 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
 import reactor.core.publisher.Mono;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class RedisAuthFlowSessionAdapter implements AuthFlowSessionPort {
-    private static final Logger log = LoggerFactory.getLogger(RedisAuthFlowSessionAdapter.class);
 
     private final CachePort cachePort;
     private final RedisCacheKeyFactory keyFactory;
@@ -210,8 +207,9 @@ public class RedisAuthFlowSessionAdapter implements AuthFlowSessionPort {
             if (revisionOperations == null) {
                 return Mono.just(new AuthFlowSessionDeleteResult(AuthFlowSessionMutationOutcome.SYSTEM_FAILURE));
             }
-            String expectedJson = jsonMapper.toJson(command.expected().session(), command.expected().revision());
-            return revisionOperations.deleteIfCurrent(keyFor(command.expected().session().authFlowSessionId()), expectedJson)
+            return revisionOperations.deleteIfCurrent(
+                            keyFor(command.expected().session().authFlowSessionId()),
+                            command.expected().revision().value())
                     .map(code -> new AuthFlowSessionDeleteResult(mapMutationCode(code)));
         }).onErrorReturn(new AuthFlowSessionDeleteResult(AuthFlowSessionMutationOutcome.SYSTEM_FAILURE));
     }
@@ -224,87 +222,24 @@ public class RedisAuthFlowSessionAdapter implements AuthFlowSessionPort {
                 return Mono.just(AuthFlowSessionMutationResult.outcome(
                         AuthFlowSessionMutationOutcome.SYSTEM_FAILURE));
             }
-            String expectedJson = jsonMapper.toJson(command.expected().session(), command.expected().revision());
             SessionRevision next = revisionGenerator.generate();
             String revisedJson = jsonMapper.toJson(command.updated(), next);
-            String sessionKey = keyFor(command.updated().authFlowSessionId());
-            return revisionOperations.replaceIfCurrent(sessionKey, expectedJson, revisedJson)
-                    .flatMap(code -> code == 0L
-                            ? diagnoseWholeValueConflict(sessionKey, command, expectedJson)
-                                    .thenReturn(AuthFlowSessionMutationResult.outcome(
-                                            AuthFlowSessionMutationOutcome.SESSION_REVISION_CHANGED))
-                            : Mono.just(code == 1L
-                                    ? new AuthFlowSessionMutationResult(AuthFlowSessionMutationOutcome.APPLIED,
-                                            new AuthFlowSessionSnapshot(command.updated(), next))
-                                    : AuthFlowSessionMutationResult.outcome(mapMutationCode(code))));
+            return revisionOperations.replaceIfCurrent(
+                            keyFor(command.updated().authFlowSessionId()),
+                            command.expected().revision().value(),
+                            revisedJson)
+                    .map(code -> code == 1L
+                            ? new AuthFlowSessionMutationResult(AuthFlowSessionMutationOutcome.APPLIED,
+                                    new AuthFlowSessionSnapshot(command.updated(), next))
+                            : AuthFlowSessionMutationResult.outcome(mapMutationCode(code)));
         }).onErrorReturn(AuthFlowSessionMutationResult.outcome(AuthFlowSessionMutationOutcome.SYSTEM_FAILURE));
-    }
-
-    private Mono<Void> diagnoseWholeValueConflict(
-            String sessionKey,
-            RevisionedAuthFlowSessionMutationCommand command,
-            String expectedJson) {
-        return cachePort.get(sessionKey)
-                .doOnNext(optionalCurrent -> {
-                    if (optionalCurrent.isEmpty()) {
-                        log.warn("event=auth-flow-session.cas-conflict-diagnostic "
-                                + "scenario={} expectedStatus={} updatedStatus={} "
-                                + "recordPresent=false currentDocumentParseable=false "
-                                + "currentRevisionEqualsExpected=false "
-                                + "currentDocumentEqualsExpected=false "
-                                + "currentDocumentLength=0 expectedDocumentLength={}",
-                                command.expected().session().scenario(),
-                                command.expected().session().status(),
-                                command.updated().status(),
-                                expectedJson.length());
-                        return;
-                    }
-
-                    String currentJson = optionalCurrent.orElseThrow();
-                    boolean currentDocumentParseable = false;
-                    boolean currentRevisionEqualsExpected = false;
-                    try {
-                        var currentSnapshot = jsonMapper.snapshotFromJson(currentJson);
-                        currentDocumentParseable = currentSnapshot.isPresent();
-                        currentRevisionEqualsExpected = currentSnapshot
-                                .map(AuthFlowSessionSnapshot::revision)
-                                .map(command.expected().revision()::equals)
-                                .orElse(false);
-                    } catch (RuntimeException ignored) {
-                        // Diagnostics must never replace the typed mutation outcome.
-                    }
-
-                    log.warn("event=auth-flow-session.cas-conflict-diagnostic "
-                            + "scenario={} expectedStatus={} updatedStatus={} "
-                            + "recordPresent=true currentDocumentParseable={} "
-                            + "currentRevisionEqualsExpected={} "
-                            + "currentDocumentEqualsExpected={} "
-                            + "currentDocumentLength={} expectedDocumentLength={}",
-                            command.expected().session().scenario(),
-                            command.expected().session().status(),
-                            command.updated().status(),
-                            currentDocumentParseable,
-                            currentRevisionEqualsExpected,
-                            currentJson.equals(expectedJson),
-                            currentJson.length(),
-                            expectedJson.length());
-                })
-                .then()
-                .onErrorResume(error -> {
-                    log.warn("event=auth-flow-session.cas-conflict-diagnostic-failed "
-                            + "scenario={} expectedStatus={} updatedStatus={} causeType={}",
-                            command.expected().session().scenario(),
-                            command.expected().session().status(),
-                            command.updated().status(),
-                            error.getClass().getSimpleName());
-                    return Mono.empty();
-                });
     }
 
     private static AuthFlowSessionMutationOutcome mapMutationCode(long code) {
         return switch ((int) code) {
             case 1 -> AuthFlowSessionMutationOutcome.APPLIED;
             case -1 -> AuthFlowSessionMutationOutcome.SESSION_NOT_FOUND;
+            case -2 -> AuthFlowSessionMutationOutcome.SESSION_REVISION_MISSING;
             case 0 -> AuthFlowSessionMutationOutcome.SESSION_REVISION_CHANGED;
             case -3 -> AuthFlowSessionMutationOutcome.CORRUPT_STATE;
             default -> AuthFlowSessionMutationOutcome.SYSTEM_FAILURE;

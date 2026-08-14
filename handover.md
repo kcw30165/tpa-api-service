@@ -1,19 +1,12 @@
-# Username Recovery CAS Diagnostic Handover
+# Shared Auth-Flow Revision CAS Handover
 
-## Purpose
+## Permanent shared fix
 
-Temporarily diagnose whether a Redis whole-value CAS mismatch represents a real revision change or a representation-only mismatch.
+- Shared replace and delete operations compare `sessionRevision`, not regenerated JSON.
+- Replacement preserves remaining TTL.
+- Legacy initialization retains whole-document proof because legacy records have no revision token.
+- Temporary CAS diagnostics are removed.
 
-## Safe WARN event
+## Repair 007
 
-`event=auth-flow-session.cas-conflict-diagnostic`
-
-Fields are limited to scenario, expected and updated lifecycle statuses, record/parse booleans, revision-equality boolean, document-equality boolean, and document lengths. No session ID, Redis key, idempotency key, Scheme-Ref, CSRF token, revision value, JSON, ciphertext, fingerprint, or personal data is logged.
-
-## Interpretation
-
-- `currentRevisionEqualsExpected=false`: the authoritative Redis revision differs from the loaded snapshot.
-- `currentRevisionEqualsExpected=true` and `currentDocumentEqualsExpected=false`: the revision is unchanged but whole-document CAS failed because the serialized representations differ.
-- No CAS diagnostic event for a public 409: the 409 did not arise from Redis replace return code `0`; investigate the idempotency classification branch instead.
-
-Remove the temporary diagnostics after the DEV cause is confirmed and the permanent fix is validated.
+The focused Cancel policy test proved the production policy emits source `BFF` for `REVISION_CONFLICT`. Repair 006 retained the incorrect test expectation `SERVER`. Repair 007 changes only the expected source to `BFF`, while preserving `VALIDATION_FAILED`, `RETURN_TO_LOGIN`, `AUTH_FLOW_INVALID`, and HTTP 409. The conflict is still no longer mislabeled as idempotency-key reuse.

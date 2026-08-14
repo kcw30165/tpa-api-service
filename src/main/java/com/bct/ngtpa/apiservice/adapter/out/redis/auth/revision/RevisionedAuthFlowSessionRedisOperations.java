@@ -7,6 +7,6 @@ public interface RevisionedAuthFlowSessionRedisOperations {
     Mono<Boolean> createIfAbsent(String sessionKey, String revisedJson, Duration ttl);
     Mono<Long> initializeLegacy(String sessionKey, String lockKey, String ownershipToken,
             String expectedLegacyJson, String revisedJson);
-    Mono<Long> replaceIfCurrent(String sessionKey, String expectedJson, String revisedJson);
-    Mono<Long> deleteIfCurrent(String sessionKey, String expectedJson);
+    Mono<Long> replaceIfCurrent(String sessionKey, String expectedRevision, String revisedJson);
+    Mono<Long> deleteIfCurrent(String sessionKey, String expectedRevision);
 }

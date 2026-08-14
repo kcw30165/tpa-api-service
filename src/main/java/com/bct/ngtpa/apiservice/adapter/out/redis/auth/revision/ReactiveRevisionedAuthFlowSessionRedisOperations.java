@@ -46,18 +46,18 @@ public final class ReactiveRevisionedAuthFlowSessionRedisOperations
     }
 
     @Override
-    public Mono<Long> replaceIfCurrent(String sessionKey, String expectedJson, String revisedJson) {
-        requireText(sessionKey, "sessionKey"); requireText(expectedJson, "expectedJson");
+    public Mono<Long> replaceIfCurrent(String sessionKey, String expectedRevision, String revisedJson) {
+        requireText(sessionKey, "sessionKey"); requireText(expectedRevision, "expectedRevision");
         requireText(revisedJson, "revisedJson");
-        return redis.execute(REPLACE, List.of(sessionKey), List.of(expectedJson, revisedJson))
+        return redis.execute(REPLACE, List.of(sessionKey), List.of(expectedRevision, revisedJson))
                 .next().defaultIfEmpty(-4L)
                 .onErrorMap(error -> new CacheException("Revisioned auth-flow session replace failed", error));
     }
 
     @Override
-    public Mono<Long> deleteIfCurrent(String sessionKey, String expectedJson) {
-        requireText(sessionKey, "sessionKey"); requireText(expectedJson, "expectedJson");
-        return redis.execute(DELETE, List.of(sessionKey), List.of(expectedJson))
+    public Mono<Long> deleteIfCurrent(String sessionKey, String expectedRevision) {
+        requireText(sessionKey, "sessionKey"); requireText(expectedRevision, "expectedRevision");
+        return redis.execute(DELETE, List.of(sessionKey), List.of(expectedRevision))
                 .next().defaultIfEmpty(-4L)
                 .onErrorMap(error -> new CacheException("Revisioned auth-flow session delete failed", error));
     }
