@@ -21,8 +21,7 @@ class ApimExecutionBoundaryCharacterizationTest {
 
     @Test
     void encryptionDisabledFeaturePathsStillCallProfileAwareFacade() throws Exception {
-        for (String file : List.of("ApimContributionSummaryAdapter.java", "ApimNoticeMessageAdapter.java",
-                "ApimNotificationReadStatusAdapter.java", "ApimUpdatePersonalInformationAdapter.java")) {
+        for (String file : List.of("ApimContributionSummaryAdapter.java", "ApimUpdatePersonalInformationAdapter.java")) {
             String source = normalized(read(file));
             assertThat(source).as(file).contains("getEncryption().isEnabled()", "apimWebClientFacade.post(");
         }
@@ -31,7 +30,6 @@ class ApimExecutionBoundaryCharacterizationTest {
     @Test
     void featureOwnedCertificateAndEncryptionDuplicationIsMeasurable() throws Exception {
         for (String file : List.of("ApimContributionSummaryAdapter.java", "ApimMemberInfoAdapter.java",
-                "ApimNoticeMessageAdapter.java", "ApimNotificationReadStatusAdapter.java",
                 "ApimReferenceDateRefreshAdapter.java", "ApimUpdatePersonalInformationAdapter.java")) {
             String source = normalized(read(file));
             assertThat(source).as(file).contains("ApimCertificateService", "resolveProfile(",

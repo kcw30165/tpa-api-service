@@ -1,352 +1,173 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim;
 
-import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
-import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateNotificationReadStatusApimRequest;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateNotificationReadStatusApimDataItem;
+import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateNotificationReadStatusApimRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusCommand;
-import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusResult;
-import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
 import com.bct.ngtpa.apiservice.exception.ApimException;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
-
-import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.List;
-
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 class ApimNotificationReadStatusAdapterTest {
-
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
     @Test
-    void postsToUpdateReadStatusEndpointAndMapsApimItems() {
-        CapturingApimWebClientFacade facade = new CapturingApimWebClientFacade("""
-                {
-                    "response": {
-                      "err-message": "",
-                      "data": [
-                        {
-                          "msg-code": "",
-                          "msg-code-long": "msgCode1",
-                          "success": true
-                        },
-                        {
-                          "msg-code": "",
-                          "msg-code-long": "msgCode2",
-                          "success": false
-                        }
-                      ]
-                    }
-                }
-                """);
+    void sendsExactTypedAuthenticatedExchangeExactlyOnceAndMapsValidSuccess() {
+        AtomicReference<ApimExchangeRequest<?, ?>> captured = new AtomicReference<>();
+        AtomicInteger calls = new AtomicInteger();
+        var result = new ApimNotificationReadStatusAdapter(capturing(captured, calls, validEnvelope()))
+                .updateReadStatus(command("JP", ActorUserRole.ROLE_USER_MBR, MessageStatus.READ)).block();
+        ApimExchangeRequest<?, ?> exchange = captured.get();
+        UpdateNotificationReadStatusApimRequest body = (UpdateNotificationReadStatusApimRequest) exchange.request();
 
-        ApimNotificationReadStatusAdapter adapter = new ApimNotificationReadStatusAdapter(
-                facade,
-                new NoopApimCertificateService(),
-                new PassThroughApimPayloadCryptoService(),
-                disabledEncryptionProperties());
-
-        UpdateNotificationsReadStatusResult result = adapter.updateReadStatus(command()).block();
-
-        assertEquals(1, facade.postInvocationCount);
-        assertEquals("/ws/NGTPA/v1/TRPUpdMsgRead", facade.capturedPath);
-        assertEquals("msgCode1,msgCode2", facade.capturedRequest.getMsgCodeLong());
-        assertEquals("READ", facade.capturedRequest.getStatus());
-        assertEquals("2", facade.capturedRequest.getCertNo());
-        // Java field is accountEnv; external APIM JSON serializes as "env"
-        assertEquals("DEV", facade.capturedRequest.getAccountEnv());
-        assertEquals(2, result.notifications().size());
-        assertEquals("msgCode1", result.notifications().getFirst().msgCode());
-        assertTrue(result.notifications().getFirst().isRead());
-        assertEquals("msgCode2", result.notifications().get(1).msgCode());
-        assertFalse(result.notifications().get(1).isRead());
+        assertThat(calls).hasValue(1);
+        assertThat(exchange.path()).isEqualTo("/ws/NGTPA/v1/TRPUpdMsgRead");
+        assertThat(exchange.requestType()).isEqualTo(UpdateNotificationReadStatusApimRequest.class);
+        assertThat(exchange.responseDataType()).isEqualTo(UpdateNotificationReadStatusApimDataItem.class);
+        assertThat(exchange.databaseScope()).isEqualTo(ApimDatabaseScope.ACCOUNT_ENV);
+        assertThat(exchange.credentialContext().actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_MBR);
+        assertThat(exchange.credentialContext().accountEnv()).isEqualTo("JP");
+        assertThat(exchange.retryEligibility()).isEqualTo(ApimRetryEligibility.IDEMPOTENT_MUTATION);
+        assertThat(body.getMsgCodeLong()).isEqualTo("msgCode1,msgCode2");
+        assertThat(body.getStatus()).isEqualTo("READ");
+        assertThat(body.getAccountEnv()).isEqualTo("JP");
+        assertThat(result.notifications()).extracting("msgCode").containsExactly("msgCode1", "msgCode2");
+        assertThat(result.notifications()).extracting("isRead").containsExactly(true, false);
     }
 
     @Test
-    void surfacesApimTopLevelErrorMessageAsBadGateway() {
-        CapturingApimWebClientFacade facade = new CapturingApimWebClientFacade("""
-                {
-                  "response": {
-                    "err-message": "APIM update failed",
-                    "response": {
-                      "err-message": "",
-                      "data": []
-                    }
-                  }
-                }
-                """);
-
-        ApimNotificationReadStatusAdapter adapter = new ApimNotificationReadStatusAdapter(
-                facade,
-                new NoopApimCertificateService(),
-                new PassThroughApimPayloadCryptoService(),
-                disabledEncryptionProperties());
-
-        ApimException ex = assertThrows(ApimException.class, () -> adapter.updateReadStatus(command()).block());
-
-        assertEquals("APIM update failed", ex.getMessage());
-        assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, ex.getErrorCode());
+    void preservesCommandActorRoleAndAccountEnvironmentInExchange() {
+        AtomicReference<ApimExchangeRequest<?, ?>> captured = new AtomicReference<>();
+        AtomicInteger calls = new AtomicInteger();
+        new ApimNotificationReadStatusAdapter(capturing(captured, calls, emptyEnvelope()))
+                .updateReadStatus(command("UAT", ActorUserRole.ROLE_USER_EPR, MessageStatus.UNREAD)).block();
+        assertThat(captured.get().credentialContext().actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_EPR);
+        assertThat(captured.get().credentialContext().accountEnv()).isEqualTo("UAT");
+        assertThat(calls).hasValue(1);
     }
 
-        @Test
-        void usesCertificateFlowWhenEncryptionEnabled() {
-        ApimProperties properties = new ApimProperties();
-        properties.getEncryption().setEnabled(true);
-        FixedEnvelopePayloadCryptoService payloadCryptoService = new FixedEnvelopePayloadCryptoService(responseEnvelope(List.of(
-            UpdateNotificationReadStatusApimDataItem.builder().msgCodeLong("msgCode1").success(true).build())));
-        FixedCertificateService certificateService = new FixedCertificateService(new TestPublicKey("bct-public"));
-        CapturingApimWebClientFacade facade = new CapturingApimWebClientFacade("ignored");
-        ApimNotificationReadStatusAdapter adapter = new ApimNotificationReadStatusAdapter(
-            facade,
-            certificateService,
-            payloadCryptoService,
-            properties);
-
-        UpdateNotificationsReadStatusResult result = adapter.updateReadStatus(command()).block();
-
-        assertEquals(1, certificateService.invocationCount);
-        assertSame(certificateService.publicKey, payloadCryptoService.lastPublicKey);
-        assertEquals(1, result.notifications().size());
-        assertTrue(result.notifications().getFirst().isRead());
-        }
-
-	@Test
-	void cryptoFailureIsMappedToApimException() {
-		ApimProperties properties = new ApimProperties();
-		properties.getEncryption().setEnabled(true);
-		ApimNotificationReadStatusAdapter adapter = new ApimNotificationReadStatusAdapter(
-				new CapturingApimWebClientFacade("ignored"),
-				new FailingCertificateService(),
-				new FixedEnvelopePayloadCryptoService(responseEnvelope(List.of())),
-				properties);
-
-		ApimException ex = assertThrows(ApimException.class, () -> adapter.updateReadStatus(command()).block());
-
-        assertEquals(ErrorCodes.SYSTEM_UNEXPECTED, ex.getErrorCode());
-		assertEquals("Certificate crypto error", ex.getMessage());
-	}
-
-        @Test
-        void returnsEmptyResultsWhenDataIsEmpty() {
-        UpdateNotificationsReadStatusResult result = (UpdateNotificationsReadStatusResult) ReflectionTestUtils.invokeMethod(
-            new ApimNotificationReadStatusAdapter(null, null, null, new ApimProperties()),
-            "toResult",
-            responseEnvelope(List.of()),
-            MessageStatus.READ);
-
-        assertTrue(result.notifications().isEmpty());
-        }
-
-        @Test
-        void fallsBackToMsgCodeAndUnknownStatusWhenNeeded() {
-        UpdateNotificationReadStatusApimDataItem item = UpdateNotificationReadStatusApimDataItem.builder()
-            .msgCode("fallback-code")
-            .msgCodeLong(" ")
-            .success(true)
-            .build();
-            ArrayList<UpdateNotificationReadStatusApimDataItem> items = new ArrayList<>(List.of(item));
-            items.addFirst(null);
-
-        UpdateNotificationsReadStatusResult result = (UpdateNotificationsReadStatusResult) ReflectionTestUtils.invokeMethod(
-            new ApimNotificationReadStatusAdapter(null, null, null, new ApimProperties()),
-            "toResult",
-                responseEnvelope(items),
-            null);
-
-        assertEquals(1, result.notifications().size());
-        assertEquals("fallback-code", result.notifications().getFirst().msgCode());
-        assertEquals(MessageStatus.UNKNOWN, result.notifications().getFirst().status());
-        assertFalse(result.notifications().getFirst().isRead());
-        }
-
-        @Test
-        void throwsWhenPayloadMissing() {
-        ApimNotificationReadStatusAdapter adapter = new ApimNotificationReadStatusAdapter(null, null, null, new ApimProperties());
-
-        ApimException ex = assertThrows(ApimException.class,
-            () -> ReflectionTestUtils.invokeMethod(adapter, "toResult", null, MessageStatus.READ));
-
-        assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, ex.getErrorCode());
-        assertEquals("APIM response payload is invalid: response is missing.", ex.getMessage());
-        }
-
-    private static UpdateNotificationsReadStatusCommand command() {
-        return new UpdateNotificationsReadStatusCommand(
-                "DEV",
-                com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR,
-                List.of("msgCode1", "msgCode2"),
-                "",
-          "2",
-                "",
-                "01/01/2024",
-                MessageStatus.READ);
+    @Test
+    void blankAccountEnvironmentFailsBeforeExecutorInvocation() {
+        AtomicInteger calls = new AtomicInteger();
+        assertThatThrownBy(() -> new ApimNotificationReadStatusAdapter(countingFailure(calls,
+                new AssertionError("must not run"))).updateReadStatus(
+                        command(" ", ActorUserRole.ROLE_USER_MBR, MessageStatus.READ)).block())
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(calls).hasValue(0);
     }
 
-    private static ApimProperties disabledEncryptionProperties() {
-        ApimProperties properties = new ApimProperties();
-        properties.getEncryption().setEnabled(false);
-        return properties;
+    @Test
+    void emptyDataReturnsEmptyResult() {
+        var result = new ApimNotificationReadStatusAdapter(fixed(emptyEnvelope()))
+                .updateReadStatus(command("JP", ActorUserRole.ROLE_USER_MBR, MessageStatus.READ)).block();
+        assertThat(result.notifications()).isEmpty();
     }
 
-    private static ApimResponseEnvelope<UpdateNotificationReadStatusApimDataItem> responseEnvelope(
-            List<UpdateNotificationReadStatusApimDataItem> items) {
+    @Test
+    void recognizedBusinessRejectionIsPreserved() {
+        assertThatThrownBy(() -> new ApimNotificationReadStatusAdapter(fixed(errorEnvelope("APIM update failed")))
+                .updateReadStatus(command("JP", ActorUserRole.ROLE_USER_MBR, MessageStatus.READ)).block())
+                .isInstanceOf(ApimException.class).hasMessage("APIM update failed")
+                .extracting("errorCode").isEqualTo(ErrorCodes.APIM_RESPONSE_INVALID);
+    }
+
+    @Test
+    void malformedAndStructurallyInvalidEnvelopesAreRejected() {
+        assertThatThrownBy(() -> new ApimNotificationReadStatusAdapter(fixed(envelopeWithMissingResponse()))
+                .updateReadStatus(command("JP", ActorUserRole.ROLE_USER_MBR, MessageStatus.READ)).block())
+                .isInstanceOf(ApimException.class).hasMessageContaining("response is missing");
+        assertThatThrownBy(() -> new ApimNotificationReadStatusAdapter(fixed(envelopeWithMissingData()))
+                .updateReadStatus(command("JP", ActorUserRole.ROLE_USER_MBR, MessageStatus.READ)).block())
+                .isInstanceOf(ApimException.class).hasMessageContaining("response.data is required");
+    }
+
+    @Test
+    void ordinaryExecutorFailurePropagatesUnchanged() {
+        IllegalStateException failure = new IllegalStateException("executor unavailable");
+        assertThatThrownBy(() -> new ApimNotificationReadStatusAdapter(
+                countingFailure(new AtomicInteger(), failure)).updateReadStatus(
+                        command("JP", ActorUserRole.ROLE_USER_MBR, MessageStatus.READ)).block())
+                .isSameAs(failure);
+    }
+
+    @Test
+    void statusAndMessageCodeMappingPreservesFallbackUnknownAndNullFiltering() {
+        ArrayList<UpdateNotificationReadStatusApimDataItem> items = new ArrayList<>();
+        items.add(null);
+        items.add(UpdateNotificationReadStatusApimDataItem.builder()
+                .msgCode("fallback-code").msgCodeLong(" ").success(true).build());
+        var envelope = ApimResponseEnvelope.<UpdateNotificationReadStatusApimDataItem>builder()
+                .response(ApimResponseBody.<UpdateNotificationReadStatusApimDataItem>builder()
+                        .errMessage("").data(items).build()).build();
+        var result = new ApimNotificationReadStatusAdapter(fixed(envelope))
+                .updateReadStatus(command("JP", ActorUserRole.ROLE_USER_MBR, null)).block();
+        assertThat(result.notifications()).hasSize(1);
+        assertThat(result.notifications().getFirst().msgCode()).isEqualTo("fallback-code");
+        assertThat(result.notifications().getFirst().status()).isEqualTo(MessageStatus.UNKNOWN);
+        assertThat(result.notifications().getFirst().isRead()).isFalse();
+    }
+
+    private static ApimExchangeExecutor capturing(AtomicReference<ApimExchangeRequest<?, ?>> captured,
+            AtomicInteger calls, ApimResponseEnvelope<UpdateNotificationReadStatusApimDataItem> response) {
+        return new ApimExchangeExecutor() {
+            @Override public <R,D> Mono<ApimResponseEnvelope<D>> postEnvelope(ApimExchangeRequest<R,D> request) {
+                captured.set(request); calls.incrementAndGet();
+                @SuppressWarnings("unchecked") var result = (ApimResponseEnvelope<D>) (Object) response;
+                return Mono.just(result);
+            }
+        };
+    }
+    private static ApimExchangeExecutor fixed(ApimResponseEnvelope<UpdateNotificationReadStatusApimDataItem> response) {
+        return capturing(new AtomicReference<>(), new AtomicInteger(), response);
+    }
+    private static ApimExchangeExecutor countingFailure(AtomicInteger calls, Throwable failure) {
+        return new ApimExchangeExecutor() {
+            @Override public <R,D> Mono<ApimResponseEnvelope<D>> postEnvelope(ApimExchangeRequest<R,D> request) {
+                calls.incrementAndGet(); return Mono.error(failure);
+            }
+        };
+    }
+    private static UpdateNotificationsReadStatusCommand command(String env, ActorUserRole role, MessageStatus status) {
+        return new UpdateNotificationsReadStatusCommand(env, role, List.of("msgCode1", "msgCode2"),
+                "P1", "C1", "U1", "01/01/2026", status);
+    }
+    private static ApimResponseEnvelope<UpdateNotificationReadStatusApimDataItem> validEnvelope() {
+        return ApimResponseEnvelope.<UpdateNotificationReadStatusApimDataItem>builder()
+                .response(ApimResponseBody.<UpdateNotificationReadStatusApimDataItem>builder().errMessage("")
+                        .data(List.of(
+                                UpdateNotificationReadStatusApimDataItem.builder().msgCodeLong("msgCode1").success(true).build(),
+                                UpdateNotificationReadStatusApimDataItem.builder().msgCodeLong("msgCode2").success(false).build()))
+                        .build()).build();
+    }
+    private static ApimResponseEnvelope<UpdateNotificationReadStatusApimDataItem> emptyEnvelope() {
         return ApimResponseEnvelope.<UpdateNotificationReadStatusApimDataItem>builder()
                 .response(ApimResponseBody.<UpdateNotificationReadStatusApimDataItem>builder()
-                        .errMessage("")
-                        .data(items)
-                        .build())
-                .build();
+                        .errMessage("").data(List.of()).build()).build();
     }
-
-    private static final class CapturingApimWebClientFacade extends ApimWebClientFacade {
-        private final String responseBody;
-        private String capturedPath;
-        private UpdateNotificationReadStatusApimRequest capturedRequest;
-        private int postInvocationCount;
-
-        private CapturingApimWebClientFacade(String responseBody) {
-            super(null, null, OBJECT_MAPPER,
-                    (scope, context) -> Mono.just(new
-                            com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile(
-                                    "test-profile", "client", "secret", "api-key",
-                                    "https://token.test", "https://apim.test", List.of(), "/certificate")),
-                    null, null, new ApimProperties());
-            this.responseBody = responseBody;
-        }
-
-        @Override
-        public Mono<String> post(String path, Object requestBody, com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope scope,
-                                 com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext resolutionContext,
-                                 com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility retryEligibility) {
-            this.capturedPath = path;
-            this.capturedRequest = (UpdateNotificationReadStatusApimRequest) requestBody;
-            this.postInvocationCount++;
-            return Mono.just(responseBody);
-        }
-    
-        @Override
-        public Mono<String> post(String path, Object requestBody,
-                com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile profile,
-                com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility retryEligibility) {
-            this.capturedPath = path;
-            this.capturedRequest = (UpdateNotificationReadStatusApimRequest) requestBody;
-            this.postInvocationCount++;
-            return Mono.just(responseBody);
-        }
-}
-
-    private static final class PassThroughApimPayloadCryptoService extends ApimPayloadCryptoService {
-        private PassThroughApimPayloadCryptoService() {
-            super(new ApimProperties(), OBJECT_MAPPER, null, null, null, null);
-        }
-
-        @Override
-        public <T> T encryptRequest(String apiName, T source, Class<T> targetType, PublicKey publicKey) {
-            return source;
-        }
-
-        @Override
-        public <T> T decryptResponse(String apiName, String responseJson, Class<T> targetType, PublicKey publicKey) {
-            try {
-                return OBJECT_MAPPER.readValue(responseJson, targetType);
-            } catch (Exception ex) {
-                throw new RuntimeException(ex);
-            }
-        }
+    private static ApimResponseEnvelope<UpdateNotificationReadStatusApimDataItem> errorEnvelope(String message) {
+        return ApimResponseEnvelope.<UpdateNotificationReadStatusApimDataItem>builder()
+                .response(ApimResponseBody.<UpdateNotificationReadStatusApimDataItem>builder()
+                        .errMessage(message).build()).build();
     }
-
-    private static final class FixedEnvelopePayloadCryptoService extends ApimPayloadCryptoService {
-        private final ApimResponseEnvelope<UpdateNotificationReadStatusApimDataItem> envelope;
-        private PublicKey lastPublicKey;
-
-        private FixedEnvelopePayloadCryptoService(ApimResponseEnvelope<UpdateNotificationReadStatusApimDataItem> envelope) {
-            super(new ApimProperties(), OBJECT_MAPPER, null, null, null, null);
-            this.envelope = envelope;
-        }
-
-        @Override
-        public <T> T encryptRequest(String apiName, T source, Class<T> targetType, PublicKey publicKey) {
-            this.lastPublicKey = publicKey;
-            return source;
-        }
-
-        @Override
-        @SuppressWarnings("unchecked")
-        public <T> ApimResponseEnvelope<T> decryptResponseEnvelope(String apiName, String responseJson, Class<T> dataClass,
-                PublicKey publicKey) {
-            this.lastPublicKey = publicKey;
-            return (ApimResponseEnvelope<T>) envelope;
-        }
+    private static ApimResponseEnvelope<UpdateNotificationReadStatusApimDataItem> envelopeWithMissingResponse() {
+        return ApimResponseEnvelope.<UpdateNotificationReadStatusApimDataItem>builder().build();
     }
-
-    private static final class FixedCertificateService extends ApimCertificateService {
-        private final PublicKey publicKey;
-        private int invocationCount;
-
-        private FixedCertificateService(PublicKey publicKey) {
-            super(null, new ApimProperties(), null);
-            this.publicKey = publicKey;
-        }
-
-        @Override
-        public Mono<PublicKey> getPublicKey(
-                com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile profile) {
-            invocationCount++;
-            return Mono.just(publicKey);
-        }
-    }
-
-    private static final class NoopApimCertificateService extends ApimCertificateService {
-        private NoopApimCertificateService() {
-            super(null, new ApimProperties(), null);
-        }
-
-        @Override
-        public Mono<PublicKey> getPublicKey(
-                com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile profile) {
-            return Mono.error(new AssertionError("Certificate lookup should not be called when encryption is disabled."));
-        }
-    }
-
-    private static final class FailingCertificateService extends ApimCertificateService {
-        private FailingCertificateService() {
-            super(null, new ApimProperties(), null);
-        }
-
-        @Override
-        public Mono<PublicKey> getPublicKey(
-                com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile profile) {
-            return Mono.error(new ApimCryptoException("Certificate crypto error"));
-        }
-    }
-
-    private record TestPublicKey(String value) implements PublicKey {
-        @Override
-        public String getAlgorithm() {
-            return "RSA";
-        }
-
-        @Override
-        public String getFormat() {
-            return "X.509";
-        }
-
-        @Override
-        public byte[] getEncoded() {
-            return value.getBytes();
-        }
+    private static ApimResponseEnvelope<UpdateNotificationReadStatusApimDataItem> envelopeWithMissingData() {
+        return ApimResponseEnvelope.<UpdateNotificationReadStatusApimDataItem>builder()
+                .response(ApimResponseBody.<UpdateNotificationReadStatusApimDataItem>builder()
+                        .errMessage("").build()).build();
     }
 }

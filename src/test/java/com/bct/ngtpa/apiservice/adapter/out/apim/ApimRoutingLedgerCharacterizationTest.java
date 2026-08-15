@@ -15,8 +15,8 @@ class ApimRoutingLedgerCharacterizationTest {
     private static final List<Entry> LEDGER = List.of(
         e("TRPGetContSumy", "ApimContributionSummaryAdapter.java", "NON_ACCOUNT", "ROLE_USER_MBR", "null", "SAFE_BUSINESS_CALL", "FEATURE", "UNCONFIRMED"),
         e("TRPGetMemberInfo", "ApimMemberInfoAdapter.java", "INFERRED", "ROLE_USER_MBR", "command.getAccountEnv()", "SAFE_BUSINESS_CALL", "FEATURE", "UNCONFIRMED"),
-        e("TRPGetMsgBoard", "ApimNoticeMessageAdapter.java", "INFERRED", "ROLE_USER_MBR", "command.accountEnv()", "SAFE_BUSINESS_CALL", "FEATURE", "ACCOUNT_ENV"),
-        e("TRPUpdMsgRead", "ApimNotificationReadStatusAdapter.java", "ACCOUNT_ENV", "ROLE_USER_MBR", "command.accountEnv()", "IDEMPOTENT_MUTATION", "FEATURE", "ACCOUNT_ENV"),
+        e("TRPGetMsgBoard", "ApimNoticeMessageAdapter.java", "ACCOUNT_ENV", "command.mbrType()", "command.accountEnv()", "SAFE_BUSINESS_CALL", "EXECUTOR", "ACCOUNT_ENV"),
+        e("TRPUpdMsgRead", "ApimNotificationReadStatusAdapter.java", "ACCOUNT_ENV", "command.mbrType()", "command.accountEnv()", "IDEMPOTENT_MUTATION", "EXECUTOR", "ACCOUNT_ENV"),
         e("TRPGetCountryList", "ApimReferenceDataCountriesAdapter.java", "NON_ACCOUNT", "ROLE_USER_MBR", "null", "SAFE_BUSINESS_CALL", "FACADE", "ACCOUNT_ENV"),
         e("TRPGetWebSysDate", "ApimReferenceDateRefreshAdapter.java", "INFERRED", "ROLE_USER_MBR", "accountEnv", "SAFE_BUSINESS_CALL", "FEATURE", "UNCONFIRMED"),
         e("TRPUpdMemberInfo", "ApimUpdatePersonalInformationAdapter.java", "ACCOUNT_ENV", "ROLE_USER_MBR", "command.accountEnv()", "IDEMPOTENT_MUTATION", "FEATURE", "UNCONFIRMED"),
@@ -59,7 +59,7 @@ class ApimRoutingLedgerCharacterizationTest {
     void confirmedTargetsAreSeparatedFromKnownCurrentDrift() {
         assertThat(find("TRPGetCountryList").currentScope()).isEqualTo("NON_ACCOUNT");
         assertThat(find("TRPGetCountryList").target()).isEqualTo("ACCOUNT_ENV");
-        assertThat(find("TRPGetMsgBoard").currentScope()).isEqualTo("INFERRED");
+        assertThat(find("TRPGetMsgBoard").currentScope()).isEqualTo("ACCOUNT_ENV");
         assertThat(find("TRPGetMsgBoard").target()).isEqualTo("ACCOUNT_ENV");
         assertThat(find("TRPResetPassword").target()).isEqualTo("NON_ACCOUNT");
         assertThat(find("TRPChkCustId").target()).isEqualTo("FORGOT_PASSWORD_NON_ACCOUNT");

@@ -401,3 +401,46 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - Request-ID and logging Reactor context remain allowed. No APIM adapter migrated, Notifications migration was not started, and Stage 008 was not started.
 - Final status: see `090-final-status.txt` and `stage-07-completion-report.txt`.
 - Commit after approval: `refactor(auth): make portal access context explicit at use-case boundary`.
+
+### Stage 008 Notifications authenticated executor fail-first
+
+- Exact evidence: `target/evidence/apim-routing-context-stage-08-20260815-114232`.
+- Added the Stage 008 fail-first architecture guard for `TRPGetMsgBoard` and `TRPUpdMsgRead` before production changes.
+- The guard requires typed `ApimExchangeExecutor` ownership, authoritative `ACCOUNT_ENV`, command-supplied actor role and account environment, operation-specific retry eligibility, retained feature mapping, and Stage 007 context preservation.
+- Real failing Maven output is retained in `011-fail-first-complete-output.txt`; production was unchanged and Stage 009 was not started.
+
+### Stage 008 boundary-guard routing-inference correction
+
+- Exact evidence: `target/evidence/apim-routing-context-stage-08-20260815-114232`.
+- Removed the remaining broad prohibition on `StringUtils.hasText` from the retrieval architecture assertion. Date parsing may use `StringUtils`; routing inference via `NON_ACCOUNT`, hardcoded role, facade, certificate, crypto, or profile handling remains prohibited.
+- No production code changed in this repair. The original fail-first and prior blocked focused outputs remain preserved.
+- Stage 009 was not started.
+
+### Stage 008 focused rerun after exact boundary-guard inventory
+
+- Exact evidence: `target/evidence/apim-routing-context-stage-08-20260815-114232`.
+- Inventory proved the stale `StringUtils.hasText` prohibition was already absent from the current untracked Stage 008 guard. No additional code correction was necessary.
+- The guard and complete Stage 008 focused suite were rerun against the exact inventoried test hash.
+- No production or test content was modified by this rerun. Stage 009 was not started.
+
+### Stage 008 completion
+
+- Exact evidence: `target/evidence/apim-routing-context-stage-08-20260815-114232`.
+- Both authenticated Notifications APIM operations use typed generic executor requests with authoritative `ACCOUNT_ENV`, explicit command role/environment, and approved retry classifications.
+- Focused, Stage 007 preservation, APIM foundation, cumulative Notifications, compile, static scope, stash, HEAD, index, and non-Notifications APIM preservation evidence is retained.
+- No other APIM operation migrated. Stage 009 was not started.
+- Final status is in `099-final-status.txt` and `100-stage-08-completion-report.txt`.
+
+### Stage 008 complete behavioral-test and evidence repair
+
+- Exact evidence: `target/evidence/apim-routing-context-stage-08-20260815-114232`.
+- Restored all operation-specific retrieval and update behavior coverage and added direct executor-backed tests for exact exchange fields, single invocation, blank-environment precondition, malformed/business/technical failures, and mapping behavior.
+- Focused validation explicitly includes Notifications service, controller, mapper, reference-date, date-format, timezone, filtering, sorting, and pagination ownership tests.
+- Corrected completion totals are derived from the new Maven outputs. Production was unchanged by this repair, APIM foundation and stash are preserved, and Stage 009 was not started.
+
+### Stage 008 exact test-API contract repair
+
+- Exact evidence: `target/evidence/apim-routing-context-stage-08-20260815-114232`.
+- Corrected test-only API assumptions to the repository contracts: `ApimExchangeRequest.request()`, `ActorUserRole.ROLE_USER_EPR`, and `NoticeMessage.msgStatus()`.
+- Re-ran adapter behavior, complete focused, Stage 007 preservation, APIM foundation/prior pilots, cumulative Notifications/architecture, and compile gates.
+- Final totals are derived from the new Maven outputs. Production, HEAD, index, stash, and APIM foundation are preserved. Stage 009 was not started.
