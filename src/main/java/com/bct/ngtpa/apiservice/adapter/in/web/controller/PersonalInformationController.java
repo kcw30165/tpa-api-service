@@ -59,7 +59,9 @@ public class PersonalInformationController {
                     .flatMap(portalAccessContext -> {
                         requireAccountRef(portalAccessContext);
                         return getPersonalInformationUseCase
-                                .execute(new GetPersonalInformationCommand(language))
+                                .execute(new GetPersonalInformationCommand(language, accountEnv(portalAccessContext),
+                                        portalAccessContext.account().policyNo(), portalAccessContext.account().certNo(),
+                                        portalAccessContext.actor().actorUserId()))
                                 .map(result -> personalInformationWebMapper.toFormPageResponse(
                                         result,
                                         language,
@@ -84,8 +86,12 @@ public class PersonalInformationController {
                     if (!errors.isEmpty()) {
                         return Mono.just(MutationResponse.failure(ApiStatus.VALIDATION_FAILED, errors));
                     }
-                    return Mono.just(requestMapper.toCommand(body.applyToAllAccounts(), body))
-                            .flatMap(command -> updatePersonalInformationUseCase.execute(command))
+                    var mapped = requestMapper.toCommand(body.applyToAllAccounts(), body);
+                    var command = new com.bct.ngtpa.apiservice.application.dto.UpdatePersonalInformationCommand(
+                            mapped.applyToAllAccounts(), mapped.updateFields(), accountEnv(portalAccessContext),
+                            portalAccessContext.account().policyNo(), portalAccessContext.account().certNo(),
+                            portalAccessContext.actor().actorUserId(), portalAccessContext.actor().actorUserRole());
+                    return updatePersonalInformationUseCase.execute(command)
                             .map(responseMapper::toResponse);
                 })));
     }

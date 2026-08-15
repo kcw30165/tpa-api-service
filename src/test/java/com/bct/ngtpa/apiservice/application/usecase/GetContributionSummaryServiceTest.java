@@ -74,8 +74,7 @@ class GetContributionSummaryServiceTest {
     private GetContributionSummaryService serviceWith(ApimContributionSummaryPort apimPort,
             CurrencyDisplayPort currencyPort) {
         return new GetContributionSummaryService(
-                apimPort, currencyPort, referenceDatePort(), currentPortalAccessContextResolver(),
-                actionPermissionPort());
+                apimPort, currencyPort, referenceDatePort(), actionPermissionPort());
     }
 
     @Test
@@ -91,7 +90,7 @@ class GetContributionSummaryServiceTest {
         var recordingPort = new RecordingCurrencyDisplayPort();
         var service = serviceWith(port, recordingPort);
 
-        var result = service.execute(new GetContributionSummaryCommand(
+        var result = service.execute(command(
                 "01/01/2026", "31/03/2026", "en", 1, 99999)).block();
 
         assertEquals(1, apimCalls.get());
@@ -123,7 +122,7 @@ class GetContributionSummaryServiceTest {
         }, (code, accountEnv, trustCode, schemeType) -> new CurrencyDisplay(code, code));
 
         var ex = assertThrows(InvalidContributionRequestException.class,
-                () -> service.execute(new GetContributionSummaryCommand(
+                () -> service.execute(command(
                         "30/03/2023", "31/03/2026", "en", 1, 99999)).block());
 
         assertEquals("fromDate and toDate must be within the range from ref-date minus 36 months to ref-date",
@@ -140,7 +139,7 @@ class GetContributionSummaryServiceTest {
         }, (code, accountEnv, trustCode, schemeType) -> new CurrencyDisplay(code, code));
 
         var ex = assertThrows(InvalidContributionRequestException.class,
-                () -> service.execute(new GetContributionSummaryCommand(
+                () -> service.execute(command(
                         "01/01/2026", "01/04/2026", "en", 1, 99999)).block());
 
         assertEquals("fromDate and toDate must be within the range from ref-date minus 36 months to ref-date",
@@ -163,12 +162,10 @@ class GetContributionSummaryServiceTest {
                     return Mono.just(sampleDataset());
                 },
                 (code, accountEnv, trustCode, schemeType) -> new CurrencyDisplay(code, code),
-                capturingReferenceDatePort,
-                currentPortalAccessContextResolver(),
-                actionPermissionPort());
+                capturingReferenceDatePort, actionPermissionPort());
 
         var ex = assertThrows(InvalidContributionRequestException.class,
-                () -> service.execute(new GetContributionSummaryCommand(
+                () -> service.execute(command(
                         "01/01/2024", "01/02/2024", "en", 1, 99999)).block());
 
         assertEquals("JP", capturedAccountEnv.get());
@@ -185,7 +182,7 @@ class GetContributionSummaryServiceTest {
         }, (code, accountEnv, trustCode, schemeType) -> new CurrencyDisplay(code, code));
 
         var ex = assertThrows(InvalidContributionRequestException.class,
-                () -> service.execute(new GetContributionSummaryCommand(
+                () -> service.execute(command(
                         "31/03/2026", "01/01/2026", "en", 1, 99999)).block());
 
         assertEquals("fromDate must not be after toDate", ex.getMessage());
@@ -200,7 +197,7 @@ class GetContributionSummaryServiceTest {
             return Mono.just(sampleDataset());
         }, (code, accountEnv, trustCode, schemeType) -> new CurrencyDisplay(code, code));
 
-        service.execute(new GetContributionSummaryCommand(
+        service.execute(command(
                 "31/03/2023", "31/03/2026", "en", 1, 99999)).block();
 
         assertEquals(1, apimCalls.get());
@@ -214,22 +211,22 @@ class GetContributionSummaryServiceTest {
 
         assertEquals("fromDate must be provided in dd/MM/yyyy format", assertThrows(
                 InvalidContributionRequestException.class,
-                () -> service.execute(new GetContributionSummaryCommand(
+                () -> service.execute(command(
                         null, "05/05/2026", "en", 1, 99999)).block())
                 .getMessage());
         assertEquals("toDate must be provided in dd/MM/yyyy format", assertThrows(
                 InvalidContributionRequestException.class,
-                () -> service.execute(new GetContributionSummaryCommand(
+                () -> service.execute(command(
                         "05/04/2026", null, "en", 1, 99999)).block())
                 .getMessage());
         assertEquals("fromDate must be provided in dd/MM/yyyy format", assertThrows(
                 InvalidContributionRequestException.class,
-                () -> service.execute(new GetContributionSummaryCommand(
+                () -> service.execute(command(
                         "2026-04-05", "05/05/2026", "en", 1, 99999)).block())
                 .getMessage());
         assertEquals("toDate must be provided in dd/MM/yyyy format", assertThrows(
                 InvalidContributionRequestException.class,
-                () -> service.execute(new GetContributionSummaryCommand(
+                () -> service.execute(command(
                         "05/04/2026", "2026-05-05", "en", 1, 99999)).block())
                 .getMessage());
     }
@@ -241,7 +238,7 @@ class GetContributionSummaryServiceTest {
                 (code, accountEnv, trustCode, schemeType) -> new CurrencyDisplay(code, code));
 
         var ex = assertThrows(InvalidContributionRequestException.class,
-                () -> service.execute(new GetContributionSummaryCommand(
+                () -> service.execute(command(
                         "01/01/2026", "31/03/2026", "en", 0, 99999)).block());
         assertEquals("page must be greater than 0", ex.getMessage());
     }
@@ -253,9 +250,15 @@ class GetContributionSummaryServiceTest {
                 (code, accountEnv, trustCode, schemeType) -> new CurrencyDisplay(code, code));
 
         var ex = assertThrows(InvalidContributionRequestException.class,
-                () -> service.execute(new GetContributionSummaryCommand(
+                () -> service.execute(command(
                         "01/01/2026", "31/03/2026", "en", 1, 0)).block());
         assertEquals("pageSize must be greater than 0", ex.getMessage());
+    }
+
+    private static GetContributionSummaryCommand command(String fromDate, String toDate, String lang, int page, int pageSize) {
+        return new GetContributionSummaryCommand(fromDate, toDate, lang, page, pageSize,
+                "JP", "policyNo_for_contributions", "certNo_for_contributions",
+                "userId_for_contributions", "trustCode_for_contributions", "schemeType_for_contributions");
     }
 
     private static ContributionSummaryDataset sampleDataset() {

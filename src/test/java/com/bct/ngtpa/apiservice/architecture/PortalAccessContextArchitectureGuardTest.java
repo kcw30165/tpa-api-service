@@ -58,8 +58,10 @@ class PortalAccessContextArchitectureGuardTest {
                 "PersonalInformationController should use the already-populated current PortalAccessContext");
         assertTrue(source.contains("requireAccountRef(portalAccessContext)"),
                 "PersonalInformationController should validate accountRef from PortalAccessContext.account()");
-        assertTrue(source.contains("new GetPersonalInformationCommand(language)"),
-                "PersonalInformationController should keep GET command language-only");
+        assertTrue(source.contains("new GetPersonalInformationCommand(language,"),
+                "PersonalInformationController should copy trusted context into the GET command");
+        assertTrue(source.contains("portalAccessContext.account().policyNo()"));
+        assertTrue(source.contains("portalAccessContext.actor().actorUserId()"));
         assertFalse(source.contains("new GetPersonalInformationCommand(accountRef"),
                 "PersonalInformationController must not pass accountRef into GET command");
     }

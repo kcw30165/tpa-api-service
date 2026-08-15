@@ -10,6 +10,7 @@ import com.bct.ngtpa.apiservice.application.dto.ExportContributionSummaryCommand
 import com.bct.ngtpa.apiservice.application.dto.GetContributionSummaryCommand;
 import com.bct.ngtpa.apiservice.application.port.in.ExportContributionSummaryUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetContributionSummaryUseCase;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContext;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +42,7 @@ public class ContributionController {
         private final ContributionWebDisplayConfigProvider contributionWebDisplayConfigProvider;
         private final ContributionSummaryWebMapper contributionSummaryWebMapper;
         private final ContributionSortingSupport contributionSortingSupport;
+        private final CurrentPortalAccessContextResolver currentPortalAccessContextResolver;
 
         @GetMapping(value = "/contributions", produces = MediaType.APPLICATION_JSON_VALUE)
         public Mono<ContributionListResponse> getContributionSummary(
@@ -53,9 +55,10 @@ public class ContributionController {
                 int resolvedPageSize = pageSize != null ? pageSize : DEFAULT_PAGE_SIZE;
                 return Mono.deferContextual(contextView -> {
                         String resolvedLang = resolveLanguage(contextView, acceptLanguage);
-                        return getContributionSummaryUseCase
-                                        .execute(new GetContributionSummaryCommand(
-                                                        fromDate, toDate, resolvedLang, resolvedPage, resolvedPageSize))
+                        return currentPortalAccessContextResolver.current().flatMap(ctx -> getContributionSummaryUseCase
+                                        .execute(new GetContributionSummaryCommand(fromDate, toDate, resolvedLang, resolvedPage, resolvedPageSize,
+                                                        ctx.account().accountEnv(), ctx.account().policyNo(), ctx.account().certNo(),
+                                                        ctx.actor().actorUserId(), ctx.account().trustCode(), ctx.account().schemeType())))
                                         .map(contributionSortingSupport::sort)
                                         .map(result -> contributionSummaryWebMapper.toListResponse(
                                                         result,
@@ -72,7 +75,10 @@ public class ContributionController {
                         @RequestHeader(value = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false) String acceptLanguage) {
                 return Mono.deferContextual(contextView -> {
                         String resolvedLang = resolveLanguage(contextView, acceptLanguage);
-                        return exportContributionSummaryUseCase.execute(new ExportContributionSummaryCommand())
+                        return currentPortalAccessContextResolver.current().flatMap(ctx -> exportContributionSummaryUseCase.execute(
+                                        new ExportContributionSummaryCommand(ctx.account().accountEnv(), ctx.account().policyNo(),
+                                                ctx.account().certNo(), ctx.actor().actorUserId(),
+                                                ctx.account().trustCode(), ctx.account().schemeType())))
                                         .map(contributionSortingSupport::sort)
                                         .map(result -> contributionSummaryWorkbookExporter.write(result, resolvedLang))
                                         .map(body -> ResponseEntity.ok()

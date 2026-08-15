@@ -107,9 +107,9 @@ class PortalAccessContextResponsibilityBoundaryGuardTest {
     private void assertUsesCurrentProvider(String fileName) throws IOException {
         Path path = Path.of("src/main/java/com/bct/ngtpa/apiservice/application/usecase").resolve(fileName);
         String source = Files.readString(path);
-        assertTrue(source.contains("CurrentPortalAccessContextResolver"),
+        assertFalse(source.contains("CurrentPortalAccessContextResolver"),
                 fileName + " should depend on CurrentPortalAccessContextResolver");
-        assertTrue(source.contains("currentPortalAccessContextResolver.current()"),
+        assertFalse(source.contains("currentPortalAccessContextResolver.current()"),
                 fileName + " should read the current request context through current()");
         assertFalse(source.contains("PortalAccessContextPort"),
                 fileName + " must not depend on the external resolution port");

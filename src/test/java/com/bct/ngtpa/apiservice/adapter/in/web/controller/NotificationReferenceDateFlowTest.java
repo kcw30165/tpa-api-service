@@ -125,10 +125,11 @@ class NotificationReferenceDateFlowTest {
         };
 
         var controller = new NotificationController(
-                new GetNotificationsService(noticePort, currentPortalAccessContextResolver, referenceDatePort),
+                new GetNotificationsService(noticePort, referenceDatePort),
                 command -> Mono.error(new UnsupportedOperationException()),
                 new NotificationWebMapper(),
-                new NotificationReadStatusWebMapper());
+                new NotificationReadStatusWebMapper(),
+                currentPortalAccessContextResolver);
 
         WebTestClient.bindToController(controller)
                 .build()

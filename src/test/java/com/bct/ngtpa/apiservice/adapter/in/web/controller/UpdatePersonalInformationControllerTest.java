@@ -83,7 +83,7 @@ class UpdatePersonalInformationControllerTest {
 
                 when(requestMapper.toCommand(eq(true), any(UpdatePersonalInformationRequest.class)))
                                 .thenReturn(command);
-                when(useCase.execute(command)).thenReturn(Mono.just(results));
+                when(useCase.execute(any(UpdatePersonalInformationCommand.class))).thenReturn(Mono.just(results));
                 when(responseMapper.toResponse(results)).thenReturn(mappedResponse);
 
                 StepVerifier.create(controller.update(Mono.just(request), null)

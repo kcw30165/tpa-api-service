@@ -61,9 +61,8 @@ class ExportContributionSummaryServiceTest {
         var recordingPort = new RecordingCurrencyDisplayPort();
         ReferenceDatePort referenceDatePort = accountEnv -> Mono.just(LocalDate.of(2026, 3, 31));
 
-        var service = new ExportContributionSummaryService(port, recordingPort, referenceDatePort,
-                currentPortalAccessContextResolver());
-        var result = service.execute(new ExportContributionSummaryCommand()).block();
+        var service = new ExportContributionSummaryService(port, recordingPort, referenceDatePort);
+        var result = service.execute(command()).block();
 
         assertEquals("31/03/2023", captured.get().coverFrom());
         assertEquals("31/03/2026", captured.get().coverTo());
@@ -94,10 +93,9 @@ class ExportContributionSummaryServiceTest {
                     return Mono.just(new ContributionSummaryDataset("HKD", List.of(), List.of()));
                 },
                 currencyDisplayPort,
-                accountEnv -> Mono.just(LocalDate.of(2026, 3, 31)),
-                currentPortalAccessContextResolver());
+                accountEnv -> Mono.just(LocalDate.of(2026, 3, 31)));
 
-        service.execute(new ExportContributionSummaryCommand()).block();
+        service.execute(command()).block();
 
         assertEquals("policyNo_for_contributions", captured.get().policyNo());
         assertEquals("certNo_for_contributions", captured.get().certNo());
@@ -106,6 +104,12 @@ class ExportContributionSummaryServiceTest {
         assertEquals("trustCode_for_contributions", captured.get().trustCode());
         assertEquals("schemeType_for_contributions", captured.get().schemeType());
     };
+
+    private static ExportContributionSummaryCommand command() {
+        return new ExportContributionSummaryCommand("JP", "policyNo_for_contributions",
+                "certNo_for_contributions", "userId_for_contributions",
+                "trustCode_for_contributions", "schemeType_for_contributions");
+    }
 
     private static final class RecordingCurrencyDisplayPort implements CurrencyDisplayPort {
 

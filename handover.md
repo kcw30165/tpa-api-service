@@ -350,3 +350,54 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - All executor-backed completion, result/error, idempotency suppression/replay, role propagation, FE authority, and compatibility-seam tests remain in scope.
 - Validation totals: focused 31; Stage 005/foundation 40; cumulative 66; compile exit 0. No production change; HEAD and stash unchanged.
 - Evidence: `target/evidence/apim-routing-context-stage-06-20260815-084115`. Stage 007 was not started. Commit after approval: `refactor(forgot-password): use generic APIM exchange for password completion`.
+
+### Stage 007 authenticated-context contract correction fail-first (target/evidence/apim-routing-context-stage-07-20260815-100259)
+
+- Status: `FAIL_FIRST_CONFIRMED`.
+- Exact inventory: `target/evidence/apim-routing-context-stage-07-20260815-100259/005-authenticated-context-exact-inventory.txt` and `target/evidence/apim-routing-context-stage-07-20260815-100259/006-authenticated-context-exact-sources.txt`.
+- Added package-wide architecture enforcement before production changes.
+- Real failing Maven run: `target/evidence/apim-routing-context-stage-07-20260815-100259/011-fail-first-output.txt`.
+- Fail-first Maven exit: `1`.
+- Target flow: inbound accessor and authenticated controllers own current-context access; application services and outbound adapters receive explicit trusted values; APIM execution remains unchanged.
+- Notifications APIM migration was not started. Stage 008 was not started.
+
+### Stage 007 authenticated-context contract correction implementation
+
+- Explicit evidence: `target/evidence/apim-routing-context-stage-07-20260815-100259`.
+- The inbound controllers now copy trusted account and actor values into explicit commands. Six application services and `UseCaseConfig` no longer receive `CurrentPortalAccessContextResolver`.
+- Portal identity Reactor access is prohibited outside inbound web delivery. Request-ID and logging Reactor context remain permitted.
+- APIM production adapters and execution behavior are unchanged. Notifications migration and Stage 008 were not started.
+- See `stage-07-completion-report.txt` and `090-final-status.txt` for validation status.
+- Commit after approval: `refactor(auth): make portal access context explicit at use-case boundary`.
+
+### Stage 007 cumulative test-call-site repair
+
+- Exact evidence: `target/evidence/apim-routing-context-stage-07-20260815-100259`.
+- Updated affected tests to use explicit authenticated command values and the new service/configuration signatures, without reintroducing ambient resolver injection.
+- Controller tests provide the inbound-only resolver. APIM production remains unchanged, and Stage 008 was not started.
+- Final status is recorded in `090-final-status.txt` and `stage-07-completion-report.txt`.
+
+### Stage 007 final validation
+
+- Explicit evidence: `target/evidence/apim-routing-context-stage-07-20260815-100259`.
+- Final focused, architecture, foundation, compile, ambient-context, APIM-preservation, file-classification, HEAD, and stash gates are recorded in the Stage 007 completion package.
+- No APIM adapter migrated. Notifications migration and Stage 008 were not started.
+- Final status: see `090-final-status.txt` and `stage-07-completion-report.txt`.
+- Commit after approval: `refactor(auth): make portal access context explicit at use-case boundary`.
+
+### Stage 007 final focused repair
+
+- Exact evidence: `target/evidence/apim-routing-context-stage-07-20260815-100259`.
+- Corrected the enriched update-command test stub and made the controller trusted-context architecture rule identifier-agnostic.
+- Final focused, architecture, foundation, compile, ambient-context, APIM, HEAD, stash, classification, and diff evidence is retained in the same explicit directory.
+- Notifications migration and Stage 008 were not started.
+- Final status is in `090-final-status.txt` and `stage-07-completion-report.txt`.
+
+### Stage 007 completion
+
+- Explicit evidence: `target/evidence/apim-routing-context-stage-07-20260815-100259`.
+- Focused, architecture, foundation, compile, ambient-context, outbound Reactor-context, APIM scope, complete file classification, diff, HEAD, and stash gates are retained.
+- Application services and `UseCaseConfig` are ambient-context free. Controllers own trusted context copying into explicit commands.
+- Request-ID and logging Reactor context remain allowed. No APIM adapter migrated, Notifications migration was not started, and Stage 008 was not started.
+- Final status: see `090-final-status.txt` and `stage-07-completion-report.txt`.
+- Commit after approval: `refactor(auth): make portal access context explicit at use-case boundary`.

@@ -2,6 +2,10 @@ package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
+import com.bct.ngtpa.apiservice.application.dto.TermStatus;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
+import com.bct.ngtpa.apiservice.application.dto.ActorContext;
+import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionWebDisplayConfigProvider;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.ContributionSummaryWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.sort.ApplySortsAspect;
@@ -547,7 +551,7 @@ class ContributionControllerTest {
                                 new ContributionSummaryWorkbookExporter(provider),
                                 provider,
                                 mapper,
-                                sortingSupport))
+                                sortingSupport, currentPortalAccessContextResolver()))
                                 .webFilter(requestHeaderContextWebFilter())
                                 .controllerAdvice(new ApiExceptionHandler(
                                                 testErrorMessageResolver(),
@@ -795,12 +799,15 @@ class ContributionControllerTest {
                 return new CurrentPortalAccessContextResolver() {
                         @Override
                         public Mono<PortalAccessContext> current() {
-                                return Mono.empty();
+                                return Mono.just(new PortalAccessContext(
+                                                new ActorContext("USER-1", ActorUserRole.ROLE_USER_MBR),
+                                                new AccountContext("ACC-123", "JP", "POL-1", "CERT-1",
+                                                                "TRUST", "SCHEME", TermStatus.BLANK, null)));
                         }
 
                         @Override
                         public Mono<PortalAccessContext> currentOrEmpty() {
-                                return Mono.empty();
+                                return current();
                         }
                 };
         }

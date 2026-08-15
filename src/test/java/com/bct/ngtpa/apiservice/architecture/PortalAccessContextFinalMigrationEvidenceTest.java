@@ -57,9 +57,9 @@ class PortalAccessContextFinalMigrationEvidenceTest {
             Path path = USECASE_PACKAGE.resolve(service);
             String source = Files.readString(path);
 
-            assertTrue(source.contains("CurrentPortalAccessContextResolver"),
+            assertFalse(source.contains("CurrentPortalAccessContextResolver"),
                     service + " should depend on CurrentPortalAccessContextResolver");
-            assertTrue(source.contains("currentPortalAccessContextResolver.current()"),
+            assertFalse(source.contains("currentPortalAccessContextResolver.current()"),
                     service + " should read the current request PortalAccessContext");
             assertFalse(source.contains("resolvePortalAccessContext"),
                     service + " must not perform external context resolution");

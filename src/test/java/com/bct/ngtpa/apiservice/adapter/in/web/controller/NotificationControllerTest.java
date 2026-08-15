@@ -10,6 +10,12 @@ import com.bct.ngtpa.apiservice.adapter.in.web.request.UpdateNotificationsReadSt
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.NotificationListResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.UpdateNotificationsReadStatusResponse;
+import com.bct.ngtpa.apiservice.application.dto.AccountContext;
+import com.bct.ngtpa.apiservice.application.dto.ActorContext;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
+import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
+import com.bct.ngtpa.apiservice.application.dto.TermStatus;
+import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.dto.GetNotificationsCommand;
 import com.bct.ngtpa.apiservice.application.dto.NotificationListResult;
 import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusCommand;
@@ -39,7 +45,7 @@ class NotificationControllerTest {
                 getUseCase,
                 updateUseCase,
                 notificationWebMapper,
-                mock(NotificationReadStatusWebMapper.class))
+                mock(NotificationReadStatusWebMapper.class), resolver())
                 .getNotifications(2, 50, "yyyy-MM-dd", "Asia/Hong_Kong")
                 .block();
 
@@ -67,11 +73,21 @@ class NotificationControllerTest {
                 getUseCase,
                 updateUseCase,
                 mock(NotificationWebMapper.class),
-                readStatusWebMapper)
+                readStatusWebMapper, resolver())
                 .updateNotificationsReadStatus(new UpdateNotificationsReadStatusRequest(List.of("N-1")))
                 .block();
 
         assertEquals(expectedResponse, actual);
         assertEquals(List.of("N-1"), captured.get().notificationIds());
     }
+    private static CurrentPortalAccessContextResolver resolver() {
+        PortalAccessContext context = new PortalAccessContext(
+                new ActorContext("USER-1", ActorUserRole.ROLE_USER_MBR),
+                new AccountContext("ACC-1", "JP", "POL-1", "CERT-1", "TRUST", "SCHEME", TermStatus.BLANK, null));
+        return new CurrentPortalAccessContextResolver() {
+            public Mono<PortalAccessContext> current() { return Mono.just(context); }
+            public Mono<PortalAccessContext> currentOrEmpty() { return Mono.just(context); }
+        };
+    }
+
 }

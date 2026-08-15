@@ -30,8 +30,8 @@ class GetPersonalInformationUseCaseTest {
                     "config", Map.of("email", "READONLY"))));
         };
 
-        var result = new GetPersonalInformationService(apimPort, resolver(context("acc-ref")))
-                .execute(new GetPersonalInformationCommand("en"))
+        var result = new GetPersonalInformationService(apimPort)
+                .execute(command("en"))
                 .block();
 
         assertEquals("JP", captured.get().getAccountEnv());
@@ -44,14 +44,16 @@ class GetPersonalInformationUseCaseTest {
 
     @Test
     void nullPayloadReturnsEmptyResult() {
-        var result = new GetPersonalInformationService(
-                command -> Mono.just(new MemberInfoResult(null)),
-                resolver(context("acc-ref")))
-                .execute(new GetPersonalInformationCommand("en"))
+        var result = new GetPersonalInformationService(command -> Mono.just(new MemberInfoResult(null)))
+                .execute(command("en"))
                 .block();
 
         assertTrue(result.data().isEmpty());
         assertTrue(result.config().isEmpty());
+    }
+
+    private static GetPersonalInformationCommand command(String language) {
+        return new GetPersonalInformationCommand(language, "JP", "policy-1", "cert-1", "user-1");
     }
 
     private static CurrentPortalAccessContextResolver resolver(PortalAccessContext context) {
