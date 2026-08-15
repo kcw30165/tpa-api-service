@@ -272,3 +272,32 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - Validation exits: Stage 04 focused 0; Stage 02/03 preservation 0; cumulative 0; compile 0; full suite NOT_RUN.
 - Exact evidence directory retained: `target/evidence/apim-routing-context-stage-04-20260815-001352`. HEAD and stash remained unchanged. No feature migrated and Stage 05 was not started.
 - Commit message after approval: `feat(apim): add generic profile-aware exchange executor`.
+
+
+### Stage 05: Forgot Password username-lookup pilot
+
+- Status: `READY_FOR_ARCHITECT_REVIEW`.
+- Migrated chain: trusted Forgot Password start mapper supplies `ROLE_USER_MBR`; start command and lookup command carry it explicitly; the APIM adapter creates `ApimCredentialResolutionContext(role, null)`, selects `NON_ACCOUNT` and `SAFE_BUSINESS_CALL`, builds typed `ApimExchangeRequest`, and invokes `ApimExchangeExecutor.postEnvelope`.
+- Manual facade, certificate, crypto, encryption-branch, and profile-resolution ownership was removed from the migrated adapter. Operation-specific TRPChkCustId envelope/error mapping remains in the adapter.
+- Registration and `SharedApimTrpChkCustIdTransport` remain unchanged. No other APIM operation migrated.
+- Evidence: `target/evidence/apim-routing-context-stage-05-20260815-075842`. Exits: fail-first 1; focused 0; foundation 0; cumulative 0; compile 0; full NOT_RUN. Stash unchanged. Stage 06 was not started.
+- Commit after approval: `refactor(forgot-password): use generic APIM exchange for username lookup`.
+
+
+### Stage 005 behavioral-test and evidence repair (target/evidence/apim-routing-context-stage-05-20260815-075842)
+
+- Status: `BLOCKED`.
+- Added direct adapter tests for executor request capture, success, recognized business rejection, and malformed response behavior.
+- Added mapper proof of server-side `ROLE_USER_MBR`, service proof that the role reaches `StartForgotPasswordUsernameLookupCommand`, and reflection proof that the FE start request exposes only `username`.
+- Validation totals: complete focused ; foundation ; cumulative ; compile exit 0.
+- Registration production files, HEAD, and stash remained unchanged. Evidence: `target/evidence/apim-routing-context-stage-05-20260815-075842`. Stage 006 was not started.
+- Commit after approval: `refactor(forgot-password): use generic APIM exchange for username lookup`.
+
+
+### Stage 005 behavioral-test compilation correction (target/evidence/apim-routing-context-stage-05-20260815-075842)
+
+- Status: `READY_FOR_ARCHITECT_REVIEW`.
+- Corrected only the new behavioral tests: repository `MemberIdentityType.ID`, Mockito generic `thenAnswer`, and FE DTO component-type name assertion.
+- Behavioral intent is unchanged: direct adapter routing/mapping, mapper role provenance, service role propagation, and FE authority exclusion.
+- Validation totals: focused 19; foundation 40; cumulative 54; compile exit 0. Registration production, HEAD, and stash remained unchanged.
+- Evidence: `target/evidence/apim-routing-context-stage-05-20260815-075842`. Stage 006 was not started. Commit after approval: `refactor(forgot-password): use generic APIM exchange for username lookup`.

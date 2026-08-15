@@ -125,7 +125,8 @@ public final class StartForgotPasswordService implements StartForgotPasswordUseC
             ForgotPasswordRequestHash requestHash,
             Instant now) {
         return lookupPort
-                .lookup(new StartForgotPasswordUsernameLookupCommand(normalizedUsername, command.correlationId()))
+                .lookup(new StartForgotPasswordUsernameLookupCommand(
+                        normalizedUsername, command.correlationId(), command.actorUserRole()))
                 .flatMap(result -> switch (result.status()) {
                     case CONFIRMED -> createStartedResult(command, normalizedUsername, requestHash, now, result);
                     case NOT_FOUND -> fail(command, requestHash).thenReturn(notFound());
