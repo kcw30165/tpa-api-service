@@ -141,6 +141,37 @@ class CompleteForgotPasswordServiceTest {
         assertThat(fixture.sessions.session.status()).isEqualTo(AuthFlowStatus.UNKNOWN_OUTCOME_BLOCKED);
     }
 
+    @Test
+    void idempotencySuppressionNeverCallsCompletionPort() {
+        for (ForgotPasswordIdempotencyStartOutcome outcome : java.util.List.of(
+                ForgotPasswordIdempotencyStartOutcome.DUPLICATE_IN_PROGRESS,
+                ForgotPasswordIdempotencyStartOutcome.KEY_REUSED_WITH_DIFFERENT_REQUEST,
+                ForgotPasswordIdempotencyStartOutcome.FAILED_EXISTING,
+                ForgotPasswordIdempotencyStartOutcome.UNKNOWN_OUTCOME_EXISTING)) {
+            var fixture = new Fixture("afs_fp", "Password1!");
+            fixture.idempotency.forcedOutcome = outcome;
+            complete(fixture, "afs_fp", "Password1!", "Password1!", "idem_suppressed");
+            assertThat(fixture.downstreamCalls).as(outcome.name()).isZero();
+        }
+    }
+
+    @Test
+    void sameKeySamePayloadReplayDoesNotDuplicateCompletionPortCall() {
+        var fixture = new Fixture("afs_fp", "Password1!");
+        fixture.downstreamResult = ForgotPasswordCompletionResult.rejected("err.tpa.password.invalid");
+        complete(fixture, "afs_fp", "Password1!", "Password1!", "idem_replay");
+        complete(fixture, "afs_fp", "Password1!", "Password1!", "idem_replay");
+        assertThat(fixture.downstreamCalls).isEqualTo(1);
+    }
+
+    @Test
+    void completionServicePropagatesTrustedActorRole() {
+        var fixture = new Fixture("afs_fp", "Password1!");
+        complete(fixture, "afs_fp", "Password1!", "Password1!", "idem_role");
+        assertThat(fixture.lastCompletionCommand.actorUserRole())
+                .isEqualTo(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
+    }
+
     private static void complete(Fixture fixture, String sessionId, String password, String confirmPassword,
             String key) {
         StepVerifier.create(fixture.service.complete(new CompleteForgotPasswordCommand(
@@ -168,6 +199,7 @@ class CompleteForgotPasswordServiceTest {
         ForgotPasswordCompletionResult downstreamResult = ForgotPasswordCompletionResult.reset("29/07/2026", "14:25:07");
         RuntimeException downstreamFailure;
         int downstreamCalls;
+        ForgotPasswordCompletionCommand lastCompletionCommand;
         CompleteForgotPasswordResult lastResult;
 
         Fixture(String sessionId, String password) {
@@ -211,6 +243,7 @@ class CompleteForgotPasswordServiceTest {
             sessions.session = session;
 
             ForgotPasswordCompletionPort completion = command -> {
+                lastCompletionCommand = command;
                 downstreamCalls++;
                 if (downstreamFailure != null) {
                     return Mono.error(downstreamFailure);
@@ -320,11 +353,25 @@ class CompleteForgotPasswordServiceTest {
 
         private final class MutableIdempotency implements ForgotPasswordIdempotencyPort {
             private ForgotPasswordIdempotencyStartCommand lastStartCommand;
+            private ForgotPasswordIdempotencyStartOutcome forcedOutcome;
             private final Map<String, ForgotPasswordIdempotencyRecord> records = new LinkedHashMap<>();
 
             @Override
             public Mono<ForgotPasswordIdempotencyStartResult> startProcessing(ForgotPasswordIdempotencyStartCommand command) {
                 lastStartCommand = command;
+                if (forcedOutcome != null) {
+                    ForgotPasswordIdempotencyRecord forcedRecord = new ForgotPasswordIdempotencyRecord(
+                            command.action(),
+                            command.idempotencyKey(),
+                            command.requestHash(),
+                            statusFor(forcedOutcome),
+                            null,
+                            command.now(),
+                            command.now(),
+                            command.expiresAt(),
+                            null);
+                    return Mono.just(new ForgotPasswordIdempotencyStartResult(forcedOutcome, forcedRecord));
+                }
             ForgotPasswordIdempotencyRecord existing = records.get(command.idempotencyKey().value());
             if (existing != null) {
                 ForgotPasswordIdempotencyStartOutcome outcome = existing.requestHash().equals(command.requestHash())
@@ -351,6 +398,17 @@ class CompleteForgotPasswordServiceTest {
             return Mono.just(new ForgotPasswordIdempotencyStartResult(
                 ForgotPasswordIdempotencyStartOutcome.STARTED,
                 created));
+            }
+
+
+            private ForgotPasswordIdempotencyStatus statusFor(ForgotPasswordIdempotencyStartOutcome outcome) {
+                return switch (outcome) {
+                    case DUPLICATE_IN_PROGRESS -> ForgotPasswordIdempotencyStatus.PROCESSING;
+                    case KEY_REUSED_WITH_DIFFERENT_REQUEST, FAILED_EXISTING -> ForgotPasswordIdempotencyStatus.FAILED;
+                    case UNKNOWN_OUTCOME_EXISTING -> ForgotPasswordIdempotencyStatus.UNKNOWN_OUTCOME;
+                    case COMPLETED_REPLAY -> ForgotPasswordIdempotencyStatus.COMPLETED;
+                    case STARTED -> ForgotPasswordIdempotencyStatus.PROCESSING;
+                };
             }
 
             @Override

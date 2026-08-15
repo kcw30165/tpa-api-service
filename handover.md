@@ -301,3 +301,52 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - Behavioral intent is unchanged: direct adapter routing/mapping, mapper role provenance, service role propagation, and FE authority exclusion.
 - Validation totals: focused 19; foundation 40; cumulative 54; compile exit 0. Registration production, HEAD, and stash remained unchanged.
 - Evidence: `target/evidence/apim-routing-context-stage-05-20260815-075842`. Stage 006 was not started. Commit after approval: `refactor(forgot-password): use generic APIM exchange for username lookup`.
+
+
+### Stage 006: Forgot Password completion pilot
+
+- Status: `BLOCKED`. Trusted mapper assigns `ROLE_USER_MBR`; completion commands carry it explicitly; adapter uses `NON_ACCOUNT`, null environment, `IDEMPOTENT_MUTATION`, and `ApimExchangeExecutor`.
+- Application idempotency key+payload behavior and completion-specific success, rejection, system failure, malformed response, and unknown-outcome ownership remain unchanged. No other APIM operation migrated.
+- Evidence: `target/evidence/apim-routing-context-stage-06-20260815-084115`. Exits: fail-first 1; focused 1; preservation 0; cumulative 125; compile 0. Stash unchanged. Stage 007 was not started.
+- Commit after approval: `refactor(forgot-password): use generic APIM exchange for password completion`.
+
+
+### Stage 006 architecture whitespace repair (target/evidence/apim-routing-context-stage-06-20260815-084115)
+
+- Status: `BLOCKED`.
+- Corrected only a whitespace-sensitive architecture assertion. Production already used caller role and null environment correctly.
+- Validation totals: focused 14; Stage 005/foundation preservation 40; cumulative 23; compile exit 0.
+- HEAD and stash remained unchanged. Evidence: `target/evidence/apim-routing-context-stage-06-20260815-084115`. Stage 007 was not started.
+- Commit after approval: `refactor(forgot-password): use generic APIM exchange for password completion`.
+
+
+### Stage 006 routing-ledger ownership correction v2 (target/evidence/apim-routing-context-stage-06-20260815-084115)
+
+- Status: `BLOCKED`. The routing ledger now follows Stage 006 ownership regardless of source formatting: trusted mapper owns `ROLE_USER_MBR`; commands carry it; adapter consumes `command.actorUserRole()` and owns `NON_ACCOUNT` plus `IDEMPOTENT_MUTATION`.
+- No production code changed. Validation totals: focused 5; preservation ; cumulative ; compile exit 0. HEAD and stash unchanged.
+- Evidence: `target/evidence/apim-routing-context-stage-06-20260815-084115`. Stage 007 was not started. Commit after approval: `refactor(forgot-password): use generic APIM exchange for password completion`.
+
+
+### Stage 006 exact routing-ledger entry correction (target/evidence/apim-routing-context-stage-06-20260815-084115)
+
+- Status: `READY_FOR_ARCHITECT_REVIEW`.
+- Updated the exact TRPResetPassword routing-ledger entry from the pre-migration state to `NON_ACCOUNT`, `command.actorUserRole()`, null environment, `IDEMPOTENT_MUTATION`, and executor ownership.
+- The separate trusted-role provenance test remains. No production code changed.
+- Validation exits: focused 0; Stage 005/foundation preservation 0; cumulative 0; compile 0.
+- Exact evidence directory: `target/evidence/apim-routing-context-stage-06-20260815-084115`. HEAD and stash remained unchanged. Stage 007 was not started.
+- Commit after approval: `refactor(forgot-password): use generic APIM exchange for password completion`.
+
+
+### Stage 006 behavioral and idempotency evidence repair (target/evidence/apim-routing-context-stage-06-20260815-084115)
+
+- Status: `BLOCKED`. Added executor-backed completion behavior coverage, all completion result/error scenarios, idempotency suppression and replay call-count proof, explicit service role propagation, FE authority exclusion, and a documented `testTransport` compatibility seam.
+- Validation totals: focused 3; Stage 005/foundation ; cumulative completion/architecture ; compile exit 0. Production scope, HEAD, and stash remained unchanged.
+- Evidence: `target/evidence/apim-routing-context-stage-06-20260815-084115`. Stage 007 was not started. Commit after approval: `refactor(forgot-password): use generic APIM exchange for password completion`.
+
+
+### Stage 006 idempotency forced-record fixture correction (target/evidence/apim-routing-context-stage-06-20260815-084115)
+
+- Status: `READY_FOR_ARCHITECT_REVIEW`. Corrected the test-only forced idempotency outcome fixture to supply the nonnull record required by `ForgotPasswordIdempotencyStartResult`.
+- All executor-backed completion, result/error, idempotency suppression/replay, role propagation, FE authority, and compatibility-seam tests remain in scope.
+- Validation totals: focused 31; Stage 005/foundation 40; cumulative 66; compile exit 0. No production change; HEAD and stash unchanged.
+- Evidence: `target/evidence/apim-routing-context-stage-06-20260815-084115`. Stage 007 was not started. Commit after approval: `refactor(forgot-password): use generic APIM exchange for password completion`.

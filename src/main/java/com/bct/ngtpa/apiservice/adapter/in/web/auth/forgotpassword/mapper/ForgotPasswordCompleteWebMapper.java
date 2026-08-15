@@ -13,6 +13,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.CompleteForgotPasswordResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.CompleteForgotPasswordStatus;
 import java.time.Duration;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import java.util.List;
 import java.util.Objects;
 
@@ -46,7 +47,8 @@ public final class ForgotPasswordCompleteWebMapper {
                 clean(referer),
                 clean(language),
                 clean(requestId),
-                idempotencyTtl);
+                idempotencyTtl,
+                ActorUserRole.ROLE_USER_MBR);
     }
 
     public MutationResponse<ForgotPasswordWorkflowResultResponse<ForgotPasswordCompleteDataResponse>> toResponse(

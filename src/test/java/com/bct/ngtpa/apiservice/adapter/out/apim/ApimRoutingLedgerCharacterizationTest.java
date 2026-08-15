@@ -20,7 +20,7 @@ class ApimRoutingLedgerCharacterizationTest {
         e("TRPGetCountryList", "ApimReferenceDataCountriesAdapter.java", "NON_ACCOUNT", "ROLE_USER_MBR", "null", "SAFE_BUSINESS_CALL", "FACADE", "ACCOUNT_ENV"),
         e("TRPGetWebSysDate", "ApimReferenceDateRefreshAdapter.java", "INFERRED", "ROLE_USER_MBR", "accountEnv", "SAFE_BUSINESS_CALL", "FEATURE", "UNCONFIRMED"),
         e("TRPUpdMemberInfo", "ApimUpdatePersonalInformationAdapter.java", "ACCOUNT_ENV", "ROLE_USER_MBR", "command.accountEnv()", "IDEMPOTENT_MUTATION", "FEATURE", "UNCONFIRMED"),
-        e("TRPResetPassword", "forgotpassword/ApimForgotPasswordCompletionAdapter.java", "MIXED", "ROLE_USER_MBR", "protected-or-null", "IDEMPOTENT_MUTATION", "FEATURE", "NON_ACCOUNT"),
+        e("TRPResetPassword", "forgotpassword/ApimForgotPasswordCompletionAdapter.java", "NON_ACCOUNT", "command.actorUserRole()", "null", "IDEMPOTENT_MUTATION", "EXECUTOR", "NON_ACCOUNT"),
         e("TRPSearchRegedMember", "forgotpassword/details/SharedApimTrpSearchRegedMemberTransport.java", "NON_ACCOUNT", "ROLE_USER_MBR", "null", "SAFE_BUSINESS_CALL", "FEATURE", "UNCONFIRMED"),
         e("TRPMemberLogin", "login/SharedApimTrpMemberLoginTransport.java", "NON_ACCOUNT", "ROLE_USER_MBR", "null", "SAFE_BUSINESS_CALL", "MIXED", "UNCONFIRMED"),
         e("TRPGetAccountList", "login/account/SharedApimTrpGetAccountListTransport.java", "NON_ACCOUNT", "ROLE_USER_MBR", "null", "SAFE_BUSINESS_CALL", "MIXED", "UNCONFIRMED"),
@@ -72,5 +72,25 @@ class ApimRoutingLedgerCharacterizationTest {
     private Entry find(String operation) { return LEDGER.stream().filter(e -> e.operation().equals(operation)).findFirst().orElseThrow(); }
     private String source(String relative) throws Exception {
         return Files.readString(Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim").resolve(relative));
+    }
+
+
+    @org.junit.jupiter.api.Test
+    void completionRoleOriginRemainsAtTrustedInboundBoundaryAfterStage06Migration() throws Exception {
+        String mapper = java.nio.file.Files.readString(java.nio.file.Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/forgotpassword/mapper/ForgotPasswordCompleteWebMapper.java"));
+        String inboundCommand = java.nio.file.Files.readString(java.nio.file.Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/forgotpassword/complete/CompleteForgotPasswordCommand.java"));
+        String outboundCommand = java.nio.file.Files.readString(java.nio.file.Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/forgotpassword/complete/ForgotPasswordCompletionCommand.java"));
+        String adapter = java.nio.file.Files.readString(java.nio.file.Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/forgotpassword/ApimForgotPasswordCompletionAdapter.java"));
+
+        org.assertj.core.api.Assertions.assertThat(mapper).contains("ActorUserRole.ROLE_USER_MBR");
+        org.assertj.core.api.Assertions.assertThat(inboundCommand).contains("ActorUserRole actorUserRole");
+        org.assertj.core.api.Assertions.assertThat(outboundCommand).contains("ActorUserRole actorUserRole");
+        org.assertj.core.api.Assertions.assertThat(adapter)
+                .contains("command.actorUserRole()", "IDEMPOTENT_MUTATION", "ApimDatabaseScope.NON_ACCOUNT")
+                .doesNotContain("ActorUserRole.ROLE_USER_MBR");
     }
 }
