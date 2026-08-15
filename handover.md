@@ -444,3 +444,55 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - Corrected test-only API assumptions to the repository contracts: `ApimExchangeRequest.request()`, `ActorUserRole.ROLE_USER_EPR`, and `NoticeMessage.msgStatus()`.
 - Re-ran adapter behavior, complete focused, Stage 007 preservation, APIM foundation/prior pilots, cumulative Notifications/architecture, and compile gates.
 - Final totals are derived from the new Maven outputs. Production, HEAD, index, stash, and APIM foundation are preserved. Stage 009 was not started.
+
+### Stage 009 country-list authenticated executor fail-first
+
+- Exact evidence: `target/evidence/apim-routing-context-stage-09-20260815-134755`.
+- Added the Stage 009 fail-first architecture guard before production changes.
+- The guard requires inbound trusted selected-account context, an explicit country-list command, typed `ApimExchangeExecutor` ownership, `ACCOUNT_ENV`, command role/environment, `SAFE_BUSINESS_CALL`, preserved language and mapping behavior, and executor-owned routing ledger state.
+- The real failing Maven run is retained in `011-fail-first-complete-output.txt`. Production, HEAD, index, stash, and APIM foundation remain unchanged. Stage 010 was not started.
+
+### Stage 009 country-list authenticated correction implementation
+
+- Exact evidence: `target/evidence/apim-routing-context-stage-09-20260815-134755`.
+- Country list now receives trusted `accountEnv` and actor role from the inbound current-context resolver, carries them explicitly through the command and port, and invokes the typed generic APIM executor with `ACCOUNT_ENV` and `SAFE_BUSINESS_CALL`.
+- Country mapping, language selection, public path, and shared envelope interpretation remain feature-owned. Direct facade, crypto, hardcoded role, and non-account routing were removed only from the country-list adapter.
+- Validation is still required. Stage 010 was not started.
+
+### Stage 009 country-list validation
+
+- Exact evidence: `target/evidence/apim-routing-context-stage-09-20260815-134755`.
+- Final validation status: `BLOCKED`.
+- Fail-first remains 5 tests run with 4 failures, 0 errors, and 0 skipped before implementation.
+- Focused, architecture, Stage 007, Stage 008, APIM foundation, cumulative, compile, static ownership, and preservation evidence are retained in the explicit Stage 009 directory.
+- Stage 010 was not started.
+
+### Stage 009 country-list validation
+
+- Exact evidence: `target/evidence/apim-routing-context-stage-09-20260815-134755`.
+- Final validation status: `BLOCKED`.
+- Fail-first remains 5 tests run with 4 failures, 0 errors, and 0 skipped before implementation.
+- Focused, architecture, Stage 007, Stage 008, APIM foundation, cumulative, compile, static ownership, and preservation evidence are retained in the explicit Stage 009 directory.
+- Stage 010 was not started.
+
+### Stage 009 country-list validation
+
+- Exact evidence: `target/evidence/apim-routing-context-stage-09-20260815-134755`.
+- Final validation status: `PASS`.
+- Fail-first remains 5 tests run with 4 failures, 0 errors, and 0 skipped before implementation.
+- Focused, architecture, Stage 007, Stage 008, APIM foundation, cumulative, compile, static ownership, and preservation evidence are retained in the explicit Stage 009 directory.
+- Stage 010 was not started.
+
+### Stage 009 boundary-guard correction
+
+- Exact evidence: `target/evidence/apim-routing-context-stage-09-20260815-134755`.
+- Corrected the stale country-list service architecture assertion introduced by the cumulative writer. The controller must consume `CurrentPortalAccessContextResolver`; the application service must remain ambient-context free and pass the explicit command to the port.
+- Production was unchanged by this repair. The complete Stage 009 validator was rerun, and Stage 010 was not started.
+
+### Stage 009 worktree-integrity and bounded-validation repair
+
+- Exact evidence: `target/evidence/apim-routing-context-stage-09-20260815-134755`.
+- Restored 811 unrelated line-ending-only test-file modifications after raw HEAD-versus-worktree newline-normalized comparison; no unrelated real content change was accepted.
+- The corrected review classifier allows only the country-list implementation, country-list tests and guards, routing ledger, `handover.md`, and `docs/integration/apim/authenticated-context-apim-profile-implementation-plan.md`.
+- Final bounded validation status: `PASS`. Maven totals are recorded only from the actual outputs in the corrected completion report.
+- HEAD, index, stash, implementation plan, and non-country production content are preserved. Stage 010 was not started.

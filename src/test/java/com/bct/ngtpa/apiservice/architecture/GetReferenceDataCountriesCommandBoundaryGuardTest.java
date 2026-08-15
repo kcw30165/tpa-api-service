@@ -17,29 +17,37 @@ class GetReferenceDataCountriesCommandBoundaryGuardTest {
             "src/main/java/com/bct/ngtpa/apiservice/application/usecase/GetReferenceDataCountriesService.java");
 
     @Test
-    void commandContainsLanguageOnly() throws Exception {
+    void commandContainsExplicitAuthenticatedRouting() throws Exception {
         String source = Files.readString(COMMAND);
-        assertTrue(source.contains("record GetReferenceDataCountriesCommand(String language)"));
+        assertTrue(source.contains("String language"));
+        assertTrue(source.contains("String accountEnv"));
+        assertTrue(source.contains("ActorUserRole actorUserRole"));
         assertFalse(source.contains("accountRef"));
     }
 
     @Test
-    void controllerDoesNotResolveOrPassAccountRef() throws Exception {
+    void controllerUsesCurrentTrustedContextWithoutPassingAccountRef() throws Exception {
         String source = Files.readString(CONTROLLER);
-        assertTrue(source.contains("new GetReferenceDataCountriesCommand(language)"));
+        assertTrue(source.contains("CurrentPortalAccessContextResolver"));
+        assertTrue(source.contains("currentPortalAccessContextResolver.current()"));
+        assertTrue(source.contains("portalAccessContext.account().accountEnv()"));
+        assertTrue(source.contains("portalAccessContext.actor().actorUserRole()"));
         assertFalse(source.contains("new GetReferenceDataCountriesCommand(accountRef"));
         assertFalse(source.contains("resolveRequiredAccountRef"));
         assertFalse(source.contains("PortalAccessContextPort"));
-        assertFalse(source.contains("CurrentPortalAccessContextResolver"));
+        assertTrue(source.contains("CurrentPortalAccessContextResolver"));
     }
 
     @Test
-    void serviceRemainsContextFreeBecauseCountryListIsGlobal() throws Exception {
+    void serviceRemainsAmbientContextFreeAndPassesExplicitCommand() throws Exception {
         String source = Files.readString(SERVICE);
-        assertTrue(source.contains("fetchCountryList()"));
+        assertTrue(source.contains("fetchCountryList(command)"));
         assertFalse(source.contains("PortalAccessContextPort"));
         assertFalse(source.contains("CurrentPortalAccessContextResolver"));
         assertFalse(source.contains("currentPortalAccessContextResolver"));
+        assertFalse(source.contains("PortalAccessContext"));
+        assertFalse(source.contains("deferContextual"));
+        assertFalse(source.contains("reactor.util.context"));
         assertFalse(source.contains("requireAccountRef"));
     }
 }

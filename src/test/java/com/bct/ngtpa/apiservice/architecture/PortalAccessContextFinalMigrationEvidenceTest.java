@@ -94,7 +94,7 @@ class PortalAccessContextFinalMigrationEvidenceTest {
     }
 
     @Test
-    void referenceDataCountriesIsExplicitlyContextFree() throws Exception {
+    void referenceDataCountriesUsesInboundContextAndContextFreeService() throws Exception {
         Path controller = Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/ReferenceDataController.java");
         Path service = USECASE_PACKAGE.resolve("GetReferenceDataCountriesService.java");
@@ -102,11 +102,11 @@ class PortalAccessContextFinalMigrationEvidenceTest {
         String controllerSource = Files.readString(controller);
         String serviceSource = Files.readString(service);
 
-        assertFalse(controllerSource.contains("CurrentPortalAccessContextResolver"));
+        assertTrue(controllerSource.contains("CurrentPortalAccessContextResolver"));
         assertFalse(controllerSource.contains("PortalAccessContextPort"));
         assertFalse(serviceSource.contains("CurrentPortalAccessContextResolver"));
         assertFalse(serviceSource.contains("PortalAccessContextPort"));
-        assertTrue(serviceSource.contains("fetchCountryList()"));
+        assertTrue(serviceSource.contains("fetchCountryList(command)"));
     }
 
     private List<String> selectedAccountServices() {

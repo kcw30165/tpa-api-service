@@ -74,7 +74,7 @@ class PortalAccessContextResponsibilityBoundaryGuardTest {
     }
 
     @Test
-    void globalReferenceDataCountriesRemainsContextFree() throws Exception {
+    void authenticatedReferenceDataCountriesUsesInboundContextOnly() throws Exception {
         Path controller = Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/ReferenceDataController.java");
         Path service = Path.of(
@@ -84,13 +84,13 @@ class PortalAccessContextResponsibilityBoundaryGuardTest {
         String serviceSource = Files.readString(service);
 
         assertFalse(controllerSource.contains("PortalAccessContextPort"));
-        assertFalse(controllerSource.contains("CurrentPortalAccessContextResolver"));
+        assertTrue(controllerSource.contains("CurrentPortalAccessContextResolver"));
         assertFalse(controllerSource.contains("resolveRequiredAccountRef"));
         assertFalse(serviceSource.contains("PortalAccessContextPort"));
         assertFalse(serviceSource.contains("CurrentPortalAccessContextResolver"));
         assertFalse(serviceSource.contains("requireAccountRef"));
-        assertTrue(serviceSource.contains("fetchCountryList()"),
-                "Country list should remain the global APIM lookup boundary");
+        assertTrue(serviceSource.contains("fetchCountryList(command)"),
+                "Country list should pass explicit authenticated routing");
     }
 
     @Test

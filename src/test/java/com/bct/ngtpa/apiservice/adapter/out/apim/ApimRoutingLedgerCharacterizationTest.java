@@ -17,7 +17,7 @@ class ApimRoutingLedgerCharacterizationTest {
         e("TRPGetMemberInfo", "ApimMemberInfoAdapter.java", "INFERRED", "ROLE_USER_MBR", "command.getAccountEnv()", "SAFE_BUSINESS_CALL", "FEATURE", "UNCONFIRMED"),
         e("TRPGetMsgBoard", "ApimNoticeMessageAdapter.java", "ACCOUNT_ENV", "command.mbrType()", "command.accountEnv()", "SAFE_BUSINESS_CALL", "EXECUTOR", "ACCOUNT_ENV"),
         e("TRPUpdMsgRead", "ApimNotificationReadStatusAdapter.java", "ACCOUNT_ENV", "command.mbrType()", "command.accountEnv()", "IDEMPOTENT_MUTATION", "EXECUTOR", "ACCOUNT_ENV"),
-        e("TRPGetCountryList", "ApimReferenceDataCountriesAdapter.java", "NON_ACCOUNT", "ROLE_USER_MBR", "null", "SAFE_BUSINESS_CALL", "FACADE", "ACCOUNT_ENV"),
+        e("TRPGetCountryList", "ApimReferenceDataCountriesAdapter.java", "ACCOUNT_ENV", "command.actorUserRole()", "command.accountEnv()", "SAFE_BUSINESS_CALL", "EXECUTOR", "ACCOUNT_ENV"),
         e("TRPGetWebSysDate", "ApimReferenceDateRefreshAdapter.java", "INFERRED", "ROLE_USER_MBR", "accountEnv", "SAFE_BUSINESS_CALL", "FEATURE", "UNCONFIRMED"),
         e("TRPUpdMemberInfo", "ApimUpdatePersonalInformationAdapter.java", "ACCOUNT_ENV", "ROLE_USER_MBR", "command.accountEnv()", "IDEMPOTENT_MUTATION", "FEATURE", "UNCONFIRMED"),
         e("TRPResetPassword", "forgotpassword/ApimForgotPasswordCompletionAdapter.java", "NON_ACCOUNT", "command.actorUserRole()", "null", "IDEMPOTENT_MUTATION", "EXECUTOR", "NON_ACCOUNT"),
@@ -57,7 +57,7 @@ class ApimRoutingLedgerCharacterizationTest {
 
     @Test
     void confirmedTargetsAreSeparatedFromKnownCurrentDrift() {
-        assertThat(find("TRPGetCountryList").currentScope()).isEqualTo("NON_ACCOUNT");
+        assertThat(find("TRPGetCountryList").currentScope()).isEqualTo("ACCOUNT_ENV");
         assertThat(find("TRPGetCountryList").target()).isEqualTo("ACCOUNT_ENV");
         assertThat(find("TRPGetMsgBoard").currentScope()).isEqualTo("ACCOUNT_ENV");
         assertThat(find("TRPGetMsgBoard").target()).isEqualTo("ACCOUNT_ENV");

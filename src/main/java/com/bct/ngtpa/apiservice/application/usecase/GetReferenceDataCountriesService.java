@@ -20,7 +20,7 @@ public class GetReferenceDataCountriesService implements GetReferenceDataCountri
 
     @Override
     public Mono<ReferenceDataCountriesResult> execute(GetReferenceDataCountriesCommand command) {
-        return apimReferenceDataCountriesPort.fetchCountryList()
+        return apimReferenceDataCountriesPort.fetchCountryList(command)
                 .defaultIfEmpty(List.of())
                 .map(items -> mapResult(items, command != null ? command.language() : null));
     }
