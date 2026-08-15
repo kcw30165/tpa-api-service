@@ -19,7 +19,7 @@ class ApimRoutingLedgerCharacterizationTest {
         e("TRPUpdMsgRead", "ApimNotificationReadStatusAdapter.java", "ACCOUNT_ENV", "command.mbrType()", "command.accountEnv()", "IDEMPOTENT_MUTATION", "EXECUTOR", "ACCOUNT_ENV"),
         e("TRPGetCountryList", "ApimReferenceDataCountriesAdapter.java", "ACCOUNT_ENV", "command.actorUserRole()", "command.accountEnv()", "SAFE_BUSINESS_CALL", "EXECUTOR", "ACCOUNT_ENV"),
         e("TRPGetWebSysDate", "ApimReferenceDateRefreshAdapter.java", "INFERRED", "ROLE_USER_MBR", "accountEnv", "SAFE_BUSINESS_CALL", "FEATURE", "UNCONFIRMED"),
-        e("TRPUpdMemberInfo", "ApimUpdatePersonalInformationAdapter.java", "ACCOUNT_ENV", "ROLE_USER_MBR", "command.accountEnv()", "IDEMPOTENT_MUTATION", "FEATURE", "UNCONFIRMED"),
+        e("TRPUpdMemberInfo", "ApimUpdatePersonalInformationAdapter.java", "ACCOUNT_ENV", "command.userRole()", "command.accountEnv()", "IDEMPOTENT_MUTATION", "EXECUTOR", "ACCOUNT_ENV"),
         e("TRPResetPassword", "forgotpassword/ApimForgotPasswordCompletionAdapter.java", "NON_ACCOUNT", "command.actorUserRole()", "null", "IDEMPOTENT_MUTATION", "EXECUTOR", "NON_ACCOUNT"),
         e("TRPSearchRegedMember", "forgotpassword/details/SharedApimTrpSearchRegedMemberTransport.java", "NON_ACCOUNT", "ROLE_USER_MBR", "null", "SAFE_BUSINESS_CALL", "FEATURE", "UNCONFIRMED"),
         e("TRPMemberLogin", "login/SharedApimTrpMemberLoginTransport.java", "NON_ACCOUNT", "ROLE_USER_MBR", "null", "SAFE_BUSINESS_CALL", "MIXED", "UNCONFIRMED"),

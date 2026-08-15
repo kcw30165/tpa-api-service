@@ -1362,6 +1362,6 @@ The Stage 009 implementation package must:
 
 ## Current implementation status
 
-- Stages 001 through 009: approved.
-- Stage 010: authenticated Personal Information retrieval implemented; hardcoded actor-role compatibility paths removed; final validation in progress.
-- Stage 011: not started.
+- Stages 001 through 010: approved.
+- Stage 011: Personal Information update migrated to explicit authenticated APIM exchange; final validation in progress.
+- Stage 012: not started.

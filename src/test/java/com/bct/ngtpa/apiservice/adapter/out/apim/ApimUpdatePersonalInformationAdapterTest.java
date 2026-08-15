@@ -19,7 +19,7 @@ class ApimUpdatePersonalInformationAdapterTest {
 
     @Test
     void mapsEveryApimDataItemToFlatUpdateResultAndMarksSelectedAccount() {
-        ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(null, null, null, null);
+        ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(null);
 
         List<UpdatePersonalInformationResult> results = invokeToResults(adapter, envelope(List.of(
                 item(true, "00000000118", "2", "DB", "260001373", List.of()),
@@ -46,7 +46,7 @@ class ApimUpdatePersonalInformationAdapterTest {
 
     @Test
     void rejectsApimResponseWhenSelectedAccountIsMissing() {
-        ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(null, null, null, null);
+        ApimUpdatePersonalInformationAdapter adapter = new ApimUpdatePersonalInformationAdapter(null);
 
         assertThatThrownBy(() -> invokeToResults(adapter, envelope(List.of(
                 item(true, "00000000118", "2", "DB", "260001373", List.of()))),

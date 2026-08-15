@@ -504,3 +504,10 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - Added `PersonalInformationRetrievalNoRoleSubstitutionGuardTest`.
 - Retained the original real fail-first evidence in the explicit Stage 010 evidence directory.
 - Personal Information update production remains unchanged and Stage 011 has not started.
+
+## Stage 011 Personal Information update
+
+- Migrated `TRPUpdMemberInfo` to `ApimExchangeExecutor.postEnvelope`.
+- Routing is explicit: `ACCOUNT_ENV`, command actor role/account environment, and `IDEMPOTENT_MUTATION`.
+- Preserved YAML validation, frontend targets, result-array and partial-success behavior, business/technical mapping, and mutation uncertainty checks.
+- Stage 010 retrieval remains unchanged. Stage 012 has not started.
