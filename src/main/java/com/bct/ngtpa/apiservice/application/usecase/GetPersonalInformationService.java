@@ -22,7 +22,8 @@ public class GetPersonalInformationService implements GetPersonalInformationUseC
     @Override
     public Mono<PersonalInformationResult> execute(GetPersonalInformationCommand command) {
         return apimMemberInfoPort.fetchMemberInfo(new FetchMemberInfoCommand(
-                command.accountEnv(), command.policyNo(), command.certNo(), command.actorUserId()))
+                command.accountEnv(), command.policyNo(), command.certNo(), command.actorUserId(),
+                command.actorUserRole()))
                 .map(this::toResult);
     }
 

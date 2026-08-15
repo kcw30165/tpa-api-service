@@ -59,9 +59,10 @@ public class PersonalInformationController {
                     .flatMap(portalAccessContext -> {
                         requireAccountRef(portalAccessContext);
                         return getPersonalInformationUseCase
-                                .execute(new GetPersonalInformationCommand(language, accountEnv(portalAccessContext),
+                                .execute(new GetPersonalInformationCommand(language, portalAccessContext.account().accountEnv(),
                                         portalAccessContext.account().policyNo(), portalAccessContext.account().certNo(),
-                                        portalAccessContext.actor().actorUserId()))
+                                        portalAccessContext.actor().actorUserId(),
+                                        portalAccessContext.actor().actorUserRole()))
                                 .map(result -> personalInformationWebMapper.toFormPageResponse(
                                         result,
                                         language,

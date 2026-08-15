@@ -496,3 +496,11 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - The corrected review classifier allows only the country-list implementation, country-list tests and guards, routing ledger, `handover.md`, and `docs/integration/apim/authenticated-context-apim-profile-implementation-plan.md`.
 - Final bounded validation status: `PASS`. Maven totals are recorded only from the actual outputs in the corrected completion report.
 - HEAD, index, stash, implementation plan, and non-country production content are preserved. Stage 010 was not started.
+
+## Stage 010 final explicit-role repair
+
+- Removed all Personal Information retrieval constructor paths that substituted `ROLE_USER_MBR`.
+- Updated affected callers and tests to pass `ActorUserRole` explicitly.
+- Added `PersonalInformationRetrievalNoRoleSubstitutionGuardTest`.
+- Retained the original real fail-first evidence in the explicit Stage 010 evidence directory.
+- Personal Information update production remains unchanged and Stage 011 has not started.

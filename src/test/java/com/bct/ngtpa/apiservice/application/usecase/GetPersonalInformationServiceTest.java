@@ -35,7 +35,7 @@ class GetPersonalInformationServiceTest {
         var payload = Map.<String, Object>of(
                 "data", Map.of("addr1", "ABC Street", "email", "nick@example.com"),
                 "config", Map.of("addr1", "EDITABLE_COM", "email", "READONLY"));
-        when(apimMemberInfoPort.fetchMemberInfo(eq(new FetchMemberInfoCommand("JP", "policy-1", "cert-1", "user-1"))))
+        when(apimMemberInfoPort.fetchMemberInfo(eq(new FetchMemberInfoCommand("JP", "policy-1", "cert-1", "user-1", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR))))
                 .thenReturn(Mono.just(new MemberInfoResult(payload)));
 
         StepVerifier.create(service.execute(command("en")))
@@ -60,7 +60,7 @@ class GetPersonalInformationServiceTest {
                                         "sch-type", "Any",
                                         "config-value", "READONLY")),
                                 "data", List.of(Map.of("email", "HGPQITD.XW.YQGPG@PTOJY.CLI"))))));
-        when(apimMemberInfoPort.fetchMemberInfo(eq(new FetchMemberInfoCommand("JP", "policy-1", "cert-1", "user-1"))))
+        when(apimMemberInfoPort.fetchMemberInfo(eq(new FetchMemberInfoCommand("JP", "policy-1", "cert-1", "user-1", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR))))
                 .thenReturn(Mono.just(new MemberInfoResult(payload)));
 
         StepVerifier.create(service.execute(command("en")))
@@ -108,7 +108,7 @@ class GetPersonalInformationServiceTest {
     }
 
     private static GetPersonalInformationCommand command(String language) {
-        return new GetPersonalInformationCommand(language, "JP", "policy-1", "cert-1", "user-1");
+        return new GetPersonalInformationCommand(language, "JP", "policy-1", "cert-1", "user-1", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
     }
 
     private static CurrentPortalAccessContextResolver resolver(PortalAccessContext context) {

@@ -53,7 +53,7 @@ class GetPersonalInformationUseCaseTest {
     }
 
     private static GetPersonalInformationCommand command(String language) {
-        return new GetPersonalInformationCommand(language, "JP", "policy-1", "cert-1", "user-1");
+        return new GetPersonalInformationCommand(language, "JP", "policy-1", "cert-1", "user-1", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
     }
 
     private static CurrentPortalAccessContextResolver resolver(PortalAccessContext context) {

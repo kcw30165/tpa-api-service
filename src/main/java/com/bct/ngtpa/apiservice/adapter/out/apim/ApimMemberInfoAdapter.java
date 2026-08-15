@@ -1,70 +1,45 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim;
 
-import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
+import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
+import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetMemberInfoApimRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetMemberInfoDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.MemberInfoConfigItem;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
 import com.bct.ngtpa.apiservice.application.dto.FetchMemberInfoCommand;
 import com.bct.ngtpa.apiservice.application.dto.MemberInfoResult;
 import com.bct.ngtpa.apiservice.application.port.out.ApimMemberInfoPort;
-import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
-import com.bct.ngtpa.apiservice.exception.ApimException;
-import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Component;
-import org.springframework.util.CollectionUtils;
-import org.springframework.util.StringUtils;
-import reactor.core.publisher.Mono;
-
 import java.util.LinkedHashMap;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+import org.springframework.util.CollectionUtils;
+import reactor.core.publisher.Mono;
 
-/**
- * Adapter for fetching personal/member information from APIM TRPGetMemberInfo
- * endpoint.
- */
+/** Executor-backed adapter for authenticated TRPGetMemberInfo retrieval. */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class ApimMemberInfoAdapter implements ApimMemberInfoPort {
-
     private static final String API_NAME = "/ws/NGTPA/v1/TRPGetMemberInfo";
 
-    private final ApimWebClientFacade apimWebClientFacade;
-    private final ApimCertificateService apimCertificateService;
-    private final ApimPayloadCryptoService apimPayloadCryptoService;
-    private final ApimProperties apimProperties;
+    private final ApimExchangeExecutor executor;
 
     @Override
     public Mono<MemberInfoResult> fetchMemberInfo(FetchMemberInfoCommand command) {
-        if (!apimProperties.getEncryption().isEnabled()) {
-            var request = apimPayloadCryptoService.encryptRequest(API_NAME, toApimRequest(command),
-                    GetMemberInfoApimRequest.class, null);
-            return apimWebClientFacade.post(API_NAME, request, (StringUtils.hasText(command.getAccountEnv()) ? com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.ACCOUNT_ENV : com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT), new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, command.getAccountEnv()), com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility.SAFE_BUSINESS_CALL)
-                    .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(API_NAME, body,
-                            GetMemberInfoDataItem.class, null))
-                    .map(this::toMemberInfoResult)
-                    .onErrorMap(ApimCryptoException.class, ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR,
-                            ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
-        }
-
-        var scope = StringUtils.hasText(command.getAccountEnv()) ? com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.ACCOUNT_ENV : com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT;
-        var ctx = new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, command.getAccountEnv());
-        return apimWebClientFacade.resolveProfile(scope, ctx)
-                .flatMap(profile -> apimCertificateService.getPublicKey(profile)
-                        .flatMap(publicKey -> {
-                            var request = apimPayloadCryptoService.encryptRequest(API_NAME, toApimRequest(command),
-                                    GetMemberInfoApimRequest.class, publicKey);
-                            return apimWebClientFacade.post(API_NAME, request, profile, com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility.SAFE_BUSINESS_CALL)
-                                    .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(API_NAME, body,
-                                            GetMemberInfoDataItem.class, publicKey))
-                                    .map(this::toMemberInfoResult);
-                        }))
-                .onErrorMap(ApimCryptoException.class, ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR,
-                        ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
+        var request = new ApimExchangeRequest<>(
+                API_NAME,
+                toApimRequest(command),
+                GetMemberInfoApimRequest.class,
+                GetMemberInfoDataItem.class,
+                ApimDatabaseScope.ACCOUNT_ENV,
+                new ApimCredentialResolutionContext(command.getActorUserRole(), command.getAccountEnv()),
+                ApimRetryEligibility.SAFE_BUSINESS_CALL);
+        return executor.postEnvelope(request).map(this::toMemberInfoResult);
     }
 
     private GetMemberInfoApimRequest toApimRequest(FetchMemberInfoCommand command) {
@@ -81,13 +56,10 @@ public class ApimMemberInfoAdapter implements ApimMemberInfoPort {
         if (CollectionUtils.isEmpty(dataItems)) {
             return new MemberInfoResult(Map.of());
         }
-
         GetMemberInfoDataItem first = dataItems.get(0);
         Map<String, Object> result = new LinkedHashMap<>();
-
-        // config -> map of item-id -> config-value
         Map<String, String> configMap = new LinkedHashMap<>();
-        if (first.getConfig() != null) {
+        if (first != null && first.getConfig() != null) {
             for (MemberInfoConfigItem cfg : first.getConfig()) {
                 if (cfg != null && cfg.getItemId() != null) {
                     configMap.put(cfg.getItemId(), cfg.getConfigValue());
@@ -95,15 +67,12 @@ public class ApimMemberInfoAdapter implements ApimMemberInfoPort {
             }
         }
         result.put("config", configMap);
-
-        // data -> first data object if present
-        if (!CollectionUtils.isEmpty(first.getData())) {
+        if (first != null && !CollectionUtils.isEmpty(first.getData())) {
             Map<String, Object> dataObj = first.getData().get(0);
             result.put("data", dataObj == null ? Map.of() : dataObj);
         } else {
             result.put("data", Map.of());
         }
-
         return new MemberInfoResult(result);
     }
 }
