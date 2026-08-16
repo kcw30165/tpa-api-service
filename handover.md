@@ -529,3 +529,6 @@ TRPMemberLogin uses NON_ACCOUNT routing with null accountEnv, explicit pre-authe
 
 ## Stage 015 Login account-list APIM exchange
 TRPGetAccountList uses NON_ACCOUNT routing with null accountEnv, actor role validated from protected LoginPreAuthContext, SAFE_BUSINESS_CALL, and ApimExchangeExecutor. Returned account environments remain output data. OTP, validation, Account-Ref assignment, and session order are unchanged. Stage 016 is not started.
+
+## Stage 016 Registration member-lookup APIM exchange
+TRPSearchUnregMember uses NON_ACCOUNT routing with null accountEnv, explicit ROLE_USER_MBR pre-authentication credential-routing metadata supplied by all three registration application callers, SAFE_BUSINESS_CALL, and ApimExchangeExecutor. Captcha ordering, contact comparison/masking, eligible-trust handling, protected context, OTP continuation, additional-trust registration, Stage 017, and Stage 018 remain unchanged.

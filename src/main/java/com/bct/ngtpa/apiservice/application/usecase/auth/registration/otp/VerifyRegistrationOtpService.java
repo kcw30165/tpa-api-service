@@ -127,7 +127,7 @@ public class VerifyRegistrationOtpService implements VerifyRegistrationOtpUseCas
             RegistrationProtectedAuthFlowContextResult protectedContext, RegistrationRequestHash hash) {
         RegistrationAuthFlowContext context = protectedContext.registrationContext();
         RegistrationLookupCommand lookupCommand = new RegistrationLookupCommand(context.identityType(),
-                context.identityValue(), context.dateOfBirth(), context.contactType(), context.contactValue());
+                context.identityValue(), context.dateOfBirth(), context.contactType(), context.contactValue(), com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
         return registrationLookupPort.searchUnregisteredMember(lookupCommand)
                 .flatMap(result -> {
                     String statusName = result.status() == null ? "" : result.status().name();

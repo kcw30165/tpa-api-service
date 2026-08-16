@@ -20,7 +20,7 @@ class TrpSearchUnregMemberApimMapperTest {
                 "1234567890",
                 "31/01/1980",
                 RegistrationContactType.EMAIL,
-                "member@example.com"));
+                "member@example.com", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR));
 
         assertThat(request.searchBy()).isEqualTo("GPFS");
         assertThat(request.searchValue()).isEqualTo("1234567890");
@@ -36,7 +36,7 @@ class TrpSearchUnregMemberApimMapperTest {
                 "A1234567",
                 "15/01/1980",
                 RegistrationContactType.MOBILE,
-                "91234567"));
+                "91234567", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR));
 
         assertThat(request.searchBy()).isEqualTo("ID");
         assertThat(request.searchValue()).isEqualTo("A1234567");
@@ -53,7 +53,7 @@ class TrpSearchUnregMemberApimMapperTest {
                     "SAFEVALUE",
                     "31/01/1980",
                     RegistrationContactType.EMAIL,
-                    "member@example.com"));
+                    "member@example.com", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR));
             assertThat(request.searchBy()).isEqualTo(type.name());
         }
     }

@@ -24,7 +24,8 @@ class ApimExecutionBoundaryCharacterizationTest {
         for (String file : List.of(
                 "ApimContributionSummaryAdapter.java",
                 "ApimReferenceDateRefreshAdapter.java",
-                "ApimUpdatePersonalInformationAdapter.java")) {
+                "ApimUpdatePersonalInformationAdapter.java",
+                "registration/ApimRegistrationLookupAdapter.java")) {
             String source = normalized(read(file));
             assertThat(source).as(file)
                     .contains("ApimExchangeRequest", "postEnvelope(")

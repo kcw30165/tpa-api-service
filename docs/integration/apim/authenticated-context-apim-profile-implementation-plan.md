@@ -1336,8 +1336,8 @@ Production investigation: COMPLETED
 Generic APIM execution direction: IMPLEMENTED
 Caller-supplied database scope: IMPLEMENTED AND ENFORCED FOR MIGRATED CALLERS
 Caller-supplied actor role: IMPLEMENTED AND ENFORCED FOR MIGRATED CALLERS
-Stages 001–008: COMPLETED AND ARCHITECT-APPROVED
-Stage 009: PREPARED, NOT YET APPROVED
+Stages 001–016: COMPLETED AND ARCHITECT-APPROVED
+Stage 007: PREPARED, NOT YET APPROVED
 First pre-auth proving flow: Forgot Password username lookup, COMPLETED
 Second pre-auth proving flow: Forgot Password completion, COMPLETED
 Authenticated context correction: COMPLETED
@@ -1359,18 +1359,3 @@ The Stage 009 implementation package must:
 - preserve Stages 007 and 008;
 - produce complete timestamped validation evidence;
 - not begin Stage 010 before architect approval.
-
-## Current implementation status
-
-- Stages 001 through 011: approved.
-- Stage 012: Contribution Summary authenticated transport migration implemented; final validation in progress.
-- Stage 013: not started.
-
-
-## Stage 013 - Internal Reference-Date Refresh Routing Correction
-
-Implementation in progress. Internal refresh uses an explicit compatibility role and typed APIM exchange; normal reads no longer auto-refresh through APIM. Evidence: target/evidence/apim-routing-context-stage-13-20260816-101615.
-
-Current status: Stage 014 implemented pending validation. TRPMemberLogin migrated; Stage 015 TRPGetAccountList not started.
-
-Current status: Stage 015 implemented pending validation. TRPGetAccountList migrated; Stage 016 not started.
