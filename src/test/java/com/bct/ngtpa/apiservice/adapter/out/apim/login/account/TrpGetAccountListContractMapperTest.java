@@ -12,7 +12,7 @@ class TrpGetAccountListContractMapperTest {
     @Test
     void mapsExactRequestContractWithoutChangingProtectedValues() {
         var request = mapper.toRequest(new LoginAccountAuthorizationCommand(
-                "member01", "MBR", "cust-id", "member01", "req-1"));
+                "member01", "MBR", "cust-id", "member01", "req-1", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR));
         assertThat(request.custId()).isEqualTo("member01");
         assertThat(request.custType()).isEqualTo("MBR");
         assertThat(request.searchKey()).isEqualTo("cust-id");

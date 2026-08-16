@@ -44,7 +44,7 @@ class Task0043LoginCleanArchitectureCorrectionTest {
         assertThat(source).doesNotContain(
                 "adapter.out.apim.crypto",
                 "ApimCryptoException");
-        assertThat(source).contains("ApimPayloadCryptoService");
+        assertThat(source).doesNotContain("ApimPayloadCryptoService");
     }
 
     @Test

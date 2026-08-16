@@ -20,6 +20,6 @@ public final class GetLoginAccountsUseCase {
     public Mono<LoginAccountAuthorizationResult> getAccounts(GetLoginAccountsCommand command) {
         Objects.requireNonNull(command);
         return port.getAccounts(new LoginAccountAuthorizationCommand(command.normalizedUsername(), command.custType(),
-                SEARCH_KEY, command.normalizedUsername(), command.correlationId()));
+                SEARCH_KEY, command.normalizedUsername(), command.correlationId(), command.actorUserRole()));
     }
 }

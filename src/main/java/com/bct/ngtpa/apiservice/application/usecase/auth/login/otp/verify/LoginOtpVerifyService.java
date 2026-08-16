@@ -194,7 +194,7 @@ public final class LoginOtpVerifyService implements VerifyLoginOtpUseCase {
                 var context = x.context();
                 return accountLookup.getAccounts(
                                 new GetLoginAccountsCommand(context.normalizedUsername(), context.custType(),
-                                                c.correlationId()))
+                                                c.correlationId(), ActorUserRole.valueOf(context.userRole())))
                                 .flatMap(auth -> {
                                         if (auth.status() == LoginAccountAuthorizationStatus.UNAVAILABLE)
                                                 return Mono.just(result(VerifyLoginOtpStatus.ACCOUNT_LIST_UNAVAILABLE,

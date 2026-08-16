@@ -526,3 +526,6 @@ Implementation in progress. Internal refresh uses an explicit compatibility role
 
 ## Stage 014 Login authentication APIM exchange
 TRPMemberLogin uses NON_ACCOUNT routing with null accountEnv, explicit pre-authentication ROLE_USER_MBR routing metadata supplied by StartLoginService, SAFE_BUSINESS_CALL, and ApimExchangeExecutor. TRPGetAccountList remains reserved for Stage 015.
+
+## Stage 015 Login account-list APIM exchange
+TRPGetAccountList uses NON_ACCOUNT routing with null accountEnv, actor role validated from protected LoginPreAuthContext, SAFE_BUSINESS_CALL, and ApimExchangeExecutor. Returned account environments remain output data. OTP, validation, Account-Ref assignment, and session order are unchanged. Stage 016 is not started.

@@ -13,7 +13,7 @@ class Task0043LoginAccountAuthorizationContractTest {
     @Test
     void requestContractMatchesTrpGetAccountListExactly() {
         var command = new LoginAccountAuthorizationCommand(
-                "member01", "MBR", "cust-id", "member01", "req-1");
+                "member01", "MBR", "cust-id", "member01", "req-1", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
         assertThat(command.custId()).isEqualTo("member01");
         assertThat(command.custType()).isEqualTo("MBR");
         assertThat(command.searchKey()).isEqualTo("cust-id");

@@ -24,7 +24,7 @@ class GetLoginAccountsUseCaseTest {
         var useCase = new GetLoginAccountsUseCase(port);
 
         StepVerifier.create(useCase.getAccounts(new GetLoginAccountsCommand(
-                        "member01", "MBR", "req-1")))
+                        "member01", "MBR", "req-1", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR)))
                 .assertNext(result -> {
                     assertThat(result.status()).isEqualTo(LoginAccountAuthorizationStatus.AVAILABLE);
                     assertThat(result.accounts()).hasSize(1);
@@ -32,12 +32,12 @@ class GetLoginAccountsUseCaseTest {
                 .verifyComplete();
 
         assertThat(captured.get()).isEqualTo(new LoginAccountAuthorizationCommand(
-                "member01", "MBR", "cust-id", "member01", "req-1"));
+                "member01", "MBR", "cust-id", "member01", "req-1", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR));
     }
 
     @Test
     void commandRejectsMalformedRequiredTransportNeutralValuesWhileRawRecordsRemainPermissive() {
-        assertThatThrownBy(() -> new GetLoginAccountsCommand(" ", "MBR", "req"))
+        assertThatThrownBy(() -> new GetLoginAccountsCommand(" ", "MBR", "req", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR))
                 .isInstanceOf(IllegalArgumentException.class);
 
         var malformedRawRecord = new LoginAccountRecord(
