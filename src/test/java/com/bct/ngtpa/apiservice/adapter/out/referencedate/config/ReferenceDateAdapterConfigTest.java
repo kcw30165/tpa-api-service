@@ -39,13 +39,7 @@ class ReferenceDateAdapterConfigTest {
         var apimPort = mock(ApimReferenceDateRefreshPort.class);
         var cacheUpdatePort = mock(ReferenceDateCacheUpdatePort.class);
 
-        ReferenceDatePort bean = config.referenceDatePort(
-                props,
-                Optional.empty(),
-                apimPort,
-                cacheUpdatePort,
-                new MockEnvironment(),
-                "ngtpa");
+        ReferenceDatePort bean = config.referenceDatePort(props, Optional.empty(), new MockEnvironment(), "ngtpa");
 
         assertThat(bean).isInstanceOf(ReferenceDateAdapter.class);
     }
@@ -58,13 +52,7 @@ class ReferenceDateAdapterConfigTest {
         var cacheUpdatePort = mock(ReferenceDateCacheUpdatePort.class);
         var cachePort = mock(CachePort.class);
 
-        ReferenceDatePort bean = config.referenceDatePort(
-                props,
-                Optional.of(cachePort),
-                apimPort,
-                cacheUpdatePort,
-                new MockEnvironment(),
-                "ngtpa");
+        ReferenceDatePort bean = config.referenceDatePort(props, Optional.of(cachePort), new MockEnvironment(), "ngtpa");
 
         assertThat(bean).isInstanceOf(ReferenceDateAdapter.class);
     }
@@ -76,13 +64,7 @@ class ReferenceDateAdapterConfigTest {
         var apimPort = mock(ApimReferenceDateRefreshPort.class);
         var cacheUpdatePort = mock(ReferenceDateCacheUpdatePort.class);
 
-        ReferenceDatePort bean = config.referenceDatePort(
-                props,
-                Optional.empty(),
-                apimPort,
-                cacheUpdatePort,
-                new MockEnvironment(),
-                "custom-pfx");
+        ReferenceDatePort bean = config.referenceDatePort(props, Optional.empty(), new MockEnvironment(), "custom-pfx");
 
         assertThat(bean).isInstanceOf(ReferenceDateAdapter.class);
     }

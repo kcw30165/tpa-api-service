@@ -7,6 +7,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.GetAllReferenceDatesResp
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ReferenceDateEntryResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.RefreshReferenceDateResponse;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.RefreshReferenceDateCommand;
 import com.bct.ngtpa.apiservice.application.port.in.CleanUpAllReferenceDatesUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.GetAllReferenceDatesUseCase;
@@ -35,7 +36,10 @@ public class ReferenceDateController {
                         "/refresh" }, consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
         public Mono<RefreshReferenceDateResponse> refreshReferenceDate(
                         @Valid @RequestBody RefreshReferenceDateRequest request) {
-                return refreshReferenceDateUseCase.execute(new RefreshReferenceDateCommand(request.accountEnv()))
+                return refreshReferenceDateUseCase.execute(new RefreshReferenceDateCommand(
+                                request.accountEnv(),
+                                // Internal transport compatibility placeholder for credential resolution; not member identity.
+                                ActorUserRole.ROLE_USER_MBR))
                                 .map(result -> new RefreshReferenceDateResponse(
                                                 result.accountEnv(),
                                                 result.refDate(),

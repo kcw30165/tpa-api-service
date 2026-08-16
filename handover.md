@@ -518,3 +518,8 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - The shared focused command contains five payload fields plus `accountEnv` and `actorUserRole` routing metadata.
 - Routing is `ACCOUNT_ENV`, command actor role/account environment, and `SAFE_BUSINESS_CALL` through `ApimExchangeExecutor.postEnvelope`.
 - Stage 010 and 011 production, APIM foundation, and workbook formatting remain preserved. Stage 013 has not started.
+
+
+## Stage 013 - Internal Reference-Date Refresh Routing Correction
+
+Implementation in progress. Internal refresh uses an explicit compatibility role and typed APIM exchange; normal reads no longer auto-refresh through APIM. Evidence: target/evidence/apim-routing-context-stage-13-20260816-101615.

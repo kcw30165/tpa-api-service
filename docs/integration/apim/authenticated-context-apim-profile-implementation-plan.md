@@ -1365,3 +1365,8 @@ The Stage 009 implementation package must:
 - Stages 001 through 011: approved.
 - Stage 012: Contribution Summary authenticated transport migration implemented; final validation in progress.
 - Stage 013: not started.
+
+
+## Stage 013 - Internal Reference-Date Refresh Routing Correction
+
+Implementation in progress. Internal refresh uses an explicit compatibility role and typed APIM exchange; normal reads no longer auto-refresh through APIM. Evidence: target/evidence/apim-routing-context-stage-13-20260816-101615.

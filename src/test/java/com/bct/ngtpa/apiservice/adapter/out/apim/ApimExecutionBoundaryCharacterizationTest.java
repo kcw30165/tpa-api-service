@@ -20,21 +20,28 @@ class ApimExecutionBoundaryCharacterizationTest {
     }
 
     @Test
-    void encryptionDisabledFeaturePathsStillCallProfileAwareFacade() throws Exception {
-        for (String file : List.of("ApimContributionSummaryAdapter.java", "ApimUpdatePersonalInformationAdapter.java")) {
+    void migratedFeaturePathsDelegateProfileCryptoAndRetryOwnershipToExecutor() throws Exception {
+        for (String file : List.of(
+                "ApimContributionSummaryAdapter.java",
+                "ApimReferenceDateRefreshAdapter.java",
+                "ApimUpdatePersonalInformationAdapter.java")) {
             String source = normalized(read(file));
-            assertThat(source).as(file).contains("getEncryption().isEnabled()", "apimWebClientFacade.post(");
+            assertThat(source).as(file)
+                    .contains("ApimExchangeRequest", "postEnvelope(")
+                    .doesNotContain("getEncryption().isEnabled()", "apimWebClientFacade.post(",
+                            "ApimCertificateService", "resolveProfile(", "getPublicKey(",
+                            "encryptRequest(", "decryptResponseEnvelope(");
         }
     }
 
     @Test
-    void featureOwnedCertificateAndEncryptionDuplicationIsMeasurable() throws Exception {
-        for (String file : List.of("ApimContributionSummaryAdapter.java", "ApimMemberInfoAdapter.java",
-                "ApimReferenceDateRefreshAdapter.java", "ApimUpdatePersonalInformationAdapter.java")) {
-            String source = normalized(read(file));
-            assertThat(source).as(file).contains("ApimCertificateService", "resolveProfile(",
-                    "getPublicKey(", "encryptRequest(", "decryptResponseEnvelope(");
-        }
+    void migratedMemberInfoPathAlsoDelegatesProfileCryptoAndRetryOwnershipToExecutor() throws Exception {
+        String source = normalized(read("ApimMemberInfoAdapter.java"));
+        assertThat(source)
+                .contains("ApimExchangeRequest", "postEnvelope(")
+                .doesNotContain("getEncryption().isEnabled()", "apimWebClientFacade.post(",
+                        "ApimCertificateService", "resolveProfile(", "getPublicKey(",
+                        "encryptRequest(", "decryptResponseEnvelope(");
     }
 
     @Test
