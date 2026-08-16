@@ -511,3 +511,10 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - Routing is explicit: `ACCOUNT_ENV`, command actor role/account environment, and `IDEMPOTENT_MUTATION`.
 - Preserved YAML validation, frontend targets, result-array and partial-success behavior, business/technical mapping, and mutation uncertainty checks.
 - Stage 010 retrieval remains unchanged. Stage 012 has not started.
+
+### Stage 012: Contribution Summary authenticated transport migration
+- Accepted the original classification blocker as a governance checkpoint and revised the boundary to both independent callers sharing `TRPGetContSumy`.
+- Retrieval and export each execute one independent APIM retrieval; export workbook formatting remains after retrieval and outside transport.
+- The shared focused command contains five payload fields plus `accountEnv` and `actorUserRole` routing metadata.
+- Routing is `ACCOUNT_ENV`, command actor role/account environment, and `SAFE_BUSINESS_CALL` through `ApimExchangeExecutor.postEnvelope`.
+- Stage 010 and 011 production, APIM foundation, and workbook formatting remain preserved. Stage 013 has not started.

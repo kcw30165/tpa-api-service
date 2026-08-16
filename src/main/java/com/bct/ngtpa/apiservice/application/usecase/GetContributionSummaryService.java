@@ -21,13 +21,13 @@ public class GetContributionSummaryService implements GetContributionSummaryUseC
         var to=ContributionSummarySupport.parseRequiredDate(command.toDate(),"toDate");
         return referenceDatePort.resolveReferenceDate(command.accountEnv()).flatMap(ref -> {
             ContributionSummarySupport.validateDateRangeWithinReferenceWindow(from,to,ref);
-            var fetch=new FetchContributionSummaryCommand(command.accountEnv(),"",ContributionSummarySupport.formatDate(from),
-                    ContributionSummarySupport.formatDate(to),command.policyNo(),command.certNo(),command.actorUserId(),
-                    command.trustCode(),command.schemeType());
+            var fetch=new FetchContributionSummaryCommand(command.policyNo(), command.certNo(), command.actorUserId(),
+                    ContributionSummarySupport.formatDate(from), ContributionSummarySupport.formatDate(to),
+                    command.accountEnv(), command.actorUserRole());
             return apimContributionSummaryPort.fetchContributionSummary(fetch).map(ContributionSummaryReportBuilder::build)
                     .map(report -> new ContributionSummaryReportResult(report,
-                            currencyDisplayPort.resolveCurrencyDisplay(report.currency(),fetch.accountEnv(),fetch.trustCode(),fetch.schemeType()),
-                            contributionActionPermissionPort.resolveContributionActions(),fetch.trustCode(),fetch.schemeType(),fetch.accountEnv()));
+                            currencyDisplayPort.resolveCurrencyDisplay(report.currency(),fetch.accountEnv(),command.trustCode(),command.schemeType()),
+                            contributionActionPermissionPort.resolveContributionActions(),command.trustCode(),command.schemeType(),fetch.accountEnv()));
         });
     }
 }

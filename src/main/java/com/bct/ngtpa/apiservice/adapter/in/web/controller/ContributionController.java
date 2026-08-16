@@ -58,7 +58,8 @@ public class ContributionController {
                         return currentPortalAccessContextResolver.current().flatMap(ctx -> getContributionSummaryUseCase
                                         .execute(new GetContributionSummaryCommand(fromDate, toDate, resolvedLang, resolvedPage, resolvedPageSize,
                                                         ctx.account().accountEnv(), ctx.account().policyNo(), ctx.account().certNo(),
-                                                        ctx.actor().actorUserId(), ctx.account().trustCode(), ctx.account().schemeType())))
+                                                        ctx.actor().actorUserId(), ctx.account().trustCode(), ctx.account().schemeType(),
+                                                        ctx.actor().actorUserRole())))
                                         .map(contributionSortingSupport::sort)
                                         .map(result -> contributionSummaryWebMapper.toListResponse(
                                                         result,
@@ -78,7 +79,7 @@ public class ContributionController {
                         return currentPortalAccessContextResolver.current().flatMap(ctx -> exportContributionSummaryUseCase.execute(
                                         new ExportContributionSummaryCommand(ctx.account().accountEnv(), ctx.account().policyNo(),
                                                 ctx.account().certNo(), ctx.actor().actorUserId(),
-                                                ctx.account().trustCode(), ctx.account().schemeType())))
+                                                ctx.account().trustCode(), ctx.account().schemeType(), ctx.actor().actorUserRole())))
                                         .map(contributionSortingSupport::sort)
                                         .map(result -> contributionSummaryWorkbookExporter.write(result, resolvedLang))
                                         .map(body -> ResponseEntity.ok()

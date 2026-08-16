@@ -99,8 +99,6 @@ class GetContributionSummaryServiceTest {
         assertEquals("policyNo_for_contributions", captured.get().policyNo());
         assertEquals("certNo_for_contributions", captured.get().certNo());
         assertEquals("userId_for_contributions", captured.get().userId());
-        assertEquals("trustCode_for_contributions", captured.get().trustCode());
-        assertEquals("schemeType_for_contributions", captured.get().schemeType());
         assertEquals(new CurrencyDisplay("HKD", "港元"), result.currencyDisplay());
         assertEquals("HKD", recordingPort.capturedCode);
         assertEquals("JP", recordingPort.capturedAccountEnv);
@@ -258,7 +256,7 @@ class GetContributionSummaryServiceTest {
     private static GetContributionSummaryCommand command(String fromDate, String toDate, String lang, int page, int pageSize) {
         return new GetContributionSummaryCommand(fromDate, toDate, lang, page, pageSize,
                 "JP", "policyNo_for_contributions", "certNo_for_contributions",
-                "userId_for_contributions", "trustCode_for_contributions", "schemeType_for_contributions");
+                "userId_for_contributions", "trustCode_for_contributions", "schemeType_for_contributions", ActorUserRole.ROLE_USER_MBR);
     }
 
     private static ContributionSummaryDataset sampleDataset() {

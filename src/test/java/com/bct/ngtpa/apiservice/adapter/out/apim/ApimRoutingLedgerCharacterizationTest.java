@@ -13,7 +13,7 @@ class ApimRoutingLedgerCharacterizationTest {
             String accountEnvSource, String retry, String encryptionOwner, String target) {}
 
     private static final List<Entry> LEDGER = List.of(
-        e("TRPGetContSumy", "ApimContributionSummaryAdapter.java", "NON_ACCOUNT", "ROLE_USER_MBR", "null", "SAFE_BUSINESS_CALL", "FEATURE", "UNCONFIRMED"),
+        e("TRPGetContSumy", "ApimContributionSummaryAdapter.java", "ACCOUNT_ENV", "command.actorUserRole()", "command.accountEnv()", "SAFE_BUSINESS_CALL", "EXECUTOR", "ACCOUNT_ENV"),
         e("TRPGetMemberInfo", "ApimMemberInfoAdapter.java", "ACCOUNT_ENV", "command.getActorUserRole()", "command.getAccountEnv()", "SAFE_BUSINESS_CALL", "EXECUTOR", "ACCOUNT_ENV"),
         e("TRPGetMsgBoard", "ApimNoticeMessageAdapter.java", "ACCOUNT_ENV", "command.mbrType()", "command.accountEnv()", "SAFE_BUSINESS_CALL", "EXECUTOR", "ACCOUNT_ENV"),
         e("TRPUpdMsgRead", "ApimNotificationReadStatusAdapter.java", "ACCOUNT_ENV", "command.mbrType()", "command.accountEnv()", "IDEMPOTENT_MUTATION", "EXECUTOR", "ACCOUNT_ENV"),

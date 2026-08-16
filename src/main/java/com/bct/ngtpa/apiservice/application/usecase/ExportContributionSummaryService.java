@@ -14,13 +14,13 @@ public class ExportContributionSummaryService implements ExportContributionSumma
     private final ReferenceDatePort referenceDatePort;
     @Override public Mono<ContributionSummaryReportResult> execute(ExportContributionSummaryCommand command) {
         return referenceDatePort.resolveReferenceDate(command.accountEnv()).flatMap(ref -> {
-            var fetch=new FetchContributionSummaryCommand(command.accountEnv(),"",ContributionSummarySupport.formatDate(ref.minusMonths(36)),
-                    ContributionSummarySupport.formatDate(ref),command.policyNo(),command.certNo(),command.actorUserId(),
-                    command.trustCode(),command.schemeType());
+            var fetch=new FetchContributionSummaryCommand(command.policyNo(), command.certNo(), command.actorUserId(),
+                    ContributionSummarySupport.formatDate(ref.minusMonths(36)), ContributionSummarySupport.formatDate(ref),
+                    command.accountEnv(), command.actorUserRole());
             return apimContributionSummaryPort.fetchContributionSummary(fetch).map(ContributionSummaryReportBuilder::build)
                     .map(report -> new ContributionSummaryReportResult(report,
-                            currencyDisplayPort.resolveCurrencyDisplay(report.currency(),fetch.accountEnv(),fetch.trustCode(),fetch.schemeType()),
-                            null,fetch.trustCode(),fetch.schemeType(),fetch.accountEnv()));
+                            currencyDisplayPort.resolveCurrencyDisplay(report.currency(),fetch.accountEnv(),command.trustCode(),command.schemeType()),
+                            null,command.trustCode(),command.schemeType(),fetch.accountEnv()));
         });
     }
 }

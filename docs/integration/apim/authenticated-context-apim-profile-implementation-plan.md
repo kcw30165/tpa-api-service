@@ -1362,6 +1362,6 @@ The Stage 009 implementation package must:
 
 ## Current implementation status
 
-- Stages 001 through 010: approved.
-- Stage 011: Personal Information update migrated to explicit authenticated APIM exchange; final validation in progress.
-- Stage 012: not started.
+- Stages 001 through 011: approved.
+- Stage 012: Contribution Summary authenticated transport migration implemented; final validation in progress.
+- Stage 013: not started.
