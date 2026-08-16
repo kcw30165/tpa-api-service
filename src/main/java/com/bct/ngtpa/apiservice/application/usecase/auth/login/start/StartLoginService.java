@@ -62,7 +62,7 @@ public final class StartLoginService implements StartLoginUseCase {
                         command.username(),
                         command.password(),
                         command.acceptLanguage(),
-                        command.correlationId()));
+                        command.correlationId(), com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR));
         LoginIdempotencyKey key = new LoginIdempotencyKey(command.idempotencyKey());
         LoginCredentialRequestHash hash = hasher.hash(normalized);
 

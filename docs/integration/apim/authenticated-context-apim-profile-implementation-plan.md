@@ -1370,3 +1370,5 @@ The Stage 009 implementation package must:
 ## Stage 013 - Internal Reference-Date Refresh Routing Correction
 
 Implementation in progress. Internal refresh uses an explicit compatibility role and typed APIM exchange; normal reads no longer auto-refresh through APIM. Evidence: target/evidence/apim-routing-context-stage-13-20260816-101615.
+
+Current status: Stage 014 implemented pending validation. TRPMemberLogin migrated; Stage 015 TRPGetAccountList not started.

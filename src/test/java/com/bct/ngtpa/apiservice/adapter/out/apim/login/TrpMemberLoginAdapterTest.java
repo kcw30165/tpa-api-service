@@ -17,7 +17,7 @@ class TrpMemberLoginAdapterTest {
     @Test
     void authenticatedOutcomeRequiresExactlyOneSuccessfulDataItem() {
         var item = new TrpMemberLoginApimDataItem(true, null, "MBR", 0, List.of());
-        TrpMemberLoginTransport transport = request -> Mono.just(envelope("", List.of(item)));
+        TrpMemberLoginTransport transport = command -> Mono.just(envelope("", List.of(item)));
         var adapter = new TrpMemberLoginAdapter(transport, new TrpMemberLoginContractMapper());
 
         StepVerifier.create(adapter.authenticate(command()))
@@ -43,7 +43,7 @@ class TrpMemberLoginAdapterTest {
         assertOutcome("err.tpa.unknown", CredentialAuthenticationStatus.UNAVAILABLE);
 
         var item = new TrpMemberLoginApimDataItem(true, null, "MBR", 0, List.of());
-        TrpMemberLoginTransport contradictory = request -> Mono.just(
+        TrpMemberLoginTransport contradictory = command -> Mono.just(
                 envelope("err.tpa.wrong.password", List.of(item)));
         StepVerifier.create(new TrpMemberLoginAdapter(
                 contradictory, new TrpMemberLoginContractMapper()).authenticate(command()))
@@ -55,7 +55,7 @@ class TrpMemberLoginAdapterTest {
     @Test
     void multipleDataItemsAreUnavailable() {
         var item = new TrpMemberLoginApimDataItem(true, null, "MBR", 0, List.of());
-        TrpMemberLoginTransport transport = request -> Mono.just(envelope("", List.of(item, item)));
+        TrpMemberLoginTransport transport = command -> Mono.just(envelope("", List.of(item, item)));
         StepVerifier.create(new TrpMemberLoginAdapter(
                 transport, new TrpMemberLoginContractMapper()).authenticate(command()))
                 .assertNext(result -> assertThat(result.status())
@@ -64,7 +64,7 @@ class TrpMemberLoginAdapterTest {
     }
 
     private void assertOutcome(String errMessage, CredentialAuthenticationStatus expected) {
-        TrpMemberLoginTransport transport = request -> Mono.just(envelope(errMessage, List.of()));
+        TrpMemberLoginTransport transport = command -> Mono.just(envelope(errMessage, List.of()));
         StepVerifier.create(new TrpMemberLoginAdapter(
                 transport, new TrpMemberLoginContractMapper()).authenticate(command()))
                 .assertNext(result -> {
@@ -75,7 +75,7 @@ class TrpMemberLoginAdapterTest {
     }
 
     private CredentialAuthenticationCommand command() {
-        return new CredentialAuthenticationCommand("member", "Exact", "en", "req-1");
+        return new CredentialAuthenticationCommand("member", "Exact", "en", "req-1", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
     }
 
     private ApimResponseEnvelope<TrpMemberLoginApimDataItem> envelope(

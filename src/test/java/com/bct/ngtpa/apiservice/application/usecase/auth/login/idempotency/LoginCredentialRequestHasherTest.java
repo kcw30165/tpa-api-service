@@ -10,7 +10,7 @@ class LoginCredentialRequestHasherTest {
 
     @Test
     void hashIsStableButDoesNotExposeUsernameOrPassword() {
-        var command = new CredentialAuthenticationCommand("member01", "Exact Password", "en", "req-1");
+        var command = new CredentialAuthenticationCommand("member01", "Exact Password", "en", "req-1", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
         var first = hasher.hash(command);
         var second = hasher.hash(command);
 
@@ -21,10 +21,10 @@ class LoginCredentialRequestHasherTest {
 
     @Test
     void exactPasswordAndNormalizedUsernameBothAffectHash() {
-        var base = hasher.hash(new CredentialAuthenticationCommand("member01", "Exact", "en", "req"));
-        assertThat(hasher.hash(new CredentialAuthenticationCommand("member02", "Exact", "en", "req")))
+        var base = hasher.hash(new CredentialAuthenticationCommand("member01", "Exact", "en", "req", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR));
+        assertThat(hasher.hash(new CredentialAuthenticationCommand("member02", "Exact", "en", "req", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR)))
                 .isNotEqualTo(base);
-        assertThat(hasher.hash(new CredentialAuthenticationCommand("member01", "exact", "en", "req")))
+        assertThat(hasher.hash(new CredentialAuthenticationCommand("member01", "exact", "en", "req", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR)))
                 .isNotEqualTo(base);
     }
 }

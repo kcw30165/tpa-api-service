@@ -523,3 +523,6 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 ## Stage 013 - Internal Reference-Date Refresh Routing Correction
 
 Implementation in progress. Internal refresh uses an explicit compatibility role and typed APIM exchange; normal reads no longer auto-refresh through APIM. Evidence: target/evidence/apim-routing-context-stage-13-20260816-101615.
+
+## Stage 014 Login authentication APIM exchange
+TRPMemberLogin uses NON_ACCOUNT routing with null accountEnv, explicit pre-authentication ROLE_USER_MBR routing metadata supplied by StartLoginService, SAFE_BUSINESS_CALL, and ApimExchangeExecutor. TRPGetAccountList remains reserved for Stage 015.

@@ -20,11 +20,11 @@ class TrpMemberLoginUnsuccessfulItemTest {
         body.setData(List.of(new TrpMemberLoginApimDataItem(false, null, null, 1, List.of())));
         var envelope = new ApimResponseEnvelope<TrpMemberLoginApimDataItem>();
         envelope.setResponse(body);
-        TrpMemberLoginTransport transport = request -> Mono.just(envelope);
+        TrpMemberLoginTransport transport = command -> Mono.just(envelope);
         var adapter = new TrpMemberLoginAdapter(transport, new TrpMemberLoginContractMapper());
 
         StepVerifier.create(adapter.authenticate(
-                        new CredentialAuthenticationCommand("member", "Wrong", "en", "req")))
+                        new CredentialAuthenticationCommand("member", "Wrong", "en", "req", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR)))
                 .assertNext(result -> {
                     assertThat(result.status()).isEqualTo(CredentialAuthenticationStatus.INCORRECT_PASSWORD);
                     assertThat(result.failCount()).isEqualTo(1);

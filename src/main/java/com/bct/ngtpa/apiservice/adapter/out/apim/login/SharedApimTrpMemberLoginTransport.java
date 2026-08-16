@@ -1,92 +1,42 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.login;
 
-import com.bct.ngtpa.apiservice.adapter.out.apim.ApimCertificateService;
-import com.bct.ngtpa.apiservice.adapter.out.apim.ApimPayloadCryptoService;
-import com.bct.ngtpa.apiservice.adapter.out.apim.ApimWebClientFacade;
-import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
-import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.login.config.TrpMemberLoginProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.login.dto.TrpMemberLoginApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.login.dto.TrpMemberLoginApimRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
-import java.security.PublicKey;
-import java.util.Map;
+import com.bct.ngtpa.apiservice.application.dto.auth.login.CredentialAuthenticationCommand;
 import java.util.Objects;
 import reactor.core.publisher.Mono;
 
 public final class SharedApimTrpMemberLoginTransport implements TrpMemberLoginTransport {
-        private final ApimWebClientFacade facade;
-        private final ApimCertificateService certificates;
-        private final ApimPayloadCryptoService crypto;
-        private final ApimProperties apimProperties;
-        private final TrpMemberLoginProperties loginProperties;
+    private final ApimExchangeExecutor executor;
+    private final TrpMemberLoginProperties loginProperties;
 
-        public SharedApimTrpMemberLoginTransport(
-                        ApimWebClientFacade facade,
-                        ApimCertificateService certificates,
-                        ApimPayloadCryptoService crypto,
-                        ApimProperties apimProperties,
-                        TrpMemberLoginProperties loginProperties) {
-                this.facade = Objects.requireNonNull(facade, "facade must not be null");
-                this.certificates = Objects.requireNonNull(certificates, "certificates must not be null");
-                this.crypto = Objects.requireNonNull(crypto, "crypto must not be null");
-                this.apimProperties = Objects.requireNonNull(apimProperties, "apimProperties must not be null");
-                this.loginProperties = Objects.requireNonNull(loginProperties, "loginProperties must not be null");
-        }
+    public SharedApimTrpMemberLoginTransport(ApimExchangeExecutor executor, TrpMemberLoginProperties loginProperties) {
+        this.executor = Objects.requireNonNull(executor, "executor must not be null");
+        this.loginProperties = Objects.requireNonNull(loginProperties, "loginProperties must not be null");
+    }
 
-        @Override
-        public Mono<ApimResponseEnvelope<TrpMemberLoginApimDataItem>> post(
-                        TrpMemberLoginApimRequest request) {
-                if (!apimProperties.getEncryption().isEnabled()) {
-                        return postEncrypted(request, null);
-                }
-                var ctx = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER_MBR, null);
-                String path = requireText(loginProperties.getPath(), "apim.login.member-login.path");
-                return facade.resolveProfile(ApimDatabaseScope.NON_ACCOUNT, ctx)
-                        .flatMap(profile -> certificates.getPublicKey(profile)
-                                .flatMap(publicKey -> {
-                                        var encryptedRequest = crypto.encryptRequest(
-                                                        path,
-                                                        request,
-                                                        TrpMemberLoginApimRequest.class,
-                                                        publicKey);
-                                        return facade.post(path, encryptedRequest, profile, ApimRetryEligibility.SAFE_BUSINESS_CALL)
-                                                        .map(body -> crypto.decryptResponseEnvelope(
-                                                                        path,
-                                                                        body,
-                                                                        TrpMemberLoginApimDataItem.class,
-                                                                        publicKey));
-                                }));
-        }
+    @Override
+    public Mono<ApimResponseEnvelope<TrpMemberLoginApimDataItem>> post(CredentialAuthenticationCommand command) {
+        Objects.requireNonNull(command, "command must not be null");
+        String path = requireText(loginProperties.getPath(), "apim.login.member-login.path");
+        var request = new TrpMemberLoginApimRequest(command.username(), command.password());
+        var exchange = new ApimExchangeRequest<>(path, request,
+                TrpMemberLoginApimRequest.class, TrpMemberLoginApimDataItem.class,
+                ApimDatabaseScope.NON_ACCOUNT,
+                new ApimCredentialResolutionContext(command.actorUserRole(), null),
+                ApimRetryEligibility.SAFE_BUSINESS_CALL);
+        return executor.postEnvelope(exchange);
+    }
 
-        private Mono<ApimResponseEnvelope<TrpMemberLoginApimDataItem>> postEncrypted(
-                        TrpMemberLoginApimRequest request,
-                        PublicKey publicKey) {
-                String path = requireText(loginProperties.getPath(), "apim.login.member-login.path");
-                String operation = requireText(
-                                loginProperties.getOperationName(),
-                                "apim.login.member-login.operation-name");
-                var encryptedRequest = crypto.encryptRequest(
-                                path,
-                                request,
-                                TrpMemberLoginApimRequest.class,
-                                publicKey);
-                var context = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER_MBR, null);
-                return facade.post(path, encryptedRequest, ApimDatabaseScope.NON_ACCOUNT, context, ApimRetryEligibility.SAFE_BUSINESS_CALL)
-                                .map(body -> crypto.decryptResponseEnvelope(
-                                                path,
-                                                body,
-                                                TrpMemberLoginApimDataItem.class,
-                                                publicKey));
-        }
-
-        private String requireText(String value, String property) {
-                if (value == null || value.isBlank()) {
-                        throw new IllegalStateException(property + " must not be blank");
-                }
-                return value.trim();
-        }
+    private String requireText(String value, String property) {
+        if (value == null || value.isBlank()) throw new IllegalStateException(property + " must not be blank");
+        return value.trim();
+    }
 }

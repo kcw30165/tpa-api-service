@@ -31,7 +31,7 @@ public final class TrpMemberLoginAdapter implements CredentialAuthenticationPort
     @Override
     public Mono<CredentialAuthenticationResult> authenticate(CredentialAuthenticationCommand command) {
         Objects.requireNonNull(command, "command must not be null");
-        return transport.post(mapper.toRequest(command))
+        return transport.post(command)
                 .map(envelope -> mapEnvelope(command.username(), envelope))
                 .onErrorResume(IllegalStateException.class,
                         ignored -> Mono.just(mapper.failure(CredentialAuthenticationStatus.UNAVAILABLE)));
