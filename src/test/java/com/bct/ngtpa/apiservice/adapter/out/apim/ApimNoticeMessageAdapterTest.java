@@ -49,7 +49,7 @@ class ApimNoticeMessageAdapterTest {
         assertThat(exchange.credentialContext().accountEnv()).isEqualTo("JP");
         assertThat(exchange.retryEligibility()).isEqualTo(ApimRetryEligibility.SAFE_BUSINESS_CALL);
         assertThat(body.getAccountEnv()).isEqualTo("JP");
-        assertThat(body.getMbrType()).isEqualTo("ROLE_USER_MBR");
+        assertThat(body.getLoginUserRole()).isEqualTo("role_user_mbr");
         assertThat(result.notifications()).hasSize(1);
         assertThat(result.notifications().getFirst().msgCode()).isEqualTo("SHORT-001");
         assertThat(result.notifications().getFirst().msgCodeLong()).isEqualTo("LONG-001");
@@ -87,7 +87,7 @@ class ApimNoticeMessageAdapterTest {
                 .fetchNotifications(command("DEV", ActorUserRole.ROLE_USER_MBR)).block();
         var node = JSON.readTree(JSON.writeValueAsString(captured.get().request()));
         assertThat(node.get("env").asText()).isEqualTo("DEV");
-        assertThat(node.get("mbr-type").asText()).isEqualTo("ROLE_USER_MBR");
+        assertThat(node.get("login-user-role").asText()).isEqualTo("role_user_mbr");
         assertThat(node.has("page")).isFalse();
         assertThat(node.has("size")).isFalse();
     }

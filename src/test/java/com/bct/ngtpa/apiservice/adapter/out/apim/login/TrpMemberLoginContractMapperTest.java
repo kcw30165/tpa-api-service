@@ -26,12 +26,7 @@ class TrpMemberLoginContractMapperTest {
 
     @Test
     void successfulItemMapsConfirmedContextAndRawProtectedDestinations() {
-        var item = new TrpMemberLoginApimDataItem(
-                true,
-                "role_user",
-                "MBR",
-                0,
-                List.of(
+        var item = new TrpMemberLoginApimDataItem(true, "role_user_mbr", 0, List.of(
                         new TrpMemberLoginApimOtpItem("email", "member@example.com"),
                         new TrpMemberLoginApimOtpItem("mobile", "91234567")));
 
@@ -39,8 +34,7 @@ class TrpMemberLoginContractMapperTest {
 
         assertThat(result.status()).isEqualTo(CredentialAuthenticationStatus.AUTHENTICATED);
         assertThat(result.normalizedUsername()).isEqualTo("normalized.member");
-        assertThat(result.custType()).isEqualTo("MBR");
-        assertThat(result.userRole()).isEqualTo("role_user");
+        assertThat(result.userRole().toLowerCase()).isEqualTo("role_user_mbr");
         assertThat(result.failCount()).isZero();
         assertThat(result.destinations()).extracting(destination -> destination.channel())
                 .containsExactly("email", "mobile");
@@ -52,23 +46,17 @@ class TrpMemberLoginContractMapperTest {
 
     @Test
     void rejectsUnsupportedDuplicateOrBlankDestinations() {
-        assertThatThrownBy(() -> mapper.toAuthenticated("member", new TrpMemberLoginApimDataItem(
-                true, null, "MBR", 0,
-                List.of(new TrpMemberLoginApimOtpItem("sms", "91234567")))))
+        assertThatThrownBy(() -> mapper.toAuthenticated("member", new TrpMemberLoginApimDataItem(true, null, 0, List.of(new TrpMemberLoginApimOtpItem("sms", "91234567")))))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("channel");
 
-        assertThatThrownBy(() -> mapper.toAuthenticated("member", new TrpMemberLoginApimDataItem(
-                true, null, "MBR", 0,
-                List.of(
+        assertThatThrownBy(() -> mapper.toAuthenticated("member", new TrpMemberLoginApimDataItem(true, null, 0, List.of(
                         new TrpMemberLoginApimOtpItem("email", "member@example.com"),
                         new TrpMemberLoginApimOtpItem("email", "member@example.com")))))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("duplicate");
 
-        assertThatThrownBy(() -> mapper.toAuthenticated("member", new TrpMemberLoginApimDataItem(
-                true, null, "MBR", 0,
-                List.of(new TrpMemberLoginApimOtpItem("email", " ")))))
+        assertThatThrownBy(() -> mapper.toAuthenticated("member", new TrpMemberLoginApimDataItem(true, null, 0, List.of(new TrpMemberLoginApimOtpItem("email", " ")))))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("destination");
     }

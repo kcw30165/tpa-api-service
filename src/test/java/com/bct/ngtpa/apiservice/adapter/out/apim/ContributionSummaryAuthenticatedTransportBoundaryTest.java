@@ -26,7 +26,7 @@ class ContributionSummaryAuthenticatedTransportBoundaryTest {
   assertThat(r.databaseScope()).isEqualTo(ApimDatabaseScope.ACCOUNT_ENV); assertThat(r.credentialContext().actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_EPR);
   assertThat(r.credentialContext().accountEnv()).isEqualTo("JP"); assertThat(r.retryEligibility()).isEqualTo(ApimRetryEligibility.SAFE_BUSINESS_CALL);
   var body=(GetContributionSummaryApimRequest)r.request(); assertThat(body.getPolicyNo()).isEqualTo("POL"); assertThat(body.getCertNo()).isEqualTo("27");
-  assertThat(body.getUserId()).isEqualTo("USER"); assertThat(body.getCoverFrom()).isEqualTo("20/03/2026"); assertThat(body.getCoverTo()).isEqualTo("29/06/2026");
+  assertThat(body.getLoginUserId()).isEqualTo("USER"); assertThat(body.getCoverFrom()).isEqualTo("20/03/2026"); assertThat(body.getCoverTo()).isEqualTo("29/06/2026");
  }
  @Test void blankEnvironmentPreventsInvocation(){ AtomicInteger calls=new AtomicInteger(); assertThatThrownBy(()->new ApimContributionSummaryAdapter(executor(new AtomicReference<>(),calls,envelope())).fetchContributionSummary(command(" ",ActorUserRole.ROLE_USER_MBR)).block()).isInstanceOf(IllegalArgumentException.class); assertThat(calls).hasValue(0); }
  @Test void ordinaryExecutorFailureIsUnchanged(){ var failure=new IllegalStateException("transport failed"); assertThatThrownBy(()->new ApimContributionSummaryAdapter(failing(failure)).fetchContributionSummary(command("JP",ActorUserRole.ROLE_USER_MBR)).block()).isSameAs(failure); }

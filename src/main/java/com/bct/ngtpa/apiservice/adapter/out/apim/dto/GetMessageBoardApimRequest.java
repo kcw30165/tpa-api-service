@@ -8,7 +8,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
@@ -18,33 +17,25 @@ import java.time.format.DateTimeFormatter;
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class GetMessageBoardApimRequest {
-
     private static final DateTimeFormatter REF_DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-
     @JsonProperty("policy-no")
     private String policyNo;
-
     @JsonProperty("cert-no")
     private String certNo;
-
-    @JsonProperty("user-id")
-    private String userId;
-
+    @JsonProperty("env")
+    private String accountEnv;
+    @JsonProperty("login-user-id")
+    private String loginUserId;
+    @JsonProperty("login-user-role")
+    private String loginUserRole;
     @Builder.Default
     @JsonProperty("ref-date")
     @JsonSetter(nulls = Nulls.SKIP)
     private String refDate = currentRefDate();
 
-    @JsonProperty("env")
-    private String accountEnv;
-
-    @JsonProperty("mbr-type")
-    private String mbrType;
-
     public String getRefDate() {
-        if (refDate == null || refDate.isBlank()) {
+        if (refDate == null || refDate.isBlank())
             refDate = currentRefDate();
-        }
         return refDate;
     }
 

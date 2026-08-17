@@ -14,7 +14,6 @@ class Task0043LoginPreAuthSecurityArchitectureTest {
                                 "src/main/java/com/bct/ngtpa/apiservice/application/dto/auth/login/preauth/LoginPreAuthContext.java"));
                 assertThat(source).contains(
                                 "normalizedUsername",
-                                "custType",
                                 "userRole",
                                 "destinationsById",
                                 "credentialVerifiedAt",

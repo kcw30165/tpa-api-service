@@ -46,11 +46,9 @@ public class ApimNotificationReadStatusAdapter implements ApimNotificationReadSt
 
     private UpdateNotificationReadStatusApimRequest toApimRequest(UpdateNotificationsReadStatusCommand command) {
         return UpdateNotificationReadStatusApimRequest.builder()
-                .certNo(command.certNo()).accountEnv(command.accountEnv())
-                .mbrType(command.mbrType() == null ? null : command.mbrType().name())
-                .msgCodeLong(String.join(",", command.notificationIds())).policyNo(command.policyNo())
-                .refDate(command.refDate()).status(command.targetStatus() == null ? null : command.targetStatus().name())
-                .userId(command.userId()).build();
+                .policyNo(command.policyNo()).certNo(command.certNo()).loginUserId(command.userId())
+                .loginUserRole(command.mbrType().toApimValue()).refDate(command.refDate())
+                .accountEnv(command.accountEnv()).msgCodeLong(String.join(",", command.notificationIds())).build();
     }
 
     private UpdateNotificationsReadStatusResult toResult(

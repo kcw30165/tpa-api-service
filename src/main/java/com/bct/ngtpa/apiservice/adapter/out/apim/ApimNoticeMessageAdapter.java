@@ -57,9 +57,9 @@ public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
 
     private GetMessageBoardApimRequest toApimRequest(GetNotificationsCommand command) {
         return GetMessageBoardApimRequest.builder()
-                .policyNo(command.policyNo()).certNo(command.certNo()).userId(command.userId())
-                .refDate(command.refDate()).accountEnv(command.accountEnv())
-                .mbrType(command.mbrType() == null ? null : command.mbrType().name()).build();
+                .policyNo(command.policyNo()).certNo(command.certNo()).accountEnv(command.accountEnv())
+                .loginUserId(command.userId()).loginUserRole(command.mbrType().toApimValue())
+                .refDate(command.refDate()).build();
     }
 
     private NotificationListResult toNotificationListResult(ApimResponseEnvelope<GetMessageBoardDataItem> response) {

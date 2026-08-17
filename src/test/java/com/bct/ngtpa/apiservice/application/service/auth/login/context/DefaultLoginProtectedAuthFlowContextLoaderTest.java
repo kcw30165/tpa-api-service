@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.application.service.auth.login.context;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.*;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.preauth.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.*;
 import com.bct.ngtpa.apiservice.application.port.out.*;
@@ -18,7 +19,8 @@ class DefaultLoginProtectedAuthFlowContextLoaderTest {
 
     @Test
     void validatesCsrfLoginScenarioStartedStatusAndDecryptsContext() {
-        var context = new LoginPreAuthContext("member01", "MBR", null, Map.of(), NOW.minusSeconds(1), "v1");
+        var context = new LoginPreAuthContext("member01",
+                ActorUserRole.ROLE_USER_MBR.toApimValue(), Map.of(), NOW.minusSeconds(1), "v1");
         var loader = loader(session(AuthFlowScenario.LOGIN, AuthFlowStatus.STARTED), context, true);
         StepVerifier.create(loader.load(command())).assertNext(r -> {
             assertThat(r.status()).isEqualTo(LoginProtectedAuthFlowContextStatus.VALID);

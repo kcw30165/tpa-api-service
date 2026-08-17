@@ -18,7 +18,7 @@ class RegistrationLookupExecutorBoundaryTest {
         String adapter = source("src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationLookupAdapter.java");
         assertThat(adapter).contains("ApimExchangeExecutor", "ApimExchangeRequest", "postEnvelope(",
                 "ApimDatabaseScope.NON_ACCOUNT", "command.actorUserRole()",
-                "new ApimCredentialResolutionContext(command.actorUserRole(),null)",
+                "new ApimCredentialResolutionContext(command.actorUserRole(), null)",
                 "ApimRetryEligibility.SAFE_BUSINESS_CALL", "TrpSearchUnregMemberApimRequest.class",
                 "TrpSearchUnregMemberApimDataItem.class");
         assertThat(adapter).doesNotContain("ROLE_USER_MBR", "ApimWebClientFacade", "ApimCertificateService",

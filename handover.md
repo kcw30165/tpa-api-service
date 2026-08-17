@@ -542,3 +542,26 @@ Removed the production-unreachable Forgot Password completion test transport con
 ## Stage 022 - Final APIM Modernization Closure
 
 Task 0043 final closure is authorized under an architect-approved genuine-fail-first governance exception because the repository already durably enforces the exact 15-operation routing and execution model. Stage 022 makes no production or test changes. The final routing ledger has 15 operations, zero unresolved entries, zero duplicate paths, zero feature-owned manual APIM orchestration paths, zero alternate production test transports, and explicit scope, role, accountEnv, and retry ownership throughout. Existing durable architecture guards remain active. Final bounded validation, full Maven validation, compilation, skipped-test disposition, warning disposition, and merge-readiness evidence are stored in target/evidence/apim-routing-context-stage-22-20260817-152917. No Stage 023 exists. Final status is pending architect review and the Stage 022 commit only.
+
+## APIM Request Signatures and TRPMemberLogin Response Update
+- Eight authoritative TAS/APIM request bodies were aligned with explicit login-user-id and login-user-role fields.
+- certNo remains the existing Java String with unchanged JSON serialization.
+- TRPMemberLogin response now consumes login-user-role=role_user_mbr, removes cust-type, and preserves fail-count and OTP destinations.
+- custType was removed from the credential-to-account-authorization pipeline because neither authoritative downstream contract supplies or consumes it.
+- Angular contracts, routing scopes, retry classifications, encryption, response/error mapping outside TRPMemberLogin, OTP order, session order, and destination redaction are preserved.
+- Evidence directory: target/evidence/apim-signature-update-v005-20260817-181420
+
+### APIM signature update validation repair v006
+- Restored GetMessageBoard ref-date defaulting while retaining the authoritative login-user-id/login-user-role wire names.
+- Kept APIM role value role_user_mbr at the DTO boundary and canonical ROLE_USER_MBR inside protected login context.
+- Updated only stale contract assertions identified by the v005 Maven evidence.
+- Preserved certNo String serialization, routing, retry, OTP, encryption, and frontend contracts.
+- Evidence: target/evidence/apim-signature-fix-v006-20260817-183322
+
+### APIM signature production regression completion v009
+- Completed validation after partial v008 applied the production corrections before its stale test matcher aborted.
+- Verified nullable internal LoginPreAuthContext userRole semantics.
+- Verified OTP destination validation precedes TRPMemberLogin role validation.
+- Verified role_user_mbr is converted to canonical internal ROLE_USER_MBR.
+- Preserved the existing compatible mapper assertion without rewriting the test or its line endings.
+- Evidence: target/evidence/apim-signature-production-fix-v009-20260817-185739

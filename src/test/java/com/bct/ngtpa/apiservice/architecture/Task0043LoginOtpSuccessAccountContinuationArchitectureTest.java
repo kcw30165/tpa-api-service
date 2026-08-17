@@ -11,8 +11,7 @@ class Task0043LoginOtpSuccessAccountContinuationArchitectureTest {
                                 "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/otp/verify/LoginOtpVerifyService.java"));
                 assertThat(s)
                                 .contains("GetLoginAccountsUseCase", "LoginAccountRecordValidationService",
-                                                "LoginAccountReferenceAssignmentService", "normalizedUsername()",
-                                                "custType()")
+                                                "LoginAccountReferenceAssignmentService", "normalizedUsername()")
                                 .doesNotContain("WebClient", "Redis", "AuthenticatedSessionPort");
         }
 

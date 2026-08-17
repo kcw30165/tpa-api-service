@@ -22,9 +22,7 @@ class AesGcmLoginPreAuthContextProtectorTest {
         var destinations = new LinkedHashMap<String, LoginPreAuthDestination>();
         destinations.put("dst_opaque_value", new LoginPreAuthDestination(
                 "dst_opaque_value", "email", "member@example.com", "m*****@example.com"));
-        var context = new LoginPreAuthContext(
-                "member01", "MBR", "role_user", destinations,
-                Instant.parse("2026-07-20T00:00:00Z"), "v1");
+        var context = new LoginPreAuthContext("member01", "role_user", destinations, Instant.parse("2026-07-20T00:00:00Z"), "v1");
 
         var encrypted = protector.protect(context);
 
@@ -40,11 +38,9 @@ class AesGcmLoginPreAuthContextProtectorTest {
     void rejectsWrongKeyVersionAndTamperedCiphertext() {
         var protector = new AesGcmLoginPreAuthContextProtector(
                 new ObjectMapper().findAndRegisterModules(), "v1", secret());
-        var context = new LoginPreAuthContext(
-                "member", "MBR", null, java.util.Map.of(
+        var context = new LoginPreAuthContext("member", null, java.util.Map.of(
                         "dst_opaque_value", new LoginPreAuthDestination(
-                                "dst_opaque_value", "sms", "91234567", "****4567")),
-                Instant.now(), "v1");
+                                "dst_opaque_value", "sms", "91234567", "****4567")), Instant.now(), "v1");
         var encrypted = protector.protect(context);
 
         assertThatThrownBy(() -> protector.unprotect(

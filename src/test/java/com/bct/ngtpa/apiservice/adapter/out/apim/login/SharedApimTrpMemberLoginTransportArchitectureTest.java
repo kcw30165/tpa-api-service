@@ -31,8 +31,8 @@ class SharedApimTrpMemberLoginTransportArchitectureTest {
         assertThat(request).contains("@JsonProperty(\"cust-id\")", "@JsonProperty(\"password\")");
         assertThat(request).doesNotContain("language", "requestId", "actorReference");
         assertThat(item).contains(
-                "@JsonProperty(\"user-role\")",
-                "@JsonProperty(\"cust-type\")",
+                "@JsonProperty(\"login-user-role\")",
+                "@JsonProperty(\"login-user-role\")",
                 "@JsonProperty(\"fail-count\")",
                 "@JsonProperty(\"otp\")");
     }

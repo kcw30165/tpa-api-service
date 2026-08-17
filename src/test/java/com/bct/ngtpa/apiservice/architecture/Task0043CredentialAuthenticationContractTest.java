@@ -47,7 +47,6 @@ class Task0043CredentialAuthenticationContractTest {
                 assertThat(componentNames(CredentialAuthenticationResult.class)).containsExactly(
                                 "status",
                                 "normalizedUsername",
-                                "custType",
                                 "userRole",
                                 "failCount",
                                 "destinations",
@@ -58,9 +57,7 @@ class Task0043CredentialAuthenticationContractTest {
 
         @Test
         void useCaseDelegatesThroughApplicationBoundary() {
-                CredentialAuthenticationResult expected = new CredentialAuthenticationResult(
-                                CredentialAuthenticationStatus.INCORRECT_PASSWORD,
-                                null, null, null, 1, List.of(), null);
+                CredentialAuthenticationResult expected = new CredentialAuthenticationResult(CredentialAuthenticationStatus.INCORRECT_PASSWORD, null, null, 1, List.of(), null);
                 CredentialAuthenticationPort port = command -> Mono.just(expected);
                 var useCase = new AuthenticateLoginCredentialsUseCase(port);
 

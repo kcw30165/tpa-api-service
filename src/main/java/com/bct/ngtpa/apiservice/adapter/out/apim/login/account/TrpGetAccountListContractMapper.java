@@ -7,7 +7,7 @@ import java.util.Objects;
 public final class TrpGetAccountListContractMapper {
     public TrpGetAccountListApimRequest toRequest(LoginAccountAuthorizationCommand c) {
         Objects.requireNonNull(c);
-        return new TrpGetAccountListApimRequest(c.custId(), c.custType(), c.searchKey(), c.searchValue());
+        return new TrpGetAccountListApimRequest(c.searchKey(), c.searchValue(), c.custId(), c.actorUserRole().toApimValue());
     }
 
     public LoginAccountRecord toRecord(TrpGetAccountListApimDataItem i) {
