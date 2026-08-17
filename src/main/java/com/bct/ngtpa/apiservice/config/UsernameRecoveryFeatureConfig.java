@@ -274,7 +274,7 @@ public class UsernameRecoveryFeatureConfig {
                 ttlSeconds,
                 true,
                 secure,
-                SessionCookieSameSite.STRICT);
+                SessionCookieSameSite.NONE);
         return new UsernameRecoveryCookieWriter(authFlowPolicy);
     }
 
