@@ -144,7 +144,8 @@ public class CompleteRegistrationService implements CompleteRegistrationUseCase 
                     String email = rc.contactType() == RegistrationContactType.EMAIL ? rc.contactValue() : "";
                     var downstream = new RegistrationCompletionCommand(trust.accountEnv(), trust.trustCode(),
                             uc.username(), rc.identityValue(), c.password(), rc.dateOfBirth(), mobile, email,
-                            c.correlationId());
+                            c.correlationId(),
+                            com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
                     return completion.complete(downstream)
                             .flatMap(r -> r.status() == RegistrationCompletionResult.Status.REGISTERED
                                     || "err.tpa.member.registered".equals(r.downstreamErrorCode())

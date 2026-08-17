@@ -24,7 +24,7 @@ class ApimRoutingLedgerCharacterizationTest {
         e("TRPSearchRegedMember", "forgotpassword/details/SharedApimTrpSearchRegedMemberTransport.java", "NON_ACCOUNT", "ROLE_USER_MBR", "null", "SAFE_BUSINESS_CALL", "FEATURE", "UNCONFIRMED"),
         e("TRPMemberLogin", "login/SharedApimTrpMemberLoginTransport.java", "NON_ACCOUNT", "command.actorUserRole()", "null", "SAFE_BUSINESS_CALL", "EXECUTOR", "NON_ACCOUNT"),
         e("TRPGetAccountList", "login/account/SharedApimTrpGetAccountListTransport.java", "NON_ACCOUNT", "command.actorUserRole()", "null", "SAFE_BUSINESS_CALL", "EXECUTOR", "NON_ACCOUNT"),
-        e("TRPRegMember", "registration/ApimRegistrationCompletionAdapter.java", "ACCOUNT_ENV", "ROLE_USER_MBR", "protected accountEnv", "IDEMPOTENT_MUTATION", "FEATURE", "ACCOUNT_ENV"),
+        e("TRPRegMember", "registration/ApimRegistrationCompletionAdapter.java", "ACCOUNT_ENV", "command.actorUserRole()", "command.accountEnv()", "NON_RETRYABLE", "EXECUTOR", "ACCOUNT_ENV"),
         e("TRPSearchUnregMember", "registration/ApimRegistrationLookupAdapter.java", "NON_ACCOUNT", "command.actorUserRole()", "null", "SAFE_BUSINESS_CALL", "EXECUTOR", "NON_ACCOUNT"),
         e("TRPChkCustId", "registration/SharedApimTrpChkCustIdTransport.java", "NON_ACCOUNT", "command.actorUserRole()", "null", "SAFE_BUSINESS_CALL", "EXECUTOR", "NON_ACCOUNT"),
         e("TRPSearchMember", "usernamerecovery/SharedApimTrpSearchMemberTransport.java", "NON_ACCOUNT", "ROLE_USER_MBR", "null", "SAFE_BUSINESS_CALL", "FEATURE", "UNCONFIRMED")

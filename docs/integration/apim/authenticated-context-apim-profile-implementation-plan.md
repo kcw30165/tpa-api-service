@@ -1371,6 +1371,6 @@ Authenticated context correction: COMPLETED
 First authenticated pilot: Notifications, COMPLETED
 Country-list classification: authenticated ACCOUNT_ENV
 
-## Stage 017 - Registration Username Availability APIM Exchange
+## Stage 018 - Registration Completion APIM Exchange
 
-Implementation pending final validation. TRPChkCustId registration username availability uses NON_ACCOUNT, null accountEnv, explicit ROLE_USER_MBR credential-routing metadata, SAFE_BUSINESS_CALL, and the generic ApimExchangeExecutor. Forgot Password retains independent business interpretation. Stage 018 has not started. Evidence: target/evidence/apim-routing-context-stage-17-20260817-072351.
+Implementation pending final validation. TRPRegMember uses protected ACCOUNT_ENV routing, explicit ROLE_USER_MBR credential metadata, NON_RETRYABLE mutation execution, and generic ApimExchangeExecutor. Existing idempotency, unknown-outcome, workflow, cleanup, additional-trust, and return-to-login behavior remain application-owned. Evidence: target/evidence/apim-routing-context-stage-18-20260817-101325.
