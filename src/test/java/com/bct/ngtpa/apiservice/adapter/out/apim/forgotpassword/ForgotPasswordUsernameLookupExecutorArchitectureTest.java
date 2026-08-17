@@ -28,9 +28,19 @@ class ForgotPasswordUsernameLookupExecutorArchitectureTest {
     }
 
     @Test
-    void registrationAndSharedTransportRemainUnchangedInStage05() throws Exception {
-        assertThat(Files.readString(Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationUsernameAvailabilityAdapter.java")))
-                .contains("SharedApimTrpChkCustIdTransport", "postWithAccountEnv");
+    void stage17RegistrationUsesTheSharedProductionPortWithoutAccountEnvRouting() throws Exception {
+        String adapter = Files.readString(Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationUsernameAvailabilityAdapter.java"));
+        String transport = Files.readString(Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/registration/SharedApimTrpChkCustIdTransport.java"));
+
+        assertThat(adapter)
+                .contains("TrpChkCustIdTransport transport", "command.actorUserRole()")
+                .doesNotContain("postWithAccountEnv", "selectedTrust().accountEnv()");
+        assertThat(transport)
+                .contains("ApimExchangeExecutor", "ApimDatabaseScope.NON_ACCOUNT",
+                        "new ApimCredentialResolutionContext(command.actorUserRole(), null)",
+                        "ApimRetryEligibility.SAFE_BUSINESS_CALL")
+                .doesNotContain("postWithAccountEnv", "ApimDatabaseScope.ACCOUNT_ENV", "ActorUserRole.ROLE_USER_MBR");
     }
 }

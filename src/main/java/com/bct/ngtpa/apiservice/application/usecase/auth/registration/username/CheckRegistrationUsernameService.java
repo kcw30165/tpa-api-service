@@ -160,7 +160,8 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
         var availabilityCommand = new RegistrationUsernameAvailabilityCommand(
                 new RegistrationSelectedTrust(normalized.trustCode(), normalized.accountEnv()),
                 normalized.username(),
-                command.correlationId());
+                command.correlationId(),
+                com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
         return usernameAvailabilityPort.checkAvailability(availabilityCommand)
                 .flatMap(availability -> switch (availability.status()) {
                     case AVAILABLE -> storeUsernameCheck(command, session, normalized);

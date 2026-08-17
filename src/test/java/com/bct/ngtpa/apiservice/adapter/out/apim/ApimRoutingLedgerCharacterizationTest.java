@@ -26,7 +26,7 @@ class ApimRoutingLedgerCharacterizationTest {
         e("TRPGetAccountList", "login/account/SharedApimTrpGetAccountListTransport.java", "NON_ACCOUNT", "command.actorUserRole()", "null", "SAFE_BUSINESS_CALL", "EXECUTOR", "NON_ACCOUNT"),
         e("TRPRegMember", "registration/ApimRegistrationCompletionAdapter.java", "ACCOUNT_ENV", "ROLE_USER_MBR", "protected accountEnv", "IDEMPOTENT_MUTATION", "FEATURE", "ACCOUNT_ENV"),
         e("TRPSearchUnregMember", "registration/ApimRegistrationLookupAdapter.java", "NON_ACCOUNT", "command.actorUserRole()", "null", "SAFE_BUSINESS_CALL", "EXECUTOR", "NON_ACCOUNT"),
-        e("TRPChkCustId", "registration/SharedApimTrpChkCustIdTransport.java", "MIXED", "ROLE_USER_MBR", "caller-or-null", "SAFE_BUSINESS_CALL", "MIXED", "FORGOT_PASSWORD_NON_ACCOUNT"),
+        e("TRPChkCustId", "registration/SharedApimTrpChkCustIdTransport.java", "NON_ACCOUNT", "command.actorUserRole()", "null", "SAFE_BUSINESS_CALL", "EXECUTOR", "NON_ACCOUNT"),
         e("TRPSearchMember", "usernamerecovery/SharedApimTrpSearchMemberTransport.java", "NON_ACCOUNT", "ROLE_USER_MBR", "null", "SAFE_BUSINESS_CALL", "FEATURE", "UNCONFIRMED")
     );
 
@@ -62,7 +62,7 @@ class ApimRoutingLedgerCharacterizationTest {
         assertThat(find("TRPGetMsgBoard").currentScope()).isEqualTo("ACCOUNT_ENV");
         assertThat(find("TRPGetMsgBoard").target()).isEqualTo("ACCOUNT_ENV");
         assertThat(find("TRPResetPassword").target()).isEqualTo("NON_ACCOUNT");
-        assertThat(find("TRPChkCustId").target()).isEqualTo("FORGOT_PASSWORD_NON_ACCOUNT");
+        assertThat(find("TRPChkCustId").target()).isEqualTo("NON_ACCOUNT");
     }
 
     private static Entry e(String operation, String file, String scope, String role,

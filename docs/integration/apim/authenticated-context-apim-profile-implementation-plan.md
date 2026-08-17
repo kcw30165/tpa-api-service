@@ -144,22 +144,22 @@ For pre-authentication flows, the caller must supply the role required by the fl
 
 ### 5.2 APIM routing and execution invariants
 
-11. Database scope is supplied explicitly by the caller for every APIM operation.
-12. Database scope must not be inferred from whether `accountEnv` is blank.
-13. `ACCOUNT_ENV` requires a nonblank authoritative `accountEnv`.
-14. `NON_ACCOUNT` and `ROLE_USER_MBR` must not be hardcoded inside the APIM execution implementation.
-15. `ActorUserRole` is supplied explicitly by the caller.
-16. Authenticated flows use the actual authenticated actor role.
-17. Profile resolution remains inside the APIM outbound boundary.
-18. A credential profile is resolved once per logical APIM call.
-19. The same resolved profile owns base URL, token, API key, certificate, and business call execution.
-20. Encryption mode is hidden from feature adapters and transports.
-21. When encryption is enabled, request encryption and response verification use the public key associated with the resolved profile and successful attempt.
-22. A refreshed public key requires regeneration of the encrypted request.
-23. Retry eligibility remains explicit and operation-specific.
-24. Business-envelope interpretation remains operation-specific.
-25. Crypto, transport, and uncertain-outcome mapping remain operation-specific.
-26. No missing routing value may trigger an implicit fallback to another database scope or global APIM configuration.
+ 1. Database scope is supplied explicitly by the caller for every APIM operation.
+ 2. Database scope must not be inferred from whether `accountEnv` is blank.
+ 3. `ACCOUNT_ENV` requires a nonblank authoritative `accountEnv`.
+ 4. `NON_ACCOUNT` and `ROLE_USER_MBR` must not be hardcoded inside the APIM execution implementation.
+ 5. `ActorUserRole` is supplied explicitly by the caller.
+ 6. Authenticated flows use the actual authenticated actor role.
+ 7. Profile resolution remains inside the APIM outbound boundary.
+ 8. A credential profile is resolved once per logical APIM call.
+ 9. The same resolved profile owns base URL, token, API key, certificate, and business call execution.
+10. Encryption mode is hidden from feature adapters and transports.
+11. When encryption is enabled, request encryption and response verification use the public key associated with the resolved profile and successful attempt.
+12. A refreshed public key requires regeneration of the encrypted request.
+13. Retry eligibility remains explicit and operation-specific.
+14. Business-envelope interpretation remains operation-specific.
+15. Crypto, transport, and uncertain-outcome mapping remain operation-specific.
+16. No missing routing value may trigger an implicit fallback to another database scope or global APIM configuration.
 
 ## 6. Target Layering
 
@@ -807,6 +807,7 @@ Execution boundary: ApimExchangeExecutor
 ```
 
 ### Work
+
 - Preserve the Stage 007 explicit-context boundary.
 - Remove inferred scope and make `ACCOUNT_ENV` explicit.
 - Route the typed APIM request through the generic executor.
@@ -815,6 +816,7 @@ Execution boundary: ApimExchangeExecutor
 - Preserve country-dependent field mapping, `Accept-Language`, frontend field identifiers, no-record handling, malformed-envelope handling, and technical-failure normalization.
 
 ### Exit criteria
+
 - The adapter uses command-supplied account environment and authenticated actor role.
 - Missing or blank account environment fails before executor invocation.
 - No `NON_ACCOUNT` fallback, hardcoded role, or scope inference remains.
@@ -844,6 +846,7 @@ Execution boundary: ApimExchangeExecutor
 ```
 
 ### Work
+
 - Route the typed mutation exchange through the generic executor.
 - Preserve APIM validation failure mapping to `MutationResponse/errors`.
 - Preserve frontend field IDs in `errors[].targets`.
@@ -852,6 +855,7 @@ Execution boundary: ApimExchangeExecutor
 - Do not move mutation-specific policy into the executor.
 
 ### Exit criteria
+
 - The update adapter uses explicit authenticated routing.
 - Validation and mutation response behavior remain unchanged.
 - Unknown or uncertain outcomes retain operation-specific handling.
@@ -883,12 +887,14 @@ Execution boundary: ApimExchangeExecutor
 ```
 
 ### Work
+
 - Prove whether retrieval and export share one APIM invocation path.
 - Migrate both in one stage only if export consumes the same application result and does not introduce a separate APIM execution path.
 - Preserve date validation, filtering, sorting, pagination, language behavior, summary mapping, and export formatting.
 - Keep export file construction outside APIM execution infrastructure.
 
 ### Exit criteria
+
 - Routing authority is documented and explicit.
 - Retrieval and export behavior remain unchanged.
 - No ambient authenticated context or feature-owned encryption orchestration remains.
@@ -908,6 +914,7 @@ Classify and migrate `TRPGetWebSysDate` without conflating the APIM refresh call
 ### Required decision gate
 
 Before production editing, confirm:
+
 - flow category;
 - authoritative account-environment source;
 - required database scope;
@@ -918,12 +925,14 @@ Before production editing, confirm:
 No implementation may infer scope from nullable `accountEnv`.
 
 ### Work
+
 - Migrate only the APIM reference-date refresh path after routing classification is approved.
 - Preserve Redis cache read/write behavior.
 - Preserve `GET` and `DELETE /api/v1/internal/reference-date/all` behavior.
 - Preserve cache key scoping and sorting by account environment.
 
 ### Exit criteria
+
 - APIM routing is explicit and evidence-backed.
 - Cache and internal administration behavior remain unchanged.
 - No unrelated reference-data operation is migrated.
@@ -941,12 +950,14 @@ refactor(reference-date): use explicit account routing and APIM exchange
 Migrate `TRPMemberLogin` as a bounded pre-authentication safe business call.
 
 ### Work
+
 - Record the authoritative pre-authentication routing contract.
 - Route the typed exchange through the generic executor.
 - Preserve login request mapping, captcha boundary, credential handling, TAS lock-policy behavior, public failure normalization, and OTP continuation.
 - Keep login-specific business-envelope interpretation outside the executor.
 
 ### Exit criteria
+
 - Mixed execution ownership is removed for `TRPMemberLogin`.
 - Routing, role, and retry eligibility are explicit caller inputs.
 - Login behavior remains unchanged.
@@ -964,12 +975,14 @@ refactor(login): use generic APIM exchange for authentication
 Migrate `TRPGetAccountList` as a protected pre-authentication continuation after successful authentication.
 
 ### Work
+
 - Identify the authoritative protected-workflow routing source.
 - Route the typed exchange through the generic executor.
 - Preserve account-list mapping, authorization data, account selection, and generation of Account-Ref mappings.
 - Do not introduce authenticated `PortalAccessContext` before the authenticated session boundary exists.
 
 ### Exit criteria
+
 - The account-list operation has explicit caller routing and retry classification.
 - Account-selection behavior remains unchanged.
 
@@ -986,12 +999,14 @@ refactor(login): use generic APIM exchange for account list
 Migrate `TRPSearchUnregMember` as an independently bounded registration lookup.
 
 ### Work
+
 - Record pre-authentication routing authority explicitly.
 - Route the typed exchange through the generic executor.
 - Preserve eligible trust discovery and additional trust registration behavior.
 - Preserve captcha and protected registration workflow boundaries.
 
 ### Exit criteria
+
 - Registration lookup no longer owns generic APIM orchestration.
 - Result and error behavior remain registration-specific.
 
@@ -1008,12 +1023,14 @@ refactor(registration): use generic APIM exchange for member lookup
 Migrate the registration caller of `TRPChkCustId` without changing the already approved Forgot Password caller.
 
 ### Work
+
 - Preserve caller-specific routing for the shared operation.
 - Supply registration scope, role, account environment, and retry eligibility explicitly.
 - Do not collapse registration and Forgot Password into one hardcoded routing policy.
 - Preserve username-availability behavior and shared DTO compatibility.
 
 ### Exit criteria
+
 - Both callers remain explicit and independently tested.
 - No shared transport hardcodes scope or role.
 - Forgot Password regressions remain green.
@@ -1031,12 +1048,14 @@ refactor(registration): use generic APIM exchange for username availability
 Migrate `TRPRegMember` as a protected pre-authentication idempotent mutation.
 
 ### Work
+
 - Confirm and use the authoritative selected-trust account environment.
 - Supply explicit `ACCOUNT_ENV` where confirmed, caller role, and `IDEMPOTENT_MUTATION`.
 - Preserve registration result mapping, business rejection, uncertain outcome, and return-to-login behavior.
 - Keep mutation-specific policy outside the executor.
 
 ### Exit criteria
+
 - Registration completion uses the generic executor with explicit routing.
 - Idempotency and uncertain-outcome behavior remain intact.
 
@@ -1053,6 +1072,7 @@ refactor(registration): use generic APIM exchange for completion
 Migrate `TRPSearchMember` as a pre-authentication safe business call.
 
 ### Work
+
 - Supply explicit routing from the Username Recovery caller contract.
 - Route the typed exchange through the generic executor.
 - Preserve captcha and identity verification.
@@ -1060,6 +1080,7 @@ Migrate `TRPSearchMember` as a pre-authentication safe business call.
 - Preserve username disclosure and public error behavior.
 
 ### Exit criteria
+
 - No outbound Reactor context supplies operation data.
 - Routing and role are explicit.
 - Username Recovery behavior remains unchanged.
@@ -1077,12 +1098,14 @@ refactor(username-recovery): use generic APIM exchange for member search
 Migrate `TRPSearchRegedMember` without reopening the completed username-lookup or password-completion stages.
 
 ### Work
+
 - Use the protected Forgot Password workflow as the authoritative caller boundary.
 - Supply explicit scope, role, account environment, and `SAFE_BUSINESS_CALL`.
 - Route the typed exchange through the generic executor.
 - Preserve details verification, malformed-envelope handling, public status mapping, and workflow security controls.
 
 ### Exit criteria
+
 - Details lookup uses the executor.
 - Stages 005 and 006 remain unchanged and green.
 
@@ -1099,6 +1122,7 @@ refactor(forgot-password): use generic APIM exchange for details lookup
 Prove that every APIM production caller has an explicit routing and execution classification.
 
 ### Work
+
 - Compare every APIM production caller against the routing ledger.
 - Identify callers still using direct facade, certificate, crypto, profile resolution, encryption branching, inferred scope, or hardcoded role.
 - Record every remaining operation explicitly.
@@ -1106,6 +1130,7 @@ Prove that every APIM production caller has an explicit routing and execution cl
 - Create a separately bounded follow-up stage for each newly discovered caller.
 
 ### Exit criteria
+
 - The ledger and production caller inventory are complete and consistent.
 - No operation remains hidden under “other post-login operations” or “remaining adapters”.
 - Any residual work has an explicit operation, routing source, retry policy, evidence gate, and commit boundary.
@@ -1119,6 +1144,7 @@ test(apim): audit remaining routing and execution callers
 ## Stage 022: Cleanup and Architecture Enforcement
 
 ### Cleanup candidates
+
 - remove obsolete manual encryption branches;
 - remove direct certificate dependencies from migrated feature adapters;
 - remove redundant facade overloads only after all callers migrate;
@@ -1133,6 +1159,7 @@ test(apim): audit remaining routing and execution callers
 ### Architecture guards
 
 Add or update guards enforcing:
+
 - only inbound web code accesses current portal context;
 - outbound APIM code cannot depend on PortalAccessContext;
 - application services cannot use Reactor Context for portal identity;
@@ -1145,6 +1172,7 @@ Add or update guards enforcing:
 - every APIM production caller appears exactly once in the final routing ledger.
 
 ### Exit criteria
+
 - All known operation migrations are complete.
 - No cleanup removes behavior still required by an unmigrated caller.
 - Final architecture and full regression suites pass.
@@ -1330,32 +1358,19 @@ A stage is complete only when:
 No later stage may begin based only on partial local success.
 
 ## 17. Current Status
+
 Architecture invariants: AGREED
 Working branch: feature/apim-routing-context-modernization
 Production investigation: COMPLETED
 Generic APIM execution direction: IMPLEMENTED
 Caller-supplied database scope: IMPLEMENTED AND ENFORCED FOR MIGRATED CALLERS
 Caller-supplied actor role: IMPLEMENTED AND ENFORCED FOR MIGRATED CALLERS
-Stages 001–016: COMPLETED AND ARCHITECT-APPROVED
-Stage 007: PREPARED, NOT YET APPROVED
 First pre-auth proving flow: Forgot Password username lookup, COMPLETED
 Second pre-auth proving flow: Forgot Password completion, COMPLETED
 Authenticated context correction: COMPLETED
 First authenticated pilot: Notifications, COMPLETED
 Country-list classification: authenticated ACCOUNT_ENV
-Immediate next stage: Stage 009 Country-List Authenticated Correction
 
-## 18. Immediate Next Action
+## Stage 017 - Registration Username Availability APIM Exchange
 
-Begin only **Stage 009: Country-List Authenticated Correction** after the Stage 008 commit is present.
-
-The Stage 009 implementation package must:
-- require the existing authenticated selected-account context at the inbound boundary;
-- pass `accountEnv` and actor role explicitly through the country-list use-case contract;
-- use `ApimDatabaseScope.ACCOUNT_ENV` and `ApimRetryEligibility.SAFE_BUSINESS_CALL`;
-- migrate `TRPGetCountryList` to `ApimExchangeExecutor`;
-- remove `NON_ACCOUNT`, hardcoded `ROLE_USER_MBR`, scope inference, and manual encryption orchestration from the country-list path;
-- preserve country mapping, language behavior, ordering, duplicate handling, no-record behavior, business rejection, malformed-envelope behavior, technical-failure normalization, and the public response contract;
-- preserve Stages 007 and 008;
-- produce complete timestamped validation evidence;
-- not begin Stage 010 before architect approval.
+Implementation pending final validation. TRPChkCustId registration username availability uses NON_ACCOUNT, null accountEnv, explicit ROLE_USER_MBR credential-routing metadata, SAFE_BUSINESS_CALL, and the generic ApimExchangeExecutor. Forgot Password retains independent business interpretation. Stage 018 has not started. Evidence: target/evidence/apim-routing-context-stage-17-20260817-072351.

@@ -58,28 +58,28 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - Correction: supplied test-only profile resolvers returning mocked  values in the two existing facade test doubles.
 - Production behavior changed: no.
 - Original fail-first characterization evidence remains valid in [INFO] Scanning for projects...
-[INFO] 
+[INFO]
 [INFO] ----------------------< com.bct:ngtpa-api-server >----------------------
 [INFO] Building ngtpa-api-server 0.0.1-SNAPSHOT
 [INFO]   from pom.xml
 [INFO] --------------------------------[ jar ]---------------------------------
-[INFO] 
+[INFO]
 [INFO] --- jacoco:0.8.12:prepare-agent (default) @ ngtpa-api-server ---
 [INFO] argLine set to -javaagent:D:\\Maven\\repository\\org\\jacoco\\org.jacoco.agent\\0.8.12\\org.jacoco.agent-0.8.12-runtime.jar=destfile=D:\\Projects\\ORSO\\ngtpa\\api-service-worktrees\\apim-profiles\\target\\jacoco.exec
-[INFO] 
+[INFO]
 [INFO] --- resources:3.3.1:resources (default-resources) @ ngtpa-api-server ---
 [INFO] Copying 7 resources from src\main\resources to target\classes
 [INFO] Copying 5 resources from src\main\resources to target\classes
-[INFO] 
+[INFO]
 [INFO] --- compiler:3.14.1:compile (default-compile) @ ngtpa-api-server ---
 [INFO] Recompiling the module because of changed source code.
 [INFO] Compiling 1360 source files with javac [debug parameters release 21] to target\classes
 [INFO] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/forgotpassword/ForgotPasswordHttpResponses.java: Some input files use or override a deprecated API.
 [INFO] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/forgotpassword/ForgotPasswordHttpResponses.java: Recompile with -Xlint:deprecation for details.
-[INFO] 
+[INFO]
 [INFO] --- resources:3.3.1:testResources (default-testResources) @ ngtpa-api-server ---
 [INFO] Copying 5 resources from src\test\resources to target\test-classes
-[INFO] 
+[INFO]
 [INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ ngtpa-api-server ---
 [INFO] Recompiling the module because of changed dependency.
 [INFO] Compiling 837 source files with javac [debug parameters release 21] to target\test-classes
@@ -111,21 +111,21 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 [INFO] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordControllerTest.java: Recompile with -Xlint:deprecation for details.
 [INFO] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimPayloadCryptoServiceTest.java: Some input files use unchecked or unsafe operations.
 [INFO] /D:/Projects/ORSO/ngtpa/api-service-worktrees/apim-profiles/src/test/java/com/bct/ngtpa/apiservice/adapter/out/apim/ApimPayloadCryptoServiceTest.java: Recompile with -Xlint:unchecked for details.
-[INFO] 
+[INFO]
 [INFO] --- surefire:3.5.5:test (default-test) @ ngtpa-api-server ---
 [INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
-[INFO] 
+[INFO]
 [INFO] -------------------------------------------------------
 [INFO]  T E S T S
 [INFO] -------------------------------------------------------
 [INFO] Running com.bct.ngtpa.apiservice.adapter.out.apim.ApimLegacyStalePayloadCharacterizationTest
 [INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.280 s -- in com.bct.ngtpa.apiservice.adapter.out.apim.ApimLegacyStalePayloadCharacterizationTest
-[INFO] 
+[INFO]
 [INFO] Results:
-[INFO] 
+[INFO]
 [INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0
-[INFO] 
-[INFO] 
+[INFO]
+[INFO]
 [INFO] --- jacoco:0.8.12:report (report) @ ngtpa-api-server ---
 [INFO] Loading execution data file D:\Projects\ORSO\ngtpa\api-service-worktrees\apim-profiles\target\jacoco.exec
 [INFO] Analyzed bundle 'ngtpa-api-server' with 1307 classes
@@ -166,7 +166,6 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - No production implementation changed. Stage 02 was not started.
 - Commit message after architect approval: test(apim): characterize profile-aware encrypted execution.
 
-
 ### Stage 01 correction: profile-aware certificate test doubles
 
 - Status: BLOCKED.
@@ -179,7 +178,6 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - No production implementation changed. Stage 02 was not started.
 - Commit message after architect approval: `test(apim): characterize profile-aware encrypted execution`.
 
-
 ### Stage 01 correction: resolved-profile facade test doubles
 
 - Status: READY_FOR_ARCHITECT_REVIEW.
@@ -191,7 +189,6 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - Fourth-repair focused exit: 0; cumulative exit: 0; compile exit: 0; full suite: NOT_RUN.
 - No production implementation changed. Stage 02 was not started.
 - Commit message after architect approval: `test(apim): characterize profile-aware encrypted execution`.
-
 
 ### Stage 02: Generic APIM execution contract
 
@@ -207,7 +204,6 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - Stash remained unchanged. Stage 03 remains gated by architect approval and was not started.
 - Commit message after approval: `feat(apim): define generic profile-aware exchange contract`.
 
-
 ### Stage 03: Successful-attempt key consistency
 
 - Status: `BLOCKED`.
@@ -221,7 +217,6 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - Stash remained unchanged. Stage 04 remains gated and was not started.
 - Commit message after approval: `refactor(apim): preserve encryption key across successful exchange attempts`.
 
-
 ### Stage 03 validation rerun correction (target/evidence/apim-routing-context-stage-03-20260814-233639)
 
 - Status: `BLOCKED`.
@@ -230,7 +225,6 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - Exact evidence directory retained: `target/evidence/apim-routing-context-stage-03-20260814-233639`.
 - The rerun script changed no production or test code. HEAD and stash state stayed unchanged. Stage 04 was not started.
 - Commit message after architect approval: `refactor(apim): preserve encryption key across successful exchange attempts`.
-
 
 ### Stage 03 obsolete body-only retry test correction (target/evidence/apim-routing-context-stage-03-20260814-233639)
 
@@ -241,7 +235,6 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - Exact evidence directory: `target/evidence/apim-routing-context-stage-03-20260814-233639`. No additional production change was made. Stage 04 was not started.
 - Commit message after approval: `refactor(apim): preserve encryption key across successful exchange attempts`.
 
-
 ### Stage 03 inline credential-profile fixture correction (target/evidence/apim-routing-context-stage-03-20260814-233639)
 
 - Status: `READY_FOR_ARCHITECT_REVIEW`.
@@ -249,7 +242,6 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - No production behavior changed. Validation exits: focused 0; Stage 02 preservation 0; cumulative 0; compile 0.
 - Exact evidence directory retained: `target/evidence/apim-routing-context-stage-03-20260814-233639`. HEAD and stash remained unchanged. Stage 04 was not started.
 - Commit message after approval: `refactor(apim): preserve encryption key across successful exchange attempts`.
-
 
 ### Stage 04: Generic APIM exchange executor
 
@@ -263,7 +255,6 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - Stash remained unchanged. Stage 05 remains gated and was not started.
 - Commit message after approval: `feat(apim): add generic profile-aware exchange executor`.
 
-
 ### Stage 04 execution-package inventory correction (target/evidence/apim-routing-context-stage-04-20260815-001352)
 
 - Status: `READY_FOR_ARCHITECT_REVIEW`.
@@ -272,7 +263,6 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - Validation exits: Stage 04 focused 0; Stage 02/03 preservation 0; cumulative 0; compile 0; full suite NOT_RUN.
 - Exact evidence directory retained: `target/evidence/apim-routing-context-stage-04-20260815-001352`. HEAD and stash remained unchanged. No feature migrated and Stage 05 was not started.
 - Commit message after approval: `feat(apim): add generic profile-aware exchange executor`.
-
 
 ### Stage 05: Forgot Password username-lookup pilot
 
@@ -283,7 +273,6 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - Evidence: `target/evidence/apim-routing-context-stage-05-20260815-075842`. Exits: fail-first 1; focused 0; foundation 0; cumulative 0; compile 0; full NOT_RUN. Stash unchanged. Stage 06 was not started.
 - Commit after approval: `refactor(forgot-password): use generic APIM exchange for username lookup`.
 
-
 ### Stage 005 behavioral-test and evidence repair (target/evidence/apim-routing-context-stage-05-20260815-075842)
 
 - Status: `BLOCKED`.
@@ -293,7 +282,6 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - Registration production files, HEAD, and stash remained unchanged. Evidence: `target/evidence/apim-routing-context-stage-05-20260815-075842`. Stage 006 was not started.
 - Commit after approval: `refactor(forgot-password): use generic APIM exchange for username lookup`.
 
-
 ### Stage 005 behavioral-test compilation correction (target/evidence/apim-routing-context-stage-05-20260815-075842)
 
 - Status: `READY_FOR_ARCHITECT_REVIEW`.
@@ -302,14 +290,12 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - Validation totals: focused 19; foundation 40; cumulative 54; compile exit 0. Registration production, HEAD, and stash remained unchanged.
 - Evidence: `target/evidence/apim-routing-context-stage-05-20260815-075842`. Stage 006 was not started. Commit after approval: `refactor(forgot-password): use generic APIM exchange for username lookup`.
 
-
 ### Stage 006: Forgot Password completion pilot
 
 - Status: `BLOCKED`. Trusted mapper assigns `ROLE_USER_MBR`; completion commands carry it explicitly; adapter uses `NON_ACCOUNT`, null environment, `IDEMPOTENT_MUTATION`, and `ApimExchangeExecutor`.
 - Application idempotency key+payload behavior and completion-specific success, rejection, system failure, malformed response, and unknown-outcome ownership remain unchanged. No other APIM operation migrated.
 - Evidence: `target/evidence/apim-routing-context-stage-06-20260815-084115`. Exits: fail-first 1; focused 1; preservation 0; cumulative 125; compile 0. Stash unchanged. Stage 007 was not started.
 - Commit after approval: `refactor(forgot-password): use generic APIM exchange for password completion`.
-
 
 ### Stage 006 architecture whitespace repair (target/evidence/apim-routing-context-stage-06-20260815-084115)
 
@@ -319,13 +305,11 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - HEAD and stash remained unchanged. Evidence: `target/evidence/apim-routing-context-stage-06-20260815-084115`. Stage 007 was not started.
 - Commit after approval: `refactor(forgot-password): use generic APIM exchange for password completion`.
 
-
 ### Stage 006 routing-ledger ownership correction v2 (target/evidence/apim-routing-context-stage-06-20260815-084115)
 
 - Status: `BLOCKED`. The routing ledger now follows Stage 006 ownership regardless of source formatting: trusted mapper owns `ROLE_USER_MBR`; commands carry it; adapter consumes `command.actorUserRole()` and owns `NON_ACCOUNT` plus `IDEMPOTENT_MUTATION`.
 - No production code changed. Validation totals: focused 5; preservation ; cumulative ; compile exit 0. HEAD and stash unchanged.
 - Evidence: `target/evidence/apim-routing-context-stage-06-20260815-084115`. Stage 007 was not started. Commit after approval: `refactor(forgot-password): use generic APIM exchange for password completion`.
-
 
 ### Stage 006 exact routing-ledger entry correction (target/evidence/apim-routing-context-stage-06-20260815-084115)
 
@@ -336,13 +320,11 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - Exact evidence directory: `target/evidence/apim-routing-context-stage-06-20260815-084115`. HEAD and stash remained unchanged. Stage 007 was not started.
 - Commit after approval: `refactor(forgot-password): use generic APIM exchange for password completion`.
 
-
 ### Stage 006 behavioral and idempotency evidence repair (target/evidence/apim-routing-context-stage-06-20260815-084115)
 
 - Status: `BLOCKED`. Added executor-backed completion behavior coverage, all completion result/error scenarios, idempotency suppression and replay call-count proof, explicit service role propagation, FE authority exclusion, and a documented `testTransport` compatibility seam.
 - Validation totals: focused 3; Stage 005/foundation ; cumulative completion/architecture ; compile exit 0. Production scope, HEAD, and stash remained unchanged.
 - Evidence: `target/evidence/apim-routing-context-stage-06-20260815-084115`. Stage 007 was not started. Commit after approval: `refactor(forgot-password): use generic APIM exchange for password completion`.
-
 
 ### Stage 006 idempotency forced-record fixture correction (target/evidence/apim-routing-context-stage-06-20260815-084115)
 
@@ -513,22 +495,29 @@ The focused Cancel policy test proved the production policy emits source `BFF` f
 - Stage 010 retrieval remains unchanged. Stage 012 has not started.
 
 ### Stage 012: Contribution Summary authenticated transport migration
+
 - Accepted the original classification blocker as a governance checkpoint and revised the boundary to both independent callers sharing `TRPGetContSumy`.
 - Retrieval and export each execute one independent APIM retrieval; export workbook formatting remains after retrieval and outside transport.
 - The shared focused command contains five payload fields plus `accountEnv` and `actorUserRole` routing metadata.
 - Routing is `ACCOUNT_ENV`, command actor role/account environment, and `SAFE_BUSINESS_CALL` through `ApimExchangeExecutor.postEnvelope`.
 - Stage 010 and 011 production, APIM foundation, and workbook formatting remain preserved. Stage 013 has not started.
 
-
 ## Stage 013 - Internal Reference-Date Refresh Routing Correction
 
 Implementation in progress. Internal refresh uses an explicit compatibility role and typed APIM exchange; normal reads no longer auto-refresh through APIM. Evidence: target/evidence/apim-routing-context-stage-13-20260816-101615.
 
 ## Stage 014 Login authentication APIM exchange
+
 TRPMemberLogin uses NON_ACCOUNT routing with null accountEnv, explicit pre-authentication ROLE_USER_MBR routing metadata supplied by StartLoginService, SAFE_BUSINESS_CALL, and ApimExchangeExecutor. TRPGetAccountList remains reserved for Stage 015.
 
 ## Stage 015 Login account-list APIM exchange
+
 TRPGetAccountList uses NON_ACCOUNT routing with null accountEnv, actor role validated from protected LoginPreAuthContext, SAFE_BUSINESS_CALL, and ApimExchangeExecutor. Returned account environments remain output data. OTP, validation, Account-Ref assignment, and session order are unchanged. Stage 016 is not started.
 
 ## Stage 016 Registration member-lookup APIM exchange
+
 TRPSearchUnregMember uses NON_ACCOUNT routing with null accountEnv, explicit ROLE_USER_MBR pre-authentication credential-routing metadata supplied by all three registration application callers, SAFE_BUSINESS_CALL, and ApimExchangeExecutor. Captcha ordering, contact comparison/masking, eligible-trust handling, protected context, OTP continuation, additional-trust registration, Stage 017, and Stage 018 remain unchanged.
+
+## Stage 017 - Registration Username Availability APIM Exchange
+
+Implementation pending final validation. TRPChkCustId registration username availability uses NON_ACCOUNT, null accountEnv, explicit ROLE_USER_MBR credential-routing metadata, SAFE_BUSINESS_CALL, and the generic ApimExchangeExecutor. Forgot Password retains independent business interpretation. Stage 018 has not started. Evidence: target/evidence/apim-routing-context-stage-17-20260817-072351.
