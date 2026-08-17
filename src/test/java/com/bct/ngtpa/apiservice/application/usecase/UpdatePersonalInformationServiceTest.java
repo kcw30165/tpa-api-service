@@ -44,8 +44,8 @@ class UpdatePersonalInformationServiceTest {
         updateFields.put("addr2", "Tai Po, New Territories");
         updateFields.put("mobile-number", "98765432");
 
-        var result = new UpdatePersonalInformationService(apimPort, provider(context()))
-                .execute(new UpdatePersonalInformationCommand(true, updateFields))
+        var result = new UpdatePersonalInformationService(apimPort)
+                .execute(new UpdatePersonalInformationCommand(true, updateFields, "JP", "POL-001", "CERT-001", "actor-user", ActorUserRole.ROLE_USER_MBR))
                 .block();
 
         assertEquals(expectedResults, result);

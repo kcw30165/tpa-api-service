@@ -28,19 +28,17 @@ import reactor.test.StepVerifier;
 class GetPersonalInformationServiceTest {
 
     private final ApimMemberInfoPort apimMemberInfoPort = mock(ApimMemberInfoPort.class);
-    private final GetPersonalInformationService service = new GetPersonalInformationService(
-            apimMemberInfoPort,
-            resolver(context("ACC-123")));
+    private final GetPersonalInformationService service = new GetPersonalInformationService(apimMemberInfoPort);
 
     @Test
     void returnsNeutralPersonalInformationResultWithoutPageMapping() {
         var payload = Map.<String, Object>of(
                 "data", Map.of("addr1", "ABC Street", "email", "nick@example.com"),
                 "config", Map.of("addr1", "EDITABLE_COM", "email", "READONLY"));
-        when(apimMemberInfoPort.fetchMemberInfo(eq(new FetchMemberInfoCommand("JP", "policy-1", "cert-1", "user-1"))))
+        when(apimMemberInfoPort.fetchMemberInfo(eq(new FetchMemberInfoCommand("JP", "policy-1", "cert-1", "user-1", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR))))
                 .thenReturn(Mono.just(new MemberInfoResult(payload)));
 
-        StepVerifier.create(service.execute(new GetPersonalInformationCommand("en")))
+        StepVerifier.create(service.execute(command("en")))
                 .expectNextMatches(result -> "ABC Street".equals(result.data().get("addr1"))
                         && "nick@example.com".equals(result.data().get("email"))
                         && "EDITABLE_COM".equals(result.config().get("addr1"))
@@ -62,10 +60,10 @@ class GetPersonalInformationServiceTest {
                                         "sch-type", "Any",
                                         "config-value", "READONLY")),
                                 "data", List.of(Map.of("email", "HGPQITD.XW.YQGPG@PTOJY.CLI"))))));
-        when(apimMemberInfoPort.fetchMemberInfo(eq(new FetchMemberInfoCommand("JP", "policy-1", "cert-1", "user-1"))))
+        when(apimMemberInfoPort.fetchMemberInfo(eq(new FetchMemberInfoCommand("JP", "policy-1", "cert-1", "user-1", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR))))
                 .thenReturn(Mono.just(new MemberInfoResult(payload)));
 
-        StepVerifier.create(service.execute(new GetPersonalInformationCommand("en")))
+        StepVerifier.create(service.execute(command("en")))
                 .assertNext(result -> {
                     assertEquals("HGPQITD.XW.YQGPG@PTOJY.CLI", result.data().get("email"));
                     assertTrue(result.config().isEmpty());
@@ -86,8 +84,8 @@ class GetPersonalInformationServiceTest {
                     "data", Map.of("addr1", "1 Example Street", "email", "a@b.test"))));
         };
 
-        var result = new GetPersonalInformationService(apimPort, resolver(context("ACC-123")))
-                .execute(new GetPersonalInformationCommand("zh_HK"))
+        var result = new GetPersonalInformationService(apimPort)
+                .execute(command("zh_HK"))
                 .block();
 
         assertEquals("JP", capturedFetchCommand.get().getAccountEnv());
@@ -100,15 +98,17 @@ class GetPersonalInformationServiceTest {
 
     @Test
     void emptyOrNullMemberInfoPayloadProducesEmptyResult() {
-        var result = new GetPersonalInformationService(
-                command -> Mono.just(new MemberInfoResult(null)),
-                resolver(context("ACC-123")))
-                .execute(new GetPersonalInformationCommand("en"))
+        var result = new GetPersonalInformationService(command -> Mono.just(new MemberInfoResult(null)))
+                .execute(command("en"))
                 .block();
 
         assertTrue(result.data().isEmpty());
         assertTrue(result.config().isEmpty());
         assertTrue(result.configItems().isEmpty());
+    }
+
+    private static GetPersonalInformationCommand command(String language) {
+        return new GetPersonalInformationCommand(language, "JP", "policy-1", "cert-1", "user-1", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
     }
 
     private static CurrentPortalAccessContextResolver resolver(PortalAccessContext context) {

@@ -14,8 +14,8 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordError;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordResult;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordResultStatus;
 import java.time.Duration;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import java.util.List;
 import java.util.Objects;
 
@@ -41,7 +41,8 @@ public final class ForgotPasswordStartWebMapper {
                 authFlowSessionId,
                 language,
                 requestId,
-                idempotencyTtl);
+                idempotencyTtl,
+                ActorUserRole.ROLE_USER_MBR);
     }
 
     public MutationResponse<ForgotPasswordWorkflowResultResponse<ForgotPasswordStartDataResponse>> toMutationResponse(

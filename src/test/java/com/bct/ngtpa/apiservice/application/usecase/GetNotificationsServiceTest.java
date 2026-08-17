@@ -29,8 +29,8 @@ class GetNotificationsServiceTest {
         };
         ReferenceDatePort referenceDatePort = accountEnv -> Mono.just(LocalDate.of(2026, 6, 16));
 
-        new GetNotificationsService(apimPort, provider(context("ACC-123")), referenceDatePort)
-                .execute(new GetNotificationsCommand(null, null, 1, 20, null, null, null, null, null, null))
+        new GetNotificationsService(apimPort, referenceDatePort)
+                .execute(new GetNotificationsCommand("JP", ActorUserRole.ROLE_USER_MBR, 1, 20, null, null, "policy-1", "cert-1", "user-1", null))
                 .block();
 
         assertEquals("JP", captured.get().accountEnv());

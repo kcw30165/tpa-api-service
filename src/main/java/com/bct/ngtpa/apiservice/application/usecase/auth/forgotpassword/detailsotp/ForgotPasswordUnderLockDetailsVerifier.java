@@ -21,7 +21,7 @@ public final class ForgotPasswordUnderLockDetailsVerifier {
             return Mono.just(ForgotPasswordDetailsResult.of(ForgotPasswordDetailsStatus.SYSTEM_FAILED));
         return lookup
                 .verify(new ForgotPasswordDetailsLookupCommand(context.publicIdentityType(), context.tasUserId(), dob,
-                        email, mobile, context.customerId(), requestId))
+                        email, mobile, context.customerId(), requestId, com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR))
                 .map(r -> r.status() == ForgotPasswordDetailsLookupStatus.MATCHED
                         ? ForgotPasswordDetailsResult.of(ForgotPasswordDetailsStatus.DETAILS_VERIFIED)
                         : ForgotPasswordDetailsResult.of(ForgotPasswordDetailsStatus.BUSINESS_REJECTED))

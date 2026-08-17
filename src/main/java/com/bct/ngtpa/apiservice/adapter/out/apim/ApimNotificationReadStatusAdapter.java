@@ -1,102 +1,70 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim;
 
-import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
+import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
+import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
+import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateNotificationReadStatusApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.UpdateNotificationReadStatusApimRequest;
-import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
 import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusCommand;
 import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusResult;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNotificationReadStatusPort;
-import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
-import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
 import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
 import com.bct.ngtpa.apiservice.domain.model.NotificationReadStatus;
-import com.bct.ngtpa.apiservice.exception.ApimException;
-import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
+import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
+import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 
-import java.util.List;
-import java.util.Objects;
-
 @Component
 @RequiredArgsConstructor
 public class ApimNotificationReadStatusAdapter implements ApimNotificationReadStatusPort {
-
     private static final String API_NAME = "/ws/NGTPA/v1/TRPUpdMsgRead";
-
-    private final ApimWebClientFacade apimWebClientFacade;
-    private final ApimCertificateService apimCertificateService;
-    private final ApimPayloadCryptoService apimPayloadCryptoService;
-    private final ApimProperties apimProperties;
+    private final ApimExchangeExecutor executor;
 
     @Override
     @LogExecution(value = "apim.updateNotificationReadStatus", logArgs = true)
     public Mono<UpdateNotificationsReadStatusResult> updateReadStatus(UpdateNotificationsReadStatusCommand command) {
-        if (!apimProperties.getEncryption().isEnabled()) {
-            var request = apimPayloadCryptoService.encryptRequest(
-                    API_NAME, toApimRequest(command), UpdateNotificationReadStatusApimRequest.class, null);
-            return apimWebClientFacade.post(API_NAME, request, com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.ACCOUNT_ENV, new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, command.accountEnv()), com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility.IDEMPOTENT_MUTATION)
-                    .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
-                            API_NAME, body, UpdateNotificationReadStatusApimDataItem.class, null))
-                    .map(response -> toResult(response, command.targetStatus()))
-                    .onErrorMap(ApimCryptoException.class, ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR,
-                            ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
-        }
-
-        var ctx = new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, command.accountEnv());
-        return apimWebClientFacade.resolveProfile(com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.ACCOUNT_ENV, ctx)
-                .flatMap(profile -> apimCertificateService.getPublicKey(profile)
-                        .flatMap(publicKey -> {
-                            var request = apimPayloadCryptoService.encryptRequest(
-                                    API_NAME, toApimRequest(command), UpdateNotificationReadStatusApimRequest.class, publicKey);
-                            return apimWebClientFacade.post(API_NAME, request, profile, com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility.IDEMPOTENT_MUTATION)
-                                    .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
-                                            API_NAME, body, UpdateNotificationReadStatusApimDataItem.class, publicKey))
-                                    .map(response -> toResult(response, command.targetStatus()));
-                        }))
-                .onErrorMap(ApimCryptoException.class, ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR,
-                        ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
+        return Mono.defer(() -> {
+            var exchange = new ApimExchangeRequest<>(
+                    API_NAME,
+                    toApimRequest(command),
+                    UpdateNotificationReadStatusApimRequest.class,
+                    UpdateNotificationReadStatusApimDataItem.class,
+                    ApimDatabaseScope.ACCOUNT_ENV,
+                    new ApimCredentialResolutionContext(command.mbrType(), command.accountEnv()),
+                    ApimRetryEligibility.IDEMPOTENT_MUTATION);
+            return executor.postEnvelope(exchange).map(response -> toResult(response, command.targetStatus()));
+        });
     }
 
     private UpdateNotificationReadStatusApimRequest toApimRequest(UpdateNotificationsReadStatusCommand command) {
         return UpdateNotificationReadStatusApimRequest.builder()
-                .certNo(command.certNo())
-                .accountEnv(command.accountEnv())
+                .certNo(command.certNo()).accountEnv(command.accountEnv())
                 .mbrType(command.mbrType() == null ? null : command.mbrType().name())
-                .msgCodeLong(String.join(",", command.notificationIds()))
-                .policyNo(command.policyNo())
-                .refDate(command.refDate())
-                .status(command.targetStatus() == null ? null : command.targetStatus().name())
-                .userId(command.userId())
-                .build();
+                .msgCodeLong(String.join(",", command.notificationIds())).policyNo(command.policyNo())
+                .refDate(command.refDate()).status(command.targetStatus() == null ? null : command.targetStatus().name())
+                .userId(command.userId()).build();
     }
 
     private UpdateNotificationsReadStatusResult toResult(
-            ApimResponseEnvelope<UpdateNotificationReadStatusApimDataItem> response,
-            MessageStatus targetStatus) {
+            ApimResponseEnvelope<UpdateNotificationReadStatusApimDataItem> response, MessageStatus targetStatus) {
         var dataItems = ApimResponseValidator.requireSuccessData(response);
-        if (CollectionUtils.isEmpty(dataItems)) {
-            return new UpdateNotificationsReadStatusResult(List.of());
-        }
-
+        if (CollectionUtils.isEmpty(dataItems)) return new UpdateNotificationsReadStatusResult(List.of());
         var effectiveStatus = targetStatus == null ? MessageStatus.UNKNOWN : targetStatus;
-        List<NotificationReadStatus> notifications = dataItems.stream()
-                .filter(Objects::nonNull)
+        List<NotificationReadStatus> notifications = dataItems.stream().filter(Objects::nonNull)
                 .map(item -> new NotificationReadStatus(resolveMessageCode(item), effectiveStatus, item.isSuccess()))
                 .toList();
-
         return new UpdateNotificationsReadStatusResult(notifications);
     }
 
     private String resolveMessageCode(UpdateNotificationReadStatusApimDataItem item) {
-        if (StringUtils.hasText(item.getMsgCodeLong())) {
-            return item.getMsgCodeLong();
-        }
-        return item.getMsgCode();
+        return StringUtils.hasText(item.getMsgCodeLong()) ? item.getMsgCodeLong() : item.getMsgCode();
     }
 }

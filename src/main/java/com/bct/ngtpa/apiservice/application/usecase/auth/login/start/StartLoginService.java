@@ -13,6 +13,7 @@ import com.bct.ngtpa.apiservice.application.port.out.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.preauth.*;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.*;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import java.time.*;
 import java.util.*;
 import reactor.core.publisher.Mono;
@@ -62,7 +63,8 @@ public final class StartLoginService implements StartLoginUseCase {
                         command.username(),
                         command.password(),
                         command.acceptLanguage(),
-                        command.correlationId()));
+                        command.correlationId(), 
+                        ActorUserRole.ROLE_USER_MBR));
         LoginIdempotencyKey key = new LoginIdempotencyKey(command.idempotencyKey());
         LoginCredentialRequestHash hash = hasher.hash(normalized);
 

@@ -97,7 +97,7 @@ class TrpSearchUnregMemberApimResultMapperTest {
                 "A1234567",
                 "01/01/1970",
                 RegistrationContactType.EMAIL,
-                "member@example.com");
+                "member@example.com", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
     }
 
     private static RegistrationLookupCommand mobileCommand() {
@@ -106,7 +106,7 @@ class TrpSearchUnregMemberApimResultMapperTest {
                 "A1234567",
                 "01/01/1970",
                 RegistrationContactType.MOBILE,
-                "91234567");
+                "91234567", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
     }
 
     private static TrpSearchUnregMemberApimDataItem item(

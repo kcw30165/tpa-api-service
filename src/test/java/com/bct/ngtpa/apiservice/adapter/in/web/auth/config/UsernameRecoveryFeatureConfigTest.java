@@ -68,6 +68,10 @@ class UsernameRecoveryFeatureConfigTest {
         Clock clock = Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC);
         return new ApplicationContextRunner()
                 .withUserConfiguration(UsernameRecoveryFeatureConfig.class)
+                .withPropertyValues(
+                        "auth-workflows.username-recovery.context-protection.enabled=true",
+                        "auth-workflows.username-recovery.context-protection.key-version=test-v1",
+                        "auth-workflows.username-recovery.context-protection.secret=0123456789abcdef0123456789abcdef")
                 .withBean(ReactiveStringRedisTemplate.class, () -> mock(ReactiveStringRedisTemplate.class))
                 .withBean(RedisCacheKeyFactory.class, () -> new RedisCacheKeyFactory("ngtpa"))
                 .withBean(CsrfTokenGenerator.class, SecureRandomCsrfTokenGenerator::new)

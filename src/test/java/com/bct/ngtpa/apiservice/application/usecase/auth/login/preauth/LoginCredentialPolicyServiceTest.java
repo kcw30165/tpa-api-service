@@ -22,7 +22,7 @@ class LoginCredentialPolicyServiceTest {
     @Test
     void trimsAndAsciiLowercasesUsernameButPreservesPasswordExactly() {
         var normalized = service.validateAndNormalize(new CredentialAuthenticationCommand(
-                "  Member.ABC  ", "  Exact Case Password  ", "en", "req-1"));
+                "  Member.ABC  ", "  Exact Case Password  ", "en", "req-1", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR));
 
         assertThat(normalized.username()).isEqualTo("member.abc");
         assertThat(normalized.password()).isEqualTo("  Exact Case Password  ");
@@ -31,20 +31,20 @@ class LoginCredentialPolicyServiceTest {
     @Test
     void asciiLowercaseNormalizesOnlyConfiguredAsciiUsernameCharacters() {
         var normalized = service.validateAndNormalize(new CredentialAuthenticationCommand(
-                "ABC-Z_9", "Exact", "en", "req-1"));
+                "ABC-Z_9", "Exact", "en", "req-1", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR));
         assertThat(normalized.username()).isEqualTo("abc-z_9");
     }
 
     @Test
     void rejectsBlankOverLengthOrPatternInvalidCredentials() {
         assertThatThrownBy(() -> service.validateAndNormalize(
-                new CredentialAuthenticationCommand(" ", "Exact", "en", "req")))
+                new CredentialAuthenticationCommand(" ", "Exact", "en", "req", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR)))
                 .isInstanceOf(InvalidLoginCredentialsException.class);
         assertThatThrownBy(() -> service.validateAndNormalize(
-                new CredentialAuthenticationCommand("member/invalid", "Exact", "en", "req")))
+                new CredentialAuthenticationCommand("member/invalid", "Exact", "en", "req", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR)))
                 .isInstanceOf(InvalidLoginCredentialsException.class);
         assertThatThrownBy(() -> service.validateAndNormalize(
-                new CredentialAuthenticationCommand("member", "", "en", "req")))
+                new CredentialAuthenticationCommand("member", "", "en", "req", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR)))
                 .isInstanceOf(InvalidLoginCredentialsException.class);
     }
 }

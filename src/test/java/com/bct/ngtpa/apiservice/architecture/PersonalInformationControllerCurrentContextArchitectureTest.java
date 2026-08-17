@@ -34,7 +34,7 @@ class PersonalInformationControllerCurrentContextArchitectureTest {
                 "Controller should validate selected accountRef from PortalAccessContext.account()");
         assertTrue(source.contains("context.account().accountRef()"),
                 "Controller should source selected accountRef from PortalAccessContext.account()");
-        assertTrue(source.contains("new GetPersonalInformationCommand(language)"),
+        assertTrue(source.contains("new GetPersonalInformationCommand(language,"),
                 "GET personal-information command should carry business input only");
         assertFalse(source.contains("new GetPersonalInformationCommand(accountRef"),
                 "GET personal-information command must not carry selected-account context");

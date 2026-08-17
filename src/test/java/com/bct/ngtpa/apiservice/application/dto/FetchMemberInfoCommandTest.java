@@ -11,7 +11,7 @@ class FetchMemberInfoCommandTest {
 
     @Test
     void exposesConstructorValuesThroughGetters() {
-        FetchMemberInfoCommand command = new FetchMemberInfoCommand("JP", "POL", "CERT", "USER");
+        FetchMemberInfoCommand command = new FetchMemberInfoCommand("JP", "POL", "CERT", "USER", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
 
         assertEquals("JP", command.getAccountEnv());
         assertEquals("POL", command.getPolicyNo());
@@ -21,9 +21,9 @@ class FetchMemberInfoCommandTest {
 
     @Test
     void implementsValueEqualityAndHashCode() {
-        FetchMemberInfoCommand left = new FetchMemberInfoCommand("JP", "POL", "CERT", "USER");
-        FetchMemberInfoCommand same = new FetchMemberInfoCommand("JP", "POL", "CERT", "USER");
-        FetchMemberInfoCommand different = new FetchMemberInfoCommand("HK", "POL", "CERT", "USER");
+        FetchMemberInfoCommand left = new FetchMemberInfoCommand("JP", "POL", "CERT", "USER", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
+        FetchMemberInfoCommand same = new FetchMemberInfoCommand("JP", "POL", "CERT", "USER", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
+        FetchMemberInfoCommand different = new FetchMemberInfoCommand("HK", "POL", "CERT", "USER", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
 
         assertEquals(left, left);
         assertEquals(left, same);
@@ -35,9 +35,9 @@ class FetchMemberInfoCommandTest {
 
     @Test
     void equalityHandlesNullComponents() {
-        FetchMemberInfoCommand left = new FetchMemberInfoCommand(null, null, null, null);
-        FetchMemberInfoCommand same = new FetchMemberInfoCommand(null, null, null, null);
-        FetchMemberInfoCommand different = new FetchMemberInfoCommand(null, null, null, "USER");
+        FetchMemberInfoCommand left = new FetchMemberInfoCommand(null, null, null, null, com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
+        FetchMemberInfoCommand same = new FetchMemberInfoCommand(null, null, null, null, com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
+        FetchMemberInfoCommand different = new FetchMemberInfoCommand(null, null, null, "USER", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
 
         assertTrue(left.equals(same));
         assertFalse(left.equals(different));

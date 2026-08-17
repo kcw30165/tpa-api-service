@@ -14,7 +14,7 @@ import reactor.test.StepVerifier;
 
 class TrpGetAccountListAdapterTest {
     private static final LoginAccountAuthorizationCommand COMMAND = new LoginAccountAuthorizationCommand("member01",
-            "MBR", "cust-id", "member01", "req-1");
+            "MBR", "cust-id", "member01", "req-1", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
 
     @Test
     void mapsSuccessfulSharedEnvelopeAndPreservesRecordOrder() {
@@ -59,7 +59,7 @@ class TrpGetAccountListAdapterTest {
     private TrpGetAccountListAdapter adapter(
             ApimResponseEnvelope<TrpGetAccountListApimDataItem> response,
             TrpGetAccountListProperties properties) {
-        TrpGetAccountListTransport transport = (request, correlationId) -> Mono.just(response);
+        TrpGetAccountListTransport transport = command -> Mono.just(response);
         return new TrpGetAccountListAdapter(
                 transport, new TrpGetAccountListContractMapper(), properties);
     }

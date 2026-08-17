@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.NotificationReadStatusWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.NotificationWebMapper;
 import com.bct.ngtpa.apiservice.adapter.out.configserver.ReferenceDateProperties;
@@ -11,10 +13,8 @@ import com.bct.ngtpa.apiservice.application.dto.GetNotificationsCommand;
 import com.bct.ngtpa.apiservice.application.dto.NotificationListResult;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.port.out.ApimNoticeMessagePort;
-import com.bct.ngtpa.apiservice.application.port.out.ApimReferenceDateRefreshPort;
 import com.bct.ngtpa.apiservice.application.port.out.CachePort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
-import com.bct.ngtpa.apiservice.application.port.out.ReferenceDateCacheUpdatePort;
 import com.bct.ngtpa.apiservice.application.usecase.GetNotificationsService;
 import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
 import com.bct.ngtpa.apiservice.domain.model.MessageType;
@@ -33,26 +33,24 @@ import org.springframework.mock.env.MockEnvironment;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 class NotificationReferenceDateFlowTest {
-
     @Test
-    void notificationsEndpoint_succeedsThroughControllerUseCaseAndNonpReferenceDateAdapter_apimFallbackPath() {
+    void notificationsEndpointUsesRedisThenHongKongDateWithoutAutomaticReferenceDateRefresh() {
         var redisRead = new AtomicBoolean(false);
-        var apimRead = new AtomicBoolean(false);
-        var redisUpdated = new AtomicBoolean(false);
+        var cacheWriteCalled = new AtomicBoolean(false);
         var noticeCommand = new AtomicReference<GetNotificationsCommand>();
 
         CachePort cachePort = new CachePort() {
             @Override
             public Mono<Optional<String>> get(String cacheKey) {
                 redisRead.set(true);
+                assertThat(cacheKey).isEqualTo("ngtpa:reference-date:JP");
                 return Mono.just(Optional.empty());
             }
 
             @Override
             public Mono<Void> set(String cacheKey, String value, Duration ttl) {
+                cacheWriteCalled.set(true);
                 return Mono.empty();
             }
 
@@ -62,32 +60,19 @@ class NotificationReferenceDateFlowTest {
             }
         };
 
-        ApimReferenceDateRefreshPort referenceDateApimPort = accountEnv -> {
-            apimRead.set(true);
-            return Mono.just(LocalDate.of(2026, 6, 30));
-        };
-
-        ReferenceDateCacheUpdatePort referenceDateCacheUpdatePort = command -> {
-            redisUpdated.set(true);
-            assertThat(command.cacheKey()).isEqualTo("ngtpa:reference-date:JP");
-            assertThat(command.cacheValue()).isEqualTo("30/06/2026");
-            return Mono.empty();
-        };
-
         var properties = new ReferenceDateProperties();
         properties.setAccountEnv("JP");
         properties.setCacheTtlSeconds(3600);
         var environment = new MockEnvironment();
         environment.setActiveProfiles("SIT");
-
         var referenceDatePort = new ReferenceDateAdapter(
                 properties,
                 Optional.of(cachePort),
                 "ngtpa",
-                referenceDateApimPort,
-                referenceDateCacheUpdatePort,
                 environment,
-                Clock.fixed(LocalDate.of(2026, 6, 21).atStartOfDay(ZoneId.of("UTC")).toInstant(), ZoneId.of("UTC")));
+                Clock.fixed(
+                        LocalDate.of(2026, 6, 21).atStartOfDay(ZoneId.of("UTC")).toInstant(),
+                        ZoneId.of("UTC")));
 
         CurrentPortalAccessContextResolver currentPortalAccessContextResolver = new CurrentPortalAccessContextResolver() {
             @Override
@@ -113,7 +98,7 @@ class NotificationReferenceDateFlowTest {
                             "GENERAL",
                             MessageType.IMPORTANT_NOTICE,
                             "Reference Date Notice",
-                            "內容",
+                            "Content zh",
                             "Content",
                             MessageStatus.UNREAD.isRead(),
                             LocalDateTime.now(ZoneId.of("Asia/Hong_Kong")).minusDays(1),
@@ -125,10 +110,11 @@ class NotificationReferenceDateFlowTest {
         };
 
         var controller = new NotificationController(
-                new GetNotificationsService(noticePort, currentPortalAccessContextResolver, referenceDatePort),
+                new GetNotificationsService(noticePort, referenceDatePort),
                 command -> Mono.error(new UnsupportedOperationException()),
                 new NotificationWebMapper(),
-                new NotificationReadStatusWebMapper());
+                new NotificationReadStatusWebMapper(),
+                currentPortalAccessContextResolver);
 
         WebTestClient.bindToController(controller)
                 .build()
@@ -145,8 +131,9 @@ class NotificationReferenceDateFlowTest {
                 .jsonPath("$.notifications[0].msgCode").isEqualTo("MSG-1-LONG");
 
         assertThat(redisRead.get()).isTrue();
-        assertThat(apimRead.get()).isTrue();
-        assertThat(redisUpdated.get()).isTrue();
-        assertThat(noticeCommand.get().refDate()).isEqualTo("30/06/2026");
+        assertThat(cacheWriteCalled.get()).isFalse();
+        assertThat(noticeCommand.get()).isNotNull();
+        assertThat(noticeCommand.get().accountEnv()).isEqualTo("JP");
+        assertThat(noticeCommand.get().refDate()).isEqualTo("21/06/2026");
     }
 }

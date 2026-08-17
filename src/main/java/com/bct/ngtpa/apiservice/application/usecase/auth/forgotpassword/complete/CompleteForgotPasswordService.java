@@ -205,7 +205,8 @@ public final class CompleteForgotPasswordService implements CompleteForgotPasswo
                         loaded.context().customerId(),
                         command.password(),
                         command.correlationId(),
-                        loaded.context().accountEnv()))
+                        loaded.context().accountEnv(),
+                        command.actorUserRole()))
                 .flatMap(result -> handleDownstream(command, requestHash, snapshot.session(), loaded.context(), result,
                         now, ttl))
                 .onErrorResume(error -> markUnknownOutcome(command, requestHash, snapshot.session(), now, ttl));

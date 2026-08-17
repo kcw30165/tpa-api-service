@@ -7,14 +7,15 @@ import org.junit.jupiter.api.Test;
 
 class Task0043TrpGetAccountListAdapterArchitectureTest {
     @Test
-    void transportReusesSharedApimFacadeCryptoCertificateAndRetry() throws Exception {
+    void transportUsesTypedExecutorAndCallerSuppliedRouting() throws Exception {
         String source = Files.readString(Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/login/account/SharedApimTrpGetAccountListTransport.java"));
-        assertThat(source).contains(
-                "ApimWebClientFacade", "ApimCertificateService", "ApimPayloadCryptoService",
-                "ApimRetryEligibility.SAFE_BUSINESS_CALL", "ApimCredentialResolutionContext");
-        assertThat(source).doesNotContain(
-                "WebClient.builder", "OAuth", "new Cipher", "TRPMemberLogin");
+        assertThat(source).contains("ApimExchangeExecutor", "ApimExchangeRequest", "postEnvelope(",
+                "ApimDatabaseScope.NON_ACCOUNT", "command.actorUserRole()",
+                "ApimRetryEligibility.SAFE_BUSINESS_CALL");
+        assertThat(source).doesNotContain("ROLE_USER_MBR", "ApimWebClientFacade", "ApimCertificateService",
+                "ApimPayloadCryptoService", "ApimProperties", "resolveProfile(", "getPublicKey(",
+                "encryptRequest(", "decryptResponseEnvelope(", "PortalAccessContext");
     }
 
     @Test

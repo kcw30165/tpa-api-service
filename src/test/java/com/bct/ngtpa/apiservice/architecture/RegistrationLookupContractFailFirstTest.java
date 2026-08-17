@@ -130,7 +130,7 @@ class RegistrationLookupContractFailFirstTest {
                         "masked-test-value",
                         "01/01/1970",
                         RegistrationContactType.EMAIL,
-                        "member@example.com"));
+                        "member@example.com", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR));
         assertThat(request.searchBy()).isEqualTo(expected);
     }
 

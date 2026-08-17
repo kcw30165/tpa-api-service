@@ -23,7 +23,7 @@ public final class TrpGetAccountListAdapter implements LoginAccountAuthorization
 
     public Mono<LoginAccountAuthorizationResult> getAccounts(LoginAccountAuthorizationCommand command) {
         Objects.requireNonNull(command);
-        return transport.post(mapper.toRequest(command), command.correlationId()).map(this::mapEnvelope)
+        return transport.post(command).map(this::mapEnvelope)
                 .onErrorReturn(LoginAccountAuthorizationResult.unavailable());
     }
 

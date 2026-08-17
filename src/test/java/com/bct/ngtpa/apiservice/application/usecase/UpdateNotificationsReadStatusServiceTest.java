@@ -30,9 +30,9 @@ class UpdateNotificationsReadStatusServiceTest {
         };
         ReferenceDatePort referenceDatePort = accountEnv -> Mono.just(LocalDate.of(2026, 6, 16));
 
-        new UpdateNotificationsReadStatusService(apimPort, provider(context("ACC-123")), referenceDatePort)
+        new UpdateNotificationsReadStatusService(apimPort, referenceDatePort)
                 .execute(new UpdateNotificationsReadStatusCommand(
-                        null, null, List.of("N-1", "N-2"), null, null, null, null, null))
+                        "JP", ActorUserRole.ROLE_USER_MBR, List.of("N-1", "N-2"), "policy-1", "cert-1", "user-1", null, null))
                 .block();
 
         assertEquals("JP", captured.get().accountEnv());

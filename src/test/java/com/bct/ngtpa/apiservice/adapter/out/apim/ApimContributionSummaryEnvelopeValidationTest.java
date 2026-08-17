@@ -17,11 +17,7 @@ import org.junit.jupiter.api.Test;
 
 class ApimContributionSummaryEnvelopeValidationTest {
 
-    private final ApimContributionSummaryAdapter adapter = new ApimContributionSummaryAdapter(
-            mock(ApimWebClientFacade.class),
-            mock(ApimCertificateService.class),
-            mock(ApimPayloadCryptoService.class),
-            mock(ApimProperties.class));
+    private final ApimContributionSummaryAdapter adapter = new ApimContributionSummaryAdapter(null);
 
     @Test
     void throwsApimResponseInvalidWhenSuccessEnvelopeOmitsDataArray() throws Exception {

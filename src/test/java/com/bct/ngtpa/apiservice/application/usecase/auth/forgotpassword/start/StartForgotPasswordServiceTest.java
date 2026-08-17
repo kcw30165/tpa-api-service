@@ -84,6 +84,8 @@ class StartForgotPasswordServiceTest {
                 .verifyComplete();
 
         assertThat(fixture.lookup.calls).isEqualTo(1);
+        assertThat(fixture.lookup.lastCommand.actorUserRole())
+                .isEqualTo(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
         assertThat(fixture.idempotency.completed).isTrue();
         assertThat(fixture.protector.lastContext.normalizedUsername()).isEqualTo("member01");
         assertThat(fixture.protector.lastContext.customerId()).isEqualTo("cust-db01");
@@ -330,10 +332,12 @@ class StartForgotPasswordServiceTest {
 
     private static final class FakeForgotPasswordUsernameLookupPort implements ForgotPasswordUsernameLookupPort {
         private int calls;
+        private StartForgotPasswordUsernameLookupCommand lastCommand;
 
         @Override
         public Mono<ForgotPasswordUsernameLookupResult> lookup(StartForgotPasswordUsernameLookupCommand command) {
             calls++;
+            lastCommand = command;
             return Mono.just(ForgotPasswordUsernameLookupResult.confirmed(
                     "cust-db01",
                     "tas-user-01",

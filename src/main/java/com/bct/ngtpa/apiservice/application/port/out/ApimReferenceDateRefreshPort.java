@@ -1,10 +1,9 @@
 package com.bct.ngtpa.apiservice.application.port.out;
 
+import com.bct.ngtpa.apiservice.application.dto.FetchReferenceDateCommand;
+import java.time.LocalDate;
 import reactor.core.publisher.Mono;
 
-import java.time.LocalDate;
-
 public interface ApimReferenceDateRefreshPort {
-
-    Mono<LocalDate> fetchReferenceDate(String accountEnv);
+    Mono<LocalDate> fetchReferenceDate(FetchReferenceDateCommand command);
 }

@@ -2,9 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.out.referencedate.config;
 
 import com.bct.ngtpa.apiservice.adapter.out.configserver.ReferenceDateProperties;
 import com.bct.ngtpa.apiservice.adapter.out.referencedate.ReferenceDateAdapter;
-import com.bct.ngtpa.apiservice.application.port.out.ApimReferenceDateRefreshPort;
 import com.bct.ngtpa.apiservice.application.port.out.CachePort;
-import com.bct.ngtpa.apiservice.application.port.out.ReferenceDateCacheUpdatePort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -50,7 +48,7 @@ public class ReferenceDateAdapterConfig {
     /**
      * Produces the {@link ReferenceDatePort} bean backed by the full source chain:
      * PROD/DR => Hong Kong system date only;
-     * non-production-like => Redis → APIM → Hong Kong system date.
+     * non-production-like => Redis → Hong Kong system date.
      *
      * @param properties                   bound from {@code reference-date.*} YAML
      * @param cachePort                    present when
@@ -69,16 +67,12 @@ public class ReferenceDateAdapterConfig {
     public ReferenceDatePort referenceDatePort(
             ReferenceDateProperties properties,
             Optional<CachePort> cachePort,
-            ApimReferenceDateRefreshPort apimReferenceDateRefreshPort,
-            ReferenceDateCacheUpdatePort referenceDateCacheUpdatePort,
             Environment environment,
             @Value("${redis-cache.key-prefix:ngtpa}") String keyPrefix) {
         return new ReferenceDateAdapter(
                 properties,
                 cachePort,
                 keyPrefix,
-                apimReferenceDateRefreshPort,
-                referenceDateCacheUpdatePort,
                 environment,
                 Clock.systemDefaultZone());
     }

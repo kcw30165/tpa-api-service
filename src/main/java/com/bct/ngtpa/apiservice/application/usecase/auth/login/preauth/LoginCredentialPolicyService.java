@@ -58,7 +58,7 @@ public final class LoginCredentialPolicyService {
         String password = command.password();
         validate(password, passwordMinLength, passwordMaxLength, "password");
         return new CredentialAuthenticationCommand(
-                username, password, command.acceptLanguage(), command.correlationId());
+                username, password, command.acceptLanguage(), command.correlationId(), com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
     }
 
     private void validate(String value, int min, int max, String field) {

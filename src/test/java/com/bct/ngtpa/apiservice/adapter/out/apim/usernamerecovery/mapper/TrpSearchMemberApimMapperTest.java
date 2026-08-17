@@ -14,7 +14,7 @@ class TrpSearchMemberApimMapperTest {
     @Test
     void mapsIdentityDobEmailAndEmptyUnusedMobile() {
         var request = mapper.toApimRequest(new UsernameRecoveryLookupCommand(
-                MemberIdentityType.STAFFNO, "3011825", "15/07/1969", "member@example.com", null));
+                MemberIdentityType.STAFFNO, "3011825", "15/07/1969", "member@example.com", null, com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR));
 
         assertThat(request.searchBy()).isEqualTo("STAFFNO");
         assertThat(request.searchValue()).isEqualTo("3011825");
@@ -26,7 +26,7 @@ class TrpSearchMemberApimMapperTest {
     @Test
     void mapsMobileAndEmptyUnusedEmail() {
         var request = mapper.toApimRequest(new UsernameRecoveryLookupCommand(
-                MemberIdentityType.ID, "A1234567", "15/07/1969", null, "66290597"));
+                MemberIdentityType.ID, "A1234567", "15/07/1969", null, "66290597", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR));
 
         assertThat(request.searchBy()).isEqualTo("ID");
         assertThat(request.email()).isEmpty();
@@ -37,7 +37,7 @@ class TrpSearchMemberApimMapperTest {
     void mapsEveryIdentityTypeDirectlyToSearchBy() {
         for (MemberIdentityType type : MemberIdentityType.values()) {
             var request = mapper.toApimRequest(new UsernameRecoveryLookupCommand(
-                    type, "VALUE", "15/07/1969", "member@example.com", null));
+                    type, "VALUE", "15/07/1969", "member@example.com", null, com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR));
 
             assertThat(request.searchBy()).isEqualTo(type.name());
         }
@@ -52,7 +52,7 @@ class TrpSearchMemberApimMapperTest {
     @Test
     void mappedRequestUsesRawHyphenatedJsonFieldNamesAndNoApplicationNames() throws Exception {
         var request = mapper.toApimRequest(new UsernameRecoveryLookupCommand(
-                MemberIdentityType.STAFFNO, "3011825", "15/07/1969", "member@example.com", "66290597"));
+                MemberIdentityType.STAFFNO, "3011825", "15/07/1969", "member@example.com", "66290597", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR));
 
         var json = new ObjectMapper().writeValueAsString(request);
 

@@ -144,7 +144,8 @@ public class CompleteRegistrationService implements CompleteRegistrationUseCase 
                     String email = rc.contactType() == RegistrationContactType.EMAIL ? rc.contactValue() : "";
                     var downstream = new RegistrationCompletionCommand(trust.accountEnv(), trust.trustCode(),
                             uc.username(), rc.identityValue(), c.password(), rc.dateOfBirth(), mobile, email,
-                            c.correlationId());
+                            c.correlationId(),
+                            com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
                     return completion.complete(downstream)
                             .flatMap(r -> r.status() == RegistrationCompletionResult.Status.REGISTERED
                                     || "err.tpa.member.registered".equals(r.downstreamErrorCode())
@@ -163,7 +164,7 @@ public class CompleteRegistrationService implements CompleteRegistrationUseCase 
     private Mono<CompleteRegistrationResult> refreshTrusts(CompleteRegistrationCommand c,
             RegistrationAuthFlowContext rc, AuthFlowSession session, RegistrationRequestHash hash) {
         var command = new RegistrationLookupCommand(rc.identityType(), rc.identityValue(), rc.dateOfBirth(),
-                rc.contactType(), rc.contactValue());
+                rc.contactType(), rc.contactValue(), com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
         return lookup.searchUnregisteredMember(command).flatMap(r -> {
             if (r.status() == RegistrationLookupStatus.ELIGIBLE && !r.accounts().isEmpty())
                 return sessionTransitions

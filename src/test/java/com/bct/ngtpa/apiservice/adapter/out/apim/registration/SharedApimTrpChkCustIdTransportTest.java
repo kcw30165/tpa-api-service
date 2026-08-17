@@ -1,121 +1,94 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-import com.bct.ngtpa.apiservice.adapter.out.apim.ApimCertificateService;
-import com.bct.ngtpa.apiservice.adapter.out.apim.ApimPayloadCryptoService;
-import com.bct.ngtpa.apiservice.adapter.out.apim.ApimWebClientFacade;
-import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
-import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
+import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseBody;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpChkCustIdApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpChkCustIdApimRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.security.PublicKey;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.springframework.web.reactive.function.client.WebClient;
+import org.mockito.ArgumentCaptor;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 class SharedApimTrpChkCustIdTransportTest {
 
     @Test
-    void usesSafeBusinessRetryAndRequestIdMetadata() {
-        var properties = new ApimProperties();
-        properties.getEncryption().setEnabled(false);
-        var facade = new CapturingApimWebClientFacade();
-        var certificates = new TrackingApimCertificateService();
-        var crypto = new StubApimPayloadCryptoService(new ApimResponseEnvelope<>(
-                new ApimResponseBody<>(
+    void delegatesTypedNonAccountExchangeWithCallerSuppliedRole() {
+        ApimExchangeExecutor executor = mock(ApimExchangeExecutor.class);
+        var item = new TrpChkCustIdApimDataItem("db01", true, "DBA", "3010008", "STAFF");
+        when(executor.postEnvelope(any())).thenAnswer(invocation -> Mono.just(
+                new ApimResponseEnvelope<>(new ApimResponseBody<>(
                         "err.tpa.cust.id.not.registered",
-                        List.of(new TrpChkCustIdApimDataItem("db01", true, "DBA", "3010008", "STAFF")))));
-        var transport = new SharedApimTrpChkCustIdTransport(facade, certificates, crypto, properties);
+                        List.of(item)))));
+        var transport = new SharedApimTrpChkCustIdTransport(executor);
+        var command = new TrpChkCustIdTransportCommand(
+                new TrpChkCustIdApimRequest("cust-1"),
+                ActorUserRole.ROLE_USER_MBR,
+                "req-123");
 
-        StepVerifier.create(transport.post(new TrpChkCustIdApimRequest("cust-1"), "req-123"))
+        StepVerifier.create(transport.post(command))
                 .assertNext(result -> {
                     assertThat(result.errMessage()).isEqualTo("err.tpa.cust.id.not.registered");
-                    assertThat(result.data()).singleElement().satisfies(item -> {
-                        assertThat(item.customerId()).isEqualTo("db01");
-                        assertThat(item.userId()).isEqualTo("3010008");
+                    assertThat(result.data()).singleElement().satisfies(data -> {
+                        assertThat(data.customerId()).isEqualTo("db01");
+                        assertThat(data.userId()).isEqualTo("3010008");
                     });
                 })
                 .verifyComplete();
 
-        assertThat(facade.path).isEqualTo(SharedApimTrpChkCustIdTransport.API_NAME);
-        assertThat(facade.requestBody).isEqualTo(new TrpChkCustIdApimRequest("cust-1"));
-        assertThat(facade.retryEligibility).isEqualTo(ApimRetryEligibility.SAFE_BUSINESS_CALL);
-        // Strict routing context no longer carries arbitrary request metadata; ensure context is present
-        assertThat(facade.context).isNotNull();
-        assertThat(certificates.calls).isZero();
-        assertThat(crypto.decryptCalls).isEqualTo(1);
+        @SuppressWarnings("rawtypes")
+        ArgumentCaptor<ApimExchangeRequest> captor = ArgumentCaptor.forClass(ApimExchangeRequest.class);
+        verify(executor).postEnvelope(captor.capture());
+        ApimExchangeRequest<?, ?> exchange = captor.getValue();
+        assertThat(exchange.path()).isEqualTo(SharedApimTrpChkCustIdTransport.API_NAME);
+        assertThat(exchange.request()).isEqualTo(new TrpChkCustIdApimRequest("cust-1"));
+        assertThat(exchange.requestType()).isEqualTo(TrpChkCustIdApimRequest.class);
+        assertThat(exchange.responseDataType()).isEqualTo(TrpChkCustIdApimDataItem.class);
+        assertThat(exchange.databaseScope()).isEqualTo(ApimDatabaseScope.NON_ACCOUNT);
+        assertThat(exchange.credentialContext().actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_MBR);
+        assertThat(exchange.credentialContext().accountEnv()).isNull();
+        assertThat(exchange.retryEligibility()).isEqualTo(ApimRetryEligibility.SAFE_BUSINESS_CALL);
     }
 
-    private static final class CapturingApimWebClientFacade extends ApimWebClientFacade {
-        private String path;
-        private Object requestBody;
-        private ApimCredentialResolutionContext context;
-        private ApimRetryEligibility retryEligibility;
+    @Test
+    void rejectsMissingResponseEnvelope() {
+        ApimExchangeExecutor executor = mock(ApimExchangeExecutor.class);
+        when(executor.postEnvelope(any())).thenAnswer(invocation -> Mono.just(new ApimResponseEnvelope<>(null)));
+        var transport = new SharedApimTrpChkCustIdTransport(executor);
 
-        private CapturingApimWebClientFacade() {
-            super(WebClient.create(), WebClient.builder(), new ObjectMapper(), (scope, ctx) -> Mono.empty(), null, null,
-                    new ApimProperties());
-        }
-
-        @Override
-        public Mono<String> post(
-                String path,
-                Object requestBody,
-                com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope scope,
-                ApimCredentialResolutionContext resolutionContext,
-                ApimRetryEligibility retryEligibility) {
-            this.path = path;
-            this.requestBody = requestBody;
-            this.context = resolutionContext;
-            this.retryEligibility = retryEligibility;
-            return Mono.just("{\"response\":{}} ");
-        }
+        StepVerifier.create(transport.post(new TrpChkCustIdTransportCommand(
+                        new TrpChkCustIdApimRequest("cust-1"),
+                        ActorUserRole.ROLE_USER_MBR,
+                        "req-124")))
+                .expectErrorSatisfies(error -> assertThat(error.getMessage())
+                        .contains("missing response"))
+                .verify();
     }
 
-    private static final class TrackingApimCertificateService extends ApimCertificateService {
-        private int calls;
+    @Test
+    void rejectsSuccessfulEnvelopeWithoutData() {
+        ApimExchangeExecutor executor = mock(ApimExchangeExecutor.class);
+        when(executor.postEnvelope(any())).thenAnswer(invocation -> Mono.just(
+                new ApimResponseEnvelope<>(new ApimResponseBody<>(null, List.of()))));
+        var transport = new SharedApimTrpChkCustIdTransport(executor);
 
-        private TrackingApimCertificateService() {
-            super(WebClient.builder(), new ApimProperties(), null);
-        }
-
-        @Override
-        public Mono<PublicKey> getBctPublicKey() {
-            calls++;
-            return Mono.error(new AssertionError("certificate lookup should not run when encryption is disabled"));
-        }
-    }
-
-    private static final class StubApimPayloadCryptoService extends ApimPayloadCryptoService {
-        private final ApimResponseEnvelope<TrpChkCustIdApimDataItem> envelope;
-        private int decryptCalls;
-
-        private StubApimPayloadCryptoService(ApimResponseEnvelope<TrpChkCustIdApimDataItem> envelope) {
-            super(new ApimProperties(), new ObjectMapper(), null, null, null, null);
-            this.envelope = envelope;
-        }
-
-        @Override
-        public <T> T encryptRequest(String apiName, T source, Class<T> targetType, PublicKey publicKey) {
-            return source;
-        }
-
-        @Override
-        @SuppressWarnings("unchecked")
-        public <T> ApimResponseEnvelope<T> decryptResponseEnvelope(
-                String apiName,
-                String responseJson,
-                Class<T> dataClass,
-                PublicKey publicKey) {
-            decryptCalls++;
-            return (ApimResponseEnvelope<T>) envelope;
-        }
+        StepVerifier.create(transport.post(new TrpChkCustIdTransportCommand(
+                        new TrpChkCustIdApimRequest("cust-1"),
+                        ActorUserRole.ROLE_USER_MBR,
+                        "req-125")))
+                .expectErrorSatisfies(error -> assertThat(error.getMessage())
+                        .contains("invalid/malformed response"))
+                .verify();
     }
 }

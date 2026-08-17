@@ -1,61 +1,26 @@
 package com.bct.ngtpa.apiservice.application.usecase;
 
-import com.bct.ngtpa.apiservice.application.dto.ContributionSummaryReportResult;
-import com.bct.ngtpa.apiservice.application.dto.ExportContributionSummaryCommand;
+import com.bct.ngtpa.apiservice.application.dto.*;
 import com.bct.ngtpa.apiservice.application.port.in.ExportContributionSummaryUseCase;
-import com.bct.ngtpa.apiservice.application.port.out.ApimContributionSummaryPort;
-import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
-import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
-import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
+import com.bct.ngtpa.apiservice.application.port.out.*;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryReportBuilder;
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
 
 @RequiredArgsConstructor
 public class ExportContributionSummaryService implements ExportContributionSummaryUseCase {
-
-        private final ApimContributionSummaryPort apimContributionSummaryPort;
-        private final CurrencyDisplayPort currencyDisplayPort;
-        private final ReferenceDatePort referenceDatePort;
-        private final CurrentPortalAccessContextResolver currentPortalAccessContextResolver;
-
-        @Override
-        public Mono<ContributionSummaryReportResult> execute(ExportContributionSummaryCommand command) {
-                return currentPortalAccessContextResolver.current()
-                                .flatMap(ctx -> {
-                                        var account = ctx.account();
-                                        var actor = ctx.actor();
-
-                                        String accountEnv = account.accountEnv();
-
-                                        return referenceDatePort.resolveReferenceDate(accountEnv)
-                                                        .flatMap(refDate -> {
-                                                                var fetchCommand = ContributionSummarySupport
-                                                                                .newFetchCommand(
-                                                                                                ContributionSummarySupport
-                                                                                                                .formatDate(refDate
-                                                                                                                                .minusMonths(36)),
-                                                                                                ContributionSummarySupport
-                                                                                                                .formatDate(refDate),
-                                                                                                ctx);
-
-                                                                return apimContributionSummaryPort
-                                                                                .fetchContributionSummary(fetchCommand)
-                                                                                .map(ContributionSummaryReportBuilder::build)
-                                                                                .map(report -> new ContributionSummaryReportResult(
-                                                                                                report,
-                                                                                                currencyDisplayPort
-                                                                                                                .resolveCurrencyDisplay(
-                                                                                                                                report.currency(),
-                                                                                                                                fetchCommand.accountEnv(),
-                                                                                                                                fetchCommand.trustCode(),
-                                                                                                                                fetchCommand.schemeType()),
-                                                                                                null,
-                                                                                                fetchCommand.trustCode(),
-                                                                                                fetchCommand.schemeType(),
-                                                                                                fetchCommand.accountEnv()));
-                                                        });
-                                });
-
-        }
+    private final ApimContributionSummaryPort apimContributionSummaryPort;
+    private final CurrencyDisplayPort currencyDisplayPort;
+    private final ReferenceDatePort referenceDatePort;
+    @Override public Mono<ContributionSummaryReportResult> execute(ExportContributionSummaryCommand command) {
+        return referenceDatePort.resolveReferenceDate(command.accountEnv()).flatMap(ref -> {
+            var fetch=new FetchContributionSummaryCommand(command.policyNo(), command.certNo(), command.actorUserId(),
+                    ContributionSummarySupport.formatDate(ref.minusMonths(36)), ContributionSummarySupport.formatDate(ref),
+                    command.accountEnv(), command.actorUserRole());
+            return apimContributionSummaryPort.fetchContributionSummary(fetch).map(ContributionSummaryReportBuilder::build)
+                    .map(report -> new ContributionSummaryReportResult(report,
+                            currencyDisplayPort.resolveCurrencyDisplay(report.currency(),fetch.accountEnv(),command.trustCode(),command.schemeType()),
+                            null,command.trustCode(),command.schemeType(),fetch.accountEnv()));
+        });
+    }
 }

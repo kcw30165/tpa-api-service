@@ -1,137 +1,40 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim;
 
-import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
-import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
-import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetContributionSummaryApimRequest;
-import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetContributionSummaryContDtlItem;
-import com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetContributionSummaryDataItem;
+import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
+import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
+import com.bct.ngtpa.apiservice.adapter.out.apim.dto.*;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
 import com.bct.ngtpa.apiservice.application.dto.FetchContributionSummaryCommand;
 import com.bct.ngtpa.apiservice.application.port.out.ApimContributionSummaryPort;
-import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
+import com.bct.ngtpa.apiservice.domain.model.*;
 import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
-import com.bct.ngtpa.apiservice.domain.model.ContributionEntry;
-import com.bct.ngtpa.apiservice.domain.model.ContributionLabels;
-import com.bct.ngtpa.apiservice.domain.model.ContributionSource;
-import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryDataset;
-import com.bct.ngtpa.apiservice.exception.ApimException;
-import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
+import java.util.*;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-
 @Component
 @RequiredArgsConstructor
 public class ApimContributionSummaryAdapter implements ApimContributionSummaryPort {
-
-        private static final String API_NAME = "/ws/NGTPA/v1/TRPGetContSumy";
-
-        private final ApimWebClientFacade apimWebClientFacade;
-        private final ApimCertificateService apimCertificateService;
-        private final ApimPayloadCryptoService apimPayloadCryptoService;
-        private final ApimProperties apimProperties;
-
-        @Override
-        @LogExecution(value = "apim.fetchContributionSummary", logArgs = true)
-        public Mono<ContributionSummaryDataset> fetchContributionSummary(FetchContributionSummaryCommand command) {
-                if (!apimProperties.getEncryption().isEnabled()) {
-                        var request = apimPayloadCryptoService.encryptRequest(
-                                        API_NAME, toApimRequest(command), GetContributionSummaryApimRequest.class,
-                                        null);
-                        return apimWebClientFacade.post(API_NAME, request, com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT, new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, null), com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility.SAFE_BUSINESS_CALL)
-                                        .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
-                                                        API_NAME, body, GetContributionSummaryDataItem.class, null))
-                                        .map(this::toContributionSummaryDataset)
-                                        .onErrorMap(ApimCryptoException.class,
-                                                        ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR,
-                                                                        ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(),
-                                                                        ex));
-                }
-
-                var scope = com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT;
-                var ctx = new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, null);
-                return apimWebClientFacade.resolveProfile(scope, ctx)
-                        .flatMap(profile -> apimCertificateService.getPublicKey(profile)
-                                .flatMap(publicKey -> {
-                                        var request = apimPayloadCryptoService.encryptRequest(
-                                                        API_NAME, toApimRequest(command),
-                                                        GetContributionSummaryApimRequest.class, publicKey);
-                                        return apimWebClientFacade.post(API_NAME, request, profile, com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility.SAFE_BUSINESS_CALL)
-                                                        .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
-                                                                        API_NAME, body,
-                                                                        GetContributionSummaryDataItem.class,
-                                                                        publicKey))
-                                                        .map(this::toContributionSummaryDataset);
-                                }))
-                        .onErrorMap(ApimCryptoException.class,
-                                                ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR,
-                                                                ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
-        }
-
-        private GetContributionSummaryApimRequest toApimRequest(FetchContributionSummaryCommand command) {
-                return GetContributionSummaryApimRequest.builder()
-                                .policyNo(command.policyNo())
-                                .certNo(command.certNo())
-                                .userId(command.userId())
-                                .coverFrom(command.coverFrom())
-                                .coverTo(command.coverTo())
-                                .build();
-        }
-
-        private ContributionSummaryDataset toContributionSummaryDataset(
-                        ApimResponseEnvelope<GetContributionSummaryDataItem> response) {
-                List<GetContributionSummaryDataItem> data = ApimResponseValidator.requireSuccessData(response);
-                if (data.isEmpty()) {
-                        return new ContributionSummaryDataset("", List.of(), List.of());
-                }
-
-                Map<String, ContributionSource> sources = new LinkedHashMap<>();
-                String currency = data.stream()
-                                .filter(Objects::nonNull)
-                                .map(GetContributionSummaryDataItem::getCurrency)
-                                .filter(StringUtils::hasText)
-                                .findFirst()
-                                .orElse("");
-                List<ContributionEntry> entries = data.stream()
-                                .filter(Objects::nonNull)
-                                .flatMap(item -> {
-                                        var dispSources = item.getDispSrc() == null
-                                                        ? List.<com.bct.ngtpa.apiservice.adapter.out.apim.dto.GetContributionSummaryDispSrcItem>of()
-                                                        : item.getDispSrc();
-                                        dispSources.stream()
-                                                        .filter(Objects::nonNull)
-                                                        .forEach(sourceItem -> sources.putIfAbsent(
-                                                                        sourceItem.getDispSrc(),
-                                                                        new ContributionSource(
-                                                                                        sourceItem.getDispSrc(),
-                                                                                        new ContributionLabels(
-                                                                                                        sourceItem.getSrcDesc(),
-                                                                                                        sourceItem.getSrcChinDesc()),
-                                                                                        sourceItem.getSeq())));
-                                        var details = item.getContDtl() == null
-                                                        ? List.<GetContributionSummaryContDtlItem>of()
-                                                        : item.getContDtl();
-                                        return details.stream();
-                                })
-                                .filter(Objects::nonNull)
-                                .map(this::toContributionEntry)
-                                .toList();
-
-                return new ContributionSummaryDataset(currency, List.copyOf(sources.values()), entries);
-        }
-
-        private ContributionEntry toContributionEntry(GetContributionSummaryContDtlItem item) {
-                return new ContributionEntry(
-                                item.getDispSrc(),
-                                item.getCoverFrom(),
-                                item.getCoverTo(),
-                                item.getDealDate(),
-                                item.getContAmt());
-        }
+ private static final String API_NAME="/ws/NGTPA/v1/TRPGetContSumy";
+ private final ApimExchangeExecutor executor;
+ @Override @LogExecution(value="apim.fetchContributionSummary",logArgs=true)
+ public Mono<ContributionSummaryDataset> fetchContributionSummary(FetchContributionSummaryCommand command){
+  var exchange=new ApimExchangeRequest<>(API_NAME,toApimRequest(command),GetContributionSummaryApimRequest.class,
+   GetContributionSummaryDataItem.class,ApimDatabaseScope.ACCOUNT_ENV,
+   new ApimCredentialResolutionContext(command.actorUserRole(),command.accountEnv()),ApimRetryEligibility.SAFE_BUSINESS_CALL);
+  return executor.postEnvelope(exchange).map(this::toContributionSummaryDataset);
+ }
+ private GetContributionSummaryApimRequest toApimRequest(FetchContributionSummaryCommand command){return GetContributionSummaryApimRequest.builder().policyNo(command.policyNo()).certNo(command.certNo()).userId(command.userId()).coverFrom(command.coverFrom()).coverTo(command.coverTo()).build();}
+ private ContributionSummaryDataset toContributionSummaryDataset(ApimResponseEnvelope<GetContributionSummaryDataItem> response){
+  List<GetContributionSummaryDataItem> data=ApimResponseValidator.requireSuccessData(response); if(data.isEmpty())return new ContributionSummaryDataset("",List.of(),List.of());
+  Map<String,ContributionSource> sources=new LinkedHashMap<>();
+  String currency=data.stream().filter(Objects::nonNull).map(GetContributionSummaryDataItem::getCurrency).filter(StringUtils::hasText).findFirst().orElse("");
+  List<ContributionEntry> entries=data.stream().filter(Objects::nonNull).flatMap(item->{var ds=item.getDispSrc()==null?List.<GetContributionSummaryDispSrcItem>of():item.getDispSrc(); ds.stream().filter(Objects::nonNull).forEach(x->sources.putIfAbsent(x.getDispSrc(),new ContributionSource(x.getDispSrc(),new ContributionLabels(x.getSrcDesc(),x.getSrcChinDesc()),x.getSeq()))); return (item.getContDtl()==null?List.<GetContributionSummaryContDtlItem>of():item.getContDtl()).stream();}).filter(Objects::nonNull).map(this::toEntry).toList();
+  return new ContributionSummaryDataset(currency,List.copyOf(sources.values()),entries);
+ }
+ private ContributionEntry toEntry(GetContributionSummaryContDtlItem x){return new ContributionEntry(x.getDispSrc(),x.getCoverFrom(),x.getCoverTo(),x.getDealDate(),x.getContAmt());}
 }

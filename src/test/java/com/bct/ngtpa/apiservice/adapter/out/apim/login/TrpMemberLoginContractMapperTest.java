@@ -17,7 +17,7 @@ class TrpMemberLoginContractMapperTest {
     @Test
     void requestUsesOnlyCustIdAndExactPassword() {
         var request = mapper.toRequest(new CredentialAuthenticationCommand(
-                "normalized.member", "  Exact Password  ", "en", "req-1"));
+                "normalized.member", "  Exact Password  ", "en", "req-1", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR));
 
         assertThat(request.custId()).isEqualTo("normalized.member");
         assertThat(request.password()).isEqualTo("  Exact Password  ");

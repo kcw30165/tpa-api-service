@@ -154,7 +154,7 @@ public class StartRegistrationService implements StartRegistrationUseCase {
             RegistrationRequestHash hash,
             RegistrationStartCommand validated) {
         var lookupCommand = new RegistrationLookupCommand(validated.identityType(), validated.identityValue(),
-                validated.dateOfBirth(), validated.contactType(), validated.contactValue());
+                validated.dateOfBirth(), validated.contactType(), validated.contactValue(), com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
         return lookupPort.searchUnregisteredMember(lookupCommand)
                 .flatMap(lookup -> handleLookup(command, hash, validated, lookup))
                 .onErrorResume(error -> markFailed(command, hash,

@@ -66,7 +66,7 @@ class ReferenceDateRefreshControllerTest {
                 .jsonPath("$.configServiceUpdated").doesNotExist()
                 .jsonPath("$.redisUpdated").isEqualTo(true);
 
-        assertEquals(new RefreshReferenceDateCommand("JP"), captured.get());
+        assertEquals(new RefreshReferenceDateCommand("JP", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR), captured.get());
     }
 
     @Test

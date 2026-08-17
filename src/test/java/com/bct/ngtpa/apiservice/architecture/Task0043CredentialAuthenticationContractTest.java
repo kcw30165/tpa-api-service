@@ -37,7 +37,7 @@ class Task0043CredentialAuthenticationContractTest {
         @Test
         void commandCarriesExactCredentialsAndRequestContextWithoutAccountOrSession() {
                 assertThat(componentNames(CredentialAuthenticationCommand.class)).containsExactly(
-                                "username", "password", "acceptLanguage", "correlationId");
+                                "username", "password", "acceptLanguage", "correlationId", "actorUserRole");
                 assertThat(componentNames(CredentialAuthenticationCommand.class))
                                 .doesNotContain("accountRef", "sessionId");
         }
@@ -65,7 +65,7 @@ class Task0043CredentialAuthenticationContractTest {
                 var useCase = new AuthenticateLoginCredentialsUseCase(port);
 
                 StepVerifier.create(useCase.authenticate(
-                                new CredentialAuthenticationCommand("member", "Exact", "en", "req-1")))
+                                new CredentialAuthenticationCommand("member", "Exact", "en", "req-1", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR)))
                                 .expectNext(expected)
                                 .verifyComplete();
         }

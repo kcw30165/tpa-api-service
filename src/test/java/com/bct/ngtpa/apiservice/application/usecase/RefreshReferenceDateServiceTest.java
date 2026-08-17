@@ -32,7 +32,7 @@ class RefreshReferenceDateServiceTest {
     void commandRejectsNullAccountEnv() {
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
-                () -> new RefreshReferenceDateCommand(null));
+                () -> new RefreshReferenceDateCommand(null, com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR));
 
         assertEquals("accountEnv must not be blank", ex.getMessage());
     }
@@ -41,7 +41,7 @@ class RefreshReferenceDateServiceTest {
     void commandRejectsBlankAccountEnv() {
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
-                () -> new RefreshReferenceDateCommand("  "));
+                () -> new RefreshReferenceDateCommand("  ", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR));
 
         assertEquals("accountEnv must not be blank", ex.getMessage());
     }
@@ -49,8 +49,8 @@ class RefreshReferenceDateServiceTest {
     @Test
     void apimSuccess_updatesRedisWithReferenceDateKeyAndValue() {
         AtomicReference<String> capturedAccountEnv = new AtomicReference<>();
-        ApimReferenceDateRefreshPort apimPort = accountEnv -> {
-            capturedAccountEnv.set(accountEnv);
+        ApimReferenceDateRefreshPort apimPort = command -> {
+            capturedAccountEnv.set(command.accountEnv());
             return Mono.just(LocalDate.of(2025, 12, 31));
         };
         AtomicReference<ReferenceDateCacheUpdateCommand> capturedCacheCommand = new AtomicReference<>();
@@ -61,7 +61,7 @@ class RefreshReferenceDateServiceTest {
 
         RefreshReferenceDateUseCase service = new RefreshReferenceDateService(apimPort, cachePort, "ngtpa");
 
-        StepVerifier.create(service.execute(new RefreshReferenceDateCommand("JP")))
+        StepVerifier.create(service.execute(new RefreshReferenceDateCommand("JP", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR)))
                 .assertNext(result -> {
                     assertEquals("JP", capturedAccountEnv.get());
                     assertEquals(new ReferenceDateCacheUpdateCommand("ngtpa:reference-date:JP", "31/12/2025"),
@@ -73,7 +73,7 @@ class RefreshReferenceDateServiceTest {
 
     @Test
     void apimFailure_skipsRedisAndPropagatesError() {
-        ApimReferenceDateRefreshPort apimPort = accountEnv -> Mono.error(new IllegalStateException("apim fetch failed"));
+        ApimReferenceDateRefreshPort apimPort = command -> Mono.error(new IllegalStateException("apim fetch failed"));
         AtomicBoolean cacheCalled = new AtomicBoolean(false);
         ReferenceDateCacheUpdatePort cachePort = command -> {
             cacheCalled.set(true);
@@ -82,7 +82,7 @@ class RefreshReferenceDateServiceTest {
 
         RefreshReferenceDateUseCase service = new RefreshReferenceDateService(apimPort, cachePort, "ngtpa");
 
-        StepVerifier.create(service.execute(new RefreshReferenceDateCommand("JP")))
+        StepVerifier.create(service.execute(new RefreshReferenceDateCommand("JP", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR)))
                 .expectErrorSatisfies(error -> {
                     assertEquals(IllegalStateException.class, error.getClass());
                     assertEquals("apim fetch failed", error.getMessage());
@@ -93,7 +93,7 @@ class RefreshReferenceDateServiceTest {
 
     @Test
     void redisFailure_returnsPartialSuccessAndLogsSanitizedWarning() {
-        ApimReferenceDateRefreshPort apimPort = accountEnv -> Mono.just(LocalDate.of(2025, 12, 31));
+        ApimReferenceDateRefreshPort apimPort = command -> Mono.just(LocalDate.of(2025, 12, 31));
         ReferenceDateCacheUpdatePort cachePort = command -> Mono.error(new CacheException(
                 "Cache set operation failed",
                 new RuntimeException("lettuce write failed redis://secret-host:6379")));
@@ -105,7 +105,7 @@ class RefreshReferenceDateServiceTest {
         try {
             RefreshReferenceDateUseCase service = new RefreshReferenceDateService(apimPort, cachePort, "ngtpa");
 
-            StepVerifier.create(service.execute(new RefreshReferenceDateCommand("JP")))
+            StepVerifier.create(service.execute(new RefreshReferenceDateCommand("JP", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR)))
                     .assertNext(result -> assertEquals(
                     new RefreshReferenceDateResult("JP", "31/12/2025", false),
                             result))
@@ -150,7 +150,7 @@ class RefreshReferenceDateServiceTest {
         assertEquals(3, RefreshReferenceDateResult.class.getRecordComponents().length);
 
         ParameterizedType apimReturnType = (ParameterizedType) ApimReferenceDateRefreshPort.class
-                .getMethod("fetchReferenceDate", String.class)
+                .getMethod("fetchReferenceDate", com.bct.ngtpa.apiservice.application.dto.FetchReferenceDateCommand.class)
                 .getGenericReturnType();
         assertEquals(Mono.class, apimReturnType.getRawType());
         assertEquals(LocalDate.class, apimReturnType.getActualTypeArguments()[0]);

@@ -1,14 +1,21 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete;
 
 import java.util.Objects;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 
 public record ForgotPasswordCompletionCommand(String customerId, String password, String correlationId,
-        String accountEnv) {
+        String accountEnv,
+        ActorUserRole actorUserRole) {
     public ForgotPasswordCompletionCommand {
         customerId = required(customerId, "customerId");
         password = required(password, "password");
         correlationId = correlationId == null || correlationId.isBlank() ? null : correlationId.trim();
         accountEnv = accountEnv == null || accountEnv.isBlank() ? null : accountEnv.trim();
+        Objects.requireNonNull(actorUserRole, "actorUserRole must not be null");
+    }
+
+    public ForgotPasswordCompletionCommand(String customerId, String password, String correlationId, String accountEnv) {
+        this(customerId, password, correlationId, accountEnv, ActorUserRole.ROLE_USER_MBR);
     }
 
     private static String required(String value, String name) {

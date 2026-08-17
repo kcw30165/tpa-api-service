@@ -15,7 +15,7 @@ class TrpChkCustIdApimMapperTest {
         var command = new RegistrationUsernameAvailabilityCommand(
                 new RegistrationSelectedTrust("TL", "ENV1"),
                 "abc1@",
-                "req-1");
+                "req-1", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
 
         var request = new TrpChkCustIdApimMapper().toApimRequest(command);
 
@@ -31,7 +31,7 @@ class TrpChkCustIdApimMapperTest {
         var command = new RegistrationUsernameAvailabilityCommand(
                 new RegistrationSelectedTrust("TL", "ENV1"),
                 "abc1@",
-                "req-1");
+                "req-1", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
 
         var request = new TrpChkCustIdApimMapper().toApimRequest(command);
 
