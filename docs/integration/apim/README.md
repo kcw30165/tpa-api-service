@@ -1,110 +1,323 @@
 # APIM Integration Capability
 
-> **Status:** Documents the APIM implementation represented by the reviewed codebase snapshot.  
-> **Audience:** New team members, backend developers, reviewers, testers, support engineers, and solution designers.  
-> **Scope:** Java BFF integration with APIM as the gateway and contract facade for TAS and related downstream operations.
+**Status:** Authoritative onboarding index for the APIM exchange architecture finalized by Task 0043.  
+**Audience:** Developers, architects, reviewers, testers, support engineers, and solution designers.  
+**Scope:** Java BFF integration with APIM as the gateway and contract facade for TAS and related downstream operations.
 
-## Start here
+## Start Here
 
-APIM is not called directly from controllers or application services. The codebase isolates APIM transport, security, DTOs, response validation, retries, and downstream error translation behind outbound ports and adapters.
-
-Read the documents in this order:
-
-1. **[Architecture and contracts](architecture-and-contracts.md)** — understand the layers, transport pipeline, DTO boundaries, OAuth, certificates, payload encryption, retries, and errors.
-2. **[Integration and reuse guide](integration-and-reuse-guide.md)** — follow the implementation recipe when adding or changing an APIM operation.
-3. **[Operations and testing](operations-and-testing.md)** — configure, test, troubleshoot, monitor, and release APIM integrations safely.
-
-## High-level architecture
+All governed APIM business operations use one canonical typed execution path:
 
 ```text
-Web controller
+web controller
     -> application use case
     -> application outbound port
-    -> operation-specific APIM adapter
-    -> contract mapper
-    -> operation transport
-    -> shared ApimWebClientFacade
-    -> OAuth / API key / certificate / encryption pipeline
+    -> operation adapter or approved business-neutral shared transport
+    -> ApimExchangeRequest
+    -> ApimExchangeExecutor.postEnvelope(...)
+    -> generic APIM transport and security foundation
     -> APIM
     -> TAS or another downstream service
 ```
 
-The application boundary uses domain commands and results. APIM request/response DTOs remain inside the outbound adapter boundary.
+Read the documentation in this order:
 
-## APIM's project role
+1. [**APIM Exchange Executor Architecture and Developer Guide**](apim-exchange-executor-architecture-and-developer-guide.md)  
+   The authoritative reference for executor contracts, routing, credential authority, retry classifications, operation-specific ownership, the final 15-operation ledger, integration patterns, architecture guards, and developer review requirements.
+
+2. [**APIM Operations, Testing, and Production Runbook**](operations-and-testing.md)  
+   The operational companion for environment configuration, OAuth and certificate troubleshooting, crypto diagnosis, observability, test inventories, release evidence, incident evidence, and production-readiness checks.
+
+The following historical paths are retained only as compatibility redirects:
+
+- [Architecture and contracts](architecture-and-contracts.md)
+- [Integration and reuse guide](integration-and-reuse-guide.md)
+
+Do not use historical guidance that instructs a feature adapter to call `ApimWebClientFacade`, certificate, crypto, token, or credential-profile services directly.
+
+---
+
+## Architectural Model
+
+### Feature and application layers
+
+The feature layers own:
+
+- inbound request validation;
+- protected workflow and session loading;
+- CSRF, captcha, and OTP gates;
+- selected-account or selected-trust validation;
+- actor-role authority;
+- authoritative account-environment selection;
+- idempotency and replay;
+- mutation unknown-outcome handling;
+- public response and workflow transitions.
+
+### Operation adapter layer
+
+The operation adapter or approved shared transport owns:
+
+- explicit downstream request mapping;
+- exact operation path;
+- request and response DTO types;
+- explicit database scope;
+- explicit credential-resolution context;
+- explicit retry eligibility;
+- operation-specific envelope and business-result interpretation.
+
+### Generic APIM executor foundation
+
+The generic executor foundation owns:
+
+- WebClient transport;
+- credential-profile resolution;
+- OAuth2 client-credentials token management;
+- subscription or API-key headers;
+- application certificate handling;
+- APIM public-certificate retrieval and caching;
+- request encryption and response decryption;
+- plain-versus-encrypted execution selection;
+- request-ID propagation;
+- transport-level envelope handling;
+- approved bounded retries;
+- APIM exception normalization.
+
+Feature adapters must not duplicate these capabilities.
+
+---
+
+## APIM's Project Role
 
 APIM acts as both:
 
-- An HTTP gateway for downstream services
-- A contract facade that owns the frontend-facing API version while TAS owns its implementation version
+- an HTTP gateway for TAS and related downstream services; and
+- a contract facade that owns frontend-facing API versioning while TAS owns implementation versioning.
 
-The Java BFF remains responsible for workflow orchestration, session/context resolution, request validation, response shaping, and translating APIM outcomes into the common API response contract.
+The Java BFF remains responsible for:
 
-## Implemented integration families
+- workflow orchestration;
+- session and protected-context resolution;
+- request validation;
+- Account-Ref resolution;
+- response shaping;
+- public error normalization;
+- feature-specific interpretation of TAS/APIM outcomes.
 
-The reviewed codebase contains APIM adapters or transports for areas including:
+APIM and TAS business errors must not leak directly to the frontend. In particular, the BFF must not expose `ApiStatus.DOWNSTREAM_REJECTED`.
 
-- Member Login
-- Accessible Account List
-- Registration lookup
-- Registration username availability
-- Registration completion
-- Member/personal information
-- Personal-information update
-- Contribution summary
-- Notice messages
-- Notification read status
-- Reference countries
-- Reference-date refresh
+---
 
-Each operation can have its own endpoint path, operation name, DTOs, mapping, error rules, and retry eligibility while sharing the common transport/security pipeline.
+## Governed Operation Families
 
-## Shared APIM capabilities
+The finalized architecture governs 15 APIM operations across these capabilities:
 
-- Reactive `WebClient` transport
-- Credential-profile resolution
-- OAuth2 client-credentials access-token management
-- Subscription/API-key header
-- Application certificate handling
-- APIM public-certificate retrieval and caching
-- Field-level request encryption and response decryption
-- Signed-JWT payload integrity
-- Correlation/request-ID propagation
-- Envelope validation
-- Retry classification and bounded backoff
-- APIM exception normalization
-- Sensitive-data logging sanitization
+### Authentication and pre-authentication
 
-## Non-negotiable boundaries
+- Member Login;
+- Accessible Account List;
+- Registration member lookup;
+- Registration username availability;
+- Registration completion;
+- Username Recovery member search;
+- Forgot Password username lookup;
+- Forgot Password details lookup;
+- Forgot Password completion.
 
-1. Controllers never call `WebClient` or APIM directly.
-2. Application ports contain no APIM HTTP DTOs.
-3. APIM DTOs do not become web response DTOs.
-4. Contract mapping is explicit; do not serialize domain records and hope field names match.
-5. Only approved fields are encrypted/decrypted.
-6. Credentials, access tokens, API keys, certificates, keys, and clear PII are never logged.
-7. Retries require explicit eligibility; mutations are not automatically retryable.
-8. APIM business rejection is different from transport/system failure.
-9. `X-Request-Id` is the canonical correlation header propagated to APIM.
-10. `Accept-Language` and selected account context are passed only when the operation contract requires them.
+### Authenticated and internal capabilities
 
-## Where to start in the code
+- Contribution Summary;
+- Country List;
+- Personal Information retrieval;
+- Personal Information update;
+- Notice Message retrieval;
+- Notification read-status update;
+- Reference Date refresh.
 
-For an existing operation, locate these elements:
+Some feature capabilities share a downstream operation. For example, Registration username availability and Forgot Password username lookup both use `TRPChkCustId`, while retaining separate business interpretation in their feature adapters.
+
+The authoritative operation names, paths, routing classifications, actor-role sources, account-environment authorities, retry classifications, DTOs, and canonical adapters are maintained in the routing ledger within the architecture and developer guide.
+
+Do not maintain a second independent ledger here.
+
+---
+
+## Routing Model
+
+Every operation explicitly declares:
 
 ```text
-Application outbound port
-Operation-specific adapter
-APIM request/response DTOs
-Contract mapper
-Transport interface/implementation
-Endpoint properties
-Error mappings
-Adapter and contract tests
+ApimDatabaseScope
+ActorUserRole authority
+accountEnv authority or intentional null
+ApimRetryEligibility
 ```
 
-Then trace the shared infrastructure through `ApimWebClientFacade`, token/certificate services, payload crypto, response validation, and logging filters.
+### `NON_ACCOUNT`
 
-## Current configuration examples
+Use `NON_ACCOUNT` for global or pre-authentication calls made before one authoritative account environment exists.
 
-The reviewed configuration supports a configurable APIM base URL and timeout, OAuth client credentials, API key headers, certificate paths, optional field-level encryption, certificate caching/renewal, and a bounded retry policy. The observed retry configuration uses three maximum attempts and 100 ms backoff, but deployments must treat these as environment-specific configuration rather than architectural constants.
+The credential context intentionally carries a null account environment.
+
+### `ACCOUNT_ENV`
+
+Use `ACCOUNT_ENV` when the call targets one protected and validated TAS account environment.
+
+The environment must come from an authoritative server-controlled source, such as:
+
+- authenticated selected-account context resolved from the session and Account-Ref;
+- a protected selected trust in Registration;
+- a validated internal command contract.
+
+Do not infer scope from nullability, use response data to route the same call, accept arbitrary frontend account context, or silently fall back to a global environment.
+
+---
+
+## Retry Model
+
+Every operation explicitly uses one supported retry classification:
+
+- `SAFE_BUSINESS_CALL`;
+- `IDEMPOTENT_MUTATION`;
+- `NON_RETRYABLE`.
+
+Retry classification follows business semantics and downstream duplicate-safety evidence, not the HTTP method.
+
+Java-side idempotency alone does not prove that a downstream mutation is safe to retry after an unknown transport outcome.
+
+Maximum attempts and backoff values are environment configuration. Historical observed values must not be treated as permanent architecture constants.
+
+---
+
+## Non-Negotiable Boundaries
+
+- Controllers and application services do not call WebClient or APIM directly.
+- Application ports use application or domain contracts, not APIM HTTP DTOs.
+- APIM DTOs remain inside the outbound APIM boundary.
+- Every operation has one canonical executor-backed production path.
+- Feature adapters do not directly use facade, token, certificate, crypto, or credential-profile services.
+- Feature adapters do not contain manual plain-versus-encrypted branches.
+- Production test transports and alternate test-only constructors are prohibited.
+- Database scope, actor role, account environment, and retry eligibility are explicit.
+- Routing metadata is not serialized unless independently required by the downstream contract.
+- Response data does not route the same APIM request.
+- Contract mapping is explicit and operation-specific.
+- Business-envelope interpretation remains outside generic infrastructure.
+- Only approved fields are encrypted or decrypted.
+- Credentials, access tokens, API keys, certificates, keys, passwords, OTP values, and clear PII are never logged.
+- Mutations require explicit idempotency, retry, and unknown-outcome decisions.
+- `X-Request-Id` is the canonical correlation value propagated to APIM.
+- `Accept-Language` is the canonical language source where required.
+- Browser session cookies and CSRF tokens are not propagated to APIM.
+
+---
+
+## Where to Start in the Code
+
+For an existing operation, locate:
+
+```text
+inbound controller and web mapper
+application use case
+application outbound port
+focused outbound command
+operation adapter or approved shared transport
+APIM request DTO
+APIM response or data-item DTO
+contract and result mappers
+executor-boundary tests
+workflow and behavior tests
+routing-ledger and architecture guards
+```
+
+Then trace generic execution through:
+
+```text
+ApimExchangeExecutor
+ApimExchangeRequest
+DefaultApimExchangeExecutor
+ApimCredentialResolutionContext
+credential-profile resolution
+ApimWebClientFacade
+OAuth token service
+certificate service
+payload crypto service
+retry policy
+request-correlation filters
+```
+
+The facade, credential, token, certificate, and crypto classes should be reached through the generic executor foundation, not imported into a feature adapter.
+
+---
+
+## Adding or Changing an Operation
+
+Before implementation:
+
+1. identify every caller and the current call chain;
+2. confirm the exact APIM path and DTO contract;
+3. classify database scope;
+4. prove actor-role authority;
+5. prove account-environment authority or intentional null;
+6. classify retry and mutation unknown-outcome behavior;
+7. define a focused outbound command;
+8. retain genuine fail-first evidence, or obtain a governance exception when no honest defect exists;
+9. construct a typed `ApimExchangeRequest`;
+10. invoke `ApimExchangeExecutor.postEnvelope(...)`;
+11. retain operation-specific business mapping outside the executor;
+12. update the authoritative routing ledger and durable guards;
+13. run focused and full validation when required.
+
+Do not begin by copying a legacy transport or injecting `ApimWebClientFacade` into a new adapter.
+
+---
+
+## Testing and Evidence
+
+Minimum evidence for an APIM behavior change includes:
+
+- DTO serialization and deserialization tests;
+- mapper tests;
+- captured `ApimExchangeRequest` assertions;
+- explicit routing and retry assertions;
+- success, recognized rejection, malformed-envelope, and technical-failure tests;
+- mutation unknown-outcome tests where applicable;
+- logging and redaction tests;
+- architecture-guard validation;
+- related-feature and generic-foundation preservation;
+- full Maven validation when production execution, shared wiring, foundation code, or architecture guards change;
+- final worktree, index, stash, and conflict-state evidence.
+
+Do not create a feature test transport or production compatibility constructor for test convenience. Mock the executor or the outbound port at the correct boundary.
+
+---
+
+## Operations and Support
+
+Use [operations-and-testing.md](operations-and-testing.md) for:
+
+- environment connectivity and credential checks;
+- OAuth token diagnosis;
+- certificate and encryption troubleshooting;
+- retry and unknown-outcome diagnosis;
+- request-correlation checks;
+- safe logging rules;
+- DTO, mapper, adapter, foundation, retry, and integration test inventories;
+- release evidence;
+- production-readiness and incident-evidence checklists.
+
+Never include secrets, key material, raw protected payloads, passwords, OTP values, or unmasked customer data in operational evidence.
+
+---
+
+## Final Architecture Invariant
+
+```text
+All governed TAS/APIM operations execute through one canonical typed
+ApimExchangeExecutor path. Each caller supplies explicit database scope,
+actor-role authority, account-environment authority or intentional null,
+and retry eligibility. Generic infrastructure owns credentials, tokens,
+certificates, crypto, correlation, and transport retries. Feature code owns
+business-envelope interpretation, public status, workflow, idempotency,
+and unknown mutation outcomes. No feature-owned manual APIM orchestration,
+duplicate path, inferred routing, or response-derived routing remains.
+```
