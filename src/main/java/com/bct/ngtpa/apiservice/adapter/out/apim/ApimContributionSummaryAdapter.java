@@ -28,7 +28,7 @@ public class ApimContributionSummaryAdapter implements ApimContributionSummaryPo
    new ApimCredentialResolutionContext(command.actorUserRole(),command.accountEnv()),ApimRetryEligibility.SAFE_BUSINESS_CALL);
   return executor.postEnvelope(exchange).map(this::toContributionSummaryDataset);
  }
- private GetContributionSummaryApimRequest toApimRequest(FetchContributionSummaryCommand command){return GetContributionSummaryApimRequest.builder().policyNo(command.policyNo()).certNo(command.certNo()).userId(command.userId()).coverFrom(command.coverFrom()).coverTo(command.coverTo()).build();}
+ private GetContributionSummaryApimRequest toApimRequest(FetchContributionSummaryCommand command){return GetContributionSummaryApimRequest.builder().policyNo(command.policyNo()).certNo(command.certNo()).coverFrom(command.coverFrom()).coverTo(command.coverTo()).loginUserId(command.userId()).loginUserRole(command.actorUserRole().toApimValue()).build();}
  private ContributionSummaryDataset toContributionSummaryDataset(ApimResponseEnvelope<GetContributionSummaryDataItem> response){
   List<GetContributionSummaryDataItem> data=ApimResponseValidator.requireSuccessData(response); if(data.isEmpty())return new ContributionSummaryDataset("",List.of(),List.of());
   Map<String,ContributionSource> sources=new LinkedHashMap<>();

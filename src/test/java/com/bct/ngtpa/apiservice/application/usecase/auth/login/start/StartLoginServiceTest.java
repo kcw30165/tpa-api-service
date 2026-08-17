@@ -27,8 +27,7 @@ class StartLoginServiceTest {
         AtomicInteger calls = new AtomicInteger();
         CredentialAuthenticationPort credentials = c -> {
             calls.incrementAndGet();
-            return Mono.just(new CredentialAuthenticationResult(CredentialAuthenticationStatus.AUTHENTICATED, "member",
-                    "MBR", null, 0, List.of(new LoginCredentialDestination("email", "member@example.com")), null));
+            return Mono.just(new CredentialAuthenticationResult(CredentialAuthenticationStatus.AUTHENTICATED, "member", null, 0, List.of(new LoginCredentialDestination("email", "member@example.com")), null));
         };
         InMemorySessionPort sessions = new InMemorySessionPort();
         var lifecycle = new AuthFlowSessionLifecycleService(sessions,

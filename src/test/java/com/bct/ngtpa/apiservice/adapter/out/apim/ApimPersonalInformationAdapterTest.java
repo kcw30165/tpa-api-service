@@ -49,7 +49,7 @@ class ApimPersonalInformationAdapterTest {
         assertThat(exchange.retryEligibility()).isEqualTo(ApimRetryEligibility.SAFE_BUSINESS_CALL);
         assertThat(body.getPolicyNo()).isEqualTo("POL-1");
         assertThat(body.getCertNo()).isEqualTo("CERT-1");
-        assertThat(body.getUserId()).isEqualTo("USER-1");
+        assertThat(body.getLoginUserId()).isEqualTo("USER-1");
         assertThat(body.getAccountEnv()).isEqualTo("JP");
         assertThat(result.getPayload()).containsOnlyKeys("config", "data");
         Map<?, ?> config = (Map<?, ?>) result.getPayload().get("config");
@@ -67,12 +67,16 @@ class ApimPersonalInformationAdapterTest {
         var node = JSON.readTree(JSON.writeValueAsString(captured.get().request()));
         assertThat(node.get("policy-no").asText()).isEqualTo("POL-1");
         assertThat(node.get("cert-no").asText()).isEqualTo("CERT-1");
-        assertThat(node.get("user-id").asText()).isEqualTo("USER-1");
+        assertThat(node.get("login-user-id").asText()).isEqualTo("USER-1");
+        assertThat(node.get("login-user-role").asText()).isEqualTo("role_user_mbr");
         assertThat(node.get("env").asText()).isEqualTo("JP");
         assertThat(node.has("accountRef")).isFalse();
         assertThat(node.has("actorUserRole")).isFalse();
         assertThat(node.has("databaseScope")).isFalse();
         assertThat(node.has("retryEligibility")).isFalse();
+        assertThat(node.has("user-id")).isFalse();
+        assertThat(node.has("user-role")).isFalse();
+        assertThat(node.has("mbr-type")).isFalse();
     }
 
     @Test

@@ -112,7 +112,6 @@ public final class AesGcmLoginPreAuthContextProtector
      */
     private record ProtectedPayload(
             String normalizedUsername,
-            String custType,
             String userRole,
             Map<String, LoginPreAuthDestination> destinationsById,
             String credentialVerifiedAt,
@@ -121,7 +120,6 @@ public final class AesGcmLoginPreAuthContextProtector
         private static ProtectedPayload from(LoginPreAuthContext context) {
             return new ProtectedPayload(
                     context.normalizedUsername(),
-                    context.custType(),
                     context.userRole(),
                     context.destinationsById(),
                     context.credentialVerifiedAt().toString(),
@@ -131,7 +129,6 @@ public final class AesGcmLoginPreAuthContextProtector
         private LoginPreAuthContext toDomain() {
             return new LoginPreAuthContext(
                     normalizedUsername,
-                    custType,
                     userRole,
                     destinationsById,
                     Instant.parse(credentialVerifiedAt),

@@ -24,7 +24,7 @@ public final class SharedApimTrpGetAccountListTransport implements TrpGetAccount
     @Override public Mono<ApimResponseEnvelope<TrpGetAccountListApimDataItem>> post(LoginAccountAuthorizationCommand command) {
         Objects.requireNonNull(command);
         String path = properties.getPath().trim();
-        var request = new TrpGetAccountListApimRequest(command.custId(), command.custType(), command.searchKey(), command.searchValue());
+        var request = new TrpGetAccountListApimRequest(command.searchKey(), command.searchValue(), command.custId(), command.actorUserRole().toApimValue());
         var exchange = new ApimExchangeRequest<>(path, request, TrpGetAccountListApimRequest.class,
                 TrpGetAccountListApimDataItem.class, ApimDatabaseScope.NON_ACCOUNT,
                 new ApimCredentialResolutionContext(command.actorUserRole(), null),

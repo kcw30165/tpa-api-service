@@ -5,7 +5,6 @@ import com.bct.ngtpa.apiservice.application.dto.auth.login.account.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.preauth.LoginPreAuthContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.*;
 import com.bct.ngtpa.apiservice.application.dto.session.*;
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.*;
 import com.bct.ngtpa.apiservice.application.port.out.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.account.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.*;
@@ -57,7 +56,8 @@ class LoginOtpSuccessAccountContinuationTest {
         final LoginOtpVerifyService service;
 
         Fixture(LoginAccountAuthorizationResult authorization) {
-            LoginPreAuthContext context = new LoginPreAuthContext("member", "MBR", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR.name(), Map.of(),
+            LoginPreAuthContext context = new LoginPreAuthContext("member",
+                    com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR.name(), Map.of(),
                     Instant.parse("2026-07-20T00:00:00Z"), "v1");
             LoginProtectedAuthFlowContextLoader loader = c -> Mono
                     .just(LoginProtectedAuthFlowContextResult.valid(context, "otp_active", null, "csrf_hash"));

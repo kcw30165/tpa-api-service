@@ -20,9 +20,7 @@ class LoginOtpDestinationResolverTest {
                                 "dst_first_opaque", "email", "member@example.com", "m*****@example.com"));
                 destinations.put("dst_second_opaque", new LoginPreAuthDestination(
                                 "dst_second_opaque", "sms", "91234567", "****4567"));
-                var context = new LoginPreAuthContext(
-                                "member01", "MBR", null, destinations,
-                                Instant.parse("2026-07-24T00:00:00Z"), "v1");
+                var context = new LoginPreAuthContext("member01", null, destinations, Instant.parse("2026-07-24T00:00:00Z"), "v1");
 
                 var resolved = resolver.resolve(context, new SendLoginOtpCommand(
                                 "afs_opaque_session", "csrf_opaque", "dst_second_opaque",
@@ -38,11 +36,8 @@ class LoginOtpDestinationResolverTest {
 
         @Test
         void rejectsUnknownDestinationWithoutFallbackToSingleOrFirstEntry() {
-                var context = new LoginPreAuthContext(
-                                "member01", "MBR", null,
-                                java.util.Map.of("dst_only", new LoginPreAuthDestination(
-                                                "dst_only", "email", "member@example.com", "m*****@example.com")),
-                                Instant.now(), "v1");
+                var context = new LoginPreAuthContext("member01", null, java.util.Map.of("dst_only", new LoginPreAuthDestination(
+                                                "dst_only", "email", "member@example.com", "m*****@example.com")), Instant.now(), "v1");
                 assertThatThrownBy(() -> resolver.resolve(context, new SendLoginOtpCommand(
                                 "afs_opaque_session", "csrf_opaque", "dst_unknown",
                                 "idem_opaque", null, null, "en", "req-1")))
@@ -51,11 +46,8 @@ class LoginOtpDestinationResolverTest {
 
         @Test
         void mapsApimMobileVocabularyToPublicSmsChannel() {
-                var context = new LoginPreAuthContext(
-                                "member01", "MBR", null,
-                                java.util.Map.of("dst_mobile", new LoginPreAuthDestination(
-                                                "dst_mobile", "mobile", "91234567", "****4567")),
-                                Instant.now(), "v1");
+                var context = new LoginPreAuthContext("member01", null, java.util.Map.of("dst_mobile", new LoginPreAuthDestination(
+                                                "dst_mobile", "mobile", "91234567", "****4567")), Instant.now(), "v1");
                 var resolved = resolver.resolve(context, new SendLoginOtpCommand(
                                 "afs_opaque_session", "csrf_opaque", "dst_mobile",
                                 "idem_opaque", null, null, "en", "req-1"));

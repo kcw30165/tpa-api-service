@@ -34,7 +34,7 @@ public final class LoginPreAuthContextFactory {
                 throw new IllegalStateException("Duplicate login destination ID generated");
             }
         }
-        return new LoginPreAuthContext(result.normalizedUsername(), result.custType(), result.userRole(),
+        return new LoginPreAuthContext(result.normalizedUsername(), result.userRole(),
                 destinations, verifiedAt, WORKFLOW_VERSION);
     }
 }

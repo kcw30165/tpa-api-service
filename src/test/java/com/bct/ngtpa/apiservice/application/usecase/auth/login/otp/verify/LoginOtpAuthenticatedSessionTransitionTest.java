@@ -81,8 +81,7 @@ class LoginOtpAuthenticatedSessionTransitionTest {
     }
 
     private LoginOtpVerifyService service(EstablishAuthenticatedLoginSessionUseCase transition) {
-        LoginPreAuthContext context = new LoginPreAuthContext(
-                "member", "MEMBER", "ROLE_USER_MBR", Map.of(), Instant.EPOCH, "v1");
+        LoginPreAuthContext context = new LoginPreAuthContext("member", "ROLE_USER_MBR", Map.of(), Instant.EPOCH, "v1");
         LoginProtectedAuthFlowContextLoader loader = command -> Mono.just(
                 LoginProtectedAuthFlowContextResult.valid(context, "otp_active", null, "csrf_hash"));
         OtpChallengePort otp = new OtpChallengePort() {

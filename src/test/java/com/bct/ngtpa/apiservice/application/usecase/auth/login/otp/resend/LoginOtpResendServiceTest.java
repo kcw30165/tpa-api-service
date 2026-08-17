@@ -30,7 +30,7 @@ class LoginOtpResendServiceTest {
         };
         var service = service(
                 c -> Mono.just(LoginProtectedAuthFlowContextResult.valid(
-                        new LoginPreAuthContext("member", "MBR", null, java.util.Map.of(), NOW, "v1"), "old",
+                        new LoginPreAuthContext("member", null, java.util.Map.of(), NOW, "v1"), "old",
                         new LoginPreAuthDestination("dst_selected", "mobile", "91234567", "****4567"), "csrf_hash")),
                 otp, c -> {
                     delivered.set(c);
@@ -58,7 +58,7 @@ class LoginOtpResendServiceTest {
         };
         var service = service(
                 c -> Mono.just(LoginProtectedAuthFlowContextResult
-                        .valid(new LoginPreAuthContext("member", "MBR", null, java.util.Map.of(), NOW, "v1"), "old",
+                        .valid(new LoginPreAuthContext("member", null, java.util.Map.of(), NOW, "v1"), "old",
                                 new LoginPreAuthDestination("dst_selected", "email", "member@example.com",
                                         "m***@example.com"),
                                 "csrf_hash")),

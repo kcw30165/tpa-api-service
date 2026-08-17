@@ -16,7 +16,7 @@ class TrpMemberLoginAdapterTest {
 
     @Test
     void authenticatedOutcomeRequiresExactlyOneSuccessfulDataItem() {
-        var item = new TrpMemberLoginApimDataItem(true, null, "MBR", 0, List.of());
+        var item = new TrpMemberLoginApimDataItem(true, "role_user_mbr", 0, List.of());
         TrpMemberLoginTransport transport = command -> Mono.just(envelope("", List.of(item)));
         var adapter = new TrpMemberLoginAdapter(transport, new TrpMemberLoginContractMapper());
 
@@ -24,7 +24,6 @@ class TrpMemberLoginAdapterTest {
                 .assertNext(result -> {
                     assertThat(result.status()).isEqualTo(CredentialAuthenticationStatus.AUTHENTICATED);
                     assertThat(result.normalizedUsername()).isEqualTo("member");
-                    assertThat(result.custType()).isEqualTo("MBR");
                 })
                 .verifyComplete();
     }
@@ -42,7 +41,7 @@ class TrpMemberLoginAdapterTest {
         assertOutcome("", CredentialAuthenticationStatus.UNAVAILABLE);
         assertOutcome("err.tpa.unknown", CredentialAuthenticationStatus.UNAVAILABLE);
 
-        var item = new TrpMemberLoginApimDataItem(true, null, "MBR", 0, List.of());
+        var item = new TrpMemberLoginApimDataItem(true, "role_user_mbr", 0, List.of());
         TrpMemberLoginTransport contradictory = command -> Mono.just(
                 envelope("err.tpa.wrong.password", List.of(item)));
         StepVerifier.create(new TrpMemberLoginAdapter(
@@ -54,7 +53,7 @@ class TrpMemberLoginAdapterTest {
 
     @Test
     void multipleDataItemsAreUnavailable() {
-        var item = new TrpMemberLoginApimDataItem(true, null, "MBR", 0, List.of());
+        var item = new TrpMemberLoginApimDataItem(true, "role_user_mbr", 0, List.of());
         TrpMemberLoginTransport transport = command -> Mono.just(envelope("", List.of(item, item)));
         StepVerifier.create(new TrpMemberLoginAdapter(
                 transport, new TrpMemberLoginContractMapper()).authenticate(command()))

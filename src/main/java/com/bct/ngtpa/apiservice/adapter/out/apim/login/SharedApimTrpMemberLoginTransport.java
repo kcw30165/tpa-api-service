@@ -26,7 +26,7 @@ public final class SharedApimTrpMemberLoginTransport implements TrpMemberLoginTr
     public Mono<ApimResponseEnvelope<TrpMemberLoginApimDataItem>> post(CredentialAuthenticationCommand command) {
         Objects.requireNonNull(command, "command must not be null");
         String path = requireText(loginProperties.getPath(), "apim.login.member-login.path");
-        var request = new TrpMemberLoginApimRequest(command.username(), command.password());
+        var request = new TrpMemberLoginApimRequest(command.username(), command.password(), command.actorUserRole().toApimValue());
         var exchange = new ApimExchangeRequest<>(path, request,
                 TrpMemberLoginApimRequest.class, TrpMemberLoginApimDataItem.class,
                 ApimDatabaseScope.NON_ACCOUNT,

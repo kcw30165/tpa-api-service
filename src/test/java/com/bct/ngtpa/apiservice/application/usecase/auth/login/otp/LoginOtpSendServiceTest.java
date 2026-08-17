@@ -136,10 +136,8 @@ class LoginOtpSendServiceTest {
     }
 
     private LoginPreAuthContext context() {
-        return new LoginPreAuthContext("member01", "MBR", null,
-                Map.of("dst_opaque", new LoginPreAuthDestination(
-                        "dst_opaque", "mobile", "91234567", "****4567")),
-                NOW.minusSeconds(60), "v1");
+        return new LoginPreAuthContext("member01", null, Map.of("dst_opaque", new LoginPreAuthDestination(
+                        "dst_opaque", "mobile", "91234567", "****4567")), NOW.minusSeconds(60), "v1");
     }
 
     private abstract static class StubOtpPort implements OtpChallengePort {

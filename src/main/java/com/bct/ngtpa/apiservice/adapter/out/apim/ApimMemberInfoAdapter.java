@@ -46,8 +46,9 @@ public class ApimMemberInfoAdapter implements ApimMemberInfoPort {
         return GetMemberInfoApimRequest.builder()
                 .policyNo(command.getPolicyNo())
                 .certNo(command.getCertNo())
-                .userId(command.getUserId())
                 .accountEnv(command.getAccountEnv())
+                .loginUserId(command.getUserId())
+                .loginUserRole(command.getActorUserRole().toApimValue())
                 .build();
     }
 

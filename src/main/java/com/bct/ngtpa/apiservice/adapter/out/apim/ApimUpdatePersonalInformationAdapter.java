@@ -40,9 +40,8 @@ public class ApimUpdatePersonalInformationAdapter implements ApimUpdatePersonalI
 
     private UpdateMemberInfoApimRequest toApimRequest(UpdateMemberInfoCommand command) {
         return UpdateMemberInfoApimRequest.builder().policyNo(command.policyNo()).certNo(command.certNo())
-                .accountEnv(command.accountEnv()).userId(command.userId())
-                .userRole(command.userRole() == null ? null : command.userRole().name())
-                .applyToAllAccounts(command.applyToAllAccounts()).updateFields(command.updateFields()).build();
+                .accountEnv(command.accountEnv()).updateFields(command.updateFields())
+                .loginUserId(command.userId()).loginUserRole(command.userRole().toApimValue()).build();
     }
 
     private List<UpdatePersonalInformationResult> toResults(ApimResponseEnvelope<UpdateMemberInfoApimDataItem> response,

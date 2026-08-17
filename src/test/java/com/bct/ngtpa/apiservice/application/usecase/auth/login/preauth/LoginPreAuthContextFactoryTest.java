@@ -20,21 +20,13 @@ class LoginPreAuthContextFactoryTest {
         AtomicInteger sequence = new AtomicInteger();
         LoginDestinationIdGenerator generator = () -> "dst_opaque_value_" + sequence.incrementAndGet();
         var factory = new LoginPreAuthContextFactory(generator, new LoginDestinationMasker());
-        var result = new CredentialAuthenticationResult(
-                CredentialAuthenticationStatus.AUTHENTICATED,
-                "member",
-                "MBR",
-                "role_user",
-                0,
-                List.of(
+        var result = new CredentialAuthenticationResult(CredentialAuthenticationStatus.AUTHENTICATED, "member", "role_user", 0, List.of(
                         new LoginCredentialDestination("email", "member@example.com"),
-                        new LoginCredentialDestination("mobile", "91234567")),
-                null);
+                        new LoginCredentialDestination("mobile", "91234567")), null);
 
         var context = factory.create(result, Instant.parse("2026-07-20T00:00:00Z"));
 
         assertThat(context.normalizedUsername()).isEqualTo("member");
-        assertThat(context.custType()).isEqualTo("MBR");
         assertThat(context.destinationsById()).hasSize(2);
         assertThat(context.destinationsById().values())
                 .extracting(LoginPreAuthDestination::channel)
@@ -49,15 +41,11 @@ class LoginPreAuthContextFactoryTest {
     @Test
     void rejectsNonAuthenticatedOrDestinationlessResults() {
         var factory = new LoginPreAuthContextFactory(() -> "dst_opaque_value", new LoginDestinationMasker());
-        assertThatThrownBy(() -> factory.create(new CredentialAuthenticationResult(
-                        CredentialAuthenticationStatus.INCORRECT_PASSWORD,
-                        null, null, null, 1, List.of(), null),
+        assertThatThrownBy(() -> factory.create(new CredentialAuthenticationResult(CredentialAuthenticationStatus.INCORRECT_PASSWORD, null, null, 1, List.of(), null),
                 Instant.now()))
                 .isInstanceOf(IllegalArgumentException.class);
 
-        assertThatThrownBy(() -> factory.create(new CredentialAuthenticationResult(
-                        CredentialAuthenticationStatus.AUTHENTICATED,
-                        "member", "MBR", null, 0, List.of(), null),
+        assertThatThrownBy(() -> factory.create(new CredentialAuthenticationResult(CredentialAuthenticationStatus.AUTHENTICATED, "member", null, 0, List.of(), null),
                 Instant.now()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("destination");

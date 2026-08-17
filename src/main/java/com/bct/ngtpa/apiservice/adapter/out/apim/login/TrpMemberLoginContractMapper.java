@@ -1,4 +1,5 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.login;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 
 import com.bct.ngtpa.apiservice.adapter.out.apim.login.dto.TrpMemberLoginApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.login.dto.TrpMemberLoginApimOtpItem;
@@ -18,7 +19,7 @@ public final class TrpMemberLoginContractMapper {
 
     public TrpMemberLoginApimRequest toRequest(CredentialAuthenticationCommand command) {
         Objects.requireNonNull(command, "command must not be null");
-        return new TrpMemberLoginApimRequest(command.username(), command.password());
+        return new TrpMemberLoginApimRequest(command.username(), command.password(), command.actorUserRole().toApimValue());
     }
 
     public CredentialAuthenticationResult toAuthenticated(
@@ -28,7 +29,6 @@ public final class TrpMemberLoginContractMapper {
         if (!item.success()) {
             throw new IllegalStateException("TRPMemberLogin success item is marked unsuccessful");
         }
-        String custType = required(item.custType(), "cust-type");
         List<TrpMemberLoginApimOtpItem> source = item.otp() == null ? List.of() : item.otp();
         List<LoginCredentialDestination> destinations = new ArrayList<>(source.size());
         Set<String> unique = new HashSet<>();
@@ -46,11 +46,13 @@ public final class TrpMemberLoginContractMapper {
             }
             destinations.add(new LoginCredentialDestination(channel, destination));
         }
+        String loginUserRole = required(item.loginUserRole(), "login-user-role");
+        if (!"role_user_mbr".equals(loginUserRole))
+            throw new IllegalStateException("TRPMemberLogin login-user-role is unsupported");
         return new CredentialAuthenticationResult(
                 CredentialAuthenticationStatus.AUTHENTICATED,
                 required(normalizedUsername, "normalized username"),
-                custType,
-                trimToNull(item.userRole()),
+                ActorUserRole.fromApimValue(loginUserRole).name(),
                 item.failCount() == null ? 0 : item.failCount(),
                 destinations,
                 null);
@@ -68,7 +70,6 @@ public final class TrpMemberLoginContractMapper {
         }
         return new CredentialAuthenticationResult(
                 status,
-                null,
                 null,
                 null,
                 failCount,
