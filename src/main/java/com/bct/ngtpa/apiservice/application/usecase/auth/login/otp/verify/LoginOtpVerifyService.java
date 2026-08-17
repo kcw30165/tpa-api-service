@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.verify;
 
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.account.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.handoff.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.*;
@@ -203,7 +204,7 @@ public final class LoginOtpVerifyService implements VerifyLoginOtpUseCase {
                                                 return Mono.just(result(VerifyLoginOtpStatus.ZERO_VALID_ACCOUNTS, null,
                                                                 false));
                                         var assigned = accountAssignment.assign(validated.accounts());
-                                        var actor = new ActorContext(context.normalizedUsername(), context.userRole());
+                                        var actor = new ActorContext(context.normalizedUsername(), ActorUserRole.valueOf(context.userRole()));
                                         var command = new EstablishAuthenticatedLoginSessionCommand(
                                                         new AuthFlowSessionId(c.authFlowSessionId()), actor,
                                                         assigned.accounts(), x.csrfTokenHash(),

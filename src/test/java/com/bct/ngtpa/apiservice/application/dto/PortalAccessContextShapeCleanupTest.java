@@ -30,7 +30,7 @@ class PortalAccessContextShapeCleanupTest {
 
     @Test
     void preservesActorAndAccountValues() {
-        ActorContext actor = new ActorContext("actor-001", "MEMBER");
+        ActorContext actor = new ActorContext("actor-001", ActorUserRole.ROLE_USER_MBR);
         AccountContext account = new AccountContext(
                 "ACC-1",
                 "JP",

@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.application.dto.session.authenticated;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import java.time.*;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -15,7 +16,7 @@ class AuthenticatedSessionModelTest {
         var account = new AuthenticatedSessionAccount(new AuthenticatedAccountRef("acc_abcdefghijklmnopqrstuvwx"), "DB",
                 "00000008802", "0001", "DBA", "OE", "T", LocalDate.of(2026, 7, 20));
         var s = new AuthenticatedSession(new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx"),
-                new ActorContext("member", "role_user"), List.of(account), AuthenticatedSessionStatus.ACTIVE,
+                new ActorContext("member", ActorUserRole.ROLE_USER_MBR), List.of(account), AuthenticatedSessionStatus.ACTIVE,
                 "csrf_hash", NOW, NOW, NOW.plusSeconds(1800), NOW.plusSeconds(28800));
         assertThat(s.accounts()).containsExactly(account);
         assertThat(s.findAccount(account.accountRef())).contains(account);
@@ -45,7 +46,7 @@ class AuthenticatedSessionModelTest {
 
     private AuthenticatedSession session(AuthenticatedSessionStatus status, Instant expires) {
         return new AuthenticatedSession(new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx"),
-                new ActorContext("member", "role_user"),
+                new ActorContext("member", ActorUserRole.ROLE_USER_MBR),
                 List.of(new AuthenticatedSessionAccount(new AuthenticatedAccountRef("acc_abcdefghijklmnopqrstuvwx"),
                         "DB", "00000008802", "0001", "DBA", null, null, null)),
                 status, "csrf_hash", NOW, NOW, expires, NOW.plusSeconds(100));

@@ -2,6 +2,9 @@ package com.bct.ngtpa.apiservice.adapter.out.apim.config;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.HashMap;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import lombok.Getter;
@@ -18,6 +21,7 @@ public class ApimProperties {
     private final Encryption encryption = new Encryption();
     private final CredentialProfiles credentialProfiles = new CredentialProfiles();
     private final Retry retry = new Retry();
+    private final Routing routing = new Routing();
 
     @Getter
     @Setter
@@ -67,7 +71,7 @@ public class ApimProperties {
         }
         if (retry.businessCall.backoffMilliseconds < 0) {
             throw new IllegalStateException(
-                    "apim.retry.business-call.backoff-milliseconds must not be negative");
+                    "apim.retry.business-call-backoff-milliseconds must not be negative");
         }
     }
 
@@ -88,6 +92,83 @@ public class ApimProperties {
             private String apiKey;
             private List<String> scope = new ArrayList<>();
             private String certificatePath = "/api/wssupport/v1/encryption/certificate";
+        }
+    }
+
+    @Getter
+    @Setter
+    public static class Routing {
+        private String nonAccountProfileId;
+        private Map<String, String> accountEnvProfileMappings = new HashMap<>();
+    }
+
+    /**
+     * Validate routing configuration at startup. Throws IllegalStateException on invalid config.
+     */
+    public void validateRouting() {
+        Routing r = getRouting();
+        if (r == null) {
+            throw new IllegalStateException("apim.routing must be configured");
+        }
+        if (r.getNonAccountProfileId() == null || r.getNonAccountProfileId().isBlank()) {
+            throw new IllegalStateException("apim.routing.non-account-profile-id must be set and non-blank");
+        }
+        // Normalize and check mappings
+        Map<String, String> normalized = new HashMap<>();
+        for (Map.Entry<String, String> e : r.getAccountEnvProfileMappings().entrySet()) {
+            String key = e.getKey();
+            if (key == null || key.isBlank()) {
+                throw new IllegalStateException("apim.routing.account-env-profile-mappings contains blank key");
+            }
+            String norm = key.trim().toUpperCase(Locale.ROOT);
+            if (normalized.containsKey(norm)) {
+                throw new IllegalStateException("apim.routing.account-env-profile-mappings contains duplicate key after normalization: " + norm);
+            }
+            String profileId = e.getValue();
+            if (profileId == null || profileId.isBlank()) {
+                throw new IllegalStateException("apim.routing.account-env-profile-mappings maps to blank profile id for key " + key);
+            }
+            normalized.put(norm, profileId);
+        }
+        // Ensure every referenced profile exists and required fields present
+        List<String> profileIds = new ArrayList<>();
+        for (CredentialProfiles.Profile p : getCredentialProfiles().getProfiles()) {
+            profileIds.add(p.getProfileId());
+            if (p.getProfileId() == null || p.getProfileId().isBlank()) {
+                throw new IllegalStateException("apim.credential-profiles.profiles contains blank profileId");
+            }
+            if (p.getBaseUrl() == null || p.getBaseUrl().isBlank()) {
+                throw new IllegalStateException("apim.credential-profiles.profile.baseUrl must be set for profile " + p.getProfileId());
+            }
+            if (p.getTokenUri() == null || p.getTokenUri().isBlank()) {
+                throw new IllegalStateException("apim.credential-profiles.profile.tokenUri must be set for profile " + p.getProfileId());
+            }
+            // if (p.getClientId() == null || p.getClientId().isBlank()) {
+            //     throw new IllegalStateException("apim.credential-profiles.profile.clientId must be set for profile " + p.getProfileId());
+            // }
+            // if (p.getClientSecret() == null || p.getClientSecret().isBlank()) {
+            //     throw new IllegalStateException("apim.credential-profiles.profile.clientSecret must be set for profile " + p.getProfileId());
+            // }
+            if (p.getScope() == null || p.getScope().isEmpty()) {
+                throw new IllegalStateException("apim.credential-profiles.profile.scope must be set for profile " + p.getProfileId());
+            }
+            // if (p.getApiKey() == null || p.getApiKey().isBlank()) {
+            //     throw new IllegalStateException("apim.credential-profiles.profile.apiKey must be set for profile " + p.getProfileId());
+            // }
+            if (p.getCertificatePath() == null || p.getCertificatePath().isBlank()) {
+                throw new IllegalStateException("apim.credential-profiles.profile.certificatePath must be set for profile " + p.getProfileId());
+            }
+
+        }
+        // non-account profile referenced must exist
+        if (!profileIds.contains(r.getNonAccountProfileId())) {
+            throw new IllegalStateException("apim.routing.non-account-profile-id references unknown profile id");
+        }
+        // every mapping target must exist
+        for (String target : normalized.values()) {
+            if (!profileIds.contains(target)) {
+                throw new IllegalStateException("apim.routing.account-env-profile-mappings references unknown profile id: " + target);
+            }
         }
     }
 }

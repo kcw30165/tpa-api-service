@@ -63,7 +63,7 @@ class ApimCertificateServiceTest {
         ApimProperties props = new ApimProperties();
         ApimCertificateService svc = new ApimCertificateService(builder, props, helper);
 
-        ApimCredentialProfile profile = new ApimCredentialProfile("default", null, null, "akey", null, "http://localhost", List.of(), null);
+        ApimCredentialProfile profile = new ApimCredentialProfile("default", null, null, "akey", null, "http://localhost", List.of(), "/cert");
 
         var pk1 = svc.getPublicKey(profile).block();
         var pk2 = svc.getPublicKey(profile).block();
@@ -92,12 +92,13 @@ class ApimCertificateServiceTest {
                 new ApimProperties(),
                 mock(ApimCertificateHelper.class));
 
-        ApimCredentialProfile profile = new ApimCredentialProfile("default", null, null, null, null, "http://localhost", List.of(), null);
+        ApimCredentialProfile profile = new ApimCredentialProfile("default", null, null, null, null, "http://localhost", List.of(), "/cert");
 
         StepVerifier.create(svc.getPublicKey(profile))
-                .expectErrorSatisfies(ex -> assertEquals(
-                        "APIM apiKey is required for certificate fetch.",
-                        ex.getMessage()))
+                .expectErrorSatisfies(ex -> {
+                    org.junit.jupiter.api.Assertions.assertTrue(ex instanceof com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException);
+                    org.junit.jupiter.api.Assertions.assertTrue(ex.getMessage().contains("profile.apiKey missing for profile=default"));
+                })
                 .verify();
 
         assertEquals(0, counter.get());
@@ -129,11 +130,17 @@ class ApimCertificateServiceTest {
 
         ApimCertificateService svc = new ApimCertificateService(WebClient.builder().exchangeFunction(ef), props, helper);
 
-        PublicKey publicKey = svc.getBctPublicKey().block();
+        // Legacy fallback is disallowed under strict routing ??expect failure
+        reactor.test.StepVerifier.create(svc.getBctPublicKey())
+                .expectErrorSatisfies(ex -> {
+                    org.junit.jupiter.api.Assertions.assertTrue(ex instanceof com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException);
+                    org.junit.jupiter.api.Assertions.assertTrue(ex.getMessage().contains("legacy global APIM properties"));
+                })
+                .verify();
 
-        assertArrayEquals(kp.getPublic().getEncoded(), publicKey.getEncoded());
-        assertEquals("legacy-key", keyIdHeader.get());
-        assertEquals("http://example.test/api/cert", requestUri.get().toString());
+        // ensure we didn't call remote
+        assertNull(keyIdHeader.get());
+        assertNull(requestUri.get());
     }
 
     @Test
@@ -147,7 +154,7 @@ class ApimCertificateServiceTest {
                 props,
                 mock(ApimCertificateHelper.class));
 
-        ApimCredentialProfile profile = new ApimCredentialProfile("default", null, null, null, null, "http://localhost", List.of(), null);
+        ApimCredentialProfile profile = new ApimCredentialProfile("default", null, null, "akey", null, "http://localhost", List.of(), "/cert");
 
         StepVerifier.create(svc.getPublicKey(profile))
                 .expectErrorSatisfies(ex -> assertEquals(
@@ -177,7 +184,7 @@ class ApimCertificateServiceTest {
         props.getEncryption().setCertificateCacheTtlSeconds(60);
 
         ApimCertificateService svc = new ApimCertificateService(WebClient.builder().exchangeFunction(ef), props, helper);
-        ApimCredentialProfile profile = new ApimCredentialProfile("default", null, null, "akey", null, "http://localhost", List.of(), null);
+        ApimCredentialProfile profile = new ApimCredentialProfile("default", null, null, "akey", null, "http://localhost", List.of(), "/cert");
 
         assertEquals(publicKey, svc.getPublicKey(profile).block());
         assertEquals(publicKey, svc.getPublicKey(profile).block());
@@ -205,7 +212,7 @@ class ApimCertificateServiceTest {
         props.getEncryption().setCertificateCacheTtlSeconds(60);
 
         ApimCertificateService svc = new ApimCertificateService(WebClient.builder().exchangeFunction(ef), props, helper);
-        ApimCredentialProfile profile = new ApimCredentialProfile("default", null, null, "akey", null, "http://localhost", List.of(), null);
+        ApimCredentialProfile profile = new ApimCredentialProfile("default", null, null, "akey", null, "http://localhost", List.of(), "/cert");
 
         assertEquals(publicKey, svc.getPublicKey(profile).block());
         assertEquals(publicKey, svc.getPublicKey(profile).block());
@@ -218,3 +225,4 @@ class ApimCertificateServiceTest {
         return kpg.generateKeyPair();
     }
 }
+

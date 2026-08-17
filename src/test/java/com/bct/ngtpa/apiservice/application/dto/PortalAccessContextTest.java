@@ -11,11 +11,11 @@ class PortalAccessContextTest {
 
     @Test
     void actorContextPreservesSuppliedValues() {
-        var actor = new ActorContext("user-01", "RM");
+        var actor = new ActorContext("user-01", ActorUserRole.ROLE_USER_MBR);
 
         assertEquals("user-01", actor.actorUserId());
         // assertEquals("STAFFNO", actor.actorUserType());
-        assertEquals("RM", actor.actorUserRole());
+        assertEquals(ActorUserRole.ROLE_USER_MBR, actor.actorUserRole());
     }
 
 
@@ -37,7 +37,7 @@ class PortalAccessContextTest {
 
     @Test
     void portalAccessContextComposesAllThreeComponents() {
-        var actor       = new ActorContext("u1", "RM");
+        var actor       = new ActorContext("u1", ActorUserRole.ROLE_USER_MBR);
         var account     = new AccountContext(
             "ref", "JP", "pol", "cert", "trust", "scheme",
             TermStatus.S, LocalDate.of(2026, 4, 1));
@@ -51,13 +51,13 @@ class PortalAccessContextTest {
     @Test
     void portalAccessContextRecordEquality() {
         var a = new PortalAccessContext(
-                new ActorContext("u1", "RM"),
+                new ActorContext("u1", ActorUserRole.ROLE_USER_MBR),
             new AccountContext(
                 "ref", "JP", "pol", "cert", "trust", "scheme",
                 TermStatus.O, LocalDate.of(2026, 5, 1)));
 
         var b = new PortalAccessContext(
-                new ActorContext("u1", "RM"),
+                new ActorContext("u1", ActorUserRole.ROLE_USER_MBR),
             new AccountContext(
                 "ref", "JP", "pol", "cert", "trust", "scheme",
                 TermStatus.O, LocalDate.of(2026, 5, 1)));

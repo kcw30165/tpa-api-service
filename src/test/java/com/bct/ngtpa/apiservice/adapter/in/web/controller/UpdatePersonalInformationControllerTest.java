@@ -4,6 +4,7 @@ import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextR
 import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -114,7 +115,7 @@ class UpdatePersonalInformationControllerTest {
 
         private static PortalAccessContext portalAccessContext() {
                 return new PortalAccessContext(
-                                new ActorContext("userId_for_update", "MEMBER"),
+                                new ActorContext("userId_for_update", ActorUserRole.ROLE_USER_MBR),
                                 new AccountContext("ACC-123", "accountEnv_for_update", "policyNo_for_update",
                                                 "certNo_for_update",
                                                 "trustCode_for_update", "schemeType_for_update", TermStatus.BLANK,

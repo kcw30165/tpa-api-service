@@ -40,7 +40,7 @@ public class ApimNotificationReadStatusAdapter implements ApimNotificationReadSt
         if (!apimProperties.getEncryption().isEnabled()) {
             var request = apimPayloadCryptoService.encryptRequest(
                     API_NAME, toApimRequest(command), UpdateNotificationReadStatusApimRequest.class, null);
-            return apimWebClientFacade.post(API_NAME, request)
+            return apimWebClientFacade.post(API_NAME, request, com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.ACCOUNT_ENV, new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, command.accountEnv()), com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility.IDEMPOTENT_MUTATION)
                     .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
                             API_NAME, body, UpdateNotificationReadStatusApimDataItem.class, null))
                     .map(response -> toResult(response, command.targetStatus()))
@@ -48,15 +48,17 @@ public class ApimNotificationReadStatusAdapter implements ApimNotificationReadSt
                             ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
         }
 
-        return apimCertificateService.getBctPublicKey()
-                .flatMap(publicKey -> {
-                    var request = apimPayloadCryptoService.encryptRequest(
-                            API_NAME, toApimRequest(command), UpdateNotificationReadStatusApimRequest.class, publicKey);
-                    return apimWebClientFacade.post(API_NAME, request)
-                            .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
-                                    API_NAME, body, UpdateNotificationReadStatusApimDataItem.class, publicKey))
-                            .map(response -> toResult(response, command.targetStatus()));
-                })
+        var ctx = new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, command.accountEnv());
+        return apimWebClientFacade.resolveProfile(com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.ACCOUNT_ENV, ctx)
+                .flatMap(profile -> apimCertificateService.getPublicKey(profile)
+                        .flatMap(publicKey -> {
+                            var request = apimPayloadCryptoService.encryptRequest(
+                                    API_NAME, toApimRequest(command), UpdateNotificationReadStatusApimRequest.class, publicKey);
+                            return apimWebClientFacade.post(API_NAME, request, profile, com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility.IDEMPOTENT_MUTATION)
+                                    .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(
+                                            API_NAME, body, UpdateNotificationReadStatusApimDataItem.class, publicKey))
+                                    .map(response -> toResult(response, command.targetStatus()));
+                        }))
                 .onErrorMap(ApimCryptoException.class, ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR,
                         ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
     }
@@ -65,7 +67,7 @@ public class ApimNotificationReadStatusAdapter implements ApimNotificationReadSt
         return UpdateNotificationReadStatusApimRequest.builder()
                 .certNo(command.certNo())
                 .accountEnv(command.accountEnv())
-                .mbrType(command.mbrType())
+                .mbrType(command.mbrType() == null ? null : command.mbrType().name())
                 .msgCodeLong(String.join(",", command.notificationIds()))
                 .policyNo(command.policyNo())
                 .refDate(command.refDate())

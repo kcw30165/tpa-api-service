@@ -9,13 +9,14 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 
 class AuthenticatedSessionValidationServiceTest {
     @Test void acceptsMatchingCsrfAndRejectsMismatch() {
         var hasher = new Sha256CsrfTokenHasher();
         var session = new AuthenticatedSession(
                 new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx"),
-                new ActorContext("member", "SELF"), List.of(), AuthenticatedSessionStatus.ACTIVE,
+                new ActorContext("member", ActorUserRole.ROLE_USER_MBR), List.of(), AuthenticatedSessionStatus.ACTIVE,
                 hasher.hash("csrf_value"), Instant.EPOCH, Instant.EPOCH,
                 Instant.EPOCH.plusSeconds(300), Instant.EPOCH.plusSeconds(900));
         var service = new AuthenticatedSessionValidationService(

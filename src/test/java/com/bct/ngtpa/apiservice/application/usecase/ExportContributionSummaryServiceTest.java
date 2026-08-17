@@ -12,6 +12,7 @@ import com.bct.ngtpa.apiservice.application.port.out.CurrencyDisplayPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryDataset;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 
@@ -24,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class ExportContributionSummaryServiceTest {
 
     private static final PortalAccessContext CONTRIBUTIONS_CONTEXT = new PortalAccessContext(
-            new ActorContext("userId_for_contributions", "SELF"),
+            new ActorContext("userId_for_contributions", ActorUserRole.ROLE_USER_MBR),
             new AccountContext(
                     "contributions",
                     "JP",

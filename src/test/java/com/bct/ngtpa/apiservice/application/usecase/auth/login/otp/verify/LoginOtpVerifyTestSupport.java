@@ -22,10 +22,41 @@ final class LoginOtpVerifyTestSupport {
             LoginAccountRecordValidationService validation,
             LoginAccountReferenceAssignmentService assignment,
             EstablishAuthenticatedLoginSessionUseCase transition, Clock clock) {
-        LoginOtpVerifyPersistencePort persistence = command -> legacyOtp.verifyChallenge(
-                new VerifyOtpChallengeCommand(command.expectedChallengeId(),
+        LoginOtpVerifyPersistencePort persistence = new LoginOtpVerifyPersistencePort() {
+            @Override
+            public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.application.dto.auth.login.otp.verify.LoginOtpVerifyReservationResult> reserveOrLoad(ReserveLoginOtpVerifyCommand command) {
+                var reservation = new com.bct.ngtpa.apiservice.application.dto.auth.login.otp.verify.LoginOtpVerifyReservation(
+                        command.requestHash(), com.bct.ngtpa.apiservice.application.dto.auth.login.otp.verify.LoginOtpVerifyReservationStatus.PROCESSING,
+                        command.proposedHandoff(), command.proposedOperation(), null, null, null, command.now(), command.expiresAt());
+                return reactor.core.publisher.Mono.just(new com.bct.ngtpa.apiservice.application.dto.auth.login.otp.verify.LoginOtpVerifyReservationResult(
+                        com.bct.ngtpa.apiservice.application.dto.auth.login.otp.verify.LoginOtpVerifyReservationOutcome.STARTED, reservation));
+            }
+
+            @Override
+            public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.application.dto.auth.login.otp.verify.LoginOtpVerifyPersistenceResult> verify(RevisionedLoginOtpVerifyCommand command) {
+                return legacyOtp.verifyChallenge(new VerifyOtpChallengeCommand(command.expectedChallengeId(),
                         command.submittedOtp().revealForComparison(), command.verificationTime()))
-                .map(result -> map(command, result));
+                        .map(result -> map(command, result));
+            }
+
+            @Override
+            public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.application.dto.auth.login.otp.verify.LoginOtpVerifyReservation> recordVerificationCommitted(RecordLoginOtpVerifyCommittedCommand command) {
+                var reservation = new com.bct.ngtpa.apiservice.application.dto.auth.login.otp.verify.LoginOtpVerifyReservation(
+                        command.requestHash(), com.bct.ngtpa.apiservice.application.dto.auth.login.otp.verify.LoginOtpVerifyReservationStatus.VERIFICATION_COMMITTED,
+                        command.proof().handoffReference(), command.proof().operationReference(), command.proof(), null, null, command.proof().committedAt(), command.proof().committedAt().plusSeconds(600));
+                return reactor.core.publisher.Mono.just(reservation);
+            }
+
+            @Override
+            public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.application.dto.auth.login.otp.verify.LoginOtpVerifyReservation> recordConclusiveFailure(com.bct.ngtpa.apiservice.application.dto.auth.login.idempotency.LoginIdempotencyKey key, String requestHash,
+                    com.bct.ngtpa.apiservice.application.dto.auth.login.otp.verify.LoginOtpVerifyPersistenceOutcome outcome, Integer remainingAttempts) {
+                var now = java.time.Instant.now();
+                var reservation = new com.bct.ngtpa.apiservice.application.dto.auth.login.otp.verify.LoginOtpVerifyReservation(
+                        requestHash, com.bct.ngtpa.apiservice.application.dto.auth.login.otp.verify.LoginOtpVerifyReservationStatus.PROCESSING,
+                        null, null, null, null, null, now, now.plusSeconds(600));
+                return reactor.core.publisher.Mono.just(reservation);
+            }
+        };
         AuthFlowSessionMutationLockPort lock = new AuthFlowSessionMutationLockPort() {
             public Mono<SessionLockHandle> acquire(AuthFlowSessionId id, Duration lease) {
                 return Mono.just(new SessionLockHandle(true, "test-lock", "test-owner"));

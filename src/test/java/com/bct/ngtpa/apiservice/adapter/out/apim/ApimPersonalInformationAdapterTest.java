@@ -99,11 +99,13 @@ class ApimPersonalInformationAdapterTest {
         private int postInvocationCount;
 
         private FixedBodyApimWebClientFacade() {
-            super(null, new ObjectMapper());
+            super(null, null, new ObjectMapper(), null, null, null, new ApimProperties());
         }
 
         @Override
-        public Mono<String> post(String path, Object requestBody) {
+        public Mono<String> post(String path, Object requestBody, com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope scope,
+                                 com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext resolutionContext,
+                                 com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility retryEligibility) {
             this.capturedPath = path;
             this.capturedRequest = requestBody;
             this.postInvocationCount++;

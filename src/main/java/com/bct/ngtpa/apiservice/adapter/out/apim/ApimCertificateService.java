@@ -37,20 +37,10 @@ public class ApimCertificateService {
     }
 
     public Mono<PublicKey> getBctPublicKey() {
-        // Legacy behavior: build a profile from single-profile properties and delegate
-        ApimProperties.Oauth o = apimProperties.getOauth();
-        ApimProperties.Encryption e = apimProperties.getEncryption();
-        ApimCredentialProfile profile = new ApimCredentialProfile(
-                "default",
-                o.getClientId(),
-                o.getClientSecret(),
-                e.getApiKey(),
-                o.getTokenUri(),
-                apimProperties.getBaseUrl(),
-                o.getScope(),
-                e.getCertificatePath());
-        return getPublicKey(profile);
-    }
+            // Legacy fallback is no longer permitted under strict routing — fail fast
+            return Mono.error(new com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException(
+                    "legacy global APIM properties are not allowed for per-profile certificate resolution"));
+        }
 
     public Mono<PublicKey> getPublicKey(ApimCredentialProfile profile) {
         String pid = profile.profileId();
@@ -80,38 +70,47 @@ public class ApimCertificateService {
     }
 
     private Mono<CertificateCacheEntry> fetchCertificateEntry(ApimCredentialProfile profile) {
-        String apiKey = profile.apiKey() != null ? profile.apiKey() : apimProperties.getEncryption().getApiKey();
-        if (!StringUtils.hasText(apiKey)) {
-            return Mono.error(new ApimCryptoException("APIM apiKey is required for certificate fetch."));
+            // Do not fallback to global properties — require per-profile values
+            if (profile.apiKey() == null || !StringUtils.hasText(profile.apiKey())) {
+                return Mono.error(new com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException(
+                        "profile.apiKey missing for profile=" + profile.profileId()));
+            }
+            if (profile.baseUrl() == null || profile.baseUrl().isBlank()) {
+                return Mono.error(new com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException(
+                        "profile.baseUrl missing for profile=" + profile.profileId()));
+            }
+            if (profile.certificatePath() == null || profile.certificatePath().isBlank()) {
+                return Mono.error(new com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException(
+                        "profile.certificatePath missing for profile=" + profile.profileId()));
+            }
+
+            String apiKey = profile.apiKey();
+            String baseUrl = profile.baseUrl();
+            String certificatePath = profile.certificatePath();
+
+            WebClient client = webClientBuilder.clone()
+                    .baseUrl(baseUrl)
+                    .defaultHeader("Accept", "application/json")
+                    .build();
+
+            return client.get()
+                    .uri(UriComponentsBuilder.fromUriString(baseUrl)
+                            .replacePath(certificatePath)
+                            .replaceQuery(null)
+                            .build(true)
+                            .toUri())
+                    .header("KeyId", apiKey)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .map(String::trim)
+                    .filter(StringUtils::hasText)
+                    .switchIfEmpty(Mono.error(
+                            new com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException("BCT certificate API returned an empty response.")))
+                    .map(pem -> {
+                        X509Certificate cert = apimCertificateHelper.getX509CertificateFromPem(pem);
+                        return new CertificateCacheEntry(cert.getPublicKey(), calculateExpiryMillis(cert));
+                    });
         }
-
-        String baseUrl = profile.baseUrl() != null ? profile.baseUrl() : apimProperties.getBaseUrl();
-        String certificatePath = profile.certificatePath() != null ? profile.certificatePath()
-                : apimProperties.getEncryption().getCertificatePath();
-
-        WebClient client = webClientBuilder.clone()
-                .baseUrl(baseUrl)
-                .defaultHeader("Accept", "application/json")
-                .build();
-
-        return client.get()
-                .uri(UriComponentsBuilder.fromUriString(baseUrl)
-                        .replacePath(certificatePath)
-                        .replaceQuery(null)
-                        .build(true)
-                        .toUri())
-                .header("KeyId", apiKey)
-                .retrieve()
-                .bodyToMono(String.class)
-                .map(String::trim)
-                .filter(StringUtils::hasText)
-                .switchIfEmpty(Mono.error(
-                        new ApimCryptoException("BCT certificate API returned an empty response.")))
-                .map(pem -> {
-                    X509Certificate cert = apimCertificateHelper.getX509CertificateFromPem(pem);
-                    return new CertificateCacheEntry(cert.getPublicKey(), calculateExpiryMillis(cert));
-                });
-    }
 
     private long calculateExpiryMillis(X509Certificate cert) {
         try {

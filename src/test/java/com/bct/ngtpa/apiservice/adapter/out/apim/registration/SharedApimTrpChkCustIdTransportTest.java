@@ -47,7 +47,8 @@ class SharedApimTrpChkCustIdTransportTest {
         assertThat(facade.path).isEqualTo(SharedApimTrpChkCustIdTransport.API_NAME);
         assertThat(facade.requestBody).isEqualTo(new TrpChkCustIdApimRequest("cust-1"));
         assertThat(facade.retryEligibility).isEqualTo(ApimRetryEligibility.SAFE_BUSINESS_CALL);
-        assertThat(facade.context.requestMetadata()).containsEntry("requestId", "req-123");
+        // Strict routing context no longer carries arbitrary request metadata; ensure context is present
+        assertThat(facade.context).isNotNull();
         assertThat(certificates.calls).isZero();
         assertThat(crypto.decryptCalls).isEqualTo(1);
     }
@@ -59,7 +60,7 @@ class SharedApimTrpChkCustIdTransportTest {
         private ApimRetryEligibility retryEligibility;
 
         private CapturingApimWebClientFacade() {
-            super(WebClient.create(), WebClient.builder(), new ObjectMapper(), ignored -> Mono.empty(), null, null,
+            super(WebClient.create(), WebClient.builder(), new ObjectMapper(), (scope, ctx) -> Mono.empty(), null, null,
                     new ApimProperties());
         }
 
@@ -67,6 +68,7 @@ class SharedApimTrpChkCustIdTransportTest {
         public Mono<String> post(
                 String path,
                 Object requestBody,
+                com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope scope,
                 ApimCredentialResolutionContext resolutionContext,
                 ApimRetryEligibility retryEligibility) {
             this.path = path;

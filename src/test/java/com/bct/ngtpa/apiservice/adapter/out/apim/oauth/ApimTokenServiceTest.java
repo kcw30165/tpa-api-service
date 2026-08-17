@@ -34,7 +34,7 @@ class ApimTokenServiceTest {
         ApimProperties props = new ApimProperties();
         ApimTokenService svc = new ApimTokenService(builder, props);
 
-        ApimCredentialProfile profile = new ApimCredentialProfile("default","cid","secret","akey",null,null, List.of(),null);
+        ApimCredentialProfile profile = new ApimCredentialProfile("default","cid","secret","akey","http://localhost/token",null, List.of(),null);
 
         String t1 = svc.getAccessToken(profile).block();
         String t2 = svc.getAccessToken(profile).block();
@@ -62,7 +62,7 @@ class ApimTokenServiceTest {
         ApimProperties props = new ApimProperties();
         ApimTokenService svc = new ApimTokenService(builder, props);
 
-        ApimCredentialProfile profile = new ApimCredentialProfile("default","cid","secret","akey",null,null, List.of(),null);
+        ApimCredentialProfile profile = new ApimCredentialProfile("default","cid","secret","akey","http://localhost/token",null, List.of(),null);
 
         Mono<?> m1 = svc.refreshAccessToken(profile);
         Mono<?> m2 = svc.refreshAccessToken(profile);
@@ -118,7 +118,7 @@ class ApimTokenServiceTest {
         ApimProperties props = new ApimProperties();
         ApimTokenService svc = new ApimTokenService(builder, props);
 
-        ApimCredentialProfile profile = new ApimCredentialProfile("p2", "cid", "secret", "akey", null, null,
+        ApimCredentialProfile profile = new ApimCredentialProfile("p2", "cid", "secret", "akey", "http://localhost/token", null,
                 List.of(), null);
 
         svc.getAccessToken(profile).block();

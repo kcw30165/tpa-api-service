@@ -18,6 +18,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.PageResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.validation.PersonalInformationUpdateYamlValidator;
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.GetPersonalInformationCommand;
 import com.bct.ngtpa.apiservice.application.dto.PersonalInformationResult;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
@@ -135,7 +136,7 @@ class PersonalInformationControllerContractTest {
 
     private static PortalAccessContext context(String accountRef) {
         return new PortalAccessContext(
-                new ActorContext("user-1", "SELF"),
+                new ActorContext("user-1", ActorUserRole.ROLE_USER_MBR),
                 new AccountContext(accountRef, "JP", "policy-1", "cert-1", "JPM", "OE", TermStatus.BLANK, null));
     }
     

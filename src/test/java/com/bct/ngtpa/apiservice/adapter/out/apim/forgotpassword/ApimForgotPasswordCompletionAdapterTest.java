@@ -55,7 +55,7 @@ class ApimForgotPasswordCompletionAdapterTest {
     }
 
     private ForgotPasswordCompletionCommand command() {
-        return new ForgotPasswordCompletionCommand("db655", "Password!", "req-1");
+        return new ForgotPasswordCompletionCommand("db655", "Password!", "req-1", null);
     }
 
     private static final class Capturing implements ApimForgotPasswordCompletionTransport {

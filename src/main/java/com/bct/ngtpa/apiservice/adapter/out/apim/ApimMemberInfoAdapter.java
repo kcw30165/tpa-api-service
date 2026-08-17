@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 
 import java.util.LinkedHashMap;
@@ -42,7 +43,7 @@ public class ApimMemberInfoAdapter implements ApimMemberInfoPort {
         if (!apimProperties.getEncryption().isEnabled()) {
             var request = apimPayloadCryptoService.encryptRequest(API_NAME, toApimRequest(command),
                     GetMemberInfoApimRequest.class, null);
-            return apimWebClientFacade.post(API_NAME, request)
+            return apimWebClientFacade.post(API_NAME, request, (StringUtils.hasText(command.getAccountEnv()) ? com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.ACCOUNT_ENV : com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT), new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, command.getAccountEnv()), com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility.SAFE_BUSINESS_CALL)
                     .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(API_NAME, body,
                             GetMemberInfoDataItem.class, null))
                     .map(this::toMemberInfoResult)
@@ -50,15 +51,18 @@ public class ApimMemberInfoAdapter implements ApimMemberInfoPort {
                             ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
         }
 
-        return apimCertificateService.getBctPublicKey()
-                .flatMap(publicKey -> {
-                    var request = apimPayloadCryptoService.encryptRequest(API_NAME, toApimRequest(command),
-                            GetMemberInfoApimRequest.class, publicKey);
-                    return apimWebClientFacade.post(API_NAME, request)
-                            .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(API_NAME, body,
-                                    GetMemberInfoDataItem.class, publicKey))
-                            .map(this::toMemberInfoResult);
-                })
+        var scope = StringUtils.hasText(command.getAccountEnv()) ? com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.ACCOUNT_ENV : com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT;
+        var ctx = new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, command.getAccountEnv());
+        return apimWebClientFacade.resolveProfile(scope, ctx)
+                .flatMap(profile -> apimCertificateService.getPublicKey(profile)
+                        .flatMap(publicKey -> {
+                            var request = apimPayloadCryptoService.encryptRequest(API_NAME, toApimRequest(command),
+                                    GetMemberInfoApimRequest.class, publicKey);
+                            return apimWebClientFacade.post(API_NAME, request, profile, com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility.SAFE_BUSINESS_CALL)
+                                    .map(body -> apimPayloadCryptoService.decryptResponseEnvelope(API_NAME, body,
+                                            GetMemberInfoDataItem.class, publicKey))
+                                    .map(this::toMemberInfoResult);
+                        }))
                 .onErrorMap(ApimCryptoException.class, ex -> new ApimException(HttpStatus.INTERNAL_SERVER_ERROR,
                         ErrorCodes.SYSTEM_UNEXPECTED, ex.getMessage(), ex));
     }

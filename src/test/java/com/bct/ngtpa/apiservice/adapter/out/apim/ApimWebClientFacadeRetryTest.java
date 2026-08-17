@@ -68,13 +68,18 @@ class ApimWebClientFacadeRetryTest {
         };
 
         ApimCredentialProfile profile = new ApimCredentialProfile("p1", "cid", "secret", "akey", null, "http://localhost", List.of(), null);
-        ApimCredentialProfileResolver resolver = ctx -> Mono.just(profile);
+        ApimCredentialProfileResolver resolver = new ApimCredentialProfileResolver() {
+            @Override
+            public reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile> resolve(com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope scope, com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext context) {
+                return reactor.core.publisher.Mono.just(profile);
+            }
+        };
 
         ApimCertificateService certificateService = new ApimCertificateService(builder, props, null);
 
         ApimWebClientFacade facade = new ApimWebClientFacade(WebClient.create(), builder, new ObjectMapper(), resolver, tokenService, certificateService, props);
 
-        String resp = facade.post("/api/test", Map.of("x", "y")).block();
+        String resp = facade.post("/api/test", Map.of("x", "y"), com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT, new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, null), null).block();
 
         assertEquals("{\"ok\":true}", resp);
         assertEquals(2, serverCalls.get(), "Server should be called twice: first failing token, then retry");
@@ -102,7 +107,7 @@ class ApimWebClientFacadeRetryTest {
         };
 
         ApimCredentialProfile profile = new ApimCredentialProfile("p1", "cid", "secret", "akey", null, "http://localhost", List.of(), null);
-        ApimCredentialProfileResolver resolver = ctx -> Mono.just(profile);
+        ApimCredentialProfileResolver resolver = (scope, ctx) -> reactor.core.publisher.Mono.just(profile);
         ApimCertificateService certificateService = new ApimCertificateService(builder, props, null);
 
         ApimWebClientFacade facade = new ApimWebClientFacade(WebClient.create(), builder, new ObjectMapper(), resolver, tokenService, certificateService, props) {
@@ -112,7 +117,7 @@ class ApimWebClientFacadeRetryTest {
             }
         };
 
-        facade.post("/api/test", Map.of("x", "y")).block();
+        facade.post("/api/test", Map.of("x", "y"), com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT, new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, null), null).block();
 
         assertEquals("app-cert-header", certificateHeader.get());
     }
@@ -153,12 +158,12 @@ class ApimWebClientFacadeRetryTest {
         };
 
         ApimCredentialProfile profile = new ApimCredentialProfile("p1", "cid", "secret", "akey", null, "http://localhost", List.of(), null);
-        ApimCredentialProfileResolver resolver = ctx -> Mono.just(profile);
+        ApimCredentialProfileResolver resolver = (scope, ctx) -> reactor.core.publisher.Mono.just(profile);
         ApimCertificateService certificateService = new ApimCertificateService(builder, props, null);
 
         ApimWebClientFacade facade = new ApimWebClientFacade(WebClient.create(), builder, new ObjectMapper(), resolver, tokenService, certificateService, props);
 
-        String resp = facade.post("/api/test", Map.of("x", "y")).block();
+        String resp = facade.post("/api/test", Map.of("x", "y"), com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT, new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, null), null).block();
 
         assertEquals("{\"ok\":true}", resp);
         assertEquals(2, serverCalls.get());
@@ -183,13 +188,13 @@ class ApimWebClientFacadeRetryTest {
         ApimProperties props = new ApimProperties();
         ApimTokenService tokenService = fixedTokenService(builder, props, "tok");
         ApimCredentialProfile profile = new ApimCredentialProfile("p1", "cid", "secret", "akey", null, "http://localhost", List.of(), null);
-        ApimCredentialProfileResolver resolver = ctx -> Mono.just(profile);
+        ApimCredentialProfileResolver resolver = (scope, ctx) -> reactor.core.publisher.Mono.just(profile);
         ApimCertificateService certificateService = trackingCertificateService(builder, props, evictions);
 
         ApimWebClientFacade facade = new ApimWebClientFacade(
                 WebClient.create(), builder, new ObjectMapper(), resolver, tokenService, certificateService, props);
 
-        assertEquals("{\"ok\":true}", facade.post("/api/test", Map.of("x", "y")).block());
+        assertEquals("{\"ok\":true}", facade.post("/api/test", Map.of("x", "y"), com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT, new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, null), null).block());
         assertEquals(2, serverCalls.get());
         assertEquals(1, evictions.get());
     }
@@ -214,12 +219,12 @@ class ApimWebClientFacadeRetryTest {
                 WebClient.create(),
                 builder,
                 new ObjectMapper(),
-                ctx -> Mono.just(profile),
+                captureResolver(profile),
                 fixedTokenService(builder, props, "tok"),
                 trackingCertificateService(builder, props, evictions),
                 props);
 
-        StepVerifier.create(facade.post("/api/test", Map.of("x", "y")))
+        StepVerifier.create(facade.post("/api/test", Map.of("x", "y"), com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT, new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, null), null))
                 .expectErrorSatisfies(ex -> {
                     assertEquals(ApimException.class, ex.getClass());
                     assertEquals(
@@ -262,12 +267,12 @@ class ApimWebClientFacadeRetryTest {
                 WebClient.create(),
                 builder,
                 new ObjectMapper(),
-                ctx -> Mono.just(profile),
+                captureResolver(profile),
                 tokenService,
                 trackingCertificateService(builder, props, new AtomicInteger()),
                 props);
 
-        StepVerifier.create(facade.post("/api/test", Map.of("x", "y")))
+        StepVerifier.create(facade.post("/api/test", Map.of("x", "y"), com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT, new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, null), null))
                 .expectErrorSatisfies(ex -> {
                     assertEquals(ApimException.class, ex.getClass());
                     assertEquals("APIM request failed with status=502 body=not-json", ex.getMessage());
@@ -297,7 +302,7 @@ class ApimWebClientFacadeRetryTest {
         props.setApiKeyHeaderName("X-Api-Key");
         props.getEncryption().setEnabled(true);
 
-        ApimCredentialProfile profile = new ApimCredentialProfile("p1", "cid", "secret", null, null, null, List.of(), null);
+        ApimCredentialProfile profile = new ApimCredentialProfile("p1", "cid", "secret", "tok", null, "http://configured.example", List.of(), null);
         ApimWebClientFacade facade = new ApimWebClientFacade(
                 WebClient.create(),
                 builder,
@@ -312,9 +317,9 @@ class ApimWebClientFacadeRetryTest {
             }
         };
 
-        assertEquals("{\"ok\":true}", facade.post("/api/test", Map.of("x", "y")).block());
+        assertEquals("{\"ok\":true}", facade.post("/api/test", Map.of("x", "y"), com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT, new com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext(com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, null), null).block());
         assertEquals("http://configured.example/api/test", requestUrl.get().toString());
-        assertEquals("", apiKeyHeader.get());
+        assertEquals("tok", apiKeyHeader.get());
         assertEquals(null, certificateHeader.get());
     }
 
@@ -338,12 +343,12 @@ class ApimWebClientFacadeRetryTest {
     }
 
     private static ApimCredentialProfileResolver captureResolver(ApimCredentialProfile profile) {
-        return new ApimCredentialProfileResolver() {
-            @Override
-            public Mono<ApimCredentialProfile> resolve(ApimCredentialResolutionContext context) {
-                assertEquals("/api/test", context.operationName());
-                return Mono.just(profile);
-            }
+        return (scope, context) -> {
+            // operationName is no longer part of ApimCredentialResolutionContext in strict routing
+            // just assert context is present and return the profile
+            org.junit.jupiter.api.Assertions.assertNotNull(context);
+            return Mono.just(profile);
         };
     }
 }
+

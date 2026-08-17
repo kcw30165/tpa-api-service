@@ -143,23 +143,25 @@ class ApimNoticeMessageAdapterTest {
         @Test
         void doesNotIncludePageOrSizeInApimRequestPayload() throws Exception {
                 GetNotificationsCommand command = new GetNotificationsCommand(
-                                "DEV", "MBR", 1, 99999, "dd/MM/yyyy HH:mm", "Asia/Hong_Kong", "P1", "C1", "U1",
+                                "DEV", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, 1, 99999, "dd/MM/yyyy HH:mm", "Asia/Hong_Kong", "P1", "C1", "U1",
                                 "29/04/2026");
 
                 GetMessageBoardApimRequest request = (GetMessageBoardApimRequest) ReflectionTestUtils.invokeMethod(
                                 adapter, "toApimRequest", command);
                 String json = new ObjectMapper().writeValueAsString(request);
 
-                assertTrue(json.contains("\"env\":\"DEV\""));
-                assertTrue(json.contains("\"mbr-type\":\"MBR\""));
-                assertFalse(json.contains("page"));
-                assertFalse(json.contains("size"));
+                // Parse JSON structurally to avoid substring false positives
+                com.fasterxml.jackson.databind.JsonNode node = new ObjectMapper().readTree(json);
+                assertEquals("DEV", node.get("env").asText());
+                assertEquals("ROLE_USER_MBR", node.get("mbr-type").asText());
+                assertFalse(node.has("page"));
+                assertFalse(node.has("size"));
         }
 
         @Test
         void mapsCommandAccountEnvToApimJsonEnvField() throws Exception {
                 GetNotificationsCommand command = new GetNotificationsCommand(
-                                "UAT", "MBR", 1, 99999, "dd/MM/yyyy HH:mm", "Asia/Hong_Kong", "P1", "C1", "U1",
+                                "UAT", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, 1, 99999, "dd/MM/yyyy HH:mm", "Asia/Hong_Kong", "P1", "C1", "U1",
                                 "29/04/2026");
 
                 GetMessageBoardApimRequest request = (GetMessageBoardApimRequest) ReflectionTestUtils.invokeMethod(
@@ -235,7 +237,7 @@ class ApimNoticeMessageAdapterTest {
         }
 
         private static GetNotificationsCommand command() {
-                return new GetNotificationsCommand("DEV", "MBR", 1, 99999, "dd/MM/yyyy HH:mm", "Asia/Hong_Kong", "P1",
+                return new GetNotificationsCommand("DEV", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR, 1, 99999, "dd/MM/yyyy HH:mm", "Asia/Hong_Kong", "P1",
                                 "C1", "U1", "29/04/2026");
         }
 
@@ -269,11 +271,13 @@ class ApimNoticeMessageAdapterTest {
                 private int postInvocationCount;
 
                 private FixedBodyApimWebClientFacade() {
-                        super(null, new ObjectMapper());
+                        super(null, null, new ObjectMapper(), null, null, null, new ApimProperties());
                 }
 
                 @Override
-                public Mono<String> post(String path, Object requestBody) {
+                public Mono<String> post(String path, Object requestBody, com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope scope,
+                                         com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext resolutionContext,
+                                         com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility retryEligibility) {
                         this.capturedPath = path;
                         this.capturedRequest = requestBody;
                         this.postInvocationCount++;

@@ -5,6 +5,8 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.ApimPayloadCryptoService;
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimWebClientFacade;
 import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
+import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.login.config.TrpMemberLoginProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.login.dto.TrpMemberLoginApimDataItem;
@@ -41,8 +43,23 @@ public final class SharedApimTrpMemberLoginTransport implements TrpMemberLoginTr
                 if (!apimProperties.getEncryption().isEnabled()) {
                         return postEncrypted(request, null);
                 }
-                return certificates.getBctPublicKey()
-                                .flatMap(publicKey -> postEncrypted(request, publicKey));
+                var ctx = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER_MBR, null);
+                String path = requireText(loginProperties.getPath(), "apim.login.member-login.path");
+                return facade.resolveProfile(ApimDatabaseScope.NON_ACCOUNT, ctx)
+                        .flatMap(profile -> certificates.getPublicKey(profile)
+                                .flatMap(publicKey -> {
+                                        var encryptedRequest = crypto.encryptRequest(
+                                                        path,
+                                                        request,
+                                                        TrpMemberLoginApimRequest.class,
+                                                        publicKey);
+                                        return facade.post(path, encryptedRequest, profile, ApimRetryEligibility.SAFE_BUSINESS_CALL)
+                                                        .map(body -> crypto.decryptResponseEnvelope(
+                                                                        path,
+                                                                        body,
+                                                                        TrpMemberLoginApimDataItem.class,
+                                                                        publicKey));
+                                }));
         }
 
         private Mono<ApimResponseEnvelope<TrpMemberLoginApimDataItem>> postEncrypted(
@@ -57,9 +74,8 @@ public final class SharedApimTrpMemberLoginTransport implements TrpMemberLoginTr
                                 request,
                                 TrpMemberLoginApimRequest.class,
                                 publicKey);
-                var context = new ApimCredentialResolutionContext(
-                                null, null, null, null, null, null, null, operation, Map.of());
-                return facade.post(path, encryptedRequest, context, ApimRetryEligibility.SAFE_BUSINESS_CALL)
+                var context = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER_MBR, null);
+                return facade.post(path, encryptedRequest, ApimDatabaseScope.NON_ACCOUNT, context, ApimRetryEligibility.SAFE_BUSINESS_CALL)
                                 .map(body -> crypto.decryptResponseEnvelope(
                                                 path,
                                                 body,

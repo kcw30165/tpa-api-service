@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.*;
 import com.bct.ngtpa.apiservice.application.usecase.session.authenticated.*;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -79,7 +80,7 @@ class AuthenticatedLogoutServiceTest {
         Instant now = Instant.parse("2026-07-28T00:00:00Z");
         return new AuthenticatedSession(
                 SID,
-                new ActorContext("member", "SELF"),
+                new ActorContext("member", ActorUserRole.ROLE_USER_MBR),
                 List.of(),
                 AuthenticatedSessionStatus.LOGGED_OUT,
                 "csrf_hash",

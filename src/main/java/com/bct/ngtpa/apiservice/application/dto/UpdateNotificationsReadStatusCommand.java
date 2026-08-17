@@ -5,7 +5,7 @@ import java.util.List;
 
 public record UpdateNotificationsReadStatusCommand(
         String accountEnv,
-        String mbrType,
+        ActorUserRole mbrType,
         List<String> notificationIds,
         String policyNo,
         String certNo,

@@ -5,6 +5,8 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.ApimPayloadCryptoService;
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimWebClientFacade;
 import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
+import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.adapter.out.apim.crypto.ApimCryptoException;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpChkCustIdApimDataItem;
@@ -44,27 +46,76 @@ public final class SharedApimTrpChkCustIdTransport implements TrpChkCustIdTransp
     @Override
     public Mono<TrpChkCustIdApimEnvelope> post(TrpChkCustIdApimRequest request, String correlationId) {
         Objects.requireNonNull(request, "request must not be null");
-        return apimProperties.getEncryption().isEnabled()
-                ? certificates.getBctPublicKey().flatMap(key -> postEncrypted(request, correlationId, key))
-                : postEncrypted(request, correlationId, null);
+        if (!apimProperties.getEncryption().isEnabled()) {
+            return postEncrypted(request, correlationId, null, null);
+        }
+        var ctx = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER_MBR, null);
+        return facade.resolveProfile(com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT, ctx)
+                        .flatMap(profile -> certificates.getPublicKey(profile)
+                        .flatMap(publicKey -> {
+                            Object encryptedRequest = crypto.encryptRequest(API_NAME, request, TrpChkCustIdApimRequest.class, publicKey);
+                            return facade.post(API_NAME, encryptedRequest, profile, ApimRetryEligibility.SAFE_BUSINESS_CALL)
+                                    .map(body -> crypto.decryptResponseEnvelope(API_NAME, body, TrpChkCustIdApimDataItem.class, publicKey))
+                                    .map(this::toEnvelopePreservingBusinessErrMessage)
+                                    .onErrorMap(ApimCryptoException.class, this::toApimException)
+                                    .doOnError(error -> LOGGER.error(
+                                            "event=forgot-password.username-lookup.transport-failed requestId={} exceptionType={}",
+                                            correlationId, error.getClass().getName(), error));
+                        }));
     }
 
     private Mono<TrpChkCustIdApimEnvelope> postEncrypted(
             TrpChkCustIdApimRequest request,
             String correlationId,
-            PublicKey publicKey) {
+            PublicKey publicKey,
+            ApimCredentialProfile profile) {
         Object encryptedRequest = crypto.encryptRequest(API_NAME, request, TrpChkCustIdApimRequest.class, publicKey);
         Map<String, String> metadata = correlationId == null || correlationId.isBlank()
                 ? Map.of()
                 : Map.of("requestId", correlationId);
-        var context = new ApimCredentialResolutionContext(null, null, null, null, null, null, null, API_NAME, metadata);
-        return facade.post(API_NAME, encryptedRequest, context, ApimRetryEligibility.SAFE_BUSINESS_CALL)
+        var context = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER_MBR, null);
+        if (profile != null) {
+            return facade.post(API_NAME, encryptedRequest, profile, ApimRetryEligibility.SAFE_BUSINESS_CALL)
+                    .map(body -> crypto.decryptResponseEnvelope(API_NAME, body, TrpChkCustIdApimDataItem.class, publicKey))
+                    .map(this::toEnvelopePreservingBusinessErrMessage)
+                    .onErrorMap(ApimCryptoException.class, this::toApimException)
+                    .doOnError(error -> LOGGER.error(
+                            "event=forgot-password.username-lookup.transport-failed requestId={} exceptionType={}",
+                            correlationId, error.getClass().getName(), error));
+        }
+        return facade.post(API_NAME, encryptedRequest, com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.NON_ACCOUNT, context, ApimRetryEligibility.SAFE_BUSINESS_CALL)
                 .map(body -> crypto.decryptResponseEnvelope(API_NAME, body, TrpChkCustIdApimDataItem.class, publicKey))
                 .map(this::toEnvelopePreservingBusinessErrMessage)
                 .onErrorMap(ApimCryptoException.class, this::toApimException)
                 .doOnError(error -> LOGGER.error(
                         "event=forgot-password.username-lookup.transport-failed requestId={} exceptionType={}",
                         correlationId, error.getClass().getName(), error));
+    }
+
+    /**
+     * Public helper that invokes TRPChkCustId using the ACCOUNT_ENV resolver.
+     * This is used by registration username-check (workflow-specific) which must
+     * route by protected selectedTrust.accountEnv. The transport remains shared
+     * but the caller supplies the safe accountEnv value (server-owned).
+     */
+    public Mono<TrpChkCustIdApimEnvelope> postWithAccountEnv(
+            TrpChkCustIdApimRequest request,
+            String correlationId,
+            String accountEnv) {
+        Objects.requireNonNull(accountEnv, "accountEnv must not be null");
+        var ctx = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER_MBR, accountEnv);
+        return facade.resolveProfile(com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope.ACCOUNT_ENV, ctx)
+                .flatMap(profile -> certificates.getPublicKey(profile)
+                .flatMap(publicKey -> {
+                    Object encryptedRequest = crypto.encryptRequest(API_NAME, request, TrpChkCustIdApimRequest.class, publicKey);
+                    return facade.post(API_NAME, encryptedRequest, profile, ApimRetryEligibility.SAFE_BUSINESS_CALL)
+                            .map(body -> crypto.decryptResponseEnvelope(API_NAME, body, TrpChkCustIdApimDataItem.class, publicKey))
+                            .map(this::toEnvelopePreservingBusinessErrMessage)
+                            .onErrorMap(ApimCryptoException.class, this::toApimException)
+                            .doOnError(error -> LOGGER.error(
+                                    "event=registration.username-check.transport-failed requestId={} exceptionType={}",
+                                    correlationId, error.getClass().getName(), error));
+                }));
     }
 
     private TrpChkCustIdApimEnvelope toEnvelopePreservingBusinessErrMessage(
@@ -77,6 +128,29 @@ public final class SharedApimTrpChkCustIdTransport implements TrpChkCustIdTransp
         int dataCount = data == null ? 0 : data.size();
         LOGGER.info("event=forgot-password.username-lookup.transport responsePresent=true errMessagePresent={} dataCount={}",
                 errMessage != null && !errMessage.isBlank(), dataCount);
+
+        // Validate minimal successful response invariants:
+        // - If errMessage is blank/empty and there's no data, treat as invalid upstream response
+        // - If data is present, ensure at least one non-null item with meaningful fields exists
+        boolean errMessagePresent = errMessage != null && !errMessage.isBlank();
+        boolean dataPresent = data != null && !data.isEmpty();
+        if (!errMessagePresent && !dataPresent) {
+            // Invalid/malformed upstream payload — classify as APIM response invalid
+            throw new com.bct.ngtpa.apiservice.exception.ApimException(
+                    org.springframework.http.HttpStatus.BAD_GATEWAY,
+                    com.bct.ngtpa.apiservice.shared.error.ErrorCodes.APIM_RESPONSE_INVALID,
+                    "TRPChkCustId returned an invalid/malformed response");
+        }
+        if (dataPresent) {
+            boolean anyValidItem = data.stream().anyMatch(item -> item != null && (item.customerId() != null || item.isExist() != null));
+            if (!anyValidItem) {
+                throw new com.bct.ngtpa.apiservice.exception.ApimException(
+                        org.springframework.http.HttpStatus.BAD_GATEWAY,
+                        com.bct.ngtpa.apiservice.shared.error.ErrorCodes.APIM_RESPONSE_INVALID,
+                        "TRPChkCustId returned data items but they are malformed");
+            }
+        }
+
         return new TrpChkCustIdApimEnvelope(errMessage, data);
     }
 

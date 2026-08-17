@@ -77,6 +77,23 @@ public class ApiExceptionHandler {
                 false);
     }
 
+    @ExceptionHandler(com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException.class)
+    public ResponseEntity<MutationResponse<Void>> handleApimProfileResolutionException(
+            com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException ex,
+            ServerWebExchange exchange) {
+        String internalCode = ex.getInternalCode() != null ? ex.getInternalCode() : "err.apim.profile.resolution.failed";
+        ApiError error = ApiError.system(internalCode, resolvePublicMessage(internalCode, exchange, ex), SOURCE_SERVER);
+        return buildMutationErrorResponse(
+                ex.getPublicStatus(),
+                ApiStatus.SYSTEM_ERROR,
+                List.of(error),
+                exchange,
+                ex,
+                "APIM profile resolution failed",
+                true,
+                false);
+    }
+
     @ExceptionHandler(ApimException.class)
     public ResponseEntity<MutationResponse<Void>> handleApimException(ApimException ex, ServerWebExchange exchange) {
         String errorCode = resolveApimErrorCode(ex);

@@ -12,6 +12,7 @@ import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.port.out.ApimMemberInfoPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
@@ -69,7 +70,7 @@ class GetPersonalInformationUseCaseTest {
 
     private static PortalAccessContext context(String accountRef) {
         return new PortalAccessContext(
-                new ActorContext("user-1", "SELF"),
+                new ActorContext("user-1", ActorUserRole.ROLE_USER_MBR),
                 new AccountContext(accountRef, "JP", "policy-1", "cert-1", "JPM", "OE", TermStatus.BLANK, null));
     }
 }

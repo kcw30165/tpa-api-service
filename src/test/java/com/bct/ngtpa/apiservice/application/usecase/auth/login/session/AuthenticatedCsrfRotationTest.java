@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.login.session;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.account.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.*;
@@ -47,7 +48,7 @@ class AuthenticatedCsrfRotationTest {
                 null);
         var command = new EstablishAuthenticatedLoginSessionCommand(
                 new AuthFlowSessionId("afs_opaque"),
-                new ActorContext("member", "SELF"),
+                new ActorContext("member", ActorUserRole.ROLE_USER_MBR),
                 List.of(account),
                 "pre_auth_csrf_hash_must_not_be_reused",
                 "req");

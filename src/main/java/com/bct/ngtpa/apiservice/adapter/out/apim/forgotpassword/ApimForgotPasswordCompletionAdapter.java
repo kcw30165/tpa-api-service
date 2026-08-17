@@ -4,12 +4,16 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.ApimCertificateService;
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimPayloadCryptoService;
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimWebClientFacade;
 import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
+import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
+import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimCryptoFailureClassifier;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.dto.TrpResetPasswordApimDataItem;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.dto.TrpResetPasswordApimRequest;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.mapper.TrpResetPasswordApimMapper;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.mapper.TrpResetPasswordApimResultMapper;
+import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordCompletionPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompletionCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompletionResult;
@@ -59,30 +63,75 @@ public class ApimForgotPasswordCompletionAdapter implements ForgotPasswordComple
 
     @Override
     @LogExecution(value = "apim.trpResetPassword", logArgs = false)
-    public Mono<ForgotPasswordCompletionResult> complete(ForgotPasswordCompletionCommand command) {
+    public Mono<ForgotPasswordCompletionResult> complete(
+            ForgotPasswordCompletionCommand command) {
+
         Objects.requireNonNull(command, "command must not be null");
+
         TrpResetPasswordApimRequest request = mapper.toRequest(command);
+
         if (testTransport != null) {
             return testTransport.postResetPassword(API_NAME, request)
-                    .map(envelope -> resultMapper.toResult(envelope, command.customerId()));
+                    .map(envelope -> resultMapper.toResult(
+                            envelope,
+                            command.customerId()));
         }
+
         if (!properties.getEncryption().isEnabled()) {
-            return post(command.customerId(), request, null);
+            return post(
+                    command.customerId(),
+                    command.accountEnv(),
+                    request,
+                    null);
         }
-        return certificates.getBctPublicKey().flatMap(key -> post(command.customerId(), request, key));
+        
+        var ctx = new ApimCredentialResolutionContext(ActorUserRole.ROLE_USER_MBR, null);
+        return facade.resolveProfile(ApimDatabaseScope.NON_ACCOUNT, ctx)
+                .flatMap(profile -> certificates.getPublicKey(profile)
+                        .flatMap(key -> {
+                            var encryptedRequest = crypto.encryptRequest(API_NAME, request, TrpResetPasswordApimRequest.class, key);
+                            return facade.post(API_NAME, encryptedRequest, profile, ApimRetryEligibility.IDEMPOTENT_MUTATION)
+                                    .map(body -> crypto.decryptResponseEnvelope(API_NAME, body, TrpResetPasswordApimDataItem.class, key))
+                                    .map(this::toEnvelope)
+                                    .map(envelope -> resultMapper.toResult(envelope, command.customerId()))
+                                    .onErrorResume(ApimCryptoFailureClassifier::isCryptoFailure, exception -> Mono.just(ForgotPasswordCompletionResult.unknownOutcome()))
+                                    .onErrorMap(this::safeFailure);
+                        }));
     }
 
     private Mono<ForgotPasswordCompletionResult> post(
             String expectedCustomerId,
+            String accountEnv,
             TrpResetPasswordApimRequest request,
             PublicKey publicKey) {
-        var encryptedRequest = crypto.encryptRequest(API_NAME, request, TrpResetPasswordApimRequest.class, publicKey);
-        return facade.post(API_NAME, encryptedRequest)
-                .map(body -> crypto.decryptResponseEnvelope(API_NAME, body, TrpResetPasswordApimDataItem.class, publicKey))
+
+        var encryptedRequest = crypto.encryptRequest(
+                API_NAME,
+                request,
+                TrpResetPasswordApimRequest.class,
+                publicKey);
+
+        return facade.post(
+                API_NAME,
+                encryptedRequest,
+                ApimDatabaseScope.ACCOUNT_ENV,
+                new ApimCredentialResolutionContext(
+                        ActorUserRole.ROLE_USER_MBR,
+                        accountEnv),
+                ApimRetryEligibility.IDEMPOTENT_MUTATION)
+                .map(body -> crypto.decryptResponseEnvelope(
+                        API_NAME,
+                        body,
+                        TrpResetPasswordApimDataItem.class,
+                        publicKey))
                 .map(this::toEnvelope)
-                .map(envelope -> resultMapper.toResult(envelope, expectedCustomerId))
-                .onErrorResume(ApimCryptoFailureClassifier::isCryptoFailure,
-                        exception -> Mono.just(ForgotPasswordCompletionResult.unknownOutcome()))
+                .map(envelope -> resultMapper.toResult(
+                        envelope,
+                        expectedCustomerId))
+                .onErrorResume(
+                        ApimCryptoFailureClassifier::isCryptoFailure,
+                        exception -> Mono.just(
+                                ForgotPasswordCompletionResult.unknownOutcome()))
                 .onErrorMap(this::safeFailure);
     }
 

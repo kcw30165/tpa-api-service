@@ -41,6 +41,17 @@ public class ApimRegistrationUsernameAvailabilityAdapter implements Registration
             RegistrationUsernameAvailabilityCommand command) {
         Objects.requireNonNull(command, "command must not be null");
         TrpChkCustIdApimRequest request = requestMapper.toApimRequest(command);
+        // Prefer caller-supplied authoritative accountEnv routing when present. The adapter is
+        // constructed with the shared transport implementation so a safe concrete call is used.
+        if (command != null && command.selectedTrust() != null && command.selectedTrust().accountEnv() != null) {
+            String accountEnv = command.selectedTrust().accountEnv();
+            if (transport instanceof SharedApimTrpChkCustIdTransport shared) {
+                return shared.postWithAccountEnv(request, command.correlationId(), accountEnv)
+                        .map(resultMapper::toResult);
+            }
+            // Test harnesses and alternate transports may not support account-env helper; fall back
+            // to the generic transport.post which the test constructor wires to the test transport.
+        }
         return transport.post(request, command.correlationId())
                 .map(resultMapper::toResult);
     }

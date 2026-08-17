@@ -15,7 +15,6 @@ import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyRecord;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyReplaySnapshot;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyStartCommand;
-import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyStartOutcome;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyUnknownOutcomeCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordRequestHash;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle;
@@ -75,7 +74,8 @@ public final class CompleteForgotPasswordService implements CompleteForgotPasswo
     private final Duration idempotencyTtl;
     private final Duration lockLease;
     private final List<String> allowedOrigins;
-    private final CsrfTokenValidationService csrfValidator = new CsrfTokenValidationService(new Sha256CsrfTokenHasher());
+    private final CsrfTokenValidationService csrfValidator = new CsrfTokenValidationService(
+            new Sha256CsrfTokenHasher());
     private final OriginRefererValidator originRefererValidator = new OriginRefererValidator();
 
     public CompleteForgotPasswordService(
@@ -144,7 +144,8 @@ public final class CompleteForgotPasswordService implements CompleteForgotPasswo
             case OUTCOME_PASSWORD_INVALID -> Mono.just(passwordInvalidResult());
             case OUTCOME_MEMBER_NOT_FOUND -> Mono.just(memberNotFoundResult());
             case OUTCOME_SUCCESS_PENDING_FINALIZATION,
-                    OUTCOME_MEMBER_NOT_FOUND_PENDING_FINALIZATION -> acquireAndRun(command, requestHash, record, true, ttl);
+                    OUTCOME_MEMBER_NOT_FOUND_PENDING_FINALIZATION ->
+                acquireAndRun(command, requestHash, record, true, ttl);
             default -> Mono.just(systemFailed(WorkflowNextStep.NONE));
         };
     }
@@ -199,11 +200,14 @@ public final class CompleteForgotPasswordService implements CompleteForgotPasswo
                     passwordValidation.errors()));
         }
 
-        return completion.complete(new ForgotPasswordCompletionCommand(
-                loaded.context().customerId(),
-                command.password(),
-                command.correlationId()))
-                .flatMap(result -> handleDownstream(command, requestHash, snapshot.session(), loaded.context(), result, now, ttl))
+        return completion.complete(
+                new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompletionCommand(
+                        loaded.context().customerId(),
+                        command.password(),
+                        command.correlationId(),
+                        loaded.context().accountEnv()))
+                .flatMap(result -> handleDownstream(command, requestHash, snapshot.session(), loaded.context(), result,
+                        now, ttl))
                 .onErrorResume(error -> markUnknownOutcome(command, requestHash, snapshot.session(), now, ttl));
     }
 
@@ -392,7 +396,8 @@ public final class CompleteForgotPasswordService implements CompleteForgotPasswo
                 .thenReturn(unknownOutcome());
     }
 
-    private LoadedContext validateForCompletion(AuthFlowSession session, CompleteForgotPasswordCommand command, Instant now) {
+    private LoadedContext validateForCompletion(AuthFlowSession session, CompleteForgotPasswordCommand command,
+            Instant now) {
         CompleteForgotPasswordResult requestValidation = validateSessionTransport(session, command, now);
         if (requestValidation != null) {
             return LoadedContext.failure(requestValidation);
@@ -441,7 +446,8 @@ public final class CompleteForgotPasswordService implements CompleteForgotPasswo
         if (session.scenario() != AuthFlowScenario.FORGOT_PASSWORD) {
             return invalidAuthFlow();
         }
-        if (csrfValidator.validate(command.csrfToken(), session.csrfTokenHash()).status() != CsrfTokenValidationStatus.VALID) {
+        if (csrfValidator.validate(command.csrfToken(), session.csrfTokenHash())
+                .status() != CsrfTokenValidationStatus.VALID) {
             return csrfInvalid();
         }
         if (!allowedOrigins.isEmpty()) {
@@ -648,7 +654,8 @@ public final class CompleteForgotPasswordService implements CompleteForgotPasswo
     }
 
     private WorkflowErrorDescriptor error(WorkflowErrorType type, String code, String target) {
-        return new WorkflowErrorDescriptor(type, code, null, List.of(target), WorkflowErrorSeverity.ERROR, SOURCE_SERVER);
+        return new WorkflowErrorDescriptor(type, code, null, List.of(target), WorkflowErrorSeverity.ERROR,
+                SOURCE_SERVER);
     }
 
     private Mono<Void> releaseAfterSuccess(SessionLockHandle handle) {
