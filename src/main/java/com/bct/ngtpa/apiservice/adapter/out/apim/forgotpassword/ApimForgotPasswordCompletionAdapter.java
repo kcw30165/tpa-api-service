@@ -19,31 +19,49 @@ import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
 import java.util.List;
 import java.util.Objects;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
 @Component
 public class ApimForgotPasswordCompletionAdapter implements ForgotPasswordCompletionPort {
- static final String API_NAME="/ws/NGTPA/v1/TRPResetPassword";
- private final ApimExchangeExecutor executor; private final ApimForgotPasswordCompletionTransport testTransport;
- private final TrpResetPasswordApimMapper mapper=new TrpResetPasswordApimMapper(); private final TrpResetPasswordApimResultMapper resultMapper=new TrpResetPasswordApimResultMapper();
- @Autowired public ApimForgotPasswordCompletionAdapter(ApimExchangeExecutor executor){this.executor=Objects.requireNonNull(executor);this.testTransport=null;}
- public ApimForgotPasswordCompletionAdapter(ApimForgotPasswordCompletionTransport transport){this.executor=null;this.testTransport=Objects.requireNonNull(transport);}
- @Override @LogExecution(value="apim.trpResetPassword",logArgs=false)
- public Mono<ForgotPasswordCompletionResult> complete(ForgotPasswordCompletionCommand command){
-  Objects.requireNonNull(command,"command must not be null"); TrpResetPasswordApimRequest request=mapper.toRequest(command);
-  if(testTransport!=null)return testTransport.postResetPassword(API_NAME,request).map(e->resultMapper.toResult(e,command.customerId()));
-  var exchange=new ApimExchangeRequest<>(API_NAME,request,TrpResetPasswordApimRequest.class,TrpResetPasswordApimDataItem.class,
-    ApimDatabaseScope.NON_ACCOUNT,new ApimCredentialResolutionContext(command.actorUserRole(),null),ApimRetryEligibility.IDEMPOTENT_MUTATION);
-  return executor.postEnvelope(exchange).map(this::toEnvelope).map(e->resultMapper.toResult(e,command.customerId()))
-    .onErrorResume(ApimCryptoFailureClassifier::isCryptoFailure,e->Mono.just(ForgotPasswordCompletionResult.unknownOutcome()))
-    .onErrorMap(this::safeFailure);
- }
- private TrpResetPasswordApimEnvelope toEnvelope(ApimResponseEnvelope<TrpResetPasswordApimDataItem> envelope){
-  if(envelope==null||envelope.getResponse()==null)throw new ApimException(HttpStatus.BAD_GATEWAY,ErrorCodes.APIM_RESPONSE_INVALID,"TRPResetPassword response envelope is missing response");
-  return new TrpResetPasswordApimEnvelope(envelope.getResponse().getErrMessage(),envelope.getResponse().getData()==null?List.of():envelope.getResponse().getData());
- }
- private Throwable safeFailure(Throwable t){if(t instanceof ApimException)return t;return new ApimException(HttpStatus.INTERNAL_SERVER_ERROR,ErrorCodes.SYSTEM_UNEXPECTED,"TRPResetPassword transport failed",t);}
+  static final String API_NAME = "/ws/NGTPA/v1/TRPResetPassword";
+  private final ApimExchangeExecutor executor;
+  private final TrpResetPasswordApimMapper mapper = new TrpResetPasswordApimMapper();
+  private final TrpResetPasswordApimResultMapper resultMapper = new TrpResetPasswordApimResultMapper();
+
+  public ApimForgotPasswordCompletionAdapter(ApimExchangeExecutor executor) {
+    this.executor = Objects.requireNonNull(executor, "executor must not be null");
+  }
+
+  @Override
+  @LogExecution(value = "apim.trpResetPassword", logArgs = false)
+  public Mono<ForgotPasswordCompletionResult> complete(ForgotPasswordCompletionCommand command) {
+    Objects.requireNonNull(command, "command must not be null");
+    TrpResetPasswordApimRequest request = mapper.toRequest(command);
+    var exchange = new ApimExchangeRequest<>(API_NAME, request, TrpResetPasswordApimRequest.class,
+        TrpResetPasswordApimDataItem.class,
+        ApimDatabaseScope.NON_ACCOUNT, new ApimCredentialResolutionContext(command.actorUserRole(), null),
+        ApimRetryEligibility.IDEMPOTENT_MUTATION);
+    return executor.postEnvelope(exchange).map(this::toEnvelope)
+        .map(e -> resultMapper.toResult(e, command.customerId()))
+        .onErrorResume(ApimCryptoFailureClassifier::isCryptoFailure,
+            e -> Mono.just(ForgotPasswordCompletionResult.unknownOutcome()))
+        .onErrorMap(this::safeFailure);
+  }
+
+  private TrpResetPasswordApimEnvelope toEnvelope(ApimResponseEnvelope<TrpResetPasswordApimDataItem> envelope) {
+    if (envelope == null || envelope.getResponse() == null)
+      throw new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID,
+          "TRPResetPassword response envelope is missing response");
+    return new TrpResetPasswordApimEnvelope(envelope.getResponse().getErrMessage(),
+        envelope.getResponse().getData() == null ? List.of() : envelope.getResponse().getData());
+  }
+
+  private Throwable safeFailure(Throwable t) {
+    if (t instanceof ApimException)
+      return t;
+    return new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, ErrorCodes.SYSTEM_UNEXPECTED,
+        "TRPResetPassword transport failed", t);
+  }
 }

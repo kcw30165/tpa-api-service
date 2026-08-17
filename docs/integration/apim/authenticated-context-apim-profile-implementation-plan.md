@@ -1384,3 +1384,6 @@ Implementation pending final validation. TRPSearchMember uses NON_ACCOUNT, null 
 ## Stage 020 - Forgot Password Details Lookup APIM Exchange
 
 Implementation pending final validation. TRPSearchRegedMember uses NON_ACCOUNT, null accountEnv, explicit ROLE_USER_MBR credential metadata, SAFE_BUSINESS_CALL, and ApimExchangeExecutor. Protected workflow, contact matching, masking, OTP destination choice and continuation, idempotency, replay, privacy, TAS lock policy, and Forgot Password completion remain unchanged. Evidence: target/evidence/apim-routing-context-stage-20-20260817-125747.
+## Stage 021 - Legacy APIM Orchestration Removal and Routing-Ledger Closure
+
+Removed the production-unreachable Forgot Password completion test transport constructor and alternate execution branch. All 15 APIM operations have explicit routing and executor classification. No feature-owned manual facade, certificate, crypto, profile-resolution, encryption, inferred-scope, or role-substitution path remains. Generic APIM foundation is retained unchanged. Validation is fail-fast. Evidence: target/evidence/apim-routing-context-stage-21-20260817-141214. Stage 022 has not started.
