@@ -27,7 +27,7 @@ class ApimRoutingLedgerCharacterizationTest {
         e("TRPRegMember", "registration/ApimRegistrationCompletionAdapter.java", "ACCOUNT_ENV", "command.actorUserRole()", "command.accountEnv()", "NON_RETRYABLE", "EXECUTOR", "ACCOUNT_ENV"),
         e("TRPSearchUnregMember", "registration/ApimRegistrationLookupAdapter.java", "NON_ACCOUNT", "command.actorUserRole()", "null", "SAFE_BUSINESS_CALL", "EXECUTOR", "NON_ACCOUNT"),
         e("TRPChkCustId", "registration/SharedApimTrpChkCustIdTransport.java", "NON_ACCOUNT", "command.actorUserRole()", "null", "SAFE_BUSINESS_CALL", "EXECUTOR", "NON_ACCOUNT"),
-        e("TRPSearchMember", "usernamerecovery/SharedApimTrpSearchMemberTransport.java", "NON_ACCOUNT", "ROLE_USER_MBR", "null", "SAFE_BUSINESS_CALL", "FEATURE", "UNCONFIRMED")
+        e("TRPSearchMember", "usernamerecovery/TrpSearchMemberAdapter.java", "NON_ACCOUNT", "command.actorUserRole()", "null", "SAFE_BUSINESS_CALL", "EXECUTOR", "NON_ACCOUNT")
     );
 
     @Test

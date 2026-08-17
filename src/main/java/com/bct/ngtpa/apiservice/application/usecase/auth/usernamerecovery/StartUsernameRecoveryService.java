@@ -255,7 +255,8 @@ public class StartUsernameRecoveryService implements StartUsernameRecoveryUseCas
                         Duration ttl) {
                 UsernameRecoveryLookupCommand lookupCommand = new UsernameRecoveryLookupCommand(
                                 command.identityType(), command.identityValue(), command.dateOfBirth(),
-                                validation.email(), validation.mobile());
+                                validation.email(), validation.mobile(),
+                                com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
                 return lookupPort.search(lookupCommand)
                                 .onErrorMap(Exception.class, StartPersistenceException::new)
                                 .flatMap(lookupResult -> switch (lookupResult.status()) {

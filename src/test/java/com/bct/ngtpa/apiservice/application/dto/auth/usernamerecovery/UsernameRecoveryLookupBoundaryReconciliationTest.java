@@ -55,7 +55,7 @@ class UsernameRecoveryLookupBoundaryReconciliationTest {
     void lookupCommandExposesOnlyTheCommittedInputFields() {
         assertThat(UsernameRecoveryLookupCommand.class.isRecord()).isTrue();
         assertThat(recordComponents(UsernameRecoveryLookupCommand.class))
-                .containsExactly("identityType", "identityValue", "dateOfBirth", "email", "mobile");
+                .containsExactly("identityType", "identityValue", "dateOfBirth", "email", "mobile", "actorUserRole");
     }
 
     @Test
@@ -71,7 +71,7 @@ class UsernameRecoveryLookupBoundaryReconciliationTest {
         var matched = new UsernameRecoveryLookupResult(
                 UsernameRecoveryLookupResult.Status.MATCHED, List.of(candidate));
         var command = new UsernameRecoveryLookupCommand(
-                MemberIdentityType.STAFFNO, "3011825", "15/07/1969", "member@example.com", "66290597");
+                MemberIdentityType.STAFFNO, "3011825", "15/07/1969", "member@example.com", "66290597", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
 
         assertThat(candidate.toString())
                 .doesNotContain("john.doe")

@@ -526,3 +526,8 @@ Implementation pending final validation. TRPChkCustId registration username avai
 ## Stage 018 - Registration Completion APIM Exchange
 
 Implementation pending final validation. TRPRegMember uses protected ACCOUNT_ENV routing, explicit ROLE_USER_MBR credential metadata, NON_RETRYABLE mutation execution, and generic ApimExchangeExecutor. Existing idempotency, unknown-outcome, workflow, cleanup, additional-trust, and return-to-login behavior remain application-owned. Evidence: target/evidence/apim-routing-context-stage-18-20260817-101325.
+
+
+## Stage 019 - Username Recovery Member Search APIM Exchange
+
+Implementation pending final validation. TRPSearchMember uses NON_ACCOUNT, null accountEnv, explicit ROLE_USER_MBR credential metadata, SAFE_BUSINESS_CALL, and ApimExchangeExecutor. Captcha, identity, candidate interpretation, privacy, disclosure, persistence, replay, and no-OTP behavior remain unchanged. Evidence: target/evidence/apim-routing-context-stage-19-20260817-113234.
