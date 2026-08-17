@@ -77,7 +77,7 @@ public final class VerifyForgotPasswordDetailsService implements VerifyForgotPas
                 return lookup
                         .verify(new ForgotPasswordDetailsLookupCommand(context.publicIdentityType(),
                                 context.tasUserId(), c.dateOfBirth(), c.email(), c.mobile(), context.customerId(),
-                                c.requestId()))
+                                c.requestId(), com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR))
                         .flatMap(r -> {
                             if (r.status() == ForgotPasswordDetailsLookupStatus.MATCHED) {
                                 // propagate account env into protected context if present

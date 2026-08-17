@@ -531,3 +531,8 @@ Implementation pending final validation. TRPRegMember uses protected ACCOUNT_ENV
 ## Stage 019 - Username Recovery Member Search APIM Exchange
 
 Implementation pending final validation. TRPSearchMember uses NON_ACCOUNT, null accountEnv, explicit ROLE_USER_MBR credential metadata, SAFE_BUSINESS_CALL, and ApimExchangeExecutor. Captcha, identity, candidate interpretation, privacy, disclosure, persistence, replay, and no-OTP behavior remain unchanged. Evidence: target/evidence/apim-routing-context-stage-19-20260817-113234.
+
+
+## Stage 020 - Forgot Password Details Lookup APIM Exchange
+
+Implementation pending final validation. TRPSearchRegedMember uses NON_ACCOUNT, null accountEnv, explicit ROLE_USER_MBR credential metadata, SAFE_BUSINESS_CALL, and ApimExchangeExecutor. Protected workflow, contact matching, masking, OTP destination choice and continuation, idempotency, replay, privacy, TAS lock policy, and Forgot Password completion remain unchanged. Evidence: target/evidence/apim-routing-context-stage-20-20260817-125747.

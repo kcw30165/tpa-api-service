@@ -21,7 +21,7 @@ class ApimRoutingLedgerCharacterizationTest {
         e("TRPGetWebSysDate", "ApimReferenceDateRefreshAdapter.java", "ACCOUNT_ENV", "command.actorUserRole()", "command.accountEnv()", "SAFE_BUSINESS_CALL", "EXECUTOR", "ACCOUNT_ENV"),
         e("TRPUpdMemberInfo", "ApimUpdatePersonalInformationAdapter.java", "ACCOUNT_ENV", "command.userRole()", "command.accountEnv()", "IDEMPOTENT_MUTATION", "EXECUTOR", "ACCOUNT_ENV"),
         e("TRPResetPassword", "forgotpassword/ApimForgotPasswordCompletionAdapter.java", "NON_ACCOUNT", "command.actorUserRole()", "null", "IDEMPOTENT_MUTATION", "EXECUTOR", "NON_ACCOUNT"),
-        e("TRPSearchRegedMember", "forgotpassword/details/SharedApimTrpSearchRegedMemberTransport.java", "NON_ACCOUNT", "ROLE_USER_MBR", "null", "SAFE_BUSINESS_CALL", "FEATURE", "UNCONFIRMED"),
+        e("TRPSearchRegedMember", "forgotpassword/details/ApimForgotPasswordDetailsLookupAdapter.java", "NON_ACCOUNT", "command.actorUserRole()", "null", "SAFE_BUSINESS_CALL", "EXECUTOR", "NON_ACCOUNT"),
         e("TRPMemberLogin", "login/SharedApimTrpMemberLoginTransport.java", "NON_ACCOUNT", "command.actorUserRole()", "null", "SAFE_BUSINESS_CALL", "EXECUTOR", "NON_ACCOUNT"),
         e("TRPGetAccountList", "login/account/SharedApimTrpGetAccountListTransport.java", "NON_ACCOUNT", "command.actorUserRole()", "null", "SAFE_BUSINESS_CALL", "EXECUTOR", "NON_ACCOUNT"),
         e("TRPRegMember", "registration/ApimRegistrationCompletionAdapter.java", "ACCOUNT_ENV", "command.actorUserRole()", "command.accountEnv()", "NON_RETRYABLE", "EXECUTOR", "ACCOUNT_ENV"),
