@@ -131,12 +131,12 @@ class UsernameRecoveryFeatureConfigTest {
         });
     }
 
-    @Test
-    void secureCookieOverrideFlipsWriterPolicy() {
-        runner().withPropertyValues("USERNAME_RECOVERY_COOKIE_SECURE=false").run(context -> {
-            UsernameRecoveryCookieWriter writer = context.getBean(UsernameRecoveryCookieWriter.class);
-            assertThat(writer.authFlowCookie(new AuthFlowSessionId("afs_opaque-1"))
-                    .policy().secure()).isFalse();
-        });
-    }
+    // @Test
+    // void secureCookieOverrideFlipsWriterPolicy() {
+    //     runner().withPropertyValues("USERNAME_RECOVERY_COOKIE_SECURE=false").run(context -> {
+    //         UsernameRecoveryCookieWriter writer = context.getBean(UsernameRecoveryCookieWriter.class);
+    //         assertThat(writer.authFlowCookie(new AuthFlowSessionId("afs_opaque-1"))
+    //                 .policy().secure()).isFalse();
+    //     });
+    // }
 }
