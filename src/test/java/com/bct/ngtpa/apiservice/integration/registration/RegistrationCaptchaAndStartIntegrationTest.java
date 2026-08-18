@@ -57,6 +57,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.CaptchaHttpResponses;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = RegistrationCaptchaAndStartIntegrationTest.TestApplication.class, properties = {
         "api.security.require-authentication=false",
@@ -159,7 +160,7 @@ class RegistrationCaptchaAndStartIntegrationTest {
         verifyFailure(id, WRONG).jsonPath("$.success").isEqualTo(false)
                 .jsonPath("$.result.nextStep").isEqualTo("NONE")
                 .jsonPath("$.result.data.remainingAttempts").isEqualTo(4)
-                .jsonPath("$.errors[0].code").isEqualTo("err.registration.captcha.invalid");
+                .jsonPath("$.errors[0].code").isEqualTo("err.captcha.verification.invalid");
         assertThat(store.require(id).failedAttemptCount()).isEqualTo(1);
     }
 
@@ -171,9 +172,9 @@ class RegistrationCaptchaAndStartIntegrationTest {
             verifyFailure(id, WRONG).jsonPath("$.result.data.remainingAttempts").isEqualTo(5 - attempt);
         }
         verifyFailure(id, WRONG).jsonPath("$.errors[0].code")
-                .isEqualTo("err.registration.captcha.locked");
+                .isEqualTo("err.captcha.verification.invalid");
         verifyFailure(id, ANSWER).jsonPath("$.errors[0].code")
-                .isEqualTo("err.registration.captcha.locked");
+                .isEqualTo("err.captcha.verification.invalid");
         assertThat(store.require(id).status()).isEqualTo(CaptchaStatus.LOCKED);
     }
 
@@ -183,7 +184,7 @@ class RegistrationCaptchaAndStartIntegrationTest {
         String id = createChallenge();
         clock.advance(Duration.ofSeconds(300));
         verifyFailure(id, ANSWER).jsonPath("$.errors[0].code")
-                .isEqualTo("err.registration.captcha.expired");
+                .isEqualTo("err.captcha.verification.invalid");
         assertThat(store.require(id).status()).isEqualTo(CaptchaStatus.CREATED);
     }
 
@@ -192,7 +193,7 @@ class RegistrationCaptchaAndStartIntegrationTest {
     void unknownChallengeReturnsSafeNotFound() {
         verifyFailure("cap_unknown000000000", ANSWER)
                 .jsonPath("$.errors[0].code")
-                .isEqualTo("err.registration.captcha.notFound");
+                .isEqualTo("err.captcha.verification.invalid");
     }
 
     @Test
@@ -241,7 +242,7 @@ class RegistrationCaptchaAndStartIntegrationTest {
     }
 
     private WebTestClient.BodyContentSpec verifyFailure(String id, String answer) {
-        return verifyRequest(id, answer).expectStatus().isBadRequest().expectBody();
+        return verifyRequest(id, answer).expectStatus().isEqualTo(422).expectBody();
     }
 
     private WebTestClient.ResponseSpec verifyRequest(String id, String answer) {
@@ -372,7 +373,12 @@ class RegistrationCaptchaAndStartIntegrationTest {
                 ObjectMapper objectMapper) {
             return new RequiredRequestIdWebFilter(objectMapper);
         }
-    }
+
+        @Bean
+        CaptchaHttpResponses captchaHttpResponses() {
+            return new CaptchaHttpResponses();
+        }
+}
 
     static final class MutableClock extends Clock {
         private Instant instant = Instant.parse("2026-07-17T00:00:00Z");

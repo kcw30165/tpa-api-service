@@ -10,7 +10,6 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CreateCaptchaChallengeResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.RefreshCaptchaChallengeResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.VerifyCaptchaChallengeResult;
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import java.util.List;
@@ -70,24 +69,24 @@ public class CaptchaWebMapper {
                     CAPTCHA_ANSWER_TARGET);
             case EXPIRED -> failure(
                     result,
-                    RegistrationErrorKey.REGISTRATION_CAPTCHA_EXPIRED.value(),
-                    CAPTCHA_CHALLENGE_ID_TARGET);
+                    ErrorCodes.CAPTCHA_VERIFICATION_INVALID,
+                    CAPTCHA_ANSWER_TARGET);
             case LOCKED -> failure(
                     result,
-                    RegistrationErrorKey.REGISTRATION_CAPTCHA_LOCKED.value(),
-                    CAPTCHA_CHALLENGE_ID_TARGET);
+                    ErrorCodes.CAPTCHA_VERIFICATION_INVALID,
+                    CAPTCHA_ANSWER_TARGET);
             case CONSUMED -> failure(
                     result,
-                    RegistrationErrorKey.REGISTRATION_CAPTCHA_CONSUMED.value(),
-                    CAPTCHA_CHALLENGE_ID_TARGET);
+                    ErrorCodes.CAPTCHA_VERIFICATION_INVALID,
+                    CAPTCHA_ANSWER_TARGET);
             case REFRESHED -> failure(
                     result,
-                    RegistrationErrorKey.REGISTRATION_CAPTCHA_REFRESHFAILED.value(),
-                    CAPTCHA_CHALLENGE_ID_TARGET);
+                    ErrorCodes.CAPTCHA_VERIFICATION_INVALID,
+                    CAPTCHA_ANSWER_TARGET);
             case NOT_FOUND -> failure(
                     result,
-                    RegistrationErrorKey.REGISTRATION_CAPTCHA_NOTFOUND.value(),
-                    CAPTCHA_CHALLENGE_ID_TARGET);
+                    ErrorCodes.CAPTCHA_VERIFICATION_INVALID,
+                    CAPTCHA_ANSWER_TARGET);
         };
     }
 
@@ -100,7 +99,7 @@ public class CaptchaWebMapper {
             String acceptLanguage) {
         return validationFailure(
                 new CaptchaVerifyResponse(false, null, null),
-                RegistrationErrorKey.REGISTRATION_CAPTCHA_REQUIRED.value(),
+                ErrorCodes.REQUEST_VALIDATION_FAILED,
                 CAPTCHA_ANSWER_TARGET);
     }
 
@@ -108,7 +107,7 @@ public class CaptchaWebMapper {
             String acceptLanguage) {
         return validationFailure(
                 new CaptchaVerifyResponse(false, null, null),
-                RegistrationErrorKey.REGISTRATION_CAPTCHA_REQUIRED.value(),
+                ErrorCodes.REQUEST_VALIDATION_FAILED,
                 CAPTCHA_CHALLENGE_ID_TARGET);
     }
 
@@ -116,14 +115,14 @@ public class CaptchaWebMapper {
             String acceptLanguage) {
         return validationFailure(
                 new CaptchaVerifyResponse(false, null, null),
-                RegistrationErrorKey.REGISTRATION_CAPTCHA_INVALID.value(),
+                ErrorCodes.REQUEST_VALIDATION_FAILED,
                 CAPTCHA_CHALLENGE_ID_TARGET);
     }
 
     public MutationResponse<CaptchaWorkflowResultResponse<CaptchaRefreshResponse>> invalidRefreshChallengeIdResponse(
             String acceptLanguage) {
         ApiError error = ApiError.field(
-                RegistrationErrorKey.REGISTRATION_CAPTCHA_INVALID.value(),
+                ErrorCodes.REQUEST_VALIDATION_FAILED,
                 null,
                 List.of(CAPTCHA_CHALLENGE_ID_TARGET),
                 SOURCE_SERVER);

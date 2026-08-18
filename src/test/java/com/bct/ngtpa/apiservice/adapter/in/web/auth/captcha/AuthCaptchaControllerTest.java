@@ -273,26 +273,26 @@ class AuthCaptchaControllerTest {
 
         @Test
         void captchaVerifyMapsExpiredToValidationFailure() {
-                assertVerifyFailureOutcome(CaptchaVerificationOutcome.EXPIRED, "err.registration.captcha.expired",
-                                "captchaChallengeId");
+                assertVerifyFailureOutcome(CaptchaVerificationOutcome.EXPIRED, "err.captcha.verification.invalid",
+                                "captchaAnswer");
         }
 
         @Test
         void captchaVerifyMapsLockedToValidationFailure() {
-                assertVerifyFailureOutcome(CaptchaVerificationOutcome.LOCKED, "err.registration.captcha.locked",
-                                "captchaChallengeId");
+                assertVerifyFailureOutcome(CaptchaVerificationOutcome.LOCKED, "err.captcha.verification.invalid",
+                                "captchaAnswer");
         }
 
         @Test
         void captchaVerifyMapsConsumedToValidationFailure() {
-                assertVerifyFailureOutcome(CaptchaVerificationOutcome.CONSUMED, "err.registration.captcha.consumed",
-                                "captchaChallengeId");
+                assertVerifyFailureOutcome(CaptchaVerificationOutcome.CONSUMED, "err.captcha.verification.invalid",
+                                "captchaAnswer");
         }
 
         @Test
         void captchaVerifyMapsNotFoundToValidationFailure() {
-                assertVerifyFailureOutcome(CaptchaVerificationOutcome.NOT_FOUND, "err.registration.captcha.notFound",
-                                "captchaChallengeId");
+                assertVerifyFailureOutcome(CaptchaVerificationOutcome.NOT_FOUND, "err.captcha.verification.invalid",
+                                "captchaAnswer");
         }
 
         @Test
@@ -322,7 +322,7 @@ class AuthCaptchaControllerTest {
                                 .expectBody()
                                 .jsonPath("$.success").isEqualTo(false)
                                 .jsonPath("$.status").isEqualTo("VALIDATION_FAILED")
-                                .jsonPath("$.errors[0].code").isEqualTo("err.registration.captcha.required")
+                                .jsonPath("$.errors[0].code").isEqualTo("err.request.validation.failed")
                                 .jsonPath("$.errors[0].targets[0]").isEqualTo("captchaAnswer");
 
                 assertThat(called).isFalse();
@@ -348,7 +348,7 @@ class AuthCaptchaControllerTest {
                                 .expectBody()
                                 .jsonPath("$.success").isEqualTo(false)
                                 .jsonPath("$.status").isEqualTo("VALIDATION_FAILED")
-                                .jsonPath("$.errors[0].code").isEqualTo("err.registration.captcha.required")
+                                .jsonPath("$.errors[0].code").isEqualTo("err.request.validation.failed")
                                 .jsonPath("$.errors[0].targets[0]").isEqualTo("captchaChallengeId");
 
                 assertThat(called).isFalse();
@@ -374,7 +374,7 @@ class AuthCaptchaControllerTest {
                                 .expectBody()
                                 .jsonPath("$.success").isEqualTo(false)
                                 .jsonPath("$.status").isEqualTo("VALIDATION_FAILED")
-                                .jsonPath("$.errors[0].code").isEqualTo("err.registration.captcha.invalid")
+                                .jsonPath("$.errors[0].code").isEqualTo("err.request.validation.failed")
                                 .jsonPath("$.errors[0].targets[0]").isEqualTo("captchaChallengeId");
 
                 assertThat(called).isFalse();
@@ -468,7 +468,7 @@ class AuthCaptchaControllerTest {
                                 .expectBody()
                                 .jsonPath("$.success").isEqualTo(false)
                                 .jsonPath("$.status").isEqualTo("VALIDATION_FAILED")
-                                .jsonPath("$.errors[0].code").isEqualTo("err.registration.captcha.invalid")
+                                .jsonPath("$.errors[0].code").isEqualTo("err.request.validation.failed")
                                 .jsonPath("$.errors[0].targets[0]").isEqualTo("captchaChallengeId");
 
                 assertThat(called).isFalse();
@@ -484,7 +484,7 @@ class AuthCaptchaControllerTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .bodyValue(Map.of("captchaChallengeId", CHALLENGE_ID.value(), "answer", "wrong"))
                                 .exchange()
-                                .expectStatus().isBadRequest()
+                                .expectStatus().isEqualTo(422)
                                 .expectBody()
                                 .jsonPath("$.success").isEqualTo(false)
                                 .jsonPath("$.status").isEqualTo("VALIDATION_FAILED")

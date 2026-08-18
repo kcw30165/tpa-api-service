@@ -56,27 +56,27 @@ class CaptchaWebMapperTest {
                                 .toVerifyMutationResponse(new VerifyCaptchaChallengeResult(
                                                 CaptchaVerificationOutcome.EXPIRED, false, null, 0), "en")
                                 .errors().getFirst().code())
-                                .isEqualTo("err.registration.captcha.expired");
+                                .isEqualTo("err.captcha.verification.invalid");
                 assertThat(mapper
                                 .toVerifyMutationResponse(new VerifyCaptchaChallengeResult(
                                                 CaptchaVerificationOutcome.LOCKED, false, null, 0), "en")
                                 .errors().getFirst().code())
-                                .isEqualTo("err.registration.captcha.locked");
+                                .isEqualTo("err.captcha.verification.invalid");
                 assertThat(mapper
                                 .toVerifyMutationResponse(new VerifyCaptchaChallengeResult(
                                                 CaptchaVerificationOutcome.CONSUMED, false, null, 0), "en")
                                 .errors().getFirst().code())
-                                .isEqualTo("err.registration.captcha.consumed");
+                                .isEqualTo("err.captcha.verification.invalid");
                 assertThat(mapper
                                 .toVerifyMutationResponse(new VerifyCaptchaChallengeResult(
                                                 CaptchaVerificationOutcome.NOT_FOUND, false, null, 0), "en")
                                 .errors().getFirst().code())
-                                .isEqualTo("err.registration.captcha.notFound");
+                                .isEqualTo("err.captcha.verification.invalid");
                 assertThat(mapper
                                 .toVerifyMutationResponse(new VerifyCaptchaChallengeResult(
                                                 CaptchaVerificationOutcome.REFRESHED, false, null, 0), "en")
                                 .errors().getFirst().code())
-                                .isEqualTo("err.registration.captcha.refreshFailed");
+                                .isEqualTo("err.captcha.verification.invalid");
         }
 
         @Test
