@@ -237,6 +237,13 @@ workflow-error-contract:
       targets:
         - PAGE
       next-step: NONE
+    - code: err.captcha.verification.invalid
+      type: FIELD
+      severity: ERROR
+      source: SERVER
+      targets:
+        - captchaAnswer
+      next-step: NONE
     - code: err.registration.captcha.locked
       type: FORM
       severity: ERROR

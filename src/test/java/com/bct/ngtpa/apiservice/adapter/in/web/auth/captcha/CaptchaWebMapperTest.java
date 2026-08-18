@@ -45,7 +45,7 @@ class CaptchaWebMapperTest {
                 assertThat(response.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
                 assertThat(response.result().toString()).contains("nextStep=NONE", "data=");
                 assertThat(response.errors()).singleElement().satisfies(error -> {
-                        assertThat(error.code()).isEqualTo("err.registration.captcha.invalid");
+                        assertThat(error.code()).isEqualTo("err.captcha.verification.invalid");
                         assertThat(error.targets()).containsExactly("captchaAnswer");
                 });
         }
