@@ -125,7 +125,7 @@ class UsernameRecoveryFeatureConfigTest {
             assertThat(authFlow.policy().maxAgeSeconds()).isEqualTo(600);
             assertThat(authFlow.policy().httpOnly()).isTrue();
             assertThat(authFlow.policy().secure()).isTrue();
-            assertThat(authFlow.policy().sameSite()).isEqualTo(SessionCookieSameSite.STRICT);
+            assertThat(authFlow.policy().sameSite()).isEqualTo(SessionCookieSameSite.NONE);
 
             assertThat(writer.clearAuthFlowCookie().operation()).isEqualTo(SessionCookieOperation.CLEAR);
         });
