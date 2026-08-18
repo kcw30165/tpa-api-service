@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.out.redis.auth;
 import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaChallenge;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaChallengeId;
+import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaConsumptionMutationResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaStatus;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaVerificationMutationResult;
 import com.bct.ngtpa.apiservice.application.port.out.CaptchaChallengePort;
@@ -145,19 +146,55 @@ public class RedisCaptchaChallengeAdapter implements CaptchaChallengePort {
     }
 
     @Override
+    public Mono<CaptchaConsumptionMutationResult> applyConsumptionAttempt(
+            CaptchaChallenge expected, Instant consumedAt) {
+        return Mono.defer(() -> {
+            Objects.requireNonNull(expected, "expected must not be null");
+            if (expected.status() != CaptchaStatus.VERIFIED) {
+                return Mono.just(CaptchaConsumptionMutationResult.of(
+                        CaptchaConsumptionMutationResult.Outcome.STATE_CHANGED, null));
+            }
+            CaptchaChallenge consumed = new CaptchaChallenge(
+                    expected.captchaChallengeId(),
+                    null,
+                    CaptchaStatus.CONSUMED,
+                    expected.failedAttemptCount(),
+                    expected.maxAttempts(),
+                    expected.createdAt(),
+                    expected.expiresAt(),
+                    expected.verifiedAt(),
+                    requireTimestamp(consumedAt, "consumedAt"),
+                    expected.refreshedAt(),
+                    expected.lockedAt());
+            return redis.replaceIfUnchanged(
+                            keyFor(expected.captchaChallengeId()),
+                            jsonMapper.toJson(expected),
+                            jsonMapper.toJson(consumed))
+                    .map(result -> switch (result) {
+                        case APPLIED -> CaptchaConsumptionMutationResult.of(
+                                CaptchaConsumptionMutationResult.Outcome.CONSUMED, consumed);
+                        case CONFLICT -> CaptchaConsumptionMutationResult.of(
+                                CaptchaConsumptionMutationResult.Outcome.STATE_CHANGED, null);
+                        case MISSING -> CaptchaConsumptionMutationResult.of(
+                                CaptchaConsumptionMutationResult.Outcome.NOT_FOUND, null);
+                    });
+        }).onErrorMap(this::safeFailure);
+    }
+
+    @Override
     public Mono<CaptchaChallenge> markConsumed(CaptchaChallengeId captchaChallengeId, Instant consumedAt) {
-        return mutateExisting(captchaChallengeId, challenge -> new CaptchaChallenge(
-                challenge.captchaChallengeId(),
-                null,
-                CaptchaStatus.CONSUMED,
-                challenge.failedAttemptCount(),
-                challenge.maxAttempts(),
-                challenge.createdAt(),
-                challenge.expiresAt(),
-                challenge.verifiedAt(),
-                requireTimestamp(consumedAt, "consumedAt"),
-                challenge.refreshedAt(),
-                challenge.lockedAt()));
+        return load(captchaChallengeId)
+                .flatMap(optional -> optional
+                        .map(expected -> applyConsumptionAttempt(expected, consumedAt)
+                                .flatMap(result -> switch (result.outcome()) {
+                                    case CONSUMED -> Mono.just(result.challenge());
+                                    case STATE_CHANGED -> Mono.error(new IllegalStateException(
+                                            "Captcha challenge state changed during consumption"));
+                                    case NOT_FOUND -> Mono.error(new IllegalStateException(
+                                            "Captcha challenge not found"));
+                                }))
+                        .orElseGet(() -> Mono.error(new IllegalStateException(
+                                "Captcha challenge not found"))));
     }
 
     @Override

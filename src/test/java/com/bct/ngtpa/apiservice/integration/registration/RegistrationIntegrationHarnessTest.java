@@ -46,6 +46,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.web.reactive.server.EntityExchangeResult;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.CaptchaHttpResponses;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = RegistrationIntegrationHarnessTest.TestApplication.class, properties = {
         "api.security.require-authentication=false",
@@ -219,7 +220,12 @@ class RegistrationIntegrationHarnessTest {
             return new CaptchaWebMapper(
                     (code, locale, accountEnv, trustCode, schemeType) -> "resolved-" + code);
         }
-    }
+
+        @Bean
+        CaptchaHttpResponses captchaHttpResponses() {
+            return new CaptchaHttpResponses();
+        }
+}
 
     static final class InMemoryCaptchaChallengePort implements CaptchaChallengePort {
         private final Map<CaptchaChallengeId, CaptchaChallenge> challenges = new ConcurrentHashMap<>();

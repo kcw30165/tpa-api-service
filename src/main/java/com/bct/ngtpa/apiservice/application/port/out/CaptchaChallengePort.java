@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.application.port.out;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaChallenge;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaChallengeId;
+import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaConsumptionMutationResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaStatus;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaVerificationMutationResult;
 import java.time.Instant;
@@ -35,6 +36,12 @@ public interface CaptchaChallengePort {
 
     Mono<CaptchaChallenge> markLocked(CaptchaChallengeId captchaChallengeId, Instant lockedAt);
 
+    default Mono<CaptchaConsumptionMutationResult> applyConsumptionAttempt(
+            CaptchaChallenge expected, Instant consumedAt) {
+        return markConsumed(expected.captchaChallengeId(), consumedAt)
+                .map(updated -> CaptchaConsumptionMutationResult.of(
+                        CaptchaConsumptionMutationResult.Outcome.CONSUMED, updated));
+    }
     Mono<CaptchaChallenge> markConsumed(CaptchaChallengeId captchaChallengeId, Instant consumedAt);
 
     Mono<CaptchaChallenge> markRefreshed(CaptchaChallengeId captchaChallengeId, Instant refreshedAt);

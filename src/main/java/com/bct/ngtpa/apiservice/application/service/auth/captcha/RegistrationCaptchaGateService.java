@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.application.service.auth.captcha;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaChallenge;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaConsumeOutcome;
+import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaConsumptionMutationResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaStatus;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.ConsumeCaptchaChallengeCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.ConsumeCaptchaChallengeResult;
@@ -36,15 +37,45 @@ public class RegistrationCaptchaGateService {
                     }
                     return switch (challenge.status()) {
                         case CREATED -> Mono.just(result(command, CaptchaConsumeOutcome.NOT_VERIFIED));
-                        case VERIFIED ->
-                            captchaChallengePort.markConsumed(command.captchaChallengeId(), command.consumedAt())
-                                    .thenReturn(result(command, CaptchaConsumeOutcome.CONSUMED));
+                        case VERIFIED -> consumeVerified(command, challenge);
                         case CONSUMED -> Mono.just(result(command, CaptchaConsumeOutcome.ALREADY_CONSUMED));
                         case REFRESHED -> Mono.just(result(command, CaptchaConsumeOutcome.REFRESHED));
                         case LOCKED -> Mono.just(result(command, CaptchaConsumeOutcome.LOCKED));
                         case EXPIRED -> Mono.just(result(command, CaptchaConsumeOutcome.EXPIRED));
                     };
                 });
+    }
+
+    private Mono<ConsumeCaptchaChallengeResult> consumeVerified(
+            ConsumeCaptchaChallengeCommand command,
+            CaptchaChallenge expected) {
+        return captchaChallengePort.applyConsumptionAttempt(expected, command.consumedAt())
+                .flatMap(mutation -> switch (mutation.outcome()) {
+                    case CONSUMED -> Mono.just(result(command, CaptchaConsumeOutcome.CONSUMED));
+                    case NOT_FOUND -> Mono.just(result(command, CaptchaConsumeOutcome.NOT_FOUND));
+                    case STATE_CHANGED -> reloadAfterConflict(command);
+                });
+    }
+
+    private Mono<ConsumeCaptchaChallengeResult> reloadAfterConflict(ConsumeCaptchaChallengeCommand command) {
+        return captchaChallengePort.load(command.captchaChallengeId())
+                .map(current -> current
+                        .map(challenge -> result(command, outcomeForCurrent(challenge)))
+                        .orElseGet(() -> result(command, CaptchaConsumeOutcome.NOT_FOUND)));
+    }
+
+    private CaptchaConsumeOutcome outcomeForCurrent(CaptchaChallenge challenge) {
+        Instant now = clock.instant();
+        if (!challenge.expiresAt().isAfter(now) || challenge.status() == CaptchaStatus.EXPIRED) {
+            return CaptchaConsumeOutcome.EXPIRED;
+        }
+        return switch (challenge.status()) {
+            case CREATED, VERIFIED -> CaptchaConsumeOutcome.NOT_VERIFIED;
+            case CONSUMED -> CaptchaConsumeOutcome.ALREADY_CONSUMED;
+            case REFRESHED -> CaptchaConsumeOutcome.REFRESHED;
+            case LOCKED -> CaptchaConsumeOutcome.LOCKED;
+            case EXPIRED -> CaptchaConsumeOutcome.EXPIRED;
+        };
     }
 
     private ConsumeCaptchaChallengeResult result(ConsumeCaptchaChallengeCommand command,
