@@ -8,3 +8,10 @@
 - The response must not reveal the stored lifecycle state.
 - `AuthCaptchaController` must be decoupled from `RegistrationHttpResponses` in a later production phase.
 - Phase 01 changes documentation and fail-first tests only. No production implementation is authorized.
+
+## Phase 03 implementation
+
+- Redis verification uses an exact-value conditional Lua replacement with `KEEPTTL`.
+- Correct verification and wrong-answer increment/lock are one atomic write each.
+- Conflicts reload current state; a correct-answer loser cannot report fresh success, and wrong-answer conflicts retry against current CREATED state.
+- Consumption remains a separate operation and public HTTP behavior remains unchanged.

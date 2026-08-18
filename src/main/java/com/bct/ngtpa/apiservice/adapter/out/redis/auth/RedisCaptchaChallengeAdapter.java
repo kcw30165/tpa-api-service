@@ -4,6 +4,7 @@ import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaChallenge;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaChallengeId;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaStatus;
+import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaVerificationMutationResult;
 import com.bct.ngtpa.apiservice.application.port.out.CaptchaChallengePort;
 import com.bct.ngtpa.apiservice.exception.CacheException;
 import java.time.Clock;
@@ -57,6 +58,42 @@ public class RedisCaptchaChallengeAdapter implements CaptchaChallengePort {
         return Mono.defer(() -> redis.get(keyFor(captchaChallengeId))
                 .map(optionalJson -> optionalJson.map(jsonMapper::fromJson)))
                 .onErrorMap(this::safeFailure);
+    }
+
+    @Override
+    public Mono<CaptchaVerificationMutationResult> applyVerificationAttempt(
+            CaptchaChallenge expected, boolean answerMatched, Instant attemptedAt) {
+        return Mono.defer(() -> {
+            Objects.requireNonNull(expected, "expected must not be null");
+            requireTimestamp(attemptedAt, "attemptedAt");
+            CaptchaChallenge updated;
+            CaptchaVerificationMutationResult.Outcome outcome;
+            if (answerMatched) {
+                updated = copyVerificationState(expected, CaptchaStatus.VERIFIED, expected.failedAttemptCount(), attemptedAt);
+                outcome = CaptchaVerificationMutationResult.Outcome.VERIFIED;
+            } else {
+                int attempts = Math.min(expected.maxAttempts(), expected.failedAttemptCount() + 1);
+                boolean locked = attempts >= expected.maxAttempts();
+                updated = copyVerificationState(expected, locked ? CaptchaStatus.LOCKED : CaptchaStatus.CREATED, attempts, attemptedAt);
+                outcome = locked ? CaptchaVerificationMutationResult.Outcome.LOCKED
+                        : CaptchaVerificationMutationResult.Outcome.INVALID;
+            }
+            return redis.replaceIfUnchanged(keyFor(expected.captchaChallengeId()), jsonMapper.toJson(expected), jsonMapper.toJson(updated))
+                    .map(result -> switch (result) {
+                        case APPLIED -> CaptchaVerificationMutationResult.of(outcome, updated);
+                        case CONFLICT -> CaptchaVerificationMutationResult.of(
+                                CaptchaVerificationMutationResult.Outcome.STATE_CHANGED, null);
+                        case MISSING -> CaptchaVerificationMutationResult.of(
+                                CaptchaVerificationMutationResult.Outcome.NOT_FOUND, null);
+                    });
+        }).onErrorMap(this::safeFailure);
+    }
+
+    private CaptchaChallenge copyVerificationState(CaptchaChallenge challenge, CaptchaStatus status, int attempts, Instant at) {
+        return new CaptchaChallenge(challenge.captchaChallengeId(), challenge.answerHash(), status, attempts,
+                challenge.maxAttempts(), challenge.createdAt(), challenge.expiresAt(),
+                status == CaptchaStatus.VERIFIED ? at : challenge.verifiedAt(), challenge.consumedAt(),
+                challenge.refreshedAt(), status == CaptchaStatus.LOCKED ? at : challenge.lockedAt());
     }
 
     @Override
