@@ -53,10 +53,10 @@ public class VerifyCaptchaService implements VerifyCaptchaUseCase {
             Instant now) {
         return switch (challenge.status()) {
             case VERIFIED -> Mono.just(result(
-                    CaptchaVerificationOutcome.VERIFIED,
-                    true,
-                    challenge.captchaChallengeId(),
-                    remainingAttempts(challenge)));
+                    CaptchaVerificationOutcome.INVALID,
+                    false,
+                    null,
+                    0));
             case LOCKED -> Mono.just(result(CaptchaVerificationOutcome.LOCKED, false, null, 0));
             case CONSUMED -> Mono.just(result(CaptchaVerificationOutcome.CONSUMED, false, null, 0));
             case REFRESHED -> Mono.just(result(CaptchaVerificationOutcome.REFRESHED, false, null, 0));
