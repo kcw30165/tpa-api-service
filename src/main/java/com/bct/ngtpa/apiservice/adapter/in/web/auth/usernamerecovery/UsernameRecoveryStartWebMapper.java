@@ -55,8 +55,7 @@ public final class UsernameRecoveryStartWebMapper {
             case MEMBER_NOT_FOUND ->
                     new UsernameRecoveryWorkflowResultResponse<>(WorkflowNextStep.RESTART_FLOW, null);
             case ZERO_REGISTERED -> new UsernameRecoveryWorkflowResultResponse<>(
-                    WorkflowNextStep.RESTART_FLOW,
-                    new UsernameRecoveryStartDataResponse(null, null, toSchemeResponses(result.schemes())));
+                    WorkflowNextStep.RESTART_FLOW, null);
         };
     }
 

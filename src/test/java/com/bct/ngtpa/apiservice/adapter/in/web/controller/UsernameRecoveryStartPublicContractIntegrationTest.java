@@ -140,10 +140,7 @@ class UsernameRecoveryStartPublicContractIntegrationTest {
                 .jsonPath("$.success").isEqualTo(false)
                 .jsonPath("$.status").isEqualTo("BUSINESS_REJECTED")
                 .jsonPath("$.result.nextStep").isEqualTo("RESTART_FLOW")
-                .jsonPath("$.result.data.schemes[0].schemeRef").isEmpty()
-                .jsonPath("$.result.data.schemes[0].isRegistered").isEqualTo(false)
-                .jsonPath("$.result.data.csrfToken").doesNotExist()
-                .jsonPath("$.result.data.expiresInSeconds").doesNotExist()
+                .jsonPath("$.result.data").isEqualTo(null)
                 .jsonPath("$.messages[0].code")
                 .isEqualTo("label.usernamerecovery.complete.registration")
                 .jsonPath("$.errors.length()").isEqualTo(0);
