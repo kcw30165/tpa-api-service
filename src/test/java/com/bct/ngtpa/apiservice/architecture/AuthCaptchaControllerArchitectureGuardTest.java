@@ -33,6 +33,20 @@ class AuthCaptchaControllerArchitectureGuardTest {
     }
 
     @Test
+    void captchaControllerDoesNotDependOnRegistrationHttpResponses() {
+        var classes = new ClassFileImporter()
+                .withImportOption(new ImportOption.DoNotIncludeTests())
+                .importPackages("com.bct.ngtpa.apiservice.adapter.in.web.controller");
+        noClasses()
+                .that()
+                .haveSimpleName("AuthCaptchaController")
+                .should()
+                .dependOnClassesThat()
+                .haveSimpleName("RegistrationHttpResponses")
+                .check(classes);
+    }
+
+    @Test
     void captchaUseCaseConfigMayDependOnPortsButNotAdapters() throws Exception {
         String source = Files.readString(Path.of("src/main/java/com/bct/ngtpa/apiservice/config/captcha/CaptchaChallengeUseCaseConfig.java"));
 

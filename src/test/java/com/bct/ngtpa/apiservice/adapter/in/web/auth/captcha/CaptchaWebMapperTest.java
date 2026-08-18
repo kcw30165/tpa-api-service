@@ -80,6 +80,25 @@ class CaptchaWebMapperTest {
         }
 
         @Test
+        void captchaVerifyMapsIneligibleStateToApprovedPrivateFailureContract() throws Exception {
+                MutationResponse<?> response = mapper.toVerifyMutationResponse(
+                                new VerifyCaptchaChallengeResult(CaptchaVerificationOutcome.INVALID, false, null, 0),
+                                "en-HK");
+                String json = new ObjectMapper().writeValueAsString(response);
+
+                assertThat(response.success()).isFalse();
+                assertThat(response.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
+                assertThat(response.messages()).isEmpty();
+                assertThat(response.errors()).singleElement().satisfies(error -> {
+                        assertThat(error.code()).isEqualTo("err.captcha.verification.invalid");
+                        assertThat(error.targets()).containsExactly("captchaAnswer");
+                });
+                assertThat(json)
+                                .contains("\"nextStep\":\"NONE\"")
+                                .doesNotContain("VERIFIED", "answerHash", "Redis", "Exception", "wrong", "aBc123");
+        }
+
+        @Test
         void captchaRefreshMapsUseCaseResultToMutationResponse() {
                 MutationResponse<?> response = mapper.toRefreshMutationResponse(
                                 new RefreshCaptchaChallengeResult(NEW_CHALLENGE_ID,

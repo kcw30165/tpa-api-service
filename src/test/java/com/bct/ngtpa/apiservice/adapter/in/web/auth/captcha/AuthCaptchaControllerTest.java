@@ -234,6 +234,36 @@ class AuthCaptchaControllerTest {
     }
 
     @Test
+    void captchaVerifyRejectsAlreadyVerifiedChallengeForCorrectAnswerUsingApprovedHttpContract() {
+        assertAlreadyVerifiedHttpFailure("aBc123");
+    }
+
+    @Test
+    void captchaVerifyRejectsAlreadyVerifiedChallengeForIncorrectAnswerUsingSameApprovedHttpContract() {
+        assertAlreadyVerifiedHttpFailure("wrong");
+    }
+
+    private void assertAlreadyVerifiedHttpFailure(String submittedAnswer) {
+        VerifyCaptchaUseCase verifyUseCase = command -> Mono
+                .just(new VerifyCaptchaChallengeResult(CaptchaVerificationOutcome.INVALID, false, null, 0));
+        webClient(stubCreateUseCase(), verifyUseCase, stubRefreshUseCase())
+                .post()
+                .uri(VERIFY_PATH)
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(Map.of("captchaChallengeId", CHALLENGE_ID.value(), "answer", submittedAnswer))
+                .exchange()
+                .expectStatus().isEqualTo(422)
+                .expectBody(String.class)
+                .value(body -> assertThat(body)
+                        .contains("\"success\":false")
+                        .contains("\"status\":\"VALIDATION_FAILED\"")
+                        .contains("err.captcha.verification.invalid")
+                        .contains("captchaAnswer")
+                        .contains("\"nextStep\":\"NONE\"")
+                        .doesNotContain("VERIFIED", submittedAnswer, "answerHash", "Redis", "Exception"));
+    }
+
+    @Test
     void captchaVerifyMapsExpiredToValidationFailure() {
         assertVerifyFailureOutcome(CaptchaVerificationOutcome.EXPIRED, "err.registration.captcha.expired",
                 "captchaChallengeId");
