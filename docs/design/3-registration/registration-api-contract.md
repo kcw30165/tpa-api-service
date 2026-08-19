@@ -663,3 +663,7 @@ Set-Cookie: XSRF-TOKEN=; Secure; SameSite=None; Path=/api/v1/auth; Max-Age=0
 ```
 
 If FE has lost CSRF, FE must not call cancel. Old session will expire or be replaced by new start.
+
+## Canonical captcha contract
+
+The standalone captcha lifecycle, HTTP 422 lifecycle-ineligible response, public error ownership, state concealment, and migration rules are defined by [`../captcha/captcha-verification-lifecycle-contract.md`](../captcha/captcha-verification-lifecycle-contract.md). Registration submits only `captchaChallengeId`, consumes through the shared application gate, retains `err.registration.captcha.*` workflow errors, and performs no downstream side effect after consumption rejection.

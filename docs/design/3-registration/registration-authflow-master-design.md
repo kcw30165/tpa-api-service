@@ -323,3 +323,7 @@ Use these documents for detailed implementation:
 - `registration-apim-contract.md` for APIM/TAS mapping and downstream classification.
 - `registration-error-matrix.md` for failure behavior.
 - `registration-implementation-checklist.md` for P9/P10 tasks and tests.
+
+## Canonical captcha boundary
+
+The current captcha contract is [`../captcha/captcha-verification-lifecycle-contract.md`](../captcha/captcha-verification-lifecycle-contract.md). Standalone verification never consumes. Registration atomically consumes `VERIFIED -> CONSUMED` through the shared application gate before lookup, session, OTP, or message side effects.
