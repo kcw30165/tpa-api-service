@@ -123,3 +123,7 @@ Use relative `/api` calls through the Angular development-server proxy. Prefer H
 ## Maintenance
 
 The generic foundation is approved for new Username Recovery code only until the future cross-workflow refactor is separately planned and validated.
+
+## Canonical captcha boundary
+
+Username Recovery follows [`../captcha/captcha-verification-lifecycle-contract.md`](../captcha/captcha-verification-lifecycle-contract.md). Start receives only `captchaChallengeId`, never the answer, consumes through the shared application gate, performs no later side effect after rejection, and does not use OTP.

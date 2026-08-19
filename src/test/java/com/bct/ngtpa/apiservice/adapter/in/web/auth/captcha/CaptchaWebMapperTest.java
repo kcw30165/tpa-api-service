@@ -45,7 +45,7 @@ class CaptchaWebMapperTest {
                 assertThat(response.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
                 assertThat(response.result().toString()).contains("nextStep=NONE", "data=");
                 assertThat(response.errors()).singleElement().satisfies(error -> {
-                        assertThat(error.code()).isEqualTo("err.registration.captcha.invalid");
+                        assertThat(error.code()).isEqualTo("err.captcha.verification.invalid");
                         assertThat(error.targets()).containsExactly("captchaAnswer");
                 });
         }
@@ -56,27 +56,46 @@ class CaptchaWebMapperTest {
                                 .toVerifyMutationResponse(new VerifyCaptchaChallengeResult(
                                                 CaptchaVerificationOutcome.EXPIRED, false, null, 0), "en")
                                 .errors().getFirst().code())
-                                .isEqualTo("err.registration.captcha.expired");
+                                .isEqualTo("err.captcha.verification.invalid");
                 assertThat(mapper
                                 .toVerifyMutationResponse(new VerifyCaptchaChallengeResult(
                                                 CaptchaVerificationOutcome.LOCKED, false, null, 0), "en")
                                 .errors().getFirst().code())
-                                .isEqualTo("err.registration.captcha.locked");
+                                .isEqualTo("err.captcha.verification.invalid");
                 assertThat(mapper
                                 .toVerifyMutationResponse(new VerifyCaptchaChallengeResult(
                                                 CaptchaVerificationOutcome.CONSUMED, false, null, 0), "en")
                                 .errors().getFirst().code())
-                                .isEqualTo("err.registration.captcha.consumed");
+                                .isEqualTo("err.captcha.verification.invalid");
                 assertThat(mapper
                                 .toVerifyMutationResponse(new VerifyCaptchaChallengeResult(
                                                 CaptchaVerificationOutcome.NOT_FOUND, false, null, 0), "en")
                                 .errors().getFirst().code())
-                                .isEqualTo("err.registration.captcha.notFound");
+                                .isEqualTo("err.captcha.verification.invalid");
                 assertThat(mapper
                                 .toVerifyMutationResponse(new VerifyCaptchaChallengeResult(
                                                 CaptchaVerificationOutcome.REFRESHED, false, null, 0), "en")
                                 .errors().getFirst().code())
-                                .isEqualTo("err.registration.captcha.refreshFailed");
+                                .isEqualTo("err.captcha.verification.invalid");
+        }
+
+        @Test
+        void captchaVerifyMapsIneligibleStateToApprovedPrivateFailureContract() throws Exception {
+                MutationResponse<?> response = mapper.toVerifyMutationResponse(
+                                new VerifyCaptchaChallengeResult(CaptchaVerificationOutcome.INVALID, false, null, 0),
+                                "en-HK");
+                String json = new ObjectMapper().writeValueAsString(response);
+
+                assertThat(response.success()).isFalse();
+                assertThat(response.status()).isEqualTo(ApiStatus.VALIDATION_FAILED);
+                assertThat(response.messages()).isEmpty();
+                assertThat(response.errors()).singleElement().satisfies(error -> {
+                        assertThat(error.code()).isEqualTo("err.captcha.verification.invalid");
+                        assertThat(error.targets()).containsExactly("captchaAnswer");
+                });
+                assertThat(json)
+                                .contains("\"nextStep\":\"NONE\"")
+                                .doesNotContain("VERIFIED", "answerHash", "Redis", "Exception", "wrong", "aBc123");
         }
 
         @Test

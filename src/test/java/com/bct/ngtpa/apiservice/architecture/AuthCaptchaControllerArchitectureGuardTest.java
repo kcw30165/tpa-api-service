@@ -29,12 +29,36 @@ class AuthCaptchaControllerArchitectureGuardTest {
                         "..adapter.out.email..",
                         "org.springframework.data.redis..",
                         "io.lettuce..",
-                        "..application.port.out..").check(classes);
+                        "..application.port.out..")
+                .check(classes);
+    }
+
+    @Test
+    void captchaControllerDoesNotDependOnRegistrationHttpResponses() {
+        var classes = new ClassFileImporter()
+                .withImportOption(new ImportOption.DoNotIncludeTests())
+                .importPackages("com.bct.ngtpa.apiservice.adapter.in.web.controller");
+        noClasses()
+                .that()
+                .haveSimpleName("AuthCaptchaController")
+                .should()
+                .dependOnClassesThat()
+                .haveSimpleName("RegistrationHttpResponses")
+                .check(classes);
+    }
+
+    @Test
+    void captchaHttpResponsesDoesNotDependOnRegistrationOrRedis() {
+        var classes = new ClassFileImporter().withImportOption(new ImportOption.DoNotIncludeTests())
+                .importPackages("com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha");
+        noClasses().that().haveSimpleName("CaptchaHttpResponses").should().dependOnClassesThat()
+                .resideInAnyPackage("..auth.registration..", "..adapter.out.redis..").check(classes);
     }
 
     @Test
     void captchaUseCaseConfigMayDependOnPortsButNotAdapters() throws Exception {
-        String source = Files.readString(Path.of("src/main/java/com/bct/ngtpa/apiservice/config/captcha/CaptchaChallengeUseCaseConfig.java"));
+        String source = Files.readString(
+                Path.of("src/main/java/com/bct/ngtpa/apiservice/config/captcha/CaptchaChallengeUseCaseConfig.java"));
 
         assertThat(source)
                 .contains("AuthWorkflowPolicyPort")

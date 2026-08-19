@@ -17,7 +17,7 @@ class FrontendOwnedLocalizationMessageFreeErrorsTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
-    void registrationErrorOmitsMessageAndIsLanguageIndependent() {
+    void standaloneRequestValidationErrorOmitsMessageAndIsLanguageIndependent() {
         var mapper = new CaptchaWebMapper((code, locale, accountEnv, trustCode, schemeType) ->
                 "server-resolved-" + locale + "-message");
 
@@ -26,7 +26,7 @@ class FrontendOwnedLocalizationMessageFreeErrorsTest {
 
         assertThat(en).isEqualTo(zh);
         assertThat(en.path("errors").path(0).path("code").asText())
-                .isEqualTo("err.registration.captcha.required");
+                .isEqualTo("err.request.validation.failed");
         assertThat(en.path("errors").path(0).has("message")).isFalse();
         assertThat(en.path("messages")).isEmpty();
     }

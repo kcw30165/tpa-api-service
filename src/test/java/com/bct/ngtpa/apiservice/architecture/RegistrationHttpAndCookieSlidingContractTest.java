@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 class RegistrationHttpAndCookieSlidingContractTest {
 
     @Test
-    void captchaVerifyAndUsernameCheckUseRegistrationHttpTranslation() throws Exception {
+    void standaloneCaptchaAndRegistrationUsernameUseTheirOwnedHttpTranslation() throws Exception {
         String captcha = Files.readString(Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthCaptchaController.java"));
         String username = Files.readString(Path.of(
@@ -17,9 +17,11 @@ class RegistrationHttpAndCookieSlidingContractTest {
         String mapper = Files.readString(Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/mapper/RegistrationUsernameCheckWebMapper.java"));
 
-        assertThat(captcha).contains("RegistrationHttpResponses.toResponse");
-                assertThat(username).contains("RegistrationHttpResponses.toResponse");
-                assertThat(mapper).contains("MutationResponse<RegistrationWorkflowResultResponse<RegistrationUsernameCheckResponse>>");
+        assertThat(captcha)
+                .contains("CaptchaHttpResponses", "captchaHttpResponses.toResponse")
+                .doesNotContain("RegistrationHttpResponses");
+        assertThat(username).contains("RegistrationHttpResponses.toResponse");
+        assertThat(mapper).contains("MutationResponse<RegistrationWorkflowResultResponse<RegistrationUsernameCheckResponse>>");
     }
 
     @Test

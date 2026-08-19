@@ -56,10 +56,52 @@ class VerifyCaptchaUseCaseTest {
         assertThat(challengePort.markVerifiedCalled).isTrue();
         assertThat(challengePort.incrementFailedAttemptCalled).isFalse();
     }
+    @Test
+    void verifyCaptchaRejectsAlreadyVerifiedChallengeForOriginalCorrectAnswerWithoutMutation() {
+        CaptchaChallenge original = verifiedChallenge();
+        challengePort.loadedChallenge = Optional.of(original);
+
+        StepVerifier.create(useCase.verify(new VerifyCaptchaChallengeCommand(ID, "aBc123", "corr")))
+                .assertNext(result -> {
+                    assertThat(result.verified()).isFalse();
+                    assertThat(result.outcome()).isNotEqualTo(CaptchaVerificationOutcome.VERIFIED);
+                    assertThat(result.captchaChallengeId()).isNull();
+                })
+                .verifyComplete();
+
+        assertVerifiedRejectionPreservesState(original);
+    }
 
     @Test
-    void verifyCaptchaAllowsIdempotentVerifiedChallenge() {
-        challengePort.loadedChallenge = Optional.of(new CaptchaChallenge(
+    void verifyCaptchaRejectsAlreadyVerifiedChallengeForIncorrectAnswerWithSameOutcome() {
+        CaptchaChallenge original = verifiedChallenge();
+        challengePort.loadedChallenge = Optional.of(original);
+
+        StepVerifier.create(useCase.verify(new VerifyCaptchaChallengeCommand(ID, "wrong", "corr")))
+                .assertNext(result -> {
+                    assertThat(result.verified()).isFalse();
+                    assertThat(result.outcome()).isNotEqualTo(CaptchaVerificationOutcome.VERIFIED);
+                    assertThat(result.captchaChallengeId()).isNull();
+                })
+                .verifyComplete();
+
+        assertVerifiedRejectionPreservesState(original);
+    }
+
+    private void assertVerifiedRejectionPreservesState(CaptchaChallenge original) {
+        assertThat(challengePort.loadedChallenge).contains(original);
+        assertThat(challengePort.loadedChallenge.orElseThrow().status()).isEqualTo(CaptchaStatus.VERIFIED);
+        assertThat(challengePort.loadedChallenge.orElseThrow().failedAttemptCount()).isEqualTo(1);
+        assertThat(challengePort.loadedChallenge.orElseThrow().expiresAt())
+                .isEqualTo(Instant.parse("2026-07-07T12:05:00Z"));
+        assertThat(hasherPort.matchesCalled).isFalse();
+        assertThat(challengePort.markVerifiedCalled).isFalse();
+        assertThat(challengePort.incrementFailedAttemptCalled).isFalse();
+        assertThat(challengePort.markLockedCalled).isFalse();
+    }
+
+    private CaptchaChallenge verifiedChallenge() {
+        return new CaptchaChallenge(
                 ID,
                 HASH,
                 CaptchaStatus.VERIFIED,
@@ -70,19 +112,9 @@ class VerifyCaptchaUseCaseTest {
                 Instant.parse("2026-07-07T12:00:10Z"),
                 null,
                 null,
-                null));
-
-        StepVerifier.create(useCase.verify(new VerifyCaptchaChallengeCommand(ID, "aBc123", "corr")))
-                .assertNext(result -> {
-                    assertThat(result.verified()).isTrue();
-                    assertThat(result.outcome()).isEqualTo(CaptchaVerificationOutcome.VERIFIED);
-                })
-                .verifyComplete();
-
-        assertThat(hasherPort.matchesCalled).isFalse();
-        assertThat(challengePort.incrementFailedAttemptCalled).isFalse();
-        assertThat(challengePort.markLockedCalled).isFalse();
+                null);
     }
+
 
     @Test
     void verifyCaptchaInvalidAnswerIncrementsFailedAttempt() {

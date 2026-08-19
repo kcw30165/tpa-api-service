@@ -352,3 +352,7 @@ Use existing shared captcha, idempotency, CSRF, and system error keys where they
 Every APIM, Redis, protected-context, idempotency, template, or sender exception caught by Username Recovery is logged with sanitized request context and mapped to internal `SYSTEM_FAILED`. Web mapping emits `SYSTEM_ERROR` and the standard public system error.
 
 There are no silent catches or exception-to-null fallbacks. Unknown delivery outcome remains distinct from ordinary mapped failure to prevent duplicate sending.
+
+## Canonical standalone captcha contract
+
+The standalone verify HTTP and error contract is owned by [`../captcha/captcha-verification-lifecycle-contract.md`](../captcha/captcha-verification-lifecycle-contract.md). Username Recovery-owned start errors remain workflow-owned; they do not replace or redefine standalone captcha errors.

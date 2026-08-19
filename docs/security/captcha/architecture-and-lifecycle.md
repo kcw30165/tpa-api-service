@@ -284,3 +284,7 @@ A visual CAPTCHA can create accessibility barriers. The codebase's image challen
 - Which session/scenario it is bound to
 - Recovery after expiry/lock/refresh
 - Public workflow next steps
+
+## Approved repeated-verification behavior
+
+Only `CREATED` is verification-eligible. A verify request against `VERIFIED` or any other ineligible or missing state is rejected with the uniform captcha-owned public contract. The answer is not compared, state and attempts are unchanged, TTL is preserved, and the internal reason is concealed. Verification never consumes. See [`../../design/captcha/captcha-verification-lifecycle-contract.md`](../../design/captcha/captcha-verification-lifecycle-contract.md).

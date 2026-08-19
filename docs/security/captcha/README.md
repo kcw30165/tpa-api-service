@@ -1,7 +1,7 @@
 # CAPTCHA Capability
 
-> **Status:** Documents the CAPTCHA implementation represented by the reviewed codebase snapshot.  
-> **Audience:** New team members, backend developers, security reviewers, frontend developers, testers, and support engineers.  
+> **Status:** Documents the CAPTCHA implementation represented by the reviewed codebase snapshot.
+> **Audience:** New team members, backend developers, security reviewers, frontend developers, testers, and support engineers.
 > **Scope:** CAPTCHA generation, image transport, answer hashing, Redis challenge state, verification, refresh, consumption, Registration gating, errors, auditing, and reuse.
 
 ## Start here
@@ -94,3 +94,7 @@ The reviewed configuration uses a seven-character, case-insensitive CAPTCHA, a r
 12. CAPTCHA IDs, answers, hashes, and images must not enter logs.
 13. Redis failure must not silently bypass a required CAPTCHA gate.
 14. Accessibility and retry behavior must be part of the frontend contract.
+
+## Canonical current contract
+
+The active lifecycle, standalone HTTP contract, error ownership, consumer rules, and state-concealment policy are defined in [`../../design/captcha/captcha-verification-lifecycle-contract.md`](../../design/captcha/captcha-verification-lifecycle-contract.md). Migration and traceability are in [`../../design/captcha/captcha-migration-and-traceability.md`](../../design/captcha/captcha-migration-and-traceability.md).

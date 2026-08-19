@@ -1,6 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.RegistrationHttpResponses;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.CaptchaHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.dto.CaptchaRefreshRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.dto.CaptchaRefreshResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.dto.CaptchaChallengeResponse;
@@ -38,6 +38,7 @@ public class AuthCaptchaController {
     private final VerifyCaptchaUseCase verifyCaptchaUseCase;
     private final RefreshCaptchaUseCase refreshCaptchaUseCase;
     private final CaptchaWebMapper captchaWebMapper;
+    private final CaptchaHttpResponses captchaHttpResponses;
 
     @PostMapping(path = "/challenge", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<ResponseEntity<MutationResponse<CaptchaWorkflowResultResponse<CaptchaChallengeResponse>>>> challenge(
@@ -48,7 +49,7 @@ public class AuthCaptchaController {
         return createCaptchaChallengeUseCase
                 .create(new CreateCaptchaChallengeCommand(trimToNull(requestId), trimToNull(acceptLanguage)))
                 .map(captchaWebMapper::toChallengeMutationResponse)
-                .map(RegistrationHttpResponses::toResponse);
+                .map(captchaHttpResponses::toResponse);
     }
 
     @PostMapping(path = "/verify", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
@@ -59,11 +60,11 @@ public class AuthCaptchaController {
             ServerHttpResponse response) {
         echoRequestId(response, requestId);
         if (request == null || !hasText(request.captchaChallengeId())) {
-            return Mono.just(RegistrationHttpResponses.toResponse(
+            return Mono.just(captchaHttpResponses.toResponse(
                     captchaWebMapper.missingChallengeIdResponse(trimToNull(acceptLanguage))));
         }
         if (!hasText(request.answer())) {
-            return Mono.just(RegistrationHttpResponses.toResponse(
+            return Mono.just(captchaHttpResponses.toResponse(
                     captchaWebMapper.missingAnswerResponse(trimToNull(acceptLanguage))));
         }
 
@@ -74,9 +75,9 @@ public class AuthCaptchaController {
                     trimToNull(requestId));
             return verifyCaptchaUseCase.verify(command)
                     .map(result -> captchaWebMapper.toVerifyMutationResponse(result, trimToNull(acceptLanguage)))
-                    .map(RegistrationHttpResponses::toResponse);
+                    .map(captchaHttpResponses::toResponse);
         } catch (RuntimeException exception) {
-            return Mono.just(RegistrationHttpResponses.toResponse(
+            return Mono.just(captchaHttpResponses.toResponse(
                     captchaWebMapper.invalidChallengeIdResponse(trimToNull(acceptLanguage))));
         }
     }
@@ -97,9 +98,9 @@ public class AuthCaptchaController {
             return refreshCaptchaUseCase
                     .refresh(new RefreshCaptchaChallengeCommand(oldCaptchaChallengeId, trimToNull(requestId)))
                     .map(captchaWebMapper::toRefreshMutationResponse)
-                    .map(RegistrationHttpResponses::toResponse);
+                    .map(captchaHttpResponses::toResponse);
         } catch (RuntimeException exception) {
-            return Mono.just(RegistrationHttpResponses.toResponse(
+            return Mono.just(captchaHttpResponses.toResponse(
                     captchaWebMapper.invalidRefreshChallengeIdResponse(trimToNull(acceptLanguage))));
         }
     }

@@ -3,7 +3,9 @@ package com.bct.ngtpa.apiservice.adapter.out.redis.auth;
 import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaChallenge;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaChallengeId;
+import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaConsumptionMutationResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaStatus;
+import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaVerificationMutationResult;
 import com.bct.ngtpa.apiservice.application.port.out.CaptchaChallengePort;
 import com.bct.ngtpa.apiservice.exception.CacheException;
 import java.time.Clock;
@@ -60,6 +62,42 @@ public class RedisCaptchaChallengeAdapter implements CaptchaChallengePort {
     }
 
     @Override
+    public Mono<CaptchaVerificationMutationResult> applyVerificationAttempt(
+            CaptchaChallenge expected, boolean answerMatched, Instant attemptedAt) {
+        return Mono.defer(() -> {
+            Objects.requireNonNull(expected, "expected must not be null");
+            requireTimestamp(attemptedAt, "attemptedAt");
+            CaptchaChallenge updated;
+            CaptchaVerificationMutationResult.Outcome outcome;
+            if (answerMatched) {
+                updated = copyVerificationState(expected, CaptchaStatus.VERIFIED, expected.failedAttemptCount(), attemptedAt);
+                outcome = CaptchaVerificationMutationResult.Outcome.VERIFIED;
+            } else {
+                int attempts = Math.min(expected.maxAttempts(), expected.failedAttemptCount() + 1);
+                boolean locked = attempts >= expected.maxAttempts();
+                updated = copyVerificationState(expected, locked ? CaptchaStatus.LOCKED : CaptchaStatus.CREATED, attempts, attemptedAt);
+                outcome = locked ? CaptchaVerificationMutationResult.Outcome.LOCKED
+                        : CaptchaVerificationMutationResult.Outcome.INVALID;
+            }
+            return redis.replaceIfUnchanged(keyFor(expected.captchaChallengeId()), jsonMapper.toJson(expected), jsonMapper.toJson(updated))
+                    .map(result -> switch (result) {
+                        case APPLIED -> CaptchaVerificationMutationResult.of(outcome, updated);
+                        case CONFLICT -> CaptchaVerificationMutationResult.of(
+                                CaptchaVerificationMutationResult.Outcome.STATE_CHANGED, null);
+                        case MISSING -> CaptchaVerificationMutationResult.of(
+                                CaptchaVerificationMutationResult.Outcome.NOT_FOUND, null);
+                    });
+        }).onErrorMap(this::safeFailure);
+    }
+
+    private CaptchaChallenge copyVerificationState(CaptchaChallenge challenge, CaptchaStatus status, int attempts, Instant at) {
+        return new CaptchaChallenge(challenge.captchaChallengeId(), challenge.answerHash(), status, attempts,
+                challenge.maxAttempts(), challenge.createdAt(), challenge.expiresAt(),
+                status == CaptchaStatus.VERIFIED ? at : challenge.verifiedAt(), challenge.consumedAt(),
+                challenge.refreshedAt(), status == CaptchaStatus.LOCKED ? at : challenge.lockedAt());
+    }
+
+    @Override
     public Mono<CaptchaChallenge> markVerified(CaptchaChallengeId captchaChallengeId, Instant verifiedAt) {
         return mutateExisting(captchaChallengeId, challenge -> new CaptchaChallenge(
                 challenge.captchaChallengeId(),
@@ -108,19 +146,55 @@ public class RedisCaptchaChallengeAdapter implements CaptchaChallengePort {
     }
 
     @Override
+    public Mono<CaptchaConsumptionMutationResult> applyConsumptionAttempt(
+            CaptchaChallenge expected, Instant consumedAt) {
+        return Mono.defer(() -> {
+            Objects.requireNonNull(expected, "expected must not be null");
+            if (expected.status() != CaptchaStatus.VERIFIED) {
+                return Mono.just(CaptchaConsumptionMutationResult.of(
+                        CaptchaConsumptionMutationResult.Outcome.STATE_CHANGED, null));
+            }
+            CaptchaChallenge consumed = new CaptchaChallenge(
+                    expected.captchaChallengeId(),
+                    null,
+                    CaptchaStatus.CONSUMED,
+                    expected.failedAttemptCount(),
+                    expected.maxAttempts(),
+                    expected.createdAt(),
+                    expected.expiresAt(),
+                    expected.verifiedAt(),
+                    requireTimestamp(consumedAt, "consumedAt"),
+                    expected.refreshedAt(),
+                    expected.lockedAt());
+            return redis.replaceIfUnchanged(
+                            keyFor(expected.captchaChallengeId()),
+                            jsonMapper.toJson(expected),
+                            jsonMapper.toJson(consumed))
+                    .map(result -> switch (result) {
+                        case APPLIED -> CaptchaConsumptionMutationResult.of(
+                                CaptchaConsumptionMutationResult.Outcome.CONSUMED, consumed);
+                        case CONFLICT -> CaptchaConsumptionMutationResult.of(
+                                CaptchaConsumptionMutationResult.Outcome.STATE_CHANGED, null);
+                        case MISSING -> CaptchaConsumptionMutationResult.of(
+                                CaptchaConsumptionMutationResult.Outcome.NOT_FOUND, null);
+                    });
+        }).onErrorMap(this::safeFailure);
+    }
+
+    @Override
     public Mono<CaptchaChallenge> markConsumed(CaptchaChallengeId captchaChallengeId, Instant consumedAt) {
-        return mutateExisting(captchaChallengeId, challenge -> new CaptchaChallenge(
-                challenge.captchaChallengeId(),
-                null,
-                CaptchaStatus.CONSUMED,
-                challenge.failedAttemptCount(),
-                challenge.maxAttempts(),
-                challenge.createdAt(),
-                challenge.expiresAt(),
-                challenge.verifiedAt(),
-                requireTimestamp(consumedAt, "consumedAt"),
-                challenge.refreshedAt(),
-                challenge.lockedAt()));
+        return load(captchaChallengeId)
+                .flatMap(optional -> optional
+                        .map(expected -> applyConsumptionAttempt(expected, consumedAt)
+                                .flatMap(result -> switch (result.outcome()) {
+                                    case CONSUMED -> Mono.just(result.challenge());
+                                    case STATE_CHANGED -> Mono.error(new IllegalStateException(
+                                            "Captcha challenge state changed during consumption"));
+                                    case NOT_FOUND -> Mono.error(new IllegalStateException(
+                                            "Captcha challenge not found"));
+                                }))
+                        .orElseGet(() -> Mono.error(new IllegalStateException(
+                                "Captcha challenge not found"))));
     }
 
     @Override
