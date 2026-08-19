@@ -15,7 +15,7 @@ class ApiResponseExceptionHandlingBoundaryTest {
   void apiExceptionHandlerDoesNotUseLegacyApiErrorResponse() throws IOException {
     String source =
         readSource(
-            "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/ApiExceptionHandler.java");
+            "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/advice/ApiExceptionHandler.java");
 
     assertFalse(containsIgnoringWhitespace(source, "ApiErrorResponse"));
     assertFalse(containsIgnoringWhitespace(source, "ResponseEntity<ApiErrorResponse>"));
@@ -66,7 +66,7 @@ class ApiResponseExceptionHandlingBoundaryTest {
   void exceptionLocalizationUsesAcceptLanguageNotLangQueryParameter() throws IOException {
     String source =
         readSource(
-            "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/ApiExceptionHandler.java");
+            "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/advice/ApiExceptionHandler.java");
 
     assertFalse(containsIgnoringWhitespace(source, "requestParam(exchange, \"lang\")"));
     assertTrue(containsIgnoringWhitespace(source, "requestLocale(exchange)"));

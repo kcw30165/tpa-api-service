@@ -30,3 +30,25 @@ Phase 07 reconciles active documentation only. Historical prompts, plans, genera
 - endpoint test evidence: focused HTTP/mapping=20, behavior-or-focused=35, class-reference-only=1, none=0
 - evidence precedence: `082-superseded-evidence-manifest.txt` governs historical corrected evidence
 - exact next-stage gate: architect PASS and Stage 001 documentation commit before Stage 002
+## Controller Refactoring Stage 002
+
+- stage: 002 advice-and-internal-api-boundaries
+- Stage 001 architect status: PASS
+- Stage 001 approved commit hash: `d9613470adaa6fab113f30cc9c12724d009b526a`
+- implementation status: READY_FOR_ARCHITECT_REVIEW
+- exact evidence directory: `target\evidence\controller-refactoring-002-20260819-163644`
+- accepted package move: `web.controller.ApiExceptionHandler` to `web.advice.ApiExceptionHandler`
+- accepted package move: `web.controller.ReferenceDateController` to `web.internal.referencedate.ReferenceDateController`
+- preserved endpoints: `POST /api/v1/internal/reference-date/refresh`, `GET /api/v1/internal/reference-date/all`, `DELETE /api/v1/internal/reference-date/all`
+- advice behavior: PRESERVATION_VALIDATION_PENDING
+- LoggingSanitizer dependency: preserved exactly for Stage 002
+- deferred boundaries: `ReferenceDataController` and `AuthenticatedPortalContextWebExceptionHandler` unchanged
+- stage_003_started=false
+- architect_status=PENDING
+- commit_authorization=false
+
+- manual-fix bounded validation totals: tests=10, failures=0, errors=0, skipped=0
+- manual-fix files: `PortalAccessContextArchitectureGuardTest.java` and `RegistrationSessionSecurityAndReactiveCorrectnessTest.java`
+- post-manual-fix full suite: NOT RERUN by explicit solution-owner direction
+- historical full suite before manual fix: 3799 tests, 0 failures, 3 errors, 12 skipped; all three errors were in the two manually repaired test classes
+- Stage 002 validation qualification: bounded repair validation PASS; architect must assess the accepted full-suite exception

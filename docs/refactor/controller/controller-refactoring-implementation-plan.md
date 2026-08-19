@@ -292,6 +292,10 @@ docs: classify controller refactoring boundaries
 ```
 
 ### Stage 002: Advice and Internal API Boundaries
+**Implementation status:** READY_FOR_ARCHITECT_REVIEW
+**Evidence:** `target\evidence\controller-refactoring-002-20260819-163644`
+**Accepted package facts:** `ApiExceptionHandler` under `web.advice`; `ReferenceDateController` under `web.internal.referencedate`.
+
 
 **Purpose:** Move exception advice and verified internal reference-date administration into explicit packages.
 
@@ -309,6 +313,8 @@ docs: classify controller refactoring boundaries
 ```text
 refactor: separate controller advice and internal APIs
 ```
+
+**Validation qualification:** The two manually repaired source-sensitive tests passed; the full suite was not rerun by explicit solution-owner direction.
 
 ### Stage 003: Standalone Capability Packages
 

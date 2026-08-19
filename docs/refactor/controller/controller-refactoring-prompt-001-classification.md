@@ -4,7 +4,7 @@
 
 You are the repository implementer for **Controller Refactoring Stage 001: Repository Classification and Baseline**.
 
-Microsoft 365 Copilot is the architect and implementation designer. Nick is the solution owner. You are not authorized to redesign the solution, choose a different target architecture, edit production code, merge controllers, move packages, rename classes, or begin Stage 002.
+You are not authorized to redesign the solution, choose a different target architecture, edit production code, merge controllers, move packages, rename classes, or begin Stage 002.
 
 Your job is to gather exact repository evidence, preserve a trustworthy baseline, update governance documentation, and produce a complete final review bundle for architect review.
 

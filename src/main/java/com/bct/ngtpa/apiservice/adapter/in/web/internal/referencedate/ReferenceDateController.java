@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.adapter.in.web.controller;
+package com.bct.ngtpa.apiservice.adapter.in.web.internal.referencedate;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.request.RefreshReferenceDateRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;

@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.adapter.in.web.controller;
+package com.bct.ngtpa.apiservice.adapter.in.web.advice;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
