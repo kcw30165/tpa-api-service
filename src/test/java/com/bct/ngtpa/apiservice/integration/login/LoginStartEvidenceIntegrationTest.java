@@ -2,11 +2,11 @@ package com.bct.ngtpa.apiservice.integration.login;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.LoginController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.dto.LoginStartRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.mapper.LoginStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
-import com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthLoginController;
 import com.bct.ngtpa.apiservice.application.port.in.StartLoginUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.start.*;
 import java.time.Duration;
@@ -40,7 +40,21 @@ class LoginStartEvidenceIntegrationTest {
                       0,
                       "rpl_private"));
       var response = new MockServerHttpResponse();
-      var controller = new AuthLoginController(useCase, new LoginStartWebMapper(), cookieWriter);
+      var controller =
+          new LoginController(
+              useCase,
+              new LoginStartWebMapper(),
+              cookieWriter,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null);
 
       StepVerifier.create(
               controller.startLogin(
@@ -76,7 +90,21 @@ class LoginStartEvidenceIntegrationTest {
           calls.incrementAndGet();
           return Mono.error(new IllegalStateException("internal secret detail"));
         };
-    var controller = new AuthLoginController(useCase, new LoginStartWebMapper(), cookieWriter);
+    var controller =
+        new LoginController(
+            useCase,
+            new LoginStartWebMapper(),
+            cookieWriter,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
 
     StepVerifier.create(
             controller.startLogin(

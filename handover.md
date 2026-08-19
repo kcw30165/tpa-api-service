@@ -88,3 +88,33 @@ Phase 07 reconciles active documentation only. Historical prompts, plans, genera
 
 - Stage 003 prerequisite commit: `a336c80a1d710040208f872a9c709c7603d9db5c`
 - architect decision: PASS
+
+## Controller Refactoring Stage 004
+
+- stage: 004 login-http-boundary
+- Stage 003 architect status: PASS
+- Stage 003 prerequisite commit: `a336c80a1d710040208f872a9c709c7603d9db5c`
+- Stage 003 governance commit: `6ad5f4d141fec0fc2f8f27d84c452fb00dd16826`
+- implementation status: READY_FOR_ARCHITECT_REVIEW
+- exact evidence directory: `target/evidence/controller-refactoring-004-20260819-220150`
+- consolidation: four Login HTTP controllers into `web.auth.login.LoginController`
+- preserved Login endpoint count: 5
+- constructor dependencies: 13 after valid cookie-writer deduplication
+- helper collisions: resolved mechanically without behavior change
+- focused validation totals: tests=28, failures=0, errors=0, skipped=0
+- Stage 002 preservation totals: tests=32, failures=0, errors=0, skipped=0
+- Stage 003 preservation totals: tests=83, failures=0, errors=0, skipped=0
+- cumulative controller regression totals: tests=183, failures=0, errors=0, skipped=0
+- full-suite totals: tests=3793, failures=0, errors=0, skipped=12
+- compile result: PASS
+- diff check result: PASS, exit=0; CRLF conversion warnings are informational
+- production scope audit: PASS
+- test scope audit: PASS
+- documentation scope audit: PASS
+- branch result: PASS; branch unchanged
+- stash result: PASS; no stash operation performed by Stage 004
+- Registration and Forgot Password: deferred and unchanged
+- Surefire XML reports are authoritative; full Maven output is not duplicated in final evidence
+- stage_005_started=false
+- architect_status=PENDING
+- commit_authorization=false

@@ -337,6 +337,8 @@ refactor: organize standalone controllers by capability
 **Validation evidence:** Existing fresh Maven Surefire XML reports, all with zero failures and zero errors; Maven was not rerun during final report generation.
 
 ### Stage 004: Login HTTP Boundary
+**Implementation status:** READY_FOR_ARCHITECT_REVIEW
+**Evidence:** `target/evidence/controller-refactoring-004-20260819-220150`
 
 **Purpose:** Consolidate the confirmed login lifecycle into a cohesive inbound HTTP boundary while preserving separate application use cases.
 

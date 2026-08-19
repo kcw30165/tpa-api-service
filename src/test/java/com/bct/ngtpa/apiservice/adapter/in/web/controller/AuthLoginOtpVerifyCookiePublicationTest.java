@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.LoginController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.mapper.LoginOtpVerifyWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.*;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieWriter;
@@ -41,11 +42,19 @@ class AuthLoginOtpVerifyCookiePublicationTest {
             "fresh_authenticated_csrf");
     var response = new MockServerHttpResponse();
     var controller =
-        new AuthLoginOtpVerifyController(
+        new LoginController(
+            null,
+            null,
+            AuthFlowCookieWriter.defaultWriter(),
+            null,
+            null,
+            new XsrfCookieWriter(new AuthFlowSessionProperties()),
+            null,
+            null,
+            null,
+            null,
             command -> Mono.just(result),
             new LoginOtpVerifyWebMapper(),
-            AuthFlowCookieWriter.defaultWriter(),
-            new XsrfCookieWriter(new AuthFlowSessionProperties()),
             new AuthenticatedSessionCookieWriter(new AuthWorkflowProperties.AuthenticatedCookie()));
 
     StepVerifier.create(

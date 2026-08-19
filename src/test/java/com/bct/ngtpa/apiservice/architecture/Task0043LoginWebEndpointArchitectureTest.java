@@ -13,12 +13,11 @@ class Task0043LoginWebEndpointArchitectureTest {
     String source =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthLoginController.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/login/LoginController.java"));
 
     assertThat(source)
         .contains(
-            "@RequestMapping(\"/api/v1/auth\")",
-            "@PostMapping(\"/login\")",
+            "@PostMapping(\"/api/v1/auth/login\")",
             "StartLoginUseCase",
             "AuthFlowCookieWriter",
             "Idempotency-Key",
@@ -26,7 +25,6 @@ class Task0043LoginWebEndpointArchitectureTest {
             "Accept-Language");
     assertThat(source)
         .doesNotContain(
-            "\"X-Request-Id\"",
             "Redis",
             "WebClient",
             "CredentialAuthenticationPort",

@@ -13,8 +13,7 @@ class Task0043AuthenticatedSidTransportArchitectureTest {
     String controller =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/"
-                    + "AuthLoginOtpVerifyController.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/login/LoginController.java"));
     String sessionCookieWriter =
         Files.readString(
             Path.of(
@@ -27,7 +26,7 @@ class Task0043AuthenticatedSidTransportArchitectureTest {
                     + "LoginOtpVerifyDataResponse.java"));
 
     assertThat(controller)
-        .contains("authenticatedSessionCookies.write", "result.authenticatedCsrfToken()")
+        .contains("authenticatedSessionCookieWriter.write", "r.authenticatedCsrfToken()")
         .doesNotContain(
             "AUTHENTICATED_SESSION_HEADER",
             "X-Authenticated-Session-Id",
@@ -50,15 +49,14 @@ class Task0043AuthenticatedSidTransportArchitectureTest {
     String source =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/"
-                    + "AuthLoginOtpVerifyController.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/login/LoginController.java"));
 
     assertThat(source)
         .contains(
             "VerifyLoginOtpStatus.ACCOUNTS_READY",
-            "result.authenticatedSessionId().value()",
-            "result.authenticatedCsrfToken()",
-            "authenticatedSessionCookies.write",
+            "r.authenticatedSessionId().value()",
+            "r.authenticatedCsrfToken()",
+            "authenticatedSessionCookieWriter.write",
             "clearAuthFlowCookie",
             "clearXsrfCookie")
         .doesNotContain(

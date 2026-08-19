@@ -83,3 +83,20 @@ READY_FOR_ARCHITECT_REVIEW
 - Endpoint test evidence is separated into focused HTTP/mapping, controller-method behavior, security, architecture/package-sensitive, class-reference-only, and no-evidence categories.
 - Immediate call chains identify web collaborators, application input ports, and statically discoverable implementations.
 - Evidence precedence is defined in `082-superseded-evidence-manifest.txt`.
+
+## Stage 004 Completed Login Boundary Consolidation
+
+**Final ownership:** `com.bct.ngtpa.apiservice.adapter.in.web.auth.login.LoginController`.
+
+| Previous source owner | Stage 004 disposition | Final source owner |
+|---|---|---|
+| `com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthLoginController` | **CONSOLIDATE** | `com.bct.ngtpa.apiservice.adapter.in.web.auth.login.LoginController` |
+| `com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthLoginCancelController` | **CONSOLIDATE** | `com.bct.ngtpa.apiservice.adapter.in.web.auth.login.LoginController` |
+| `com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthLoginOtpController` | **CONSOLIDATE** | `com.bct.ngtpa.apiservice.adapter.in.web.auth.login.LoginController` |
+| `com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthLoginOtpVerifyController` | **CONSOLIDATE** | `com.bct.ngtpa.apiservice.adapter.in.web.auth.login.LoginController` |
+
+- Preserved effective endpoint count: **5**.
+- Public HTTP contract change: **NONE**.
+- Compatibility controller retained: **NO**.
+- Registration and Forgot Password controllers remain deferred and unchanged.
+- Stage 005 started: **false**.

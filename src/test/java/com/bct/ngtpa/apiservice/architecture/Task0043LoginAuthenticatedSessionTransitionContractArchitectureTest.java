@@ -38,7 +38,7 @@ class Task0043LoginAuthenticatedSessionTransitionContractArchitectureTest {
     String controller =
         java.nio.file.Files.readString(
             java.nio.file.Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthLoginOtpVerifyController.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/login/LoginController.java"));
     String service =
         java.nio.file.Files.readString(
             java.nio.file.Path.of(
@@ -51,8 +51,8 @@ class Task0043LoginAuthenticatedSessionTransitionContractArchitectureTest {
     org.assertj.core.api.Assertions.assertThat(controller)
         .contains(
             "AuthenticatedSessionCookieWriter",
-            "result.authenticatedSessionId().value()",
-            "result.authenticatedCsrfToken()")
+            "r.authenticatedSessionId().value()",
+            "r.authenticatedCsrfToken()")
         .doesNotContain("AUTHENTICATED_SESSION_HEADER", "X-Authenticated-Session-Id");
   }
 }

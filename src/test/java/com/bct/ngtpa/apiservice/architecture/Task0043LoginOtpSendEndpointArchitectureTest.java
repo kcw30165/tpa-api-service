@@ -11,7 +11,7 @@ class Task0043LoginOtpSendEndpointArchitectureTest {
     String s =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthLoginOtpController.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/login/LoginController.java"));
     assertThat(s)
         .contains(
             "/api/v1/auth/login/otp",

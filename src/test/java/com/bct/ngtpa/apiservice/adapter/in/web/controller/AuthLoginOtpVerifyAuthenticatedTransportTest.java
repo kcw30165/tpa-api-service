@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.LoginController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.mapper.LoginOtpVerifyWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.XsrfCookieWriter;
@@ -36,12 +37,20 @@ class AuthLoginOtpVerifyAuthenticatedTransportTest {
                     new AuthenticatedSessionId(SID),
                     "authenticated_csrf_token"));
     AuthFlowSessionProperties properties = new AuthFlowSessionProperties();
-    AuthLoginOtpVerifyController controller =
-        new AuthLoginOtpVerifyController(
+    LoginController controller =
+        new LoginController(
+            null,
+            null,
+            AuthFlowCookieWriter.from(properties),
+            null,
+            null,
+            new XsrfCookieWriter(properties),
+            null,
+            null,
+            null,
+            null,
             useCase,
             new LoginOtpVerifyWebMapper(),
-            AuthFlowCookieWriter.from(properties),
-            new XsrfCookieWriter(properties),
             new com.bct.ngtpa.apiservice.adapter.in.web.auth.session
                 .AuthenticatedSessionCookieWriter(
                 new com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties
@@ -81,12 +90,20 @@ class AuthLoginOtpVerifyAuthenticatedTransportTest {
     VerifyLoginOtpUseCase useCase =
         command -> Mono.just(new VerifyLoginOtpResult(VerifyLoginOtpStatus.INVALID, 3, false));
     AuthFlowSessionProperties properties = new AuthFlowSessionProperties();
-    AuthLoginOtpVerifyController controller =
-        new AuthLoginOtpVerifyController(
+    LoginController controller =
+        new LoginController(
+            null,
+            null,
+            AuthFlowCookieWriter.from(properties),
+            null,
+            null,
+            new XsrfCookieWriter(properties),
+            null,
+            null,
+            null,
+            null,
             useCase,
             new LoginOtpVerifyWebMapper(),
-            AuthFlowCookieWriter.from(properties),
-            new XsrfCookieWriter(properties),
             new com.bct.ngtpa.apiservice.adapter.in.web.auth.session
                 .AuthenticatedSessionCookieWriter(
                 new com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties

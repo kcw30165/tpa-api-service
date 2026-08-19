@@ -11,7 +11,7 @@ class Task0043LoginOtpResendEndpointArchitectureTest {
     String c =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthLoginOtpController.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/login/LoginController.java"));
     assertThat(c)
         .contains(
             "/resend", "ResendLoginOtpUseCase", "Idempotency-Key", "auth_flow_sid", "X-XSRF-TOKEN");
