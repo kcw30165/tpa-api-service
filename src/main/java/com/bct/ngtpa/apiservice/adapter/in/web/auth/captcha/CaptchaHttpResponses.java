@@ -9,7 +9,9 @@ import java.util.List;
 import java.util.Objects;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Component;
 
+@Component
 public final class CaptchaHttpResponses {
     public <T> ResponseEntity<MutationResponse<T>> toResponse(MutationResponse<T> body) {
         Objects.requireNonNull(body, "body must not be null");
