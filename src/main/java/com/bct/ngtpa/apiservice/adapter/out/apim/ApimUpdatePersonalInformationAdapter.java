@@ -64,8 +64,21 @@ public class ApimUpdatePersonalInformationAdapter implements ApimUpdatePersonalI
                 item.getCertNo(), item.getEnv(), item.getRefNo(), item.getSubmitDate(), item.getSubmitTime(), toErrors(item));
     }
     private boolean isSelected(UpdateMemberInfoApimDataItem item, UpdateMemberInfoCommand command) {
-        return same(item.getPolicyNo(), command.policyNo()) && same(item.getCertNo(), command.certNo())
+        return sameAccountIdentifier(item.getPolicyNo(), command.policyNo())
+                && sameAccountIdentifier(item.getCertNo(), command.certNo())
                 && same(item.getEnv(), command.accountEnv());
+    }
+    private boolean sameAccountIdentifier(String first, String second) {
+        String normalizedFirst = normalizeAccountIdentifier(first);
+        String normalizedSecond = normalizeAccountIdentifier(second);
+        return !normalizedFirst.isEmpty() && normalizedFirst.equals(normalizedSecond);
+    }
+    private String normalizeAccountIdentifier(String value) {
+        String normalized = trim(value);
+        if (!normalized.matches("[0-9]+")) return normalized;
+        int firstNonZero = 0;
+        while (firstNonZero < normalized.length() - 1 && normalized.charAt(firstNonZero) == '0') firstNonZero++;
+        return normalized.substring(firstNonZero);
     }
     private boolean same(String first, String second) { return trim(first).equals(trim(second)); }
     private String trim(String value) { return value == null ? "" : value.trim(); }
