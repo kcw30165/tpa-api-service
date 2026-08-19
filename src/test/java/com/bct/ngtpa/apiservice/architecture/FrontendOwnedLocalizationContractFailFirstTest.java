@@ -18,7 +18,7 @@ class FrontendOwnedLocalizationContractFailFirstTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
-    void registrationErrorsExposeStableCodeWithoutResolvedMessage() {
+    void standaloneCaptchaRequestErrorsExposeStableCodeWithoutResolvedMessage() {
         var mapper = new CaptchaWebMapper((code, locale, accountEnv, trustCode, schemeType) ->
                 "server-resolved-" + locale + "-message");
 
@@ -26,11 +26,11 @@ class FrontendOwnedLocalizationContractFailFirstTest {
         JsonNode error = response.path("errors").path(0);
 
         assertThat(error.path("code").asText())
-                .isEqualTo("err.registration.captcha.required");
+                .isEqualTo("err.request.validation.failed");
         assertThat(error.path("targets").path(0).asText())
                 .isEqualTo("captchaAnswer");
         assertThat(error.has("message"))
-                .as("FE resolves Java/BFF-owned error text from errors[].code")
+                .as("FE resolves standalone captcha request error text from errors[].code")
                 .isFalse();
     }
 
