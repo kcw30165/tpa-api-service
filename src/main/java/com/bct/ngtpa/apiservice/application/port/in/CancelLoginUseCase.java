@@ -5,5 +5,5 @@ import reactor.core.publisher.Mono;
 
 @FunctionalInterface
 public interface CancelLoginUseCase {
-    Mono<CancelLoginResult> cancel(CancelLoginCommand command);
+  Mono<CancelLoginResult> cancel(CancelLoginCommand command);
 }

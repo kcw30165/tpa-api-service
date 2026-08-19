@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusCommand;
@@ -12,7 +13,6 @@ import com.bct.ngtpa.apiservice.application.port.out.ApimNotificationReadStatusP
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import com.bct.ngtpa.apiservice.domain.model.MessageStatus;
-import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -21,46 +21,56 @@ import reactor.core.publisher.Mono;
 
 class UpdateNotificationsReadStatusServiceTest {
 
-    @Test
-    void enrichesApimCommandFromCurrentPortalAccessContext() {
-        AtomicReference<UpdateNotificationsReadStatusCommand> captured = new AtomicReference<>();
-        ApimNotificationReadStatusPort apimPort = command -> {
-            captured.set(command);
-            return Mono.just(new UpdateNotificationsReadStatusResult(List.of()));
+  @Test
+  void enrichesApimCommandFromCurrentPortalAccessContext() {
+    AtomicReference<UpdateNotificationsReadStatusCommand> captured = new AtomicReference<>();
+    ApimNotificationReadStatusPort apimPort =
+        command -> {
+          captured.set(command);
+          return Mono.just(new UpdateNotificationsReadStatusResult(List.of()));
         };
-        ReferenceDatePort referenceDatePort = accountEnv -> Mono.just(LocalDate.of(2026, 6, 16));
+    ReferenceDatePort referenceDatePort = accountEnv -> Mono.just(LocalDate.of(2026, 6, 16));
 
-        new UpdateNotificationsReadStatusService(apimPort, referenceDatePort)
-                .execute(new UpdateNotificationsReadStatusCommand(
-                        "JP", ActorUserRole.ROLE_USER_MBR, List.of("N-1", "N-2"), "policy-1", "cert-1", "user-1", null, null))
-                .block();
+    new UpdateNotificationsReadStatusService(apimPort, referenceDatePort)
+        .execute(
+            new UpdateNotificationsReadStatusCommand(
+                "JP",
+                ActorUserRole.ROLE_USER_MBR,
+                List.of("N-1", "N-2"),
+                "policy-1",
+                "cert-1",
+                "user-1",
+                null,
+                null))
+        .block();
 
-        assertEquals("JP", captured.get().accountEnv());
-        assertEquals("policy-1", captured.get().policyNo());
-        assertEquals("cert-1", captured.get().certNo());
-        assertEquals("user-1", captured.get().userId());
-        assertEquals("16/06/2026", captured.get().refDate());
-        assertEquals(List.of("N-1", "N-2"), captured.get().notificationIds());
-        assertEquals(MessageStatus.READ, captured.get().targetStatus());
-    }
+    assertEquals("JP", captured.get().accountEnv());
+    assertEquals("policy-1", captured.get().policyNo());
+    assertEquals("cert-1", captured.get().certNo());
+    assertEquals("user-1", captured.get().userId());
+    assertEquals("16/06/2026", captured.get().refDate());
+    assertEquals(List.of("N-1", "N-2"), captured.get().notificationIds());
+    assertEquals(MessageStatus.READ, captured.get().targetStatus());
+  }
 
-    private static CurrentPortalAccessContextResolver provider(PortalAccessContext context) {
-        return new CurrentPortalAccessContextResolver() {
-            @Override
-            public Mono<PortalAccessContext> current() {
-                return Mono.just(context);
-            }
+  private static CurrentPortalAccessContextResolver provider(PortalAccessContext context) {
+    return new CurrentPortalAccessContextResolver() {
+      @Override
+      public Mono<PortalAccessContext> current() {
+        return Mono.just(context);
+      }
 
-            @Override
-            public Mono<PortalAccessContext> currentOrEmpty() {
-                return Mono.just(context);
-            }
-        };
-    }
+      @Override
+      public Mono<PortalAccessContext> currentOrEmpty() {
+        return Mono.just(context);
+      }
+    };
+  }
 
-    private static PortalAccessContext context(String accountRef) {
-        return new PortalAccessContext(
-                new ActorContext("user-1", ActorUserRole.ROLE_USER_MBR),
-                new AccountContext(accountRef, "JP", "policy-1", "cert-1", "JPM", "OE", TermStatus.BLANK, null));
-    }
+  private static PortalAccessContext context(String accountRef) {
+    return new PortalAccessContext(
+        new ActorContext("user-1", ActorUserRole.ROLE_USER_MBR),
+        new AccountContext(
+            accountRef, "JP", "policy-1", "cert-1", "JPM", "OE", TermStatus.BLANK, null));
+  }
 }

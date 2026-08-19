@@ -8,13 +8,15 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @EnableConfigurationProperties(WorkflowErrorContractProperties.class)
 public class WorkflowErrorContractConfig {
-    @Bean
-    WorkflowErrorContractResolver workflowErrorContractResolver(WorkflowErrorContractProperties properties) {
-        return new WorkflowErrorContractResolver(properties);
-    }
+  @Bean
+  WorkflowErrorContractResolver workflowErrorContractResolver(
+      WorkflowErrorContractProperties properties) {
+    return new WorkflowErrorContractResolver(properties);
+  }
 
-    @Bean
-    SmartInitializingSingleton workflowErrorContractValidation(WorkflowErrorContractProperties properties) {
-        return () -> WorkflowErrorContractValidator.validate(properties);
-    }
+  @Bean
+  SmartInitializingSingleton workflowErrorContractValidation(
+      WorkflowErrorContractProperties properties) {
+    return () -> WorkflowErrorContractValidator.validate(properties);
+  }
 }

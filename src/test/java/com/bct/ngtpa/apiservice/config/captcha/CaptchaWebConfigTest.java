@@ -10,13 +10,14 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 class CaptchaWebConfigTest {
 
-    @Test
-    void captchaWebMapperBeanIsRegistered() {
-        new ApplicationContextRunner()
-                .withUserConfiguration(CaptchaWebConfig.class)
-                .withBean(ErrorMessageResolver.class, () -> mock(ErrorMessageResolver.class))
-                .run(context -> {
-                    assertThat(context).hasSingleBean(CaptchaWebMapper.class);
-                });
-    }
+  @Test
+  void captchaWebMapperBeanIsRegistered() {
+    new ApplicationContextRunner()
+        .withUserConfiguration(CaptchaWebConfig.class)
+        .withBean(ErrorMessageResolver.class, () -> mock(ErrorMessageResolver.class))
+        .run(
+            context -> {
+              assertThat(context).hasSingleBean(CaptchaWebMapper.class);
+            });
+  }
 }

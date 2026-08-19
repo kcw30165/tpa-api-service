@@ -47,212 +47,263 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/auth/forgot-password")
 public class AuthForgotPasswordController {
-    private final StartForgotPasswordUseCase startUseCase;
-    private final ForgotPasswordStartWebMapper startMapper;
-    private final VerifyForgotPasswordIdentityUseCase identityCheckUseCase;
-    private final ForgotPasswordIdentityWebMapper identityCheckMapper;
-    private final ProcessForgotPasswordDetailsOtpUseCase detailsCheckUseCase;
-    private final ForgotPasswordDetailsOtpWebMapper detailsCheckMapper;
-    private final CompleteForgotPasswordUseCase completeUseCase;
-    private final ForgotPasswordCompleteWebMapper completeMapper;
-    private final CancelForgotPasswordUseCase cancelUseCase;
-    private final ForgotPasswordCancelWebMapper cancelMapper;
-    private final AuthFlowCookieWriter cookieWriter;
-    private final XsrfCookieWriter xsrfCookies;
+  private final StartForgotPasswordUseCase startUseCase;
+  private final ForgotPasswordStartWebMapper startMapper;
+  private final VerifyForgotPasswordIdentityUseCase identityCheckUseCase;
+  private final ForgotPasswordIdentityWebMapper identityCheckMapper;
+  private final ProcessForgotPasswordDetailsOtpUseCase detailsCheckUseCase;
+  private final ForgotPasswordDetailsOtpWebMapper detailsCheckMapper;
+  private final CompleteForgotPasswordUseCase completeUseCase;
+  private final ForgotPasswordCompleteWebMapper completeMapper;
+  private final CancelForgotPasswordUseCase cancelUseCase;
+  private final ForgotPasswordCancelWebMapper cancelMapper;
+  private final AuthFlowCookieWriter cookieWriter;
+  private final XsrfCookieWriter xsrfCookies;
 
-    @PostMapping("/start")
-    public Mono<ResponseEntity<MutationResponse<ForgotPasswordWorkflowResultResponse<ForgotPasswordStartDataResponse>>>> startForgotPassword(
-            @RequestBody(required = false) ForgotPasswordStartRequest request,
-            @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
-            @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false) String requestId,
-            @RequestHeader(name = "Accept-Language", required = false) String acceptLanguage,
-            @CookieValue(name = "auth_flow_sid", required = false) String authFlowSessionId,
-            ServerHttpResponse response) {
-        echoRequestId(response, requestId);
-        if (!hasText(idempotencyKey)) {
-            return Mono.just(ForgotPasswordHttpResponses.toResponse(startMapper.missingIdempotencyKey()));
-        }
-        if (request == null) {
-            return Mono.just(ForgotPasswordHttpResponses.toResponse(startMapper.invalidRequest()));
-        }
-        try {
-            return startUseCase.start(startMapper.toCommand(
-                    request,
-                    idempotencyKey.trim(),
-                    requestId,
-                    acceptLanguage,
-                    authFlowSessionId))
-                    .map(result -> {
-                        if (result.status() == StartForgotPasswordResultStatus.STARTED
-                                || result.status() == StartForgotPasswordResultStatus.COMPLETED_REPLAY) {
-                            cookieWriter.writeAuthFlowCookie(response, result.authFlowSessionId());
-                        } else if (result.status() == StartForgotPasswordResultStatus.AUTH_FLOW_INVALID) {
-                            cookieWriter.clearAuthFlowCookie(response);
-                            xsrfCookies.clearXsrfCookie(response);
-                        }
-                        return ForgotPasswordHttpResponses.toResponse(
-                                startMapper.toMutationResponse(result, acceptLanguage));
-                    })
-                    .onErrorResume(exception -> Mono.just(
-                            ForgotPasswordHttpResponses.toResponse(startMapper.systemUnavailable())));
-        } catch (RuntimeException exception) {
-            return Mono.just(ForgotPasswordHttpResponses.toResponse(startMapper.invalidRequest()));
-        }
+  @PostMapping("/start")
+  public Mono<
+          ResponseEntity<
+              MutationResponse<
+                  ForgotPasswordWorkflowResultResponse<ForgotPasswordStartDataResponse>>>>
+      startForgotPassword(
+          @RequestBody(required = false) ForgotPasswordStartRequest request,
+          @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
+          @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false)
+              String requestId,
+          @RequestHeader(name = "Accept-Language", required = false) String acceptLanguage,
+          @CookieValue(name = "auth_flow_sid", required = false) String authFlowSessionId,
+          ServerHttpResponse response) {
+    echoRequestId(response, requestId);
+    if (!hasText(idempotencyKey)) {
+      return Mono.just(ForgotPasswordHttpResponses.toResponse(startMapper.missingIdempotencyKey()));
     }
+    if (request == null) {
+      return Mono.just(ForgotPasswordHttpResponses.toResponse(startMapper.invalidRequest()));
+    }
+    try {
+      return startUseCase
+          .start(
+              startMapper.toCommand(
+                  request, idempotencyKey.trim(), requestId, acceptLanguage, authFlowSessionId))
+          .map(
+              result -> {
+                if (result.status() == StartForgotPasswordResultStatus.STARTED
+                    || result.status() == StartForgotPasswordResultStatus.COMPLETED_REPLAY) {
+                  cookieWriter.writeAuthFlowCookie(response, result.authFlowSessionId());
+                } else if (result.status() == StartForgotPasswordResultStatus.AUTH_FLOW_INVALID) {
+                  cookieWriter.clearAuthFlowCookie(response);
+                  xsrfCookies.clearXsrfCookie(response);
+                }
+                return ForgotPasswordHttpResponses.toResponse(
+                    startMapper.toMutationResponse(result, acceptLanguage));
+              })
+          .onErrorResume(
+              exception ->
+                  Mono.just(
+                      ForgotPasswordHttpResponses.toResponse(startMapper.systemUnavailable())));
+    } catch (RuntimeException exception) {
+      return Mono.just(ForgotPasswordHttpResponses.toResponse(startMapper.invalidRequest()));
+    }
+  }
 
-    @PostMapping("/identity-check")
-    public Mono<ResponseEntity<MutationResponse<ForgotPasswordWorkflowResultResponse<Map<String, Object>>>>> check(
-            @RequestBody(required = false) ForgotPasswordIdentityCheckRequest body,
-            @CookieValue(name = "auth_flow_sid", required = false) String sid,
-            @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrf,
-            @RequestHeader(name = "Origin", required = false) String origin,
-            @RequestHeader(name = "Referer", required = false) String referer,
-            @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false) String requestId,
-            @RequestHeader(name = "Accept-Language", required = false) String language,
-            ServerHttpResponse response) {
-        echoRequestId(response, requestId);
-        if (!hasText(sid))
-            return Mono.just(ForgotPasswordHttpResponses.toResponse(identityCheckMapper.response(
-                    VerifyForgotPasswordIdentityResult.of(VerifyForgotPasswordIdentityStatus.SYSTEM_FAILED))));
-        if (!hasText(csrf))
-            return CsrfHttpResponses.missingToken();
-        try {
-            return identityCheckUseCase.verify(identityCheckMapper.command(body, sid, csrf, origin, referer, requestId))
-                    .map(r -> ForgotPasswordHttpResponses.toResponse(identityCheckMapper.response(r)));
-        } catch (RuntimeException e) {
-            return Mono.just(ForgotPasswordHttpResponses.toResponse(identityCheckMapper.response(
-                    VerifyForgotPasswordIdentityResult.of(VerifyForgotPasswordIdentityStatus.SYSTEM_FAILED))));
-        }
+  @PostMapping("/identity-check")
+  public Mono<
+          ResponseEntity<
+              MutationResponse<ForgotPasswordWorkflowResultResponse<Map<String, Object>>>>>
+      check(
+          @RequestBody(required = false) ForgotPasswordIdentityCheckRequest body,
+          @CookieValue(name = "auth_flow_sid", required = false) String sid,
+          @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrf,
+          @RequestHeader(name = "Origin", required = false) String origin,
+          @RequestHeader(name = "Referer", required = false) String referer,
+          @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false)
+              String requestId,
+          @RequestHeader(name = "Accept-Language", required = false) String language,
+          ServerHttpResponse response) {
+    echoRequestId(response, requestId);
+    if (!hasText(sid))
+      return Mono.just(
+          ForgotPasswordHttpResponses.toResponse(
+              identityCheckMapper.response(
+                  VerifyForgotPasswordIdentityResult.of(
+                      VerifyForgotPasswordIdentityStatus.SYSTEM_FAILED))));
+    if (!hasText(csrf)) return CsrfHttpResponses.missingToken();
+    try {
+      return identityCheckUseCase
+          .verify(identityCheckMapper.command(body, sid, csrf, origin, referer, requestId))
+          .map(r -> ForgotPasswordHttpResponses.toResponse(identityCheckMapper.response(r)));
+    } catch (RuntimeException e) {
+      return Mono.just(
+          ForgotPasswordHttpResponses.toResponse(
+              identityCheckMapper.response(
+                  VerifyForgotPasswordIdentityResult.of(
+                      VerifyForgotPasswordIdentityStatus.SYSTEM_FAILED))));
     }
+  }
 
-    @PostMapping({ "/details-check", "/details" })
-    public Mono<ResponseEntity<MutationResponse<ForgotPasswordWorkflowResultResponse<ForgotPasswordOtpDataResponse>>>> details(
-            @RequestBody(required = false) ForgotPasswordDetailsRequest b,
-            @CookieValue(name = "auth_flow_sid", required = false) String sid,
-            @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrf,
-            @RequestHeader(name = "Origin", required = false) String origin,
-            @RequestHeader(name = "Referer", required = false) String referer,
-            @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false) String requestId,
-            @RequestHeader(name = "Accept-Language", required = false) String lang,
-            @RequestHeader(name = "Idempotency-Key", required = false) String key,
-            ServerHttpResponse response) {
-        echoRequestId(response, requestId);
-        if (b == null || !hasText(sid) || !hasText(key))
-            return Mono
-                    .just(ForgotPasswordHttpResponses
-                            .toResponse(detailsCheckMapper.map(ForgotPasswordDetailsOtpResult.system())));
-        if (!hasText(csrf))
-            return CsrfHttpResponses.missingToken();
-        try {
-            return detailsCheckUseCase
-                    .process(new ForgotPasswordDetailsOtpCommand(new AuthFlowSessionId(sid), csrf, origin, referer,
-                            requestId, lang, key, b.dateOfBirth(), b.email(), b.mobile()))
-                    .map(r -> ForgotPasswordHttpResponses.toResponse(detailsCheckMapper.map(r)));
-        } catch (RuntimeException e) {
-            return Mono
-                    .just(ForgotPasswordHttpResponses
-                            .toResponse(detailsCheckMapper.map(ForgotPasswordDetailsOtpResult.system())));
-        }
+  @PostMapping({"/details-check", "/details"})
+  public Mono<
+          ResponseEntity<
+              MutationResponse<
+                  ForgotPasswordWorkflowResultResponse<ForgotPasswordOtpDataResponse>>>>
+      details(
+          @RequestBody(required = false) ForgotPasswordDetailsRequest b,
+          @CookieValue(name = "auth_flow_sid", required = false) String sid,
+          @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrf,
+          @RequestHeader(name = "Origin", required = false) String origin,
+          @RequestHeader(name = "Referer", required = false) String referer,
+          @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false)
+              String requestId,
+          @RequestHeader(name = "Accept-Language", required = false) String lang,
+          @RequestHeader(name = "Idempotency-Key", required = false) String key,
+          ServerHttpResponse response) {
+    echoRequestId(response, requestId);
+    if (b == null || !hasText(sid) || !hasText(key))
+      return Mono.just(
+          ForgotPasswordHttpResponses.toResponse(
+              detailsCheckMapper.map(ForgotPasswordDetailsOtpResult.system())));
+    if (!hasText(csrf)) return CsrfHttpResponses.missingToken();
+    try {
+      return detailsCheckUseCase
+          .process(
+              new ForgotPasswordDetailsOtpCommand(
+                  new AuthFlowSessionId(sid),
+                  csrf,
+                  origin,
+                  referer,
+                  requestId,
+                  lang,
+                  key,
+                  b.dateOfBirth(),
+                  b.email(),
+                  b.mobile()))
+          .map(r -> ForgotPasswordHttpResponses.toResponse(detailsCheckMapper.map(r)));
+    } catch (RuntimeException e) {
+      return Mono.just(
+          ForgotPasswordHttpResponses.toResponse(
+              detailsCheckMapper.map(ForgotPasswordDetailsOtpResult.system())));
     }
+  }
 
-    @PostMapping(path = "/cancel", produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
-    public Mono<ResponseEntity<MutationResponse<ForgotPasswordWorkflowResultResponse<ForgotPasswordCancelDataResponse>>>> cancel(
-            @CookieValue(name = "auth_flow_sid", required = false) String sessionId,
-            @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrfToken,
-            @RequestHeader(name = "Origin", required = false) String origin,
-            @RequestHeader(name = "Referer", required = false) String referer,
-            @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false) String requestId,
-            @RequestHeader(name = "Accept-Language", required = false) String language,
-            ServerHttpResponse response) {
-        echoRequestId(response, requestId);
-        if (!hasText(sessionId)) {
-            cookieWriter.clearAuthFlowCookie(response);
-            xsrfCookies.clearXsrfCookie(response);
-            return Mono.just(ForgotPasswordHttpResponses.toResponse(cancelMapper.missingSession()));
-        }
-        if (!hasText(csrfToken)) {
-            return CsrfHttpResponses.missingToken();
-        }
-        try {
-            return cancelUseCase.cancel(cancelMapper.toCommand(
-                    sessionId,
-                    csrfToken,
-                    origin,
-                    referer,
-                    requestId))
-                    .map(result -> {
-                        if (result.clearAuthFlowCookie()) {
-                            cookieWriter.clearAuthFlowCookie(response);
-                        }
-                        if (result.clearXsrfCookie()) {
-                            xsrfCookies.clearXsrfCookie(response);
-                        }
-                        return ForgotPasswordHttpResponses.toResponse(cancelMapper.toResponse(result));
-                    })
-                    .onErrorResume(error -> Mono
-                            .just(ForgotPasswordHttpResponses.toResponse(cancelMapper.systemUnavailable())));
-        } catch (RuntimeException exception) {
-            return Mono.just(ForgotPasswordHttpResponses.toResponse(cancelMapper.csrfInvalid()));
-        }
+  @PostMapping(
+      path = "/cancel",
+      produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
+  public Mono<
+          ResponseEntity<
+              MutationResponse<
+                  ForgotPasswordWorkflowResultResponse<ForgotPasswordCancelDataResponse>>>>
+      cancel(
+          @CookieValue(name = "auth_flow_sid", required = false) String sessionId,
+          @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrfToken,
+          @RequestHeader(name = "Origin", required = false) String origin,
+          @RequestHeader(name = "Referer", required = false) String referer,
+          @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false)
+              String requestId,
+          @RequestHeader(name = "Accept-Language", required = false) String language,
+          ServerHttpResponse response) {
+    echoRequestId(response, requestId);
+    if (!hasText(sessionId)) {
+      cookieWriter.clearAuthFlowCookie(response);
+      xsrfCookies.clearXsrfCookie(response);
+      return Mono.just(ForgotPasswordHttpResponses.toResponse(cancelMapper.missingSession()));
     }
+    if (!hasText(csrfToken)) {
+      return CsrfHttpResponses.missingToken();
+    }
+    try {
+      return cancelUseCase
+          .cancel(cancelMapper.toCommand(sessionId, csrfToken, origin, referer, requestId))
+          .map(
+              result -> {
+                if (result.clearAuthFlowCookie()) {
+                  cookieWriter.clearAuthFlowCookie(response);
+                }
+                if (result.clearXsrfCookie()) {
+                  xsrfCookies.clearXsrfCookie(response);
+                }
+                return ForgotPasswordHttpResponses.toResponse(cancelMapper.toResponse(result));
+              })
+          .onErrorResume(
+              error ->
+                  Mono.just(
+                      ForgotPasswordHttpResponses.toResponse(cancelMapper.systemUnavailable())));
+    } catch (RuntimeException exception) {
+      return Mono.just(ForgotPasswordHttpResponses.toResponse(cancelMapper.csrfInvalid()));
+    }
+  }
 
-    @PostMapping(path = "/complete", consumes = org.springframework.http.MediaType.APPLICATION_JSON_VALUE, produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
-    public Mono<ResponseEntity<MutationResponse<ForgotPasswordWorkflowResultResponse<ForgotPasswordCompleteDataResponse>>>> complete(
-            @RequestBody(required = false) ForgotPasswordCompleteRequest request,
-            @CookieValue(name = "auth_flow_sid", required = false) String sessionId,
-            @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrfToken,
-            @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
-            @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false) String requestId,
-            @RequestHeader(name = "Accept-Language", required = false) String language,
-            @RequestHeader(name = "Origin", required = false) String origin,
-            @RequestHeader(name = "Referer", required = false) String referer,
-            ServerHttpResponse response) {
-        echoRequestId(response, requestId);
-        if (!hasText(sessionId)) {
-            return Mono.just(ForgotPasswordHttpResponses.toResponse(completeMapper.missingAuthFlowCookie()));
-        }
-        if (!hasText(csrfToken)) {
-            return CsrfHttpResponses.missingToken();
-        }
-        if (!hasText(idempotencyKey)) {
-            return Mono.just(ForgotPasswordHttpResponses.toResponse(completeMapper.missingIdempotencyKey()));
-        }
-        if (request == null) {
-            return Mono.just(ForgotPasswordHttpResponses.toResponse(completeMapper.invalidRequest()));
-        }
-        try {
-            return completeUseCase.complete(completeMapper.toCommand(
-                    request,
-                    sessionId,
-                    csrfToken,
-                    idempotencyKey,
-                    origin,
-                    referer,
-                    language,
-                    requestId))
-                    .map(result -> {
-                        if (result.clearAuthFlowCookie()) {
-                            cookieWriter.clearAuthFlowCookie(response);
-                        }
-                        if (result.clearXsrfCookie()) {
-                            xsrfCookies.clearXsrfCookie(response);
-                        }
-                        return ForgotPasswordHttpResponses.toResponse(completeMapper.toResponse(result));
-                    })
-                    .onErrorResume(error -> Mono
-                            .just(ForgotPasswordHttpResponses.toResponse(completeMapper.systemUnavailable())));
-        } catch (RuntimeException exception) {
-            return Mono.just(ForgotPasswordHttpResponses.toResponse(completeMapper.invalidRequest()));
-        }
+  @PostMapping(
+      path = "/complete",
+      consumes = org.springframework.http.MediaType.APPLICATION_JSON_VALUE,
+      produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
+  public Mono<
+          ResponseEntity<
+              MutationResponse<
+                  ForgotPasswordWorkflowResultResponse<ForgotPasswordCompleteDataResponse>>>>
+      complete(
+          @RequestBody(required = false) ForgotPasswordCompleteRequest request,
+          @CookieValue(name = "auth_flow_sid", required = false) String sessionId,
+          @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrfToken,
+          @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
+          @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false)
+              String requestId,
+          @RequestHeader(name = "Accept-Language", required = false) String language,
+          @RequestHeader(name = "Origin", required = false) String origin,
+          @RequestHeader(name = "Referer", required = false) String referer,
+          ServerHttpResponse response) {
+    echoRequestId(response, requestId);
+    if (!hasText(sessionId)) {
+      return Mono.just(
+          ForgotPasswordHttpResponses.toResponse(completeMapper.missingAuthFlowCookie()));
     }
+    if (!hasText(csrfToken)) {
+      return CsrfHttpResponses.missingToken();
+    }
+    if (!hasText(idempotencyKey)) {
+      return Mono.just(
+          ForgotPasswordHttpResponses.toResponse(completeMapper.missingIdempotencyKey()));
+    }
+    if (request == null) {
+      return Mono.just(ForgotPasswordHttpResponses.toResponse(completeMapper.invalidRequest()));
+    }
+    try {
+      return completeUseCase
+          .complete(
+              completeMapper.toCommand(
+                  request,
+                  sessionId,
+                  csrfToken,
+                  idempotencyKey,
+                  origin,
+                  referer,
+                  language,
+                  requestId))
+          .map(
+              result -> {
+                if (result.clearAuthFlowCookie()) {
+                  cookieWriter.clearAuthFlowCookie(response);
+                }
+                if (result.clearXsrfCookie()) {
+                  xsrfCookies.clearXsrfCookie(response);
+                }
+                return ForgotPasswordHttpResponses.toResponse(completeMapper.toResponse(result));
+              })
+          .onErrorResume(
+              error ->
+                  Mono.just(
+                      ForgotPasswordHttpResponses.toResponse(completeMapper.systemUnavailable())));
+    } catch (RuntimeException exception) {
+      return Mono.just(ForgotPasswordHttpResponses.toResponse(completeMapper.invalidRequest()));
+    }
+  }
 
-    private void echoRequestId(ServerHttpResponse response, String requestId) {
-        if (hasText(requestId)) {
-            response.getHeaders().set(RequestCorrelation.REQUEST_ID_HEADER, requestId.trim());
-        }
+  private void echoRequestId(ServerHttpResponse response, String requestId) {
+    if (hasText(requestId)) {
+      response.getHeaders().set(RequestCorrelation.REQUEST_ID_HEADER, requestId.trim());
     }
+  }
 
-    private boolean hasText(String value) {
-        return value != null && !value.isBlank();
-    }
+  private boolean hasText(String value) {
+    return value != null && !value.isBlank();
+  }
 }

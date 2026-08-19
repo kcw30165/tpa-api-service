@@ -5,5 +5,5 @@ import java.time.LocalDate;
 import reactor.core.publisher.Mono;
 
 public interface ApimReferenceDateRefreshPort {
-    Mono<LocalDate> fetchReferenceDate(FetchReferenceDateCommand command);
+  Mono<LocalDate> fetchReferenceDate(FetchReferenceDateCommand command);
 }

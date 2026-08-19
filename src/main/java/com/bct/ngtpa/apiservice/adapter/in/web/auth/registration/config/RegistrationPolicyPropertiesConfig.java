@@ -5,5 +5,4 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 @EnableConfigurationProperties(RegistrationIdempotencyProperties.class)
-public class RegistrationPolicyPropertiesConfig {
-}
+public class RegistrationPolicyPropertiesConfig {}

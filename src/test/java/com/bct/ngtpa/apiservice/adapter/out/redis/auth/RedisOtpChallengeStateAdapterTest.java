@@ -29,158 +29,160 @@ import reactor.test.StepVerifier;
 
 class RedisOtpChallengeStateAdapterTest {
 
-    private final OtpCodeHasher hasher = new Sha256OtpCodeHasher();
-    private final RedisOtpChallengeJsonMapper jsonMapper = new RedisOtpChallengeJsonMapper();
+  private final OtpCodeHasher hasher = new Sha256OtpCodeHasher();
+  private final RedisOtpChallengeJsonMapper jsonMapper = new RedisOtpChallengeJsonMapper();
 
-    private CachePort cachePort;
-    private RedisOtpChallengeStateAdapter adapter;
+  private CachePort cachePort;
+  private RedisOtpChallengeStateAdapter adapter;
 
-    @BeforeEach
-    void setUp() {
-        cachePort = org.mockito.Mockito.mock(CachePort.class);
-        adapter = new RedisOtpChallengeStateAdapter(
-                cachePort,
-                new RedisCacheKeyFactory("ngtpa"),
-                jsonMapper,
-                Clock.fixed(Instant.parse("2026-06-26T10:15:30Z"), ZoneOffset.UTC));
-    }
+  @BeforeEach
+  void setUp() {
+    cachePort = org.mockito.Mockito.mock(CachePort.class);
+    adapter =
+        new RedisOtpChallengeStateAdapter(
+            cachePort,
+            new RedisCacheKeyFactory("ngtpa"),
+            jsonMapper,
+            Clock.fixed(Instant.parse("2026-06-26T10:15:30Z"), ZoneOffset.UTC));
+  }
 
-    @Test
-    void buildsOtpChallengeKeyWithAuthOtpNamespace() {
-        OtpChallenge challenge = sampleChallenge(Instant.parse("2026-06-26T10:20:30Z"));
-        when(cachePort.set(any(), any(), any())).thenReturn(Mono.empty());
+  @Test
+  void buildsOtpChallengeKeyWithAuthOtpNamespace() {
+    OtpChallenge challenge = sampleChallenge(Instant.parse("2026-06-26T10:20:30Z"));
+    when(cachePort.set(any(), any(), any())).thenReturn(Mono.empty());
 
-        StepVerifier.create(adapter.save(challenge))
-                .verifyComplete();
+    StepVerifier.create(adapter.save(challenge)).verifyComplete();
 
-        verify(cachePort).set(eq("ngtpa:auth:otp:otp_123"), any(), eq(Duration.ofMinutes(5)));
-    }
+    verify(cachePort).set(eq("ngtpa:auth:otp:otp_123"), any(), eq(Duration.ofMinutes(5)));
+  }
 
-    @Test
-    void loadsOtpChallengeRoundTrip() {
-        OtpChallenge challenge = sampleChallenge(Instant.parse("2026-06-26T10:20:30Z"));
-        when(cachePort.get("ngtpa:auth:otp:otp_123")).thenReturn(Mono.just(Optional.of(jsonMapper.toJson(challenge))));
+  @Test
+  void loadsOtpChallengeRoundTrip() {
+    OtpChallenge challenge = sampleChallenge(Instant.parse("2026-06-26T10:20:30Z"));
+    when(cachePort.get("ngtpa:auth:otp:otp_123"))
+        .thenReturn(Mono.just(Optional.of(jsonMapper.toJson(challenge))));
 
-        StepVerifier.create(adapter.findById("otp_123"))
-                .assertNext(result -> assertThat(result).contains(challenge))
-                .verifyComplete();
-    }
+    StepVerifier.create(adapter.findById("otp_123"))
+        .assertNext(result -> assertThat(result).contains(challenge))
+        .verifyComplete();
+  }
 
-    @Test
-    void returnsEmptyWhenOtpChallengeMissing() {
-        when(cachePort.get("ngtpa:auth:otp:missing")).thenReturn(Mono.just(Optional.empty()));
+  @Test
+  void returnsEmptyWhenOtpChallengeMissing() {
+    when(cachePort.get("ngtpa:auth:otp:missing")).thenReturn(Mono.just(Optional.empty()));
 
-        StepVerifier.create(adapter.findById("missing"))
-                .assertNext(result -> assertThat(result).isEmpty())
-                .verifyComplete();
-    }
+    StepVerifier.create(adapter.findById("missing"))
+        .assertNext(result -> assertThat(result).isEmpty())
+        .verifyComplete();
+  }
 
-    @Test
-    void updatesExistingOtpChallenge() {
-        OtpChallenge updated = new OtpChallenge(
-                "otp_123",
-                OtpScenario.REGISTRATION,
-                "workflow-123",
-                OtpChannel.SMS,
-                "destination-hash",
-                hasher.hash("123456"),
-                OtpStatus.LOCKED,
-                5,
-                5,
-                0,
-                3,
-                Instant.parse("2026-06-26T10:15:30Z"),
-                Instant.parse("2026-06-26T10:20:30Z"),
-                Instant.parse("2026-06-26T10:15:30Z"),
-                null,
-                null);
-        when(cachePort.set(any(), any(), any())).thenReturn(Mono.empty());
-        when(cachePort.get("ngtpa:auth:otp:otp_123")).thenReturn(Mono.just(Optional.of(jsonMapper.toJson(updated))));
+  @Test
+  void updatesExistingOtpChallenge() {
+    OtpChallenge updated =
+        new OtpChallenge(
+            "otp_123",
+            OtpScenario.REGISTRATION,
+            "workflow-123",
+            OtpChannel.SMS,
+            "destination-hash",
+            hasher.hash("123456"),
+            OtpStatus.LOCKED,
+            5,
+            5,
+            0,
+            3,
+            Instant.parse("2026-06-26T10:15:30Z"),
+            Instant.parse("2026-06-26T10:20:30Z"),
+            Instant.parse("2026-06-26T10:15:30Z"),
+            null,
+            null);
+    when(cachePort.set(any(), any(), any())).thenReturn(Mono.empty());
+    when(cachePort.get("ngtpa:auth:otp:otp_123"))
+        .thenReturn(Mono.just(Optional.of(jsonMapper.toJson(updated))));
 
-        StepVerifier.create(adapter.update(updated))
-                .verifyComplete();
+    StepVerifier.create(adapter.update(updated)).verifyComplete();
 
-        StepVerifier.create(adapter.findById("otp_123"))
-                .assertNext(result -> {
-                    assertThat(result).contains(updated);
-                    assertThat(result.orElseThrow().status()).isEqualTo(OtpStatus.LOCKED);
-                    assertThat(result.orElseThrow().failedAttemptCount()).isEqualTo(5);
-                })
-                .verifyComplete();
-    }
+    StepVerifier.create(adapter.findById("otp_123"))
+        .assertNext(
+            result -> {
+              assertThat(result).contains(updated);
+              assertThat(result.orElseThrow().status()).isEqualTo(OtpStatus.LOCKED);
+              assertThat(result.orElseThrow().failedAttemptCount()).isEqualTo(5);
+            })
+        .verifyComplete();
+  }
 
-    @Test
-    void deleteRemovesOtpChallenge() {
-        when(cachePort.evict("ngtpa:auth:otp:otp_123")).thenReturn(Mono.just(true));
+  @Test
+  void deleteRemovesOtpChallenge() {
+    when(cachePort.evict("ngtpa:auth:otp:otp_123")).thenReturn(Mono.just(true));
 
-        StepVerifier.create(adapter.delete("otp_123"))
-                .verifyComplete();
+    StepVerifier.create(adapter.delete("otp_123")).verifyComplete();
 
-        verify(cachePort).evict("ngtpa:auth:otp:otp_123");
-    }
+    verify(cachePort).evict("ngtpa:auth:otp:otp_123");
+  }
 
-    @Test
-    void saveRejectsAlreadyExpiredChallenge() {
-        OtpChallenge challenge = sampleChallenge(Instant.parse("2026-06-26T10:15:30Z"));
+  @Test
+  void saveRejectsAlreadyExpiredChallenge() {
+    OtpChallenge challenge = sampleChallenge(Instant.parse("2026-06-26T10:15:30Z"));
 
-        StepVerifier.create(adapter.save(challenge))
-                .expectError(IllegalArgumentException.class)
-                .verify();
+    StepVerifier.create(adapter.save(challenge))
+        .expectError(IllegalArgumentException.class)
+        .verify();
 
-        verifyNoInteractions(cachePort);
-    }
+    verifyNoInteractions(cachePort);
+  }
 
-    @Test
-    void saveUsesTtlDerivedFromExpiresAt() {
-        OtpChallenge challenge = sampleChallenge(Instant.parse("2026-06-26T10:16:45Z"));
-        when(cachePort.set(any(), any(), any())).thenReturn(Mono.empty());
+  @Test
+  void saveUsesTtlDerivedFromExpiresAt() {
+    OtpChallenge challenge = sampleChallenge(Instant.parse("2026-06-26T10:16:45Z"));
+    when(cachePort.set(any(), any(), any())).thenReturn(Mono.empty());
 
-        StepVerifier.create(adapter.save(challenge))
-                .verifyComplete();
+    StepVerifier.create(adapter.save(challenge)).verifyComplete();
 
-        ArgumentCaptor<Duration> ttlCaptor = ArgumentCaptor.forClass(Duration.class);
-        verify(cachePort).set(eq("ngtpa:auth:otp:otp_123"), any(), ttlCaptor.capture());
-        assertThat(ttlCaptor.getValue()).isEqualTo(Duration.ofSeconds(75));
-    }
+    ArgumentCaptor<Duration> ttlCaptor = ArgumentCaptor.forClass(Duration.class);
+    verify(cachePort).set(eq("ngtpa:auth:otp:otp_123"), any(), ttlCaptor.capture());
+    assertThat(ttlCaptor.getValue()).isEqualTo(Duration.ofSeconds(75));
+  }
 
-    @Test
-    void malformedRedisJsonFailsSafely() {
-        when(cachePort.get("ngtpa:auth:otp:otp_123")).thenReturn(Mono.just(Optional.of("{bad-json")));
+  @Test
+  void malformedRedisJsonFailsSafely() {
+    when(cachePort.get("ngtpa:auth:otp:otp_123")).thenReturn(Mono.just(Optional.of("{bad-json")));
 
-        StepVerifier.create(adapter.findById("otp_123"))
-                .expectErrorSatisfies(error -> {
-                    assertThat(error).isInstanceOf(CacheException.class);
-                    assertThat(error.getMessage()).doesNotContain("{bad-json");
-                })
-                .verify();
-    }
+    StepVerifier.create(adapter.findById("otp_123"))
+        .expectErrorSatisfies(
+            error -> {
+              assertThat(error).isInstanceOf(CacheException.class);
+              assertThat(error.getMessage()).doesNotContain("{bad-json");
+            })
+        .verify();
+  }
 
-    @Test
-    void findRejectsBlankOtpChallengeIdBeforeOutboundCall() {
-        StepVerifier.create(adapter.findById("  "))
-                .expectError(IllegalArgumentException.class)
-                .verify();
+  @Test
+  void findRejectsBlankOtpChallengeIdBeforeOutboundCall() {
+    StepVerifier.create(adapter.findById("  "))
+        .expectError(IllegalArgumentException.class)
+        .verify();
 
-        verifyNoInteractions(cachePort);
-    }
+    verifyNoInteractions(cachePort);
+  }
 
-    private OtpChallenge sampleChallenge(Instant expiresAt) {
-        return new OtpChallenge(
-                "otp_123",
-                OtpScenario.REGISTRATION,
-                "workflow-123",
-                OtpChannel.SMS,
-                "destination-hash",
-                hasher.hash("123456"),
-                OtpStatus.CREATED,
-                0,
-                5,
-                0,
-                3,
-                Instant.parse("2026-06-26T10:15:30Z"),
-                expiresAt,
-                Instant.parse("2026-06-26T10:15:30Z"),
-                null,
-                null);
-    }
+  private OtpChallenge sampleChallenge(Instant expiresAt) {
+    return new OtpChallenge(
+        "otp_123",
+        OtpScenario.REGISTRATION,
+        "workflow-123",
+        OtpChannel.SMS,
+        "destination-hash",
+        hasher.hash("123456"),
+        OtpStatus.CREATED,
+        0,
+        5,
+        0,
+        3,
+        Instant.parse("2026-06-26T10:15:30Z"),
+        expiresAt,
+        Instant.parse("2026-06-26T10:15:30Z"),
+        null,
+        null);
+  }
 }

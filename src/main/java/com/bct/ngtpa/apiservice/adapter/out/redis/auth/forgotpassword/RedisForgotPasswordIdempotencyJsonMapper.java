@@ -13,75 +13,82 @@ import java.time.Instant;
 import java.util.Map;
 
 public final class RedisForgotPasswordIdempotencyJsonMapper {
-    private final ObjectMapper objectMapper;
+  private final ObjectMapper objectMapper;
 
-    public RedisForgotPasswordIdempotencyJsonMapper() {
-        this(defaultObjectMapper());
-    }
+  public RedisForgotPasswordIdempotencyJsonMapper() {
+    this(defaultObjectMapper());
+  }
 
-    public RedisForgotPasswordIdempotencyJsonMapper(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
-    }
+  public RedisForgotPasswordIdempotencyJsonMapper(ObjectMapper objectMapper) {
+    this.objectMapper = objectMapper;
+  }
 
-    public String toJson(ForgotPasswordIdempotencyRecord record) {
-        try {
-            return objectMapper.writeValueAsString(toRedisRecord(record));
-        } catch (JsonProcessingException exception) {
-            throw new IllegalStateException("Unable to serialize forgot password idempotency record");
-        }
+  public String toJson(ForgotPasswordIdempotencyRecord record) {
+    try {
+      return objectMapper.writeValueAsString(toRedisRecord(record));
+    } catch (JsonProcessingException exception) {
+      throw new IllegalStateException("Unable to serialize forgot password idempotency record");
     }
+  }
 
-    public ForgotPasswordIdempotencyRecord fromJson(String json) {
-        try {
-            return fromRedisRecord(objectMapper.readValue(json, RedisForgotPasswordIdempotencyRecord.class));
-        } catch (Exception exception) {
-            throw new IllegalStateException("Unable to deserialize forgot password idempotency record");
-        }
+  public ForgotPasswordIdempotencyRecord fromJson(String json) {
+    try {
+      return fromRedisRecord(
+          objectMapper.readValue(json, RedisForgotPasswordIdempotencyRecord.class));
+    } catch (Exception exception) {
+      throw new IllegalStateException("Unable to deserialize forgot password idempotency record");
     }
+  }
 
-    private static RedisForgotPasswordIdempotencyRecord toRedisRecord(ForgotPasswordIdempotencyRecord record) {
-        RedisForgotPasswordIdempotencyReplaySnapshotRecord snapshot = null;
-        if (record.replaySnapshot() != null) {
-            snapshot = new RedisForgotPasswordIdempotencyReplaySnapshotRecord(
-                    record.replaySnapshot().outcomeCode(),
-                    record.replaySnapshot().opaqueCommitRef(),
-                    record.replaySnapshot().safeHeaders(),
-                    record.replaySnapshot().identityType());
-        }
-        return new RedisForgotPasswordIdempotencyRecord(
-                record.action().name(),
-                record.idempotencyKey().value(),
-                record.requestHash().value(),
-                record.status().name(),
-                snapshot,
-                record.createdAt().toString(),
-                record.updatedAt().toString(),
-                record.expiresAt().toString(),
-                record.pendingOpaqueCommitRef());
+  private static RedisForgotPasswordIdempotencyRecord toRedisRecord(
+      ForgotPasswordIdempotencyRecord record) {
+    RedisForgotPasswordIdempotencyReplaySnapshotRecord snapshot = null;
+    if (record.replaySnapshot() != null) {
+      snapshot =
+          new RedisForgotPasswordIdempotencyReplaySnapshotRecord(
+              record.replaySnapshot().outcomeCode(),
+              record.replaySnapshot().opaqueCommitRef(),
+              record.replaySnapshot().safeHeaders(),
+              record.replaySnapshot().identityType());
     }
+    return new RedisForgotPasswordIdempotencyRecord(
+        record.action().name(),
+        record.idempotencyKey().value(),
+        record.requestHash().value(),
+        record.status().name(),
+        snapshot,
+        record.createdAt().toString(),
+        record.updatedAt().toString(),
+        record.expiresAt().toString(),
+        record.pendingOpaqueCommitRef());
+  }
 
-    private static ForgotPasswordIdempotencyRecord fromRedisRecord(RedisForgotPasswordIdempotencyRecord record) {
-        ForgotPasswordIdempotencyReplaySnapshot snapshot = null;
-        if (record.replaySnapshot() != null) {
-            snapshot = new ForgotPasswordIdempotencyReplaySnapshot(
-                    record.replaySnapshot().outcomeCode(),
-                    record.replaySnapshot().opaqueCommitRef(),
-                    record.replaySnapshot().safeHeaders() == null ? Map.of() : record.replaySnapshot().safeHeaders(),
-                    record.replaySnapshot().identityType());
-        }
-        return new ForgotPasswordIdempotencyRecord(
-                ForgotPasswordIdempotencyAction.valueOf(record.action()),
-                new ForgotPasswordIdempotencyKey(record.idempotencyKey()),
-                new ForgotPasswordRequestHash(record.requestHash()),
-                ForgotPasswordIdempotencyStatus.valueOf(record.status()),
-                snapshot,
-                Instant.parse(record.createdAt()),
-                Instant.parse(record.updatedAt()),
-                Instant.parse(record.expiresAt()),
-                record.pendingOpaqueCommitRef());
+  private static ForgotPasswordIdempotencyRecord fromRedisRecord(
+      RedisForgotPasswordIdempotencyRecord record) {
+    ForgotPasswordIdempotencyReplaySnapshot snapshot = null;
+    if (record.replaySnapshot() != null) {
+      snapshot =
+          new ForgotPasswordIdempotencyReplaySnapshot(
+              record.replaySnapshot().outcomeCode(),
+              record.replaySnapshot().opaqueCommitRef(),
+              record.replaySnapshot().safeHeaders() == null
+                  ? Map.of()
+                  : record.replaySnapshot().safeHeaders(),
+              record.replaySnapshot().identityType());
     }
+    return new ForgotPasswordIdempotencyRecord(
+        ForgotPasswordIdempotencyAction.valueOf(record.action()),
+        new ForgotPasswordIdempotencyKey(record.idempotencyKey()),
+        new ForgotPasswordRequestHash(record.requestHash()),
+        ForgotPasswordIdempotencyStatus.valueOf(record.status()),
+        snapshot,
+        Instant.parse(record.createdAt()),
+        Instant.parse(record.updatedAt()),
+        Instant.parse(record.expiresAt()),
+        record.pendingOpaqueCommitRef());
+  }
 
-    private static ObjectMapper defaultObjectMapper() {
-        return new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
-    }
+  private static ObjectMapper defaultObjectMapper() {
+    return new ObjectMapper().disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+  }
 }

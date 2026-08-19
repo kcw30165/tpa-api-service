@@ -13,48 +13,68 @@ import reactor.test.StepVerifier;
 
 class GetLoginAccountsUseCaseTest {
 
-    @Test
-    void delegatesExactProtectedContextValuesWithoutInventingRequestFields() {
-        AtomicReference<LoginAccountAuthorizationCommand> captured = new AtomicReference<>();
-        LoginAccountAuthorizationPort port = command -> {
-            captured.set(command);
-            return Mono.just(LoginAccountAuthorizationResult.available(List.of(
-                    new LoginAccountRecord("DB", "DBA", "8802", "OE", 1, "T", "20/07/2026"))));
+  @Test
+  void delegatesExactProtectedContextValuesWithoutInventingRequestFields() {
+    AtomicReference<LoginAccountAuthorizationCommand> captured = new AtomicReference<>();
+    LoginAccountAuthorizationPort port =
+        command -> {
+          captured.set(command);
+          return Mono.just(
+              LoginAccountAuthorizationResult.available(
+                  List.of(
+                      new LoginAccountRecord("DB", "DBA", "8802", "OE", 1, "T", "20/07/2026"))));
         };
-        var useCase = new GetLoginAccountsUseCase(port);
+    var useCase = new GetLoginAccountsUseCase(port);
 
-        StepVerifier.create(useCase.getAccounts(new GetLoginAccountsCommand("member01", "req-1", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR)))
-                .assertNext(result -> {
-                    assertThat(result.status()).isEqualTo(LoginAccountAuthorizationStatus.AVAILABLE);
-                    assertThat(result.accounts()).hasSize(1);
-                })
-                .verifyComplete();
+    StepVerifier.create(
+            useCase.getAccounts(
+                new GetLoginAccountsCommand(
+                    "member01",
+                    "req-1",
+                    com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR)))
+        .assertNext(
+            result -> {
+              assertThat(result.status()).isEqualTo(LoginAccountAuthorizationStatus.AVAILABLE);
+              assertThat(result.accounts()).hasSize(1);
+            })
+        .verifyComplete();
 
-        assertThat(captured.get()).isEqualTo(new LoginAccountAuthorizationCommand("member01", "cust-id", "member01", "req-1", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR));
-    }
+    assertThat(captured.get())
+        .isEqualTo(
+            new LoginAccountAuthorizationCommand(
+                "member01",
+                "cust-id",
+                "member01",
+                "req-1",
+                com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR));
+  }
 
-    @Test
-    void commandRejectsMalformedRequiredTransportNeutralValuesWhileRawRecordsRemainPermissive() {
-        assertThatThrownBy(() -> new GetLoginAccountsCommand(" ", "req", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR))
-                .isInstanceOf(IllegalArgumentException.class);
+  @Test
+  void commandRejectsMalformedRequiredTransportNeutralValuesWhileRawRecordsRemainPermissive() {
+    assertThatThrownBy(
+            () ->
+                new GetLoginAccountsCommand(
+                    " ",
+                    "req",
+                    com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR))
+        .isInstanceOf(IllegalArgumentException.class);
 
-        var malformedRawRecord = new LoginAccountRecord(
-                "DB", "DBA", "8802", "OE", 0, "", "");
-        var validation = new LoginAccountRecordValidationService(11, 4, '0')
-                .validate(List.of(malformedRawRecord));
+    var malformedRawRecord = new LoginAccountRecord("DB", "DBA", "8802", "OE", 0, "", "");
+    var validation =
+        new LoginAccountRecordValidationService(11, 4, '0').validate(List.of(malformedRawRecord));
 
-        assertThat(validation.status()).isEqualTo(LoginAccountValidationStatus.ZERO_VALID_RECORDS);
-        assertThat(validation.accounts()).isEmpty();
-        assertThat(validation.rejections()).hasSize(1);
-        assertThat(validation.rejections().getFirst().category())
-                .isEqualTo(LoginAccountRecordRejectionCategory.CERTIFICATE_NUMBER);
-    }
+    assertThat(validation.status()).isEqualTo(LoginAccountValidationStatus.ZERO_VALID_RECORDS);
+    assertThat(validation.accounts()).isEmpty();
+    assertThat(validation.rejections()).hasSize(1);
+    assertThat(validation.rejections().getFirst().category())
+        .isEqualTo(LoginAccountRecordRejectionCategory.CERTIFICATE_NUMBER);
+  }
 
-    @Test
-    void unavailableOutcomeCarriesNoRawDownstreamCodeOrRecords() {
-        var result = LoginAccountAuthorizationResult.unavailable();
-        assertThat(result.status()).isEqualTo(LoginAccountAuthorizationStatus.UNAVAILABLE);
-        assertThat(result.accounts()).isEmpty();
-        assertThat(result.toString()).doesNotContain("err.tpa", "member01", "8802");
-    }
+  @Test
+  void unavailableOutcomeCarriesNoRawDownstreamCodeOrRecords() {
+    var result = LoginAccountAuthorizationResult.unavailable();
+    assertThat(result.status()).isEqualTo(LoginAccountAuthorizationStatus.UNAVAILABLE);
+    assertThat(result.accounts()).isEmpty();
+    assertThat(result.toString()).doesNotContain("err.tpa", "member01", "8802");
+  }
 }

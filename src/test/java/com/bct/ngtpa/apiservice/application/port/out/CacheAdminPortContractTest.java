@@ -10,32 +10,35 @@ import reactor.core.publisher.Mono;
 
 class CacheAdminPortContractTest {
 
-    @Test
-    void exposesCapabilityScopedFindAndEvictOperations() {
-        Method find = method("findAllByCapability");
-        Method evict = method("evictAllByCapability");
+  @Test
+  void exposesCapabilityScopedFindAndEvictOperations() {
+    Method find = method("findAllByCapability");
+    Method evict = method("evictAllByCapability");
 
-        assertThat(find.getReturnType()).isEqualTo(Flux.class);
-        assertThat(find.getParameterTypes()).hasSize(1);
-        assertThat(evict.getReturnType()).isEqualTo(Mono.class);
-        assertThat(evict.getParameterTypes()).hasSize(1);
-    }
+    assertThat(find.getReturnType()).isEqualTo(Flux.class);
+    assertThat(find.getParameterTypes()).hasSize(1);
+    assertThat(evict.getReturnType()).isEqualTo(Mono.class);
+    assertThat(evict.getParameterTypes()).hasSize(1);
+  }
 
-    @Test
-    void doesNotExposeRawPatternOrKeyspaceDeleteOperations() {
-        assertThat(Arrays.stream(CacheAdminPort.class.getMethods())
+  @Test
+  void doesNotExposeRawPatternOrKeyspaceDeleteOperations() {
+    assertThat(
+            Arrays.stream(CacheAdminPort.class.getMethods())
                 .map(Method::getName)
-                .filter(name -> name.toLowerCase().contains("pattern")
-                        || name.toLowerCase().contains("keyspace")
-                        || name.toLowerCase().equals("deleteall"))
+                .filter(
+                    name ->
+                        name.toLowerCase().contains("pattern")
+                            || name.toLowerCase().contains("keyspace")
+                            || name.toLowerCase().equals("deleteall"))
                 .toList())
-                .isEmpty();
-    }
+        .isEmpty();
+  }
 
-    private Method method(String name) {
-        return Arrays.stream(CacheAdminPort.class.getMethods())
-                .filter(candidate -> candidate.getName().equals(name))
-                .findFirst()
-                .orElseThrow(() -> new AssertionError("Missing method: " + name));
-    }
+  private Method method(String name) {
+    return Arrays.stream(CacheAdminPort.class.getMethods())
+        .filter(candidate -> candidate.getName().equals(name))
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("Missing method: " + name));
+  }
 }

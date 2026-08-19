@@ -12,36 +12,43 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class AesGcmLoginStartReplayProtectorTest {
-        private final AesGcmLoginStartReplayProtector protector = new AesGcmLoginStartReplayProtector(
-                        new ObjectMapper(), "v1", Base64.getEncoder().encodeToString(new byte[32]));
+  private final AesGcmLoginStartReplayProtector protector =
+      new AesGcmLoginStartReplayProtector(
+          new ObjectMapper(), "v1", Base64.getEncoder().encodeToString(new byte[32]));
 
-        @Test
-        void roundTripsSensitiveReplayPayloadWithoutPlaintextCiphertext() {
-                var payload = new LoginStartReplayPayload(
-                                "afs_secret_session",
-                                "csrf_secret_token",
-                                900,
-                                List.of(new LoginDestinationChoice("dst_opaque", "email", "m*****@example.com")),
-                                Instant.parse("2026-07-20T00:15:00Z"));
+  @Test
+  void roundTripsSensitiveReplayPayloadWithoutPlaintextCiphertext() {
+    var payload =
+        new LoginStartReplayPayload(
+            "afs_secret_session",
+            "csrf_secret_token",
+            900,
+            List.of(new LoginDestinationChoice("dst_opaque", "email", "m*****@example.com")),
+            Instant.parse("2026-07-20T00:15:00Z"));
 
-                var encrypted = protector.protect(payload);
+    var encrypted = protector.protect(payload);
 
-                assertThat(encrypted.ciphertext()).doesNotContain(
-                                "afs_secret_session", "csrf_secret_token", "m*****@example.com");
-                assertThat(protector.unprotect(encrypted)).isEqualTo(payload);
-                assertThat(encrypted.toString()).doesNotContain(encrypted.ciphertext());
-        }
+    assertThat(encrypted.ciphertext())
+        .doesNotContain("afs_secret_session", "csrf_secret_token", "m*****@example.com");
+    assertThat(protector.unprotect(encrypted)).isEqualTo(payload);
+    assertThat(encrypted.toString()).doesNotContain(encrypted.ciphertext());
+  }
 
-        @Test
-        void rejectsTamperingAndKeyVersionMismatch() {
-                var payload = new LoginStartReplayPayload(
-                                "afs_secret_session", "csrf_secret_token", 900, List.of(), Instant.now());
-                var encrypted = protector.protect(payload);
+  @Test
+  void rejectsTamperingAndKeyVersionMismatch() {
+    var payload =
+        new LoginStartReplayPayload(
+            "afs_secret_session", "csrf_secret_token", 900, List.of(), Instant.now());
+    var encrypted = protector.protect(payload);
 
-                assertThatThrownBy(() -> protector.unprotect(encrypted.withKeyVersion("v2")))
-                                .isInstanceOf(LoginStartReplayProtectionException.class);
-                assertThatThrownBy(() -> protector.unprotect(encrypted.withCiphertext(
-                                encrypted.ciphertext().substring(0, encrypted.ciphertext().length() - 2) + "AA")))
-                                .isInstanceOf(LoginStartReplayProtectionException.class);
-        }
+    assertThatThrownBy(() -> protector.unprotect(encrypted.withKeyVersion("v2")))
+        .isInstanceOf(LoginStartReplayProtectionException.class);
+    assertThatThrownBy(
+            () ->
+                protector.unprotect(
+                    encrypted.withCiphertext(
+                        encrypted.ciphertext().substring(0, encrypted.ciphertext().length() - 2)
+                            + "AA")))
+        .isInstanceOf(LoginStartReplayProtectionException.class);
+  }
 }

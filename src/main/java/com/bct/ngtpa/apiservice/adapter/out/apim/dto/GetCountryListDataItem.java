@@ -14,18 +14,18 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class GetCountryListDataItem {
 
-    @JsonProperty("country-code")
-    private String countryCode;
+  @JsonProperty("country-code")
+  private String countryCode;
 
-    @JsonProperty("country-name-eng")
-    private String countryNameEng;
+  @JsonProperty("country-name-eng")
+  private String countryNameEng;
 
-    @JsonProperty("country-name-chi")
-    private String countryNameChi;
+  @JsonProperty("country-name-chi")
+  private String countryNameChi;
 
-    @JsonProperty("calling-code")
-    private String callingCode;
+  @JsonProperty("calling-code")
+  private String callingCode;
 
-    @JsonProperty("alpha-two-code")
-    private String alphaTwoCode;
+  @JsonProperty("alpha-two-code")
+  private String alphaTwoCode;
 }

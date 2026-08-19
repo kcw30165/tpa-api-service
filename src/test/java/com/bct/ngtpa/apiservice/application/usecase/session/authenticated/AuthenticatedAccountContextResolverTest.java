@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.application.usecase.session.authenticated;
 
 import static org.assertj.core.api.Assertions.assertThat;
+
 import com.bct.ngtpa.apiservice.application.dto.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.*;
 import com.bct.ngtpa.apiservice.application.port.out.*;
@@ -11,51 +12,78 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 class AuthenticatedAccountContextResolverTest {
-    private static final Instant NOW = Instant.parse("2026-07-20T00:00:00Z");
-    private static final String SID = "sid_abcdefghijklmnopqrstuvwx";
-    private static final String REF = "acc_abcdefghijklmnopqrstuvwx";
+  private static final Instant NOW = Instant.parse("2026-07-20T00:00:00Z");
+  private static final String SID = "sid_abcdefghijklmnopqrstuvwx";
+  private static final String REF = "acc_abcdefghijklmnopqrstuvwx";
 
-    @Test
-    void resolvesSelectedAccountAndActorFromTouchedSession() {
-        var resolver = resolver(active());
-        StepVerifier.create(resolver.resolvePortalAccessContext(REF, SID)).assertNext(c -> {
-            assertThat(c.actor().actorUserId()).isEqualTo("member");
-            assertThat(c.actor().actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_MBR);
-            assertThat(c.account().accountRef()).isEqualTo(REF);
-            assertThat(c.account().policyNo()).isEqualTo("00000008802");
-            assertThat(c.account().termStatus()).isEqualTo(TermStatus.T);
-        }).verifyComplete();
-    }
+  @Test
+  void resolvesSelectedAccountAndActorFromTouchedSession() {
+    var resolver = resolver(active());
+    StepVerifier.create(resolver.resolvePortalAccessContext(REF, SID))
+        .assertNext(
+            c -> {
+              assertThat(c.actor().actorUserId()).isEqualTo("member");
+              assertThat(c.actor().actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_MBR);
+              assertThat(c.account().accountRef()).isEqualTo(REF);
+              assertThat(c.account().policyNo()).isEqualTo("00000008802");
+              assertThat(c.account().termStatus()).isEqualTo(TermStatus.T);
+            })
+        .verifyComplete();
+  }
 
-    @Test
-    void unknownAccountRefFailsClosed() {
-        StepVerifier.create(resolver(active()).resolvePortalAccessContext("acc_yxwvutsrqponmlkjihgfedcb", SID))
-                .expectErrorSatisfies(e -> assertThat(e)
-                        .isInstanceOf(AuthenticatedPortalContextResolutionException.class)
-                        .hasMessage("Authenticated account context unavailable").hasMessageNotContaining("00000008802"))
-                .verify();
-    }
+  @Test
+  void unknownAccountRefFailsClosed() {
+    StepVerifier.create(
+            resolver(active()).resolvePortalAccessContext("acc_yxwvutsrqponmlkjihgfedcb", SID))
+        .expectErrorSatisfies(
+            e ->
+                assertThat(e)
+                    .isInstanceOf(AuthenticatedPortalContextResolutionException.class)
+                    .hasMessage("Authenticated account context unavailable")
+                    .hasMessageNotContaining("00000008802"))
+        .verify();
+  }
 
-    @Test
-    void missingSessionIdAndInactiveSessionFailClosed() {
-        StepVerifier.create(resolver(active()).resolvePortalAccessContext(REF, " "))
-                .expectError(AuthenticatedPortalContextResolutionException.class).verify();
-        StepVerifier
-                .create(resolver(AuthenticatedSessionLifecycleResult.of(AuthenticatedSessionLifecycleStatus.EXPIRED))
-                        .resolvePortalAccessContext(REF, SID))
-                .expectError(AuthenticatedPortalContextResolutionException.class).verify();
-    }
+  @Test
+  void missingSessionIdAndInactiveSessionFailClosed() {
+    StepVerifier.create(resolver(active()).resolvePortalAccessContext(REF, " "))
+        .expectError(AuthenticatedPortalContextResolutionException.class)
+        .verify();
+    StepVerifier.create(
+            resolver(
+                    AuthenticatedSessionLifecycleResult.of(
+                        AuthenticatedSessionLifecycleStatus.EXPIRED))
+                .resolvePortalAccessContext(REF, SID))
+        .expectError(AuthenticatedPortalContextResolutionException.class)
+        .verify();
+  }
 
-    private AuthenticatedAccountContextResolver resolver(AuthenticatedSessionLifecycleResult result) {
-        return new AuthenticatedAccountContextResolver(command -> Mono.just(result));
-    }
+  private AuthenticatedAccountContextResolver resolver(AuthenticatedSessionLifecycleResult result) {
+    return new AuthenticatedAccountContextResolver(command -> Mono.just(result));
+  }
 
-    private AuthenticatedSessionLifecycleResult active() {
-        var account = new AuthenticatedSessionAccount(new AuthenticatedAccountRef(REF), "DB", "00000008802", "0001",
-                "DBA", "OE", "T", LocalDate.of(2026, 7, 20));
-        var session = new AuthenticatedSession(new AuthenticatedSessionId(SID), new ActorContext("member", ActorUserRole.ROLE_USER_MBR),
-                List.of(account), AuthenticatedSessionStatus.ACTIVE, "csrf_hash", NOW, NOW, NOW.plusSeconds(1800),
-                NOW.plusSeconds(28800));
-        return AuthenticatedSessionLifecycleResult.active(session);
-    }
+  private AuthenticatedSessionLifecycleResult active() {
+    var account =
+        new AuthenticatedSessionAccount(
+            new AuthenticatedAccountRef(REF),
+            "DB",
+            "00000008802",
+            "0001",
+            "DBA",
+            "OE",
+            "T",
+            LocalDate.of(2026, 7, 20));
+    var session =
+        new AuthenticatedSession(
+            new AuthenticatedSessionId(SID),
+            new ActorContext("member", ActorUserRole.ROLE_USER_MBR),
+            List.of(account),
+            AuthenticatedSessionStatus.ACTIVE,
+            "csrf_hash",
+            NOW,
+            NOW,
+            NOW.plusSeconds(1800),
+            NOW.plusSeconds(28800));
+    return AuthenticatedSessionLifecycleResult.active(session);
+  }
 }

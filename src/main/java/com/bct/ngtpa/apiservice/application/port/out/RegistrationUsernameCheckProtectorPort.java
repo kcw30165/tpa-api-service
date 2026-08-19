@@ -4,7 +4,7 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.RegistrationUse
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.UsernameCheckState;
 
 public interface RegistrationUsernameCheckProtectorPort {
-    RegistrationUsernameCheckEncryptedState protect(UsernameCheckState usernameCheckState);
+  RegistrationUsernameCheckEncryptedState protect(UsernameCheckState usernameCheckState);
 
-    UsernameCheckState unprotect(RegistrationUsernameCheckEncryptedState encryptedState);
+  UsernameCheckState unprotect(RegistrationUsernameCheckEncryptedState encryptedState);
 }

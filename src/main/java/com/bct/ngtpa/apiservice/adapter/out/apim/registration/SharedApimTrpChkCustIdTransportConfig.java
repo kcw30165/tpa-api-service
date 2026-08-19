@@ -7,9 +7,9 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class SharedApimTrpChkCustIdTransportConfig {
-    @Bean
-    @ConditionalOnMissingBean(SharedApimTrpChkCustIdTransport.class)
-    SharedApimTrpChkCustIdTransport sharedApimTrpChkCustIdTransport(ApimExchangeExecutor executor) {
-        return new SharedApimTrpChkCustIdTransport(executor);
-    }
+  @Bean
+  @ConditionalOnMissingBean(SharedApimTrpChkCustIdTransport.class)
+  SharedApimTrpChkCustIdTransport sharedApimTrpChkCustIdTransport(ApimExchangeExecutor executor) {
+    return new SharedApimTrpChkCustIdTransport(executor);
+  }
 }

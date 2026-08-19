@@ -5,7 +5,7 @@ import java.time.Duration;
 import reactor.core.publisher.Mono;
 
 public interface SessionLockPort<S> {
-    Mono<SessionLockHandle> acquire(S sessionId, Duration leaseDuration);
+  Mono<SessionLockHandle> acquire(S sessionId, Duration leaseDuration);
 
-    Mono<Boolean> release(SessionLockHandle handle);
+  Mono<Boolean> release(SessionLockHandle handle);
 }

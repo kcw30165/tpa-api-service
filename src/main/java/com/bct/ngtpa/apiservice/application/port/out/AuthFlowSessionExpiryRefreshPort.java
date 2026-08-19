@@ -6,5 +6,5 @@ import java.time.Instant;
 import reactor.core.publisher.Mono;
 
 public interface AuthFlowSessionExpiryRefreshPort {
-    Mono<AuthFlowSession> refresh(AuthFlowSessionId sessionId, Instant interactionAt);
+  Mono<AuthFlowSession> refresh(AuthFlowSessionId sessionId, Instant interactionAt);
 }

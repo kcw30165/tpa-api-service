@@ -19,45 +19,46 @@ import org.springframework.util.CollectionUtils;
 @Configuration
 public class ApimOAuthClientConfig {
 
-    @Bean
-    public ReactiveClientRegistrationRepository clientRegistrationRepository(ApimProperties apimProperties) {
-        ApimProperties.Oauth oauth = apimProperties.getOauth();
+  @Bean
+  public ReactiveClientRegistrationRepository clientRegistrationRepository(
+      ApimProperties apimProperties) {
+    ApimProperties.Oauth oauth = apimProperties.getOauth();
 
-        ClientRegistration.Builder builder = ClientRegistration
-                .withRegistrationId(oauth.getRegistrationId())
-                .clientId(oauth.getClientId())
-                .clientSecret(oauth.getClientSecret())
-                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                .clientAuthenticationMethod(new ClientAuthenticationMethod(oauth.getClientAuthenticationMethod()))
-                .tokenUri(oauth.getTokenUri());
+    ClientRegistration.Builder builder =
+        ClientRegistration.withRegistrationId(oauth.getRegistrationId())
+            .clientId(oauth.getClientId())
+            .clientSecret(oauth.getClientSecret())
+            .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+            .clientAuthenticationMethod(
+                new ClientAuthenticationMethod(oauth.getClientAuthenticationMethod()))
+            .tokenUri(oauth.getTokenUri());
 
-        if (!CollectionUtils.isEmpty(oauth.getScope())) {
-            builder.scope(oauth.getScope());
-        }
-
-        return new InMemoryReactiveClientRegistrationRepository(builder.build());
+    if (!CollectionUtils.isEmpty(oauth.getScope())) {
+      builder.scope(oauth.getScope());
     }
 
-    @Bean
-    public ReactiveOAuth2AuthorizedClientService authorizedClientService(
-            ReactiveClientRegistrationRepository clientRegistrationRepository) {
-        return new InMemoryReactiveOAuth2AuthorizedClientService(clientRegistrationRepository);
-    }
+    return new InMemoryReactiveClientRegistrationRepository(builder.build());
+  }
 
-    @Bean
-    public ReactiveOAuth2AuthorizedClientManager authorizedClientManager(
-            ReactiveClientRegistrationRepository clientRegistrationRepository,
-            ReactiveOAuth2AuthorizedClientService authorizedClientService) {
+  @Bean
+  public ReactiveOAuth2AuthorizedClientService authorizedClientService(
+      ReactiveClientRegistrationRepository clientRegistrationRepository) {
+    return new InMemoryReactiveOAuth2AuthorizedClientService(clientRegistrationRepository);
+  }
 
-        ReactiveOAuth2AuthorizedClientProvider authorizedClientProvider = ReactiveOAuth2AuthorizedClientProviderBuilder
-                .builder()
-                .clientCredentials()
-                .build();
+  @Bean
+  public ReactiveOAuth2AuthorizedClientManager authorizedClientManager(
+      ReactiveClientRegistrationRepository clientRegistrationRepository,
+      ReactiveOAuth2AuthorizedClientService authorizedClientService) {
 
-        AuthorizedClientServiceReactiveOAuth2AuthorizedClientManager authorizedClientManager = new AuthorizedClientServiceReactiveOAuth2AuthorizedClientManager(
-                clientRegistrationRepository, authorizedClientService);
+    ReactiveOAuth2AuthorizedClientProvider authorizedClientProvider =
+        ReactiveOAuth2AuthorizedClientProviderBuilder.builder().clientCredentials().build();
 
-        authorizedClientManager.setAuthorizedClientProvider(authorizedClientProvider);
-        return authorizedClientManager;
-    }
+    AuthorizedClientServiceReactiveOAuth2AuthorizedClientManager authorizedClientManager =
+        new AuthorizedClientServiceReactiveOAuth2AuthorizedClientManager(
+            clientRegistrationRepository, authorizedClientService);
+
+    authorizedClientManager.setAuthorizedClientProvider(authorizedClientProvider);
+    return authorizedClientManager;
+  }
 }

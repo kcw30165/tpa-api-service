@@ -10,42 +10,41 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class ApimPayloadFieldTransformer {
-    public JsonNode transformFields(
-            JsonNode sourceNode,
-            Set<String> targetFields,
-            UnaryOperator<String> transformFn) {
-        JsonNode resultNode = sourceNode.deepCopy();
-        transform(resultNode, targetFields, transformFn);
-        return resultNode;
+  public JsonNode transformFields(
+      JsonNode sourceNode, Set<String> targetFields, UnaryOperator<String> transformFn) {
+    JsonNode resultNode = sourceNode.deepCopy();
+    transform(resultNode, targetFields, transformFn);
+    return resultNode;
+  }
+
+  private void transform(
+      JsonNode currentNode, Set<String> targetFields, UnaryOperator<String> transformFn) {
+    if (currentNode == null || currentNode.isNull()) {
+      return;
     }
 
-    private void transform(JsonNode currentNode, Set<String> targetFields, UnaryOperator<String> transformFn) {
-        if (currentNode == null || currentNode.isNull()) {
-            return;
-        }
-
-        if (currentNode.isArray()) {
-            ArrayNode arrayNode = (ArrayNode) currentNode;
-            for (JsonNode node : arrayNode) {
-                transform(node, targetFields, transformFn);
-            }
-            return;
-        }
-
-        if (!currentNode.isObject()) {
-            return;
-        }
-
-        ObjectNode objectNode = (ObjectNode) currentNode;
-        for (Map.Entry<String, JsonNode> field : objectNode.properties()) {
-            String fieldName = field.getKey();
-            JsonNode fieldValue = field.getValue();
-
-            if (targetFields.contains(fieldName) && fieldValue.isTextual()) {
-                objectNode.put(fieldName, transformFn.apply(fieldValue.asText()));
-            } else {
-                transform(fieldValue, targetFields, transformFn);
-            }
-        }
+    if (currentNode.isArray()) {
+      ArrayNode arrayNode = (ArrayNode) currentNode;
+      for (JsonNode node : arrayNode) {
+        transform(node, targetFields, transformFn);
+      }
+      return;
     }
+
+    if (!currentNode.isObject()) {
+      return;
+    }
+
+    ObjectNode objectNode = (ObjectNode) currentNode;
+    for (Map.Entry<String, JsonNode> field : objectNode.properties()) {
+      String fieldName = field.getKey();
+      JsonNode fieldValue = field.getValue();
+
+      if (targetFields.contains(fieldName) && fieldValue.isTextual()) {
+        objectNode.put(fieldName, transformFn.apply(fieldValue.asText()));
+      } else {
+        transform(fieldValue, targetFields, transformFn);
+      }
+    }
+  }
 }

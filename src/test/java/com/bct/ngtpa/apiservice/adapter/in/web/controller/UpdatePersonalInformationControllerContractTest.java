@@ -32,116 +32,115 @@ import reactor.core.publisher.Mono;
 
 class UpdatePersonalInformationControllerContractTest {
 
-    private static final String REQUEST_ID = "client-request-uuid";
-    private static final String ACCEPT_LANGUAGE = "en";
+  private static final String REQUEST_ID = "client-request-uuid";
+  private static final String ACCEPT_LANGUAGE = "en";
 
-    @Test
-    void updatePersonalInformationReturnsGenericBaseErrorWhenAccountRefMissing() {
-        client()
-                .put()
-                .uri("/api/v1/personal-information")
-                .header(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
-                .header(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, ACCEPT_LANGUAGE)
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(new UpdatePersonalInformationRequest(
-                        "1.0",
-                        true,
-                        Map.of("emailAddress", "nick@example.test")))
-                .exchange()
-                .expectStatus().isBadRequest()
-                .expectHeader().valueEquals(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
-                .expectBody()
-                .jsonPath("$.success").isEqualTo(false)
-                .jsonPath("$.messages").isArray()
-                .jsonPath("$.errors").isArray()
-                .jsonPath("$.errors[0].code").isEqualTo(ErrorCodes.MEMBER_CONTEXT_INVALID)
-                .jsonPath("$.errorCode").doesNotExist()
-                .jsonPath("$.requestId").doesNotExist()
-                .consumeWith(result -> assertBodyDoesNotContainRequestId(result.getResponseBody()));
-    }
+  @Test
+  void updatePersonalInformationReturnsGenericBaseErrorWhenAccountRefMissing() {
+    client()
+        .put()
+        .uri("/api/v1/personal-information")
+        .header(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
+        .header(RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, ACCEPT_LANGUAGE)
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(
+            new UpdatePersonalInformationRequest(
+                "1.0", true, Map.of("emailAddress", "nick@example.test")))
+        .exchange()
+        .expectStatus()
+        .isBadRequest()
+        .expectHeader()
+        .valueEquals(RequestCorrelation.REQUEST_ID_HEADER, REQUEST_ID)
+        .expectBody()
+        .jsonPath("$.success")
+        .isEqualTo(false)
+        .jsonPath("$.messages")
+        .isArray()
+        .jsonPath("$.errors")
+        .isArray()
+        .jsonPath("$.errors[0].code")
+        .isEqualTo(ErrorCodes.MEMBER_CONTEXT_INVALID)
+        .jsonPath("$.errorCode")
+        .doesNotExist()
+        .jsonPath("$.requestId")
+        .doesNotExist()
+        .consumeWith(result -> assertBodyDoesNotContainRequestId(result.getResponseBody()));
+  }
 
-    private static void assertBodyDoesNotContainRequestId(byte[] responseBody) {
-        String body = new String(responseBody, StandardCharsets.UTF_8);
-        org.junit.jupiter.api.Assertions.assertFalse(
-                body.contains("\"requestId\""),
-                "X-Request-Id must stay in response headers and must not be serialized in response body");
-    }
+  private static void assertBodyDoesNotContainRequestId(byte[] responseBody) {
+    String body = new String(responseBody, StandardCharsets.UTF_8);
+    org.junit.jupiter.api.Assertions.assertFalse(
+        body.contains("\"requestId\""),
+        "X-Request-Id must stay in response headers and must not be serialized in response body");
+  }
 
-    private WebTestClient client() {
-        UpdatePersonalInformationUseCase useCase = command -> Mono.empty();
-        PersonalInformationUpdateWebMapper requestMapper = mock(PersonalInformationUpdateWebMapper.class);
-        PersonalInformationUpdateResponseMapper responseMapper = mock(PersonalInformationUpdateResponseMapper.class);
-        PersonalInformationUpdateYamlValidator validator = mock(PersonalInformationUpdateYamlValidator.class);
-        CurrentPortalAccessContextResolver provider = missingPortalAccessContextProvider();
+  private WebTestClient client() {
+    UpdatePersonalInformationUseCase useCase = command -> Mono.empty();
+    PersonalInformationUpdateWebMapper requestMapper =
+        mock(PersonalInformationUpdateWebMapper.class);
+    PersonalInformationUpdateResponseMapper responseMapper =
+        mock(PersonalInformationUpdateResponseMapper.class);
+    PersonalInformationUpdateYamlValidator validator =
+        mock(PersonalInformationUpdateYamlValidator.class);
+    CurrentPortalAccessContextResolver provider = missingPortalAccessContextProvider();
 
-        return WebTestClient.bindToController(controller(
-                        useCase,
-                        requestMapper,
-                        responseMapper,
-                        validator,
-                        provider))
-                .webFilter(requestHeaderContextWebFilter())
-                .controllerAdvice(new ApiExceptionHandler(
-                        testErrorMessageResolver(),
-                        testLoggingSanitizer()
-                    ))
-                .build();
-    }
+    return WebTestClient.bindToController(
+            controller(useCase, requestMapper, responseMapper, validator, provider))
+        .webFilter(requestHeaderContextWebFilter())
+        .controllerAdvice(
+            new ApiExceptionHandler(testErrorMessageResolver(), testLoggingSanitizer()))
+        .build();
+  }
 
-    private RequestHeaderContextWebFilter requestHeaderContextWebFilter() {
-        return new RequestHeaderContextWebFilter(
-                new RequestLoggingWebFilter(new RequestLoggingProperties(), testLoggingSanitizer(),
-                        new ObjectMapper()));
-    }
+  private RequestHeaderContextWebFilter requestHeaderContextWebFilter() {
+    return new RequestHeaderContextWebFilter(
+        new RequestLoggingWebFilter(
+            new RequestLoggingProperties(), testLoggingSanitizer(), new ObjectMapper()));
+  }
 
-    private static ErrorMessageResolver testErrorMessageResolver() {
-        return (errorCode, locale, accountEnv, trustCode, schemeType) -> {
-            if (ErrorCodes.MEMBER_CONTEXT_INVALID.equals(errorCode)) {
-                return "Member context is invalid.";
-            }
-            return errorCode;
-        };
-    }
+  private static ErrorMessageResolver testErrorMessageResolver() {
+    return (errorCode, locale, accountEnv, trustCode, schemeType) -> {
+      if (ErrorCodes.MEMBER_CONTEXT_INVALID.equals(errorCode)) {
+        return "Member context is invalid.";
+      }
+      return errorCode;
+    };
+  }
 
-    private static LoggingSanitizer testLoggingSanitizer() {
-        LoggingSanitizerProperties properties = new LoggingSanitizerProperties();
-        properties.setSensitiveTokens(List.of("policyNo", "certNo", "userId", "apiKey", "token"));
-        return new LoggingSanitizer(new ObjectMapper(), properties);
-    }
+  private static LoggingSanitizer testLoggingSanitizer() {
+    LoggingSanitizerProperties properties = new LoggingSanitizerProperties();
+    properties.setSensitiveTokens(List.of("policyNo", "certNo", "userId", "apiKey", "token"));
+    return new LoggingSanitizer(new ObjectMapper(), properties);
+  }
 
-    private static CurrentPortalAccessContextResolver missingPortalAccessContextProvider() {
-        return new CurrentPortalAccessContextResolver() {
-            @Override
-            public Mono<PortalAccessContext> current() {
-                return Mono.error(new PortalAccessContextResolutionException(
-                        ErrorCodes.MEMBER_CONTEXT_INVALID,
-                        "PortalAccessContext is not available in the current request context."));
-            }
+  private static CurrentPortalAccessContextResolver missingPortalAccessContextProvider() {
+    return new CurrentPortalAccessContextResolver() {
+      @Override
+      public Mono<PortalAccessContext> current() {
+        return Mono.error(
+            new PortalAccessContextResolutionException(
+                ErrorCodes.MEMBER_CONTEXT_INVALID,
+                "PortalAccessContext is not available in the current request context."));
+      }
 
-            @Override
-            public Mono<PortalAccessContext> currentOrEmpty() {
-                return Mono.empty();
-            }
-        };
-    }
-    
-    private static PersonalInformationController controller(
-            UpdatePersonalInformationUseCase useCase,
-            PersonalInformationUpdateWebMapper requestMapper,
-            PersonalInformationUpdateResponseMapper responseMapper,
-            PersonalInformationUpdateYamlValidator validator,
-            CurrentPortalAccessContextResolver resolver) {
+      @Override
+      public Mono<PortalAccessContext> currentOrEmpty() {
+        return Mono.empty();
+      }
+    };
+  }
 
-        GetPersonalInformationUseCase getUseCase = mock(GetPersonalInformationUseCase.class);
-        PersonalInformationWebMapper getRequestMapper = mock(PersonalInformationWebMapper.class);
-        
-        return new PersonalInformationController(
-                getUseCase,
-                getRequestMapper,
-                resolver,
-                useCase,
-                requestMapper,
-                responseMapper,
-                validator);
-    }
+  private static PersonalInformationController controller(
+      UpdatePersonalInformationUseCase useCase,
+      PersonalInformationUpdateWebMapper requestMapper,
+      PersonalInformationUpdateResponseMapper responseMapper,
+      PersonalInformationUpdateYamlValidator validator,
+      CurrentPortalAccessContextResolver resolver) {
+
+    GetPersonalInformationUseCase getUseCase = mock(GetPersonalInformationUseCase.class);
+    PersonalInformationWebMapper getRequestMapper = mock(PersonalInformationWebMapper.class);
+
+    return new PersonalInformationController(
+        getUseCase, getRequestMapper, resolver, useCase, requestMapper, responseMapper, validator);
+  }
 }

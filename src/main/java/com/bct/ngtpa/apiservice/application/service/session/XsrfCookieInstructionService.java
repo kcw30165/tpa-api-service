@@ -6,23 +6,24 @@ import java.util.Objects;
 
 public class XsrfCookieInstructionService {
 
-    private final SessionCookieInstructionFactory instructionFactory;
+  private final SessionCookieInstructionFactory instructionFactory;
 
-    public XsrfCookieInstructionService() {
-        this(new SessionCookieInstructionFactory());
-    }
+  public XsrfCookieInstructionService() {
+    this(new SessionCookieInstructionFactory());
+  }
 
-    XsrfCookieInstructionService(SessionCookieInstructionFactory instructionFactory) {
-        this.instructionFactory = Objects.requireNonNull(instructionFactory, "instructionFactory must not be null");
-    }
+  XsrfCookieInstructionService(SessionCookieInstructionFactory instructionFactory) {
+    this.instructionFactory =
+        Objects.requireNonNull(instructionFactory, "instructionFactory must not be null");
+  }
 
-    public SessionCookieInstruction setXsrfCookie(XsrfTokenTransportPolicy policy, String rawToken) {
-        Objects.requireNonNull(policy, "policy must not be null");
-        return instructionFactory.setCookie(policy.cookiePolicy(), rawToken);
-    }
+  public SessionCookieInstruction setXsrfCookie(XsrfTokenTransportPolicy policy, String rawToken) {
+    Objects.requireNonNull(policy, "policy must not be null");
+    return instructionFactory.setCookie(policy.cookiePolicy(), rawToken);
+  }
 
-    public SessionCookieInstruction clearXsrfCookie(XsrfTokenTransportPolicy policy) {
-        Objects.requireNonNull(policy, "policy must not be null");
-        return instructionFactory.clearCookie(policy.cookiePolicy());
-    }
+  public SessionCookieInstruction clearXsrfCookie(XsrfTokenTransportPolicy policy) {
+    Objects.requireNonNull(policy, "policy must not be null");
+    return instructionFactory.clearCookie(policy.cookiePolicy());
+  }
 }

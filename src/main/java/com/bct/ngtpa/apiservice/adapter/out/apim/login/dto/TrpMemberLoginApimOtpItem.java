@@ -5,11 +5,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record TrpMemberLoginApimOtpItem(
-        @JsonProperty("channel") String channel,
-        @JsonProperty("destination") String destination) {
+    @JsonProperty("channel") String channel, @JsonProperty("destination") String destination) {
 
-    @Override
-    public String toString() {
-        return "TrpMemberLoginApimOtpItem[channel=" + channel + ", destination=<redacted>]";
-    }
+  @Override
+  public String toString() {
+    return "TrpMemberLoginApimOtpItem[channel=" + channel + ", destination=<redacted>]";
+  }
 }

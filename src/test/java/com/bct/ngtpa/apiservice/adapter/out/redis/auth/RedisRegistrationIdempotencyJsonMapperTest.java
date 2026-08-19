@@ -14,84 +14,99 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class RedisRegistrationIdempotencyJsonMapperTest {
-    private static final String HASH = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-    private static final Instant NOW = Instant.parse("2026-07-03T00:00:00Z");
-    private final RedisRegistrationIdempotencyJsonMapper mapper = new RedisRegistrationIdempotencyJsonMapper();
+  private static final String HASH =
+      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+  private static final Instant NOW = Instant.parse("2026-07-03T00:00:00Z");
+  private final RedisRegistrationIdempotencyJsonMapper mapper =
+      new RedisRegistrationIdempotencyJsonMapper();
 
-    @Test
-    void jsonMapperRoundTripsCompletedRecord() {
-        var record = completedRecord();
+  @Test
+  void jsonMapperRoundTripsCompletedRecord() {
+    var record = completedRecord();
 
-        var json = mapper.toJson(record);
-        var roundTrip = mapper.fromJson(json);
+    var json = mapper.toJson(record);
+    var roundTrip = mapper.fromJson(json);
 
-        assertThat(roundTrip.action()).isEqualTo(record.action());
-        assertThat(roundTrip.idempotencyKey()).isEqualTo(record.idempotencyKey());
-        assertThat(roundTrip.requestHash()).isEqualTo(record.requestHash());
-        assertThat(roundTrip.status()).isEqualTo(RegistrationIdempotencyStatus.COMPLETED);
-        assertThat(roundTrip.responseSnapshot()).isNotNull();
-        assertThat(roundTrip.responseSnapshot().safeHeaders()).containsExactly(Map.entry("X-Safe", "value"));
-    }
+    assertThat(roundTrip.action()).isEqualTo(record.action());
+    assertThat(roundTrip.idempotencyKey()).isEqualTo(record.idempotencyKey());
+    assertThat(roundTrip.requestHash()).isEqualTo(record.requestHash());
+    assertThat(roundTrip.status()).isEqualTo(RegistrationIdempotencyStatus.COMPLETED);
+    assertThat(roundTrip.responseSnapshot()).isNotNull();
+    assertThat(roundTrip.responseSnapshot().safeHeaders())
+        .containsExactly(Map.entry("X-Safe", "value"));
+  }
 
-    @Test
-    void storedJsonDoesNotContainForbiddenRawFieldNames() {
-        var json = mapper.toJson(completedRecord());
+  @Test
+  void storedJsonDoesNotContainForbiddenRawFieldNames() {
+    var json = mapper.toJson(completedRecord());
 
-        assertThat(json).contains("requestHash", "responseSnapshot");
-        assertThat(json.toLowerCase())
-                .doesNotContain("rawrequestbody")
-                .doesNotContain("otpcode")
-                .doesNotContain("rawotp")
-                .doesNotContain("password")
-                .doesNotContain("confirmpassword")
-                .doesNotContain("mobile")
-                .doesNotContain("email")
-                .doesNotContain("hkid")
-                .doesNotContain("passport")
-                .doesNotContain("policyno")
-                .doesNotContain("certno")
-                .doesNotContain("auth_flow_sid")
-                .doesNotContain("csrftoken")
-                .doesNotContain("cookie")
-                .doesNotContain("authorization");
-    }
+    assertThat(json).contains("requestHash", "responseSnapshot");
+    assertThat(json.toLowerCase())
+        .doesNotContain("rawrequestbody")
+        .doesNotContain("otpcode")
+        .doesNotContain("rawotp")
+        .doesNotContain("password")
+        .doesNotContain("confirmpassword")
+        .doesNotContain("mobile")
+        .doesNotContain("email")
+        .doesNotContain("hkid")
+        .doesNotContain("passport")
+        .doesNotContain("policyno")
+        .doesNotContain("certno")
+        .doesNotContain("auth_flow_sid")
+        .doesNotContain("csrftoken")
+        .doesNotContain("cookie")
+        .doesNotContain("authorization");
+  }
 
-    @Test
-    void responseSnapshotHeadersRejectUnsafeHeaderPersistence() {
-        assertThatThrownBy(() -> new RegistrationIdempotencyResponseSnapshot("200", "{}", Map.of("Set-Cookie", "x")))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Unsafe idempotency snapshot header");
-        assertThatThrownBy(() -> new RegistrationIdempotencyResponseSnapshot("200", "{}", Map.of("Cookie", "x")))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Unsafe idempotency snapshot header");
-        assertThatThrownBy(() -> new RegistrationIdempotencyResponseSnapshot("200", "{}", Map.of("Authorization", "x")))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Unsafe idempotency snapshot header");
-        assertThatThrownBy(() -> new RegistrationIdempotencyResponseSnapshot("200", "{}", Map.of("X-XSRF-TOKEN", "x")))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Unsafe idempotency snapshot header");
-        assertThatThrownBy(() -> new RegistrationIdempotencyResponseSnapshot("200", "{}", Map.of("XSRF-TOKEN", "x")))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Unsafe idempotency snapshot header");
-    }
+  @Test
+  void responseSnapshotHeadersRejectUnsafeHeaderPersistence() {
+    assertThatThrownBy(
+            () ->
+                new RegistrationIdempotencyResponseSnapshot("200", "{}", Map.of("Set-Cookie", "x")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Unsafe idempotency snapshot header");
+    assertThatThrownBy(
+            () -> new RegistrationIdempotencyResponseSnapshot("200", "{}", Map.of("Cookie", "x")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Unsafe idempotency snapshot header");
+    assertThatThrownBy(
+            () ->
+                new RegistrationIdempotencyResponseSnapshot(
+                    "200", "{}", Map.of("Authorization", "x")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Unsafe idempotency snapshot header");
+    assertThatThrownBy(
+            () ->
+                new RegistrationIdempotencyResponseSnapshot(
+                    "200", "{}", Map.of("X-XSRF-TOKEN", "x")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Unsafe idempotency snapshot header");
+    assertThatThrownBy(
+            () ->
+                new RegistrationIdempotencyResponseSnapshot("200", "{}", Map.of("XSRF-TOKEN", "x")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Unsafe idempotency snapshot header");
+  }
 
-    @Test
-    void malformedRedisJsonFailsSafely() {
-        assertThatThrownBy(() -> mapper.fromJson("{not-json"))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessage("Unable to deserialize registration idempotency record")
-                .hasMessageNotContaining("{not-json");
-    }
+  @Test
+  void malformedRedisJsonFailsSafely() {
+    assertThatThrownBy(() -> mapper.fromJson("{not-json"))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Unable to deserialize registration idempotency record")
+        .hasMessageNotContaining("{not-json");
+  }
 
-    private static RegistrationIdempotencyRecord completedRecord() {
-        return new RegistrationIdempotencyRecord(
-                RegistrationIdempotencyAction.REGISTRATION_START,
-                new RegistrationIdempotencyKey("idem_abc123"),
-                new RegistrationRequestHash(HASH),
-                RegistrationIdempotencyStatus.COMPLETED,
-                new RegistrationIdempotencyResponseSnapshot("200", "{\"ok\":true}", Map.of("X-Safe", "value")),
-                NOW,
-                NOW.plusSeconds(1),
-                NOW.plusSeconds(300));
-    }
+  private static RegistrationIdempotencyRecord completedRecord() {
+    return new RegistrationIdempotencyRecord(
+        RegistrationIdempotencyAction.REGISTRATION_START,
+        new RegistrationIdempotencyKey("idem_abc123"),
+        new RegistrationRequestHash(HASH),
+        RegistrationIdempotencyStatus.COMPLETED,
+        new RegistrationIdempotencyResponseSnapshot(
+            "200", "{\"ok\":true}", Map.of("X-Safe", "value")),
+        NOW,
+        NOW.plusSeconds(1),
+        NOW.plusSeconds(300));
+  }
 }

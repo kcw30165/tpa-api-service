@@ -5,5 +5,6 @@ import reactor.core.publisher.Mono;
 
 @FunctionalInterface
 public interface ApimForgotPasswordCompletionTransport {
-    Mono<TrpResetPasswordApimEnvelope> postResetPassword(String path, TrpResetPasswordApimRequest request);
+  Mono<TrpResetPasswordApimEnvelope> postResetPassword(
+      String path, TrpResetPasswordApimRequest request);
 }

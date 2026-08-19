@@ -20,24 +20,31 @@ import reactor.util.context.ContextView;
 @RequestMapping("/api/v1/reference-data")
 @RequiredArgsConstructor
 public class ReferenceDataController {
-    private final GetReferenceDataCountriesUseCase getReferenceDataCountriesUseCase;
-    private final CurrentPortalAccessContextResolver currentPortalAccessContextResolver;
+  private final GetReferenceDataCountriesUseCase getReferenceDataCountriesUseCase;
+  private final CurrentPortalAccessContextResolver currentPortalAccessContextResolver;
 
-    @GetMapping(value = "/countries", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<ReferenceDataCountriesResult> getCountries(
-            @RequestHeader(value = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false) String acceptLanguage) {
-        return Mono.deferContextual(contextView -> {
-            String language = resolveLanguage(contextView, acceptLanguage);
-            return currentPortalAccessContextResolver.current().flatMap(portalAccessContext ->
-                    getReferenceDataCountriesUseCase.execute(new GetReferenceDataCountriesCommand(
-                            language,
-                            portalAccessContext.account().accountEnv(),
-                            portalAccessContext.actor().actorUserRole())));
+  @GetMapping(value = "/countries", produces = MediaType.APPLICATION_JSON_VALUE)
+  public Mono<ReferenceDataCountriesResult> getCountries(
+      @RequestHeader(value = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false)
+          String acceptLanguage) {
+    return Mono.deferContextual(
+        contextView -> {
+          String language = resolveLanguage(contextView, acceptLanguage);
+          return currentPortalAccessContextResolver
+              .current()
+              .flatMap(
+                  portalAccessContext ->
+                      getReferenceDataCountriesUseCase.execute(
+                          new GetReferenceDataCountriesCommand(
+                              language,
+                              portalAccessContext.account().accountEnv(),
+                              portalAccessContext.actor().actorUserRole())));
         });
-    }
+  }
 
-    private String resolveLanguage(ContextView contextView, String acceptLanguage) {
-        RequestHeaderContext requestHeaderContext = contextView.getOrDefault(RequestHeaderContextKeys.CONTEXT_KEY, null);
-        return RequestLanguageResolver.resolve(requestHeaderContext, acceptLanguage, null);
-    }
+  private String resolveLanguage(ContextView contextView, String acceptLanguage) {
+    RequestHeaderContext requestHeaderContext =
+        contextView.getOrDefault(RequestHeaderContextKeys.CONTEXT_KEY, null);
+    return RequestLanguageResolver.resolve(requestHeaderContext, acceptLanguage, null);
+  }
 }

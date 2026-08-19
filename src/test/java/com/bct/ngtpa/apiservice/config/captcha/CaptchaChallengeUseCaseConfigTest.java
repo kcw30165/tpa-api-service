@@ -22,31 +22,34 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 class CaptchaChallengeUseCaseConfigTest {
 
-    @Test
-    void captchaChallengeUseCaseConfigProvidesOverrideableBeans() {
-        new ApplicationContextRunner()
-                .withUserConfiguration(CaptchaChallengeUseCaseConfig.class)
-                .withBean(AuthWorkflowPolicyPort.class, () -> mock(AuthWorkflowPolicyPort.class))
-                .withBean(CaptchaImageGeneratorPort.class, () -> mock(CaptchaImageGeneratorPort.class))
-                .withBean(CaptchaAnswerHasherPort.class, () -> mock(CaptchaAnswerHasherPort.class))
-                .withBean(CaptchaChallengePort.class, () -> mock(CaptchaChallengePort.class))
-                .withBean(Clock.class, () -> Clock.fixed(Instant.parse("2026-07-07T12:00:00Z"), ZoneOffset.UTC))
-                .run(context -> {
-                    assertThat(context).hasSingleBean(CaptchaChallengeIdGenerator.class);
-                    assertThat(context).hasSingleBean(CreateCaptchaChallengeUseCase.class);
-                    assertThat(context).hasSingleBean(VerifyCaptchaUseCase.class);
-                    assertThat(context).hasSingleBean(RefreshCaptchaUseCase.class);
-                    assertThat(context.getBean(CaptchaChallengeIdGenerator.class))
-                            .isInstanceOf(SecureCaptchaChallengeIdGenerator.class);
-                });
-    }
+  @Test
+  void captchaChallengeUseCaseConfigProvidesOverrideableBeans() {
+    new ApplicationContextRunner()
+        .withUserConfiguration(CaptchaChallengeUseCaseConfig.class)
+        .withBean(AuthWorkflowPolicyPort.class, () -> mock(AuthWorkflowPolicyPort.class))
+        .withBean(CaptchaImageGeneratorPort.class, () -> mock(CaptchaImageGeneratorPort.class))
+        .withBean(CaptchaAnswerHasherPort.class, () -> mock(CaptchaAnswerHasherPort.class))
+        .withBean(CaptchaChallengePort.class, () -> mock(CaptchaChallengePort.class))
+        .withBean(
+            Clock.class, () -> Clock.fixed(Instant.parse("2026-07-07T12:00:00Z"), ZoneOffset.UTC))
+        .run(
+            context -> {
+              assertThat(context).hasSingleBean(CaptchaChallengeIdGenerator.class);
+              assertThat(context).hasSingleBean(CreateCaptchaChallengeUseCase.class);
+              assertThat(context).hasSingleBean(VerifyCaptchaUseCase.class);
+              assertThat(context).hasSingleBean(RefreshCaptchaUseCase.class);
+              assertThat(context.getBean(CaptchaChallengeIdGenerator.class))
+                  .isInstanceOf(SecureCaptchaChallengeIdGenerator.class);
+            });
+  }
 
-    @Test
-    void captchaUseCaseBeansUseExistingPolicyPort() throws Exception {
-        String source = Files.readString(Path.of("src/main/java/com/bct/ngtpa/apiservice/config/captcha/CaptchaChallengeUseCaseConfig.java"));
+  @Test
+  void captchaUseCaseBeansUseExistingPolicyPort() throws Exception {
+    String source =
+        Files.readString(
+            Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/config/captcha/CaptchaChallengeUseCaseConfig.java"));
 
-        assertThat(source)
-                .contains("AuthWorkflowPolicyPort")
-                .doesNotContain("AuthWorkflowProperties");
-    }
+    assertThat(source).contains("AuthWorkflowPolicyPort").doesNotContain("AuthWorkflowProperties");
+  }
 }

@@ -7,5 +7,5 @@ import reactor.core.publisher.Mono;
 @FunctionalInterface
 public interface GetReferenceDataCountriesUseCase {
 
-    Mono<ReferenceDataCountriesResult> execute(GetReferenceDataCountriesCommand command);
+  Mono<ReferenceDataCountriesResult> execute(GetReferenceDataCountriesCommand command);
 }

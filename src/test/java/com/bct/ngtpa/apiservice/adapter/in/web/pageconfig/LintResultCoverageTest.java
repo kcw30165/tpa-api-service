@@ -10,25 +10,25 @@ import org.junit.jupiter.api.Test;
 
 class LintResultCoverageTest {
 
-    @Test
-    void startsWithoutErrorsAndReportsErrorsAfterAddingThem() {
-        LintResult result = new LintResult();
+  @Test
+  void startsWithoutErrorsAndReportsErrorsAfterAddingThem() {
+    LintResult result = new LintResult();
 
-        assertFalse(result.hasErrors());
-        assertEquals(List.of(), result.getErrors());
+    assertFalse(result.hasErrors());
+    assertEquals(List.of(), result.getErrors());
 
-        result.addError("first");
-        result.addError("second");
+    result.addError("first");
+    result.addError("second");
 
-        assertTrue(result.hasErrors());
-        assertEquals(List.of("first", "second"), result.getErrors());
-    }
+    assertTrue(result.hasErrors());
+    assertEquals(List.of("first", "second"), result.getErrors());
+  }
 
-    @Test
-    void returnsUnmodifiableErrorsView() {
-        LintResult result = new LintResult();
-        result.addError("readonly");
+  @Test
+  void returnsUnmodifiableErrorsView() {
+    LintResult result = new LintResult();
+    result.addError("readonly");
 
-        assertThrows(UnsupportedOperationException.class, () -> result.getErrors().add("mutation"));
-    }
+    assertThrows(UnsupportedOperationException.class, () -> result.getErrors().add("mutation"));
+  }
 }

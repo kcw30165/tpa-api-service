@@ -8,61 +8,77 @@ import java.util.*;
 import reactor.core.publisher.Mono;
 
 public final class RedisAuthenticatedSessionAdapter implements AuthenticatedSessionPort {
-    private static final String CAPABILITY = "auth:authenticated-session";
-    private final CachePort cache;
-    private final RedisCacheKeyFactory keys;
-    private final RedisAuthenticatedSessionJsonMapper json;
+  private static final String CAPABILITY = "auth:authenticated-session";
+  private final CachePort cache;
+  private final RedisCacheKeyFactory keys;
+  private final RedisAuthenticatedSessionJsonMapper json;
 
-    public RedisAuthenticatedSessionAdapter(CachePort cache, RedisCacheKeyFactory keys,
-            RedisAuthenticatedSessionJsonMapper json) {
-        this.cache = Objects.requireNonNull(cache);
-        this.keys = Objects.requireNonNull(keys);
-        this.json = Objects.requireNonNull(json);
-    }
+  public RedisAuthenticatedSessionAdapter(
+      CachePort cache, RedisCacheKeyFactory keys, RedisAuthenticatedSessionJsonMapper json) {
+    this.cache = Objects.requireNonNull(cache);
+    this.keys = Objects.requireNonNull(keys);
+    this.json = Objects.requireNonNull(json);
+  }
 
-    public Mono<AuthenticatedSessionPersistenceResult> store(StoreAuthenticatedSessionCommand c) {
-        return Mono.defer(() -> cache.set(key(c.authenticatedSessionId()), json.toJson(c.protectedSession()), c.ttl())
-                .thenReturn(result(AuthenticatedSessionPersistenceStatus.STORED))).onErrorMap(this::safe);
-    }
+  public Mono<AuthenticatedSessionPersistenceResult> store(StoreAuthenticatedSessionCommand c) {
+    return Mono.defer(
+            () ->
+                cache
+                    .set(
+                        key(c.authenticatedSessionId()), json.toJson(c.protectedSession()), c.ttl())
+                    .thenReturn(result(AuthenticatedSessionPersistenceStatus.STORED)))
+        .onErrorMap(this::safe);
+  }
 
-    public Mono<Optional<ProtectedAuthenticatedSession>> load(LoadAuthenticatedSessionCommand c) {
-        return Mono.defer(() -> cache.get(key(c.authenticatedSessionId())).map(v -> v.map(json::fromJson)))
-                .onErrorMap(this::safe);
-    }
+  public Mono<Optional<ProtectedAuthenticatedSession>> load(LoadAuthenticatedSessionCommand c) {
+    return Mono.defer(
+            () -> cache.get(key(c.authenticatedSessionId())).map(v -> v.map(json::fromJson)))
+        .onErrorMap(this::safe);
+  }
 
-    public Mono<AuthenticatedSessionPersistenceResult> touch(TouchAuthenticatedSessionCommand c) {
-        return Mono.defer(() -> cache.set(key(c.authenticatedSessionId()), json.toJson(c.protectedSession()), c.ttl())
-                .thenReturn(result(AuthenticatedSessionPersistenceStatus.TOUCHED))).onErrorMap(this::safe);
-    }
+  public Mono<AuthenticatedSessionPersistenceResult> touch(TouchAuthenticatedSessionCommand c) {
+    return Mono.defer(
+            () ->
+                cache
+                    .set(
+                        key(c.authenticatedSessionId()), json.toJson(c.protectedSession()), c.ttl())
+                    .thenReturn(result(AuthenticatedSessionPersistenceStatus.TOUCHED)))
+        .onErrorMap(this::safe);
+  }
 
-    public Mono<AuthenticatedSessionPersistenceResult> revoke(RevokeAuthenticatedSessionCommand c) {
-        return remove(c.authenticatedSessionId(), AuthenticatedSessionPersistenceStatus.REVOKED);
-    }
+  public Mono<AuthenticatedSessionPersistenceResult> revoke(RevokeAuthenticatedSessionCommand c) {
+    return remove(c.authenticatedSessionId(), AuthenticatedSessionPersistenceStatus.REVOKED);
+  }
 
-    public Mono<AuthenticatedSessionPersistenceResult> delete(DeleteAuthenticatedSessionCommand c) {
-        return cache.get(key(c.authenticatedSessionId()))
-                .flatMap(v -> v.isEmpty() ? Mono.just(result(AuthenticatedSessionPersistenceStatus.NOT_FOUND))
-                        : remove(c.authenticatedSessionId(), AuthenticatedSessionPersistenceStatus.DELETED))
-                .onErrorMap(this::safe);
-    }
+  public Mono<AuthenticatedSessionPersistenceResult> delete(DeleteAuthenticatedSessionCommand c) {
+    return cache
+        .get(key(c.authenticatedSessionId()))
+        .flatMap(
+            v ->
+                v.isEmpty()
+                    ? Mono.just(result(AuthenticatedSessionPersistenceStatus.NOT_FOUND))
+                    : remove(
+                        c.authenticatedSessionId(), AuthenticatedSessionPersistenceStatus.DELETED))
+        .onErrorMap(this::safe);
+  }
 
-    private Mono<AuthenticatedSessionPersistenceResult> remove(AuthenticatedSessionId id,
-            AuthenticatedSessionPersistenceStatus status) {
-        return Mono.defer(() -> cache.evict(key(id)).thenReturn(result(status))).onErrorMap(this::safe);
-    }
+  private Mono<AuthenticatedSessionPersistenceResult> remove(
+      AuthenticatedSessionId id, AuthenticatedSessionPersistenceStatus status) {
+    return Mono.defer(() -> cache.evict(key(id)).thenReturn(result(status))).onErrorMap(this::safe);
+  }
 
-    private String key(AuthenticatedSessionId id) {
-        return keys.key(CAPABILITY, id.value());
-    }
+  private String key(AuthenticatedSessionId id) {
+    return keys.key(CAPABILITY, id.value());
+  }
 
-    private AuthenticatedSessionPersistenceResult result(AuthenticatedSessionPersistenceStatus s) {
-        return new AuthenticatedSessionPersistenceResult(s);
-    }
+  private AuthenticatedSessionPersistenceResult result(AuthenticatedSessionPersistenceStatus s) {
+    return new AuthenticatedSessionPersistenceResult(s);
+  }
 
-    private Throwable safe(Throwable t) {
-        if (t instanceof IllegalArgumentException || t instanceof IllegalStateException || t instanceof CacheException)
-            return t;
-        return new CacheException("Authenticated session persistence operation failed", t);
-    }
-
+  private Throwable safe(Throwable t) {
+    if (t instanceof IllegalArgumentException
+        || t instanceof IllegalStateException
+        || t instanceof CacheException) return t;
+    return new CacheException("Authenticated session persistence operation failed", t);
+  }
 }

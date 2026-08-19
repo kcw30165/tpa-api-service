@@ -7,8 +7,8 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class AuthenticatedLogoutWebConfig {
 
-    @Bean
-    AuthenticatedLogoutWebMapper authenticatedLogoutWebMapper() {
-        return new AuthenticatedLogoutWebMapper();
-    }
+  @Bean
+  AuthenticatedLogoutWebMapper authenticatedLogoutWebMapper() {
+    return new AuthenticatedLogoutWebMapper();
+  }
 }

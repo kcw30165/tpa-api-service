@@ -11,35 +11,38 @@ import org.junit.jupiter.api.Test;
 
 class NotificationDateOptionsTest {
 
-    @Test
-    void resolveRejectsInvalidTimezone() {
-        InvalidNotificationRequestException exception = assertThrows(
-                InvalidNotificationRequestException.class,
-                () -> NotificationDateOptions.resolve("yyyy-MM-dd", "Mars/Base"));
+  @Test
+  void resolveRejectsInvalidTimezone() {
+    InvalidNotificationRequestException exception =
+        assertThrows(
+            InvalidNotificationRequestException.class,
+            () -> NotificationDateOptions.resolve("yyyy-MM-dd", "Mars/Base"));
 
-        assertEquals("Invalid timezone: Mars/Base", exception.getMessage());
-    }
+    assertEquals("Invalid timezone: Mars/Base", exception.getMessage());
+  }
 
-    @Test
-    void resolveRejectsInvalidDateFormat() {
-        InvalidNotificationRequestException exception = assertThrows(
-                InvalidNotificationRequestException.class,
-                () -> NotificationDateOptions.resolve("[invalid", ZoneId.of("UTC").getId()));
+  @Test
+  void resolveRejectsInvalidDateFormat() {
+    InvalidNotificationRequestException exception =
+        assertThrows(
+            InvalidNotificationRequestException.class,
+            () -> NotificationDateOptions.resolve("[invalid", ZoneId.of("UTC").getId()));
 
-        assertEquals("Invalid dateFormat: [invalid", exception.getMessage());
-    }
+    assertEquals("Invalid dateFormat: [invalid", exception.getMessage());
+  }
 
-    @Test
-    void formatReturnsNullWhenInputIsNull() {
-        NotificationDateOptions options = NotificationDateOptions.resolve("yyyy-MM-dd", "UTC");
+  @Test
+  void formatReturnsNullWhenInputIsNull() {
+    NotificationDateOptions options = NotificationDateOptions.resolve("yyyy-MM-dd", "UTC");
 
-        assertNull(options.format(null));
-    }
+    assertNull(options.format(null));
+  }
 
-    @Test
-    void resolveTrimsInputsBeforeFormatting() {
-        NotificationDateOptions options = NotificationDateOptions.resolve(" yyyy-MM-dd HH:mm ", " UTC ");
+  @Test
+  void resolveTrimsInputsBeforeFormatting() {
+    NotificationDateOptions options =
+        NotificationDateOptions.resolve(" yyyy-MM-dd HH:mm ", " UTC ");
 
-        assertEquals("2026-05-04 10:15", options.format(LocalDateTime.of(2026, 5, 4, 10, 15)));
-    }
+    assertEquals("2026-05-04 10:15", options.format(LocalDateTime.of(2026, 5, 4, 10, 15)));
+  }
 }

@@ -4,8 +4,8 @@ import java.util.UUID;
 
 public final class SecureOtpChallengeIdGenerator implements OtpChallengeIdGenerator {
 
-    @Override
-    public String generate() {
-        return "otp_" + UUID.randomUUID().toString().replace("-", "");
-    }
+  @Override
+  public String generate() {
+    return "otp_" + UUID.randomUUID().toString().replace("-", "");
+  }
 }

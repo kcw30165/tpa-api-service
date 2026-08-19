@@ -14,6 +14,6 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class GetWebSysDateApimDataItem {
 
-    @JsonProperty("sys-date")
-    private String sysDate;
+  @JsonProperty("sys-date")
+  private String sysDate;
 }

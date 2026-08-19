@@ -12,23 +12,24 @@ import reactor.core.publisher.Mono;
 
 class StartUsernameRecoveryUseCaseTest {
 
-    @Test
-    void exposesSingleTypedReactiveStartMethod() {
-        Class<?> port = StartUsernameRecoveryUseCase.class;
-        assertThat(Modifier.isInterface(port.getModifiers())).isTrue();
-        assertThat(port.isAnnotationPresent(FunctionalInterface.class)).isTrue();
+  @Test
+  void exposesSingleTypedReactiveStartMethod() {
+    Class<?> port = StartUsernameRecoveryUseCase.class;
+    assertThat(Modifier.isInterface(port.getModifiers())).isTrue();
+    assertThat(port.isAnnotationPresent(FunctionalInterface.class)).isTrue();
 
-        Method[] methods = port.getDeclaredMethods();
-        assertThat(methods).hasSize(1);
+    Method[] methods = port.getDeclaredMethods();
+    assertThat(methods).hasSize(1);
 
-        Method method = methods[0];
-        assertThat(method.getName()).isEqualTo("start");
-        assertThat(method.getParameterTypes()).containsExactly(UsernameRecoveryStartCommand.class);
-        assertThat(method.getReturnType()).isEqualTo(Mono.class);
-        assertThat(method.getGenericReturnType()).isInstanceOf(ParameterizedType.class);
+    Method method = methods[0];
+    assertThat(method.getName()).isEqualTo("start");
+    assertThat(method.getParameterTypes()).containsExactly(UsernameRecoveryStartCommand.class);
+    assertThat(method.getReturnType()).isEqualTo(Mono.class);
+    assertThat(method.getGenericReturnType()).isInstanceOf(ParameterizedType.class);
 
-        var parameterized = (ParameterizedType) method.getGenericReturnType();
-        assertThat(parameterized.getRawType()).isEqualTo(Mono.class);
-        assertThat(parameterized.getActualTypeArguments()).containsExactly(UsernameRecoveryStartResult.class);
-    }
+    var parameterized = (ParameterizedType) method.getGenericReturnType();
+    assertThat(parameterized.getRawType()).isEqualTo(Mono.class);
+    assertThat(parameterized.getActualTypeArguments())
+        .containsExactly(UsernameRecoveryStartResult.class);
+  }
 }

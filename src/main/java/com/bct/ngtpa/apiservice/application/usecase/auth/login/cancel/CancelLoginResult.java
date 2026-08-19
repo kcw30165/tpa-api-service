@@ -3,17 +3,20 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.login.cancel;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
 import java.util.*;
 
-public record CancelLoginResult(CancelLoginStatus status, boolean clearAuthFlowCookie, boolean clearXsrfCookie,
-        List<WorkflowErrorDescriptor> errors) {
-    public CancelLoginResult {
-        Objects.requireNonNull(status);
-        errors = errors == null ? List.of() : List.copyOf(errors);
-    }
+public record CancelLoginResult(
+    CancelLoginStatus status,
+    boolean clearAuthFlowCookie,
+    boolean clearXsrfCookie,
+    List<WorkflowErrorDescriptor> errors) {
+  public CancelLoginResult {
+    Objects.requireNonNull(status);
+    errors = errors == null ? List.of() : List.copyOf(errors);
+  }
 
-    public boolean successfulCleanup() {
-        return switch (status) {
-            case CANCELLED, SESSION_NOT_FOUND, ALREADY_CANCELLED, ALREADY_TERMINAL -> true;
-            default -> false;
-        };
-    }
+  public boolean successfulCleanup() {
+    return switch (status) {
+      case CANCELLED, SESSION_NOT_FOUND, ALREADY_CANCELLED, ALREADY_TERMINAL -> true;
+      default -> false;
+    };
+  }
 }

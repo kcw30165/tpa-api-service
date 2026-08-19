@@ -10,18 +10,20 @@ import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 
 @Configuration
 public class LoginOtpSendIdempotencyConfig {
-    @Bean
-    RedisLoginOtpSendIdempotencyKeyFactory redisLoginOtpSendIdempotencyKeyFactory(
-            @Value("${redis-cache.key-prefix:ngtpa}") String prefix) {
-        return new RedisLoginOtpSendIdempotencyKeyFactory(prefix);
-    }
+  @Bean
+  RedisLoginOtpSendIdempotencyKeyFactory redisLoginOtpSendIdempotencyKeyFactory(
+      @Value("${redis-cache.key-prefix:ngtpa}") String prefix) {
+    return new RedisLoginOtpSendIdempotencyKeyFactory(prefix);
+  }
 
-    @Bean
-    LoginOtpSendIdempotencyPort loginOtpSendIdempotencyPort(RedisLoginOtpSendIdempotencyKeyFactory keys,
-            ReactiveStringRedisTemplate redis, AuthWorkflowProperties properties) {
-        properties.validateLoginPolicy();
-        int ttl = properties.getLogin().getIdempotency().getOtpSendTtlSeconds();
-        Duration.ofSeconds(ttl);
-        return LoginOtpSendRedisAdapterFactory.create(keys, redis);
-    }
+  @Bean
+  LoginOtpSendIdempotencyPort loginOtpSendIdempotencyPort(
+      RedisLoginOtpSendIdempotencyKeyFactory keys,
+      ReactiveStringRedisTemplate redis,
+      AuthWorkflowProperties properties) {
+    properties.validateLoginPolicy();
+    int ttl = properties.getLogin().getIdempotency().getOtpSendTtlSeconds();
+    Duration.ofSeconds(ttl);
+    return LoginOtpSendRedisAdapterFactory.create(keys, redis);
+  }
 }

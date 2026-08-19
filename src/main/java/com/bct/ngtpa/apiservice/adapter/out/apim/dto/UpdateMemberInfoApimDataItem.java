@@ -14,20 +14,27 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UpdateMemberInfoApimDataItem {
-    @JsonProperty("success")
-    private boolean success;
-    @JsonProperty("policy-no")
-    private String policyNo;
-    @JsonProperty("cert-no")
-    private String certNo;
-    @JsonProperty("env")
-    private String env;
-    @JsonProperty("ref-no")
-    private String refNo;
-    @JsonProperty("submit-date")
-    private String submitDate;
-    @JsonProperty("submit-time")
-    private String submitTime;
-    @JsonProperty("errors")
-    private List<UpdateMemberInfoApimError> errors;
+  @JsonProperty("success")
+  private boolean success;
+
+  @JsonProperty("policy-no")
+  private String policyNo;
+
+  @JsonProperty("cert-no")
+  private String certNo;
+
+  @JsonProperty("env")
+  private String env;
+
+  @JsonProperty("ref-no")
+  private String refNo;
+
+  @JsonProperty("submit-date")
+  private String submitDate;
+
+  @JsonProperty("submit-time")
+  private String submitTime;
+
+  @JsonProperty("errors")
+  private List<UpdateMemberInfoApimError> errors;
 }

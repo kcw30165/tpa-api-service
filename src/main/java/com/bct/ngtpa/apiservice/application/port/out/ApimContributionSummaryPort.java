@@ -5,5 +5,6 @@ import com.bct.ngtpa.apiservice.domain.model.ContributionSummaryDataset;
 import reactor.core.publisher.Mono;
 
 public interface ApimContributionSummaryPort {
-    Mono<ContributionSummaryDataset> fetchContributionSummary(FetchContributionSummaryCommand command);
+  Mono<ContributionSummaryDataset> fetchContributionSummary(
+      FetchContributionSummaryCommand command);
 }

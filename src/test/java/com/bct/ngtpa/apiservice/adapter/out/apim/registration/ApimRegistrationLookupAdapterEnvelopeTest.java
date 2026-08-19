@@ -8,31 +8,33 @@ import org.junit.jupiter.api.Test;
 
 class ApimRegistrationLookupAdapterEnvelopeTest {
 
-    @Test
-    void envelopeFactoryKeepsBusinessErrMessageInspectable() {
-        var envelope = new ApimRegistrationLookupEnvelope("err.tpa.member.not.found", List.of());
+  @Test
+  void envelopeFactoryKeepsBusinessErrMessageInspectable() {
+    var envelope = new ApimRegistrationLookupEnvelope("err.tpa.member.not.found", List.of());
 
-        assertThat(envelope.errMessage()).isEqualTo("err.tpa.member.not.found");
-        assertThat(envelope.data()).isEmpty();
-    }
+    assertThat(envelope.errMessage()).isEqualTo("err.tpa.member.not.found");
+    assertThat(envelope.data()).isEmpty();
+  }
 
-    @Test
-    void envelopeDefensivelyCopiesDataAndRedactsToString() {
-        var data = new java.util.ArrayList<TrpSearchUnregMemberApimDataItem>();
-        data.add(new TrpSearchUnregMemberApimDataItem("member@example.com", "91234567", "OI", "JPM"));
+  @Test
+  void envelopeDefensivelyCopiesDataAndRedactsToString() {
+    var data = new java.util.ArrayList<TrpSearchUnregMemberApimDataItem>();
+    data.add(new TrpSearchUnregMemberApimDataItem("member@example.com", "91234567", "OI", "JPM"));
 
-        var envelope = new ApimRegistrationLookupEnvelope("", data);
-        data.clear();
+    var envelope = new ApimRegistrationLookupEnvelope("", data);
+    data.clear();
 
-        assertThat(envelope.data()).hasSize(1);
-        assertThat(envelope.toString()).doesNotContain("member@example.com", "91234567");
-    }
+    assertThat(envelope.data()).hasSize(1);
+    assertThat(envelope.toString()).doesNotContain("member@example.com", "91234567");
+  }
 
-    @Test
-    void adapterDoesNotHardcodeUserFacingMessages() throws Exception {
-        var source = java.nio.file.Files.readString(java.nio.file.Path.of(
+  @Test
+  void adapterDoesNotHardcodeUserFacingMessages() throws Exception {
+    var source =
+        java.nio.file.Files.readString(
+            java.nio.file.Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/registration/ApimRegistrationLookupAdapter.java"));
 
-        assertThat(source).doesNotContain("We are unable to verify your details", "我們未能核實您的資料");
-    }
+    assertThat(source).doesNotContain("We are unable to verify your details", "我們未能核實您的資料");
+  }
 }

@@ -6,5 +6,5 @@ import reactor.core.publisher.Mono;
 
 public interface EmailSenderPort {
 
-    Mono<SenderResult> sendEmail(EmailMessage message);
+  Mono<SenderResult> sendEmail(EmailMessage message);
 }

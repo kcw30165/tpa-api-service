@@ -5,5 +5,5 @@ import com.bct.ngtpa.apiservice.application.dto.PersonalInformationResult;
 import reactor.core.publisher.Mono;
 
 public interface GetPersonalInformationUseCase {
-    Mono<PersonalInformationResult> execute(GetPersonalInformationCommand command);
+  Mono<PersonalInformationResult> execute(GetPersonalInformationCommand command);
 }

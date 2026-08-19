@@ -9,10 +9,21 @@ import org.junit.jupiter.api.Test;
 
 class RegistrationStartRequestDtoTest {
 
-    @Test
-    void registrationStartRequestDoesNotExposeRemovedPayloadFields() {
-        assertThat(Arrays.stream(RegistrationStartRequest.class.getRecordComponents()).map(RecordComponent::getName))
-                .containsExactly("identityType", "identityValue", "dateOfBirth", "email", "mobile", "captchaChallengeId")
-                .doesNotContain("registrationSessionId", "authFlowSessionId", "otpChallengeId", "contactType", "contactValue", "accountRef", "lang", "requestId");
-    }
+  @Test
+  void registrationStartRequestDoesNotExposeRemovedPayloadFields() {
+    assertThat(
+            Arrays.stream(RegistrationStartRequest.class.getRecordComponents())
+                .map(RecordComponent::getName))
+        .containsExactly(
+            "identityType", "identityValue", "dateOfBirth", "email", "mobile", "captchaChallengeId")
+        .doesNotContain(
+            "registrationSessionId",
+            "authFlowSessionId",
+            "otpChallengeId",
+            "contactType",
+            "contactValue",
+            "accountRef",
+            "lang",
+            "requestId");
+  }
 }

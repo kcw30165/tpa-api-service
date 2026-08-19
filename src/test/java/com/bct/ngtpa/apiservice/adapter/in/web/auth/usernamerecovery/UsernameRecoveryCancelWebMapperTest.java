@@ -10,34 +10,35 @@ import org.junit.jupiter.api.Test;
 /**
  * Web mapper tests for Username Recovery /cancel result projections.
  *
- * <p>Successful cancellation projects {@code RETURN_TO_LOGIN} with null data.
- * {@code SYSTEM_FAILED} projects null data with nextStep NONE; Task 023 owns
- * the system-error response policy.
+ * <p>Successful cancellation projects {@code RETURN_TO_LOGIN} with null data. {@code SYSTEM_FAILED}
+ * projects null data with nextStep NONE; Task 023 owns the system-error response policy.
  */
 class UsernameRecoveryCancelWebMapperTest {
 
-    private final UsernameRecoveryCancelWebMapper mapper = new UsernameRecoveryCancelWebMapper();
+  private final UsernameRecoveryCancelWebMapper mapper = new UsernameRecoveryCancelWebMapper();
 
-    @Test
-    void successProjectsReturnToLoginWithNullData() {
-        var response = mapper.toResult(new UsernameRecoveryCancelResult(
-                UsernameRecoveryCancelResult.Outcome.SUCCESS));
+  @Test
+  void successProjectsReturnToLoginWithNullData() {
+    var response =
+        mapper.toResult(
+            new UsernameRecoveryCancelResult(UsernameRecoveryCancelResult.Outcome.SUCCESS));
 
-        assertThat(response.nextStep()).isEqualTo(WorkflowNextStep.RETURN_TO_LOGIN);
-        assertThat(response.data()).isNull();
-    }
+    assertThat(response.nextStep()).isEqualTo(WorkflowNextStep.RETURN_TO_LOGIN);
+    assertThat(response.data()).isNull();
+  }
 
-    @Test
-    void systemFailedProjectsNoDataAndNoNextStepDecision() {
-        var response = mapper.toResult(new UsernameRecoveryCancelResult(
-                UsernameRecoveryCancelResult.Outcome.SYSTEM_FAILED));
+  @Test
+  void systemFailedProjectsNoDataAndNoNextStepDecision() {
+    var response =
+        mapper.toResult(
+            new UsernameRecoveryCancelResult(UsernameRecoveryCancelResult.Outcome.SYSTEM_FAILED));
 
-        assertThat(response.data()).isNull();
-        assertThat(response.nextStep()).isEqualTo(WorkflowNextStep.NONE);
-    }
+    assertThat(response.data()).isNull();
+    assertThat(response.nextStep()).isEqualTo(WorkflowNextStep.NONE);
+  }
 
-    @Test
-    void nullCancelResultFailsClosed() {
-        assertThatThrownBy(() -> mapper.toResult(null)).isInstanceOf(NullPointerException.class);
-    }
+  @Test
+  void nullCancelResultFailsClosed() {
+    assertThatThrownBy(() -> mapper.toResult(null)).isInstanceOf(NullPointerException.class);
+  }
 }

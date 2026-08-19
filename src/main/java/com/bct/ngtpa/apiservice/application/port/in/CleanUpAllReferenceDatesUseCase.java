@@ -4,5 +4,5 @@ import com.bct.ngtpa.apiservice.application.dto.CleanUpAllReferenceDatesResult;
 import reactor.core.publisher.Mono;
 
 public interface CleanUpAllReferenceDatesUseCase {
-    Mono<CleanUpAllReferenceDatesResult> execute();
+  Mono<CleanUpAllReferenceDatesResult> execute();
 }

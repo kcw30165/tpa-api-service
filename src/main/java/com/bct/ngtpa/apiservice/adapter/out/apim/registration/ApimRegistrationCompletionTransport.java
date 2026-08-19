@@ -5,5 +5,5 @@ import reactor.core.publisher.Mono;
 
 @FunctionalInterface
 public interface ApimRegistrationCompletionTransport {
-    Mono<TrpRegMemberApimEnvelope> postRegMember(String path, TrpRegMemberApimRequest request);
+  Mono<TrpRegMemberApimEnvelope> postRegMember(String path, TrpRegMemberApimRequest request);
 }

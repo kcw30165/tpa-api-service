@@ -12,18 +12,23 @@ import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 
 @Configuration
 public class AuthenticatedLoginReplayConfig {
-    @Bean
-    AuthenticatedLoginReplaySessionPort authenticatedLoginReplaySessionPort(
-            ReactiveStringRedisTemplate redis, RedisCacheKeyFactory keys,
-            RedisAuthenticatedSessionJsonMapper json) {
-        return new RedisAuthenticatedLoginReplaySessionAdapter(redis, keys, json);
-    }
+  @Bean
+  AuthenticatedLoginReplaySessionPort authenticatedLoginReplaySessionPort(
+      ReactiveStringRedisTemplate redis,
+      RedisCacheKeyFactory keys,
+      RedisAuthenticatedSessionJsonMapper json) {
+    return new RedisAuthenticatedLoginReplaySessionAdapter(redis, keys, json);
+  }
 
-    @Bean
-    RecoverCommittedLoginUseCase recoverCommittedLoginUseCase(
-            AuthenticatedLoginHandoffPort handoffs, AuthenticatedLoginReplaySessionPort replaySessions,
-            AuthenticatedSessionProtectorPort protector, CsrfTokenGenerator csrfTokens,
-            CsrfTokenHasher csrfHasher, Clock clock) {
-        return new RecoverCommittedLoginService(handoffs, replaySessions, protector, csrfTokens, csrfHasher, clock);
-    }
+  @Bean
+  RecoverCommittedLoginUseCase recoverCommittedLoginUseCase(
+      AuthenticatedLoginHandoffPort handoffs,
+      AuthenticatedLoginReplaySessionPort replaySessions,
+      AuthenticatedSessionProtectorPort protector,
+      CsrfTokenGenerator csrfTokens,
+      CsrfTokenHasher csrfHasher,
+      Clock clock) {
+    return new RecoverCommittedLoginService(
+        handoffs, replaySessions, protector, csrfTokens, csrfHasher, clock);
+  }
 }

@@ -10,21 +10,21 @@ import org.junit.jupiter.api.Test;
 
 class UpdateNotificationsReadStatusRequestTest {
 
-    @Test
-    void keepsNotificationIdsNullWhenInputIsNull() {
-        UpdateNotificationsReadStatusRequest request = new UpdateNotificationsReadStatusRequest(null);
+  @Test
+  void keepsNotificationIdsNullWhenInputIsNull() {
+    UpdateNotificationsReadStatusRequest request = new UpdateNotificationsReadStatusRequest(null);
 
-        assertNull(request.notificationId());
-    }
+    assertNull(request.notificationId());
+  }
 
-    @Test
-    void defensivelyCopiesNotificationIds() {
-        List<String> ids = new ArrayList<>(List.of("n1", "n2"));
+  @Test
+  void defensivelyCopiesNotificationIds() {
+    List<String> ids = new ArrayList<>(List.of("n1", "n2"));
 
-        UpdateNotificationsReadStatusRequest request = new UpdateNotificationsReadStatusRequest(ids);
-        ids.add("n3");
+    UpdateNotificationsReadStatusRequest request = new UpdateNotificationsReadStatusRequest(ids);
+    ids.add("n3");
 
-        assertEquals(List.of("n1", "n2"), request.notificationId());
-        assertThrows(UnsupportedOperationException.class, () -> request.notificationId().add("n4"));
-    }
+    assertEquals(List.of("n1", "n2"), request.notificationId());
+    assertThrows(UnsupportedOperationException.class, () -> request.notificationId().add("n4"));
+  }
 }

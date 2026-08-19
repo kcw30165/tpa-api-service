@@ -5,5 +5,5 @@ import com.bct.ngtpa.apiservice.application.dto.UpdateNotificationsReadStatusRes
 import reactor.core.publisher.Mono;
 
 public interface UpdateNotificationsReadStatusUseCase {
-    Mono<UpdateNotificationsReadStatusResult> execute(UpdateNotificationsReadStatusCommand command);
+  Mono<UpdateNotificationsReadStatusResult> execute(UpdateNotificationsReadStatusCommand command);
 }

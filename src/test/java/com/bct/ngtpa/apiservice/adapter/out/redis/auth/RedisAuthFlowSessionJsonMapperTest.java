@@ -16,61 +16,62 @@ import org.junit.jupiter.api.Test;
 
 class RedisAuthFlowSessionJsonMapperTest {
 
-    private final RedisAuthFlowSessionJsonMapper mapper = new RedisAuthFlowSessionJsonMapper();
+  private final RedisAuthFlowSessionJsonMapper mapper = new RedisAuthFlowSessionJsonMapper();
 
-    @Test
-    void loadsExistingAuthFlowSessionRoundTrip() {
-        var session = sampleSession();
+  @Test
+  void loadsExistingAuthFlowSessionRoundTrip() {
+    var session = sampleSession();
 
-        var json = mapper.toJson(session);
-        var roundTrip = mapper.fromJson(json);
+    var json = mapper.toJson(session);
+    var roundTrip = mapper.fromJson(json);
 
-        assertThat(roundTrip.authFlowSessionId().value()).isEqualTo("afs_abc123");
-        assertThat(roundTrip.scenario()).isEqualTo(AuthFlowScenario.REGISTRATION);
-        assertThat(roundTrip.status()).isEqualTo(AuthFlowStatus.OTP_SENT);
-        assertThat(roundTrip.csrfTokenHash()).isEqualTo("csrf_hash_value");
-        assertThat(roundTrip.activeOtpChallengeId()).isEqualTo("otp_abc");
-        assertThat(roundTrip.data().contactType()).isEqualTo("EMAIL");
-        assertThat(roundTrip.data().maskedDestination()).isEqualTo("m****r@example.com");
-        assertThat(roundTrip.createdAt()).isEqualTo(Instant.parse("2026-06-29T00:00:00Z"));
-        assertThat(roundTrip.updatedAt()).isEqualTo(Instant.parse("2026-06-29T00:01:00Z"));
-        assertThat(roundTrip.expiresAt()).isEqualTo(Instant.parse("2026-06-29T00:30:00Z"));
-    }
+    assertThat(roundTrip.authFlowSessionId().value()).isEqualTo("afs_abc123");
+    assertThat(roundTrip.scenario()).isEqualTo(AuthFlowScenario.REGISTRATION);
+    assertThat(roundTrip.status()).isEqualTo(AuthFlowStatus.OTP_SENT);
+    assertThat(roundTrip.csrfTokenHash()).isEqualTo("csrf_hash_value");
+    assertThat(roundTrip.activeOtpChallengeId()).isEqualTo("otp_abc");
+    assertThat(roundTrip.data().contactType()).isEqualTo("EMAIL");
+    assertThat(roundTrip.data().maskedDestination()).isEqualTo("m****r@example.com");
+    assertThat(roundTrip.createdAt()).isEqualTo(Instant.parse("2026-06-29T00:00:00Z"));
+    assertThat(roundTrip.updatedAt()).isEqualTo(Instant.parse("2026-06-29T00:01:00Z"));
+    assertThat(roundTrip.expiresAt()).isEqualTo(Instant.parse("2026-06-29T00:30:00Z"));
+  }
 
-    @Test
-    void storedJsonDoesNotContainRawSecretFields() {
-        var json = mapper.toJson(sampleSession());
+  @Test
+  void storedJsonDoesNotContainRawSecretFields() {
+    var json = mapper.toJson(sampleSession());
 
-        assertThat(json)
-                .doesNotContain("rawCsrfToken")
-                .doesNotContain("csrfToken\"")
-                .doesNotContain("auth_flow_sid")
-                .doesNotContain("XSRF-TOKEN")
-                .doesNotContain("otpCode")
-                .doesNotContain("rawOtp")
-                .doesNotContain("password")
-                .doesNotContain("confirmPassword")
-                .doesNotContain("email")
-                .doesNotContain("mobile")
-                .doesNotContain("phone")
-                .doesNotContain("hkid")
-                .doesNotContain("passport")
-                .doesNotContain("policyNo")
-                .doesNotContain("certNo");
-        assertThat(json).contains("csrfTokenHash", "activeOtpChallengeId", "maskedDestination");
-    }
+    assertThat(json)
+        .doesNotContain("rawCsrfToken")
+        .doesNotContain("csrfToken\"")
+        .doesNotContain("auth_flow_sid")
+        .doesNotContain("XSRF-TOKEN")
+        .doesNotContain("otpCode")
+        .doesNotContain("rawOtp")
+        .doesNotContain("password")
+        .doesNotContain("confirmPassword")
+        .doesNotContain("email")
+        .doesNotContain("mobile")
+        .doesNotContain("phone")
+        .doesNotContain("hkid")
+        .doesNotContain("passport")
+        .doesNotContain("policyNo")
+        .doesNotContain("certNo");
+    assertThat(json).contains("csrfTokenHash", "activeOtpChallengeId", "maskedDestination");
+  }
 
-    @Test
-    void malformedRedisJsonFailsSafely() {
-        assertThatThrownBy(() -> mapper.fromJson("{not-json"))
-                .isInstanceOf(CacheException.class)
-                .hasMessage("Auth flow session state deserialization failed")
-                .hasMessageNotContaining("{not-json");
-    }
+  @Test
+  void malformedRedisJsonFailsSafely() {
+    assertThatThrownBy(() -> mapper.fromJson("{not-json"))
+        .isInstanceOf(CacheException.class)
+        .hasMessage("Auth flow session state deserialization failed")
+        .hasMessageNotContaining("{not-json");
+  }
 
-    @Test
-    void readsExistingRedisJsonAfterAuthFlowStatusExpansion() {
-        var legacyJson = """
+  @Test
+  void readsExistingRedisJsonAfterAuthFlowStatusExpansion() {
+    var legacyJson =
+        """
                 {
                     \"authFlowSessionId\":\"afs_legacy\",
                     \"scenario\":\"FORGOT_PASSWORD\",
@@ -90,54 +91,56 @@ class RedisAuthFlowSessionJsonMapperTest {
                 }
                 """;
 
-        var session = mapper.fromJson(legacyJson);
+    var session = mapper.fromJson(legacyJson);
 
-        assertThat(session.authFlowSessionId().value()).isEqualTo("afs_legacy");
-        assertThat(session.scenario()).isEqualTo(AuthFlowScenario.FORGOT_PASSWORD);
-        assertThat(session.status()).isEqualTo(AuthFlowStatus.OTP_SENT);
-        assertThat(session.data().attributes()).containsEntry("forgotPasswordContextCiphertext", "ciphertext");
-    }
+    assertThat(session.authFlowSessionId().value()).isEqualTo("afs_legacy");
+    assertThat(session.scenario()).isEqualTo(AuthFlowScenario.FORGOT_PASSWORD);
+    assertThat(session.status()).isEqualTo(AuthFlowStatus.OTP_SENT);
+    assertThat(session.data().attributes())
+        .containsEntry("forgotPasswordContextCiphertext", "ciphertext");
+  }
 
-    @Test
-    void authFlowStatusDoesNotUseAmbiguousFailureStates() {
-        assertThat(java.util.Arrays.stream(AuthFlowStatus.values()).map(Enum::name))
-                .doesNotContain("FAILED", "UNKNOWN", "ERROR");
-    }
+  @Test
+  void authFlowStatusDoesNotUseAmbiguousFailureStates() {
+    assertThat(java.util.Arrays.stream(AuthFlowStatus.values()).map(Enum::name))
+        .doesNotContain("FAILED", "UNKNOWN", "ERROR");
+  }
 
-    @Test
-    void revisedRecordRoundTripsOpaqueRevisionWithoutChangingDomainSession() {
-        var revision = new SessionRevision("0123456789abcdef0123456789abcdef");
-        var json = mapper.toJson(sampleSession(), revision);
-        var snapshot = mapper.snapshotFromJson(json).orElseThrow();
+  @Test
+  void revisedRecordRoundTripsOpaqueRevisionWithoutChangingDomainSession() {
+    var revision = new SessionRevision("0123456789abcdef0123456789abcdef");
+    var json = mapper.toJson(sampleSession(), revision);
+    var snapshot = mapper.snapshotFromJson(json).orElseThrow();
 
-        assertThat(snapshot.session()).isEqualTo(sampleSession());
-        assertThat(snapshot.revision()).isEqualTo(revision);
-        assertThat(snapshot.toString()).doesNotContain(revision.value());
-    }
+    assertThat(snapshot.session()).isEqualTo(sampleSession());
+    assertThat(snapshot.revision()).isEqualTo(revision);
+    assertThat(snapshot.toString()).doesNotContain(revision.value());
+  }
 
-    @Test
-    void legacyRecordRemainsReadableButHasNoSnapshotRevision() {
-        var legacyJson = mapper.toJson(sampleSession());
-        assertThat(mapper.fromJson(legacyJson)).isEqualTo(sampleSession());
-        assertThat(mapper.snapshotFromJson(legacyJson)).isEmpty();
-    }
+  @Test
+  void legacyRecordRemainsReadableButHasNoSnapshotRevision() {
+    var legacyJson = mapper.toJson(sampleSession());
+    assertThat(mapper.fromJson(legacyJson)).isEqualTo(sampleSession());
+    assertThat(mapper.snapshotFromJson(legacyJson)).isEmpty();
+  }
 
-    private static AuthFlowSession sampleSession() {
-        var data = new AuthFlowSessionData(
-                "EMAIL",
-                "m****r@example.com",
-                Map.of(
-                        "safe", "value",
-                        "usernameCheckCiphertext", "encrypted-username-check"));
-        return new AuthFlowSession(
-                new AuthFlowSessionId("afs_abc123"),
-                AuthFlowScenario.REGISTRATION,
-                AuthFlowStatus.OTP_SENT,
-                "csrf_hash_value",
-                "otp_abc",
-                data,
-                Instant.parse("2026-06-29T00:00:00Z"),
-                Instant.parse("2026-06-29T00:01:00Z"),
-                Instant.parse("2026-06-29T00:30:00Z"));
-    }
+  private static AuthFlowSession sampleSession() {
+    var data =
+        new AuthFlowSessionData(
+            "EMAIL",
+            "m****r@example.com",
+            Map.of(
+                "safe", "value",
+                "usernameCheckCiphertext", "encrypted-username-check"));
+    return new AuthFlowSession(
+        new AuthFlowSessionId("afs_abc123"),
+        AuthFlowScenario.REGISTRATION,
+        AuthFlowStatus.OTP_SENT,
+        "csrf_hash_value",
+        "otp_abc",
+        data,
+        Instant.parse("2026-06-29T00:00:00Z"),
+        Instant.parse("2026-06-29T00:01:00Z"),
+        Instant.parse("2026-06-29T00:30:00Z"));
+  }
 }

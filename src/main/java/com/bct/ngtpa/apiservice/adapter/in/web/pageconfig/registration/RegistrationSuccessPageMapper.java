@@ -13,29 +13,25 @@ import org.springframework.stereotype.Component;
 @Component
 public class RegistrationSuccessPageMapper {
 
-    public RegistrationSuccessPageMapper(BffPagesProperties pages) {
-        Objects.requireNonNull(pages, "pages must not be null");
-    }
+  public RegistrationSuccessPageMapper(BffPagesProperties pages) {
+    Objects.requireNonNull(pages, "pages must not be null");
+  }
 
-    public RegistrationSuccessPageResponse map(
-            String pageId,
-            String variant,
-            String ignoredLanguage) {
-        return new RegistrationSuccessPageResponse(
-                pageId,
-                variant,
-                actions(variant));
-    }
+  public RegistrationSuccessPageResponse map(
+      String pageId, String variant, String ignoredLanguage) {
+    return new RegistrationSuccessPageResponse(pageId, variant, actions(variant));
+  }
 
-    private List<RegistrationSuccessPageActionResponse> actions(String variant) {
-        if (RegistrationWorkflowConstants.SUCCESS_VARIANT_HAS_REMAINING_TRUSTS.equals(variant)) {
-            return List.of(
-                    new RegistrationSuccessPageActionResponse(
-                            "registerAnotherTrust", "PRIMARY", WorkflowNextStep.SELECT_TRUST),
-                    new RegistrationSuccessPageActionResponse(
-                            "returnToLogin", "SECONDARY", WorkflowNextStep.RETURN_TO_LOGIN));
-        }
-        return List.of(new RegistrationSuccessPageActionResponse(
-                "returnToLogin", "PRIMARY", WorkflowNextStep.RETURN_TO_LOGIN));
+  private List<RegistrationSuccessPageActionResponse> actions(String variant) {
+    if (RegistrationWorkflowConstants.SUCCESS_VARIANT_HAS_REMAINING_TRUSTS.equals(variant)) {
+      return List.of(
+          new RegistrationSuccessPageActionResponse(
+              "registerAnotherTrust", "PRIMARY", WorkflowNextStep.SELECT_TRUST),
+          new RegistrationSuccessPageActionResponse(
+              "returnToLogin", "SECONDARY", WorkflowNextStep.RETURN_TO_LOGIN));
     }
+    return List.of(
+        new RegistrationSuccessPageActionResponse(
+            "returnToLogin", "PRIMARY", WorkflowNextStep.RETURN_TO_LOGIN));
+  }
 }

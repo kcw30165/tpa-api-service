@@ -5,20 +5,20 @@ import java.util.List;
 import java.util.Objects;
 
 public record CancelForgotPasswordResult(
-        CancelForgotPasswordStatus status,
-        boolean clearAuthFlowCookie,
-        boolean clearXsrfCookie,
-        List<WorkflowErrorDescriptor> errors) {
+    CancelForgotPasswordStatus status,
+    boolean clearAuthFlowCookie,
+    boolean clearXsrfCookie,
+    List<WorkflowErrorDescriptor> errors) {
 
-    public CancelForgotPasswordResult {
-        Objects.requireNonNull(status, "status must not be null");
-        errors = errors == null ? List.of() : List.copyOf(errors);
-    }
+  public CancelForgotPasswordResult {
+    Objects.requireNonNull(status, "status must not be null");
+    errors = errors == null ? List.of() : List.copyOf(errors);
+  }
 
-    public boolean successfulCleanup() {
-        return switch (status) {
-            case CANCELLED, SESSION_NOT_FOUND, ALREADY_CANCELLED, ALREADY_TERMINAL -> true;
-            default -> false;
-        };
-    }
+  public boolean successfulCleanup() {
+    return switch (status) {
+      case CANCELLED, SESSION_NOT_FOUND, ALREADY_CANCELLED, ALREADY_TERMINAL -> true;
+      default -> false;
+    };
+  }
 }

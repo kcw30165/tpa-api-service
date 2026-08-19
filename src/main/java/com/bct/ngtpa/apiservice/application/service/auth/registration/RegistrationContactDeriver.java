@@ -5,31 +5,31 @@ import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationSt
 import java.util.Locale;
 
 public class RegistrationContactDeriver {
-    public RegistrationStartContact derive(String email, String mobile) {
-        String normalizedEmail = normalizeEmail(email);
-        String normalizedMobile = normalizeMobile(mobile);
-        boolean hasEmail = !normalizedEmail.isBlank();
-        boolean hasMobile = !normalizedMobile.isBlank();
-        if (hasEmail == hasMobile) {
-            throw new IllegalArgumentException("exactly one contact is required");
-        }
-        if (hasEmail) {
-            return new RegistrationStartContact(
-                    RegistrationContactType.EMAIL,
-                    normalizedEmail,
-                    RegistrationContactMasker.maskEmail(normalizedEmail));
-        }
-        return new RegistrationStartContact(
-                RegistrationContactType.MOBILE,
-                normalizedMobile,
-                RegistrationContactMasker.maskMobile(normalizedMobile));
+  public RegistrationStartContact derive(String email, String mobile) {
+    String normalizedEmail = normalizeEmail(email);
+    String normalizedMobile = normalizeMobile(mobile);
+    boolean hasEmail = !normalizedEmail.isBlank();
+    boolean hasMobile = !normalizedMobile.isBlank();
+    if (hasEmail == hasMobile) {
+      throw new IllegalArgumentException("exactly one contact is required");
     }
+    if (hasEmail) {
+      return new RegistrationStartContact(
+          RegistrationContactType.EMAIL,
+          normalizedEmail,
+          RegistrationContactMasker.maskEmail(normalizedEmail));
+    }
+    return new RegistrationStartContact(
+        RegistrationContactType.MOBILE,
+        normalizedMobile,
+        RegistrationContactMasker.maskMobile(normalizedMobile));
+  }
 
-    static String normalizeEmail(String email) {
-        return email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
-    }
+  static String normalizeEmail(String email) {
+    return email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
+  }
 
-    static String normalizeMobile(String mobile) {
-        return mobile == null ? "" : mobile.trim();
-    }
+  static String normalizeMobile(String mobile) {
+    return mobile == null ? "" : mobile.trim();
+  }
 }

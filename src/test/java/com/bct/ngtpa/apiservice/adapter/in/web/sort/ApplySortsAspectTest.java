@@ -1,15 +1,14 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.sort;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.aop.aspectj.annotation.AspectJProxyFactory;
 import reactor.core.publisher.Mono;
-
-import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * Tests for {@link ApplySortsAspect}.
@@ -19,149 +18,155 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  */
 class ApplySortsAspectTest {
 
-    // ─── Test domain ──────────────────────────────────────────────────────────
+  // ─── Test domain ──────────────────────────────────────────────────────────
 
-    record Item(String name) {}
+  record Item(String name) {}
 
-    record Container(List<Item> items) {}
+  record Container(List<Item> items) {}
 
-    // ─── Test target classes ──────────────────────────────────────────────────
+  // ─── Test target classes ──────────────────────────────────────────────────
 
-    /** Synchronous sort target. */
-    static class SyncTarget {
+  /** Synchronous sort target. */
+  static class SyncTarget {
 
-        @ApplySorts({@SortList(path = "items",
-                by = @SortBy(field = "name", direction = SortDirection.ASC, type = SortType.STRING))})
-        public Container sort(Container input) {
-            return input;
-        }
-
-        public Container noAnnotation(Container input) {
-            return input;
-        }
+    @ApplySorts({
+      @SortList(
+          path = "items",
+          by = @SortBy(field = "name", direction = SortDirection.ASC, type = SortType.STRING))
+    })
+    public Container sort(Container input) {
+      return input;
     }
 
-    /** Reactive sort target returning {@link Mono}. */
-    static class MonoTarget {
+    public Container noAnnotation(Container input) {
+      return input;
+    }
+  }
 
-        @ApplySorts({@SortList(path = "items",
-                by = @SortBy(field = "name", direction = SortDirection.ASC, type = SortType.STRING))})
-        public Mono<Container> sort(Container input) {
+  /** Reactive sort target returning {@link Mono}. */
+  static class MonoTarget {
+
+    @ApplySorts({
+      @SortList(
+          path = "items",
+          by = @SortBy(field = "name", direction = SortDirection.ASC, type = SortType.STRING))
+    })
+    public Mono<Container> sort(Container input) {
+      return Mono.just(input);
+    }
+  }
+
+  /** Reactive target backed by a deferred (cold) Mono to verify no early subscription. */
+  static class DeferredMonoTarget {
+
+    private final AtomicInteger subscriptionCount;
+
+    DeferredMonoTarget(AtomicInteger counter) {
+      this.subscriptionCount = counter;
+    }
+
+    @ApplySorts({
+      @SortList(
+          path = "items",
+          by = @SortBy(field = "name", direction = SortDirection.ASC, type = SortType.STRING))
+    })
+    public Mono<Container> sort(Container input) {
+      return Mono.defer(
+          () -> {
+            subscriptionCount.incrementAndGet();
             return Mono.just(input);
-        }
+          });
     }
+  }
 
-    /** Reactive target backed by a deferred (cold) Mono to verify no early subscription. */
-    static class DeferredMonoTarget {
+  // ─── Setup ────────────────────────────────────────────────────────────────
 
-        private final AtomicInteger subscriptionCount;
+  private SortEngine sortEngine;
+  private ApplySortsAspect aspect;
 
-        DeferredMonoTarget(AtomicInteger counter) {
-            this.subscriptionCount = counter;
-        }
+  @BeforeEach
+  void setUp() {
+    sortEngine = new SortEngine();
+    aspect = new ApplySortsAspect(sortEngine);
+  }
 
-        @ApplySorts({@SortList(path = "items",
-                by = @SortBy(field = "name", direction = SortDirection.ASC, type = SortType.STRING))})
-        public Mono<Container> sort(Container input) {
-            return Mono.defer(() -> {
-                subscriptionCount.incrementAndGet();
-                return Mono.just(input);
-            });
-        }
-    }
+  private <T> T proxy(T target) {
+    var factory = new AspectJProxyFactory(target);
+    factory.addAspect(aspect);
+    @SuppressWarnings("unchecked")
+    T proxyInstance = (T) factory.getProxy();
+    return proxyInstance;
+  }
 
-    // ─── Setup ────────────────────────────────────────────────────────────────
+  // ─── Synchronous tests ────────────────────────────────────────────────────
 
-    private SortEngine sortEngine;
-    private ApplySortsAspect aspect;
+  @Test
+  void annotatedSynchronousMethodOutputIsSorted() {
+    var target = proxy(new SyncTarget());
+    var unsorted = new Container(List.of(new Item("Zebra"), new Item("Apple"), new Item("Mango")));
 
-    @BeforeEach
-    void setUp() {
-        sortEngine = new SortEngine();
-        aspect = new ApplySortsAspect(sortEngine);
-    }
+    var sorted = target.sort(unsorted);
 
-    private <T> T proxy(T target) {
-        var factory = new AspectJProxyFactory(target);
-        factory.addAspect(aspect);
-        @SuppressWarnings("unchecked")
-        T proxyInstance = (T) factory.getProxy();
-        return proxyInstance;
-    }
+    assertEquals(
+        List.of("Apple", "Mango", "Zebra"), sorted.items().stream().map(Item::name).toList());
+  }
 
-    // ─── Synchronous tests ────────────────────────────────────────────────────
+  @Test
+  void nonAnnotatedMethodIsNotSorted() {
+    var target = proxy(new SyncTarget());
+    var unsorted = new Container(List.of(new Item("Zebra"), new Item("Apple"), new Item("Mango")));
 
-    @Test
-    void annotatedSynchronousMethodOutputIsSorted() {
-        var target = proxy(new SyncTarget());
-        var unsorted = new Container(List.of(
-                new Item("Zebra"), new Item("Apple"), new Item("Mango")));
+    var result = target.noAnnotation(unsorted);
 
-        var sorted = target.sort(unsorted);
+    // Order unchanged – no @ApplySorts on this method
+    assertEquals(
+        List.of("Zebra", "Apple", "Mango"), result.items().stream().map(Item::name).toList());
+  }
 
-        assertEquals(List.of("Apple", "Mango", "Zebra"),
-                sorted.items().stream().map(Item::name).toList());
-    }
+  // ─── Mono tests ───────────────────────────────────────────────────────────
 
-    @Test
-    void nonAnnotatedMethodIsNotSorted() {
-        var target = proxy(new SyncTarget());
-        var unsorted = new Container(List.of(
-                new Item("Zebra"), new Item("Apple"), new Item("Mango")));
+  @Test
+  void annotatedMonoMethodOutputIsSortedWithoutBlocking() {
+    var target = proxy(new MonoTarget());
+    var unsorted = new Container(List.of(new Item("Zebra"), new Item("Apple"), new Item("Mango")));
 
-        var result = target.noAnnotation(unsorted);
+    // Must return a Mono that, when subscribed, produces a sorted container
+    Mono<Container> result = target.sort(unsorted);
+    assertNotNull(result);
 
-        // Order unchanged – no @ApplySorts on this method
-        assertEquals(List.of("Zebra", "Apple", "Mango"),
-                result.items().stream().map(Item::name).toList());
-    }
+    var sorted = result.block(); // subscribe exactly once here
+    assertNotNull(sorted);
+    assertEquals(
+        List.of("Apple", "Mango", "Zebra"), sorted.items().stream().map(Item::name).toList());
+  }
 
-    // ─── Mono tests ───────────────────────────────────────────────────────────
+  @Test
+  void aspectDoesNotSubscribeInternally() {
+    var subscriptionCount = new AtomicInteger(0);
+    var target = proxy(new DeferredMonoTarget(subscriptionCount));
 
-    @Test
-    void annotatedMonoMethodOutputIsSortedWithoutBlocking() {
-        var target = proxy(new MonoTarget());
-        var unsorted = new Container(List.of(
-                new Item("Zebra"), new Item("Apple"), new Item("Mango")));
+    var unsorted = new Container(List.of(new Item("B"), new Item("A")));
 
-        // Must return a Mono that, when subscribed, produces a sorted container
-        Mono<Container> result = target.sort(unsorted);
-        assertNotNull(result);
+    // Calling the proxy method should NOT subscribe to the inner Mono
+    Mono<Container> result = target.sort(unsorted);
+    assertEquals(0, subscriptionCount.get(), "Aspect must not subscribe to the Mono internally");
 
-        var sorted = result.block(); // subscribe exactly once here
-        assertNotNull(sorted);
-        assertEquals(List.of("Apple", "Mango", "Zebra"),
-                sorted.items().stream().map(Item::name).toList());
-    }
+    // Subscribing here is the first and only subscription
+    result.block();
+    assertEquals(
+        1,
+        subscriptionCount.get(),
+        "Mono should be subscribed exactly once when the caller subscribes");
+  }
 
-    @Test
-    void aspectDoesNotSubscribeInternally() {
-        var subscriptionCount = new AtomicInteger(0);
-        var target = proxy(new DeferredMonoTarget(subscriptionCount));
+  @Test
+  void monoSortingPreservesReactiveChainCorrectly() {
+    // Verify the Mono result can be chained without issues
+    var target = proxy(new MonoTarget());
+    var unsorted = new Container(List.of(new Item("C"), new Item("A"), new Item("B")));
 
-        var unsorted = new Container(List.of(new Item("B"), new Item("A")));
+    var firstItem = target.sort(unsorted).map(c -> c.items().get(0).name()).block();
 
-        // Calling the proxy method should NOT subscribe to the inner Mono
-        Mono<Container> result = target.sort(unsorted);
-        assertEquals(0, subscriptionCount.get(),
-                "Aspect must not subscribe to the Mono internally");
-
-        // Subscribing here is the first and only subscription
-        result.block();
-        assertEquals(1, subscriptionCount.get(),
-                "Mono should be subscribed exactly once when the caller subscribes");
-    }
-
-    @Test
-    void monoSortingPreservesReactiveChainCorrectly() {
-        // Verify the Mono result can be chained without issues
-        var target = proxy(new MonoTarget());
-        var unsorted = new Container(List.of(new Item("C"), new Item("A"), new Item("B")));
-
-        var firstItem = target.sort(unsorted)
-                .map(c -> c.items().get(0).name())
-                .block();
-
-        assertEquals("A", firstItem);
-    }
+    assertEquals("A", firstItem);
+  }
 }

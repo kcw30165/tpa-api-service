@@ -13,10 +13,12 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UpdateMemberInfoApimError {
-    @JsonProperty("type")
-    private String type;
-    @JsonProperty("fields")
-    private String fields;
-    @JsonProperty("code")
-    private String code;
+  @JsonProperty("type")
+  private String type;
+
+  @JsonProperty("fields")
+  private String fields;
+
+  @JsonProperty("code")
+  private String code;
 }

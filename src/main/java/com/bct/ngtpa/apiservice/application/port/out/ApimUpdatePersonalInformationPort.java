@@ -6,5 +6,5 @@ import java.util.List;
 import reactor.core.publisher.Mono;
 
 public interface ApimUpdatePersonalInformationPort {
-    Mono<List<UpdatePersonalInformationResult>> updateMemberInfo(UpdateMemberInfoCommand command);
+  Mono<List<UpdatePersonalInformationResult>> updateMemberInfo(UpdateMemberInfoCommand command);
 }

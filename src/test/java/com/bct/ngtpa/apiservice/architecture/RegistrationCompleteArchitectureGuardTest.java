@@ -12,96 +12,106 @@ import org.junit.jupiter.api.Test;
 
 class RegistrationCompleteArchitectureGuardTest {
 
-    private static final Path APPLICATION_SERVICE = Path.of(
-            "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/complete/"
-                    + "CompleteRegistrationService.java");
-    private static final Path REGISTRATION_CONTROLLER = Path.of(
-            "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/"
-                    + "AuthRegistrationController.java");
-    private static final Path SEPARATE_COMPLETE_CONTROLLER = Path.of(
-            "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/"
-                    + "AuthRegistrationCompleteController.java");
+  private static final Path APPLICATION_SERVICE =
+      Path.of(
+          "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/complete/"
+              + "CompleteRegistrationService.java");
+  private static final Path REGISTRATION_CONTROLLER =
+      Path.of(
+          "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/"
+              + "AuthRegistrationController.java");
+  private static final Path SEPARATE_COMPLETE_CONTROLLER =
+      Path.of(
+          "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/"
+              + "AuthRegistrationCompleteController.java");
 
-    @Test
-    void completionUseCaseRemainsFrameworkAndAdapterFree() {
-        var classes = new ClassFileImporter()
-                .withImportOption(new ImportOption.DoNotIncludeTests())
-                .importPackages(
-                        "com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete");
+  @Test
+  void completionUseCaseRemainsFrameworkAndAdapterFree() {
+    var classes =
+        new ClassFileImporter()
+            .withImportOption(new ImportOption.DoNotIncludeTests())
+            .importPackages(
+                "com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete");
 
-        noClasses()
-                .that()
-                .resideInAPackage("..application.usecase.auth.registration.complete..")
-                .should()
-                .dependOnClassesThat()
-                .resideInAnyPackage(
-                        "..adapter..",
-                        "..config..",
-                        "org.springframework..",
-                        "jakarta.servlet..",
-                        "io.lettuce..",
-                        "org.springframework.data.redis..")
-                .check(classes);
-    }
+    noClasses()
+        .that()
+        .resideInAPackage("..application.usecase.auth.registration.complete..")
+        .should()
+        .dependOnClassesThat()
+        .resideInAnyPackage(
+            "..adapter..",
+            "..config..",
+            "org.springframework..",
+            "jakarta.servlet..",
+            "io.lettuce..",
+            "org.springframework.data.redis..")
+        .check(classes);
+  }
 
-    @Test
-    void existingRegistrationControllerSolelyOwnsCompleteEndpoint() throws Exception {
-        String controller = Files.readString(REGISTRATION_CONTROLLER);
+  @Test
+  void existingRegistrationControllerSolelyOwnsCompleteEndpoint() throws Exception {
+    String controller = Files.readString(REGISTRATION_CONTROLLER);
 
-        assertThat(Files.exists(SEPARATE_COMPLETE_CONTROLLER)).isFalse();
-        assertThat(controller)
-                .contains("@PostMapping(path = \"/complete\"")
-                .contains("CompleteRegistrationUseCase")
-                .contains("CompleteRegistrationWebMapper")
-                .contains("cookieWriter.clearAuthFlowCookie(response)");
+    assertThat(Files.exists(SEPARATE_COMPLETE_CONTROLLER)).isFalse();
+    assertThat(controller)
+        .containsIgnoringWhitespaces("@PostMapping(path = \"/complete\"")
+        .containsIgnoringWhitespaces("CompleteRegistrationUseCase")
+        .containsIgnoringWhitespaces("CompleteRegistrationWebMapper")
+        .containsIgnoringWhitespaces("cookieWriter.clearAuthFlowCookie(response)");
 
-        long constructorCount = Pattern.compile("public\\s+AuthRegistrationController\\s*\\(")
-                .matcher(controller)
-                .results()
-                .count();
-        assertThat(constructorCount).isEqualTo(0);
-    }
+    long constructorCount =
+        Pattern.compile("public\\s+AuthRegistrationController\\s*\\(")
+            .matcher(controller)
+            .results()
+            .count();
+    assertThat(constructorCount).isEqualTo(0);
+  }
 
-    @Test
-    void applicationOrchestrationUsesProtectedContextAndTypedCapabilities() throws Exception {
-        String source = Files.readString(APPLICATION_SERVICE);
+  @Test
+  void applicationOrchestrationUsesProtectedContextAndTypedCapabilities() throws Exception {
+    String source = Files.readString(APPLICATION_SERVICE);
 
-        assertThat(source)
-                .contains("RegistrationProtectedAuthFlowContextLoader")
-                .contains("RegistrationUsernameCheckContextLoader")
-                .contains("AuthFlowSessionCompletionLockPort")
-                .contains("AuthFlowSessionExpiryRefreshPort")
-                .contains("AuthFlowSessionCancellationPort")
-                .contains("RegistrationIdempotencyUnknownOutcomeCommand")
-                .contains("AuthFlowStatus.COMPLETING")
-                .doesNotContain("AuthFlowSessionProperties")
-                .doesNotContain("adapter.in.web")
-                .doesNotContain("adapter.out.redis")
-                .doesNotContain("adapter.out.apim");
-    }
+    assertThat(source)
+        .containsIgnoringWhitespaces("RegistrationProtectedAuthFlowContextLoader")
+        .containsIgnoringWhitespaces("RegistrationUsernameCheckContextLoader")
+        .containsIgnoringWhitespaces("AuthFlowSessionCompletionLockPort")
+        .containsIgnoringWhitespaces("AuthFlowSessionExpiryRefreshPort")
+        .containsIgnoringWhitespaces("AuthFlowSessionCancellationPort")
+        .containsIgnoringWhitespaces("RegistrationIdempotencyUnknownOutcomeCommand")
+        .containsIgnoringWhitespaces("AuthFlowStatus.COMPLETING")
+        .doesNotContain("AuthFlowSessionProperties")
+        .doesNotContain("adapter.in.web")
+        .doesNotContain("adapter.out.redis")
+        .doesNotContain("adapter.out.apim");
+  }
 
-    @Test
-    void passwordAndProtectedStateAreNotWrittenToLogsOrIdempotencySnapshots() throws Exception {
-        String service = Files.readString(APPLICATION_SERVICE);
-        String request = Files.readString(Path.of(
+  @Test
+  void passwordAndProtectedStateAreNotWrittenToLogsOrIdempotencySnapshots() throws Exception {
+    String service = Files.readString(APPLICATION_SERVICE);
+    String request =
+        Files.readString(
+            Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/dto/"
-                        + "CompleteRegistrationRequest.java"));
-        String command = Files.readString(Path.of(
+                    + "CompleteRegistrationRequest.java"));
+    String command =
+        Files.readString(
+            Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/complete/"
-                        + "CompleteRegistrationCommand.java"));
+                    + "CompleteRegistrationCommand.java"));
 
-        assertThat(request).contains("password=<redacted>", "confirmPassword=<redacted>");
-        assertThat(command)
-                .contains("password=<redacted>")
-                .contains("confirmPassword=<redacted>")
-                .contains("authFlowSessionId=<redacted>")
-                .contains("csrfToken=<redacted>")
-                .contains("idempotencyKey=<redacted>");
-        assertThat(service)
-                .contains("sha256(c.password())")
-                .doesNotContain("responseSnapshot(), c.password()")
-                .doesNotContain("log.info")
-                .doesNotContain("log.debug")
-                .doesNotContain("log.error");
-    }
+    assertThat(request)
+        .containsIgnoringWhitespaces("password=<redacted>", "confirmPassword=<redacted>");
+    assertThat(command)
+        .containsIgnoringWhitespaces("password=<redacted>")
+        .containsIgnoringWhitespaces("confirmPassword=<redacted>")
+        .containsIgnoringWhitespaces("authFlowSessionId=<redacted>")
+        .containsIgnoringWhitespaces("csrfToken=<redacted>")
+        .containsIgnoringWhitespaces("idempotencyKey=<redacted>");
+    assertThat(service)
+        .containsIgnoringWhitespaces("sha256(c.password())")
+        .doesNotContain("responseSnapshot(), c.password()")
+        .doesNotContain("log.info")
+        .doesNotContain("log.debug")
+        .doesNotContain("log.error");
+  }
 }

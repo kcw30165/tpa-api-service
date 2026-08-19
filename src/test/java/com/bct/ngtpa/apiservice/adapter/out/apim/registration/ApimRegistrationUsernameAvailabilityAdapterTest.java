@@ -14,67 +14,76 @@ import reactor.test.StepVerifier;
 
 class ApimRegistrationUsernameAvailabilityAdapterTest {
 
-    @Test
-    void mapsRequestAndCarriesExplicitRoutingMetadataThroughProductionPort() {
-        AtomicReference<TrpChkCustIdTransportCommand> captured = new AtomicReference<>();
-        TrpChkCustIdTransport transport = command -> {
-            captured.set(command);
-            return Mono.just(TrpChkCustIdApimEnvelope.success());
+  @Test
+  void mapsRequestAndCarriesExplicitRoutingMetadataThroughProductionPort() {
+    AtomicReference<TrpChkCustIdTransportCommand> captured = new AtomicReference<>();
+    TrpChkCustIdTransport transport =
+        command -> {
+          captured.set(command);
+          return Mono.just(TrpChkCustIdApimEnvelope.success());
         };
-        var adapter = new ApimRegistrationUsernameAvailabilityAdapter(transport);
+    var adapter = new ApimRegistrationUsernameAvailabilityAdapter(transport);
 
-        StepVerifier.create(adapter.checkAvailability(command("abc1@")))
-                .assertNext(result -> {
-                    assertThat(result.status()).isEqualTo(RegistrationUsernameAvailabilityStatus.AVAILABLE);
-                    assertThat(result.downstreamErrorCode()).isNull();
-                })
-                .verifyComplete();
+    StepVerifier.create(adapter.checkAvailability(command("abc1@")))
+        .assertNext(
+            result -> {
+              assertThat(result.status())
+                  .isEqualTo(RegistrationUsernameAvailabilityStatus.AVAILABLE);
+              assertThat(result.downstreamErrorCode()).isNull();
+            })
+        .verifyComplete();
 
-        assertThat(captured.get().request()).isEqualTo(new TrpChkCustIdApimRequest("abc1@"));
-        assertThat(captured.get().actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_MBR);
-        assertThat(captured.get().correlationId()).isEqualTo("req-1");
-    }
+    assertThat(captured.get().request()).isEqualTo(new TrpChkCustIdApimRequest("abc1@"));
+    assertThat(captured.get().actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_MBR);
+    assertThat(captured.get().correlationId()).isEqualTo("req-1");
+  }
 
-    @Test
-    void mapsBusinessErrorWithoutChangingRawDownstreamCode() {
-        TrpChkCustIdTransport transport = command -> Mono.just(
-                TrpChkCustIdApimEnvelope.businessRejected("err.tpa.username.taken"));
-        var adapter = new ApimRegistrationUsernameAvailabilityAdapter(transport);
+  @Test
+  void mapsBusinessErrorWithoutChangingRawDownstreamCode() {
+    TrpChkCustIdTransport transport =
+        command -> Mono.just(TrpChkCustIdApimEnvelope.businessRejected("err.tpa.username.taken"));
+    var adapter = new ApimRegistrationUsernameAvailabilityAdapter(transport);
 
-        StepVerifier.create(adapter.checkAvailability(command("abc1@")))
-                .assertNext(result -> {
-                    assertThat(result.status()).isEqualTo(RegistrationUsernameAvailabilityStatus.REJECTED);
-                    assertThat(result.downstreamErrorCode()).isEqualTo("err.tpa.username.taken");
-                })
-                .verifyComplete();
-    }
+    StepVerifier.create(adapter.checkAvailability(command("abc1@")))
+        .assertNext(
+            result -> {
+              assertThat(result.status())
+                  .isEqualTo(RegistrationUsernameAvailabilityStatus.REJECTED);
+              assertThat(result.downstreamErrorCode()).isEqualTo("err.tpa.username.taken");
+            })
+        .verifyComplete();
+  }
 
-    @Test
-    void propagatesTechnicalFailure() {
-        TrpChkCustIdTransport transport = command -> Mono.error(new IllegalStateException("transport timeout"));
-        var adapter = new ApimRegistrationUsernameAvailabilityAdapter(transport);
+  @Test
+  void propagatesTechnicalFailure() {
+    TrpChkCustIdTransport transport =
+        command -> Mono.error(new IllegalStateException("transport timeout"));
+    var adapter = new ApimRegistrationUsernameAvailabilityAdapter(transport);
 
-        StepVerifier.create(adapter.checkAvailability(command("abc1@")))
-                .expectErrorSatisfies(error -> assertThat(error)
-                        .isInstanceOf(IllegalStateException.class)
-                        .hasMessage("transport timeout"))
-                .verify();
-    }
+    StepVerifier.create(adapter.checkAvailability(command("abc1@")))
+        .expectErrorSatisfies(
+            error ->
+                assertThat(error)
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessage("transport timeout"))
+        .verify();
+  }
 
-    @Test
-    void redactsUsernameFromCommandAndRequestToString() {
-        var command = command("abc1@");
-        var request = new com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpChkCustIdApimMapper()
-                .toApimRequest(command);
-        assertThat(command.toString()).doesNotContain("abc1@");
-        assertThat(request.toString()).doesNotContain("abc1@");
-    }
+  @Test
+  void redactsUsernameFromCommandAndRequestToString() {
+    var command = command("abc1@");
+    var request =
+        new com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpChkCustIdApimMapper()
+            .toApimRequest(command);
+    assertThat(command.toString()).doesNotContain("abc1@");
+    assertThat(request.toString()).doesNotContain("abc1@");
+  }
 
-    private RegistrationUsernameAvailabilityCommand command(String username) {
-        return new RegistrationUsernameAvailabilityCommand(
-                new RegistrationSelectedTrust("TL", "ENV1"),
-                username,
-                "req-1",
-                ActorUserRole.ROLE_USER_MBR);
-    }
+  private RegistrationUsernameAvailabilityCommand command(String username) {
+    return new RegistrationUsernameAvailabilityCommand(
+        new RegistrationSelectedTrust("TL", "ENV1"),
+        username,
+        "req-1",
+        ActorUserRole.ROLE_USER_MBR);
+  }
 }

@@ -7,5 +7,5 @@ import reactor.core.publisher.Mono;
 /** Forgot Password Cancel mutation boundary. */
 @FunctionalInterface
 public interface CancelForgotPasswordUseCase {
-    Mono<CancelForgotPasswordResult> cancel(CancelForgotPasswordCommand command);
+  Mono<CancelForgotPasswordResult> cancel(CancelForgotPasswordCommand command);
 }

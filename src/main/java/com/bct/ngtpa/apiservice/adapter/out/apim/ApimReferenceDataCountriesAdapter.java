@@ -21,31 +21,43 @@ import reactor.core.publisher.Mono;
 @Component
 @RequiredArgsConstructor
 public class ApimReferenceDataCountriesAdapter implements ApimReferenceDataCountriesPort {
-    private static final String API_NAME = "/ws/NGTPA/v1/TRPGetCountryList";
-    private final ApimExchangeExecutor apimExchangeExecutor;
+  private static final String API_NAME = "/ws/NGTPA/v1/TRPGetCountryList";
+  private final ApimExchangeExecutor apimExchangeExecutor;
 
-    @Override
-    @LogExecution(value = "apim.fetchCountryList", logArgs = true)
-    public Mono<List<ReferenceDataCountryItem>> fetchCountryList(GetReferenceDataCountriesCommand command) {
-        Objects.requireNonNull(command, "command must not be null");
-        var exchange = new ApimExchangeRequest<>(
-                API_NAME,
-                newRequest(),
-                GetCountryListApimRequest.class,
-                GetCountryListDataItem.class,
-                ApimDatabaseScope.ACCOUNT_ENV,
-                new ApimCredentialResolutionContext(command.actorUserRole(), command.accountEnv()),
-                ApimRetryEligibility.SAFE_BUSINESS_CALL);
-        return apimExchangeExecutor.postEnvelope(exchange).map(this::toCountryItems);
-    }
+  @Override
+  @LogExecution(value = "apim.fetchCountryList", logArgs = true)
+  public Mono<List<ReferenceDataCountryItem>> fetchCountryList(
+      GetReferenceDataCountriesCommand command) {
+    Objects.requireNonNull(command, "command must not be null");
+    var exchange =
+        new ApimExchangeRequest<>(
+            API_NAME,
+            newRequest(),
+            GetCountryListApimRequest.class,
+            GetCountryListDataItem.class,
+            ApimDatabaseScope.ACCOUNT_ENV,
+            new ApimCredentialResolutionContext(command.actorUserRole(), command.accountEnv()),
+            ApimRetryEligibility.SAFE_BUSINESS_CALL);
+    return apimExchangeExecutor.postEnvelope(exchange).map(this::toCountryItems);
+  }
 
-    private GetCountryListApimRequest newRequest() { return new GetCountryListApimRequest(); }
+  private GetCountryListApimRequest newRequest() {
+    return new GetCountryListApimRequest();
+  }
 
-    private List<ReferenceDataCountryItem> toCountryItems(ApimResponseEnvelope<GetCountryListDataItem> response) {
-        var dataItems = ApimResponseValidator.requireSuccessData(response);
-        if (dataItems.isEmpty()) return List.of();
-        return dataItems.stream().filter(Objects::nonNull)
-                .map(item -> new ReferenceDataCountryItem(item.getCountryCode(), item.getCountryNameEng(),
-                        item.getCountryNameChi(), item.getCallingCode())).toList();
-    }
+  private List<ReferenceDataCountryItem> toCountryItems(
+      ApimResponseEnvelope<GetCountryListDataItem> response) {
+    var dataItems = ApimResponseValidator.requireSuccessData(response);
+    if (dataItems.isEmpty()) return List.of();
+    return dataItems.stream()
+        .filter(Objects::nonNull)
+        .map(
+            item ->
+                new ReferenceDataCountryItem(
+                    item.getCountryCode(),
+                    item.getCountryNameEng(),
+                    item.getCountryNameChi(),
+                    item.getCallingCode()))
+        .toList();
+  }
 }

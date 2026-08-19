@@ -5,5 +5,5 @@ import reactor.core.publisher.Mono;
 
 @FunctionalInterface
 public interface SendLoginOtpUseCase {
-    Mono<SendLoginOtpResult> send(SendLoginOtpCommand command);
+  Mono<SendLoginOtpResult> send(SendLoginOtpCommand command);
 }

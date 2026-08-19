@@ -4,25 +4,30 @@ import java.util.List;
 import java.util.Objects;
 
 public record RegistrationLookupResult(
-        RegistrationLookupStatus status,
-        List<RegistrationLookupAccount> accounts,
-        String upstreamErrorCode) {
-    public RegistrationLookupResult {
-        Objects.requireNonNull(status, "status must not be null");
-        accounts = accounts == null ? List.of() : List.copyOf(accounts);
-        if (status == RegistrationLookupStatus.ELIGIBLE && accounts.isEmpty()) {
-            throw new IllegalArgumentException("eligible lookup requires at least one account");
-        }
-        if (status == RegistrationLookupStatus.NOT_ELIGIBLE && !accounts.isEmpty()) {
-            throw new IllegalArgumentException("not-eligible lookup must not contain accounts");
-        }
-        upstreamErrorCode = upstreamErrorCode == null || upstreamErrorCode.isBlank() ? null : upstreamErrorCode.trim();
+    RegistrationLookupStatus status,
+    List<RegistrationLookupAccount> accounts,
+    String upstreamErrorCode) {
+  public RegistrationLookupResult {
+    Objects.requireNonNull(status, "status must not be null");
+    accounts = accounts == null ? List.of() : List.copyOf(accounts);
+    if (status == RegistrationLookupStatus.ELIGIBLE && accounts.isEmpty()) {
+      throw new IllegalArgumentException("eligible lookup requires at least one account");
     }
+    if (status == RegistrationLookupStatus.NOT_ELIGIBLE && !accounts.isEmpty()) {
+      throw new IllegalArgumentException("not-eligible lookup must not contain accounts");
+    }
+    upstreamErrorCode =
+        upstreamErrorCode == null || upstreamErrorCode.isBlank() ? null : upstreamErrorCode.trim();
+  }
 
-    @Override
-    public String toString() {
-        return "RegistrationLookupResult[status=" + status
-                + ", accountCount=" + accounts.size()
-                + ", upstreamErrorCode=" + upstreamErrorCode + "]";
-    }
+  @Override
+  public String toString() {
+    return "RegistrationLookupResult[status="
+        + status
+        + ", accountCount="
+        + accounts.size()
+        + ", upstreamErrorCode="
+        + upstreamErrorCode
+        + "]";
+  }
 }

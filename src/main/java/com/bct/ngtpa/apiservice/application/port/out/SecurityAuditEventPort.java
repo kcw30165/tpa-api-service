@@ -5,5 +5,5 @@ import reactor.core.publisher.Mono;
 
 public interface SecurityAuditEventPort {
 
-    Mono<Void> publish(SecurityAuditEvent event);
+  Mono<Void> publish(SecurityAuditEvent event);
 }

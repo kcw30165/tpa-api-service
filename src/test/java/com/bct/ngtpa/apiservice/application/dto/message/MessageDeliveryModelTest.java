@@ -11,120 +11,131 @@ import org.junit.jupiter.api.Test;
 
 class MessageDeliveryModelTest {
 
-    @Test
-    void messageDeliveryTypeSupportsRegistrationAndLoginOtp() {
-        assertThat(Arrays.stream(MessageDeliveryType.values()).map(Enum::name).toList())
-                .containsExactly("REGISTRATION_OTP", "LOGIN_OTP", "FORGOT_PASSWORD_OTP", "USERNAME_RECOVERY");
-    }
+  @Test
+  void messageDeliveryTypeSupportsRegistrationAndLoginOtp() {
+    assertThat(Arrays.stream(MessageDeliveryType.values()).map(Enum::name).toList())
+        .containsExactly(
+            "REGISTRATION_OTP", "LOGIN_OTP", "FORGOT_PASSWORD_OTP", "USERNAME_RECOVERY");
+  }
 
-    @Test
-    void messageDeliveryScenarioSupportsRegistrationAndLogin() {
-        assertThat(Arrays.stream(MessageDeliveryScenario.values()).map(Enum::name).toList())
-                .containsExactly("REGISTRATION", "LOGIN", "FORGOT_PASSWORD", "USERNAME_RECOVERY");
-    }
+  @Test
+  void messageDeliveryScenarioSupportsRegistrationAndLogin() {
+    assertThat(Arrays.stream(MessageDeliveryScenario.values()).map(Enum::name).toList())
+        .containsExactly("REGISTRATION", "LOGIN", "FORGOT_PASSWORD", "USERNAME_RECOVERY");
+  }
 
-    @Test
-    void messageDeliveryChannelSupportsSmsAndEmail() {
-        assertThat(Arrays.stream(MessageDeliveryChannel.values()).map(Enum::name).toList())
-                .containsExactly("SMS", "EMAIL");
-    }
+  @Test
+  void messageDeliveryChannelSupportsSmsAndEmail() {
+    assertThat(Arrays.stream(MessageDeliveryChannel.values()).map(Enum::name).toList())
+        .containsExactly("SMS", "EMAIL");
+  }
 
-    @Test
-    void messageDeliveryStatusSupportsAcceptedFailedAndUnknownOutcome() {
-        assertThat(Arrays.stream(MessageDeliveryStatus.values()).map(Enum::name).toList())
-                .containsExactly("ACCEPTED", "FAILED", "UNKNOWN_OUTCOME");
-    }
+  @Test
+  void messageDeliveryStatusSupportsAcceptedFailedAndUnknownOutcome() {
+    assertThat(Arrays.stream(MessageDeliveryStatus.values()).map(Enum::name).toList())
+        .containsExactly("ACCEPTED", "FAILED", "UNKNOWN_OUTCOME");
+  }
 
-    @Test
-    void messageDeliveryCommandCarriesGenericMessageFields() {
-        RecordComponent[] components = MessageDeliveryCommand.class.getRecordComponents();
+  @Test
+  void messageDeliveryCommandCarriesGenericMessageFields() {
+    RecordComponent[] components = MessageDeliveryCommand.class.getRecordComponents();
 
-        assertThat(Arrays.stream(components).map(RecordComponent::getName).toList())
-                .containsExactly(
-                        "messageType",
-                        "scenario",
-                        "channel",
-                        "recipient",
-                        "subject",
-                        "body",
-                        "templateCode",
-                        "templateVariables",
-                        "locale",
-                        "correlationId");
-        assertThat(components[0].getType()).isEqualTo(MessageDeliveryType.class);
-        assertThat(components[1].getType()).isEqualTo(MessageDeliveryScenario.class);
-        assertThat(components[2].getType()).isEqualTo(MessageDeliveryChannel.class);
-        assertThat(components[7].getType()).isEqualTo(Map.class);
-    }
+    assertThat(Arrays.stream(components).map(RecordComponent::getName).toList())
+        .containsExactly(
+            "messageType",
+            "scenario",
+            "channel",
+            "recipient",
+            "subject",
+            "body",
+            "templateCode",
+            "templateVariables",
+            "locale",
+            "correlationId");
+    assertThat(components[0].getType()).isEqualTo(MessageDeliveryType.class);
+    assertThat(components[1].getType()).isEqualTo(MessageDeliveryScenario.class);
+    assertThat(components[2].getType()).isEqualTo(MessageDeliveryChannel.class);
+    assertThat(components[7].getType()).isEqualTo(Map.class);
+  }
 
-    @Test
-    void messageDeliveryCommandDefensivelyCopiesTemplateVariables() {
-        Map<String, String> variables = new HashMap<>();
-        variables.put("code", "123456");
+  @Test
+  void messageDeliveryCommandDefensivelyCopiesTemplateVariables() {
+    Map<String, String> variables = new HashMap<>();
+    variables.put("code", "123456");
 
-        MessageDeliveryCommand command = new MessageDeliveryCommand(
-                MessageDeliveryType.REGISTRATION_OTP,
-                MessageDeliveryScenario.REGISTRATION,
-                MessageDeliveryChannel.SMS,
-                "85261234567",
-                null,
-                "Your code is 123456",
-                "registration-otp",
-                variables,
-                "en-HK",
-                "req-123");
+    MessageDeliveryCommand command =
+        new MessageDeliveryCommand(
+            MessageDeliveryType.REGISTRATION_OTP,
+            MessageDeliveryScenario.REGISTRATION,
+            MessageDeliveryChannel.SMS,
+            "85261234567",
+            null,
+            "Your code is 123456",
+            "registration-otp",
+            variables,
+            "en-HK",
+            "req-123");
 
-        variables.put("code", "000000");
+    variables.put("code", "000000");
 
-        assertThat(command.templateVariables()).containsEntry("code", "123456");
-        assertThat(command.templateVariables()).isUnmodifiable();
-    }
+    assertThat(command.templateVariables()).containsEntry("code", "123456");
+    assertThat(command.templateVariables()).isUnmodifiable();
+  }
 
-    @Test
-    void messageDeliveryCommandNormalizesNullTemplateVariablesToEmptyMap() {
-        MessageDeliveryCommand command = new MessageDeliveryCommand(
-                MessageDeliveryType.REGISTRATION_OTP,
-                MessageDeliveryScenario.REGISTRATION,
-                MessageDeliveryChannel.EMAIL,
-                "user@example.com",
-                "Subject",
-                "Body",
-                "registration-otp",
-                null,
-                "en-HK",
-                "req-123");
+  @Test
+  void messageDeliveryCommandNormalizesNullTemplateVariablesToEmptyMap() {
+    MessageDeliveryCommand command =
+        new MessageDeliveryCommand(
+            MessageDeliveryType.REGISTRATION_OTP,
+            MessageDeliveryScenario.REGISTRATION,
+            MessageDeliveryChannel.EMAIL,
+            "user@example.com",
+            "Subject",
+            "Body",
+            "registration-otp",
+            null,
+            "en-HK",
+            "req-123");
 
-        assertThat(command.templateVariables()).isEmpty();
-    }
+    assertThat(command.templateVariables()).isEmpty();
+  }
 
-    @Test
-    void messageDeliveryCommandDoesNotContainSmsAdapterSpecificFields() {
-        List<String> componentNames = Arrays.stream(MessageDeliveryCommand.class.getRecordComponents())
-                .map(RecordComponent::getName)
-                .toList();
+  @Test
+  void messageDeliveryCommandDoesNotContainSmsAdapterSpecificFields() {
+    List<String> componentNames =
+        Arrays.stream(MessageDeliveryCommand.class.getRecordComponents())
+            .map(RecordComponent::getName)
+            .toList();
 
-        assertThat(componentNames)
-                .doesNotContain("username", "password", "sendId", "classCode", "country", "phone", "smsContent");
-        assertThat(Arrays.stream(MessageDeliveryCommand.class.getMethods())
+    assertThat(componentNames)
+        .doesNotContain(
+            "username", "password", "sendId", "classCode", "country", "phone", "smsContent");
+    assertThat(
+            Arrays.stream(MessageDeliveryCommand.class.getMethods())
                 .map(method -> method.getName())
-                .filter(name -> List.of("username", "password", "sendId", "classCode", "country", "phone", "smsContent")
-                        .contains(name))
-                .toList()).isEmpty();
-    }
+                .filter(
+                    name ->
+                        List.of(
+                                "username",
+                                "password",
+                                "sendId",
+                                "classCode",
+                                "country",
+                                "phone",
+                                "smsContent")
+                            .contains(name))
+                .toList())
+        .isEmpty();
+  }
 
-    @Test
-    void messageDeliveryResultCarriesSafeOutcomeFields() {
-        RecordComponent[] components = MessageDeliveryResult.class.getRecordComponents();
+  @Test
+  void messageDeliveryResultCarriesSafeOutcomeFields() {
+    RecordComponent[] components = MessageDeliveryResult.class.getRecordComponents();
 
-        assertThat(Arrays.stream(components).map(RecordComponent::getName).toList())
-                .containsExactly(
-                        "status",
-                        "channel",
-                        "providerMessageId",
-                        "failureCode",
-                        "failureMessage");
-        assertThat(components[0].getType()).isEqualTo(MessageDeliveryStatus.class);
-        assertThat(components[1].getType()).isEqualTo(MessageDeliveryChannel.class);
-        assertThat(components[2].getType()).isEqualTo(String.class);
-    }
+    assertThat(Arrays.stream(components).map(RecordComponent::getName).toList())
+        .containsExactly("status", "channel", "providerMessageId", "failureCode", "failureMessage");
+    assertThat(components[0].getType()).isEqualTo(MessageDeliveryStatus.class);
+    assertThat(components[1].getType()).isEqualTo(MessageDeliveryChannel.class);
+    assertThat(components[2].getType()).isEqualTo(String.class);
+  }
 }

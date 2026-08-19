@@ -6,5 +6,5 @@ import reactor.core.publisher.Mono;
 
 public interface SmsSenderPort {
 
-    Mono<SenderResult> sendSms(SmsMessage message);
+  Mono<SenderResult> sendSms(SmsMessage message);
 }

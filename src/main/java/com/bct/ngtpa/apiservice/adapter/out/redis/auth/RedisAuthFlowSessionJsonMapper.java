@@ -9,62 +9,64 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class RedisAuthFlowSessionJsonMapper {
 
-    private final ObjectMapper objectMapper;
+  private final ObjectMapper objectMapper;
 
-    public RedisAuthFlowSessionJsonMapper() {
-        this(new ObjectMapper());
-    }
+  public RedisAuthFlowSessionJsonMapper() {
+    this(new ObjectMapper());
+  }
 
-    RedisAuthFlowSessionJsonMapper(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
-    }
+  RedisAuthFlowSessionJsonMapper(ObjectMapper objectMapper) {
+    this.objectMapper = objectMapper;
+  }
 
-    public String toJson(AuthFlowSession session) {
-        if (session == null) {
-            throw new IllegalArgumentException("Auth flow session must not be null");
-        }
-        try {
-            return objectMapper.writeValueAsString(RedisAuthFlowSessionRecord.from(session));
-        } catch (RuntimeException | JsonProcessingException exception) {
-            throw new CacheException("Auth flow session state serialization failed", exception);
-        }
+  public String toJson(AuthFlowSession session) {
+    if (session == null) {
+      throw new IllegalArgumentException("Auth flow session must not be null");
     }
+    try {
+      return objectMapper.writeValueAsString(RedisAuthFlowSessionRecord.from(session));
+    } catch (RuntimeException | JsonProcessingException exception) {
+      throw new CacheException("Auth flow session state serialization failed", exception);
+    }
+  }
 
-    public String toJson(AuthFlowSession session, SessionRevision revision) {
-        if (session == null || revision == null) {
-            throw new IllegalArgumentException("Auth flow session and revision must not be null");
-        }
-        try {
-            return objectMapper.writeValueAsString(RedisAuthFlowSessionRecord.from(session, revision));
-        } catch (RuntimeException | JsonProcessingException exception) {
-            throw new CacheException("Auth flow session state serialization failed", exception);
-        }
+  public String toJson(AuthFlowSession session, SessionRevision revision) {
+    if (session == null || revision == null) {
+      throw new IllegalArgumentException("Auth flow session and revision must not be null");
     }
+    try {
+      return objectMapper.writeValueAsString(RedisAuthFlowSessionRecord.from(session, revision));
+    } catch (RuntimeException | JsonProcessingException exception) {
+      throw new CacheException("Auth flow session state serialization failed", exception);
+    }
+  }
 
-    public java.util.Optional<AuthFlowSessionSnapshot> snapshotFromJson(String json) {
-        if (json == null || json.isBlank()) {
-            throw new IllegalArgumentException("Auth flow session JSON must not be blank");
-        }
-        try {
-            RedisAuthFlowSessionRecord record = objectMapper.readValue(json, RedisAuthFlowSessionRecord.class);
-            if (!record.sessionRevisionPresent()) {
-                return java.util.Optional.empty();
-            }
-            return java.util.Optional.of(new AuthFlowSessionSnapshot(
-                    record.toAuthFlowSession(), new SessionRevision(record.sessionRevision())));
-        } catch (RuntimeException | JsonProcessingException exception) {
-            throw new CacheException("Auth flow session snapshot deserialization failed", exception);
-        }
+  public java.util.Optional<AuthFlowSessionSnapshot> snapshotFromJson(String json) {
+    if (json == null || json.isBlank()) {
+      throw new IllegalArgumentException("Auth flow session JSON must not be blank");
     }
+    try {
+      RedisAuthFlowSessionRecord record =
+          objectMapper.readValue(json, RedisAuthFlowSessionRecord.class);
+      if (!record.sessionRevisionPresent()) {
+        return java.util.Optional.empty();
+      }
+      return java.util.Optional.of(
+          new AuthFlowSessionSnapshot(
+              record.toAuthFlowSession(), new SessionRevision(record.sessionRevision())));
+    } catch (RuntimeException | JsonProcessingException exception) {
+      throw new CacheException("Auth flow session snapshot deserialization failed", exception);
+    }
+  }
 
-    public AuthFlowSession fromJson(String json) {
-        if (json == null || json.isBlank()) {
-            throw new IllegalArgumentException("Auth flow session JSON must not be blank");
-        }
-        try {
-            return objectMapper.readValue(json, RedisAuthFlowSessionRecord.class).toAuthFlowSession();
-        } catch (RuntimeException | JsonProcessingException exception) {
-            throw new CacheException("Auth flow session state deserialization failed", exception);
-        }
+  public AuthFlowSession fromJson(String json) {
+    if (json == null || json.isBlank()) {
+      throw new IllegalArgumentException("Auth flow session JSON must not be blank");
     }
+    try {
+      return objectMapper.readValue(json, RedisAuthFlowSessionRecord.class).toAuthFlowSession();
+    } catch (RuntimeException | JsonProcessingException exception) {
+      throw new CacheException("Auth flow session state deserialization failed", exception);
+    }
+  }
 }

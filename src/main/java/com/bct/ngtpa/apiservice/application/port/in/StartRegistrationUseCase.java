@@ -5,5 +5,5 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegis
 import reactor.core.publisher.Mono;
 
 public interface StartRegistrationUseCase {
-    Mono<StartRegistrationResult> start(StartRegistrationCommand command);
+  Mono<StartRegistrationResult> start(StartRegistrationCommand command);
 }

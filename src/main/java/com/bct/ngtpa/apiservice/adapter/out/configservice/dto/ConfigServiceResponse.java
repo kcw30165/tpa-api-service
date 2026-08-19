@@ -10,14 +10,11 @@ import lombok.NoArgsConstructor;
 /**
  * HTTP response DTO for a single Config Service entry.
  *
- * <p>
- * Field names are assumed to be camelCase based on the Config Service query
- * parameter naming convention. Verify the exact JSON keys against the actual
- * Config Service before promoting to production.
+ * <p>Field names are assumed to be camelCase based on the Config Service query parameter naming
+ * convention. Verify the exact JSON keys against the actual Config Service before promoting to
+ * production.
  *
- * <p>
- * Must not be used outside {@code adapter/out/configservice} — enforced by
- * ArchUnit.
+ * <p>Must not be used outside {@code adapter/out/configservice} — enforced by ArchUnit.
  */
 @Data
 @Builder
@@ -26,18 +23,18 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ConfigServiceResponse {
 
-    @JsonProperty("application")
-    private String application;
+  @JsonProperty("application")
+  private String application;
 
-    @JsonProperty("profile")
-    private String profile;
+  @JsonProperty("profile")
+  private String profile;
 
-    @JsonProperty("label")
-    private String label;
+  @JsonProperty("label")
+  private String label;
 
-    @JsonProperty("configKey")
-    private String configKey;
+  @JsonProperty("configKey")
+  private String configKey;
 
-    @JsonProperty("configValue")
-    private String configValue;
+  @JsonProperty("configValue")
+  private String configValue;
 }

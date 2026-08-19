@@ -8,16 +8,17 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class RegistrationStartWebConfig {
-    @Bean
-    @ConditionalOnMissingBean
-    public RegistrationStartWebMapper registrationStartWebMapper(
-            RegistrationIdempotencyProperties idempotencyProperties) {
-        return new RegistrationStartWebMapper(idempotencyProperties.startTtl());
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  public RegistrationStartWebMapper registrationStartWebMapper(
+      RegistrationIdempotencyProperties idempotencyProperties) {
+    return new RegistrationStartWebMapper(idempotencyProperties.startTtl());
+  }
 
-    @Bean
-    @ConditionalOnMissingBean
-    public AuthFlowCookieWriter authFlowCookieWriter(AuthFlowSessionProperties authFlowSessionProperties) {
-        return AuthFlowCookieWriter.from(authFlowSessionProperties);
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  public AuthFlowCookieWriter authFlowCookieWriter(
+      AuthFlowSessionProperties authFlowSessionProperties) {
+    return AuthFlowCookieWriter.from(authFlowSessionProperties);
+  }
 }

@@ -5,22 +5,33 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
-public record LoginPreAuthContext(String normalizedUsername, String userRole,
-        Map<String, LoginPreAuthDestination> destinationsById, Instant credentialVerifiedAt, 
-        String workflowVersion) {
-    public LoginPreAuthContext {
-        Objects.requireNonNull(normalizedUsername);
+public record LoginPreAuthContext(
+    String normalizedUsername,
+    String userRole,
+    Map<String, LoginPreAuthDestination> destinationsById,
+    Instant credentialVerifiedAt,
+    String workflowVersion) {
+  public LoginPreAuthContext {
+    Objects.requireNonNull(normalizedUsername);
 
-        destinationsById = destinationsById == null ? Map.of()
-                : java.util.Collections.unmodifiableMap(new LinkedHashMap<>(destinationsById));
-        Objects.requireNonNull(credentialVerifiedAt);
-        Objects.requireNonNull(workflowVersion);
-    }
+    destinationsById =
+        destinationsById == null
+            ? Map.of()
+            : java.util.Collections.unmodifiableMap(new LinkedHashMap<>(destinationsById));
+    Objects.requireNonNull(credentialVerifiedAt);
+    Objects.requireNonNull(workflowVersion);
+  }
 
-    @Override
-    public String toString() {
-        return "LoginPreAuthContext[normalizedUsername=<redacted>, userRole=" + userRole
-                + ", destinationsCount=" + destinationsById.size() + ", credentialVerifiedAt=" + credentialVerifiedAt
-                + ", workflowVersion=" + workflowVersion + "]";
-    }
+  @Override
+  public String toString() {
+    return "LoginPreAuthContext[normalizedUsername=<redacted>, userRole="
+        + userRole
+        + ", destinationsCount="
+        + destinationsById.size()
+        + ", credentialVerifiedAt="
+        + credentialVerifiedAt
+        + ", workflowVersion="
+        + workflowVersion
+        + "]";
+  }
 }

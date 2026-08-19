@@ -4,19 +4,22 @@ import com.bct.ngtpa.apiservice.application.dto.session.authenticated.Authentica
 import java.util.Objects;
 
 public record ValidateAuthenticatedSessionCommand(
-        AuthenticatedSessionId authenticatedSessionId,
-        String submittedCsrfToken,
-        String correlationId) {
-    public ValidateAuthenticatedSessionCommand {
-        Objects.requireNonNull(authenticatedSessionId, "authenticatedSessionId must not be null");
-        if (submittedCsrfToken == null || submittedCsrfToken.isBlank()) {
-            throw new IllegalArgumentException("submittedCsrfToken must not be blank");
-        }
-        submittedCsrfToken = submittedCsrfToken.trim();
-        correlationId = correlationId == null || correlationId.isBlank() ? null : correlationId.trim();
+    AuthenticatedSessionId authenticatedSessionId,
+    String submittedCsrfToken,
+    String correlationId) {
+  public ValidateAuthenticatedSessionCommand {
+    Objects.requireNonNull(authenticatedSessionId, "authenticatedSessionId must not be null");
+    if (submittedCsrfToken == null || submittedCsrfToken.isBlank()) {
+      throw new IllegalArgumentException("submittedCsrfToken must not be blank");
     }
-    @Override public String toString() {
-        return "ValidateAuthenticatedSessionCommand[authenticatedSessionId=<redacted>, submittedCsrfToken=<redacted>, correlationId="
-                + correlationId + "]";
-    }
+    submittedCsrfToken = submittedCsrfToken.trim();
+    correlationId = correlationId == null || correlationId.isBlank() ? null : correlationId.trim();
+  }
+
+  @Override
+  public String toString() {
+    return "ValidateAuthenticatedSessionCommand[authenticatedSessionId=<redacted>, submittedCsrfToken=<redacted>, correlationId="
+        + correlationId
+        + "]";
+  }
 }

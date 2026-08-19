@@ -1,13 +1,13 @@
 package com.bct.ngtpa.apiservice.config.registration;
 
-import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
-import com.bct.ngtpa.apiservice.application.port.out.RegistrationCsrPort;
-import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
-import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
-import com.bct.ngtpa.apiservice.application.port.out.CaptchaChallengePort;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyAction;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationRequestHash;
 import com.bct.ngtpa.apiservice.application.port.in.StartRegistrationUseCase;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
+import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
+import com.bct.ngtpa.apiservice.application.port.out.CaptchaChallengePort;
+import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationCsrPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationLookupPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationMessagePort;
@@ -30,75 +30,74 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RegistrationStartUseCaseConfig {
 
-    @Bean
-    @ConditionalOnMissingBean
-    public RegistrationStartValidator registrationStartValidator() {
-        return new RegistrationStartValidator();
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  public RegistrationStartValidator registrationStartValidator() {
+    return new RegistrationStartValidator();
+  }
 
-    @Bean
-    @ConditionalOnMissingBean
-    public RegistrationRequestHashGenerator registrationRequestHashGenerator() {
-        return (RegistrationIdempotencyAction action, List<String> normalizedParts) -> {
-            try {
-                MessageDigest digest = MessageDigest.getInstance("SHA-256");
-                digest.update(action.name().getBytes(StandardCharsets.UTF_8));
-                digest.update((byte) 0);
-                for (String part : normalizedParts == null ? List.<String>of() : normalizedParts) {
-                    digest.update((part == null ? "" : part).getBytes(StandardCharsets.UTF_8));
-                    digest.update((byte) 0);
-                }
-                return new RegistrationRequestHash(HexFormat.of().formatHex(digest.digest()));
-            } catch (NoSuchAlgorithmException exception) {
-                throw new IllegalStateException("Registration request hash algorithm unavailable", exception);
-            }
-        };
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  public RegistrationRequestHashGenerator registrationRequestHashGenerator() {
+    return (RegistrationIdempotencyAction action, List<String> normalizedParts) -> {
+      try {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        digest.update(action.name().getBytes(StandardCharsets.UTF_8));
+        digest.update((byte) 0);
+        for (String part : normalizedParts == null ? List.<String>of() : normalizedParts) {
+          digest.update((part == null ? "" : part).getBytes(StandardCharsets.UTF_8));
+          digest.update((byte) 0);
+        }
+        return new RegistrationRequestHash(HexFormat.of().formatHex(digest.digest()));
+      } catch (NoSuchAlgorithmException exception) {
+        throw new IllegalStateException(
+            "Registration request hash algorithm unavailable", exception);
+      }
+    };
+  }
 
-    @Bean
-    @ConditionalOnMissingBean
-    public Clock clock() {
-        return Clock.systemUTC();
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  public Clock clock() {
+    return Clock.systemUTC();
+  }
 
-    @Bean
-    @ConditionalOnMissingBean
-    public RegistrationCaptchaGateService registrationCaptchaGateService(
-            CaptchaChallengePort captchaChallengePort,
-            Clock clock) {
-        return new RegistrationCaptchaGateService(captchaChallengePort, clock);
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  public RegistrationCaptchaGateService registrationCaptchaGateService(
+      CaptchaChallengePort captchaChallengePort, Clock clock) {
+    return new RegistrationCaptchaGateService(captchaChallengePort, clock);
+  }
 
-    @Bean
-    @ConditionalOnMissingBean(StartRegistrationUseCase.class)
-    public StartRegistrationUseCase startRegistrationUseCase(
-            RegistrationStartValidator registrationStartValidator,
-            RegistrationRequestHashGenerator requestHashGenerator,
-            RegistrationIdempotencyPort registrationIdempotencyPort,
-            RegistrationLookupPort registrationLookupPort,
-            RegistrationSessionPort registrationSessionGateway,
-            RegistrationCsrPort registrationCsrfGateway,
-            RegistrationOtpPort registrationOtpGateway,
-            RegistrationMessagePort registrationMessageGateway,
-            AuthFlowSessionPort authFlowSessionPort,
-            OtpChallengeStatePort otpChallengeStatePort,
-            AuthWorkflowPolicyPort authWorkflowPolicyPort,
-            RegistrationCaptchaGateService registrationCaptchaGateService,
-            Clock clock) {
-        return new StartRegistrationService(
-                registrationStartValidator,
-                requestHashGenerator,
-                registrationIdempotencyPort,
-                registrationLookupPort,
-                registrationSessionGateway,
-                registrationCsrfGateway,
-                registrationOtpGateway,
-                registrationMessageGateway,
-                authFlowSessionPort,
-                otpChallengeStatePort,
-                authWorkflowPolicyPort,
-                registrationCaptchaGateService,
-                clock
-        );
-    }
+  @Bean
+  @ConditionalOnMissingBean(StartRegistrationUseCase.class)
+  public StartRegistrationUseCase startRegistrationUseCase(
+      RegistrationStartValidator registrationStartValidator,
+      RegistrationRequestHashGenerator requestHashGenerator,
+      RegistrationIdempotencyPort registrationIdempotencyPort,
+      RegistrationLookupPort registrationLookupPort,
+      RegistrationSessionPort registrationSessionGateway,
+      RegistrationCsrPort registrationCsrfGateway,
+      RegistrationOtpPort registrationOtpGateway,
+      RegistrationMessagePort registrationMessageGateway,
+      AuthFlowSessionPort authFlowSessionPort,
+      OtpChallengeStatePort otpChallengeStatePort,
+      AuthWorkflowPolicyPort authWorkflowPolicyPort,
+      RegistrationCaptchaGateService registrationCaptchaGateService,
+      Clock clock) {
+    return new StartRegistrationService(
+        registrationStartValidator,
+        requestHashGenerator,
+        registrationIdempotencyPort,
+        registrationLookupPort,
+        registrationSessionGateway,
+        registrationCsrfGateway,
+        registrationOtpGateway,
+        registrationMessageGateway,
+        authFlowSessionPort,
+        otpChallengeStatePort,
+        authWorkflowPolicyPort,
+        registrationCaptchaGateService,
+        clock);
+  }
 }

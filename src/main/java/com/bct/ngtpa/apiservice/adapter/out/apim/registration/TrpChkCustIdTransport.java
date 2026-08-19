@@ -4,5 +4,5 @@ import reactor.core.publisher.Mono;
 
 @FunctionalInterface
 public interface TrpChkCustIdTransport {
-    Mono<TrpChkCustIdApimEnvelope> post(TrpChkCustIdTransportCommand command);
+  Mono<TrpChkCustIdApimEnvelope> post(TrpChkCustIdTransportCommand command);
 }

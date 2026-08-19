@@ -9,19 +9,21 @@ import reactor.core.publisher.Mono;
 @Component
 public class ApimRequestIdExchangeFilter {
 
-    public ExchangeFilterFunction filter() {
-        return ExchangeFilterFunction.ofRequestProcessor(request -> Mono.deferContextual(ctx -> {
-            String requestId = ctx.getOrDefault(
-                    RequestCorrelation.REQUEST_ID_CONTEXT_KEY,
-                    null);
+  public ExchangeFilterFunction filter() {
+    return ExchangeFilterFunction.ofRequestProcessor(
+        request ->
+            Mono.deferContextual(
+                ctx -> {
+                  String requestId =
+                      ctx.getOrDefault(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, null);
 
-            ClientRequest.Builder requestBuilder = ClientRequest.from(request);
+                  ClientRequest.Builder requestBuilder = ClientRequest.from(request);
 
-            if (requestId != null && !requestId.isBlank()) {
-                requestBuilder.header(RequestCorrelation.REQUEST_ID_HEADER, requestId);
-            }
+                  if (requestId != null && !requestId.isBlank()) {
+                    requestBuilder.header(RequestCorrelation.REQUEST_ID_HEADER, requestId);
+                  }
 
-            return Mono.just(requestBuilder.build());
-        }));
-    }
+                  return Mono.just(requestBuilder.build());
+                }));
+  }
 }

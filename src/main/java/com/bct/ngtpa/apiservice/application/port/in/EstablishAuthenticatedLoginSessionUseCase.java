@@ -6,6 +6,6 @@ import reactor.core.publisher.Mono;
 
 @FunctionalInterface
 public interface EstablishAuthenticatedLoginSessionUseCase {
-    Mono<EstablishAuthenticatedLoginSessionResult> establish(
-            EstablishAuthenticatedLoginSessionCommand command);
+  Mono<EstablishAuthenticatedLoginSessionResult> establish(
+      EstablishAuthenticatedLoginSessionCommand command);
 }

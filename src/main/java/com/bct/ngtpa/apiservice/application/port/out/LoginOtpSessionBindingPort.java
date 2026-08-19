@@ -5,5 +5,5 @@ import reactor.core.publisher.Mono;
 
 @FunctionalInterface
 public interface LoginOtpSessionBindingPort {
-    Mono<Void> bind(LoginOtpSessionBindingCommand command);
+  Mono<Void> bind(LoginOtpSessionBindingCommand command);
 }

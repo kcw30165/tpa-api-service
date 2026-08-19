@@ -4,5 +4,5 @@ import com.bct.ngtpa.apiservice.application.dto.downstream.DownstreamErrorClassi
 import com.bct.ngtpa.apiservice.application.dto.downstream.DownstreamErrorClassificationRequest;
 
 public interface DownstreamErrorClassificationPort {
-    DownstreamErrorClassification classify(DownstreamErrorClassificationRequest request);
+  DownstreamErrorClassification classify(DownstreamErrorClassificationRequest request);
 }

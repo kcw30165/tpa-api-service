@@ -6,14 +6,14 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import java.util.List;
 
 public record CompleteRegistrationResult(
-        CompleteRegistrationResultStatus status,
-        WorkflowNextStep nextStep,
-        boolean registered,
-        boolean clearAuthFlowCookie,
-        List<RegistrationLookupAccount> remainingTrusts,
-        List<WorkflowErrorDescriptor> errors) {
-    public CompleteRegistrationResult {
-        remainingTrusts = remainingTrusts == null ? List.of() : List.copyOf(remainingTrusts);
-        errors = errors == null ? List.of() : List.copyOf(errors);
-    }
+    CompleteRegistrationResultStatus status,
+    WorkflowNextStep nextStep,
+    boolean registered,
+    boolean clearAuthFlowCookie,
+    List<RegistrationLookupAccount> remainingTrusts,
+    List<WorkflowErrorDescriptor> errors) {
+  public CompleteRegistrationResult {
+    remainingTrusts = remainingTrusts == null ? List.of() : List.copyOf(remainingTrusts);
+    errors = errors == null ? List.of() : List.copyOf(errors);
+  }
 }

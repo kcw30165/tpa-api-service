@@ -7,9 +7,9 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class RegistrationUsernameCheckWebConfig {
-    @Bean
-    @ConditionalOnMissingBean
-    public RegistrationUsernameCheckWebMapper registrationUsernameCheckWebMapper() {
-        return new RegistrationUsernameCheckWebMapper();
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  public RegistrationUsernameCheckWebMapper registrationUsernameCheckWebMapper() {
+    return new RegistrationUsernameCheckWebMapper();
+  }
 }

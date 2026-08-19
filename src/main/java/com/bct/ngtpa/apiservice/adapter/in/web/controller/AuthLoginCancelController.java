@@ -17,58 +17,65 @@ import reactor.core.publisher.Mono;
 @RestController
 @RequestMapping("/api/v1/auth/login")
 public final class AuthLoginCancelController {
-    private final CancelLoginUseCase useCase;
-    private final CancelLoginWebMapper mapper;
-    private final AuthFlowCookieWriter authCookie;
-    private final XsrfCookieWriter xsrfCookie;
+  private final CancelLoginUseCase useCase;
+  private final CancelLoginWebMapper mapper;
+  private final AuthFlowCookieWriter authCookie;
+  private final XsrfCookieWriter xsrfCookie;
 
-    public AuthLoginCancelController(CancelLoginUseCase u, CancelLoginWebMapper m, AuthFlowCookieWriter a,
-            XsrfCookieWriter x) {
-        useCase = u;
-        mapper = m;
-        authCookie = a;
-        xsrfCookie = x;
-    }
+  public AuthLoginCancelController(
+      CancelLoginUseCase u, CancelLoginWebMapper m, AuthFlowCookieWriter a, XsrfCookieWriter x) {
+    useCase = u;
+    mapper = m;
+    authCookie = a;
+    xsrfCookie = x;
+  }
 
-    @PostMapping("/cancel")
-    public Mono<ResponseEntity<MutationResponse<LoginWorkflowResultResponse<CancelLoginDataResponse>>>> cancel(
-            @CookieValue(name = "auth_flow_sid", required = false) String session,
-            @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrf,
-            @RequestHeader(name = "X-Request-Id", required = false) String requestId,
-            @RequestHeader(name = "Origin", required = false) String origin,
-            @RequestHeader(name = "Referer", required = false) String referer, ServerHttpResponse response) {
-        if (text(requestId))
-            response.getHeaders().set("X-Request-Id", requestId.trim());
-        if (!text(session)) {
-            clear(response);
-            return Mono.just(LoginHttpResponses.toResponse(mapper.missingSession()));
-        }
-        if (!text(csrf))
-            return CsrfHttpResponses.missingToken();
-        try {
-            return useCase.cancel(new CancelLoginCommand(new AuthFlowSessionId(session.trim()), csrf.trim(),
-                    clean(origin), clean(referer), clean(requestId))).map(r -> {
-                        if (r.clearAuthFlowCookie())
-                            authCookie.clearAuthFlowCookie(response);
-                        if (r.clearXsrfCookie())
-                            xsrfCookie.clearXsrfCookie(response);
-                        return LoginHttpResponses.toResponse(mapper.toMutationResponse(r));
-                    });
-        } catch (RuntimeException e) {
-            return Mono.just(LoginHttpResponses.toResponse(mapper.missingCsrf()));
-        }
+  @PostMapping("/cancel")
+  public Mono<
+          ResponseEntity<MutationResponse<LoginWorkflowResultResponse<CancelLoginDataResponse>>>>
+      cancel(
+          @CookieValue(name = "auth_flow_sid", required = false) String session,
+          @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrf,
+          @RequestHeader(name = "X-Request-Id", required = false) String requestId,
+          @RequestHeader(name = "Origin", required = false) String origin,
+          @RequestHeader(name = "Referer", required = false) String referer,
+          ServerHttpResponse response) {
+    if (text(requestId)) response.getHeaders().set("X-Request-Id", requestId.trim());
+    if (!text(session)) {
+      clear(response);
+      return Mono.just(LoginHttpResponses.toResponse(mapper.missingSession()));
     }
+    if (!text(csrf)) return CsrfHttpResponses.missingToken();
+    try {
+      return useCase
+          .cancel(
+              new CancelLoginCommand(
+                  new AuthFlowSessionId(session.trim()),
+                  csrf.trim(),
+                  clean(origin),
+                  clean(referer),
+                  clean(requestId)))
+          .map(
+              r -> {
+                if (r.clearAuthFlowCookie()) authCookie.clearAuthFlowCookie(response);
+                if (r.clearXsrfCookie()) xsrfCookie.clearXsrfCookie(response);
+                return LoginHttpResponses.toResponse(mapper.toMutationResponse(r));
+              });
+    } catch (RuntimeException e) {
+      return Mono.just(LoginHttpResponses.toResponse(mapper.missingCsrf()));
+    }
+  }
 
-    private void clear(ServerHttpResponse r) {
-        authCookie.clearAuthFlowCookie(r);
-        xsrfCookie.clearXsrfCookie(r);
-    }
+  private void clear(ServerHttpResponse r) {
+    authCookie.clearAuthFlowCookie(r);
+    xsrfCookie.clearXsrfCookie(r);
+  }
 
-    private boolean text(String v) {
-        return v != null && !v.isBlank();
-    }
+  private boolean text(String v) {
+    return v != null && !v.isBlank();
+  }
 
-    private String clean(String v) {
-        return text(v) ? v.trim() : null;
-    }
+  private String clean(String v) {
+    return text(v) ? v.trim() : null;
+  }
 }

@@ -6,12 +6,15 @@ import java.security.MessageDigest;
 import java.util.HexFormat;
 
 public final class ForgotPasswordOtpResendRequestHashGenerator {
-    public ForgotPasswordRequestHash generate() {
-        try {
-            return new ForgotPasswordRequestHash(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                    .digest("forgot-password:otp-resend:v1".getBytes(StandardCharsets.UTF_8))));
-        } catch (Exception e) {
-            throw new IllegalStateException("resend request hash unavailable");
-        }
+  public ForgotPasswordRequestHash generate() {
+    try {
+      return new ForgotPasswordRequestHash(
+          HexFormat.of()
+              .formatHex(
+                  MessageDigest.getInstance("SHA-256")
+                      .digest("forgot-password:otp-resend:v1".getBytes(StandardCharsets.UTF_8))));
+    } catch (Exception e) {
+      throw new IllegalStateException("resend request hash unavailable");
     }
+  }
 }

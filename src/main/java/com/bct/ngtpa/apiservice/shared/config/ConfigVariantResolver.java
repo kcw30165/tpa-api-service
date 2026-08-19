@@ -4,5 +4,5 @@ import java.util.Optional;
 
 public interface ConfigVariantResolver {
 
-    Optional<String> resolve(ConfigLookupRequest request);
+  Optional<String> resolve(ConfigLookupRequest request);
 }

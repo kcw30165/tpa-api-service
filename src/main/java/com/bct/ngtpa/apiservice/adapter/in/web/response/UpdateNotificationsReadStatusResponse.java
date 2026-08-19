@@ -4,7 +4,7 @@ import java.util.List;
 
 public record UpdateNotificationsReadStatusResponse(List<NotificationReadStatusDto> notifications) {
 
-    public UpdateNotificationsReadStatusResponse {
-        notifications = notifications == null ? List.of() : List.copyOf(notifications);
-    }
+  public UpdateNotificationsReadStatusResponse {
+    notifications = notifications == null ? List.of() : List.copyOf(notifications);
+  }
 }

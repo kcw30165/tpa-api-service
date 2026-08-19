@@ -9,8 +9,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @Setter
 public class ConfigServiceProperties {
 
-    private String baseUrl = "";
-    private int timeoutMilliseconds = 10000;
-    private String username = "";
-    private String password = "";
+  private String baseUrl = "";
+  private int timeoutMilliseconds = 10000;
+  private String username = "";
+  private String password = "";
 }

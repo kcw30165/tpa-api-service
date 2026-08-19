@@ -6,5 +6,5 @@ import reactor.core.publisher.Mono;
 
 @FunctionalInterface
 public interface RevokeAuthenticatedSessionUseCase {
-    Mono<AuthenticatedSessionLifecycleResult> revoke(RevokeActiveAuthenticatedSessionCommand command);
+  Mono<AuthenticatedSessionLifecycleResult> revoke(RevokeActiveAuthenticatedSessionCommand command);
 }

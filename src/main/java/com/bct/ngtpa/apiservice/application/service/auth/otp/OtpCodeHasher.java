@@ -2,7 +2,7 @@ package com.bct.ngtpa.apiservice.application.service.auth.otp;
 
 public interface OtpCodeHasher {
 
-    String hash(String rawCode);
+  String hash(String rawCode);
 
-    boolean matches(String rawCode, String storedHash);
+  boolean matches(String rawCode, String storedHash);
 }

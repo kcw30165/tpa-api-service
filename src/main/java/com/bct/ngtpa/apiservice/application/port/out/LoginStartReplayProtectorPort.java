@@ -4,6 +4,5 @@ import com.bct.ngtpa.apiservice.application.dto.auth.login.replay.LoginStartRepl
 import com.bct.ngtpa.apiservice.application.dto.auth.login.replay.ProtectedLoginStartReplay;
 import com.bct.ngtpa.apiservice.application.port.out.authflow.AuthFlowProtectedContextPort;
 
-public interface LoginStartReplayProtectorPort extends
-                AuthFlowProtectedContextPort<LoginStartReplayPayload, ProtectedLoginStartReplay> {
-}
+public interface LoginStartReplayProtectorPort
+    extends AuthFlowProtectedContextPort<LoginStartReplayPayload, ProtectedLoginStartReplay> {}

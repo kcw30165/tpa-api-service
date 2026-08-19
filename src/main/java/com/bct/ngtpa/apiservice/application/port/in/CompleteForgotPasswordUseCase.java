@@ -5,5 +5,5 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete
 import reactor.core.publisher.Mono;
 
 public interface CompleteForgotPasswordUseCase {
-    Mono<CompleteForgotPasswordResult> complete(CompleteForgotPasswordCommand command);
+  Mono<CompleteForgotPasswordResult> complete(CompleteForgotPasswordCommand command);
 }

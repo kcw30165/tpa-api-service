@@ -8,6 +8,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @Setter
 @ConfigurationProperties(prefix = "apim.login.member-login")
 public class TrpMemberLoginProperties {
-    private String path = "/ws/NGTPA/v1/TRPMemberLogin";
-    private String operationName = "TRPMemberLogin";
+  private String path = "/ws/NGTPA/v1/TRPMemberLogin";
+  private String operationName = "TRPMemberLogin";
 }

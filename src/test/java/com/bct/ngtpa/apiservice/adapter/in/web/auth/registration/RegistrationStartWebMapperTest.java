@@ -14,149 +14,171 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegis
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationError;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResultStatus;
-import java.time.Duration;
 import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
+import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class RegistrationStartWebMapperTest {
-        private final RegistrationStartWebMapper mapper = new RegistrationStartWebMapper(Duration.ofMinutes(5));
+  private final RegistrationStartWebMapper mapper =
+      new RegistrationStartWebMapper(Duration.ofMinutes(5));
 
-        @Test
-        void registrationStartMapsRequestToUseCaseCommand() {
-                var request = new RegistrationStartRequest("GPFS", "1234567890", "31/01/1980", "member@example.com",
-                                null,
-                                "cap_secret");
-                StartRegistrationCommand command = mapper.toCommand(request, "idem_abc123", "req-123", "en-HK");
+  @Test
+  void registrationStartMapsRequestToUseCaseCommand() {
+    var request =
+        new RegistrationStartRequest(
+            "GPFS", "1234567890", "31/01/1980", "member@example.com", null, "cap_secret");
+    StartRegistrationCommand command = mapper.toCommand(request, "idem_abc123", "req-123", "en-HK");
 
-                assertThat(command.idempotencyKey()).isEqualTo(new RegistrationIdempotencyKey("idem_abc123"));
-                assertThat(command.identityType()).isEqualTo("GPFS");
-                assertThat(command.identityValue()).isEqualTo("1234567890");
-                assertThat(command.dateOfBirth()).isEqualTo("31/01/1980");
-                assertThat(command.email()).isEqualTo("member@example.com");
-                assertThat(command.mobile()).isNull();
-                assertThat(command.acceptLanguage()).isEqualTo("en-HK");
-                assertThat(command.correlationId()).isEqualTo("req-123");
-                assertThat(command.toString()).doesNotContain("1234567890", "member@example.com", "cap_secret",
-                                "req-123",
-                                "idem_abc123");
-        }
+    assertThat(command.idempotencyKey()).isEqualTo(new RegistrationIdempotencyKey("idem_abc123"));
+    assertThat(command.identityType()).isEqualTo("GPFS");
+    assertThat(command.identityValue()).isEqualTo("1234567890");
+    assertThat(command.dateOfBirth()).isEqualTo("31/01/1980");
+    assertThat(command.email()).isEqualTo("member@example.com");
+    assertThat(command.mobile()).isNull();
+    assertThat(command.acceptLanguage()).isEqualTo("en-HK");
+    assertThat(command.correlationId()).isEqualTo("req-123");
+    assertThat(command.toString())
+        .doesNotContain("1234567890", "member@example.com", "cap_secret", "req-123", "idem_abc123");
+  }
 
-        @Test
-        void responseToStringDoesNotExposeCsrfTokenOrSessionId() {
-                var result = new StartRegistrationResult(StartRegistrationResultStatus.STARTED,
-                                WorkflowNextStep.VERIFY_OTP,
-                                "m****r@example.com", 300, 60, 5, "csrf_secret", "afs_secret", List.of(), List.of(),
-                                RegistrationIdempotencyStartOutcome.STARTED, null);
-                var response = mapper.toResponse(result);
+  @Test
+  void responseToStringDoesNotExposeCsrfTokenOrSessionId() {
+    var result =
+        new StartRegistrationResult(
+            StartRegistrationResultStatus.STARTED,
+            WorkflowNextStep.VERIFY_OTP,
+            "m****r@example.com",
+            300,
+            60,
+            5,
+            "csrf_secret",
+            "afs_secret",
+            List.of(),
+            List.of(),
+            RegistrationIdempotencyStartOutcome.STARTED,
+            null);
+    var response = mapper.toResponse(result);
 
-                assertThat(response.csrfToken()).isEqualTo("csrf_secret");
-                assertThat(response.toString()).doesNotContain("csrf_secret", "afs_secret", "authFlowSessionId",
-                                "otpChallengeId", "otpCode");
-        }
+    assertThat(response.csrfToken()).isEqualTo("csrf_secret");
+    assertThat(response.toString())
+        .doesNotContain(
+            "csrf_secret", "afs_secret", "authFlowSessionId", "otpChallengeId", "otpCode");
+  }
 
-        @Test
-        void mapperIncludesLocalizedErrorMessage() {
-                var result = new StartRegistrationResult(
-                                StartRegistrationResultStatus.VERIFICATION_FAILED,
-                                WorkflowNextStep.NONE,
-                                null,
-                                0,
-                                0,
-                                0,
-                                null,
-                                null,
-                                List.of(),
-                                List.of(new StartRegistrationError(RegistrationErrorKey.START_VERIFICATION_FAILED,
-                                                "identityValue",
-                                                "We are unable to verify your details. Please review and try again.")),
-                                RegistrationIdempotencyStartOutcome.STARTED,
-                                null);
+  @Test
+  void mapperIncludesLocalizedErrorMessage() {
+    var result =
+        new StartRegistrationResult(
+            StartRegistrationResultStatus.VERIFICATION_FAILED,
+            WorkflowNextStep.NONE,
+            null,
+            0,
+            0,
+            0,
+            null,
+            null,
+            List.of(),
+            List.of(
+                new StartRegistrationError(
+                    RegistrationErrorKey.START_VERIFICATION_FAILED,
+                    "identityValue",
+                    "We are unable to verify your details. Please review and try again.")),
+            RegistrationIdempotencyStartOutcome.STARTED,
+            null);
 
-                var response = mapper.toMutationResponse(result);
+    var response = mapper.toMutationResponse(result);
 
-                assertThat(response.errors()).singleElement().satisfies(error -> {
-                        assertThat(error.code()).isEqualTo("err.registration.start.verificationFailed");
-                });
-        }
+    assertThat(response.errors())
+        .singleElement()
+        .satisfies(
+            error -> {
+              assertThat(error.code()).isEqualTo("err.registration.start.verificationFailed");
+            });
+  }
 
-        @Test
-        void mapperResolvesRegistrationErrorMessageThroughResolver() {
-                ErrorMessageResolver resolver = (code, locale, accountEnv, trustCode, schemeType) -> "resolved-message";
-                var localMapper = new RegistrationStartWebMapper(Duration.ofMinutes(5), resolver);
-                var result = new StartRegistrationResult(
-                                StartRegistrationResultStatus.VERIFICATION_FAILED,
-                                WorkflowNextStep.NONE,
-                                null,
-                                0,
-                                0,
-                                0,
-                                null,
-                                null,
-                                List.of(),
-                                List.of(new StartRegistrationError(RegistrationErrorKey.START_VERIFICATION_FAILED,
-                                                "identityValue")),
-                                RegistrationIdempotencyStartOutcome.STARTED,
-                                null);
+  @Test
+  void mapperResolvesRegistrationErrorMessageThroughResolver() {
+    ErrorMessageResolver resolver =
+        (code, locale, accountEnv, trustCode, schemeType) -> "resolved-message";
+    var localMapper = new RegistrationStartWebMapper(Duration.ofMinutes(5), resolver);
+    var result =
+        new StartRegistrationResult(
+            StartRegistrationResultStatus.VERIFICATION_FAILED,
+            WorkflowNextStep.NONE,
+            null,
+            0,
+            0,
+            0,
+            null,
+            null,
+            List.of(),
+            List.of(
+                new StartRegistrationError(
+                    RegistrationErrorKey.START_VERIFICATION_FAILED, "identityValue")),
+            RegistrationIdempotencyStartOutcome.STARTED,
+            null);
 
-                var response = localMapper.toMutationResponse(result, "zh-HK");
+    var response = localMapper.toMutationResponse(result, "zh-HK");
 
-                assertThat(response.errors()).singleElement().satisfies(error -> {
-                        assertThat(error.code()).isEqualTo("err.registration.start.verificationFailed");
-                });
-        }
+    assertThat(response.errors())
+        .singleElement()
+        .satisfies(
+            error -> {
+              assertThat(error.code()).isEqualTo("err.registration.start.verificationFailed");
+            });
+  }
 
-        @Test
-        void messageDeliveryFailureMapsToDownstreamErrorStatus() {
-                var result = new StartRegistrationResult(
-                                StartRegistrationResultStatus.MESSAGE_DELIVERY_FAILED,
-                                WorkflowNextStep.NONE,
-                                null,
-                                0,
-                                0,
-                                0,
-                                null,
-                                null,
-                                List.of(),
-                                List.of(new StartRegistrationError(
-                                                RegistrationErrorKey.MESSAGE_DELIVERY_FAILED,
-                                                "email")),
-                                RegistrationIdempotencyStartOutcome.STARTED,
-                                null);
+  @Test
+  void messageDeliveryFailureMapsToDownstreamErrorStatus() {
+    var result =
+        new StartRegistrationResult(
+            StartRegistrationResultStatus.MESSAGE_DELIVERY_FAILED,
+            WorkflowNextStep.NONE,
+            null,
+            0,
+            0,
+            0,
+            null,
+            null,
+            List.of(),
+            List.of(
+                new StartRegistrationError(RegistrationErrorKey.MESSAGE_DELIVERY_FAILED, "email")),
+            RegistrationIdempotencyStartOutcome.STARTED,
+            null);
 
-                var response = mapper.toMutationResponse(result, "en");
+    var response = mapper.toMutationResponse(result, "en");
 
-                assertThat(response.success()).isFalse();
-                assertThat(response.status()).isEqualTo(ApiStatus.SYSTEM_ERROR);
-                assertThat(response.result()).isNotNull();
-                assertThat(response.errors()).singleElement()
-                                .satisfies(error -> assertThat(error.code())
-                                                .isEqualTo("err.registration.message.deliveryFailed"));
-        }
+    assertThat(response.success()).isFalse();
+    assertThat(response.status()).isEqualTo(ApiStatus.SYSTEM_ERROR);
+    assertThat(response.result()).isNotNull();
+    assertThat(response.errors())
+        .singleElement()
+        .satisfies(
+            error -> assertThat(error.code()).isEqualTo("err.registration.message.deliveryFailed"));
+  }
 
-        @Test
-        void systemFailureMapsToSystemErrorStatus() {
-                var result = new StartRegistrationResult(
-                                StartRegistrationResultStatus.SYSTEM_FAILED,
-                                WorkflowNextStep.NONE,
-                                null,
-                                0,
-                                0,
-                                0,
-                                null,
-                                null,
-                                List.of(),
-                                List.of(new StartRegistrationError(
-                                                SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE,
-                                                "PAGE")),
-                                RegistrationIdempotencyStartOutcome.STARTED,
-                                null);
+  @Test
+  void systemFailureMapsToSystemErrorStatus() {
+    var result =
+        new StartRegistrationResult(
+            StartRegistrationResultStatus.SYSTEM_FAILED,
+            WorkflowNextStep.NONE,
+            null,
+            0,
+            0,
+            0,
+            null,
+            null,
+            List.of(),
+            List.of(new StartRegistrationError(SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE, "PAGE")),
+            RegistrationIdempotencyStartOutcome.STARTED,
+            null);
 
-                var response = mapper.toMutationResponse(result, "en");
+    var response = mapper.toMutationResponse(result, "en");
 
-                assertThat(response.success()).isFalse();
-                assertThat(response.status()).isEqualTo(ApiStatus.SYSTEM_ERROR);
-                assertThat(response.result()).isNotNull();
-        }
-
+    assertThat(response.success()).isFalse();
+    assertThat(response.status()).isEqualTo(ApiStatus.SYSTEM_ERROR);
+    assertThat(response.result()).isNotNull();
+  }
 }

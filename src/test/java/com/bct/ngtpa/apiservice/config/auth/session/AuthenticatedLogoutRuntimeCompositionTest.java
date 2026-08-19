@@ -11,25 +11,29 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 class AuthenticatedLogoutRuntimeCompositionTest {
-    @Test
-    void compositionConnectsLogoutOnlyToLoggedOutLifecycleCapability() {
-        AtomicBoolean invoked = new AtomicBoolean();
-        LogoutAuthenticatedSessionUseCase logout = command -> {
-            invoked.set(true);
-            return Mono.just(AuthenticatedSessionLifecycleResult.of(
-                    AuthenticatedSessionLifecycleStatus.LOGGED_OUT));
+  @Test
+  void compositionConnectsLogoutOnlyToLoggedOutLifecycleCapability() {
+    AtomicBoolean invoked = new AtomicBoolean();
+    LogoutAuthenticatedSessionUseCase logout =
+        command -> {
+          invoked.set(true);
+          return Mono.just(
+              AuthenticatedSessionLifecycleResult.of(
+                  AuthenticatedSessionLifecycleStatus.LOGGED_OUT));
         };
 
-        AuthenticatedLogoutUseCase useCase =
-                new AuthenticatedSessionConfig().authenticatedLogoutUseCase(logout);
+    AuthenticatedLogoutUseCase useCase =
+        new AuthenticatedSessionConfig().authenticatedLogoutUseCase(logout);
 
-        assertThat(useCase).isInstanceOf(AuthenticatedLogoutService.class);
-        StepVerifier.create(useCase.logout(new AuthenticatedLogoutCommand(
-                        new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx"),
-                        "req-1")))
-                .assertNext(result -> assertThat(result.status())
-                        .isEqualTo(AuthenticatedLogoutStatus.ALREADY_LOGGED_OUT))
-                .verifyComplete();
-        assertThat(invoked).isTrue();
-    }
+    assertThat(useCase).isInstanceOf(AuthenticatedLogoutService.class);
+    StepVerifier.create(
+            useCase.logout(
+                new AuthenticatedLogoutCommand(
+                    new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx"), "req-1")))
+        .assertNext(
+            result ->
+                assertThat(result.status()).isEqualTo(AuthenticatedLogoutStatus.ALREADY_LOGGED_OUT))
+        .verifyComplete();
+    assertThat(invoked).isTrue();
+  }
 }

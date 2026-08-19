@@ -19,31 +19,35 @@ import reactor.core.publisher.Mono;
 
 @Component
 public class ApimRegistrationCompletionAdapter implements RegistrationCompletionPort {
-    static final String API_NAME = "/ws/NGTPA/v1/TRPRegMember";
-    private final ApimExchangeExecutor executor;
-    private final TrpRegMemberApimMapper mapper = new TrpRegMemberApimMapper();
-    private final TrpRegMemberApimResultMapper resultMapper = new TrpRegMemberApimResultMapper();
+  static final String API_NAME = "/ws/NGTPA/v1/TRPRegMember";
+  private final ApimExchangeExecutor executor;
+  private final TrpRegMemberApimMapper mapper = new TrpRegMemberApimMapper();
+  private final TrpRegMemberApimResultMapper resultMapper = new TrpRegMemberApimResultMapper();
 
-    public ApimRegistrationCompletionAdapter(ApimExchangeExecutor executor) {
-        this.executor = Objects.requireNonNull(executor, "executor must not be null");
-    }
+  public ApimRegistrationCompletionAdapter(ApimExchangeExecutor executor) {
+    this.executor = Objects.requireNonNull(executor, "executor must not be null");
+  }
 
-    @Override
-    @LogExecution(value = "apim.trpRegMember", logArgs = false)
-    public Mono<RegistrationCompletionResult> complete(RegistrationCompletionCommand command) {
-        Objects.requireNonNull(command, "command must not be null");
-        TrpRegMemberApimRequest requestBody = mapper.toRequest(command);
-        var request = new ApimExchangeRequest<>(
-                API_NAME,
-                requestBody,
-                TrpRegMemberApimRequest.class,
-                TrpRegMemberApimDataItem.class,
-                ApimDatabaseScope.ACCOUNT_ENV,
-                new ApimCredentialResolutionContext(command.actorUserRole(), command.accountEnv()),
-                ApimRetryEligibility.NON_RETRYABLE);
-        return executor.postEnvelope(request)
-                .map(envelope -> new TrpRegMemberApimEnvelope(
-                        envelope.getResponse().getErrMessage(), envelope.getResponse().getData()))
-                .map(resultMapper::toResult);
-    }
+  @Override
+  @LogExecution(value = "apim.trpRegMember", logArgs = false)
+  public Mono<RegistrationCompletionResult> complete(RegistrationCompletionCommand command) {
+    Objects.requireNonNull(command, "command must not be null");
+    TrpRegMemberApimRequest requestBody = mapper.toRequest(command);
+    var request =
+        new ApimExchangeRequest<>(
+            API_NAME,
+            requestBody,
+            TrpRegMemberApimRequest.class,
+            TrpRegMemberApimDataItem.class,
+            ApimDatabaseScope.ACCOUNT_ENV,
+            new ApimCredentialResolutionContext(command.actorUserRole(), command.accountEnv()),
+            ApimRetryEligibility.NON_RETRYABLE);
+    return executor
+        .postEnvelope(request)
+        .map(
+            envelope ->
+                new TrpRegMemberApimEnvelope(
+                    envelope.getResponse().getErrMessage(), envelope.getResponse().getData()))
+        .map(resultMapper::toResult);
+  }
 }

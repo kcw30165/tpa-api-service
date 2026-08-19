@@ -5,6 +5,6 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.R
 import reactor.core.publisher.Mono;
 
 public interface RegistrationUsernameAvailabilityPort {
-    Mono<RegistrationUsernameAvailabilityResult> checkAvailability(
-            RegistrationUsernameAvailabilityCommand command);
+  Mono<RegistrationUsernameAvailabilityResult> checkAvailability(
+      RegistrationUsernameAvailabilityCommand command);
 }

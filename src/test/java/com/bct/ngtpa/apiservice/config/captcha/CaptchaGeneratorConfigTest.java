@@ -11,25 +11,29 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 class CaptchaGeneratorConfigTest {
 
-    @Test
-    void captchaGeneratorConfigProvidesOverrideableBeans() {
-        new ApplicationContextRunner()
-                .withUserConfiguration(CaptchaGeneratorConfig.class)
-                .run(context -> {
-                    assertThat(context).hasSingleBean(CaptchaAnswerHasherPort.class);
-                    assertThat(context).hasSingleBean(CaptchaImageGeneratorPort.class);
-                    assertThat(context.getBean(CaptchaAnswerHasherPort.class)).isInstanceOf(Sha256CaptchaAnswerHasher.class);
-                    assertThat(context.getBean(CaptchaImageGeneratorPort.class)).isInstanceOf(JavaCaptchaImageGeneratorAdapter.class);
-                });
-    }
+  @Test
+  void captchaGeneratorConfigProvidesOverrideableBeans() {
+    new ApplicationContextRunner()
+        .withUserConfiguration(CaptchaGeneratorConfig.class)
+        .run(
+            context -> {
+              assertThat(context).hasSingleBean(CaptchaAnswerHasherPort.class);
+              assertThat(context).hasSingleBean(CaptchaImageGeneratorPort.class);
+              assertThat(context.getBean(CaptchaAnswerHasherPort.class))
+                  .isInstanceOf(Sha256CaptchaAnswerHasher.class);
+              assertThat(context.getBean(CaptchaImageGeneratorPort.class))
+                  .isInstanceOf(JavaCaptchaImageGeneratorAdapter.class);
+            });
+  }
 
-    @Test
-    void captchaGeneratorUsesPolicyFromExistingAuthWorkflowPathInComposition() {
-        new ApplicationContextRunner()
-                .withUserConfiguration(CaptchaGeneratorConfig.class)
-                .run(context -> {
-                    assertThat(context.getBean(CaptchaImageGeneratorPort.class)).isNotNull();
-                    assertThat(context.getBean(CaptchaAnswerHasherPort.class)).isNotNull();
-                });
-    }
+  @Test
+  void captchaGeneratorUsesPolicyFromExistingAuthWorkflowPathInComposition() {
+    new ApplicationContextRunner()
+        .withUserConfiguration(CaptchaGeneratorConfig.class)
+        .run(
+            context -> {
+              assertThat(context.getBean(CaptchaImageGeneratorPort.class)).isNotNull();
+              assertThat(context.getBean(CaptchaAnswerHasherPort.class)).isNotNull();
+            });
+  }
 }

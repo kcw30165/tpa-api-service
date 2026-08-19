@@ -10,23 +10,23 @@ import reactor.core.publisher.Mono;
 
 class EmailSenderConfigTest {
 
-    @Test
-    void createsEmailSenderPortWhenEmailEnabled() {
-        new ApplicationContextRunner()
-                .withUserConfiguration(EmailSenderConfig.class)
-                .withBean(SmtpClient.class, () -> command -> Mono.empty())
-                .withPropertyValues(
-                        "email.enabled=true",
-                        "email.smtp.host=smtp.example.test",
-                        "email.smtp.from=noreply@example.com")
-                .run(context -> assertThat(context).hasSingleBean(EmailSenderPort.class));
-    }
+  @Test
+  void createsEmailSenderPortWhenEmailEnabled() {
+    new ApplicationContextRunner()
+        .withUserConfiguration(EmailSenderConfig.class)
+        .withBean(SmtpClient.class, () -> command -> Mono.empty())
+        .withPropertyValues(
+            "email.enabled=true",
+            "email.smtp.host=smtp.example.test",
+            "email.smtp.from=noreply@example.com")
+        .run(context -> assertThat(context).hasSingleBean(EmailSenderPort.class));
+  }
 
-    @Test
-    void doesNotCreateEmailSenderPortWhenEmailDisabled() {
-        new ApplicationContextRunner()
-                .withUserConfiguration(EmailSenderConfig.class)
-                .withPropertyValues("email.enabled=false")
-                .run(context -> assertThat(context).doesNotHaveBean(EmailSenderPort.class));
-    }
+  @Test
+  void doesNotCreateEmailSenderPortWhenEmailDisabled() {
+    new ApplicationContextRunner()
+        .withUserConfiguration(EmailSenderConfig.class)
+        .withPropertyValues("email.enabled=false")
+        .run(context -> assertThat(context).doesNotHaveBean(EmailSenderPort.class));
+  }
 }

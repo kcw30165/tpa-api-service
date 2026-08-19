@@ -15,33 +15,36 @@ import reactor.core.publisher.Mono;
 
 class UpdatePersonalInformationResultListPortContractTest {
 
-    @Test
-    void apimUpdatePortReturnsMonoOfUpdateResultList() throws Exception {
-        Type returnType = ApimUpdatePersonalInformationPort.class
-                .getMethod("updateMemberInfo", UpdateMemberInfoCommand.class)
-                .getGenericReturnType();
+  @Test
+  void apimUpdatePortReturnsMonoOfUpdateResultList() throws Exception {
+    Type returnType =
+        ApimUpdatePersonalInformationPort.class
+            .getMethod("updateMemberInfo", UpdateMemberInfoCommand.class)
+            .getGenericReturnType();
 
-        assertMonoOfListOfUpdatePersonalInformationResult(returnType);
-    }
+    assertMonoOfListOfUpdatePersonalInformationResult(returnType);
+  }
 
-    @Test
-    void updateUseCaseReturnsMonoOfUpdateResultList() throws Exception {
-        Type returnType = UpdatePersonalInformationUseCase.class
-                .getMethod("execute", UpdatePersonalInformationCommand.class)
-                .getGenericReturnType();
+  @Test
+  void updateUseCaseReturnsMonoOfUpdateResultList() throws Exception {
+    Type returnType =
+        UpdatePersonalInformationUseCase.class
+            .getMethod("execute", UpdatePersonalInformationCommand.class)
+            .getGenericReturnType();
 
-        assertMonoOfListOfUpdatePersonalInformationResult(returnType);
-    }
+    assertMonoOfListOfUpdatePersonalInformationResult(returnType);
+  }
 
-    private void assertMonoOfListOfUpdatePersonalInformationResult(Type returnType) {
-        assertThat(returnType).isInstanceOf(ParameterizedType.class);
-        ParameterizedType monoType = (ParameterizedType) returnType;
-        assertThat(monoType.getRawType()).isEqualTo(Mono.class);
+  private void assertMonoOfListOfUpdatePersonalInformationResult(Type returnType) {
+    assertThat(returnType).isInstanceOf(ParameterizedType.class);
+    ParameterizedType monoType = (ParameterizedType) returnType;
+    assertThat(monoType.getRawType()).isEqualTo(Mono.class);
 
-        Type monoArgument = monoType.getActualTypeArguments()[0];
-        assertThat(monoArgument).isInstanceOf(ParameterizedType.class);
-        ParameterizedType listType = (ParameterizedType) monoArgument;
-        assertThat(listType.getRawType()).isEqualTo(List.class);
-        assertThat(listType.getActualTypeArguments()[0]).isEqualTo(UpdatePersonalInformationResult.class);
-    }
+    Type monoArgument = monoType.getActualTypeArguments()[0];
+    assertThat(monoArgument).isInstanceOf(ParameterizedType.class);
+    ParameterizedType listType = (ParameterizedType) monoArgument;
+    assertThat(listType.getRawType()).isEqualTo(List.class);
+    assertThat(listType.getActualTypeArguments()[0])
+        .isEqualTo(UpdatePersonalInformationResult.class);
+  }
 }

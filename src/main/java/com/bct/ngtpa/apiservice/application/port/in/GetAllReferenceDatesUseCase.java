@@ -4,5 +4,5 @@ import com.bct.ngtpa.apiservice.application.dto.GetAllReferenceDatesResult;
 import reactor.core.publisher.Mono;
 
 public interface GetAllReferenceDatesUseCase {
-    Mono<GetAllReferenceDatesResult> execute();
+  Mono<GetAllReferenceDatesResult> execute();
 }

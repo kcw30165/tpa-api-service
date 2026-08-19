@@ -9,9 +9,9 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface ResolveConfig {
 
-    ConfigCategory category();
+  ConfigCategory category();
 
-    String code();
+  String code();
 
-    boolean required() default false;
+  boolean required() default false;
 }

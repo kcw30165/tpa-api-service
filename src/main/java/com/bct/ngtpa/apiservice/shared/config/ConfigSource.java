@@ -5,7 +5,7 @@ import java.util.Optional;
 
 public interface ConfigSource {
 
-    ConfigCategory category();
+  ConfigCategory category();
 
-    Optional<String> get(String key, Locale locale);
+  Optional<String> get(String key, Locale locale);
 }

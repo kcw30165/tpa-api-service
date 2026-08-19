@@ -6,9 +6,10 @@ import java.util.Optional;
 import reactor.core.publisher.Mono;
 
 public interface ForgotPasswordOtpCommitStatePort {
-    Mono<Boolean> saveIfAbsent(String opaqueCommitRef, ForgotPasswordOtpCommitState state, Duration ttl);
+  Mono<Boolean> saveIfAbsent(
+      String opaqueCommitRef, ForgotPasswordOtpCommitState state, Duration ttl);
 
-    Mono<Optional<ForgotPasswordOtpCommitState>> load(String opaqueCommitRef);
+  Mono<Optional<ForgotPasswordOtpCommitState>> load(String opaqueCommitRef);
 
-    Mono<Void> delete(String opaqueCommitRef);
+  Mono<Void> delete(String opaqueCommitRef);
 }

@@ -13,23 +13,31 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 class TrpMemberLoginUnsuccessfulItemTest {
-    @Test
-    void blankErrorAndSingleUnsuccessfulItemMapsToIncorrectPassword() {
-        var body = new ApimResponseBody<TrpMemberLoginApimDataItem>();
-        body.setErrMessage("");
-        body.setData(List.of(new TrpMemberLoginApimDataItem(false, null, 1, List.of())));
-        var envelope = new ApimResponseEnvelope<TrpMemberLoginApimDataItem>();
-        envelope.setResponse(body);
-        TrpMemberLoginTransport transport = command -> Mono.just(envelope);
-        var adapter = new TrpMemberLoginAdapter(transport, new TrpMemberLoginContractMapper());
+  @Test
+  void blankErrorAndSingleUnsuccessfulItemMapsToIncorrectPassword() {
+    var body = new ApimResponseBody<TrpMemberLoginApimDataItem>();
+    body.setErrMessage("");
+    body.setData(List.of(new TrpMemberLoginApimDataItem(false, null, 1, List.of())));
+    var envelope = new ApimResponseEnvelope<TrpMemberLoginApimDataItem>();
+    envelope.setResponse(body);
+    TrpMemberLoginTransport transport = command -> Mono.just(envelope);
+    var adapter = new TrpMemberLoginAdapter(transport, new TrpMemberLoginContractMapper());
 
-        StepVerifier.create(adapter.authenticate(
-                        new CredentialAuthenticationCommand("member", "Wrong", "en", "req", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR)))
-                .assertNext(result -> {
-                    assertThat(result.status()).isEqualTo(CredentialAuthenticationStatus.INCORRECT_PASSWORD);
-                    assertThat(result.failCount()).isEqualTo(1);
-                    assertThat(result.downstreamCode()).isNull();
-                })
-                .verifyComplete();
-    }
+    StepVerifier.create(
+            adapter.authenticate(
+                new CredentialAuthenticationCommand(
+                    "member",
+                    "Wrong",
+                    "en",
+                    "req",
+                    com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR)))
+        .assertNext(
+            result -> {
+              assertThat(result.status())
+                  .isEqualTo(CredentialAuthenticationStatus.INCORRECT_PASSWORD);
+              assertThat(result.failCount()).isEqualTo(1);
+              assertThat(result.downstreamCode()).isNull();
+            })
+        .verifyComplete();
+  }
 }

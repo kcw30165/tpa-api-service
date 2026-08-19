@@ -25,30 +25,45 @@ import reactor.core.publisher.Mono;
 @Component
 @RequiredArgsConstructor
 public class ApimReferenceDateRefreshAdapter implements ApimReferenceDateRefreshPort {
-    private static final String API_NAME = "/ws/NGTPA/v1/TRPGetWebSysDate";
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    private final ApimExchangeExecutor apimExchangeExecutor;
+  private static final String API_NAME = "/ws/NGTPA/v1/TRPGetWebSysDate";
+  private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+  private final ApimExchangeExecutor apimExchangeExecutor;
 
-    @Override
-    public Mono<LocalDate> fetchReferenceDate(FetchReferenceDateCommand command) {
-        var body = GetWebSysDateApimRequest.builder().accountEnv(command.accountEnv()).build();
-        var request = new ApimExchangeRequest<>(API_NAME, body, GetWebSysDateApimRequest.class,
-                GetWebSysDateApimDataItem.class, ApimDatabaseScope.ACCOUNT_ENV,
-                new ApimCredentialResolutionContext(command.actorUserRole(), command.accountEnv()),
-                ApimRetryEligibility.SAFE_BUSINESS_CALL);
-        return apimExchangeExecutor.postEnvelope(request).map(this::toReferenceDate);
-    }
+  @Override
+  public Mono<LocalDate> fetchReferenceDate(FetchReferenceDateCommand command) {
+    var body = GetWebSysDateApimRequest.builder().accountEnv(command.accountEnv()).build();
+    var request =
+        new ApimExchangeRequest<>(
+            API_NAME,
+            body,
+            GetWebSysDateApimRequest.class,
+            GetWebSysDateApimDataItem.class,
+            ApimDatabaseScope.ACCOUNT_ENV,
+            new ApimCredentialResolutionContext(command.actorUserRole(), command.accountEnv()),
+            ApimRetryEligibility.SAFE_BUSINESS_CALL);
+    return apimExchangeExecutor.postEnvelope(request).map(this::toReferenceDate);
+  }
 
-    private LocalDate toReferenceDate(ApimResponseEnvelope<GetWebSysDateApimDataItem> response) {
-        var payload = response != null ? response.getResponse() : null;
-        if (payload == null) throw invalid("APIM response payload is missing.");
-        if (StringUtils.hasText(payload.getErrMessage())) throw invalid(payload.getErrMessage());
-        if (CollectionUtils.isEmpty(payload.getData())) throw invalid("APIM response data is missing.");
-        var first = payload.getData().getFirst();
-        String sysDate = first == null ? null : first.getSysDate();
-        if (!StringUtils.hasText(sysDate)) throw invalid("APIM sys-date is missing.");
-        try { return LocalDate.parse(sysDate.trim(), DATE_FORMATTER); }
-        catch (DateTimeParseException ex) { throw new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID, "APIM sys-date must use dd/MM/yyyy format.", ex); }
+  private LocalDate toReferenceDate(ApimResponseEnvelope<GetWebSysDateApimDataItem> response) {
+    var payload = response != null ? response.getResponse() : null;
+    if (payload == null) throw invalid("APIM response payload is missing.");
+    if (StringUtils.hasText(payload.getErrMessage())) throw invalid(payload.getErrMessage());
+    if (CollectionUtils.isEmpty(payload.getData())) throw invalid("APIM response data is missing.");
+    var first = payload.getData().getFirst();
+    String sysDate = first == null ? null : first.getSysDate();
+    if (!StringUtils.hasText(sysDate)) throw invalid("APIM sys-date is missing.");
+    try {
+      return LocalDate.parse(sysDate.trim(), DATE_FORMATTER);
+    } catch (DateTimeParseException ex) {
+      throw new ApimException(
+          HttpStatus.BAD_GATEWAY,
+          ErrorCodes.APIM_RESPONSE_INVALID,
+          "APIM sys-date must use dd/MM/yyyy format.",
+          ex);
     }
-    private ApimException invalid(String message) { return new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID, message); }
+  }
+
+  private ApimException invalid(String message) {
+    return new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID, message);
+  }
 }

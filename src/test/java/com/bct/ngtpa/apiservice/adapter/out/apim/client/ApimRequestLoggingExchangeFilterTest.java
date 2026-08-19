@@ -26,124 +26,134 @@ import reactor.core.publisher.Mono;
 
 class ApimRequestLoggingExchangeFilterTest {
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
-    private final LoggingSanitizer loggingSanitizer = loggingSanitizerWithDefaults();
-    private final ApimRequestLoggingExchangeFilter filter =
-            new ApimRequestLoggingExchangeFilter(loggingSanitizer, objectMapper);
+  private final ObjectMapper objectMapper = new ObjectMapper();
+  private final LoggingSanitizer loggingSanitizer = loggingSanitizerWithDefaults();
+  private final ApimRequestLoggingExchangeFilter filter =
+      new ApimRequestLoggingExchangeFilter(loggingSanitizer, objectMapper);
 
-    private static LoggingSanitizer loggingSanitizerWithDefaults() {
-        LoggingSanitizerProperties props = new LoggingSanitizerProperties();
-        props.setSensitiveTokens(java.util.List.of(
-                "authorization", "token", "secret", "password",
-                "apiKey", "Certificate", "clientSecret"
-        ));
-        return new LoggingSanitizer(new ObjectMapper(), props);
-    }
+  private static LoggingSanitizer loggingSanitizerWithDefaults() {
+    LoggingSanitizerProperties props = new LoggingSanitizerProperties();
+    props.setSensitiveTokens(
+        java.util.List.of(
+            "authorization",
+            "token",
+            "secret",
+            "password",
+            "apiKey",
+            "Certificate",
+            "clientSecret"));
+    return new LoggingSanitizer(new ObjectMapper(), props);
+  }
 
-    private ListAppender<ILoggingEvent> listAppender;
-    private Logger filterLogger;
+  private ListAppender<ILoggingEvent> listAppender;
+  private Logger filterLogger;
 
-    @BeforeEach
-    void setUpLogCapture() {
-        filterLogger = (Logger) LoggerFactory.getLogger(ApimRequestLoggingExchangeFilter.class);
-        listAppender = new ListAppender<>();
-        listAppender.start();
-        filterLogger.addAppender(listAppender);
-    }
+  @BeforeEach
+  void setUpLogCapture() {
+    filterLogger = (Logger) LoggerFactory.getLogger(ApimRequestLoggingExchangeFilter.class);
+    listAppender = new ListAppender<>();
+    listAppender.start();
+    filterLogger.addAppender(listAppender);
+  }
 
-    @AfterEach
-    void tearDownLogCapture() {
-        filterLogger.detachAppender(listAppender);
-    }
+  @AfterEach
+  void tearDownLogCapture() {
+    filterLogger.detachAppender(listAppender);
+  }
 
-    @Test
-    void logEventIsValidJson() throws Exception {
-        ExchangeFilterFunction exchangeFilter = filter.filter();
-        ClientRequest request = ClientRequest
-                .create(HttpMethod.POST, URI.create("https://api.example.test/notifications"))
-                .header("Accept", "application/json")
-                .build();
+  @Test
+  void logEventIsValidJson() throws Exception {
+    ExchangeFilterFunction exchangeFilter = filter.filter();
+    ClientRequest request =
+        ClientRequest.create(HttpMethod.POST, URI.create("https://api.example.test/notifications"))
+            .header("Accept", "application/json")
+            .build();
 
-        invokeFilter(exchangeFilter, request, "req-001");
+    invokeFilter(exchangeFilter, request, "req-001");
 
-        assertNotNull(listAppender.list);
-        assertEquals(1, listAppender.list.size());
-        String message = listAppender.list.get(0).getFormattedMessage();
-        objectMapper.readTree(message); // valid JSON - no exception thrown
-    }
+    assertNotNull(listAppender.list);
+    assertEquals(1, listAppender.list.size());
+    String message = listAppender.list.get(0).getFormattedMessage();
+    objectMapper.readTree(message); // valid JSON - no exception thrown
+  }
 
-    @Test
-    void logEventNameIsApimRequest() throws Exception {
-        ExchangeFilterFunction exchangeFilter = filter.filter();
-        ClientRequest request = ClientRequest
-                .create(HttpMethod.GET, URI.create("https://api.example.test/test"))
-                .build();
+  @Test
+  void logEventNameIsApimRequest() throws Exception {
+    ExchangeFilterFunction exchangeFilter = filter.filter();
+    ClientRequest request =
+        ClientRequest.create(HttpMethod.GET, URI.create("https://api.example.test/test")).build();
 
-        invokeFilter(exchangeFilter, request, "req-002");
+    invokeFilter(exchangeFilter, request, "req-002");
 
-        String message = listAppender.list.get(0).getFormattedMessage();
-        var node = objectMapper.readTree(message);
-        assertEquals("apim.request", node.get("event").asText());
-    }
+    String message = listAppender.list.get(0).getFormattedMessage();
+    var node = objectMapper.readTree(message);
+    assertEquals("apim.request", node.get("event").asText());
+  }
 
-    @Test
-    void logEventContainsMethodUrlAndRequestId() throws Exception {
-        ExchangeFilterFunction exchangeFilter = filter.filter();
-        ClientRequest request = ClientRequest
-                .create(HttpMethod.POST, URI.create("https://api.example.test/contributions"))
-                .build();
+  @Test
+  void logEventContainsMethodUrlAndRequestId() throws Exception {
+    ExchangeFilterFunction exchangeFilter = filter.filter();
+    ClientRequest request =
+        ClientRequest.create(HttpMethod.POST, URI.create("https://api.example.test/contributions"))
+            .build();
 
-        invokeFilter(exchangeFilter, request, "req-xyz");
+    invokeFilter(exchangeFilter, request, "req-xyz");
 
-        String message = listAppender.list.get(0).getFormattedMessage();
-        var node = objectMapper.readTree(message);
-        assertEquals("POST", node.get("method").asText());
-        assertEquals("https://api.example.test/contributions", node.get("url").asText());
-        assertEquals("req-xyz", node.get("requestId").asText());
-        assertNotNull(node.get("headers"));
-    }
+    String message = listAppender.list.get(0).getFormattedMessage();
+    var node = objectMapper.readTree(message);
+    assertEquals("POST", node.get("method").asText());
+    assertEquals("https://api.example.test/contributions", node.get("url").asText());
+    assertEquals("req-xyz", node.get("requestId").asText());
+    assertNotNull(node.get("headers"));
+  }
 
-    @Test
-    void sensitiveHeadersAreMaskedInLogOutput() throws Exception {
-        ExchangeFilterFunction exchangeFilter = filter.filter();
-        ClientRequest request = ClientRequest
-                .create(HttpMethod.GET, URI.create("https://api.example.test/test"))
-                .header("Authorization", "Bearer super-secret-token")
-                .header("Certificate", "encoded-cert-data")
-                .header("clientSecret", "my-secret-value")
-                .build();
+  @Test
+  void sensitiveHeadersAreMaskedInLogOutput() throws Exception {
+    ExchangeFilterFunction exchangeFilter = filter.filter();
+    ClientRequest request =
+        ClientRequest.create(HttpMethod.GET, URI.create("https://api.example.test/test"))
+            .header("Authorization", "Bearer super-secret-token")
+            .header("Certificate", "encoded-cert-data")
+            .header("clientSecret", "my-secret-value")
+            .build();
 
-        invokeFilter(exchangeFilter, request, "req-003");
+    invokeFilter(exchangeFilter, request, "req-003");
 
-        String message = listAppender.list.get(0).getFormattedMessage();
-        assertTrue(message.contains("apim.request"), "event name should be present");
-        assertTrue(!message.contains("super-secret-token"), "Authorization value must be masked");
-        assertTrue(!message.contains("encoded-cert-data"), "Certificate value must be masked");
-        assertTrue(!message.contains("my-secret-value"), "clientSecret value must be masked");
-    }
+    String message = listAppender.list.get(0).getFormattedMessage();
+    assertTrue(message.contains("apim.request"), "event name should be present");
+    assertTrue(!message.contains("super-secret-token"), "Authorization value must be masked");
+    assertTrue(!message.contains("encoded-cert-data"), "Certificate value must be masked");
+    assertTrue(!message.contains("my-secret-value"), "clientSecret value must be masked");
+  }
 
-    @Test
-    void requestIsPassedThroughUnmodified() {
-        ExchangeFilterFunction exchangeFilter = filter.filter();
-        ClientRequest request = ClientRequest
-                .create(HttpMethod.GET, URI.create("https://api.example.test/test"))
-                .header("Accept", "application/json")
-                .build();
-        AtomicReference<ClientRequest> captured = new AtomicReference<>();
+  @Test
+  void requestIsPassedThroughUnmodified() {
+    ExchangeFilterFunction exchangeFilter = filter.filter();
+    ClientRequest request =
+        ClientRequest.create(HttpMethod.GET, URI.create("https://api.example.test/test"))
+            .header("Accept", "application/json")
+            .build();
+    AtomicReference<ClientRequest> captured = new AtomicReference<>();
 
-        exchangeFilter.filter(request, req -> {
-            captured.set(req);
-            return Mono.just(ClientResponse.create(HttpStatus.OK).build());
-        }).block();
+    exchangeFilter
+        .filter(
+            request,
+            req -> {
+              captured.set(req);
+              return Mono.just(ClientResponse.create(HttpStatus.OK).build());
+            })
+        .block();
 
-        assertNotNull(captured.get());
-        assertEquals(request.url(), captured.get().url());
-        assertEquals(request.method(), captured.get().method());
-    }
+    assertNotNull(captured.get());
+    assertEquals(request.url(), captured.get().url());
+    assertEquals(request.method(), captured.get().method());
+  }
 
-    private void invokeFilter(ExchangeFilterFunction exchangeFilter, ClientRequest request, String requestId) {
-        exchangeFilter.filter(request, req -> Mono.just(ClientResponse.create(HttpStatus.OK).build()))
-                .contextWrite(ctx -> ctx.put(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, requestId))
-                .block();
-    }
+  private void invokeFilter(
+      ExchangeFilterFunction exchangeFilter, ClientRequest request, String requestId) {
+    exchangeFilter
+        .filter(request, req -> Mono.just(ClientResponse.create(HttpStatus.OK).build()))
+        .contextWrite(ctx -> ctx.put(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, requestId))
+        .block();
+  }
 }

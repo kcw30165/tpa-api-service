@@ -9,21 +9,21 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @Setter
 public class ContributionSummaryProperties {
 
-    private final Label totalLabel = new Label();
-    private final Headers headers = new Headers();
+  private final Label totalLabel = new Label();
+  private final Headers headers = new Headers();
 
-    @Getter
-    @Setter
-    public static class Label {
-        private String en = "Total Contributions";
-        private String zh = "供款總額";
-    }
+  @Getter
+  @Setter
+  public static class Label {
+    private String en = "Total Contributions";
+    private String zh = "供款總額";
+  }
 
-    @Getter
-    @Setter
-    public static class Headers {
-        private String dealingDate = "Dealing date處理日期";
-        private String contributionPeriod = "Contribution Periods供款期";
-        private String totalContribution = "Total Contributions供款總額";
-    }
+  @Getter
+  @Setter
+  public static class Headers {
+    private String dealingDate = "Dealing date處理日期";
+    private String contributionPeriod = "Contribution Periods供款期";
+    private String totalContribution = "Total Contributions供款總額";
+  }
 }

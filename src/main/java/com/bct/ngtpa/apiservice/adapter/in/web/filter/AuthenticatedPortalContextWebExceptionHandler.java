@@ -18,23 +18,33 @@ import reactor.core.publisher.Mono;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RequiredArgsConstructor
 public final class AuthenticatedPortalContextWebExceptionHandler implements WebExceptionHandler {
-    private final ObjectMapper objectMapper;
+  private final ObjectMapper objectMapper;
 
-    @Override
-    public Mono<Void> handle(ServerWebExchange exchange, Throwable failure) {
-        if (!(failure instanceof AuthenticatedPortalContextResolutionException))
-            return Mono.error(failure);
-        MutationResponse<Void> body = MutationResponse.failure(ApiStatus.BUSINESS_REJECTED, null,
-                List.of(new ApiError("AUTHENTICATION_REQUIRED", ErrorCodes.SECURITY_AUTHENTICATION_REQUIRED, null,
-                        List.of("PAGE"), "ERROR", "SERVER")));
-        exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-        exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
-        try {
-            DataBuffer buffer = exchange.getResponse().bufferFactory().wrap(objectMapper.writeValueAsBytes(body));
-            return exchange.getResponse().writeWith(Mono.just(buffer));
-        } catch (Exception ignored) {
-            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-            return exchange.getResponse().setComplete();
-        }
+  @Override
+  public Mono<Void> handle(ServerWebExchange exchange, Throwable failure) {
+    if (!(failure instanceof AuthenticatedPortalContextResolutionException))
+      return Mono.error(failure);
+    MutationResponse<Void> body =
+        MutationResponse.failure(
+            ApiStatus.BUSINESS_REJECTED,
+            null,
+            List.of(
+                new ApiError(
+                    "AUTHENTICATION_REQUIRED",
+                    ErrorCodes.SECURITY_AUTHENTICATION_REQUIRED,
+                    null,
+                    List.of("PAGE"),
+                    "ERROR",
+                    "SERVER")));
+    exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+    exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
+    try {
+      DataBuffer buffer =
+          exchange.getResponse().bufferFactory().wrap(objectMapper.writeValueAsBytes(body));
+      return exchange.getResponse().writeWith(Mono.just(buffer));
+    } catch (Exception ignored) {
+      exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
+      return exchange.getResponse().setComplete();
     }
+  }
 }

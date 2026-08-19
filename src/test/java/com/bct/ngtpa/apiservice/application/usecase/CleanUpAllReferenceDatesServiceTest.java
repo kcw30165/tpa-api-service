@@ -13,25 +13,27 @@ import reactor.test.StepVerifier;
 
 class CleanUpAllReferenceDatesServiceTest {
 
-    @Test
-    void returnsDeletedCountFromCacheAdminPort() {
-        CacheAdminPort cacheAdminPort = mock(CacheAdminPort.class);
-        when(cacheAdminPort.evictAllByCapability(CacheCapability.REFERENCE_DATE)).thenReturn(Mono.just(2L));
+  @Test
+  void returnsDeletedCountFromCacheAdminPort() {
+    CacheAdminPort cacheAdminPort = mock(CacheAdminPort.class);
+    when(cacheAdminPort.evictAllByCapability(CacheCapability.REFERENCE_DATE))
+        .thenReturn(Mono.just(2L));
 
-        StepVerifier.create(new CleanUpAllReferenceDatesService(cacheAdminPort).execute())
-                .assertNext(result -> assertThat(result.deletedCount()).isEqualTo(2L))
-                .verifyComplete();
+    StepVerifier.create(new CleanUpAllReferenceDatesService(cacheAdminPort).execute())
+        .assertNext(result -> assertThat(result.deletedCount()).isEqualTo(2L))
+        .verifyComplete();
 
-        verify(cacheAdminPort).evictAllByCapability(CacheCapability.REFERENCE_DATE);
-    }
+    verify(cacheAdminPort).evictAllByCapability(CacheCapability.REFERENCE_DATE);
+  }
 
-    @Test
-    void keepsZeroDeletedCountAsSuccessfulResult() {
-        CacheAdminPort cacheAdminPort = mock(CacheAdminPort.class);
-        when(cacheAdminPort.evictAllByCapability(CacheCapability.REFERENCE_DATE)).thenReturn(Mono.just(0L));
+  @Test
+  void keepsZeroDeletedCountAsSuccessfulResult() {
+    CacheAdminPort cacheAdminPort = mock(CacheAdminPort.class);
+    when(cacheAdminPort.evictAllByCapability(CacheCapability.REFERENCE_DATE))
+        .thenReturn(Mono.just(0L));
 
-        StepVerifier.create(new CleanUpAllReferenceDatesService(cacheAdminPort).execute())
-                .assertNext(result -> assertThat(result.deletedCount()).isZero())
-                .verifyComplete();
-    }
+    StepVerifier.create(new CleanUpAllReferenceDatesService(cacheAdminPort).execute())
+        .assertNext(result -> assertThat(result.deletedCount()).isZero())
+        .verifyComplete();
+  }
 }

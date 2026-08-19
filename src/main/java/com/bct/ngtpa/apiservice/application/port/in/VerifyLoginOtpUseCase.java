@@ -5,5 +5,5 @@ import reactor.core.publisher.Mono;
 
 @FunctionalInterface
 public interface VerifyLoginOtpUseCase {
-    Mono<VerifyLoginOtpResult> verify(VerifyLoginOtpCommand command);
+  Mono<VerifyLoginOtpResult> verify(VerifyLoginOtpCommand command);
 }

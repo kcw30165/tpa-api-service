@@ -14,9 +14,9 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class MemberInfoConfigItem {
 
-    @JsonProperty("item-id")
-    private String itemId;
+  @JsonProperty("item-id")
+  private String itemId;
 
-    @JsonProperty("config-value")
-    private String configValue;
+  @JsonProperty("config-value")
+  private String configValue;
 }

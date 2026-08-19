@@ -16,33 +16,35 @@ import reactor.core.publisher.Mono;
 
 class OtpChallengePortContractShapeTest {
 
-    @Test
-    void otpChallengePortExposesLifecycleOperations() {
-        Method create = method("createChallenge", CreateOtpChallengeCommand.class);
-        Method verify = method("verifyChallenge", VerifyOtpChallengeCommand.class);
-        Method replace = method("replaceChallenge", ReplaceOtpChallengeCommand.class);
-        Method invalidate = method("invalidateChallenge", InvalidateOtpChallengeCommand.class);
+  @Test
+  void otpChallengePortExposesLifecycleOperations() {
+    Method create = method("createChallenge", CreateOtpChallengeCommand.class);
+    Method verify = method("verifyChallenge", VerifyOtpChallengeCommand.class);
+    Method replace = method("replaceChallenge", ReplaceOtpChallengeCommand.class);
+    Method invalidate = method("invalidateChallenge", InvalidateOtpChallengeCommand.class);
 
-        assertThat(create.getReturnType()).isEqualTo(Mono.class);
-        assertThat(verify.getReturnType()).isEqualTo(Mono.class);
-        assertThat(replace.getReturnType()).isEqualTo(Mono.class);
-        assertThat(invalidate.getReturnType()).isEqualTo(Mono.class);
+    assertThat(create.getReturnType()).isEqualTo(Mono.class);
+    assertThat(verify.getReturnType()).isEqualTo(Mono.class);
+    assertThat(replace.getReturnType()).isEqualTo(Mono.class);
+    assertThat(invalidate.getReturnType()).isEqualTo(Mono.class);
 
-        assertThat(create.getGenericReturnType().getTypeName())
-                .isEqualTo(Mono.class.getName() + "<" + CreateOtpChallengeResult.class.getName() + ">");
-        assertThat(verify.getGenericReturnType().getTypeName())
-                .isEqualTo(Mono.class.getName() + "<" + VerifyOtpChallengeResult.class.getName() + ">");
-        assertThat(replace.getGenericReturnType().getTypeName())
-                .isEqualTo(Mono.class.getName() + "<" + ReplaceOtpChallengeResult.class.getName() + ">");
-        assertThat(invalidate.getGenericReturnType().getTypeName())
-                .isEqualTo(Mono.class.getName() + "<java.lang.Void>");
-    }
+    assertThat(create.getGenericReturnType().getTypeName())
+        .isEqualTo(Mono.class.getName() + "<" + CreateOtpChallengeResult.class.getName() + ">");
+    assertThat(verify.getGenericReturnType().getTypeName())
+        .isEqualTo(Mono.class.getName() + "<" + VerifyOtpChallengeResult.class.getName() + ">");
+    assertThat(replace.getGenericReturnType().getTypeName())
+        .isEqualTo(Mono.class.getName() + "<" + ReplaceOtpChallengeResult.class.getName() + ">");
+    assertThat(invalidate.getGenericReturnType().getTypeName())
+        .isEqualTo(Mono.class.getName() + "<java.lang.Void>");
+  }
 
-    private Method method(String name, Class<?> parameterType) {
-        return Arrays.stream(OtpChallengePort.class.getMethods())
-                .filter(candidate -> candidate.getName().equals(name))
-                .filter(candidate -> Arrays.equals(candidate.getParameterTypes(), new Class<?>[] {parameterType}))
-                .findFirst()
-                .orElseThrow(() -> new AssertionError("Missing method: " + name));
-    }
+  private Method method(String name, Class<?> parameterType) {
+    return Arrays.stream(OtpChallengePort.class.getMethods())
+        .filter(candidate -> candidate.getName().equals(name))
+        .filter(
+            candidate ->
+                Arrays.equals(candidate.getParameterTypes(), new Class<?>[] {parameterType}))
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("Missing method: " + name));
+  }
 }

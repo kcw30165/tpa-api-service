@@ -4,15 +4,15 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 public record UpdateMemberInfoCommand(
-        String accountEnv,
-        String policyNo,
-        String certNo,
-        String userId,
-        ActorUserRole userRole,
-        Boolean applyToAllAccounts,
-        Map<String, Object> updateFields) {
+    String accountEnv,
+    String policyNo,
+    String certNo,
+    String userId,
+    ActorUserRole userRole,
+    Boolean applyToAllAccounts,
+    Map<String, Object> updateFields) {
 
-    public UpdateMemberInfoCommand {
-        updateFields = updateFields == null ? Map.of() : Map.copyOf(new LinkedHashMap<>(updateFields));
-    }
+  public UpdateMemberInfoCommand {
+    updateFields = updateFields == null ? Map.of() : Map.copyOf(new LinkedHashMap<>(updateFields));
+  }
 }

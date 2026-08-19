@@ -22,120 +22,172 @@ import reactor.core.publisher.Mono;
 
 class AuthRegistrationControllerCaptchaGateTest {
 
-    @Test
-    void registrationStartCaptchaFailureDoesNotSetAuthFlowCookieOrReturnCsrf() {
-        WebTestClient client = client(command -> Mono.just(new StartRegistrationResult(
-                StartRegistrationResultStatus.VALIDATION_FAILED,
-                WorkflowNextStep.NONE,
-                null,
-                0,
-                0,
-                0,
-                null,
-                null,
-                List.of(),
-                List.of(new StartRegistrationError(RegistrationErrorKey.REGISTRATION_CAPTCHA_REQUIRED, "captchaChallengeId")),
-                RegistrationIdempotencyStartOutcome.STARTED,
-                null)));
+  @Test
+  void registrationStartCaptchaFailureDoesNotSetAuthFlowCookieOrReturnCsrf() {
+    WebTestClient client =
+        client(
+            command ->
+                Mono.just(
+                    new StartRegistrationResult(
+                        StartRegistrationResultStatus.VALIDATION_FAILED,
+                        WorkflowNextStep.NONE,
+                        null,
+                        0,
+                        0,
+                        0,
+                        null,
+                        null,
+                        List.of(),
+                        List.of(
+                            new StartRegistrationError(
+                                RegistrationErrorKey.REGISTRATION_CAPTCHA_REQUIRED,
+                                "captchaChallengeId")),
+                        RegistrationIdempotencyStartOutcome.STARTED,
+                        null)));
 
-        client.post()
-                .uri("/api/v1/auth/registration/start")
-                .header("Idempotency-Key", "idem_abc123")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(new RegistrationStartRequest("GPFS", "1234567890", "31/01/1980", "member@example.com", null, null))
-                .exchange()
-                .expectStatus().isBadRequest()
-                .expectCookie().doesNotExist("auth_flow_sid")
-                .expectBody(String.class)
-                .value(body -> assertThat(body)
-                        .contains("err.registration.captcha.required")
-                        .contains("captchaChallengeId")
-                        .doesNotContain("csrfToken")
-                        .doesNotContain("auth_flow_sid")
-                        .doesNotContain("otpExpiresInSeconds")
-                        .doesNotContain("imageBase64")
-                        .doesNotContain("answerHash")
-                        .doesNotContain("cap_"));
-    }
+    client
+        .post()
+        .uri("/api/v1/auth/registration/start")
+        .header("Idempotency-Key", "idem_abc123")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(
+            new RegistrationStartRequest(
+                "GPFS", "1234567890", "31/01/1980", "member@example.com", null, null))
+        .exchange()
+        .expectStatus()
+        .isBadRequest()
+        .expectCookie()
+        .doesNotExist("auth_flow_sid")
+        .expectBody(String.class)
+        .value(
+            body ->
+                assertThat(body)
+                    .contains("err.registration.captcha.required")
+                    .contains("captchaChallengeId")
+                    .doesNotContain("csrfToken")
+                    .doesNotContain("auth_flow_sid")
+                    .doesNotContain("otpExpiresInSeconds")
+                    .doesNotContain("imageBase64")
+                    .doesNotContain("answerHash")
+                    .doesNotContain("cap_"));
+  }
 
-    @Test
-    void registrationStartSuccessDoesNotReturnCaptchaData() {
-        WebTestClient client = client(command -> Mono.just(new StartRegistrationResult(
-                StartRegistrationResultStatus.STARTED,
-                WorkflowNextStep.VERIFY_OTP,
-                "m****r@example.com",
-                300,
-                60,
-                5,
-                "csrf_token_safe",
-                "afs_secret",
-                List.of(),
-                List.of(),
-                RegistrationIdempotencyStartOutcome.STARTED,
-                null)));
+  @Test
+  void registrationStartSuccessDoesNotReturnCaptchaData() {
+    WebTestClient client =
+        client(
+            command ->
+                Mono.just(
+                    new StartRegistrationResult(
+                        StartRegistrationResultStatus.STARTED,
+                        WorkflowNextStep.VERIFY_OTP,
+                        "m****r@example.com",
+                        300,
+                        60,
+                        5,
+                        "csrf_token_safe",
+                        "afs_secret",
+                        List.of(),
+                        List.of(),
+                        RegistrationIdempotencyStartOutcome.STARTED,
+                        null)));
 
-        client.post()
-                .uri("/api/v1/auth/registration/start")
-                .header("Idempotency-Key", "idem_abc123")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(new RegistrationStartRequest("GPFS", "1234567890", "31/01/1980", "member@example.com", null, "cap_abcdefghijklmnop"))
-                .exchange()
-                .expectStatus().isOk()
-                .expectCookie().exists("auth_flow_sid")
-                .expectBody(String.class)
-                .value(body -> assertThat(body)
-                        .contains("VERIFY_OTP")
-                        .contains("csrf_token_safe")
-                        .doesNotContain("captchaChallengeId")
-                        .doesNotContain("imageBase64")
-                        .doesNotContain("answerHash")
-                        .doesNotContain("captchaStatus")
-                        .doesNotContain("ngtpa:auth:captcha:"));
-    }
-
-    @Test
-    void registrationStartCaptchaFailureTargetsCaptchaChallengeId() {
-        WebTestClient client = client(command -> Mono.just(new StartRegistrationResult(
-                StartRegistrationResultStatus.VALIDATION_FAILED,
-                WorkflowNextStep.NONE,
+    client
+        .post()
+        .uri("/api/v1/auth/registration/start")
+        .header("Idempotency-Key", "idem_abc123")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(
+            new RegistrationStartRequest(
+                "GPFS",
+                "1234567890",
+                "31/01/1980",
+                "member@example.com",
                 null,
-                0,
-                0,
-                0,
-                null,
-                null,
-                List.of(),
-                List.of(new StartRegistrationError(RegistrationErrorKey.REGISTRATION_CAPTCHA_INVALID, "captchaChallengeId")),
-                RegistrationIdempotencyStartOutcome.STARTED,
-                null)));
+                "cap_abcdefghijklmnop"))
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectCookie()
+        .exists("auth_flow_sid")
+        .expectBody(String.class)
+        .value(
+            body ->
+                assertThat(body)
+                    .contains("VERIFY_OTP")
+                    .contains("csrf_token_safe")
+                    .doesNotContain("captchaChallengeId")
+                    .doesNotContain("imageBase64")
+                    .doesNotContain("answerHash")
+                    .doesNotContain("captchaStatus")
+                    .doesNotContain("ngtpa:auth:captcha:"));
+  }
 
-        client.post()
-                .uri("/api/v1/auth/registration/start")
-                .header("Idempotency-Key", "idem_abc123")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(new RegistrationStartRequest("GPFS", "1234567890", "31/01/1980", "member@example.com", null, "cap_abcdefghijklmnop"))
-                .exchange()
-                .expectStatus().isBadRequest()
-                .expectBody()
-                .jsonPath("$.errors[0].code").isEqualTo("err.registration.captcha.invalid")
-                .jsonPath("$.errors[0].targets[0]").isEqualTo("captchaChallengeId");
-    }
+  @Test
+  void registrationStartCaptchaFailureTargetsCaptchaChallengeId() {
+    WebTestClient client =
+        client(
+            command ->
+                Mono.just(
+                    new StartRegistrationResult(
+                        StartRegistrationResultStatus.VALIDATION_FAILED,
+                        WorkflowNextStep.NONE,
+                        null,
+                        0,
+                        0,
+                        0,
+                        null,
+                        null,
+                        List.of(),
+                        List.of(
+                            new StartRegistrationError(
+                                RegistrationErrorKey.REGISTRATION_CAPTCHA_INVALID,
+                                "captchaChallengeId")),
+                        RegistrationIdempotencyStartOutcome.STARTED,
+                        null)));
 
-    private WebTestClient client(StartRegistrationUseCase useCase) {
-        return WebTestClient.bindToController(new AuthRegistrationController(
-                        useCase,
-                        new RegistrationStartWebMapper(Duration.ofMinutes(5)),
-                        AuthFlowCookieWriter.defaultWriter(),
-                        org.mockito.Mockito.mock(
-                                com.bct.ngtpa.apiservice.application.port.in.CompleteRegistrationUseCase.class),
-                        org.mockito.Mockito.mock(
-                                com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.CompleteRegistrationWebMapper.class),
-                        org.mockito.Mockito.mock(
-                                com.bct.ngtpa.apiservice.application.port.in.CancelRegistrationUseCase.class),
-                        org.mockito.Mockito.mock(
-                                com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.CancelRegistrationWebMapper.class),
-                        org.mockito.Mockito.mock(
-                                com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.XsrfCookieWriter.class)))
-                .build();
-    }
+    client
+        .post()
+        .uri("/api/v1/auth/registration/start")
+        .header("Idempotency-Key", "idem_abc123")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(
+            new RegistrationStartRequest(
+                "GPFS",
+                "1234567890",
+                "31/01/1980",
+                "member@example.com",
+                null,
+                "cap_abcdefghijklmnop"))
+        .exchange()
+        .expectStatus()
+        .isBadRequest()
+        .expectBody()
+        .jsonPath("$.errors[0].code")
+        .isEqualTo("err.registration.captcha.invalid")
+        .jsonPath("$.errors[0].targets[0]")
+        .isEqualTo("captchaChallengeId");
+  }
+
+  private WebTestClient client(StartRegistrationUseCase useCase) {
+    return WebTestClient.bindToController(
+            new AuthRegistrationController(
+                useCase,
+                new RegistrationStartWebMapper(Duration.ofMinutes(5)),
+                AuthFlowCookieWriter.defaultWriter(),
+                org.mockito.Mockito.mock(
+                    com.bct.ngtpa.apiservice.application.port.in.CompleteRegistrationUseCase.class),
+                org.mockito.Mockito.mock(
+                    com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper
+                        .CompleteRegistrationWebMapper.class),
+                org.mockito.Mockito.mock(
+                    com.bct.ngtpa.apiservice.application.port.in.CancelRegistrationUseCase.class),
+                org.mockito.Mockito.mock(
+                    com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper
+                        .CancelRegistrationWebMapper.class),
+                org.mockito.Mockito.mock(
+                    com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config
+                        .XsrfCookieWriter.class)))
+        .build();
+  }
 }

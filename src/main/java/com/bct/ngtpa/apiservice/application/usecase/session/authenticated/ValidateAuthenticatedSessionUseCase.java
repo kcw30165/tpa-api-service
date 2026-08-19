@@ -5,5 +5,5 @@ import reactor.core.publisher.Mono;
 
 @FunctionalInterface
 public interface ValidateAuthenticatedSessionUseCase {
-    Mono<AuthenticatedSession> validate(ValidateAuthenticatedSessionCommand command);
+  Mono<AuthenticatedSession> validate(ValidateAuthenticatedSessionCommand command);
 }

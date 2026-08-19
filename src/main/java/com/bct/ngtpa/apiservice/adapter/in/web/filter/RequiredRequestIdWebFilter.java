@@ -24,48 +24,48 @@ import reactor.core.publisher.Mono;
 @Order(Ordered.HIGHEST_PRECEDENCE + 1)
 public class RequiredRequestIdWebFilter implements WebFilter {
 
-    private static final String API_PREFIX = "/api/";
-    private static final String TARGET = RequestCorrelation.REQUEST_ID_HEADER;
-    private final ObjectMapper objectMapper;
+  private static final String API_PREFIX = "/api/";
+  private static final String TARGET = RequestCorrelation.REQUEST_ID_HEADER;
+  private final ObjectMapper objectMapper;
 
-    public RequiredRequestIdWebFilter(ObjectMapper objectMapper) {
-        this.objectMapper = java.util.Objects.requireNonNull(
-                objectMapper,
-                "objectMapper must not be null");
+  public RequiredRequestIdWebFilter(ObjectMapper objectMapper) {
+    this.objectMapper =
+        java.util.Objects.requireNonNull(objectMapper, "objectMapper must not be null");
+  }
+
+  @Override
+  public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
+    String path = exchange.getRequest().getPath().value();
+    if (path == null || !path.startsWith(API_PREFIX)) {
+      return chain.filter(exchange);
     }
 
-    @Override
-    public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
-        String path = exchange.getRequest().getPath().value();
-        if (path == null || !path.startsWith(API_PREFIX)) {
-            return chain.filter(exchange);
-        }
-
-        String inbound = exchange.getRequest().getHeaders()
-                .getFirst(RequestCorrelation.REQUEST_ID_HEADER);
-        if (inbound != null && !inbound.isBlank()) {
-            return chain.filter(exchange);
-        }
-
-        return reject(exchange);
+    String inbound =
+        exchange.getRequest().getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER);
+    if (inbound != null && !inbound.isBlank()) {
+      return chain.filter(exchange);
     }
 
-    private Mono<Void> reject(ServerWebExchange exchange) {
-        String code = ErrorCodes.REQUEST_ID_MISSING;
-        MutationResponse<Void> response = MutationResponse.failure(
-                ApiStatus.VALIDATION_FAILED,
-                List.of(ApiError.field(code, null, List.of(TARGET), "SERVER")));
+    return reject(exchange);
+  }
 
-        byte[] bytes;
-        try {
-            bytes = objectMapper.writeValueAsBytes(response);
-        } catch (JsonProcessingException exception) {
-            return Mono.error(exception);
-        }
+  private Mono<Void> reject(ServerWebExchange exchange) {
+    String code = ErrorCodes.REQUEST_ID_MISSING;
+    MutationResponse<Void> response =
+        MutationResponse.failure(
+            ApiStatus.VALIDATION_FAILED,
+            List.of(ApiError.field(code, null, List.of(TARGET), "SERVER")));
 
-        exchange.getResponse().setStatusCode(HttpStatus.BAD_REQUEST);
-        exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
-        DataBuffer buffer = exchange.getResponse().bufferFactory().wrap(bytes);
-        return exchange.getResponse().writeWith(Mono.just(buffer));
+    byte[] bytes;
+    try {
+      bytes = objectMapper.writeValueAsBytes(response);
+    } catch (JsonProcessingException exception) {
+      return Mono.error(exception);
     }
+
+    exchange.getResponse().setStatusCode(HttpStatus.BAD_REQUEST);
+    exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
+    DataBuffer buffer = exchange.getResponse().bufferFactory().wrap(bytes);
+    return exchange.getResponse().writeWith(Mono.just(buffer));
+  }
 }

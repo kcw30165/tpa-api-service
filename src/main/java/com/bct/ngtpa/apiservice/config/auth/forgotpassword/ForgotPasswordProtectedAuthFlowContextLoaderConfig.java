@@ -16,25 +16,19 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class ForgotPasswordProtectedAuthFlowContextLoaderConfig {
 
-    @Bean
-    @ConditionalOnMissingBean(ForgotPasswordProtectedAuthFlowContextLoader.class)
-    public ForgotPasswordProtectedAuthFlowContextLoader forgotPasswordProtectedAuthFlowContextLoader(
-            AuthFlowSessionLifecycleService lifecycleService,
-            AuthFlowSessionCsrfService csrfService,
-            ForgotPasswordAuthFlowContextProtectorPort contextProtector,
-            SecurityAuditEventPort securityAuditEventPort,
-            AuthFlowSessionExpiryRefreshPort expiryRefreshPort,
-            Clock clock) {
-        ForgotPasswordProtectedAuthFlowContextLoader delegate =
-                new DefaultForgotPasswordProtectedAuthFlowContextLoader(
-                        lifecycleService,
-                        csrfService,
-                        contextProtector,
-                        securityAuditEventPort,
-                        clock);
-        return new SlidingForgotPasswordProtectedAuthFlowContextLoader(
-                delegate,
-                expiryRefreshPort,
-                clock);
-    }
+  @Bean
+  @ConditionalOnMissingBean(ForgotPasswordProtectedAuthFlowContextLoader.class)
+  public ForgotPasswordProtectedAuthFlowContextLoader forgotPasswordProtectedAuthFlowContextLoader(
+      AuthFlowSessionLifecycleService lifecycleService,
+      AuthFlowSessionCsrfService csrfService,
+      ForgotPasswordAuthFlowContextProtectorPort contextProtector,
+      SecurityAuditEventPort securityAuditEventPort,
+      AuthFlowSessionExpiryRefreshPort expiryRefreshPort,
+      Clock clock) {
+    ForgotPasswordProtectedAuthFlowContextLoader delegate =
+        new DefaultForgotPasswordProtectedAuthFlowContextLoader(
+            lifecycleService, csrfService, contextProtector, securityAuditEventPort, clock);
+    return new SlidingForgotPasswordProtectedAuthFlowContextLoader(
+        delegate, expiryRefreshPort, clock);
+  }
 }

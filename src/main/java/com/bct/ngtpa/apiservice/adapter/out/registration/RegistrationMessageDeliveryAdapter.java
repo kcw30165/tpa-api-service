@@ -11,94 +11,94 @@ import com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryType;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationMessagePort;
-
-import lombok.extern.slf4j.Slf4j;
-
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Mono;
 
 @Slf4j
 public class RegistrationMessageDeliveryAdapter implements RegistrationMessagePort {
-    private final MessageDeliveryPort messageDeliveryPort;
-    private final AuthWorkflowPolicyPort authWorkflowPolicyPort;
+  private final MessageDeliveryPort messageDeliveryPort;
+  private final AuthWorkflowPolicyPort authWorkflowPolicyPort;
 
-    public RegistrationMessageDeliveryAdapter(
-            MessageDeliveryPort messageDeliveryPort,
-            AuthWorkflowPolicyPort authWorkflowPolicyPort) {
-        this.messageDeliveryPort = Objects.requireNonNull(messageDeliveryPort, "messageDeliveryPort must not be null");
-        this.authWorkflowPolicyPort = Objects.requireNonNull(authWorkflowPolicyPort,
-                "authWorkflowPolicyPort must not be null");
+  public RegistrationMessageDeliveryAdapter(
+      MessageDeliveryPort messageDeliveryPort, AuthWorkflowPolicyPort authWorkflowPolicyPort) {
+    this.messageDeliveryPort =
+        Objects.requireNonNull(messageDeliveryPort, "messageDeliveryPort must not be null");
+    this.authWorkflowPolicyPort =
+        Objects.requireNonNull(authWorkflowPolicyPort, "authWorkflowPolicyPort must not be null");
+  }
+
+  @Override
+  public Mono<Boolean> deliverRegistrationOtp(
+      RegistrationContactType contactType,
+      String recipient,
+      String otpCode,
+      int ttlSeconds,
+      String acceptLanguage,
+      String correlationId) {
+    OtpPolicy policy = otpPolicy();
+    MessageDeliveryChannel channel = toChannel(contactType);
+
+    var variables = new LinkedHashMap<String, String>();
+    variables.put("code", otpCode);
+    variables.put("ttlValue", String.valueOf(Math.max(1, ttlSeconds / 60)));
+    variables.put("ttlUnit", "minutes");
+
+    var command =
+        new MessageDeliveryCommand(
+            MessageDeliveryType.REGISTRATION_OTP,
+            MessageDeliveryScenario.REGISTRATION,
+            channel,
+            recipient,
+            subject(channel, policy),
+            body(channel, policy),
+            "registration-otp",
+            Map.copyOf(variables),
+            acceptLanguage,
+            correlationId);
+
+    return messageDeliveryPort
+        .deliver(command)
+        .map(result -> result.status() == MessageDeliveryStatus.ACCEPTED);
+  }
+
+  private OtpPolicy otpPolicy() {
+    RegistrationAuthWorkflowPolicy policy = authWorkflowPolicyPort.registrationPolicy();
+    if (policy == null || policy.otp() == null) {
+      throw new IllegalStateException("Registration OTP policy is not configured");
     }
+    return policy.otp();
+  }
 
-    @Override
-    public Mono<Boolean> deliverRegistrationOtp(
-            RegistrationContactType contactType,
-            String recipient,
-            String otpCode,
-            int ttlSeconds,
-            String acceptLanguage,
-            String correlationId) {
-        OtpPolicy policy = otpPolicy();
-        MessageDeliveryChannel channel = toChannel(contactType);
-
-        var variables = new LinkedHashMap<String, String>();
-        variables.put("code", otpCode);
-        variables.put("ttlValue", String.valueOf(Math.max(1, ttlSeconds / 60)));
-        variables.put("ttlUnit", "minutes");
-
-        var command = new MessageDeliveryCommand(
-                MessageDeliveryType.REGISTRATION_OTP,
-                MessageDeliveryScenario.REGISTRATION,
-                channel,
-                recipient,
-                subject(channel, policy),
-                body(channel, policy),
-                "registration-otp",
-                Map.copyOf(variables),
-                acceptLanguage,
-                correlationId);
-
-        return messageDeliveryPort.deliver(command)
-                .map(result -> result.status() == MessageDeliveryStatus.ACCEPTED);
+  private MessageDeliveryChannel toChannel(RegistrationContactType contactType) {
+    if (contactType == RegistrationContactType.MOBILE) {
+      return MessageDeliveryChannel.SMS;
     }
+    return MessageDeliveryChannel.EMAIL;
+  }
 
-    private OtpPolicy otpPolicy() {
-        RegistrationAuthWorkflowPolicy policy = authWorkflowPolicyPort.registrationPolicy();
-        if (policy == null || policy.otp() == null) {
-            throw new IllegalStateException("Registration OTP policy is not configured");
-        }
-        return policy.otp();
+  private String subject(MessageDeliveryChannel channel, OtpPolicy policy) {
+    if (channel == MessageDeliveryChannel.EMAIL
+        && policy.email() != null
+        && policy.email().subject() != null
+        && !policy.email().subject().isBlank()) {
+      return policy.email().subject();
     }
+    return "registration-otp";
+  }
 
-    private MessageDeliveryChannel toChannel(RegistrationContactType contactType) {
-        if (contactType == RegistrationContactType.MOBILE) {
-            return MessageDeliveryChannel.SMS;
-        }
-        return MessageDeliveryChannel.EMAIL;
+  private String body(MessageDeliveryChannel channel, OtpPolicy policy) {
+    if (channel == MessageDeliveryChannel.EMAIL
+        && policy.email() != null
+        && policy.email().body() != null
+        && !policy.email().body().isBlank()) {
+      return policy.email().body();
     }
-
-    private String subject(MessageDeliveryChannel channel, OtpPolicy policy) {
-        if (channel == MessageDeliveryChannel.EMAIL
-                && policy.email() != null
-                && policy.email().subject() != null
-                && !policy.email().subject().isBlank()) {
-            return policy.email().subject();
-        }
-        return "registration-otp";
+    if (policy.smsTemplate() != null && !policy.smsTemplate().isBlank()) {
+      return policy.smsTemplate();
     }
-
-    private String body(MessageDeliveryChannel channel, OtpPolicy policy) {
-        if (channel == MessageDeliveryChannel.EMAIL
-                && policy.email() != null
-                && policy.email().body() != null
-                && !policy.email().body().isBlank()) {
-            return policy.email().body();
-        }
-        if (policy.smsTemplate() != null && !policy.smsTemplate().isBlank()) {
-            return policy.smsTemplate();
-        }
-        return "{code}";
-    }
+    return "{code}";
+  }
 }

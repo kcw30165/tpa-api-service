@@ -1,7 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.pageconfig;
 
 import java.util.List;
-
 import lombok.Getter;
 import lombok.Setter;
 
@@ -9,8 +8,8 @@ import lombok.Setter;
 @Setter
 public class RuleActionProperties {
 
-    private String operator;
-    private String field;
-    private List<String> fields;
-    private List<String> targets;
+  private String operator;
+  private String field;
+  private List<String> fields;
+  private List<String> targets;
 }

@@ -10,65 +10,57 @@ import org.junit.jupiter.api.Test;
 
 class SessionCookieInstructionFactoryTest {
 
-    private final SessionCookieInstructionFactory factory = new SessionCookieInstructionFactory();
+  private final SessionCookieInstructionFactory factory = new SessionCookieInstructionFactory();
 
-    @Test
-    void createsSetCookieInstruction() {
-        var policy = authFlowCookiePolicy();
+  @Test
+  void createsSetCookieInstruction() {
+    var policy = authFlowCookiePolicy();
 
-        var instruction = factory.setCookie(policy, "afs_abc");
+    var instruction = factory.setCookie(policy, "afs_abc");
 
-        assertThat(instruction.operation()).isEqualTo(SessionCookieOperation.SET);
-        assertThat(instruction.policy()).isSameAs(policy);
-        assertThat(instruction.value()).isEqualTo("afs_abc");
-    }
+    assertThat(instruction.operation()).isEqualTo(SessionCookieOperation.SET);
+    assertThat(instruction.policy()).isSameAs(policy);
+    assertThat(instruction.value()).isEqualTo("afs_abc");
+  }
 
-    @Test
-    void createsClearCookieInstruction() {
-        var policy = authFlowCookiePolicy();
+  @Test
+  void createsClearCookieInstruction() {
+    var policy = authFlowCookiePolicy();
 
-        var instruction = factory.clearCookie(policy);
+    var instruction = factory.clearCookie(policy);
 
-        assertThat(instruction.operation()).isEqualTo(SessionCookieOperation.CLEAR);
-        assertThat(instruction.policy()).isSameAs(policy);
-        assertThat(instruction.value()).isNull();
-    }
+    assertThat(instruction.operation()).isEqualTo(SessionCookieOperation.CLEAR);
+    assertThat(instruction.policy()).isSameAs(policy);
+    assertThat(instruction.value()).isNull();
+  }
 
-    @Test
-    void setCookieInstructionRejectsBlankValue() {
-        assertThatThrownBy(() -> factory.setCookie(authFlowCookiePolicy(), " "))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Cookie value is required for SET operation")
-                .hasMessageNotContaining("afs_");
-    }
+  @Test
+  void setCookieInstructionRejectsBlankValue() {
+    assertThatThrownBy(() -> factory.setCookie(authFlowCookiePolicy(), " "))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Cookie value is required for SET operation")
+        .hasMessageNotContaining("afs_");
+  }
 
-    @Test
-    void setCookieInstructionRejectsNullPolicy() {
-        assertThatThrownBy(() -> factory.setCookie(null, "afs_abc"))
-                .isInstanceOf(NullPointerException.class)
-                .hasMessage("policy must not be null");
-    }
+  @Test
+  void setCookieInstructionRejectsNullPolicy() {
+    assertThatThrownBy(() -> factory.setCookie(null, "afs_abc"))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessage("policy must not be null");
+  }
 
-    @Test
-    void sameSiteNoneRequiresSecure() {
-        assertThatThrownBy(() -> new SessionCookiePolicy(
-                "auth_flow_sid",
-                "/api/v1/auth",
-                1800,
-                true,
-                false,
-                SessionCookieSameSite.NONE))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("SameSite=None cookies must be Secure");
-    }
+  @Test
+  void sameSiteNoneRequiresSecure() {
+    assertThatThrownBy(
+            () ->
+                new SessionCookiePolicy(
+                    "auth_flow_sid", "/api/v1/auth", 1800, true, false, SessionCookieSameSite.NONE))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("SameSite=None cookies must be Secure");
+  }
 
-    private static SessionCookiePolicy authFlowCookiePolicy() {
-        return new SessionCookiePolicy(
-                "auth_flow_sid",
-                "/api/v1/auth",
-                1800,
-                true,
-                true,
-                SessionCookieSameSite.NONE);
-    }
+  private static SessionCookiePolicy authFlowCookiePolicy() {
+    return new SessionCookiePolicy(
+        "auth_flow_sid", "/api/v1/auth", 1800, true, true, SessionCookieSameSite.NONE);
+  }
 }

@@ -7,5 +7,5 @@ import reactor.core.publisher.Mono;
 
 @FunctionalInterface
 public interface ApimReferenceDataCountriesPort {
-    Mono<List<ReferenceDataCountryItem>> fetchCountryList(GetReferenceDataCountriesCommand command);
+  Mono<List<ReferenceDataCountryItem>> fetchCountryList(GetReferenceDataCountriesCommand command);
 }

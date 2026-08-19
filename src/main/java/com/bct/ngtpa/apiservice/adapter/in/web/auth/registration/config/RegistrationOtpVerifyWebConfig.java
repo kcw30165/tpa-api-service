@@ -9,10 +9,10 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RegistrationOtpVerifyWebConfig {
 
-    @Bean
-    @ConditionalOnMissingBean
-    public RegistrationOtpVerifyWebMapper registrationOtpVerifyWebMapper(
-            WorkflowMutationResponseMapper workflowMutationResponseMapper) {
-        return new RegistrationOtpVerifyWebMapper(workflowMutationResponseMapper);
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  public RegistrationOtpVerifyWebMapper registrationOtpVerifyWebMapper(
+      WorkflowMutationResponseMapper workflowMutationResponseMapper) {
+    return new RegistrationOtpVerifyWebMapper(workflowMutationResponseMapper);
+  }
 }

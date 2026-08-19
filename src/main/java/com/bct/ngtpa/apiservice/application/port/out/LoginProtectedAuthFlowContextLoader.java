@@ -5,5 +5,5 @@ import reactor.core.publisher.Mono;
 
 @FunctionalInterface
 public interface LoginProtectedAuthFlowContextLoader {
-    Mono<LoginProtectedAuthFlowContextResult> load(LoginProtectedAuthFlowContextCommand command);
+  Mono<LoginProtectedAuthFlowContextResult> load(LoginProtectedAuthFlowContextCommand command);
 }

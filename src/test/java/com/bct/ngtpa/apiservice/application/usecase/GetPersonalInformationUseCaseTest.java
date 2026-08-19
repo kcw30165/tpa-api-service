@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.bct.ngtpa.apiservice.application.dto.AccountContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.FetchMemberInfoCommand;
 import com.bct.ngtpa.apiservice.application.dto.GetPersonalInformationCommand;
 import com.bct.ngtpa.apiservice.application.dto.MemberInfoResult;
@@ -12,7 +13,6 @@ import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.TermStatus;
 import com.bct.ngtpa.apiservice.application.port.out.ApimMemberInfoPort;
 import com.bct.ngtpa.apiservice.application.port.out.CurrentPortalAccessContextResolver;
-import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
@@ -20,59 +20,68 @@ import reactor.core.publisher.Mono;
 
 class GetPersonalInformationUseCaseTest {
 
-    @Test
-    void resolvesPortalContextAndCallsApimAndReturnsNeutralResult() {
-        AtomicReference<FetchMemberInfoCommand> captured = new AtomicReference<>();
-        ApimMemberInfoPort apimPort = command -> {
-            captured.set(command);
-            return Mono.just(new MemberInfoResult(Map.of(
-                    "data", Map.of("email", "a@b.test"),
-                    "config", Map.of("email", "READONLY"))));
+  @Test
+  void resolvesPortalContextAndCallsApimAndReturnsNeutralResult() {
+    AtomicReference<FetchMemberInfoCommand> captured = new AtomicReference<>();
+    ApimMemberInfoPort apimPort =
+        command -> {
+          captured.set(command);
+          return Mono.just(
+              new MemberInfoResult(
+                  Map.of(
+                      "data", Map.of("email", "a@b.test"),
+                      "config", Map.of("email", "READONLY"))));
         };
 
-        var result = new GetPersonalInformationService(apimPort)
-                .execute(command("en"))
-                .block();
+    var result = new GetPersonalInformationService(apimPort).execute(command("en")).block();
 
-        assertEquals("JP", captured.get().getAccountEnv());
-        assertEquals("policy-1", captured.get().getPolicyNo());
-        assertEquals("cert-1", captured.get().getCertNo());
-        assertEquals("user-1", captured.get().getUserId());
-        assertEquals("a@b.test", result.data().get("email"));
-        assertEquals("READONLY", result.config().get("email"));
-    }
+    assertEquals("JP", captured.get().getAccountEnv());
+    assertEquals("policy-1", captured.get().getPolicyNo());
+    assertEquals("cert-1", captured.get().getCertNo());
+    assertEquals("user-1", captured.get().getUserId());
+    assertEquals("a@b.test", result.data().get("email"));
+    assertEquals("READONLY", result.config().get("email"));
+  }
 
-    @Test
-    void nullPayloadReturnsEmptyResult() {
-        var result = new GetPersonalInformationService(command -> Mono.just(new MemberInfoResult(null)))
-                .execute(command("en"))
-                .block();
+  @Test
+  void nullPayloadReturnsEmptyResult() {
+    var result =
+        new GetPersonalInformationService(command -> Mono.just(new MemberInfoResult(null)))
+            .execute(command("en"))
+            .block();
 
-        assertTrue(result.data().isEmpty());
-        assertTrue(result.config().isEmpty());
-    }
+    assertTrue(result.data().isEmpty());
+    assertTrue(result.config().isEmpty());
+  }
 
-    private static GetPersonalInformationCommand command(String language) {
-        return new GetPersonalInformationCommand(language, "JP", "policy-1", "cert-1", "user-1", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
-    }
+  private static GetPersonalInformationCommand command(String language) {
+    return new GetPersonalInformationCommand(
+        language,
+        "JP",
+        "policy-1",
+        "cert-1",
+        "user-1",
+        com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
+  }
 
-    private static CurrentPortalAccessContextResolver resolver(PortalAccessContext context) {
-        return new CurrentPortalAccessContextResolver() {
-            @Override
-            public Mono<PortalAccessContext> current() {
-                return Mono.just(context);
-            }
+  private static CurrentPortalAccessContextResolver resolver(PortalAccessContext context) {
+    return new CurrentPortalAccessContextResolver() {
+      @Override
+      public Mono<PortalAccessContext> current() {
+        return Mono.just(context);
+      }
 
-            @Override
-            public Mono<PortalAccessContext> currentOrEmpty() {
-                return Mono.just(context);
-            }
-        };
-    }
+      @Override
+      public Mono<PortalAccessContext> currentOrEmpty() {
+        return Mono.just(context);
+      }
+    };
+  }
 
-    private static PortalAccessContext context(String accountRef) {
-        return new PortalAccessContext(
-                new ActorContext("user-1", ActorUserRole.ROLE_USER_MBR),
-                new AccountContext(accountRef, "JP", "policy-1", "cert-1", "JPM", "OE", TermStatus.BLANK, null));
-    }
+  private static PortalAccessContext context(String accountRef) {
+    return new PortalAccessContext(
+        new ActorContext("user-1", ActorUserRole.ROLE_USER_MBR),
+        new AccountContext(
+            accountRef, "JP", "policy-1", "cert-1", "JPM", "OE", TermStatus.BLANK, null));
+  }
 }

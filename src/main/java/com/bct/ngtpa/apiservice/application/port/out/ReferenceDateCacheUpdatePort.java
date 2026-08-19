@@ -5,5 +5,5 @@ import reactor.core.publisher.Mono;
 
 public interface ReferenceDateCacheUpdatePort {
 
-    Mono<Void> updateReferenceDate(ReferenceDateCacheUpdateCommand command);
+  Mono<Void> updateReferenceDate(ReferenceDateCacheUpdateCommand command);
 }

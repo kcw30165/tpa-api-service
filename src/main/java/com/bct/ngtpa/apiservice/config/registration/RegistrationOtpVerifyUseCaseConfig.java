@@ -16,23 +16,23 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RegistrationOtpVerifyUseCaseConfig {
 
-    @Bean
-    @ConditionalOnMissingBean(VerifyRegistrationOtpUseCase.class)
-    public VerifyRegistrationOtpUseCase verifyRegistrationOtpUseCase(
-            RegistrationProtectedAuthFlowContextLoader protectedContextLoader,
-            RegistrationRequestHashGenerator requestHashGenerator,
-            RegistrationIdempotencyPort registrationIdempotencyPort,
-            RegistrationOtpPort registrationOtpPort,
-            RegistrationSessionPort registrationSessionPort,
-            RegistrationLookupPort registrationLookupPort,
-            Clock clock) {
-        return new VerifyRegistrationOtpService(
-                protectedContextLoader,
-                requestHashGenerator,
-                registrationIdempotencyPort,
-                registrationOtpPort,
-                registrationSessionPort,
-                registrationLookupPort,
-                clock);
-    }
+  @Bean
+  @ConditionalOnMissingBean(VerifyRegistrationOtpUseCase.class)
+  public VerifyRegistrationOtpUseCase verifyRegistrationOtpUseCase(
+      RegistrationProtectedAuthFlowContextLoader protectedContextLoader,
+      RegistrationRequestHashGenerator requestHashGenerator,
+      RegistrationIdempotencyPort registrationIdempotencyPort,
+      RegistrationOtpPort registrationOtpPort,
+      RegistrationSessionPort registrationSessionPort,
+      RegistrationLookupPort registrationLookupPort,
+      Clock clock) {
+    return new VerifyRegistrationOtpService(
+        protectedContextLoader,
+        requestHashGenerator,
+        registrationIdempotencyPort,
+        registrationOtpPort,
+        registrationSessionPort,
+        registrationLookupPort,
+        clock);
+  }
 }

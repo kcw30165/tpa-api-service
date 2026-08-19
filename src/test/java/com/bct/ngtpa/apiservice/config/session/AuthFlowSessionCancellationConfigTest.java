@@ -8,10 +8,10 @@ import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import org.junit.jupiter.api.Test;
 
 class AuthFlowSessionCancellationConfigTest {
-    @Test
-    void wiresTypedCancellationCapabilityFromExistingSessionPersistencePort() {
-        var config = new AuthFlowSessionRuntimeServiceConfig();
-        var capability = config.authFlowSessionCancellationPort(mock(AuthFlowSessionPort.class));
-        assertThat(capability).isInstanceOf(AuthFlowSessionCancellationAdapter.class);
-    }
+  @Test
+  void wiresTypedCancellationCapabilityFromExistingSessionPersistencePort() {
+    var config = new AuthFlowSessionRuntimeServiceConfig();
+    var capability = config.authFlowSessionCancellationPort(mock(AuthFlowSessionPort.class));
+    assertThat(capability).isInstanceOf(AuthFlowSessionCancellationAdapter.class);
+  }
 }

@@ -7,35 +7,35 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class RedisOtpChallengeJsonMapper {
 
-    private final ObjectMapper objectMapper;
+  private final ObjectMapper objectMapper;
 
-    public RedisOtpChallengeJsonMapper() {
-        this(new ObjectMapper());
-    }
+  public RedisOtpChallengeJsonMapper() {
+    this(new ObjectMapper());
+  }
 
-    RedisOtpChallengeJsonMapper(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
-    }
+  RedisOtpChallengeJsonMapper(ObjectMapper objectMapper) {
+    this.objectMapper = objectMapper;
+  }
 
-    public String toJson(OtpChallenge challenge) {
-        if (challenge == null) {
-            throw new IllegalArgumentException("OTP challenge must not be null");
-        }
-        try {
-            return objectMapper.writeValueAsString(RedisOtpChallengeRecord.from(challenge));
-        } catch (RuntimeException | JsonProcessingException exception) {
-            throw new CacheException("OTP challenge state serialization failed", exception);
-        }
+  public String toJson(OtpChallenge challenge) {
+    if (challenge == null) {
+      throw new IllegalArgumentException("OTP challenge must not be null");
     }
+    try {
+      return objectMapper.writeValueAsString(RedisOtpChallengeRecord.from(challenge));
+    } catch (RuntimeException | JsonProcessingException exception) {
+      throw new CacheException("OTP challenge state serialization failed", exception);
+    }
+  }
 
-    public OtpChallenge fromJson(String json) {
-        if (json == null || json.isBlank()) {
-            throw new IllegalArgumentException("OTP challenge JSON must not be blank");
-        }
-        try {
-            return objectMapper.readValue(json, RedisOtpChallengeRecord.class).toOtpChallenge();
-        } catch (RuntimeException | JsonProcessingException exception) {
-            throw new CacheException("OTP challenge state deserialization failed", exception);
-        }
+  public OtpChallenge fromJson(String json) {
+    if (json == null || json.isBlank()) {
+      throw new IllegalArgumentException("OTP challenge JSON must not be blank");
     }
+    try {
+      return objectMapper.readValue(json, RedisOtpChallengeRecord.class).toOtpChallenge();
+    } catch (RuntimeException | JsonProcessingException exception) {
+      throw new CacheException("OTP challenge state deserialization failed", exception);
+    }
+  }
 }

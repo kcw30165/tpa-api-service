@@ -4,7 +4,7 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpRegMemberAp
 import java.util.List;
 
 public record TrpRegMemberApimEnvelope(String errMessage, List<TrpRegMemberApimDataItem> data) {
-    public TrpRegMemberApimEnvelope {
-        data = data == null ? List.of() : List.copyOf(data);
-    }
+  public TrpRegMemberApimEnvelope {
+    data = data == null ? List.of() : List.copyOf(data);
+  }
 }

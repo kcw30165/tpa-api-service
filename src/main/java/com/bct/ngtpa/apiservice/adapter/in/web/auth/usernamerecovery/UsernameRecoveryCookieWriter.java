@@ -8,18 +8,19 @@ import java.util.Objects;
 
 /** Writes only the opaque Username Recovery auth-flow session cookie. */
 public final class UsernameRecoveryCookieWriter {
-    private final SessionCookiePolicy authFlowPolicy;
+  private final SessionCookiePolicy authFlowPolicy;
 
-    public UsernameRecoveryCookieWriter(SessionCookiePolicy authFlowPolicy) {
-        this.authFlowPolicy = Objects.requireNonNull(authFlowPolicy, "authFlowPolicy must not be null");
-    }
+  public UsernameRecoveryCookieWriter(SessionCookiePolicy authFlowPolicy) {
+    this.authFlowPolicy = Objects.requireNonNull(authFlowPolicy, "authFlowPolicy must not be null");
+  }
 
-    public SessionCookieInstruction authFlowCookie(AuthFlowSessionId sessionId) {
-        Objects.requireNonNull(sessionId, "sessionId must not be null");
-        return new SessionCookieInstruction(SessionCookieOperation.SET, authFlowPolicy, sessionId.value());
-    }
+  public SessionCookieInstruction authFlowCookie(AuthFlowSessionId sessionId) {
+    Objects.requireNonNull(sessionId, "sessionId must not be null");
+    return new SessionCookieInstruction(
+        SessionCookieOperation.SET, authFlowPolicy, sessionId.value());
+  }
 
-    public SessionCookieInstruction clearAuthFlowCookie() {
-        return new SessionCookieInstruction(SessionCookieOperation.CLEAR, authFlowPolicy, null);
-    }
+  public SessionCookieInstruction clearAuthFlowCookie() {
+    return new SessionCookieInstruction(SessionCookieOperation.CLEAR, authFlowPolicy, null);
+  }
 }

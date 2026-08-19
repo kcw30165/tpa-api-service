@@ -5,5 +5,5 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.R
 import reactor.core.publisher.Mono;
 
 public interface RegistrationCompletionPort {
-    Mono<RegistrationCompletionResult> complete(RegistrationCompletionCommand command);
+  Mono<RegistrationCompletionResult> complete(RegistrationCompletionCommand command);
 }

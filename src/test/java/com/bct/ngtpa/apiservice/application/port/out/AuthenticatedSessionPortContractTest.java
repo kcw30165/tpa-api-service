@@ -1,33 +1,44 @@
 package com.bct.ngtpa.apiservice.application.port.out;
 
 import static org.assertj.core.api.Assertions.assertThat;
+
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.*;
 import java.time.*;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 
 class AuthenticatedSessionPortContractTest {
-    @Test
-    void portExposesStoreLoadTouchRevokeAndDeleteWithoutInfrastructureTypes() {
-        assertThat(AuthenticatedSessionPort.class.getDeclaredMethods()).extracting(java.lang.reflect.Method::getName)
-                .containsExactlyInAnyOrder("store", "load", "touch", "revoke", "delete");
-        for (var m : AuthenticatedSessionPort.class.getDeclaredMethods()) {
-            assertThat(m.getReturnType()).isEqualTo(Mono.class);
-            assertThat(m.toGenericString()).doesNotContain("Redis", "ObjectMapper", "StringRedisTemplate");
-        }
+  @Test
+  void portExposesStoreLoadTouchRevokeAndDeleteWithoutInfrastructureTypes() {
+    assertThat(AuthenticatedSessionPort.class.getDeclaredMethods())
+        .extracting(java.lang.reflect.Method::getName)
+        .containsExactlyInAnyOrder("store", "load", "touch", "revoke", "delete");
+    for (var m : AuthenticatedSessionPort.class.getDeclaredMethods()) {
+      assertThat(m.getReturnType()).isEqualTo(Mono.class);
+      assertThat(m.toGenericString())
+          .doesNotContain("Redis", "ObjectMapper", "StringRedisTemplate");
     }
+  }
 
-    @Test
-    void persistenceCommandsRequireOpaqueIdentityAndPositiveTtl() {
-        var id = new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx");
-        var payload = com.bct.ngtpa.apiservice.application.dto.session.authenticated.ProtectedAuthenticatedSessionTestFixtures
-                .envelope("v1", "ciphertext", "nonce", "tag");
-        assertThat(new StoreAuthenticatedSessionCommand(id, payload, Duration.ofMinutes(30),
-                Instant.parse("2026-07-20T00:00:00Z"), "req").toString())
-                .doesNotContain(id.value(), "ciphertext", "nonce", "tag");
-        org.assertj.core.api.Assertions
-                .assertThatThrownBy(
-                        () -> new StoreAuthenticatedSessionCommand(id, payload, Duration.ZERO, Instant.now(), "req"))
-                .isInstanceOf(IllegalArgumentException.class);
-    }
+  @Test
+  void persistenceCommandsRequireOpaqueIdentityAndPositiveTtl() {
+    var id = new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx");
+    var payload =
+        com.bct.ngtpa.apiservice.application.dto.session.authenticated
+            .ProtectedAuthenticatedSessionTestFixtures.envelope("v1", "ciphertext", "nonce", "tag");
+    assertThat(
+            new StoreAuthenticatedSessionCommand(
+                    id,
+                    payload,
+                    Duration.ofMinutes(30),
+                    Instant.parse("2026-07-20T00:00:00Z"),
+                    "req")
+                .toString())
+        .doesNotContain(id.value(), "ciphertext", "nonce", "tag");
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () ->
+                new StoreAuthenticatedSessionCommand(
+                    id, payload, Duration.ZERO, Instant.now(), "req"))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
 }

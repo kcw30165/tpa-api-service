@@ -6,12 +6,17 @@ import java.security.*;
 import java.util.HexFormat;
 
 public final class LoginOtpResendRequestHashGenerator {
-    public LoginOtpSendRequestHash generate(ResendLoginOtpCommand c) {
-        try {
-            return new LoginOtpSendRequestHash(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-                    .digest(("LOGIN_OTP_RESEND\u0000" + c.authFlowSessionId()).getBytes(StandardCharsets.UTF_8))));
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException(e);
-        }
+  public LoginOtpSendRequestHash generate(ResendLoginOtpCommand c) {
+    try {
+      return new LoginOtpSendRequestHash(
+          HexFormat.of()
+              .formatHex(
+                  MessageDigest.getInstance("SHA-256")
+                      .digest(
+                          ("LOGIN_OTP_RESEND\u0000" + c.authFlowSessionId())
+                              .getBytes(StandardCharsets.UTF_8))));
+    } catch (NoSuchAlgorithmException e) {
+      throw new IllegalStateException(e);
     }
+  }
 }

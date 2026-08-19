@@ -6,5 +6,5 @@ import reactor.core.publisher.Mono;
 
 public interface CreateCaptchaChallengeUseCase {
 
-    Mono<CreateCaptchaChallengeResult> create(CreateCaptchaChallengeCommand command);
+  Mono<CreateCaptchaChallengeResult> create(CreateCaptchaChallengeCommand command);
 }

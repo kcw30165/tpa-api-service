@@ -10,23 +10,27 @@ import lombok.Setter;
 @Getter
 @Setter
 public class DownstreamErrorClassificationProperties {
-    private String source;
-    private String endpoint;
+  private String source;
+  private String endpoint;
 
-    /**
-     * Legacy map retained for existing non-registration configuration. Dotted
-     * downstream codes must use explicitMappings because Spring property binding
-     * does not preserve dotted map keys reliably.
-     */
-    private Map<String, DownstreamErrorClassificationMappingProperties> mappings = new LinkedHashMap<>();
-    private List<DownstreamErrorClassificationMappingProperties> explicitMappings = new ArrayList<>();
-    private DownstreamErrorClassificationMappingProperties fallback;
+  /**
+   * Legacy map retained for existing non-registration configuration. Dotted downstream codes must
+   * use explicitMappings because Spring property binding does not preserve dotted map keys
+   * reliably.
+   */
+  private Map<String, DownstreamErrorClassificationMappingProperties> mappings =
+      new LinkedHashMap<>();
 
-    public void setMappings(Map<String, DownstreamErrorClassificationMappingProperties> mappings) {
-        this.mappings = mappings == null ? new LinkedHashMap<>() : new LinkedHashMap<>(mappings);
-    }
+  private List<DownstreamErrorClassificationMappingProperties> explicitMappings = new ArrayList<>();
+  private DownstreamErrorClassificationMappingProperties fallback;
 
-    public void setExplicitMappings(List<DownstreamErrorClassificationMappingProperties> explicitMappings) {
-        this.explicitMappings = explicitMappings == null ? new ArrayList<>() : new ArrayList<>(explicitMappings);
-    }
+  public void setMappings(Map<String, DownstreamErrorClassificationMappingProperties> mappings) {
+    this.mappings = mappings == null ? new LinkedHashMap<>() : new LinkedHashMap<>(mappings);
+  }
+
+  public void setExplicitMappings(
+      List<DownstreamErrorClassificationMappingProperties> explicitMappings) {
+    this.explicitMappings =
+        explicitMappings == null ? new ArrayList<>() : new ArrayList<>(explicitMappings);
+  }
 }

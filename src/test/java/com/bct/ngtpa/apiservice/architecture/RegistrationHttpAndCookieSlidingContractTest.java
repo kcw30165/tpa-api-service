@@ -8,31 +8,42 @@ import org.junit.jupiter.api.Test;
 
 class RegistrationHttpAndCookieSlidingContractTest {
 
-    @Test
-    void standaloneCaptchaAndRegistrationUsernameUseTheirOwnedHttpTranslation() throws Exception {
-        String captcha = Files.readString(Path.of(
+  @Test
+  void standaloneCaptchaAndRegistrationUsernameUseTheirOwnedHttpTranslation() throws Exception {
+    String captcha =
+        Files.readString(
+            Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthCaptchaController.java"));
-        String username = Files.readString(Path.of(
+    String username =
+        Files.readString(
+            Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationUsernameController.java"));
-        String mapper = Files.readString(Path.of(
+    String mapper =
+        Files.readString(
+            Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/mapper/RegistrationUsernameCheckWebMapper.java"));
 
-        assertThat(captcha)
-                .contains("CaptchaHttpResponses", "captchaHttpResponses.toResponse")
-                .doesNotContain("RegistrationHttpResponses");
-        assertThat(username).contains("RegistrationHttpResponses.toResponse");
-        assertThat(mapper).contains("MutationResponse<RegistrationWorkflowResultResponse<RegistrationUsernameCheckResponse>>");
-    }
+    assertThat(captcha)
+        .contains("CaptchaHttpResponses", "captchaHttpResponses.toResponse")
+        .doesNotContain("RegistrationHttpResponses");
+    assertThat(username).contains("RegistrationHttpResponses.toResponse");
+    assertThat(mapper)
+        .contains(
+            "MutationResponse<RegistrationWorkflowResultResponse<RegistrationUsernameCheckResponse>>");
+  }
 
-    @Test
-    void protectedRegistrationInteractionsReissueSlidingCookie() throws Exception {
-        for (String file : new String[] {
-                "AuthRegistrationOtpController.java",
-                "AuthRegistrationUsernameController.java",
-                "AuthRegistrationController.java"}) {
-            String source = Files.readString(Path.of(
-                    "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller", file));
-            assertThat(source).contains("cookieWriter.writeAuthFlowCookie");
-        }
+  @Test
+  void protectedRegistrationInteractionsReissueSlidingCookie() throws Exception {
+    for (String file :
+        new String[] {
+          "AuthRegistrationOtpController.java",
+          "AuthRegistrationUsernameController.java",
+          "AuthRegistrationController.java"
+        }) {
+      String source =
+          Files.readString(
+              Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller", file));
+      assertThat(source).contains("cookieWriter.writeAuthFlowCookie");
     }
+  }
 }

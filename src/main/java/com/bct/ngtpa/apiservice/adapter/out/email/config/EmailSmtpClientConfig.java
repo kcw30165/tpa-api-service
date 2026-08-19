@@ -9,9 +9,9 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class EmailSmtpClientConfig {
 
-    @Bean
-    @ConditionalOnMissingBean(SmtpClient.class)
-    public SmtpClient smtpClient() {
-        return new PlainSocketSmtpClient();
-    }
+  @Bean
+  @ConditionalOnMissingBean(SmtpClient.class)
+  public SmtpClient smtpClient() {
+    return new PlainSocketSmtpClient();
+  }
 }

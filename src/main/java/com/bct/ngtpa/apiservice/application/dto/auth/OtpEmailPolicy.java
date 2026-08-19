@@ -1,6 +1,3 @@
 package com.bct.ngtpa.apiservice.application.dto.auth;
 
-public record OtpEmailPolicy(
-                String subject,
-                String body) {
-}
+public record OtpEmailPolicy(String subject, String body) {}

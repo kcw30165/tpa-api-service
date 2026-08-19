@@ -7,19 +7,20 @@ import reactor.core.publisher.Mono;
 /**
  * Outbound port for resolving the effective Username Recovery delivery destination.
  *
- * <p>Design references:
- * {@code docs/design/6-username-recovery/username-recovery-nonprod-destination-override-design.md}
- * section 3 (production-like deployments deliver to the verified member destination; every other
- * deployment applies the dedicated Username Recovery override) and section 8 (missing or blank
- * applicable override must fail closed).
+ * <p>Design references: {@code
+ * docs/design/6-username-recovery/username-recovery-nonprod-destination-override-design.md} section
+ * 3 (production-like deployments deliver to the verified member destination; every other deployment
+ * applies the dedicated Username Recovery override) and section 8 (missing or blank applicable
+ * override must fail closed).
  *
  * <p>The port is reactive and exposes only application contracts. Implementations own the
- * deployment classification and dedicated override configuration; the request use case remains
- * free of environment-specific destination logic and uses the resolved effective destination only for physical delivery. Public masking is
- * derived independently from the original verified destination in protected workflow state.
+ * deployment classification and dedicated override configuration; the request use case remains free
+ * of environment-specific destination logic and uses the resolved effective destination only for
+ * physical delivery. Public masking is derived independently from the original verified destination
+ * in protected workflow state.
  */
 public interface UsernameRecoveryEffectiveDestinationPort {
 
-    Mono<UsernameRecoveryEffectiveDestinationResult> resolve(
-            UsernameRecoveryEffectiveDestinationCommand command);
+  Mono<UsernameRecoveryEffectiveDestinationResult> resolve(
+      UsernameRecoveryEffectiveDestinationCommand command);
 }

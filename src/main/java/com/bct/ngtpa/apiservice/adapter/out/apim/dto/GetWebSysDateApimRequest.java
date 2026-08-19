@@ -14,6 +14,6 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class GetWebSysDateApimRequest {
 
-    @JsonProperty("env")
-    private String accountEnv;
+  @JsonProperty("env")
+  private String accountEnv;
 }

@@ -31,113 +31,141 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** Cumulative 025-3 integration guard for controller, Spring composition and architecture. */
 class UsernameRecoveryControllerCompositionIntegrationTest {
-    private static final Path CONTROLLER = Path.of(
-            "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthUsernameRecoveryController.java");
-    private static final Path CONFIG = Path.of(
-            "src/main/java/com/bct/ngtpa/apiservice/config/UsernameRecoveryFeatureConfig.java");
+  private static final Path CONTROLLER =
+      Path.of(
+          "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthUsernameRecoveryController.java");
+  private static final Path CONFIG =
+      Path.of("src/main/java/com/bct/ngtpa/apiservice/config/UsernameRecoveryFeatureConfig.java");
 
-    @Test
-    void controllerPublishesExactlyStartRequestAndCancelUnderCanonicalPath() {
-        assertThat(AuthUsernameRecoveryController.class).hasAnnotation(RestController.class);
-        RequestMapping base = AuthUsernameRecoveryController.class.getAnnotation(RequestMapping.class);
-        assertThat(base.value()).containsExactly("/api/v1/auth/username-recovery");
-        assertThat(mappedPostPaths()).containsExactlyInAnyOrder("/start", "/request", "/cancel");
+  @Test
+  void controllerPublishesExactlyStartRequestAndCancelUnderCanonicalPath() {
+    assertThat(AuthUsernameRecoveryController.class).hasAnnotation(RestController.class);
+    RequestMapping base = AuthUsernameRecoveryController.class.getAnnotation(RequestMapping.class);
+    assertThat(base.value()).containsExactly("/api/v1/auth/username-recovery");
+    assertThat(mappedPostPaths()).containsExactlyInAnyOrder("/start", "/request", "/cancel");
+  }
+
+  @Test
+  void controllerConstructorComposesOnlyCommittedPortsMappersPoliciesAndCookieWriter() {
+    Constructor<?>[] constructors = AuthUsernameRecoveryController.class.getDeclaredConstructors();
+    assertThat(constructors).hasSize(1);
+    assertThat(Arrays.asList(constructors[0].getParameterTypes()))
+        .containsExactly(
+            StartUsernameRecoveryUseCase.class,
+            UsernameRecoveryStartWebMapper.class,
+            UsernameRecoveryStartResponsePolicy.class,
+            RequestUsernameRecoveryUseCase.class,
+            UsernameRecoveryRequestWebMapper.class,
+            UsernameRecoveryRequestResponsePolicy.class,
+            CancelUsernameRecoveryUseCase.class,
+            UsernameRecoveryCancelWebMapper.class,
+            UsernameRecoveryCancelResponsePolicy.class,
+            UsernameRecoveryCookieWriter.class);
+  }
+
+  @Test
+  void featureConfigurationPublishesEveryControllerDependencyAsConditionalBean() {
+    assertThat(UsernameRecoveryFeatureConfig.class).hasAnnotation(Configuration.class);
+    List<Class<?>> requiredReturnTypes =
+        List.of(
+            StartUsernameRecoveryUseCase.class,
+            UsernameRecoveryStartWebMapper.class,
+            UsernameRecoveryStartResponsePolicy.class,
+            RequestUsernameRecoveryUseCase.class,
+            UsernameRecoveryRequestWebMapper.class,
+            UsernameRecoveryRequestResponsePolicy.class,
+            CancelUsernameRecoveryUseCase.class,
+            UsernameRecoveryCancelWebMapper.class,
+            UsernameRecoveryCancelResponsePolicy.class,
+            UsernameRecoveryCookieWriter.class);
+    for (Class<?> requiredType : requiredReturnTypes) {
+      List<Method> beanMethods =
+          Arrays.stream(UsernameRecoveryFeatureConfig.class.getDeclaredMethods())
+              .filter(method -> method.isAnnotationPresent(Bean.class))
+              .filter(method -> requiredType.isAssignableFrom(method.getReturnType()))
+              .toList();
+      assertThat(beanMethods)
+          .as("@Bean returning %s", requiredType.getSimpleName())
+          .singleElement()
+          .satisfies(
+              method ->
+                  assertThat(method)
+                      .as("%s must remain override-safe", method.getName())
+                      .matches(
+                          candidate ->
+                              candidate.isAnnotationPresent(ConditionalOnMissingBean.class)));
     }
+  }
 
-    @Test
-    void controllerConstructorComposesOnlyCommittedPortsMappersPoliciesAndCookieWriter() {
-        Constructor<?>[] constructors = AuthUsernameRecoveryController.class.getDeclaredConstructors();
-        assertThat(constructors).hasSize(1);
-        assertThat(Arrays.asList(constructors[0].getParameterTypes())).containsExactly(
-                StartUsernameRecoveryUseCase.class,
-                UsernameRecoveryStartWebMapper.class,
-                UsernameRecoveryStartResponsePolicy.class,
-                RequestUsernameRecoveryUseCase.class,
-                UsernameRecoveryRequestWebMapper.class,
-                UsernameRecoveryRequestResponsePolicy.class,
-                CancelUsernameRecoveryUseCase.class,
-                UsernameRecoveryCancelWebMapper.class,
-                UsernameRecoveryCancelResponsePolicy.class,
-                UsernameRecoveryCookieWriter.class);
-    }
+  @Test
+  void controllerAndFeatureConfigPreserveCleanArchitectureSplit() throws Exception {
+    String controller = Files.readString(CONTROLLER);
+    String config = Files.readString(CONFIG);
+    assertThat(controller)
+        .doesNotContain(
+            "adapter.out",
+            "ReactiveStringRedisTemplate",
+            "RedisTemplate",
+            "StartUsernameRecoveryService",
+            "RequestUsernameRecoveryService",
+            "CancelUsernameRecoveryService",
+            "ResponseCookie.from",
+            "Set-Cookie")
+        .containsIgnoringWhitespaces(
+            "StartUsernameRecoveryUseCase",
+            "RequestUsernameRecoveryUseCase",
+            "CancelUsernameRecoveryUseCase",
+            "WorkflowHttpResponses.toResponse");
+    assertThat(config)
+        .containsIgnoringWhitespaces(
+            "RedisUsernameRecoveryIdempotencyAdapter",
+            "StartUsernameRecoveryService",
+            "RequestUsernameRecoveryService",
+            "CancelUsernameRecoveryService")
+        .doesNotContain("@RestController", "@RequestMapping", "@PostMapping");
+  }
 
-    @Test
-    void featureConfigurationPublishesEveryControllerDependencyAsConditionalBean() {
-        assertThat(UsernameRecoveryFeatureConfig.class).hasAnnotation(Configuration.class);
-        List<Class<?>> requiredReturnTypes = List.of(
-                StartUsernameRecoveryUseCase.class,
-                UsernameRecoveryStartWebMapper.class,
-                UsernameRecoveryStartResponsePolicy.class,
-                RequestUsernameRecoveryUseCase.class,
-                UsernameRecoveryRequestWebMapper.class,
-                UsernameRecoveryRequestResponsePolicy.class,
-                CancelUsernameRecoveryUseCase.class,
-                UsernameRecoveryCancelWebMapper.class,
-                UsernameRecoveryCancelResponsePolicy.class,
-                UsernameRecoveryCookieWriter.class);
-        for (Class<?> requiredType : requiredReturnTypes) {
-            List<Method> beanMethods = Arrays.stream(UsernameRecoveryFeatureConfig.class.getDeclaredMethods())
-                    .filter(method -> method.isAnnotationPresent(Bean.class))
-                    .filter(method -> requiredType.isAssignableFrom(method.getReturnType()))
-                    .toList();
-            assertThat(beanMethods).as("@Bean returning %s", requiredType.getSimpleName()).singleElement()
-                    .satisfies(method -> assertThat(method)
-                            .as("%s must remain override-safe", method.getName())
-                            .matches(candidate -> candidate.isAnnotationPresent(ConditionalOnMissingBean.class)));
-        }
-    }
+  @Test
+  void controllerKeepsSecurityMaterialTransientAndUnexpectedFailuresCentralized() throws Exception {
+    String source = Files.readString(CONTROLLER);
+    assertThat(source)
+        .containsIgnoringWhitespaces(
+            "requestUseCase.request(command, csrfToken.trim(), clean(origin), clean(referer))",
+            "cancelUseCase.cancel(command, csrfToken.trim(), clean(origin), clean(referer))",
+            "onErrorResume(UsernameRecoveryStartException.class",
+            "onErrorResume(UsernameRecoveryRequestException.class",
+            "onErrorResume(UsernameRecoveryCancelException.class")
+        .doesNotContain(
+            "catch (Exception",
+            "catch (RuntimeException",
+            "onErrorResume(Exception.class",
+            "onErrorResume(RuntimeException.class",
+            "getMessage()",
+            "errorCode.equals",
+            "switch (errorCode)");
+  }
 
-    @Test
-    void controllerAndFeatureConfigPreserveCleanArchitectureSplit() throws Exception {
-        String controller = Files.readString(CONTROLLER);
-        String config = Files.readString(CONFIG);
-        assertThat(controller)
-                .doesNotContain("adapter.out", "ReactiveStringRedisTemplate", "RedisTemplate",
-                        "StartUsernameRecoveryService", "RequestUsernameRecoveryService",
-                        "CancelUsernameRecoveryService", "ResponseCookie.from", "Set-Cookie")
-                .contains("StartUsernameRecoveryUseCase", "RequestUsernameRecoveryUseCase",
-                        "CancelUsernameRecoveryUseCase", "WorkflowHttpResponses.toResponse");
-        assertThat(config)
-                .contains("RedisUsernameRecoveryIdempotencyAdapter",
-                        "StartUsernameRecoveryService", "RequestUsernameRecoveryService",
-                        "CancelUsernameRecoveryService")
-                .doesNotContain("@RestController", "@RequestMapping", "@PostMapping");
-    }
-
-    @Test
-    void controllerKeepsSecurityMaterialTransientAndUnexpectedFailuresCentralized() throws Exception {
-        String source = Files.readString(CONTROLLER);
-        assertThat(source)
-                .contains(
-                        "requestUseCase.request(command, csrfToken.trim(), clean(origin), clean(referer))",
-                        "cancelUseCase.cancel(command, csrfToken.trim(), clean(origin), clean(referer))",
-                        "onErrorResume(UsernameRecoveryStartException.class",
-                        "onErrorResume(UsernameRecoveryRequestException.class",
-                        "onErrorResume(UsernameRecoveryCancelException.class")
-                .doesNotContain(
-                        "catch (Exception", "catch (RuntimeException",
-                        "onErrorResume(Exception.class", "onErrorResume(RuntimeException.class",
-                        "getMessage()", "errorCode.equals", "switch (errorCode)");
-    }
-
-    @Test
-    void controllerRemainsConcreteFinalAndHasNoMutableStaticState() {
-        int modifiers = AuthUsernameRecoveryController.class.getModifiers();
-        assertThat(Modifier.isFinal(modifiers)).isTrue();
-        assertThat(Modifier.isAbstract(modifiers)).isFalse();
-        assertThat(Arrays.stream(AuthUsernameRecoveryController.class.getDeclaredFields())
+  @Test
+  void controllerRemainsConcreteFinalAndHasNoMutableStaticState() {
+    int modifiers = AuthUsernameRecoveryController.class.getModifiers();
+    assertThat(Modifier.isFinal(modifiers)).isTrue();
+    assertThat(Modifier.isAbstract(modifiers)).isFalse();
+    assertThat(
+            Arrays.stream(AuthUsernameRecoveryController.class.getDeclaredFields())
                 .filter(field -> Modifier.isStatic(field.getModifiers()))
-                .allMatch(field -> Modifier.isFinal(field.getModifiers()))).isTrue();
-    }
+                .allMatch(field -> Modifier.isFinal(field.getModifiers())))
+        .isTrue();
+  }
 
-    private static List<String> mappedPostPaths() {
-        return Arrays.stream(AuthUsernameRecoveryController.class.getDeclaredMethods())
-                .filter(method -> method.isAnnotationPresent(PostMapping.class))
-                .map(method -> {
-                    PostMapping mapping = method.getAnnotation(PostMapping.class);
-                    return mapping.path().length > 0 ? mapping.path()[0] : mapping.value()[0];
-                })
-                .sorted()
-                .toList();
-    }
+  private static List<String> mappedPostPaths() {
+    return Arrays.stream(AuthUsernameRecoveryController.class.getDeclaredMethods())
+        .filter(method -> method.isAnnotationPresent(PostMapping.class))
+        .map(
+            method -> {
+              PostMapping mapping = method.getAnnotation(PostMapping.class);
+              return mapping.path().length > 0 ? mapping.path()[0] : mapping.value()[0];
+            })
+        .sorted()
+        .toList();
+  }
 }

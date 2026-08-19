@@ -8,26 +8,25 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResultPayload;
 import java.util.Objects;
 
 final class RegistrationWorkflowMutationResponseMapper {
-    private final WorkflowMutationResponseMapper delegate;
+  private final WorkflowMutationResponseMapper delegate;
 
-    RegistrationWorkflowMutationResponseMapper() {
-        this(new WorkflowMutationResponseMapper());
-    }
+  RegistrationWorkflowMutationResponseMapper() {
+    this(new WorkflowMutationResponseMapper());
+  }
 
-    RegistrationWorkflowMutationResponseMapper(WorkflowMutationResponseMapper delegate) {
-        this.delegate = Objects.requireNonNull(delegate, "delegate must not be null");
-    }
+  RegistrationWorkflowMutationResponseMapper(WorkflowMutationResponseMapper delegate) {
+    this.delegate = Objects.requireNonNull(delegate, "delegate must not be null");
+  }
 
-    <T> MutationResponse<RegistrationWorkflowResultResponse<T>> toMutationResponse(WorkflowResult<T> result) {
-        MutationResponse<WorkflowResultPayload<T>> response = delegate.toMutationResponse(result);
-        RegistrationWorkflowResultResponse<T> payload = response.result() == null
-                ? null
-                : new RegistrationWorkflowResultResponse<>(response.result().nextStep(), response.result().data());
-        return new MutationResponse<>(
-                response.success(),
-                response.status(),
-                payload,
-                response.messages(),
-                response.errors());
-    }
+  <T> MutationResponse<RegistrationWorkflowResultResponse<T>> toMutationResponse(
+      WorkflowResult<T> result) {
+    MutationResponse<WorkflowResultPayload<T>> response = delegate.toMutationResponse(result);
+    RegistrationWorkflowResultResponse<T> payload =
+        response.result() == null
+            ? null
+            : new RegistrationWorkflowResultResponse<>(
+                response.result().nextStep(), response.result().data());
+    return new MutationResponse<>(
+        response.success(), response.status(), payload, response.messages(), response.errors());
+  }
 }

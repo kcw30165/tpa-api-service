@@ -11,68 +11,116 @@ import java.util.*;
 import reactor.core.publisher.Mono;
 
 public final class RecoverCommittedLoginService implements RecoverCommittedLoginUseCase {
-    private final AuthenticatedLoginHandoffPort handoffs;
-    private final AuthenticatedLoginReplaySessionPort replaySessions;
-    private final AuthenticatedSessionProtectorPort protector;
-    private final CsrfTokenGenerator csrfTokens;
-    private final CsrfTokenHasher csrfHasher;
-    private final Clock clock;
+  private final AuthenticatedLoginHandoffPort handoffs;
+  private final AuthenticatedLoginReplaySessionPort replaySessions;
+  private final AuthenticatedSessionProtectorPort protector;
+  private final CsrfTokenGenerator csrfTokens;
+  private final CsrfTokenHasher csrfHasher;
+  private final Clock clock;
 
-    public RecoverCommittedLoginService(AuthenticatedLoginHandoffPort handoffs,
-            AuthenticatedLoginReplaySessionPort replaySessions,
-            AuthenticatedSessionProtectorPort protector,
-            CsrfTokenGenerator csrfTokens, CsrfTokenHasher csrfHasher, Clock clock) {
-        this.handoffs = Objects.requireNonNull(handoffs);
-        this.replaySessions = Objects.requireNonNull(replaySessions);
-        this.protector = Objects.requireNonNull(protector);
-        this.csrfTokens = Objects.requireNonNull(csrfTokens);
-        this.csrfHasher = Objects.requireNonNull(csrfHasher);
-        this.clock = Objects.requireNonNull(clock);
-    }
+  public RecoverCommittedLoginService(
+      AuthenticatedLoginHandoffPort handoffs,
+      AuthenticatedLoginReplaySessionPort replaySessions,
+      AuthenticatedSessionProtectorPort protector,
+      CsrfTokenGenerator csrfTokens,
+      CsrfTokenHasher csrfHasher,
+      Clock clock) {
+    this.handoffs = Objects.requireNonNull(handoffs);
+    this.replaySessions = Objects.requireNonNull(replaySessions);
+    this.protector = Objects.requireNonNull(protector);
+    this.csrfTokens = Objects.requireNonNull(csrfTokens);
+    this.csrfHasher = Objects.requireNonNull(csrfHasher);
+    this.clock = Objects.requireNonNull(clock);
+  }
 
-    public Mono<RecoverCommittedLoginResult> recover(RecoverCommittedLoginCommand command) {
-        var proof = command.proof();
-        return handoffs.loadByHandoff(proof.handoffReference())
-                .filter(h -> h.status() == AuthenticatedLoginHandoffStatus.AUTH_FLOW_DELETED)
-                .filter(h -> h.operationReference().equals(proof.operationReference()))
-                .filter(h -> h.reservationHash().equals(proof.reservationHash()))
-                .filter(h -> h.authenticatedSessionId() != null && clock.instant().isBefore(h.expiresAt()))
-                .flatMap(h -> replaySessions.loadForReplay(
-                        new LoadAuthenticatedSessionForReplayCommand(h.authenticatedSessionId(), command.correlationId()))
-                        .flatMap(optional -> optional.map(envelope -> rotate(envelope, h, command.correlationId()))
+  public Mono<RecoverCommittedLoginResult> recover(RecoverCommittedLoginCommand command) {
+    var proof = command.proof();
+    return handoffs
+        .loadByHandoff(proof.handoffReference())
+        .filter(h -> h.status() == AuthenticatedLoginHandoffStatus.AUTH_FLOW_DELETED)
+        .filter(h -> h.operationReference().equals(proof.operationReference()))
+        .filter(h -> h.reservationHash().equals(proof.reservationHash()))
+        .filter(h -> h.authenticatedSessionId() != null && clock.instant().isBefore(h.expiresAt()))
+        .flatMap(
+            h ->
+                replaySessions
+                    .loadForReplay(
+                        new LoadAuthenticatedSessionForReplayCommand(
+                            h.authenticatedSessionId(), command.correlationId()))
+                    .flatMap(
+                        optional ->
+                            optional
+                                .map(envelope -> rotate(envelope, h, command.correlationId()))
                                 .orElseGet(() -> Mono.just(RecoverCommittedLoginResult.failed()))))
-                .switchIfEmpty(Mono.just(RecoverCommittedLoginResult.failed()))
-                .onErrorReturn(RecoverCommittedLoginResult.failed());
-    }
+        .switchIfEmpty(Mono.just(RecoverCommittedLoginResult.failed()))
+        .onErrorReturn(RecoverCommittedLoginResult.failed());
+  }
 
-    private Mono<RecoverCommittedLoginResult> rotate(ProtectedAuthenticatedSession expected,
-            AuthenticatedLoginHandoff handoff, String correlationId) {
-        AuthenticatedSession session = protector.unprotect(expected);
-        Instant now = clock.instant();
-        if (!session.authenticatedSessionId().equals(handoff.authenticatedSessionId()) || !session.isUsable(now))
-            return Mono.just(RecoverCommittedLoginResult.failed());
-        String raw = csrfTokens.generate();
-        if (raw == null || raw.isBlank()) return Mono.just(RecoverCommittedLoginResult.failed());
-        String replacementHash = csrfHasher.hash(raw);
-        var replacement = new AuthenticatedSession(session.authenticatedSessionId(), session.actorContext(),
-                session.accounts(), session.status(), replacementHash, session.createdAt(), session.lastAccessedAt(),
-                session.idleExpiresAt(), session.absoluteExpiresAt());
-        Instant expiry = session.idleExpiresAt().isBefore(session.absoluteExpiresAt())
-                ? session.idleExpiresAt() : session.absoluteExpiresAt();
-        Duration ttl = Duration.between(now, expiry);
-        if (ttl.isZero() || ttl.isNegative()) return Mono.just(RecoverCommittedLoginResult.failed());
-        return replaySessions.rotateCsrfHashIfCurrent(new RotateAuthenticatedSessionCsrfHashCommand(
-                        session.authenticatedSessionId(), expected, protector.protect(replacement),
-                        session.csrfTokenHash(), replacementHash, ttl, correlationId))
-                .filter(r -> r.status() == AuthenticatedSessionCsrfRotationStatus.ROTATED)
-                .map(ignored -> new RecoverCommittedLoginResult(true, reconstructLoginAccounts(session.accounts()),
-                        session.authenticatedSessionId(), raw))
-                .switchIfEmpty(Mono.just(RecoverCommittedLoginResult.failed()));
-    }
+  private Mono<RecoverCommittedLoginResult> rotate(
+      ProtectedAuthenticatedSession expected,
+      AuthenticatedLoginHandoff handoff,
+      String correlationId) {
+    AuthenticatedSession session = protector.unprotect(expected);
+    Instant now = clock.instant();
+    if (!session.authenticatedSessionId().equals(handoff.authenticatedSessionId())
+        || !session.isUsable(now)) return Mono.just(RecoverCommittedLoginResult.failed());
+    String raw = csrfTokens.generate();
+    if (raw == null || raw.isBlank()) return Mono.just(RecoverCommittedLoginResult.failed());
+    String replacementHash = csrfHasher.hash(raw);
+    var replacement =
+        new AuthenticatedSession(
+            session.authenticatedSessionId(),
+            session.actorContext(),
+            session.accounts(),
+            session.status(),
+            replacementHash,
+            session.createdAt(),
+            session.lastAccessedAt(),
+            session.idleExpiresAt(),
+            session.absoluteExpiresAt());
+    Instant expiry =
+        session.idleExpiresAt().isBefore(session.absoluteExpiresAt())
+            ? session.idleExpiresAt()
+            : session.absoluteExpiresAt();
+    Duration ttl = Duration.between(now, expiry);
+    if (ttl.isZero() || ttl.isNegative()) return Mono.just(RecoverCommittedLoginResult.failed());
+    return replaySessions
+        .rotateCsrfHashIfCurrent(
+            new RotateAuthenticatedSessionCsrfHashCommand(
+                session.authenticatedSessionId(),
+                expected,
+                protector.protect(replacement),
+                session.csrfTokenHash(),
+                replacementHash,
+                ttl,
+                correlationId))
+        .filter(r -> r.status() == AuthenticatedSessionCsrfRotationStatus.ROTATED)
+        .map(
+            ignored ->
+                new RecoverCommittedLoginResult(
+                    true,
+                    reconstructLoginAccounts(session.accounts()),
+                    session.authenticatedSessionId(),
+                    raw))
+        .switchIfEmpty(Mono.just(RecoverCommittedLoginResult.failed()));
+  }
 
-    private List<LoginSessionAccount> reconstructLoginAccounts(List<AuthenticatedSessionAccount> accounts) {
-        return accounts.stream().map(a -> new LoginSessionAccount(new LoginAccountRef(a.accountRef().value()),
-                a.accountEnv(), a.policyNo(), a.policyNo(), a.certNo(), a.certNo(), a.trustCode(),
-                a.schemeType(), a.termStatus(), a.termCompletionDate())).toList();
-    }
+  private List<LoginSessionAccount> reconstructLoginAccounts(
+      List<AuthenticatedSessionAccount> accounts) {
+    return accounts.stream()
+        .map(
+            a ->
+                new LoginSessionAccount(
+                    new LoginAccountRef(a.accountRef().value()),
+                    a.accountEnv(),
+                    a.policyNo(),
+                    a.policyNo(),
+                    a.certNo(),
+                    a.certNo(),
+                    a.trustCode(),
+                    a.schemeType(),
+                    a.termStatus(),
+                    a.termCompletionDate()))
+        .toList();
+  }
 }

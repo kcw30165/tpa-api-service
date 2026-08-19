@@ -3,11 +3,11 @@ package com.bct.ngtpa.apiservice.adapter.in.web.response;
 import java.util.List;
 
 public interface ApiResponse {
-    boolean success();
+  boolean success();
 
-    ApiStatus status();
+  ApiStatus status();
 
-    List<ApiMessage> messages();
+  List<ApiMessage> messages();
 
-    List<ApiError> errors();
+  List<ApiError> errors();
 }

@@ -8,18 +8,20 @@ import org.junit.jupiter.api.Test;
 
 class CacheAdminPortCacheCapabilityContractTest {
 
-    @Test
-    void adminOperationsAcceptCacheCapabilityEnumNotRawPattern() {
-        var find = Arrays.stream(CacheAdminPort.class.getMethods())
-                .filter(method -> method.getName().equals("findAllByCapability"))
-                .findFirst()
-                .orElseThrow();
-        var evict = Arrays.stream(CacheAdminPort.class.getMethods())
-                .filter(method -> method.getName().equals("evictAllByCapability"))
-                .findFirst()
-                .orElseThrow();
+  @Test
+  void adminOperationsAcceptCacheCapabilityEnumNotRawPattern() {
+    var find =
+        Arrays.stream(CacheAdminPort.class.getMethods())
+            .filter(method -> method.getName().equals("findAllByCapability"))
+            .findFirst()
+            .orElseThrow();
+    var evict =
+        Arrays.stream(CacheAdminPort.class.getMethods())
+            .filter(method -> method.getName().equals("evictAllByCapability"))
+            .findFirst()
+            .orElseThrow();
 
-        assertThat(find.getParameterTypes()).containsExactly(CacheCapability.class);
-        assertThat(evict.getParameterTypes()).containsExactly(CacheCapability.class);
-    }
+    assertThat(find.getParameterTypes()).containsExactly(CacheCapability.class);
+    assertThat(evict.getParameterTypes()).containsExactly(CacheCapability.class);
+  }
 }

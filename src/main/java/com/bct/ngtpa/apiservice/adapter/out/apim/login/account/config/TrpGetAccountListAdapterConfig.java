@@ -10,14 +10,27 @@ import org.springframework.context.annotation.*;
 @Configuration
 @EnableConfigurationProperties(TrpGetAccountListProperties.class)
 public class TrpGetAccountListAdapterConfig {
-    @Bean TrpGetAccountListContractMapper trpGetAccountListContractMapper() { return new TrpGetAccountListContractMapper(); }
-    @Bean TrpGetAccountListTransport trpGetAccountListTransport(ApimExchangeExecutor executor,
-            TrpGetAccountListProperties properties) { return new SharedApimTrpGetAccountListTransport(executor, properties); }
-    @Bean LoginAccountAuthorizationPort loginAccountAuthorizationPort(TrpGetAccountListTransport transport,
-            TrpGetAccountListContractMapper mapper, TrpGetAccountListProperties properties) {
-        return new TrpGetAccountListAdapter(transport, mapper, properties);
-    }
-    @Bean GetLoginAccountsUseCase getLoginAccountsUseCase(LoginAccountAuthorizationPort authorizationPort) {
-        return new GetLoginAccountsUseCase(authorizationPort);
-    }
+  @Bean
+  TrpGetAccountListContractMapper trpGetAccountListContractMapper() {
+    return new TrpGetAccountListContractMapper();
+  }
+
+  @Bean
+  TrpGetAccountListTransport trpGetAccountListTransport(
+      ApimExchangeExecutor executor, TrpGetAccountListProperties properties) {
+    return new SharedApimTrpGetAccountListTransport(executor, properties);
+  }
+
+  @Bean
+  LoginAccountAuthorizationPort loginAccountAuthorizationPort(
+      TrpGetAccountListTransport transport,
+      TrpGetAccountListContractMapper mapper,
+      TrpGetAccountListProperties properties) {
+    return new TrpGetAccountListAdapter(transport, mapper, properties);
+  }
+
+  @Bean
+  GetLoginAccountsUseCase getLoginAccountsUseCase(LoginAccountAuthorizationPort authorizationPort) {
+    return new GetLoginAccountsUseCase(authorizationPort);
+  }
 }

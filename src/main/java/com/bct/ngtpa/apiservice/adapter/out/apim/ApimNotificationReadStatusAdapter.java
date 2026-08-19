@@ -25,44 +25,62 @@ import reactor.core.publisher.Mono;
 @Component
 @RequiredArgsConstructor
 public class ApimNotificationReadStatusAdapter implements ApimNotificationReadStatusPort {
-    private static final String API_NAME = "/ws/NGTPA/v1/TRPUpdMsgRead";
-    private final ApimExchangeExecutor executor;
+  private static final String API_NAME = "/ws/NGTPA/v1/TRPUpdMsgRead";
+  private final ApimExchangeExecutor executor;
 
-    @Override
-    @LogExecution(value = "apim.updateNotificationReadStatus", logArgs = true)
-    public Mono<UpdateNotificationsReadStatusResult> updateReadStatus(UpdateNotificationsReadStatusCommand command) {
-        return Mono.defer(() -> {
-            var exchange = new ApimExchangeRequest<>(
-                    API_NAME,
-                    toApimRequest(command),
-                    UpdateNotificationReadStatusApimRequest.class,
-                    UpdateNotificationReadStatusApimDataItem.class,
-                    ApimDatabaseScope.ACCOUNT_ENV,
-                    new ApimCredentialResolutionContext(command.mbrType(), command.accountEnv()),
-                    ApimRetryEligibility.IDEMPOTENT_MUTATION);
-            return executor.postEnvelope(exchange).map(response -> toResult(response, command.targetStatus()));
+  @Override
+  @LogExecution(value = "apim.updateNotificationReadStatus", logArgs = true)
+  public Mono<UpdateNotificationsReadStatusResult> updateReadStatus(
+      UpdateNotificationsReadStatusCommand command) {
+    return Mono.defer(
+        () -> {
+          var exchange =
+              new ApimExchangeRequest<>(
+                  API_NAME,
+                  toApimRequest(command),
+                  UpdateNotificationReadStatusApimRequest.class,
+                  UpdateNotificationReadStatusApimDataItem.class,
+                  ApimDatabaseScope.ACCOUNT_ENV,
+                  new ApimCredentialResolutionContext(command.mbrType(), command.accountEnv()),
+                  ApimRetryEligibility.IDEMPOTENT_MUTATION);
+          return executor
+              .postEnvelope(exchange)
+              .map(response -> toResult(response, command.targetStatus()));
         });
-    }
+  }
 
-    private UpdateNotificationReadStatusApimRequest toApimRequest(UpdateNotificationsReadStatusCommand command) {
-        return UpdateNotificationReadStatusApimRequest.builder()
-                .policyNo(command.policyNo()).certNo(command.certNo()).loginUserId(command.userId())
-                .loginUserRole(command.mbrType().toApimValue()).refDate(command.refDate())
-                .accountEnv(command.accountEnv()).msgCodeLong(String.join(",", command.notificationIds())).build();
-    }
+  private UpdateNotificationReadStatusApimRequest toApimRequest(
+      UpdateNotificationsReadStatusCommand command) {
+    return UpdateNotificationReadStatusApimRequest.builder()
+        .policyNo(command.policyNo())
+        .certNo(command.certNo())
+        .loginUserId(command.userId())
+        .loginUserRole(command.mbrType().toApimValue())
+        .refDate(command.refDate())
+        .accountEnv(command.accountEnv())
+        .msgCodeLong(String.join(",", command.notificationIds()))
+        .build();
+  }
 
-    private UpdateNotificationsReadStatusResult toResult(
-            ApimResponseEnvelope<UpdateNotificationReadStatusApimDataItem> response, MessageStatus targetStatus) {
-        var dataItems = ApimResponseValidator.requireSuccessData(response);
-        if (CollectionUtils.isEmpty(dataItems)) return new UpdateNotificationsReadStatusResult(List.of());
-        var effectiveStatus = targetStatus == null ? MessageStatus.UNKNOWN : targetStatus;
-        List<NotificationReadStatus> notifications = dataItems.stream().filter(Objects::nonNull)
-                .map(item -> new NotificationReadStatus(resolveMessageCode(item), effectiveStatus, item.isSuccess()))
-                .toList();
-        return new UpdateNotificationsReadStatusResult(notifications);
-    }
+  private UpdateNotificationsReadStatusResult toResult(
+      ApimResponseEnvelope<UpdateNotificationReadStatusApimDataItem> response,
+      MessageStatus targetStatus) {
+    var dataItems = ApimResponseValidator.requireSuccessData(response);
+    if (CollectionUtils.isEmpty(dataItems))
+      return new UpdateNotificationsReadStatusResult(List.of());
+    var effectiveStatus = targetStatus == null ? MessageStatus.UNKNOWN : targetStatus;
+    List<NotificationReadStatus> notifications =
+        dataItems.stream()
+            .filter(Objects::nonNull)
+            .map(
+                item ->
+                    new NotificationReadStatus(
+                        resolveMessageCode(item), effectiveStatus, item.isSuccess()))
+            .toList();
+    return new UpdateNotificationsReadStatusResult(notifications);
+  }
 
-    private String resolveMessageCode(UpdateNotificationReadStatusApimDataItem item) {
-        return StringUtils.hasText(item.getMsgCodeLong()) ? item.getMsgCodeLong() : item.getMsgCode();
-    }
+  private String resolveMessageCode(UpdateNotificationReadStatusApimDataItem item) {
+    return StringUtils.hasText(item.getMsgCodeLong()) ? item.getMsgCodeLong() : item.getMsgCode();
+  }
 }

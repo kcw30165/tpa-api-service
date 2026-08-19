@@ -18,170 +18,185 @@ import reactor.test.StepVerifier;
 
 class SmtpEmailSenderAdapterTest {
 
-    private Logger logger;
-    private ListAppender<ILoggingEvent> listAppender;
+  private Logger logger;
+  private ListAppender<ILoggingEvent> listAppender;
 
-    @BeforeEach
-    void attachAppender() {
-        logger = (Logger) LoggerFactory.getLogger(SmtpEmailSenderAdapter.class);
-        listAppender = new ListAppender<>();
-        listAppender.start();
-        logger.addAppender(listAppender);
-    }
+  @BeforeEach
+  void attachAppender() {
+    logger = (Logger) LoggerFactory.getLogger(SmtpEmailSenderAdapter.class);
+    listAppender = new ListAppender<>();
+    listAppender.start();
+    logger.addAppender(listAppender);
+  }
 
-    @AfterEach
-    void detachAppender() {
-        logger.detachAppender(listAppender);
-        listAppender.stop();
-    }
+  @AfterEach
+  void detachAppender() {
+    logger.detachAppender(listAppender);
+    listAppender.stop();
+  }
 
-    @Test
-    void mapsEmailMessageToSmtpMessage() {
-        AtomicReference<SmtpSendCommand> captured = new AtomicReference<>();
-        SmtpEmailSenderAdapter adapter = adapterWith(baseProperties(), command -> {
-            captured.set(command);
-            return Mono.empty();
-        });
+  @Test
+  void mapsEmailMessageToSmtpMessage() {
+    AtomicReference<SmtpSendCommand> captured = new AtomicReference<>();
+    SmtpEmailSenderAdapter adapter =
+        adapterWith(
+            baseProperties(),
+            command -> {
+              captured.set(command);
+              return Mono.empty();
+            });
 
-        StepVerifier.create(adapter.sendEmail(new EmailMessage(
-                        "member@example.com",
-                        "Notice ABC123",
-                        "Hello Member",
-                        "noreply@example.com",
-                        "req-123")))
-                .assertNext(result -> assertThat(result.status()).isEqualTo(SenderStatus.ACCEPTED))
-                .verifyComplete();
+    StepVerifier.create(
+            adapter.sendEmail(
+                new EmailMessage(
+                    "member@example.com",
+                    "Notice ABC123",
+                    "Hello Member",
+                    "noreply@example.com",
+                    "req-123")))
+        .assertNext(result -> assertThat(result.status()).isEqualTo(SenderStatus.ACCEPTED))
+        .verifyComplete();
 
-        assertThat(captured.get().to()).isEqualTo("member@example.com");
-        assertThat(captured.get().subject()).isEqualTo("Notice ABC123");
-        assertThat(captured.get().body()).isEqualTo("Hello Member");
-        assertThat(captured.get().from()).isEqualTo("noreply@example.com");
-        assertThat(captured.get().host()).isEqualTo("smtp.example.test");
-        assertThat(captured.get().port()).isEqualTo(25);
-        assertThat(captured.get().timeoutMillis()).isEqualTo(5000);
-    }
+    assertThat(captured.get().to()).isEqualTo("member@example.com");
+    assertThat(captured.get().subject()).isEqualTo("Notice ABC123");
+    assertThat(captured.get().body()).isEqualTo("Hello Member");
+    assertThat(captured.get().from()).isEqualTo("noreply@example.com");
+    assertThat(captured.get().host()).isEqualTo("smtp.example.test");
+    assertThat(captured.get().port()).isEqualTo(25);
+    assertThat(captured.get().timeoutMillis()).isEqualTo(5000);
+  }
 
-    @Test
-    void usesConfiguredFromWhenEmailMessageFromBlank() {
-        AtomicReference<SmtpSendCommand> captured = new AtomicReference<>();
-        SmtpEmailSenderAdapter adapter = adapterWith(baseProperties(), command -> {
-            captured.set(command);
-            return Mono.empty();
-        });
+  @Test
+  void usesConfiguredFromWhenEmailMessageFromBlank() {
+    AtomicReference<SmtpSendCommand> captured = new AtomicReference<>();
+    SmtpEmailSenderAdapter adapter =
+        adapterWith(
+            baseProperties(),
+            command -> {
+              captured.set(command);
+              return Mono.empty();
+            });
 
-        StepVerifier.create(adapter.sendEmail(new EmailMessage(
-                        "member@example.com",
-                        "Notice ABC123",
-                        "Hello Member",
-                        "   ",
-                        "req-123")))
-                .assertNext(result -> assertThat(result.status()).isEqualTo(SenderStatus.ACCEPTED))
-                .verifyComplete();
+    StepVerifier.create(
+            adapter.sendEmail(
+                new EmailMessage(
+                    "member@example.com", "Notice ABC123", "Hello Member", "   ", "req-123")))
+        .assertNext(result -> assertThat(result.status()).isEqualTo(SenderStatus.ACCEPTED))
+        .verifyComplete();
 
-        assertThat(captured.get().from()).isEqualTo("configured-from@example.com");
-    }
+    assertThat(captured.get().from()).isEqualTo("configured-from@example.com");
+  }
 
-    @Test
-    void returnsAcceptedWhenSmtpSendSucceeds() {
-        SmtpEmailSenderAdapter adapter = adapterWith(baseProperties(), command -> Mono.empty());
+  @Test
+  void returnsAcceptedWhenSmtpSendSucceeds() {
+    SmtpEmailSenderAdapter adapter = adapterWith(baseProperties(), command -> Mono.empty());
 
-        StepVerifier.create(adapter.sendEmail(messageWithOtpBody()))
-                .assertNext(result -> {
-                    assertThat(result.status()).isEqualTo(SenderStatus.ACCEPTED);
-                    assertThat(result.failureCode()).isNull();
-                    assertThat(result.failureMessage()).isNull();
-                })
-                .verifyComplete();
-    }
+    StepVerifier.create(adapter.sendEmail(messageWithOtpBody()))
+        .assertNext(
+            result -> {
+              assertThat(result.status()).isEqualTo(SenderStatus.ACCEPTED);
+              assertThat(result.failureCode()).isNull();
+              assertThat(result.failureMessage()).isNull();
+            })
+        .verifyComplete();
+  }
 
-    @Test
-    void returnsFailedOrPropagatesSafeErrorWhenSmtpSendFails() {
-        SmtpEmailSenderAdapter adapter = adapterWith(
-                baseProperties(),
-                command -> Mono.error(new IllegalStateException(
+  @Test
+  void returnsFailedOrPropagatesSafeErrorWhenSmtpSendFails() {
+    SmtpEmailSenderAdapter adapter =
+        adapterWith(
+            baseProperties(),
+            command ->
+                Mono.error(
+                    new IllegalStateException(
                         "provider leaked member@example.com Your code is 123456 smtp-password")));
 
-        StepVerifier.create(adapter.sendEmail(messageWithOtpBody()))
-                .assertNext(result -> {
-                    assertThat(result.status()).isEqualTo(SenderStatus.UNKNOWN_OUTCOME);
-                    assertThat(result.failureCode()).isEqualTo("EMAIL_REQUEST_OUTCOME_UNKNOWN");
-                    assertThat(result.failureMessage()).doesNotContain(
-                            "member@example.com", "Your code is 123456", "123456", "smtp-password");
-                })
-                .verifyComplete();
+    StepVerifier.create(adapter.sendEmail(messageWithOtpBody()))
+        .assertNext(
+            result -> {
+              assertThat(result.status()).isEqualTo(SenderStatus.UNKNOWN_OUTCOME);
+              assertThat(result.failureCode()).isEqualTo("EMAIL_REQUEST_OUTCOME_UNKNOWN");
+              assertThat(result.failureMessage())
+                  .doesNotContain(
+                      "member@example.com", "Your code is 123456", "123456", "smtp-password");
+            })
+        .verifyComplete();
 
-        String logOutput = logOutput();
-        assertThat(logOutput).doesNotContain("member@example.com", "Your code is 123456", "123456", "smtp-password");
-        assertThat(logOutput).contains("bodyLogged=false");
-    }
+    String logOutput = logOutput();
+    assertThat(logOutput)
+        .doesNotContain("member@example.com", "Your code is 123456", "123456", "smtp-password");
+    assertThat(logOutput).contains("bodyLogged=false");
+  }
 
-    @Test
-    void rejectsMissingRequiredConfigWhenEnabled() {
-        EmailProperties properties = baseProperties();
-        properties.getSmtp().setHost("");
-        properties.getSmtp().setFrom("");
+  @Test
+  void rejectsMissingRequiredConfigWhenEnabled() {
+    EmailProperties properties = baseProperties();
+    properties.getSmtp().setHost("");
+    properties.getSmtp().setFrom("");
 
-        SmtpEmailSenderAdapter adapter = adapterWith(properties, command -> Mono.empty());
+    SmtpEmailSenderAdapter adapter = adapterWith(properties, command -> Mono.empty());
 
-        StepVerifier.create(adapter.sendEmail(messageWithOtpBody()))
-                .assertNext(result -> {
-                    assertThat(result.status()).isEqualTo(SenderStatus.FAILED);
-                    assertThat(result.failureCode()).isEqualTo("EMAIL_CONFIG_HOST_MISSING");
-                    assertThat(result.failureMessage()).doesNotContain(
-                            "member@example.com", "Your code is 123456", "123456", "smtp-password");
-                })
-                .verifyComplete();
-    }
+    StepVerifier.create(adapter.sendEmail(messageWithOtpBody()))
+        .assertNext(
+            result -> {
+              assertThat(result.status()).isEqualTo(SenderStatus.FAILED);
+              assertThat(result.failureCode()).isEqualTo("EMAIL_CONFIG_HOST_MISSING");
+              assertThat(result.failureMessage())
+                  .doesNotContain(
+                      "member@example.com", "Your code is 123456", "123456", "smtp-password");
+            })
+        .verifyComplete();
+  }
 
-    @Test
-    void doesNotLogFullEmailBodyOrOtp() {
-        SmtpEmailSenderAdapter adapter = adapterWith(baseProperties(), command -> Mono.empty());
+  @Test
+  void doesNotLogFullEmailBodyOrOtp() {
+    SmtpEmailSenderAdapter adapter = adapterWith(baseProperties(), command -> Mono.empty());
 
-        StepVerifier.create(adapter.sendEmail(messageWithOtpBody()))
-                .assertNext(result -> assertThat(result.status()).isEqualTo(SenderStatus.ACCEPTED))
-                .verifyComplete();
+    StepVerifier.create(adapter.sendEmail(messageWithOtpBody()))
+        .assertNext(result -> assertThat(result.status()).isEqualTo(SenderStatus.ACCEPTED))
+        .verifyComplete();
 
-        assertThat(listAppender.list).isNotEmpty();
-        String logOutput = logOutput();
+    assertThat(listAppender.list).isNotEmpty();
+    String logOutput = logOutput();
 
-        assertThat(logOutput).doesNotContain("member@example.com", "Your code is 123456", "123456");
-        assertThat(logOutput).contains("recipientMasked=m***r@example.com", "bodyLogged=false");
-    }
+    assertThat(logOutput).doesNotContain("member@example.com", "Your code is 123456", "123456");
+    assertThat(logOutput).contains("recipientMasked=m***r@example.com", "bodyLogged=false");
+  }
 
-    @Test
-    void emailMaskerMasksCommonEmailShape() {
-        assertThat(EmailAddressMasker.mask("member@example.com")).isEqualTo("m***r@example.com");
-        assertThat(EmailAddressMasker.mask("a@example.com")).isEqualTo("***@example.com");
-        assertThat(EmailAddressMasker.mask("   ")).isEqualTo("");
-        assertThat(EmailAddressMasker.mask(null)).isEqualTo("");
-    }
+  @Test
+  void emailMaskerMasksCommonEmailShape() {
+    assertThat(EmailAddressMasker.mask("member@example.com")).isEqualTo("m***r@example.com");
+    assertThat(EmailAddressMasker.mask("a@example.com")).isEqualTo("***@example.com");
+    assertThat(EmailAddressMasker.mask("   ")).isEqualTo("");
+    assertThat(EmailAddressMasker.mask(null)).isEqualTo("");
+  }
 
-    private SmtpEmailSenderAdapter adapterWith(EmailProperties properties, SmtpClient smtpClient) {
-        return new SmtpEmailSenderAdapter(smtpClient, properties);
-    }
+  private SmtpEmailSenderAdapter adapterWith(EmailProperties properties, SmtpClient smtpClient) {
+    return new SmtpEmailSenderAdapter(smtpClient, properties);
+  }
 
-    private EmailProperties baseProperties() {
-        EmailProperties properties = new EmailProperties();
-        properties.setEnabled(true);
-        properties.getSmtp().setHost("smtp.example.test");
-        properties.getSmtp().setPort(25);
-        properties.getSmtp().setFrom("configured-from@example.com");
-        properties.getSmtp().setTimeoutMillis(5000);
-        return properties;
-    }
+  private EmailProperties baseProperties() {
+    EmailProperties properties = new EmailProperties();
+    properties.setEnabled(true);
+    properties.getSmtp().setHost("smtp.example.test");
+    properties.getSmtp().setPort(25);
+    properties.getSmtp().setFrom("configured-from@example.com");
+    properties.getSmtp().setTimeoutMillis(5000);
+    return properties;
+  }
 
-    private EmailMessage messageWithOtpBody() {
-        return new EmailMessage(
-                "member@example.com",
-                "Notice ABC123",
-                "Your code is 123456",
-                "noreply@example.com",
-                "req-123");
-    }
+  private EmailMessage messageWithOtpBody() {
+    return new EmailMessage(
+        "member@example.com",
+        "Notice ABC123",
+        "Your code is 123456",
+        "noreply@example.com",
+        "req-123");
+  }
 
-    private String logOutput() {
-        return listAppender.list.stream()
-                .map(ILoggingEvent::getFormattedMessage)
-                .reduce("", (left, right) -> left + "\n" + right);
-    }
+  private String logOutput() {
+    return listAppender.list.stream()
+        .map(ILoggingEvent::getFormattedMessage)
+        .reduce("", (left, right) -> left + "\n" + right);
+  }
 }

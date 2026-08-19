@@ -4,5 +4,5 @@ import com.bct.ngtpa.apiservice.application.dto.session.authenticated.Authentica
 
 @FunctionalInterface
 public interface AuthenticatedSessionIdGenerator {
-    AuthenticatedSessionId generate();
+  AuthenticatedSessionId generate();
 }

@@ -8,66 +8,74 @@ import org.junit.jupiter.api.Test;
 
 class UsernameRecoveryLookupResultTest {
 
-    private static UsernameRecoveryLookupCandidate candidate() {
-        return new UsernameRecoveryLookupCandidate("DB", "DBA", true, "john.doe");
+  private static UsernameRecoveryLookupCandidate candidate() {
+    return new UsernameRecoveryLookupCandidate("DB", "DBA", true, "john.doe");
+  }
+
+  @Test
+  void matchedCarriesCandidates() {
+    var result =
+        new UsernameRecoveryLookupResult(
+            UsernameRecoveryLookupResult.Status.MATCHED, List.of(candidate()));
+
+    assertThat(result.status()).isEqualTo(UsernameRecoveryLookupResult.Status.MATCHED);
+    assertThat(result.candidates()).hasSize(1);
+  }
+
+  @Test
+  void matchedRequiresAtLeastOneCandidate() {
+    assertThatThrownBy(
+            () ->
+                new UsernameRecoveryLookupResult(
+                    UsernameRecoveryLookupResult.Status.MATCHED, List.of()))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("matched lookup requires at least one candidate");
+  }
+
+  @Test
+  void nonMatchedOutcomesCarryNoCandidates() {
+    for (var status :
+        new UsernameRecoveryLookupResult.Status[] {
+          UsernameRecoveryLookupResult.Status.NOT_FOUND,
+          UsernameRecoveryLookupResult.Status.CONTRACT_INVALID,
+          UsernameRecoveryLookupResult.Status.UNAVAILABLE,
+          UsernameRecoveryLookupResult.Status.UNKNOWN_OUTCOME
+        }) {
+      var result = new UsernameRecoveryLookupResult(status, List.of());
+      assertThat(result.candidates()).isEmpty();
     }
+  }
 
-    @Test
-    void matchedCarriesCandidates() {
-        var result = new UsernameRecoveryLookupResult(
-                UsernameRecoveryLookupResult.Status.MATCHED, List.of(candidate()));
+  @Test
+  void nonMatchedOutcomeRejectsCandidates() {
+    assertThatThrownBy(
+            () ->
+                new UsernameRecoveryLookupResult(
+                    UsernameRecoveryLookupResult.Status.NOT_FOUND, List.of(candidate())))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("non-matched lookup must not contain candidates");
+  }
 
-        assertThat(result.status()).isEqualTo(UsernameRecoveryLookupResult.Status.MATCHED);
-        assertThat(result.candidates()).hasSize(1);
-    }
+  @Test
+  void requiresStatusAndCopiesCandidateList() {
+    assertThatThrownBy(() -> new UsernameRecoveryLookupResult(null, List.of()))
+        .isInstanceOf(NullPointerException.class);
 
-    @Test
-    void matchedRequiresAtLeastOneCandidate() {
-        assertThatThrownBy(() -> new UsernameRecoveryLookupResult(
-                UsernameRecoveryLookupResult.Status.MATCHED, List.of()))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("matched lookup requires at least one candidate");
-    }
+    var result =
+        new UsernameRecoveryLookupResult(UsernameRecoveryLookupResult.Status.NOT_FOUND, null);
+    assertThat(result.candidates()).isEmpty();
+    assertThatThrownBy(() -> result.candidates().add(candidate()))
+        .isInstanceOf(UnsupportedOperationException.class);
+  }
 
-    @Test
-    void nonMatchedOutcomesCarryNoCandidates() {
-        for (var status : new UsernameRecoveryLookupResult.Status[]{
-                UsernameRecoveryLookupResult.Status.NOT_FOUND,
-                UsernameRecoveryLookupResult.Status.CONTRACT_INVALID,
-                UsernameRecoveryLookupResult.Status.UNAVAILABLE,
-                UsernameRecoveryLookupResult.Status.UNKNOWN_OUTCOME}) {
-            var result = new UsernameRecoveryLookupResult(status, List.of());
-            assertThat(result.candidates()).isEmpty();
-        }
-    }
+  @Test
+  void toStringDoesNotDiscloseCandidateUsernames() {
+    var result =
+        new UsernameRecoveryLookupResult(
+            UsernameRecoveryLookupResult.Status.MATCHED, List.of(candidate()));
 
-    @Test
-    void nonMatchedOutcomeRejectsCandidates() {
-        assertThatThrownBy(() -> new UsernameRecoveryLookupResult(
-                UsernameRecoveryLookupResult.Status.NOT_FOUND, List.of(candidate())))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("non-matched lookup must not contain candidates");
-    }
-
-    @Test
-    void requiresStatusAndCopiesCandidateList() {
-        assertThatThrownBy(() -> new UsernameRecoveryLookupResult(null, List.of()))
-                .isInstanceOf(NullPointerException.class);
-
-        var result = new UsernameRecoveryLookupResult(
-                UsernameRecoveryLookupResult.Status.NOT_FOUND, null);
-        assertThat(result.candidates()).isEmpty();
-        assertThatThrownBy(() -> result.candidates().add(candidate()))
-                .isInstanceOf(UnsupportedOperationException.class);
-    }
-
-    @Test
-    void toStringDoesNotDiscloseCandidateUsernames() {
-        var result = new UsernameRecoveryLookupResult(
-                UsernameRecoveryLookupResult.Status.MATCHED, List.of(candidate()));
-
-        assertThat(result.toString())
-                .doesNotContain("john.doe")
-                .contains("status=MATCHED", "candidateCount=1");
-    }
+    assertThat(result.toString())
+        .doesNotContain("john.doe")
+        .contains("status=MATCHED", "candidateCount=1");
+  }
 }

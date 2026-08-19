@@ -9,21 +9,22 @@ import org.junit.jupiter.api.Test;
 
 class ResendRegistrationOtpResultTest {
 
-    @Test
-    void resultToStringRedactsSensitiveValues() {
-        var result = new ResendRegistrationOtpResult(
-                ResendRegistrationOtpResultStatus.RESENT,
-                WorkflowNextStep.VERIFY_OTP,
-                "m****r@example.com",
-                300,
-                60,
-                4,
-                List.of(),
-                List.of(),
-                RegistrationIdempotencyStartOutcome.STARTED,
-                null);
+  @Test
+  void resultToStringRedactsSensitiveValues() {
+    var result =
+        new ResendRegistrationOtpResult(
+            ResendRegistrationOtpResultStatus.RESENT,
+            WorkflowNextStep.VERIFY_OTP,
+            "m****r@example.com",
+            300,
+            60,
+            4,
+            List.of(),
+            List.of(),
+            RegistrationIdempotencyStartOutcome.STARTED,
+            null);
 
-        assertThat(result.toString())
-                .doesNotContain("123456", "otp_", "afs_secret", "csrf_secret", "member@example.com");
-    }
+    assertThat(result.toString())
+        .doesNotContain("123456", "otp_", "afs_secret", "csrf_secret", "member@example.com");
+  }
 }

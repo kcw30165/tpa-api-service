@@ -4,11 +4,9 @@ import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRe
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryStartResult;
 import reactor.core.publisher.Mono;
 
-/**
- * Framework-free inbound application contract for the Username Recovery start flow.
- */
+/** Framework-free inbound application contract for the Username Recovery start flow. */
 @FunctionalInterface
 public interface StartUsernameRecoveryUseCase {
 
-    Mono<UsernameRecoveryStartResult> start(UsernameRecoveryStartCommand command);
+  Mono<UsernameRecoveryStartResult> start(UsernameRecoveryStartCommand command);
 }

@@ -10,7 +10,6 @@ import com.bct.ngtpa.apiservice.application.port.out.RegistrationSessionPort;
 import com.bct.ngtpa.apiservice.application.service.auth.idempotency.RegistrationRequestHashGenerator;
 import com.bct.ngtpa.apiservice.application.service.auth.registration.context.RegistrationProtectedAuthFlowContextLoader;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.ResendRegistrationOtpService;
-
 import java.time.Clock;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
@@ -19,31 +18,30 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RegistrationOtpResendWebConfig {
 
-    @Bean
-    @ConditionalOnMissingBean
-    public RegistrationOtpResendWebMapper registrationOtpResendWebMapper(
-            WorkflowMutationResponseMapper workflowMutationResponseMapper) {
-        return new RegistrationOtpResendWebMapper(
-                workflowMutationResponseMapper);
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  public RegistrationOtpResendWebMapper registrationOtpResendWebMapper(
+      WorkflowMutationResponseMapper workflowMutationResponseMapper) {
+    return new RegistrationOtpResendWebMapper(workflowMutationResponseMapper);
+  }
 
-    @Bean
-    @ConditionalOnMissingBean(ResendRegistrationOtpUseCase.class)
-    public ResendRegistrationOtpUseCase resendRegistrationOtpUseCase(
-            RegistrationProtectedAuthFlowContextLoader protectedContextService,
-            RegistrationRequestHashGenerator requestHashGenerator,
-            RegistrationIdempotencyPort registrationIdempotencyPort,
-            RegistrationOtpPort registrationOtpGateway,
-            RegistrationSessionPort registrationSessionGateway,
-            RegistrationMessagePort registrationMessageGateway,
-            Clock clock) {
-        return new ResendRegistrationOtpService(
-                protectedContextService,
-                requestHashGenerator,
-                registrationIdempotencyPort,
-                registrationOtpGateway,
-                registrationSessionGateway,
-                registrationMessageGateway,
-                clock);
-    }
+  @Bean
+  @ConditionalOnMissingBean(ResendRegistrationOtpUseCase.class)
+  public ResendRegistrationOtpUseCase resendRegistrationOtpUseCase(
+      RegistrationProtectedAuthFlowContextLoader protectedContextService,
+      RegistrationRequestHashGenerator requestHashGenerator,
+      RegistrationIdempotencyPort registrationIdempotencyPort,
+      RegistrationOtpPort registrationOtpGateway,
+      RegistrationSessionPort registrationSessionGateway,
+      RegistrationMessagePort registrationMessageGateway,
+      Clock clock) {
+    return new ResendRegistrationOtpService(
+        protectedContextService,
+        requestHashGenerator,
+        registrationIdempotencyPort,
+        registrationOtpGateway,
+        registrationSessionGateway,
+        registrationMessageGateway,
+        clock);
+  }
 }

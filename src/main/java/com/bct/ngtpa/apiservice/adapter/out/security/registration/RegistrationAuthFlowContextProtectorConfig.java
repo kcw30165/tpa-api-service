@@ -11,19 +11,19 @@ import org.springframework.context.annotation.Configuration;
 @EnableConfigurationProperties(RegistrationAuthFlowContextProperties.class)
 public class RegistrationAuthFlowContextProtectorConfig {
 
-    @Bean
-    @ConditionalOnMissingBean(RegistrationAuthFlowContextProtectorPort.class)
-    public RegistrationAuthFlowContextProtectorPort registrationAuthFlowContextProtector(
-            RegistrationAuthFlowContextProperties properties) {
-        return new AesGcmRegistrationAuthFlowContextProtectorAdapter(properties.getKeyVersion(),
-                properties.getSecret());
-    }
+  @Bean
+  @ConditionalOnMissingBean(RegistrationAuthFlowContextProtectorPort.class)
+  public RegistrationAuthFlowContextProtectorPort registrationAuthFlowContextProtector(
+      RegistrationAuthFlowContextProperties properties) {
+    return new AesGcmRegistrationAuthFlowContextProtectorAdapter(
+        properties.getKeyVersion(), properties.getSecret());
+  }
 
-    @Bean
-    @ConditionalOnMissingBean(RegistrationUsernameCheckProtectorPort.class)
-    public RegistrationUsernameCheckProtectorPort registrationUsernameCheckProtector(
-            RegistrationAuthFlowContextProperties properties) {
-        return new AesGcmRegistrationUsernameCheckProtectorAdapter(properties.getKeyVersion(), properties.getSecret());
-    }
-
+  @Bean
+  @ConditionalOnMissingBean(RegistrationUsernameCheckProtectorPort.class)
+  public RegistrationUsernameCheckProtectorPort registrationUsernameCheckProtector(
+      RegistrationAuthFlowContextProperties properties) {
+    return new AesGcmRegistrationUsernameCheckProtectorAdapter(
+        properties.getKeyVersion(), properties.getSecret());
+  }
 }

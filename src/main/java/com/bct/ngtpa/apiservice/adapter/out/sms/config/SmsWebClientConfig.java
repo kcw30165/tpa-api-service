@@ -18,28 +18,29 @@ import reactor.netty.http.client.HttpClient;
 @ConditionalOnProperty(name = "sms.enabled", havingValue = "true", matchIfMissing = true)
 public class SmsWebClientConfig {
 
-    @Bean
-    public WebClient smsWebClient(WebClient.Builder webClientBuilder, SmsProperties smsProperties) {
-        HttpClient httpClient = HttpClient.create()
-                .responseTimeout(Duration.ofMillis(smsProperties.getTimeoutMillis()));
+  @Bean
+  public WebClient smsWebClient(WebClient.Builder webClientBuilder, SmsProperties smsProperties) {
+    HttpClient httpClient =
+        HttpClient.create().responseTimeout(Duration.ofMillis(smsProperties.getTimeoutMillis()));
 
-        return webClientBuilder.clone()
-                .clientConnector(new ReactorClientHttpConnector(httpClient))
-                .baseUrl(smsProperties.getBaseUrl())
-                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
-                .build();
-    }
+    return webClientBuilder
+        .clone()
+        .clientConnector(new ReactorClientHttpConnector(httpClient))
+        .baseUrl(smsProperties.getBaseUrl())
+        .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+        .build();
+  }
 
-    @Bean
-    public SmsSenderPort smsSenderPort(WebClient smsWebClient, SmsProperties smsProperties) {
-        return new SmsSenderAdapter(smsWebClient, smsProperties);
-    }
+  @Bean
+  public SmsSenderPort smsSenderPort(WebClient smsWebClient, SmsProperties smsProperties) {
+    return new SmsSenderAdapter(smsWebClient, smsProperties);
+  }
 
-    @Bean
-    public com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryTimeoutBound smsMessageDeliveryTimeoutBound(
-            SmsProperties smsProperties) {
-        return new com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryTimeoutBound(
-                com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryChannel.SMS,
-                smsProperties.getTimeoutMillis());
-    }
+  @Bean
+  public com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryTimeoutBound
+      smsMessageDeliveryTimeoutBound(SmsProperties smsProperties) {
+    return new com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryTimeoutBound(
+        com.bct.ngtpa.apiservice.application.dto.message.MessageDeliveryChannel.SMS,
+        smsProperties.getTimeoutMillis());
+  }
 }

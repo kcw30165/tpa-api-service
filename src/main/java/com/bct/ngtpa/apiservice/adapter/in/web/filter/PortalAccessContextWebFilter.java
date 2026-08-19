@@ -19,42 +19,51 @@ import reactor.core.publisher.Mono;
 @Order(Ordered.HIGHEST_PRECEDENCE + 1)
 @RequiredArgsConstructor
 public final class PortalAccessContextWebFilter implements WebFilter {
-    private final PortalAccessContextPort portalAccessContextPort;
-    private final ValidateAuthenticatedSessionUseCase sessionValidation;
-    private final AuthenticatedSessionCookieWriter sessionCookies;
+  private final PortalAccessContextPort portalAccessContextPort;
+  private final ValidateAuthenticatedSessionUseCase sessionValidation;
+  private final AuthenticatedSessionCookieWriter sessionCookies;
 
-    @Override
-    public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
-        String accountRef = accountRef(exchange);
-        if (!StringUtils.hasText(accountRef)) return chain.filter(exchange);
-        String sessionId = cookie(exchange, sessionCookies.cookieName());
-        String csrf = exchange.getRequest().getHeaders().getFirst(RequestHeaderContextKeys.XSRF_TOKEN_HEADER);
-        if (!StringUtils.hasText(sessionId) || !StringUtils.hasText(csrf)) {
-            return Mono.error(new AuthenticatedPortalContextResolutionException());
-        }
-        AuthenticatedSessionId id;
-        try { id = new AuthenticatedSessionId(sessionId.trim()); }
-        catch (RuntimeException failure) {
-            return Mono.error(new AuthenticatedPortalContextResolutionException());
-        }
-        String requestId = exchange.getRequest().getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER);
-        return sessionValidation.validate(new ValidateAuthenticatedSessionCommand(id, csrf, requestId))
-                .then(portalAccessContextPort.resolvePortalAccessContext(accountRef, sessionId))
-                .flatMap(context -> continueWith(exchange, chain, context));
+  @Override
+  public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
+    String accountRef = accountRef(exchange);
+    if (!StringUtils.hasText(accountRef)) return chain.filter(exchange);
+    String sessionId = cookie(exchange, sessionCookies.cookieName());
+    String csrf =
+        exchange.getRequest().getHeaders().getFirst(RequestHeaderContextKeys.XSRF_TOKEN_HEADER);
+    if (!StringUtils.hasText(sessionId) || !StringUtils.hasText(csrf)) {
+      return Mono.error(new AuthenticatedPortalContextResolutionException());
     }
+    AuthenticatedSessionId id;
+    try {
+      id = new AuthenticatedSessionId(sessionId.trim());
+    } catch (RuntimeException failure) {
+      return Mono.error(new AuthenticatedPortalContextResolutionException());
+    }
+    String requestId =
+        exchange.getRequest().getHeaders().getFirst(RequestCorrelation.REQUEST_ID_HEADER);
+    return sessionValidation
+        .validate(new ValidateAuthenticatedSessionCommand(id, csrf, requestId))
+        .then(portalAccessContextPort.resolvePortalAccessContext(accountRef, sessionId))
+        .flatMap(context -> continueWith(exchange, chain, context));
+  }
 
-    private Mono<Void> continueWith(ServerWebExchange exchange, WebFilterChain chain, PortalAccessContext context) {
-        exchange.getAttributes().put(PortalAccessContextKeys.ATTRIBUTE_KEY, context);
-        return chain.filter(exchange).contextWrite(c -> c.put(PortalAccessContextKeys.CONTEXT_KEY, context));
-    }
-    private String accountRef(ServerWebExchange exchange) {
-        RequestHeaderContext context = (RequestHeaderContext) exchange.getAttributes()
-                .get(RequestHeaderContextKeys.ATTRIBUTE_KEY);
-        if (context != null && StringUtils.hasText(context.accountRef())) return context.accountRef();
-        return exchange.getRequest().getHeaders().getFirst(RequestHeaderContextKeys.ACCOUNT_REF_HEADER);
-    }
-    private String cookie(ServerWebExchange exchange, String name) {
-        var cookie = exchange.getRequest().getCookies().getFirst(name);
-        return cookie == null ? null : cookie.getValue();
-    }
+  private Mono<Void> continueWith(
+      ServerWebExchange exchange, WebFilterChain chain, PortalAccessContext context) {
+    exchange.getAttributes().put(PortalAccessContextKeys.ATTRIBUTE_KEY, context);
+    return chain
+        .filter(exchange)
+        .contextWrite(c -> c.put(PortalAccessContextKeys.CONTEXT_KEY, context));
+  }
+
+  private String accountRef(ServerWebExchange exchange) {
+    RequestHeaderContext context =
+        (RequestHeaderContext) exchange.getAttributes().get(RequestHeaderContextKeys.ATTRIBUTE_KEY);
+    if (context != null && StringUtils.hasText(context.accountRef())) return context.accountRef();
+    return exchange.getRequest().getHeaders().getFirst(RequestHeaderContextKeys.ACCOUNT_REF_HEADER);
+  }
+
+  private String cookie(ServerWebExchange exchange, String name) {
+    var cookie = exchange.getRequest().getCookies().getFirst(name);
+    return cookie == null ? null : cookie.getValue();
+  }
 }

@@ -5,20 +5,20 @@ import com.bct.ngtpa.apiservice.application.dto.session.authenticated.Authentica
 import java.util.Objects;
 
 public record RecordAuthenticatedSessionCommittedCommand(
-        AuthenticatedLoginHandoffReference handoffReference,
-        LoginOtpVerificationOperationReference operationReference,
-        String reservationHash,
-        AuthenticatedSessionId authenticatedSessionId) {
-    public RecordAuthenticatedSessionCommittedCommand {
-        Objects.requireNonNull(handoffReference);
-        Objects.requireNonNull(operationReference);
-        Objects.requireNonNull(authenticatedSessionId);
-        if (reservationHash == null || reservationHash.isBlank())
-            throw new IllegalArgumentException("reservationHash required");
-    }
+    AuthenticatedLoginHandoffReference handoffReference,
+    LoginOtpVerificationOperationReference operationReference,
+    String reservationHash,
+    AuthenticatedSessionId authenticatedSessionId) {
+  public RecordAuthenticatedSessionCommittedCommand {
+    Objects.requireNonNull(handoffReference);
+    Objects.requireNonNull(operationReference);
+    Objects.requireNonNull(authenticatedSessionId);
+    if (reservationHash == null || reservationHash.isBlank())
+      throw new IllegalArgumentException("reservationHash required");
+  }
 
-    @Override
-    public String toString() {
-        return "RecordAuthenticatedSessionCommittedCommand[<redacted>]";
-    }
+  @Override
+  public String toString() {
+    return "RecordAuthenticatedSessionCommittedCommand[<redacted>]";
+  }
 }

@@ -8,35 +8,48 @@ import org.junit.jupiter.api.Test;
 
 class P6RegistrationStartWorkflowContractArchitectureGuardTest {
 
-    @Test
-    void registrationStartNoLongerUsesSimpleMutationResponsePath() throws Exception {
-        String controller = Files.readString(Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationController.java"));
-        String mapper = Files.readString(Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/mapper/RegistrationStartWebMapper.java"));
+  @Test
+  void registrationStartNoLongerUsesSimpleMutationResponsePath() throws Exception {
+    String controller =
+        Files.readString(
+            Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationController.java"));
+    String mapper =
+        Files.readString(
+            Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/mapper/RegistrationStartWebMapper.java"));
 
-        assertThat(controller).doesNotContain("SimpleMutationResponse", "SimpleWebError");
-        assertThat(mapper).doesNotContain("SimpleMutationResponse", "SimpleWebError");
-    }
+    assertThat(controller).doesNotContain("SimpleMutationResponse", "SimpleWebError");
+    assertThat(mapper).doesNotContain("SimpleMutationResponse", "SimpleWebError");
+  }
 
-    @Test
-    void workflowAlignedMapperUsesExistingWorkflowMutationResponseMapper() throws Exception {
-        String mapper = Files.readString(Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/mapper/RegistrationStartWebMapper.java"));
+  @Test
+  void workflowAlignedMapperUsesExistingWorkflowMutationResponseMapper() throws Exception {
+    String mapper =
+        Files.readString(
+            Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/mapper/RegistrationStartWebMapper.java"));
 
-        assertThat(mapper).contains("WorkflowResult", "WorkflowMutationResponseMapper");
-    }
+    assertThat(mapper).contains("WorkflowResult", "WorkflowMutationResponseMapper");
+  }
 
-    @Test
-    void workflowAlignedControllerDoesNotDependOnOutboundAdapters() throws Exception {
-        String controller = Files.readString(Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationController.java"));
+  @Test
+  void workflowAlignedControllerDoesNotDependOnOutboundAdapters() throws Exception {
+    String controller =
+        Files.readString(
+            Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationController.java"));
 
-        assertThat(controller).doesNotContain(
-                "adapter.out.apim",
-                "adapter.out.redis",
-                "adapter.out.sms",
-                "adapter.out.email",
-                "ApimWebClientFacade",
-                "ReactiveRedisTemplate",
-                "OtpChallengePort",
-                "MessageDeliveryPort",
-                "RegistrationLookupPort");
-    }
+    assertThat(controller)
+        .doesNotContain(
+            "adapter.out.apim",
+            "adapter.out.redis",
+            "adapter.out.sms",
+            "adapter.out.email",
+            "ApimWebClientFacade",
+            "ReactiveRedisTemplate",
+            "OtpChallengePort",
+            "MessageDeliveryPort",
+            "RegistrationLookupPort");
+  }
 }

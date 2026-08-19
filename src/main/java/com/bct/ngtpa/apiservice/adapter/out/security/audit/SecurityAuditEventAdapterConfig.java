@@ -8,9 +8,9 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class SecurityAuditEventAdapterConfig {
 
-    @Bean
-    @ConditionalOnMissingBean(SecurityAuditEventPort.class)
-    SecurityAuditEventPort securityAuditEventPort() {
-        return new LoggingSecurityAuditEventAdapter();
-    }
+  @Bean
+  @ConditionalOnMissingBean(SecurityAuditEventPort.class)
+  SecurityAuditEventPort securityAuditEventPort() {
+    return new LoggingSecurityAuditEventAdapter();
+  }
 }

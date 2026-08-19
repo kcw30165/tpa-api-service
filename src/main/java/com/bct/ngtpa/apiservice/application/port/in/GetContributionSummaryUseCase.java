@@ -5,5 +5,5 @@ import com.bct.ngtpa.apiservice.application.dto.GetContributionSummaryCommand;
 import reactor.core.publisher.Mono;
 
 public interface GetContributionSummaryUseCase {
-    Mono<ContributionSummaryReportResult> execute(GetContributionSummaryCommand command);
+  Mono<ContributionSummaryReportResult> execute(GetContributionSummaryCommand command);
 }

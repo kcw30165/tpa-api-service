@@ -7,14 +7,14 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class ContributionWebDisplayConfigProvider {
 
-    private final ContributionSummaryProperties properties;
+  private final ContributionSummaryProperties properties;
 
-    public ContributionWebDisplayConfig get() {
-        return new ContributionWebDisplayConfig(
-                properties.getTotalLabel().getEn(),
-                properties.getTotalLabel().getZh(),
-                properties.getHeaders().getDealingDate(),
-                properties.getHeaders().getContributionPeriod(),
-                properties.getHeaders().getTotalContribution());
-    }
+  public ContributionWebDisplayConfig get() {
+    return new ContributionWebDisplayConfig(
+        properties.getTotalLabel().getEn(),
+        properties.getTotalLabel().getZh(),
+        properties.getHeaders().getDealingDate(),
+        properties.getHeaders().getContributionPeriod(),
+        properties.getHeaders().getTotalContribution());
+  }
 }

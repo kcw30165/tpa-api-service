@@ -1,31 +1,42 @@
 package com.bct.ngtpa.apiservice.architecture;
 
 import static org.assertj.core.api.Assertions.assertThat;
+
 import java.nio.file.*;
 import org.junit.jupiter.api.Test;
 
 class Task0043LoginCancellationArchitectureTest {
-        @Test
-        void cancellationReusesSharedCapabilities() throws Exception {
-                String s = Files.readString(Path.of(
-                                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/cancel/CancelLoginService.java"));
-                assertThat(s)
-                                .contains("AuthFlowSessionPort", "AuthFlowSessionCsrfService",
-                                                "AuthFlowSessionCancellationPort",
-                                                "OtpChallengePort", "USER_CANCELLED_LOGIN", "AuthFlowScenario.LOGIN")
-                                .doesNotContain("Redis", "WebClient", "LoginOtpPort");
-        }
+  @Test
+  void cancellationReusesSharedCapabilities() throws Exception {
+    String s =
+        Files.readString(
+            Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/cancel/CancelLoginService.java"));
+    assertThat(s)
+        .contains(
+            "AuthFlowSessionPort",
+            "AuthFlowSessionCsrfService",
+            "AuthFlowSessionCancellationPort",
+            "OtpChallengePort",
+            "USER_CANCELLED_LOGIN",
+            "AuthFlowScenario.LOGIN")
+        .doesNotContain("Redis", "WebClient", "LoginOtpPort");
+  }
 
-        @Test
-        void noLoginSpecificCancellationRepositoryAndVerifyDtosRemainScoped() {
-                assertThat(Files.exists(
-                                Path.of("src/main/java/com/bct/ngtpa/apiservice/application/port/out/LoginCancellationPort.java")))
-                                .isFalse();
-                Path verifyDtos = Path.of(
-                                "src/main/java/com/bct/ngtpa/apiservice/application/dto/auth/login/otp/verify");
-                assertThat(Files.isDirectory(verifyDtos)).isTrue();
-                assertThat(Files.exists(Path.of(
-                                "src/main/java/com/bct/ngtpa/apiservice/application/dto/auth/login/otp/cancel")))
-                                .isFalse();
-        }
+  @Test
+  void noLoginSpecificCancellationRepositoryAndVerifyDtosRemainScoped() {
+    assertThat(
+            Files.exists(
+                Path.of(
+                    "src/main/java/com/bct/ngtpa/apiservice/application/port/out/LoginCancellationPort.java")))
+        .isFalse();
+    Path verifyDtos =
+        Path.of("src/main/java/com/bct/ngtpa/apiservice/application/dto/auth/login/otp/verify");
+    assertThat(Files.isDirectory(verifyDtos)).isTrue();
+    assertThat(
+            Files.exists(
+                Path.of(
+                    "src/main/java/com/bct/ngtpa/apiservice/application/dto/auth/login/otp/cancel")))
+        .isFalse();
+  }
 }

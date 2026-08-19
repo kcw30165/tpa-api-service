@@ -4,5 +4,5 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.rese
 import reactor.core.publisher.Mono;
 
 public interface EvaluateForgotPasswordOtpResendUseCase {
-    Mono<ForgotPasswordOtpResendResult> evaluate(ForgotPasswordOtpResendCommand command);
+  Mono<ForgotPasswordOtpResendResult> evaluate(ForgotPasswordOtpResendCommand command);
 }

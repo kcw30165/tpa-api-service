@@ -9,13 +9,12 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @EnableConfigurationProperties(ForgotPasswordAuthFlowContextProperties.class)
 public class ForgotPasswordAuthFlowContextProtectorConfig {
-    @Bean
-    @ConditionalOnMissingBean(ForgotPasswordAuthFlowContextProtectorPort.class)
-    ForgotPasswordAuthFlowContextProtectorPort forgotPasswordAuthFlowContextProtector(
-            ForgotPasswordAuthFlowContextProperties properties) {
-        properties.validate();
-        return new AesGcmForgotPasswordAuthFlowContextProtectorAdapter(
-                properties.getKeyVersion().trim(),
-                properties.getSecret());
-    }
+  @Bean
+  @ConditionalOnMissingBean(ForgotPasswordAuthFlowContextProtectorPort.class)
+  ForgotPasswordAuthFlowContextProtectorPort forgotPasswordAuthFlowContextProtector(
+      ForgotPasswordAuthFlowContextProperties properties) {
+    properties.validate();
+    return new AesGcmForgotPasswordAuthFlowContextProtectorAdapter(
+        properties.getKeyVersion().trim(), properties.getSecret());
+  }
 }

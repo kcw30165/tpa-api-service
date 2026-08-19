@@ -10,13 +10,23 @@ import java.util.Objects;
 import reactor.core.publisher.Mono;
 
 public class UpdatePersonalInformationService implements UpdatePersonalInformationUseCase {
-    private final ApimUpdatePersonalInformationPort apimUpdatePersonalInformationPort;
-    public UpdatePersonalInformationService(ApimUpdatePersonalInformationPort port) {
-        this.apimUpdatePersonalInformationPort=Objects.requireNonNull(port);
-    }
-    @Override public Mono<List<UpdatePersonalInformationResult>> execute(UpdatePersonalInformationCommand command) {
-        return apimUpdatePersonalInformationPort.updateMemberInfo(new UpdateMemberInfoCommand(
-                command.accountEnv(),command.policyNo(),command.certNo(),command.actorUserId(),command.actorUserRole(),
-                command.applyToAllAccounts(),command.updateFields()));
-    }
+  private final ApimUpdatePersonalInformationPort apimUpdatePersonalInformationPort;
+
+  public UpdatePersonalInformationService(ApimUpdatePersonalInformationPort port) {
+    this.apimUpdatePersonalInformationPort = Objects.requireNonNull(port);
+  }
+
+  @Override
+  public Mono<List<UpdatePersonalInformationResult>> execute(
+      UpdatePersonalInformationCommand command) {
+    return apimUpdatePersonalInformationPort.updateMemberInfo(
+        new UpdateMemberInfoCommand(
+            command.accountEnv(),
+            command.policyNo(),
+            command.certNo(),
+            command.actorUserId(),
+            command.actorUserRole(),
+            command.applyToAllAccounts(),
+            command.updateFields()));
+  }
 }

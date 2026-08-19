@@ -9,25 +9,35 @@ import org.junit.jupiter.api.Test;
 
 class PersonalInformationConfirmationDisplayYamlTest {
 
-    private static final Path PERSONAL_INFORMATION_YAML = Path.of(
-            "src/main/resources/application-page-personal-information.yml");
+  private static final Path PERSONAL_INFORMATION_YAML =
+      Path.of("src/main/resources/application-page-personal-information.yml");
 
-    @Test
-    void confirmationDisplayTextIsCentralizedAndReferencedByCodes() throws IOException {
-        String yaml = Files.readString(PERSONAL_INFORMATION_YAML);
-        assertThat(yaml).containsPattern("['\"]\\[personalInformation.confirmation.title\\]['\"]:");
-        assertThat(yaml).containsPattern("['\"]\\[personalInformation.confirmation.title\\]['\"]:");
-        assertThat(yaml).containsPattern("['\"]\\[personalInformation.confirmation.reviewMessage\\]['\"]:");
-        assertThat(yaml).containsPattern("['\"]\\[personalInformation.confirmation.beforeLabel\\]['\"]:");
-        assertThat(yaml).containsPattern("['\"]\\[personalInformation.confirmation.afterLabel\\]['\"]:");
-        assertThat(yaml).containsPattern("['\"]\\[personalInformation.confirmation.securityVerification.label\\]['\"]:");
-        assertThat(yaml).containsPattern("['\"]\\[personalInformation.confirmation.securityVerification.instruction\\]['\"]:");
+  @Test
+  void confirmationDisplayTextIsCentralizedAndReferencedByCodes() throws IOException {
+    String yaml = Files.readString(PERSONAL_INFORMATION_YAML);
+    assertThat(yaml).containsPattern("['\"]\\[personalInformation.confirmation.title\\]['\"]:");
+    assertThat(yaml).containsPattern("['\"]\\[personalInformation.confirmation.title\\]['\"]:");
+    assertThat(yaml)
+        .containsPattern("['\"]\\[personalInformation.confirmation.reviewMessage\\]['\"]:");
+    assertThat(yaml)
+        .containsPattern("['\"]\\[personalInformation.confirmation.beforeLabel\\]['\"]:");
+    assertThat(yaml)
+        .containsPattern("['\"]\\[personalInformation.confirmation.afterLabel\\]['\"]:");
+    assertThat(yaml)
+        .containsPattern(
+            "['\"]\\[personalInformation.confirmation.securityVerification.label\\]['\"]:");
+    assertThat(yaml)
+        .containsPattern(
+            "['\"]\\[personalInformation.confirmation.securityVerification.instruction\\]['\"]:");
 
-        assertThat(yaml).contains("titleCode: personalInformation.confirmation.title");
-        assertThat(yaml).contains("reviewMessageCode: personalInformation.confirmation.reviewMessage");
-        assertThat(yaml).contains("beforeLabelCode: personalInformation.confirmation.beforeLabel");
-        assertThat(yaml).contains("afterLabelCode: personalInformation.confirmation.afterLabel");
-        assertThat(yaml).contains("labelCode: personalInformation.confirmation.securityVerification.label");
-        assertThat(yaml).contains("instructionCode: personalInformation.confirmation.securityVerification.instruction");
-    }
+    assertThat(yaml).contains("titleCode: personalInformation.confirmation.title");
+    assertThat(yaml).contains("reviewMessageCode: personalInformation.confirmation.reviewMessage");
+    assertThat(yaml).contains("beforeLabelCode: personalInformation.confirmation.beforeLabel");
+    assertThat(yaml).contains("afterLabelCode: personalInformation.confirmation.afterLabel");
+    assertThat(yaml)
+        .contains("labelCode: personalInformation.confirmation.securityVerification.label");
+    assertThat(yaml)
+        .contains(
+            "instructionCode: personalInformation.confirmation.securityVerification.instruction");
+  }
 }

@@ -7,8 +7,8 @@ import org.springframework.context.annotation.Configuration;
 @EnableConfigurationProperties(ApimProperties.class)
 public class ApimRoutingValidationConfig {
 
-    public ApimRoutingValidationConfig(ApimProperties apimProperties) {
-        // validate at startup and fail fast if routing is invalid
-        apimProperties.validateRouting();
-    }
+  public ApimRoutingValidationConfig(ApimProperties apimProperties) {
+    // validate at startup and fail fast if routing is invalid
+    apimProperties.validateRouting();
+  }
 }

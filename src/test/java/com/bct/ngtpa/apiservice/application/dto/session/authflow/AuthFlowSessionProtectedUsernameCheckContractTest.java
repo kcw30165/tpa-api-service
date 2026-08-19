@@ -9,26 +9,29 @@ import org.junit.jupiter.api.Test;
 
 class AuthFlowSessionProtectedUsernameCheckContractTest {
 
-    @Test
-    void sessionDataHasNoPlaintextUsernameCheckComponent() {
-        assertThat(Arrays.stream(AuthFlowSessionData.class.getRecordComponents())
+  @Test
+  void sessionDataHasNoPlaintextUsernameCheckComponent() {
+    assertThat(
+            Arrays.stream(AuthFlowSessionData.class.getRecordComponents())
                 .map(RecordComponent::getName))
-                .containsExactly("contactType", "maskedDestination", "attributes")
-                .doesNotContain("usernameCheck");
-    }
+        .containsExactly("contactType", "maskedDestination", "attributes")
+        .doesNotContain("usernameCheck");
+  }
 
-    @Test
-    void encryptedUsernameCheckIsStoredOnlyAsProtectedAttributes() {
-        var data = new AuthFlowSessionData(
-                "EMAIL",
-                "m****r@example.com",
-                Map.of(
-                        RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_CIPHERTEXT, "enc-value",
-                        RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_KEY_VERSION, "v1",
-                        RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_ALGORITHM, "AES_GCM_V1"));
+  @Test
+  void encryptedUsernameCheckIsStoredOnlyAsProtectedAttributes() {
+    var data =
+        new AuthFlowSessionData(
+            "EMAIL",
+            "m****r@example.com",
+            Map.of(
+                RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_CIPHERTEXT, "enc-value",
+                RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_KEY_VERSION, "v1",
+                RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_ALGORITHM, "AES_GCM_V1"));
 
-        assertThat(data.attributes())
-                .containsEntry(RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_CIPHERTEXT, "enc-value");
-        assertThat(data.toString()).doesNotContain("enc-value");
-    }
+    assertThat(data.attributes())
+        .containsEntry(
+            RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_CIPHERTEXT, "enc-value");
+    assertThat(data.toString()).doesNotContain("enc-value");
+  }
 }
