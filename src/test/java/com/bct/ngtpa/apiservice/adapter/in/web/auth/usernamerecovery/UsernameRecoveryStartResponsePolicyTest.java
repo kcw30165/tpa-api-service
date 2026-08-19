@@ -100,13 +100,7 @@ class UsernameRecoveryStartResponsePolicyTest {
         assertThat(body.success()).isFalse();
         assertThat(body.status()).isEqualTo(ApiStatus.BUSINESS_REJECTED);
         assertThat(body.result().nextStep()).isEqualTo(WorkflowNextStep.RESTART_FLOW);
-        assertThat(body.result().data()).isNotNull();
-        assertThat(body.result().data().csrfToken()).isNull();
-        assertThat(body.result().data().expiresInSeconds()).isNull();
-        assertThat(body.result().data().schemes()).singleElement().satisfies(scheme -> {
-            assertThat(scheme.schemeRef()).isNull();
-            assertThat(scheme.isRegistered()).isFalse();
-        });
+        assertThat(body.result().data()).isNull();
         assertThat(body.messages()).singleElement().satisfies(message -> {
             assertThat(message.type()).isEqualTo("INFO");
             assertThat(message.code()).isEqualTo("label.usernamerecovery.complete.registration");
