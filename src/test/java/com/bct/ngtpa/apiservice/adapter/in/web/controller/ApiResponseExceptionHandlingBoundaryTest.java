@@ -88,8 +88,18 @@ class ApiResponseExceptionHandlingBoundaryTest {
   }
 
   private static String readController(String fileName) throws IOException {
-    return readSource(
-        "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/" + fileName);
+    String path =
+        switch (fileName) {
+          case "NotificationController.java" ->
+              "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/notification/NotificationController.java";
+          case "PersonalInformationController.java" ->
+              "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/personalinformation/PersonalInformationController.java";
+          case "ContributionController.java" ->
+              "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/contribution/ContributionController.java";
+          default ->
+              throw new IllegalArgumentException("Unsupported controller source: " + fileName);
+        };
+    return readSource(path);
   }
 
   private static String readSource(String path) throws IOException {

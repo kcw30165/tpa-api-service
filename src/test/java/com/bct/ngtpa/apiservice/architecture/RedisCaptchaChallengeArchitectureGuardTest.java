@@ -83,7 +83,7 @@ class RedisCaptchaChallengeArchitectureGuardTest {
 
   @Test
   void p8_5AllowsControllerEndpointsWithoutChangingRedisBoundary() throws Exception {
-    assertClassPresent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController");
+    assertClassPresent("com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.CaptchaController");
   }
 
   private static void assertClassPresent(String className) throws Exception {

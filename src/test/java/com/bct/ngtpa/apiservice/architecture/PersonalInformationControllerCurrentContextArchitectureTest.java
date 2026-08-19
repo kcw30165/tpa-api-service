@@ -12,7 +12,7 @@ class PersonalInformationControllerCurrentContextArchitectureTest {
 
   private static final Path CONTROLLER =
       Path.of(
-          "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/PersonalInformationController.java");
+          "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/personalinformation/PersonalInformationController.java");
 
   @Test
   void controllerUsesCurrentCurrentPortalAccessContextResolverOnly() throws Exception {

@@ -38,7 +38,7 @@ class Task0043FlowSpecificCsrfHttpMappingTest {
     String controller =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthLogoutController.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/logout/LogoutController.java"));
     String errors =
         Files.readString(
             Path.of(

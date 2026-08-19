@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.adapter.in.web.controller;
+package com.bct.ngtpa.apiservice.adapter.in.web.personalinformation;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateResponseMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.mapper.PersonalInformationUpdateWebMapper;

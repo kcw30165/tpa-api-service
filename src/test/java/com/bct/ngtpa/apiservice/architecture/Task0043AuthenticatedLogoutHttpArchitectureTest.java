@@ -12,7 +12,7 @@ class Task0043AuthenticatedLogoutHttpArchitectureTest {
     String source =
         java.nio.file.Files.readString(
             java.nio.file.Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthLogoutController.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/logout/LogoutController.java"));
     org.assertj.core.api.Assertions.assertThat(source)
         .contains(
             "@PostMapping(\"/logout\")",

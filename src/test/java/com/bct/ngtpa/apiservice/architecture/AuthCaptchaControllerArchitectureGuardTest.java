@@ -16,11 +16,11 @@ class AuthCaptchaControllerArchitectureGuardTest {
     var classes =
         new ClassFileImporter()
             .withImportOption(new ImportOption.DoNotIncludeTests())
-            .importPackages("com.bct.ngtpa.apiservice.adapter.in.web.controller");
+            .importPackages("com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha");
 
     noClasses()
         .that()
-        .haveSimpleName("AuthCaptchaController")
+        .haveSimpleName("CaptchaController")
         .should()
         .dependOnClassesThat()
         .resideInAnyPackage(
@@ -39,10 +39,10 @@ class AuthCaptchaControllerArchitectureGuardTest {
     var classes =
         new ClassFileImporter()
             .withImportOption(new ImportOption.DoNotIncludeTests())
-            .importPackages("com.bct.ngtpa.apiservice.adapter.in.web.controller");
+            .importPackages("com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha");
     noClasses()
         .that()
-        .haveSimpleName("AuthCaptchaController")
+        .haveSimpleName("CaptchaController")
         .should()
         .dependOnClassesThat()
         .haveSimpleName("RegistrationHttpResponses")

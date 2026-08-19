@@ -2,6 +2,8 @@ package com.bct.ngtpa.apiservice.architecture;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
+import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchRule;
@@ -32,10 +34,23 @@ class UsernameRecoveryWebDtoArchitectureGuardTest {
             .withImportOption(new ImportOption.DoNotIncludeTests())
             .importPackages("com.bct.ngtpa.apiservice");
 
+    DescribedPredicate<JavaClass> webDtoOrMapper =
+        new DescribedPredicate<>("Username Recovery web DTO or mapper classes") {
+          @Override
+          public boolean test(JavaClass input) {
+            String simpleName = input.getSimpleName();
+            return input
+                    .getPackageName()
+                    .equals("com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery")
+                && (simpleName.endsWith("Request")
+                    || simpleName.endsWith("Response")
+                    || simpleName.endsWith("Mapper"));
+          }
+        };
+
     ArchRule rule =
         noClasses()
-            .that()
-            .resideInAPackage(WEB_PACKAGE)
+            .that(webDtoOrMapper)
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage(

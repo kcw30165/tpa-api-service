@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.adapter.in.web.controller;
+package com.bct.ngtpa.apiservice.adapter.in.web.referencedata;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.support.RequestLanguageResolver;
 import com.bct.ngtpa.apiservice.application.dto.GetReferenceDataCountriesCommand;

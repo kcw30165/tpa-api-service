@@ -4,12 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryCancelResponsePolicy;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryCancelWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryRequestResponsePolicy;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryRequestWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryStartResponsePolicy;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryStartWebMapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthUsernameRecoveryController;
 import com.bct.ngtpa.apiservice.application.port.in.CancelUsernameRecoveryUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.RequestUsernameRecoveryUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.StartUsernameRecoveryUseCase;
@@ -33,21 +33,21 @@ import org.springframework.web.bind.annotation.RestController;
 class UsernameRecoveryControllerCompositionIntegrationTest {
   private static final Path CONTROLLER =
       Path.of(
-          "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthUsernameRecoveryController.java");
+          "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/usernamerecovery/UsernameRecoveryController.java");
   private static final Path CONFIG =
       Path.of("src/main/java/com/bct/ngtpa/apiservice/config/UsernameRecoveryFeatureConfig.java");
 
   @Test
   void controllerPublishesExactlyStartRequestAndCancelUnderCanonicalPath() {
-    assertThat(AuthUsernameRecoveryController.class).hasAnnotation(RestController.class);
-    RequestMapping base = AuthUsernameRecoveryController.class.getAnnotation(RequestMapping.class);
+    assertThat(UsernameRecoveryController.class).hasAnnotation(RestController.class);
+    RequestMapping base = UsernameRecoveryController.class.getAnnotation(RequestMapping.class);
     assertThat(base.value()).containsExactly("/api/v1/auth/username-recovery");
     assertThat(mappedPostPaths()).containsExactlyInAnyOrder("/start", "/request", "/cancel");
   }
 
   @Test
   void controllerConstructorComposesOnlyCommittedPortsMappersPoliciesAndCookieWriter() {
-    Constructor<?>[] constructors = AuthUsernameRecoveryController.class.getDeclaredConstructors();
+    Constructor<?>[] constructors = UsernameRecoveryController.class.getDeclaredConstructors();
     assertThat(constructors).hasSize(1);
     assertThat(Arrays.asList(constructors[0].getParameterTypes()))
         .containsExactly(
@@ -147,18 +147,18 @@ class UsernameRecoveryControllerCompositionIntegrationTest {
 
   @Test
   void controllerRemainsConcreteFinalAndHasNoMutableStaticState() {
-    int modifiers = AuthUsernameRecoveryController.class.getModifiers();
+    int modifiers = UsernameRecoveryController.class.getModifiers();
     assertThat(Modifier.isFinal(modifiers)).isTrue();
     assertThat(Modifier.isAbstract(modifiers)).isFalse();
     assertThat(
-            Arrays.stream(AuthUsernameRecoveryController.class.getDeclaredFields())
+            Arrays.stream(UsernameRecoveryController.class.getDeclaredFields())
                 .filter(field -> Modifier.isStatic(field.getModifiers()))
                 .allMatch(field -> Modifier.isFinal(field.getModifiers())))
         .isTrue();
   }
 
   private static List<String> mappedPostPaths() {
-    return Arrays.stream(AuthUsernameRecoveryController.class.getDeclaredMethods())
+    return Arrays.stream(UsernameRecoveryController.class.getDeclaredMethods())
         .filter(method -> method.isAnnotationPresent(PostMapping.class))
         .map(
             method -> {

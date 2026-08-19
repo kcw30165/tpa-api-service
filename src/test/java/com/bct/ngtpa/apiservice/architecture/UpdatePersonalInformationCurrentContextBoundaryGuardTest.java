@@ -29,7 +29,7 @@ class UpdatePersonalInformationCurrentContextBoundaryGuardTest {
     String source =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/PersonalInformationController.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/personalinformation/PersonalInformationController.java"));
     assertTrue(containsIgnoringWhitespace(source, "CurrentPortalAccessContextResolver"));
     assertTrue(containsIgnoringWhitespace(source, "currentPortalAccessContextResolver.current()"));
     assertFalse(containsIgnoringWhitespace(source, "context.accountRef()"));

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.bct.ngtpa.apiservice.adapter.in.web.advice.ApiExceptionHandler;
 import com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionSummaryProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.config.ContributionWebDisplayConfigProvider;
+import com.bct.ngtpa.apiservice.adapter.in.web.contribution.ContributionController;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestHeaderContextWebFilter;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingWebFilter;
@@ -495,7 +496,7 @@ class ContributionControllerTest {
         .expectStatus()
         .isOk()
         .expectHeader()
-        .contentType(ContributionController.EXCEL_MEDIA_TYPE)
+        .contentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         .expectHeader()
         .valueEquals("Content-Disposition", "attachment; filename=\"Contribution_Summary.xlsx\"")
         .expectBody()
@@ -514,7 +515,7 @@ class ContributionControllerTest {
   // webClient(unusedGetUseCase(), exportUseCase)
   // .get()
   // .uri(uriBuilder -> uriBuilder.path("/api/v1/contributions/export").build())
-  // .header("Accept", ContributionController.EXCEL_MEDIA_TYPE)
+  // .header("Accept", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
   // .exchange()
   // .expectStatus().isEqualTo(HttpStatus.BAD_GATEWAY)
   // .expectHeader().contentType("application/json")

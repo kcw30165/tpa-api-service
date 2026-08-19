@@ -177,7 +177,7 @@ class CaptchaWebMapperTest {
     String controllerSource =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthCaptchaController.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/captcha/CaptchaController.java"));
 
     assertThat(mapperSource + controllerSource)
         .doesNotContain("Invalid captcha")

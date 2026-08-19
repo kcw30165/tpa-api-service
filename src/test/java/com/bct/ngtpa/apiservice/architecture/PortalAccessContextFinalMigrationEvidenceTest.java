@@ -117,7 +117,7 @@ class PortalAccessContextFinalMigrationEvidenceTest {
   void referenceDataCountriesUsesInboundContextAndContextFreeService() throws Exception {
     Path controller =
         Path.of(
-            "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/ReferenceDataController.java");
+            "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/referencedata/ReferenceDataController.java");
     Path service = USECASE_PACKAGE.resolve("GetReferenceDataCountriesService.java");
 
     String controllerSource = Files.readString(controller);
@@ -153,9 +153,9 @@ class PortalAccessContextFinalMigrationEvidenceTest {
 
   private List<String> selectedAccountControllers() {
     return List.of(
-        "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/PersonalInformationController.java",
-        "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/NotificationController.java",
-        "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/ContributionController.java");
+        "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/personalinformation/PersonalInformationController.java",
+        "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/notification/NotificationController.java",
+        "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/contribution/ContributionController.java");
   }
 
   private boolean contains(Path path, String token) {

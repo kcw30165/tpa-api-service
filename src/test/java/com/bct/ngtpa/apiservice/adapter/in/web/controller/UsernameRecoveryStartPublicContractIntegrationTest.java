@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryCancelResponsePolicy;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryCancelWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryRequestResponsePolicy;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryRequestWebMapper;
@@ -272,8 +273,8 @@ class UsernameRecoveryStartPublicContractIntegrationTest {
     SessionCookiePolicy authFlow =
         new SessionCookiePolicy(
             "auth_flow_sid", COOKIE_PATH, 600, true, true, SessionCookieSameSite.STRICT);
-    AuthUsernameRecoveryController controller =
-        new AuthUsernameRecoveryController(
+    UsernameRecoveryController controller =
+        new UsernameRecoveryController(
             start,
             new UsernameRecoveryStartWebMapper(),
             new UsernameRecoveryStartResponsePolicy(),

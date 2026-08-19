@@ -317,6 +317,10 @@ refactor: separate controller advice and internal APIs
 **Validation qualification:** The two manually repaired source-sensitive tests passed; the full suite was not rerun by explicit solution-owner direction.
 
 ### Stage 003: Standalone Capability Packages
+**Implementation status:** READY_FOR_ARCHITECT_REVIEW
+**Evidence:** `target\evidence\controller-refactoring-003-20260819-173419`
+**Accepted package facts:** Seven standalone controllers moved into approved capability packages; three approved class renames applied.
+
 
 **Purpose:** Move standalone authentication and business controllers into capability packages and remove redundant class prefixes where safe.
 
@@ -329,6 +333,8 @@ refactor: separate controller advice and internal APIs
 ```text
 refactor: organize standalone controllers by capability
 ```
+
+**Validation evidence:** Existing fresh Maven Surefire XML reports, all with zero failures and zero errors; Maven was not rerun during final report generation.
 
 ### Stage 004: Login HTTP Boundary
 

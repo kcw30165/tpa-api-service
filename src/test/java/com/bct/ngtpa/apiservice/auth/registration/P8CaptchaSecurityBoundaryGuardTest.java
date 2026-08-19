@@ -13,7 +13,7 @@ class P8CaptchaSecurityBoundaryGuardTest {
     String source =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthCaptchaController.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/captcha/CaptchaController.java"));
 
     assertThat(source)
         .doesNotContain("auth_flow_sid")
@@ -27,7 +27,7 @@ class P8CaptchaSecurityBoundaryGuardTest {
     String controller =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthCaptchaController.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/captcha/CaptchaController.java"));
     String mapper =
         Files.readString(
             Path.of(

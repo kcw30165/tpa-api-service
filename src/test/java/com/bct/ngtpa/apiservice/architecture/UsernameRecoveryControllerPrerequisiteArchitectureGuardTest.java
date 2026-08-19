@@ -27,7 +27,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Repair 024A controller-prerequisite architecture guard.
  *
- * <p>Locks: the Task 024 {@code AuthUsernameRecoveryController} is present as a concrete thin
+ * <p>Locks: the Task 024 {@code UsernameRecoveryController} is present as a concrete thin
  * controller with no dependency on concrete services, Redis, APIM, configuration internals, or
  * other workflow controllers; the {@link UsernameRecoveryCookieWriter} stays Spring-free and
  * instruction-producing; the richer Request/Cancel inbound-port signatures are the single abstract
@@ -62,9 +62,9 @@ class UsernameRecoveryControllerPrerequisiteArchitectureGuardTest {
     ArchRule rule =
         classes()
             .that()
-            .resideInAPackage("..adapter.in.web.controller..")
+            .resideInAPackage("..adapter.in.web.auth.usernamerecovery..")
             .and()
-            .haveSimpleName("AuthUsernameRecoveryController")
+            .haveSimpleName("UsernameRecoveryController")
             .should()
             .notBeInterfaces()
             .andShould()
@@ -82,7 +82,7 @@ class UsernameRecoveryControllerPrerequisiteArchitectureGuardTest {
                 "org.springframework..",
                 "reactor..",
                 "java..")
-            .as("AuthUsernameRecoveryController is the concrete thin Task 024 controller");
+            .as("UsernameRecoveryController is the concrete thin Task 024 controller");
     rule.check(classes);
   }
 

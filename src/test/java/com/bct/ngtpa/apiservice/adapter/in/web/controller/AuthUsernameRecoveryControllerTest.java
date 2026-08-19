@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryCancelResponsePolicy;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryCancelWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryRequestResponsePolicy;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryRequestWebMapper;
@@ -742,7 +743,7 @@ class AuthUsernameRecoveryControllerTest {
     return command -> Mono.error(new AssertionError("start must not be called"));
   }
 
-  private static AuthUsernameRecoveryController controller(
+  private static UsernameRecoveryController controller(
       StartUsernameRecoveryUseCase start,
       RequestUsernameRecoveryUseCase request,
       CancelUsernameRecoveryUseCase cancel) {
@@ -754,7 +755,7 @@ class AuthUsernameRecoveryControllerTest {
             true,
             true,
             SessionCookieSameSite.STRICT);
-    return new AuthUsernameRecoveryController(
+    return new UsernameRecoveryController(
         start,
         new UsernameRecoveryStartWebMapper(),
         new UsernameRecoveryStartResponsePolicy(),

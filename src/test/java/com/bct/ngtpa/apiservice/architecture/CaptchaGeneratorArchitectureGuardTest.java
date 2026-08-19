@@ -50,7 +50,7 @@ class CaptchaGeneratorArchitectureGuardTest {
   @Test
   void captchaGeneratorDoesNotIntroduceRedisAdapterAndAllowsWebEndpoints() throws Exception {
     assertClassAbsent("com.bct.ngtpa.apiservice.adapter.out.redis.CaptchaChallengeRedisAdapter");
-    assertClassPresent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController");
+    assertClassPresent("com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.CaptchaController");
   }
 
   private static void assertClassAbsent(String className) throws Exception {

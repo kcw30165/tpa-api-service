@@ -1,6 +1,5 @@
-package com.bct.ngtpa.apiservice.adapter.in.web.controller;
+package com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.CaptchaHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.dto.CaptchaChallengeResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.dto.CaptchaRefreshRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.dto.CaptchaRefreshResponse;
@@ -32,7 +31,7 @@ import reactor.core.publisher.Mono;
 @RestController
 @RequestMapping("/api/v1/auth/captcha")
 @RequiredArgsConstructor
-public class AuthCaptchaController {
+public class CaptchaController {
 
   private final CreateCaptchaChallengeUseCase createCaptchaChallengeUseCase;
   private final VerifyCaptchaUseCase verifyCaptchaUseCase;

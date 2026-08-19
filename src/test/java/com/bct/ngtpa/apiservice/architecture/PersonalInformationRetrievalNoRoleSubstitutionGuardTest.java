@@ -28,7 +28,7 @@ class PersonalInformationRetrievalNoRoleSubstitutionGuardTest {
   void trustedControllerSuppliesAndServicePropagatesRole() throws Exception {
     assertThat(
             source(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/PersonalInformationController.java"))
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/personalinformation/PersonalInformationController.java"))
         .contains("portalAccessContext.actor().actorUserRole()");
     assertThat(
             source(

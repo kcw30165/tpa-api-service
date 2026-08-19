@@ -52,3 +52,36 @@ Phase 07 reconciles active documentation only. Historical prompts, plans, genera
 - post-manual-fix full suite: NOT RERUN by explicit solution-owner direction
 - historical full suite before manual fix: 3799 tests, 0 failures, 3 errors, 12 skipped; all three errors were in the two manually repaired test classes
 - Stage 002 validation qualification: bounded repair validation PASS; architect must assess the accepted full-suite exception
+## Controller Refactoring Stage 003
+
+- stage: 003 standalone-capability-packages
+- Stage 002 architect status: PASS
+- Stage 002 approved commit hash: `8eedd7ab39bc6ac63735c1ae9970fff22b3995c0`
+- implementation status: READY_FOR_ARCHITECT_REVIEW
+- exact evidence directory: `target\evidence\controller-refactoring-003-20260819-173419`
+- accepted renames: `AuthCaptchaController` to `CaptchaController`; `AuthLogoutController` to `LogoutController`; `AuthUsernameRecoveryController` to `UsernameRecoveryController`
+- accepted moves: captcha, logout, username recovery, contribution, notification, personal information, and reference data into capability packages
+- preserved endpoint count: 14
+- Stage 002 boundaries: preservation evidence PASS from current Surefire reports
+- stage_004_started=false
+- architect_status=PENDING
+- commit_authorization=false
+
+- Surefire evidence totals: tests=3790, failures=0, errors=0, skipped=12
+- Surefire report count: 863
+- validation source: existing `target/surefire-reports/TEST-*.xml`; Maven not rerun for final report generation
+- validation freshness: PASS against all current changed Java sources
+- endpoint contract audit: PASS; 14 effective method endpoints preserved
+- source ownership audit: PASS; seven old sources absent and seven approved targets present
+
+### Stage 003 Classification Documentation Repair 016
+
+- repair type: documentation only
+- corrected entries: seven source-to-target MOVE/RENAME classifications
+- production changes: none
+- test changes: none
+- Maven rerun: false
+- validation evidence reused: fresh passing Surefire XML, endpoint audit PASS, source ownership audit PASS
+- architect status: PENDING corrected-bundle review
+- commit authorization: false
+- stage_004_started=false

@@ -1,6 +1,5 @@
-package com.bct.ngtpa.apiservice.adapter.in.web.controller;
+package com.bct.ngtpa.apiservice.adapter.in.web.auth.logout;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.logout.AuthenticatedLogoutWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiError;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
@@ -21,7 +20,7 @@ import reactor.core.publisher.Mono;
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
-public final class AuthLogoutController {
+public final class LogoutController {
   private final AuthenticatedLogoutUseCase useCase;
   private final AuthenticatedLogoutWebMapper mapper;
   private final ValidateAuthenticatedSessionUseCase sessionValidation;

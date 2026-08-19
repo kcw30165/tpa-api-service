@@ -1,17 +1,5 @@
-package com.bct.ngtpa.apiservice.adapter.in.web.controller;
+package com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryCancelResponsePolicy;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryCancelWebMapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryCookieWriter;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryRequestDataResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryRequestResponsePolicy;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryRequestWebMapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryResponsePolicy;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryStartDataResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryStartRequest;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryStartResponsePolicy;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryStartWebMapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryWorkflowResultResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.CookieHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.CsrfHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.IdempotencyHttpResponses;
@@ -65,7 +53,7 @@ import reactor.core.publisher.Mono;
  */
 @RestController
 @RequestMapping("/api/v1/auth/username-recovery")
-public final class AuthUsernameRecoveryController {
+public final class UsernameRecoveryController {
 
   private static final String SCHEME_REF_HEADER = "Scheme-Ref";
 
@@ -81,7 +69,7 @@ public final class AuthUsernameRecoveryController {
   private final UsernameRecoveryCookieWriter cookieWriter;
   private final HttpSessionCookieAdapter cookieAdapter;
 
-  public AuthUsernameRecoveryController(
+  public UsernameRecoveryController(
       StartUsernameRecoveryUseCase startUseCase,
       UsernameRecoveryStartWebMapper startMapper,
       UsernameRecoveryStartResponsePolicy startPolicy,
