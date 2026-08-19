@@ -6,5 +6,5 @@ import reactor.core.publisher.Mono;
 
 public interface CaptchaImageGeneratorPort {
 
-    Mono<GeneratedCaptcha> generate(CaptchaPolicy policy);
+  Mono<GeneratedCaptcha> generate(CaptchaPolicy policy);
 }

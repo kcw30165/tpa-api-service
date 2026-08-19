@@ -6,5 +6,5 @@ import reactor.core.publisher.Mono;
 
 public interface VerifyCaptchaUseCase {
 
-    Mono<VerifyCaptchaChallengeResult> verify(VerifyCaptchaChallengeCommand command);
+  Mono<VerifyCaptchaChallengeResult> verify(VerifyCaptchaChallengeCommand command);
 }

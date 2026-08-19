@@ -14,33 +14,33 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class GetMessageBoardMessageItem {
 
-    @JsonProperty("msg-code")
-    private String msgCode;
+  @JsonProperty("msg-code")
+  private String msgCode;
 
-    @JsonProperty("msg-code-long")
-    private String msgCodeLong;
+  @JsonProperty("msg-code-long")
+  private String msgCodeLong;
 
-    @JsonProperty("seq")
-    private Integer seq;
+  @JsonProperty("seq")
+  private Integer seq;
 
-    @JsonProperty("msg-cate")
-    private String msgCate;
+  @JsonProperty("msg-cate")
+  private String msgCate;
 
-    @JsonProperty("msg-title")
-    private String msgTitle;
+  @JsonProperty("msg-title")
+  private String msgTitle;
 
-    @JsonProperty("msg-content-chi")
-    private String msgContentChi;
+  @JsonProperty("msg-content-chi")
+  private String msgContentChi;
 
-    @JsonProperty("msg-content-eng")
-    private String msgContentEng;
+  @JsonProperty("msg-content-eng")
+  private String msgContentEng;
 
-    @JsonProperty("start-datetime")
-    private String startDatetime;
+  @JsonProperty("start-datetime")
+  private String startDatetime;
 
-    @JsonProperty("msg-status")
-    private String msgStatus;
+  @JsonProperty("msg-status")
+  private String msgStatus;
 
-    @JsonProperty("is-read")
-    private boolean isRead;
+  @JsonProperty("is-read")
+  private boolean isRead;
 }

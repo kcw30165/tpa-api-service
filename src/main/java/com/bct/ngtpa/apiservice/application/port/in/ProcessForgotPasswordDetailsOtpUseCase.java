@@ -4,5 +4,5 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailso
 import reactor.core.publisher.Mono;
 
 public interface ProcessForgotPasswordDetailsOtpUseCase {
-    Mono<ForgotPasswordDetailsOtpResult> process(ForgotPasswordDetailsOtpCommand command);
+  Mono<ForgotPasswordDetailsOtpResult> process(ForgotPasswordDetailsOtpCommand command);
 }

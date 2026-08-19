@@ -10,40 +10,36 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class ConfigVariantResolverConfiguration {
 
-    @Bean
-    ConfigVariantCandidateGenerator configVariantCandidateGenerator() {
-        return new ConfigVariantCandidateGenerator();
-    }
+  @Bean
+  ConfigVariantCandidateGenerator configVariantCandidateGenerator() {
+    return new ConfigVariantCandidateGenerator();
+  }
 
-    @Bean
-    ConfigKeyCandidateStrategy errorMessageKeyCandidateStrategy(
-            ConfigVariantCandidateGenerator configVariantCandidateGenerator) {
-        return new DefaultConfigKeyCandidateStrategy(
-                configVariantCandidateGenerator,
-                ConfigCategory.ERROR_MESSAGE);
-    }
+  @Bean
+  ConfigKeyCandidateStrategy errorMessageKeyCandidateStrategy(
+      ConfigVariantCandidateGenerator configVariantCandidateGenerator) {
+    return new DefaultConfigKeyCandidateStrategy(
+        configVariantCandidateGenerator, ConfigCategory.ERROR_MESSAGE);
+  }
 
-    @Bean
-    ConfigKeyCandidateStrategy currencyMappingKeyCandidateStrategy(
-            ConfigVariantCandidateGenerator configVariantCandidateGenerator) {
-        return new DefaultConfigKeyCandidateStrategy(
-                configVariantCandidateGenerator,
-                ConfigCategory.CURRENCY_MAPPING);
-    }
+  @Bean
+  ConfigKeyCandidateStrategy currencyMappingKeyCandidateStrategy(
+      ConfigVariantCandidateGenerator configVariantCandidateGenerator) {
+    return new DefaultConfigKeyCandidateStrategy(
+        configVariantCandidateGenerator, ConfigCategory.CURRENCY_MAPPING);
+  }
 
-    @Bean
-    ConfigKeyCandidateStrategy displayDateFormatKeyCandidateStrategy(
-            ConfigVariantCandidateGenerator configVariantCandidateGenerator) {
-        return new DefaultConfigKeyCandidateStrategy(
-                configVariantCandidateGenerator,
-                ConfigCategory.DISPLAY_DATE_FORMAT);
-    }
+  @Bean
+  ConfigKeyCandidateStrategy displayDateFormatKeyCandidateStrategy(
+      ConfigVariantCandidateGenerator configVariantCandidateGenerator) {
+    return new DefaultConfigKeyCandidateStrategy(
+        configVariantCandidateGenerator, ConfigCategory.DISPLAY_DATE_FORMAT);
+  }
 
-    @Bean
-    ConfigKeyCandidateStrategy displayAmountFormatKeyCandidateStrategy(
-            ConfigVariantCandidateGenerator configVariantCandidateGenerator) {
-        return new DefaultConfigKeyCandidateStrategy(
-                configVariantCandidateGenerator,
-                ConfigCategory.DISPLAY_AMOUNT_FORMAT);
-    }
+  @Bean
+  ConfigKeyCandidateStrategy displayAmountFormatKeyCandidateStrategy(
+      ConfigVariantCandidateGenerator configVariantCandidateGenerator) {
+    return new DefaultConfigKeyCandidateStrategy(
+        configVariantCandidateGenerator, ConfigCategory.DISPLAY_AMOUNT_FORMAT);
+  }
 }

@@ -10,38 +10,38 @@ import java.util.Objects;
  */
 public class ApplicationException extends RuntimeException {
 
-    private final String errorCode;
+  private final String errorCode;
 
-    public ApplicationException(String errorCode) {
-        super();
-        this.errorCode = requireErrorCode(errorCode);
-    }
+  public ApplicationException(String errorCode) {
+    super();
+    this.errorCode = requireErrorCode(errorCode);
+  }
 
-    public ApplicationException(String errorCode, String diagnosticMessage) {
-        super(diagnosticMessage);
-        this.errorCode = requireErrorCode(errorCode);
-    }
+  public ApplicationException(String errorCode, String diagnosticMessage) {
+    super(diagnosticMessage);
+    this.errorCode = requireErrorCode(errorCode);
+  }
 
-    public ApplicationException(String errorCode, Throwable cause) {
-        super(cause);
-        this.errorCode = requireErrorCode(errorCode);
-    }
+  public ApplicationException(String errorCode, Throwable cause) {
+    super(cause);
+    this.errorCode = requireErrorCode(errorCode);
+  }
 
-    public ApplicationException(String errorCode, String diagnosticMessage, Throwable cause) {
-        super(diagnosticMessage, cause);
-        this.errorCode = requireErrorCode(errorCode);
-    }
+  public ApplicationException(String errorCode, String diagnosticMessage, Throwable cause) {
+    super(diagnosticMessage, cause);
+    this.errorCode = requireErrorCode(errorCode);
+  }
 
-    public String getErrorCode() {
-        return errorCode;
-    }
+  public String getErrorCode() {
+    return errorCode;
+  }
 
-    private static String requireErrorCode(String errorCode) {
-        Objects.requireNonNull(errorCode, "errorCode must not be null");
-        var trimmed = errorCode.trim();
-        if (trimmed.isEmpty()) {
-            throw new IllegalArgumentException("errorCode must not be blank");
-        }
-        return trimmed;
+  private static String requireErrorCode(String errorCode) {
+    Objects.requireNonNull(errorCode, "errorCode must not be null");
+    var trimmed = errorCode.trim();
+    if (trimmed.isEmpty()) {
+      throw new IllegalArgumentException("errorCode must not be blank");
     }
+    return trimmed;
+  }
 }

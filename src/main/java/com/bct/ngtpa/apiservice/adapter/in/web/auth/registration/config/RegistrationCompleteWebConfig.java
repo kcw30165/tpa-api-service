@@ -8,12 +8,11 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class RegistrationCompleteWebConfig {
-    @Bean
-    @ConditionalOnMissingBean
-    CompleteRegistrationWebMapper completeRegistrationWebMapper(
-            RegistrationIdempotencyProperties idempotency,
-            RegistrationSuccessPageMapper successPageMapper) {
-        return new CompleteRegistrationWebMapper(
-                idempotency.completeTtl(), successPageMapper);
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  CompleteRegistrationWebMapper completeRegistrationWebMapper(
+      RegistrationIdempotencyProperties idempotency,
+      RegistrationSuccessPageMapper successPageMapper) {
+    return new CompleteRegistrationWebMapper(idempotency.completeTtl(), successPageMapper);
+  }
 }

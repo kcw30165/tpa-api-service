@@ -12,13 +12,26 @@ import reactor.core.publisher.Mono;
 
 @RequiredArgsConstructor
 public class UpdateNotificationsReadStatusService implements UpdateNotificationsReadStatusUseCase {
-    private static final DateTimeFormatter DATE_FORMATTER=DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    private final ApimNotificationReadStatusPort apimNotificationReadStatusPort;
-    private final ReferenceDatePort referenceDatePort;
-    @Override public Mono<UpdateNotificationsReadStatusResult> execute(UpdateNotificationsReadStatusCommand command) {
-        return referenceDatePort.resolveReferenceDate(command.accountEnv()).flatMap(refDate ->
-                apimNotificationReadStatusPort.updateReadStatus(new UpdateNotificationsReadStatusCommand(
-                        command.accountEnv(),command.mbrType(),command.notificationIds(),command.policyNo(),command.certNo(),
-                        command.userId(),refDate.format(DATE_FORMATTER),MessageStatus.READ)));
-    }
+  private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+  private final ApimNotificationReadStatusPort apimNotificationReadStatusPort;
+  private final ReferenceDatePort referenceDatePort;
+
+  @Override
+  public Mono<UpdateNotificationsReadStatusResult> execute(
+      UpdateNotificationsReadStatusCommand command) {
+    return referenceDatePort
+        .resolveReferenceDate(command.accountEnv())
+        .flatMap(
+            refDate ->
+                apimNotificationReadStatusPort.updateReadStatus(
+                    new UpdateNotificationsReadStatusCommand(
+                        command.accountEnv(),
+                        command.mbrType(),
+                        command.notificationIds(),
+                        command.policyNo(),
+                        command.certNo(),
+                        command.userId(),
+                        refDate.format(DATE_FORMATTER),
+                        MessageStatus.READ)));
+  }
 }

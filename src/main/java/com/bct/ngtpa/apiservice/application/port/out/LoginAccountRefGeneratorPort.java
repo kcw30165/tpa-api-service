@@ -4,5 +4,5 @@ import com.bct.ngtpa.apiservice.application.dto.auth.login.account.LoginAccountR
 
 @FunctionalInterface
 public interface LoginAccountRefGeneratorPort {
-    LoginAccountRef generate();
+  LoginAccountRef generate();
 }

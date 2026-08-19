@@ -12,62 +12,67 @@ import org.junit.jupiter.api.Test;
 
 class RegistrationUsernameCheckBoundaryTest {
 
-    @Test
-    void selectedTrustModelContainsOnlyTrustCodeAndAccountEnv() {
-        assertThat(componentNames(RegistrationSelectedTrust.class))
-                .containsExactly("trustCode", "accountEnv")
-                .doesNotContain("policyNo", "certNo");
-    }
+  @Test
+  void selectedTrustModelContainsOnlyTrustCodeAndAccountEnv() {
+    assertThat(componentNames(RegistrationSelectedTrust.class))
+        .containsExactly("trustCode", "accountEnv")
+        .doesNotContain("policyNo", "certNo");
+  }
 
-    @Test
-    void resultStatusMapsIntendedNextSteps() {
-        assertThat(CheckRegistrationUsernameResult.nextStepFor(
+  @Test
+  void resultStatusMapsIntendedNextSteps() {
+    assertThat(
+            CheckRegistrationUsernameResult.nextStepFor(
                 CheckRegistrationUsernameResultStatus.USERNAME_AVAILABLE))
-                .isEqualTo(WorkflowNextStep.PASSWORD_SETUP);
-        assertThat(CheckRegistrationUsernameResult.nextStepFor(
+        .isEqualTo(WorkflowNextStep.PASSWORD_SETUP);
+    assertThat(
+            CheckRegistrationUsernameResult.nextStepFor(
                 CheckRegistrationUsernameResultStatus.VALIDATION_FAILED))
-                .isEqualTo(WorkflowNextStep.USERNAME_CHECK);
-        assertThat(CheckRegistrationUsernameResult.nextStepFor(
+        .isEqualTo(WorkflowNextStep.USERNAME_CHECK);
+    assertThat(
+            CheckRegistrationUsernameResult.nextStepFor(
                 CheckRegistrationUsernameResultStatus.DOWNSTREAM_REJECTED))
-                .isEqualTo(WorkflowNextStep.USERNAME_CHECK);
-    }
+        .isEqualTo(WorkflowNextStep.USERNAME_CHECK);
+  }
 
-    @Test
-    void usernameCheckCommandHasNoIdempotencyInputsAndRedactsSecrets() {
-        var command = new CheckRegistrationUsernameCommand(
-                new AuthFlowSessionId("afs_secret"),
-                "csrf_secret",
-                new RegistrationSelectedTrust("TL", "ENV1"),
-                "abc1@",
-                "https://example.test",
-                "https://example.test/register",
-                "en",
-                "req-1");
+  @Test
+  void usernameCheckCommandHasNoIdempotencyInputsAndRedactsSecrets() {
+    var command =
+        new CheckRegistrationUsernameCommand(
+            new AuthFlowSessionId("afs_secret"),
+            "csrf_secret",
+            new RegistrationSelectedTrust("TL", "ENV1"),
+            "abc1@",
+            "https://example.test",
+            "https://example.test/register",
+            "en",
+            "req-1");
 
-        assertThat(componentNames(CheckRegistrationUsernameCommand.class))
-                .doesNotContain("idempotencyKey", "idempotencyTtl");
-        assertThat(Arrays.stream(CheckRegistrationUsernameCommand.class.getRecordComponents())
+    assertThat(componentNames(CheckRegistrationUsernameCommand.class))
+        .doesNotContain("idempotencyKey", "idempotencyTtl");
+    assertThat(
+            Arrays.stream(CheckRegistrationUsernameCommand.class.getRecordComponents())
                 .map(component -> component.getType().getName()))
-                .doesNotContain(Duration.class.getName());
-        assertThat(command.toString()).doesNotContain("afs_secret", "csrf_secret", "abc1@");
-    }
+        .doesNotContain(Duration.class.getName());
+    assertThat(command.toString()).doesNotContain("afs_secret", "csrf_secret", "abc1@");
+  }
 
-    @Test
-    void availabilityBoundaryDistinguishesRejectedFromTechnicalFailure() {
-        var rejected = new RegistrationUsernameAvailabilityResult(
-                RegistrationUsernameAvailabilityStatus.REJECTED,
-                "err.tpa.username.taken");
-        var failed = new RegistrationUsernameAvailabilityResult(
-                RegistrationUsernameAvailabilityStatus.DOWNSTREAM_FAILED,
-                null);
+  @Test
+  void availabilityBoundaryDistinguishesRejectedFromTechnicalFailure() {
+    var rejected =
+        new RegistrationUsernameAvailabilityResult(
+            RegistrationUsernameAvailabilityStatus.REJECTED, "err.tpa.username.taken");
+    var failed =
+        new RegistrationUsernameAvailabilityResult(
+            RegistrationUsernameAvailabilityStatus.DOWNSTREAM_FAILED, null);
 
-        assertThat(rejected.status()).isEqualTo(RegistrationUsernameAvailabilityStatus.REJECTED);
-        assertThat(rejected.downstreamErrorCode()).isEqualTo("err.tpa.username.taken");
-        assertThat(failed.status()).isEqualTo(RegistrationUsernameAvailabilityStatus.DOWNSTREAM_FAILED);
-        assertThat(failed.downstreamErrorCode()).isNull();
-    }
+    assertThat(rejected.status()).isEqualTo(RegistrationUsernameAvailabilityStatus.REJECTED);
+    assertThat(rejected.downstreamErrorCode()).isEqualTo("err.tpa.username.taken");
+    assertThat(failed.status()).isEqualTo(RegistrationUsernameAvailabilityStatus.DOWNSTREAM_FAILED);
+    assertThat(failed.downstreamErrorCode()).isNull();
+  }
 
-    private static java.util.List<String> componentNames(Class<?> type) {
-        return Arrays.stream(type.getRecordComponents()).map(RecordComponent::getName).toList();
-    }
+  private static java.util.List<String> componentNames(Class<?> type) {
+    return Arrays.stream(type.getRecordComponents()).map(RecordComponent::getName).toList();
+  }
 }

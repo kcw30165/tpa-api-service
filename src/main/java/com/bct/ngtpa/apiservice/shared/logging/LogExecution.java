@@ -9,9 +9,9 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface LogExecution {
 
-    String value() default "";
+  String value() default "";
 
-    boolean logArgs() default false;
+  boolean logArgs() default false;
 
-    boolean logResult() default false;
+  boolean logResult() default false;
 }

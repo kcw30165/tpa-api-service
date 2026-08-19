@@ -11,111 +11,166 @@ import java.util.*;
 import reactor.core.publisher.Mono;
 
 public final class LoginOtpSendService implements SendLoginOtpUseCase {
-    private final LoginProtectedAuthFlowContextLoader contextLoader;
-    private final LoginOtpDestinationResolver destinationResolver;
-    private final OtpChallengePort otp;
-    private final MessageDeliveryPort messages;
-    private final LoginOtpSessionBindingPort sessions;
-    private final DestinationBucketIdGenerator destinationBucketIds;
-    private final Clock clock;
-    private final LoginOtpSendPolicy policy;
+  private final LoginProtectedAuthFlowContextLoader contextLoader;
+  private final LoginOtpDestinationResolver destinationResolver;
+  private final OtpChallengePort otp;
+  private final MessageDeliveryPort messages;
+  private final LoginOtpSessionBindingPort sessions;
+  private final DestinationBucketIdGenerator destinationBucketIds;
+  private final Clock clock;
+  private final LoginOtpSendPolicy policy;
 
-    public LoginOtpSendService(LoginProtectedAuthFlowContextLoader contextLoader,
-            LoginOtpDestinationResolver destinationResolver, OtpChallengePort otp, MessageDeliveryPort messages,
-            LoginOtpSessionBindingPort sessions, DestinationBucketIdGenerator destinationBucketIds, Clock clock,
-            LoginOtpSendPolicy policy) {
-        this.contextLoader = Objects.requireNonNull(contextLoader);
-        this.destinationResolver = Objects.requireNonNull(destinationResolver);
-        this.otp = Objects.requireNonNull(otp);
-        this.messages = Objects.requireNonNull(messages);
-        this.sessions = Objects.requireNonNull(sessions);
-        this.destinationBucketIds = Objects.requireNonNull(destinationBucketIds);
-        this.clock = Objects.requireNonNull(clock);
-        this.policy = Objects.requireNonNull(policy);
-    }
+  public LoginOtpSendService(
+      LoginProtectedAuthFlowContextLoader contextLoader,
+      LoginOtpDestinationResolver destinationResolver,
+      OtpChallengePort otp,
+      MessageDeliveryPort messages,
+      LoginOtpSessionBindingPort sessions,
+      DestinationBucketIdGenerator destinationBucketIds,
+      Clock clock,
+      LoginOtpSendPolicy policy) {
+    this.contextLoader = Objects.requireNonNull(contextLoader);
+    this.destinationResolver = Objects.requireNonNull(destinationResolver);
+    this.otp = Objects.requireNonNull(otp);
+    this.messages = Objects.requireNonNull(messages);
+    this.sessions = Objects.requireNonNull(sessions);
+    this.destinationBucketIds = Objects.requireNonNull(destinationBucketIds);
+    this.clock = Objects.requireNonNull(clock);
+    this.policy = Objects.requireNonNull(policy);
+  }
 
-    public Mono<SendLoginOtpResult> send(SendLoginOtpCommand command) {
-        Objects.requireNonNull(command);
-        return contextLoader
-                .load(new LoginProtectedAuthFlowContextCommand(command.authFlowSessionId(), command.csrfToken(),
-                        command.origin(), command.referer(), command.correlationId(),
-                        com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus.STARTED, false))
-                .flatMap(loaded -> {
-                    if (!loaded.isValid())
-                        return Mono.just(
-                                new SendLoginOtpResult(loaded.status() == LoginProtectedAuthFlowContextStatus.CSRF_INVALID
-                                ? SendLoginOtpStatus.CSRF_INVALID
-                                : SendLoginOtpStatus.AUTH_FLOW_INVALID, null, null, null, null));
-                    ResolvedLoginOtpDestination destination;
-                    try {
-                        destination = destinationResolver.resolve(loaded.context(), command);
-                    } catch (InvalidLoginOtpDestinationException exception) {
-                        return Mono.just(
-                                new SendLoginOtpResult(SendLoginOtpStatus.INVALID_DESTINATION, null, null, null, null));
-                    }
-                    return createDeliverBind(command, destination);
-                });
-    }
-
-    private Mono<SendLoginOtpResult> createDeliverBind(SendLoginOtpCommand command,
-            ResolvedLoginOtpDestination destination) {
-        Instant now = clock.instant();
-        CreateOtpChallengeCommand create = new CreateOtpChallengeCommand(OtpScenario.LOGIN, command.authFlowSessionId(),
-                otpChannel(destination.channel()),
-                destinationBucketIds.generateBucketId(destinationType(destination.channel()),
-                        destination.destination()),
-                policy.length(), policy.numericOnly(), policy.ttlSeconds(), policy.maxVerifyAttempts(),
-                policy.resendLimitEnabled() ? policy.maxResendAttempts() : 0, now);
-        return otp.createChallenge(create).flatMap(challenge -> {
-            MessageDeliveryCommand delivery = new MessageDeliveryCommand(MessageDeliveryType.LOGIN_OTP,
-                    MessageDeliveryScenario.LOGIN, messageChannel(destination.channel()), destination.destination(),
-                    destination.channel() == OtpChannel.EMAIL ? policy.emailSubject() : null, policy.messageTemplate(),
-                    null, templateVariables(challenge.rawCode()), command.acceptLanguage(), command.correlationId());
-            return messages.deliver(delivery).flatMap(outcome -> {
-                if (outcome.status() == MessageDeliveryStatus.UNKNOWN_OUTCOME)
-                    return otp
-                            .invalidateChallenge(new InvalidateOtpChallengeCommand(challenge.otpChallengeId(),
-                                    OtpChallengeInvalidationReason.DELIVERY_FAILED, clock.instant()))
-                            .thenReturn(
-                                    new SendLoginOtpResult(SendLoginOtpStatus.UNKNOWN_OUTCOME, null, null, null, null));
-                if (outcome.status() == MessageDeliveryStatus.FAILED)
-                    return otp
-                            .invalidateChallenge(new InvalidateOtpChallengeCommand(challenge.otpChallengeId(),
-                                    OtpChallengeInvalidationReason.DELIVERY_FAILED, clock.instant()))
-                            .thenReturn(
-                                    new SendLoginOtpResult(SendLoginOtpStatus.DELIVERY_FAILED, null, null, null, null));
-                return sessions.bind(new LoginOtpSessionBindingCommand(command.authFlowSessionId(),
+  public Mono<SendLoginOtpResult> send(SendLoginOtpCommand command) {
+    Objects.requireNonNull(command);
+    return contextLoader
+        .load(
+            new LoginProtectedAuthFlowContextCommand(
+                command.authFlowSessionId(),
+                command.csrfToken(),
+                command.origin(),
+                command.referer(),
+                command.correlationId(),
+                com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus.STARTED,
+                false))
+        .flatMap(
+            loaded -> {
+              if (!loaded.isValid())
+                return Mono.just(
+                    new SendLoginOtpResult(
+                        loaded.status() == LoginProtectedAuthFlowContextStatus.CSRF_INVALID
+                            ? SendLoginOtpStatus.CSRF_INVALID
+                            : SendLoginOtpStatus.AUTH_FLOW_INVALID,
                         null,
-                        challenge.otpChallengeId(),
-                        com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus.STARTED,
-                        com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus.OTP_SENT,
-                        destination.channel().name().toLowerCase(java.util.Locale.ROOT),
-                        destination.maskedDestination(),
-                        command.correlationId()))
-                        .thenReturn(new SendLoginOtpResult(SendLoginOtpStatus.SENT, destination.maskedDestination(),
-                                challenge.expiresInSeconds(), policy.resendCooldownSeconds(), null));
+                        null,
+                        null,
+                        null));
+              ResolvedLoginOtpDestination destination;
+              try {
+                destination = destinationResolver.resolve(loaded.context(), command);
+              } catch (InvalidLoginOtpDestinationException exception) {
+                return Mono.just(
+                    new SendLoginOtpResult(
+                        SendLoginOtpStatus.INVALID_DESTINATION, null, null, null, null));
+              }
+              return createDeliverBind(command, destination);
             });
-        });
-    }
+  }
 
-    private Map<String, String> templateVariables(String rawCode) {
-        return Map.of("code", rawCode, "ttlValue", Integer.toString(policy.ttlSeconds()), "ttlUnit", "seconds");
-    }
+  private Mono<SendLoginOtpResult> createDeliverBind(
+      SendLoginOtpCommand command, ResolvedLoginOtpDestination destination) {
+    Instant now = clock.instant();
+    CreateOtpChallengeCommand create =
+        new CreateOtpChallengeCommand(
+            OtpScenario.LOGIN,
+            command.authFlowSessionId(),
+            otpChannel(destination.channel()),
+            destinationBucketIds.generateBucketId(
+                destinationType(destination.channel()), destination.destination()),
+            policy.length(),
+            policy.numericOnly(),
+            policy.ttlSeconds(),
+            policy.maxVerifyAttempts(),
+            policy.resendLimitEnabled() ? policy.maxResendAttempts() : 0,
+            now);
+    return otp.createChallenge(create)
+        .flatMap(
+            challenge -> {
+              MessageDeliveryCommand delivery =
+                  new MessageDeliveryCommand(
+                      MessageDeliveryType.LOGIN_OTP,
+                      MessageDeliveryScenario.LOGIN,
+                      messageChannel(destination.channel()),
+                      destination.destination(),
+                      destination.channel() == OtpChannel.EMAIL ? policy.emailSubject() : null,
+                      policy.messageTemplate(),
+                      null,
+                      templateVariables(challenge.rawCode()),
+                      command.acceptLanguage(),
+                      command.correlationId());
+              return messages
+                  .deliver(delivery)
+                  .flatMap(
+                      outcome -> {
+                        if (outcome.status() == MessageDeliveryStatus.UNKNOWN_OUTCOME)
+                          return otp.invalidateChallenge(
+                                  new InvalidateOtpChallengeCommand(
+                                      challenge.otpChallengeId(),
+                                      OtpChallengeInvalidationReason.DELIVERY_FAILED,
+                                      clock.instant()))
+                              .thenReturn(
+                                  new SendLoginOtpResult(
+                                      SendLoginOtpStatus.UNKNOWN_OUTCOME, null, null, null, null));
+                        if (outcome.status() == MessageDeliveryStatus.FAILED)
+                          return otp.invalidateChallenge(
+                                  new InvalidateOtpChallengeCommand(
+                                      challenge.otpChallengeId(),
+                                      OtpChallengeInvalidationReason.DELIVERY_FAILED,
+                                      clock.instant()))
+                              .thenReturn(
+                                  new SendLoginOtpResult(
+                                      SendLoginOtpStatus.DELIVERY_FAILED, null, null, null, null));
+                        return sessions
+                            .bind(
+                                new LoginOtpSessionBindingCommand(
+                                    command.authFlowSessionId(),
+                                    null,
+                                    challenge.otpChallengeId(),
+                                    com.bct.ngtpa.apiservice.application.dto.session.authflow
+                                        .AuthFlowStatus.STARTED,
+                                    com.bct.ngtpa.apiservice.application.dto.session.authflow
+                                        .AuthFlowStatus.OTP_SENT,
+                                    destination.channel().name().toLowerCase(java.util.Locale.ROOT),
+                                    destination.maskedDestination(),
+                                    command.correlationId()))
+                            .thenReturn(
+                                new SendLoginOtpResult(
+                                    SendLoginOtpStatus.SENT,
+                                    destination.maskedDestination(),
+                                    challenge.expiresInSeconds(),
+                                    policy.resendCooldownSeconds(),
+                                    null));
+                      });
+            });
+  }
 
-    private DestinationType destinationType(OtpChannel channel) {
-        return channel == OtpChannel.EMAIL ? DestinationType.EMAIL : DestinationType.MOBILE;
-    }
+  private Map<String, String> templateVariables(String rawCode) {
+    return Map.of(
+        "code", rawCode, "ttlValue", Integer.toString(policy.ttlSeconds()), "ttlUnit", "seconds");
+  }
 
-    private OtpChannel otpChannel(OtpChannel channel) {
-        return channel == OtpChannel.EMAIL ? OtpChannel.EMAIL : OtpChannel.SMS;
-    }
+  private DestinationType destinationType(OtpChannel channel) {
+    return channel == OtpChannel.EMAIL ? DestinationType.EMAIL : DestinationType.MOBILE;
+  }
 
-    private MessageDeliveryChannel messageChannel(OtpChannel channel) {
-        return channel == OtpChannel.EMAIL ? MessageDeliveryChannel.EMAIL : MessageDeliveryChannel.SMS;
-    }
+  private OtpChannel otpChannel(OtpChannel channel) {
+    return channel == OtpChannel.EMAIL ? OtpChannel.EMAIL : OtpChannel.SMS;
+  }
 
-    @Override
-    public String toString() {
-        return "LoginOtpSendService[policy=<configured>]";
-    }
+  private MessageDeliveryChannel messageChannel(OtpChannel channel) {
+    return channel == OtpChannel.EMAIL ? MessageDeliveryChannel.EMAIL : MessageDeliveryChannel.SMS;
+  }
+
+  @Override
+  public String toString() {
+    return "LoginOtpSendService[policy=<configured>]";
+  }
 }

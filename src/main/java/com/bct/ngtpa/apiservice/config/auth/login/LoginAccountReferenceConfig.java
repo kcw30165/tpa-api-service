@@ -9,22 +9,22 @@ import org.springframework.context.annotation.*;
 
 @Configuration
 public class LoginAccountReferenceConfig {
-    @Bean
-    @ConfigurationProperties("auth-workflows.login.account-ref")
-    LoginAccountReferenceProperties loginAccountReferenceProperties() {
-        return new LoginAccountReferenceProperties();
-    }
+  @Bean
+  @ConfigurationProperties("auth-workflows.login.account-ref")
+  LoginAccountReferenceProperties loginAccountReferenceProperties() {
+    return new LoginAccountReferenceProperties();
+  }
 
-    @Bean
-    LoginAccountRefGeneratorPort loginAccountRefGeneratorPort(LoginAccountReferenceProperties p) {
-        p.validate();
-        return new SecureRandomLoginAccountRefGenerator(p.getPrefix(), p.getEntropyBytes());
-    }
+  @Bean
+  LoginAccountRefGeneratorPort loginAccountRefGeneratorPort(LoginAccountReferenceProperties p) {
+    p.validate();
+    return new SecureRandomLoginAccountRefGenerator(p.getPrefix(), p.getEntropyBytes());
+  }
 
-    @Bean
-    LoginAccountReferenceAssignmentService loginAccountReferenceAssignmentService(
-            LoginAccountRefGeneratorPort generator, LoginAccountReferenceProperties p) {
-        p.validate();
-        return new LoginAccountReferenceAssignmentService(generator, p.getMaxGenerationAttempts());
-    }
+  @Bean
+  LoginAccountReferenceAssignmentService loginAccountReferenceAssignmentService(
+      LoginAccountRefGeneratorPort generator, LoginAccountReferenceProperties p) {
+    p.validate();
+    return new LoginAccountReferenceAssignmentService(generator, p.getMaxGenerationAttempts());
+  }
 }

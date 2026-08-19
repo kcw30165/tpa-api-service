@@ -7,33 +7,40 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 class Task0043AuthenticatedLogoutOrchestrationArchitectureTest {
-    @Test
-    void serviceDelegatesNormalLogoutToLoggedOutLifecycleCapability() throws Exception {
-        String source = Files.readString(Path.of(
+  @Test
+  void serviceDelegatesNormalLogoutToLoggedOutLifecycleCapability() throws Exception {
+    String source =
+        Files.readString(
+            Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/logout/AuthenticatedLogoutService.java"));
-        String compact = source.replaceAll("\\s+", "");
-        assertThat(compact).contains(
-                "implementsAuthenticatedLogoutUseCase",
-                "LogoutAuthenticatedSessionUseCase",
-                "newLogoutActiveAuthenticatedSessionCommand(",
-                "logout.logout(");
-        assertThat(source).doesNotContain(
-                "RevokeAuthenticatedSessionUseCase",
-                "RevokeActiveAuthenticatedSessionCommand",
-                "USER_LOGOUT_REASON");
-    }
+    String compact = source.replaceAll("\\s+", "");
+    assertThat(compact)
+        .contains(
+            "implementsAuthenticatedLogoutUseCase",
+            "LogoutAuthenticatedSessionUseCase",
+            "newLogoutActiveAuthenticatedSessionCommand(",
+            "logout.logout(");
+    assertThat(source)
+        .doesNotContain(
+            "RevokeAuthenticatedSessionUseCase",
+            "RevokeActiveAuthenticatedSessionCommand",
+            "USER_LOGOUT_REASON");
+  }
 
-    @Test
-    void orchestrationHasNoWebPersistenceOrCryptoDependencies() throws Exception {
-        String source = Files.readString(Path.of(
+  @Test
+  void orchestrationHasNoWebPersistenceOrCryptoDependencies() throws Exception {
+    String source =
+        Files.readString(
+            Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/logout/AuthenticatedLogoutService.java"));
-        assertThat(source).doesNotContain(
-                "org.springframework",
-                "ServerWebExchange",
-                "HttpHeaders",
-                "Redis",
-                "CachePort",
-                "ObjectMapper",
-                "AuthenticatedSessionPort");
-    }
+    assertThat(source)
+        .doesNotContain(
+            "org.springframework",
+            "ServerWebExchange",
+            "HttpHeaders",
+            "Redis",
+            "CachePort",
+            "ObjectMapper",
+            "AuthenticatedSessionPort");
+  }
 }

@@ -13,64 +13,59 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class GetMessageBoardApimRequestTest {
 
-    private static final Pattern REF_DATE_PATTERN = Pattern.compile("\\d{2}/\\d{2}/\\d{4}");
+  private static final Pattern REF_DATE_PATTERN = Pattern.compile("\\d{2}/\\d{2}/\\d{4}");
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+  private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Test
-    void getRefDateGeneratesDefaultWhenValueIsNull() {
-        GetMessageBoardApimRequest request = GetMessageBoardApimRequest.builder()
-                .refDate(null)
-                .build();
+  @Test
+  void getRefDateGeneratesDefaultWhenValueIsNull() {
+    GetMessageBoardApimRequest request = GetMessageBoardApimRequest.builder().refDate(null).build();
 
-        assertDefaultRefDate(request.getRefDate());
-    }
+    assertDefaultRefDate(request.getRefDate());
+  }
 
-    @ParameterizedTest
-    @ValueSource(strings = {" ", "   "})
-    void getRefDateGeneratesDefaultWhenValueIsBlank(String input) {
-        GetMessageBoardApimRequest request = GetMessageBoardApimRequest.builder()
-                .refDate(input)
-                .build();
+  @ParameterizedTest
+  @ValueSource(strings = {" ", "   "})
+  void getRefDateGeneratesDefaultWhenValueIsBlank(String input) {
+    GetMessageBoardApimRequest request =
+        GetMessageBoardApimRequest.builder().refDate(input).build();
 
-        assertDefaultRefDate(request.getRefDate());
-    }
+    assertDefaultRefDate(request.getRefDate());
+  }
 
-    @ParameterizedTest
-    @NullAndEmptySource
-    @ValueSource(strings = {" ", "   "})
-    void setRefDateGeneratesDefaultWhenInputHasNoText(String input) {
-        GetMessageBoardApimRequest request = new GetMessageBoardApimRequest();
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {" ", "   "})
+  void setRefDateGeneratesDefaultWhenInputHasNoText(String input) {
+    GetMessageBoardApimRequest request = new GetMessageBoardApimRequest();
 
-        request.setRefDate(input);
+    request.setRefDate(input);
 
-        assertDefaultRefDate(request.getRefDate());
-    }
+    assertDefaultRefDate(request.getRefDate());
+  }
 
-    @Test
-    void setRefDatePreservesExplicitValue() {
-        GetMessageBoardApimRequest request = new GetMessageBoardApimRequest();
+  @Test
+  void setRefDatePreservesExplicitValue() {
+    GetMessageBoardApimRequest request = new GetMessageBoardApimRequest();
 
-        request.setRefDate("17/04/2026");
+    request.setRefDate("17/04/2026");
 
-        assertEquals("17/04/2026", request.getRefDate());
-    }
+    assertEquals("17/04/2026", request.getRefDate());
+  }
 
-    @Test
-    void deserializingNullRefDateKeepsBuilderDefault() throws Exception {
-        GetMessageBoardApimRequest request = objectMapper.readValue(
-                "{" +
-                        "\"policy-no\":\"P1\"," +
-                        "\"ref-date\":null" +
-                        "}",
-                GetMessageBoardApimRequest.class);
+  @Test
+  void deserializingNullRefDateKeepsBuilderDefault() throws Exception {
+    GetMessageBoardApimRequest request =
+        objectMapper.readValue(
+            "{" + "\"policy-no\":\"P1\"," + "\"ref-date\":null" + "}",
+            GetMessageBoardApimRequest.class);
 
-        assertEquals("P1", request.getPolicyNo());
-        assertDefaultRefDate(request.getRefDate());
-    }
+    assertEquals("P1", request.getPolicyNo());
+    assertDefaultRefDate(request.getRefDate());
+  }
 
-    private static void assertDefaultRefDate(String value) {
-        assertNotNull(value);
-        assertTrue(REF_DATE_PATTERN.matcher(value).matches(), () -> "Unexpected ref date: " + value);
-    }
+  private static void assertDefaultRefDate(String value) {
+    assertNotNull(value);
+    assertTrue(REF_DATE_PATTERN.matcher(value).matches(), () -> "Unexpected ref date: " + value);
+  }
 }

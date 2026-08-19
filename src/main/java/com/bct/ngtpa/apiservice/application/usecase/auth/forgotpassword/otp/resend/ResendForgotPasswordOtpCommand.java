@@ -4,20 +4,20 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import java.util.Objects;
 
 public record ResendForgotPasswordOtpCommand(
-        AuthFlowSessionId sessionId,
-        String csrfToken,
-        String origin,
-        String referer,
-        String requestId,
-        String language,
-        String idempotencyKey) {
-    public ResendForgotPasswordOtpCommand {
-        Objects.requireNonNull(sessionId, "sessionId must not be null");
-        if (csrfToken == null || csrfToken.isBlank()) {
-            throw new IllegalArgumentException("csrfToken must not be blank");
-        }
-        if (idempotencyKey == null || idempotencyKey.isBlank()) {
-            throw new IllegalArgumentException("idempotencyKey must not be blank");
-        }
+    AuthFlowSessionId sessionId,
+    String csrfToken,
+    String origin,
+    String referer,
+    String requestId,
+    String language,
+    String idempotencyKey) {
+  public ResendForgotPasswordOtpCommand {
+    Objects.requireNonNull(sessionId, "sessionId must not be null");
+    if (csrfToken == null || csrfToken.isBlank()) {
+      throw new IllegalArgumentException("csrfToken must not be blank");
     }
+    if (idempotencyKey == null || idempotencyKey.isBlank()) {
+      throw new IllegalArgumentException("idempotencyKey must not be blank");
+    }
+  }
 }

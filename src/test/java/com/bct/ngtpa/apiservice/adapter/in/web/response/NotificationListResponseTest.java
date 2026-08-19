@@ -1,19 +1,20 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.response;
 
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.junit.jupiter.api.Test;
 
 class NotificationListResponseTest {
 
-    @Test
-    void recordFieldIsAccessible() {
-        var dto = new NotificationDto("CODE", "1", "GENERAL", "Title", "Chi", "Eng", false, "01/01/2026 00:00");
-        var response = new NotificationListResponse(List.of(dto));
+  @Test
+  void recordFieldIsAccessible() {
+    var dto =
+        new NotificationDto(
+            "CODE", "1", "GENERAL", "Title", "Chi", "Eng", false, "01/01/2026 00:00");
+    var response = new NotificationListResponse(List.of(dto));
 
-        assertEquals(1, response.notifications().size());
-        assertEquals("CODE", response.notifications().getFirst().msgCode());
-    }
+    assertEquals(1, response.notifications().size());
+    assertEquals("CODE", response.notifications().getFirst().msgCode());
+  }
 }

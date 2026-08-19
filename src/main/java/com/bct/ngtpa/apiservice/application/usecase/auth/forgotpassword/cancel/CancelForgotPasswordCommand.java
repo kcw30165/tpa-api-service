@@ -4,20 +4,21 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import java.util.Objects;
 
 public record CancelForgotPasswordCommand(
-        AuthFlowSessionId authFlowSessionId,
-        String csrfToken,
-        String origin,
-        String referer,
-        String correlationId) {
+    AuthFlowSessionId authFlowSessionId,
+    String csrfToken,
+    String origin,
+    String referer,
+    String correlationId) {
 
-    public CancelForgotPasswordCommand {
-        Objects.requireNonNull(authFlowSessionId, "authFlowSessionId must not be null");
-    }
+  public CancelForgotPasswordCommand {
+    Objects.requireNonNull(authFlowSessionId, "authFlowSessionId must not be null");
+  }
 
-    @Override
-    public String toString() {
-        return "CancelForgotPasswordCommand[authFlowSessionId=<redacted>, csrfToken=<redacted>, "
-                + "origin=<redacted>, referer=<redacted>, correlationId="
-                + (correlationId == null ? "" : "<redacted>") + "]";
-    }
+  @Override
+  public String toString() {
+    return "CancelForgotPasswordCommand[authFlowSessionId=<redacted>, csrfToken=<redacted>, "
+        + "origin=<redacted>, referer=<redacted>, correlationId="
+        + (correlationId == null ? "" : "<redacted>")
+        + "]";
+  }
 }

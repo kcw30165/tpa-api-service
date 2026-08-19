@@ -5,5 +5,5 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.St
 import reactor.core.publisher.Mono;
 
 public interface ForgotPasswordUsernameLookupPort {
-    Mono<ForgotPasswordUsernameLookupResult> lookup(StartForgotPasswordUsernameLookupCommand command);
+  Mono<ForgotPasswordUsernameLookupResult> lookup(StartForgotPasswordUsernameLookupCommand command);
 }

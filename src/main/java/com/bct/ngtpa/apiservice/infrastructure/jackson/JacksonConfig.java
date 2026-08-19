@@ -8,9 +8,9 @@ import org.springframework.context.annotation.Primary;
 @Configuration
 public class JacksonConfig {
 
-    @Primary
-    @Bean
-    public ObjectMapper objectMapper() {
-        return new ObjectMapper().findAndRegisterModules();
-    }
+  @Primary
+  @Bean
+  public ObjectMapper objectMapper() {
+    return new ObjectMapper().findAndRegisterModules();
+  }
 }

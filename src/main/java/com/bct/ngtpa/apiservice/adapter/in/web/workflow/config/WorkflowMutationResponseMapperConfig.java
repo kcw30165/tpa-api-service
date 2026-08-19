@@ -8,9 +8,9 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class WorkflowMutationResponseMapperConfig {
 
-    @Bean
-    @ConditionalOnMissingBean(WorkflowMutationResponseMapper.class)
-    public WorkflowMutationResponseMapper workflowMutationResponseMapper() {
-        return new WorkflowMutationResponseMapper();
-    }
+  @Bean
+  @ConditionalOnMissingBean(WorkflowMutationResponseMapper.class)
+  public WorkflowMutationResponseMapper workflowMutationResponseMapper() {
+    return new WorkflowMutationResponseMapper();
+  }
 }

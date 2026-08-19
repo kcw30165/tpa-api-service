@@ -10,20 +10,21 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 
 class LoginCredentialHttpContractTest {
-    @Test
-    void incorrectPasswordIsSafeBusinessRejectionWithHttp401() {
-        var mapped = new LoginStartWebMapper().toMutationResponse(
+  @Test
+  void incorrectPasswordIsSafeBusinessRejectionWithHttp401() {
+    var mapped =
+        new LoginStartWebMapper()
+            .toMutationResponse(
                 new StartLoginResult(
-                        StartLoginStatus.INCORRECT_PASSWORD,
-                        null, null, null, List.of(), 1, null),
+                    StartLoginStatus.INCORRECT_PASSWORD, null, null, null, List.of(), 1, null),
                 "en");
-        var response = LoginHttpResponses.toResponse(mapped);
+    var response = LoginHttpResponses.toResponse(mapped);
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-        assertThat(mapped.status().name()).isEqualTo("BUSINESS_REJECTED");
-        assertThat(mapped.status().name()).doesNotContain("DOWNSTREAM_ERROR");
-        assertThat(mapped.errors()).hasSize(1);
-        assertThat(mapped.errors().getFirst().code()).isEqualTo("err.login.incorrect.password");
-        assertThat(mapped.errors().getFirst().source()).isEqualTo("BFF");
-    }
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    assertThat(mapped.status().name()).isEqualTo("BUSINESS_REJECTED");
+    assertThat(mapped.status().name()).doesNotContain("DOWNSTREAM_ERROR");
+    assertThat(mapped.errors()).hasSize(1);
+    assertThat(mapped.errors().getFirst().code()).isEqualTo("err.login.incorrect.password");
+    assertThat(mapped.errors().getFirst().source()).isEqualTo("BFF");
+  }
 }

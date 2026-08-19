@@ -13,23 +13,26 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 class AuthenticatedPortalContextCompositionTest {
-    @Test
-    void primaryPortalContextPortUsesAuthenticatedLifecycle() {
-        var seenSession = new java.util.concurrent.atomic.AtomicReference<AuthenticatedSessionId>();
-        LoadAndTouchAuthenticatedSessionUseCase lifecycle = command -> {
-            seenSession.set(command.authenticatedSessionId());
-            return Mono.just(AuthenticatedSessionLifecycleResult.of(
-                    AuthenticatedSessionLifecycleStatus.NOT_FOUND));
+  @Test
+  void primaryPortalContextPortUsesAuthenticatedLifecycle() {
+    var seenSession = new java.util.concurrent.atomic.AtomicReference<AuthenticatedSessionId>();
+    LoadAndTouchAuthenticatedSessionUseCase lifecycle =
+        command -> {
+          seenSession.set(command.authenticatedSessionId());
+          return Mono.just(
+              AuthenticatedSessionLifecycleResult.of(
+                  AuthenticatedSessionLifecycleStatus.NOT_FOUND));
         };
 
-        PortalAccessContextPort port = new AuthenticatedSessionConfig().authenticatedPortalAccessContextPort(lifecycle);
+    PortalAccessContextPort port =
+        new AuthenticatedSessionConfig().authenticatedPortalAccessContextPort(lifecycle);
 
-        assertThat(port).isInstanceOf(AuthenticatedAccountContextResolver.class);
-        StepVerifier.create(port.resolvePortalAccessContext(
-                "acc_abcdefghijklmnopqrstuvwx",
-                "sid_abcdefghijklmnopqrstuvwx"))
-                .expectError()
-                .verify();
-        assertThat(seenSession.get().value()).isEqualTo("sid_abcdefghijklmnopqrstuvwx");
-    }
+    assertThat(port).isInstanceOf(AuthenticatedAccountContextResolver.class);
+    StepVerifier.create(
+            port.resolvePortalAccessContext(
+                "acc_abcdefghijklmnopqrstuvwx", "sid_abcdefghijklmnopqrstuvwx"))
+        .expectError()
+        .verify();
+    assertThat(seenSession.get().value()).isEqualTo("sid_abcdefghijklmnopqrstuvwx");
+  }
 }

@@ -4,7 +4,7 @@ import java.util.List;
 
 public interface ConfigKeyCandidateStrategy {
 
-    ConfigCategory category();
+  ConfigCategory category();
 
-    List<String> generateCandidateKeys(ConfigLookupRequest request);
+  List<String> generateCandidateKeys(ConfigLookupRequest request);
 }

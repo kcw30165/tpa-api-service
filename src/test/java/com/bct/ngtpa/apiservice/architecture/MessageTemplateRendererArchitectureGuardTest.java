@@ -9,26 +9,33 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import org.junit.jupiter.api.Test;
 
-@AnalyzeClasses(packages = "com.bct.ngtpa.apiservice", importOptions = ImportOption.DoNotIncludeTests.class)
+@AnalyzeClasses(
+    packages = "com.bct.ngtpa.apiservice",
+    importOptions = ImportOption.DoNotIncludeTests.class)
 class MessageTemplateRendererArchitectureGuardTest {
 
-    @ArchTest
-    static final ArchRule messageTemplateRendererHasNoSpringAdapterMailWebClientOrRedisDependencies = noClasses()
-            .that().resideInAnyPackage("..application.service.message..")
-            .should().dependOnClassesThat().resideInAnyPackage(
-                    "org.springframework..",
-                    "com.bct.ngtpa.apiservice.adapter..",
-                    "io.lettuce..",
-                    "org.springframework.data.redis..",
-                    "jakarta.mail..",
-                    "javax.mail..",
-                    "org.springframework.mail..",
-                    "org.springframework.web.reactive.function.client..");
+  @ArchTest
+  static final ArchRule messageTemplateRendererHasNoSpringAdapterMailWebClientOrRedisDependencies =
+      noClasses()
+          .that()
+          .resideInAnyPackage("..application.service.message..")
+          .should()
+          .dependOnClassesThat()
+          .resideInAnyPackage(
+              "org.springframework..",
+              "com.bct.ngtpa.apiservice.adapter..",
+              "io.lettuce..",
+              "org.springframework.data.redis..",
+              "jakarta.mail..",
+              "javax.mail..",
+              "org.springframework.mail..",
+              "org.springframework.web.reactive.function.client..");
 
-    @Test
-    void rendererHasNoSpringAdapterMailWebClientOrRedisDependencies() {
-        messageTemplateRendererHasNoSpringAdapterMailWebClientOrRedisDependencies.check(new ClassFileImporter()
-                .withImportOption(new ImportOption.DoNotIncludeTests())
-                .importPackages("com.bct.ngtpa.apiservice"));
-    }
+  @Test
+  void rendererHasNoSpringAdapterMailWebClientOrRedisDependencies() {
+    messageTemplateRendererHasNoSpringAdapterMailWebClientOrRedisDependencies.check(
+        new ClassFileImporter()
+            .withImportOption(new ImportOption.DoNotIncludeTests())
+            .importPackages("com.bct.ngtpa.apiservice"));
+  }
 }

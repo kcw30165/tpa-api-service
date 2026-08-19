@@ -8,28 +8,31 @@ import org.junit.jupiter.api.Test;
 
 class RegistrationPublicErrorOriginHidingTest {
 
-    @Test
-    void registrationPublicMappingsDoNotExposeDownstreamOrigin() throws Exception {
-        String username = Files.readString(Path.of(
+  @Test
+  void registrationPublicMappingsDoNotExposeDownstreamOrigin() throws Exception {
+    String username =
+        Files.readString(
+            Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/username/CheckRegistrationUsernameService.java"));
-        String complete = Files.readString(Path.of(
+    String complete =
+        Files.readString(
+            Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/complete/CompleteRegistrationService.java"));
-        String yaml = Files.readString(Path.of(
-                "src/main/resources/application-page-registration.yml"));
+    String yaml = Files.readString(Path.of("src/main/resources/application-page-registration.yml"));
 
-        assertThat(username)
-                .contains("err.registration.username.isRegistered")
-                .contains("err.registration.username.checkFailed");
-        assertThat(complete)
-                .contains("RegistrationErrorKey.REGISTRATION_COMPLETE_FAILED")
-                .doesNotContain("SharedWorkflowErrorKey.DOWNSTREAM_BUSINESS_REJECTED");
+    assertThat(username)
+        .containsIgnoringWhitespaces("err.registration.username.isRegistered")
+        .containsIgnoringWhitespaces("err.registration.username.checkFailed");
+    assertThat(complete)
+        .containsIgnoringWhitespaces("RegistrationErrorKey.REGISTRATION_COMPLETE_FAILED")
+        .doesNotContain("SharedWorkflowErrorKey.DOWNSTREAM_BUSINESS_REJECTED");
 
-        assertThat(yaml)
-                .contains("responseCode: err.registration.username.isRegistered")
-                .contains("responseCode: err.registration.username.checkFailed")
-                .contains("responseCode: err.registration.trustLookup.failed")
-                .contains("responseCode: err.registration.complete.failed")
-                .doesNotContain("responseCode: err.workflow.downstream.businessRejected")
-                .doesNotContain("responseCode: downstream.generic.businessRejected");
-    }
+    assertThat(yaml)
+        .containsIgnoringWhitespaces("responseCode: err.registration.username.isRegistered")
+        .containsIgnoringWhitespaces("responseCode: err.registration.username.checkFailed")
+        .containsIgnoringWhitespaces("responseCode: err.registration.trustLookup.failed")
+        .containsIgnoringWhitespaces("responseCode: err.registration.complete.failed")
+        .doesNotContain("responseCode: err.workflow.downstream.businessRejected")
+        .doesNotContain("responseCode: downstream.generic.businessRejected");
+  }
 }

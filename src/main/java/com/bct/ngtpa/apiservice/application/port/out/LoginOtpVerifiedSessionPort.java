@@ -4,5 +4,5 @@ import reactor.core.publisher.Mono;
 
 @FunctionalInterface
 public interface LoginOtpVerifiedSessionPort {
-    Mono<Void> markVerified(String authFlowSessionId, String correlationId);
+  Mono<Void> markVerified(String authFlowSessionId, String correlationId);
 }

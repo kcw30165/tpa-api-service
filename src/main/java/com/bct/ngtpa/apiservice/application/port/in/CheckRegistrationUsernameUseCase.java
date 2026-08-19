@@ -5,5 +5,5 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.C
 import reactor.core.publisher.Mono;
 
 public interface CheckRegistrationUsernameUseCase {
-    Mono<CheckRegistrationUsernameResult> check(CheckRegistrationUsernameCommand command);
+  Mono<CheckRegistrationUsernameResult> check(CheckRegistrationUsernameCommand command);
 }

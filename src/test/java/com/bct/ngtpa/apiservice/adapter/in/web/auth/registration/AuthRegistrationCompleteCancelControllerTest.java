@@ -35,151 +35,166 @@ import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
 import reactor.core.publisher.Mono;
 
 class AuthRegistrationCompleteCancelControllerTest {
-    private final ObjectMapper objectMapper = new ObjectMapper();
+  private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Test
-    void completeRegistrationSuccessUsesNextStepAndDataOnly() throws Exception {
-        var controller = controller(
-                new CompleteUseCaseStub(new CompleteRegistrationResult(
-                        CompleteRegistrationResultStatus.REGISTERED_WITH_REMAINING_TRUSTS,
-                        WorkflowNextStep.REGISTRATION_SUCCESS,
-                        true,
-                        false,
-                        List.of(new RegistrationLookupAccount(null, null, "ENV1", "TL")),
-                        List.of())),
-                new CancelUseCaseStub(new CancelRegistrationResult(
-                        CancelRegistrationResultStatus.CANCELLED,
-                        true,
-                        true,
-                        List.of())));
+  @Test
+  void completeRegistrationSuccessUsesNextStepAndDataOnly() throws Exception {
+    var controller =
+        controller(
+            new CompleteUseCaseStub(
+                new CompleteRegistrationResult(
+                    CompleteRegistrationResultStatus.REGISTERED_WITH_REMAINING_TRUSTS,
+                    WorkflowNextStep.REGISTRATION_SUCCESS,
+                    true,
+                    false,
+                    List.of(new RegistrationLookupAccount(null, null, "ENV1", "TL")),
+                    List.of())),
+            new CancelUseCaseStub(
+                new CancelRegistrationResult(
+                    CancelRegistrationResultStatus.CANCELLED, true, true, List.of())));
 
-        JsonNode json = json(controller.completeRegistration(
-                new CompleteRegistrationRequest("Password123!", "Password123!"),
-            validAuthFlowSessionId(),
-                "csrf",
-            validIdempotencyKey(),
-                "req",
-                "en",
-                null,
-                null,
-                new MockServerHttpResponse()).block());
+    JsonNode json =
+        json(
+            controller
+                .completeRegistration(
+                    new CompleteRegistrationRequest("Password123!", "Password123!"),
+                    validAuthFlowSessionId(),
+                    "csrf",
+                    validIdempotencyKey(),
+                    "req",
+                    "en",
+                    null,
+                    null,
+                    new MockServerHttpResponse())
+                .block());
 
-        assertThat(json.get("success").asBoolean()).isTrue();
-        assertThat(json.at("/result/nextStep").asText()).isEqualTo("REGISTRATION_SUCCESS");
-        assertThat(json.at("/result/data/unregisteredTrusts/0/accountEnv").asText()).isEqualTo("ENV1");
-        assertThat(json.at("/result/data/actions/0/id").asText()).isEqualTo("registerAnotherTrust");
-        assertThat(json.at("/result/data/actions/0/type").asText()).isEqualTo("PRIMARY");
-        assertThat(json.at("/result/data/actions/0/nextStep").asText()).isEqualTo("SELECT_TRUST");
-        assertThat(json.at("/result/page").isMissingNode()).isTrue();
-        assertThat(json.at("/result/pageRef").isMissingNode()).isTrue();
+    assertThat(json.get("success").asBoolean()).isTrue();
+    assertThat(json.at("/result/nextStep").asText()).isEqualTo("REGISTRATION_SUCCESS");
+    assertThat(json.at("/result/data/unregisteredTrusts/0/accountEnv").asText()).isEqualTo("ENV1");
+    assertThat(json.at("/result/data/actions/0/id").asText()).isEqualTo("registerAnotherTrust");
+    assertThat(json.at("/result/data/actions/0/type").asText()).isEqualTo("PRIMARY");
+    assertThat(json.at("/result/data/actions/0/nextStep").asText()).isEqualTo("SELECT_TRUST");
+    assertThat(json.at("/result/page").isMissingNode()).isTrue();
+    assertThat(json.at("/result/pageRef").isMissingNode()).isTrue();
+  }
+
+  @Test
+  void cancelRegistrationSuccessUsesNextStepAndDataOnly() throws Exception {
+    var controller =
+        controller(
+            new CompleteUseCaseStub(
+                new CompleteRegistrationResult(
+                    CompleteRegistrationResultStatus.REGISTERED,
+                    WorkflowNextStep.REGISTRATION_SUCCESS,
+                    true,
+                    true,
+                    List.of(),
+                    List.of())),
+            new CancelUseCaseStub(
+                new CancelRegistrationResult(
+                    CancelRegistrationResultStatus.CANCELLED, true, true, List.of())));
+
+    JsonNode json =
+        json(
+            controller
+                .cancelRegistration(
+                    validAuthFlowSessionId(),
+                    "csrf",
+                    "req",
+                    "en",
+                    null,
+                    null,
+                    new MockServerHttpResponse())
+                .block());
+
+    assertThat(json.get("success").asBoolean()).isTrue();
+    assertThat(json.at("/result/nextStep").asText()).isEqualTo("RETURN_TO_LOGIN");
+    assertThat(json.at("/result/data/actions/0/id").asText()).isEqualTo("returnToLogin");
+    assertThat(json.at("/result/data/actions/0/type").asText()).isEqualTo("PRIMARY");
+    assertThat(json.at("/result/data/actions/0/nextStep").asText()).isEqualTo("RETURN_TO_LOGIN");
+    assertThat(json.at("/result/page").isMissingNode()).isTrue();
+    assertThat(json.at("/result/pageRef").isMissingNode()).isTrue();
+  }
+
+  private JsonNode json(Object value) {
+    if (value instanceof org.springframework.http.ResponseEntity<?> response) {
+      value = response.getBody();
     }
+    return objectMapper.valueToTree(value);
+  }
 
-    @Test
-    void cancelRegistrationSuccessUsesNextStepAndDataOnly() throws Exception {
-        var controller = controller(
-                new CompleteUseCaseStub(new CompleteRegistrationResult(
-                        CompleteRegistrationResultStatus.REGISTERED,
-                        WorkflowNextStep.REGISTRATION_SUCCESS,
-                        true,
-                        true,
-                        List.of(),
-                        List.of())),
-                new CancelUseCaseStub(new CancelRegistrationResult(
-                        CancelRegistrationResultStatus.CANCELLED,
-                        true,
-                        true,
-                        List.of())));
+  private static AuthRegistrationController controller(
+      CompleteRegistrationUseCase completeUseCase, CancelRegistrationUseCase cancelUseCase) {
+    var pages = new BffPagesProperties();
+    return new AuthRegistrationController(
+        new StartUseCaseStub(),
+        new com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper
+            .RegistrationStartWebMapper(Duration.ofMinutes(5)),
+        AuthFlowCookieWriter.defaultWriter(),
+        completeUseCase,
+        new CompleteRegistrationWebMapper(
+            Duration.ofMinutes(5), new RegistrationSuccessPageMapper(pages)),
+        cancelUseCase,
+        new CancelRegistrationWebMapper(new RegistrationCancellationPageMapper(pages)),
+        org.mockito.Mockito.mock(XsrfCookieWriter.class));
+  }
 
-        JsonNode json = json(controller.cancelRegistration(
-            validAuthFlowSessionId(),
-                "csrf",
-                "req",
-                "en",
-                null,
-                null,
-                new MockServerHttpResponse()).block());
-
-        assertThat(json.get("success").asBoolean()).isTrue();
-        assertThat(json.at("/result/nextStep").asText()).isEqualTo("RETURN_TO_LOGIN");
-        assertThat(json.at("/result/data/actions/0/id").asText()).isEqualTo("returnToLogin");
-        assertThat(json.at("/result/data/actions/0/type").asText()).isEqualTo("PRIMARY");
-        assertThat(json.at("/result/data/actions/0/nextStep").asText()).isEqualTo("RETURN_TO_LOGIN");
-        assertThat(json.at("/result/page").isMissingNode()).isTrue();
-        assertThat(json.at("/result/pageRef").isMissingNode()).isTrue();
+  private static String validAuthFlowSessionId() {
+    for (String candidate :
+        List.of(
+            "sid_0123456789abcdef",
+            "sid_0123456789abcdef0123456789abcdef",
+            "afs_0123456789abcdef",
+            "afs_0123456789abcdef0123456789abcdef",
+            "01234567-89ab-cdef-0123-456789abcdef",
+            "opaqueAuthFlowSessionId0123456789")) {
+      try {
+        return new AuthFlowSessionId(candidate).value();
+      } catch (RuntimeException ignored) {
+        // Follow current value-object validation rules.
+      }
     }
+    throw new AssertionError(
+        "No valid AuthFlowSessionId test fixture candidate matched current validation rules");
+  }
 
-    private JsonNode json(Object value) {
-        if (value instanceof org.springframework.http.ResponseEntity<?> response) {
-            value = response.getBody();
-        }
-        return objectMapper.valueToTree(value);
+  private static String validIdempotencyKey() {
+    for (String candidate :
+        List.of(
+            "idem_0123456789abcdef",
+            "idem_0123456789abcdef0123456789abcdef",
+            "01234567-89ab-cdef-0123-456789abcdef",
+            "opaqueIdempotencyKey0123456789")) {
+      try {
+        return new RegistrationIdempotencyKey(candidate).value();
+      } catch (RuntimeException ignored) {
+        // Follow current value-object validation rules.
+      }
     }
+    throw new AssertionError(
+        "No valid RegistrationIdempotencyKey test fixture candidate matched current validation rules");
+  }
 
-    private static AuthRegistrationController controller(
-            CompleteRegistrationUseCase completeUseCase,
-            CancelRegistrationUseCase cancelUseCase) {
-        var pages = new BffPagesProperties();
-        return new AuthRegistrationController(
-                new StartUseCaseStub(),
-                new com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationStartWebMapper(Duration.ofMinutes(5)),
-                AuthFlowCookieWriter.defaultWriter(),
-                completeUseCase,
-                new CompleteRegistrationWebMapper(Duration.ofMinutes(5), new RegistrationSuccessPageMapper(pages)),
-                cancelUseCase,
-                new CancelRegistrationWebMapper(new RegistrationCancellationPageMapper(pages)),
-                org.mockito.Mockito.mock(XsrfCookieWriter.class));
+  private static final class StartUseCaseStub implements StartRegistrationUseCase {
+    @Override
+    public Mono<StartRegistrationResult> start(StartRegistrationCommand command) {
+      return Mono.error(new AssertionError("start use case must not be called"));
     }
+  }
 
-    private static String validAuthFlowSessionId() {
-        for (String candidate : List.of(
-                "sid_0123456789abcdef",
-                "sid_0123456789abcdef0123456789abcdef",
-                "afs_0123456789abcdef",
-                "afs_0123456789abcdef0123456789abcdef",
-                "01234567-89ab-cdef-0123-456789abcdef",
-                "opaqueAuthFlowSessionId0123456789")) {
-            try {
-                return new AuthFlowSessionId(candidate).value();
-            } catch (RuntimeException ignored) {
-                // Follow current value-object validation rules.
-            }
-        }
-        throw new AssertionError("No valid AuthFlowSessionId test fixture candidate matched current validation rules");
+  private record CompleteUseCaseStub(CompleteRegistrationResult result)
+      implements CompleteRegistrationUseCase {
+    @Override
+    public Mono<CompleteRegistrationResult> complete(CompleteRegistrationCommand command) {
+      return Mono.just(result);
     }
+  }
 
-    private static String validIdempotencyKey() {
-        for (String candidate : List.of(
-                "idem_0123456789abcdef",
-                "idem_0123456789abcdef0123456789abcdef",
-                "01234567-89ab-cdef-0123-456789abcdef",
-                "opaqueIdempotencyKey0123456789")) {
-            try {
-                return new RegistrationIdempotencyKey(candidate).value();
-            } catch (RuntimeException ignored) {
-                // Follow current value-object validation rules.
-            }
-        }
-        throw new AssertionError("No valid RegistrationIdempotencyKey test fixture candidate matched current validation rules");
+  private record CancelUseCaseStub(CancelRegistrationResult result)
+      implements CancelRegistrationUseCase {
+    @Override
+    public Mono<CancelRegistrationResult> cancel(CancelRegistrationCommand command) {
+      return Mono.just(result);
     }
-
-    private static final class StartUseCaseStub implements StartRegistrationUseCase {
-        @Override
-        public Mono<StartRegistrationResult> start(StartRegistrationCommand command) {
-            return Mono.error(new AssertionError("start use case must not be called"));
-        }
-    }
-
-    private record CompleteUseCaseStub(CompleteRegistrationResult result) implements CompleteRegistrationUseCase {
-        @Override
-        public Mono<CompleteRegistrationResult> complete(CompleteRegistrationCommand command) {
-            return Mono.just(result);
-        }
-    }
-
-    private record CancelUseCaseStub(CancelRegistrationResult result) implements CancelRegistrationUseCase {
-        @Override
-        public Mono<CancelRegistrationResult> cancel(CancelRegistrationCommand command) {
-            return Mono.just(result);
-        }
-    }
+  }
 }

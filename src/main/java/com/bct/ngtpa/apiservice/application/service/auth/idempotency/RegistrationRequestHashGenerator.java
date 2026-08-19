@@ -5,5 +5,5 @@ import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationReq
 import java.util.List;
 
 public interface RegistrationRequestHashGenerator {
-    RegistrationRequestHash hash(RegistrationIdempotencyAction action, List<String> normalizedParts);
+  RegistrationRequestHash hash(RegistrationIdempotencyAction action, List<String> normalizedParts);
 }

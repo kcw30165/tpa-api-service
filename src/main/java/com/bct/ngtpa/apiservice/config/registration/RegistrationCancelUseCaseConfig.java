@@ -13,19 +13,15 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class RegistrationCancelUseCaseConfig {
-    @Bean
-    @ConditionalOnMissingBean(CancelRegistrationUseCase.class)
-    CancelRegistrationUseCase cancelRegistrationUseCase(
-            AuthFlowSessionPort sessions,
-            AuthFlowSessionCsrfService csrfService,
-            OtpChallengePort otpChallenges,
-            AuthFlowSessionCancellationPort cancellationPort,
-            Clock clock) {
-        return new CancelRegistrationService(
-                sessions,
-                csrfService,
-                otpChallenges,
-                cancellationPort,
-                clock);
-    }
+  @Bean
+  @ConditionalOnMissingBean(CancelRegistrationUseCase.class)
+  CancelRegistrationUseCase cancelRegistrationUseCase(
+      AuthFlowSessionPort sessions,
+      AuthFlowSessionCsrfService csrfService,
+      OtpChallengePort otpChallenges,
+      AuthFlowSessionCancellationPort cancellationPort,
+      Clock clock) {
+    return new CancelRegistrationService(
+        sessions, csrfService, otpChallenges, cancellationPort, clock);
+  }
 }

@@ -15,31 +15,29 @@ import org.junit.jupiter.api.Test;
 
 class UseCaseConfigCoverageTest {
 
-    @Test
-    void createsAllUseCaseBeansWithMockedPorts() {
-        UseCaseConfig config = new UseCaseConfig();
+  @Test
+  void createsAllUseCaseBeansWithMockedPorts() {
+    UseCaseConfig config = new UseCaseConfig();
 
-        ApimNoticeMessagePort noticePort = mock(ApimNoticeMessagePort.class);
-        ApimNotificationReadStatusPort readStatusPort = mock(ApimNotificationReadStatusPort.class);
-        ApimContributionSummaryPort contributionPort = mock(ApimContributionSummaryPort.class);
-        ApimReferenceDataCountriesPort countriesPort = mock(ApimReferenceDataCountriesPort.class);
-        ApimMemberInfoPort memberInfoPort = mock(ApimMemberInfoPort.class);
-        CurrencyDisplayPort currencyDisplayPort = mock(CurrencyDisplayPort.class);
-        ReferenceDatePort referenceDatePort = mock(ReferenceDatePort.class);
-        ContributionActionPermissionPort actionPermissionPort = mock(ContributionActionPermissionPort.class);
+    ApimNoticeMessagePort noticePort = mock(ApimNoticeMessagePort.class);
+    ApimNotificationReadStatusPort readStatusPort = mock(ApimNotificationReadStatusPort.class);
+    ApimContributionSummaryPort contributionPort = mock(ApimContributionSummaryPort.class);
+    ApimReferenceDataCountriesPort countriesPort = mock(ApimReferenceDataCountriesPort.class);
+    ApimMemberInfoPort memberInfoPort = mock(ApimMemberInfoPort.class);
+    CurrencyDisplayPort currencyDisplayPort = mock(CurrencyDisplayPort.class);
+    ReferenceDatePort referenceDatePort = mock(ReferenceDatePort.class);
+    ContributionActionPermissionPort actionPermissionPort =
+        mock(ContributionActionPermissionPort.class);
 
-        assertNotNull(config.getNotificationsUseCase(noticePort, referenceDatePort));
-        assertNotNull(config.updateNotificationsReadStatusUseCase(readStatusPort, referenceDatePort));
-        assertNotNull(config.getContributionSummaryUseCase(
-                contributionPort,
-                currencyDisplayPort,
-                referenceDatePort,
-                actionPermissionPort));
-        assertNotNull(config.exportContributionSummaryUseCase(
-                contributionPort,
-                currencyDisplayPort,
-                referenceDatePort));
-        assertNotNull(config.getReferenceDataCountriesUseCase(countriesPort));
-        assertNotNull(config.getPersonalInformationUseCase(memberInfoPort));
-    }
+    assertNotNull(config.getNotificationsUseCase(noticePort, referenceDatePort));
+    assertNotNull(config.updateNotificationsReadStatusUseCase(readStatusPort, referenceDatePort));
+    assertNotNull(
+        config.getContributionSummaryUseCase(
+            contributionPort, currencyDisplayPort, referenceDatePort, actionPermissionPort));
+    assertNotNull(
+        config.exportContributionSummaryUseCase(
+            contributionPort, currencyDisplayPort, referenceDatePort));
+    assertNotNull(config.getReferenceDataCountriesUseCase(countriesPort));
+    assertNotNull(config.getPersonalInformationUseCase(memberInfoPort));
+  }
 }

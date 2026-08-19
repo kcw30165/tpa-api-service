@@ -10,38 +10,46 @@ import org.springframework.http.HttpStatus;
 
 class ApimExceptionAdditionalCoverageTest {
 
-    @Test
-    void mapsDefaultErrorCodesByHttpStatus() {
-        assertEquals(ErrorCodes.APIM_UPSTREAM_FAILURE,
-                new ApimException(HttpStatus.BAD_GATEWAY, "bad gateway").getErrorCode());
-        assertEquals(ErrorCodes.APIM_SERVICE_UNAVAILABLE,
-                new ApimException(HttpStatus.SERVICE_UNAVAILABLE, "unavailable").getErrorCode());
-        assertEquals(ErrorCodes.APIM_TIMEOUT,
-                new ApimException(HttpStatus.GATEWAY_TIMEOUT, "timeout").getErrorCode());
-        assertEquals(ErrorCodes.APIM_UNEXPECTED,
-                new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, "internal").getErrorCode());
-    }
+  @Test
+  void mapsDefaultErrorCodesByHttpStatus() {
+    assertEquals(
+        ErrorCodes.APIM_UPSTREAM_FAILURE,
+        new ApimException(HttpStatus.BAD_GATEWAY, "bad gateway").getErrorCode());
+    assertEquals(
+        ErrorCodes.APIM_SERVICE_UNAVAILABLE,
+        new ApimException(HttpStatus.SERVICE_UNAVAILABLE, "unavailable").getErrorCode());
+    assertEquals(
+        ErrorCodes.APIM_TIMEOUT,
+        new ApimException(HttpStatus.GATEWAY_TIMEOUT, "timeout").getErrorCode());
+    assertEquals(
+        ErrorCodes.APIM_UNEXPECTED,
+        new ApimException(HttpStatus.INTERNAL_SERVER_ERROR, "internal").getErrorCode());
+  }
 
-    @Test
-    void normalizesBlankNullAndNumericCodesToDefaultButPreservesTrimmedBusinessCode() {
-        assertEquals(ErrorCodes.APIM_UPSTREAM_FAILURE,
-                new ApimException(HttpStatus.BAD_GATEWAY, null, "message").getErrorCode());
-        assertEquals(ErrorCodes.APIM_UPSTREAM_FAILURE,
-                new ApimException(HttpStatus.BAD_GATEWAY, "   ", "message").getErrorCode());
-        assertEquals(ErrorCodes.APIM_UPSTREAM_FAILURE,
-                new ApimException(HttpStatus.BAD_GATEWAY, "502", "message").getErrorCode());
-        assertEquals("err.custom",
-                new ApimException(HttpStatus.BAD_GATEWAY, " err.custom ", "message").getErrorCode());
-    }
+  @Test
+  void normalizesBlankNullAndNumericCodesToDefaultButPreservesTrimmedBusinessCode() {
+    assertEquals(
+        ErrorCodes.APIM_UPSTREAM_FAILURE,
+        new ApimException(HttpStatus.BAD_GATEWAY, null, "message").getErrorCode());
+    assertEquals(
+        ErrorCodes.APIM_UPSTREAM_FAILURE,
+        new ApimException(HttpStatus.BAD_GATEWAY, "   ", "message").getErrorCode());
+    assertEquals(
+        ErrorCodes.APIM_UPSTREAM_FAILURE,
+        new ApimException(HttpStatus.BAD_GATEWAY, "502", "message").getErrorCode());
+    assertEquals(
+        "err.custom",
+        new ApimException(HttpStatus.BAD_GATEWAY, " err.custom ", "message").getErrorCode());
+  }
 
-    @Test
-    void preservesStatusMessageAndCauseAndRejectsNullStatus() {
-        RuntimeException cause = new RuntimeException("cause");
-        ApimException exception = new ApimException(HttpStatus.BAD_GATEWAY, "message", cause);
+  @Test
+  void preservesStatusMessageAndCauseAndRejectsNullStatus() {
+    RuntimeException cause = new RuntimeException("cause");
+    ApimException exception = new ApimException(HttpStatus.BAD_GATEWAY, "message", cause);
 
-        assertEquals(HttpStatus.BAD_GATEWAY, exception.getStatusCode());
-        assertEquals("message", exception.getMessage());
-        assertSame(cause, exception.getCause());
-        assertThrows(NullPointerException.class, () -> new ApimException(null, "message"));
-    }
+    assertEquals(HttpStatus.BAD_GATEWAY, exception.getStatusCode());
+    assertEquals("message", exception.getMessage());
+    assertSame(cause, exception.getCause());
+    assertThrows(NullPointerException.class, () -> new ApimException(null, "message"));
+  }
 }

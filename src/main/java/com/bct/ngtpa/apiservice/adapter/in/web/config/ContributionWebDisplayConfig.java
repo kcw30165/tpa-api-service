@@ -5,6 +5,4 @@ public record ContributionWebDisplayConfig(
     String totalLabelZh,
     String dealingDateHeader,
     String contributionPeriodHeader,
-    String totalContributionHeader
-) {
-}
+    String totalContributionHeader) {}

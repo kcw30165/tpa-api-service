@@ -5,5 +5,5 @@ import com.bct.ngtpa.apiservice.application.dto.MemberInfoResult;
 import reactor.core.publisher.Mono;
 
 public interface ApimMemberInfoPort {
-    Mono<MemberInfoResult> fetchMemberInfo(FetchMemberInfoCommand command);
+  Mono<MemberInfoResult> fetchMemberInfo(FetchMemberInfoCommand command);
 }

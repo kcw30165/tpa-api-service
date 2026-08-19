@@ -8,16 +8,16 @@ import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import java.util.List;
 
 public final class AuthenticatedLogoutWebMapper {
-    public MutationResponse<Void> toResponse(AuthenticatedLogoutResult result) {
-        if (result.successful()) {
-            return MutationResponse.success(ApiStatus.SUCCESS, null, List.of());
-        }
-        return MutationResponse.failure(
-                ApiStatus.SYSTEM_ERROR,
-                List.of(ApiError.system(ErrorCodes.SYSTEM_UNEXPECTED, null, "SERVER")));
+  public MutationResponse<Void> toResponse(AuthenticatedLogoutResult result) {
+    if (result.successful()) {
+      return MutationResponse.success(ApiStatus.SUCCESS, null, List.of());
     }
+    return MutationResponse.failure(
+        ApiStatus.SYSTEM_ERROR,
+        List.of(ApiError.system(ErrorCodes.SYSTEM_UNEXPECTED, null, "SERVER")));
+  }
 
-    public MutationResponse<Void> idempotentSuccess() {
-        return MutationResponse.success(ApiStatus.SUCCESS, null, List.of());
-    }
+  public MutationResponse<Void> idempotentSuccess() {
+    return MutationResponse.success(ApiStatus.SUCCESS, null, List.of());
+  }
 }

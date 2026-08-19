@@ -5,5 +5,5 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.veri
 import reactor.core.publisher.Mono;
 
 public interface VerifyForgotPasswordOtpUseCase {
-    Mono<VerifyForgotPasswordOtpResult> verify(VerifyForgotPasswordOtpCommand command);
+  Mono<VerifyForgotPasswordOtpResult> verify(VerifyForgotPasswordOtpCommand command);
 }

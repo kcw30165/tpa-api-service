@@ -6,16 +6,16 @@ import org.junit.jupiter.api.Test;
 
 class UsernameRecoveryDestinationTypeTest {
 
-    @Test
-    void exposesEmailAndMobileChannels() {
-        assertThat(UsernameRecoveryDestinationType.values()).containsExactly(
-                UsernameRecoveryDestinationType.EMAIL,
-                UsernameRecoveryDestinationType.MOBILE);
-    }
+  @Test
+  void exposesEmailAndMobileChannels() {
+    assertThat(UsernameRecoveryDestinationType.values())
+        .containsExactly(
+            UsernameRecoveryDestinationType.EMAIL, UsernameRecoveryDestinationType.MOBILE);
+  }
 
-    @Test
-    void enumNamesAreSafePublicValues() {
-        assertThat(UsernameRecoveryDestinationType.EMAIL.name()).isEqualTo("EMAIL");
-        assertThat(UsernameRecoveryDestinationType.MOBILE.name()).isEqualTo("MOBILE");
-    }
+  @Test
+  void enumNamesAreSafePublicValues() {
+    assertThat(UsernameRecoveryDestinationType.EMAIL.name()).isEqualTo("EMAIL");
+    assertThat(UsernameRecoveryDestinationType.MOBILE.name()).isEqualTo("MOBILE");
+  }
 }

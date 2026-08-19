@@ -5,8 +5,10 @@ import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.context.Us
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 
 public interface UsernameRecoveryAuthFlowContextProtectorPort {
-    UsernameRecoveryAuthFlowEncryptedContext protect(
-            AuthFlowSessionId authFlowSessionId, UsernameRecoveryAuthFlowContext context);
-    UsernameRecoveryAuthFlowContext unprotect(
-            AuthFlowSessionId authFlowSessionId, UsernameRecoveryAuthFlowEncryptedContext encryptedContext);
+  UsernameRecoveryAuthFlowEncryptedContext protect(
+      AuthFlowSessionId authFlowSessionId, UsernameRecoveryAuthFlowContext context);
+
+  UsernameRecoveryAuthFlowContext unprotect(
+      AuthFlowSessionId authFlowSessionId,
+      UsernameRecoveryAuthFlowEncryptedContext encryptedContext);
 }

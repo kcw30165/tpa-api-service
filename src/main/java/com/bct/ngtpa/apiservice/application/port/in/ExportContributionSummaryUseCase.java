@@ -5,5 +5,5 @@ import com.bct.ngtpa.apiservice.application.dto.ExportContributionSummaryCommand
 import reactor.core.publisher.Mono;
 
 public interface ExportContributionSummaryUseCase {
-    Mono<ContributionSummaryReportResult> execute(ExportContributionSummaryCommand command);
+  Mono<ContributionSummaryReportResult> execute(ExportContributionSummaryCommand command);
 }

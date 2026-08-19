@@ -8,16 +8,20 @@ import org.junit.jupiter.api.Test;
 
 class RegistrationOtpChallengeAdapterVerifyGuardTest {
 
-    @Test
-    void registrationOtpChallengeAdapterOverridesVerifyOtpAndDelegatesToOtpChallengePort() throws Exception {
-        Path sourcePath = Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/out/registration/RegistrationOtpChallengeAdapter.java");
-        assertThat(Files.exists(sourcePath)).isTrue();
-        String source = Files.readString(sourcePath);
-        assertThat(source).contains(
-                "public Mono<RegistrationOtpVerificationResult> verifyOtp",
-                "otpChallengePort.verifyChallenge",
-                "new VerifyOtpChallengeCommand",
-                "RegistrationOtpVerificationResult.verified()",
-                "RegistrationOtpVerificationResult.invalid(result.remainingAttempts())");
-    }
+  @Test
+  void registrationOtpChallengeAdapterOverridesVerifyOtpAndDelegatesToOtpChallengePort()
+      throws Exception {
+    Path sourcePath =
+        Path.of(
+            "src/main/java/com/bct/ngtpa/apiservice/adapter/out/registration/RegistrationOtpChallengeAdapter.java");
+    assertThat(Files.exists(sourcePath)).isTrue();
+    String source = Files.readString(sourcePath);
+    assertThat(source)
+        .containsIgnoringWhitespaces(
+            "public Mono<RegistrationOtpVerificationResult> verifyOtp",
+            "otpChallengePort.verifyChallenge",
+            "new VerifyOtpChallengeCommand",
+            "RegistrationOtpVerificationResult.verified()",
+            "RegistrationOtpVerificationResult.invalid(result.remainingAttempts())");
+  }
 }

@@ -16,87 +16,107 @@ import reactor.test.StepVerifier;
 
 class RequiredRequestIdWebFilterTest {
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
-    private final RequiredRequestIdWebFilter filter = new RequiredRequestIdWebFilter(objectMapper);
+  private final ObjectMapper objectMapper = new ObjectMapper();
+  private final RequiredRequestIdWebFilter filter = new RequiredRequestIdWebFilter(objectMapper);
 
-    @Test
-    void missingRequestIdRejectsApiRequestBeforeBusinessChain() {
-        AtomicBoolean invoked = new AtomicBoolean(false);
-        var exchange = MockServerWebExchange.from(
-                MockServerHttpRequest.post("/api/v1/auth/captcha/challenge").build());
+  @Test
+  void missingRequestIdRejectsApiRequestBeforeBusinessChain() {
+    AtomicBoolean invoked = new AtomicBoolean(false);
+    var exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.post("/api/v1/auth/captcha/challenge").build());
 
-        StepVerifier.create(filter.filter(exchange, ignored -> {
-            invoked.set(true);
-            return Mono.empty();
-        })).verifyComplete();
+    StepVerifier.create(
+            filter.filter(
+                exchange,
+                ignored -> {
+                  invoked.set(true);
+                  return Mono.empty();
+                }))
+        .verifyComplete();
 
-        assertThat(invoked).isFalse();
-        assertThat(exchange.getResponse().getStatusCode().value()).isEqualTo(400);
-        JsonNode body = responseBody(exchange);
-        assertThat(body.path("success").asBoolean()).isFalse();
-        assertThat(body.path("status").asText()).isEqualTo("VALIDATION_FAILED");
-        assertThat(body.at("/errors/0/code").asText()).isEqualTo("err.request.id.missing");
-        assertThat(body.path("errors").path(0).has("message")).isFalse();
-        assertThat(body.at("/errors/0/targets/0").asText()).isEqualTo("X-Request-Id");
-    }
+    assertThat(invoked).isFalse();
+    assertThat(exchange.getResponse().getStatusCode().value()).isEqualTo(400);
+    JsonNode body = responseBody(exchange);
+    assertThat(body.path("success").asBoolean()).isFalse();
+    assertThat(body.path("status").asText()).isEqualTo("VALIDATION_FAILED");
+    assertThat(body.at("/errors/0/code").asText()).isEqualTo("err.request.id.missing");
+    assertThat(body.path("errors").path(0).has("message")).isFalse();
+    assertThat(body.at("/errors/0/targets/0").asText()).isEqualTo("X-Request-Id");
+  }
 
-    @Test
-    void blankRequestIdIsRejected() {
-        var exchange = MockServerWebExchange.from(MockServerHttpRequest
-                .post("/api/v1/auth/captcha/challenge")
+  @Test
+  void blankRequestIdIsRejected() {
+    var exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.post("/api/v1/auth/captcha/challenge")
                 .header(RequestCorrelation.REQUEST_ID_HEADER, "   ")
                 .build());
 
-        StepVerifier.create(filter.filter(exchange, ignored -> Mono.error(
-                new AssertionError("business chain must not be called"))))
-                .verifyComplete();
+    StepVerifier.create(
+            filter.filter(
+                exchange,
+                ignored -> Mono.error(new AssertionError("business chain must not be called"))))
+        .verifyComplete();
 
-        assertThat(exchange.getResponse().getStatusCode().value()).isEqualTo(400);
-    }
+    assertThat(exchange.getResponse().getStatusCode().value()).isEqualTo(400);
+  }
 
-    @Test
-    void suppliedRequestIdAllowsApiRequest() {
-        AtomicBoolean invoked = new AtomicBoolean(false);
-        var exchange = MockServerWebExchange.from(MockServerHttpRequest
-                .post("/api/v1/auth/captcha/challenge")
+  @Test
+  void suppliedRequestIdAllowsApiRequest() {
+    AtomicBoolean invoked = new AtomicBoolean(false);
+    var exchange =
+        MockServerWebExchange.from(
+            MockServerHttpRequest.post("/api/v1/auth/captcha/challenge")
                 .header(RequestCorrelation.REQUEST_ID_HEADER, "req-123")
                 .build());
 
-        StepVerifier.create(filter.filter(exchange, ignored -> {
-            invoked.set(true);
-            return Mono.empty();
-        })).verifyComplete();
+    StepVerifier.create(
+            filter.filter(
+                exchange,
+                ignored -> {
+                  invoked.set(true);
+                  return Mono.empty();
+                }))
+        .verifyComplete();
 
-        assertThat(invoked).isTrue();
-    }
+    assertThat(invoked).isTrue();
+  }
 
-    @Test
-    void nonApiRequestIsNotSubjectToApplicationHeaderContract() {
-        AtomicBoolean invoked = new AtomicBoolean(false);
-        var exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/actuator/health").build());
+  @Test
+  void nonApiRequestIsNotSubjectToApplicationHeaderContract() {
+    AtomicBoolean invoked = new AtomicBoolean(false);
+    var exchange =
+        MockServerWebExchange.from(MockServerHttpRequest.get("/actuator/health").build());
 
-        StepVerifier.create(filter.filter(exchange, ignored -> {
-            invoked.set(true);
-            return Mono.empty();
-        })).verifyComplete();
+    StepVerifier.create(
+            filter.filter(
+                exchange,
+                ignored -> {
+                  invoked.set(true);
+                  return Mono.empty();
+                }))
+        .verifyComplete();
 
-        assertThat(invoked).isTrue();
-    }
+    assertThat(invoked).isTrue();
+  }
 
-    private JsonNode responseBody(MockServerWebExchange exchange) {
-        var buffers = exchange.getResponse().getBody();
-        byte[] bytes = DataBufferUtils.join(buffers)
-                .map(buffer -> {
-                    byte[] value = new byte[buffer.readableByteCount()];
-                    buffer.read(value);
-                    DataBufferUtils.release(buffer);
-                    return value;
+  private JsonNode responseBody(MockServerWebExchange exchange) {
+    var buffers = exchange.getResponse().getBody();
+    byte[] bytes =
+        DataBufferUtils.join(buffers)
+            .map(
+                buffer -> {
+                  byte[] value = new byte[buffer.readableByteCount()];
+                  buffer.read(value);
+                  DataBufferUtils.release(buffer);
+                  return value;
                 })
-                .block();
-        try {
-            return objectMapper.readTree(new String(bytes, StandardCharsets.UTF_8));
-        } catch (Exception exception) {
-            throw new AssertionError(exception);
-        }
+            .block();
+    try {
+      return objectMapper.readTree(new String(bytes, StandardCharsets.UTF_8));
+    } catch (Exception exception) {
+      throw new AssertionError(exception);
     }
+  }
 }

@@ -8,9 +8,9 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class ApimCertificateHeaderProvider {
 
-    private final ApimAppCertificateService apimAppCertificateService;
+  private final ApimAppCertificateService apimAppCertificateService;
 
-    public String getCertificateHeaderValue() {
-        return apimAppCertificateService.getCertificateHeaderValue();
-    }
+  public String getCertificateHeaderValue() {
+    return apimAppCertificateService.getCertificateHeaderValue();
+  }
 }

@@ -10,11 +10,24 @@ import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyUnknownOutcomeCommand;
 import com.bct.ngtpa.apiservice.application.port.out.authflow.AuthFlowIdempotencyPort;
 
-public interface ForgotPasswordIdempotencyPort extends
-        AuthFlowIdempotencyPort<ForgotPasswordIdempotencyAction, ForgotPasswordIdempotencyKey, ForgotPasswordIdempotencyStartCommand, ForgotPasswordIdempotencyStartResult, ForgotPasswordIdempotencyCompleteCommand, ForgotPasswordIdempotencyFailCommand, ForgotPasswordIdempotencyUnknownOutcomeCommand, ForgotPasswordIdempotencyRecord> {
-    default reactor.core.publisher.Mono<com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordPendingCommitRefResult> attachPendingCommitRef(
-            com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordPendingCommitRefCommand command) {
-        return reactor.core.publisher.Mono.error(
-                new UnsupportedOperationException("Pending commit reference operation is not configured"));
-    }
+public interface ForgotPasswordIdempotencyPort
+    extends AuthFlowIdempotencyPort<
+        ForgotPasswordIdempotencyAction,
+        ForgotPasswordIdempotencyKey,
+        ForgotPasswordIdempotencyStartCommand,
+        ForgotPasswordIdempotencyStartResult,
+        ForgotPasswordIdempotencyCompleteCommand,
+        ForgotPasswordIdempotencyFailCommand,
+        ForgotPasswordIdempotencyUnknownOutcomeCommand,
+        ForgotPasswordIdempotencyRecord> {
+  default reactor.core.publisher.Mono<
+          com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency
+              .ForgotPasswordPendingCommitRefResult>
+      attachPendingCommitRef(
+          com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency
+                  .ForgotPasswordPendingCommitRefCommand
+              command) {
+    return reactor.core.publisher.Mono.error(
+        new UnsupportedOperationException("Pending commit reference operation is not configured"));
+  }
 }

@@ -5,8 +5,8 @@ import org.springframework.context.annotation.*;
 
 @Configuration
 public class LoginWebConfig {
-    @Bean
-    LoginStartWebMapper loginStartWebMapper() {
-        return new LoginStartWebMapper();
-    }
+  @Bean
+  LoginStartWebMapper loginStartWebMapper() {
+    return new LoginStartWebMapper();
+  }
 }

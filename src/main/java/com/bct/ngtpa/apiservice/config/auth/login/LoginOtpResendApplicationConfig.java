@@ -11,22 +11,39 @@ import org.springframework.context.annotation.*;
 
 @Configuration
 public class LoginOtpResendApplicationConfig {
-    @Bean
-    LoginOtpResendWebMapper loginOtpResendWebMapper() {
-        return new LoginOtpResendWebMapper();
-    }
+  @Bean
+  LoginOtpResendWebMapper loginOtpResendWebMapper() {
+    return new LoginOtpResendWebMapper();
+  }
 
-    @Bean
-    ResendLoginOtpUseCase resendLoginOtpUseCase(LoginProtectedAuthFlowContextLoader loader, OtpChallengePort otp,
-            MessageDeliveryPort messages, LoginOtpSessionBindingPort binding, LoginOtpSendIdempotencyPort idempotency,
-            Clock clock, AuthWorkflowProperties properties) {
-        properties.validateLoginPolicy();
-        var p = properties.getLogin().getOtp();
-        var policy = new LoginOtpSendPolicy(p.getLength(), p.isNumericOnly(), p.getTtlSeconds(),
-                p.getResendCooldownSeconds(), p.getMaxVerifyAttempts(), p.isResendLimitEnabled(),
-                p.getMaxResendAttempts(), p.getSmsTemplate(), p.getEmailTemplate().getSubject());
-        var core = new LoginOtpResendService(loader, otp, messages, binding, clock, policy);
-        return new IdempotentLoginOtpResendService(core, idempotency, new LoginOtpResendRequestHashGenerator(), clock,
-                Duration.ofSeconds(properties.getLogin().getIdempotency().getOtpResendTtlSeconds()));
-    }
+  @Bean
+  ResendLoginOtpUseCase resendLoginOtpUseCase(
+      LoginProtectedAuthFlowContextLoader loader,
+      OtpChallengePort otp,
+      MessageDeliveryPort messages,
+      LoginOtpSessionBindingPort binding,
+      LoginOtpSendIdempotencyPort idempotency,
+      Clock clock,
+      AuthWorkflowProperties properties) {
+    properties.validateLoginPolicy();
+    var p = properties.getLogin().getOtp();
+    var policy =
+        new LoginOtpSendPolicy(
+            p.getLength(),
+            p.isNumericOnly(),
+            p.getTtlSeconds(),
+            p.getResendCooldownSeconds(),
+            p.getMaxVerifyAttempts(),
+            p.isResendLimitEnabled(),
+            p.getMaxResendAttempts(),
+            p.getSmsTemplate(),
+            p.getEmailTemplate().getSubject());
+    var core = new LoginOtpResendService(loader, otp, messages, binding, clock, policy);
+    return new IdempotentLoginOtpResendService(
+        core,
+        idempotency,
+        new LoginOtpResendRequestHashGenerator(),
+        clock,
+        Duration.ofSeconds(properties.getLogin().getIdempotency().getOtpResendTtlSeconds()));
+  }
 }

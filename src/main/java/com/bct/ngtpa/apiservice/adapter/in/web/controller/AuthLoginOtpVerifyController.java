@@ -17,9 +17,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.verify.Verify
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.verify.VerifyLoginOtpStatus;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
-
 import lombok.extern.slf4j.Slf4j;
-
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.CookieValue;
@@ -34,104 +32,113 @@ import reactor.core.publisher.Mono;
 @RequestMapping("/api/v1/auth/login/otp")
 @Slf4j
 public final class AuthLoginOtpVerifyController {
-    private final VerifyLoginOtpUseCase useCase;
-    private final LoginOtpVerifyWebMapper mapper;
-    private final AuthFlowCookieWriter authFlowCookies;
-    private final XsrfCookieWriter xsrfCookies;
-    private final AuthenticatedSessionCookieWriter authenticatedSessionCookies;
+  private final VerifyLoginOtpUseCase useCase;
+  private final LoginOtpVerifyWebMapper mapper;
+  private final AuthFlowCookieWriter authFlowCookies;
+  private final XsrfCookieWriter xsrfCookies;
+  private final AuthenticatedSessionCookieWriter authenticatedSessionCookies;
 
-    public AuthLoginOtpVerifyController(
-            VerifyLoginOtpUseCase useCase,
-            LoginOtpVerifyWebMapper mapper,
-            AuthFlowCookieWriter authFlowCookies,
-            XsrfCookieWriter xsrfCookies,
-            AuthenticatedSessionCookieWriter authenticatedSessionCookies) {
-        this.useCase = useCase;
-        this.mapper = mapper;
-        this.authFlowCookies = authFlowCookies;
-        this.xsrfCookies = xsrfCookies;
-        this.authenticatedSessionCookies = authenticatedSessionCookies;
-    }
+  public AuthLoginOtpVerifyController(
+      VerifyLoginOtpUseCase useCase,
+      LoginOtpVerifyWebMapper mapper,
+      AuthFlowCookieWriter authFlowCookies,
+      XsrfCookieWriter xsrfCookies,
+      AuthenticatedSessionCookieWriter authenticatedSessionCookies) {
+    this.useCase = useCase;
+    this.mapper = mapper;
+    this.authFlowCookies = authFlowCookies;
+    this.xsrfCookies = xsrfCookies;
+    this.authenticatedSessionCookies = authenticatedSessionCookies;
+  }
 
-    @PostMapping("/verify")
-    public Mono<ResponseEntity<MutationResponse<LoginWorkflowResultResponse<LoginOtpVerifyDataResponse>>>> verify(
-            @RequestBody(required = false) LoginOtpVerifyRequest request,
-            @CookieValue(name = "auth_flow_sid", required = false) String session,
-            @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrf,
-            @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
-            @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false) String requestId,
-            @RequestHeader(name = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false) String language,
-            @RequestHeader(name = "Origin", required = false) String origin,
-            @RequestHeader(name = "Referer", required = false) String referer,
-            ServerHttpResponse response) {
-        if (hasText(requestId)) {
-            response.getHeaders().set(RequestCorrelation.REQUEST_ID_HEADER, requestId.trim());
-        }
-        if (!hasText(session)) {
-            return missing(LoginErrorKey.AUTH_FLOW_INVALID.value(), "PAGE");
-        }
-        if (!hasText(csrf)) {
-            return CsrfHttpResponses.missingToken();
-        }
-        if (!hasText(idempotencyKey)) {
-            return missing(SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value(), "Idempotency-Key");
-        }
-        if (request == null || !hasText(request.code())) {
-            return missing(LoginErrorKey.OTP_REQUIRED.value(), "otpCode");
-        }
-        try {
-            return useCase.verify(new VerifyLoginOtpCommand(
-                    session.trim(),
-                    csrf.trim(),
-                    request.code().trim(),
-                    idempotencyKey.trim(),
-                    clean(origin),
-                    clean(referer),
-                    clean(language),
-                    clean(requestId)))
-                    .map(result -> {
-                        if (result.status() == VerifyLoginOtpStatus.SESSION_CREATION_FAILED
-                                || result.status() == VerifyLoginOtpStatus.SYSTEM_FAILED) {
-                            log.error("event=login.otp.verify.http.failure status={} requestId={}",
-                                    result.status(), clean(requestId));
-                        }
-                        if (result.status() == VerifyLoginOtpStatus.ACCOUNTS_READY
-                                && result.authenticatedSessionId() != null
-                                && hasText(result.authenticatedCsrfToken())) {
-                            authenticatedSessionCookies.write(
-                                    response,
-                                    result.authenticatedSessionId().value());
-                        }
-                        if (result.clearAuthFlowCookie()) {
-                            authFlowCookies.clearAuthFlowCookie(response);
-                            xsrfCookies.clearXsrfCookie(response);
-                        }
-                        return LoginHttpResponses.toResponse(mapper.toMutationResponse(result));
-                    })
-                    .doOnError(error -> log.error(
-                            "event=login.otp.verify.http.exception exceptionType={} message={} requestId={}",
-                            error.getClass().getSimpleName(), error.getMessage(), clean(requestId), error));
-        } catch (RuntimeException exception) {
-            log.error(
-                    "Synchronous login OTP verification failure: requestId={}",
-                    requestId,
-                    exception
-            );
-            return missing(LoginErrorKey.REQUEST_INVALID.value(), "PAGE");
-        }
+  @PostMapping("/verify")
+  public Mono<
+          ResponseEntity<MutationResponse<LoginWorkflowResultResponse<LoginOtpVerifyDataResponse>>>>
+      verify(
+          @RequestBody(required = false) LoginOtpVerifyRequest request,
+          @CookieValue(name = "auth_flow_sid", required = false) String session,
+          @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrf,
+          @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
+          @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false)
+              String requestId,
+          @RequestHeader(name = RequestHeaderContextKeys.ACCEPT_LANGUAGE_HEADER, required = false)
+              String language,
+          @RequestHeader(name = "Origin", required = false) String origin,
+          @RequestHeader(name = "Referer", required = false) String referer,
+          ServerHttpResponse response) {
+    if (hasText(requestId)) {
+      response.getHeaders().set(RequestCorrelation.REQUEST_ID_HEADER, requestId.trim());
     }
+    if (!hasText(session)) {
+      return missing(LoginErrorKey.AUTH_FLOW_INVALID.value(), "PAGE");
+    }
+    if (!hasText(csrf)) {
+      return CsrfHttpResponses.missingToken();
+    }
+    if (!hasText(idempotencyKey)) {
+      return missing(SharedWorkflowErrorKey.IDEMPOTENCY_MISSING.value(), "Idempotency-Key");
+    }
+    if (request == null || !hasText(request.code())) {
+      return missing(LoginErrorKey.OTP_REQUIRED.value(), "otpCode");
+    }
+    try {
+      return useCase
+          .verify(
+              new VerifyLoginOtpCommand(
+                  session.trim(),
+                  csrf.trim(),
+                  request.code().trim(),
+                  idempotencyKey.trim(),
+                  clean(origin),
+                  clean(referer),
+                  clean(language),
+                  clean(requestId)))
+          .map(
+              result -> {
+                if (result.status() == VerifyLoginOtpStatus.SESSION_CREATION_FAILED
+                    || result.status() == VerifyLoginOtpStatus.SYSTEM_FAILED) {
+                  log.error(
+                      "event=login.otp.verify.http.failure status={} requestId={}",
+                      result.status(),
+                      clean(requestId));
+                }
+                if (result.status() == VerifyLoginOtpStatus.ACCOUNTS_READY
+                    && result.authenticatedSessionId() != null
+                    && hasText(result.authenticatedCsrfToken())) {
+                  authenticatedSessionCookies.write(
+                      response, result.authenticatedSessionId().value());
+                }
+                if (result.clearAuthFlowCookie()) {
+                  authFlowCookies.clearAuthFlowCookie(response);
+                  xsrfCookies.clearXsrfCookie(response);
+                }
+                return LoginHttpResponses.toResponse(mapper.toMutationResponse(result));
+              })
+          .doOnError(
+              error ->
+                  log.error(
+                      "event=login.otp.verify.http.exception exceptionType={} message={} requestId={}",
+                      error.getClass().getSimpleName(),
+                      error.getMessage(),
+                      clean(requestId),
+                      error));
+    } catch (RuntimeException exception) {
+      log.error("Synchronous login OTP verification failure: requestId={}", requestId, exception);
+      return missing(LoginErrorKey.REQUEST_INVALID.value(), "PAGE");
+    }
+  }
 
-    private Mono<ResponseEntity<MutationResponse<LoginWorkflowResultResponse<LoginOtpVerifyDataResponse>>>> missing(
-            String code,
-            String target) {
-        return Mono.just(LoginHttpResponses.toResponse(mapper.missing(code, target)));
-    }
+  private Mono<
+          ResponseEntity<MutationResponse<LoginWorkflowResultResponse<LoginOtpVerifyDataResponse>>>>
+      missing(String code, String target) {
+    return Mono.just(LoginHttpResponses.toResponse(mapper.missing(code, target)));
+  }
 
-    private boolean hasText(String value) {
-        return value != null && !value.isBlank();
-    }
+  private boolean hasText(String value) {
+    return value != null && !value.isBlank();
+  }
 
-    private String clean(String value) {
-        return hasText(value) ? value.trim() : null;
-    }
+  private String clean(String value) {
+    return hasText(value) ? value.trim() : null;
+  }
 }

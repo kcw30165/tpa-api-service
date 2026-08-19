@@ -17,140 +17,143 @@ import org.junit.jupiter.api.Test;
 /**
  * Fail-first contract for the confirmed TRPSearchUnregMember behavior.
  *
- * <p>This test intentionally goes red before Patch 010 production changes. Do
- * not weaken it to preserve the old three-state lookup model.</p>
+ * <p>This test intentionally goes red before Patch 010 production changes. Do not weaken it to
+ * preserve the old three-state lookup model.
  */
 class RegistrationLookupContractFailFirstTest {
 
-    @Test
-    void lookupStatusContainsOnlyTheTwoBusinessOutcomes() {
-        assertThat(Arrays.stream(RegistrationLookupStatus.values())
-                        .map(Enum::name)
-                        .toList())
-                .containsExactly("ELIGIBLE", "NOT_ELIGIBLE");
-    }
+  @Test
+  void lookupStatusContainsOnlyTheTwoBusinessOutcomes() {
+    assertThat(Arrays.stream(RegistrationLookupStatus.values()).map(Enum::name).toList())
+        .containsExactly("ELIGIBLE", "NOT_ELIGIBLE");
+  }
 
-    @Test
-    void resultMapperRequiresOriginalRequestContactForSemanticValidation()
-            throws Exception {
-        Class<?> mapper = Class.forName(
-                "com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper."
-                        + "TrpSearchUnregMemberApimResultMapper");
+  @Test
+  void resultMapperRequiresOriginalRequestContactForSemanticValidation() throws Exception {
+    Class<?> mapper =
+        Class.forName(
+            "com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper."
+                + "TrpSearchUnregMemberApimResultMapper");
 
-        assertThat(Arrays.stream(mapper.getDeclaredMethods())
-                        .filter(method -> method.getName().equals("toResult"))
-                        .map(Method::getParameterTypes)
-                        .map(Arrays::asList)
-                        .toList())
-                .anySatisfy(parameters -> assertThat(parameters)
-                        .anySatisfy(type -> assertThat(type.getSimpleName())
+    assertThat(
+            Arrays.stream(mapper.getDeclaredMethods())
+                .filter(method -> method.getName().equals("toResult"))
+                .map(Method::getParameterTypes)
+                .map(Arrays::asList)
+                .toList())
+        .anySatisfy(
+            parameters ->
+                assertThat(parameters)
+                    .anySatisfy(
+                        type ->
+                            assertThat(type.getSimpleName())
                                 .isEqualTo("RegistrationLookupCommand")));
-    }
+  }
 
-    @Test
-    void unexpectedApimErrorCannotBeRepresentedAsNormalLookupStatus()
-            throws Exception {
-        String mapper = readMain("TrpSearchUnregMemberApimResultMapper.java");
+  @Test
+  void unexpectedApimErrorCannotBeRepresentedAsNormalLookupStatus() throws Exception {
+    String mapper = readMain("TrpSearchUnregMemberApimResultMapper.java");
 
-        assertThat(mapper)
-                .doesNotContain("UPSTREAM_BUSINESS_REJECTED")
-                .contains("err.tpa.member.not.found")
-                .contains("RegistrationLookupDownstreamException");
-    }
+    assertThat(mapper)
+        .doesNotContain("UPSTREAM_BUSINESS_REJECTED")
+        .contains("err.tpa.member.not.found")
+        .contains("RegistrationLookupDownstreamException");
+  }
 
-    @Test
-    void emptySuccessfulEnvelopeCannotBeTreatedAsNotEligible() throws Exception {
-        String mapper = readMain("TrpSearchUnregMemberApimResultMapper.java");
+  @Test
+  void emptySuccessfulEnvelopeCannotBeTreatedAsNotEligible() throws Exception {
+    String mapper = readMain("TrpSearchUnregMemberApimResultMapper.java");
 
-        assertThat(mapper)
-                .contains("RegistrationLookupDownstreamException.Reason.EMPTY_DATA")
-                .contains("RegistrationLookupStatus.NOT_ELIGIBLE");
-    }
+    assertThat(mapper)
+        .contains("RegistrationLookupDownstreamException.Reason.EMPTY_DATA")
+        .contains("RegistrationLookupStatus.NOT_ELIGIBLE");
+  }
 
-    @Test
-    void eligibleDataRequiresMatchingContactAndNonBlankAccountIdentity()
-            throws Exception {
-        String mapper = readMain("TrpSearchUnregMemberApimResultMapper.java");
+  @Test
+  void eligibleDataRequiresMatchingContactAndNonBlankAccountIdentity() throws Exception {
+    String mapper = readMain("TrpSearchUnregMemberApimResultMapper.java");
 
-        assertThat(mapper)
-                .contains("contactValue")
-                .contains("contactType")
-                .contains("item.env()")
-                .contains("item.trustCode()")
-                .contains("RegistrationLookupDownstreamException");
-    }
+    assertThat(mapper)
+        .contains("contactValue")
+        .contains("contactType")
+        .contains("item.env()")
+        .contains("item.trustCode()")
+        .contains("RegistrationLookupDownstreamException");
+  }
 
-    @Test
-    void feIdentityValuesMapToTheConfirmedApimValues() {
-        var mapper = new TrpSearchUnregMemberApimMapper();
+  @Test
+  void feIdentityValuesMapToTheConfirmedApimValues() {
+    var mapper = new TrpSearchUnregMemberApimMapper();
 
-        assertSearchBy(mapper, MemberIdentityType.ID, "ID");
-        assertSearchBy(mapper, MemberIdentityType.STAFFNO, "STAFFNO");
-        assertSearchBy(mapper, MemberIdentityType.GPFS, "GPFS");
-        assertSearchBy(mapper, MemberIdentityType.GPN, "GPN");
-    }
+    assertSearchBy(mapper, MemberIdentityType.ID, "ID");
+    assertSearchBy(mapper, MemberIdentityType.STAFFNO, "STAFFNO");
+    assertSearchBy(mapper, MemberIdentityType.GPFS, "GPFS");
+    assertSearchBy(mapper, MemberIdentityType.GPN, "GPN");
+  }
 
-    @Test
-    void staleLookupStatusesAndHkidErrorAreAbsentFromProduction() throws Exception {
-        String status = readMain("RegistrationLookupStatus.java");
-        String pageYaml = Files.readString(Path.of(
-                "src/main/resources/application-page-registration.yml"));
+  @Test
+  void staleLookupStatusesAndHkidErrorAreAbsentFromProduction() throws Exception {
+    String status = readMain("RegistrationLookupStatus.java");
+    String pageYaml =
+        Files.readString(Path.of("src/main/resources/application-page-registration.yml"));
 
-        assertThat(status)
-                .doesNotContain("NOT_FOUND_OR_NOT_ELIGIBLE")
-                .doesNotContain("UPSTREAM_BUSINESS_REJECTED");
-        assertThat(pageYaml)
-                .contains("endpoint: TRPSearchUnregMember")
-                .doesNotContain("err.tpa.hkid.invalid");
-    }
+    assertThat(status)
+        .doesNotContain("NOT_FOUND_OR_NOT_ELIGIBLE")
+        .doesNotContain("UPSTREAM_BUSINESS_REJECTED");
+    assertThat(pageYaml)
+        .contains("endpoint: TRPSearchUnregMember")
+        .doesNotContain("err.tpa.hkid.invalid");
+  }
 
-    @Test
-    void errorKeyConsolidationTargetIsExplicitlyGuarded() throws Exception {
-        assertThat(classExists(
-                "com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey"))
-                .isTrue();
-        assertThat(classExists(
-                "com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey"))
-                .isTrue();
-        assertThat(classExists(
+  @Test
+  void errorKeyConsolidationTargetIsExplicitlyGuarded() throws Exception {
+    assertThat(
+            classExists("com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey"))
+        .isTrue();
+    assertThat(
+            classExists("com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey"))
+        .isTrue();
+    assertThat(
+            classExists(
                 "com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationPublicErrorCode"))
-                .isFalse();
-        assertThat(classExists(
+        .isFalse();
+    assertThat(
+            classExists(
                 "com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationWorkflowErrorKeys"))
-                .isFalse();
-    }
+        .isFalse();
+  }
 
-    private void assertSearchBy(
-            TrpSearchUnregMemberApimMapper mapper,
-            MemberIdentityType type,
-            String expected) {
-        TrpSearchUnregMemberApimRequest request = mapper.toApimRequest(
-                new RegistrationLookupCommand(
-                        type,
-                        "masked-test-value",
-                        "01/01/1970",
-                        RegistrationContactType.EMAIL,
-                        "member@example.com", com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR));
-        assertThat(request.searchBy()).isEqualTo(expected);
-    }
+  private void assertSearchBy(
+      TrpSearchUnregMemberApimMapper mapper, MemberIdentityType type, String expected) {
+    TrpSearchUnregMemberApimRequest request =
+        mapper.toApimRequest(
+            new RegistrationLookupCommand(
+                type,
+                "masked-test-value",
+                "01/01/1970",
+                RegistrationContactType.EMAIL,
+                "member@example.com",
+                com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR));
+    assertThat(request.searchBy()).isEqualTo(expected);
+  }
 
-    private boolean classExists(String className) {
-        try {
-            Class.forName(className);
-            return true;
-        } catch (ClassNotFoundException ignored) {
-            return false;
-        }
+  private boolean classExists(String className) {
+    try {
+      Class.forName(className);
+      return true;
+    } catch (ClassNotFoundException ignored) {
+      return false;
     }
+  }
 
-    private String readMain(String fileName) throws Exception {
-        try (var paths = Files.walk(Path.of("src/main/java"))) {
-            Path path = paths
-                    .filter(candidate -> candidate.getFileName().toString()
-                            .equals(fileName))
-                    .findFirst()
-                    .orElseThrow();
-            return Files.readString(path);
-        }
+  private String readMain(String fileName) throws Exception {
+    try (var paths = Files.walk(Path.of("src/main/java"))) {
+      Path path =
+          paths
+              .filter(candidate -> candidate.getFileName().toString().equals(fileName))
+              .findFirst()
+              .orElseThrow();
+      return Files.readString(path);
     }
+  }
 }

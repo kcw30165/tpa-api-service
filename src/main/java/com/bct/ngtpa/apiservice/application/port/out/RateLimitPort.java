@@ -6,5 +6,5 @@ import reactor.core.publisher.Mono;
 
 public interface RateLimitPort {
 
-    Mono<RateLimitResult> checkAndConsume(RateLimitCommand command);
+  Mono<RateLimitResult> checkAndConsume(RateLimitCommand command);
 }

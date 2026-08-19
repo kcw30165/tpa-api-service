@@ -4,76 +4,54 @@ import com.bct.ngtpa.apiservice.adapter.out.configserver.ReferenceDateProperties
 import com.bct.ngtpa.apiservice.adapter.out.referencedate.ReferenceDateAdapter;
 import com.bct.ngtpa.apiservice.application.port.out.CachePort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
+import java.time.Clock;
+import java.util.Optional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 
-import java.time.Clock;
-import java.util.Optional;
-
 /**
- * Spring composition configuration for the {@link ReferenceDatePort} outbound
- * adapter.
+ * Spring composition configuration for the {@link ReferenceDatePort} outbound adapter.
  *
- * <p>
- * Registers {@link ReferenceDateAdapter} as the application-facing
- * {@link ReferenceDatePort} bean, wiring:
+ * <p>Registers {@link ReferenceDateAdapter} as the application-facing {@link ReferenceDatePort}
+ * bean, wiring:
+ *
  * <ul>
- * <li>{@link ReferenceDateProperties} — accountEnv, read-path cache TTL,
- * refresh settings.</li>
- * <li>{@code Optional<CachePort>} — present when Redis is enabled; empty when
- * disabled.</li>
- * <li>{@link ApimReferenceDateRefreshPort} — APIM fetch used as the non-prod
- * upstream source.</li>
- * <li>{@link ReferenceDateCacheUpdatePort} — Redis write reused after an APIM
- * hit.</li>
- * <li>{@link Environment} — runtime deployment environment derived from active
- * Spring profiles.</li>
- * <li>{@code redis-cache.key-prefix} — Redis key namespace; defaults to
- * {@code ngtpa}.</li>
- * <li>{@link Clock#systemDefaultZone()} — injected for deterministic
- * testing.</li>
+ *   <li>{@link ReferenceDateProperties} — accountEnv, read-path cache TTL, refresh settings.
+ *   <li>{@code Optional<CachePort>} — present when Redis is enabled; empty when disabled.
+ *   <li>{@link ApimReferenceDateRefreshPort} — APIM fetch used as the non-prod upstream source.
+ *   <li>{@link ReferenceDateCacheUpdatePort} — Redis write reused after an APIM hit.
+ *   <li>{@link Environment} — runtime deployment environment derived from active Spring profiles.
+ *   <li>{@code redis-cache.key-prefix} — Redis key namespace; defaults to {@code ngtpa}.
+ *   <li>{@link Clock#systemDefaultZone()} — injected for deterministic testing.
  * </ul>
  *
- * <p>
- * This class is intentionally free of business logic. The orchestration
- * behaviour
- * (deployment-env branching, source precedence, fallback chain, writes) lives
- * entirely in the adapter.
+ * <p>This class is intentionally free of business logic. The orchestration behaviour
+ * (deployment-env branching, source precedence, fallback chain, writes) lives entirely in the
+ * adapter.
  */
 @Configuration(proxyBeanMethods = false)
 public class ReferenceDateAdapterConfig {
 
-    /**
-     * Produces the {@link ReferenceDatePort} bean backed by the full source chain:
-     * PROD/DR => Hong Kong system date only;
-     * non-production-like => Redis → Hong Kong system date.
-     *
-     * @param properties                   bound from {@code reference-date.*} YAML
-     * @param cachePort                    present when
-     *                                     {@code redis-cache.enabled=true}
-     *                                     (default); empty otherwise
-     * @param apimReferenceDateRefreshPort APIM reference-date refresh/fetch port
-     * @param referenceDateCacheUpdatePort Redis update port reused from refresh
-     *                                     flow
-     * @param environment                  active Spring profiles used as deployment
-     *                                     environment signal
-     * @param keyPrefix                    bound from
-     *                                     {@code redis-cache.key-prefix}; defaults
-     *                                     to {@code ngtpa}
-     */
-    @Bean
-    public ReferenceDatePort referenceDatePort(
-            ReferenceDateProperties properties,
-            Optional<CachePort> cachePort,
-            Environment environment,
-            @Value("${redis-cache.key-prefix:ngtpa}") String keyPrefix) {
-        return new ReferenceDateAdapter(
-                properties,
-                cachePort,
-                keyPrefix,
-                environment,
-                Clock.systemDefaultZone());
-    }
+  /**
+   * Produces the {@link ReferenceDatePort} bean backed by the full source chain: PROD/DR => Hong
+   * Kong system date only; non-production-like => Redis → Hong Kong system date.
+   *
+   * @param properties bound from {@code reference-date.*} YAML
+   * @param cachePort present when {@code redis-cache.enabled=true} (default); empty otherwise
+   * @param apimReferenceDateRefreshPort APIM reference-date refresh/fetch port
+   * @param referenceDateCacheUpdatePort Redis update port reused from refresh flow
+   * @param environment active Spring profiles used as deployment environment signal
+   * @param keyPrefix bound from {@code redis-cache.key-prefix}; defaults to {@code ngtpa}
+   */
+  @Bean
+  public ReferenceDatePort referenceDatePort(
+      ReferenceDateProperties properties,
+      Optional<CachePort> cachePort,
+      Environment environment,
+      @Value("${redis-cache.key-prefix:ngtpa}") String keyPrefix) {
+    return new ReferenceDateAdapter(
+        properties, cachePort, keyPrefix, environment, Clock.systemDefaultZone());
+  }
 }

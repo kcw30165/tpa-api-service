@@ -4,15 +4,16 @@ import java.time.LocalDate;
 
 public interface DateDisplayPort {
 
-    /**
-     * Formats a {@link LocalDate} as a display string for the given locale/context.
-     *
-     * @param date        the date to format
-     * @param lang        locale/language code, e.g. "en" or "zh_HK"
-     * @param accountEnv  account environment, e.g. "JP"
-     * @param trustCode   trust code from access token (empty when not yet available)
-     * @param schemeType  scheme type from access token (empty when not yet available)
-     * @return formatted date string
-     */
-    String formatDate(LocalDate date, String lang, String accountEnv, String trustCode, String schemeType);
+  /**
+   * Formats a {@link LocalDate} as a display string for the given locale/context.
+   *
+   * @param date the date to format
+   * @param lang locale/language code, e.g. "en" or "zh_HK"
+   * @param accountEnv account environment, e.g. "JP"
+   * @param trustCode trust code from access token (empty when not yet available)
+   * @param schemeType scheme type from access token (empty when not yet available)
+   * @return formatted date string
+   */
+  String formatDate(
+      LocalDate date, String lang, String accountEnv, String trustCode, String schemeType);
 }

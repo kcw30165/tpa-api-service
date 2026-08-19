@@ -4,5 +4,5 @@ import com.bct.ngtpa.apiservice.application.dto.auth.login.replay.LoginStartRepl
 
 @FunctionalInterface
 public interface LoginStartReplayCommitRefGenerator {
-    LoginStartReplayCommitRef generate();
+  LoginStartReplayCommitRef generate();
 }

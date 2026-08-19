@@ -4,11 +4,11 @@ import com.bct.ngtpa.apiservice.application.port.out.LoginOtpSendIdempotencyPort
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 
 public final class LoginOtpSendRedisAdapterFactory {
-    private LoginOtpSendRedisAdapterFactory() {
-    }
+  private LoginOtpSendRedisAdapterFactory() {}
 
-    public static LoginOtpSendIdempotencyPort create(RedisLoginOtpSendIdempotencyKeyFactory keys,
-            ReactiveStringRedisTemplate redis) {
-        return new RedisLoginOtpSendIdempotencyAdapter(keys, new ReactiveLoginOtpSendRedisOperations(redis));
-    }
+  public static LoginOtpSendIdempotencyPort create(
+      RedisLoginOtpSendIdempotencyKeyFactory keys, ReactiveStringRedisTemplate redis) {
+    return new RedisLoginOtpSendIdempotencyAdapter(
+        keys, new ReactiveLoginOtpSendRedisOperations(redis));
+  }
 }

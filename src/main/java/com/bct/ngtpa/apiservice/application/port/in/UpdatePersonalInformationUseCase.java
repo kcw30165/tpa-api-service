@@ -6,5 +6,5 @@ import java.util.List;
 import reactor.core.publisher.Mono;
 
 public interface UpdatePersonalInformationUseCase {
-    Mono<List<UpdatePersonalInformationResult>> execute(UpdatePersonalInformationCommand command);
+  Mono<List<UpdatePersonalInformationResult>> execute(UpdatePersonalInformationCommand command);
 }

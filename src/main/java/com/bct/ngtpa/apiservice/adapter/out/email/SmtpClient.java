@@ -4,5 +4,5 @@ import reactor.core.publisher.Mono;
 
 public interface SmtpClient {
 
-    Mono<Void> send(SmtpSendCommand command);
+  Mono<Void> send(SmtpSendCommand command);
 }

@@ -14,15 +14,15 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class GetContributionSummaryDispSrcItem {
 
-    @JsonProperty("disp-src")
-    private String dispSrc;
+  @JsonProperty("disp-src")
+  private String dispSrc;
 
-    @JsonProperty("src-desc")
-    private String srcDesc;
+  @JsonProperty("src-desc")
+  private String srcDesc;
 
-    @JsonProperty("src-chin-desc")
-    private String srcChinDesc;
+  @JsonProperty("src-chin-desc")
+  private String srcChinDesc;
 
-    @JsonProperty("seq")
-    private Integer seq;
+  @JsonProperty("seq")
+  private Integer seq;
 }

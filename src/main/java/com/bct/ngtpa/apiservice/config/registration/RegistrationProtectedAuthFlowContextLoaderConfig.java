@@ -15,23 +15,18 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RegistrationProtectedAuthFlowContextLoaderConfig {
 
-    @Bean
-    @ConditionalOnMissingBean(RegistrationProtectedAuthFlowContextLoader.class)
-    public RegistrationProtectedAuthFlowContextLoader registrationProtectedAuthFlowContextLoader(
-            AuthFlowSessionLifecycleService lifecycleService,
-            AuthFlowSessionCsrfService csrfService,
-            RegistrationAuthFlowContextProtectorPort contextProtector,
-            AuthFlowSessionExpiryRefreshPort expiryRefreshPort,
-            Clock clock) {
-        RegistrationProtectedAuthFlowContextLoader delegate =
-                new DefaultRegistrationProtectedAuthFlowContextLoader(
-                        lifecycleService,
-                        csrfService,
-                        contextProtector,
-                        clock);
-        return new SlidingRegistrationProtectedAuthFlowContextLoader(
-                delegate,
-                expiryRefreshPort,
-                clock);
-    }
+  @Bean
+  @ConditionalOnMissingBean(RegistrationProtectedAuthFlowContextLoader.class)
+  public RegistrationProtectedAuthFlowContextLoader registrationProtectedAuthFlowContextLoader(
+      AuthFlowSessionLifecycleService lifecycleService,
+      AuthFlowSessionCsrfService csrfService,
+      RegistrationAuthFlowContextProtectorPort contextProtector,
+      AuthFlowSessionExpiryRefreshPort expiryRefreshPort,
+      Clock clock) {
+    RegistrationProtectedAuthFlowContextLoader delegate =
+        new DefaultRegistrationProtectedAuthFlowContextLoader(
+            lifecycleService, csrfService, contextProtector, clock);
+    return new SlidingRegistrationProtectedAuthFlowContextLoader(
+        delegate, expiryRefreshPort, clock);
+  }
 }

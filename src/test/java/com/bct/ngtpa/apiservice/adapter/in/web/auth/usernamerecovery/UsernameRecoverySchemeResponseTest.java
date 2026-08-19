@@ -9,32 +9,31 @@ import org.junit.jupiter.api.Test;
 /**
  * Structural contract of the public scheme projection record.
  *
- * <p>schemeRef may be null only for the pre-session zero-registered projection
- * (approved contract), and must never be disclosed by {@code toString()}.
+ * <p>schemeRef may be null only for the pre-session zero-registered projection (approved contract),
+ * and must never be disclosed by {@code toString()}.
  */
 class UsernameRecoverySchemeResponseTest {
 
-    @Test
-    void schemeResponseExposesOnlyApprovedPublicFields() {
-        assertThat(Arrays.stream(UsernameRecoverySchemeResponse.class.getRecordComponents())
+  @Test
+  void schemeResponseExposesOnlyApprovedPublicFields() {
+    assertThat(
+            Arrays.stream(UsernameRecoverySchemeResponse.class.getRecordComponents())
                 .map(RecordComponent::getName))
-                .containsExactly("schemeRef", "accountEnv", "trustCode", "isRegistered");
-    }
+        .containsExactly("schemeRef", "accountEnv", "trustCode", "isRegistered");
+  }
 
-    @Test
-    void toStringNeverDisclosesSchemeRef() {
-        var response = new UsernameRecoverySchemeResponse("sch_opaque-1", "DB", "DBA", true);
+  @Test
+  void toStringNeverDisclosesSchemeRef() {
+    var response = new UsernameRecoverySchemeResponse("sch_opaque-1", "DB", "DBA", true);
 
-        assertThat(response.toString())
-                .contains("DB", "DBA", "true")
-                .doesNotContain("sch_opaque-1");
-    }
+    assertThat(response.toString()).contains("DB", "DBA", "true").doesNotContain("sch_opaque-1");
+  }
 
-    @Test
-    void nullSchemeRefAllowedForZeroRegisteredProjection() {
-        var response = new UsernameRecoverySchemeResponse(null, "DB", "DBA", false);
+  @Test
+  void nullSchemeRefAllowedForZeroRegisteredProjection() {
+    var response = new UsernameRecoverySchemeResponse(null, "DB", "DBA", false);
 
-        assertThat(response.schemeRef()).isNull();
-        assertThat(response.toString()).contains("null");
-    }
+    assertThat(response.schemeRef()).isNull();
+    assertThat(response.toString()).contains("null");
+  }
 }

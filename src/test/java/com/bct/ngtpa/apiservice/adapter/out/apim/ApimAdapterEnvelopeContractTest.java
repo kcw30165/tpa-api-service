@@ -17,80 +17,85 @@ import org.junit.jupiter.api.Test;
 
 class ApimAdapterEnvelopeContractTest {
 
-    @Test
-    void contributionSummaryAdapterEnvelopeRejectsEmptyErrMessageWithoutDataArray() {
-        assertMissingDataSuccessIsInvalid(GetContributionSummaryDataItem.class);
-    }
+  @Test
+  void contributionSummaryAdapterEnvelopeRejectsEmptyErrMessageWithoutDataArray() {
+    assertMissingDataSuccessIsInvalid(GetContributionSummaryDataItem.class);
+  }
 
-    @Test
-    void contributionSummaryAdapterEnvelopeAllowsEmptyDataArrayForNoRecords() {
-        assertNoRecordsSuccessIsValid(GetContributionSummaryDataItem.class);
-    }
+  @Test
+  void contributionSummaryAdapterEnvelopeAllowsEmptyDataArrayForNoRecords() {
+    assertNoRecordsSuccessIsValid(GetContributionSummaryDataItem.class);
+  }
 
-    @Test
-    void memberInfoAdapterEnvelopeRejectsEmptyErrMessageWithoutDataArray() {
-        assertMissingDataSuccessIsInvalid(GetMemberInfoDataItem.class);
-    }
+  @Test
+  void memberInfoAdapterEnvelopeRejectsEmptyErrMessageWithoutDataArray() {
+    assertMissingDataSuccessIsInvalid(GetMemberInfoDataItem.class);
+  }
 
-    @Test
-    void memberInfoAdapterEnvelopeAllowsEmptyDataArrayForNoRecords() {
-        assertNoRecordsSuccessIsValid(GetMemberInfoDataItem.class);
-    }
+  @Test
+  void memberInfoAdapterEnvelopeAllowsEmptyDataArrayForNoRecords() {
+    assertNoRecordsSuccessIsValid(GetMemberInfoDataItem.class);
+  }
 
-    @Test
-    void noticeMessageAdapterEnvelopeRejectsEmptyErrMessageWithoutDataArray() {
-        assertMissingDataSuccessIsInvalid(GetMessageBoardDataItem.class);
-    }
+  @Test
+  void noticeMessageAdapterEnvelopeRejectsEmptyErrMessageWithoutDataArray() {
+    assertMissingDataSuccessIsInvalid(GetMessageBoardDataItem.class);
+  }
 
-    @Test
-    void noticeMessageAdapterEnvelopeAllowsEmptyDataArrayForNoRecords() {
-        assertNoRecordsSuccessIsValid(GetMessageBoardDataItem.class);
-    }
+  @Test
+  void noticeMessageAdapterEnvelopeAllowsEmptyDataArrayForNoRecords() {
+    assertNoRecordsSuccessIsValid(GetMessageBoardDataItem.class);
+  }
 
-    @Test
-    void notificationReadStatusAdapterEnvelopeRejectsEmptyErrMessageWithoutDataArray() {
-        assertMissingDataSuccessIsInvalid(UpdateNotificationReadStatusApimDataItem.class);
-    }
+  @Test
+  void notificationReadStatusAdapterEnvelopeRejectsEmptyErrMessageWithoutDataArray() {
+    assertMissingDataSuccessIsInvalid(UpdateNotificationReadStatusApimDataItem.class);
+  }
 
-    @Test
-    void notificationReadStatusAdapterEnvelopeAllowsEmptyDataArrayForNoRecords() {
-        assertNoRecordsSuccessIsValid(UpdateNotificationReadStatusApimDataItem.class);
-    }
+  @Test
+  void notificationReadStatusAdapterEnvelopeAllowsEmptyDataArrayForNoRecords() {
+    assertNoRecordsSuccessIsValid(UpdateNotificationReadStatusApimDataItem.class);
+  }
 
-    @Test
-    void referenceDataCountriesAdapterEnvelopeRejectsEmptyErrMessageWithoutDataArray() {
-        assertMissingDataSuccessIsInvalid(GetCountryListDataItem.class);
-    }
+  @Test
+  void referenceDataCountriesAdapterEnvelopeRejectsEmptyErrMessageWithoutDataArray() {
+    assertMissingDataSuccessIsInvalid(GetCountryListDataItem.class);
+  }
 
-    @Test
-    void referenceDataCountriesAdapterEnvelopeAllowsEmptyDataArrayForNoRecords() {
-        assertNoRecordsSuccessIsValid(GetCountryListDataItem.class);
-    }
+  @Test
+  void referenceDataCountriesAdapterEnvelopeAllowsEmptyDataArrayForNoRecords() {
+    assertNoRecordsSuccessIsValid(GetCountryListDataItem.class);
+  }
 
-    @Test
-    void updatePersonalInformationAdapterEnvelopeRejectsEmptyErrMessageWithoutDataArray() {
-        assertMissingDataSuccessIsInvalid(UpdateMemberInfoApimDataItem.class);
-    }
+  @Test
+  void updatePersonalInformationAdapterEnvelopeRejectsEmptyErrMessageWithoutDataArray() {
+    assertMissingDataSuccessIsInvalid(UpdateMemberInfoApimDataItem.class);
+  }
 
-    @Test
-    void updatePersonalInformationAdapterEnvelopeAllowsEmptyDataArrayForNoRecords() {
-        assertNoRecordsSuccessIsValid(UpdateMemberInfoApimDataItem.class);
-    }
+  @Test
+  void updatePersonalInformationAdapterEnvelopeAllowsEmptyDataArrayForNoRecords() {
+    assertNoRecordsSuccessIsValid(UpdateMemberInfoApimDataItem.class);
+  }
 
-    private static <T> void assertMissingDataSuccessIsInvalid(Class<T> ignoredPayloadType) {
-        ApimException exception = assertThrows(ApimException.class,
-                () -> ApimResponseValidator.requireSuccessData(ApimEnvelopeFixtures.missingDataSuccess()));
+  private static <T> void assertMissingDataSuccessIsInvalid(Class<T> ignoredPayloadType) {
+    ApimException exception =
+        assertThrows(
+            ApimException.class,
+            () ->
+                ApimResponseValidator.requireSuccessData(
+                    ApimEnvelopeFixtures.missingDataSuccess()));
 
-        assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, exception.getErrorCode());
-        assertEquals("APIM response payload is invalid: response.data is required when err-message is empty.",
-                exception.getMessage());
-    }
+    assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, exception.getErrorCode());
+    assertEquals(
+        "APIM response payload is invalid: response.data is required when err-message is empty.",
+        exception.getMessage());
+  }
 
-    private static <T> void assertNoRecordsSuccessIsValid(Class<T> ignoredPayloadType) {
-        List<T> data = assertDoesNotThrow(
-                () -> ApimResponseValidator.requireSuccessData(ApimEnvelopeFixtures.noRecords()));
+  private static <T> void assertNoRecordsSuccessIsValid(Class<T> ignoredPayloadType) {
+    List<T> data =
+        assertDoesNotThrow(
+            () -> ApimResponseValidator.requireSuccessData(ApimEnvelopeFixtures.noRecords()));
 
-        assertEquals(List.of(), data);
-    }
+    assertEquals(List.of(), data);
+  }
 }
-

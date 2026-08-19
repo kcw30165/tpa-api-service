@@ -11,15 +11,16 @@ import reactor.core.publisher.Mono;
 
 @RequiredArgsConstructor
 public class GetAllReferenceDatesService implements GetAllReferenceDatesUseCase {
-    private final CacheAdminPort cacheAdminPort;
+  private final CacheAdminPort cacheAdminPort;
 
-    @Override
-    public Mono<GetAllReferenceDatesResult> execute() {
-        return cacheAdminPort.findAllByCapability(CacheCapability.REFERENCE_DATE)
-                .filter(entry -> entry.qualifier() != null && !entry.qualifier().isBlank())
-                .map(entry -> new ReferenceDateEntryResult(entry.qualifier(), entry.value()))
-                .sort(Comparator.comparing(ReferenceDateEntryResult::accountEnv))
-                .collectList()
-                .map(GetAllReferenceDatesResult::new);
-    }
+  @Override
+  public Mono<GetAllReferenceDatesResult> execute() {
+    return cacheAdminPort
+        .findAllByCapability(CacheCapability.REFERENCE_DATE)
+        .filter(entry -> entry.qualifier() != null && !entry.qualifier().isBlank())
+        .map(entry -> new ReferenceDateEntryResult(entry.qualifier(), entry.value()))
+        .sort(Comparator.comparing(ReferenceDateEntryResult::accountEnv))
+        .collectList()
+        .map(GetAllReferenceDatesResult::new);
+  }
 }

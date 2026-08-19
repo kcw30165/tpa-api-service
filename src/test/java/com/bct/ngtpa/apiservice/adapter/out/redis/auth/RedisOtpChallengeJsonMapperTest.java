@@ -15,58 +15,58 @@ import org.junit.jupiter.api.Test;
 
 class RedisOtpChallengeJsonMapperTest {
 
-    private final OtpCodeHasher hasher = new Sha256OtpCodeHasher();
-    private final RedisOtpChallengeJsonMapper mapper = new RedisOtpChallengeJsonMapper();
+  private final OtpCodeHasher hasher = new Sha256OtpCodeHasher();
+  private final RedisOtpChallengeJsonMapper mapper = new RedisOtpChallengeJsonMapper();
 
-    @Test
-    void savesOtpChallengeWithHashNotRawCode() {
-        OtpChallenge challenge = sampleChallenge();
+  @Test
+  void savesOtpChallengeWithHashNotRawCode() {
+    OtpChallenge challenge = sampleChallenge();
 
-        String json = mapper.toJson(challenge);
+    String json = mapper.toJson(challenge);
 
-        assertThat(json).contains("\"codeHash\"");
-        assertThat(json).contains(challenge.codeHash());
-        assertThat(json)
-                .doesNotContain("123456")
-                .doesNotContain("rawCode")
-                .doesNotContain("otpCode")
-                .doesNotContain("plainCode");
-    }
+    assertThat(json).contains("\"codeHash\"");
+    assertThat(json).contains(challenge.codeHash());
+    assertThat(json)
+        .doesNotContain("123456")
+        .doesNotContain("rawCode")
+        .doesNotContain("otpCode")
+        .doesNotContain("plainCode");
+  }
 
-    @Test
-    void loadsOtpChallengeRoundTrip() {
-        OtpChallenge challenge = sampleChallenge();
+  @Test
+  void loadsOtpChallengeRoundTrip() {
+    OtpChallenge challenge = sampleChallenge();
 
-        String json = mapper.toJson(challenge);
+    String json = mapper.toJson(challenge);
 
-        assertThat(mapper.fromJson(json)).isEqualTo(challenge);
-    }
+    assertThat(mapper.fromJson(json)).isEqualTo(challenge);
+  }
 
-    @Test
-    void malformedRedisJsonFailsSafely() {
-        assertThatThrownBy(() -> mapper.fromJson("{bad-json"))
-                .isInstanceOf(CacheException.class)
-                .hasMessage("OTP challenge state deserialization failed")
-                .hasMessageNotContaining("{bad-json");
-    }
+  @Test
+  void malformedRedisJsonFailsSafely() {
+    assertThatThrownBy(() -> mapper.fromJson("{bad-json"))
+        .isInstanceOf(CacheException.class)
+        .hasMessage("OTP challenge state deserialization failed")
+        .hasMessageNotContaining("{bad-json");
+  }
 
-    private OtpChallenge sampleChallenge() {
-        return new OtpChallenge(
-                "otp_123",
-                OtpScenario.REGISTRATION,
-                "workflow-123",
-                OtpChannel.SMS,
-                "destination-hash",
-                hasher.hash("123456"),
-                OtpStatus.CREATED,
-                0,
-                5,
-                0,
-                3,
-                Instant.parse("2026-06-26T10:15:30Z"),
-                Instant.parse("2026-06-26T10:20:30Z"),
-                Instant.parse("2026-06-26T10:15:30Z"),
-                null,
-                null);
-    }
+  private OtpChallenge sampleChallenge() {
+    return new OtpChallenge(
+        "otp_123",
+        OtpScenario.REGISTRATION,
+        "workflow-123",
+        OtpChannel.SMS,
+        "destination-hash",
+        hasher.hash("123456"),
+        OtpStatus.CREATED,
+        0,
+        5,
+        0,
+        3,
+        Instant.parse("2026-06-26T10:15:30Z"),
+        Instant.parse("2026-06-26T10:20:30Z"),
+        Instant.parse("2026-06-26T10:15:30Z"),
+        null,
+        null);
+  }
 }

@@ -7,5 +7,5 @@ import reactor.core.publisher.Mono;
 /** Outbound boundary for credential authority authentication. */
 @FunctionalInterface
 public interface CredentialAuthenticationPort {
-    Mono<CredentialAuthenticationResult> authenticate(CredentialAuthenticationCommand command);
+  Mono<CredentialAuthenticationResult> authenticate(CredentialAuthenticationCommand command);
 }

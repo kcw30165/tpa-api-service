@@ -19,80 +19,98 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 class LoginStartEvidenceIntegrationTest {
-        private final AuthFlowCookieWriter cookieWriter = new AuthFlowCookieWriter(
-                        new AuthFlowCookieProperties(
-                                        "auth_flow_sid", "/api/v1/auth", Duration.ofSeconds(900),
-                                        true, true, "None"));
+  private final AuthFlowCookieWriter cookieWriter =
+      new AuthFlowCookieWriter(
+          new AuthFlowCookieProperties(
+              "auth_flow_sid", "/api/v1/auth", Duration.ofSeconds(900), true, true, "None"));
 
-        @Test
-        void freshAndCompletedReplayBothRestoreCookieAndPublicContract() {
-                for (StartLoginStatus status : List.of(
-                                StartLoginStatus.STARTED, StartLoginStatus.COMPLETED_REPLAY)) {
-                        StartLoginUseCase useCase = command -> Mono.just(new StartLoginResult(
-                                        status, "afs_private", "csrf_private", 900,
-                                        List.of(new LoginDestinationChoice(
-                                                        "dst_opaque", "sms", "****4567")),
-                                        0, "rpl_private"));
-                        var response = new MockServerHttpResponse();
-                        var controller = new AuthLoginController(
-                                        useCase, new LoginStartWebMapper(), cookieWriter);
+  @Test
+  void freshAndCompletedReplayBothRestoreCookieAndPublicContract() {
+    for (StartLoginStatus status :
+        List.of(StartLoginStatus.STARTED, StartLoginStatus.COMPLETED_REPLAY)) {
+      StartLoginUseCase useCase =
+          command ->
+              Mono.just(
+                  new StartLoginResult(
+                      status,
+                      "afs_private",
+                      "csrf_private",
+                      900,
+                      List.of(new LoginDestinationChoice("dst_opaque", "sms", "****4567")),
+                      0,
+                      "rpl_private"));
+      var response = new MockServerHttpResponse();
+      var controller = new AuthLoginController(useCase, new LoginStartWebMapper(), cookieWriter);
 
-                        StepVerifier.create(controller.startLogin(
-                                        new LoginStartRequest("member", "Exact Password"),
-                                        "login_key_opaque", "req-evidence", "en", response))
-                                        .assertNext(entity -> {
-                                                assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK);
-                                                assertThat(entity.getBody().result().data().csrfToken())
-                                                                .isEqualTo("csrf_private");
-                                                assertThat(entity.toString()).doesNotContain(
-                                                                "afs_private", "rpl_private", "Exact Password");
-                                        })
-                                        .verifyComplete();
+      StepVerifier.create(
+              controller.startLogin(
+                  new LoginStartRequest("member", "Exact Password"),
+                  "login_key_opaque",
+                  "req-evidence",
+                  "en",
+                  response))
+          .assertNext(
+              entity -> {
+                assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(entity.getBody().result().data().csrfToken()).isEqualTo("csrf_private");
+                assertThat(entity.toString())
+                    .doesNotContain("afs_private", "rpl_private", "Exact Password");
+              })
+          .verifyComplete();
 
-                        var cookie = response.getCookies().getFirst("auth_flow_sid");
-                        assertThat(cookie.getValue()).isEqualTo("afs_private");
-                        assertThat(cookie.isHttpOnly()).isTrue();
-                        assertThat(cookie.isSecure()).isTrue();
-                        assertThat(cookie.getSameSite()).isEqualTo("None");
-                        assertThat(cookie.getPath()).isEqualTo("/api/v1/auth");
-                        assertThat(response.getHeaders().getFirst("X-Request-Id"))
-                                        .isEqualTo("req-evidence");
-                }
-        }
+      var cookie = response.getCookies().getFirst("auth_flow_sid");
+      assertThat(cookie.getValue()).isEqualTo("afs_private");
+      assertThat(cookie.isHttpOnly()).isTrue();
+      assertThat(cookie.isSecure()).isTrue();
+      assertThat(cookie.getSameSite()).isEqualTo("None");
+      assertThat(cookie.getPath()).isEqualTo("/api/v1/auth");
+      assertThat(response.getHeaders().getFirst("X-Request-Id")).isEqualTo("req-evidence");
+    }
+  }
 
-        @Test
-        void missingRequestIdAndReactiveFailureAreContainedWithoutSuccessCookie() {
-                AtomicInteger calls = new AtomicInteger();
-                StartLoginUseCase useCase = command -> {
-                        calls.incrementAndGet();
-                        return Mono.error(new IllegalStateException("internal secret detail"));
-                };
-                var controller = new AuthLoginController(
-                                useCase, new LoginStartWebMapper(), cookieWriter);
+  @Test
+  void missingRequestIdAndReactiveFailureAreContainedWithoutSuccessCookie() {
+    AtomicInteger calls = new AtomicInteger();
+    StartLoginUseCase useCase =
+        command -> {
+          calls.incrementAndGet();
+          return Mono.error(new IllegalStateException("internal secret detail"));
+        };
+    var controller = new AuthLoginController(useCase, new LoginStartWebMapper(), cookieWriter);
 
-                StepVerifier.create(controller.startLogin(
-                                new LoginStartRequest("member", "Exact"),
-                                "login_key_opaque", null, "en", new MockServerHttpResponse()))
-                                .assertNext(entity -> {
-                                        assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-                                        assertThat(entity.getBody().errors()).singleElement()
-                                                        .extracting(error -> error.code())
-                                                        .isEqualTo("err.request.id.missing");
-                                })
-                                .verifyComplete();
-                assertThat(calls).hasValue(0);
+    StepVerifier.create(
+            controller.startLogin(
+                new LoginStartRequest("member", "Exact"),
+                "login_key_opaque",
+                null,
+                "en",
+                new MockServerHttpResponse()))
+        .assertNext(
+            entity -> {
+              assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+              assertThat(entity.getBody().errors())
+                  .singleElement()
+                  .extracting(error -> error.code())
+                  .isEqualTo("err.request.id.missing");
+            })
+        .verifyComplete();
+    assertThat(calls).hasValue(0);
 
-                var failureResponse = new MockServerHttpResponse();
-                StepVerifier.create(controller.startLogin(
-                                new LoginStartRequest("member", "Exact"),
-                                "login_key_opaque", "req-failure", "en", failureResponse))
-                                .assertNext(entity -> {
-                                        assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
-                                        assertThat(entity.toString()).doesNotContain("internal secret detail");
-                                })
-                                .verifyComplete();
-                assertThat(failureResponse.getCookies()).doesNotContainKey("auth_flow_sid");
-                assertThat(failureResponse.getHeaders().getFirst("X-Request-Id"))
-                                .isEqualTo("req-failure");
-        }
+    var failureResponse = new MockServerHttpResponse();
+    StepVerifier.create(
+            controller.startLogin(
+                new LoginStartRequest("member", "Exact"),
+                "login_key_opaque",
+                "req-failure",
+                "en",
+                failureResponse))
+        .assertNext(
+            entity -> {
+              assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+              assertThat(entity.toString()).doesNotContain("internal secret detail");
+            })
+        .verifyComplete();
+    assertThat(failureResponse.getCookies()).doesNotContainKey("auth_flow_sid");
+    assertThat(failureResponse.getHeaders().getFirst("X-Request-Id")).isEqualTo("req-failure");
+  }
 }

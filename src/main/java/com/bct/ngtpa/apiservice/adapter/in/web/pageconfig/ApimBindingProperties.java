@@ -7,6 +7,6 @@ import lombok.Setter;
 @Setter
 public class ApimBindingProperties {
 
-    private String data;
-    private String config;
+  private String data;
+  private String config;
 }

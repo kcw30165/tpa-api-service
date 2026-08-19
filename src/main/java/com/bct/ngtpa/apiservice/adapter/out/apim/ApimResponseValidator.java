@@ -9,52 +9,51 @@ import org.springframework.http.HttpStatus;
 /**
  * Shared validation for APIM response envelopes.
  *
- * <p>
- * Global contract:
+ * <p>Global contract:
+ *
  * <ul>
- * <li>{@code response} must be present.</li>
- * <li>{@code err-message} must be present.</li>
- * <li>{@code err-message == ""} means success and requires {@code data} to be
- * present as an array.</li>
- * <li>{@code data: []} is valid for a no-record success response.</li>
- * <li>{@code err-message != ""} means APIM returned an error; {@code data} may
- * be absent.</li>
+ *   <li>{@code response} must be present.
+ *   <li>{@code err-message} must be present.
+ *   <li>{@code err-message == ""} means success and requires {@code data} to be present as an
+ *       array.
+ *   <li>{@code data: []} is valid for a no-record success response.
+ *   <li>{@code err-message != ""} means APIM returned an error; {@code data} may be absent.
  * </ul>
  */
 public final class ApimResponseValidator {
 
-    private ApimResponseValidator() {
-    }
+  private ApimResponseValidator() {}
 
-    public static <T> List<T> requireSuccessData(ApimResponseEnvelope<T> envelope) {
-        var payload = envelope == null ? null : envelope.getResponse();
-        if (payload == null) {
-            throw invalid("APIM response payload is invalid: response is missing.");
-        }
-        String errMessage = payload.getErrMessage();
-        if (errMessage == null) {
-            throw invalid("APIM response payload is invalid: response.err-message is missing.");
-        }
-        if (!errMessage.isEmpty()) {
-            throw new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID, errMessage);
-        }
-        List<T> data = payload.getData();
-        if (data == null) {
-            throw invalid("APIM response payload is invalid: response.data is required when err-message is empty.");
-        }
-        return data;
+  public static <T> List<T> requireSuccessData(ApimResponseEnvelope<T> envelope) {
+    var payload = envelope == null ? null : envelope.getResponse();
+    if (payload == null) {
+      throw invalid("APIM response payload is invalid: response is missing.");
     }
+    String errMessage = payload.getErrMessage();
+    if (errMessage == null) {
+      throw invalid("APIM response payload is invalid: response.err-message is missing.");
+    }
+    if (!errMessage.isEmpty()) {
+      throw new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID, errMessage);
+    }
+    List<T> data = payload.getData();
+    if (data == null) {
+      throw invalid(
+          "APIM response payload is invalid: response.data is required when err-message is empty.");
+    }
+    return data;
+  }
 
-    /**
-     * @deprecated Use {@link #requireSuccessData(ApimResponseEnvelope)} for clearer
-     *             APIM success semantics.
-     */
-    @Deprecated(forRemoval = false)
-    public static <T> List<T> requireValidData(ApimResponseEnvelope<T> envelope) {
-        return requireSuccessData(envelope);
-    }
+  /**
+   * @deprecated Use {@link #requireSuccessData(ApimResponseEnvelope)} for clearer APIM success
+   *     semantics.
+   */
+  @Deprecated(forRemoval = false)
+  public static <T> List<T> requireValidData(ApimResponseEnvelope<T> envelope) {
+    return requireSuccessData(envelope);
+  }
 
-    private static ApimException invalid(String message) {
-        return new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID, message);
-    }
+  private static ApimException invalid(String message) {
+    return new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID, message);
+  }
 }

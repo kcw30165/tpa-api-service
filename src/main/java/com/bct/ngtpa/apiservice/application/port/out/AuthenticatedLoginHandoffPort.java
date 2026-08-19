@@ -5,12 +5,13 @@ import com.bct.ngtpa.apiservice.application.dto.auth.login.otp.verify.Authentica
 import reactor.core.publisher.Mono;
 
 public interface AuthenticatedLoginHandoffPort {
-    Mono<AuthenticatedLoginHandoffCreateResult> createIfAbsent(CreateAuthenticatedLoginHandoffCommand command);
+  Mono<AuthenticatedLoginHandoffCreateResult> createIfAbsent(
+      CreateAuthenticatedLoginHandoffCommand command);
 
-    Mono<AuthenticatedLoginHandoff> loadByHandoff(AuthenticatedLoginHandoffReference reference);
+  Mono<AuthenticatedLoginHandoff> loadByHandoff(AuthenticatedLoginHandoffReference reference);
 
-    Mono<AuthenticatedLoginHandoff> recordAuthenticatedSessionCommitted(
-            RecordAuthenticatedSessionCommittedCommand command);
+  Mono<AuthenticatedLoginHandoff> recordAuthenticatedSessionCommitted(
+      RecordAuthenticatedSessionCommittedCommand command);
 
-    Mono<AuthenticatedLoginHandoff> recordCleanupProof(RecordAuthFlowCleanupProofCommand command);
+  Mono<AuthenticatedLoginHandoff> recordCleanupProof(RecordAuthFlowCleanupProofCommand command);
 }

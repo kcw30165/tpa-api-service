@@ -1,45 +1,56 @@
 package com.bct.ngtpa.apiservice.architecture;
 
+import static com.bct.ngtpa.apiservice.architecture.SourceTextAssertions.*;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 class UpdatePersonalInformationCurrentContextBoundaryGuardTest {
-    @Test
-    void updateCommandCarriesTrustedContextButNotAccountRef() throws Exception {
-        String source = Files.readString(Path.of(
+  @Test
+  void updateCommandCarriesTrustedContextButNotAccountRef() throws Exception {
+    String source =
+        Files.readString(
+            Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/application/dto/UpdatePersonalInformationCommand.java"));
-        assertTrue(source.contains("record UpdatePersonalInformationCommand("));
-        assertFalse(source.contains("String accountRef,"));
-        assertFalse(source.contains("accountRef()"));
-        assertTrue(source.contains("String accountEnv"));
-        assertTrue(source.contains("String actorUserId"));
-        assertTrue(source.contains("ActorUserRole actorUserRole"));
-    }
+    assertTrue(containsIgnoringWhitespace(source, "record UpdatePersonalInformationCommand("));
+    assertFalse(containsIgnoringWhitespace(source, "String accountRef,"));
+    assertFalse(containsIgnoringWhitespace(source, "accountRef()"));
+    assertTrue(containsIgnoringWhitespace(source, "String accountEnv"));
+    assertTrue(containsIgnoringWhitespace(source, "String actorUserId"));
+    assertTrue(containsIgnoringWhitespace(source, "ActorUserRole actorUserRole"));
+  }
 
-    @Test
-    void updateControllerCopiesCurrentContextAndDoesNotReadAccountRefFromHeaderContext() throws Exception {
-        String source = Files.readString(Path.of(
+  @Test
+  void updateControllerCopiesCurrentContextAndDoesNotReadAccountRefFromHeaderContext()
+      throws Exception {
+    String source =
+        Files.readString(
+            Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/PersonalInformationController.java"));
-        assertTrue(source.contains("CurrentPortalAccessContextResolver"));
-        assertTrue(source.contains("currentPortalAccessContextResolver.current()"));
-        assertFalse(source.contains("context.accountRef()"));
-        assertTrue(source.contains("requestMapper.toCommand(body.applyToAllAccounts(), body)"));
-        assertTrue(source.contains("portalAccessContext.account().policyNo()"));
-        assertTrue(source.contains("portalAccessContext.actor().actorUserRole()"));
-    }
+    assertTrue(containsIgnoringWhitespace(source, "CurrentPortalAccessContextResolver"));
+    assertTrue(containsIgnoringWhitespace(source, "currentPortalAccessContextResolver.current()"));
+    assertFalse(containsIgnoringWhitespace(source, "context.accountRef()"));
+    assertTrue(
+        containsIgnoringWhitespace(
+            source, "requestMapper.toCommand(body.applyToAllAccounts(), body)"));
+    assertTrue(containsIgnoringWhitespace(source, "portalAccessContext.account().policyNo()"));
+    assertTrue(containsIgnoringWhitespace(source, "portalAccessContext.actor().actorUserRole()"));
+  }
 
-    @Test
-    void updateServiceUsesExplicitCommandNotAmbientProvider() throws Exception {
-        String source = Files.readString(Path.of(
+  @Test
+  void updateServiceUsesExplicitCommandNotAmbientProvider() throws Exception {
+    String source =
+        Files.readString(
+            Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/application/usecase/UpdatePersonalInformationService.java"));
-        assertFalse(source.contains("CurrentPortalAccessContextResolver"));
-        assertFalse(source.contains("currentPortalAccessContextResolver.current()"));
-        assertFalse(source.contains("resolvePortalAccessContext"));
-        assertFalse(source.contains("command.accountRef()"));
-        assertTrue(source.contains("command.accountEnv()"));
-        assertTrue(source.contains("command.actorUserRole()"));
-    }
+    assertFalse(containsIgnoringWhitespace(source, "CurrentPortalAccessContextResolver"));
+    assertFalse(containsIgnoringWhitespace(source, "currentPortalAccessContextResolver.current()"));
+    assertFalse(containsIgnoringWhitespace(source, "resolvePortalAccessContext"));
+    assertFalse(containsIgnoringWhitespace(source, "command.accountRef()"));
+    assertTrue(containsIgnoringWhitespace(source, "command.accountEnv()"));
+    assertTrue(containsIgnoringWhitespace(source, "command.actorUserRole()"));
+  }
 }

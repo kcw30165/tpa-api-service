@@ -9,5 +9,4 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class GetCountryListApimRequest {
-}
+public class GetCountryListApimRequest {}

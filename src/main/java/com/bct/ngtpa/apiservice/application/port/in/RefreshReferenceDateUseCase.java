@@ -6,5 +6,5 @@ import reactor.core.publisher.Mono;
 
 public interface RefreshReferenceDateUseCase {
 
-    Mono<RefreshReferenceDateResult> execute(RefreshReferenceDateCommand command);
+  Mono<RefreshReferenceDateResult> execute(RefreshReferenceDateCommand command);
 }

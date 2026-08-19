@@ -6,15 +6,18 @@ import com.bct.ngtpa.apiservice.application.usecase.session.authflow.*;
 import reactor.core.publisher.Mono;
 
 public final class LoginOtpVerifiedSessionAdapter implements LoginOtpVerifiedSessionPort {
-    private final AuthFlowSessionLifecycleService lifecycle;
+  private final AuthFlowSessionLifecycleService lifecycle;
 
-    public LoginOtpVerifiedSessionAdapter(AuthFlowSessionLifecycleService l) {
-        lifecycle = l;
-    }
+  public LoginOtpVerifiedSessionAdapter(AuthFlowSessionLifecycleService l) {
+    lifecycle = l;
+  }
 
-    public Mono<Void> markVerified(String id, String correlation) {
-        return Mono.defer(() -> lifecycle.updateStatus(
-                new UpdateAuthFlowStatusCommand(new AuthFlowSessionId(id), AuthFlowStatus.OTP_VERIFIED, correlation)))
-                .then();
-    }
+  public Mono<Void> markVerified(String id, String correlation) {
+    return Mono.defer(
+            () ->
+                lifecycle.updateStatus(
+                    new UpdateAuthFlowStatusCommand(
+                        new AuthFlowSessionId(id), AuthFlowStatus.OTP_VERIFIED, correlation)))
+        .then();
+  }
 }

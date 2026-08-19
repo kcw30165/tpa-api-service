@@ -13,23 +13,29 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import org.junit.jupiter.api.Test;
 
-@AnalyzeClasses(packages = "com.bct.ngtpa.apiservice", importOptions = ImportOption.DoNotIncludeTests.class)
+@AnalyzeClasses(
+    packages = "com.bct.ngtpa.apiservice",
+    importOptions = ImportOption.DoNotIncludeTests.class)
 class Task0043SharedAuthFlowContractArchitectureTest {
 
-    @Test
-    void sharedAuthFlowContractsAreFrameworkNeutralApplicationPorts() {
-        assertThat(AuthFlowOtpPort.class.getPackageName()).endsWith("application.port.out.authflow");
-        assertThat(AuthFlowMessagePort.class.getPackageName()).endsWith("application.port.out.authflow");
-        assertThat(AuthFlowIdempotencyPort.class.getPackageName()).endsWith("application.port.out.authflow");
-        assertThat(AuthFlowProtectedContextPort.class.getPackageName()).endsWith("application.port.out.authflow");
-    }
+  @Test
+  void sharedAuthFlowContractsAreFrameworkNeutralApplicationPorts() {
+    assertThat(AuthFlowOtpPort.class.getPackageName()).endsWith("application.port.out.authflow");
+    assertThat(AuthFlowMessagePort.class.getPackageName())
+        .endsWith("application.port.out.authflow");
+    assertThat(AuthFlowIdempotencyPort.class.getPackageName())
+        .endsWith("application.port.out.authflow");
+    assertThat(AuthFlowProtectedContextPort.class.getPackageName())
+        .endsWith("application.port.out.authflow");
+  }
 
-    @ArchTest
-    static final ArchRule sharedContractsMustNotDependOnRegistrationOrAdapters = noClasses()
-            .that().resideInAPackage("..application.port.out.authflow..")
-            .should().dependOnClassesThat().resideInAnyPackage(
-                    "..auth.registration..",
-                    "..adapter..",
-                    "org.springframework..")
-            .as("shared auth-flow contracts must be scenario-neutral and framework-free");
+  @ArchTest
+  static final ArchRule sharedContractsMustNotDependOnRegistrationOrAdapters =
+      noClasses()
+          .that()
+          .resideInAPackage("..application.port.out.authflow..")
+          .should()
+          .dependOnClassesThat()
+          .resideInAnyPackage("..auth.registration..", "..adapter..", "org.springframework..")
+          .as("shared auth-flow contracts must be scenario-neutral and framework-free");
 }

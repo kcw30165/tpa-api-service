@@ -6,5 +6,5 @@ import reactor.core.publisher.Mono;
 
 public interface RefreshCaptchaUseCase {
 
-    Mono<RefreshCaptchaChallengeResult> refresh(RefreshCaptchaChallengeCommand command);
+  Mono<RefreshCaptchaChallengeResult> refresh(RefreshCaptchaChallengeCommand command);
 }

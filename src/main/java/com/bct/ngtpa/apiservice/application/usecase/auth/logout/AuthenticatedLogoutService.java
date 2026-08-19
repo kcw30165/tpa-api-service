@@ -9,33 +9,34 @@ import reactor.core.publisher.Mono;
 
 /** Maps normal user logout onto the persisted ACTIVE to LOGGED_OUT lifecycle transition. */
 public final class AuthenticatedLogoutService implements AuthenticatedLogoutUseCase {
-    private final LogoutAuthenticatedSessionUseCase logout;
+  private final LogoutAuthenticatedSessionUseCase logout;
 
-    public AuthenticatedLogoutService(LogoutAuthenticatedSessionUseCase logout) {
-        this.logout = Objects.requireNonNull(logout, "logout must not be null");
-    }
+  public AuthenticatedLogoutService(LogoutAuthenticatedSessionUseCase logout) {
+    this.logout = Objects.requireNonNull(logout, "logout must not be null");
+  }
 
-    @Override
-    public Mono<AuthenticatedLogoutResult> logout(AuthenticatedLogoutCommand command) {
-        Objects.requireNonNull(command, "command must not be null");
-        return logout.logout(new LogoutActiveAuthenticatedSessionCommand(
-                        command.authenticatedSessionId(),
-                        command.correlationId()))
-                .map(this::map)
-                .onErrorReturn(AuthenticatedLogoutResult.failed());
-    }
+  @Override
+  public Mono<AuthenticatedLogoutResult> logout(AuthenticatedLogoutCommand command) {
+    Objects.requireNonNull(command, "command must not be null");
+    return logout
+        .logout(
+            new LogoutActiveAuthenticatedSessionCommand(
+                command.authenticatedSessionId(), command.correlationId()))
+        .map(this::map)
+        .onErrorReturn(AuthenticatedLogoutResult.failed());
+  }
 
-    private AuthenticatedLogoutResult map(AuthenticatedSessionLifecycleResult result) {
-        if (result.status() == AuthenticatedSessionLifecycleStatus.LOGGED_OUT) {
-            return result.session() == null
-                    ? AuthenticatedLogoutResult.alreadyLoggedOut()
-                    : AuthenticatedLogoutResult.loggedOut();
-        }
-        if (result.status() == AuthenticatedSessionLifecycleStatus.NOT_FOUND
-                || result.status() == AuthenticatedSessionLifecycleStatus.EXPIRED
-                || result.status() == AuthenticatedSessionLifecycleStatus.REVOKED) {
-            return AuthenticatedLogoutResult.alreadyLoggedOut();
-        }
-        return AuthenticatedLogoutResult.failed();
+  private AuthenticatedLogoutResult map(AuthenticatedSessionLifecycleResult result) {
+    if (result.status() == AuthenticatedSessionLifecycleStatus.LOGGED_OUT) {
+      return result.session() == null
+          ? AuthenticatedLogoutResult.alreadyLoggedOut()
+          : AuthenticatedLogoutResult.loggedOut();
     }
+    if (result.status() == AuthenticatedSessionLifecycleStatus.NOT_FOUND
+        || result.status() == AuthenticatedSessionLifecycleStatus.EXPIRED
+        || result.status() == AuthenticatedSessionLifecycleStatus.REVOKED) {
+      return AuthenticatedLogoutResult.alreadyLoggedOut();
+    }
+    return AuthenticatedLogoutResult.failed();
+  }
 }

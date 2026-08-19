@@ -4,7 +4,6 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchUnreg
 import reactor.core.publisher.Mono;
 
 public interface ApimRegistrationLookupTransport {
-    Mono<ApimRegistrationLookupEnvelope> postSearchUnregisteredMember(
-            String path,
-            TrpSearchUnregMemberApimRequest request);
+  Mono<ApimRegistrationLookupEnvelope> postSearchUnregisteredMember(
+      String path, TrpSearchUnregMemberApimRequest request);
 }

@@ -1,4 +1,3 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.response;
 
-public record CleanUpAllReferenceDatesResponse(long deletedCount) {
-}
+public record CleanUpAllReferenceDatesResponse(long deletedCount) {}

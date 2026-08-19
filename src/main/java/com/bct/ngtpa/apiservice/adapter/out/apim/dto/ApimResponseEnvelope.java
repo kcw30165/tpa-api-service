@@ -14,6 +14,6 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ApimResponseEnvelope<T> {
 
-    @JsonProperty("response")
-    private ApimResponseBody<T> response;
+  @JsonProperty("response")
+  private ApimResponseBody<T> response;
 }

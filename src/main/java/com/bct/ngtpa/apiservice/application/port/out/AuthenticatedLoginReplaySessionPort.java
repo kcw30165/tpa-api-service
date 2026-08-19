@@ -6,9 +6,9 @@ import reactor.core.publisher.Mono;
 
 /** Capability-scoped persistence used only by committed authenticated-login replay. */
 public interface AuthenticatedLoginReplaySessionPort {
-    Mono<Optional<ProtectedAuthenticatedSession>> loadForReplay(
-            LoadAuthenticatedSessionForReplayCommand command);
+  Mono<Optional<ProtectedAuthenticatedSession>> loadForReplay(
+      LoadAuthenticatedSessionForReplayCommand command);
 
-    Mono<AuthenticatedSessionCsrfRotationResult> rotateCsrfHashIfCurrent(
-            RotateAuthenticatedSessionCsrfHashCommand command);
+  Mono<AuthenticatedSessionCsrfRotationResult> rotateCsrfHashIfCurrent(
+      RotateAuthenticatedSessionCsrfHashCommand command);
 }

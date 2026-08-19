@@ -13,94 +13,109 @@ import org.junit.jupiter.api.Test;
 
 class P5WorkflowArchitectureGuardTest {
 
-    @Test
-    void p5ApplicationWorkflowPackagesRemainFrameworkFree() {
-        JavaClasses classes = new ClassFileImporter().importPackages(
+  @Test
+  void p5ApplicationWorkflowPackagesRemainFrameworkFree() {
+    JavaClasses classes =
+        new ClassFileImporter()
+            .importPackages(
                 "com.bct.ngtpa.apiservice.application.dto.workflow",
                 "com.bct.ngtpa.apiservice.application.port.out");
 
-        ArchRuleDefinition.noClasses()
-                .that().resideInAnyPackage("..application.dto.workflow..", "..application.port.out..")
-                .should().dependOnClassesThat().resideInAnyPackage(
-                        "org.springframework..",
-                        "org.springframework.http..",
-                        "org.springframework.web..",
-                        "jakarta.servlet..",
-                        "com.bct.ngtpa.apiservice.adapter..",
-                        "io.lettuce..",
-                        "org.springframework.data.redis..",
-                        "org.slf4j..")
-                .check(classes);
-    }
+    ArchRuleDefinition.noClasses()
+        .that()
+        .resideInAnyPackage("..application.dto.workflow..", "..application.port.out..")
+        .should()
+        .dependOnClassesThat()
+        .resideInAnyPackage(
+            "org.springframework..",
+            "org.springframework.http..",
+            "org.springframework.web..",
+            "jakarta.servlet..",
+            "com.bct.ngtpa.apiservice.adapter..",
+            "io.lettuce..",
+            "org.springframework.data.redis..",
+            "org.slf4j..")
+        .check(classes);
+  }
 
-    @Test
-    void p5WorkflowModelsDoNotDependOnAuthFlowSession() {
-        JavaClasses classes = new ClassFileImporter().importPackages("com.bct.ngtpa.apiservice.application.dto.workflow");
+  @Test
+  void p5WorkflowModelsDoNotDependOnAuthFlowSession() {
+    JavaClasses classes =
+        new ClassFileImporter().importPackages("com.bct.ngtpa.apiservice.application.dto.workflow");
 
-        ArchRuleDefinition.noClasses()
-                .that().resideInAPackage("..application.dto.workflow..")
-                .should().dependOnClassesThat().resideInAnyPackage(
-                        "..application.dto.session.authflow..",
-                        "..application.usecase.session.authflow..",
-                        "..application.port.out.AuthFlowSessionPort")
-                .check(classes);
-    }
+    ArchRuleDefinition.noClasses()
+        .that()
+        .resideInAPackage("..application.dto.workflow..")
+        .should()
+        .dependOnClassesThat()
+        .resideInAnyPackage(
+            "..application.dto.session.authflow..",
+            "..application.usecase.session.authflow..",
+            "..application.port.out.AuthFlowSessionPort")
+        .check(classes);
+  }
 
-    @Test
-    void p5WorkflowResultDoesNotIntroduceSecondResponseEnvelope() {
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowMutationEnvelope");
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowApiResponse");
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResponseEnvelope");
-    }
+  @Test
+  void p5WorkflowResultDoesNotIntroduceSecondResponseEnvelope() {
+    assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowMutationEnvelope");
+    assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowApiResponse");
+    assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowResponseEnvelope");
+  }
 
-    @Test
-    void p5DoesNotIntroduceWorkflowEngineOrRuntime() {
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowEngine");
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowGraph");
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowRuntime");
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowTransitionExecutor");
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowStateMachine");
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowDefinitionRepository");
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowDatabaseState");
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowCompensation");
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowEventSourcing");
-    }
+  @Test
+  void p5DoesNotIntroduceWorkflowEngineOrRuntime() {
+    assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowEngine");
+    assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowGraph");
+    assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowRuntime");
+    assertClassAbsent(
+        "com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowTransitionExecutor");
+    assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowStateMachine");
+    assertClassAbsent(
+        "com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowDefinitionRepository");
+    assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowDatabaseState");
+    assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowCompensation");
+    assertClassAbsent("com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowEventSourcing");
+  }
 
-    @Test
-    void p5DoesNotIntroduceAuthFlowResume() throws IOException {
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.request.AuthFlowResumeRequest");
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.ResumeAuthFlowUseCase");
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.port.out.AuthFlowResumePort");
-        assertClassAbsent("com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowResumeService");
-        assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthFlowResumeController");
-        assertThat(sourceContains("auth-flow.resume")).isFalse();
-        assertThat(sourceContains("/api/v1/auth/flow/resume")).isFalse();
-    }
+  @Test
+  void p5DoesNotIntroduceAuthFlowResume() throws IOException {
+    assertClassAbsent("com.bct.ngtpa.apiservice.adapter.in.web.request.AuthFlowResumeRequest");
+    assertClassAbsent("com.bct.ngtpa.apiservice.application.port.in.ResumeAuthFlowUseCase");
+    assertClassAbsent("com.bct.ngtpa.apiservice.application.port.out.AuthFlowResumePort");
+    assertClassAbsent(
+        "com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowResumeService");
+    assertClassAbsent(
+        "com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthFlowResumeController");
+    assertThat(sourceContains("auth-flow.resume")).isFalse();
+    assertThat(sourceContains("/api/v1/auth/flow/resume")).isFalse();
+  }
 
-    private static void assertClassAbsent(String className) {
-        assertThrows(ClassNotFoundException.class, () -> Class.forName(className));
-    }
+  private static void assertClassAbsent(String className) {
+    assertThrows(ClassNotFoundException.class, () -> Class.forName(className));
+  }
 
-    private static boolean sourceContains(String text) throws IOException {
-        Path root = Path.of("src/main");
-        if (!Files.exists(root)) {
-            return false;
-        }
-        try (var paths = Files.walk(root)) {
-            return paths
-                    .filter(Files::isRegularFile)
-                    .filter(path -> path.toString().endsWith(".java")
-                            || path.toString().endsWith(".yml")
-                            || path.toString().endsWith(".yaml"))
-                    .anyMatch(path -> contains(path, text));
-        }
+  private static boolean sourceContains(String text) throws IOException {
+    Path root = Path.of("src/main");
+    if (!Files.exists(root)) {
+      return false;
     }
+    try (var paths = Files.walk(root)) {
+      return paths
+          .filter(Files::isRegularFile)
+          .filter(
+              path ->
+                  path.toString().endsWith(".java")
+                      || path.toString().endsWith(".yml")
+                      || path.toString().endsWith(".yaml"))
+          .anyMatch(path -> contains(path, text));
+    }
+  }
 
-    private static boolean contains(Path path, String text) {
-        try {
-            return Files.readString(path).contains(text);
-        } catch (IOException exception) {
-            return false;
-        }
+  private static boolean contains(Path path, String text) {
+    try {
+      return Files.readString(path).contains(text);
+    } catch (IOException exception) {
+      return false;
     }
+  }
 }

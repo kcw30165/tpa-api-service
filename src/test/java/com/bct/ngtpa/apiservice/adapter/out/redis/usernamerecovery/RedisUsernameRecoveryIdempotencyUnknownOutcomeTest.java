@@ -27,135 +27,141 @@ import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
 /**
- * Group 3: stable unknown-outcome recording for the Username Recovery idempotency
- * persistence adapter.
+ * Group 3: stable unknown-outcome recording for the Username Recovery idempotency persistence
+ * adapter.
  *
- * <p>Verifies the unknown-outcome transition is ownership-checked like completion,
- * stores NO replay snapshot, and every non-success Lua outcome becomes a sanitized
- * {@link CacheException} (the record is never blindly resent).
+ * <p>Verifies the unknown-outcome transition is ownership-checked like completion, stores NO replay
+ * snapshot, and every non-success Lua outcome becomes a sanitized {@link CacheException} (the
+ * record is never blindly resent).
  */
 class RedisUsernameRecoveryIdempotencyUnknownOutcomeTest {
 
-    private static final Instant NOW = Instant.parse("2026-08-08T00:00:00Z");
-    private static final Duration TTL = Duration.ofMinutes(5);
-    private static final String DIGEST =
-            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-    private static final String KEY_VALUE = "idem_12345678";
-    private static final String KEY =
-            "ngtpa:username-recovery:idempotency:username-recovery-request:idem_12345678";
-    private static final String OP_REF = "op-1234567890";
+  private static final Instant NOW = Instant.parse("2026-08-08T00:00:00Z");
+  private static final Duration TTL = Duration.ofMinutes(5);
+  private static final String DIGEST =
+      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+  private static final String KEY_VALUE = "idem_12345678";
+  private static final String KEY =
+      "ngtpa:username-recovery:idempotency:username-recovery-request:idem_12345678";
+  private static final String OP_REF = "op-1234567890";
 
-    private final ReactiveStringRedisTemplate redis = mock(ReactiveStringRedisTemplate.class);
-    private final RedisUsernameRecoveryIdempotencyJsonMapper jsonMapper =
-            new RedisUsernameRecoveryIdempotencyJsonMapper();
-    private final RedisUsernameRecoveryIdempotencyAdapter adapter =
-            new RedisUsernameRecoveryIdempotencyAdapter(
-                    redis, new RedisCacheKeyFactory("ngtpa"), jsonMapper);
+  private final ReactiveStringRedisTemplate redis = mock(ReactiveStringRedisTemplate.class);
+  private final RedisUsernameRecoveryIdempotencyJsonMapper jsonMapper =
+      new RedisUsernameRecoveryIdempotencyJsonMapper();
+  private final RedisUsernameRecoveryIdempotencyAdapter adapter =
+      new RedisUsernameRecoveryIdempotencyAdapter(
+          redis, new RedisCacheKeyFactory("ngtpa"), jsonMapper);
 
-    @Test
-    void recordUnknownOutcomeStoresNoReplaySnapshotAndReturnsUnknownRecord() {
-        var unknown = unknownRecord();
-        when(redis.execute(any(RedisScript.class), anyList(), anyList()))
-                .thenReturn(Flux.just(jsonMapper.toJson(unknown)));
+  @Test
+  void recordUnknownOutcomeStoresNoReplaySnapshotAndReturnsUnknownRecord() {
+    var unknown = unknownRecord();
+    when(redis.execute(any(RedisScript.class), anyList(), anyList()))
+        .thenReturn(Flux.just(jsonMapper.toJson(unknown)));
 
-        StepVerifier.create(adapter.recordUnknownOutcome(unknownCommand()))
-                .assertNext(record -> {
-                    assertThat(record.status()).isEqualTo(Status.UNKNOWN_OUTCOME);
-                    assertThat(record.replaySnapshot()).isNull();
-                    assertThat(record.expiresAt()).isEqualTo(NOW.plus(TTL));
-                })
-                .verifyComplete();
+    StepVerifier.create(adapter.recordUnknownOutcome(unknownCommand()))
+        .assertNext(
+            record -> {
+              assertThat(record.status()).isEqualTo(Status.UNKNOWN_OUTCOME);
+              assertThat(record.replaySnapshot()).isNull();
+              assertThat(record.expiresAt()).isEqualTo(NOW.plus(TTL));
+            })
+        .verifyComplete();
 
-        verify(redis).execute(
-                any(RedisScript.class),
-                eq(List.of(KEY)),
-                eq(List.of("REQUEST", KEY_VALUE, DIGEST, OP_REF,
-                        "UNKNOWN_OUTCOME", NOW.toString(), "")));
-    }
+    verify(redis)
+        .execute(
+            any(RedisScript.class),
+            eq(List.of(KEY)),
+            eq(
+                List.of(
+                    "REQUEST", KEY_VALUE, DIGEST, OP_REF, "UNKNOWN_OUTCOME", NOW.toString(), "")));
+  }
 
-    @Test
-    void unknownOutcomeMapsMissingScriptCodeToSanitizedCacheFailure() {
-        when(redis.execute(any(RedisScript.class), anyList(), anyList()))
-                .thenReturn(Flux.just("MISSING"));
+  @Test
+  void unknownOutcomeMapsMissingScriptCodeToSanitizedCacheFailure() {
+    when(redis.execute(any(RedisScript.class), anyList(), anyList()))
+        .thenReturn(Flux.just("MISSING"));
 
-        assertUnknownOutcomeFailsWithSafeMessage();
-    }
+    assertUnknownOutcomeFailsWithSafeMessage();
+  }
 
-    @Test
-    void unknownOutcomeMapsConflictScriptCodeToSanitizedCacheFailure() {
-        when(redis.execute(any(RedisScript.class), anyList(), anyList()))
-                .thenReturn(Flux.just("CONFLICT"));
+  @Test
+  void unknownOutcomeMapsConflictScriptCodeToSanitizedCacheFailure() {
+    when(redis.execute(any(RedisScript.class), anyList(), anyList()))
+        .thenReturn(Flux.just("CONFLICT"));
 
-        assertUnknownOutcomeFailsWithSafeMessage();
-    }
+    assertUnknownOutcomeFailsWithSafeMessage();
+  }
 
-    @Test
-    void unknownOutcomeMapsExpiredScriptCodeToSanitizedCacheFailure() {
-        when(redis.execute(any(RedisScript.class), anyList(), anyList()))
-                .thenReturn(Flux.just("EXPIRED"));
+  @Test
+  void unknownOutcomeMapsExpiredScriptCodeToSanitizedCacheFailure() {
+    when(redis.execute(any(RedisScript.class), anyList(), anyList()))
+        .thenReturn(Flux.just("EXPIRED"));
 
-        assertUnknownOutcomeFailsWithSafeMessage();
-    }
+    assertUnknownOutcomeFailsWithSafeMessage();
+  }
 
-    @Test
-    void unknownOutcomeMapsCorruptScriptCodeToSanitizedCacheFailure() {
-        when(redis.execute(any(RedisScript.class), anyList(), anyList()))
-                .thenReturn(Flux.just("CORRUPT"));
+  @Test
+  void unknownOutcomeMapsCorruptScriptCodeToSanitizedCacheFailure() {
+    when(redis.execute(any(RedisScript.class), anyList(), anyList()))
+        .thenReturn(Flux.just("CORRUPT"));
 
-        assertUnknownOutcomeFailsWithSafeMessage();
-    }
+    assertUnknownOutcomeFailsWithSafeMessage();
+  }
 
-    @Test
-    void unknownOutcomeMapsEmptyScriptResultToSanitizedCacheFailure() {
-        when(redis.execute(any(RedisScript.class), anyList(), anyList()))
-                .thenReturn(Flux.empty());
+  @Test
+  void unknownOutcomeMapsEmptyScriptResultToSanitizedCacheFailure() {
+    when(redis.execute(any(RedisScript.class), anyList(), anyList())).thenReturn(Flux.empty());
 
-        assertUnknownOutcomeFailsWithSafeMessage();
-    }
+    assertUnknownOutcomeFailsWithSafeMessage();
+  }
 
-    @Test
-    void unknownOutcomeFailureMessageNeverDisclosesOwnershipValues() {
-        when(redis.execute(any(RedisScript.class), anyList(), anyList()))
-                .thenReturn(Flux.just("CONFLICT"));
+  @Test
+  void unknownOutcomeFailureMessageNeverDisclosesOwnershipValues() {
+    when(redis.execute(any(RedisScript.class), anyList(), anyList()))
+        .thenReturn(Flux.just("CONFLICT"));
 
-        StepVerifier.create(adapter.recordUnknownOutcome(unknownCommand()))
-                .expectErrorSatisfies(error -> assertThat(error)
-                        .isInstanceOf(CacheException.class)
-                        .hasMessage("Username recovery idempotency unknown outcome failed")
-                        .hasMessageNotContaining(KEY_VALUE)
-                        .hasMessageNotContaining(DIGEST)
-                        .hasMessageNotContaining(OP_REF))
-                .verify();
-    }
+    StepVerifier.create(adapter.recordUnknownOutcome(unknownCommand()))
+        .expectErrorSatisfies(
+            error ->
+                assertThat(error)
+                    .isInstanceOf(CacheException.class)
+                    .hasMessage("Username recovery idempotency unknown outcome failed")
+                    .hasMessageNotContaining(KEY_VALUE)
+                    .hasMessageNotContaining(DIGEST)
+                    .hasMessageNotContaining(OP_REF))
+        .verify();
+  }
 
-    private void assertUnknownOutcomeFailsWithSafeMessage() {
-        StepVerifier.create(adapter.recordUnknownOutcome(unknownCommand()))
-                .expectErrorSatisfies(error -> assertThat(error)
-                        .isInstanceOf(CacheException.class)
-                        .hasMessage("Username recovery idempotency unknown outcome failed"))
-                .verify();
-    }
+  private void assertUnknownOutcomeFailsWithSafeMessage() {
+    StepVerifier.create(adapter.recordUnknownOutcome(unknownCommand()))
+        .expectErrorSatisfies(
+            error ->
+                assertThat(error)
+                    .isInstanceOf(CacheException.class)
+                    .hasMessage("Username recovery idempotency unknown outcome failed"))
+        .verify();
+  }
 
-    private static UnknownOutcomeCommand unknownCommand() {
-        return new UnknownOutcomeCommand(
-                UsernameRecoveryIdempotencyAction.REQUEST,
-                new UsernameRecoveryIdempotencyKey(KEY_VALUE),
-                new UsernameRecoveryIdempotencyFingerprint(DIGEST),
-                new UsernameRecoveryIdempotencyOperationReference(OP_REF),
-                NOW,
-                TTL);
-    }
+  private static UnknownOutcomeCommand unknownCommand() {
+    return new UnknownOutcomeCommand(
+        UsernameRecoveryIdempotencyAction.REQUEST,
+        new UsernameRecoveryIdempotencyKey(KEY_VALUE),
+        new UsernameRecoveryIdempotencyFingerprint(DIGEST),
+        new UsernameRecoveryIdempotencyOperationReference(OP_REF),
+        NOW,
+        TTL);
+  }
 
-    private static UsernameRecoveryIdempotencyRecord unknownRecord() {
-        return new UsernameRecoveryIdempotencyRecord(
-                UsernameRecoveryIdempotencyAction.REQUEST,
-                new UsernameRecoveryIdempotencyKey(KEY_VALUE),
-                new UsernameRecoveryIdempotencyFingerprint(DIGEST),
-                new UsernameRecoveryIdempotencyOperationReference(OP_REF),
-                Status.UNKNOWN_OUTCOME,
-                null,
-                NOW,
-                NOW,
-                NOW.plus(TTL));
-    }
+  private static UsernameRecoveryIdempotencyRecord unknownRecord() {
+    return new UsernameRecoveryIdempotencyRecord(
+        UsernameRecoveryIdempotencyAction.REQUEST,
+        new UsernameRecoveryIdempotencyKey(KEY_VALUE),
+        new UsernameRecoveryIdempotencyFingerprint(DIGEST),
+        new UsernameRecoveryIdempotencyOperationReference(OP_REF),
+        Status.UNKNOWN_OUTCOME,
+        null,
+        NOW,
+        NOW,
+        NOW.plus(TTL));
+  }
 }

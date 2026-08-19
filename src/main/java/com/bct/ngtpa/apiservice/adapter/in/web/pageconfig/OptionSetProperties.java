@@ -9,10 +9,10 @@ import lombok.Setter;
 @Getter
 @Setter
 public class OptionSetProperties {
-    private String code;
-    private Map<String, List<OptionProperties>> options = new LinkedHashMap<>();
+  private String code;
+  private Map<String, List<OptionProperties>> options = new LinkedHashMap<>();
 
-    public void setOptions(Map<String, List<OptionProperties>> options) {
-        this.options = options == null ? new LinkedHashMap<>() : options;
-    }
+  public void setOptions(Map<String, List<OptionProperties>> options) {
+    this.options = options == null ? new LinkedHashMap<>() : options;
+  }
 }

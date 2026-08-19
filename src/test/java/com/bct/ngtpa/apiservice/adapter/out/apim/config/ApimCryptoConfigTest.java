@@ -9,17 +9,17 @@ import org.junit.jupiter.api.Test;
 
 class ApimCryptoConfigTest {
 
-    @Test
-    void bouncyCastleProviderIsAddedOnlyOnce() {
-        ApimCryptoConfig config = new ApimCryptoConfig();
-        String providerName = new BouncyCastleProvider().getName();
+  @Test
+  void bouncyCastleProviderIsAddedOnlyOnce() {
+    ApimCryptoConfig config = new ApimCryptoConfig();
+    String providerName = new BouncyCastleProvider().getName();
 
-        Security.removeProvider(providerName);
+    Security.removeProvider(providerName);
 
-        BouncyCastleProvider first = config.bouncyCastleProvider();
-        BouncyCastleProvider second = config.bouncyCastleProvider();
+    BouncyCastleProvider first = config.bouncyCastleProvider();
+    BouncyCastleProvider second = config.bouncyCastleProvider();
 
-        assertEquals(first.getName(), second.getName());
-        assertNotNull(Security.getProvider(first.getName()));
-    }
+    assertEquals(first.getName(), second.getName());
+    assertNotNull(Security.getProvider(first.getName()));
+  }
 }

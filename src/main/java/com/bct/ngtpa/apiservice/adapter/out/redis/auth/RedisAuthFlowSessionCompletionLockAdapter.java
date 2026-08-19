@@ -13,35 +13,43 @@ import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import reactor.core.publisher.Mono;
 
-public class RedisAuthFlowSessionCompletionLockAdapter implements AuthFlowSessionCompletionLockPort {
-    private static final DefaultRedisScript<Long> RELEASE = new DefaultRedisScript<>(
-            "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
-            Long.class);
-    private final ReactiveStringRedisTemplate redis;
-    private final RedisCacheKeyFactory keys;
+public class RedisAuthFlowSessionCompletionLockAdapter
+    implements AuthFlowSessionCompletionLockPort {
+  private static final DefaultRedisScript<Long> RELEASE =
+      new DefaultRedisScript<>(
+          "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
+          Long.class);
+  private final ReactiveStringRedisTemplate redis;
+  private final RedisCacheKeyFactory keys;
 
-    public RedisAuthFlowSessionCompletionLockAdapter(ReactiveStringRedisTemplate redis, RedisCacheKeyFactory keys) {
-        this.redis = Objects.requireNonNull(redis);
-        this.keys = Objects.requireNonNull(keys);
-    }
+  public RedisAuthFlowSessionCompletionLockAdapter(
+      ReactiveStringRedisTemplate redis, RedisCacheKeyFactory keys) {
+    this.redis = Objects.requireNonNull(redis);
+    this.keys = Objects.requireNonNull(keys);
+  }
 
-    public Mono<SessionLockHandle> acquire(AuthFlowSessionId id, Duration lease) {
-        Objects.requireNonNull(id, "sessionId must not be null");
-        if (lease == null || lease.isZero() || lease.isNegative())
-            return Mono.error(new IllegalArgumentException("leaseDuration must be positive"));
-        String key = keys.key("auth", "completion-lock", id.value());
-        String token = UUID.randomUUID().toString();
-        return redis.opsForValue().setIfAbsent(key, token, lease).map(Boolean.TRUE::equals)
-                .map(ok -> ok ? new SessionLockHandle(true, key, token) : SessionLockHandle.notAcquired())
-                .onErrorMap(e -> new CacheException("Session completion lock operation failed", e));
-    }
+  public Mono<SessionLockHandle> acquire(AuthFlowSessionId id, Duration lease) {
+    Objects.requireNonNull(id, "sessionId must not be null");
+    if (lease == null || lease.isZero() || lease.isNegative())
+      return Mono.error(new IllegalArgumentException("leaseDuration must be positive"));
+    String key = keys.key("auth", "completion-lock", id.value());
+    String token = UUID.randomUUID().toString();
+    return redis
+        .opsForValue()
+        .setIfAbsent(key, token, lease)
+        .map(Boolean.TRUE::equals)
+        .map(ok -> ok ? new SessionLockHandle(true, key, token) : SessionLockHandle.notAcquired())
+        .onErrorMap(e -> new CacheException("Session completion lock operation failed", e));
+  }
 
-    public Mono<Boolean> release(SessionLockHandle h) {
-        Objects.requireNonNull(h, "handle must not be null");
-        if (!h.acquired())
-            return Mono.just(false);
-        return redis.execute(RELEASE, List.of(h.lockKey()), h.ownershipToken()).next().map(v -> v != null && v > 0)
-                .defaultIfEmpty(false)
-                .onErrorMap(e -> new CacheException("Session completion lock operation failed", e));
-    }
+  public Mono<Boolean> release(SessionLockHandle h) {
+    Objects.requireNonNull(h, "handle must not be null");
+    if (!h.acquired()) return Mono.just(false);
+    return redis
+        .execute(RELEASE, List.of(h.lockKey()), h.ownershipToken())
+        .next()
+        .map(v -> v != null && v > 0)
+        .defaultIfEmpty(false)
+        .onErrorMap(e -> new CacheException("Session completion lock operation failed", e));
+  }
 }

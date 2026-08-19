@@ -11,13 +11,16 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class RegistrationOtpVerifyWebMapperTest {
-    private final ObjectMapper objectMapper = new ObjectMapper();
-    private final RegistrationOtpVerifyWebMapper mapper = new RegistrationOtpVerifyWebMapper(
-                new com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper());
+  private final ObjectMapper objectMapper = new ObjectMapper();
+  private final RegistrationOtpVerifyWebMapper mapper =
+      new RegistrationOtpVerifyWebMapper(
+          new com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper());
 
-    @Test
-    void successSingleTrustMapsToUsernameCheck() throws Exception {
-        var response = mapper.toMutationResponse(new VerifyRegistrationOtpResult(
+  @Test
+  void successSingleTrustMapsToUsernameCheck() throws Exception {
+    var response =
+        mapper.toMutationResponse(
+            new VerifyRegistrationOtpResult(
                 VerifyRegistrationOtpResultStatus.VERIFIED,
                 WorkflowNextStep.USERNAME_CHECK,
                 List.of(new RegistrationUnregisteredTrust("OI", "JPM")),
@@ -27,41 +30,57 @@ class RegistrationOtpVerifyWebMapperTest {
                 RegistrationIdempotencyStartOutcome.STARTED,
                 null));
 
-        String json = objectMapper.writeValueAsString(response);
-        assertThat(response.result().nextStep()).isEqualTo(WorkflowNextStep.USERNAME_CHECK);
-        assertThat(response.result().data().unregisteredTrusts()).singleElement().satisfies(trust -> {
-            assertThat(trust.accountEnv()).isEqualTo("OI");
-            assertThat(trust.trustCode()).isEqualTo("JPM");
-        });
-        assertThat(json).contains("\"success\":true", "\"nextStep\":\"USERNAME_CHECK\"");
-        assertThat(json).doesNotContain("registration-username-check", "pageRef");
-        assertThat(json).doesNotContain("auth_flow_sid", "csrfToken", "otpChallengeId", "activeOtpChallengeId", "123456", "member@example.com", "3024102", "04/04/1982");
-    }
+    String json = objectMapper.writeValueAsString(response);
+    assertThat(response.result().nextStep()).isEqualTo(WorkflowNextStep.USERNAME_CHECK);
+    assertThat(response.result().data().unregisteredTrusts())
+        .singleElement()
+        .satisfies(
+            trust -> {
+              assertThat(trust.accountEnv()).isEqualTo("OI");
+              assertThat(trust.trustCode()).isEqualTo("JPM");
+            });
+    assertThat(json).contains("\"success\":true", "\"nextStep\":\"USERNAME_CHECK\"");
+    assertThat(json).doesNotContain("registration-username-check", "pageRef");
+    assertThat(json)
+        .doesNotContain(
+            "auth_flow_sid",
+            "csrfToken",
+            "otpChallengeId",
+            "activeOtpChallengeId",
+            "123456",
+            "member@example.com",
+            "3024102",
+            "04/04/1982");
+  }
 
-    @Test
-    void successMultipleTrustsMapsToSelectTrust() throws Exception {
-        var response = mapper.toMutationResponse(new VerifyRegistrationOtpResult(
+  @Test
+  void successMultipleTrustsMapsToSelectTrust() throws Exception {
+    var response =
+        mapper.toMutationResponse(
+            new VerifyRegistrationOtpResult(
                 VerifyRegistrationOtpResultStatus.VERIFIED,
                 WorkflowNextStep.SELECT_TRUST,
                 List.of(
-                        new RegistrationUnregisteredTrust("OI", "JPM"),
-                        new RegistrationUnregisteredTrust("OI", "BCT")),
+                    new RegistrationUnregisteredTrust("OI", "JPM"),
+                    new RegistrationUnregisteredTrust("OI", "BCT")),
                 null,
                 List.of(),
                 List.of(),
                 RegistrationIdempotencyStartOutcome.STARTED,
                 null));
 
-        String json = objectMapper.writeValueAsString(response);
-        assertThat(response.result().nextStep()).isEqualTo(WorkflowNextStep.SELECT_TRUST);
-        assertThat(response.result().data().unregisteredTrusts()).hasSize(2);
-        assertThat(json).contains("\"success\":true", "\"nextStep\":\"SELECT_TRUST\"");
-        assertThat(json).doesNotContain("registration-trust-selection", "pageRef");
-    }
+    String json = objectMapper.writeValueAsString(response);
+    assertThat(response.result().nextStep()).isEqualTo(WorkflowNextStep.SELECT_TRUST);
+    assertThat(response.result().data().unregisteredTrusts()).hasSize(2);
+    assertThat(json).contains("\"success\":true", "\"nextStep\":\"SELECT_TRUST\"");
+    assertThat(json).doesNotContain("registration-trust-selection", "pageRef");
+  }
 
-    @Test
-    void invalidOtpMapsToOtpVerificationPageError() throws Exception {
-        Object response = mapper.toMutationResponse(new VerifyRegistrationOtpResult(
+  @Test
+  void invalidOtpMapsToOtpVerificationPageError() throws Exception {
+    Object response =
+        mapper.toMutationResponse(
+            new VerifyRegistrationOtpResult(
                 VerifyRegistrationOtpResultStatus.OTP_INVALID,
                 WorkflowNextStep.VERIFY_OTP,
                 List.of(),
@@ -71,14 +90,16 @@ class RegistrationOtpVerifyWebMapperTest {
                 RegistrationIdempotencyStartOutcome.STARTED,
                 null));
 
-        String json = objectMapper.writeValueAsString(response);
-        assertThat(json).contains("\"success\":false", "err.registration.otp.invalid");
-        assertThat(json).doesNotContain("123456", "otpChallengeId", "activeOtpChallengeId");
-    }
+    String json = objectMapper.writeValueAsString(response);
+    assertThat(json).contains("\"success\":false", "err.registration.otp.invalid");
+    assertThat(json).doesNotContain("123456", "otpChallengeId", "activeOtpChallengeId");
+  }
 
-    @Test
-    void duplicateInProgressMapsToWait() throws Exception {
-        var response = mapper.toMutationResponse(new VerifyRegistrationOtpResult(
+  @Test
+  void duplicateInProgressMapsToWait() throws Exception {
+    var response =
+        mapper.toMutationResponse(
+            new VerifyRegistrationOtpResult(
                 VerifyRegistrationOtpResultStatus.DUPLICATE_IN_PROGRESS,
                 WorkflowNextStep.WAIT,
                 List.of(),
@@ -88,13 +109,15 @@ class RegistrationOtpVerifyWebMapperTest {
                 RegistrationIdempotencyStartOutcome.DUPLICATE_IN_PROGRESS,
                 null));
 
-        assertThat(response.result().nextStep()).isEqualTo(WorkflowNextStep.WAIT);
-        assertThat(response.result().data()).isNull();
-    }
+    assertThat(response.result().nextStep()).isEqualTo(WorkflowNextStep.WAIT);
+    assertThat(response.result().data()).isNull();
+  }
 
-    @Test
-    void invalidOtpMapsRemainingAttemptsToVerifyOtpPayload() throws Exception {
-        var response = mapper.toMutationResponse(new VerifyRegistrationOtpResult(
+  @Test
+  void invalidOtpMapsRemainingAttemptsToVerifyOtpPayload() throws Exception {
+    var response =
+        mapper.toMutationResponse(
+            new VerifyRegistrationOtpResult(
                 VerifyRegistrationOtpResultStatus.OTP_INVALID,
                 WorkflowNextStep.VERIFY_OTP,
                 List.of(),
@@ -104,11 +127,11 @@ class RegistrationOtpVerifyWebMapperTest {
                 RegistrationIdempotencyStartOutcome.STARTED,
                 null));
 
-        String json = objectMapper.writeValueAsString(response);
-        assertThat(json).contains("\"success\":false", "err.registration.otp.invalid");
-        assertThat(json).contains("\"nextStep\":\"VERIFY_OTP\"", "\"remainingVerifyAttempts\":2");
-        assertThat(json).doesNotContain("registration-otp-verification", "pageRef");
-        assertThat(json).doesNotContain("otpChallengeId", "activeOtpChallengeId", "123456", "member@example.com");
-    }
-
+    String json = objectMapper.writeValueAsString(response);
+    assertThat(json).contains("\"success\":false", "err.registration.otp.invalid");
+    assertThat(json).contains("\"nextStep\":\"VERIFY_OTP\"", "\"remainingVerifyAttempts\":2");
+    assertThat(json).doesNotContain("registration-otp-verification", "pageRef");
+    assertThat(json)
+        .doesNotContain("otpChallengeId", "activeOtpChallengeId", "123456", "member@example.com");
+  }
 }

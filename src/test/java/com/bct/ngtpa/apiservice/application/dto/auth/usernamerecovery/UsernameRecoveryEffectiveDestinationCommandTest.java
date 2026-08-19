@@ -14,32 +14,34 @@ import org.junit.jupiter.api.Test;
  */
 class UsernameRecoveryEffectiveDestinationCommandTest {
 
-    @Test
-    void carriesVerifiedDestinationWithoutMutation() {
-        var verified = new UsernameRecoveryVerifiedDestination(
-                "member@example.test", UsernameRecoveryVerifiedDestination.Channel.EMAIL);
+  @Test
+  void carriesVerifiedDestinationWithoutMutation() {
+    var verified =
+        new UsernameRecoveryVerifiedDestination(
+            "member@example.test", UsernameRecoveryVerifiedDestination.Channel.EMAIL);
 
-        var command = new UsernameRecoveryEffectiveDestinationCommand(verified);
+    var command = new UsernameRecoveryEffectiveDestinationCommand(verified);
 
-        assertThat(command.verifiedDestination()).isSameAs(verified);
-    }
+    assertThat(command.verifiedDestination()).isSameAs(verified);
+  }
 
-    @Test
-    void rejectsNullVerifiedDestination() {
-        assertThatThrownBy(() -> new UsernameRecoveryEffectiveDestinationCommand(null))
-                .isInstanceOf(NullPointerException.class)
-                .hasMessageContaining("verifiedDestination");
-    }
+  @Test
+  void rejectsNullVerifiedDestination() {
+    assertThatThrownBy(() -> new UsernameRecoveryEffectiveDestinationCommand(null))
+        .isInstanceOf(NullPointerException.class)
+        .hasMessageContaining("verifiedDestination");
+  }
 
-    @Test
-    void toStringNeverDisclosesDestinationValue() {
-        var command = new UsernameRecoveryEffectiveDestinationCommand(
-                new UsernameRecoveryVerifiedDestination(
-                        "member@example.test", UsernameRecoveryVerifiedDestination.Channel.EMAIL));
+  @Test
+  void toStringNeverDisclosesDestinationValue() {
+    var command =
+        new UsernameRecoveryEffectiveDestinationCommand(
+            new UsernameRecoveryVerifiedDestination(
+                "member@example.test", UsernameRecoveryVerifiedDestination.Channel.EMAIL));
 
-        assertThat(command.toString())
-                .contains("<redacted>")
-                .contains("EMAIL")
-                .doesNotContain("member@example.test");
-    }
+    assertThat(command.toString())
+        .contains("<redacted>")
+        .contains("EMAIL")
+        .doesNotContain("member@example.test");
+  }
 }

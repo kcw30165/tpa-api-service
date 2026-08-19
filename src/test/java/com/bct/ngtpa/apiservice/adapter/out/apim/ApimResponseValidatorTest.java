@@ -11,45 +11,59 @@ import org.junit.jupiter.api.Test;
 
 class ApimResponseValidatorTest {
 
-    @Test
-    void requiresResponsePayload() {
-        ApimException exception = assertThrows(ApimException.class,
-                () -> ApimResponseValidator.requireSuccessData(ApimEnvelopeFixtures.envelope(null, null)));
+  @Test
+  void requiresResponsePayload() {
+    ApimException exception =
+        assertThrows(
+            ApimException.class,
+            () ->
+                ApimResponseValidator.requireSuccessData(
+                    ApimEnvelopeFixtures.envelope(null, null)));
 
-        assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, exception.getErrorCode());
-    }
+    assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, exception.getErrorCode());
+  }
 
-    @Test
-    void requiresErrMessageField() {
-        ApimException exception = assertThrows(ApimException.class,
-                () -> ApimResponseValidator.requireSuccessData(ApimEnvelopeFixtures.missingErrMessage(List.of())));
+  @Test
+  void requiresErrMessageField() {
+    ApimException exception =
+        assertThrows(
+            ApimException.class,
+            () ->
+                ApimResponseValidator.requireSuccessData(
+                    ApimEnvelopeFixtures.missingErrMessage(List.of())));
 
-        assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, exception.getErrorCode());
-    }
+    assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, exception.getErrorCode());
+  }
 
-    @Test
-    void allowsEmptyDataArrayWhenErrMessageIsExactlyEmptyString() {
-        List<String> data = List.of();
+  @Test
+  void allowsEmptyDataArrayWhenErrMessageIsExactlyEmptyString() {
+    List<String> data = List.of();
 
-        assertSame(data, ApimResponseValidator.requireSuccessData(ApimEnvelopeFixtures.success(data)));
-    }
+    assertSame(data, ApimResponseValidator.requireSuccessData(ApimEnvelopeFixtures.success(data)));
+  }
 
-    @Test
-    void requiresDataArrayWhenErrMessageIsExactlyEmptyString() {
-        ApimException exception = assertThrows(ApimException.class,
-                () -> ApimResponseValidator.requireSuccessData(ApimEnvelopeFixtures.missingDataSuccess()));
+  @Test
+  void requiresDataArrayWhenErrMessageIsExactlyEmptyString() {
+    ApimException exception =
+        assertThrows(
+            ApimException.class,
+            () ->
+                ApimResponseValidator.requireSuccessData(
+                    ApimEnvelopeFixtures.missingDataSuccess()));
 
-        assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, exception.getErrorCode());
-    }
+    assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, exception.getErrorCode());
+  }
 
-    @Test
-    void nonEmptyErrMessageThrowsAndDoesNotRequireDataArray() {
-        ApimException exception = assertThrows(ApimException.class,
-                () -> ApimResponseValidator.requireSuccessData(ApimEnvelopeFixtures.apimError("APIM failed")));
+  @Test
+  void nonEmptyErrMessageThrowsAndDoesNotRequireDataArray() {
+    ApimException exception =
+        assertThrows(
+            ApimException.class,
+            () ->
+                ApimResponseValidator.requireSuccessData(
+                    ApimEnvelopeFixtures.apimError("APIM failed")));
 
-        assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, exception.getErrorCode());
-        assertEquals("APIM failed", exception.getMessage());
-    }
-
+    assertEquals(ErrorCodes.APIM_RESPONSE_INVALID, exception.getErrorCode());
+    assertEquals("APIM failed", exception.getMessage());
+  }
 }
-

@@ -24,46 +24,50 @@ import reactor.core.publisher.Mono;
  */
 @Component
 public class UsernameRecoveryEffectiveDestinationConfigAdapter
-        implements UsernameRecoveryEffectiveDestinationPort {
+    implements UsernameRecoveryEffectiveDestinationPort {
 
-    private static final String USERNAME_RECOVERY_OVERRIDE_PREFIX =
-            "auth-workflows.username-recovery.message.destination-override";
+  private static final String USERNAME_RECOVERY_OVERRIDE_PREFIX =
+      "auth-workflows.username-recovery.message.destination-override";
 
-    private final DeploymentEnvironmentPolicy environmentPolicy;
-    private final AuthWorkflowProperties properties;
+  private final DeploymentEnvironmentPolicy environmentPolicy;
+  private final AuthWorkflowProperties properties;
 
-    public UsernameRecoveryEffectiveDestinationConfigAdapter(
-            DeploymentEnvironmentPolicy environmentPolicy, AuthWorkflowProperties properties) {
-        this.environmentPolicy = Objects.requireNonNull(environmentPolicy);
-        this.properties = Objects.requireNonNull(properties);
-    }
+  public UsernameRecoveryEffectiveDestinationConfigAdapter(
+      DeploymentEnvironmentPolicy environmentPolicy, AuthWorkflowProperties properties) {
+    this.environmentPolicy = Objects.requireNonNull(environmentPolicy);
+    this.properties = Objects.requireNonNull(properties);
+  }
 
-    @Override
-    public Mono<UsernameRecoveryEffectiveDestinationResult> resolve(
-            UsernameRecoveryEffectiveDestinationCommand command) {
-        return Mono.defer(() -> {
-            Objects.requireNonNull(command, "command must not be null");
-            UsernameRecoveryVerifiedDestination verified = command.verifiedDestination();
-            if (environmentPolicy.isProductionLikeDeployment()) {
-                return Mono.just(new UsernameRecoveryEffectiveDestinationResult(
-                        verified.value(), verified.channel()));
-            }
-            String effectiveDestination = switch (verified.channel()) {
+  @Override
+  public Mono<UsernameRecoveryEffectiveDestinationResult> resolve(
+      UsernameRecoveryEffectiveDestinationCommand command) {
+    return Mono.defer(
+        () -> {
+          Objects.requireNonNull(command, "command must not be null");
+          UsernameRecoveryVerifiedDestination verified = command.verifiedDestination();
+          if (environmentPolicy.isProductionLikeDeployment()) {
+            return Mono.just(
+                new UsernameRecoveryEffectiveDestinationResult(
+                    verified.value(), verified.channel()));
+          }
+          String effectiveDestination =
+              switch (verified.channel()) {
                 case EMAIL -> requiredOverride().requiredEmail(USERNAME_RECOVERY_OVERRIDE_PREFIX);
                 case MOBILE -> requiredOverride().requiredMobile(USERNAME_RECOVERY_OVERRIDE_PREFIX);
-            };
-            return Mono.just(new UsernameRecoveryEffectiveDestinationResult(
-                    effectiveDestination, verified.channel()));
+              };
+          return Mono.just(
+              new UsernameRecoveryEffectiveDestinationResult(
+                  effectiveDestination, verified.channel()));
         });
-    }
+  }
 
-    private AuthWorkflowProperties.DestinationOverride requiredOverride() {
-        if (properties.getUsernameRecovery() == null) {
-            throw new IllegalStateException("auth-workflows.username-recovery configuration is required");
-        }
-        AuthWorkflowProperties.DestinationOverride override =
-                properties.getUsernameRecovery().getMessage().getDestinationOverride();
-        override.validateRequiredDestinations(USERNAME_RECOVERY_OVERRIDE_PREFIX);
-        return override;
+  private AuthWorkflowProperties.DestinationOverride requiredOverride() {
+    if (properties.getUsernameRecovery() == null) {
+      throw new IllegalStateException("auth-workflows.username-recovery configuration is required");
     }
+    AuthWorkflowProperties.DestinationOverride override =
+        properties.getUsernameRecovery().getMessage().getDestinationOverride();
+    override.validateRequiredDestinations(USERNAME_RECOVERY_OVERRIDE_PREFIX);
+    return override;
+  }
 }

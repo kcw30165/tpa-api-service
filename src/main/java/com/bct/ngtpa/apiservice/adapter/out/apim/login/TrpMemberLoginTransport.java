@@ -7,5 +7,6 @@ import reactor.core.publisher.Mono;
 
 @FunctionalInterface
 public interface TrpMemberLoginTransport {
-    Mono<ApimResponseEnvelope<TrpMemberLoginApimDataItem>> post(CredentialAuthenticationCommand command);
+  Mono<ApimResponseEnvelope<TrpMemberLoginApimDataItem>> post(
+      CredentialAuthenticationCommand command);
 }

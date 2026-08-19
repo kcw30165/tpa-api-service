@@ -15,62 +15,68 @@ import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
 
 /**
- * Group 4: architecture and shared-script reuse guards for the Username Recovery
- * idempotency Redis adapter.
+ * Group 4: architecture and shared-script reuse guards for the Username Recovery idempotency Redis
+ * adapter.
  *
- * <p>Pins: reserve reuses the generic native SET-NX convention (no feature Lua);
- * the single retained feature script (transition.lua) exists only because the shared
- * auth-flow-session scripts use whole-value CAS and the workflow-state sidecar script
- * is revision-based (physically incompatible); the adapter implements the typed
- * reactive port; application/domain never depend on the adapter; Redis keys stay
- * opaque and feature-scoped.
+ * <p>Pins: reserve reuses the generic native SET-NX convention (no feature Lua); the single
+ * retained feature script (transition.lua) exists only because the shared auth-flow-session scripts
+ * use whole-value CAS and the workflow-state sidecar script is revision-based (physically
+ * incompatible); the adapter implements the typed reactive port; application/domain never depend on
+ * the adapter; Redis keys stay opaque and feature-scoped.
  */
 class RedisUsernameRecoveryIdempotencyArchitectureGuardTest {
 
-    @Test
-    void reserveNeedsNoFeatureScriptBecauseItUsesGenericSetNx() throws IOException {
-        assertThat(new ClassPathResource(
-                "redis/username-recovery-idempotency/reserve.lua").exists()).isFalse();
-        assertThat(new ClassPathResource(
-                "redis/username-recovery-idempotency/resolve.lua").exists()).isFalse();
-    }
+  @Test
+  void reserveNeedsNoFeatureScriptBecauseItUsesGenericSetNx() throws IOException {
+    assertThat(new ClassPathResource("redis/username-recovery-idempotency/reserve.lua").exists())
+        .isFalse();
+    assertThat(new ClassPathResource("redis/username-recovery-idempotency/resolve.lua").exists())
+        .isFalse();
+  }
 
-    @Test
-    void adapterImplementsTypedReactivePort() {
-        assertThat(UsernameRecoveryIdempotencyPort.class.isAssignableFrom(
-                RedisUsernameRecoveryIdempotencyAdapter.class)).isTrue();
-    }
+  @Test
+  void adapterImplementsTypedReactivePort() {
+    assertThat(
+            UsernameRecoveryIdempotencyPort.class.isAssignableFrom(
+                RedisUsernameRecoveryIdempotencyAdapter.class))
+        .isTrue();
+  }
 
-    @Test
-    void applicationAndDomainNeverDependOnRedisUsernameRecoveryIdempotencyAdapter() {
-        JavaClasses classes = new ClassFileImporter().importPackages(
+  @Test
+  void applicationAndDomainNeverDependOnRedisUsernameRecoveryIdempotencyAdapter() {
+    JavaClasses classes =
+        new ClassFileImporter()
+            .importPackages(
                 "com.bct.ngtpa.apiservice.application.port.out",
                 "com.bct.ngtpa.apiservice.domain.model");
-        ArchRuleDefinition.noClasses()
-                .that().resideInAnyPackage("..application.port.out..", "..domain.model..")
-                .should().dependOnClassesThat()
-                .resideInAPackage("..adapter.out.redis.usernamerecovery..")
-                .check(classes);
-    }
+    ArchRuleDefinition.noClasses()
+        .that()
+        .resideInAnyPackage("..application.port.out..", "..domain.model..")
+        .should()
+        .dependOnClassesThat()
+        .resideInAPackage("..adapter.out.redis.usernamerecovery..")
+        .check(classes);
+  }
 
-    @Test
-    void redisKeyStaysOpaqueAndFeatureScoped() {
-        var key = RedisUsernameRecoveryIdempotencyKeyFactory.keyFor(
-                new RedisCacheKeyFactory("ngtpa"),
-                UsernameRecoveryIdempotencyAction.REQUEST,
-                new UsernameRecoveryIdempotencyKey("idem_12345678"));
-        assertThat(key).isEqualTo(
-                "ngtpa:username-recovery:idempotency:username-recovery-request:idem_12345678");
-        assertThat(key)
-                .doesNotContain("user-sch")
-                .doesNotContain("member@example.com")
-                .doesNotContain("csrf")
-                .doesNotContain("cookie")
-                .doesNotContain("policy")
-                .doesNotContain("cert");
-    }
+  @Test
+  void redisKeyStaysOpaqueAndFeatureScoped() {
+    var key =
+        RedisUsernameRecoveryIdempotencyKeyFactory.keyFor(
+            new RedisCacheKeyFactory("ngtpa"),
+            UsernameRecoveryIdempotencyAction.REQUEST,
+            new UsernameRecoveryIdempotencyKey("idem_12345678"));
+    assertThat(key)
+        .isEqualTo("ngtpa:username-recovery:idempotency:username-recovery-request:idem_12345678");
+    assertThat(key)
+        .doesNotContain("user-sch")
+        .doesNotContain("member@example.com")
+        .doesNotContain("csrf")
+        .doesNotContain("cookie")
+        .doesNotContain("policy")
+        .doesNotContain("cert");
+  }
 
-    private static String resource(String path) throws IOException {
-        return new ClassPathResource(path).getContentAsString(StandardCharsets.UTF_8);
-    }
+  private static String resource(String path) throws IOException {
+    return new ClassPathResource(path).getContentAsString(StandardCharsets.UTF_8);
+  }
 }

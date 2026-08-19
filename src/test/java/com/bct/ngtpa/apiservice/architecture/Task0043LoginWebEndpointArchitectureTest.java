@@ -8,44 +8,43 @@ import org.junit.jupiter.api.Test;
 
 class Task0043LoginWebEndpointArchitectureTest {
 
-    @Test
-    void controllerIsThinAndUsesApplicationInputPort() throws Exception {
-        String source = Files.readString(Path.of(
+  @Test
+  void controllerIsThinAndUsesApplicationInputPort() throws Exception {
+    String source =
+        Files.readString(
+            Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthLoginController.java"));
 
-        assertThat(source).contains(
-                "@RequestMapping(\"/api/v1/auth\")",
-                "@PostMapping(\"/login\")",
-                "StartLoginUseCase",
-                "AuthFlowCookieWriter",
-                "Idempotency-Key",
-                "RequestCorrelation.REQUEST_ID_HEADER",
-                "Accept-Language");
-        assertThat(source).doesNotContain(
-                "\"X-Request-Id\"",
-                "Redis",
-                "WebClient",
-                "CredentialAuthenticationPort",
-                "LoginStartReplayPort",
-                "AuthFlowSessionLifecycleService",
-                "Cipher");
-    }
+    assertThat(source)
+        .contains(
+            "@RequestMapping(\"/api/v1/auth\")",
+            "@PostMapping(\"/login\")",
+            "StartLoginUseCase",
+            "AuthFlowCookieWriter",
+            "Idempotency-Key",
+            "RequestCorrelation.REQUEST_ID_HEADER",
+            "Accept-Language");
+    assertThat(source)
+        .doesNotContain(
+            "\"X-Request-Id\"",
+            "Redis",
+            "WebClient",
+            "CredentialAuthenticationPort",
+            "LoginStartReplayPort",
+            "AuthFlowSessionLifecycleService",
+            "Cipher");
+  }
 
-    @Test
-    void webDtosDoNotExposeSessionReplayOrCredentialsInResponse() throws Exception {
-        String response = Files.readString(Path.of(
+  @Test
+  void webDtosDoNotExposeSessionReplayOrCredentialsInResponse() throws Exception {
+    String response =
+        Files.readString(
+            Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/login/dto/LoginStartDataResponse.java"));
 
-        assertThat(response).contains(
-                "csrfToken",
-                "destinations",
-                "expiresInSeconds",
-                "actions");
-        assertThat(response).doesNotContain(
-                "authFlowSessionId",
-                "replayCommitRef",
-                "password",
-                "ciphertext",
-                "rawDestination");
-    }
+    assertThat(response).contains("csrfToken", "destinations", "expiresInSeconds", "actions");
+    assertThat(response)
+        .doesNotContain(
+            "authFlowSessionId", "replayCommitRef", "password", "ciphertext", "rawDestination");
+  }
 }

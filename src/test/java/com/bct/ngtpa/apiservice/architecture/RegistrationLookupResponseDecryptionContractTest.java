@@ -8,12 +8,11 @@ import org.junit.jupiter.api.Test;
 
 class RegistrationLookupResponseDecryptionContractTest {
 
-    @Test
-    void registrationContactFieldsAreConfiguredForApimResponseDecryption() {
-        var properties = new ApimProperties();
-        properties.getEncryption().setResponseFields(List.of("email", "mobile-number"));
+  @Test
+  void registrationContactFieldsAreConfiguredForApimResponseDecryption() {
+    var properties = new ApimProperties();
+    properties.getEncryption().setResponseFields(List.of("email", "mobile-number"));
 
-        assertThat(properties.getEncryption().getResponseFields())
-                .contains("email", "mobile-number");
-    }
+    assertThat(properties.getEncryption().getResponseFields()).contains("email", "mobile-number");
+  }
 }

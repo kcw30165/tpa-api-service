@@ -14,29 +14,39 @@ import java.util.Objects;
 import reactor.core.publisher.Mono;
 
 public final class SharedApimTrpMemberLoginTransport implements TrpMemberLoginTransport {
-    private final ApimExchangeExecutor executor;
-    private final TrpMemberLoginProperties loginProperties;
+  private final ApimExchangeExecutor executor;
+  private final TrpMemberLoginProperties loginProperties;
 
-    public SharedApimTrpMemberLoginTransport(ApimExchangeExecutor executor, TrpMemberLoginProperties loginProperties) {
-        this.executor = Objects.requireNonNull(executor, "executor must not be null");
-        this.loginProperties = Objects.requireNonNull(loginProperties, "loginProperties must not be null");
-    }
+  public SharedApimTrpMemberLoginTransport(
+      ApimExchangeExecutor executor, TrpMemberLoginProperties loginProperties) {
+    this.executor = Objects.requireNonNull(executor, "executor must not be null");
+    this.loginProperties =
+        Objects.requireNonNull(loginProperties, "loginProperties must not be null");
+  }
 
-    @Override
-    public Mono<ApimResponseEnvelope<TrpMemberLoginApimDataItem>> post(CredentialAuthenticationCommand command) {
-        Objects.requireNonNull(command, "command must not be null");
-        String path = requireText(loginProperties.getPath(), "apim.login.member-login.path");
-        var request = new TrpMemberLoginApimRequest(command.username(), command.password(), command.actorUserRole().toApimValue());
-        var exchange = new ApimExchangeRequest<>(path, request,
-                TrpMemberLoginApimRequest.class, TrpMemberLoginApimDataItem.class,
-                ApimDatabaseScope.NON_ACCOUNT,
-                new ApimCredentialResolutionContext(command.actorUserRole(), null),
-                ApimRetryEligibility.SAFE_BUSINESS_CALL);
-        return executor.postEnvelope(exchange);
-    }
+  @Override
+  public Mono<ApimResponseEnvelope<TrpMemberLoginApimDataItem>> post(
+      CredentialAuthenticationCommand command) {
+    Objects.requireNonNull(command, "command must not be null");
+    String path = requireText(loginProperties.getPath(), "apim.login.member-login.path");
+    var request =
+        new TrpMemberLoginApimRequest(
+            command.username(), command.password(), command.actorUserRole().toApimValue());
+    var exchange =
+        new ApimExchangeRequest<>(
+            path,
+            request,
+            TrpMemberLoginApimRequest.class,
+            TrpMemberLoginApimDataItem.class,
+            ApimDatabaseScope.NON_ACCOUNT,
+            new ApimCredentialResolutionContext(command.actorUserRole(), null),
+            ApimRetryEligibility.SAFE_BUSINESS_CALL);
+    return executor.postEnvelope(exchange);
+  }
 
-    private String requireText(String value, String property) {
-        if (value == null || value.isBlank()) throw new IllegalStateException(property + " must not be blank");
-        return value.trim();
-    }
+  private String requireText(String value, String property) {
+    if (value == null || value.isBlank())
+      throw new IllegalStateException(property + " must not be blank");
+    return value.trim();
+  }
 }

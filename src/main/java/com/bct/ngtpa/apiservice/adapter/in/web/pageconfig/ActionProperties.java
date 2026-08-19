@@ -8,13 +8,13 @@ import lombok.Setter;
 @Setter
 public class ActionProperties {
 
-    private String id;
+  private String id;
 
-    private String labelCode;
+  private String labelCode;
 
-    private String nextStep;
+  private String nextStep;
 
-    private String name;
-    private String type;
-    private Map<String, String> label;
+  private String name;
+  private String type;
+  private Map<String, String> label;
 }

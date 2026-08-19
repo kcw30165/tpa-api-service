@@ -15,22 +15,22 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class RegistrationUsernameCheckUseCaseConfig {
-    @Bean
-    @ConditionalOnMissingBean
-    public CheckRegistrationUsernameUseCase checkRegistrationUsernameUseCase(
-            AuthFlowSessionPort authFlowSessionPort,
-            AuthFlowSessionExpiryRefreshPort expiryRefreshPort,
-            RegistrationUsernameAvailabilityPort registrationUsernameAvailabilityPort,
-            AuthWorkflowPolicyPort authWorkflowPolicyPort,
-            DownstreamErrorClassificationPort downstreamErrorClassificationPort,
-            RegistrationUsernameCheckProtectorPort registrationUsernameCheckProtectorPort) {
-        return new CheckRegistrationUsernameService(
-                authFlowSessionPort,
-                expiryRefreshPort,
-                registrationUsernameAvailabilityPort,
-                authWorkflowPolicyPort,
-                downstreamErrorClassificationPort,
-                registrationUsernameCheckProtectorPort,
-                Clock.systemUTC());
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  public CheckRegistrationUsernameUseCase checkRegistrationUsernameUseCase(
+      AuthFlowSessionPort authFlowSessionPort,
+      AuthFlowSessionExpiryRefreshPort expiryRefreshPort,
+      RegistrationUsernameAvailabilityPort registrationUsernameAvailabilityPort,
+      AuthWorkflowPolicyPort authWorkflowPolicyPort,
+      DownstreamErrorClassificationPort downstreamErrorClassificationPort,
+      RegistrationUsernameCheckProtectorPort registrationUsernameCheckProtectorPort) {
+    return new CheckRegistrationUsernameService(
+        authFlowSessionPort,
+        expiryRefreshPort,
+        registrationUsernameAvailabilityPort,
+        authWorkflowPolicyPort,
+        downstreamErrorClassificationPort,
+        registrationUsernameCheckProtectorPort,
+        Clock.systemUTC());
+  }
 }

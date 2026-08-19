@@ -6,22 +6,19 @@ import com.bct.ngtpa.apiservice.application.port.out.CredentialAuthenticationPor
 import java.util.Objects;
 import reactor.core.publisher.Mono;
 
-/**
- * Application entry point; web/session orchestration is added in a later
- * script.
- */
+/** Application entry point; web/session orchestration is added in a later script. */
 public final class AuthenticateLoginCredentialsUseCase {
-    private final CredentialAuthenticationPort credentialAuthenticationPort;
+  private final CredentialAuthenticationPort credentialAuthenticationPort;
 
-    public AuthenticateLoginCredentialsUseCase(
-            CredentialAuthenticationPort credentialAuthenticationPort) {
-        this.credentialAuthenticationPort = Objects.requireNonNull(
-                credentialAuthenticationPort,
-                "credentialAuthenticationPort must not be null");
-    }
+  public AuthenticateLoginCredentialsUseCase(
+      CredentialAuthenticationPort credentialAuthenticationPort) {
+    this.credentialAuthenticationPort =
+        Objects.requireNonNull(
+            credentialAuthenticationPort, "credentialAuthenticationPort must not be null");
+  }
 
-    public Mono<CredentialAuthenticationResult> authenticate(
-            CredentialAuthenticationCommand command) {
-        return credentialAuthenticationPort.authenticate(command);
-    }
+  public Mono<CredentialAuthenticationResult> authenticate(
+      CredentialAuthenticationCommand command) {
+    return credentialAuthenticationPort.authenticate(command);
+  }
 }

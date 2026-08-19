@@ -12,31 +12,34 @@ import org.junit.jupiter.api.Test;
 
 class RegistrationSharedCoreMigrationArchitectureTest {
 
-    @Test
-    void existingGenericCoresMustBeTheSharedAuthFlowContracts() {
-        assertThat(AuthFlowOtpPort.class).isAssignableFrom(OtpChallengePort.class);
-        assertThat(AuthFlowMessagePort.class).isAssignableFrom(MessageDeliveryPort.class);
-    }
+  @Test
+  void existingGenericCoresMustBeTheSharedAuthFlowContracts() {
+    assertThat(AuthFlowOtpPort.class).isAssignableFrom(OtpChallengePort.class);
+    assertThat(AuthFlowMessagePort.class).isAssignableFrom(MessageDeliveryPort.class);
+  }
 
-    @Test
-    void temporaryDelegatingCompatibilityAdaptersMustBeRemoved() {
-        assertThat(Path.of(
+  @Test
+  void temporaryDelegatingCompatibilityAdaptersMustBeRemoved() {
+    assertThat(
+            Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/out/authflow/DelegatingAuthFlowOtpAdapter.java"))
-                .doesNotExist();
-        assertThat(Path.of(
+        .doesNotExist();
+    assertThat(
+            Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/out/authflow/DelegatingAuthFlowMessageAdapter.java"))
-                .doesNotExist();
-    }
+        .doesNotExist();
+  }
 
-    @Test
-    void registrationWiringUsesTheExistingSharedCoresWithoutDuplicateBeans() throws Exception {
-        String source = Files.readString(Path.of(
+  @Test
+  void registrationWiringUsesTheExistingSharedCoresWithoutDuplicateBeans() throws Exception {
+    String source =
+        Files.readString(
+            Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/out/registration/config/RegistrationStartGatewayConfig.java"));
-        assertThat(source).contains(
-                "OtpChallengePort otpChallengePort",
-                "MessageDeliveryPort messageDeliveryPort");
-        assertThat(source).doesNotContain(
-                "AuthFlowOtpPort otpChallengePort",
-                "AuthFlowMessagePort messageDeliveryPort");
-    }
+    assertThat(source)
+        .contains("OtpChallengePort otpChallengePort", "MessageDeliveryPort messageDeliveryPort");
+    assertThat(source)
+        .doesNotContain(
+            "AuthFlowOtpPort otpChallengePort", "AuthFlowMessagePort messageDeliveryPort");
+  }
 }

@@ -5,7 +5,5 @@ import reactor.core.publisher.Mono;
 
 @FunctionalInterface
 public interface ApimRegistrationUsernameAvailabilityTransport {
-    Mono<TrpChkCustIdApimEnvelope> postChkCustId(
-            String path,
-            TrpChkCustIdApimRequest request);
+  Mono<TrpChkCustIdApimEnvelope> postChkCustId(String path, TrpChkCustIdApimRequest request);
 }

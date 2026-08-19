@@ -7,88 +7,89 @@ import com.bct.ngtpa.apiservice.shared.config.ConfigResolutionException;
 import com.bct.ngtpa.apiservice.shared.config.ConfigVariantResolver;
 import com.bct.ngtpa.apiservice.shared.error.ErrorCodes;
 import com.bct.ngtpa.apiservice.shared.error.ErrorMessageResolver;
-import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
-
 import java.util.Locale;
 import java.util.Optional;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 @Component
 public class ConfigBackedErrorMessageResolver implements ErrorMessageResolver {
 
-    static final String HARD_CODED_FALLBACK = "Sorry, this service might be interrupted. Please try again later.";
+  static final String HARD_CODED_FALLBACK =
+      "Sorry, this service might be interrupted. Please try again later.";
 
-    private static final Locale ZH_HK_LOCALE = Locale.forLanguageTag("zh-HK");
+  private static final Locale ZH_HK_LOCALE = Locale.forLanguageTag("zh-HK");
 
-    private final ConfigVariantResolver configVariantResolver;
+  private final ConfigVariantResolver configVariantResolver;
 
-    public ConfigBackedErrorMessageResolver(ConfigVariantResolver configVariantResolver) {
-        this.configVariantResolver = configVariantResolver;
+  public ConfigBackedErrorMessageResolver(ConfigVariantResolver configVariantResolver) {
+    this.configVariantResolver = configVariantResolver;
+  }
+
+  @Override
+  public String resolve(
+      String errorCode, String locale, String accountEnv, String trustCode, String schemeType) {
+    var normalizedLocale = normalizeLocale(locale);
+    var normalizedCode = normalizeCode(errorCode);
+
+    if (StringUtils.hasText(normalizedCode)) {
+      var requested =
+          resolveConfiguredMessage(
+              normalizedCode, accountEnv, trustCode, schemeType, normalizedLocale);
+      if (requested.isPresent()) {
+        return requested.orElseThrow();
+      }
+
+      if (!Locale.ENGLISH.equals(normalizedLocale)) {
+        var english =
+            resolveConfiguredMessage(
+                normalizedCode, accountEnv, trustCode, schemeType, Locale.ENGLISH);
+        if (english.isPresent()) {
+          return english.orElseThrow();
+        }
+      }
     }
 
-    @Override
-    public String resolve(String errorCode, String locale, String accountEnv, String trustCode, String schemeType) {
-        var normalizedLocale = normalizeLocale(locale);
-        var normalizedCode = normalizeCode(errorCode);
+    return resolveConfiguredMessage(ErrorCodes.SYSTEM_UNEXPECTED, null, null, null, Locale.ENGLISH)
+        .orElse(HARD_CODED_FALLBACK);
+  }
 
-        if (StringUtils.hasText(normalizedCode)) {
-            var requested = resolveConfiguredMessage(normalizedCode, accountEnv, trustCode, schemeType,
-                    normalizedLocale);
-            if (requested.isPresent()) {
-                return requested.orElseThrow();
-            }
+  private Optional<String> resolveConfiguredMessage(
+      String errorCode, String accountEnv, String trustCode, String schemeType, Locale locale) {
+    try {
+      return configVariantResolver
+          .resolve(
+              ConfigLookupRequest.optional(
+                  ConfigCategory.ERROR_MESSAGE,
+                  errorCode,
+                  ConfigLookupContext.of(accountEnv, trustCode, schemeType, locale)))
+          .map(String::trim)
+          .filter(StringUtils::hasText);
+    } catch (ConfigResolutionException exception) {
+      return Optional.empty();
+    }
+  }
 
-            if (!Locale.ENGLISH.equals(normalizedLocale)) {
-                var english = resolveConfiguredMessage(normalizedCode, accountEnv, trustCode, schemeType,
-                        Locale.ENGLISH);
-                if (english.isPresent()) {
-                    return english.orElseThrow();
-                }
-            }
-        }
+  private static String normalizeCode(String errorCode) {
+    if (errorCode == null) {
+      return null;
+    }
+    var trimmed = errorCode.trim();
+    return trimmed.isEmpty() ? null : trimmed;
+  }
 
-        return resolveConfiguredMessage(ErrorCodes.SYSTEM_UNEXPECTED, null, null, null, Locale.ENGLISH)
-                .orElse(HARD_CODED_FALLBACK);
+  static Locale normalizeLocale(String locale) {
+    if (!StringUtils.hasText(locale)) {
+      return Locale.ENGLISH;
     }
 
-    private Optional<String> resolveConfiguredMessage(
-            String errorCode,
-            String accountEnv,
-            String trustCode,
-            String schemeType,
-            Locale locale) {
-        try {
-            return configVariantResolver.resolve(ConfigLookupRequest.optional(
-                    ConfigCategory.ERROR_MESSAGE,
-                    errorCode,
-                    ConfigLookupContext.of(accountEnv, trustCode, schemeType, locale)))
-                    .map(String::trim)
-                    .filter(StringUtils::hasText);
-        } catch (ConfigResolutionException exception) {
-            return Optional.empty();
-        }
+    var normalized = locale.trim().replace('_', '-');
+    if (normalized.equalsIgnoreCase("en")) {
+      return Locale.ENGLISH;
     }
-
-    private static String normalizeCode(String errorCode) {
-        if (errorCode == null) {
-            return null;
-        }
-        var trimmed = errorCode.trim();
-        return trimmed.isEmpty() ? null : trimmed;
+    if (normalized.equalsIgnoreCase("zh-hk")) {
+      return ZH_HK_LOCALE;
     }
-
-    static Locale normalizeLocale(String locale) {
-        if (!StringUtils.hasText(locale)) {
-            return Locale.ENGLISH;
-        }
-
-        var normalized = locale.trim().replace('_', '-');
-        if (normalized.equalsIgnoreCase("en")) {
-            return Locale.ENGLISH;
-        }
-        if (normalized.equalsIgnoreCase("zh-hk")) {
-            return ZH_HK_LOCALE;
-        }
-        return Locale.ENGLISH;
-    }
+    return Locale.ENGLISH;
+  }
 }

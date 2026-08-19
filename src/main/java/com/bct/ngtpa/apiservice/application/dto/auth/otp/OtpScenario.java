@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.application.dto.auth.otp;
 
 public enum OtpScenario {
-    REGISTRATION,
-    LOGIN,
-    FORGOT_PASSWORD
+  REGISTRATION,
+  LOGIN,
+  FORGOT_PASSWORD
 }

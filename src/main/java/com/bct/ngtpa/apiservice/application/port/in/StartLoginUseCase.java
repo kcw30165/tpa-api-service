@@ -4,5 +4,5 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.login.start.*;
 import reactor.core.publisher.Mono;
 
 public interface StartLoginUseCase {
-    Mono<StartLoginResult> start(StartLoginCommand command);
+  Mono<StartLoginResult> start(StartLoginCommand command);
 }

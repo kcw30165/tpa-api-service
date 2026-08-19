@@ -20,59 +20,56 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class CaptchaChallengeUseCaseConfig {
 
-    @Bean
-    @ConditionalOnMissingBean
-    public CaptchaChallengeIdGenerator captchaChallengeIdGenerator() {
-        return new SecureCaptchaChallengeIdGenerator();
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  public CaptchaChallengeIdGenerator captchaChallengeIdGenerator() {
+    return new SecureCaptchaChallengeIdGenerator();
+  }
 
-    @Bean
-    @ConditionalOnMissingBean(CreateCaptchaChallengeUseCase.class)
-    public CreateCaptchaChallengeUseCase createCaptchaChallengeUseCase(
-            AuthWorkflowPolicyPort authWorkflowPolicyPort,
-            CaptchaImageGeneratorPort captchaImageGeneratorPort,
-            CaptchaAnswerHasherPort captchaAnswerHasherPort,
-            CaptchaChallengePort captchaChallengePort,
-            CaptchaChallengeIdGenerator captchaChallengeIdGenerator,
-            Clock clock) {
-        return new CreateCaptchaChallengeService(
-                authWorkflowPolicyPort,
-                captchaImageGeneratorPort,
-                captchaAnswerHasherPort,
-                captchaChallengePort,
-                captchaChallengeIdGenerator,
-                clock);
-    }
+  @Bean
+  @ConditionalOnMissingBean(CreateCaptchaChallengeUseCase.class)
+  public CreateCaptchaChallengeUseCase createCaptchaChallengeUseCase(
+      AuthWorkflowPolicyPort authWorkflowPolicyPort,
+      CaptchaImageGeneratorPort captchaImageGeneratorPort,
+      CaptchaAnswerHasherPort captchaAnswerHasherPort,
+      CaptchaChallengePort captchaChallengePort,
+      CaptchaChallengeIdGenerator captchaChallengeIdGenerator,
+      Clock clock) {
+    return new CreateCaptchaChallengeService(
+        authWorkflowPolicyPort,
+        captchaImageGeneratorPort,
+        captchaAnswerHasherPort,
+        captchaChallengePort,
+        captchaChallengeIdGenerator,
+        clock);
+  }
 
-    @Bean
-    @ConditionalOnMissingBean(VerifyCaptchaUseCase.class)
-    public VerifyCaptchaUseCase verifyCaptchaUseCase(
-            AuthWorkflowPolicyPort authWorkflowPolicyPort,
-            CaptchaAnswerHasherPort captchaAnswerHasherPort,
-            CaptchaChallengePort captchaChallengePort,
-            Clock clock) {
-        return new VerifyCaptchaService(
-                authWorkflowPolicyPort,
-                captchaAnswerHasherPort,
-                captchaChallengePort,
-                clock);
-    }
+  @Bean
+  @ConditionalOnMissingBean(VerifyCaptchaUseCase.class)
+  public VerifyCaptchaUseCase verifyCaptchaUseCase(
+      AuthWorkflowPolicyPort authWorkflowPolicyPort,
+      CaptchaAnswerHasherPort captchaAnswerHasherPort,
+      CaptchaChallengePort captchaChallengePort,
+      Clock clock) {
+    return new VerifyCaptchaService(
+        authWorkflowPolicyPort, captchaAnswerHasherPort, captchaChallengePort, clock);
+  }
 
-    @Bean
-    @ConditionalOnMissingBean(RefreshCaptchaUseCase.class)
-    public RefreshCaptchaUseCase refreshCaptchaUseCase(
-            AuthWorkflowPolicyPort authWorkflowPolicyPort,
-            CaptchaImageGeneratorPort captchaImageGeneratorPort,
-            CaptchaAnswerHasherPort captchaAnswerHasherPort,
-            CaptchaChallengePort captchaChallengePort,
-            CaptchaChallengeIdGenerator captchaChallengeIdGenerator,
-            Clock clock) {
-        return new RefreshCaptchaService(
-                authWorkflowPolicyPort,
-                captchaImageGeneratorPort,
-                captchaAnswerHasherPort,
-                captchaChallengePort,
-                captchaChallengeIdGenerator,
-                clock);
-    }
+  @Bean
+  @ConditionalOnMissingBean(RefreshCaptchaUseCase.class)
+  public RefreshCaptchaUseCase refreshCaptchaUseCase(
+      AuthWorkflowPolicyPort authWorkflowPolicyPort,
+      CaptchaImageGeneratorPort captchaImageGeneratorPort,
+      CaptchaAnswerHasherPort captchaAnswerHasherPort,
+      CaptchaChallengePort captchaChallengePort,
+      CaptchaChallengeIdGenerator captchaChallengeIdGenerator,
+      Clock clock) {
+    return new RefreshCaptchaService(
+        authWorkflowPolicyPort,
+        captchaImageGeneratorPort,
+        captchaAnswerHasherPort,
+        captchaChallengePort,
+        captchaChallengeIdGenerator,
+        clock);
+  }
 }

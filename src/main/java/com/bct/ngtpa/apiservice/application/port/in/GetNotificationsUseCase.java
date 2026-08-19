@@ -5,5 +5,5 @@ import com.bct.ngtpa.apiservice.application.dto.NotificationListResult;
 import reactor.core.publisher.Mono;
 
 public interface GetNotificationsUseCase {
-    Mono<NotificationListResult> execute(GetNotificationsCommand command);
+  Mono<NotificationListResult> execute(GetNotificationsCommand command);
 }

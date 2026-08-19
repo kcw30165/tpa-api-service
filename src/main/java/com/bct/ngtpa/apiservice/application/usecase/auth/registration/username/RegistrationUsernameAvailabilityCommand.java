@@ -6,19 +6,23 @@ import java.util.Objects;
 
 /** Registration-owned TRPChkCustId inputs and explicit credential-routing metadata. */
 public record RegistrationUsernameAvailabilityCommand(
-        RegistrationSelectedTrust selectedTrust,
-        String username,
-        String correlationId,
-        ActorUserRole actorUserRole) {
-    public RegistrationUsernameAvailabilityCommand {
-        Objects.requireNonNull(selectedTrust, "selectedTrust must not be null");
-        Objects.requireNonNull(actorUserRole, "actorUserRole must not be null");
-    }
+    RegistrationSelectedTrust selectedTrust,
+    String username,
+    String correlationId,
+    ActorUserRole actorUserRole) {
+  public RegistrationUsernameAvailabilityCommand {
+    Objects.requireNonNull(selectedTrust, "selectedTrust must not be null");
+    Objects.requireNonNull(actorUserRole, "actorUserRole must not be null");
+  }
 
-    @Override
-    public String toString() {
-        return "RegistrationUsernameAvailabilityCommand[selectedTrust=" + selectedTrust
-                + ", username=<redacted>, correlationId=" + correlationId
-                + ", actorUserRole=" + actorUserRole + "]";
-    }
+  @Override
+  public String toString() {
+    return "RegistrationUsernameAvailabilityCommand[selectedTrust="
+        + selectedTrust
+        + ", username=<redacted>, correlationId="
+        + correlationId
+        + ", actorUserRole="
+        + actorUserRole
+        + "]";
+  }
 }

@@ -11,29 +11,33 @@ import org.springframework.core.io.ClassPathResource;
 
 class AuthFlowSessionSessionIdConfigBindingTest {
 
-    private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
-            .withUserConfiguration(TestConfig.class)
-            .withInitializer(context -> {
+  private final ApplicationContextRunner contextRunner =
+      new ApplicationContextRunner()
+          .withUserConfiguration(TestConfig.class)
+          .withInitializer(
+              context -> {
                 var resource = new ClassPathResource("application.yml");
                 try {
-                    var propertySources = new YamlPropertySourceLoader().load("applicationConfig", resource);
-                    propertySources.forEach(source -> context.getEnvironment().getPropertySources().addLast(source));
+                  var propertySources =
+                      new YamlPropertySourceLoader().load("applicationConfig", resource);
+                  propertySources.forEach(
+                      source -> context.getEnvironment().getPropertySources().addLast(source));
                 } catch (java.io.IOException ex) {
-                    throw new IllegalStateException("Failed to load YAML", ex);
+                  throw new IllegalStateException("Failed to load YAML", ex);
                 }
-            });
+              });
 
-    @Test
-    void bindsAuthFlowSessionIdPolicy() {
-        contextRunner.run(context -> {
-            var properties = context.getBean(AuthFlowSessionProperties.class);
-            assertThat(properties.getSessionId().getPrefix()).isEqualTo("afs");
-            assertThat(properties.getSessionId().getEntropyBytes()).isEqualTo(16);
+  @Test
+  void bindsAuthFlowSessionIdPolicy() {
+    contextRunner.run(
+        context -> {
+          var properties = context.getBean(AuthFlowSessionProperties.class);
+          assertThat(properties.getSessionId().getPrefix()).isEqualTo("afs");
+          assertThat(properties.getSessionId().getEntropyBytes()).isEqualTo(16);
         });
-    }
+  }
 
-    @Configuration(proxyBeanMethods = false)
-    @EnableConfigurationProperties(AuthFlowSessionProperties.class)
-    static class TestConfig {
-    }
+  @Configuration(proxyBeanMethods = false)
+  @EnableConfigurationProperties(AuthFlowSessionProperties.class)
+  static class TestConfig {}
 }

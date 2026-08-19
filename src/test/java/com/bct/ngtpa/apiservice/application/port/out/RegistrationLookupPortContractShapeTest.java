@@ -10,13 +10,14 @@ import reactor.core.publisher.Mono;
 
 class RegistrationLookupPortContractShapeTest {
 
-    @Test
-    void registrationLookupPortExposesSearchOperation() throws Exception {
-        Method method = RegistrationLookupPort.class.getMethod("searchUnregisteredMember",
-                RegistrationLookupCommand.class);
+  @Test
+  void registrationLookupPortExposesSearchOperation() throws Exception {
+    Method method =
+        RegistrationLookupPort.class.getMethod(
+            "searchUnregisteredMember", RegistrationLookupCommand.class);
 
-        assertThat(method.getReturnType()).isEqualTo(Mono.class);
-        assertThat(method.getGenericReturnType().getTypeName())
-                .contains(RegistrationLookupResult.class.getSimpleName());
-    }
+    assertThat(method.getReturnType()).isEqualTo(Mono.class);
+    assertThat(method.getGenericReturnType().getTypeName())
+        .contains(RegistrationLookupResult.class.getSimpleName());
+  }
 }

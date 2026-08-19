@@ -10,23 +10,22 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class RegistrationCancelWebConfig {
-    @Bean
-    @ConditionalOnMissingBean
-    RegistrationCancellationPageMapper registrationCancellationPageMapper(
-            BffPagesProperties pages) {
-        return new RegistrationCancellationPageMapper(pages);
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  RegistrationCancellationPageMapper registrationCancellationPageMapper(BffPagesProperties pages) {
+    return new RegistrationCancellationPageMapper(pages);
+  }
 
-    @Bean
-    @ConditionalOnMissingBean
-    CancelRegistrationWebMapper cancelRegistrationWebMapper(
-            RegistrationCancellationPageMapper pageMapper) {
-        return new CancelRegistrationWebMapper(pageMapper);
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  CancelRegistrationWebMapper cancelRegistrationWebMapper(
+      RegistrationCancellationPageMapper pageMapper) {
+    return new CancelRegistrationWebMapper(pageMapper);
+  }
 
-    @Bean
-    @ConditionalOnMissingBean
-    XsrfCookieWriter xsrfCookieWriter(AuthFlowSessionProperties properties) {
-        return new XsrfCookieWriter(properties);
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  XsrfCookieWriter xsrfCookieWriter(AuthFlowSessionProperties properties) {
+    return new XsrfCookieWriter(properties);
+  }
 }

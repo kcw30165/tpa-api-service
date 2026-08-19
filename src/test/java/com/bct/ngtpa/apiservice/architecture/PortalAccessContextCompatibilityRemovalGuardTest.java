@@ -10,35 +10,38 @@ import org.junit.jupiter.api.Test;
 
 class PortalAccessContextCompatibilityRemovalGuardTest {
 
-    @Test
-    void compatibilityBridgesAreRemovedFromMainCode() throws Exception {
-        List<String> forbidden = List.of(
-                "ignoredLegacySelectedAccount",
-                "ignoredLegacyContextDependency",
-                "new AccountContext(headersContext.accountRef()",
-                "new AccountContext(requestHeaderContext.accountRef()",
-                "currentPortalAccessContextResolver == null",
-                "Account-Ref is required for personal information update.",
-                "toCommand(String ignoredLegacySelectedAccount",
-                "command.accountRef()");
+  @Test
+  void compatibilityBridgesAreRemovedFromMainCode() throws Exception {
+    List<String> forbidden =
+        List.of(
+            "ignoredLegacySelectedAccount",
+            "ignoredLegacyContextDependency",
+            "new AccountContext(headersContext.accountRef()",
+            "new AccountContext(requestHeaderContext.accountRef()",
+            "currentPortalAccessContextResolver == null",
+            "Account-Ref is required for personal information update.",
+            "toCommand(String ignoredLegacySelectedAccount",
+            "command.accountRef()");
 
-        List<Path> offenders;
-        try (Stream<Path> files = Files.walk(Path.of("src/main/java"))) {
-            offenders = files
-                    .filter(path -> path.toString().endsWith(".java"))
-                    .filter(path -> containsAny(path, forbidden))
-                    .toList();
-        }
-
-        assertTrue(offenders.isEmpty(), "Compatibility bridge tokens remain in main code: " + offenders);
+    List<Path> offenders;
+    try (Stream<Path> files = Files.walk(Path.of("src/main/java"))) {
+      offenders =
+          files
+              .filter(path -> path.toString().endsWith(".java"))
+              .filter(path -> containsAny(path, forbidden))
+              .toList();
     }
 
-    private boolean containsAny(Path path, List<String> tokens) {
-        try {
-            String source = Files.readString(path);
-            return tokens.stream().anyMatch(source::contains);
-        } catch (Exception exception) {
-            throw new IllegalStateException("Unable to read " + path, exception);
-        }
+    assertTrue(
+        offenders.isEmpty(), "Compatibility bridge tokens remain in main code: " + offenders);
+  }
+
+  private boolean containsAny(Path path, List<String> tokens) {
+    try {
+      String source = Files.readString(path);
+      return tokens.stream().anyMatch(source::contains);
+    } catch (Exception exception) {
+      throw new IllegalStateException("Unable to read " + path, exception);
     }
+  }
 }

@@ -24,67 +24,110 @@ import reactor.core.publisher.Mono;
 @Component
 @RequiredArgsConstructor
 public class ApimUpdatePersonalInformationAdapter implements ApimUpdatePersonalInformationPort {
-    private static final String API_NAME = "/ws/NGTPA/v1/TRPUpdMemberInfo";
-    private final ApimExchangeExecutor executor;
+  private static final String API_NAME = "/ws/NGTPA/v1/TRPUpdMemberInfo";
+  private final ApimExchangeExecutor executor;
 
-    @Override
-    @LogExecution(value = "apim.updatePersonalInformation", logArgs = true)
-    public Mono<List<UpdatePersonalInformationResult>> updateMemberInfo(UpdateMemberInfoCommand command) {
-        var request = new ApimExchangeRequest<>(API_NAME, toApimRequest(command),
-                UpdateMemberInfoApimRequest.class, UpdateMemberInfoApimDataItem.class,
-                ApimDatabaseScope.ACCOUNT_ENV,
-                new ApimCredentialResolutionContext(command.userRole(), command.accountEnv()),
-                ApimRetryEligibility.IDEMPOTENT_MUTATION);
-        return executor.postEnvelope(request).map(response -> toResults(response, command));
-    }
+  @Override
+  @LogExecution(value = "apim.updatePersonalInformation", logArgs = true)
+  public Mono<List<UpdatePersonalInformationResult>> updateMemberInfo(
+      UpdateMemberInfoCommand command) {
+    var request =
+        new ApimExchangeRequest<>(
+            API_NAME,
+            toApimRequest(command),
+            UpdateMemberInfoApimRequest.class,
+            UpdateMemberInfoApimDataItem.class,
+            ApimDatabaseScope.ACCOUNT_ENV,
+            new ApimCredentialResolutionContext(command.userRole(), command.accountEnv()),
+            ApimRetryEligibility.IDEMPOTENT_MUTATION);
+    return executor.postEnvelope(request).map(response -> toResults(response, command));
+  }
 
-    private UpdateMemberInfoApimRequest toApimRequest(UpdateMemberInfoCommand command) {
-        return UpdateMemberInfoApimRequest.builder().policyNo(command.policyNo()).certNo(command.certNo())
-                .accountEnv(command.accountEnv()).updateFields(command.updateFields())
-                .loginUserId(command.userId()).loginUserRole(command.userRole().toApimValue()).build();
-    }
+  private UpdateMemberInfoApimRequest toApimRequest(UpdateMemberInfoCommand command) {
+    return UpdateMemberInfoApimRequest.builder()
+        .policyNo(command.policyNo())
+        .certNo(command.certNo())
+        .accountEnv(command.accountEnv())
+        .updateFields(command.updateFields())
+        .loginUserId(command.userId())
+        .loginUserRole(command.userRole().toApimValue())
+        .build();
+  }
 
-    private List<UpdatePersonalInformationResult> toResults(ApimResponseEnvelope<UpdateMemberInfoApimDataItem> response,
-            UpdateMemberInfoCommand command) {
-        var dataItems = ApimResponseValidator.requireSuccessData(response);
-        if (dataItems == null || dataItems.stream().noneMatch(item -> item != null)) {
-            throw new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID,
-                    "APIM personal information update response data is missing.");
-        }
-        var results = dataItems.stream().filter(item -> item != null).map(item -> toResult(item, command)).toList();
-        if (results.stream().noneMatch(UpdatePersonalInformationResult::selected)) {
-            throw new ApimException(HttpStatus.BAD_GATEWAY, ErrorCodes.APIM_RESPONSE_INVALID,
-                    "APIM personal information update response does not contain the selected account.");
-        }
-        return results;
+  private List<UpdatePersonalInformationResult> toResults(
+      ApimResponseEnvelope<UpdateMemberInfoApimDataItem> response,
+      UpdateMemberInfoCommand command) {
+    var dataItems = ApimResponseValidator.requireSuccessData(response);
+    if (dataItems == null || dataItems.stream().noneMatch(item -> item != null)) {
+      throw new ApimException(
+          HttpStatus.BAD_GATEWAY,
+          ErrorCodes.APIM_RESPONSE_INVALID,
+          "APIM personal information update response data is missing.");
     }
+    var results =
+        dataItems.stream()
+            .filter(item -> item != null)
+            .map(item -> toResult(item, command))
+            .toList();
+    if (results.stream().noneMatch(UpdatePersonalInformationResult::selected)) {
+      throw new ApimException(
+          HttpStatus.BAD_GATEWAY,
+          ErrorCodes.APIM_RESPONSE_INVALID,
+          "APIM personal information update response does not contain the selected account.");
+    }
+    return results;
+  }
 
-    private UpdatePersonalInformationResult toResult(UpdateMemberInfoApimDataItem item, UpdateMemberInfoCommand command) {
-        return new UpdatePersonalInformationResult(isSelected(item, command), item.isSuccess(), item.getPolicyNo(),
-                item.getCertNo(), item.getEnv(), item.getRefNo(), item.getSubmitDate(), item.getSubmitTime(), toErrors(item));
-    }
-    private boolean isSelected(UpdateMemberInfoApimDataItem item, UpdateMemberInfoCommand command) {
-        return sameAccountIdentifier(item.getPolicyNo(), command.policyNo())
-                && sameAccountIdentifier(item.getCertNo(), command.certNo())
-                && same(item.getEnv(), command.accountEnv());
-    }
-    private boolean sameAccountIdentifier(String first, String second) {
-        String normalizedFirst = normalizeAccountIdentifier(first);
-        String normalizedSecond = normalizeAccountIdentifier(second);
-        return !normalizedFirst.isEmpty() && normalizedFirst.equals(normalizedSecond);
-    }
-    private String normalizeAccountIdentifier(String value) {
-        String normalized = trim(value);
-        if (!normalized.matches("[0-9]+")) return normalized;
-        int firstNonZero = 0;
-        while (firstNonZero < normalized.length() - 1 && normalized.charAt(firstNonZero) == '0') firstNonZero++;
-        return normalized.substring(firstNonZero);
-    }
-    private boolean same(String first, String second) { return trim(first).equals(trim(second)); }
-    private String trim(String value) { return value == null ? "" : value.trim(); }
-    private List<UpdatePersonalInformationError> toErrors(UpdateMemberInfoApimDataItem item) {
-        if (item == null || item.getErrors() == null || item.getErrors().isEmpty()) return List.of();
-        return item.getErrors().stream().map(error -> UpdatePersonalInformationError.fromPipeSeparatedFields(
-                error.getType(), error.getFields(), error.getCode())).toList();
-    }
+  private UpdatePersonalInformationResult toResult(
+      UpdateMemberInfoApimDataItem item, UpdateMemberInfoCommand command) {
+    return new UpdatePersonalInformationResult(
+        isSelected(item, command),
+        item.isSuccess(),
+        item.getPolicyNo(),
+        item.getCertNo(),
+        item.getEnv(),
+        item.getRefNo(),
+        item.getSubmitDate(),
+        item.getSubmitTime(),
+        toErrors(item));
+  }
+
+  private boolean isSelected(UpdateMemberInfoApimDataItem item, UpdateMemberInfoCommand command) {
+    return sameAccountIdentifier(item.getPolicyNo(), command.policyNo())
+        && sameAccountIdentifier(item.getCertNo(), command.certNo())
+        && same(item.getEnv(), command.accountEnv());
+  }
+
+  private boolean sameAccountIdentifier(String first, String second) {
+    String normalizedFirst = normalizeAccountIdentifier(first);
+    String normalizedSecond = normalizeAccountIdentifier(second);
+    return !normalizedFirst.isEmpty() && normalizedFirst.equals(normalizedSecond);
+  }
+
+  private String normalizeAccountIdentifier(String value) {
+    String normalized = trim(value);
+    if (!normalized.matches("[0-9]+")) return normalized;
+    int firstNonZero = 0;
+    while (firstNonZero < normalized.length() - 1 && normalized.charAt(firstNonZero) == '0')
+      firstNonZero++;
+    return normalized.substring(firstNonZero);
+  }
+
+  private boolean same(String first, String second) {
+    return trim(first).equals(trim(second));
+  }
+
+  private String trim(String value) {
+    return value == null ? "" : value.trim();
+  }
+
+  private List<UpdatePersonalInformationError> toErrors(UpdateMemberInfoApimDataItem item) {
+    if (item == null || item.getErrors() == null || item.getErrors().isEmpty()) return List.of();
+    return item.getErrors().stream()
+        .map(
+            error ->
+                UpdatePersonalInformationError.fromPipeSeparatedFields(
+                    error.getType(), error.getFields(), error.getCode()))
+        .toList();
+  }
 }

@@ -1,18 +1,16 @@
 package com.bct.ngtpa.apiservice.application.dto;
 
-/**
- * Supported cache capabilities for administrative cache operations.
- */
+/** Supported cache capabilities for administrative cache operations. */
 public enum CacheCapability {
-    REFERENCE_DATE("reference-date");
+  REFERENCE_DATE("reference-date");
 
-    private final String keyPart;
+  private final String keyPart;
 
-    CacheCapability(String keyPart) {
-        this.keyPart = keyPart;
-    }
+  CacheCapability(String keyPart) {
+    this.keyPart = keyPart;
+  }
 
-    public String keyPart() {
-        return keyPart;
-    }
+  public String keyPart() {
+    return keyPart;
+  }
 }

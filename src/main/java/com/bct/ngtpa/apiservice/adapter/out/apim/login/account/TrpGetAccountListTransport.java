@@ -7,5 +7,6 @@ import reactor.core.publisher.Mono;
 
 @FunctionalInterface
 public interface TrpGetAccountListTransport {
-    Mono<ApimResponseEnvelope<TrpGetAccountListApimDataItem>> post(LoginAccountAuthorizationCommand command);
+  Mono<ApimResponseEnvelope<TrpGetAccountListApimDataItem>> post(
+      LoginAccountAuthorizationCommand command);
 }

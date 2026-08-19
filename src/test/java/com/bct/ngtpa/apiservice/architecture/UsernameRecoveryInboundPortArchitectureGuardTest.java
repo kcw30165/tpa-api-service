@@ -25,81 +25,109 @@ import org.junit.jupiter.api.Test;
  */
 class UsernameRecoveryInboundPortArchitectureGuardTest {
 
-    @Test
-    void usernameRecoveryInboundPortsStayFrameworkAndAdapterFree() {
-        var classes = new ClassFileImporter()
-                .withImportOption(new ImportOption.DoNotIncludeTests())
-                .importPackages("com.bct.ngtpa.apiservice.application.port.in");
+  @Test
+  void usernameRecoveryInboundPortsStayFrameworkAndAdapterFree() {
+    var classes =
+        new ClassFileImporter()
+            .withImportOption(new ImportOption.DoNotIncludeTests())
+            .importPackages("com.bct.ngtpa.apiservice.application.port.in");
 
-        ArchRule rule = noClasses()
-                .that().resideInAPackage("..application.port.in..")
-                .and().haveSimpleNameEndingWith("UsernameRecoveryUseCase")
-                .should().dependOnClassesThat().resideInAnyPackage(
-                        "org.springframework..",
-                        "jakarta.servlet..",
-                        "com.bct.ngtpa.apiservice.adapter..",
-                        "com.bct.ngtpa.apiservice.config..",
-                        "com.bct.ngtpa.apiservice.infrastructure..",
-                        "io.lettuce..",
-                        "org.springframework.data.redis..")
-                .as("Username Recovery inbound ports must stay framework-free and adapter-free");
-        rule.check(classes);
-    }
+    ArchRule rule =
+        noClasses()
+            .that()
+            .resideInAPackage("..application.port.in..")
+            .and()
+            .haveSimpleNameEndingWith("UsernameRecoveryUseCase")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage(
+                "org.springframework..",
+                "jakarta.servlet..",
+                "com.bct.ngtpa.apiservice.adapter..",
+                "com.bct.ngtpa.apiservice.config..",
+                "com.bct.ngtpa.apiservice.infrastructure..",
+                "io.lettuce..",
+                "org.springframework.data.redis..")
+            .as("Username Recovery inbound ports must stay framework-free and adapter-free");
+    rule.check(classes);
+  }
 
-    @Test
-    void usernameRecoveryInboundPortsAreInterfacesOnly() {
-        var classes = new ClassFileImporter()
-                .withImportOption(new ImportOption.DoNotIncludeTests())
-                .importPackages("com.bct.ngtpa.apiservice.application.port.in");
+  @Test
+  void usernameRecoveryInboundPortsAreInterfacesOnly() {
+    var classes =
+        new ClassFileImporter()
+            .withImportOption(new ImportOption.DoNotIncludeTests())
+            .importPackages("com.bct.ngtpa.apiservice.application.port.in");
 
-        ArchRule rule = classes()
-                .that().resideInAPackage("..application.port.in..")
-                .and().haveSimpleNameEndingWith("UsernameRecoveryUseCase")
-                .should().beInterfaces()
-                .as("Username Recovery inbound ports must be interfaces, not concrete classes");
-        rule.check(classes);
-    }
+    ArchRule rule =
+        classes()
+            .that()
+            .resideInAPackage("..application.port.in..")
+            .and()
+            .haveSimpleNameEndingWith("UsernameRecoveryUseCase")
+            .should()
+            .beInterfaces()
+            .as("Username Recovery inbound ports must be interfaces, not concrete classes");
+    rule.check(classes);
+  }
 
-    @Test
-    void usernameRecoveryInboundPortImplementationsResideInTheApplicationLayer() {
-        var classes = new ClassFileImporter()
-                .withImportOption(new ImportOption.DoNotIncludeTests())
-                .importPackages("com.bct.ngtpa.apiservice");
+  @Test
+  void usernameRecoveryInboundPortImplementationsResideInTheApplicationLayer() {
+    var classes =
+        new ClassFileImporter()
+            .withImportOption(new ImportOption.DoNotIncludeTests())
+            .importPackages("com.bct.ngtpa.apiservice");
 
-        ArchRule rule = classes()
-                .that().implement(StartUsernameRecoveryUseCase.class)
-                .or().implement(RequestUsernameRecoveryUseCase.class)
-                .or().implement(CancelUsernameRecoveryUseCase.class)
-                .and().areNotInterfaces()
-                .should().resideInAPackage("..application..")
-                .as("Username Recovery inbound-port implementations must reside in the application layer")
-                .allowEmptyShould(true);
-        rule.check(classes);
-    }
+    ArchRule rule =
+        classes()
+            .that()
+            .implement(StartUsernameRecoveryUseCase.class)
+            .or()
+            .implement(RequestUsernameRecoveryUseCase.class)
+            .or()
+            .implement(CancelUsernameRecoveryUseCase.class)
+            .and()
+            .areNotInterfaces()
+            .should()
+            .resideInAPackage("..application..")
+            .as(
+                "Username Recovery inbound-port implementations must reside in the application layer")
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
 
-    @Test
-    void usernameRecoveryInboundPortImplementationsStayFrameworkAndAdapterFree() {
-        var classes = new ClassFileImporter()
-                .withImportOption(new ImportOption.DoNotIncludeTests())
-                .importPackages("com.bct.ngtpa.apiservice");
+  @Test
+  void usernameRecoveryInboundPortImplementationsStayFrameworkAndAdapterFree() {
+    var classes =
+        new ClassFileImporter()
+            .withImportOption(new ImportOption.DoNotIncludeTests())
+            .importPackages("com.bct.ngtpa.apiservice");
 
-        ArchRule rule = noClasses()
-                .that().implement(StartUsernameRecoveryUseCase.class)
-                .or().implement(RequestUsernameRecoveryUseCase.class)
-                .or().implement(CancelUsernameRecoveryUseCase.class)
-                .and().areNotInterfaces()
-                .should().dependOnClassesThat().resideInAnyPackage(
-                        "org.springframework..",
-                        "jakarta.servlet..",
-                        "com.bct.ngtpa.apiservice.adapter..",
-                        "com.bct.ngtpa.apiservice.config..",
-                        "com.bct.ngtpa.apiservice.infrastructure..",
-                        "io.lettuce..",
-                        "org.springframework.data.redis..",
-                        "org.springframework.web..",
-                        "org.springframework.http..")
-                .as("Username Recovery inbound-port implementations must stay framework-free and adapter-free")
-                .allowEmptyShould(true);
-        rule.check(classes);
-    }
+    ArchRule rule =
+        noClasses()
+            .that()
+            .implement(StartUsernameRecoveryUseCase.class)
+            .or()
+            .implement(RequestUsernameRecoveryUseCase.class)
+            .or()
+            .implement(CancelUsernameRecoveryUseCase.class)
+            .and()
+            .areNotInterfaces()
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage(
+                "org.springframework..",
+                "jakarta.servlet..",
+                "com.bct.ngtpa.apiservice.adapter..",
+                "com.bct.ngtpa.apiservice.config..",
+                "com.bct.ngtpa.apiservice.infrastructure..",
+                "io.lettuce..",
+                "org.springframework.data.redis..",
+                "org.springframework.web..",
+                "org.springframework.http..")
+            .as(
+                "Username Recovery inbound-port implementations must stay framework-free and adapter-free")
+            .allowEmptyShould(true);
+    rule.check(classes);
+  }
 }

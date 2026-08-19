@@ -5,12 +5,14 @@ import com.bct.ngtpa.apiservice.application.port.out.LoginStartReplayCommitRefGe
 import java.security.SecureRandom;
 import java.util.Base64;
 
-public final class SecureLoginStartReplayCommitRefGenerator implements LoginStartReplayCommitRefGenerator {
-    private final SecureRandom random = new SecureRandom();
+public final class SecureLoginStartReplayCommitRefGenerator
+    implements LoginStartReplayCommitRefGenerator {
+  private final SecureRandom random = new SecureRandom();
 
-    public LoginStartReplayCommitRef generate() {
-        byte[] value = new byte[24];
-        random.nextBytes(value);
-        return new LoginStartReplayCommitRef("rpl_" + Base64.getUrlEncoder().withoutPadding().encodeToString(value));
-    }
+  public LoginStartReplayCommitRef generate() {
+    byte[] value = new byte[24];
+    random.nextBytes(value);
+    return new LoginStartReplayCommitRef(
+        "rpl_" + Base64.getUrlEncoder().withoutPadding().encodeToString(value));
+  }
 }

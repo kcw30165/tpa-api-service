@@ -7,14 +7,14 @@ import reactor.core.publisher.Mono;
 
 public class RequestHeaderContextWebFilter implements WebFilter {
 
-    private final RequestLoggingWebFilter requestLoggingWebFilter;
+  private final RequestLoggingWebFilter requestLoggingWebFilter;
 
-    public RequestHeaderContextWebFilter(RequestLoggingWebFilter requestLoggingWebFilter) {
-        this.requestLoggingWebFilter = requestLoggingWebFilter;
-    }
+  public RequestHeaderContextWebFilter(RequestLoggingWebFilter requestLoggingWebFilter) {
+    this.requestLoggingWebFilter = requestLoggingWebFilter;
+  }
 
-    @Override
-    public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
-        return requestLoggingWebFilter.filter(exchange, chain);
-    }
+  @Override
+  public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
+    return requestLoggingWebFilter.filter(exchange, chain);
+  }
 }

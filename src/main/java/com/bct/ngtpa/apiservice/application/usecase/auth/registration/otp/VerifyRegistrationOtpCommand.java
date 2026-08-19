@@ -6,26 +6,26 @@ import java.time.Duration;
 import java.util.Objects;
 
 public record VerifyRegistrationOtpCommand(
-        AuthFlowSessionId authFlowSessionId,
-        String csrfToken,
-        String otpCode,
-        String origin,
-        String referer,
-        RegistrationIdempotencyKey idempotencyKey,
-        String acceptLanguage,
-        String correlationId,
-        Duration idempotencyTtl) {
-    public VerifyRegistrationOtpCommand {
-        Objects.requireNonNull(authFlowSessionId, "authFlowSessionId must not be null");
-        if (csrfToken == null || csrfToken.isBlank()) {
-            throw new IllegalArgumentException("csrfToken must not be blank");
-        }
-        Objects.requireNonNull(idempotencyKey, "idempotencyKey must not be null");
-        idempotencyTtl = Objects.requireNonNull(idempotencyTtl, "idempotencyTtl must not be null");
+    AuthFlowSessionId authFlowSessionId,
+    String csrfToken,
+    String otpCode,
+    String origin,
+    String referer,
+    RegistrationIdempotencyKey idempotencyKey,
+    String acceptLanguage,
+    String correlationId,
+    Duration idempotencyTtl) {
+  public VerifyRegistrationOtpCommand {
+    Objects.requireNonNull(authFlowSessionId, "authFlowSessionId must not be null");
+    if (csrfToken == null || csrfToken.isBlank()) {
+      throw new IllegalArgumentException("csrfToken must not be blank");
     }
+    Objects.requireNonNull(idempotencyKey, "idempotencyKey must not be null");
+    idempotencyTtl = Objects.requireNonNull(idempotencyTtl, "idempotencyTtl must not be null");
+  }
 
-    @Override
-    public String toString() {
-        return "VerifyRegistrationOtpCommand[authFlowSessionId=<redacted>, csrfToken=<redacted>, otpCode=<redacted>, idempotencyKey=<redacted>, origin=<redacted>, referer=<redacted>]";
-    }
+  @Override
+  public String toString() {
+    return "VerifyRegistrationOtpCommand[authFlowSessionId=<redacted>, csrfToken=<redacted>, otpCode=<redacted>, idempotencyKey=<redacted>, origin=<redacted>, referer=<redacted>]";
+  }
 }

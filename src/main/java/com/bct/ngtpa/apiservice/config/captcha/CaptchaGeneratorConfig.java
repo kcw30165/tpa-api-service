@@ -13,29 +13,31 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class CaptchaGeneratorConfig {
 
-    @Bean
-    @ConditionalOnMissingBean
-    public SecureRandom captchaSecureRandom() {
-        return new SecureRandom();
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  public SecureRandom captchaSecureRandom() {
+    return new SecureRandom();
+  }
 
-    @Bean
-    @ConditionalOnMissingBean
-    public SecureRandomCaptchaTextGenerator secureRandomCaptchaTextGenerator(SecureRandom captchaSecureRandom) {
-        return new SecureRandomCaptchaTextGenerator(captchaSecureRandom);
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  public SecureRandomCaptchaTextGenerator secureRandomCaptchaTextGenerator(
+      SecureRandom captchaSecureRandom) {
+    return new SecureRandomCaptchaTextGenerator(captchaSecureRandom);
+  }
 
-    @Bean
-    @ConditionalOnMissingBean
-    public CaptchaAnswerHasherPort captchaAnswerHasherPort() {
-        return new Sha256CaptchaAnswerHasher();
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  public CaptchaAnswerHasherPort captchaAnswerHasherPort() {
+    return new Sha256CaptchaAnswerHasher();
+  }
 
-    @Bean
-    @ConditionalOnMissingBean
-    public CaptchaImageGeneratorPort captchaImageGeneratorPort(
-            SecureRandomCaptchaTextGenerator secureRandomCaptchaTextGenerator,
-            SecureRandom captchaSecureRandom) {
-        return new JavaCaptchaImageGeneratorAdapter(secureRandomCaptchaTextGenerator, captchaSecureRandom);
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  public CaptchaImageGeneratorPort captchaImageGeneratorPort(
+      SecureRandomCaptchaTextGenerator secureRandomCaptchaTextGenerator,
+      SecureRandom captchaSecureRandom) {
+    return new JavaCaptchaImageGeneratorAdapter(
+        secureRandomCaptchaTextGenerator, captchaSecureRandom);
+  }
 }

@@ -5,5 +5,5 @@ import reactor.core.publisher.Mono;
 
 @FunctionalInterface
 public interface DeleteAuthFlowSessionPort {
-    Mono<Void> delete(AuthFlowSessionId authFlowSessionId);
+  Mono<Void> delete(AuthFlowSessionId authFlowSessionId);
 }

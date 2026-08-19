@@ -4,5 +4,5 @@ import reactor.core.publisher.Mono;
 
 @FunctionalInterface
 public interface RecoverCommittedLoginUseCase {
-    Mono<RecoverCommittedLoginResult> recover(RecoverCommittedLoginCommand command);
+  Mono<RecoverCommittedLoginResult> recover(RecoverCommittedLoginCommand command);
 }

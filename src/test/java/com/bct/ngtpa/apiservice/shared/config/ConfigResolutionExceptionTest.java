@@ -7,19 +7,19 @@ import org.junit.jupiter.api.Test;
 
 class ConfigResolutionExceptionTest {
 
-    @Test
-    void preservesMessage() {
-        ConfigResolutionException exception = new ConfigResolutionException("missing config");
+  @Test
+  void preservesMessage() {
+    ConfigResolutionException exception = new ConfigResolutionException("missing config");
 
-        assertEquals("missing config", exception.getMessage());
-    }
+    assertEquals("missing config", exception.getMessage());
+  }
 
-    @Test
-    void preservesMessageAndCause() {
-        RuntimeException cause = new RuntimeException("root cause");
-        ConfigResolutionException exception = new ConfigResolutionException("failed", cause);
+  @Test
+  void preservesMessageAndCause() {
+    RuntimeException cause = new RuntimeException("root cause");
+    ConfigResolutionException exception = new ConfigResolutionException("failed", cause);
 
-        assertEquals("failed", exception.getMessage());
-        assertSame(cause, exception.getCause());
-    }
+    assertEquals("failed", exception.getMessage());
+    assertSame(cause, exception.getCause());
+  }
 }

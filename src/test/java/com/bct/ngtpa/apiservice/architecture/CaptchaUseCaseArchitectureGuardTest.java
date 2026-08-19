@@ -10,33 +10,34 @@ import org.junit.jupiter.api.Test;
 
 class CaptchaUseCaseArchitectureGuardTest {
 
-    @Test
-    void captchaUseCasesHaveNoSpringRedisWebOrAdapterDependencies() {
-        var classes = new ClassFileImporter()
-                .withImportOption(new ImportOption.DoNotIncludeTests())
-                .importPackages("com.bct.ngtpa.apiservice.application.usecase.auth.captcha");
+  @Test
+  void captchaUseCasesHaveNoSpringRedisWebOrAdapterDependencies() {
+    var classes =
+        new ClassFileImporter()
+            .withImportOption(new ImportOption.DoNotIncludeTests())
+            .importPackages("com.bct.ngtpa.apiservice.application.usecase.auth.captcha");
 
-        noClasses()
-                .that()
-                .resideInAPackage("..application.usecase.auth.captcha..")
-                .should()
-                .dependOnClassesThat()
-                .resideInAnyPackage(
-                        "org.springframework..",
-                        "org.springframework.http..",
-                        "org.springframework.web..",
-                        "jakarta.servlet..",
-                        "com.bct.ngtpa.apiservice.adapter..",
-                        "io.lettuce..",
-                        "org.springframework.data.redis..")
-                .check(classes);
-    }
+    noClasses()
+        .that()
+        .resideInAPackage("..application.usecase.auth.captcha..")
+        .should()
+        .dependOnClassesThat()
+        .resideInAnyPackage(
+            "org.springframework..",
+            "org.springframework.http..",
+            "org.springframework.web..",
+            "jakarta.servlet..",
+            "com.bct.ngtpa.apiservice.adapter..",
+            "io.lettuce..",
+            "org.springframework.data.redis..")
+        .check(classes);
+  }
 
-    private static boolean contains(Path path, String text) {
-        try {
-            return Files.readString(path).contains(text);
-        } catch (Exception exception) {
-            return false;
-        }
+  private static boolean contains(Path path, String text) {
+    try {
+      return Files.readString(path).contains(text);
+    } catch (Exception exception) {
+      return false;
     }
+  }
 }

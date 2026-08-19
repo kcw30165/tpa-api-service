@@ -11,5 +11,5 @@ import reactor.core.publisher.Mono;
  * @param <R> cancellation reason type
  */
 public interface SessionCancellationPort<S, R> {
-    Mono<SessionCancellationResult> cancel(S sessionId, R reason, Instant cancelledAt);
+  Mono<SessionCancellationResult> cancel(S sessionId, R reason, Instant cancelledAt);
 }

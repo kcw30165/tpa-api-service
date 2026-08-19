@@ -8,9 +8,4 @@ package com.bct.ngtpa.apiservice.application.dto;
  * @param qualifier capability-specific key qualifier, e.g. accountEnv for reference-date
  * @param value string cache value
  */
-public record CacheEntry(
-        String key,
-        String capability,
-        String qualifier,
-        String value) {
-}
+public record CacheEntry(String key, String capability, String qualifier, String value) {}

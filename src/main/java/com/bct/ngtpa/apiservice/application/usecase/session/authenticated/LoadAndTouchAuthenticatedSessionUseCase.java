@@ -4,5 +4,6 @@ import reactor.core.publisher.Mono;
 
 @FunctionalInterface
 public interface LoadAndTouchAuthenticatedSessionUseCase {
-    Mono<AuthenticatedSessionLifecycleResult> loadAndTouch(LoadAndTouchAuthenticatedSessionCommand command);
+  Mono<AuthenticatedSessionLifecycleResult> loadAndTouch(
+      LoadAndTouchAuthenticatedSessionCommand command);
 }

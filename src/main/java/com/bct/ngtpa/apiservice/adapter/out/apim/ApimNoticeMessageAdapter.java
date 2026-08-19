@@ -32,62 +32,90 @@ import reactor.core.publisher.Mono;
 @Component
 @RequiredArgsConstructor
 public class ApimNoticeMessageAdapter implements ApimNoticeMessagePort {
-    private static final String API_NAME = "/ws/NGTPA/v1/TRPGetMsgBoard";
-    private static final List<DateTimeFormatter> APIM_DT_FORMATTERS = List.of(
-            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"),
-            DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
+  private static final String API_NAME = "/ws/NGTPA/v1/TRPGetMsgBoard";
+  private static final List<DateTimeFormatter> APIM_DT_FORMATTERS =
+      List.of(
+          DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"),
+          DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"));
 
-    private final ApimExchangeExecutor executor;
+  private final ApimExchangeExecutor executor;
 
-    @Override
-    @LogExecution(value = "apim.fetchNotifications", logArgs = true)
-    public Mono<NotificationListResult> fetchNotifications(GetNotificationsCommand command) {
-        return Mono.defer(() -> {
-            var exchange = new ApimExchangeRequest<>(
-                    API_NAME,
-                    toApimRequest(command),
-                    GetMessageBoardApimRequest.class,
-                    GetMessageBoardDataItem.class,
-                    ApimDatabaseScope.ACCOUNT_ENV,
-                    new ApimCredentialResolutionContext(command.mbrType(), command.accountEnv()),
-                    ApimRetryEligibility.SAFE_BUSINESS_CALL);
-            return executor.postEnvelope(exchange).map(this::toNotificationListResult);
+  @Override
+  @LogExecution(value = "apim.fetchNotifications", logArgs = true)
+  public Mono<NotificationListResult> fetchNotifications(GetNotificationsCommand command) {
+    return Mono.defer(
+        () -> {
+          var exchange =
+              new ApimExchangeRequest<>(
+                  API_NAME,
+                  toApimRequest(command),
+                  GetMessageBoardApimRequest.class,
+                  GetMessageBoardDataItem.class,
+                  ApimDatabaseScope.ACCOUNT_ENV,
+                  new ApimCredentialResolutionContext(command.mbrType(), command.accountEnv()),
+                  ApimRetryEligibility.SAFE_BUSINESS_CALL);
+          return executor.postEnvelope(exchange).map(this::toNotificationListResult);
         });
-    }
+  }
 
-    private GetMessageBoardApimRequest toApimRequest(GetNotificationsCommand command) {
-        return GetMessageBoardApimRequest.builder()
-                .policyNo(command.policyNo()).certNo(command.certNo()).accountEnv(command.accountEnv())
-                .loginUserId(command.userId()).loginUserRole(command.mbrType().toApimValue())
-                .refDate(command.refDate()).build();
-    }
+  private GetMessageBoardApimRequest toApimRequest(GetNotificationsCommand command) {
+    return GetMessageBoardApimRequest.builder()
+        .policyNo(command.policyNo())
+        .certNo(command.certNo())
+        .accountEnv(command.accountEnv())
+        .loginUserId(command.userId())
+        .loginUserRole(command.mbrType().toApimValue())
+        .refDate(command.refDate())
+        .build();
+  }
 
-    private NotificationListResult toNotificationListResult(ApimResponseEnvelope<GetMessageBoardDataItem> response) {
-        var dataItems = ApimResponseValidator.requireSuccessData(response);
-        if (CollectionUtils.isEmpty(dataItems)) return new NotificationListResult(List.of());
-        List<NoticeMessage> messages = dataItems.stream().filter(Objects::nonNull)
-                .map(GetMessageBoardDataItem::getMessage).filter(Objects::nonNull).flatMap(List::stream)
-                .filter(Objects::nonNull).map(this::toNoticeMessage).toList();
-        return new NotificationListResult(messages);
-    }
+  private NotificationListResult toNotificationListResult(
+      ApimResponseEnvelope<GetMessageBoardDataItem> response) {
+    var dataItems = ApimResponseValidator.requireSuccessData(response);
+    if (CollectionUtils.isEmpty(dataItems)) return new NotificationListResult(List.of());
+    List<NoticeMessage> messages =
+        dataItems.stream()
+            .filter(Objects::nonNull)
+            .map(GetMessageBoardDataItem::getMessage)
+            .filter(Objects::nonNull)
+            .flatMap(List::stream)
+            .filter(Objects::nonNull)
+            .map(this::toNoticeMessage)
+            .toList();
+    return new NotificationListResult(messages);
+  }
 
-    private NoticeMessage toNoticeMessage(GetMessageBoardMessageItem item) {
-        var status = MessageStatus.fromCode(item.getMsgStatus());
-        var category = item.getMsgCate();
-        return new NoticeMessage(item.getMsgCode(), item.getMsgCodeLong(), item.getSeq(), category,
-                MessageType.fromCode(category), MessageType.titleFor(category), item.getMsgContentChi(),
-                item.getMsgContentEng(), status.isRead(), parseDateTime(item.getStartDatetime()), null,
-                status, (AudienceType) null, null, List.of());
-    }
+  private NoticeMessage toNoticeMessage(GetMessageBoardMessageItem item) {
+    var status = MessageStatus.fromCode(item.getMsgStatus());
+    var category = item.getMsgCate();
+    return new NoticeMessage(
+        item.getMsgCode(),
+        item.getMsgCodeLong(),
+        item.getSeq(),
+        category,
+        MessageType.fromCode(category),
+        MessageType.titleFor(category),
+        item.getMsgContentChi(),
+        item.getMsgContentEng(),
+        status.isRead(),
+        parseDateTime(item.getStartDatetime()),
+        null,
+        status,
+        (AudienceType) null,
+        null,
+        List.of());
+  }
 
-    private LocalDateTime parseDateTime(String value) {
-        if (!StringUtils.hasText(value)) return null;
-        var trimmed = value.trim();
-        for (DateTimeFormatter formatter : APIM_DT_FORMATTERS) {
-            try { return LocalDateTime.parse(trimmed, formatter); }
-            catch (Exception ignored) { }
-        }
-        log.warn("Unable to parse APIM datetime value='{}'; treating as null.", value);
-        return null;
+  private LocalDateTime parseDateTime(String value) {
+    if (!StringUtils.hasText(value)) return null;
+    var trimmed = value.trim();
+    for (DateTimeFormatter formatter : APIM_DT_FORMATTERS) {
+      try {
+        return LocalDateTime.parse(trimmed, formatter);
+      } catch (Exception ignored) {
+      }
     }
+    log.warn("Unable to parse APIM datetime value='{}'; treating as null.", value);
+    return null;
+  }
 }

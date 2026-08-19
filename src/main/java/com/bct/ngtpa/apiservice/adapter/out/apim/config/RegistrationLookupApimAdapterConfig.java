@@ -8,13 +8,13 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RegistrationLookupApimAdapterConfig {
 
-    @Bean
-    public TrpSearchUnregMemberApimMapper trpSearchUnregMemberApimMapper() {
-        return new TrpSearchUnregMemberApimMapper();
-    }
+  @Bean
+  public TrpSearchUnregMemberApimMapper trpSearchUnregMemberApimMapper() {
+    return new TrpSearchUnregMemberApimMapper();
+  }
 
-    @Bean
-    public TrpSearchUnregMemberApimResultMapper trpSearchUnregMemberApimResultMapper() {
-        return new TrpSearchUnregMemberApimResultMapper();
-    }
+  @Bean
+  public TrpSearchUnregMemberApimResultMapper trpSearchUnregMemberApimResultMapper() {
+    return new TrpSearchUnregMemberApimResultMapper();
+  }
 }

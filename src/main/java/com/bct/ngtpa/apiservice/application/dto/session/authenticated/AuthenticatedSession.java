@@ -4,44 +4,61 @@ import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import java.time.Instant;
 import java.util.*;
 
-public record AuthenticatedSession(AuthenticatedSessionId authenticatedSessionId, ActorContext actorContext,
-        List<AuthenticatedSessionAccount> accounts, AuthenticatedSessionStatus status, String csrfTokenHash,
-        Instant createdAt, Instant lastAccessedAt, Instant idleExpiresAt, Instant absoluteExpiresAt) {
-    public AuthenticatedSession {
-        Objects.requireNonNull(authenticatedSessionId);
-        Objects.requireNonNull(actorContext);
-        accounts = accounts == null ? List.of() : List.copyOf(accounts);
-        Objects.requireNonNull(status);
-        Objects.requireNonNull(createdAt);
-        Objects.requireNonNull(lastAccessedAt);
-        Objects.requireNonNull(idleExpiresAt);
-        Objects.requireNonNull(absoluteExpiresAt);
-        if (!createdAt.equals(lastAccessedAt) && createdAt.isAfter(lastAccessedAt))
-            throw new IllegalArgumentException("lastAccessedAt precedes createdAt");
-        if (idleExpiresAt.isBefore(lastAccessedAt) || absoluteExpiresAt.isBefore(createdAt))
-            throw new IllegalArgumentException("Invalid authenticated-session expiry");
-        Set<String> refs = new HashSet<>();
-        for (var a : accounts)
-            if (!refs.add(a.accountRef().value()))
-                throw new IllegalArgumentException("Duplicate account reference");
-    }
+public record AuthenticatedSession(
+    AuthenticatedSessionId authenticatedSessionId,
+    ActorContext actorContext,
+    List<AuthenticatedSessionAccount> accounts,
+    AuthenticatedSessionStatus status,
+    String csrfTokenHash,
+    Instant createdAt,
+    Instant lastAccessedAt,
+    Instant idleExpiresAt,
+    Instant absoluteExpiresAt) {
+  public AuthenticatedSession {
+    Objects.requireNonNull(authenticatedSessionId);
+    Objects.requireNonNull(actorContext);
+    accounts = accounts == null ? List.of() : List.copyOf(accounts);
+    Objects.requireNonNull(status);
+    Objects.requireNonNull(createdAt);
+    Objects.requireNonNull(lastAccessedAt);
+    Objects.requireNonNull(idleExpiresAt);
+    Objects.requireNonNull(absoluteExpiresAt);
+    if (!createdAt.equals(lastAccessedAt) && createdAt.isAfter(lastAccessedAt))
+      throw new IllegalArgumentException("lastAccessedAt precedes createdAt");
+    if (idleExpiresAt.isBefore(lastAccessedAt) || absoluteExpiresAt.isBefore(createdAt))
+      throw new IllegalArgumentException("Invalid authenticated-session expiry");
+    Set<String> refs = new HashSet<>();
+    for (var a : accounts)
+      if (!refs.add(a.accountRef().value()))
+        throw new IllegalArgumentException("Duplicate account reference");
+  }
 
-    public boolean isUsable(Instant now) {
-        Objects.requireNonNull(now);
-        return status == AuthenticatedSessionStatus.ACTIVE && now.isBefore(idleExpiresAt)
-                && now.isBefore(absoluteExpiresAt);
-    }
+  public boolean isUsable(Instant now) {
+    Objects.requireNonNull(now);
+    return status == AuthenticatedSessionStatus.ACTIVE
+        && now.isBefore(idleExpiresAt)
+        && now.isBefore(absoluteExpiresAt);
+  }
 
-    public Optional<AuthenticatedSessionAccount> findAccount(AuthenticatedAccountRef ref) {
-        if (ref == null)
-            return Optional.empty();
-        return accounts.stream().filter(a -> a.accountRef().equals(ref)).findFirst();
-    }
+  public Optional<AuthenticatedSessionAccount> findAccount(AuthenticatedAccountRef ref) {
+    if (ref == null) return Optional.empty();
+    return accounts.stream().filter(a -> a.accountRef().equals(ref)).findFirst();
+  }
 
-    @Override
-    public String toString() {
-        return "AuthenticatedSession[id=<redacted>, actor=<redacted>, accountCount=" + accounts.size() + ", status="
-                + status + ", csrfTokenHash=<redacted>, createdAt=" + createdAt + ", lastAccessedAt=" + lastAccessedAt
-                + ", idleExpiresAt=" + idleExpiresAt + ", absoluteExpiresAt=" + absoluteExpiresAt + "]";
-    }
+  @Override
+  public String toString() {
+    return "AuthenticatedSession[id=<redacted>, actor=<redacted>, accountCount="
+        + accounts.size()
+        + ", status="
+        + status
+        + ", csrfTokenHash=<redacted>, createdAt="
+        + createdAt
+        + ", lastAccessedAt="
+        + lastAccessedAt
+        + ", idleExpiresAt="
+        + idleExpiresAt
+        + ", absoluteExpiresAt="
+        + absoluteExpiresAt
+        + "]";
+  }
 }

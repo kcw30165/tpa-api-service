@@ -8,9 +8,9 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class CaptchaWebConfig {
 
-    @Bean
-    @ConditionalOnMissingBean
-    public CaptchaWebMapper captchaWebMapper() {
-        return new CaptchaWebMapper();
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  public CaptchaWebMapper captchaWebMapper() {
+    return new CaptchaWebMapper();
+  }
 }

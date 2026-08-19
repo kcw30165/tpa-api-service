@@ -7,35 +7,35 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class RedisCaptchaChallengeJsonMapper {
 
-    private final ObjectMapper objectMapper;
+  private final ObjectMapper objectMapper;
 
-    public RedisCaptchaChallengeJsonMapper() {
-        this(new ObjectMapper());
-    }
+  public RedisCaptchaChallengeJsonMapper() {
+    this(new ObjectMapper());
+  }
 
-    RedisCaptchaChallengeJsonMapper(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
-    }
+  RedisCaptchaChallengeJsonMapper(ObjectMapper objectMapper) {
+    this.objectMapper = objectMapper;
+  }
 
-    public String toJson(CaptchaChallenge challenge) {
-        if (challenge == null) {
-            throw new IllegalArgumentException("Captcha challenge must not be null");
-        }
-        try {
-            return objectMapper.writeValueAsString(RedisCaptchaChallengeRecord.from(challenge));
-        } catch (RuntimeException | JsonProcessingException exception) {
-            throw new CacheException("Captcha challenge state serialization failed", exception);
-        }
+  public String toJson(CaptchaChallenge challenge) {
+    if (challenge == null) {
+      throw new IllegalArgumentException("Captcha challenge must not be null");
     }
+    try {
+      return objectMapper.writeValueAsString(RedisCaptchaChallengeRecord.from(challenge));
+    } catch (RuntimeException | JsonProcessingException exception) {
+      throw new CacheException("Captcha challenge state serialization failed", exception);
+    }
+  }
 
-    public CaptchaChallenge fromJson(String json) {
-        if (json == null || json.isBlank()) {
-            throw new IllegalArgumentException("Captcha challenge JSON must not be blank");
-        }
-        try {
-            return objectMapper.readValue(json, RedisCaptchaChallengeRecord.class).toCaptchaChallenge();
-        } catch (RuntimeException | JsonProcessingException exception) {
-            throw new CacheException("Captcha challenge state deserialization failed", exception);
-        }
+  public CaptchaChallenge fromJson(String json) {
+    if (json == null || json.isBlank()) {
+      throw new IllegalArgumentException("Captcha challenge JSON must not be blank");
     }
+    try {
+      return objectMapper.readValue(json, RedisCaptchaChallengeRecord.class).toCaptchaChallenge();
+    } catch (RuntimeException | JsonProcessingException exception) {
+      throw new CacheException("Captcha challenge state deserialization failed", exception);
+    }
+  }
 }

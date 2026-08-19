@@ -36,115 +36,130 @@ import reactor.core.publisher.Mono;
 
 class PersonalInformationControllerTest {
 
-    @Test
-    void resolvesPortalContextAndLanguageForPersonalInformation() {
-        AtomicReference<GetPersonalInformationCommand> captured = new AtomicReference<>();
-        var result = new PersonalInformationResult(Map.of("addr1", "ABC Street"), Map.of("addr1", "EDITABLE_COM"));
-        GetPersonalInformationUseCase useCase = command -> {
-            captured.set(command);
-            return Mono.just(result);
+  @Test
+  void resolvesPortalContextAndLanguageForPersonalInformation() {
+    AtomicReference<GetPersonalInformationCommand> captured = new AtomicReference<>();
+    var result =
+        new PersonalInformationResult(
+            Map.of("addr1", "ABC Street"), Map.of("addr1", "EDITABLE_COM"));
+    GetPersonalInformationUseCase useCase =
+        command -> {
+          captured.set(command);
+          return Mono.just(result);
         };
-        PersonalInformationWebMapper mapper = mock(PersonalInformationWebMapper.class);
-        when(mapper.toFormPageResponse(eq(result), eq("zh_HK"), eq("JP"), eq("JPM"), eq("OE")))
-                .thenReturn(response("zh_HK", "個人資料"));
+    PersonalInformationWebMapper mapper = mock(PersonalInformationWebMapper.class);
+    when(mapper.toFormPageResponse(eq(result), eq("zh_HK"), eq("JP"), eq("JPM"), eq("OE")))
+        .thenReturn(response("zh_HK", "個人資料"));
 
-        FormPageResponse<FormSchemaResponse> response = controller(useCase, mapper, resolver(context("ACC-123")))
-                .getPersonalInformation("en")
-                .contextWrite(ctx -> ctx.put(RequestHeaderContextKeys.CONTEXT_KEY,
-                        new RequestHeaderContext("ACC-123", "req-1", "zh-HK")))
-                .block();
-
-        assertEquals(true, response.success());
-        assertEquals(ApiStatus.SUCCESS, response.status());
-        assertEquals("personalInformationPage", response.page().id());
-        assertEquals("個人資料", response.page().title());
-        assertEquals("zh_HK", response.page().lang());
-        assertEquals("personalInformationForm", response.form().id());
-        assertTrue(response.messages().isEmpty());
-        assertTrue(response.errors().isEmpty());
-        assertEquals("zh_HK", captured.get().language());
-    }
-
-    @Test
-    void prefersContextLanguageOverRawAcceptLanguageHeader() {
-        AtomicReference<GetPersonalInformationCommand> captured = new AtomicReference<>();
-        var result = new PersonalInformationResult(Map.of(), Map.of());
-        GetPersonalInformationUseCase useCase = command -> {
-            captured.set(command);
-            return Mono.just(result);
-        };
-        PersonalInformationWebMapper mapper = mock(PersonalInformationWebMapper.class);
-        when(mapper.toFormPageResponse(eq(result), eq("en"), eq("JP"), eq("JPM"), eq("OE")))
-                .thenReturn(response("en", "Personal Information"));
-
+    FormPageResponse<FormSchemaResponse> response =
         controller(useCase, mapper, resolver(context("ACC-123")))
-                .getPersonalInformation("zh-HK")
-                .contextWrite(ctx -> ctx.put(RequestHeaderContextKeys.CONTEXT_KEY,
-                        new RequestHeaderContext("ACC-123", "req-1", "en")))
-                .block();
+            .getPersonalInformation("en")
+            .contextWrite(
+                ctx ->
+                    ctx.put(
+                        RequestHeaderContextKeys.CONTEXT_KEY,
+                        new RequestHeaderContext("ACC-123", "req-1", "zh-HK")))
+            .block();
 
-        assertEquals("en", captured.get().language());
-    }
+    assertEquals(true, response.success());
+    assertEquals(ApiStatus.SUCCESS, response.status());
+    assertEquals("personalInformationPage", response.page().id());
+    assertEquals("個人資料", response.page().title());
+    assertEquals("zh_HK", response.page().lang());
+    assertEquals("personalInformationForm", response.form().id());
+    assertTrue(response.messages().isEmpty());
+    assertTrue(response.errors().isEmpty());
+    assertEquals("zh_HK", captured.get().language());
+  }
 
-    @Test
-    void rejectsMissingAccountRefAsInvalidMemberContext() {
-        GetPersonalInformationUseCase useCase = command -> Mono.just(new PersonalInformationResult(Map.of(), Map.of()));
-        PersonalInformationWebMapper mapper = mock(PersonalInformationWebMapper.class);
-
-        PortalAccessContextResolutionException ex = assertThrows(
-                PortalAccessContextResolutionException.class,
-                () -> controller(useCase, mapper, resolver(context(" ")))
-                        .getPersonalInformation("en")
-                        .contextWrite(ctx -> ctx.put(RequestHeaderContextKeys.CONTEXT_KEY,
-                                new RequestHeaderContext(" ", "req-1", "en")))
-                        .block());
-
-        assertEquals(ErrorCodes.MEMBER_CONTEXT_INVALID, ex.getErrorCode());
-    }
-
-    private FormPageResponse<FormSchemaResponse> response(String language, String title) {
-        return FormPageResponse.success(
-                new PageResponse("personalInformationPage", title, language),
-                new FormSchemaResponse("personalInformationForm", "1.0", "view", null, null, null, null));
-    }
-
-    private static CurrentPortalAccessContextResolver resolver(PortalAccessContext context) {
-        return new CurrentPortalAccessContextResolver() {
-            @Override
-            public Mono<PortalAccessContext> current() {
-                return Mono.just(context);
-            }
-
-            @Override
-            public Mono<PortalAccessContext> currentOrEmpty() {
-                return Mono.just(context);
-            }
+  @Test
+  void prefersContextLanguageOverRawAcceptLanguageHeader() {
+    AtomicReference<GetPersonalInformationCommand> captured = new AtomicReference<>();
+    var result = new PersonalInformationResult(Map.of(), Map.of());
+    GetPersonalInformationUseCase useCase =
+        command -> {
+          captured.set(command);
+          return Mono.just(result);
         };
-    }
+    PersonalInformationWebMapper mapper = mock(PersonalInformationWebMapper.class);
+    when(mapper.toFormPageResponse(eq(result), eq("en"), eq("JP"), eq("JPM"), eq("OE")))
+        .thenReturn(response("en", "Personal Information"));
 
-    private static PortalAccessContext context(String accountRef) {
-        return new PortalAccessContext(
-                new ActorContext("user-1", ActorUserRole.ROLE_USER_MBR),
-                new AccountContext(accountRef, "JP", "policy-1", "cert-1", "JPM", "OE", TermStatus.BLANK, null));
-    }
+    controller(useCase, mapper, resolver(context("ACC-123")))
+        .getPersonalInformation("zh-HK")
+        .contextWrite(
+            ctx ->
+                ctx.put(
+                    RequestHeaderContextKeys.CONTEXT_KEY,
+                    new RequestHeaderContext("ACC-123", "req-1", "en")))
+        .block();
 
-    private static PersonalInformationController controller(
-            GetPersonalInformationUseCase useCase,
-            PersonalInformationWebMapper mapper,
-            CurrentPortalAccessContextResolver resolver) {
+    assertEquals("en", captured.get().language());
+  }
 
-        UpdatePersonalInformationUseCase updateUseCase = mock(UpdatePersonalInformationUseCase.class);
-        PersonalInformationUpdateWebMapper requestMapper = mock(PersonalInformationUpdateWebMapper.class);
-        PersonalInformationUpdateResponseMapper responseMapper = mock(PersonalInformationUpdateResponseMapper.class);
-        PersonalInformationUpdateYamlValidator validator = mock(PersonalInformationUpdateYamlValidator.class);
+  @Test
+  void rejectsMissingAccountRefAsInvalidMemberContext() {
+    GetPersonalInformationUseCase useCase =
+        command -> Mono.just(new PersonalInformationResult(Map.of(), Map.of()));
+    PersonalInformationWebMapper mapper = mock(PersonalInformationWebMapper.class);
 
-        return new PersonalInformationController(
-                useCase,
-                mapper,
-                resolver,
-                updateUseCase,
-                requestMapper,
-                responseMapper,
-                validator);
-    }
+    PortalAccessContextResolutionException ex =
+        assertThrows(
+            PortalAccessContextResolutionException.class,
+            () ->
+                controller(useCase, mapper, resolver(context(" ")))
+                    .getPersonalInformation("en")
+                    .contextWrite(
+                        ctx ->
+                            ctx.put(
+                                RequestHeaderContextKeys.CONTEXT_KEY,
+                                new RequestHeaderContext(" ", "req-1", "en")))
+                    .block());
+
+    assertEquals(ErrorCodes.MEMBER_CONTEXT_INVALID, ex.getErrorCode());
+  }
+
+  private FormPageResponse<FormSchemaResponse> response(String language, String title) {
+    return FormPageResponse.success(
+        new PageResponse("personalInformationPage", title, language),
+        new FormSchemaResponse("personalInformationForm", "1.0", "view", null, null, null, null));
+  }
+
+  private static CurrentPortalAccessContextResolver resolver(PortalAccessContext context) {
+    return new CurrentPortalAccessContextResolver() {
+      @Override
+      public Mono<PortalAccessContext> current() {
+        return Mono.just(context);
+      }
+
+      @Override
+      public Mono<PortalAccessContext> currentOrEmpty() {
+        return Mono.just(context);
+      }
+    };
+  }
+
+  private static PortalAccessContext context(String accountRef) {
+    return new PortalAccessContext(
+        new ActorContext("user-1", ActorUserRole.ROLE_USER_MBR),
+        new AccountContext(
+            accountRef, "JP", "policy-1", "cert-1", "JPM", "OE", TermStatus.BLANK, null));
+  }
+
+  private static PersonalInformationController controller(
+      GetPersonalInformationUseCase useCase,
+      PersonalInformationWebMapper mapper,
+      CurrentPortalAccessContextResolver resolver) {
+
+    UpdatePersonalInformationUseCase updateUseCase = mock(UpdatePersonalInformationUseCase.class);
+    PersonalInformationUpdateWebMapper requestMapper =
+        mock(PersonalInformationUpdateWebMapper.class);
+    PersonalInformationUpdateResponseMapper responseMapper =
+        mock(PersonalInformationUpdateResponseMapper.class);
+    PersonalInformationUpdateYamlValidator validator =
+        mock(PersonalInformationUpdateYamlValidator.class);
+
+    return new PersonalInformationController(
+        useCase, mapper, resolver, updateUseCase, requestMapper, responseMapper, validator);
+  }
 }

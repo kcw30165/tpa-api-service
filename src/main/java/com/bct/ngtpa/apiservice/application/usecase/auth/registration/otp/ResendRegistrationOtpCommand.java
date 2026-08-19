@@ -6,29 +6,30 @@ import java.time.Duration;
 import java.util.Objects;
 
 public record ResendRegistrationOtpCommand(
-        AuthFlowSessionId authFlowSessionId,
-        String csrfToken,
-        String origin,
-        String referer,
-        RegistrationIdempotencyKey idempotencyKey,
-        String acceptLanguage,
-        String correlationId,
-        Duration idempotencyTtl) {
-    public ResendRegistrationOtpCommand {
-        Objects.requireNonNull(authFlowSessionId, "authFlowSessionId must not be null");
-        if (csrfToken == null || csrfToken.isBlank()) {
-            throw new IllegalArgumentException("csrfToken must not be blank");
-        }
-        Objects.requireNonNull(idempotencyKey, "idempotencyKey must not be null");
-        idempotencyTtl = Objects.requireNonNull(idempotencyTtl, "idempotencyTtl must not be null");
-        if (idempotencyTtl.isZero() || idempotencyTtl.isNegative()) {
-            throw new IllegalArgumentException("idempotencyTtl must be positive");
-        }
+    AuthFlowSessionId authFlowSessionId,
+    String csrfToken,
+    String origin,
+    String referer,
+    RegistrationIdempotencyKey idempotencyKey,
+    String acceptLanguage,
+    String correlationId,
+    Duration idempotencyTtl) {
+  public ResendRegistrationOtpCommand {
+    Objects.requireNonNull(authFlowSessionId, "authFlowSessionId must not be null");
+    if (csrfToken == null || csrfToken.isBlank()) {
+      throw new IllegalArgumentException("csrfToken must not be blank");
     }
+    Objects.requireNonNull(idempotencyKey, "idempotencyKey must not be null");
+    idempotencyTtl = Objects.requireNonNull(idempotencyTtl, "idempotencyTtl must not be null");
+    if (idempotencyTtl.isZero() || idempotencyTtl.isNegative()) {
+      throw new IllegalArgumentException("idempotencyTtl must be positive");
+    }
+  }
 
-    @Override
-    public String toString() {
-        return "ResendRegistrationOtpCommand[authFlowSessionId=<redacted>, csrfToken=<redacted>, idempotencyKey=<redacted>, origin=<redacted>, referer=<redacted>, correlationId="
-                + (correlationId == null ? "" : "<redacted>") + "]";
-    }
+  @Override
+  public String toString() {
+    return "ResendRegistrationOtpCommand[authFlowSessionId=<redacted>, csrfToken=<redacted>, idempotencyKey=<redacted>, origin=<redacted>, referer=<redacted>, correlationId="
+        + (correlationId == null ? "" : "<redacted>")
+        + "]";
+  }
 }

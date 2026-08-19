@@ -4,5 +4,5 @@ import com.bct.ngtpa.apiservice.application.dto.session.SessionId;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionIdGenerationCommand;
 
 public interface SessionIdGenerator {
-    SessionId generate(SessionIdGenerationCommand command);
+  SessionId generate(SessionIdGenerationCommand command);
 }

@@ -10,90 +10,90 @@ import org.springframework.stereotype.Component;
 @Component
 public class TrpUpdMemberInfoResponseMapper {
 
-    public List<UpdatePersonalInformationResult> toResults(TrpUpdMemberInfoResponse response) {
-        if (response == null || response.response() == null
-                || response.response().data() == null || response.response().data().isEmpty()) {
-            return List.of();
-        }
-        return response.response().data().stream()
-                .filter(data -> data != null)
-                .map(data -> toResult(data, false, null, null, null))
-                .toList();
+  public List<UpdatePersonalInformationResult> toResults(TrpUpdMemberInfoResponse response) {
+    if (response == null
+        || response.response() == null
+        || response.response().data() == null
+        || response.response().data().isEmpty()) {
+      return List.of();
     }
+    return response.response().data().stream()
+        .filter(data -> data != null)
+        .map(data -> toResult(data, false, null, null, null))
+        .toList();
+  }
 
-    public List<UpdatePersonalInformationResult> toResults(
-            TrpUpdMemberInfoResponse response,
-            String selectedPolicyNo,
-            String selectedCertNo,
-            String selectedEnv) {
-        if (response == null || response.response() == null
-                || response.response().data() == null || response.response().data().isEmpty()) {
-            return List.of();
-        }
-        return response.response().data().stream()
-                .filter(data -> data != null)
-                .map(data -> toResult(
-                        data,
-                        isSelected(data, selectedPolicyNo, selectedCertNo, selectedEnv),
-                        selectedPolicyNo,
-                        selectedCertNo,
-                        selectedEnv))
-                .toList();
+  public List<UpdatePersonalInformationResult> toResults(
+      TrpUpdMemberInfoResponse response,
+      String selectedPolicyNo,
+      String selectedCertNo,
+      String selectedEnv) {
+    if (response == null
+        || response.response() == null
+        || response.response().data() == null
+        || response.response().data().isEmpty()) {
+      return List.of();
     }
+    return response.response().data().stream()
+        .filter(data -> data != null)
+        .map(
+            data ->
+                toResult(
+                    data,
+                    isSelected(data, selectedPolicyNo, selectedCertNo, selectedEnv),
+                    selectedPolicyNo,
+                    selectedCertNo,
+                    selectedEnv))
+        .toList();
+  }
 
-    public UpdatePersonalInformationResult toResult(TrpUpdMemberInfoResponse response) {
-        return toResults(response).stream()
-                .findFirst()
-                .orElseGet(() -> new UpdatePersonalInformationResult(
-                        false,
-                        false,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        List.of()));
-    }
+  public UpdatePersonalInformationResult toResult(TrpUpdMemberInfoResponse response) {
+    return toResults(response).stream()
+        .findFirst()
+        .orElseGet(
+            () ->
+                new UpdatePersonalInformationResult(
+                    false, false, null, null, null, null, null, null, List.of()));
+  }
 
-    private UpdatePersonalInformationResult toResult(
-            TrpUpdMemberInfoData data,
-            boolean selected,
-            String selectedPolicyNo,
-            String selectedCertNo,
-            String selectedEnv) {
-        return new UpdatePersonalInformationResult(
-                selected,
-                Boolean.TRUE.equals(data.success()),
-                selectedPolicyNo,
-                selectedCertNo,
-                selectedEnv,
-                data.refNo(),
-                data.submitDate(),
-                data.submitTime(),
-                toErrors(data));
-    }
+  private UpdatePersonalInformationResult toResult(
+      TrpUpdMemberInfoData data,
+      boolean selected,
+      String selectedPolicyNo,
+      String selectedCertNo,
+      String selectedEnv) {
+    return new UpdatePersonalInformationResult(
+        selected,
+        Boolean.TRUE.equals(data.success()),
+        selectedPolicyNo,
+        selectedCertNo,
+        selectedEnv,
+        data.refNo(),
+        data.submitDate(),
+        data.submitTime(),
+        toErrors(data));
+  }
 
-    private boolean isSelected(
-            TrpUpdMemberInfoData data,
-            String selectedPolicyNo,
-            String selectedCertNo,
-            String selectedEnv) {
-        // TrpUpdMemberInfoData legacy DTO does not expose policy/cert/env fields.
-        // The overload exists for forward compatibility; production selection is
-        // handled in ApimUpdatePersonalInformationAdapter.
-        return false;
-    }
+  private boolean isSelected(
+      TrpUpdMemberInfoData data,
+      String selectedPolicyNo,
+      String selectedCertNo,
+      String selectedEnv) {
+    // TrpUpdMemberInfoData legacy DTO does not expose policy/cert/env fields.
+    // The overload exists for forward compatibility; production selection is
+    // handled in ApimUpdatePersonalInformationAdapter.
+    return false;
+  }
 
-    private List<UpdatePersonalInformationError> toErrors(TrpUpdMemberInfoData data) {
-        if (data.errors() == null || data.errors().isEmpty()) {
-            return List.of();
-        }
-        return data.errors().stream()
-                .map(error -> UpdatePersonalInformationError.fromPipeSeparatedFields(
-                        error.type(),
-                        error.fields(),
-                        error.code()))
-                .toList();
+  private List<UpdatePersonalInformationError> toErrors(TrpUpdMemberInfoData data) {
+    if (data.errors() == null || data.errors().isEmpty()) {
+      return List.of();
     }
+    return data.errors().stream()
+        .map(
+            error ->
+                UpdatePersonalInformationError.fromPipeSeparatedFields(
+                    error.type(), error.fields(), error.code()))
+        .toList();
+  }
 }

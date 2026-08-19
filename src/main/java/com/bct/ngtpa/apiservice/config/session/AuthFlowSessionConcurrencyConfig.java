@@ -9,10 +9,10 @@ import org.springframework.context.annotation.Configuration;
 /** Shared runtime wiring for auth-flow session concurrency across authentication workflows. */
 @Configuration
 public class AuthFlowSessionConcurrencyConfig {
-    @Bean
-    @ConditionalOnMissingBean(AuthFlowSessionConcurrencyService.class)
-    AuthFlowSessionConcurrencyService authFlowSessionConcurrencyService(
-            AuthFlowSessionLifecycleService lifecycleService) {
-        return new AuthFlowSessionConcurrencyService(lifecycleService);
-    }
+  @Bean
+  @ConditionalOnMissingBean(AuthFlowSessionConcurrencyService.class)
+  AuthFlowSessionConcurrencyService authFlowSessionConcurrencyService(
+      AuthFlowSessionLifecycleService lifecycleService) {
+    return new AuthFlowSessionConcurrencyService(lifecycleService);
+  }
 }

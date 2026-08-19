@@ -6,11 +6,11 @@ import reactor.core.publisher.Mono;
 
 public interface OtpChallengeStatePort {
 
-    Mono<Void> save(OtpChallenge challenge);
+  Mono<Void> save(OtpChallenge challenge);
 
-    Mono<Optional<OtpChallenge>> findById(String otpChallengeId);
+  Mono<Optional<OtpChallenge>> findById(String otpChallengeId);
 
-    Mono<Void> update(OtpChallenge challenge);
+  Mono<Void> update(OtpChallenge challenge);
 
-    Mono<Void> delete(String otpChallengeId);
+  Mono<Void> delete(String otpChallengeId);
 }

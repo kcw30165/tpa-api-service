@@ -7,16 +7,17 @@ import org.springframework.context.annotation.*;
 
 @Configuration
 public class LoginAccountValidationConfig {
-    @Bean
-    @ConfigurationProperties("auth-workflows.login.account-identifiers")
-    LoginAccountIdentifierProperties loginAccountIdentifierProperties() {
-        return new LoginAccountIdentifierProperties();
-    }
+  @Bean
+  @ConfigurationProperties("auth-workflows.login.account-identifiers")
+  LoginAccountIdentifierProperties loginAccountIdentifierProperties() {
+    return new LoginAccountIdentifierProperties();
+  }
 
-    @Bean
-    LoginAccountRecordValidationService loginAccountRecordValidationService(LoginAccountIdentifierProperties p) {
-        p.validate();
-        return new LoginAccountRecordValidationService(p.getPolicyNo().getWidth(), p.getCertNo().getWidth(),
-                p.getPadCharacter().charAt(0));
-    }
+  @Bean
+  LoginAccountRecordValidationService loginAccountRecordValidationService(
+      LoginAccountIdentifierProperties p) {
+    p.validate();
+    return new LoginAccountRecordValidationService(
+        p.getPolicyNo().getWidth(), p.getCertNo().getWidth(), p.getPadCharacter().charAt(0));
+  }
 }

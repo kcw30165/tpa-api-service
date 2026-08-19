@@ -12,28 +12,30 @@ import reactor.core.publisher.Mono;
 
 class SmsWebClientConfigTest {
 
-    @Test
-    void createsSmsWebClientUsingConfiguredBaseUrl() {
-        SmsProperties properties = new SmsProperties();
-        properties.setBaseUrl("https://sms.example.test");
-        properties.setTimeoutMillis(5000);
+  @Test
+  void createsSmsWebClientUsingConfiguredBaseUrl() {
+    SmsProperties properties = new SmsProperties();
+    properties.setBaseUrl("https://sms.example.test");
+    properties.setTimeoutMillis(5000);
 
-        WebClient webClient = new SmsWebClientConfig().smsWebClient(WebClient.builder(), properties);
-        AtomicReference<String> capturedUrl = new AtomicReference<>();
-        ExchangeFunction exchangeFunction = request -> {
-            capturedUrl.set(request.url().toString());
-            return Mono.just(ClientResponse.create(HttpStatus.OK).build());
+    WebClient webClient = new SmsWebClientConfig().smsWebClient(WebClient.builder(), properties);
+    AtomicReference<String> capturedUrl = new AtomicReference<>();
+    ExchangeFunction exchangeFunction =
+        request -> {
+          capturedUrl.set(request.url().toString());
+          return Mono.just(ClientResponse.create(HttpStatus.OK).build());
         };
 
-        webClient.mutate()
-                .exchangeFunction(exchangeFunction)
-                .build()
-                .post()
-                .uri("/sms/ext/sendSingleSMS.do")
-                .retrieve()
-                .toBodilessEntity()
-                .block();
+    webClient
+        .mutate()
+        .exchangeFunction(exchangeFunction)
+        .build()
+        .post()
+        .uri("/sms/ext/sendSingleSMS.do")
+        .retrieve()
+        .toBodilessEntity()
+        .block();
 
-        assertThat(capturedUrl.get()).isEqualTo("https://sms.example.test/sms/ext/sendSingleSMS.do");
-    }
+    assertThat(capturedUrl.get()).isEqualTo("https://sms.example.test/sms/ext/sendSingleSMS.do");
+  }
 }

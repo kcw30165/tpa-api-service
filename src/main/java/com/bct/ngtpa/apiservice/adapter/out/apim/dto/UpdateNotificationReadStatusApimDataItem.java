@@ -14,12 +14,12 @@ import lombok.NoArgsConstructor;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class UpdateNotificationReadStatusApimDataItem {
 
-    @JsonProperty("msg-code")
-    private String msgCode;
+  @JsonProperty("msg-code")
+  private String msgCode;
 
-    @JsonProperty("msg-code-long")
-    private String msgCodeLong;
+  @JsonProperty("msg-code-long")
+  private String msgCodeLong;
 
-    @JsonProperty("success")
-    private boolean success;
+  @JsonProperty("success")
+  private boolean success;
 }

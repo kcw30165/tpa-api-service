@@ -5,10 +5,9 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.R
 import java.util.Objects;
 
 public class TrpChkCustIdApimMapper {
-    public TrpChkCustIdApimRequest toApimRequest(RegistrationUsernameAvailabilityCommand command) {
-        Objects.requireNonNull(command, "command must not be null");
-        Objects.requireNonNull(command.selectedTrust(), "selectedTrust must not be null");
-        return new TrpChkCustIdApimRequest(
-                command.username());
-    }
+  public TrpChkCustIdApimRequest toApimRequest(RegistrationUsernameAvailabilityCommand command) {
+    Objects.requireNonNull(command, "command must not be null");
+    Objects.requireNonNull(command.selectedTrust(), "selectedTrust must not be null");
+    return new TrpChkCustIdApimRequest(command.username());
+  }
 }

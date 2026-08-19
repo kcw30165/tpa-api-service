@@ -5,5 +5,5 @@ import reactor.core.publisher.Mono;
 
 @FunctionalInterface
 public interface CreateAuthenticatedSessionUseCase {
-    Mono<AuthenticatedSessionLifecycleResult> create(CreateAuthenticatedSessionCommand command);
+  Mono<AuthenticatedSessionLifecycleResult> create(CreateAuthenticatedSessionCommand command);
 }

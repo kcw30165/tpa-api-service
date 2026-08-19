@@ -1,10 +1,9 @@
 package com.bct.ngtpa.apiservice.application.port.out;
 
-import reactor.core.publisher.Mono;
-
 import java.time.LocalDate;
+import reactor.core.publisher.Mono;
 
 public interface ReferenceDatePort {
 
-    Mono<LocalDate> resolveReferenceDate(String accountEnv);
+  Mono<LocalDate> resolveReferenceDate(String accountEnv);
 }

@@ -7,22 +7,25 @@ import org.junit.jupiter.api.Test;
 
 class AuthFlowSessionCsrfArchitectureGuardTest {
 
-        @Test
-        void authFlowSessionCsrfServiceHasNoSpringRedisWebOrAdapterDependencies() {
-                JavaClasses classes = new ClassFileImporter().importPackages(
-                                "com.bct.ngtpa.apiservice.application.usecase.session.authflow");
+  @Test
+  void authFlowSessionCsrfServiceHasNoSpringRedisWebOrAdapterDependencies() {
+    JavaClasses classes =
+        new ClassFileImporter()
+            .importPackages("com.bct.ngtpa.apiservice.application.usecase.session.authflow");
 
-                ArchRuleDefinition.noClasses()
-                                .that().resideInAPackage("..application.usecase.session.authflow..")
-                                .should().dependOnClassesThat().resideInAnyPackage(
-                                                "org.springframework..",
-                                                "org.springframework.http..",
-                                                "org.springframework.web..",
-                                                "jakarta.servlet..",
-                                                "io.lettuce..",
-                                                "org.springframework.data.redis..",
-                                                "com.bct.ngtpa.apiservice.adapter..")
-                                .check(classes);
-        }
-
+    ArchRuleDefinition.noClasses()
+        .that()
+        .resideInAPackage("..application.usecase.session.authflow..")
+        .should()
+        .dependOnClassesThat()
+        .resideInAnyPackage(
+            "org.springframework..",
+            "org.springframework.http..",
+            "org.springframework.web..",
+            "jakarta.servlet..",
+            "io.lettuce..",
+            "org.springframework.data.redis..",
+            "com.bct.ngtpa.apiservice.adapter..")
+        .check(classes);
+  }
 }

@@ -13,10 +13,20 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @EnableConfigurationProperties(TrpMemberLoginProperties.class)
 public class TrpMemberLoginAdapterConfig {
-    @Bean TrpMemberLoginContractMapper trpMemberLoginContractMapper() { return new TrpMemberLoginContractMapper(); }
-    @Bean TrpMemberLoginTransport trpMemberLoginTransport(ApimExchangeExecutor executor, TrpMemberLoginProperties properties) {
-        return new SharedApimTrpMemberLoginTransport(executor, properties);
-    }
-    @Bean CredentialAuthenticationPort credentialAuthenticationPort(TrpMemberLoginTransport transport,
-            TrpMemberLoginContractMapper mapper) { return new TrpMemberLoginAdapter(transport, mapper); }
+  @Bean
+  TrpMemberLoginContractMapper trpMemberLoginContractMapper() {
+    return new TrpMemberLoginContractMapper();
+  }
+
+  @Bean
+  TrpMemberLoginTransport trpMemberLoginTransport(
+      ApimExchangeExecutor executor, TrpMemberLoginProperties properties) {
+    return new SharedApimTrpMemberLoginTransport(executor, properties);
+  }
+
+  @Bean
+  CredentialAuthenticationPort credentialAuthenticationPort(
+      TrpMemberLoginTransport transport, TrpMemberLoginContractMapper mapper) {
+    return new TrpMemberLoginAdapter(transport, mapper);
+  }
 }

@@ -5,5 +5,5 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.registration.cancel.Can
 import reactor.core.publisher.Mono;
 
 public interface CancelRegistrationUseCase {
-    Mono<CancelRegistrationResult> cancel(CancelRegistrationCommand command);
+  Mono<CancelRegistrationResult> cancel(CancelRegistrationCommand command);
 }

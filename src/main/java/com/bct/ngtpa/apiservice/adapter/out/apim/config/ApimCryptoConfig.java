@@ -8,12 +8,12 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class ApimCryptoConfig {
 
-    @Bean
-    public BouncyCastleProvider bouncyCastleProvider() {
-        BouncyCastleProvider provider = new BouncyCastleProvider();
-        if (Security.getProvider(provider.getName()) == null) {
-            Security.addProvider(provider);
-        }
-        return provider;
+  @Bean
+  public BouncyCastleProvider bouncyCastleProvider() {
+    BouncyCastleProvider provider = new BouncyCastleProvider();
+    if (Security.getProvider(provider.getName()) == null) {
+      Security.addProvider(provider);
     }
+    return provider;
+  }
 }

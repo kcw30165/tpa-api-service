@@ -22,58 +22,62 @@ import org.junit.jupiter.api.Test;
 
 class PersonalInformationWebMapperTypedResponseTest {
 
-    @Test
-    void mapsPersonalInformationToTypedFormPageResponse() {
-        PersonalInformationWebMapper mapper = new PersonalInformationWebMapper(
-                mock(LoggingSanitizer.class), properties(), new YamlResponseMapper(new ObjectMapper()));
+  @Test
+  void mapsPersonalInformationToTypedFormPageResponse() {
+    PersonalInformationWebMapper mapper =
+        new PersonalInformationWebMapper(
+            mock(LoggingSanitizer.class), properties(), new YamlResponseMapper(new ObjectMapper()));
 
-        FormPageResponse<FormSchemaResponse> response = mapper.toFormPageResponse(
-                new PersonalInformationResult(Map.of("email", "nick@example.com"), Map.of("email", "EDITABLE_COM")),
-                "en");
+    FormPageResponse<FormSchemaResponse> response =
+        mapper.toFormPageResponse(
+            new PersonalInformationResult(
+                Map.of("email", "nick@example.com"), Map.of("email", "EDITABLE_COM")),
+            "en");
 
-        assertThat(response.success()).isTrue();
-        assertThat(response.status()).isEqualTo(ApiStatus.SUCCESS);
-        assertThat(response.page().id()).isEqualTo("personalInformationPage");
-        assertThat(response.form().id()).isEqualTo("personalInformationForm");
-        assertThat(response.form().sections()).hasSize(1);
-        assertThat(response.form().sections().get(0).fields()).hasSize(1);
-        assertThat(response.form().sections().get(0).fields().get(0).name()).isEqualTo("emailAddress");
-        assertThat(response.form().sections().get(0).fields().get(0).value()).isEqualTo("nick@example.com");
-        assertThat(response.form().sections().get(0).fields().get(0).required()).isTrue();
-    }
+    assertThat(response.success()).isTrue();
+    assertThat(response.status()).isEqualTo(ApiStatus.SUCCESS);
+    assertThat(response.page().id()).isEqualTo("personalInformationPage");
+    assertThat(response.form().id()).isEqualTo("personalInformationForm");
+    assertThat(response.form().sections()).hasSize(1);
+    assertThat(response.form().sections().get(0).fields()).hasSize(1);
+    assertThat(response.form().sections().get(0).fields().get(0).name()).isEqualTo("emailAddress");
+    assertThat(response.form().sections().get(0).fields().get(0).value())
+        .isEqualTo("nick@example.com");
+    assertThat(response.form().sections().get(0).fields().get(0).required()).isTrue();
+  }
 
-    private BffPagesProperties properties() {
-        FieldProperties field = new FieldProperties();
-        field.setId("emailAddress");
-        field.setLabel(Map.of("en", "Email Address"));
-        field.setDataType("string");
-        field.setControlType("email");
-        ApimBindingProperties binding = new ApimBindingProperties();
-        binding.setData("email");
-        binding.setConfig("email");
-        field.setApimBinding(binding);
+  private BffPagesProperties properties() {
+    FieldProperties field = new FieldProperties();
+    field.setId("emailAddress");
+    field.setLabel(Map.of("en", "Email Address"));
+    field.setDataType("string");
+    field.setControlType("email");
+    ApimBindingProperties binding = new ApimBindingProperties();
+    binding.setData("email");
+    binding.setConfig("email");
+    field.setApimBinding(binding);
 
-        SectionProperties section = new SectionProperties();
-        section.setId("electronicContacts");
-        section.setTitle(Map.of("en", "Email Contact"));
-        section.setFields(List.of(field));
+    SectionProperties section = new SectionProperties();
+    section.setId("electronicContacts");
+    section.setTitle(Map.of("en", "Email Contact"));
+    section.setFields(List.of(field));
 
-        FormMetadataProperties form = new FormMetadataProperties();
-        form.setId("personalInformationForm");
-        form.setDefaultMode("view");
-        form.setSections(List.of(section));
+    FormMetadataProperties form = new FormMetadataProperties();
+    form.setId("personalInformationForm");
+    form.setDefaultMode("view");
+    form.setSections(List.of(section));
 
-        PageMetadataProperties metadata = new PageMetadataProperties();
-        metadata.setId("personalInformationPage");
-        metadata.setVersion("1.0");
-        metadata.setTitle(Map.of("en", "Personal Information"));
+    PageMetadataProperties metadata = new PageMetadataProperties();
+    metadata.setId("personalInformationPage");
+    metadata.setVersion("1.0");
+    metadata.setTitle(Map.of("en", "Personal Information"));
 
-        PageSchemaProperties page = new PageSchemaProperties();
-        page.setMetadata(metadata);
-        page.setForm(form);
+    PageSchemaProperties page = new PageSchemaProperties();
+    page.setMetadata(metadata);
+    page.setForm(form);
 
-        BffPagesProperties properties = new BffPagesProperties();
-        properties.setPages(Map.of("personalInformation", page));
-        return properties;
-    }
+    BffPagesProperties properties = new BffPagesProperties();
+    properties.setPages(Map.of("personalInformation", page));
+    return properties;
+  }
 }

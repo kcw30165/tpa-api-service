@@ -12,18 +12,16 @@ import org.springframework.stereotype.Component;
 @Component
 public class NotificationReadStatusWebMapper {
 
-    public MutationResponse<UpdateNotificationsReadStatusResponse> toResponse(
-            UpdateNotificationsReadStatusResult result) {
-        return MutationResponse.success(
-                ApiStatus.UPDATED,
-                new UpdateNotificationsReadStatusResponse(
-                        result.notifications().stream()
-                                .map(this::toDto)
-                                .toList()),
-                List.of());
-    }
+  public MutationResponse<UpdateNotificationsReadStatusResponse> toResponse(
+      UpdateNotificationsReadStatusResult result) {
+    return MutationResponse.success(
+        ApiStatus.UPDATED,
+        new UpdateNotificationsReadStatusResponse(
+            result.notifications().stream().map(this::toDto).toList()),
+        List.of());
+  }
 
-    NotificationReadStatusDto toDto(NotificationReadStatus status) {
-        return new NotificationReadStatusDto(status.msgCode(), status.isRead());
-    }
+  NotificationReadStatusDto toDto(NotificationReadStatus status) {
+    return new NotificationReadStatusDto(status.msgCode(), status.isRead());
+  }
 }

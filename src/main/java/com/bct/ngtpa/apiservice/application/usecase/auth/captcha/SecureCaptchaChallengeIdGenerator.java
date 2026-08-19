@@ -5,8 +5,8 @@ import java.util.UUID;
 
 public final class SecureCaptchaChallengeIdGenerator implements CaptchaChallengeIdGenerator {
 
-    @Override
-    public CaptchaChallengeId nextId() {
-        return new CaptchaChallengeId("cap_" + UUID.randomUUID().toString().replace("-", ""));
-    }
+  @Override
+  public CaptchaChallengeId nextId() {
+    return new CaptchaChallengeId("cap_" + UUID.randomUUID().toString().replace("-", ""));
+  }
 }

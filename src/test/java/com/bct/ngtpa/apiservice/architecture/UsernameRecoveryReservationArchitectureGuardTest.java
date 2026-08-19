@@ -15,38 +15,46 @@ import org.junit.jupiter.api.Test;
  */
 class UsernameRecoveryReservationArchitectureGuardTest {
 
-    private static final String RESERVATION_PACKAGE = "com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery";
+  private static final String RESERVATION_PACKAGE =
+      "com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery";
 
-    @Test
-    void reservationApplicationLayerHasNoSpringAdapterRedisOrWebDependencies() {
-        JavaClasses classes = new ClassFileImporter()
-                .withImportOption(new ImportOption.DoNotIncludeTests())
-                .importPackages(RESERVATION_PACKAGE);
+  @Test
+  void reservationApplicationLayerHasNoSpringAdapterRedisOrWebDependencies() {
+    JavaClasses classes =
+        new ClassFileImporter()
+            .withImportOption(new ImportOption.DoNotIncludeTests())
+            .importPackages(RESERVATION_PACKAGE);
 
-        ArchRuleDefinition.noClasses()
-                .that().resideInAnyPackage("..application.usecase.auth.usernamerecovery..")
-                .should().dependOnClassesThat().resideInAnyPackage(
-                        "org.springframework..",
-                        "org.springframework.http..",
-                        "org.springframework.web..",
-                        "jakarta.servlet..",
-                        "com.bct.ngtpa.apiservice.adapter..",
-                        "io.lettuce..",
-                        "org.springframework.data.redis..")
-                .check(classes);
-    }
+    ArchRuleDefinition.noClasses()
+        .that()
+        .resideInAnyPackage("..application.usecase.auth.usernamerecovery..")
+        .should()
+        .dependOnClassesThat()
+        .resideInAnyPackage(
+            "org.springframework..",
+            "org.springframework.http..",
+            "org.springframework.web..",
+            "jakarta.servlet..",
+            "com.bct.ngtpa.apiservice.adapter..",
+            "io.lettuce..",
+            "org.springframework.data.redis..")
+        .check(classes);
+  }
 
-    @Test
-    void reservationApplicationLayerDoesNotDependOnInfrastructureExceptionsOrWebDtos() {
-        JavaClasses classes = new ClassFileImporter()
-                .withImportOption(new ImportOption.DoNotIncludeTests())
-                .importPackages(RESERVATION_PACKAGE);
+  @Test
+  void reservationApplicationLayerDoesNotDependOnInfrastructureExceptionsOrWebDtos() {
+    JavaClasses classes =
+        new ClassFileImporter()
+            .withImportOption(new ImportOption.DoNotIncludeTests())
+            .importPackages(RESERVATION_PACKAGE);
 
-        ArchRuleDefinition.noClasses()
-                .that().resideInAnyPackage("..application.usecase.auth.usernamerecovery..")
-                .should().dependOnClassesThat().resideInAnyPackage(
-                        "com.bct.ngtpa.apiservice.exception..",
-                        "com.bct.ngtpa.apiservice.adapter.in.web..")
-                .check(classes);
-    }
+    ArchRuleDefinition.noClasses()
+        .that()
+        .resideInAnyPackage("..application.usecase.auth.usernamerecovery..")
+        .should()
+        .dependOnClassesThat()
+        .resideInAnyPackage(
+            "com.bct.ngtpa.apiservice.exception..", "com.bct.ngtpa.apiservice.adapter.in.web..")
+        .check(classes);
+  }
 }

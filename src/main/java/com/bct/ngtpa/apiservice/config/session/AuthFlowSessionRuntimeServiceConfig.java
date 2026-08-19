@@ -1,13 +1,13 @@
 package com.bct.ngtpa.apiservice.config.session;
 
-import com.bct.ngtpa.apiservice.adapter.out.session.AuthFlowSessionCancellationAdapter;
-import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionCancellationPort;
 import com.bct.ngtpa.apiservice.adapter.in.web.session.config.AuthFlowSessionProperties;
+import com.bct.ngtpa.apiservice.adapter.out.session.AuthFlowSessionCancellationAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.session.AuthFlowSessionExpiryRefreshAdapter;
-import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionExpiryRefreshPort;
-import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.SecureSessionRevisionGenerator;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevisionGenerator;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionCancellationPort;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionExpiryRefreshPort;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.service.session.SecureSessionIdGenerator;
 import com.bct.ngtpa.apiservice.application.service.session.SessionIdGenerator;
 import com.bct.ngtpa.apiservice.application.service.session.SessionTtlCalculator;
@@ -25,74 +25,67 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class AuthFlowSessionRuntimeServiceConfig {
 
-    @Bean
-    @ConditionalOnMissingBean
-    public SessionIdGenerator sessionIdGenerator() {
-        return new SecureSessionIdGenerator();
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  public SessionIdGenerator sessionIdGenerator() {
+    return new SecureSessionIdGenerator();
+  }
 
-    @Bean
-    @ConditionalOnMissingBean
-    public SessionTtlCalculator sessionTtlCalculator() {
-        return new SessionTtlCalculator();
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  public SessionTtlCalculator sessionTtlCalculator() {
+    return new SessionTtlCalculator();
+  }
 
-    @Bean
-    @ConditionalOnMissingBean
-    public SessionRevisionGenerator sessionRevisionGenerator() {
-        return new SecureSessionRevisionGenerator();
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  public SessionRevisionGenerator sessionRevisionGenerator() {
+    return new SecureSessionRevisionGenerator();
+  }
 
-    @Bean
-    @ConditionalOnMissingBean(AuthFlowSessionCancellationPort.class)
-    public AuthFlowSessionCancellationPort authFlowSessionCancellationPort(
-            AuthFlowSessionPort authFlowSessionPort) {
-        return new AuthFlowSessionCancellationAdapter(authFlowSessionPort);
-    }
+  @Bean
+  @ConditionalOnMissingBean(AuthFlowSessionCancellationPort.class)
+  public AuthFlowSessionCancellationPort authFlowSessionCancellationPort(
+      AuthFlowSessionPort authFlowSessionPort) {
+    return new AuthFlowSessionCancellationAdapter(authFlowSessionPort);
+  }
 
-    @Bean
-    @ConditionalOnMissingBean(AuthFlowSessionExpiryRefreshPort.class)
-    public AuthFlowSessionExpiryRefreshPort authFlowSessionExpiryRefreshPort(
-            AuthFlowSessionPort authFlowSessionPort,
-            AuthFlowSessionProperties properties) {
-        return new AuthFlowSessionExpiryRefreshAdapter(authFlowSessionPort, properties);
-    }
+  @Bean
+  @ConditionalOnMissingBean(AuthFlowSessionExpiryRefreshPort.class)
+  public AuthFlowSessionExpiryRefreshPort authFlowSessionExpiryRefreshPort(
+      AuthFlowSessionPort authFlowSessionPort, AuthFlowSessionProperties properties) {
+    return new AuthFlowSessionExpiryRefreshAdapter(authFlowSessionPort, properties);
+  }
 
-    @Bean
-    @ConditionalOnMissingBean(AuthFlowSessionLifecycleService.class)
-    public AuthFlowSessionLifecycleService authFlowSessionLifecycleService(
-            AuthFlowSessionPort authFlowSessionPort,
-            SessionIdGenerator sessionIdGenerator,
-            SessionTtlCalculator sessionTtlCalculator,
-            Clock clock) {
-        return new AuthFlowSessionLifecycleService(
-                authFlowSessionPort,
-                sessionIdGenerator,
-                sessionTtlCalculator,
-                clock);
-    }
+  @Bean
+  @ConditionalOnMissingBean(AuthFlowSessionLifecycleService.class)
+  public AuthFlowSessionLifecycleService authFlowSessionLifecycleService(
+      AuthFlowSessionPort authFlowSessionPort,
+      SessionIdGenerator sessionIdGenerator,
+      SessionTtlCalculator sessionTtlCalculator,
+      Clock clock) {
+    return new AuthFlowSessionLifecycleService(
+        authFlowSessionPort, sessionIdGenerator, sessionTtlCalculator, clock);
+  }
 
-    @Bean
-    @ConditionalOnMissingBean
-    public CsrfTokenGenerator csrfTokenGenerator() {
-        return new SecureRandomCsrfTokenGenerator();
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  public CsrfTokenGenerator csrfTokenGenerator() {
+    return new SecureRandomCsrfTokenGenerator();
+  }
 
-    @Bean
-    @ConditionalOnMissingBean
-    public CsrfTokenHasher csrfTokenHasher() {
-        return new Sha256CsrfTokenHasher();
-    }
+  @Bean
+  @ConditionalOnMissingBean
+  public CsrfTokenHasher csrfTokenHasher() {
+    return new Sha256CsrfTokenHasher();
+  }
 
-    @Bean
-    @ConditionalOnMissingBean(AuthFlowSessionCsrfService.class)
-    public AuthFlowSessionCsrfService authFlowSessionCsrfService(
-            AuthFlowSessionPort authFlowSessionPort,
-            CsrfTokenGenerator csrfTokenGenerator,
-            CsrfTokenHasher csrfTokenHasher) {
-        return new AuthFlowSessionCsrfService(
-                authFlowSessionPort,
-                csrfTokenGenerator,
-                csrfTokenHasher);
-    }
+  @Bean
+  @ConditionalOnMissingBean(AuthFlowSessionCsrfService.class)
+  public AuthFlowSessionCsrfService authFlowSessionCsrfService(
+      AuthFlowSessionPort authFlowSessionPort,
+      CsrfTokenGenerator csrfTokenGenerator,
+      CsrfTokenHasher csrfTokenHasher) {
+    return new AuthFlowSessionCsrfService(authFlowSessionPort, csrfTokenGenerator, csrfTokenHasher);
+  }
 }

@@ -34,107 +34,113 @@ import reactor.test.StepVerifier;
 
 class CompleteRegistrationExpiryOrderingTest {
 
-        private static final Instant NOW = Instant.parse("2026-07-14T10:50:00Z");
-        private static final AuthFlowSessionId SESSION_ID = new AuthFlowSessionId("afs_safe");
+  private static final Instant NOW = Instant.parse("2026-07-14T10:50:00Z");
+  private static final AuthFlowSessionId SESSION_ID = new AuthFlowSessionId("afs_safe");
 
-        @Test
-        void acceptedUsernameVerifiedContextRefreshesExpiryBeforeFurtherProcessing() {
-                var contextLoader = mock(RegistrationProtectedAuthFlowContextLoader.class);
-                var expiry = mock(AuthFlowSessionExpiryRefreshPort.class);
-                var marker = new IllegalStateException("stop-after-expiry");
-                when(contextLoader.load(any())).thenReturn(Mono.just(
-                                RegistrationProtectedAuthFlowContextResult.valid(
-                                                "otp-safe",
-                                                "m****r@example.com",
-                                                registrationContext())));
-                when(expiry.refresh(eq(SESSION_ID), eq(NOW))).thenReturn(Mono.error(marker));
-                var service = service(contextLoader, expiry);
+  @Test
+  void acceptedUsernameVerifiedContextRefreshesExpiryBeforeFurtherProcessing() {
+    var contextLoader = mock(RegistrationProtectedAuthFlowContextLoader.class);
+    var expiry = mock(AuthFlowSessionExpiryRefreshPort.class);
+    var marker = new IllegalStateException("stop-after-expiry");
+    when(contextLoader.load(any()))
+        .thenReturn(
+            Mono.just(
+                RegistrationProtectedAuthFlowContextResult.valid(
+                    "otp-safe", "m****r@example.com", registrationContext())));
+    when(expiry.refresh(eq(SESSION_ID), eq(NOW))).thenReturn(Mono.error(marker));
+    var service = service(contextLoader, expiry);
 
-                StepVerifier.create(service.complete(command("csrf-safe")))
-                                .expectErrorMatches(error -> error == marker)
-                                .verify();
+    StepVerifier.create(service.complete(command("csrf-safe")))
+        .expectErrorMatches(error -> error == marker)
+        .verify();
 
-                verify(expiry).refresh(SESSION_ID, NOW);
-        }
+    verify(expiry).refresh(SESSION_ID, NOW);
+  }
 
-        @Test
-        void csrfRejectedRequestDoesNotRefreshExpiry() {
-                var contextLoader = mock(RegistrationProtectedAuthFlowContextLoader.class);
-                var expiry = mock(AuthFlowSessionExpiryRefreshPort.class);
-                when(contextLoader.load(any())).thenReturn(Mono.just(
-                                RegistrationProtectedAuthFlowContextResult.invalid(
-                                                RegistrationProtectedAuthFlowContextStatus.CSRF_INVALID)));
-                var service = service(contextLoader, expiry);
+  @Test
+  void csrfRejectedRequestDoesNotRefreshExpiry() {
+    var contextLoader = mock(RegistrationProtectedAuthFlowContextLoader.class);
+    var expiry = mock(AuthFlowSessionExpiryRefreshPort.class);
+    when(contextLoader.load(any()))
+        .thenReturn(
+            Mono.just(
+                RegistrationProtectedAuthFlowContextResult.invalid(
+                    RegistrationProtectedAuthFlowContextStatus.CSRF_INVALID)));
+    var service = service(contextLoader, expiry);
 
-                StepVerifier.create(service.complete(command("bad-csrf")))
-                                .assertNext(result -> {
-                                        assertThat(result.status())
-                                                        .isEqualTo(CompleteRegistrationResultStatus.CSRF_INVALID);
-                                        assertThat(result.errors())
-                                                        .extracting(error -> error.code())
-                                                        .containsExactly("err.registration.authFlow.invalid");
-                                })
-                                .verifyComplete();
+    StepVerifier.create(service.complete(command("bad-csrf")))
+        .assertNext(
+            result -> {
+              assertThat(result.status()).isEqualTo(CompleteRegistrationResultStatus.CSRF_INVALID);
+              assertThat(result.errors())
+                  .extracting(error -> error.code())
+                  .containsExactly("err.registration.authFlow.invalid");
+            })
+        .verifyComplete();
 
-                verify(expiry, never()).refresh(any(), any());
-        }
+    verify(expiry, never()).refresh(any(), any());
+  }
 
-        @Test
-        void missingOrInvalidProtectedContextDoesNotRefreshExpiry() {
-                var contextLoader = mock(RegistrationProtectedAuthFlowContextLoader.class);
-                var expiry = mock(AuthFlowSessionExpiryRefreshPort.class);
-                when(contextLoader.load(any())).thenReturn(Mono.just(
-                                RegistrationProtectedAuthFlowContextResult.invalid(
-                                                RegistrationProtectedAuthFlowContextStatus.INVALID_STATUS)));
-                var service = service(contextLoader, expiry);
+  @Test
+  void missingOrInvalidProtectedContextDoesNotRefreshExpiry() {
+    var contextLoader = mock(RegistrationProtectedAuthFlowContextLoader.class);
+    var expiry = mock(AuthFlowSessionExpiryRefreshPort.class);
+    when(contextLoader.load(any()))
+        .thenReturn(
+            Mono.just(
+                RegistrationProtectedAuthFlowContextResult.invalid(
+                    RegistrationProtectedAuthFlowContextStatus.INVALID_STATUS)));
+    var service = service(contextLoader, expiry);
 
-                StepVerifier.create(service.complete(command("csrf-safe")))
-                                .assertNext(result -> assertThat(result.status())
-                                                .isEqualTo(CompleteRegistrationResultStatus.INVALID_AUTH_FLOW))
-                                .verifyComplete();
+    StepVerifier.create(service.complete(command("csrf-safe")))
+        .assertNext(
+            result ->
+                assertThat(result.status())
+                    .isEqualTo(CompleteRegistrationResultStatus.INVALID_AUTH_FLOW))
+        .verifyComplete();
 
-                verify(expiry, never()).refresh(any(), any());
-        }
+    verify(expiry, never()).refresh(any(), any());
+  }
 
-        private CompleteRegistrationService service(
-                        RegistrationProtectedAuthFlowContextLoader contextLoader,
-                        AuthFlowSessionExpiryRefreshPort expiry) {
-                return new CompleteRegistrationService(
-                                contextLoader,
-                                mock(AuthFlowSessionPort.class),
-                                mock(RegistrationUsernameCheckContextLoader.class),
-                                mock(RegistrationPasswordValidator.class),
-                                mock(RegistrationIdempotencyPort.class),
-                                mock(RegistrationRequestHashGenerator.class),
-                                mock(AuthFlowSessionCompletionLockPort.class),
-                                expiry,
-                                mock(RegistrationCompletionPort.class),
-                                mock(RegistrationLookupPort.class),
-                                mock(AuthFlowSessionCancellationPort.class),
-                                Duration.ofSeconds(30),
-                                Clock.fixed(NOW, ZoneOffset.UTC));
-        }
+  private CompleteRegistrationService service(
+      RegistrationProtectedAuthFlowContextLoader contextLoader,
+      AuthFlowSessionExpiryRefreshPort expiry) {
+    return new CompleteRegistrationService(
+        contextLoader,
+        mock(AuthFlowSessionPort.class),
+        mock(RegistrationUsernameCheckContextLoader.class),
+        mock(RegistrationPasswordValidator.class),
+        mock(RegistrationIdempotencyPort.class),
+        mock(RegistrationRequestHashGenerator.class),
+        mock(AuthFlowSessionCompletionLockPort.class),
+        expiry,
+        mock(RegistrationCompletionPort.class),
+        mock(RegistrationLookupPort.class),
+        mock(AuthFlowSessionCancellationPort.class),
+        Duration.ofSeconds(30),
+        Clock.fixed(NOW, ZoneOffset.UTC));
+  }
 
-        private CompleteRegistrationCommand command(String csrfToken) {
-                return new CompleteRegistrationCommand(
-                                SESSION_ID,
-                                csrfToken,
-                                new RegistrationIdempotencyKey("idem-safe"),
-                                "Password1!",
-                                "Password1!",
-                                null,
-                                null,
-                                "en",
-                                "req-safe",
-                                Duration.ofMinutes(5));
-        }
+  private CompleteRegistrationCommand command(String csrfToken) {
+    return new CompleteRegistrationCommand(
+        SESSION_ID,
+        csrfToken,
+        new RegistrationIdempotencyKey("idem-safe"),
+        "Password1!",
+        "Password1!",
+        null,
+        null,
+        "en",
+        "req-safe",
+        Duration.ofMinutes(5));
+  }
 
-        private RegistrationAuthFlowContext registrationContext() {
-                return new RegistrationAuthFlowContext(
-                                MemberIdentityType.GPFS,
-                                "identity-safe",
-                                "31/01/1980",
-                                RegistrationContactType.EMAIL,
-                                "member@example.com");
-        }
+  private RegistrationAuthFlowContext registrationContext() {
+    return new RegistrationAuthFlowContext(
+        MemberIdentityType.GPFS,
+        "identity-safe",
+        "31/01/1980",
+        RegistrationContactType.EMAIL,
+        "member@example.com");
+  }
 }

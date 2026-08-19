@@ -4,5 +4,4 @@ import com.bct.ngtpa.apiservice.application.dto.auth.login.preauth.*;
 import com.bct.ngtpa.apiservice.application.port.out.authflow.AuthFlowProtectedContextPort;
 
 public interface LoginPreAuthContextProtectorPort
-        extends AuthFlowProtectedContextPort<LoginPreAuthContext, LoginPreAuthEncryptedContext> {
-}
+    extends AuthFlowProtectedContextPort<LoginPreAuthContext, LoginPreAuthEncryptedContext> {}

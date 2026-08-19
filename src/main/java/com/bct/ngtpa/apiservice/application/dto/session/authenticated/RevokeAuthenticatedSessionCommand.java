@@ -3,28 +3,35 @@ package com.bct.ngtpa.apiservice.application.dto.session.authenticated;
 import java.time.Instant;
 import java.util.Objects;
 
-public record RevokeAuthenticatedSessionCommand(AuthenticatedSessionId authenticatedSessionId, Instant revokedAt,
-        String reason, String correlationId) {
-    public RevokeAuthenticatedSessionCommand {
-        Objects.requireNonNull(authenticatedSessionId);
-        Objects.requireNonNull(revokedAt);
-        reason = required(reason, "reason");
-        correlationId = optional(correlationId);
-    }
+public record RevokeAuthenticatedSessionCommand(
+    AuthenticatedSessionId authenticatedSessionId,
+    Instant revokedAt,
+    String reason,
+    String correlationId) {
+  public RevokeAuthenticatedSessionCommand {
+    Objects.requireNonNull(authenticatedSessionId);
+    Objects.requireNonNull(revokedAt);
+    reason = required(reason, "reason");
+    correlationId = optional(correlationId);
+  }
 
-    private static String required(String v, String n) {
-        if (v == null || v.isBlank())
-            throw new IllegalArgumentException(n + " required");
-        return v.trim();
-    }
+  private static String required(String v, String n) {
+    if (v == null || v.isBlank()) throw new IllegalArgumentException(n + " required");
+    return v.trim();
+  }
 
-    private static String optional(String v) {
-        return v == null || v.isBlank() ? null : v.trim();
-    }
+  private static String optional(String v) {
+    return v == null || v.isBlank() ? null : v.trim();
+  }
 
-    @Override
-    public String toString() {
-        return "RevokeAuthenticatedSessionCommand[id=<redacted>, revokedAt=" + revokedAt + ", reason=" + reason
-                + ", correlationId=" + correlationId + "]";
-    }
+  @Override
+  public String toString() {
+    return "RevokeAuthenticatedSessionCommand[id=<redacted>, revokedAt="
+        + revokedAt
+        + ", reason="
+        + reason
+        + ", correlationId="
+        + correlationId
+        + "]";
+  }
 }

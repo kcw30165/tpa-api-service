@@ -16,21 +16,53 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
 @Component
-public final class ApimForgotPasswordDetailsLookupAdapter implements ForgotPasswordDetailsLookupPort {
-    public static final String API_NAME="/ws/NGTPA/v1/TRPSearchRegedMember";
-    private final ApimExchangeExecutor executor;
-    private final TrpSearchRegedMemberMapper mapper=new TrpSearchRegedMemberMapper();
-    public ApimForgotPasswordDetailsLookupAdapter(ApimExchangeExecutor executor){this.executor=Objects.requireNonNull(executor,"executor must not be null");}
-    @Override public Mono<ForgotPasswordDetailsLookupResult> verify(ForgotPasswordDetailsLookupCommand command){
-        Objects.requireNonNull(command,"command must not be null");
-        var details=new ForgotPasswordDetailsCommand(null,null,null,null,command.requestId(),command.dateOfBirth(),command.email(),command.mobile(),null);
-        TrpSearchRegedMemberRequest body=mapper.toRequest(details,command.searchBy(),command.searchValue(),command.customerId());
-        var request=new ApimExchangeRequest<>(API_NAME,body,TrpSearchRegedMemberRequest.class,TrpSearchRegedMemberDataItem.class,
-                ApimDatabaseScope.NON_ACCOUNT,new ApimCredentialResolutionContext(command.actorUserRole(),null),ApimRetryEligibility.SAFE_BUSINESS_CALL);
-        return executor.postEnvelope(request).map(envelope -> {
-            if(envelope==null||envelope.getResponse()==null) throw new ForgotPasswordDetailsDownstreamException(ForgotPasswordDetailsDownstreamException.Reason.UNEXPECTED_ERROR);
-            var response=envelope.getResponse(); List<TrpSearchRegedMemberDataItem> data=response.getData()==null?List.of():List.copyOf(response.getData());
-            return mapper.toResult(response.getErrMessage(),data,details);
-        });
-    }
+public final class ApimForgotPasswordDetailsLookupAdapter
+    implements ForgotPasswordDetailsLookupPort {
+  public static final String API_NAME = "/ws/NGTPA/v1/TRPSearchRegedMember";
+  private final ApimExchangeExecutor executor;
+  private final TrpSearchRegedMemberMapper mapper = new TrpSearchRegedMemberMapper();
+
+  public ApimForgotPasswordDetailsLookupAdapter(ApimExchangeExecutor executor) {
+    this.executor = Objects.requireNonNull(executor, "executor must not be null");
+  }
+
+  @Override
+  public Mono<ForgotPasswordDetailsLookupResult> verify(
+      ForgotPasswordDetailsLookupCommand command) {
+    Objects.requireNonNull(command, "command must not be null");
+    var details =
+        new ForgotPasswordDetailsCommand(
+            null,
+            null,
+            null,
+            null,
+            command.requestId(),
+            command.dateOfBirth(),
+            command.email(),
+            command.mobile(),
+            null);
+    TrpSearchRegedMemberRequest body =
+        mapper.toRequest(details, command.searchBy(), command.searchValue(), command.customerId());
+    var request =
+        new ApimExchangeRequest<>(
+            API_NAME,
+            body,
+            TrpSearchRegedMemberRequest.class,
+            TrpSearchRegedMemberDataItem.class,
+            ApimDatabaseScope.NON_ACCOUNT,
+            new ApimCredentialResolutionContext(command.actorUserRole(), null),
+            ApimRetryEligibility.SAFE_BUSINESS_CALL);
+    return executor
+        .postEnvelope(request)
+        .map(
+            envelope -> {
+              if (envelope == null || envelope.getResponse() == null)
+                throw new ForgotPasswordDetailsDownstreamException(
+                    ForgotPasswordDetailsDownstreamException.Reason.UNEXPECTED_ERROR);
+              var response = envelope.getResponse();
+              List<TrpSearchRegedMemberDataItem> data =
+                  response.getData() == null ? List.of() : List.copyOf(response.getData());
+              return mapper.toResult(response.getErrMessage(), data, details);
+            });
+  }
 }

@@ -4,5 +4,5 @@ import reactor.core.publisher.Mono;
 
 @FunctionalInterface
 public interface AuthenticatedLogoutUseCase {
-    Mono<AuthenticatedLogoutResult> logout(AuthenticatedLogoutCommand command);
+  Mono<AuthenticatedLogoutResult> logout(AuthenticatedLogoutCommand command);
 }

@@ -5,13 +5,13 @@ import java.util.Optional;
 import reactor.core.publisher.Mono;
 
 public interface AuthenticatedSessionPort {
-    Mono<AuthenticatedSessionPersistenceResult> store(StoreAuthenticatedSessionCommand command);
+  Mono<AuthenticatedSessionPersistenceResult> store(StoreAuthenticatedSessionCommand command);
 
-    Mono<Optional<ProtectedAuthenticatedSession>> load(LoadAuthenticatedSessionCommand command);
+  Mono<Optional<ProtectedAuthenticatedSession>> load(LoadAuthenticatedSessionCommand command);
 
-    Mono<AuthenticatedSessionPersistenceResult> touch(TouchAuthenticatedSessionCommand command);
+  Mono<AuthenticatedSessionPersistenceResult> touch(TouchAuthenticatedSessionCommand command);
 
-    Mono<AuthenticatedSessionPersistenceResult> revoke(RevokeAuthenticatedSessionCommand command);
+  Mono<AuthenticatedSessionPersistenceResult> revoke(RevokeAuthenticatedSessionCommand command);
 
-    Mono<AuthenticatedSessionPersistenceResult> delete(DeleteAuthenticatedSessionCommand command);
+  Mono<AuthenticatedSessionPersistenceResult> delete(DeleteAuthenticatedSessionCommand command);
 }

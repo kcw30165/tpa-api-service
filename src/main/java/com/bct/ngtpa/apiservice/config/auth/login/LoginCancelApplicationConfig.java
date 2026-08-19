@@ -10,14 +10,18 @@ import org.springframework.context.annotation.*;
 
 @Configuration
 public class LoginCancelApplicationConfig {
-    @Bean
-    CancelLoginWebMapper cancelLoginWebMapper() {
-        return new CancelLoginWebMapper();
-    }
+  @Bean
+  CancelLoginWebMapper cancelLoginWebMapper() {
+    return new CancelLoginWebMapper();
+  }
 
-    @Bean
-    CancelLoginUseCase cancelLoginUseCase(AuthFlowSessionPort s, AuthFlowSessionCsrfService c, OtpChallengePort o,
-            AuthFlowSessionCancellationPort x, Clock clock) {
-        return new CancelLoginService(s, c, o, x, clock);
-    }
+  @Bean
+  CancelLoginUseCase cancelLoginUseCase(
+      AuthFlowSessionPort s,
+      AuthFlowSessionCsrfService c,
+      OtpChallengePort o,
+      AuthFlowSessionCancellationPort x,
+      Clock clock) {
+    return new CancelLoginService(s, c, o, x, clock);
+  }
 }

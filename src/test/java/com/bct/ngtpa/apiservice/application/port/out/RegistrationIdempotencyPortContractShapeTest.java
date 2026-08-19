@@ -13,18 +13,28 @@ import reactor.core.publisher.Mono;
 
 class RegistrationIdempotencyPortContractShapeTest {
 
-    @Test
-    void registrationIdempotencyPortExposesExpectedOperations() throws Exception {
-        Method start = RegistrationIdempotencyPort.class.getMethod("startProcessing", RegistrationIdempotencyStartCommand.class);
-        Method completed = RegistrationIdempotencyPort.class.getMethod("markCompleted", RegistrationIdempotencyCompleteCommand.class);
-        Method failed = RegistrationIdempotencyPort.class.getMethod("markFailed", RegistrationIdempotencyFailCommand.class);
-        Method load = RegistrationIdempotencyPort.class.getMethod("load", RegistrationIdempotencyAction.class, RegistrationIdempotencyKey.class);
-        Method delete = RegistrationIdempotencyPort.class.getMethod("delete", RegistrationIdempotencyAction.class, RegistrationIdempotencyKey.class);
+  @Test
+  void registrationIdempotencyPortExposesExpectedOperations() throws Exception {
+    Method start =
+        RegistrationIdempotencyPort.class.getMethod(
+            "startProcessing", RegistrationIdempotencyStartCommand.class);
+    Method completed =
+        RegistrationIdempotencyPort.class.getMethod(
+            "markCompleted", RegistrationIdempotencyCompleteCommand.class);
+    Method failed =
+        RegistrationIdempotencyPort.class.getMethod(
+            "markFailed", RegistrationIdempotencyFailCommand.class);
+    Method load =
+        RegistrationIdempotencyPort.class.getMethod(
+            "load", RegistrationIdempotencyAction.class, RegistrationIdempotencyKey.class);
+    Method delete =
+        RegistrationIdempotencyPort.class.getMethod(
+            "delete", RegistrationIdempotencyAction.class, RegistrationIdempotencyKey.class);
 
-        assertThat(start.getReturnType()).isEqualTo(Mono.class);
-        assertThat(completed.getReturnType()).isEqualTo(Mono.class);
-        assertThat(failed.getReturnType()).isEqualTo(Mono.class);
-        assertThat(load.getReturnType()).isEqualTo(Mono.class);
-        assertThat(delete.getReturnType()).isEqualTo(Mono.class);
-    }
+    assertThat(start.getReturnType()).isEqualTo(Mono.class);
+    assertThat(completed.getReturnType()).isEqualTo(Mono.class);
+    assertThat(failed.getReturnType()).isEqualTo(Mono.class);
+    assertThat(load.getReturnType()).isEqualTo(Mono.class);
+    assertThat(delete.getReturnType()).isEqualTo(Mono.class);
+  }
 }

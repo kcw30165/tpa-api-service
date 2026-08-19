@@ -17,39 +17,34 @@ import reactor.test.StepVerifier;
 
 @SuppressWarnings({"unchecked", "rawtypes"})
 class ReactiveRedisForgotPasswordIdempotencyOperationsTest {
-    private static final String RESEND_KEY =
-            "ngtpa:auth:idempotency:forgot-password-otp-resend:idem_fp_123";
-    private static final String HASH = "0".repeat(64);
+  private static final String RESEND_KEY =
+      "ngtpa:auth:idempotency:forgot-password-otp-resend:idem_fp_123";
+  private static final String HASH = "0".repeat(64);
 
-    @Test
-    void attachPendingCommitRefValidatesAgainstActionArgumentNotHardCodedAction() {
-        ReactiveStringRedisTemplate redisTemplate = mock(ReactiveStringRedisTemplate.class);
-        ReactiveRedisForgotPasswordIdempotencyOperations operations =
-                new ReactiveRedisForgotPasswordIdempotencyOperations(redisTemplate);
-        when(redisTemplate.execute(any(RedisScript.class), any(List.class), any(List.class)))
-                .thenReturn(Flux.just("stored-json"));
+  @Test
+  void attachPendingCommitRefValidatesAgainstActionArgumentNotHardCodedAction() {
+    ReactiveStringRedisTemplate redisTemplate = mock(ReactiveStringRedisTemplate.class);
+    ReactiveRedisForgotPasswordIdempotencyOperations operations =
+        new ReactiveRedisForgotPasswordIdempotencyOperations(redisTemplate);
+    when(redisTemplate.execute(any(RedisScript.class), any(List.class), any(List.class)))
+        .thenReturn(Flux.just("stored-json"));
 
-        StepVerifier.create(operations.attachPendingCommitRef(
-                        RESEND_KEY,
-                        "OTP_RESEND",
-                        HASH,
-                        "ref-resend-1",
-                        Duration.ofSeconds(300)))
-                .expectNext("stored-json")
-                .verifyComplete();
+    StepVerifier.create(
+            operations.attachPendingCommitRef(
+                RESEND_KEY, "OTP_RESEND", HASH, "ref-resend-1", Duration.ofSeconds(300)))
+        .expectNext("stored-json")
+        .verifyComplete();
 
-        ArgumentCaptor<RedisScript> scriptCaptor = ArgumentCaptor.forClass(RedisScript.class);
-        ArgumentCaptor<List> keysCaptor = ArgumentCaptor.forClass(List.class);
-        ArgumentCaptor<List> argsCaptor = ArgumentCaptor.forClass(List.class);
-        verify(redisTemplate).execute(scriptCaptor.capture(), keysCaptor.capture(), argsCaptor.capture());
+    ArgumentCaptor<RedisScript> scriptCaptor = ArgumentCaptor.forClass(RedisScript.class);
+    ArgumentCaptor<List> keysCaptor = ArgumentCaptor.forClass(List.class);
+    ArgumentCaptor<List> argsCaptor = ArgumentCaptor.forClass(List.class);
+    verify(redisTemplate)
+        .execute(scriptCaptor.capture(), keysCaptor.capture(), argsCaptor.capture());
 
-        String script = scriptCaptor.getValue().getScriptAsString();
-        assertThat(script)
-                .doesNotContain("DETAILS_AND_OTP")
-                .contains("o.action")
-                .contains("ARGV[");
-        assertThat((List<String>) keysCaptor.getValue()).containsExactly(RESEND_KEY);
-        assertThat((List<String>) argsCaptor.getValue()).containsExactly(
-                "OTP_RESEND", HASH, "ref-resend-1", "300000");
-    }
+    String script = scriptCaptor.getValue().getScriptAsString();
+    assertThat(script).doesNotContain("DETAILS_AND_OTP").contains("o.action").contains("ARGV[");
+    assertThat((List<String>) keysCaptor.getValue()).containsExactly(RESEND_KEY);
+    assertThat((List<String>) argsCaptor.getValue())
+        .containsExactly("OTP_RESEND", HASH, "ref-resend-1", "300000");
+  }
 }

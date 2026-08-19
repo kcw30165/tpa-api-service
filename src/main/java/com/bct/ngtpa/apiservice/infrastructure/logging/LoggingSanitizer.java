@@ -16,197 +16,207 @@ import org.springframework.stereotype.Component;
 @Component
 public class LoggingSanitizer {
 
-    private static final String MASKED_VALUE = "***";
+  private static final String MASKED_VALUE = "***";
 
-    private final ObjectMapper objectMapper;
-    private final LoggingSanitizerProperties properties;
+  private final ObjectMapper objectMapper;
+  private final LoggingSanitizerProperties properties;
 
-    public LoggingSanitizer(ObjectMapper objectMapper, LoggingSanitizerProperties properties) {
-        this.objectMapper = objectMapper;
-        this.properties = properties;
+  public LoggingSanitizer(ObjectMapper objectMapper, LoggingSanitizerProperties properties) {
+    this.objectMapper = objectMapper;
+    this.properties = properties;
+  }
+
+  public List<Object> sanitizeArguments(Object[] args) {
+    if (args == null || args.length == 0) {
+      return List.of();
     }
 
-    public List<Object> sanitizeArguments(Object[] args) {
-        if (args == null || args.length == 0) {
-            return List.of();
-        }
+    List<Object> sanitized = new ArrayList<>(args.length);
+    for (Object arg : args) {
+      sanitized.add(sanitizeValue(arg));
+    }
+    return sanitized;
+  }
 
-        List<Object> sanitized = new ArrayList<>(args.length);
-        for (Object arg : args) {
-            sanitized.add(sanitizeValue(arg));
-        }
-        return sanitized;
+  public Object sanitizeValue(Object value) {
+    return sanitizeValue(null, value);
+  }
+
+  public String toSafeString(Object value) {
+    Object sanitized = sanitizeValue(value);
+    if (sanitized == null) {
+      return "null";
+    }
+    if (sanitized instanceof CharSequence
+        || sanitized instanceof Number
+        || sanitized instanceof Boolean) {
+      return sanitized.toString();
     }
 
-    public Object sanitizeValue(Object value) {
-        return sanitizeValue(null, value);
+    try {
+      return objectMapper.writeValueAsString(sanitized);
+    } catch (Exception ex) {
+      return typeName(value);
+    }
+  }
+
+  public String sanitizeText(String value) {
+    if (value == null) {
+      return null;
     }
 
-    public String toSafeString(Object value) {
-        Object sanitized = sanitizeValue(value);
-        if (sanitized == null) {
-            return "null";
-        }
-        if (sanitized instanceof CharSequence || sanitized instanceof Number || sanitized instanceof Boolean) {
-            return sanitized.toString();
-        }
+    try {
+      JsonNode tree = objectMapper.readTree(value);
+      Object sanitized = sanitizeJsonNode(null, tree);
+      return sanitized == null ? null : objectMapper.writeValueAsString(sanitized);
+    } catch (Exception ex) {
+      return maskSensitiveAssignments(value);
+    }
+  }
 
-        try {
-            return objectMapper.writeValueAsString(sanitized);
-        } catch (Exception ex) {
-            return typeName(value);
-        }
+  private Object sanitizeValue(String fieldName, Object value) {
+    if (isSensitiveKey(fieldName)) {
+      return MASKED_VALUE;
+    }
+    if (value == null) {
+      return null;
+    }
+    if (value instanceof CharSequence
+        || value instanceof Number
+        || value instanceof Boolean
+        || value instanceof Enum<?>) {
+      return value;
+    }
+    if (value instanceof Map<?, ?> map) {
+      return sanitizeMap(map);
+    }
+    if (value instanceof Collection<?> collection) {
+      return sanitizeCollection(collection);
+    }
+    if (value.getClass().isArray()) {
+      return sanitizeArray(value);
     }
 
-    public String sanitizeText(String value) {
-        if (value == null) {
-            return null;
-        }
-
-        try {
-            JsonNode tree = objectMapper.readTree(value);
-            Object sanitized = sanitizeJsonNode(null, tree);
-            return sanitized == null ? null : objectMapper.writeValueAsString(sanitized);
-        } catch (Exception ex) {
-            return maskSensitiveAssignments(value);
-        }
+    try {
+      JsonNode tree = objectMapper.valueToTree(value);
+      return sanitizeJsonNode(fieldName, tree);
+    } catch (Exception ex) {
+      return typeName(value);
     }
+  }
 
-    private Object sanitizeValue(String fieldName, Object value) {
-        if (isSensitiveKey(fieldName)) {
-            return MASKED_VALUE;
-        }
-        if (value == null) {
-            return null;
-        }
-        if (value instanceof CharSequence || value instanceof Number || value instanceof Boolean || value instanceof Enum<?>) {
-            return value;
-        }
-        if (value instanceof Map<?, ?> map) {
-            return sanitizeMap(map);
-        }
-        if (value instanceof Collection<?> collection) {
-            return sanitizeCollection(collection);
-        }
-        if (value.getClass().isArray()) {
-            return sanitizeArray(value);
-        }
-
-        try {
-            JsonNode tree = objectMapper.valueToTree(value);
-            return sanitizeJsonNode(fieldName, tree);
-        } catch (Exception ex) {
-            return typeName(value);
-        }
-    }
-
-    private Map<String, Object> sanitizeMap(Map<?, ?> map) {
-        Map<String, Object> sanitized = new LinkedHashMap<>();
-        map.forEach((key, value) -> {
-            String keyName = String.valueOf(key);
-            sanitized.put(keyName, sanitizeValue(keyName, value));
+  private Map<String, Object> sanitizeMap(Map<?, ?> map) {
+    Map<String, Object> sanitized = new LinkedHashMap<>();
+    map.forEach(
+        (key, value) -> {
+          String keyName = String.valueOf(key);
+          sanitized.put(keyName, sanitizeValue(keyName, value));
         });
-        return sanitized;
+    return sanitized;
+  }
+
+  private List<Object> sanitizeCollection(Collection<?> collection) {
+    List<Object> sanitized = new ArrayList<>(collection.size());
+    for (Object item : collection) {
+      sanitized.add(sanitizeValue(item));
+    }
+    return sanitized;
+  }
+
+  private List<Object> sanitizeArray(Object array) {
+    int length = Array.getLength(array);
+    List<Object> sanitized = new ArrayList<>(length);
+    for (int index = 0; index < length; index++) {
+      sanitized.add(sanitizeValue(Array.get(array, index)));
+    }
+    return sanitized;
+  }
+
+  private Object sanitizeJsonNode(String fieldName, JsonNode node) {
+    if (isSensitiveKey(fieldName)) {
+      return MASKED_VALUE;
+    }
+    if (node == null || node.isNull()) {
+      return null;
+    }
+    if (node.isObject()) {
+      Map<String, Object> sanitized = new LinkedHashMap<>();
+      node.properties()
+          .forEach(
+              entry ->
+                  sanitized.put(
+                      entry.getKey(), sanitizeJsonNode(entry.getKey(), entry.getValue())));
+      return sanitized;
+    }
+    if (node.isArray()) {
+      List<Object> sanitized = new ArrayList<>(node.size());
+      node.forEach(item -> sanitized.add(sanitizeJsonNode(null, item)));
+      return sanitized;
+    }
+    if (node.isNumber()) {
+      return node.numberValue();
+    }
+    if (node.isBoolean()) {
+      return node.booleanValue();
+    }
+    return node.asText();
+  }
+
+  private boolean isSensitiveKey(String key) {
+    if (key == null || key.isBlank()) {
+      return false;
     }
 
-    private List<Object> sanitizeCollection(Collection<?> collection) {
-        List<Object> sanitized = new ArrayList<>(collection.size());
-        for (Object item : collection) {
-            sanitized.add(sanitizeValue(item));
-        }
-        return sanitized;
+    String normalized = key.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
+    return properties.getSensitiveTokens().stream()
+        .map(token -> token.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT))
+        .anyMatch(normalized::contains);
+  }
+
+  private String typeName(Object value) {
+    if (value == null) {
+      return "null";
+    }
+    if (value.getClass().isArray()) {
+      return value.getClass().getComponentType().getSimpleName() + "[]";
+    }
+    return value.getClass().getSimpleName();
+  }
+
+  private String maskSensitiveAssignments(String value) {
+    String sanitized = value;
+    for (String sensitiveToken : properties.getSensitiveTokens()) {
+      sanitized = maskTokenAssignment(sanitized, sensitiveToken);
+    }
+    return sanitized;
+  }
+
+  private String maskTokenAssignment(String value, String sensitiveToken) {
+    String normalizedToken =
+        sensitiveToken == null ? "" : sensitiveToken.replaceAll("[^A-Za-z0-9]", "");
+    if (normalizedToken.isEmpty()) {
+      return value;
     }
 
-    private List<Object> sanitizeArray(Object array) {
-        int length = Array.getLength(array);
-        List<Object> sanitized = new ArrayList<>(length);
-        for (int index = 0; index < length; index++) {
-            sanitized.add(sanitizeValue(Array.get(array, index)));
-        }
-        return sanitized;
+    StringBuilder tokenPattern = new StringBuilder();
+    for (int index = 0; index < normalizedToken.length(); index++) {
+      if (index > 0) {
+        tokenPattern.append("[\\W_]*");
+      }
+      tokenPattern.append(Pattern.quote(String.valueOf(normalizedToken.charAt(index))));
     }
 
-    private Object sanitizeJsonNode(String fieldName, JsonNode node) {
-        if (isSensitiveKey(fieldName)) {
-            return MASKED_VALUE;
-        }
-        if (node == null || node.isNull()) {
-            return null;
-        }
-        if (node.isObject()) {
-            Map<String, Object> sanitized = new LinkedHashMap<>();
-            node.properties().forEach(entry ->
-                sanitized.put(entry.getKey(), sanitizeJsonNode(entry.getKey(), entry.getValue())));
-            return sanitized;
-        }
-        if (node.isArray()) {
-            List<Object> sanitized = new ArrayList<>(node.size());
-            node.forEach(item -> sanitized.add(sanitizeJsonNode(null, item)));
-            return sanitized;
-        }
-        if (node.isNumber()) {
-            return node.numberValue();
-        }
-        if (node.isBoolean()) {
-            return node.booleanValue();
-        }
-        return node.asText();
+    Pattern pattern =
+        Pattern.compile(
+            "(\\\"?(?:" + tokenPattern + ")\\\"?\\s*[:=]\\s*)(\\\"[^\\\"]*\\\"|[^\\s,;]+)",
+            Pattern.CASE_INSENSITIVE);
+    Matcher matcher = pattern.matcher(value);
+    StringBuffer buffer = new StringBuffer();
+    while (matcher.find()) {
+      String maskedValue = matcher.group(2).startsWith("\"") ? "\"***\"" : "***";
+      matcher.appendReplacement(buffer, Matcher.quoteReplacement(matcher.group(1) + maskedValue));
     }
-
-    private boolean isSensitiveKey(String key) {
-        if (key == null || key.isBlank()) {
-            return false;
-        }
-
-        String normalized = key.replaceAll("[^A-Za-z0-9]", "")
-                .toLowerCase(Locale.ROOT);
-        return properties.getSensitiveTokens().stream()
-                .map(token -> token.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT))
-                .anyMatch(normalized::contains);
-    }
-
-    private String typeName(Object value) {
-        if (value == null) {
-            return "null";
-        }
-        if (value.getClass().isArray()) {
-            return value.getClass().getComponentType().getSimpleName() + "[]";
-        }
-        return value.getClass().getSimpleName();
-    }
-
-    private String maskSensitiveAssignments(String value) {
-        String sanitized = value;
-        for (String sensitiveToken : properties.getSensitiveTokens()) {
-            sanitized = maskTokenAssignment(sanitized, sensitiveToken);
-        }
-        return sanitized;
-    }
-
-    private String maskTokenAssignment(String value, String sensitiveToken) {
-        String normalizedToken = sensitiveToken == null ? "" : sensitiveToken.replaceAll("[^A-Za-z0-9]", "");
-        if (normalizedToken.isEmpty()) {
-            return value;
-        }
-
-        StringBuilder tokenPattern = new StringBuilder();
-        for (int index = 0; index < normalizedToken.length(); index++) {
-            if (index > 0) {
-                tokenPattern.append("[\\W_]*");
-            }
-            tokenPattern.append(Pattern.quote(String.valueOf(normalizedToken.charAt(index))));
-        }
-
-        Pattern pattern = Pattern.compile(
-                "(\\\"?(?:" + tokenPattern + ")\\\"?\\s*[:=]\\s*)(\\\"[^\\\"]*\\\"|[^\\s,;]+)",
-                Pattern.CASE_INSENSITIVE);
-        Matcher matcher = pattern.matcher(value);
-        StringBuffer buffer = new StringBuffer();
-        while (matcher.find()) {
-            String maskedValue = matcher.group(2).startsWith("\"") ? "\"***\"" : "***";
-            matcher.appendReplacement(buffer, Matcher.quoteReplacement(matcher.group(1) + maskedValue));
-        }
-        matcher.appendTail(buffer);
-        return buffer.toString();
-    }
+    matcher.appendTail(buffer);
+    return buffer.toString();
+  }
 }

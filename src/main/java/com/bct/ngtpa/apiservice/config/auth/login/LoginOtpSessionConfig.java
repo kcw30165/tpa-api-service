@@ -9,14 +9,17 @@ import org.springframework.context.annotation.*;
 
 @Configuration
 public class LoginOtpSessionConfig {
-    @Bean
-    LoginProtectedAuthFlowContextLoader loginProtectedAuthFlowContextLoader(AuthFlowSessionLifecycleService l,
-            AuthFlowSessionCsrfService c, LoginPreAuthContextProtectorPort p, Clock clock) {
-        return new DefaultLoginProtectedAuthFlowContextLoader(l, c, p, clock);
-    }
+  @Bean
+  LoginProtectedAuthFlowContextLoader loginProtectedAuthFlowContextLoader(
+      AuthFlowSessionLifecycleService l,
+      AuthFlowSessionCsrfService c,
+      LoginPreAuthContextProtectorPort p,
+      Clock clock) {
+    return new DefaultLoginProtectedAuthFlowContextLoader(l, c, p, clock);
+  }
 
-    @Bean
-    LoginOtpSessionBindingPort loginOtpSessionBindingPort(AuthFlowSessionLifecycleService l) {
-        return new LoginOtpSessionBindingAdapter(l);
-    }
+  @Bean
+  LoginOtpSessionBindingPort loginOtpSessionBindingPort(AuthFlowSessionLifecycleService l) {
+    return new LoginOtpSessionBindingAdapter(l);
+  }
 }

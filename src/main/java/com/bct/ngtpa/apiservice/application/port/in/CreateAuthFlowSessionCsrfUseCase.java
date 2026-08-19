@@ -7,6 +7,5 @@ import reactor.core.publisher.Mono;
 /** Narrow application capability for establishing a session-to-CSRF binding. */
 @FunctionalInterface
 public interface CreateAuthFlowSessionCsrfUseCase {
-    Mono<CreateAuthFlowSessionCsrfResult> createForSession(
-            CreateAuthFlowSessionCsrfCommand command);
+  Mono<CreateAuthFlowSessionCsrfResult> createForSession(CreateAuthFlowSessionCsrfCommand command);
 }

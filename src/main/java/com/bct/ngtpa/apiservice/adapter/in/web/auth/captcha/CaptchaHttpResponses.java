@@ -13,22 +13,26 @@ import org.springframework.stereotype.Component;
 
 @Component
 public final class CaptchaHttpResponses {
-    public <T> ResponseEntity<MutationResponse<T>> toResponse(MutationResponse<T> body) {
-        Objects.requireNonNull(body, "body must not be null");
-        if (isIneligibleVerification(body)) {
-            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(body);
-        }
-        return ResponseEntity.status(HttpStatusClassification.classify(body.status())).body(body);
+  public <T> ResponseEntity<MutationResponse<T>> toResponse(MutationResponse<T> body) {
+    Objects.requireNonNull(body, "body must not be null");
+    if (isIneligibleVerification(body)) {
+      return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(body);
     }
+    return ResponseEntity.status(HttpStatusClassification.classify(body.status())).body(body);
+  }
 
-    private boolean isIneligibleVerification(MutationResponse<?> body) {
-        return !body.success() && body.status() == ApiStatus.VALIDATION_FAILED
-                && firstCode(body.errors()).equals(ErrorCodes.CAPTCHA_VERIFICATION_INVALID);
-    }
+  private boolean isIneligibleVerification(MutationResponse<?> body) {
+    return !body.success()
+        && body.status() == ApiStatus.VALIDATION_FAILED
+        && firstCode(body.errors()).equals(ErrorCodes.CAPTCHA_VERIFICATION_INVALID);
+  }
 
-    private String firstCode(List<ApiError> errors) {
-        return errors == null || errors.isEmpty() || errors.getFirst() == null || errors.getFirst().code() == null
-                ? ""
-                : errors.getFirst().code();
-    }
+  private String firstCode(List<ApiError> errors) {
+    return errors == null
+            || errors.isEmpty()
+            || errors.getFirst() == null
+            || errors.getFirst().code() == null
+        ? ""
+        : errors.getFirst().code();
+  }
 }

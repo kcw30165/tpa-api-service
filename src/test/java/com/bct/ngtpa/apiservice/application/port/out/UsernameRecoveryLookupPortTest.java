@@ -10,13 +10,13 @@ import reactor.core.publisher.Mono;
 
 class UsernameRecoveryLookupPortTest {
 
-    @Test
-    void usernameRecoveryLookupPortExposesSearchOperation() throws Exception {
-        Method method = UsernameRecoveryLookupPort.class.getMethod("search",
-                UsernameRecoveryLookupCommand.class);
+  @Test
+  void usernameRecoveryLookupPortExposesSearchOperation() throws Exception {
+    Method method =
+        UsernameRecoveryLookupPort.class.getMethod("search", UsernameRecoveryLookupCommand.class);
 
-        assertThat(method.getReturnType()).isEqualTo(Mono.class);
-        assertThat(method.getGenericReturnType().getTypeName())
-                .isEqualTo(Mono.class.getName() + "<" + UsernameRecoveryLookupResult.class.getName() + ">");
-    }
+    assertThat(method.getReturnType()).isEqualTo(Mono.class);
+    assertThat(method.getGenericReturnType().getTypeName())
+        .isEqualTo(Mono.class.getName() + "<" + UsernameRecoveryLookupResult.class.getName() + ">");
+  }
 }

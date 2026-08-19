@@ -12,37 +12,45 @@ import org.springframework.context.annotation.*;
 @Configuration
 @EnableConfigurationProperties(LoginPreAuthContextProtectionProperties.class)
 public class LoginPreAuthFoundationConfig {
-    @Bean
-    LoginDestinationIdGenerator loginDestinationIdGenerator(LoginPreAuthContextProtectionProperties p) {
-        return new SecureRandomLoginDestinationIdGenerator(new SecureRandom(), p.getDestinationIdEntropyBytes());
-    }
+  @Bean
+  LoginDestinationIdGenerator loginDestinationIdGenerator(
+      LoginPreAuthContextProtectionProperties p) {
+    return new SecureRandomLoginDestinationIdGenerator(
+        new SecureRandom(), p.getDestinationIdEntropyBytes());
+  }
 
-    @Bean
-    LoginPreAuthContextProtectorPort loginPreAuthContextProtector(ObjectMapper mapper,
-            LoginPreAuthContextProtectionProperties p) {
-        if (!p.isEnabled())
-            throw new IllegalStateException("Login pre-auth context protection must be enabled");
-        return new AesGcmLoginPreAuthContextProtector(mapper, p.getKeyVersion(), p.getSecret());
-    }
+  @Bean
+  LoginPreAuthContextProtectorPort loginPreAuthContextProtector(
+      ObjectMapper mapper, LoginPreAuthContextProtectionProperties p) {
+    if (!p.isEnabled())
+      throw new IllegalStateException("Login pre-auth context protection must be enabled");
+    return new AesGcmLoginPreAuthContextProtector(mapper, p.getKeyVersion(), p.getSecret());
+  }
 
-    @Bean
-    LoginDestinationMasker loginDestinationMasker() {
-        return new LoginDestinationMasker();
-    }
+  @Bean
+  LoginDestinationMasker loginDestinationMasker() {
+    return new LoginDestinationMasker();
+  }
 
-    @Bean
-    LoginPreAuthContextFactory loginPreAuthContextFactory(LoginDestinationIdGenerator ids,
-            LoginDestinationMasker masker) {
-        return new LoginPreAuthContextFactory(ids, masker);
-    }
+  @Bean
+  LoginPreAuthContextFactory loginPreAuthContextFactory(
+      LoginDestinationIdGenerator ids, LoginDestinationMasker masker) {
+    return new LoginPreAuthContextFactory(ids, masker);
+  }
 
-    @Bean
-    LoginCredentialPolicyService loginCredentialPolicyService(AuthWorkflowProperties props) {
-        props.validateLoginPolicy();
-        var c = props.getLogin().getCredential();
-        return new LoginCredentialPolicyService(c.isUsernameTrim(),
-                LoginUsernameNormalization.valueOf(c.getUsernameNormalization()), c.getUsernameMinLength(),
-                c.getUsernameMaxLength(), c.getUsernameAllowedPattern(), c.isPasswordTrim(),
-                c.isPasswordCaseSensitive(), c.getPasswordMinLength(), c.getPasswordMaxLength());
-    }
+  @Bean
+  LoginCredentialPolicyService loginCredentialPolicyService(AuthWorkflowProperties props) {
+    props.validateLoginPolicy();
+    var c = props.getLogin().getCredential();
+    return new LoginCredentialPolicyService(
+        c.isUsernameTrim(),
+        LoginUsernameNormalization.valueOf(c.getUsernameNormalization()),
+        c.getUsernameMinLength(),
+        c.getUsernameMaxLength(),
+        c.getUsernameAllowedPattern(),
+        c.isPasswordTrim(),
+        c.isPasswordCaseSensitive(),
+        c.getPasswordMinLength(),
+        c.getPasswordMaxLength());
+  }
 }
