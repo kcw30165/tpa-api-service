@@ -113,3 +113,22 @@ READY_FOR_ARCHITECT_REVIEW
 - Architect status: **PENDING**.
 - Commit authorization: **false**.
 - Stage 006 started: **false**.
+
+## Stage 007 Final Ownership Supersession
+All earlier MOVE, RENAME, CONSOLIDATE, and provisional entries are historical decisions. The active final owners are:
+
+- `web.advice.ApiExceptionHandler`: REST advice.
+- `web.auth.captcha.CaptchaController`: Captcha endpoints.
+- `web.auth.forgotpassword.ForgotPasswordController`: Forgot Password endpoints.
+- `web.auth.login.LoginController`: Login endpoints.
+- `web.auth.logout.LogoutController`: Logout endpoint.
+- `web.auth.registration.RegistrationController`: Registration endpoints.
+- `web.auth.usernamerecovery.UsernameRecoveryController`: Username Recovery endpoints.
+- `web.contribution.ContributionController`: Contribution endpoints.
+- `web.notification.NotificationController`: Notification endpoints.
+- `web.personalinformation.PersonalInformationController`: Personal Information endpoints.
+- `web.referencedata.ReferenceDataController`: customer Reference Data endpoint.
+- `web.internal.referencedate.ReferenceDateController`: internal Reference Date endpoints.
+- `web.filter.AuthenticatedPortalContextWebExceptionHandler`: filter-stack exception handling, not controller advice.
+
+The old flat production controller package contains no Java source. The executable Stage 007 architecture guard enforces final ownership, dependency direction, route uniqueness, the accepted 36-endpoint count, and single-owner journey boundaries.
