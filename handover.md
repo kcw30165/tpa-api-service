@@ -221,3 +221,28 @@ Phase 07 reconciles active documentation only. Historical prompts, plans, genera
 - unplanned_stage_008_started=false
 - architect_status=PENDING
 - commit_authorization=false
+
+### Login Cancel Revision-Aware CSRF Repair
+- implementation: Option A validates CSRF against the exact already-loaded auth-flow session snapshot
+- persistence reads: Login Cancel loads one revisioned snapshot and does not request a second CSRF-time session load
+- cancellation: AuthFlowSessionPort.cancelRevisioned uses the exact loaded snapshot
+- conflict policy: revision/state conflicts and uncertain persistence outcomes return SYSTEM_FAILED and do not report successful cleanup
+- OTP ordering: OTP invalidation occurs only after revision-aware session cancellation is applied; revision conflicts perform no OTP mutation
+- security logging: raw CSRF token and auth-flow session logging removed from the repaired service path
+- compatibility: validateForSession remains as the load-and-delegate convenience API for callers without a loaded session
+- validation: formatting, production compile, and test compilation are executed by the implementation script; runtime tests remain a manual post-implementation gate
+
+### Login CSRF Runtime Fingerprint Diagnostics
+- purpose: distinguish submitted-token, persisted-hash, and session-correlation differences between Send OTP and Cancel
+- logging: SHA-256 fingerprints truncated to 8 bytes; no raw CSRF token, stored hash, session ID, OTP, or revision is logged
+- path identification: Send OTP validates while the flow is STARTED; Cancel normally validates while the flow is OTP_SENT
+- persistence conclusion: load and loadSnapshot use the same Redis key and AuthFlowSession record mapping
+- status: temporary local diagnostic instrumentation; remove after the mismatch is identified
+
+### Login CSRF Loaded-Session API Removal
+- runtime root cause: Cancel submitted a different X-XSRF-TOKEN value from Send OTP; the server session and stored CSRF hash fingerprints were unchanged
+- API decision: AuthFlowSessionCsrfService.validateLoadedSession removed because it was not part of the root-cause fix
+- validation path: Login Cancel again uses the shared asynchronous validateForSession API
+- concurrency: Login Cancel still loads a revisioned snapshot and uses that snapshot for cancelRevisioned after successful CSRF validation
+- diagnostics: safe fingerprint logging remains temporarily available for final local verification
+- validation: formatting, production compile, and test compilation are executed by the removal script; runtime tests remain manual

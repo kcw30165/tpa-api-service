@@ -1,20 +1,15 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.login.cancel;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.*;
-import com.bct.ngtpa.apiservice.application.dto.session.SessionCancellationStatus;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.*;
 import com.bct.ngtpa.apiservice.application.dto.workflow.*;
 import com.bct.ngtpa.apiservice.application.port.in.CancelLoginUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.*;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.*;
-
-import lombok.extern.slf4j.Slf4j;
-
 import java.time.*;
 import java.util.*;
 import reactor.core.publisher.Mono;
 
-@Slf4j
 public final class CancelLoginService implements CancelLoginUseCase {
   private final AuthFlowSessionPort sessions;
   private final AuthFlowSessionCsrfService csrf;
@@ -38,16 +33,18 @@ public final class CancelLoginService implements CancelLoginUseCase {
   public Mono<CancelLoginResult> cancel(CancelLoginCommand c) {
     Instant now = clock.instant();
     return sessions
-        .load(c.authFlowSessionId())
+        .loadSnapshot(c.authFlowSessionId())
         .flatMap(
-            v ->
-                v.map(s -> cancelExisting(c, s, now))
+            optional ->
+                optional
+                    .map(snapshot -> cancelExisting(c, snapshot, now))
                     .orElseGet(() -> Mono.just(clean(CancelLoginStatus.SESSION_NOT_FOUND))))
         .onErrorReturn(system());
   }
 
   private Mono<CancelLoginResult> cancelExisting(
-      CancelLoginCommand c, AuthFlowSession s, Instant now) {
+      CancelLoginCommand c, AuthFlowSessionSnapshot snapshot, Instant now) {
+    AuthFlowSession s = snapshot.session();
     if (s.scenario() != AuthFlowScenario.LOGIN)
       return Mono.just(
           fail(CancelLoginStatus.INVALID_AUTH_FLOW, LoginErrorKey.AUTH_FLOW_INVALID.value()));
@@ -56,12 +53,6 @@ public final class CancelLoginService implements CancelLoginUseCase {
     if (s.status() == AuthFlowStatus.COMPLETED
         || s.status() == AuthFlowStatus.EXPIRED
         || s.isExpired(now)) return Mono.just(clean(CancelLoginStatus.ALREADY_TERMINAL));
-    log.info(
-        "Canceling login session {} with status {} and scenario {} and csrfToken {}",
-        s.authFlowSessionId(),
-        s.status(),
-        s.scenario(),
-        c.csrfToken());
     if (c.csrfToken() == null || c.csrfToken().isBlank())
       return Mono.just(fail(CancelLoginStatus.CSRF_INVALID, LoginErrorKey.CSRF_INVALID.value()));
     return csrf.validateForSession(
@@ -74,17 +65,18 @@ public final class CancelLoginService implements CancelLoginUseCase {
                 List.of(),
                 c.correlationId()))
         .flatMap(
-            v ->
-                !v.valid()
+            validation ->
+                !validation.valid()
                     ? Mono.just(
                         fail(CancelLoginStatus.CSRF_INVALID, LoginErrorKey.CSRF_INVALID.value()))
-                    : invalidate(s, now)
-                        .then(
-                            cancellation.cancel(
-                                s.authFlowSessionId(),
-                                AuthFlowSessionCancellationReason.USER_CANCELLED,
-                                now))
-                        .map(r -> map(r.status())))
+                    : sessions
+                        .cancelRevisioned(snapshot, now)
+                        .flatMap(
+                            mutation ->
+                                mutation.outcome() == AuthFlowSessionMutationOutcome.APPLIED
+                                    ? invalidate(s, now)
+                                        .thenReturn(clean(CancelLoginStatus.CANCELLED))
+                                    : Mono.just(mapMutationFailure(mutation.outcome()))))
         .onErrorReturn(system());
   }
 
@@ -98,12 +90,18 @@ public final class CancelLoginService implements CancelLoginUseCase {
                 now));
   }
 
-  private CancelLoginResult map(SessionCancellationStatus s) {
-    return switch (s) {
-      case CANCELLED -> clean(CancelLoginStatus.CANCELLED);
-      case ALREADY_CANCELLED -> clean(CancelLoginStatus.ALREADY_CANCELLED);
-      case ALREADY_TERMINAL -> clean(CancelLoginStatus.ALREADY_TERMINAL);
-      case NOT_FOUND -> clean(CancelLoginStatus.SESSION_NOT_FOUND);
+  private CancelLoginResult mapMutationFailure(AuthFlowSessionMutationOutcome outcome) {
+    return switch (outcome) {
+      case SESSION_NOT_FOUND -> clean(CancelLoginStatus.SESSION_NOT_FOUND);
+      case INVALID_TRANSITION -> clean(CancelLoginStatus.ALREADY_TERMINAL);
+      case APPLIED -> clean(CancelLoginStatus.CANCELLED);
+      case SESSION_REVISION_MISSING,
+          SESSION_REVISION_CHANGED,
+          EXPECTED_STATE_CHANGED,
+          CORRUPT_STATE,
+          SCHEMA_NOT_ESTABLISHED,
+          SYSTEM_FAILURE ->
+          system();
     };
   }
 

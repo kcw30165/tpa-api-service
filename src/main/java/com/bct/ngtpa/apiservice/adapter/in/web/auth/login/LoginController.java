@@ -94,7 +94,6 @@ public final class LoginController {
     }
     if (!text(csrf)) return CsrfHttpResponses.missingToken();
     try {
-      log.info("csrf={} session={} requestId={} origin={} referer={}", csrf, session, requestId, origin, referer);
       return cancelLoginUseCase
           .cancel(
               new CancelLoginCommand(
