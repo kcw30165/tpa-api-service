@@ -64,25 +64,6 @@ public class TrpSearchUnregMemberApimResultMapper {
 
     boolean matches = normalizedResponseContact.equals(normalizedRequestContact);
 
-    log.info(
-        "event=registration.lookup.contact.comparison "
-            + "contactType={} "
-            + "requestLength={} "
-            + "responseLength={} "
-            + "requestMasked={} "
-            + "responseMasked={} "
-            + "responseEmailPresent={} "
-            + "responseMobilePresent={} "
-            + "matches={}",
-        contactType,
-        normalizedRequestContact.length(),
-        normalizedResponseContact.length(),
-        maskContact(contactType, normalizedRequestContact),
-        maskContact(contactType, normalizedResponseContact),
-        !normalizeEmail(item.email()).isBlank(),
-        !normalizeMobile(item.mobileNumber()).isBlank(),
-        matches);
-
     if (!matches) {
       throw new RegistrationLookupDownstreamException(
           RegistrationLookupDownstreamException.Reason.CONTACT_MISMATCH, null);
