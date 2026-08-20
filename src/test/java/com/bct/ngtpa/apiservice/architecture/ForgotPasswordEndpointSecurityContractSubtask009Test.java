@@ -10,22 +10,19 @@ class ForgotPasswordEndpointSecurityContractSubtask009Test {
 
   @Test
   void forgotPasswordControllersDoNotRequireAccountRef() throws Exception {
-    assertThat(source("AuthForgotPasswordController.java")).doesNotContain("Account-Ref");
-    assertThat(source("AuthForgotPasswordOtpController.java")).doesNotContain("Account-Ref");
+    assertThat(source("ForgotPasswordController.java")).doesNotContain("Account-Ref");
   }
 
   @Test
   void forgotPasswordControllersEchoRequestIdOnPublicEndpoints() throws Exception {
-    assertThat(source("AuthForgotPasswordController.java"))
-        .contains("response.getHeaders().set(RequestCorrelation.REQUEST_ID_HEADER");
-    assertThat(source("AuthForgotPasswordOtpController.java"))
+    assertThat(source("ForgotPasswordController.java"))
         .contains("response.getHeaders().set(RequestCorrelation.REQUEST_ID_HEADER");
   }
 
   @Test
   void protectedForgotPasswordEndpointsRequireExpectedCookieAndHeaderGuards() throws Exception {
-    String controller = source("AuthForgotPasswordController.java");
-    String otp = source("AuthForgotPasswordOtpController.java");
+    String controller = source("ForgotPasswordController.java");
+    String otp = source("ForgotPasswordController.java");
 
     assertThat(controller)
         .contains("auth_flow_sid")
@@ -43,7 +40,8 @@ class ForgotPasswordEndpointSecurityContractSubtask009Test {
 
   private static String source(String fileName) throws Exception {
     try (var paths =
-        Files.walk(Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller"))) {
+        Files.walk(
+            Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/forgotpassword"))) {
       Path path =
           paths
               .filter(Files::isRegularFile)

@@ -1,12 +1,13 @@
-package com.bct.ngtpa.apiservice.adapter.in.web.controller;
+package com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.ForgotPasswordHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordCancelDataResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordCompleteDataResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordCompleteRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordDetailsRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordIdentityCheckRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordOtpDataResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordOtpVerifyRequest;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordPasswordSetupDataResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordStartDataResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordStartRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordWorkflowResultResponse;
@@ -14,6 +15,8 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.Forgot
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordCompleteWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordDetailsOtpWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordIdentityWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordOtpResendWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordOtpVerifyWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.XsrfCookieWriter;
@@ -23,16 +26,21 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.port.in.CancelForgotPasswordUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.CompleteForgotPasswordUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.ProcessForgotPasswordDetailsOtpUseCase;
+import com.bct.ngtpa.apiservice.application.port.in.ResendForgotPasswordOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.StartForgotPasswordUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.VerifyForgotPasswordIdentityUseCase;
+import com.bct.ngtpa.apiservice.application.port.in.VerifyForgotPasswordOtpUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordDetailsOtpCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordDetailsOtpResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identity.VerifyForgotPasswordIdentityResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.identity.VerifyForgotPasswordIdentityStatus;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ResendForgotPasswordOtpCommand;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.verify.VerifyForgotPasswordOtpCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordResultStatus;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
+import java.time.Duration;
 import java.util.Map;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.CookieValue;
@@ -44,9 +52,8 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
 @RestController
-@RequiredArgsConstructor
 @RequestMapping("/api/v1/auth/forgot-password")
-public class AuthForgotPasswordController {
+public final class ForgotPasswordController {
   private final StartForgotPasswordUseCase startUseCase;
   private final ForgotPasswordStartWebMapper startMapper;
   private final VerifyForgotPasswordIdentityUseCase identityCheckUseCase;
@@ -59,6 +66,46 @@ public class AuthForgotPasswordController {
   private final ForgotPasswordCancelWebMapper cancelMapper;
   private final AuthFlowCookieWriter cookieWriter;
   private final XsrfCookieWriter xsrfCookies;
+  private final ResendForgotPasswordOtpUseCase otpResendUseCase;
+  private final ForgotPasswordOtpResendWebMapper otpResendMapper;
+  private final VerifyForgotPasswordOtpUseCase otpVerifyUseCase;
+  private final ForgotPasswordOtpVerifyWebMapper otpVerifyMapper;
+
+  @Autowired
+  public ForgotPasswordController(
+      StartForgotPasswordUseCase startUseCase,
+      ForgotPasswordStartWebMapper startMapper,
+      VerifyForgotPasswordIdentityUseCase identityCheckUseCase,
+      ForgotPasswordIdentityWebMapper identityCheckMapper,
+      ProcessForgotPasswordDetailsOtpUseCase detailsCheckUseCase,
+      ForgotPasswordDetailsOtpWebMapper detailsCheckMapper,
+      CompleteForgotPasswordUseCase completeUseCase,
+      ForgotPasswordCompleteWebMapper completeMapper,
+      CancelForgotPasswordUseCase cancelUseCase,
+      ForgotPasswordCancelWebMapper cancelMapper,
+      AuthFlowCookieWriter cookieWriter,
+      XsrfCookieWriter xsrfCookies,
+      ResendForgotPasswordOtpUseCase otpResendUseCase,
+      ForgotPasswordOtpResendWebMapper otpResendMapper,
+      VerifyForgotPasswordOtpUseCase otpVerifyUseCase,
+      ForgotPasswordOtpVerifyWebMapper otpVerifyMapper) {
+    this.startUseCase = startUseCase;
+    this.startMapper = startMapper;
+    this.identityCheckUseCase = identityCheckUseCase;
+    this.identityCheckMapper = identityCheckMapper;
+    this.detailsCheckUseCase = detailsCheckUseCase;
+    this.detailsCheckMapper = detailsCheckMapper;
+    this.completeUseCase = completeUseCase;
+    this.completeMapper = completeMapper;
+    this.cancelUseCase = cancelUseCase;
+    this.cancelMapper = cancelMapper;
+    this.cookieWriter = cookieWriter;
+    this.xsrfCookies = xsrfCookies;
+    this.otpResendUseCase = otpResendUseCase;
+    this.otpResendMapper = otpResendMapper;
+    this.otpVerifyUseCase = otpVerifyUseCase;
+    this.otpVerifyMapper = otpVerifyMapper;
+  }
 
   @PostMapping("/start")
   public Mono<
@@ -297,6 +344,109 @@ public class AuthForgotPasswordController {
     }
   }
 
+  @PostMapping("/otp/resend")
+  public Mono<
+          ResponseEntity<
+              MutationResponse<
+                  ForgotPasswordWorkflowResultResponse<ForgotPasswordOtpDataResponse>>>>
+      resend(
+          @CookieValue(name = "auth_flow_sid", required = false) String sessionId,
+          @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrfToken,
+          @RequestHeader(name = "Origin", required = false) String origin,
+          @RequestHeader(name = "Referer", required = false) String referer,
+          @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false)
+              String requestId,
+          @RequestHeader(name = "Accept-Language", required = false) String language,
+          @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
+          ServerHttpResponse response) {
+    echoRequestId(response, requestId);
+    if (!hasText(idempotencyKey)) {
+      return Mono.just(
+          ForgotPasswordHttpResponses.toResponse(otpResendMapper.missingIdempotencyKey()));
+    }
+    if (!hasText(sessionId)) {
+      return Mono.just(ForgotPasswordHttpResponses.toResponse(otpResendMapper.systemUnavailable()));
+    }
+    if (!hasText(csrfToken)) {
+      return CsrfHttpResponses.missingToken();
+    }
+    try {
+      return otpResendUseCase
+          .resend(
+              new ResendForgotPasswordOtpCommand(
+                  new AuthFlowSessionId(sessionId.trim()),
+                  csrfToken.trim(),
+                  clean(origin),
+                  clean(referer),
+                  clean(requestId),
+                  clean(language),
+                  idempotencyKey.trim()))
+          .map(otpResendMapper::toMutationResponse)
+          .map(ForgotPasswordHttpResponses::toResponse)
+          .onErrorResume(
+              exception ->
+                  Mono.just(
+                      ForgotPasswordHttpResponses.toResponse(otpResendMapper.systemUnavailable())));
+    } catch (RuntimeException exception) {
+      return Mono.just(ForgotPasswordHttpResponses.toResponse(otpResendMapper.systemUnavailable()));
+    }
+  }
+
+  @PostMapping(path = "/otp/verify")
+  public Mono<
+          ResponseEntity<
+              MutationResponse<
+                  ForgotPasswordWorkflowResultResponse<ForgotPasswordPasswordSetupDataResponse>>>>
+      verify(
+          @RequestBody(required = false) ForgotPasswordOtpVerifyRequest request,
+          @CookieValue(name = "auth_flow_sid", required = false) String sessionId,
+          @RequestHeader(name = "X-XSRF-TOKEN", required = false) String csrfToken,
+          @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
+          @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false)
+              String requestId,
+          @RequestHeader(name = "Accept-Language", required = false) String language,
+          @RequestHeader(name = "Origin", required = false) String origin,
+          @RequestHeader(name = "Referer", required = false) String referer,
+          ServerHttpResponse response) {
+    echoRequestId(response, requestId);
+    if (!hasText(sessionId)) {
+      return Mono.just(
+          ForgotPasswordHttpResponses.toResponse(otpVerifyMapper.missingAuthFlowCookie()));
+    }
+    if (!hasText(csrfToken)) {
+      return CsrfHttpResponses.missingToken();
+    }
+    if (!hasText(idempotencyKey)) {
+      return Mono.just(
+          ForgotPasswordHttpResponses.toResponse(otpVerifyMapper.missingIdempotencyKey()));
+    }
+    if (request == null || !hasText(request.code())) {
+      return Mono.just(ForgotPasswordHttpResponses.toResponse(otpVerifyMapper.missingCode()));
+    }
+    try {
+      return otpVerifyUseCase
+          .verify(
+              new VerifyForgotPasswordOtpCommand(
+                  new AuthFlowSessionId(sessionId.trim()),
+                  csrfToken.trim(),
+                  request.code().trim(),
+                  clean(origin),
+                  clean(referer),
+                  idempotencyKey.trim(),
+                  clean(language),
+                  clean(requestId),
+                  Duration.ofSeconds(300)))
+          .map(otpVerifyMapper::toMutationResponse)
+          .map(ForgotPasswordHttpResponses::toResponse)
+          .onErrorResume(
+              exception ->
+                  Mono.just(
+                      ForgotPasswordHttpResponses.toResponse(otpVerifyMapper.systemUnavailable())));
+    } catch (RuntimeException exception) {
+      return Mono.just(ForgotPasswordHttpResponses.toResponse(otpVerifyMapper.systemUnavailable()));
+    }
+  }
+
   private void echoRequestId(ServerHttpResponse response, String requestId) {
     if (hasText(requestId)) {
       response.getHeaders().set(RequestCorrelation.REQUEST_ID_HEADER, requestId.trim());
@@ -305,5 +455,9 @@ public class AuthForgotPasswordController {
 
   private boolean hasText(String value) {
     return value != null && !value.isBlank();
+  }
+
+  private String clean(String value) {
+    return hasText(value) ? value.trim() : null;
   }
 }

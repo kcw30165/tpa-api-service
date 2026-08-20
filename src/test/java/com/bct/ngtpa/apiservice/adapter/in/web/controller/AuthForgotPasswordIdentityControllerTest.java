@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.ForgotPasswordController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordIdentityCheckRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordCancelWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordCompleteWebMapper;
@@ -29,7 +30,7 @@ class AuthForgotPasswordIdentityControllerTest {
   @Test
   void identityCheckEndpointExists() throws Exception {
     Method method =
-        AuthForgotPasswordController.class.getDeclaredMethod(
+        ForgotPasswordController.class.getDeclaredMethod(
             "check",
             ForgotPasswordIdentityCheckRequest.class,
             String.class,
@@ -121,9 +122,9 @@ class AuthForgotPasswordIdentityControllerTest {
     }
   }
 
-  private static AuthForgotPasswordController controller(
+  private static ForgotPasswordController controller(
       VerifyForgotPasswordIdentityUseCase identityCheckUseCase) {
-    return new AuthForgotPasswordController(
+    return new ForgotPasswordController(
         command -> Mono.error(new AssertionError("start use case must not be called")),
         new ForgotPasswordStartWebMapper(Duration.ofMinutes(5)),
         identityCheckUseCase,
@@ -136,7 +137,10 @@ class AuthForgotPasswordIdentityControllerTest {
         new ForgotPasswordCancelWebMapper(),
         AuthFlowCookieWriter.defaultWriter(),
         new XsrfCookieWriter(
-            new com.bct.ngtpa.apiservice.adapter.in.web.session.config
-                .AuthFlowSessionProperties()));
+            new com.bct.ngtpa.apiservice.adapter.in.web.session.config.AuthFlowSessionProperties()),
+        null,
+        null,
+        null,
+        null);
   }
 }

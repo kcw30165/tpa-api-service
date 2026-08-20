@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.ForgotPasswordController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordCompleteRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordCancelWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordCompleteWebMapper;
@@ -31,7 +32,7 @@ class AuthForgotPasswordCompleteControllerTest {
   @Test
   void completionEndpointExists() throws Exception {
     Method method =
-        AuthForgotPasswordController.class.getDeclaredMethod(
+        ForgotPasswordController.class.getDeclaredMethod(
             "complete",
             ForgotPasswordCompleteRequest.class,
             String.class,
@@ -100,8 +101,8 @@ class AuthForgotPasswordCompleteControllerTest {
     }
   }
 
-  private static AuthForgotPasswordController controller(CompleteForgotPasswordUseCase useCase) {
-    return new AuthForgotPasswordController(
+  private static ForgotPasswordController controller(CompleteForgotPasswordUseCase useCase) {
+    return new ForgotPasswordController(
         command -> Mono.error(new AssertionError("start use case must not be called")),
         new ForgotPasswordStartWebMapper(Duration.ofMinutes(5)),
         command -> Mono.error(new AssertionError("identity use case must not be called")),
@@ -114,7 +115,10 @@ class AuthForgotPasswordCompleteControllerTest {
         new ForgotPasswordCancelWebMapper(),
         AuthFlowCookieWriter.defaultWriter(),
         new XsrfCookieWriter(
-            new com.bct.ngtpa.apiservice.adapter.in.web.session.config
-                .AuthFlowSessionProperties()));
+            new com.bct.ngtpa.apiservice.adapter.in.web.session.config.AuthFlowSessionProperties()),
+        null,
+        null,
+        null,
+        null);
   }
 }

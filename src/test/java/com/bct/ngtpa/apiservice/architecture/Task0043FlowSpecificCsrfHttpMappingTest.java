@@ -84,11 +84,11 @@ class Task0043FlowSpecificCsrfHttpMappingTest {
     String forgotPassword =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordController.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/forgotpassword/ForgotPasswordController.java"));
     String forgotPasswordOtp =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordOtpController.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/forgotpassword/ForgotPasswordController.java"));
 
     assertThat(loginSend).contains("CsrfHttpResponses.missingToken()");
     assertThat(loginVerify).contains("CsrfHttpResponses.missingToken()");

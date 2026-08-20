@@ -184,3 +184,19 @@ Phase 07 reconciles active documentation only. Historical prompts, plans, genera
 - Stage 006 started: false
 - Commit authorization: false
 - Next action: review the final Stage 005 diff and authorize the commit.
+
+## Controller Refactoring Stage 006
+- classification: IMPLEMENTABLE_AS_DESIGNED
+- prerequisite: `c56172d94c9c80690e04280980c186f8f7fb4f1c`
+- evidence: `target\evidence\controller-refactoring-006-20260820-141556`
+- consolidation: two legacy Forgot Password controllers into `web.auth.forgotpassword.ForgotPasswordController`
+- preserved endpoint count: 8
+- Change Password excluded: true
+- production compile: PASS
+- test compile: PASS
+- test execution: PASS by Solution Owner manual run, 3,806 tests, 0 failures, 0 errors, 12 skipped
+- stage_007_started=false
+- architect_status=PASS
+- commit_authorization=true
+
+- Stage 006 approved commit: `9d0b4741ff00618f809d56aa6cee42545e5850a6`

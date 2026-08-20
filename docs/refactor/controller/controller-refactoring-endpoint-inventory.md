@@ -65,8 +65,8 @@
 - Supporting tests: `src/test/java/com/bct/ngtpa/apiservice/architecture/AuthCaptchaControllerArchitectureGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/CaptchaGeneratorArchitectureGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/CaptchaPublicErrorOwnershipGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/RedisCaptchaChallengeArchitectureGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/RegistrationHttpAndCookieSlidingContractTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/RequiredRequestIdRegistrationContractTest.java`, `src/test/java/com/bct/ngtpa/apiservice/integration/registration/RegistrationCaptchaAndStartIntegrationTest.java`, `src/test/java/com/bct/ngtpa/apiservice/integration/registration/RegistrationIntegrationHarnessTest.java`, `src/test/java/com/bct/ngtpa/apiservice/auth/registration/P8CaptchaSecurityBoundaryGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/captcha/AuthCaptchaControllerTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/captcha/CaptchaWebMapperTest.java`
 
 ### `POST /api/v1/auth/forgot-password/cancel`
-- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthForgotPasswordController#cancel`
-- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordController.java`
+- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.ForgotPasswordController#cancel`
+- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/forgotpassword/ForgotPasswordController.java`
 - Security boundary: `AUTHENTICATED_CUSTOMER`
 - Security evidence: AUTHENTICATED_CUSTOMER; in-process authentication required when api.security.require-authentication=true; when false, SecurityConfig explicitly delegates protection externally by permitting exchanges; evidence: src/main/java/com/bct/ngtpa/apiservice/infrastructure/security/SecurityConfig.java
 - Headers: `X-XSRF-TOKEN (optional)`, `Origin (optional)`, `Referer (optional)`, `RequestCorrelation.REQUEST_ID_HEADER (optional)`, `Accept-Language (optional)`
@@ -82,8 +82,8 @@
 - Supporting tests: `src/test/java/com/bct/ngtpa/apiservice/architecture/ForgotPasswordCancelArchitectureGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/ForgotPasswordEndpointSecurityContractSubtask009Test.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/Task0043FlowSpecificCsrfHttpMappingTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordCancelControllerTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordCompleteControllerTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordControllerTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordDetailsControllerTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordIdentityControllerTest.java`
 
 ### `POST /api/v1/auth/forgot-password/complete`
-- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthForgotPasswordController#complete`
-- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordController.java`
+- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.ForgotPasswordController#complete`
+- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/forgotpassword/ForgotPasswordController.java`
 - Security boundary: `AUTHENTICATED_CUSTOMER`
 - Security evidence: AUTHENTICATED_CUSTOMER; in-process authentication required when api.security.require-authentication=true; when false, SecurityConfig explicitly delegates protection externally by permitting exchanges; evidence: src/main/java/com/bct/ngtpa/apiservice/infrastructure/security/SecurityConfig.java
 - Headers: `X-XSRF-TOKEN (optional)`, `Idempotency-Key (optional)`, `RequestCorrelation.REQUEST_ID_HEADER (optional)`, `Accept-Language (optional)`, `Origin (optional)`, `Referer (optional)`
@@ -99,8 +99,8 @@
 - Supporting tests: `src/test/java/com/bct/ngtpa/apiservice/architecture/ForgotPasswordCancelArchitectureGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/ForgotPasswordEndpointSecurityContractSubtask009Test.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/Task0043FlowSpecificCsrfHttpMappingTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordCancelControllerTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordCompleteControllerTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordControllerTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordDetailsControllerTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordIdentityControllerTest.java`
 
 ### `POST /api/v1/auth/forgot-password/details`
-- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthForgotPasswordController#details`
-- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordController.java`
+- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.ForgotPasswordController#details`
+- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/forgotpassword/ForgotPasswordController.java`
 - Security boundary: `AUTHENTICATED_CUSTOMER`
 - Security evidence: AUTHENTICATED_CUSTOMER; in-process authentication required when api.security.require-authentication=true; when false, SecurityConfig explicitly delegates protection externally by permitting exchanges; evidence: src/main/java/com/bct/ngtpa/apiservice/infrastructure/security/SecurityConfig.java
 - Headers: `X-XSRF-TOKEN (optional)`, `Origin (optional)`, `Referer (optional)`, `RequestCorrelation.REQUEST_ID_HEADER (optional)`, `Accept-Language (optional)`, `Idempotency-Key (optional)`
@@ -116,8 +116,8 @@
 - Supporting tests: `src/test/java/com/bct/ngtpa/apiservice/architecture/ForgotPasswordCancelArchitectureGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/ForgotPasswordEndpointSecurityContractSubtask009Test.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/Task0043FlowSpecificCsrfHttpMappingTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordCancelControllerTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordCompleteControllerTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordControllerTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordDetailsControllerTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordIdentityControllerTest.java`
 
 ### `POST /api/v1/auth/forgot-password/details-check`
-- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthForgotPasswordController#details`
-- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordController.java`
+- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.ForgotPasswordController#details`
+- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/forgotpassword/ForgotPasswordController.java`
 - Security boundary: `AUTHENTICATED_CUSTOMER`
 - Security evidence: AUTHENTICATED_CUSTOMER; in-process authentication required when api.security.require-authentication=true; when false, SecurityConfig explicitly delegates protection externally by permitting exchanges; evidence: src/main/java/com/bct/ngtpa/apiservice/infrastructure/security/SecurityConfig.java
 - Headers: `X-XSRF-TOKEN (optional)`, `Origin (optional)`, `Referer (optional)`, `RequestCorrelation.REQUEST_ID_HEADER (optional)`, `Accept-Language (optional)`, `Idempotency-Key (optional)`
@@ -133,8 +133,8 @@
 - Supporting tests: `src/test/java/com/bct/ngtpa/apiservice/architecture/ForgotPasswordCancelArchitectureGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/ForgotPasswordEndpointSecurityContractSubtask009Test.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/Task0043FlowSpecificCsrfHttpMappingTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordCancelControllerTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordCompleteControllerTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordControllerTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordDetailsControllerTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordIdentityControllerTest.java`
 
 ### `POST /api/v1/auth/forgot-password/identity-check`
-- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthForgotPasswordController#check`
-- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordController.java`
+- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.ForgotPasswordController#check`
+- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/forgotpassword/ForgotPasswordController.java`
 - Security boundary: `AUTHENTICATED_CUSTOMER`
 - Security evidence: AUTHENTICATED_CUSTOMER; in-process authentication required when api.security.require-authentication=true; when false, SecurityConfig explicitly delegates protection externally by permitting exchanges; evidence: src/main/java/com/bct/ngtpa/apiservice/infrastructure/security/SecurityConfig.java
 - Headers: `X-XSRF-TOKEN (optional)`, `Origin (optional)`, `Referer (optional)`, `RequestCorrelation.REQUEST_ID_HEADER (optional)`, `Accept-Language (optional)`
@@ -150,8 +150,8 @@
 - Supporting tests: `src/test/java/com/bct/ngtpa/apiservice/architecture/ForgotPasswordCancelArchitectureGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/ForgotPasswordEndpointSecurityContractSubtask009Test.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/Task0043FlowSpecificCsrfHttpMappingTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordCancelControllerTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordCompleteControllerTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordControllerTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordDetailsControllerTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordIdentityControllerTest.java`
 
 ### `POST /api/v1/auth/forgot-password/otp/resend`
-- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthForgotPasswordOtpController#resend`
-- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordOtpController.java`
+- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.ForgotPasswordController#resend`
+- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/forgotpassword/ForgotPasswordController.java`
 - Security boundary: `AUTHENTICATED_CUSTOMER`
 - Security evidence: AUTHENTICATED_CUSTOMER; in-process authentication required when api.security.require-authentication=true; when false, SecurityConfig explicitly delegates protection externally by permitting exchanges; evidence: src/main/java/com/bct/ngtpa/apiservice/infrastructure/security/SecurityConfig.java
 - Headers: `X-XSRF-TOKEN (optional)`, `Origin (optional)`, `Referer (optional)`, `RequestCorrelation.REQUEST_ID_HEADER (optional)`, `Accept-Language (optional)`, `Idempotency-Key (optional)`
@@ -167,8 +167,8 @@
 - Supporting tests: `src/test/java/com/bct/ngtpa/apiservice/architecture/ForgotPasswordEndpointSecurityContractSubtask009Test.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/Task0043FlowSpecificCsrfHttpMappingTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordOtpResendControllerTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordOtpResendEndpointArchitectureFailFirstTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordOtpVerifyControllerTest.java`
 
 ### `POST /api/v1/auth/forgot-password/otp/verify`
-- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthForgotPasswordOtpController#verify`
-- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordOtpController.java`
+- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.ForgotPasswordController#verify`
+- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/forgotpassword/ForgotPasswordController.java`
 - Security boundary: `AUTHENTICATED_CUSTOMER`
 - Security evidence: AUTHENTICATED_CUSTOMER; in-process authentication required when api.security.require-authentication=true; when false, SecurityConfig explicitly delegates protection externally by permitting exchanges; evidence: src/main/java/com/bct/ngtpa/apiservice/infrastructure/security/SecurityConfig.java
 - Headers: `X-XSRF-TOKEN (optional)`, `Idempotency-Key (optional)`, `RequestCorrelation.REQUEST_ID_HEADER (optional)`, `Accept-Language (optional)`, `Origin (optional)`, `Referer (optional)`
@@ -184,8 +184,8 @@
 - Supporting tests: `src/test/java/com/bct/ngtpa/apiservice/architecture/ForgotPasswordEndpointSecurityContractSubtask009Test.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/Task0043FlowSpecificCsrfHttpMappingTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordOtpResendControllerTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordOtpResendEndpointArchitectureFailFirstTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordOtpVerifyControllerTest.java`
 
 ### `POST /api/v1/auth/forgot-password/start`
-- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthForgotPasswordController#startForgotPassword`
-- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordController.java`
+- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.ForgotPasswordController#startForgotPassword`
+- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/forgotpassword/ForgotPasswordController.java`
 - Security boundary: `AUTHENTICATED_CUSTOMER`
 - Security evidence: AUTHENTICATED_CUSTOMER; in-process authentication required when api.security.require-authentication=true; when false, SecurityConfig explicitly delegates protection externally by permitting exchanges; evidence: src/main/java/com/bct/ngtpa/apiservice/infrastructure/security/SecurityConfig.java
 - Headers: `Idempotency-Key (optional)`, `RequestCorrelation.REQUEST_ID_HEADER (optional)`, `Accept-Language (optional)`
@@ -303,8 +303,8 @@
 - Supporting tests: `src/test/java/com/bct/ngtpa/apiservice/architecture/Task0043AuthenticatedLogoutHttpArchitectureTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/Task0043FlowSpecificCsrfHttpMappingTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthLogoutControllerTest.java`
 
 ### `POST /api/v1/auth/registration/cancel`
-- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationController#cancelRegistration`
-- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationController.java`
+- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.RegistrationController#cancelRegistration`
+- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/RegistrationController.java`
 - Security boundary: `AUTHENTICATED_CUSTOMER`
 - Security evidence: AUTHENTICATED_CUSTOMER; in-process authentication required when api.security.require-authentication=true; when false, SecurityConfig explicitly delegates protection externally by permitting exchanges; evidence: src/main/java/com/bct/ngtpa/apiservice/infrastructure/security/SecurityConfig.java
 - Headers: `X-XSRF-TOKEN (optional)`, `X-Request-Id (optional)`, `Accept-Language (optional)`, `Origin (optional)`, `Referer (optional)`
@@ -320,8 +320,8 @@
 - Supporting tests: `src/test/java/com/bct/ngtpa/apiservice/architecture/AuthRegistrationControllerArchitectureGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/AuthRegistrationOtpVerifyControllerArchitectureGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/P6RegistrationStartWorkflowContractArchitectureGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/P8CaptchaArchitectureGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/RegistrationCancelWebContractGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/RegistrationCompleteArchitectureGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/RegistrationHttpAndCookieSlidingContractTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/RequiredRequestIdRegistrationContractTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/Task0043FlowSpecificCsrfHttpMappingTest.java`, `src/test/java/com/bct/ngtpa/apiservice/integration/registration/RegistrationStartWorkflowIntegrationTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/AuthRegistrationCompleteCancelControllerTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/AuthRegistrationControllerCaptchaGateTest.java`
 
 ### `POST /api/v1/auth/registration/complete`
-- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationController#completeRegistration`
-- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationController.java`
+- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.RegistrationController#completeRegistration`
+- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/RegistrationController.java`
 - Security boundary: `AUTHENTICATED_CUSTOMER`
 - Security evidence: AUTHENTICATED_CUSTOMER; in-process authentication required when api.security.require-authentication=true; when false, SecurityConfig explicitly delegates protection externally by permitting exchanges; evidence: src/main/java/com/bct/ngtpa/apiservice/infrastructure/security/SecurityConfig.java
 - Headers: `X-XSRF-TOKEN (optional)`, `Idempotency-Key (optional)`, `X-Request-Id (optional)`, `Accept-Language (optional)`, `Origin (optional)`, `Referer (optional)`
@@ -337,8 +337,8 @@
 - Supporting tests: `src/test/java/com/bct/ngtpa/apiservice/architecture/AuthRegistrationControllerArchitectureGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/AuthRegistrationOtpVerifyControllerArchitectureGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/P6RegistrationStartWorkflowContractArchitectureGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/P8CaptchaArchitectureGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/RegistrationCancelWebContractGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/RegistrationCompleteArchitectureGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/RegistrationHttpAndCookieSlidingContractTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/RequiredRequestIdRegistrationContractTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/Task0043FlowSpecificCsrfHttpMappingTest.java`, `src/test/java/com/bct/ngtpa/apiservice/integration/registration/RegistrationStartWorkflowIntegrationTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/AuthRegistrationCompleteCancelControllerTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/AuthRegistrationControllerCaptchaGateTest.java`
 
 ### `POST /api/v1/auth/registration/otp/resend`
-- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController#resendOtp`
-- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationOtpController.java`
+- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.RegistrationController#resendOtp`
+- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/RegistrationController.java`
 - Security boundary: `AUTHENTICATED_CUSTOMER`
 - Security evidence: AUTHENTICATED_CUSTOMER; in-process authentication required when api.security.require-authentication=true; when false, SecurityConfig explicitly delegates protection externally by permitting exchanges; evidence: src/main/java/com/bct/ngtpa/apiservice/infrastructure/security/SecurityConfig.java
 - Headers: `X-XSRF-TOKEN (optional)`, `Idempotency-Key (optional)`, `X-Request-Id (optional)`, `Accept-Language (optional)`, `Origin (optional)`, `Referer (optional)`
@@ -354,8 +354,8 @@
 - Supporting tests: `src/test/java/com/bct/ngtpa/apiservice/architecture/AuthRegistrationOtpResendControllerArchitectureGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/P7RegistrationOtpArchitectureGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/RegistrationHardcodedPolicyArchitectureGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/RegistrationHttpAndCookieSlidingContractTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/RegistrationRuntimeSemanticRegressionTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/RequiredRequestIdRegistrationContractTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/Task0043FlowSpecificCsrfHttpMappingTest.java`, `src/test/java/com/bct/ngtpa/apiservice/auth/registration/P7RegistrationOtpIntegrationTest.java`, `src/test/java/com/bct/ngtpa/apiservice/auth/registration/P8CaptchaSecurityBoundaryGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/AuthRegistrationOtpResendControllerTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/AuthRegistrationOtpVerifyControllerTest.java`
 
 ### `POST /api/v1/auth/registration/otp/verify`
-- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController#verifyOtp`
-- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationOtpController.java`
+- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.RegistrationController#verifyOtp`
+- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/RegistrationController.java`
 - Security boundary: `AUTHENTICATED_CUSTOMER`
 - Security evidence: AUTHENTICATED_CUSTOMER; in-process authentication required when api.security.require-authentication=true; when false, SecurityConfig explicitly delegates protection externally by permitting exchanges; evidence: src/main/java/com/bct/ngtpa/apiservice/infrastructure/security/SecurityConfig.java
 - Headers: `X-XSRF-TOKEN (optional)`, `Idempotency-Key (optional)`, `X-Request-Id (optional)`, `Accept-Language (optional)`, `Origin (optional)`, `Referer (optional)`
@@ -371,8 +371,8 @@
 - Supporting tests: `src/test/java/com/bct/ngtpa/apiservice/architecture/AuthRegistrationOtpResendControllerArchitectureGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/P7RegistrationOtpArchitectureGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/RegistrationHardcodedPolicyArchitectureGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/RegistrationHttpAndCookieSlidingContractTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/RegistrationRuntimeSemanticRegressionTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/RequiredRequestIdRegistrationContractTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/Task0043FlowSpecificCsrfHttpMappingTest.java`, `src/test/java/com/bct/ngtpa/apiservice/auth/registration/P7RegistrationOtpIntegrationTest.java`, `src/test/java/com/bct/ngtpa/apiservice/auth/registration/P8CaptchaSecurityBoundaryGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/AuthRegistrationOtpResendControllerTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/AuthRegistrationOtpVerifyControllerTest.java`
 
 ### `POST /api/v1/auth/registration/start`
-- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationController#startRegistration`
-- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationController.java`
+- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.RegistrationController#startRegistration`
+- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/RegistrationController.java`
 - Security boundary: `AUTHENTICATED_CUSTOMER`
 - Security evidence: AUTHENTICATED_CUSTOMER; in-process authentication required when api.security.require-authentication=true; when false, SecurityConfig explicitly delegates protection externally by permitting exchanges; evidence: src/main/java/com/bct/ngtpa/apiservice/infrastructure/security/SecurityConfig.java
 - Headers: `Idempotency-Key (optional)`, `X-Request-Id (optional)`, `Accept-Language (optional)`
@@ -388,8 +388,8 @@
 - Supporting tests: `src/test/java/com/bct/ngtpa/apiservice/architecture/AuthRegistrationControllerArchitectureGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/P6RegistrationStartWorkflowContractArchitectureGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/P8CaptchaArchitectureGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/RegistrationCancelWebContractGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/RegistrationCompleteArchitectureGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/RegistrationHttpAndCookieSlidingContractTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/RequiredRequestIdRegistrationContractTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/Task0043FlowSpecificCsrfHttpMappingTest.java`, `src/test/java/com/bct/ngtpa/apiservice/session/P4ASessionManagementFoundationIntegrationTest.java`, `src/test/java/com/bct/ngtpa/apiservice/integration/registration/RegistrationStartWorkflowIntegrationTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/session/config/AuthFlowSessionPropertiesBindingTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/AuthRegistrationCompleteCancelControllerTest.java`
 
 ### `POST /api/v1/auth/registration/username/check`
-- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationUsernameController#checkUsername`
-- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationUsernameController.java`
+- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.RegistrationController#checkUsername`
+- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/RegistrationController.java`
 - Security boundary: `AUTHENTICATED_CUSTOMER`
 - Security evidence: AUTHENTICATED_CUSTOMER; in-process authentication required when api.security.require-authentication=true; when false, SecurityConfig explicitly delegates protection externally by permitting exchanges; evidence: src/main/java/com/bct/ngtpa/apiservice/infrastructure/security/SecurityConfig.java
 - Headers: `X-XSRF-TOKEN (optional)`, `X-Request-Id (optional)`, `Accept-Language (optional)`, `Origin (optional)`, `Referer (optional)`
@@ -490,8 +490,8 @@
 - Supporting tests: `src/test/java/com/bct/ngtpa/apiservice/architecture/AuthenticatedContextExplicitUseCaseBoundaryTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/ContributionCurrentContextBoundaryGuardTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/FrontendOwnedLocalizationContractFailFirstTest.java`, `src/test/java/com/bct/ngtpa/apiservice/architecture/PortalAccessContextFinalMigrationEvidenceTest.java`, `src/test/java/com/bct/ngtpa/apiservice/config/SecurityConfigAuthTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/ApiResponseExceptionHandlingBoundaryTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/ContributionControllerTest.java`
 
 ### `DELETE /api/v1/internal/reference-date/all`
-- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.controller.ReferenceDateController#cleanUpAllReferenceDates`
-- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/ReferenceDateController.java`
+- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.internal.referencedate.ReferenceDateController#cleanUpAllReferenceDates`
+- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/internal/referencedate/ReferenceDateController.java`
 - Security boundary: `INTERNAL_ADMINISTRATION`
 - Security evidence: INTERNAL_ADMINISTRATION; in-process authentication required when api.security.require-authentication=true; when false, SecurityConfig explicitly delegates protection externally by permitting exchanges; evidence: src/main/java/com/bct/ngtpa/apiservice/infrastructure/security/SecurityConfig.java
 - Headers: None declared
@@ -507,8 +507,8 @@
 - Supporting tests: `src/test/java/com/bct/ngtpa/apiservice/config/SecurityConfigAuthDisabledTest.java`, `src/test/java/com/bct/ngtpa/apiservice/config/SecurityConfigAuthTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/ReferenceDateAllControllerTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/ReferenceDateAllMutationResponseContractTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/ReferenceDateRefreshControllerTest.java`
 
 ### `GET /api/v1/internal/reference-date/all`
-- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.controller.ReferenceDateController#getAllReferenceDates`
-- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/ReferenceDateController.java`
+- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.internal.referencedate.ReferenceDateController#getAllReferenceDates`
+- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/internal/referencedate/ReferenceDateController.java`
 - Security boundary: `INTERNAL_ADMINISTRATION`
 - Security evidence: INTERNAL_ADMINISTRATION; in-process authentication required when api.security.require-authentication=true; when false, SecurityConfig explicitly delegates protection externally by permitting exchanges; evidence: src/main/java/com/bct/ngtpa/apiservice/infrastructure/security/SecurityConfig.java
 - Headers: None declared
@@ -524,8 +524,8 @@
 - Supporting tests: `src/test/java/com/bct/ngtpa/apiservice/config/SecurityConfigAuthDisabledTest.java`, `src/test/java/com/bct/ngtpa/apiservice/config/SecurityConfigAuthTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/ReferenceDateAllControllerTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/ReferenceDateAllMutationResponseContractTest.java`, `src/test/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/ReferenceDateRefreshControllerTest.java`
 
 ### `POST /api/v1/internal/reference-date/refresh`
-- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.controller.ReferenceDateController#refreshReferenceDate`
-- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/ReferenceDateController.java`
+- Controller: `com.bct.ngtpa.apiservice.adapter.in.web.internal.referencedate.ReferenceDateController#refreshReferenceDate`
+- Source: `src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/internal/referencedate/ReferenceDateController.java`
 - Security boundary: `INTERNAL_ADMINISTRATION`
 - Security evidence: INTERNAL_ADMINISTRATION; in-process authentication required when api.security.require-authentication=true; when false, SecurityConfig explicitly delegates protection externally by permitting exchanges; evidence: src/main/java/com/bct/ngtpa/apiservice/infrastructure/security/SecurityConfig.java
 - Headers: None declared

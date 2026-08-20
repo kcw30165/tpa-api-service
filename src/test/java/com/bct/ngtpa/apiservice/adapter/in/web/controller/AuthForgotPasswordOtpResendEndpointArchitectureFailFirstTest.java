@@ -11,7 +11,7 @@ class AuthForgotPasswordOtpResendEndpointArchitectureFailFirstTest {
   void forgotPasswordOtpResendEndpointAndMapperExist() throws Exception {
     Path controller =
         Path.of(
-            "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordOtpController.java");
+            "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/forgotpassword/ForgotPasswordController.java");
     Path mapper =
         Path.of(
             "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/forgotpassword/mapper/ForgotPasswordOtpResendWebMapper.java");
@@ -22,8 +22,8 @@ class AuthForgotPasswordOtpResendEndpointArchitectureFailFirstTest {
     String controllerText = Files.readString(controller);
     String mapperText = Files.readString(mapper);
 
-    assertThat(controllerText).contains("@PostMapping(\"/resend\")");
-    assertThat(controllerText).contains("@RequestMapping(\"/api/v1/auth/forgot-password/otp\")");
+    assertThat(controllerText).contains("@PostMapping(\"/otp/resend\")");
+    assertThat(controllerText).contains("@RequestMapping(\"/api/v1/auth/forgot-password\")");
     assertThat(controllerText).contains("Idempotency-Key");
     assertThat(controllerText).doesNotContain("Account-Ref");
 

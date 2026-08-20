@@ -27,13 +27,7 @@ class RegistrationHttpBoundaryConsolidationArchitectureTest {
           Path.of(
               "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationUsernameController.java"));
   private static final Set<String> EXPECTED_POST_PATHS =
-      Set.of(
-          "/start",
-          "/complete",
-          "/cancel",
-          "/otp/resend",
-          "/otp/verify",
-          "/username/check");
+      Set.of("/start", "/complete", "/cancel", "/otp/resend", "/otp/verify", "/username/check");
 
   @Test
   void oneRegistrationControllerOwnsTheCompleteRegistrationHttpBoundary() {
@@ -72,11 +66,11 @@ class RegistrationHttpBoundaryConsolidationArchitectureTest {
         .exists();
     assertThat(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordController.java"))
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/forgotpassword/ForgotPasswordController.java"))
         .exists();
     assertThat(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordOtpController.java"))
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/forgotpassword/ForgotPasswordController.java"))
         .exists();
   }
 

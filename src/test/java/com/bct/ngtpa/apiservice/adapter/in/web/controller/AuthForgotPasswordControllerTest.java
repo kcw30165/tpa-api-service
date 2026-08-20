@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.ForgotPasswordController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordStartRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordCancelWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordCompleteWebMapper;
@@ -27,7 +28,7 @@ import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-class AuthForgotPasswordControllerTest {
+class ForgotPasswordControllerTest {
   @Test
   void successfulStartWritesCookieAndReturnsCsrfOnly() {
     AtomicReference<StartForgotPasswordCommand> command = new AtomicReference<>();
@@ -159,9 +160,9 @@ class AuthForgotPasswordControllerTest {
     assertThat(response.getCookies().getFirst("XSRF-TOKEN").getValue()).isEmpty();
   }
 
-  private static AuthForgotPasswordController controller(
+  private static ForgotPasswordController controller(
       StartForgotPasswordUseCase startUseCase, AuthFlowCookieWriter cookieWriter) {
-    return new AuthForgotPasswordController(
+    return new ForgotPasswordController(
         startUseCase,
         new ForgotPasswordStartWebMapper(Duration.ofMinutes(5)),
         command -> Mono.error(new AssertionError("identity use case must not be called")),
@@ -174,7 +175,10 @@ class AuthForgotPasswordControllerTest {
         new ForgotPasswordCancelWebMapper(),
         cookieWriter,
         new XsrfCookieWriter(
-            new com.bct.ngtpa.apiservice.adapter.in.web.session.config
-                .AuthFlowSessionProperties()));
+            new com.bct.ngtpa.apiservice.adapter.in.web.session.config.AuthFlowSessionProperties()),
+        null,
+        null,
+        null,
+        null);
   }
 }
