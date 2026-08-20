@@ -10,6 +10,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRec
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryRequestWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryStartResponsePolicy;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryStartWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.session.cookie.HttpSessionCookieAdapter;
 import com.bct.ngtpa.apiservice.application.port.in.CancelUsernameRecoveryUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.RequestUsernameRecoveryUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.StartUsernameRecoveryUseCase;
@@ -60,7 +61,8 @@ class UsernameRecoveryControllerCompositionIntegrationTest {
             CancelUsernameRecoveryUseCase.class,
             UsernameRecoveryCancelWebMapper.class,
             UsernameRecoveryCancelResponsePolicy.class,
-            UsernameRecoveryCookieWriter.class);
+            UsernameRecoveryCookieWriter.class,
+            HttpSessionCookieAdapter.class);
   }
 
   @Test

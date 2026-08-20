@@ -11,6 +11,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRec
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryStartRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryStartResponsePolicy;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryStartWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.session.cookie.HttpSessionCookieAdapter;
 import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryCancelCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryCancelResult;
@@ -765,7 +766,8 @@ class AuthUsernameRecoveryControllerTest {
         cancel,
         new UsernameRecoveryCancelWebMapper(),
         new UsernameRecoveryCancelResponsePolicy(),
-        new UsernameRecoveryCookieWriter(authFlowPolicy));
+        new UsernameRecoveryCookieWriter(authFlowPolicy),
+        new HttpSessionCookieAdapter());
   }
 
   private static final class RecordingStartUseCase implements StartUsernameRecoveryUseCase {

@@ -20,6 +20,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.verify.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.start.StartLoginStatus;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import com.bct.ngtpa.apiservice.shared.web.RequestHeaderContextKeys;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -28,6 +29,8 @@ import reactor.core.publisher.Mono;
 
 @RestController
 @Slf4j
+@RequiredArgsConstructor
+@RequestMapping("/api/v1/auth/login")
 public final class LoginController {
   private final StartLoginUseCase startLoginUseCase;
   private final LoginStartWebMapper loginStartMapper;
@@ -43,36 +46,7 @@ public final class LoginController {
   private final LoginOtpVerifyWebMapper loginOtpVerifyMapper;
   private final AuthenticatedSessionCookieWriter authenticatedSessionCookieWriter;
 
-  public LoginController(
-      StartLoginUseCase a,
-      LoginStartWebMapper b,
-      AuthFlowCookieWriter c,
-      CancelLoginUseCase d,
-      CancelLoginWebMapper e,
-      XsrfCookieWriter f,
-      SendLoginOtpUseCase g,
-      LoginOtpSendWebMapper h,
-      ResendLoginOtpUseCase i,
-      LoginOtpResendWebMapper j,
-      VerifyLoginOtpUseCase k,
-      LoginOtpVerifyWebMapper l,
-      AuthenticatedSessionCookieWriter m) {
-    startLoginUseCase = a;
-    loginStartMapper = b;
-    authFlowCookieWriter = c;
-    cancelLoginUseCase = d;
-    cancelLoginMapper = e;
-    xsrfCookieWriter = f;
-    sendLoginOtpUseCase = g;
-    loginOtpSendMapper = h;
-    resendLoginOtpUseCase = i;
-    loginOtpResendMapper = j;
-    verifyLoginOtpUseCase = k;
-    loginOtpVerifyMapper = l;
-    authenticatedSessionCookieWriter = m;
-  }
-
-  @PostMapping("/api/v1/auth/login")
+  @PostMapping
   public Mono<ResponseEntity<MutationResponse<LoginWorkflowResultResponse<LoginStartDataResponse>>>>
       startLogin(
           @RequestBody(required = false) LoginStartRequest request,
@@ -105,7 +79,7 @@ public final class LoginController {
     }
   }
 
-  @PostMapping("/api/v1/auth/login/cancel")
+  @PostMapping("/cancel")
   public Mono<
           ResponseEntity<MutationResponse<LoginWorkflowResultResponse<CancelLoginDataResponse>>>>
       cancel(
@@ -142,7 +116,7 @@ public final class LoginController {
     }
   }
 
-  @PostMapping("/api/v1/auth/login/otp/send")
+  @PostMapping("/otp/send")
   public Mono<
           ResponseEntity<MutationResponse<LoginWorkflowResultResponse<LoginOtpSendDataResponse>>>>
       send(
@@ -188,7 +162,7 @@ public final class LoginController {
     }
   }
 
-  @PostMapping("/api/v1/auth/login/otp/resend")
+  @PostMapping("/otp/resend")
   public Mono<
           ResponseEntity<MutationResponse<LoginWorkflowResultResponse<LoginOtpSendDataResponse>>>>
       resend(
@@ -238,7 +212,7 @@ public final class LoginController {
     }
   }
 
-  @PostMapping("/api/v1/auth/login/otp/verify")
+  @PostMapping("/otp/verify")
   public Mono<
           ResponseEntity<MutationResponse<LoginWorkflowResultResponse<LoginOtpVerifyDataResponse>>>>
       verify(

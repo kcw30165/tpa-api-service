@@ -11,6 +11,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRec
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryStartRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryStartResponsePolicy;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryStartWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.session.cookie.HttpSessionCookieAdapter;
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoverySchemeProjection;
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryStartResult;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionCookiePolicy;
@@ -226,6 +227,7 @@ class UsernameRecoveryControllerSecurityTest {
         cancel,
         new UsernameRecoveryCancelWebMapper(),
         new UsernameRecoveryCancelResponsePolicy(),
-        new UsernameRecoveryCookieWriter(authFlowPolicy));
+        new UsernameRecoveryCookieWriter(authFlowPolicy),
+        new HttpSessionCookieAdapter());
   }
 }

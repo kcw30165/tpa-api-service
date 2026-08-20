@@ -70,7 +70,6 @@ class UsernameRecoveryControllerPrerequisiteArchitectureGuardTest {
             .andShould()
             .onlyDependOnClassesThat()
             .resideInAnyPackage(
-                "com.bct.ngtpa.apiservice.adapter.in.web.controller..",
                 "com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery..",
                 "com.bct.ngtpa.apiservice.adapter.in.web.response..",
                 "com.bct.ngtpa.apiservice.adapter.in.web.session.cookie..",
@@ -81,8 +80,10 @@ class UsernameRecoveryControllerPrerequisiteArchitectureGuardTest {
                 "com.bct.ngtpa.apiservice.shared..",
                 "org.springframework..",
                 "reactor..",
+                "lombok..",
                 "java..")
             .as("UsernameRecoveryController is the concrete thin Task 024 controller");
+    ;
     rule.check(classes);
   }
 

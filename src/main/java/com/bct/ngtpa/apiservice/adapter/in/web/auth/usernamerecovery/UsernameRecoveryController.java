@@ -24,7 +24,7 @@ import com.bct.ngtpa.apiservice.domain.model.UsernameRecoverySchemeRef;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.CookieValue;
@@ -53,6 +53,7 @@ import reactor.core.publisher.Mono;
  */
 @RestController
 @RequestMapping("/api/v1/auth/username-recovery")
+@RequiredArgsConstructor
 public final class UsernameRecoveryController {
 
   private static final String SCHEME_REF_HEADER = "Scheme-Ref";
@@ -68,30 +69,6 @@ public final class UsernameRecoveryController {
   private final UsernameRecoveryCancelResponsePolicy cancelPolicy;
   private final UsernameRecoveryCookieWriter cookieWriter;
   private final HttpSessionCookieAdapter cookieAdapter;
-
-  public UsernameRecoveryController(
-      StartUsernameRecoveryUseCase startUseCase,
-      UsernameRecoveryStartWebMapper startMapper,
-      UsernameRecoveryStartResponsePolicy startPolicy,
-      RequestUsernameRecoveryUseCase requestUseCase,
-      UsernameRecoveryRequestWebMapper requestMapper,
-      UsernameRecoveryRequestResponsePolicy requestPolicy,
-      CancelUsernameRecoveryUseCase cancelUseCase,
-      UsernameRecoveryCancelWebMapper cancelMapper,
-      UsernameRecoveryCancelResponsePolicy cancelPolicy,
-      UsernameRecoveryCookieWriter cookieWriter) {
-    this.startUseCase = Objects.requireNonNull(startUseCase, "startUseCase must not be null");
-    this.startMapper = Objects.requireNonNull(startMapper, "startMapper must not be null");
-    this.startPolicy = Objects.requireNonNull(startPolicy, "startPolicy must not be null");
-    this.requestUseCase = Objects.requireNonNull(requestUseCase, "requestUseCase must not be null");
-    this.requestMapper = Objects.requireNonNull(requestMapper, "requestMapper must not be null");
-    this.requestPolicy = Objects.requireNonNull(requestPolicy, "requestPolicy must not be null");
-    this.cancelUseCase = Objects.requireNonNull(cancelUseCase, "cancelUseCase must not be null");
-    this.cancelMapper = Objects.requireNonNull(cancelMapper, "cancelMapper must not be null");
-    this.cancelPolicy = Objects.requireNonNull(cancelPolicy, "cancelPolicy must not be null");
-    this.cookieWriter = Objects.requireNonNull(cookieWriter, "cookieWriter must not be null");
-    this.cookieAdapter = new HttpSessionCookieAdapter();
-  }
 
   @PostMapping("/start")
   public Mono<

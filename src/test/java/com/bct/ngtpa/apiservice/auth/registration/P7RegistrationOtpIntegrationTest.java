@@ -51,10 +51,8 @@ class P7RegistrationOtpIntegrationTest {
             String.class,
             org.springframework.http.server.reactive.ServerHttpResponse.class);
 
-    assertThat(resend.getAnnotation(PostMapping.class).path())
-        .containsExactly("/otp/resend");
-    assertThat(verify.getAnnotation(PostMapping.class).path())
-        .containsExactly("/otp/verify");
+    assertThat(resend.getAnnotation(PostMapping.class).path()).containsExactly("/otp/resend");
+    assertThat(verify.getAnnotation(PostMapping.class).path()).containsExactly("/otp/verify");
     assertThat(
             java.util.Arrays.stream(RegistrationController.class.getDeclaredMethods())
                 .filter(method -> method.getAnnotation(PostMapping.class) != null)

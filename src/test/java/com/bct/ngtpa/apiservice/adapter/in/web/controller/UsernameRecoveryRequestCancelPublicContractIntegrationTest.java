@@ -10,6 +10,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRec
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryRequestWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryStartResponsePolicy;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryStartWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.session.cookie.HttpSessionCookieAdapter;
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryCancelCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryCancelResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryDestinationType;
@@ -268,7 +269,8 @@ class UsernameRecoveryRequestCancelPublicContractIntegrationTest {
             cancel,
             new UsernameRecoveryCancelWebMapper(),
             new UsernameRecoveryCancelResponsePolicy(),
-            new UsernameRecoveryCookieWriter(authFlow));
+            new UsernameRecoveryCookieWriter(authFlow),
+            new HttpSessionCookieAdapter());
     return WebTestClient.bindToController(controller).build();
   }
 

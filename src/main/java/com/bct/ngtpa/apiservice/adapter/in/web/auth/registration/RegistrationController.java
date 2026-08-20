@@ -36,6 +36,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegis
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.ResendRegistrationOtpCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.VerifyRegistrationOtpCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.username.CheckRegistrationUsernameCommand;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -44,6 +45,7 @@ import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("/api/v1/auth/registration")
+@RequiredArgsConstructor
 public final class RegistrationController {
   private final StartRegistrationUseCase useCase;
   private final RegistrationStartWebMapper mapper;
@@ -60,39 +62,6 @@ public final class RegistrationController {
   private final RegistrationIdempotencyProperties idempotencyProperties;
   private final CheckRegistrationUsernameUseCase checkRegistrationUsernameUseCase;
   private final RegistrationUsernameCheckWebMapper registrationUsernameCheckWebMapper;
-
-  public RegistrationController(
-      StartRegistrationUseCase useCase,
-      RegistrationStartWebMapper mapper,
-      AuthFlowCookieWriter cookieWriter,
-      CompleteRegistrationUseCase completeRegistrationUseCase,
-      CompleteRegistrationWebMapper completeRegistrationWebMapper,
-      CancelRegistrationUseCase cancelRegistrationUseCase,
-      CancelRegistrationWebMapper cancelRegistrationWebMapper,
-      XsrfCookieWriter xsrfCookieWriter,
-      ResendRegistrationOtpUseCase resendRegistrationOtpUseCase,
-      RegistrationOtpResendWebMapper registrationOtpResendMapper,
-      VerifyRegistrationOtpUseCase verifyRegistrationOtpUseCase,
-      RegistrationOtpVerifyWebMapper registrationOtpVerifyMapper,
-      RegistrationIdempotencyProperties idempotencyProperties,
-      CheckRegistrationUsernameUseCase checkRegistrationUsernameUseCase,
-      RegistrationUsernameCheckWebMapper registrationUsernameCheckWebMapper) {
-    this.useCase = useCase;
-    this.mapper = mapper;
-    this.cookieWriter = cookieWriter;
-    this.completeRegistrationUseCase = completeRegistrationUseCase;
-    this.completeRegistrationWebMapper = completeRegistrationWebMapper;
-    this.cancelRegistrationUseCase = cancelRegistrationUseCase;
-    this.cancelRegistrationWebMapper = cancelRegistrationWebMapper;
-    this.xsrfCookieWriter = xsrfCookieWriter;
-    this.resendRegistrationOtpUseCase = resendRegistrationOtpUseCase;
-    this.registrationOtpResendMapper = registrationOtpResendMapper;
-    this.verifyRegistrationOtpUseCase = verifyRegistrationOtpUseCase;
-    this.registrationOtpVerifyMapper = registrationOtpVerifyMapper;
-    this.idempotencyProperties = idempotencyProperties;
-    this.checkRegistrationUsernameUseCase = checkRegistrationUsernameUseCase;
-    this.registrationUsernameCheckWebMapper = registrationUsernameCheckWebMapper;
-  }
 
   @PostMapping(path = "/start")
   public Mono<

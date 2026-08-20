@@ -17,7 +17,7 @@ class Task0043LoginWebEndpointArchitectureTest {
 
     assertThat(source)
         .contains(
-            "@PostMapping(\"/api/v1/auth/login\")",
+            "@PostMapping",
             "StartLoginUseCase",
             "AuthFlowCookieWriter",
             "Idempotency-Key",

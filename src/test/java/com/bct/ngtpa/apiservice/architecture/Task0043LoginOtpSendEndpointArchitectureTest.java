@@ -14,7 +14,7 @@ class Task0043LoginOtpSendEndpointArchitectureTest {
                 "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/login/LoginController.java"));
     assertThat(s)
         .contains(
-            "/api/v1/auth/login/otp",
+            "/otp",
             "/send",
             "auth_flow_sid",
             "X-XSRF-TOKEN",

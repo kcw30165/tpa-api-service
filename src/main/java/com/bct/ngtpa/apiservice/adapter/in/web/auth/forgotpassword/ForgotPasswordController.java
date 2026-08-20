@@ -40,7 +40,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.St
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import java.time.Duration;
 import java.util.Map;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.bind.annotation.CookieValue;
@@ -53,6 +53,7 @@ import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping("/api/v1/auth/forgot-password")
+@RequiredArgsConstructor
 public final class ForgotPasswordController {
   private final StartForgotPasswordUseCase startUseCase;
   private final ForgotPasswordStartWebMapper startMapper;
@@ -70,42 +71,6 @@ public final class ForgotPasswordController {
   private final ForgotPasswordOtpResendWebMapper otpResendMapper;
   private final VerifyForgotPasswordOtpUseCase otpVerifyUseCase;
   private final ForgotPasswordOtpVerifyWebMapper otpVerifyMapper;
-
-  @Autowired
-  public ForgotPasswordController(
-      StartForgotPasswordUseCase startUseCase,
-      ForgotPasswordStartWebMapper startMapper,
-      VerifyForgotPasswordIdentityUseCase identityCheckUseCase,
-      ForgotPasswordIdentityWebMapper identityCheckMapper,
-      ProcessForgotPasswordDetailsOtpUseCase detailsCheckUseCase,
-      ForgotPasswordDetailsOtpWebMapper detailsCheckMapper,
-      CompleteForgotPasswordUseCase completeUseCase,
-      ForgotPasswordCompleteWebMapper completeMapper,
-      CancelForgotPasswordUseCase cancelUseCase,
-      ForgotPasswordCancelWebMapper cancelMapper,
-      AuthFlowCookieWriter cookieWriter,
-      XsrfCookieWriter xsrfCookies,
-      ResendForgotPasswordOtpUseCase otpResendUseCase,
-      ForgotPasswordOtpResendWebMapper otpResendMapper,
-      VerifyForgotPasswordOtpUseCase otpVerifyUseCase,
-      ForgotPasswordOtpVerifyWebMapper otpVerifyMapper) {
-    this.startUseCase = startUseCase;
-    this.startMapper = startMapper;
-    this.identityCheckUseCase = identityCheckUseCase;
-    this.identityCheckMapper = identityCheckMapper;
-    this.detailsCheckUseCase = detailsCheckUseCase;
-    this.detailsCheckMapper = detailsCheckMapper;
-    this.completeUseCase = completeUseCase;
-    this.completeMapper = completeMapper;
-    this.cancelUseCase = cancelUseCase;
-    this.cancelMapper = cancelMapper;
-    this.cookieWriter = cookieWriter;
-    this.xsrfCookies = xsrfCookies;
-    this.otpResendUseCase = otpResendUseCase;
-    this.otpResendMapper = otpResendMapper;
-    this.otpVerifyUseCase = otpVerifyUseCase;
-    this.otpVerifyMapper = otpVerifyMapper;
-  }
 
   @PostMapping("/start")
   public Mono<

@@ -33,12 +33,7 @@ class LoginHttpBoundaryConsolidationArchitectureTest {
               "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthLoginOtpVerifyController.java"));
 
   private static final Set<String> EXPECTED_POST_PATHS =
-      Set.of(
-          "/api/v1/auth/login",
-          "/api/v1/auth/login/cancel",
-          "/api/v1/auth/login/otp/send",
-          "/api/v1/auth/login/otp/resend",
-          "/api/v1/auth/login/otp/verify");
+      Set.of("/cancel", "/otp/send", "/otp/resend", "/otp/verify");
 
   @Test
   void oneLoginControllerOwnsTheCompleteLoginHttpBoundary() {
@@ -58,7 +53,7 @@ class LoginHttpBoundaryConsolidationArchitectureTest {
             .collect(Collectors.toSet());
 
     assertThat(postPaths).containsExactlyInAnyOrderElementsOf(EXPECTED_POST_PATHS);
-    assertThat(postPaths).hasSize(5);
+    assertThat(postPaths).hasSize(4);
   }
 
   @Test
