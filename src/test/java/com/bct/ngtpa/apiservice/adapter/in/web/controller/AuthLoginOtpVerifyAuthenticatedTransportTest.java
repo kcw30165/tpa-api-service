@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.LoginController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.mapper.LoginOtpVerifyWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.XsrfCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.session.config.AuthFlowSessionProperties;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.account.LoginAccountRef;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.account.LoginSessionAccount;
@@ -44,7 +43,6 @@ class AuthLoginOtpVerifyAuthenticatedTransportTest {
             AuthFlowCookieWriter.from(properties),
             null,
             null,
-            new XsrfCookieWriter(properties),
             null,
             null,
             null,
@@ -78,11 +76,6 @@ class AuthLoginOtpVerifyAuthenticatedTransportTest {
     assertThat(
             response.getCookies().getFirst(properties.getCookie().getName()).getMaxAge().isZero())
         .isTrue();
-    assertThat(response.getCookies().get(properties.getCsrf().getCookieName())).hasSize(1);
-    var clearedPreAuthXsrf = response.getCookies().getFirst(properties.getCsrf().getCookieName());
-    assertThat(clearedPreAuthXsrf).isNotNull();
-    assertThat(clearedPreAuthXsrf.getPath()).isEqualTo(properties.getCsrf().getCookiePath());
-    assertThat(clearedPreAuthXsrf.getMaxAge().isZero()).isTrue();
   }
 
   @Test
@@ -97,7 +90,6 @@ class AuthLoginOtpVerifyAuthenticatedTransportTest {
             AuthFlowCookieWriter.from(properties),
             null,
             null,
-            new XsrfCookieWriter(properties),
             null,
             null,
             null,

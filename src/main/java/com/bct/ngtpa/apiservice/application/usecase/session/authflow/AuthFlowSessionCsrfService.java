@@ -4,10 +4,14 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.port.in.CreateAuthFlowSessionCsrfUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
+
+import lombok.extern.slf4j.Slf4j;
+
 import java.time.Instant;
 import java.util.Objects;
 import reactor.core.publisher.Mono;
 
+@Slf4j
 public class AuthFlowSessionCsrfService implements CreateAuthFlowSessionCsrfUseCase {
   private final AuthFlowSessionPort authFlowSessionPort;
   private final CsrfTokenGenerator csrfTokenGenerator;
@@ -66,6 +70,11 @@ public class AuthFlowSessionCsrfService implements CreateAuthFlowSessionCsrfUseC
               CsrfTokenValidationResult token =
                   csrfTokenValidationService.validate(
                       command.submittedToken(), session.csrfTokenHash());
+              log.info(
+                  "CSRF validation for session {}: submittedToken={} status={}",
+                  session.authFlowSessionId(),
+                  command.submittedToken(),
+                  token.status());
               return result(
                   switch (token.status()) {
                     case VALID -> AuthFlowSessionCsrfValidationStatus.VALID;

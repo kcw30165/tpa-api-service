@@ -50,7 +50,6 @@ class AuthLoginControllerTest {
             null,
             null,
             null,
-            null,
             null);
     var response = new MockServerHttpResponse();
 
@@ -81,7 +80,6 @@ class AuthLoginControllerTest {
             useCase,
             new LoginStartWebMapper(),
             AuthFlowCookieWriter.defaultWriter(),
-            null,
             null,
             null,
             null,

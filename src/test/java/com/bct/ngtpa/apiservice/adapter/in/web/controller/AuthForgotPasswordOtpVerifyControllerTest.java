@@ -242,7 +242,6 @@ class AuthForgotPasswordOtpVerifyControllerTest {
         null,
         null,
         null,
-        null,
         command -> Mono.error(new AssertionError("resend use case must not be called")),
         new ForgotPasswordOtpResendWebMapper(),
         verifyUseCase,

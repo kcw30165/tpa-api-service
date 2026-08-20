@@ -366,7 +366,6 @@ class P7RegistrationOtpIntegrationTest {
         null,
         null,
         null,
-        null,
         resendUseCase,
         new RegistrationOtpResendWebMapper(null),
         verifyUseCase,

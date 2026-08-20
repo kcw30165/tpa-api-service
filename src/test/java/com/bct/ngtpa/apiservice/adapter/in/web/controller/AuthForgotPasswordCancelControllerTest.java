@@ -9,7 +9,6 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.Forgot
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordIdentityWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.XsrfCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
@@ -81,7 +80,6 @@ class AuthForgotPasswordCancelControllerTest {
         .verifyComplete();
 
     assertThat(response.getCookies().getFirst("auth_flow_sid").getValue()).isEmpty();
-    assertThat(response.getCookies().getFirst("XSRF-TOKEN").getValue()).isEmpty();
   }
 
   @Test
@@ -151,7 +149,6 @@ class AuthForgotPasswordCancelControllerTest {
         .verifyComplete();
 
     assertThat(response.getCookies().getFirst("auth_flow_sid").getValue()).isEmpty();
-    assertThat(response.getCookies().getFirst("XSRF-TOKEN").getValue()).isEmpty();
     assertThat(response.getHeaders().getFirst("X-Request-Id")).isEqualTo("req_abc");
   }
 
@@ -260,8 +257,6 @@ class AuthForgotPasswordCancelControllerTest {
         cancelUseCase,
         new ForgotPasswordCancelWebMapper(),
         AuthFlowCookieWriter.defaultWriter(),
-        new XsrfCookieWriter(
-            new com.bct.ngtpa.apiservice.adapter.in.web.session.config.AuthFlowSessionProperties()),
         null,
         null,
         null,

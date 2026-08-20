@@ -2,7 +2,6 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.RegistrationIdempotencyProperties;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.XsrfCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.CancelRegistrationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.CompleteRegistrationRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.CompleteRegistrationResponse;
@@ -54,7 +53,6 @@ public final class RegistrationController {
   private final CompleteRegistrationWebMapper completeRegistrationWebMapper;
   private final CancelRegistrationUseCase cancelRegistrationUseCase;
   private final CancelRegistrationWebMapper cancelRegistrationWebMapper;
-  private final XsrfCookieWriter xsrfCookieWriter;
   private final ResendRegistrationOtpUseCase resendRegistrationOtpUseCase;
   private final RegistrationOtpResendWebMapper registrationOtpResendMapper;
   private final VerifyRegistrationOtpUseCase verifyRegistrationOtpUseCase;
@@ -179,7 +177,6 @@ public final class RegistrationController {
           ServerHttpResponse response) {
     if (!hasText(authFlowSessionId)) {
       cookieWriter.clearAuthFlowCookie(response);
-      xsrfCookieWriter.clearXsrfCookie(response);
       return Mono.just(
           RegistrationHttpResponses.toResponse(
               cancelRegistrationWebMapper.missingSession(acceptLanguage)));
@@ -196,9 +193,6 @@ public final class RegistrationController {
               result -> {
                 if (result.clearAuthFlowCookie()) {
                   cookieWriter.clearAuthFlowCookie(response);
-                }
-                if (result.clearXsrfCookie()) {
-                  xsrfCookieWriter.clearXsrfCookie(response);
                 }
                 return RegistrationHttpResponses.toResponse(
                     cancelRegistrationWebMapper.toResponse(result, acceptLanguage));

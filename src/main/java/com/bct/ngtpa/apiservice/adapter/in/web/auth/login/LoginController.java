@@ -5,7 +5,6 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.cancel.CancelLoginWebM
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.dto.*;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.mapper.*;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.XsrfCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.CsrfHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
@@ -37,7 +36,6 @@ public final class LoginController {
   private final AuthFlowCookieWriter authFlowCookieWriter;
   private final CancelLoginUseCase cancelLoginUseCase;
   private final CancelLoginWebMapper cancelLoginMapper;
-  private final XsrfCookieWriter xsrfCookieWriter;
   private final SendLoginOtpUseCase sendLoginOtpUseCase;
   private final LoginOtpSendWebMapper loginOtpSendMapper;
   private final ResendLoginOtpUseCase resendLoginOtpUseCase;
@@ -92,11 +90,11 @@ public final class LoginController {
     echo(response, requestId);
     if (!text(session)) {
       authFlowCookieWriter.clearAuthFlowCookie(response);
-      xsrfCookieWriter.clearXsrfCookie(response);
       return Mono.just(LoginHttpResponses.toResponse(cancelLoginMapper.missingSession()));
     }
     if (!text(csrf)) return CsrfHttpResponses.missingToken();
     try {
+      log.info("csrf={} session={} requestId={} origin={} referer={}", csrf, session, requestId, origin, referer);
       return cancelLoginUseCase
           .cancel(
               new CancelLoginCommand(
@@ -108,7 +106,6 @@ public final class LoginController {
           .map(
               r -> {
                 if (r.clearAuthFlowCookie()) authFlowCookieWriter.clearAuthFlowCookie(response);
-                if (r.clearXsrfCookie()) xsrfCookieWriter.clearXsrfCookie(response);
                 return LoginHttpResponses.toResponse(cancelLoginMapper.toMutationResponse(r));
               });
     } catch (RuntimeException x) {
@@ -260,7 +257,6 @@ public final class LoginController {
                       response, r.authenticatedSessionId().value());
                 if (r.clearAuthFlowCookie()) {
                   authFlowCookieWriter.clearAuthFlowCookie(response);
-                  xsrfCookieWriter.clearXsrfCookie(response);
                 }
                 return LoginHttpResponses.toResponse(loginOtpVerifyMapper.toMutationResponse(r));
               })

@@ -241,7 +241,6 @@ class AuthRegistrationOtpVerifyControllerTest {
         null,
         null,
         null,
-        null,
         command -> Mono.error(new AssertionError("resend use case must not be called")),
         new RegistrationOtpResendWebMapper(null),
         verifyUseCase,

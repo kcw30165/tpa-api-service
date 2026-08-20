@@ -58,9 +58,6 @@ class AuthRegistrationControllerWorkflowContractTest {
             org.mockito.Mockito.mock(
                 com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper
                     .CancelRegistrationWebMapper.class),
-            org.mockito.Mockito.mock(
-                com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.XsrfCookieWriter
-                    .class),
             null,
             null,
             null,
@@ -112,9 +109,6 @@ class AuthRegistrationControllerWorkflowContractTest {
             org.mockito.Mockito.mock(
                 com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper
                     .CancelRegistrationWebMapper.class),
-            org.mockito.Mockito.mock(
-                com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.XsrfCookieWriter
-                    .class),
             null,
             null,
             null,

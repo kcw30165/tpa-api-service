@@ -19,7 +19,6 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.Forgot
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordOtpVerifyWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.XsrfCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.CsrfHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
@@ -66,7 +65,6 @@ public final class ForgotPasswordController {
   private final CancelForgotPasswordUseCase cancelUseCase;
   private final ForgotPasswordCancelWebMapper cancelMapper;
   private final AuthFlowCookieWriter cookieWriter;
-  private final XsrfCookieWriter xsrfCookies;
   private final ResendForgotPasswordOtpUseCase otpResendUseCase;
   private final ForgotPasswordOtpResendWebMapper otpResendMapper;
   private final VerifyForgotPasswordOtpUseCase otpVerifyUseCase;
@@ -104,7 +102,6 @@ public final class ForgotPasswordController {
                   cookieWriter.writeAuthFlowCookie(response, result.authFlowSessionId());
                 } else if (result.status() == StartForgotPasswordResultStatus.AUTH_FLOW_INVALID) {
                   cookieWriter.clearAuthFlowCookie(response);
-                  xsrfCookies.clearXsrfCookie(response);
                 }
                 return ForgotPasswordHttpResponses.toResponse(
                     startMapper.toMutationResponse(result, acceptLanguage));
@@ -216,7 +213,6 @@ public final class ForgotPasswordController {
     echoRequestId(response, requestId);
     if (!hasText(sessionId)) {
       cookieWriter.clearAuthFlowCookie(response);
-      xsrfCookies.clearXsrfCookie(response);
       return Mono.just(ForgotPasswordHttpResponses.toResponse(cancelMapper.missingSession()));
     }
     if (!hasText(csrfToken)) {
@@ -229,9 +225,6 @@ public final class ForgotPasswordController {
               result -> {
                 if (result.clearAuthFlowCookie()) {
                   cookieWriter.clearAuthFlowCookie(response);
-                }
-                if (result.clearXsrfCookie()) {
-                  xsrfCookies.clearXsrfCookie(response);
                 }
                 return ForgotPasswordHttpResponses.toResponse(cancelMapper.toResponse(result));
               })
@@ -294,9 +287,6 @@ public final class ForgotPasswordController {
               result -> {
                 if (result.clearAuthFlowCookie()) {
                   cookieWriter.clearAuthFlowCookie(response);
-                }
-                if (result.clearXsrfCookie()) {
-                  xsrfCookies.clearXsrfCookie(response);
                 }
                 return ForgotPasswordHttpResponses.toResponse(completeMapper.toResponse(result));
               })

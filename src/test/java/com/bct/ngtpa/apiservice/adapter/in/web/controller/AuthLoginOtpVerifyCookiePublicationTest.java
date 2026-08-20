@@ -7,7 +7,6 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.LoginController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.mapper.LoginOtpVerifyWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.*;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieWriter;
-import com.bct.ngtpa.apiservice.adapter.in.web.session.config.AuthFlowSessionProperties;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.account.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.verify.*;
@@ -48,7 +47,6 @@ class AuthLoginOtpVerifyCookiePublicationTest {
             AuthFlowCookieWriter.defaultWriter(),
             null,
             null,
-            new XsrfCookieWriter(new AuthFlowSessionProperties()),
             null,
             null,
             null,
@@ -78,9 +76,5 @@ class AuthLoginOtpVerifyCookiePublicationTest {
         .verifyComplete();
 
     assertThat(response.getCookies().getFirst("portal_sid")).isNotNull();
-    assertThat(response.getCookies().get("XSRF-TOKEN"))
-        .allSatisfy(cookie -> assertThat(cookie.getPath()).isEqualTo("/api/v1/auth"));
-    assertThat(response.getCookies().get("XSRF-TOKEN"))
-        .allSatisfy(cookie -> assertThat(cookie.getMaxAge().isZero()).isTrue());
   }
 }

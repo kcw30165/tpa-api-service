@@ -334,7 +334,6 @@ class AuthRegistrationUsernameControllerTest {
         null,
         null,
         null,
-        null,
         useCase,
         new RegistrationUsernameCheckWebMapper());
   }

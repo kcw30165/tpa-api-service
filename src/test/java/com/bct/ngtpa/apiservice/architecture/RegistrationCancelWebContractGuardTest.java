@@ -21,8 +21,7 @@ class RegistrationCancelWebContractGuardTest {
     assertThat(source)
         .containsIgnoringWhitespaces("@PostMapping(path = \"/cancel\"")
         .containsIgnoringWhitespaces("CancelRegistrationUseCase")
-        .containsIgnoringWhitespaces("clearAuthFlowCookie(response)")
-        .containsIgnoringWhitespaces("clearXsrfCookie(response)");
+        .containsIgnoringWhitespaces("clearAuthFlowCookie(response)");
     long explicitConstructors =
         Pattern.compile("public\\s+RegistrationController\\s*\\(")
             .matcher(source)

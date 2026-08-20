@@ -57,8 +57,7 @@ class Task0043AuthenticatedSidTransportArchitectureTest {
             "r.authenticatedSessionId().value()",
             "r.authenticatedCsrfToken()",
             "authenticatedSessionCookieWriter.write",
-            "clearAuthFlowCookie",
-            "clearXsrfCookie")
+            "clearAuthFlowCookie")
         .doesNotContain(
             "AUTHENTICATED_SESSION_HEADER",
             "X-Authenticated-Session-Id",

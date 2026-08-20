@@ -11,7 +11,6 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.Forgot
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.XsrfCookieWriter;
 import com.bct.ngtpa.apiservice.application.dto.workflow.ForgotPasswordErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.in.StartForgotPasswordUseCase;
@@ -157,7 +156,6 @@ class ForgotPasswordControllerTest {
         .verifyComplete();
 
     assertThat(response.getCookies().getFirst("auth_flow_sid").getValue()).isEmpty();
-    assertThat(response.getCookies().getFirst("XSRF-TOKEN").getValue()).isEmpty();
   }
 
   private static ForgotPasswordController controller(
@@ -174,8 +172,6 @@ class ForgotPasswordControllerTest {
         command -> Mono.error(new AssertionError("cancel use case must not be called")),
         new ForgotPasswordCancelWebMapper(),
         cookieWriter,
-        new XsrfCookieWriter(
-            new com.bct.ngtpa.apiservice.adapter.in.web.session.config.AuthFlowSessionProperties()),
         null,
         null,
         null,

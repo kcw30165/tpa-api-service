@@ -3,7 +3,6 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.XsrfCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.CompleteRegistrationRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.CancelRegistrationWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.CompleteRegistrationWebMapper;
@@ -135,7 +134,6 @@ class AuthRegistrationCompleteCancelControllerTest {
             Duration.ofMinutes(5), new RegistrationSuccessPageMapper(pages)),
         cancelUseCase,
         new CancelRegistrationWebMapper(new RegistrationCancellationPageMapper(pages)),
-        org.mockito.Mockito.mock(XsrfCookieWriter.class),
         null,
         null,
         null,

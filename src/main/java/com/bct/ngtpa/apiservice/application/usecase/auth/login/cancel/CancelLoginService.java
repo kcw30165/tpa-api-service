@@ -7,10 +7,14 @@ import com.bct.ngtpa.apiservice.application.dto.workflow.*;
 import com.bct.ngtpa.apiservice.application.port.in.CancelLoginUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.*;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.*;
+
+import lombok.extern.slf4j.Slf4j;
+
 import java.time.*;
 import java.util.*;
 import reactor.core.publisher.Mono;
 
+@Slf4j
 public final class CancelLoginService implements CancelLoginUseCase {
   private final AuthFlowSessionPort sessions;
   private final AuthFlowSessionCsrfService csrf;
@@ -52,6 +56,12 @@ public final class CancelLoginService implements CancelLoginUseCase {
     if (s.status() == AuthFlowStatus.COMPLETED
         || s.status() == AuthFlowStatus.EXPIRED
         || s.isExpired(now)) return Mono.just(clean(CancelLoginStatus.ALREADY_TERMINAL));
+    log.info(
+        "Canceling login session {} with status {} and scenario {} and csrfToken {}",
+        s.authFlowSessionId(),
+        s.status(),
+        s.scenario(),
+        c.csrfToken());
     if (c.csrfToken() == null || c.csrfToken().isBlank())
       return Mono.just(fail(CancelLoginStatus.CSRF_INVALID, LoginErrorKey.CSRF_INVALID.value()));
     return csrf.validateForSession(

@@ -511,8 +511,7 @@ class RegistrationStartWorkflowIntegrationTest {
         RegistrationStartWebMapper mapper,
         AuthFlowCookieWriter writer) {
       return new RegistrationController(
-          start, mapper, writer, null, null, null, null, null, null, null, null, null, null, null,
-          null);
+          start, mapper, writer, null, null, null, null, null, null, null, null, null, null, null);
     }
   }
 
