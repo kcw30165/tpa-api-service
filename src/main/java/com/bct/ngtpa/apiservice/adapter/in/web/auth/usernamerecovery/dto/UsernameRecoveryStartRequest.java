@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery;
+package com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.dto;
 
 /**
  * Public request body for {@code POST /api/v1/auth/username-recovery/start}.

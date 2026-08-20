@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery;
+package com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.policy;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.response.HttpStatusClassificationOverride;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;

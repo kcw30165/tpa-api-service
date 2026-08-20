@@ -38,13 +38,12 @@ class UsernameRecoveryWebDtoArchitectureGuardTest {
         new DescribedPredicate<>("Username Recovery web DTO or mapper classes") {
           @Override
           public boolean test(JavaClass input) {
-            String simpleName = input.getSimpleName();
-            return input
-                    .getPackageName()
-                    .equals("com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery")
-                && (simpleName.endsWith("Request")
-                    || simpleName.endsWith("Response")
-                    || simpleName.endsWith("Mapper"));
+            String packageName = input.getPackageName();
+
+            return packageName.equals(
+                    "com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.dto")
+                || packageName.equals(
+                    "com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.mapper");
           }
         };
 
@@ -58,9 +57,6 @@ class UsernameRecoveryWebDtoArchitectureGuardTest {
                 "com.bct.ngtpa.apiservice.config..",
                 "com.bct.ngtpa.apiservice.infrastructure..",
                 "org.springframework..",
-                "org.springframework.http..",
-                "org.springframework.web..",
-                "org.springframework.web.reactive..",
                 "reactor.core..",
                 "jakarta.servlet..",
                 "io.lettuce..",
@@ -68,6 +64,7 @@ class UsernameRecoveryWebDtoArchitectureGuardTest {
             .as(
                 "Username Recovery web DTOs and mappers must stay free of outbound adapters, "
                     + "config, infrastructure, Spring, servlet, and Redis types");
+
     rule.check(classes);
   }
 

@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery;
+package com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.dto;
 
 /**
  * Public scheme projection inside the Start response data.

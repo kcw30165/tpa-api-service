@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery;
+package com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.dto;
 
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 

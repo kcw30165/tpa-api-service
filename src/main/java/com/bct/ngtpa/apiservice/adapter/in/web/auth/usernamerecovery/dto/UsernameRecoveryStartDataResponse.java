@@ -1,4 +1,4 @@
-package com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery;
+package com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.List;
