@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationStartWebMapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationController;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
@@ -27,7 +26,7 @@ class AuthRegistrationControllerWorkflowContractTest {
   @Test
   void registrationStartUsesGenericMutationResponseContract() throws Exception {
     var method =
-        AuthRegistrationController.class.getDeclaredMethod(
+        RegistrationController.class.getDeclaredMethod(
             "startRegistration",
             RegistrationStartRequest.class,
             String.class,
@@ -45,7 +44,7 @@ class AuthRegistrationControllerWorkflowContractTest {
   void missingIdempotencyKeyUsesGenericMutationResponseAndDoesNotCallUseCase() {
     var useCase = new RecordingUseCase();
     var controller =
-        new AuthRegistrationController(
+        new RegistrationController(
             useCase,
             new RegistrationStartWebMapper(Duration.ofMinutes(5)),
             AuthFlowCookieWriter.defaultWriter(),
@@ -61,7 +60,14 @@ class AuthRegistrationControllerWorkflowContractTest {
                     .CancelRegistrationWebMapper.class),
             org.mockito.Mockito.mock(
                 com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.XsrfCookieWriter
-                    .class));
+                    .class),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
 
     StepVerifier.create(
             controller.startRegistration(
@@ -92,7 +98,7 @@ class AuthRegistrationControllerWorkflowContractTest {
   void workflowAlignedCookieBehaviourIsUnchanged() {
     var useCase = new RecordingUseCase();
     var controller =
-        new AuthRegistrationController(
+        new RegistrationController(
             useCase,
             new RegistrationStartWebMapper(Duration.ofMinutes(5)),
             AuthFlowCookieWriter.defaultWriter(),
@@ -108,7 +114,14 @@ class AuthRegistrationControllerWorkflowContractTest {
                     .CancelRegistrationWebMapper.class),
             org.mockito.Mockito.mock(
                 com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.XsrfCookieWriter
-                    .class));
+                    .class),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
     var response = new MockServerHttpResponse();
 
     StepVerifier.create(

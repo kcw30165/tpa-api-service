@@ -630,3 +630,22 @@
 - No duplicate annotation-proven HTTP method/path pairs found.
 - No composed mapping annotation is reported as `ANY`; `ANY` is reserved for an unconstrained `@RequestMapping`.
 - Statuses described as runtime-dependent identify the exact response selector rather than inventing a single HTTP status.
+
+## Stage 005 Registration Endpoint Ownership Checkpoint
+
+The six existing Registration endpoints are now owned in the working tree by `com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.RegistrationController`:
+
+- `POST /api/v1/auth/registration/start`
+- `POST /api/v1/auth/registration/complete`
+- `POST /api/v1/auth/registration/cancel`
+- `POST /api/v1/auth/registration/otp/resend`
+- `POST /api/v1/auth/registration/otp/verify`
+- `POST /api/v1/auth/registration/username/check`
+
+Endpoint count and contracts are unchanged. Final validation and architect approval remain pending.
+
+- Registration start/captcha validation: **PASS**.
+- Registration OTP lifecycle validation: **PASS**.
+- Architect status: **PENDING**.
+- Commit authorization: **false**.
+- Stage 006 started: **false**.

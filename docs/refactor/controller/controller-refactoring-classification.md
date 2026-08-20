@@ -100,3 +100,16 @@ READY_FOR_ARCHITECT_REVIEW
 - Compatibility controller retained: **NO**.
 - Registration and Forgot Password controllers remain deferred and unchanged.
 - Stage 005 started: **false**.
+
+## Stage 005 Registration Boundary Checkpoint
+
+- Classification: **IMPLEMENTABLE_AS_DESIGNED**.
+- Completed consolidation owner: `com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.RegistrationController`.
+- Legacy source owners removed in the working tree: `AuthRegistrationController`, `AuthRegistrationOtpController`, and `AuthRegistrationUsernameController`.
+- Effective endpoint count: **6**, unchanged.
+- Public HTTP contract change: **NONE**.
+- Registration start/captcha validation: **PASS**.
+- Registration OTP lifecycle validation: **PASS**.
+- Architect status: **PENDING**.
+- Commit authorization: **false**.
+- Stage 006 started: **false**.

@@ -118,3 +118,69 @@ Phase 07 reconciles active documentation only. Historical prompts, plans, genera
 - stage_005_started=false
 - architect_status=PENDING
 - commit_authorization=false
+
+## Controller Refactoring Stage 005
+
+- stage: 005 registration-http-boundary
+- Stage 004 architect status: PASS
+- Stage 004 prerequisite commit: `f4f043a37504d2dc36103dd3d13b4622c501edd9`
+- implementation status: FOCUSED_ARCHITECTURE_PASS
+- exact evidence directory: `target/evidence/controller-refactoring-005-20260819-233249`
+- classification result: IMPLEMENTABLE_AS_DESIGNED
+- consolidation: `AuthRegistrationController`, `AuthRegistrationOtpController`, and `AuthRegistrationUsernameController` into `web.auth.registration.RegistrationController`
+- preserved Registration endpoint count: 6
+- constructor dependencies: 15 after deduplicating the shared `AuthFlowCookieWriter`
+- helper decisions: one identical `hasText(String)` retained; OTP-specific `trimToNull(String)` retained
+- genuine fail-first result: PASS, expected architectural failure retained with exit 1
+- formatter: Spotless PASS
+- production compile: PASS
+- test compile: PASS
+- focused Registration architecture: PASS, tests=3, failures=0, errors=0, skipped=0
+- Registration start and captcha: PASS
+- Registration OTP lifecycle: PASS
+- remaining Registration focused gates: PENDING
+- eligible trust preservation: PENDING final validation; existing characterization identified
+- Stage 002, Stage 003, and Stage 004 preservation: PENDING
+- cumulative controller regression: PENDING
+- full suite: PENDING
+- final compile and audits: PENDING
+- Forgot Password work: deferred and unchanged
+- stage_006_started=false
+- architect_status=PENDING
+- commit_authorization=false
+
+## Stage 005 validation continuation
+
+- HEAD: `f4f043a37504d2dc36103dd3d13b4622c501edd9`
+- Evidence: `target/evidence/controller-refactoring-005-20260819-233249`
+- Username gate: PASS
+- Remaining validation result: **FAIL**
+- Failed gate: `registration-completion-cancel`
+- Stage 006 started: **false**
+- Commit authorization: **false**
+
+## Stage 005 validation continuation
+
+- HEAD: `f4f043a37504d2dc36103dd3d13b4622c501edd9`
+- Evidence: `target/evidence/controller-refactoring-005-20260819-233249`
+- Username gate: PASS
+- Remaining validation result: **FAIL**
+- Failed gate: `registration-completion-cancel`
+- Stage 006 started: **false**
+- Commit authorization: **false**
+
+## Stage 005 final validation
+
+- Registration start: PASS
+- Registration OTP: PASS
+- Registration username: PASS
+- Registration completion/cancellation: PASS
+- Registration security/session: PASS
+- Eligible-trust: PASS
+- Cumulative validation: PASS
+- Full test suite: PASS
+- Full test result: 3,806 run, 0 failures, 0 errors, 12 skipped
+- Surefire reports are the authoritative test evidence.
+- Stage 006 started: false
+- Commit authorization: false
+- Next action: review the final Stage 005 diff and authorize the commit.

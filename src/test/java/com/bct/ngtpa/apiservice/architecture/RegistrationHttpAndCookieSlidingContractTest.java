@@ -17,7 +17,7 @@ class RegistrationHttpAndCookieSlidingContractTest {
     String username =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationUsernameController.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/RegistrationController.java"));
     String mapper =
         Files.readString(
             Path.of(
@@ -34,15 +34,11 @@ class RegistrationHttpAndCookieSlidingContractTest {
 
   @Test
   void protectedRegistrationInteractionsReissueSlidingCookie() throws Exception {
-    for (String file :
-        new String[] {
-          "AuthRegistrationOtpController.java",
-          "AuthRegistrationUsernameController.java",
-          "AuthRegistrationController.java"
-        }) {
+    for (String file : new String[] {"RegistrationController.java"}) {
       String source =
           Files.readString(
-              Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller", file));
+              Path.of(
+                  "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration", file));
       assertThat(source).contains("cookieWriter.writeAuthFlowCookie");
     }
   }

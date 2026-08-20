@@ -7,17 +7,15 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 class AuthRegistrationOtpVerifyControllerArchitectureGuardTest {
+  private static final Path CONTROLLER =
+      Path.of(
+          "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/RegistrationController.java");
 
   @Test
   void otpVerifyControllerDoesNotDependOnOutboundAdapters() throws Exception {
-    Path controller =
-        Path.of(
-            "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationOtpVerifyController.java");
-    if (!Files.exists(controller)) {
-      return;
-    }
-    String source = Files.readString(controller);
-    assertThat(source)
+    String verifyOtp = methodSource(Files.readString(CONTROLLER), "verifyOtp(");
+
+    assertThat(verifyOtp)
         .doesNotContain(
             "adapter.out.redis",
             "adapter.out.apim",
@@ -32,24 +30,9 @@ class AuthRegistrationOtpVerifyControllerArchitectureGuardTest {
 
   @Test
   void p7_5DoesNotIntroduceUsernameCompleteCancelOrResume() throws Exception {
-    String sources;
-    try (var files = Files.walk(Path.of("src/main/java"))) {
-      sources =
-          String.join(
-              "\n",
-              files
-                  .filter(path -> path.toString().endsWith(".java"))
-                  .map(
-                      path -> {
-                        try {
-                          return Files.readString(path);
-                        } catch (Exception exception) {
-                          return "";
-                        }
-                      })
-                  .toList());
-    }
-    assertThat(sources)
+    String verifyOtp = methodSource(Files.readString(CONTROLLER), "verifyOtp(");
+
+    assertThat(verifyOtp)
         .doesNotContain(
             "/api/v1/auth/registration/username/check",
             "/api/v1/auth/registration/complete",
@@ -57,5 +40,27 @@ class AuthRegistrationOtpVerifyControllerArchitectureGuardTest {
             "/api/v1/auth/flow/resume",
             "AuthFlowResumeRequest",
             "ResumeAuthFlowUseCase");
+  }
+
+  private static String methodSource(String source, String methodMarker) {
+    int marker = source.indexOf(methodMarker);
+    assertThat(marker).as("method marker %s", methodMarker).isGreaterThanOrEqualTo(0);
+    int mapping = source.lastIndexOf("@PostMapping", marker);
+    int openingBrace = source.indexOf('{', marker);
+    assertThat(mapping).isGreaterThanOrEqualTo(0);
+    assertThat(openingBrace).isGreaterThan(marker);
+    int depth = 0;
+    for (int index = openingBrace; index < source.length(); index++) {
+      char current = source.charAt(index);
+      if (current == '{') {
+        depth++;
+      } else if (current == '}') {
+        depth--;
+        if (depth == 0) {
+          return source.substring(mapping, index + 1);
+        }
+      }
+    }
+    throw new AssertionError("Unbalanced method body for " + methodMarker);
   }
 }

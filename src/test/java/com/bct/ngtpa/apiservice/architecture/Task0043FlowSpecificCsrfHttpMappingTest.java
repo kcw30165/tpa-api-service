@@ -72,15 +72,15 @@ class Task0043FlowSpecificCsrfHttpMappingTest {
     String registration =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationController.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/RegistrationController.java"));
     String registrationOtp =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationOtpController.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/RegistrationController.java"));
     String registrationUsername =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationUsernameController.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/RegistrationController.java"));
     String forgotPassword =
         Files.readString(
             Path.of(

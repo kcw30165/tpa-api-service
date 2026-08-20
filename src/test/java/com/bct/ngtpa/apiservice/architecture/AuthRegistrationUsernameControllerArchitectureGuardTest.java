@@ -12,7 +12,7 @@ class AuthRegistrationUsernameControllerArchitectureGuardTest {
       throws Exception {
     Path controller =
         Path.of(
-            "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationUsernameController.java");
+            "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/RegistrationController.java");
     if (!Files.exists(controller)) {
       throw new AssertionError("Expected username-check controller to exist: " + controller);
     }
@@ -26,8 +26,7 @@ class AuthRegistrationUsernameControllerArchitectureGuardTest {
             "adapter.out.redis",
             "adapter.out.apim",
             "ReactiveRedisTemplate",
-            "ApimWebClientFacade",
-            "RegistrationIdempotency");
+            "ApimWebClientFacade");
     assertThat(source)
         .contains("CheckRegistrationUsernameUseCase", "RegistrationUsernameCheckWebMapper");
   }

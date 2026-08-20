@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationSelectedTrustRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationUsernameCheckRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationUsernameCheckWebMapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationUsernameController;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorType;
@@ -30,7 +29,7 @@ class AuthRegistrationUsernameControllerTest {
   @Test
   void usernameCheckEndpointExists() throws Exception {
     Method method =
-        AuthRegistrationUsernameController.class.getDeclaredMethod(
+        RegistrationController.class.getDeclaredMethod(
             "checkUsername",
             RegistrationUsernameCheckRequest.class,
             String.class,
@@ -320,11 +319,22 @@ class AuthRegistrationUsernameControllerTest {
         .toList();
   }
 
-  private static AuthRegistrationUsernameController controller(
-      CheckRegistrationUsernameUseCase useCase) {
-    return new AuthRegistrationUsernameController(
+  private static RegistrationController controller(CheckRegistrationUsernameUseCase useCase) {
+    return new RegistrationController(
+        null,
+        null,
         com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter
             .defaultWriter(),
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
         useCase,
         new RegistrationUsernameCheckWebMapper());
   }

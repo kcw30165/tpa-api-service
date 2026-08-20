@@ -12,7 +12,7 @@ class AuthRegistrationOtpResendControllerArchitectureGuardTest {
   void otpResendControllerDoesNotDependOnOutboundAdapters() throws Exception {
     Path controller =
         Path.of(
-            "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationOtpController.java");
+            "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/RegistrationController.java");
     if (!Files.exists(controller)) {
       return;
     }

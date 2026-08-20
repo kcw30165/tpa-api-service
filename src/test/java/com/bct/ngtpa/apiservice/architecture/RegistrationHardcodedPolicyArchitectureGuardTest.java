@@ -14,7 +14,7 @@ class RegistrationHardcodedPolicyArchitectureGuardTest {
     String controller =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationOtpController.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/RegistrationController.java"));
 
     assertThat(controller)
         .doesNotContain("Duration.ofMinutes(5)")

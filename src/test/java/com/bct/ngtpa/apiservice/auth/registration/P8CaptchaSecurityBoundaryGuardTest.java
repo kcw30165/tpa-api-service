@@ -46,11 +46,11 @@ class P8CaptchaSecurityBoundaryGuardTest {
     String resend =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationOtpController.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/RegistrationController.java"));
     String verify =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationOtpController.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/RegistrationController.java"));
 
     assertThat(resend)
         .contains("auth_flow_sid")

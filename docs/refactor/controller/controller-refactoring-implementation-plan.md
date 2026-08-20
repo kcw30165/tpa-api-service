@@ -588,3 +588,16 @@ The initiative is complete only when:
 - all focused, preservation, architecture, compile, and required full-suite gates pass;
 - `handover.md` reflects the final cumulative state;
 - every stage has received architect PASS and has been committed in order.
+
+## Stage 005 Registration Boundary Checkpoint
+
+- Status: **FOCUSED_ARCHITECTURE_PASS**.
+- Prerequisite commit: `f4f043a37504d2dc36103dd3d13b4622c501edd9`.
+- Evidence: `target/evidence/controller-refactoring-005-20260819-233249`.
+- Compile and test-compile gates: **PASS**.
+- Focused Registration architecture gate: **PASS**.
+- Registration start/captcha and OTP lifecycle gates: **PASS**.
+- Remaining focused, preservation, cumulative, full-suite, and final audit gates: **PENDING**.
+- Architect status: **PENDING**.
+- Commit authorization: **false**.
+- Stage 006 started: **false**.

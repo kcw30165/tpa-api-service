@@ -26,7 +26,7 @@ class RegistrationRuntimeSemanticRegressionTest {
   @Test
   void resendSendRateLimitIsBusinessOutcomeWithLocalizedMessage() throws Exception {
     String mapper = read("RegistrationOtpResendWebMapper.java");
-    String controller = read("AuthRegistrationOtpController.java");
+    String controller = read("RegistrationController.java");
     assertThat(mapper)
         .containsIgnoringWhitespaces(
             "SEND_RATE_LIMITED, MAX_RESEND_ATTEMPTS_REACHED -> WorkflowResultStatus.BUSINESS_FAILED")

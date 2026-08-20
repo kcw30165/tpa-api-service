@@ -43,7 +43,7 @@ class P7RegistrationOtpArchitectureGuardTest {
     for (Path controller :
         new Path[] {
           Path.of(
-              "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationOtpController.java"),
+              "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/RegistrationController.java"),
           Path.of(
               "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationOtpVerifyController.java")
         }) {
