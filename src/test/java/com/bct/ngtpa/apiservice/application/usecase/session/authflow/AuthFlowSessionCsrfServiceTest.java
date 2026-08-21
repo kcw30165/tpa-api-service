@@ -209,6 +209,26 @@ class AuthFlowSessionCsrfServiceTest {
   }
 
   @Test
+  void rotateReportsOriginalExpiryAndRemainingLifetimeInsteadOfResettingTtl() {
+    port.save(activeSession(new Sha256CsrfTokenHasher().hash("old_token"), NOW.plusSeconds(90)));
+    var rotatingService =
+        new AuthFlowSessionCsrfService(
+            port, new FixedCsrfTokenGenerator("new_token"), new Sha256CsrfTokenHasher());
+
+    StepVerifier.create(
+            rotatingService.rotateForSession(
+                new RotateAuthFlowSessionCsrfCommand(
+                    new AuthFlowSessionId("afs_abc"), NOW, 1800, "corr-remaining")))
+        .assertNext(
+            result -> {
+              assertThat(result.expiresAt()).isEqualTo(NOW.plusSeconds(90));
+              assertThat(result.expiresInSeconds()).isEqualTo(90);
+            })
+        .verifyComplete();
+    assertThat(port.sessions.get("afs_abc").expiresAt()).isEqualTo(NOW.plusSeconds(90));
+  }
+
+  @Test
   void rotateCsrfTokenReplacesStoredHashAndReturnsNewRawToken() {
     var oldHash = new Sha256CsrfTokenHasher().hash("old_token");
     port.save(activeSession(oldHash, NOW.plusSeconds(1800)));

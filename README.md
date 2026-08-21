@@ -1,6 +1,6 @@
 # NGTPA API Service
 
-NGTPA API Service is a Java 21 Spring Boot WebFlux backend-for-frontend for member-facing portal flows. It exposes HTTP APIs for authentication, registration, personal information, notifications, contribution summaries, reference data, and internal reference-date cache operations.
+NGTPA API Service is a Java 21 Spring Boot WebFlux backend-for-frontend for member-facing portal flows. It exposes HTTP APIs for authentication, Forgot Password, Username Recovery, registration, personal information, notifications, contribution summaries, reference data, and internal reference-date cache operations.
 
 The service sits between frontend clients and downstream services such as APIM-backed integrations and Redis-backed runtime/session storage. Current code shows a ports-and-adapters structure, thin WebFlux controllers, and feature-specific response models rather than a single universal REST envelope.
 
@@ -44,7 +44,8 @@ docs/
 
 ## Implemented Capabilities
 
-- Authentication workflows: captcha, login start, login OTP send or resend, OTP verification, login cancel, logout
+- Authentication and session workflows: captcha, login start, login OTP send or resend, OTP verification, login cancel, logout
+- Forgot Password: start, identity and member-detail verification, OTP resend and verification, password reset completion, cancellation, and idempotent replay protection
 - Username Recovery: start, username delivery request, cancellation, idempotent replay, and protected single-envelope workflow state
 - Registration workflows: start, username check, OTP resend or verify, complete, cancel
 - Selected-account business APIs: contribution summaries, contribution export, notifications, personal information
@@ -67,12 +68,13 @@ Base path: `/api/v1`
 | POST   | `/auth/login/otp/resend`  | Resend login OTP                                     | Auth-flow cookie and CSRF      | No               |
 | POST   | `/auth/login/otp/verify`  | Verify login OTP and establish authenticated session | Auth-flow cookie and CSRF      | No               |
 | POST   | `/auth/login/cancel`      | Cancel the current login flow                        | Auth-flow cookie and CSRF      | No               |
+| POST   | `/auth/csrf-token/refresh` | Rotate the selected pre-auth or authenticated CSRF token | Session cookie plus Origin/Referer | No |
 | POST   | `/auth/logout`            | End the authenticated session                        | Authenticated session and CSRF | No               |
 
-Detailed design packs: [docs/design/login/finalized/0-login-design-pack-index.md](docs/design/login/finalized/0-login-design-pack-index.md), [docs/design/login/finalized/login-api-contract.md](docs/design/login/finalized/login-api-contract.md)
+Detailed design packs: [login design-pack index](docs/design/4-login/0-login-design-pack-index.md) and [login API contract](docs/design/4-login/login-api-contract.md)
 
 
-## Username Recovery
+### Username Recovery
 
 Username Recovery uses one protected, revisioned auth-flow envelope. The encrypted `UsernameRecoveryAuthFlowContext` stores the verified destination, language, candidate projections, delivery states, and workflow status. START creates the envelope, Request uses revision-aware envelope updates for reservation and delivery outcomes, and Cancel changes the envelope lifecycle to `CANCELLED` while retaining the protected context and original expiry. There is no separate Username Recovery workflow-state Redis sidecar.
 
@@ -93,6 +95,24 @@ Key runtime properties:
 The context-protection secret must be environment-specific and contain at least 32 characters. Do not commit a real secret.
 
 
+### Forgot Password
+
+Forgot Password is an implemented pre-authentication workflow backed by protected auth-flow context, OTP lifecycle controls, idempotency records, APIM integrations, and Redis-backed workflow state. The `/details-check` and `/details` routes are aliases handled by the same controller operation.
+
+| Method | Path | Purpose | Requirement | Selected account |
+| --- | --- | --- | --- | --- |
+| POST | `/auth/forgot-password/start` | Start the workflow and create protected auth-flow state | Pre-auth, captcha, idempotency | No |
+| POST | `/auth/forgot-password/identity-check` | Verify the submitted identity | Auth-flow cookie, CSRF, idempotency | No |
+| POST | `/auth/forgot-password/details-check` | Verify member details and progress to OTP handling | Auth-flow cookie, CSRF, idempotency | No |
+| POST | `/auth/forgot-password/details` | Alias of `/details-check` | Auth-flow cookie, CSRF, idempotency | No |
+| POST | `/auth/forgot-password/otp/resend` | Resend the Forgot Password OTP | Auth-flow cookie, CSRF, idempotency | No |
+| POST | `/auth/forgot-password/otp/verify` | Verify the Forgot Password OTP | Auth-flow cookie, CSRF, idempotency | No |
+| POST | `/auth/forgot-password/complete` | Complete the password reset | Auth-flow cookie, CSRF, idempotency | No |
+| POST | `/auth/forgot-password/cancel` | Cancel the current workflow | Auth-flow cookie, CSRF, idempotency | No |
+
+Detailed design packs: [Forgot Password design-pack index](docs/design/5-forgot-password/0-forgot-password-design-pack-index.md) and [Forgot Password API contract](docs/design/5-forgot-password/forgot-password-api-contract.md)
+
+
 ### Registration
 
 | Method | Path                                  | Purpose                                       | Requirement                         | Selected account |
@@ -104,28 +124,28 @@ The context-protection secret must be environment-specific and contain at least 
 | POST   | `/auth/registration/complete`       | Complete registration                         | Auth-flow cookie, CSRF, idempotency | No               |
 | POST   | `/auth/registration/cancel`         | Cancel the current registration flow          | Auth-flow cookie and CSRF           | No               |
 
-Detailed contract: [docs/design/registration/finalized/registration-api-contract.md](docs/design/registration/finalized/registration-api-contract.md)
+Detailed contract: [registration API contract](docs/design/3-registration/registration-api-contract.md)
 
 ### Contributions
 
 | Method | Path                      | Purpose                               | Requirement                                 | Selected account |
 | ------ | ------------------------- | ------------------------------------- | ------------------------------------------- | ---------------- |
-| GET    | `/contributions`        | Return contribution summaries         | Authenticated session, CSRF,`Account-Ref` | Yes              |
-| GET    | `/contributions/export` | Export contribution summaries as XLSX | Authenticated session, CSRF,`Account-Ref` | Yes              |
+| GET    | `/contributions`        | Return contribution summaries         | Authenticated session, CSRF, `Account-Ref` | Yes              |
+| GET    | `/contributions/export` | Export contribution summaries as XLSX | Authenticated session, CSRF, `Account-Ref` | Yes              |
 
 ### Notifications
 
 | Method | Path               | Purpose                         | Requirement                                 | Selected account |
 | ------ | ------------------ | ------------------------------- | ------------------------------------------- | ---------------- |
-| GET    | `/notifications` | Return notifications            | Authenticated session, CSRF,`Account-Ref` | Yes              |
-| PATCH  | `/notifications` | Update notification read status | Authenticated session, CSRF,`Account-Ref` | Yes              |
+| GET    | `/notifications` | Return notifications            | Authenticated session, CSRF, `Account-Ref` | Yes              |
+| PATCH  | `/notifications` | Update notification read status | Authenticated session, CSRF, `Account-Ref` | Yes              |
 
 ### Personal Information
 
 | Method | Path                      | Purpose                                      | Requirement                                 | Selected account |
 | ------ | ------------------------- | -------------------------------------------- | ------------------------------------------- | ---------------- |
-| GET    | `/personal-information` | Return page-backed personal information data | Authenticated session, CSRF,`Account-Ref` | Yes              |
-| PUT    | `/personal-information` | Update personal information                  | Authenticated session, CSRF,`Account-Ref` | Yes              |
+| GET    | `/personal-information` | Return page-backed personal information data | Authenticated session, CSRF, `Account-Ref` | Yes              |
+| PUT    | `/personal-information` | Update personal information                  | Authenticated session, CSRF, `Account-Ref` | Yes              |
 
 ### Reference Data
 
@@ -141,7 +161,7 @@ Detailed contract: [docs/design/registration/finalized/registration-api-contract
 | GET    | `/internal/reference-date/all`     | List cached reference-date entries   | Internal endpoint; authenticated when in-process auth is enabled | No               |
 | DELETE | `/internal/reference-date/all`     | Delete cached reference-date entries | Internal endpoint; authenticated when in-process auth is enabled | No               |
 
-Detailed contract: [docs/design/reference-date/reference-date-cache-admin.md](docs/design/reference-date/reference-date-cache-admin.md)
+Detailed contract: [reference-date cache administration](docs/design/2-reference-date/reference-date-cache-admin.md)
 
 ## Common API Conventions
 
@@ -192,7 +212,7 @@ Detailed contract: [docs/design/reference-date/reference-date-cache-admin.md](do
 
 - Redis Sentinel connectivity unless `redis-cache.enabled=false`
 - APIM connectivity and credentials for APIM-backed flows
-- Startup crypto settings for login, authenticated session, and registration context protection
+- Startup crypto settings for login, authenticated session, registration, and Forgot Password context protection
 - Any downstream message-delivery configuration required by the flows you exercise
 
 ## Build and Test
@@ -216,8 +236,8 @@ mvn -T 1C -Djunit.jupiter.execution.parallel.enabled=false clean verify
 - `auth-workflows.login.context-protection.secret`
 - `auth-workflows.login.session.protection.base64-key`
 - `auth-workflows.registration.context-protection.secret`
-- `auth-workflows.username-recovery.context-protection.key-version`
-- `auth-workflows.username-recovery.context-protection.secret`
+- `auth-workflows.forgot-password.context-protection.key-version`
+- `auth-workflows.forgot-password.context-protection.secret`
 
 1. Start the application:
 
@@ -241,22 +261,21 @@ The attached startup log in this repository workspace confirms that leaving `aut
 | ----------------------------------------------------- | ------------------------------------------------------------------------------------- | ----------------- | -------------------------------------------------------------------------- |
 | `apim`                                              | APIM base URL, OAuth client, encryption, retry, credential profiles                   | Yes               | Required for APIM-backed calls                                             |
 | `redis-cache`                                       | Redis Sentinel, SSL bundle, timeout, key prefix                                       | Usually           | Enabled by default; disable explicitly for no-Redis local runs             |
-| `auth-workflows`                                    | Login, registration, and forgot-password rules, OTP behavior, session cookie settings | Partly            | Includes authenticated session cookie name`portal_sid`                   |
-| `auth-flow-session`                                 | Auth-flow cookie, CSRF, TTL, scenario settings                                        | No                | Drives`auth_flow_sid` and `XSRF-TOKEN` behavior                        |
+| `auth-workflows`                                    | Login, registration, Username Recovery, and Forgot Password rules, OTP behavior, and session settings | Partly | Includes authenticated session cookie name `portal_sid` |
+| `auth-flow-session`                                 | Auth-flow cookie, CSRF, TTL, scenario settings                                        | No                | Drives `auth_flow_sid` and `XSRF-TOKEN` behavior                        |
 | `auth-workflows.login.context-protection`           | Login pre-auth encryption settings                                                    | Yes               | Required at startup                                                        |
 | `auth-workflows.login.session.protection`           | Authenticated-session payload protection                                              | Yes               | Required at startup                                                        |
 | `auth-workflows.registration.context-protection`    | Registration context and username-check protection                                    | Yes               | Required at startup                                                        |
 | `auth-workflows.username-recovery.context-protection` | Username Recovery protected auth-flow context | Yes | Required for Username Recovery runtime composition; workflow state is stored only in the auth-flow envelope |
-| `auth-workflows.forgot-password.context-protection` | Forgot-password continuation-context encryption settings                              | Yes               | Declared for later workflow wiring; not startup-critical in Subtask 002    |
+| `auth-workflows.forgot-password.context-protection` | Forgot Password protected continuation-context settings | Yes | Used by the implemented Forgot Password workflow |
 | `config-service`                                    | Config service HTTP client settings                                                   | Usually           | Startup integration settings                                               |
 | `sms`                                               | SMS delivery settings for workflow messaging                                          | Usually           | Used by current auth workflows                                             |
 | `cors`                                              | Allowed origins, headers, and methods                                                 | No                | Applied when origins are configured                                        |
 | `request-logging`                                   | Structured request logging and body-logging rules                                     | No                | Body logging is opt-in                                                     |
 | `logging-sanitizer`                                 | Sensitive-field masking configuration                                                 | No                | Masks tokens, secrets, identifiers, and key material                       |
 | `reference-date`                                    | Reference-date cache TTL and refresh behavior                                         | No                | Used by internal reference-date operations                                 |
-| `bff-pages`                                         | Page schema and validation metadata                                                   | No                | See page-schema DSL doc                                                    |
+| `bff-pages`                                         | Page schema, display, option-set, and validation metadata | No | Configuration is split across the `application-page-*.yml` resources |
 
-Page-schema reference: [docs/pageconfig/045-page-schema-validation-dsl.md](docs/pageconfig/045-page-schema-validation-dsl.md)
 
 ## Security and Sensitive Data
 
@@ -275,12 +294,17 @@ Page-schema reference: [docs/pageconfig/045-page-schema-validation-dsl.md](docs/
 
 ## Project Documentation
 
-- [docs/design/login/finalized/0-login-design-pack-index.md](docs/design/login/finalized/0-login-design-pack-index.md) — index of current login design and contract documents
-- [docs/design/login/finalized/login-api-contract.md](docs/design/login/finalized/login-api-contract.md) — detailed login workflow contract baseline
-- [docs/design/registration/finalized/registration-api-contract.md](docs/design/registration/finalized/registration-api-contract.md) — detailed registration workflow contract baseline
-- [docs/design/reference-date/reference-date-cache-admin.md](docs/design/reference-date/reference-date-cache-admin.md) — internal reference-date cache admin contract
-- [docs/implementation/username-recovery-single-envelope-migration.md](docs/implementation/username-recovery-single-envelope-migration.md) — Username Recovery single-envelope migration and sidecar-removal record
-- [docs/pageconfig/045-page-schema-validation-dsl.md](docs/pageconfig/045-page-schema-validation-dsl.md) — page schema and validation DSL reference
+- [Login design-pack index](docs/design/4-login/0-login-design-pack-index.md) and [API contract](docs/design/4-login/login-api-contract.md)
+- [Registration API contract](docs/design/3-registration/registration-api-contract.md) and [auth-flow master design](docs/design/3-registration/registration-authflow-master-design.md)
+- [Forgot Password design-pack index](docs/design/5-forgot-password/0-forgot-password-design-pack-index.md) and [API contract](docs/design/5-forgot-password/forgot-password-api-contract.md)
+- [Username Recovery documentation index](docs/design/6-username-recovery/README.md) and [API contract design](docs/design/6-username-recovery/username-recovery-api-contract-design.md)
+- [Reference-date cache administration](docs/design/2-reference-date/reference-date-cache-admin.md)
+- [Authentication session and CSRF documentation](docs/auth/session-and-csrf/README.md)
+- [OTP documentation](docs/auth/otp/otp-README.md)
+- [Idempotency capability documentation](docs/capabilities/idempotency/README.md)
+- [Workflow-contract capability documentation](docs/capabilities/workflow-contract/README.md)
+- [APIM integration documentation](docs/integration/apim/README.md)
+- [Redis infrastructure documentation](docs/infrastructure/redis/README.md)
 
 ## Documentation Maintenance
 

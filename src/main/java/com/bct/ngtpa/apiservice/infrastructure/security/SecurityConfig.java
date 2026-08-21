@@ -37,6 +37,8 @@ public class SecurityConfig {
           auth ->
               auth.pathMatchers(HttpMethod.OPTIONS, "/api/**")
                   .permitAll()
+                  .pathMatchers(HttpMethod.POST, "/api/v1/auth/csrf-token/refresh")
+                  .permitAll()
                   .pathMatchers("/api/v1/internal/**")
                   .authenticated()
                   .anyExchange()

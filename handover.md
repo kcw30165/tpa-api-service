@@ -246,3 +246,96 @@ Phase 07 reconciles active documentation only. Historical prompts, plans, genera
 - concurrency: Login Cancel still loads a revisioned snapshot and uses that snapshot for cancelRevisioned after successful CSRF validation
 - diagnostics: safe fingerprint logging remains temporarily available for final local verification
 - validation: formatting, production compile, and test compilation are executed by the removal script; runtime tests remain manual
+
+## CSRF Token Refresh Phase 2 Foundation
+
+Baseline: `30a3028dba96adcfb0159dd2ed69171cdb36a9f7`.
+
+Implemented in this round:
+
+- introduced the framework-free refresh command, result, session-type, and inbound use-case contract
+- extracted `AuthenticatedSessionCsrfRotationPort` as the shared atomic authenticated-session CSRF capability while preserving `AuthenticatedLoginReplaySessionPort` compatibility
+- hardened pre-auth rotation so its response reports the existing session expiry and remaining lifetime instead of resetting the advertised lifetime from a configured scenario TTL
+- retained revision-aware pre-auth persistence, existing token generation/hashing, Login replay CAS behavior, payload transport, cookie names, and protected-request `X-XSRF-TOKEN` validation
+- added contract and remaining-lifetime tests
+
+Not yet implemented:
+
+- session-selecting refresh orchestration
+- authenticated token-free validation and rotation service
+- Spring composition
+- HTTP controller, response mapper, cache headers, and public error mappings
+
+The next round must build from this cumulative state and must not recreate either pre-auth rotation or authenticated Redis CAS logic.
+
+## CSRF Token Refresh Phase 3A Typed Outcomes and Fail-First Contracts
+
+Baseline: `da34340ab371d757e7a5b13584e6dac792bd6b59`.
+
+This round restores the implementation plan's fail-first gate before adding orchestration or HTTP production classes.
+
+Added:
+
+- typed `RefreshCsrfTokenStatus` outcomes for success, missing, invalid, unusable, provenance rejection, conflict, and system failure
+- an invariant-bearing `RefreshCsrfTokenResult` that never carries a raw token or session type on failure
+- redaction and result-invariant tests
+- reflection-based fail-first specifications for the application orchestration service, capability-scoped authenticated rotation dependency, and approved controller route
+
+The reflection specifications intentionally compile before the production classes exist and are expected to fail if run at this commit. Implementation remains deferred to the next cumulative round.
+
+## CSRF Token Refresh Phase 3B Application Orchestration
+
+Baseline: `c77b47a4c616fb1d7677a954c79d118fb779fe7b`.
+
+Implemented in this round:
+
+- token-free authenticated-session load, protection validation, lifecycle validation, remaining-TTL calculation, and atomic CSRF-hash compare-and-set rotation
+- session-family orchestration with authenticated-cookie precedence and no downgrade fallback
+- strict Origin/Referer validation using configured CORS allowed origins
+- stable internal refresh failure classification that never returns a raw token on conflict or failure
+- Spring application composition reusing the existing Login replay Redis CAS adapter
+- preservation of authenticated actor, account, lifecycle timestamp, absolute expiry, and Redis TTL state
+
+Still deferred to the HTTP phase:
+
+- controller and payload DTO mapping
+- cookie extraction and public status mapping
+- cache-prevention headers and endpoint documentation
+
+### Phase 3B cumulative outcome correction
+
+Pre-auth rotation now passes through `PreAuthSessionCsrfRefreshService`, which preserves distinct typed outcomes for missing, unusable, revision-conflict, and system-failure cases. The orchestration layer no longer collapses every pre-auth failure into `SESSION_NOT_USABLE`. Structural and classifier tests were added while the HTTP controller remains deferred.
+
+## CSRF Token Refresh Phase 4 HTTP Adapter
+
+Baseline: `c8975ebdcb2aa960bf608eae6187023d1cc38828`.
+
+Added the `POST /api/v1/auth/csrf-token/refresh` WebFlux adapter, standard `MutationResponse` payload, configured session-cookie names, authenticated-cookie precedence, selected-cookie ambiguity rejection, request provenance mapping, request ID echo, and `no-store`/`no-cache` response headers. The endpoint does not require the old CSRF token and never publishes an XSRF cookie. Typed application failures map to unauthenticated, forbidden, conflict, or system-error HTTP responses without session or token leakage.
+
+### Phase 4 cumulative no-downgrade correction
+
+A present but blank authenticated-session cookie is now rejected immediately. The controller does not treat a blank `portal_sid` as absent and therefore cannot downgrade to a valid `auth_flow_sid`.
+
+## CSRF Token Refresh Phase 5 Hardening
+
+Baseline: `f0abac361e590f44cf46e20e240fef2dcf3dd27e`.
+
+The refresh route is explicitly permitted through the in-process WebFlux security chain because the endpoint must recover a CSRF token before a protected request can be made. Session validity and Origin/Referer remain enforced by the application use case. Behavioral tests cover authenticated precedence, blank-cookie no-fallback, selected-cookie ambiguity, pre-auth selection, non-cacheable headers, request-ID echo, and absence of response cookies. Architecture guards retain configured cookie names and keep WebFlux/Redis dependencies out of the application orchestration package.
+
+### Phase 6 focused-test fixture correction
+
+The first focused runtime run reached all selected suites but the four controller behavior cases errored before their assertions because the direct `AuthWorkflowProperties` test fixture did not initialize its bindable `login` subtree. Production Spring binding was not implicated. The fixture now installs `AuthWorkflowProperties.Login`, retaining production defaults for `portal_sid`; the pre-auth properties already provide the `auth_flow_sid` default.
+
+### Phase 6 JDT assertion compatibility correction
+
+`RefreshCsrfTokenServiceStructureTest` now extracts declared field type names before asserting membership. This avoids Eclipse JDT selecting AssertJ's indexed `contains(element, Index)` overload for the two `Class<?>` arguments while retaining the same structural contract under Maven `javac` and IDE compilation.
+
+## CSRF Token Refresh Result Data Envelope
+
+Baseline: `abe67a1a523b55c9f4718c843cb2870ff43e023e`.
+
+The successful refresh response now wraps the payload under `result.data`, yielding `result.data.sessionType` and `result.data.csrfToken`. Failure envelopes remain unchanged and continue to return a null result through the standard `MutationResponse` contract.
+
+### Result data documentation alignment
+
+The implementation plan, Phase 1 design record, session architecture, frontend integration guide, operations/testing guide, and session/CSRF README now document the final `result.data.sessionType` and `result.data.csrfToken` response path. The Phase 1 record explicitly marks only its original envelope detail as superseded; all locked security and persistence decisions remain valid.

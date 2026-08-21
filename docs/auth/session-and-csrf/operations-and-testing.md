@@ -78,6 +78,12 @@ Login OTP send/resend/verify and Registration OTP, username, completion, and can
 
 Authenticated context is resolved from `portal_sid`; protected mutations validate authenticated CSRF. Account-specific APIs also require an `Account-Ref` that belongs to the session.
 
+
+
+### CSRF token refresh
+
+`POST /api/v1/auth/csrf-token/refresh` rotates the token for the selected authenticated or pre-authentication session. The endpoint requires browser credentials, `X-Request-Id`, and approved provenance, but not the previous `X-XSRF-TOKEN`. Success returns `sessionType` and `csrfToken` under `result.data`. Every response is non-cacheable, and the endpoint does not set an XSRF cookie.
+
 ### Logout
 
 Logout validates authenticated session/CSRF when a session exists, transitions terminal state, and clears the authenticated cookie. Missing-session behavior follows the idempotent logout contract.
@@ -143,6 +149,12 @@ Verify that the account reference was returned by the current authenticated sess
 ### Logout/cancellation does not clear cookies
 
 Ensure clear uses the same cookie name and path as issuance, with zero max age and matching security attributes. Verify the use-case result asked the web layer to clear the correct cookies.
+
+
+
+### CSRF refresh rejected
+
+Check the selected cookie family, duplicate cookie values, session lifecycle state, Origin/Referer policy, request ID, concurrent rotation conflicts, and Redis availability. A present `portal_sid` always takes precedence and cannot downgrade to `auth_flow_sid`. The request must not rely on the previous CSRF token. Never log the cookie value, raw token, stored hash, or persistence key while diagnosing the failure.
 
 ### Redis unavailable
 
@@ -303,6 +315,22 @@ Events must use correlation IDs, not security tokens or session identifiers.
 - Reverse-proxy and TLS deployment
 - Log/APM redaction assertions
 - GET endpoints have no state-changing side effects
+
+
+
+### 5.9 CSRF refresh tests
+
+- Success for authenticated and pre-authentication sessions
+- Authenticated-cookie precedence when both cookies are present
+- No fallback when the authenticated cookie is blank, malformed, missing in storage, expired, or terminal
+- Duplicate selected-cookie rejection
+- Missing-cookie and rejected-provenance responses
+- Atomic or revision-aware conflict behavior
+- Persistence failure returns no raw token
+- Success shape uses `result.data.sessionType` and `result.data.csrfToken`
+- `Cache-Control: no-store`, `Pragma: no-cache`, and request-ID echo
+- No `Set-Cookie` response and no old `X-XSRF-TOKEN` requirement
+- No session identifier, token, hash, Redis, or encryption detail leakage
 
 ## 6. Production readiness checklist
 
