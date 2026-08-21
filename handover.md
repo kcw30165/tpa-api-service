@@ -246,3 +246,24 @@ Phase 07 reconciles active documentation only. Historical prompts, plans, genera
 - concurrency: Login Cancel still loads a revisioned snapshot and uses that snapshot for cancelRevisioned after successful CSRF validation
 - diagnostics: safe fingerprint logging remains temporarily available for final local verification
 - validation: formatting, production compile, and test compilation are executed by the removal script; runtime tests remain manual
+
+## CSRF Token Refresh Phase 2 Foundation
+
+Baseline: `30a3028dba96adcfb0159dd2ed69171cdb36a9f7`.
+
+Implemented in this round:
+
+- introduced the framework-free refresh command, result, session-type, and inbound use-case contract
+- extracted `AuthenticatedSessionCsrfRotationPort` as the shared atomic authenticated-session CSRF capability while preserving `AuthenticatedLoginReplaySessionPort` compatibility
+- hardened pre-auth rotation so its response reports the existing session expiry and remaining lifetime instead of resetting the advertised lifetime from a configured scenario TTL
+- retained revision-aware pre-auth persistence, existing token generation/hashing, Login replay CAS behavior, payload transport, cookie names, and protected-request `X-XSRF-TOKEN` validation
+- added contract and remaining-lifetime tests
+
+Not yet implemented:
+
+- session-selecting refresh orchestration
+- authenticated token-free validation and rotation service
+- Spring composition
+- HTTP controller, response mapper, cache headers, and public error mappings
+
+The next round must build from this cumulative state and must not recreate either pre-auth rotation or authenticated Redis CAS logic.

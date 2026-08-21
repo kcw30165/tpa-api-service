@@ -7,6 +7,7 @@ import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.HexFormat;
 import java.util.Objects;
@@ -129,11 +130,20 @@ public class AuthFlowSessionCsrfService implements CreateAuthFlowSessionCsrfUseC
                       session.createdAt(),
                       now,
                       session.expiresAt());
+              Duration remaining = Duration.between(now, session.expiresAt());
+              long remainingSeconds = remaining.getSeconds();
+              if (remainingSeconds <= 0) {
+                return Mono.error(new IllegalStateException("Auth flow session is not usable"));
+              }
+              int expiresInSeconds =
+                  remainingSeconds > Integer.MAX_VALUE
+                      ? Integer.MAX_VALUE
+                      : Math.toIntExact(remainingSeconds);
               return revisionWriter
                   .updateExpected(session, updated)
                   .thenReturn(
                       new CreateAuthFlowSessionCsrfResult(
-                          rawToken, now.plusSeconds(ttlSeconds), ttlSeconds));
+                          rawToken, session.expiresAt(), expiresInSeconds));
             });
   }
 
