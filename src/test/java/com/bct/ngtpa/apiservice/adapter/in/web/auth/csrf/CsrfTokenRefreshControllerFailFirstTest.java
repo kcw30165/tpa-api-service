@@ -9,16 +9,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 
 class CsrfTokenRefreshControllerFailFirstTest {
   @Test
-  void controllerContractMustUseTheApprovedPostRoute() throws Exception {
-    Class<?> controller =
-        Class.forName(
-            "com.bct.ngtpa.apiservice.adapter.in.web.auth.csrf.CsrfTokenRefreshController");
-    RequestMapping classMapping = controller.getAnnotation(RequestMapping.class);
-    assertThat(classMapping).isNotNull();
+  void controllerUsesTheApprovedPostRoute() {
+    RequestMapping classMapping =
+        CsrfTokenRefreshController.class.getAnnotation(RequestMapping.class);
     assertThat(classMapping.value()).containsExactly("/api/v1/auth/csrf-token");
-
     Method refresh =
-        java.util.Arrays.stream(controller.getDeclaredMethods())
+        java.util.Arrays.stream(CsrfTokenRefreshController.class.getDeclaredMethods())
             .filter(method -> method.getAnnotation(PostMapping.class) != null)
             .findFirst()
             .orElseThrow();

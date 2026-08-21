@@ -305,3 +305,13 @@ Still deferred to the HTTP phase:
 ### Phase 3B cumulative outcome correction
 
 Pre-auth rotation now passes through `PreAuthSessionCsrfRefreshService`, which preserves distinct typed outcomes for missing, unusable, revision-conflict, and system-failure cases. The orchestration layer no longer collapses every pre-auth failure into `SESSION_NOT_USABLE`. Structural and classifier tests were added while the HTTP controller remains deferred.
+
+## CSRF Token Refresh Phase 4 HTTP Adapter
+
+Baseline: `c8975ebdcb2aa960bf608eae6187023d1cc38828`.
+
+Added the `POST /api/v1/auth/csrf-token/refresh` WebFlux adapter, standard `MutationResponse` payload, configured session-cookie names, authenticated-cookie precedence, selected-cookie ambiguity rejection, request provenance mapping, request ID echo, and `no-store`/`no-cache` response headers. The endpoint does not require the old CSRF token and never publishes an XSRF cookie. Typed application failures map to unauthenticated, forbidden, conflict, or system-error HTTP responses without session or token leakage.
+
+### Phase 4 cumulative no-downgrade correction
+
+A present but blank authenticated-session cookie is now rejected immediately. The controller does not treat a blank `portal_sid` as absent and therefore cannot downgrade to a valid `auth_flow_sid`.
