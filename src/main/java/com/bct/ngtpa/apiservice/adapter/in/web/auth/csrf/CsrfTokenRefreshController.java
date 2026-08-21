@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.auth.csrf;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.csrf.dto.CsrfTokenRefreshData;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.csrf.dto.CsrfTokenRefreshResult;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.session.config.AuthFlowSessionProperties;
 import com.bct.ngtpa.apiservice.application.dto.auth.csrf.RefreshCsrfTokenCommand;
@@ -30,7 +30,7 @@ public final class CsrfTokenRefreshController {
   private final AuthFlowSessionProperties authFlowSessionProperties;
 
   @PostMapping("/refresh")
-  public Mono<ResponseEntity<MutationResponse<CsrfTokenRefreshData>>> refresh(
+  public Mono<ResponseEntity<MutationResponse<CsrfTokenRefreshResult>>> refresh(
       @RequestHeader(name = HttpHeaders.ORIGIN, required = false) String origin,
       @RequestHeader(name = HttpHeaders.REFERER, required = false) String referer,
       @RequestHeader(name = RequestCorrelation.REQUEST_ID_HEADER, required = false)

@@ -18,8 +18,10 @@ class CsrfTokenRefreshHttpContractTest {
             RefreshCsrfTokenResult.success(CsrfRefreshSessionType.AUTHENTICATED, "raw-token"));
     assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK);
     assertThat(entity.getBody().success()).isTrue();
-    assertThat(entity.getBody().result().csrfToken()).isEqualTo("raw-token");
-    assertThat(entity.getBody().result().toString()).doesNotContain("raw-token");
+    assertThat(entity.getBody().result().data().csrfToken()).isEqualTo("raw-token");
+    assertThat(entity.getBody().result().data().sessionType())
+        .isEqualTo(CsrfRefreshSessionType.AUTHENTICATED);
+    assertThat(entity.getBody().result().data().toString()).doesNotContain("raw-token");
   }
 
   @Test

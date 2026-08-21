@@ -329,3 +329,9 @@ The first focused runtime run reached all selected suites but the four controlle
 ### Phase 6 JDT assertion compatibility correction
 
 `RefreshCsrfTokenServiceStructureTest` now extracts declared field type names before asserting membership. This avoids Eclipse JDT selecting AssertJ's indexed `contains(element, Index)` overload for the two `Class<?>` arguments while retaining the same structural contract under Maven `javac` and IDE compilation.
+
+## CSRF Token Refresh Result Data Envelope
+
+Baseline: `abe67a1a523b55c9f4718c843cb2870ff43e023e`.
+
+The successful refresh response now wraps the payload under `result.data`, yielding `result.data.sessionType` and `result.data.csrfToken`. Failure envelopes remain unchanged and continue to return a null result through the standard `MutationResponse` contract.
