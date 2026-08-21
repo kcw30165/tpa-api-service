@@ -68,6 +68,7 @@ Base path: `/api/v1`
 | POST   | `/auth/login/otp/resend`  | Resend login OTP                                     | Auth-flow cookie and CSRF      | No               |
 | POST   | `/auth/login/otp/verify`  | Verify login OTP and establish authenticated session | Auth-flow cookie and CSRF      | No               |
 | POST   | `/auth/login/cancel`      | Cancel the current login flow                        | Auth-flow cookie and CSRF      | No               |
+| POST   | `/auth/csrf-token/refresh` | Rotate the selected pre-auth or authenticated CSRF token | Session cookie plus Origin/Referer | No |
 | POST   | `/auth/logout`            | End the authenticated session                        | Authenticated session and CSRF | No               |
 
 Detailed design packs: [login design-pack index](docs/design/4-login/0-login-design-pack-index.md) and [login API contract](docs/design/4-login/login-api-contract.md)

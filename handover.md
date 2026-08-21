@@ -315,3 +315,9 @@ Added the `POST /api/v1/auth/csrf-token/refresh` WebFlux adapter, standard `Muta
 ### Phase 4 cumulative no-downgrade correction
 
 A present but blank authenticated-session cookie is now rejected immediately. The controller does not treat a blank `portal_sid` as absent and therefore cannot downgrade to a valid `auth_flow_sid`.
+
+## CSRF Token Refresh Phase 5 Hardening
+
+Baseline: `f0abac361e590f44cf46e20e240fef2dcf3dd27e`.
+
+The refresh route is explicitly permitted through the in-process WebFlux security chain because the endpoint must recover a CSRF token before a protected request can be made. Session validity and Origin/Referer remain enforced by the application use case. Behavioral tests cover authenticated precedence, blank-cookie no-fallback, selected-cookie ambiguity, pre-auth selection, non-cacheable headers, request-ID echo, and absence of response cookies. Architecture guards retain configured cookie names and keep WebFlux/Redis dependencies out of the application orchestration package.
