@@ -6,7 +6,6 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.Registra
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationOtpVerifyRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationOtpResendWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationOtpVerifyWebMapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.in.VerifyRegistrationOtpUseCase;
@@ -24,7 +23,7 @@ class AuthRegistrationOtpVerifyControllerTest {
   @Test
   void otpVerifyEndpointExists() throws Exception {
     Method method =
-        AuthRegistrationOtpController.class.getDeclaredMethod(
+        RegistrationController.class.getDeclaredMethod(
             "verifyOtp",
             RegistrationOtpVerifyRequest.class,
             String.class,
@@ -37,7 +36,7 @@ class AuthRegistrationOtpVerifyControllerTest {
             org.springframework.http.server.reactive.ServerHttpResponse.class);
     PostMapping mapping = method.getAnnotation(PostMapping.class);
     assertThat(mapping).isNotNull();
-    assertThat(mapping.path()).contains("/verify");
+    assertThat(mapping.path()).contains("/otp/verify");
   }
 
   @Test
@@ -232,16 +231,23 @@ class AuthRegistrationOtpVerifyControllerTest {
     }
   }
 
-  private static AuthRegistrationOtpController otpController(
-      VerifyRegistrationOtpUseCase verifyUseCase) {
-    return new AuthRegistrationOtpController(
+  private static RegistrationController otpController(VerifyRegistrationOtpUseCase verifyUseCase) {
+    return new RegistrationController(
+        null,
+        null,
         com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter
             .defaultWriter(),
+        null,
+        null,
+        null,
+        null,
         command -> Mono.error(new AssertionError("resend use case must not be called")),
         new RegistrationOtpResendWebMapper(null),
         verifyUseCase,
         new RegistrationOtpVerifyWebMapper(
             new com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper()),
-        new RegistrationIdempotencyProperties());
+        new RegistrationIdempotencyProperties(),
+        null,
+        null);
   }
 }

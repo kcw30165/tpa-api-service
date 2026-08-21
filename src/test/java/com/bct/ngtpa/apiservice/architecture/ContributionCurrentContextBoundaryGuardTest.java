@@ -14,7 +14,7 @@ class ContributionCurrentContextBoundaryGuardTest {
     String source =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/ContributionController.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/contribution/ContributionController.java"));
     assertFalse(containsIgnoringWhitespace(source, "resolveRequiredAccountRef"));
     assertFalse(containsIgnoringWhitespace(source, "PortalAccessContextResolutionException"));
     assertFalse(containsIgnoringWhitespace(source, "ErrorCodes"));

@@ -90,7 +90,7 @@ class NotificationsAuthenticatedExecutorBoundaryTest {
     String controller =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/NotificationController.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/notification/NotificationController.java"));
 
     assertThat(getService)
         .doesNotContain("CurrentPortalAccessContextResolver", "PortalAccessContext");

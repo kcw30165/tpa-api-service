@@ -3,11 +3,13 @@ package com.bct.ngtpa.apiservice.architecture;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryCancelResponsePolicy;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryRequestResponsePolicy;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryResponsePolicy;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryStartResponsePolicy;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryWorkflowMapping;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.mapper.UsernameRecoveryWorkflowMapping;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.policy.UsernameRecoveryCancelResponsePolicy;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.policy.UsernameRecoveryRequestResponsePolicy;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.policy.UsernameRecoveryResponsePolicy;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.policy.UsernameRecoveryStartResponsePolicy;
+import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchRule;
@@ -23,8 +25,8 @@ import org.junit.jupiter.api.Test;
  * <p>Locks:
  *
  * <ul>
- *   <li>the feature web package stays free of outbound adapters (APIM, Redis, message), config,
- *       infrastructure, Spring, servlet, Reactor, Redis, and reflection types
+ *   <li>the five response-policy and workflow-mapping classes stay free of outbound adapters,
+ *       config, infrastructure, Spring, servlet, Reactor, Redis, and reflection types
  *       (controller/cookie/transport concerns stay in Task 024);
  *   <li>no all-purpose {@code UsernameRecoveryHttpResponses} type exists in the feature web
  *       package;
@@ -51,10 +53,17 @@ class UsernameRecoveryFeatureWebArchitectureGuardTest {
             .withImportOption(new ImportOption.DoNotIncludeTests())
             .importPackages("com.bct.ngtpa.apiservice");
 
+    DescribedPredicate<JavaClass> policyOrMappingClass =
+        new DescribedPredicate<>("the five Username Recovery policy and workflow mapping classes") {
+          @Override
+          public boolean test(JavaClass input) {
+            return POLICY_CLASSES.stream().anyMatch(type -> type.getName().equals(input.getName()));
+          }
+        };
+
     ArchRule rule =
         noClasses()
-            .that()
-            .resideInAPackage(FEATURE_PACKAGE)
+            .that(policyOrMappingClass)
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage(

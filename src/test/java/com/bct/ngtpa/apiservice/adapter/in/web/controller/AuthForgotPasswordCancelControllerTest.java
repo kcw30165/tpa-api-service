@@ -2,13 +2,13 @@ package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.ForgotPasswordController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordCancelWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordCompleteWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordDetailsOtpWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordIdentityWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.XsrfCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
@@ -37,7 +37,7 @@ class AuthForgotPasswordCancelControllerTest {
   @Test
   void cancelEndpointExists() throws Exception {
     Method method =
-        AuthForgotPasswordController.class.getDeclaredMethod(
+        ForgotPasswordController.class.getDeclaredMethod(
             "cancel",
             String.class,
             String.class,
@@ -80,7 +80,6 @@ class AuthForgotPasswordCancelControllerTest {
         .verifyComplete();
 
     assertThat(response.getCookies().getFirst("auth_flow_sid").getValue()).isEmpty();
-    assertThat(response.getCookies().getFirst("XSRF-TOKEN").getValue()).isEmpty();
   }
 
   @Test
@@ -150,7 +149,6 @@ class AuthForgotPasswordCancelControllerTest {
         .verifyComplete();
 
     assertThat(response.getCookies().getFirst("auth_flow_sid").getValue()).isEmpty();
-    assertThat(response.getCookies().getFirst("XSRF-TOKEN").getValue()).isEmpty();
     assertThat(response.getHeaders().getFirst("X-Request-Id")).isEqualTo("req_abc");
   }
 
@@ -246,9 +244,8 @@ class AuthForgotPasswordCancelControllerTest {
     }
   }
 
-  private static AuthForgotPasswordController controller(
-      CancelForgotPasswordUseCase cancelUseCase) {
-    return new AuthForgotPasswordController(
+  private static ForgotPasswordController controller(CancelForgotPasswordUseCase cancelUseCase) {
+    return new ForgotPasswordController(
         command -> Mono.error(new AssertionError("start use case must not be called")),
         new ForgotPasswordStartWebMapper(Duration.ofMinutes(5)),
         command -> Mono.error(new AssertionError("identity use case must not be called")),
@@ -260,8 +257,9 @@ class AuthForgotPasswordCancelControllerTest {
         cancelUseCase,
         new ForgotPasswordCancelWebMapper(),
         AuthFlowCookieWriter.defaultWriter(),
-        new XsrfCookieWriter(
-            new com.bct.ngtpa.apiservice.adapter.in.web.session.config
-                .AuthFlowSessionProperties()));
+        null,
+        null,
+        null,
+        null);
   }
 }

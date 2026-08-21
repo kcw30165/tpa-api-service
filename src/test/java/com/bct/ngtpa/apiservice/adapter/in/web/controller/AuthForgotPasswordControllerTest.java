@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.ForgotPasswordController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordStartRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordCancelWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordCompleteWebMapper;
@@ -10,7 +11,6 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.Forgot
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.XsrfCookieWriter;
 import com.bct.ngtpa.apiservice.application.dto.workflow.ForgotPasswordErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.in.StartForgotPasswordUseCase;
@@ -27,7 +27,7 @@ import org.springframework.mock.http.server.reactive.MockServerHttpResponse;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-class AuthForgotPasswordControllerTest {
+class ForgotPasswordControllerTest {
   @Test
   void successfulStartWritesCookieAndReturnsCsrfOnly() {
     AtomicReference<StartForgotPasswordCommand> command = new AtomicReference<>();
@@ -156,12 +156,11 @@ class AuthForgotPasswordControllerTest {
         .verifyComplete();
 
     assertThat(response.getCookies().getFirst("auth_flow_sid").getValue()).isEmpty();
-    assertThat(response.getCookies().getFirst("XSRF-TOKEN").getValue()).isEmpty();
   }
 
-  private static AuthForgotPasswordController controller(
+  private static ForgotPasswordController controller(
       StartForgotPasswordUseCase startUseCase, AuthFlowCookieWriter cookieWriter) {
-    return new AuthForgotPasswordController(
+    return new ForgotPasswordController(
         startUseCase,
         new ForgotPasswordStartWebMapper(Duration.ofMinutes(5)),
         command -> Mono.error(new AssertionError("identity use case must not be called")),
@@ -173,8 +172,9 @@ class AuthForgotPasswordControllerTest {
         command -> Mono.error(new AssertionError("cancel use case must not be called")),
         new ForgotPasswordCancelWebMapper(),
         cookieWriter,
-        new XsrfCookieWriter(
-            new com.bct.ngtpa.apiservice.adapter.in.web.session.config
-                .AuthFlowSessionProperties()));
+        null,
+        null,
+        null,
+        null);
   }
 }

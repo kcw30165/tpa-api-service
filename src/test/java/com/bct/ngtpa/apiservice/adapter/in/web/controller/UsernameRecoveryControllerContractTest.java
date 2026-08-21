@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryController;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.List;
@@ -17,7 +18,7 @@ class UsernameRecoveryControllerContractTest {
   @Test
   void exposesExactlyThreeMappedEndpointsUnderCanonicalBasePath() throws Exception {
     RequestMapping classMapping =
-        AuthUsernameRecoveryController.class.getAnnotation(RequestMapping.class);
+        UsernameRecoveryController.class.getAnnotation(RequestMapping.class);
     assertThat(classMapping).isNotNull();
     assertThat(classMapping.value()).containsExactly(BASE_PATH);
 
@@ -52,7 +53,7 @@ class UsernameRecoveryControllerContractTest {
   }
 
   private static Method method(String name) throws Exception {
-    for (Method candidate : AuthUsernameRecoveryController.class.getDeclaredMethods()) {
+    for (Method candidate : UsernameRecoveryController.class.getDeclaredMethods()) {
       if (candidate.getName().equals(name) && candidate.isAnnotationPresent(PostMapping.class)) {
         return candidate;
       }

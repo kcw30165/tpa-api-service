@@ -24,6 +24,20 @@ class Task0043LoginCancellationArchitectureTest {
   }
 
   @Test
+  void cancellationUsesLoadedSnapshotAndRevisionAwareMutation() throws Exception {
+    String source =
+        Files.readString(
+            Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/cancel/CancelLoginService.java"));
+    assertThat(source)
+        .contains(
+            ".loadSnapshot(c.authFlowSessionId())",
+            "csrf.validateForSession(",
+            ".cancelRevisioned(snapshot, now)",
+            "SESSION_REVISION_CHANGED");
+  }
+
+  @Test
   void noLoginSpecificCancellationRepositoryAndVerifyDtosRemainScoped() {
     assertThat(
             Files.exists(

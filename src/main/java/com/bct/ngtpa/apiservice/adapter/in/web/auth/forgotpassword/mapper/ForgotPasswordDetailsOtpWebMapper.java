@@ -11,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 public final class ForgotPasswordDetailsOtpWebMapper {
   public MutationResponse<ForgotPasswordWorkflowResultResponse<ForgotPasswordOtpDataResponse>> map(
       ForgotPasswordDetailsOtpResult r) {
-    log.info("Mapping ForgotPasswordDetailsOtpResult: {}", r.toString());
     if (r.status() == ForgotPasswordDetailsOtpResult.Status.SUCCESS)
       return MutationResponse.success(
           ApiStatus.SUCCESS,

@@ -3,3 +3,246 @@
 The implementation and documentation through Phase 06 are approved. The active architectural contract is `docs/design/captcha/captcha-verification-lifecycle-contract.md`; migration and traceability are in `docs/design/captcha/captcha-migration-and-traceability.md`; the focused cumulative handover is `docs/design/captcha/handover.md`.
 
 Phase 07 reconciles active documentation only. Historical prompts, plans, generated test evidence, and prior evidence directories remain unchanged. Phase 08 is limited to final cumulative validation and merge-request evidence. Settled lifecycle, HTTP 422, captcha-owned standalone errors, atomic verification, atomic consumption, Registration preservation, Username Recovery preservation, answer isolation, TTL preservation, and state concealment must not be reopened without new evidence and explicit architecture approval.
+
+## Controller Refactoring Stage 001
+
+- stage: 001 controller-classification-and-baseline
+- canonical controller-refactoring documentation directory: `docs/refactor/controller/`
+- current status: READY_FOR_ARCHITECT_REVIEW
+- exact evidence directory: `target\evidence\controller-refactoring-001-20260819-160419`
+- repository: root Maven project with standard `src/main/java` and `src/test/java` roots
+- endpoint controllers: 17
+- advice classes: 1
+- filter-stack exception handlers: 1
+- effective annotation-proven endpoints: 36
+- accepted static facts: recorded in `docs/refactor/controller/controller-refactoring-classification.md`
+- provisional migration decisions: recorded in evidence `021-proposed-migration-map.txt`
+- reference-date duplicate result: 1 filesystem match(es); see evidence 017
+- baseline compile result: PASS (exit 0)
+- bounded-test result: PASS (exit 0)
+- accepted boundary decisions: `ReferenceDataController` targets `web.referencedata`; `AuthenticatedPortalContextWebExceptionHandler` remains under `web.filter`
+- Git-controlled files changed: `handover.md` and controller-refactoring Markdown documents under `docs/refactor/controller/`
+- stage_002_started=false
+- architect_status=PENDING
+- commit_authorization=false
+- Stage 002 has not started.
+- endpoint contract completion: response types resolved for 36 endpoints; unresolved response types=0
+- endpoint test evidence: focused HTTP/mapping=20, behavior-or-focused=35, class-reference-only=1, none=0
+- evidence precedence: `082-superseded-evidence-manifest.txt` governs historical corrected evidence
+- exact next-stage gate: architect PASS and Stage 001 documentation commit before Stage 002
+## Controller Refactoring Stage 002
+
+- stage: 002 advice-and-internal-api-boundaries
+- Stage 001 architect status: PASS
+- Stage 001 approved commit hash: `d9613470adaa6fab113f30cc9c12724d009b526a`
+- implementation status: READY_FOR_ARCHITECT_REVIEW
+- exact evidence directory: `target\evidence\controller-refactoring-002-20260819-163644`
+- accepted package move: `web.controller.ApiExceptionHandler` to `web.advice.ApiExceptionHandler`
+- accepted package move: `web.controller.ReferenceDateController` to `web.internal.referencedate.ReferenceDateController`
+- preserved endpoints: `POST /api/v1/internal/reference-date/refresh`, `GET /api/v1/internal/reference-date/all`, `DELETE /api/v1/internal/reference-date/all`
+- advice behavior: PRESERVATION_VALIDATION_PENDING
+- LoggingSanitizer dependency: preserved exactly for Stage 002
+- deferred boundaries: `ReferenceDataController` and `AuthenticatedPortalContextWebExceptionHandler` unchanged
+- stage_003_started=false
+- architect_status=PENDING
+- commit_authorization=false
+
+- manual-fix bounded validation totals: tests=10, failures=0, errors=0, skipped=0
+- manual-fix files: `PortalAccessContextArchitectureGuardTest.java` and `RegistrationSessionSecurityAndReactiveCorrectnessTest.java`
+- post-manual-fix full suite: NOT RERUN by explicit solution-owner direction
+- historical full suite before manual fix: 3799 tests, 0 failures, 3 errors, 12 skipped; all three errors were in the two manually repaired test classes
+- Stage 002 validation qualification: bounded repair validation PASS; architect must assess the accepted full-suite exception
+## Controller Refactoring Stage 003
+
+- stage: 003 standalone-capability-packages
+- Stage 002 architect status: PASS
+- Stage 002 approved commit hash: `8eedd7ab39bc6ac63735c1ae9970fff22b3995c0`
+- implementation status: READY_FOR_ARCHITECT_REVIEW
+- exact evidence directory: `target\evidence\controller-refactoring-003-20260819-173419`
+- accepted renames: `AuthCaptchaController` to `CaptchaController`; `AuthLogoutController` to `LogoutController`; `AuthUsernameRecoveryController` to `UsernameRecoveryController`
+- accepted moves: captcha, logout, username recovery, contribution, notification, personal information, and reference data into capability packages
+- preserved endpoint count: 14
+- Stage 002 boundaries: preservation evidence PASS from current Surefire reports
+- stage_004_started=false
+- architect_status=PASS
+- commit_authorization=true
+
+- Surefire evidence totals: tests=3790, failures=0, errors=0, skipped=12
+- Surefire report count: 863
+- validation source: existing `target/surefire-reports/TEST-*.xml`; Maven not rerun for final report generation
+- validation freshness: PASS against all current changed Java sources
+- endpoint contract audit: PASS; 14 effective method endpoints preserved
+- source ownership audit: PASS; seven old sources absent and seven approved targets present
+
+### Stage 003 Classification Documentation Repair 016
+
+- repair type: documentation only
+- corrected entries: seven source-to-target MOVE/RENAME classifications
+- production changes: none
+- test changes: none
+- Maven rerun: false
+- validation evidence reused: fresh passing Surefire XML, endpoint audit PASS, source ownership audit PASS
+- architect status: PASS
+- commit authorization: false
+- stage_004_started=false
+
+- Stage 003 prerequisite commit: `a336c80a1d710040208f872a9c709c7603d9db5c`
+- architect decision: PASS
+
+## Controller Refactoring Stage 004
+
+- stage: 004 login-http-boundary
+- Stage 003 architect status: PASS
+- Stage 003 prerequisite commit: `a336c80a1d710040208f872a9c709c7603d9db5c`
+- Stage 003 governance commit: `6ad5f4d141fec0fc2f8f27d84c452fb00dd16826`
+- implementation status: READY_FOR_ARCHITECT_REVIEW
+- exact evidence directory: `target/evidence/controller-refactoring-004-20260819-220150`
+- consolidation: four Login HTTP controllers into `web.auth.login.LoginController`
+- preserved Login endpoint count: 5
+- constructor dependencies: 13 after valid cookie-writer deduplication
+- helper collisions: resolved mechanically without behavior change
+- focused validation totals: tests=28, failures=0, errors=0, skipped=0
+- Stage 002 preservation totals: tests=32, failures=0, errors=0, skipped=0
+- Stage 003 preservation totals: tests=83, failures=0, errors=0, skipped=0
+- cumulative controller regression totals: tests=183, failures=0, errors=0, skipped=0
+- full-suite totals: tests=3793, failures=0, errors=0, skipped=12
+- compile result: PASS
+- diff check result: PASS, exit=0; CRLF conversion warnings are informational
+- production scope audit: PASS
+- test scope audit: PASS
+- documentation scope audit: PASS
+- branch result: PASS; branch unchanged
+- stash result: PASS; no stash operation performed by Stage 004
+- Registration and Forgot Password: deferred and unchanged
+- Surefire XML reports are authoritative; full Maven output is not duplicated in final evidence
+- stage_005_started=false
+- architect_status=PENDING
+- commit_authorization=false
+
+## Controller Refactoring Stage 005
+
+- stage: 005 registration-http-boundary
+- Stage 004 architect status: PASS
+- Stage 004 prerequisite commit: `f4f043a37504d2dc36103dd3d13b4622c501edd9`
+- implementation status: FOCUSED_ARCHITECTURE_PASS
+- exact evidence directory: `target/evidence/controller-refactoring-005-20260819-233249`
+- classification result: IMPLEMENTABLE_AS_DESIGNED
+- consolidation: `AuthRegistrationController`, `AuthRegistrationOtpController`, and `AuthRegistrationUsernameController` into `web.auth.registration.RegistrationController`
+- preserved Registration endpoint count: 6
+- constructor dependencies: 15 after deduplicating the shared `AuthFlowCookieWriter`
+- helper decisions: one identical `hasText(String)` retained; OTP-specific `trimToNull(String)` retained
+- genuine fail-first result: PASS, expected architectural failure retained with exit 1
+- formatter: Spotless PASS
+- production compile: PASS
+- test compile: PASS
+- focused Registration architecture: PASS, tests=3, failures=0, errors=0, skipped=0
+- Registration start and captcha: PASS
+- Registration OTP lifecycle: PASS
+- remaining Registration focused gates: PENDING
+- eligible trust preservation: PENDING final validation; existing characterization identified
+- Stage 002, Stage 003, and Stage 004 preservation: PENDING
+- cumulative controller regression: PENDING
+- full suite: PENDING
+- final compile and audits: PENDING
+- Forgot Password work: deferred and unchanged
+- stage_006_started=false
+- architect_status=PENDING
+- commit_authorization=false
+
+## Stage 005 validation continuation
+
+- HEAD: `f4f043a37504d2dc36103dd3d13b4622c501edd9`
+- Evidence: `target/evidence/controller-refactoring-005-20260819-233249`
+- Username gate: PASS
+- Remaining validation result: **FAIL**
+- Failed gate: `registration-completion-cancel`
+- Stage 006 started: **false**
+- Commit authorization: **false**
+
+## Stage 005 validation continuation
+
+- HEAD: `f4f043a37504d2dc36103dd3d13b4622c501edd9`
+- Evidence: `target/evidence/controller-refactoring-005-20260819-233249`
+- Username gate: PASS
+- Remaining validation result: **FAIL**
+- Failed gate: `registration-completion-cancel`
+- Stage 006 started: **false**
+- Commit authorization: **false**
+
+## Stage 005 final validation
+
+- Registration start: PASS
+- Registration OTP: PASS
+- Registration username: PASS
+- Registration completion/cancellation: PASS
+- Registration security/session: PASS
+- Eligible-trust: PASS
+- Cumulative validation: PASS
+- Full test suite: PASS
+- Full test result: 3,806 run, 0 failures, 0 errors, 12 skipped
+- Surefire reports are the authoritative test evidence.
+- Stage 006 started: false
+- Commit authorization: false
+- Next action: review the final Stage 005 diff and authorize the commit.
+
+## Controller Refactoring Stage 006
+- classification: IMPLEMENTABLE_AS_DESIGNED
+- prerequisite: `c56172d94c9c80690e04280980c186f8f7fb4f1c`
+- evidence: `target\evidence\controller-refactoring-006-20260820-141556`
+- consolidation: two legacy Forgot Password controllers into `web.auth.forgotpassword.ForgotPasswordController`
+- preserved endpoint count: 8
+- Change Password excluded: true
+- production compile: PASS
+- test compile: PASS
+- test execution: PASS by Solution Owner manual run, 3,806 tests, 0 failures, 0 errors, 12 skipped
+- stage_007_started=false
+- architect_status=PASS
+- commit_authorization=true
+
+- Stage 006 approved commit: `9d0b4741ff00618f809d56aa6cee42545e5850a6`
+## Controller Refactoring Stage 007
+- Stage 006 architect status: PASS
+- Stage 006 prerequisite commit: `e5892a49bd3453721a1f216e5d6a7ecf3f4da7a8`
+- stage: 007 architecture-enforcement-and-final-cleanup
+- implementation status: READY_FOR_ARCHITECT_REVIEW
+- evidence: `target\evidence\controller-refactoring-007-20260820-150427`
+- final architecture rules: final ownership, flat-package absence, advice/filter separation, forbidden dependency exclusion, route uniqueness, 36-endpoint parity, journey single ownership, Change Password exclusion
+- expected endpoint count: 36
+- route uniqueness: PASS by static classification audit; runtime test not run by script
+- old flat package: PASS
+- forbidden dependency audit: PASS
+- production compile: PASS
+- test compile: PASS
+- test_execution=NOT_RUN_BY_SCRIPT
+- solution_owner_validation_override=true
+- full_suite_run=false
+- full_suite_reason=manual post-implementation gate outside Stage 007 implementation script
+- controller_refactoring_complete=false
+- unplanned_stage_008_started=false
+- architect_status=PENDING
+- commit_authorization=false
+
+### Login Cancel Revision-Aware CSRF Repair
+- implementation: Option A validates CSRF against the exact already-loaded auth-flow session snapshot
+- persistence reads: Login Cancel loads one revisioned snapshot and does not request a second CSRF-time session load
+- cancellation: AuthFlowSessionPort.cancelRevisioned uses the exact loaded snapshot
+- conflict policy: revision/state conflicts and uncertain persistence outcomes return SYSTEM_FAILED and do not report successful cleanup
+- OTP ordering: OTP invalidation occurs only after revision-aware session cancellation is applied; revision conflicts perform no OTP mutation
+- security logging: raw CSRF token and auth-flow session logging removed from the repaired service path
+- compatibility: validateForSession remains as the load-and-delegate convenience API for callers without a loaded session
+- validation: formatting, production compile, and test compilation are executed by the implementation script; runtime tests remain a manual post-implementation gate
+
+### Login CSRF Runtime Fingerprint Diagnostics
+- purpose: distinguish submitted-token, persisted-hash, and session-correlation differences between Send OTP and Cancel
+- logging: SHA-256 fingerprints truncated to 8 bytes; no raw CSRF token, stored hash, session ID, OTP, or revision is logged
+- path identification: Send OTP validates while the flow is STARTED; Cancel normally validates while the flow is OTP_SENT
+- persistence conclusion: load and loadSnapshot use the same Redis key and AuthFlowSession record mapping
+- status: temporary local diagnostic instrumentation; remove after the mismatch is identified
+
+### Login CSRF Loaded-Session API Removal
+- runtime root cause: Cancel submitted a different X-XSRF-TOKEN value from Send OTP; the server session and stored CSRF hash fingerprints were unchanged
+- API decision: AuthFlowSessionCsrfService.validateLoadedSession removed because it was not part of the root-cause fix
+- validation path: Login Cancel again uses the shared asynchronous validateForSession API
+- concurrency: Login Cancel still loads a revisioned snapshot and uses that snapshot for cancelRevisioned after successful CSRF validation
+- diagnostics: safe fingerprint logging remains temporarily available for final local verification
+- validation: formatting, production compile, and test compilation are executed by the removal script; runtime tests remain manual

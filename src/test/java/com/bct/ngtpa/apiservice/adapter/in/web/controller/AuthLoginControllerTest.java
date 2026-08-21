@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.LoginController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.dto.LoginStartRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.mapper.LoginStartWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieProperties;
@@ -35,12 +36,21 @@ class AuthLoginControllerTest {
                   null));
         };
     var controller =
-        new AuthLoginController(
+        new LoginController(
             useCase,
             new LoginStartWebMapper(),
             new AuthFlowCookieWriter(
                 new AuthFlowCookieProperties(
-                    "auth_flow_sid", "/api/v1/auth", Duration.ofSeconds(900), true, true, "None")));
+                    "auth_flow_sid", "/api/v1/auth", Duration.ofSeconds(900), true, true, "None")),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
     var response = new MockServerHttpResponse();
 
     StepVerifier.create(
@@ -66,8 +76,19 @@ class AuthLoginControllerTest {
   void missingIdempotencyKeyDoesNotInvokeUseCase() {
     StartLoginUseCase useCase = value -> Mono.error(new AssertionError("must not execute"));
     var controller =
-        new AuthLoginController(
-            useCase, new LoginStartWebMapper(), AuthFlowCookieWriter.defaultWriter());
+        new LoginController(
+            useCase,
+            new LoginStartWebMapper(),
+            AuthFlowCookieWriter.defaultWriter(),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
 
     StepVerifier.create(
             controller.startLogin(

@@ -28,7 +28,7 @@ class NotificationCurrentContextBoundaryGuardTest {
     String source =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/NotificationController.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/notification/NotificationController.java"));
 
     assertFalse(source.contains("resolveRequiredAccountRef"));
     assertFalse(source.contains("RequestHeaderContext"));

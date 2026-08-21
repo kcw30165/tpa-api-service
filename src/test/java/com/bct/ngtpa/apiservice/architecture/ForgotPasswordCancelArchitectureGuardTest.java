@@ -126,7 +126,7 @@ class ForgotPasswordCancelArchitectureGuardTest {
     String controller =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthForgotPasswordController.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/forgotpassword/ForgotPasswordController.java"));
     var cancelMappingPattern =
         java.util.regex.Pattern.compile(
             "@PostMapping\\s*\\([^)]*path\\s*=\\s*\"/cancel\"", java.util.regex.Pattern.DOTALL);

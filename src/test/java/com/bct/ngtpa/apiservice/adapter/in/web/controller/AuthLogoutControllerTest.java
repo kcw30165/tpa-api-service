@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.logout.AuthenticatedLogoutWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.logout.LogoutController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieWriter;
 import com.bct.ngtpa.apiservice.application.dto.ActorContext;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
@@ -110,9 +111,9 @@ class AuthLogoutControllerTest {
         .verifyComplete();
   }
 
-  private AuthLogoutController controller(
+  private LogoutController controller(
       AuthenticatedLogoutUseCase useCase, ValidateAuthenticatedSessionUseCase validation) {
-    return new AuthLogoutController(
+    return new LogoutController(
         useCase,
         new AuthenticatedLogoutWebMapper(),
         validation,

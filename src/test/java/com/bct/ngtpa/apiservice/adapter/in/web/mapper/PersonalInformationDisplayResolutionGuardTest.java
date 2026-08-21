@@ -16,7 +16,7 @@ class PersonalInformationDisplayResolutionGuardTest {
           "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/mapper/PersonalInformationWebMapper.java");
   private static final Path CONTROLLER_SOURCE =
       Path.of(
-          "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/PersonalInformationController.java");
+          "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/personalinformation/PersonalInformationController.java");
 
   @Test
   void controllerResolvesPortalContextAndPassesAccountDimensionsToMapper() throws IOException {

@@ -12,14 +12,14 @@ class Task0043LoginStartFinalEvidenceTest {
     String source =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthLoginController.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/login/LoginController.java"));
     assertThat(source)
         .contains(
             "RequestCorrelation.REQUEST_ID_HEADER",
-            "mapper.missingRequestId()",
-            "echoRequestId(response, requestId)",
+            "loginStartMapper.missingRequestId()",
+            "echo(response, requestId)",
             ".onErrorResume(",
-            "mapper.systemUnavailable()");
+            "loginStartMapper.systemUnavailable()");
     assertThat(source)
         .doesNotContain(
             "Redis",

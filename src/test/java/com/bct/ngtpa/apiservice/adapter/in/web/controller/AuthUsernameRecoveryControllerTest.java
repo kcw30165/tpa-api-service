@@ -2,14 +2,16 @@ package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryCancelResponsePolicy;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryCancelWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryCookieWriter;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryRequestResponsePolicy;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryRequestWebMapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryStartRequest;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryStartResponsePolicy;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryStartWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.dto.UsernameRecoveryStartRequest;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.mapper.UsernameRecoveryCancelWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.mapper.UsernameRecoveryRequestWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.mapper.UsernameRecoveryStartWebMapper;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.policy.UsernameRecoveryCancelResponsePolicy;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.policy.UsernameRecoveryRequestResponsePolicy;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.policy.UsernameRecoveryStartResponsePolicy;
+import com.bct.ngtpa.apiservice.adapter.in.web.session.cookie.HttpSessionCookieAdapter;
 import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryCancelCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryCancelResult;
@@ -742,7 +744,7 @@ class AuthUsernameRecoveryControllerTest {
     return command -> Mono.error(new AssertionError("start must not be called"));
   }
 
-  private static AuthUsernameRecoveryController controller(
+  private static UsernameRecoveryController controller(
       StartUsernameRecoveryUseCase start,
       RequestUsernameRecoveryUseCase request,
       CancelUsernameRecoveryUseCase cancel) {
@@ -754,7 +756,7 @@ class AuthUsernameRecoveryControllerTest {
             true,
             true,
             SessionCookieSameSite.STRICT);
-    return new AuthUsernameRecoveryController(
+    return new UsernameRecoveryController(
         start,
         new UsernameRecoveryStartWebMapper(),
         new UsernameRecoveryStartResponsePolicy(),
@@ -764,7 +766,8 @@ class AuthUsernameRecoveryControllerTest {
         cancel,
         new UsernameRecoveryCancelWebMapper(),
         new UsernameRecoveryCancelResponsePolicy(),
-        new UsernameRecoveryCookieWriter(authFlowPolicy));
+        new UsernameRecoveryCookieWriter(authFlowPolicy),
+        new HttpSessionCookieAdapter());
   }
 
   private static final class RecordingStartUseCase implements StartUsernameRecoveryUseCase {

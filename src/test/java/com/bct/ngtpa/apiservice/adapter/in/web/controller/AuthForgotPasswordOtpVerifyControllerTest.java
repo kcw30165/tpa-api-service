@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.ForgotPasswordController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.dto.ForgotPasswordOtpVerifyRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordOtpResendWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordOtpVerifyWebMapper;
@@ -25,7 +26,7 @@ class AuthForgotPasswordOtpVerifyControllerTest {
   @Test
   void otpVerifyEndpointExists() throws Exception {
     Method method =
-        AuthForgotPasswordOtpController.class.getDeclaredMethod(
+        ForgotPasswordController.class.getDeclaredMethod(
             "verify",
             ForgotPasswordOtpVerifyRequest.class,
             String.class,
@@ -39,7 +40,7 @@ class AuthForgotPasswordOtpVerifyControllerTest {
 
     PostMapping mapping = method.getAnnotation(PostMapping.class);
     assertThat(mapping).isNotNull();
-    assertThat(mapping.path()).contains("/verify");
+    assertThat(mapping.path()).contains("/otp/verify");
   }
 
   @Test
@@ -228,9 +229,19 @@ class AuthForgotPasswordOtpVerifyControllerTest {
     }
   }
 
-  private static AuthForgotPasswordOtpController controller(
-      VerifyForgotPasswordOtpUseCase verifyUseCase) {
-    return new AuthForgotPasswordOtpController(
+  private static ForgotPasswordController controller(VerifyForgotPasswordOtpUseCase verifyUseCase) {
+    return new ForgotPasswordController(
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
         command -> Mono.error(new AssertionError("resend use case must not be called")),
         new ForgotPasswordOtpResendWebMapper(),
         verifyUseCase,

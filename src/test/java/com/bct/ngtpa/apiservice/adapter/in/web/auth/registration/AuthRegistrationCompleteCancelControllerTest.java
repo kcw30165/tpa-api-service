@@ -3,11 +3,9 @@ package com.bct.ngtpa.apiservice.adapter.in.web.auth.registration;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.XsrfCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.CompleteRegistrationRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.CancelRegistrationWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.CompleteRegistrationWebMapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationController;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.BffPagesProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.registration.RegistrationCancellationPageMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.pageconfig.registration.RegistrationSuccessPageMapper;
@@ -123,10 +121,10 @@ class AuthRegistrationCompleteCancelControllerTest {
     return objectMapper.valueToTree(value);
   }
 
-  private static AuthRegistrationController controller(
+  private static RegistrationController controller(
       CompleteRegistrationUseCase completeUseCase, CancelRegistrationUseCase cancelUseCase) {
     var pages = new BffPagesProperties();
-    return new AuthRegistrationController(
+    return new RegistrationController(
         new StartUseCaseStub(),
         new com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper
             .RegistrationStartWebMapper(Duration.ofMinutes(5)),
@@ -136,7 +134,13 @@ class AuthRegistrationCompleteCancelControllerTest {
             Duration.ofMinutes(5), new RegistrationSuccessPageMapper(pages)),
         cancelUseCase,
         new CancelRegistrationWebMapper(new RegistrationCancellationPageMapper(pages)),
-        org.mockito.Mockito.mock(XsrfCookieWriter.class));
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null);
   }
 
   private static String validAuthFlowSessionId() {

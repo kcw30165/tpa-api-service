@@ -42,7 +42,7 @@ class P8CaptchaArchitectureGuardTest {
     String controller =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthRegistrationController.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/RegistrationController.java"));
 
     assertThat(controller)
         .doesNotContain(

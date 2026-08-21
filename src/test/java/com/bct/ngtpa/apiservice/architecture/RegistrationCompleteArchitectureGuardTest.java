@@ -18,12 +18,8 @@ class RegistrationCompleteArchitectureGuardTest {
               + "CompleteRegistrationService.java");
   private static final Path REGISTRATION_CONTROLLER =
       Path.of(
-          "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/"
-              + "AuthRegistrationController.java");
-  private static final Path SEPARATE_COMPLETE_CONTROLLER =
-      Path.of(
-          "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/"
-              + "AuthRegistrationCompleteController.java");
+          "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/"
+              + "RegistrationController.java");
 
   @Test
   void completionUseCaseRemainsFrameworkAndAdapterFree() {
@@ -52,7 +48,6 @@ class RegistrationCompleteArchitectureGuardTest {
   void existingRegistrationControllerSolelyOwnsCompleteEndpoint() throws Exception {
     String controller = Files.readString(REGISTRATION_CONTROLLER);
 
-    assertThat(Files.exists(SEPARATE_COMPLETE_CONTROLLER)).isFalse();
     assertThat(controller)
         .containsIgnoringWhitespaces("@PostMapping(path = \"/complete\"")
         .containsIgnoringWhitespaces("CompleteRegistrationUseCase")

@@ -5,10 +5,10 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryCookieWriter;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryRequestDataResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoverySchemeResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryStartDataResponse;
-import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.UsernameRecoveryWorkflowResultResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.dto.UsernameRecoveryRequestDataResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.dto.UsernameRecoverySchemeResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.dto.UsernameRecoveryStartDataResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.dto.UsernameRecoveryWorkflowResultResponse;
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryCancelCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryRequestCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.usernamerecovery.UsernameRecoveryStartCommand;
@@ -27,7 +27,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Repair 024A controller-prerequisite architecture guard.
  *
- * <p>Locks: the Task 024 {@code AuthUsernameRecoveryController} is present as a concrete thin
+ * <p>Locks: the Task 024 {@code UsernameRecoveryController} is present as a concrete thin
  * controller with no dependency on concrete services, Redis, APIM, configuration internals, or
  * other workflow controllers; the {@link UsernameRecoveryCookieWriter} stays Spring-free and
  * instruction-producing; the richer Request/Cancel inbound-port signatures are the single abstract
@@ -62,15 +62,14 @@ class UsernameRecoveryControllerPrerequisiteArchitectureGuardTest {
     ArchRule rule =
         classes()
             .that()
-            .resideInAPackage("..adapter.in.web.controller..")
+            .resideInAPackage("..adapter.in.web.auth.usernamerecovery..")
             .and()
-            .haveSimpleName("AuthUsernameRecoveryController")
+            .haveSimpleName("UsernameRecoveryController")
             .should()
             .notBeInterfaces()
             .andShould()
             .onlyDependOnClassesThat()
             .resideInAnyPackage(
-                "com.bct.ngtpa.apiservice.adapter.in.web.controller..",
                 "com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery..",
                 "com.bct.ngtpa.apiservice.adapter.in.web.response..",
                 "com.bct.ngtpa.apiservice.adapter.in.web.session.cookie..",
@@ -81,8 +80,10 @@ class UsernameRecoveryControllerPrerequisiteArchitectureGuardTest {
                 "com.bct.ngtpa.apiservice.shared..",
                 "org.springframework..",
                 "reactor..",
+                "lombok..",
                 "java..")
-            .as("AuthUsernameRecoveryController is the concrete thin Task 024 controller");
+            .as("UsernameRecoveryController is the concrete thin Task 024 controller");
+    ;
     rule.check(classes);
   }
 

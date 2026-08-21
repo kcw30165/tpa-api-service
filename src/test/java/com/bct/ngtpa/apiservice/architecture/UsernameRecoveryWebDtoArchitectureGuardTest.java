@@ -2,6 +2,8 @@ package com.bct.ngtpa.apiservice.architecture;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
+import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchRule;
@@ -32,10 +34,22 @@ class UsernameRecoveryWebDtoArchitectureGuardTest {
             .withImportOption(new ImportOption.DoNotIncludeTests())
             .importPackages("com.bct.ngtpa.apiservice");
 
+    DescribedPredicate<JavaClass> webDtoOrMapper =
+        new DescribedPredicate<>("Username Recovery web DTO or mapper classes") {
+          @Override
+          public boolean test(JavaClass input) {
+            String packageName = input.getPackageName();
+
+            return packageName.equals(
+                    "com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.dto")
+                || packageName.equals(
+                    "com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.mapper");
+          }
+        };
+
     ArchRule rule =
         noClasses()
-            .that()
-            .resideInAPackage(WEB_PACKAGE)
+            .that(webDtoOrMapper)
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage(
@@ -43,9 +57,6 @@ class UsernameRecoveryWebDtoArchitectureGuardTest {
                 "com.bct.ngtpa.apiservice.config..",
                 "com.bct.ngtpa.apiservice.infrastructure..",
                 "org.springframework..",
-                "org.springframework.http..",
-                "org.springframework.web..",
-                "org.springframework.web.reactive..",
                 "reactor.core..",
                 "jakarta.servlet..",
                 "io.lettuce..",
@@ -53,6 +64,7 @@ class UsernameRecoveryWebDtoArchitectureGuardTest {
             .as(
                 "Username Recovery web DTOs and mappers must stay free of outbound adapters, "
                     + "config, infrastructure, Spring, servlet, and Redis types");
+
     rule.check(classes);
   }
 

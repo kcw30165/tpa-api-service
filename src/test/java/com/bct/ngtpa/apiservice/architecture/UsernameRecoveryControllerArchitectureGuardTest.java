@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 class UsernameRecoveryControllerArchitectureGuardTest {
 
   private static final String CONTROLLER =
-      "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthUsernameRecoveryController.java";
+      "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/usernamerecovery/UsernameRecoveryController.java";
 
   @Test
   void controllerDelegatesThroughCommittedPortsAndTask023PoliciesOnly() throws Exception {

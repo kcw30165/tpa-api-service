@@ -2,9 +2,9 @@ package com.bct.ngtpa.apiservice.integration.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.CaptchaController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.CaptchaHttpResponses;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.mapper.CaptchaWebMapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestHeaderContextWebFilter;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequestLoggingWebFilter;
@@ -315,7 +315,7 @@ class RegistrationCaptchaAndStartIntegrationTest {
         "org.springframework.boot.micrometer.metrics.autoconfigure.ssl.SslMetricsAutoConfiguration"
       })
   @EnableConfigurationProperties(CorsProperties.class)
-  @Import({SecurityConfig.class, AuthCaptchaController.class})
+  @Import({SecurityConfig.class, CaptchaController.class})
   static class TestApplication {
     @Bean
     MutableClock clock() {

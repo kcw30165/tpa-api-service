@@ -31,6 +31,49 @@ class CancelLoginServiceTest {
   }
 
   @Test
+  void cancelLoadsSnapshotValidatesCentrallyAndUsesSnapshotForRevisionAwareMutation() {
+    var f = new Fixture();
+    f.session = session(AuthFlowScenario.LOGIN, AuthFlowStatus.OTP_SENT, "otp_active");
+    StepVerifier.create(f.service.cancel(command()))
+        .assertNext(r -> assertThat(r.status()).isEqualTo(CancelLoginStatus.CANCELLED))
+        .verifyComplete();
+    assertThat(f.snapshotLoads.get()).isOne();
+    assertThat(f.plainLoads.get()).isOne();
+    assertThat(f.cancelledSnapshot).isNotNull();
+    assertThat(f.cancelledSnapshot.session()).isSameAs(f.session);
+  }
+
+  @Test
+  void revisionConflictDoesNotInvalidateOtpOrReportSuccess() {
+    var f = new Fixture();
+    f.session = session(AuthFlowScenario.LOGIN, AuthFlowStatus.OTP_SENT, "otp_active");
+    f.cancelOutcome = AuthFlowSessionMutationOutcome.SESSION_REVISION_CHANGED;
+    StepVerifier.create(f.service.cancel(command()))
+        .assertNext(
+            r -> {
+              assertThat(r.status()).isEqualTo(CancelLoginStatus.SYSTEM_FAILED);
+              assertThat(r.successfulCleanup()).isFalse();
+            })
+        .verifyComplete();
+    assertThat(f.invalidated.get()).isZero();
+    assertThat(f.cancelled.get()).isZero();
+  }
+
+  @Test
+  void invalidCsrfDoesNotInvalidateOtpOrCancelSession() {
+    var f = new Fixture();
+    f.session = session(AuthFlowScenario.LOGIN, AuthFlowStatus.OTP_SENT, "otp_active");
+    CancelLoginCommand wrong =
+        new CancelLoginCommand(
+            new AuthFlowSessionId("afs_opaque"), "wrong", "https://portal", null, "req");
+    StepVerifier.create(f.service.cancel(wrong))
+        .assertNext(r -> assertThat(r.status()).isEqualTo(CancelLoginStatus.CSRF_INVALID))
+        .verifyComplete();
+    assertThat(f.invalidated.get()).isZero();
+    assertThat(f.cancelled.get()).isZero();
+  }
+
+  @Test
   void missingSessionIsSafeCleanup() {
     var f = new Fixture();
     StepVerifier.create(f.service.cancel(command()))
@@ -76,13 +119,53 @@ class CancelLoginServiceTest {
   static final class Fixture {
     AuthFlowSession session;
     AtomicInteger invalidated = new AtomicInteger(), cancelled = new AtomicInteger();
+    AtomicInteger snapshotLoads = new AtomicInteger(), plainLoads = new AtomicInteger();
+    AuthFlowSessionMutationOutcome cancelOutcome = AuthFlowSessionMutationOutcome.APPLIED;
+    AuthFlowSessionSnapshot cancelledSnapshot;
     CancelLoginService service;
 
     Fixture() {
       AuthFlowSessionPort sessions =
           new AuthFlowSessionPort() {
             public Mono<Optional<AuthFlowSession>> load(AuthFlowSessionId id) {
+              plainLoads.incrementAndGet();
               return Mono.just(Optional.ofNullable(session));
+            }
+
+            public Mono<Optional<AuthFlowSessionSnapshot>> loadSnapshot(AuthFlowSessionId id) {
+              snapshotLoads.incrementAndGet();
+              return Mono.just(
+                  Optional.ofNullable(session)
+                      .map(
+                          value ->
+                              new AuthFlowSessionSnapshot(
+                                  value, new SessionRevision("00000000000000000000000000000001"))));
+            }
+
+            public Mono<AuthFlowSessionMutationResult> cancelRevisioned(
+                AuthFlowSessionSnapshot expected, Instant now) {
+              cancelledSnapshot = expected;
+              if (cancelOutcome == AuthFlowSessionMutationOutcome.APPLIED) {
+                cancelled.incrementAndGet();
+                AuthFlowSession cancelledSession =
+                    new AuthFlowSession(
+                        expected.session().authFlowSessionId(),
+                        expected.session().scenario(),
+                        AuthFlowStatus.CANCELLED,
+                        expected.session().csrfTokenHash(),
+                        expected.session().activeOtpChallengeId(),
+                        expected.session().data(),
+                        expected.session().createdAt(),
+                        now,
+                        expected.session().expiresAt());
+                return Mono.just(
+                    new AuthFlowSessionMutationResult(
+                        AuthFlowSessionMutationOutcome.APPLIED,
+                        new AuthFlowSessionSnapshot(
+                            cancelledSession,
+                            new SessionRevision("00000000000000000000000000000002"))));
+              }
+              return Mono.just(AuthFlowSessionMutationResult.outcome(cancelOutcome));
             }
 
             public Mono<AuthFlowSession> create(AuthFlowSessionCreateCommand c) {
@@ -143,11 +226,9 @@ class CancelLoginServiceTest {
             }
           };
       AuthFlowSessionCancellationPort cancel =
-          (id, reason, now) -> {
-            cancelled.incrementAndGet();
-            assertThat(reason).isEqualTo(AuthFlowSessionCancellationReason.USER_CANCELLED);
-            return Mono.just(new SessionCancellationResult(SessionCancellationStatus.CANCELLED));
-          };
+          (id, reason, now) ->
+              Mono.error(
+                  new AssertionError("Login Cancel must use AuthFlowSessionPort.cancelRevisioned"));
       service =
           new CancelLoginService(
               sessions,

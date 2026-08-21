@@ -105,6 +105,16 @@ class AuthFlowSessionCsrfServiceTest {
   }
 
   @Test
+  void validateForSessionLoadsOnceAndValidatesMatchingToken() {
+    String hash = new Sha256CsrfTokenHasher().hash("csrf_token_a");
+    port.save(activeSession(hash, NOW.plusSeconds(1800)));
+    StepVerifier.create(service.validateForSession(validateCommand("csrf_token_a", NOW)))
+        .expectNextMatches(ValidateAuthFlowSessionCsrfResult::valid)
+        .verifyComplete();
+    assertThat(port.loadCount).isOne();
+  }
+
+  @Test
   void validateCsrfReturnsValidForMatchingToken() {
     String hash = new Sha256CsrfTokenHasher().hash("csrf_token_a");
     port.save(activeSession(hash, NOW.plusSeconds(1800)));
@@ -254,6 +264,7 @@ class AuthFlowSessionCsrfServiceTest {
   private static final class FakeAuthFlowSessionPort implements AuthFlowSessionPort {
     private final Map<String, AuthFlowSession> sessions = new LinkedHashMap<>();
     private int updateCount;
+    private int loadCount;
 
     void save(AuthFlowSession session) {
       sessions.put(session.authFlowSessionId().value(), session);
@@ -262,6 +273,7 @@ class AuthFlowSessionCsrfServiceTest {
     void clear() {
       sessions.clear();
       updateCount = 0;
+      loadCount = 0;
     }
 
     @Override
@@ -271,6 +283,7 @@ class AuthFlowSessionCsrfServiceTest {
 
     @Override
     public Mono<Optional<AuthFlowSession>> load(AuthFlowSessionId id) {
+      loadCount++;
       return Mono.just(Optional.ofNullable(sessions.get(id.value())));
     }
 

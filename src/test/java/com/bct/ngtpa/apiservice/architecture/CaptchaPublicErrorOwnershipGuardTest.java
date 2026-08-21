@@ -10,7 +10,7 @@ class CaptchaPublicErrorOwnershipGuardTest {
   private static final List<Path> STANDALONE =
       List.of(
           Path.of(
-              "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AuthCaptchaController.java"),
+              "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/captcha/CaptchaController.java"),
           Path.of(
               "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/captcha/CaptchaHttpResponses.java"),
           Path.of(

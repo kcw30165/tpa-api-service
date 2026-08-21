@@ -3,10 +3,10 @@ package com.bct.ngtpa.apiservice.adapter.in.web.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties;
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.LoginController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.mapper.LoginOtpVerifyWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.*;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.session.AuthenticatedSessionCookieWriter;
-import com.bct.ngtpa.apiservice.adapter.in.web.session.config.AuthFlowSessionProperties;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.account.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.verify.*;
@@ -41,11 +41,18 @@ class AuthLoginOtpVerifyCookiePublicationTest {
             "fresh_authenticated_csrf");
     var response = new MockServerHttpResponse();
     var controller =
-        new AuthLoginOtpVerifyController(
+        new LoginController(
+            null,
+            null,
+            AuthFlowCookieWriter.defaultWriter(),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
             command -> Mono.just(result),
             new LoginOtpVerifyWebMapper(),
-            AuthFlowCookieWriter.defaultWriter(),
-            new XsrfCookieWriter(new AuthFlowSessionProperties()),
             new AuthenticatedSessionCookieWriter(new AuthWorkflowProperties.AuthenticatedCookie()));
 
     StepVerifier.create(
@@ -69,9 +76,5 @@ class AuthLoginOtpVerifyCookiePublicationTest {
         .verifyComplete();
 
     assertThat(response.getCookies().getFirst("portal_sid")).isNotNull();
-    assertThat(response.getCookies().get("XSRF-TOKEN"))
-        .allSatisfy(cookie -> assertThat(cookie.getPath()).isEqualTo("/api/v1/auth"));
-    assertThat(response.getCookies().get("XSRF-TOKEN"))
-        .allSatisfy(cookie -> assertThat(cookie.getMaxAge().isZero()).isTrue());
   }
 }

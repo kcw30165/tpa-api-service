@@ -2,9 +2,9 @@ package com.bct.ngtpa.apiservice.integration.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.RegistrationController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationStartWebMapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationController;
 import com.bct.ngtpa.apiservice.adapter.in.web.filter.RequiredRequestIdWebFilter;
 import com.bct.ngtpa.apiservice.application.dto.auth.CaptchaPolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.PreStartChallengePolicy;
@@ -506,11 +506,12 @@ class RegistrationStartWorkflowIntegrationTest {
     }
 
     @Bean
-    AuthRegistrationController controller(
+    RegistrationController controller(
         StartRegistrationUseCase start,
         RegistrationStartWebMapper mapper,
         AuthFlowCookieWriter writer) {
-      return new AuthRegistrationController(start, mapper, writer, null, null, null, null, null);
+      return new RegistrationController(
+          start, mapper, writer, null, null, null, null, null, null, null, null, null, null, null);
     }
   }
 

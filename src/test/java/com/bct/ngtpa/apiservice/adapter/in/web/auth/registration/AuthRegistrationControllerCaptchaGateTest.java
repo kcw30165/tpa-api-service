@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationStartWebMapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationController;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
@@ -171,7 +170,7 @@ class AuthRegistrationControllerCaptchaGateTest {
 
   private WebTestClient client(StartRegistrationUseCase useCase) {
     return WebTestClient.bindToController(
-            new AuthRegistrationController(
+            new RegistrationController(
                 useCase,
                 new RegistrationStartWebMapper(Duration.ofMinutes(5)),
                 AuthFlowCookieWriter.defaultWriter(),
@@ -185,9 +184,13 @@ class AuthRegistrationControllerCaptchaGateTest {
                 org.mockito.Mockito.mock(
                     com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper
                         .CancelRegistrationWebMapper.class),
-                org.mockito.Mockito.mock(
-                    com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config
-                        .XsrfCookieWriter.class)))
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null))
         .build();
   }
 }

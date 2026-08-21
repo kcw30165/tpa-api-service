@@ -11,8 +11,8 @@ import org.junit.jupiter.api.Test;
 class RegistrationCancelWebContractGuardTest {
   private static final Path CONTROLLER =
       Path.of(
-          "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/"
-              + "AuthRegistrationController.java");
+          "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/"
+              + "RegistrationController.java");
   private static final Path YAML = Path.of("src/main/resources/application-page-registration.yml");
 
   @Test
@@ -21,10 +21,9 @@ class RegistrationCancelWebContractGuardTest {
     assertThat(source)
         .containsIgnoringWhitespaces("@PostMapping(path = \"/cancel\"")
         .containsIgnoringWhitespaces("CancelRegistrationUseCase")
-        .containsIgnoringWhitespaces("clearAuthFlowCookie(response)")
-        .containsIgnoringWhitespaces("clearXsrfCookie(response)");
+        .containsIgnoringWhitespaces("clearAuthFlowCookie(response)");
     long explicitConstructors =
-        Pattern.compile("public\\s+AuthRegistrationController\\s*\\(")
+        Pattern.compile("public\\s+RegistrationController\\s*\\(")
             .matcher(source)
             .results()
             .count();

@@ -2,11 +2,11 @@ package com.bct.ngtpa.apiservice.auth.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.RegistrationController;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.RegistrationIdempotencyProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationOtpVerifyRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationOtpResendWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.mapper.RegistrationOtpVerifyWebMapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthRegistrationOtpController;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
@@ -19,7 +19,6 @@ import java.lang.reflect.Method;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
 import reactor.core.publisher.Mono;
 
 class P7RegistrationOtpIntegrationTest {
@@ -28,7 +27,7 @@ class P7RegistrationOtpIntegrationTest {
   @Test
   void p7OtpEndpointsExistAndOnlyExpectedOtpEndpointsExist() throws Exception {
     Method resend =
-        AuthRegistrationOtpController.class.getDeclaredMethod(
+        RegistrationController.class.getDeclaredMethod(
             "resendOtp",
             String.class,
             String.class,
@@ -40,7 +39,7 @@ class P7RegistrationOtpIntegrationTest {
             org.springframework.http.server.reactive.ServerHttpResponse.class);
 
     Method verify =
-        AuthRegistrationOtpController.class.getDeclaredMethod(
+        RegistrationController.class.getDeclaredMethod(
             "verifyOtp",
             RegistrationOtpVerifyRequest.class,
             String.class,
@@ -52,10 +51,14 @@ class P7RegistrationOtpIntegrationTest {
             String.class,
             org.springframework.http.server.reactive.ServerHttpResponse.class);
 
-    assertThat(AuthRegistrationOtpController.class.getAnnotation(RequestMapping.class).value())
-        .contains("/api/v1/auth/registration/otp");
-    assertThat(resend.getAnnotation(PostMapping.class).path()).contains("/resend");
-    assertThat(verify.getAnnotation(PostMapping.class).path()).contains("/verify");
+    assertThat(resend.getAnnotation(PostMapping.class).path()).containsExactly("/otp/resend");
+    assertThat(verify.getAnnotation(PostMapping.class).path()).containsExactly("/otp/verify");
+    assertThat(
+            java.util.Arrays.stream(RegistrationController.class.getDeclaredMethods())
+                .filter(method -> method.getAnnotation(PostMapping.class) != null)
+                .map(Method::getName)
+                .filter(name -> name.equals("resendOtp") || name.equals("verifyOtp")))
+        .containsExactlyInAnyOrder("resendOtp", "verifyOtp");
   }
 
   @Test
@@ -352,17 +355,25 @@ class P7RegistrationOtpIntegrationTest {
     assertThat(json).doesNotContain("apimEmail", "apimMobile", "member@example.com");
   }
 
-  private static AuthRegistrationOtpController otpController(
+  private static RegistrationController otpController(
       ResendRegistrationOtpUseCase resendUseCase, VerifyRegistrationOtpUseCase verifyUseCase) {
-    return new AuthRegistrationOtpController(
+    return new RegistrationController(
+        null,
+        null,
         com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.config.AuthFlowCookieWriter
             .defaultWriter(),
+        null,
+        null,
+        null,
+        null,
         resendUseCase,
         new RegistrationOtpResendWebMapper(null),
         verifyUseCase,
         new RegistrationOtpVerifyWebMapper(
             new com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper()),
-        new RegistrationIdempotencyProperties());
+        new RegistrationIdempotencyProperties(),
+        null,
+        null);
   }
 
   private static ResendRegistrationOtpUseCase failResendUseCase() {

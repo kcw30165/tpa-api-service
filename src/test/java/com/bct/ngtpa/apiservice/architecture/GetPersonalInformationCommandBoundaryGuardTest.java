@@ -14,7 +14,7 @@ class GetPersonalInformationCommandBoundaryGuardTest {
           "src/main/java/com/bct/ngtpa/apiservice/application/dto/GetPersonalInformationCommand.java");
   private static final Path CONTROLLER =
       Path.of(
-          "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/PersonalInformationController.java");
+          "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/personalinformation/PersonalInformationController.java");
   private static final Path SERVICE =
       Path.of(
           "src/main/java/com/bct/ngtpa/apiservice/application/usecase/GetPersonalInformationService.java");

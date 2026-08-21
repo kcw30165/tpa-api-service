@@ -15,7 +15,7 @@ class GetReferenceDataCountriesCommandBoundaryGuardTest {
           "src/main/java/com/bct/ngtpa/apiservice/application/dto/GetReferenceDataCountriesCommand.java");
   private static final Path CONTROLLER =
       Path.of(
-          "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/ReferenceDataController.java");
+          "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/referencedata/ReferenceDataController.java");
   private static final Path SERVICE =
       Path.of(
           "src/main/java/com/bct/ngtpa/apiservice/application/usecase/GetReferenceDataCountriesService.java");

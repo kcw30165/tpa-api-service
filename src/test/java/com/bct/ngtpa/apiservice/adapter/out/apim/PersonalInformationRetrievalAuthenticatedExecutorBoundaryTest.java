@@ -18,7 +18,8 @@ class PersonalInformationRetrievalAuthenticatedExecutorBoundaryTest {
 
   @Test
   void controllerCopiesTrustedActorAndSelectedAccountIntoRetrievalCommand() throws Exception {
-    String controller = source("adapter/in/web/controller/PersonalInformationController.java");
+    String controller =
+        source("adapter/in/web/personalInformation/PersonalInformationController.java");
     String command = source("application/dto/GetPersonalInformationCommand.java");
 
     assertThat(controller)

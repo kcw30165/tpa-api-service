@@ -4,11 +4,18 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.port.in.CreateAuthFlowSessionCsrfUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.util.HexFormat;
 import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
 public class AuthFlowSessionCsrfService implements CreateAuthFlowSessionCsrfUseCase {
+  private static final Logger LOG = LoggerFactory.getLogger(AuthFlowSessionCsrfService.class);
   private final AuthFlowSessionPort authFlowSessionPort;
   private final CsrfTokenGenerator csrfTokenGenerator;
   private final CsrfTokenValidationService csrfTokenValidationService;
@@ -56,7 +63,12 @@ public class AuthFlowSessionCsrfService implements CreateAuthFlowSessionCsrfUseC
               if (optional.isEmpty()) {
                 return result(AuthFlowSessionCsrfValidationStatus.SESSION_MISSING);
               }
-              AuthFlowSession session = optional.get();
+              AuthFlowSession session = optional.orElseThrow();
+              Objects.requireNonNull(session, "session must not be null");
+              Objects.requireNonNull(command, "command must not be null");
+              if (!session.authFlowSessionId().equals(command.authFlowSessionId())) {
+                return result(AuthFlowSessionCsrfValidationStatus.SESSION_MISSING);
+              }
               if (session.isExpired(command.now())) {
                 return result(AuthFlowSessionCsrfValidationStatus.SESSION_EXPIRED);
               }
@@ -66,6 +78,16 @@ public class AuthFlowSessionCsrfService implements CreateAuthFlowSessionCsrfUseC
               CsrfTokenValidationResult token =
                   csrfTokenValidationService.validate(
                       command.submittedToken(), session.csrfTokenHash());
+              LOG.info(
+                  "event=auth.flow.csrf.validation sessionFingerprint={} submittedFingerprint={} "
+                      + "storedHashFingerprint={} scenario={} flowStatus={} updatedAt={} result={}",
+                  fingerprint(session.authFlowSessionId().value()),
+                  fingerprint(command.submittedToken()),
+                  fingerprint(session.csrfTokenHash()),
+                  session.scenario(),
+                  session.status(),
+                  session.updatedAt(),
+                  token.status());
               return result(
                   switch (token.status()) {
                     case VALID -> AuthFlowSessionCsrfValidationStatus.VALID;
@@ -113,6 +135,19 @@ public class AuthFlowSessionCsrfService implements CreateAuthFlowSessionCsrfUseC
                       new CreateAuthFlowSessionCsrfResult(
                           rawToken, now.plusSeconds(ttlSeconds), ttlSeconds));
             });
+  }
+
+  private static String fingerprint(String value) {
+    if (value == null) {
+      return "<null>";
+    }
+    try {
+      byte[] digest =
+          MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
+      return HexFormat.of().formatHex(digest, 0, 8);
+    } catch (NoSuchAlgorithmException exception) {
+      throw new IllegalStateException("SHA-256 is unavailable", exception);
+    }
   }
 
   private static ValidateAuthFlowSessionCsrfResult result(

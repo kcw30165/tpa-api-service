@@ -15,7 +15,7 @@ class ApiResponseExceptionHandlingBoundaryTest {
   void apiExceptionHandlerDoesNotUseLegacyApiErrorResponse() throws IOException {
     String source =
         readSource(
-            "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/ApiExceptionHandler.java");
+            "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/advice/ApiExceptionHandler.java");
 
     assertFalse(containsIgnoringWhitespace(source, "ApiErrorResponse"));
     assertFalse(containsIgnoringWhitespace(source, "ResponseEntity<ApiErrorResponse>"));
@@ -66,7 +66,7 @@ class ApiResponseExceptionHandlingBoundaryTest {
   void exceptionLocalizationUsesAcceptLanguageNotLangQueryParameter() throws IOException {
     String source =
         readSource(
-            "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/ApiExceptionHandler.java");
+            "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/advice/ApiExceptionHandler.java");
 
     assertFalse(containsIgnoringWhitespace(source, "requestParam(exchange, \"lang\")"));
     assertTrue(containsIgnoringWhitespace(source, "requestLocale(exchange)"));
@@ -88,8 +88,18 @@ class ApiResponseExceptionHandlingBoundaryTest {
   }
 
   private static String readController(String fileName) throws IOException {
-    return readSource(
-        "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/" + fileName);
+    String path =
+        switch (fileName) {
+          case "NotificationController.java" ->
+              "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/notification/NotificationController.java";
+          case "PersonalInformationController.java" ->
+              "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/personalinformation/PersonalInformationController.java";
+          case "ContributionController.java" ->
+              "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/contribution/ContributionController.java";
+          default ->
+              throw new IllegalArgumentException("Unsupported controller source: " + fileName);
+        };
+    return readSource(path);
   }
 
   private static String readSource(String path) throws IOException {

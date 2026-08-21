@@ -14,7 +14,7 @@ class RegistrationSessionSecurityAndReactiveCorrectnessTest {
     String source =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/ApiExceptionHandler.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/advice/ApiExceptionHandler.java"));
     assertThat(source).doesNotContain(".block(");
     assertThat(source).doesNotContain("currentOrEmpty()");
     assertThat(source)
@@ -27,7 +27,7 @@ class RegistrationSessionSecurityAndReactiveCorrectnessTest {
     String source =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/ApiExceptionHandler.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/advice/ApiExceptionHandler.java"));
     assertThat(source)
         .containsIgnoringWhitespaces("/api/v1/auth/registration")
         .containsIgnoringWhitespaces("return null;");

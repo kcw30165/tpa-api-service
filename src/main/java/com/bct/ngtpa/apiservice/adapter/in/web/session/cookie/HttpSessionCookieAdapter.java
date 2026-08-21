@@ -9,7 +9,9 @@ import java.util.Collection;
 import java.util.Objects;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.server.reactive.ServerHttpResponse;
+import org.springframework.stereotype.Component;
 
+@Component
 public class HttpSessionCookieAdapter {
 
   public void apply(ServerHttpResponse response, SessionCookieInstruction instruction) {

@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.dto.CaptchaRefreshRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.dto.CaptchaVerifyRequest;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.captcha.mapper.CaptchaWebMapper;
-import com.bct.ngtpa.apiservice.adapter.in.web.controller.AuthCaptchaController;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaChallengeId;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaImage;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaVerificationOutcome;
@@ -606,7 +605,7 @@ class AuthCaptchaControllerTest {
       VerifyCaptchaUseCase verifyUseCase,
       RefreshCaptchaUseCase refreshUseCase) {
     return WebTestClient.bindToController(
-            new AuthCaptchaController(
+            new CaptchaController(
                 createUseCase,
                 verifyUseCase,
                 refreshUseCase,
