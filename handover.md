@@ -321,3 +321,11 @@ A present but blank authenticated-session cookie is now rejected immediately. Th
 Baseline: `f0abac361e590f44cf46e20e240fef2dcf3dd27e`.
 
 The refresh route is explicitly permitted through the in-process WebFlux security chain because the endpoint must recover a CSRF token before a protected request can be made. Session validity and Origin/Referer remain enforced by the application use case. Behavioral tests cover authenticated precedence, blank-cookie no-fallback, selected-cookie ambiguity, pre-auth selection, non-cacheable headers, request-ID echo, and absence of response cookies. Architecture guards retain configured cookie names and keep WebFlux/Redis dependencies out of the application orchestration package.
+
+### Phase 6 focused-test fixture correction
+
+The first focused runtime run reached all selected suites but the four controller behavior cases errored before their assertions because the direct `AuthWorkflowProperties` test fixture did not initialize its bindable `login` subtree. Production Spring binding was not implicated. The fixture now installs `AuthWorkflowProperties.Login`, retaining production defaults for `portal_sid`; the pre-auth properties already provide the `auth_flow_sid` default.
+
+### Phase 6 JDT assertion compatibility correction
+
+`RefreshCsrfTokenServiceStructureTest` now extracts declared field type names before asserting membership. This avoids Eclipse JDT selecting AssertJ's indexed `contains(element, Index)` overload for the two `Class<?>` arguments while retaining the same structural contract under Maven `javac` and IDE compilation.

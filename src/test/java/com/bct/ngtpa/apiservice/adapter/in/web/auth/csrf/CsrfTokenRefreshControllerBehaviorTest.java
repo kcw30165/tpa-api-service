@@ -110,10 +110,12 @@ class CsrfTokenRefreshControllerBehaviorTest {
   }
 
   private static CsrfTokenRefreshController controller(RefreshCsrfTokenUseCase useCase) {
+    AuthWorkflowProperties authWorkflowProperties = new AuthWorkflowProperties();
+    authWorkflowProperties.setLogin(new AuthWorkflowProperties.Login());
     return new CsrfTokenRefreshController(
         useCase,
         new CsrfTokenRefreshHttpResponses(),
-        new AuthWorkflowProperties(),
+        authWorkflowProperties,
         new AuthFlowSessionProperties());
   }
 
