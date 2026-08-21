@@ -184,6 +184,22 @@ The frontend must:
 - Never put session/CSRF values in URLs, logs, analytics, browser storage, or error telemetry.
 - Handle `401`, `403`, conflict, and rate-limit responses according to the workflow contract.
 
+
+
+## 5.1 Frontend page-refresh recovery sequence
+
+When the frontend has a valid session cookie but no raw CSRF token in memory:
+
+1. Send `POST /api/v1/auth/csrf-token/refresh` with browser credentials.
+2. Include `X-Request-Id` and an approved `Origin` or `Referer`.
+3. Do not send the lost or previous `X-XSRF-TOKEN` value.
+4. Read the selected context from `response.result.data.sessionType`.
+5. Read the rotated token from `response.result.data.csrfToken`.
+6. Keep the token only in the approved in-memory frontend security state.
+7. Submit the token through `X-XSRF-TOKEN` on subsequent protected mutations.
+
+If `portal_sid` is present, the backend selects the authenticated session and never falls back to `auth_flow_sid`, even when the authenticated cookie is blank, malformed, expired, or otherwise unusable. A conflict may mean another tab rotated the token first; the frontend should follow the approved retry or restart behavior without logging token or cookie values.
+
 ## 6. Logout and revocation
 
 ### Logout

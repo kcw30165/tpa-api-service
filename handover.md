@@ -335,3 +335,7 @@ The first focused runtime run reached all selected suites but the four controlle
 Baseline: `abe67a1a523b55c9f4718c843cb2870ff43e023e`.
 
 The successful refresh response now wraps the payload under `result.data`, yielding `result.data.sessionType` and `result.data.csrfToken`. Failure envelopes remain unchanged and continue to return a null result through the standard `MutationResponse` contract.
+
+### Result data documentation alignment
+
+The implementation plan, Phase 1 design record, session architecture, frontend integration guide, operations/testing guide, and session/CSRF README now document the final `result.data.sessionType` and `result.data.csrfToken` response path. The Phase 1 record explicitly marks only its original envelope detail as superseded; all locked security and persistence decisions remain valid.

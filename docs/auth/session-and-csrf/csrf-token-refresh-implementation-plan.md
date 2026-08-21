@@ -21,7 +21,7 @@ Because the backend stores only a hash of the CSRF token, the endpoint cannot re
 - Refuse fallback to the pre-auth session when an authenticated-session cookie is present but invalid.
 - Generate a new cryptographically secure CSRF token.
 - Persist only the new token hash.
-- Return the raw token in the approved `MutationResponse<T>` payload.
+- Return the raw token at `MutationResponse.result.data.csrfToken`.
 - Preserve all unrelated session and workflow state.
 - Validate request provenance using the existing Origin/Referer policy.
 - Require the existing request-correlation contract.
@@ -81,8 +81,10 @@ The endpoint must not accept a session ID or CSRF token through:
   "success": true,
   "status": "SUCCESS",
   "result": {
-    "sessionType": "AUTHENTICATED",
-    "csrfToken": "<new-raw-csrf-token>"
+    "data": {
+      "sessionType": "AUTHENTICATED",
+      "csrfToken": "<new-raw-csrf-token>"
+    }
   },
   "messages": [],
   "errors": []
@@ -96,8 +98,10 @@ The endpoint must not accept a session ID or CSRF token through:
   "success": true,
   "status": "SUCCESS",
   "result": {
-    "sessionType": "PRE_AUTH",
-    "csrfToken": "<new-raw-csrf-token>"
+    "data": {
+      "sessionType": "PRE_AUTH",
+      "csrfToken": "<new-raw-csrf-token>"
+    }
   },
   "messages": [],
   "errors": []
@@ -600,7 +604,7 @@ Document that concurrent refreshes may invalidate the token returned to another 
 
 ### 10.5 Response and leakage cases
 
-- Standard success envelope.
+- Standard success envelope with `sessionType` and `csrfToken` under `result.data`.
 - Correct public `sessionType`.
 - `Cache-Control: no-store`.
 - `Pragma: no-cache`.
@@ -699,7 +703,7 @@ The implementation is complete only when all the following are true:
 - It requires approved request provenance.
 - It rotates rather than recovers the previous token.
 - It persists only the new token hash.
-- It returns the new raw token in the mutation-result payload.
+- It returns the new raw token at `result.data.csrfToken` in the mutation-result payload.
 - It preserves all unrelated session state.
 - It rejects expired and terminal sessions.
 - It is safe under concurrent session mutation.

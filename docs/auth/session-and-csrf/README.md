@@ -124,3 +124,7 @@ The reviewed configuration uses:
 - Redis Sentinel with SSL/mTLS
 
 These are current configuration values, not architectural constants. Confirm the active deployment profile before diagnosing or changing behavior.
+
+## Page-refresh CSRF recovery
+
+Use `POST /api/v1/auth/csrf-token/refresh` when browser memory has lost the current raw CSRF token. The endpoint selects the authenticated session when `portal_sid` is present; otherwise it can use `auth_flow_sid`. It rotates the stored hash and returns the new token under `result.data.csrfToken`, with the selected context under `result.data.sessionType`. The previous `X-XSRF-TOKEN` is not required, responses are non-cacheable, and no XSRF cookie is set.

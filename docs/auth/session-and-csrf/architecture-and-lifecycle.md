@@ -244,6 +244,24 @@ Request header:
 
 Both cookies remain Secure and use the configured SameSite policy. SameSite supplements token validation; it does not replace it.
 
+
+
+### 5.4 Page-refresh token recovery
+
+When frontend memory loses the raw CSRF token, the browser calls `POST /api/v1/auth/csrf-token/refresh` with credentials, `X-Request-Id`, and an approved `Origin` or `Referer`. The endpoint does not require the previous `X-XSRF-TOKEN` value.
+
+```text
+Browser loses raw CSRF token
+  -> select portal_sid when present; otherwise auth_flow_sid
+  -> reject duplicate selected cookies and prohibit authenticated-to-pre-auth downgrade
+  -> validate active session state and request provenance
+  -> atomically or revision-safely replace only the stored CSRF hash
+  -> preserve unrelated session state and remaining lifetime
+  -> return result.data.sessionType and result.data.csrfToken
+```
+
+The response is non-cacheable and does not publish an XSRF cookie. Protected mutations continue to submit the current raw token through `X-XSRF-TOKEN`.
+
 ## 6. Redis persistence and protection
 
 Session adapters are reactive and expose application ports rather than Redis types. They use:

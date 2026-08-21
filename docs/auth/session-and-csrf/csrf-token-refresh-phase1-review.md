@@ -201,3 +201,7 @@ The implementation should add one session-selecting application use case, expose
 ```text
 docs(auth): lock CSRF token refresh implementation design
 ```
+
+## Superseded response-envelope detail
+
+The original Phase 1 design showed `sessionType` and `csrfToken` directly under `result`. Final contract alignment supersedes that detail. Successful responses now expose the payload under `result.data`, specifically `result.data.sessionType` and `result.data.csrfToken`. The security, rotation, persistence, and no-cookie decisions in this design lock remain unchanged.
