@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 class CsrfRefreshContractTest {
   @Test
   void resultAndCommandRedactSecrets() {
-    var result = new RefreshCsrfTokenResult(CsrfRefreshSessionType.PRE_AUTH, "raw-secret");
+    var result = RefreshCsrfTokenResult.success(CsrfRefreshSessionType.PRE_AUTH, "raw-secret");
     var command =
         new RefreshCsrfTokenCommand("portal-secret", "flow-secret", "https://fe", null, "req-1");
     assertThat(result.toString()).doesNotContain("raw-secret");

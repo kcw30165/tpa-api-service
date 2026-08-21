@@ -267,3 +267,18 @@ Not yet implemented:
 - HTTP controller, response mapper, cache headers, and public error mappings
 
 The next round must build from this cumulative state and must not recreate either pre-auth rotation or authenticated Redis CAS logic.
+
+## CSRF Token Refresh Phase 3A Typed Outcomes and Fail-First Contracts
+
+Baseline: `da34340ab371d757e7a5b13584e6dac792bd6b59`.
+
+This round restores the implementation plan's fail-first gate before adding orchestration or HTTP production classes.
+
+Added:
+
+- typed `RefreshCsrfTokenStatus` outcomes for success, missing, invalid, unusable, provenance rejection, conflict, and system failure
+- an invariant-bearing `RefreshCsrfTokenResult` that never carries a raw token or session type on failure
+- redaction and result-invariant tests
+- reflection-based fail-first specifications for the application orchestration service, capability-scoped authenticated rotation dependency, and approved controller route
+
+The reflection specifications intentionally compile before the production classes exist and are expected to fail if run at this commit. Implementation remains deferred to the next cumulative round.
