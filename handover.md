@@ -282,3 +282,26 @@ Added:
 - reflection-based fail-first specifications for the application orchestration service, capability-scoped authenticated rotation dependency, and approved controller route
 
 The reflection specifications intentionally compile before the production classes exist and are expected to fail if run at this commit. Implementation remains deferred to the next cumulative round.
+
+## CSRF Token Refresh Phase 3B Application Orchestration
+
+Baseline: `c77b47a4c616fb1d7677a954c79d118fb779fe7b`.
+
+Implemented in this round:
+
+- token-free authenticated-session load, protection validation, lifecycle validation, remaining-TTL calculation, and atomic CSRF-hash compare-and-set rotation
+- session-family orchestration with authenticated-cookie precedence and no downgrade fallback
+- strict Origin/Referer validation using configured CORS allowed origins
+- stable internal refresh failure classification that never returns a raw token on conflict or failure
+- Spring application composition reusing the existing Login replay Redis CAS adapter
+- preservation of authenticated actor, account, lifecycle timestamp, absolute expiry, and Redis TTL state
+
+Still deferred to the HTTP phase:
+
+- controller and payload DTO mapping
+- cookie extraction and public status mapping
+- cache-prevention headers and endpoint documentation
+
+### Phase 3B cumulative outcome correction
+
+Pre-auth rotation now passes through `PreAuthSessionCsrfRefreshService`, which preserves distinct typed outcomes for missing, unusable, revision-conflict, and system-failure cases. The orchestration layer no longer collapses every pre-auth failure into `SESSION_NOT_USABLE`. Structural and classifier tests were added while the HTTP controller remains deferred.
