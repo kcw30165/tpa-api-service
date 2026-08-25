@@ -339,3 +339,21 @@ The successful refresh response now wraps the payload under `result.data`, yield
 ### Result data documentation alignment
 
 The implementation plan, Phase 1 design record, session architecture, frontend integration guide, operations/testing guide, and session/CSRF README now document the final `result.data.sessionType` and `result.data.csrfToken` response path. The Phase 1 record explicitly marks only its original envelope detail as superseded; all locked security and persistence decisions remain valid.
+
+## WSL Runtime and Validation Handover
+
+- Updated: 20260825-222602
+- Branch: `dev`
+- Validated HEAD: `4864b746a9cb1615d2ac757561753bf15d7298ac`
+- Maven production compile: PASS, reused from Phase 07-002 evidence
+- Maven test compile: PASS, reused from Phase 07-002 evidence
+- Full Maven test suite in Phase 07: NOT RUN
+- Repaired runtime PID/PGID isolation: PASS
+- Actuator health and safe missing `X-Request-Id` contract: PASS
+- Targeted graceful shutdown with validation-process survival: PASS
+- Build-once JAR SHA-256: `a0528d83328094253f0f7ea12e9be66571e375a34b56358f3b1d03bc76d736f0`
+- Runtime-only image ID: `sha256:d263eb2b6bb9455d3798b75e83eef3ba64b6d768ed048a901c3c7b577f2bf3da`
+- Optional local Docker end-to-end runtime: DEFERRED
+- Deferral reason: Docker Desktop cannot route to the WSL loopback-only Redis Sentinel forward.
+- Future option: install a container-reachable local Redis/Sentinel instance.
+- Authoritative local workflow: `ngtpa-runtime-start dev`, `ngtpa-runtime-status dev`, `ngtpa-runtime-stop dev`.
