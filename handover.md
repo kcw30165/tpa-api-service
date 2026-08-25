@@ -369,3 +369,14 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - WSL Phase 07 Gate E: outstanding for Jenkins in Phase 08.
 - WSL Phase 07 Gate F: outstanding for immutable deployment and Nick acceptance.
 - Account Balance investigation exists, but implementation remains deferred until the WSL workstream advances.
+
+## WSL Phase 08 API-service CI Contract
+
+- Application branch: `features/feature-impl-account-balance`, MR target `dev`.
+- Pipeline development branch: `features/feature-ngtpa-131-141-restructure-jenkins-repo`, MR target `dev`.
+- Jenkins consumes both repositories for deployment.
+- API-service deterministic validation entrypoint: `scripts/ci/validate.sh`.
+- Test report contract: Surefire XML plus JaCoCo XML.
+- Deployment verification contract: `.devsecops/healthcheck.sh` performs an HTTP Actuator readiness check only.
+- Account Balance implementation remains deferred.
+- Gate E and protected-merge enforcement remain outstanding.

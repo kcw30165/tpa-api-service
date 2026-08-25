@@ -25,3 +25,16 @@ Make Jenkins an independent and trustworthy CI authority before changing the del
 - GitLab receives status for the exact commit.
 - Protected merges can be blocked on stable required checks.
 - Deployment verification includes application-level HTTP health.
+
+## Gate B implementation status
+
+### API-service repository
+
+- Repository-owned validation entrypoint: `scripts/ci/validate.sh`.
+- Required toolchain: Java 21 and Maven 3.9.15.
+- Validation order: Spotless check, production compile, test compilation, real Maven tests, JaCoCo report.
+- Required reports: `target/surefire-reports/TEST-*.xml` and `target/site/jacoco/jacoco.xml`.
+- Post-deployment application check: `.devsecops/healthcheck.sh`, using only Actuator readiness.
+- Login, OTP, captcha, and SMS calls are excluded from unconditional health verification.
+- Jenkins pipeline correction remains a separate commit and MR on `features/feature-ngtpa-131-141-restructure-jenkins-repo`.
+- Gate E remains outstanding until Jenkins independently runs the checks for the exact application commit.
