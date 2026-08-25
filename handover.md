@@ -357,3 +357,15 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - Deferral reason: Docker Desktop cannot route to the WSL loopback-only Redis Sentinel forward.
 - Future option: install a container-reachable local Redis/Sentinel instance.
 - Authoritative local workflow: `ngtpa-runtime-start dev`, `ngtpa-runtime-status dev`, `ngtpa-runtime-stop dev`.
+
+## WSL Workstream Gate State
+
+- Canonical documents: `docs/wsl`.
+- WSL Phases 01 through 06: completed evidence exists; optional local Docker-to-Sentinel runtime remains deferred.
+- WSL Phase 07 Gate A: complete.
+- WSL Phase 07 Gate B: implementation prepared; commit required before completion declaration.
+- WSL Phase 07 Gate C: prior direct-runtime evidence exists.
+- WSL Phase 07 Gate D: prior safe curl evidence exists; external physical effects are not inferred.
+- WSL Phase 07 Gate E: outstanding for Jenkins in Phase 08.
+- WSL Phase 07 Gate F: outstanding for immutable deployment and Nick acceptance.
+- Account Balance investigation exists, but implementation remains deferred until the WSL workstream advances.

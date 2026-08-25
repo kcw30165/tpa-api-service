@@ -59,3 +59,13 @@ Make Copilot A, Copilot B, and Nick use explicit and non-overlapping completion 
 - Every phase completion statement names its gate.
 - No generic `PASS` is used without scope.
 - `handover.md` records gate state and outstanding validation.
+
+## Implementation status
+
+- Gate A: investigation evidence captured.
+- Gate B: gate operating model and launcher enforcement implemented; final commit is still required before Gate B can be declared complete.
+- Gate C: supported by prior direct-runtime evidence, but not reclassified as canonical Phase 07 completion.
+- Gate D: supported by prior safe curl evidence, but external physical effects remain unconfirmed.
+- Gate E: outstanding and owned by WSL Phase 08 / Jenkins.
+- Gate F: outstanding and requires Jenkins deployment plus Nick acceptance.
+- Account Balance implementation remains deferred.
