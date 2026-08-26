@@ -3,7 +3,7 @@ set -euo pipefail
 BASE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; cd "$BASE/../.."
 source "$BASE/lib/runtime.sh"; source "$BASE/lib/preflight.sh"; source "$BASE/lib/redaction.sh"; source "$BASE/lib/evidence.sh"; source "$BASE/lib/assertions.sh"; source "$BASE/lib/http-client.sh"
 : "${E2E_SCENARIO_PACK:=platform}"; : "${E2E_SCENARIO_ID:=controlled-assertion-self-test}"
-case "$E2E_SCENARIO_PACK/$E2E_SCENARIO_ID" in platform/readiness|platform/controlled-assertion-self-test) ;; *) printf 'ERROR unknown or pending scenario\n' >&2; exit 2;; esac
+case "$E2E_SCENARIO_PACK/$E2E_SCENARIO_ID" in platform/readiness|platform/controlled-assertion-self-test|login/missing-request-id|login/missing-idempotency-key|login/invalid-request|login/valid-start) ;; *) printf 'ERROR unknown or pending scenario\n' >&2; exit 2;; esac
 [[ "$E2E_SCENARIO_ID" == controlled-assertion-self-test ]] || preflight
 create_evidence_dir
 printf 'environment=%s\npack=%s\nscenario=%s\nbootstrap=%s\n' "$E2E_ENVIRONMENT" "$E2E_SCENARIO_PACK" "$E2E_SCENARIO_ID" "$E2E_BOOTSTRAP_MODE" >"$E2E_RUN_EVIDENCE_DIR/001-preflight.txt"

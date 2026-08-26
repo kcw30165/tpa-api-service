@@ -2,7 +2,9 @@
 bff_request() {
   local method="$1" path="$2" body="${3:-}" out="$E2E_RUN_EVIDENCE_DIR"
   local request_id="${REQUEST_ID_PREFIX}-$(date +%s)-$$" url="${BFF_BASE_URL%/}${path}"
-  local -a args=(--silent --show-error --fail-with-body --connect-timeout "$E2E_CONNECT_TIMEOUT_SECONDS" --max-time "$E2E_REQUEST_TIMEOUT_SECONDS" -X "$method" -H "Accept-Language: $ACCEPT_LANGUAGE" -H "X-Request-Id: $request_id" -D "$out/006-response-headers-redacted.txt" -o "$out/007-response-body-redacted.json" -w '%{http_code} %{time_total}')
+  local -a args=(--silent --show-error --connect-timeout "$E2E_CONNECT_TIMEOUT_SECONDS" --max-time "$E2E_REQUEST_TIMEOUT_SECONDS" -X "$method" -H "Accept-Language: $ACCEPT_LANGUAGE" -D "$out/006-response-headers-redacted.txt" -o "$out/007-response-body-redacted.json" -w '%{http_code} %{time_total}')
+  [[ "${E2E_SEND_REQUEST_ID:-true}" == true ]] && args+=(-H "X-Request-Id: $request_id")
+  [[ -n "${IDEMPOTENCY_KEY:-}" ]] && args+=(-H "Idempotency-Key: $IDEMPOTENCY_KEY")
   [[ "$E2E_TLS_VERIFY" == true ]] || args+=(--insecure)
   [[ -n "${PORTAL_SESSION_COOKIE_VALUE:-}" ]] && args+=(--cookie "portal_sid=$PORTAL_SESSION_COOKIE_VALUE")
   [[ -n "${AUTH_FLOW_COOKIE_VALUE:-}" ]] && args+=(--cookie "auth_flow_sid=$AUTH_FLOW_COOKIE_VALUE")
