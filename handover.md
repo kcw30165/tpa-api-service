@@ -380,3 +380,13 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - Deployment verification contract: `.devsecops/healthcheck.sh` performs an HTTP Actuator readiness check only.
 - Account Balance implementation remains deferred.
 - Gate E and protected-merge enforcement remain outstanding.
+
+## BFF Phase 00 Scripted E2E Framework
+
+- The shared curl-based framework is under `scripts/e2e` and replaces Postman as authoritative local functional validation.
+- Initial bootstrap modes are `anonymous` and `provided-session`.
+- Authenticated transport uses the configured `portal_sid` cookie, `X-XSRF-TOKEN` when required, and selected `Account-Ref`; no `Session-Id` header is introduced.
+- Pre-auth transport uses `auth_flow_sid` and `X-XSRF-TOKEN` when required.
+- `Accept-Language` and `X-Request-Id` are applied consistently.
+- Evidence is timestamped and redacted. Destructive, OTP/SMS, CAPTCHA automation, and scripted-auth flows are deferred.
+- Account Balance is the first planned feature-pack consumer, but its provisional design pack remains untracked and uncommitted.
