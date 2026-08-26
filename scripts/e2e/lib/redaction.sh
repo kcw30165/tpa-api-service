@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -euo pipefail
 redact_stream() {
   sed -E \
     -e 's/(portal_sid|auth_flow_sid|X-XSRF-TOKEN|Authorization|Cookie|Set-Cookie)([=:][[:space:]]*)[^;[:space:]\"]+/\1\2<redacted>/Ig' \

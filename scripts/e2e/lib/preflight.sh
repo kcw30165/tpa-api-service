@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -euo pipefail
 preflight() {
   for c in bash curl jq sed awk grep mktemp date; do command -v "$c" >/dev/null 2>&1 || { printf 'ERROR missing dependency: %s\n' "$c" >&2; return 1; }; done
   [[ -n "${BFF_BASE_URL:-}" ]] || { printf 'ERROR BFF_BASE_URL is required\n' >&2; return 1; }

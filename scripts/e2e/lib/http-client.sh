@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -euo pipefail
 bff_request() {
   local method="$1" path="$2" body="${3:-}" out="$E2E_RUN_EVIDENCE_DIR"
   local request_id="${REQUEST_ID_PREFIX}-$(date +%s)-$$" url="${BFF_BASE_URL%/}${path}"
@@ -11,10 +10,12 @@ bff_request() {
   [[ -n "${ACCOUNT_REF:-}" ]] && args+=(-H "Account-Ref: $ACCOUNT_REF")
   [[ -n "$body" ]] && args+=(-H 'Content-Type: application/json' --data-binary "$body")
   printf 'method=%s\nurl=%s\nrequest_id=%s\nportal_cookie=%s\nauth_flow_cookie=%s\nxsrf=%s\naccount_ref=%s\n' "$method" "$url" "$request_id" "$(redacted_presence "${PORTAL_SESSION_COOKIE_VALUE:-}")" "$(redacted_presence "${AUTH_FLOW_COOKIE_VALUE:-}")" "$(redacted_presence "${XSRF_TOKEN:-}")" "$(redacted_presence "${ACCOUNT_REF:-}")" >"$out/005-request-command-redacted.txt"
-  set +e
   local metrics rc
-  metrics="$(curl "${args[@]}" "$url" 2>"$out/.curl-error")"; rc=$?
-  set -e
+  if metrics="$(curl "${args[@]}" "$url" 2>"$out/.curl-error")"; then
+    rc=0
+  else
+    rc=$?
+  fi
   E2E_CURL_EXIT="$rc"; E2E_HTTP_STATUS="${metrics%% *}"; E2E_ELAPSED_SECONDS="${metrics#* }"
   [[ -f "$out/.curl-error" ]] && redact_stream <"$out/.curl-error" >"$out/009-curl-diagnostic-redacted.txt"
   rm -f "$out/.curl-error"

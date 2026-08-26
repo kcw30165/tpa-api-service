@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -euo pipefail
 : "${E2E_ENVIRONMENT:=local}"
 : "${E2E_BOOTSTRAP_MODE:=anonymous}"
 : "${E2E_CONNECT_TIMEOUT_SECONDS:=5}"

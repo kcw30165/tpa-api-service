@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -euo pipefail
 create_evidence_dir() {
   local ts scenario
   ts="$(date +%Y%m%d-%H%M%S)"; scenario="${E2E_SCENARIO_ID//[^A-Za-z0-9._-]/-}"
