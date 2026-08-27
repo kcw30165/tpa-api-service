@@ -421,3 +421,9 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - Expected behavior is `BUSINESS_REJECTED` with `VERIFY_OTP`, remaining verify attempts, no authenticated portal cookie, and no account list.
 - Real execution is fail-closed behind explicit external-effect, verification, and invalid-OTP intent guards.
 - OTP resend, account selection, cancel, and logout remain excluded.
+
+### Deterministic invalid Login OTP validation
+
+- Live invalid-OTP validation prompts for the received OTP using hidden `/dev/tty` input, derives a same-length numeric code that differs in the final digit, and submits only the derived code.
+- Neither the received nor derived OTP is displayed or retained.
+- Invalid-OTP summaries are derived from the actual response, including public status, next step, portal-cookie issuance, and account count. Intended outcomes are not hardcoded into evidence.

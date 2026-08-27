@@ -40,8 +40,19 @@ run_scenario() {
   if [[ "${E2E_OFFLINE_TEST_MODE:-false}" == true && -n "${E2E_TEST_INVALID_OTP_CODE_FILE:-}" ]]; then
     invalid_code="$(cat "$E2E_TEST_INVALID_OTP_CODE_FILE")"
   else
-    read -r -s -p 'Deliberately invalid Login OTP: ' invalid_code </dev/tty 2>/dev/tty
+    local received_code last_digit replacement
+    read -r -s -p 'Enter the received Login OTP to derive a different test code: ' received_code </dev/tty 2>/dev/tty
     printf '\n' >/dev/tty
+    [[ "$received_code" =~ ^[0-9]+$ ]] || { received_code=''; printf 'FAIL received OTP must be numeric\n'; return 1; }
+    last_digit="${received_code: -1}"
+    if [[ "$last_digit" == 9 ]]; then replacement=0; else replacement=$((last_digit + 1)); fi
+    invalid_code="${received_code:0:${#received_code}-1}${replacement}"
+    [[ "$invalid_code" != "$received_code" && "${#invalid_code}" -eq "${#received_code}" ]] || {
+      received_code=''; invalid_code=''; printf 'FAIL invalid OTP derivation failed\n'; return 1;
+    }
+    printf 'Received OTP accepted securely: %s digits\n' "${#received_code}" >/dev/tty
+    printf 'Submitting one guaranteed-different OTP verification attempt...\n' >/dev/tty
+    received_code=''
   fi
   [[ -n "$invalid_code" ]] || { printf 'FAIL invalid OTP is required\n'; return 1; }
 
@@ -69,7 +80,13 @@ run_scenario() {
   if grep -Eqi '^set-cookie:[[:space:]]*portal_sid=' "$raw_headers"; then printf 'FAIL portal_cookie_absent\n'; rc=1; else printf 'PASS portal_cookie_absent\n'; fi
   jq -e '((.result.data.accounts? // []) | length) == 0' "$raw_body" >/dev/null \
     || { printf 'FAIL accounts_absent\n'; rc=1; }
-  printf 'otp_send_attempts=1\ninvalid_otp_verify_attempts=1\notp_resend_attempts=0\nportal_cookie_issued=no\naccount_count=0\n' \
+  local response_status response_next_step response_account_count portal_issued
+  response_status="$(jq -r '.status // "<absent>"' "$raw_body")"
+  response_next_step="$(jq -r '.result.nextStep // "<absent>"' "$raw_body")"
+  response_account_count="$(jq -r '(.result.data.accounts? // []) | length' "$raw_body")"
+  if grep -Eqi '^set-cookie:[[:space:]]*portal_sid=[^;]+' "$raw_headers"; then portal_issued=yes; else portal_issued=no; fi
+  printf 'otp_send_attempts=1\ninvalid_otp_verify_attempts=1\notp_resend_attempts=0\nportal_cookie_issued=%s\naccount_count=%s\nresponse_status=%s\nresponse_next_step=%s\n' \
+    "$portal_issued" "$response_account_count" "$response_status" "$response_next_step" \
     >"$E2E_RUN_EVIDENCE_DIR/017-invalid-otp-summary.txt"
   return "$rc"
 }
