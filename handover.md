@@ -433,3 +433,10 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - A well-formed but incorrect Login OTP returns HTTP 422, `BUSINESS_REJECTED`, and `VERIFY_OTP`.
 - The response includes remaining verify attempts, does not issue `portal_sid`, and does not return accounts.
 - The deterministic live run on 2026-08-27 satisfied every functional assertion except the obsolete HTTP 400 expectation, so the run is reclassified as successful after aligning the scenario to HTTP 422.
+
+### Guarded Login OTP resend
+
+- The first resend scenario performs one initial OTP send followed by one immediate resend request.
+- Expected cooldown response is HTTP 429, `BUSINESS_REJECTED`, `VERIFY_OTP`, and consistent positive header/body retry timing.
+- The scenario never sleeps or retries automatically and does not infer message-delivery success.
+- OTP verification, additional resend attempts, cancel, and logout remain excluded.
