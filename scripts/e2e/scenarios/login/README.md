@@ -50,3 +50,9 @@ The development runtime returns HTTP `422 Unprocessable Entity` for a well-forme
 `otp-send-and-resend` performs a fresh Login start, one initial OTP send, and one immediate resend request. It expects cooldown enforcement through HTTP 429, `BUSINESS_REJECTED`, `VERIFY_OTP`, and matching positive `Retry-After` and `retryAfterSeconds` values. It performs no automatic wait or retry.
 
 Real execution requires `E2E_ALLOW_EXTERNAL_EFFECTS=true` and `E2E_ALLOW_OTP_RESEND=true`. OTP verification, additional resend attempts, cancel, and logout remain disabled.
+
+## Guarded Login cancellation
+
+`start-and-cancel` performs one fresh Login start and one cancellation request without sending an OTP. It expects HTTP 200, `SUCCESS`, `RETURN_TO_LOGIN`, removal of `auth_flow_sid`, and no response CSRF token.
+
+Execution requires `E2E_ALLOW_LOGIN_CANCELLATION=true`. OTP send, resend, verification, account selection, repeated cancellation, and logout remain excluded.

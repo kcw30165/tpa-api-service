@@ -446,3 +446,9 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - The live immediate-resend run performed one initial OTP send and one immediate resend request.
 - The inner scenario passed with HTTP 429, `BUSINESS_REJECTED`, `VERIFY_OTP`, matching positive header/body retry timing, and zero automatic retries.
 - The outer runner initially failed because attempt counts were written to the assertion stream instead of the retained resend summary. The summary writer now groups all fields under one file redirection.
+
+### Guarded Login cancellation
+
+- The cancellation scenario performs one fresh Login start followed by one cancellation request before OTP delivery.
+- Expected behavior is HTTP 200, `SUCCESS`, `RETURN_TO_LOGIN`, cleared `auth_flow_sid`, and no returned CSRF token.
+- The scenario performs no OTP send, resend, verification, account selection, repeated cancellation, or logout.
