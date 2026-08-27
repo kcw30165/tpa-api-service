@@ -34,3 +34,9 @@ Successful OTP verification establishes the authenticated portal session and ret
 The frontend selects an account locally and sends only the selected opaque `Account-Ref` on a subsequent business request together with the `portal_sid` cookie. Unsafe subsequent requests additionally send the authenticated `X-XSRF-TOKEN`. The BFF resolves the selected account from the authenticated session. `Session-Id` is not accepted.
 
 Therefore, Login Gate D treats `SELECT_ACCOUNT` and the returned account-list structure as the terminal Login result. Feature-specific post-login Gate D packs validate selected-account resolution on their own business endpoints.
+
+## Guarded invalid OTP
+
+`otp-send-and-invalid-verify` performs a fresh Login start, one OTP send, and one deliberately invalid OTP verification attempt. It expects `BUSINESS_REJECTED`, continuation at `VERIFY_OTP`, remaining-attempt information, no `portal_sid`, and no account list.
+
+Real execution requires `E2E_ALLOW_EXTERNAL_EFFECTS=true`, `E2E_ALLOW_OTP_VERIFICATION=true`, and `E2E_EXPECT_INVALID_OTP=true`. Resend, account selection, cancel, and logout remain disabled.

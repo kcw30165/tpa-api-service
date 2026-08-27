@@ -414,3 +414,10 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - Unsafe subsequent requests also require authenticated `X-XSRF-TOKEN`.
 - The BFF loads the authenticated session and resolves the selected account per request. `Session-Id` is not accepted.
 - Login Gate D ends at authenticated `SELECT_ACCOUNT`; selected-account context is validated by each post-login feature pack.
+
+### Guarded invalid Login OTP scenario
+
+- The invalid-OTP scenario uses one fresh Login start, one OTP send, and one deliberately invalid verification attempt.
+- Expected behavior is `BUSINESS_REJECTED` with `VERIFY_OTP`, remaining verify attempts, no authenticated portal cookie, and no account list.
+- Real execution is fail-closed behind explicit external-effect, verification, and invalid-OTP intent guards.
+- OTP resend, account selection, cancel, and logout remain excluded.
