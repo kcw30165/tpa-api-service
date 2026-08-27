@@ -42,3 +42,11 @@ The repository investigation ratifies these physical boundaries:
 ### Implementation handover
 
 Phase I investigation is ratified. Implementation must preserve the exact physical boundaries and evidence-backed reuse points above. The next work starts with fail-first shared general-metadata domain and port contracts, followed by executor-backed APIM and Redis adapters, then the Account Balance controller and application flow. Update this `handover.md` during every implementation stage to preserve agreed context.
+
+## Phase II-001 implementation handover
+
+Shared general-metadata domain and port contracts now define downstream-independent metadata names and types, explicit TAS wire mapping, policy-scoped resolution, duplicate normalization, unbounded nonnegative precision parsing through `BigInteger`, one-call required-key resolution, and reactive source/cache boundaries. No APIM DTO, Redis implementation, YAML, controller, Account Balance mapper, blocking call, or rounding policy is included. Phase II-002 must build on these contracts without changing their public semantics unless architect review records a replacement.
+
+### Phase II-001 v003 contract repair
+
+`FetchGeneralMetadataCommand` now carries the trusted `ActorUserRole` unchanged from the protected application boundary. The future APIM metadata adapter must use this role with the command scope's account environment for credential resolution. It must not hardcode a member role or read ambient `PortalAccessContext`. Focused fail-first evidence covers null rejection and preservation of every supported role.
