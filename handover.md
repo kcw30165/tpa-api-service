@@ -398,3 +398,10 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - Cookie, CSRF, and destination IDs exist only in a mode-700 temporary directory with mode-600 files and are deleted at exit.
 - Destination selection remains explicit even when only one destination is returned.
 - OTP resend and verification remain deferred.
+
+### Guarded Login OTP verification
+
+- The integrated Login scenario supports one fresh Login start, one OTP send, hidden OTP input, and one verification attempt.
+- Successful verification expects `SELECT_ACCOUNT`, a non-empty account list, `portal_sid`, and rotated authenticated CSRF.
+- Retained evidence contains only account count and structural status. Account references and protected account data are redacted.
+- OTP resend and account selection remain disabled.

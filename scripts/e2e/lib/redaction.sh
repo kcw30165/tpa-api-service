@@ -16,7 +16,7 @@ redact_headers_file() {
 redact_json_file() {
   local source="$1" destination="$2"
   if jq -e . "$source" >/dev/null 2>&1; then
-    jq 'walk(if type == "object" then with_entries(if (.key | test("^(password|confirmPassword|otpCode|captchaAnswer|csrfToken|destinationId|maskedDestination|sessionId|accountRef|policyNo|certNo)$"; "i")) then .value = "<redacted>" else . end) else . end)' "$source" >"$destination"
+    jq 'walk(if type == "object" then with_entries(if (.key | test("^(password|confirmPassword|otpCode|code|captchaAnswer|csrfToken|destinationId|maskedDestination|sessionId|accountRef|accountEnv|policyNo|certNo|trustCode|actorUserId|actorUserName|actorUserRole|actorUserType)$"; "i")) then .value = "<redacted>" else . end) else . end)' "$source" >"$destination"
   else
     redact_stream <"$source" >"$destination"
   fi

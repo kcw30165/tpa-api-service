@@ -20,3 +20,9 @@ Credentials, cookies, CSRF values, destinations, and account data must never be 
 ## Guarded OTP journey
 
 `otp-send` performs a fresh Login start, keeps `auth_flow_sid`, CSRF, and destination ID only in a private temporary directory, explicitly selects a returned destination, and deletes private state at exit. The scenario fails closed unless `E2E_ALLOW_EXTERNAL_EFFECTS=true` is supplied. OTP resend and verification are not implemented in this step.
+
+## Guarded OTP verification
+
+`otp-send-and-verify` performs one fresh Login start, one OTP send, hidden OTP input, and one OTP verification attempt in the same process. It expects `SELECT_ACCOUNT`, records only the account count, retains authenticated cookie and CSRF values only in private runtime state, and stops before account selection.
+
+Real execution requires both `E2E_ALLOW_EXTERNAL_EFFECTS=true` and `E2E_ALLOW_OTP_VERIFICATION=true`. OTP resend and account selection remain disabled.
