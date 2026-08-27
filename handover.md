@@ -452,3 +452,10 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - The cancellation scenario performs one fresh Login start followed by one cancellation request before OTP delivery.
 - Expected behavior is HTTP 200, `SUCCESS`, `RETURN_TO_LOGIN`, cleared `auth_flow_sid`, and no returned CSRF token.
 - The scenario performs no OTP send, resend, verification, account selection, repeated cancellation, or logout.
+
+### Guarded authenticated logout
+
+- The authenticated logout scenario extends the successful one-process Login journey with exactly one logout request.
+- Logout uses `portal_sid`, authenticated CSRF, and `X-Request-Id`, and returns `MutationResponse<Void>` with HTTP 200 and `SUCCESS`.
+- Expected transport cleanup is a cleared `portal_sid` and no CSRF token in the response.
+- OTP resend, account selection, repeated logout, and post-logout protected requests remain excluded.

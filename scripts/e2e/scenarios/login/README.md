@@ -56,3 +56,9 @@ Real execution requires `E2E_ALLOW_EXTERNAL_EFFECTS=true` and `E2E_ALLOW_OTP_RES
 `start-and-cancel` performs one fresh Login start and one cancellation request without sending an OTP. It expects HTTP 200, `SUCCESS`, `RETURN_TO_LOGIN`, removal of `auth_flow_sid`, and no response CSRF token.
 
 Execution requires `E2E_ALLOW_LOGIN_CANCELLATION=true`. OTP send, resend, verification, account selection, repeated cancellation, and logout remain excluded.
+
+## Guarded authenticated logout
+
+`otp-send-verify-and-logout` performs one fresh Login start, one OTP send, one OTP verification, and one authenticated logout. It expects HTTP 200 and public `SUCCESS` from `POST /api/v1/auth/logout`, removal of `portal_sid`, and no returned CSRF token. Logout uses `MutationResponse<Void>`, so no workflow `nextStep` is asserted.
+
+Execution requires `E2E_ALLOW_EXTERNAL_EFFECTS=true`, `E2E_ALLOW_OTP_VERIFICATION=true`, and `E2E_ALLOW_AUTHENTICATED_LOGOUT=true`. OTP resend, account selection, repeated logout, and post-logout protected requests remain excluded.
