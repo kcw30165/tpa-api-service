@@ -50,3 +50,23 @@ Shared general-metadata domain and port contracts now define downstream-independ
 ### Phase II-001 v003 contract repair
 
 `FetchGeneralMetadataCommand` now carries the trusted `ActorUserRole` unchanged from the protected application boundary. The future APIM metadata adapter must use this role with the command scope's account environment for credential resolution. It must not hardcode a member role or read ambient `PortalAccessContext`. Focused fail-first evidence covers null rejection and preservation of every supported role.
+
+## Phase II-002 implementation handover
+
+The `TRPGetGeneralMetaData` APIM contract now has exact request/row DTOs and operation-content normalization. Unfiltered requests always serialize blank `metadata-name` and `metadata-type`; targeted requests use the explicit shared wire mapping. Response normalization accepts `policy-no=all` or the requested policy, rejects mixed/foreign policy rows, deduplicates exact rows, rejects conflicts and unknown wire values, validates precision, and permits empty data only as a targeted-fallback transport outcome. Redis, resolver orchestration, final executor adapter, Account Balance DTOs, and controller logic remain excluded.
+
+### Phase II-002 v002 contract repair
+
+The exact APIM response envelope is now represented, including `response`, `err-message`, and `data`, with forward-compatible unknown-property handling and structural validation. Empty `data` remains available for targeted fallback but is represented as unresolved through `Optional.empty()` rather than inventing a policy resolution source. Non-empty normalized results always carry the source proven by their rows.
+
+### Phase II-002 v004 canonical envelope ownership repair
+
+Generic APIM envelope parsing and validation are owned exclusively by `ApimResponseEnvelope<T>` and `ApimResponseValidator.requireSuccessData(...)`. The metadata-owned response body and envelope were removed. General metadata retains only its operation-specific row DTO and content normalizer. Valid empty canonical data remains an unresolved `FetchGeneralMetadataResult`; malformed or rejected generic envelopes remain standard `ApimException` outcomes. Phase II-003 must invoke the canonical executor and validator before passing rows to the metadata normalizer.
+
+### Phase II-002 v007 account environment naming repair
+
+Java-side metadata contracts use `accountEnv` consistently to distinguish the account database environment from development or deployment environments. The APIM JSON property remains exactly `env` through `@JsonProperty("env")`. No Java accessor or domain/application field named only `env` is introduced by the metadata capability.
+
+### Phase II-002 v008 complete account environment naming repair
+
+All Java identifiers in the general metadata capability now use `accountEnv` for the account database environment, including record components, factory parameters, local references, and tests. The only retained standalone `env` text is the required APIM JSON wire property in `@JsonProperty("env")` and serialized fixtures. This prevents confusion with development and deployment environments.
