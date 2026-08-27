@@ -390,3 +390,11 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - `Accept-Language` and `X-Request-Id` are applied consistently.
 - Evidence is timestamped and redacted. Destructive, OTP/SMS, CAPTCHA automation, and scripted-auth flows are deferred.
 - Account Balance is the first planned feature-pack consumer, but its provisional design pack remains untracked and uncommitted.
+
+### Guarded Login OTP journey
+
+- Login OTP send is implemented behind `E2E_ALLOW_EXTERNAL_EFFECTS=true` and is disabled by default.
+- A fresh Login start is required in the same process. Historic auth-flow state is never reused.
+- Cookie, CSRF, and destination IDs exist only in a mode-700 temporary directory with mode-600 files and are deleted at exit.
+- Destination selection remains explicit even when only one destination is returned.
+- OTP resend and verification remain deferred.
