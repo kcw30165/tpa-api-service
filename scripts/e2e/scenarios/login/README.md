@@ -26,3 +26,11 @@ Credentials, cookies, CSRF values, destinations, and account data must never be 
 `otp-send-and-verify` performs one fresh Login start, one OTP send, hidden OTP input, and one OTP verification attempt in the same process. It expects `SELECT_ACCOUNT`, records only the account count, retains authenticated cookie and CSRF values only in private runtime state, and stops before account selection.
 
 Real execution requires both `E2E_ALLOW_EXTERNAL_EFFECTS=true` and `E2E_ALLOW_OTP_VERIFICATION=true`. OTP resend and account selection remain disabled.
+
+## Post-login account selection model
+
+Successful OTP verification establishes the authenticated portal session and returns `nextStep=SELECT_ACCOUNT` with an account list. There is no separate Login account-selection mutation endpoint in the confirmed controller contract.
+
+The frontend selects an account locally and sends only the selected opaque `Account-Ref` on a subsequent business request together with the `portal_sid` cookie. Unsafe subsequent requests additionally send the authenticated `X-XSRF-TOKEN`. The BFF resolves the selected account from the authenticated session. `Session-Id` is not accepted.
+
+Therefore, Login Gate D treats `SELECT_ACCOUNT` and the returned account-list structure as the terminal Login result. Feature-specific post-login Gate D packs validate selected-account resolution on their own business endpoints.

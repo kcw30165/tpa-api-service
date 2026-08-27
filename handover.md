@@ -405,3 +405,12 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - Successful verification expects `SELECT_ACCOUNT`, a non-empty account list, `portal_sid`, and rotated authenticated CSRF.
 - Retained evidence contains only account count and structural status. Account references and protected account data are redacted.
 - OTP resend and account selection remain disabled.
+
+### Confirmed post-login account selection model
+
+- Successful Login OTP verification creates the authenticated portal session and returns `SELECT_ACCOUNT` with accessible accounts.
+- There is no separate Login account-selection mutation endpoint in the confirmed `LoginController` contract.
+- The frontend selects an account locally and sends only the selected `Account-Ref` with `portal_sid` on subsequent business requests.
+- Unsafe subsequent requests also require authenticated `X-XSRF-TOKEN`.
+- The BFF loads the authenticated session and resolves the selected account per request. `Session-Id` is not accepted.
+- Login Gate D ends at authenticated `SELECT_ACCOUNT`; selected-account context is validated by each post-login feature pack.
