@@ -1,0 +1,26 @@
+# Account Balance Validation and Error Contract
+
+**Feature:** 6.14 Account Balance  
+**Baseline:** 27/08/2026  
+**Status:** Consolidated design baseline, pending repository investigation  
+
+## Validation
+
+Java validates X-Request-Id, Accept-Language, Idempotency-Key, and Account-Ref through existing shared practice. Optional currency is validated only when present. Validation failure uses existing `VALIDATION_FAILED` codes and targets and invokes no feature downstream capability.
+
+Only X-Request-Id is propagated to APIM. Accept-Language drives BFF localization. Account-Ref resolves context. Idempotency-Key is validated, but no feature idempotency store is introduced for GET.
+
+## Business mappings
+
+```text
+err.tpa.account.invalid -> BUSINESS_REJECTED / err.ab.account.not.exist
+err.tpa.member.not.found -> BUSINESS_REJECTED / err.ab.account.mismatch
+```
+
+These exact approved pairings are locked by tests.
+
+## System mapping
+
+All other errors map to HTTP 503, `SYSTEM_ERROR`, `err.system.unavailable`, including TAS required-field errors, ReferenceDate failure, APIM failure, invalid array cardinality, join violations, visible missing/sentinel values, metadata failures, and missing effective precision.
+
+Malformed factsheet URL is the exception: log safely, omit, continue success.
