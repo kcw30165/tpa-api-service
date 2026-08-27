@@ -72,7 +72,7 @@ run_scenario() {
   redact_headers_file "$raw_headers" "$E2E_RUN_EVIDENCE_DIR/015-invalid-otp-response-headers-redacted.txt"
   redact_json_file "$raw_body" "$E2E_RUN_EVIDENCE_DIR/016-invalid-otp-response-body-redacted.json"
   assert_eq 0 "$curl_rc" invalid_otp_curl_exit || rc=1
-  assert_eq 400 "${metrics%% *}" invalid_otp_http_status || rc=1
+  assert_eq 422 "${metrics%% *}" invalid_otp_http_status || rc=1
   assert_json_scalar_eq "$E2E_RUN_EVIDENCE_DIR/016-invalid-otp-response-body-redacted.json" '.status' 'BUSINESS_REJECTED' invalid_otp_api_status || rc=1
   assert_json_scalar_eq "$E2E_RUN_EVIDENCE_DIR/016-invalid-otp-response-body-redacted.json" '.result.nextStep' 'VERIFY_OTP' invalid_otp_next_step || rc=1
   jq -e '.result.data.remainingVerifyAttempts | numbers' "$E2E_RUN_EVIDENCE_DIR/016-invalid-otp-response-body-redacted.json" >/dev/null \

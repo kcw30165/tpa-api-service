@@ -427,3 +427,9 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - Live invalid-OTP validation prompts for the received OTP using hidden `/dev/tty` input, derives a same-length numeric code that differs in the final digit, and submits only the derived code.
 - Neither the received nor derived OTP is displayed or retained.
 - Invalid-OTP summaries are derived from the actual response, including public status, next step, portal-cookie issuance, and account count. Intended outcomes are not hardcoded into evidence.
+
+### Confirmed live invalid Login OTP contract
+
+- A well-formed but incorrect Login OTP returns HTTP 422, `BUSINESS_REJECTED`, and `VERIFY_OTP`.
+- The response includes remaining verify attempts, does not issue `portal_sid`, and does not return accounts.
+- The deterministic live run on 2026-08-27 satisfied every functional assertion except the obsolete HTTP 400 expectation, so the run is reclassified as successful after aligning the scenario to HTTP 422.

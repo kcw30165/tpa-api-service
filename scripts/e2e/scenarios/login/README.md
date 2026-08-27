@@ -40,3 +40,7 @@ Therefore, Login Gate D treats `SELECT_ACCOUNT` and the returned account-list st
 `otp-send-and-invalid-verify` performs a fresh Login start, one OTP send, and one deliberately invalid OTP verification attempt. It expects `BUSINESS_REJECTED`, continuation at `VERIFY_OTP`, remaining-attempt information, no `portal_sid`, and no account list.
 
 Real execution requires `E2E_ALLOW_EXTERNAL_EFFECTS=true`, `E2E_ALLOW_OTP_VERIFICATION=true`, and `E2E_EXPECT_INVALID_OTP=true`. Resend, account selection, cancel, and logout remain disabled.
+
+### Confirmed live invalid-OTP response
+
+The development runtime returns HTTP `422 Unprocessable Entity` for a well-formed but incorrect Login OTP. The public response remains `BUSINESS_REJECTED` with `nextStep=VERIFY_OTP`, a numeric `remainingVerifyAttempts`, no authenticated portal cookie, and no accounts.
