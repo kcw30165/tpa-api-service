@@ -440,3 +440,9 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - Expected cooldown response is HTTP 429, `BUSINESS_REJECTED`, `VERIFY_OTP`, and consistent positive header/body retry timing.
 - The scenario never sleeps or retries automatically and does not infer message-delivery success.
 - OTP verification, additional resend attempts, cancel, and logout remain excluded.
+
+### Confirmed live Login OTP immediate resend cooldown
+
+- The live immediate-resend run performed one initial OTP send and one immediate resend request.
+- The inner scenario passed with HTTP 429, `BUSINESS_REJECTED`, `VERIFY_OTP`, matching positive header/body retry timing, and zero automatic retries.
+- The outer runner initially failed because attempt counts were written to the assertion stream instead of the retained resend summary. The summary writer now groups all fields under one file redirection.

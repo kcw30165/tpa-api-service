@@ -56,8 +56,13 @@ run_scenario() {
   [[ "$retry_body" =~ ^[1-9][0-9]*$ ]] || { printf 'FAIL resend_retry_after_body\n'; rc=1; }
   [[ "$retry_header" =~ ^[1-9][0-9]*$ ]] || { printf 'FAIL resend_retry_after_header\n'; rc=1; }
   [[ -n "$retry_body" && "$retry_body" == "$retry_header" ]] || { printf 'FAIL resend_retry_after_consistency\n'; rc=1; }
-  printf 'otp_send_attempts=1\notp_resend_attempts=1\notp_verify_attempts=0\n'
-  printf 'resend_outcome=COOLDOWN_ACTIVE\nretry_after_seconds=%s\nautomatic_retry_attempts=0\n' "$retry_body" \
-    >"$E2E_RUN_EVIDENCE_DIR/017-otp-resend-summary.txt"
+  {
+    printf 'otp_send_attempts=1\n'
+    printf 'otp_resend_attempts=1\n'
+    printf 'otp_verify_attempts=0\n'
+    printf 'resend_outcome=COOLDOWN_ACTIVE\n'
+    printf 'retry_after_seconds=%s\n' "$retry_body"
+    printf 'automatic_retry_attempts=0\n'
+  } >"$E2E_RUN_EVIDENCE_DIR/017-otp-resend-summary.txt"
   return "$rc"
 }
