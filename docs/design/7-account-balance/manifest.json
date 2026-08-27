@@ -1,11 +1,11 @@
 [
   {
     "file": "0-account-balance-design-pack-index.md",
-    "bytes": 2166
+    "bytes": 1301
   },
   {
     "file": "account-balance-api-contract.md",
-    "bytes": 2114
+    "bytes": 2337
   },
   {
     "file": "account-balance-apim-contract.md",
@@ -17,15 +17,15 @@
   },
   {
     "file": "account-balance-decisions-open-questions.md",
-    "bytes": 1483
+    "bytes": 1911
   },
   {
     "file": "account-balance-implementation-plan.md",
-    "bytes": 5987
+    "bytes": 6301
   },
   {
     "file": "account-balance-master-design.md",
-    "bytes": 1395
+    "bytes": 1585
   },
   {
     "file": "account-balance-sequence-diagrams.md",
@@ -33,11 +33,11 @@
   },
   {
     "file": "account-balance-source-and-requirements.md",
-    "bytes": 1884
+    "bytes": 1868
   },
   {
     "file": "account-balance-test-traceability-design.md",
-    "bytes": 1840
+    "bytes": 2207
   },
   {
     "file": "account-balance-transformation-contract.md",
@@ -45,7 +45,7 @@
   },
   {
     "file": "account-balance-validation-error-contract.md",
-    "bytes": 1293
+    "bytes": 1656
   },
   {
     "file": "general-metadata-cache-resolver-design.md",
@@ -53,6 +53,6 @@
   },
   {
     "file": "handover.md",
-    "bytes": 1066
+    "bytes": 1370
   }
 ]

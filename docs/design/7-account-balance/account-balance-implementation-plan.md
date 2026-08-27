@@ -12,7 +12,7 @@ The previous seven stages were too broad. This revision separates a mandatory in
 
 ### I-001 Inbound and response conventions
 
-Find controller patterns, generic response builders, optional query validation, and exact validation codes/targets for X-Request-Id, Accept-Language, Idempotency-Key, and Account-Ref.
+Find controller patterns, generic response builders, optional query validation, and exact validation codes/targets for X-Request-Id, Accept-Language, and Account-Ref.
 
 Deliverable: investigation evidence and exact reuse map.
 
@@ -74,7 +74,7 @@ Apply the investigated project pattern for same-key concurrent misses and prove 
 
 ### III-001 Fail-first FE API contract
 
-Lock endpoint, optional currency, required shared headers, Display Account names, currency selection, visibility, and generic response shape.
+Lock endpoint, optional currency, required Account Balance headers, Display Account names, currency selection, visibility, and generic response shape.
 
 ### III-002 Account Balance application query and context mapping
 
@@ -149,3 +149,7 @@ Each implementation subtask should have fail-first tests, production change, for
 ```text
 feat(account-balance): add account balance and shared metadata design baseline
 ```
+
+## Architect review gate
+
+Phase I investigation scripts produce evidence only and end with `REVIEW_REQUIRED`. They do not alter production code or design documents and do not commit. Copilot reviews every subphase report. Physical implementation subtasks are revised after investigation and before implementation begins.

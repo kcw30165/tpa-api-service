@@ -21,3 +21,7 @@ The entry embeds whether TAS resolved `policy-no=all` or the specific policy. Th
 ## Next step
 
 Run Phase I repository investigation first. Then revise the physical implementation plan with exact packages, classes, validators, Redis ports, concurrency mechanisms, APIM ledger locations, and test names before generating implementation artifacts.
+
+## Header contract correction
+
+The Account Balance GET endpoint requires `X-Request-Id`, `Accept-Language`, and `Account-Ref`. `Idempotency-Key` has been removed from the approved contract. Any repository-wide enforcement discovered during Phase I must be escalated to the architect as a contradiction.

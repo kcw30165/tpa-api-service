@@ -2,11 +2,11 @@
 
 **Feature:** 6.14 Account Balance  
 **Baseline:** 27/08/2026  
-**Status:** Consolidated design baseline, pending repository investigation  
+**Status:** Consolidated logical baseline pending repository investigation  
 
 ## Review conclusion
 
-The previous package contained 26 files, including several parallel generations of the same subjects. Twenty-seven documents are not necessary for this feature. This revision consolidates the package into 12 design documents plus a manifest while preserving the current requirements, contracts, transformation rules, validation, observability, tests, decisions, and handover.
+The earlier archive contained parallel generations of the same subjects. This canonical pack retains the still-valid requirements, APIM contracts, transformation rules, shared metadata design, validation, observability, tests, decisions, implementation plan, and handover without retaining duplicate versions.
 
 ## Canonical documents
 
@@ -24,15 +24,6 @@ The previous package contained 26 files, including several parallel generations 
 12. `account-balance-implementation-plan.md`
 13. `handover.md`
 
-## Consolidation map
+## Header decision
 
-- Old requirements analysis and source inventory are merged into `account-balance-source-and-requirements.md`.
-- Old APIM-only and APIM-plus-transformation files are replaced by separate canonical APIM and transformation contracts.
-- Three old precision/cache documents are replaced by `general-metadata-cache-resolver-design.md`.
-- Two old validation/error files and the error matrix are replaced by one canonical validation/error contract.
-- Three old test/open-question documents are replaced by a test-traceability design plus a decisions/open-questions register.
-- Configuration and observability remain together because both are small cross-cutting operational contracts.
-
-## Readiness
-
-Business and logical design are sufficient for FE review and for repository investigation. Physical implementation phases, exact class/package names, existing validator reuse, Redis concurrency mechanics, and APIM registration edits must be finalized only after codebase investigation.
+Account Balance requires `X-Request-Id`, `Accept-Language`, and `Account-Ref`. It does not require `Idempotency-Key` because the GET operation is read-only and naturally repeatable.

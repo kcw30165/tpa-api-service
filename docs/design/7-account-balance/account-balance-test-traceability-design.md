@@ -50,3 +50,9 @@
 - Existing validation behavior reused.
 - All remaining errors return 503, SYSTEM_ERROR, err.system.unavailable.
 - Sensitive values are absent from logs.
+
+## Idempotency tests
+
+- A request without `Idempotency-Key` is accepted when all Account Balance headers are valid.
+- No idempotency record, replay entry, or idempotency adapter is invoked.
+- If repository investigation finds a method-agnostic global validator, capture that as a contradiction requiring architect review rather than changing this contract silently.

@@ -29,7 +29,6 @@ Required shared headers:
 ```text
 X-Request-Id
 Accept-Language
-Idempotency-Key
 Account-Ref
 ```
 

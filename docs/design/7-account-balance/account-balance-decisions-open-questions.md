@@ -31,3 +31,9 @@
 ## Design implication
 
 These are physical implementation questions, not unresolved business rules. They should be closed by repository investigation before freezing class names and implementation subtasks.
+
+## Idempotency decision
+
+- Confirmed: `Idempotency-Key` is not part of the Account Balance FE-BFF contract.
+- Confirmed: repeated GET requests are naturally safe and no Account Balance idempotency store is introduced.
+- Investigation item only: verify whether any current global filter incorrectly mandates Idempotency-Key for every HTTP method and report it as a repository constraint, not as an approved feature requirement.

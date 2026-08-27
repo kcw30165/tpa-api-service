@@ -36,3 +36,7 @@ On metadata cache hit: one Account Balance APIM call. On unresolved metadata: on
 ## No startup metadata call
 
 There is no `PortalAccessContext` at application startup. Population is lazy on the first authenticated dashboard or feature request and shared through Redis.
+
+## Request-header boundary
+
+Account Balance requires `X-Request-Id`, `Accept-Language`, and `Account-Ref`. It does not require `Idempotency-Key`. Only `X-Request-Id` is propagated to APIM.

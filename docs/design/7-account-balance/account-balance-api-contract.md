@@ -71,3 +71,7 @@ Use `displayAccounts`, `displayAccountId`, `displayAccountLabel`, `subDisplayAcc
 ## Exclusions
 
 Do not echo Account-Ref, request currency, account currency, snapshot ID, fixed labels, Important Note, or price dates. One `asOfDate` applies to the page.
+
+## Idempotency decision
+
+`Idempotency-Key` is not required for `GET /api/v1/account-balance`. The operation is read-only and safe to repeat. The BFF does not create an idempotency record or replay store for this endpoint.
