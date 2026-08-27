@@ -40,7 +40,7 @@ run_scenario() {
   if [[ "${E2E_OFFLINE_TEST_MODE:-false}" == true && -n "${E2E_TEST_INVALID_OTP_CODE_FILE:-}" ]]; then
     invalid_code="$(cat "$E2E_TEST_INVALID_OTP_CODE_FILE")"
   else
-    read -r -s -p 'Deliberately invalid Login OTP: ' invalid_code </dev/tty >/dev/tty
+    read -r -s -p 'Deliberately invalid Login OTP: ' invalid_code </dev/tty 2>/dev/tty
     printf '\n' >/dev/tty
   fi
   [[ -n "$invalid_code" ]] || { printf 'FAIL invalid OTP is required\n'; return 1; }
