@@ -459,3 +459,9 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - Logout uses `portal_sid`, authenticated CSRF, and `X-Request-Id`, and returns `MutationResponse<Void>` with HTTP 200 and `SUCCESS`.
 - Expected transport cleanup is a cleared `portal_sid` and no CSRF token in the response.
 - OTP resend, account selection, repeated logout, and post-logout protected requests remain excluded.
+
+### Committed Login retest interface
+
+- Routine Login retesting uses `scripts/e2e/run-login-dev.sh <scenario>` rather than commit-pinned `/mnt/d` wrappers.
+- The dispatcher interactively collects runtime credentials, keeps the password hidden, sets the scenario-specific guards, and invokes the canonical runner.
+- Supported names are `cancel`, `valid-otp`, `invalid-otp`, `resend-cooldown`, and `logout`.

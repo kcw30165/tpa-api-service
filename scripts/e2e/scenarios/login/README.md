@@ -62,3 +62,17 @@ Execution requires `E2E_ALLOW_LOGIN_CANCELLATION=true`. OTP send, resend, verifi
 `otp-send-verify-and-logout` performs one fresh Login start, one OTP send, one OTP verification, and one authenticated logout. It expects HTTP 200 and public `SUCCESS` from `POST /api/v1/auth/logout`, removal of `portal_sid`, and no returned CSRF token. Logout uses `MutationResponse<Void>`, so no workflow `nextStep` is asserted.
 
 Execution requires `E2E_ALLOW_EXTERNAL_EFFECTS=true`, `E2E_ALLOW_OTP_VERIFICATION=true`, and `E2E_ALLOW_AUTHENTICATED_LOGOUT=true`. OTP resend, account selection, repeated logout, and post-logout protected requests remain excluded.
+
+## Routine interactive retesting
+
+Use the committed dispatcher instead of the one-time phase wrappers:
+
+```bash
+bash scripts/e2e/run-login-dev.sh cancel
+bash scripts/e2e/run-login-dev.sh valid-otp
+bash scripts/e2e/run-login-dev.sh invalid-otp
+bash scripts/e2e/run-login-dev.sh resend-cooldown
+bash scripts/e2e/run-login-dev.sh logout
+```
+
+The dispatcher prompts for runtime credentials, prompts for the destination index when needed, sets only the guards required by the selected scenario, and delegates to `scripts/e2e/run.sh`.
