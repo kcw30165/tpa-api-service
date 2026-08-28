@@ -11,11 +11,16 @@ import reactor.core.publisher.Mono;
 @Configuration(proxyBeanMethods = false)
 public class AccountBalanceApplicationConfig {
   @Bean
-  GetAccountBalanceUseCase getAccountBalanceUseCase(ReferenceDatePort referenceDatePort,
-      GeneralMetadataResolver generalMetadataResolver, AccountBalanceSourcePort accountBalanceSourcePort,
+  GetAccountBalanceUseCase getAccountBalanceUseCase(
+      ReferenceDatePort referenceDatePort,
+      GeneralMetadataResolver generalMetadataResolver,
+      AccountBalanceSourcePort accountBalanceSourcePort,
       AccountBalanceAssembler accountBalanceAssembler) {
-    return new GetAccountBalanceService(referenceDatePort, generalMetadataResolver,
-        accountBalanceSourcePort, accountBalanceAssembler);
+    return new GetAccountBalanceService(
+        referenceDatePort,
+        generalMetadataResolver,
+        accountBalanceSourcePort,
+        accountBalanceAssembler);
   }
 
   @Bean

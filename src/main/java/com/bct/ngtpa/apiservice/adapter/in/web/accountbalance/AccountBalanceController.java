@@ -29,9 +29,12 @@ public class AccountBalanceController {
           String acceptLanguage) {
     return Mono.deferContextual(
         contextView -> {
-          RequestHeaderContext headers = contextView.getOrDefault(RequestHeaderContextKeys.CONTEXT_KEY, null);
+          RequestHeaderContext headers =
+              contextView.getOrDefault(RequestHeaderContextKeys.CONTEXT_KEY, null);
           String language = RequestLanguageResolver.resolve(headers, acceptLanguage, "en");
-          return currentPortalAccessContextResolver.current().flatMap(context -> invoke(context, language, clean(currency)));
+          return currentPortalAccessContextResolver
+              .current()
+              .flatMap(context -> invoke(context, language, clean(currency)));
         });
   }
 
@@ -39,23 +42,44 @@ public class AccountBalanceController {
       PortalAccessContext context, String language, String currency) {
     AccountContext account = context.account();
     ActorContext actor = context.actor();
-    GetAccountBalanceCommand command = new GetAccountBalanceCommand(
-        language, currency, account.accountEnv(), account.policyNo(), account.certNo(), account.trustCode(),
-        account.schemeType(), actor.actorUserId(), actor.actorUserRole());
+    GetAccountBalanceCommand command =
+        new GetAccountBalanceCommand(
+            language,
+            currency,
+            account.accountEnv(),
+            account.policyNo(),
+            account.certNo(),
+            account.trustCode(),
+            account.schemeType(),
+            actor.actorUserId(),
+            actor.actorUserRole());
     return getAccountBalanceUseCase.get(command).map(this::success);
   }
 
   private MutationResponse<AccountBalanceResultResponse> success(AccountBalanceResult result) {
-    CurrencySelectionResponse currencies = new CurrencySelectionResponse(
-        result.currencySelection().selectedCurrency(), result.currencySelection().availableCurrencies());
-    AccountOverviewResponse overview = new AccountOverviewResponse(
-        result.accountOverview().displayAccountLabel(), result.accountOverview().vestedBalance(),
-        result.accountOverview().pendingSwitchIn());
-    List<InvestmentPortfolioItemResponse> portfolio = result.investmentPortfolio().stream()
-        .map(item -> new InvestmentPortfolioItemResponse(item.subDisplayAccountLabel(), item.fundName(), item.fxRate(), item.factsheetUrl()))
-        .toList();
-    return MutationResponse.success(ApiStatus.SUCCESS,
-        new AccountBalanceResultResponse(new AccountBalanceDataResponse(result.asOfDate(), currencies, overview, portfolio)),
+    CurrencySelectionResponse currencies =
+        new CurrencySelectionResponse(
+            result.currencySelection().selectedCurrency(),
+            result.currencySelection().availableCurrencies());
+    AccountOverviewResponse overview =
+        new AccountOverviewResponse(
+            result.accountOverview().displayAccountLabel(),
+            result.accountOverview().vestedBalance(),
+            result.accountOverview().pendingSwitchIn());
+    List<InvestmentPortfolioItemResponse> portfolio =
+        result.investmentPortfolio().stream()
+            .map(
+                item ->
+                    new InvestmentPortfolioItemResponse(
+                        item.subDisplayAccountLabel(),
+                        item.fundName(),
+                        item.fxRate(),
+                        item.factsheetUrl()))
+            .toList();
+    return MutationResponse.success(
+        ApiStatus.SUCCESS,
+        new AccountBalanceResultResponse(
+            new AccountBalanceDataResponse(result.asOfDate(), currencies, overview, portfolio)),
         List.of());
   }
 

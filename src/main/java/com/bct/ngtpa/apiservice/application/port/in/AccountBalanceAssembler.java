@@ -9,6 +9,9 @@ import reactor.core.publisher.Mono;
 
 @FunctionalInterface
 public interface AccountBalanceAssembler {
-  Mono<AccountBalanceResult> assemble(GetAccountBalanceCommand command, LocalDate referenceDate,
-      ResolvedGeneralMetadataSet metadata, RawAccountBalanceData rawData);
+  Mono<AccountBalanceResult> assemble(
+      GetAccountBalanceCommand command,
+      LocalDate referenceDate,
+      ResolvedGeneralMetadataSet metadata,
+      RawAccountBalanceData rawData);
 }

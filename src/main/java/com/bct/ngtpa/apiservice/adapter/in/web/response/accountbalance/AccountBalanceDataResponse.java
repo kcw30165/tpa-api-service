@@ -8,6 +8,7 @@ public record AccountBalanceDataResponse(
     AccountOverviewResponse accountOverview,
     List<InvestmentPortfolioItemResponse> investmentPortfolio) {
   public AccountBalanceDataResponse {
-    investmentPortfolio = investmentPortfolio == null ? List.of() : List.copyOf(investmentPortfolio);
+    investmentPortfolio =
+        investmentPortfolio == null ? List.of() : List.copyOf(investmentPortfolio);
   }
 }

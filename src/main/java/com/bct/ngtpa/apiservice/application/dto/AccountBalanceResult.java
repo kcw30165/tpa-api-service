@@ -8,6 +8,7 @@ public record AccountBalanceResult(
     AccountOverview accountOverview,
     List<InvestmentPortfolioItem> investmentPortfolio) {
   public AccountBalanceResult {
-    investmentPortfolio = investmentPortfolio == null ? List.of() : List.copyOf(investmentPortfolio);
+    investmentPortfolio =
+        investmentPortfolio == null ? List.of() : List.copyOf(investmentPortfolio);
   }
 }

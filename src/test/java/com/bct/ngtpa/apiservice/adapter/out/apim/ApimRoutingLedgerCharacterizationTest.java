@@ -21,7 +21,15 @@ class ApimRoutingLedgerCharacterizationTest {
 
   private static final List<Entry> LEDGER =
       List.of(
-        e("TRPGetMemberAccBal", "accountbalance/ApimAccountBalanceSourceAdapter.java", "ACCOUNT_ENV", "command.actorUserRole()", "command.accountEnv()", "SAFE_BUSINESS_CALL", "EXECUTOR", "ACCOUNT_ENV"),
+          e(
+              "TRPGetMemberAccBal",
+              "accountbalance/ApimAccountBalanceSourceAdapter.java",
+              "ACCOUNT_ENV",
+              "command.actorUserRole()",
+              "command.accountEnv()",
+              "SAFE_BUSINESS_CALL",
+              "EXECUTOR",
+              "ACCOUNT_ENV"),
           e(
               "TRPGetContSumy",
               "ApimContributionSummaryAdapter.java",

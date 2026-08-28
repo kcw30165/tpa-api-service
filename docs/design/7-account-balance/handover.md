@@ -183,3 +183,7 @@ The application use case now composes one reference-date resolution, one policy-
 ## Phase III-006A phase review requirements contract
 
 Added the committed `account-balance-phase-review-requirements.md` governance contract. It fixes the timestamped `phase-review` directory, twelve required review files, formatter and compilation gates, cumulative Git boundaries, architecture and preservation audits, provisional-assembler blocker disclosure, machine-readable review status, and the architect decision gate. This subphase defines review evidence only and does not begin Phase IV transformation.
+
+## Phase III-006B stabilization and architect review package
+
+Ran the deferred repository formatter once at the Phase III feature-level stabilization point, then reran production compilation and test compilation. Generated the committed-contract twelve-file architect-review package from the immutable Phase III base through the pre-review HEAD. Cumulative audits cover the public header contract, selected-account ownership, technical error shape, APIM request and cardinality contracts, executor ownership, reactive non-blocking behavior, preservation of all approved Phase III boundaries, and absence of premature presentation transformation. The provisional `AccountBalanceAssembler` production bean remains the explicit Phase IV blocker: it returns a sanitized system failure and does not fabricate financial output. Phase IV remains blocked pending the architect decision.

@@ -29,24 +29,41 @@ class GetAccountBalanceServiceTest {
     var metadataCalls = new AtomicInteger();
     var fetched = new AtomicReference<FetchAccountBalanceCommand>();
     var assembled = new AtomicInteger();
-    ReferenceDatePort dates = env -> { references.incrementAndGet(); return Mono.just(LocalDate.of(2026, 8, 28)); };
-    GeneralMetadataResolver metadata = query -> {
-      metadataCalls.incrementAndGet();
-      return Mono.just(new ResolvedGeneralMetadataSet(query.scope(),
-          GeneralMetadataResolutionSource.POLICY_SPECIFIC,
-          query.requiredKeys().stream().map(key -> new ResolvedGeneralMetadata(key,
-              key.type().name().equals("PRECISION") ? "2" : "HALF_UP")).toList()));
-    };
-    RawAccountBalanceData raw = new RawAccountBalanceData(null, null, List.of(), List.of(), List.of());
-    AccountBalanceSourcePort source = command -> { fetched.set(command); return Mono.just(raw); };
+    ReferenceDatePort dates =
+        env -> {
+          references.incrementAndGet();
+          return Mono.just(LocalDate.of(2026, 8, 28));
+        };
+    GeneralMetadataResolver metadata =
+        query -> {
+          metadataCalls.incrementAndGet();
+          return Mono.just(
+              new ResolvedGeneralMetadataSet(
+                  query.scope(),
+                  GeneralMetadataResolutionSource.POLICY_SPECIFIC,
+                  query.requiredKeys().stream()
+                      .map(
+                          key ->
+                              new ResolvedGeneralMetadata(
+                                  key, key.type().name().equals("PRECISION") ? "2" : "HALF_UP"))
+                      .toList()));
+        };
+    RawAccountBalanceData raw =
+        new RawAccountBalanceData(null, null, List.of(), List.of(), List.of());
+    AccountBalanceSourcePort source =
+        command -> {
+          fetched.set(command);
+          return Mono.just(raw);
+        };
     AccountBalanceResult expected = new AccountBalanceResult("28/08/2026", null, null, List.of());
-    AccountBalanceAssembler assembler = (command, date, resolved, data) -> {
-      assembled.incrementAndGet();
-      assertThat(command.currency()).isNull();
-      assertThat(date).isEqualTo(LocalDate.of(2026, 8, 28));
-      assertThat(data).isSameAs(raw);
-      return Mono.just(expected);
-    };
+    AccountBalanceAssembler assembler =
+        (command, date, resolved, data) -> {
+          assembled.incrementAndGet();
+          assertThat(command.currency()).isNull();
+          assertThat(date).isEqualTo(LocalDate.of(2026, 8, 28));
+          assertThat(data).isSameAs(raw);
+          return Mono.just(expected);
+        };
 
     var service = new GetAccountBalanceService(dates, metadata, source, assembler);
     StepVerifier.create(service.get(command(null))).expectNext(expected).verifyComplete();
@@ -54,9 +71,19 @@ class GetAccountBalanceServiceTest {
     assertThat(references).hasValue(1);
     assertThat(metadataCalls).hasValue(1);
     assertThat(assembled).hasValue(1);
-    assertThat(fetched.get()).isEqualTo(new FetchAccountBalanceCommand(
-        "en", null, "JP", "00000008802", "0001", "TRUST", "SCHEME",
-        "user-1", ActorUserRole.ROLE_USER_MBR, LocalDate.of(2026, 8, 28)));
+    assertThat(fetched.get())
+        .isEqualTo(
+            new FetchAccountBalanceCommand(
+                "en",
+                null,
+                "JP",
+                "00000008802",
+                "0001",
+                "TRUST",
+                "SCHEME",
+                "user-1",
+                ActorUserRole.ROLE_USER_MBR,
+                LocalDate.of(2026, 8, 28)));
   }
 
   @Test
@@ -64,11 +91,21 @@ class GetAccountBalanceServiceTest {
     var metadataCalls = new AtomicInteger();
     var sourceCalls = new AtomicInteger();
     var assemblerCalls = new AtomicInteger();
-    var service = new GetAccountBalanceService(
-        env -> Mono.empty(),
-        query -> { metadataCalls.incrementAndGet(); return Mono.empty(); },
-        fetch -> { sourceCalls.incrementAndGet(); return Mono.empty(); },
-        (command, date, metadata, raw) -> { assemblerCalls.incrementAndGet(); return Mono.empty(); });
+    var service =
+        new GetAccountBalanceService(
+            env -> Mono.empty(),
+            query -> {
+              metadataCalls.incrementAndGet();
+              return Mono.empty();
+            },
+            fetch -> {
+              sourceCalls.incrementAndGet();
+              return Mono.empty();
+            },
+            (command, date, metadata, raw) -> {
+              assemblerCalls.incrementAndGet();
+              return Mono.empty();
+            });
 
     StepVerifier.create(service.get(command("USD"))).verifyComplete();
     assertThat(metadataCalls).hasValue(0);
@@ -80,11 +117,21 @@ class GetAccountBalanceServiceTest {
   void referenceDateFailureShortCircuitsEveryLaterStage() {
     var laterCalls = new AtomicInteger();
     var failure = new RuntimeException("reference unavailable");
-    var service = new GetAccountBalanceService(
-        env -> Mono.error(failure),
-        query -> { laterCalls.incrementAndGet(); return Mono.empty(); },
-        fetch -> { laterCalls.incrementAndGet(); return Mono.empty(); },
-        (command, date, metadata, raw) -> { laterCalls.incrementAndGet(); return Mono.empty(); });
+    var service =
+        new GetAccountBalanceService(
+            env -> Mono.error(failure),
+            query -> {
+              laterCalls.incrementAndGet();
+              return Mono.empty();
+            },
+            fetch -> {
+              laterCalls.incrementAndGet();
+              return Mono.empty();
+            },
+            (command, date, metadata, raw) -> {
+              laterCalls.incrementAndGet();
+              return Mono.empty();
+            });
 
     StepVerifier.create(service.get(command(null)))
         .expectErrorSatisfies(error -> assertThat(error).isSameAs(failure))
@@ -93,7 +140,15 @@ class GetAccountBalanceServiceTest {
   }
 
   private static GetAccountBalanceCommand command(String currency) {
-    return new GetAccountBalanceCommand("en", currency, "JP", "00000008802", "0001",
-        "TRUST", "SCHEME", "user-1", ActorUserRole.ROLE_USER_MBR);
+    return new GetAccountBalanceCommand(
+        "en",
+        currency,
+        "JP",
+        "00000008802",
+        "0001",
+        "TRUST",
+        "SCHEME",
+        "user-1",
+        ActorUserRole.ROLE_USER_MBR);
   }
 }
