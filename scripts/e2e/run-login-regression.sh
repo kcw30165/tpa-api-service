@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 MODE="${1:-}"
+command -v zip >/dev/null 2>&1 || { printf 'ERROR: zip is required.\n' >&2; exit 2; }
 case "$MODE" in offline|live-safe|live-otp|live-otp-remaining|all) ;; *) printf 'Usage: bash scripts/e2e/run-login-regression.sh {offline|live-safe|live-otp|live-otp-remaining|all}\n' >&2; exit 2;; esac
 
 TS="$(date +%Y%m%d-%H%M%S)"
@@ -11,14 +12,28 @@ PARENT="${E2E_EVIDENCE_ROOT:-$ROOT/target/evidence}/${TS}-bff-e2e-login-regressi
 CHILD_ROOT="$PARENT/children"
 mkdir -p "$CHILD_ROOT"
 chmod 700 "$PARENT" "$CHILD_ROOT"
+SUITE_UPLOAD_ROOT="${E2E_UPLOAD_ROOT:-/mnt/d/Projects/ORSO/ngtpa}"
+SUITE_UPLOAD_FILE="$SUITE_UPLOAD_ROOT/$(basename "$PARENT").txt"
+SUITE_PACKAGED=0
+package_suite_evidence() {
+  [[ "$SUITE_PACKAGED" -eq 0 ]] || return 0
+  SUITE_PACKAGED=1
+  mkdir -p "$SUITE_UPLOAD_ROOT"
+  rm -f "$SUITE_UPLOAD_FILE"
+  (cd "$(dirname "$PARENT")" && zip -qr "$SUITE_UPLOAD_FILE" "$(basename "$PARENT")")
+}
 MANIFEST="$PARENT/040-scenario-manifest.txt"
 FAILURES="$PARENT/050-failure-manifest.txt"
 : >"$MANIFEST"; : >"$FAILURES"
 OVERALL=0
 
 cleanup() {
+  local rc=$?
   unset LOGIN_TEST_PASSWORD LOGIN_TEST_USERNAME
   find "${TMPDIR:-/tmp}" -mindepth 1 -maxdepth 1 -type d -name 'bff-e2e-private.*' -exec rm -rf -- {} + 2>/dev/null || true
+  package_suite_evidence || true
+  [[ -s "$SUITE_UPLOAD_FILE" ]] && printf 'Upload artifact: %s\n' "$SUITE_UPLOAD_FILE"
+  return "$rc"
 }
 trap cleanup EXIT
 

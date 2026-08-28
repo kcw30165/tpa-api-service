@@ -491,3 +491,8 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - `live-otp-remaining` runs only invalid-OTP and resend-cooldown after logout already passed.
 - Invalid OTP input is trimmed and allows three local corrections without a BFF verification call for rejected local input.
 - Continuation budget is two OTP deliveries, one OTP prompt, one resend request, and zero automatic retries.
+
+### Login suite packaging and OTP derivation stabilization
+
+- Routine Login suites package their exact parent evidence directory as ZIP-in-`.txt` under `/mnt/d/Projects/ORSO/ngtpa` on exit.
+- Invalid OTP derivation initializes `last_digit` and `replacement` at function scope before either assignment branch.

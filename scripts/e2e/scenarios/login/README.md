@@ -99,3 +99,7 @@ bash scripts/e2e/run-login-regression.sh live-otp-remaining
 ```
 
 The continuation runs invalid-OTP verification followed by immediate resend cooldown. It does not repeat logout. Invalid OTP input is trimmed and allows up to three local corrections; rejected local input does not send a verification request.
+
+### Automatic suite artifact
+
+Every Login regression suite packages its exact parent evidence directory on exit as a ZIP archive with a `.txt` extension under `/mnt/d/Projects/ORSO/ngtpa`. The artifact path is printed for pass, failure, and interruption.

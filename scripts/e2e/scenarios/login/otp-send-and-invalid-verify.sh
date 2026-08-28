@@ -57,6 +57,13 @@ run_scenario() {
       fi
     done
     [[ -n "$received_code" ]] || { printf 'FAIL received OTP was not numeric after 3 local attempts\n'; return 1; }
+    local last_digit replacement
+    last_digit="${received_code: -1}"
+    if [[ "$last_digit" == 9 ]]; then
+      replacement=0
+    else
+      replacement=$((last_digit + 1))
+    fi
     invalid_code="${received_code:0:${#received_code}-1}${replacement}"
     [[ "$invalid_code" != "$received_code" && "${#invalid_code}" -eq "${#received_code}" ]] || {
       received_code=''; invalid_code=''; printf 'FAIL invalid OTP derivation failed\n'; return 1;
