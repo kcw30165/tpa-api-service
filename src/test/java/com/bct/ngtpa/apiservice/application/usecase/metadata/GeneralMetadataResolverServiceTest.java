@@ -65,14 +65,47 @@ class GeneralMetadataResolverServiceTest {
   }
 
   @Test
-  void incompleteUnfilteredResultFailsWithoutCacheWrite() {
+  void missingAfterOneTargetedAttemptFailsWithoutCacheWrite() {
     var cache = new RecordingCache(Optional.empty());
     var service = service(cache, command -> Mono.just(new FetchGeneralMetadataResult(
-        Optional.of(GeneralMetadataResolutionSource.DEFAULT_ALL),
-        List.of(entry(GeneralMetadataName.FX_RATE, "4")))));
-
+        Optional.empty(),
+        List.of())));
     assertThatThrownBy(() -> service.resolve(query(GeneralMetadataName.FUND_PRICE)).block())
         .hasRootCauseInstanceOf(MissingRequiredGeneralMetadataException.class);
+    assertThat(cache.written).isNull();
+  }
+
+  @Test
+  void targetedPolicySpecificResultMergesExistingKeysAndRewritesCache() {
+    var cache = new RecordingCache(Optional.empty());
+    var query = new ResolveGeneralMetadataQuery(
+        scope(),
+        Set.of(key(GeneralMetadataName.FUND_PRICE), key(GeneralMetadataName.FX_RATE)),
+        ActorUserRole.ROLE_USER_MBR);
+    var service = service(cache, command -> command.requestedKeys().isEmpty()
+        ? Mono.just(new FetchGeneralMetadataResult(
+            Optional.of(GeneralMetadataResolutionSource.POLICY_SPECIFIC),
+            List.of(entry(GeneralMetadataName.FUND_PRICE, "6"))))
+        : Mono.just(new FetchGeneralMetadataResult(
+            Optional.of(GeneralMetadataResolutionSource.POLICY_SPECIFIC),
+            List.of(entry(GeneralMetadataName.FX_RATE, "4")))));
+    var resolved = service.resolve(query).block();
+    assertThat(resolved.entries()).hasSize(2);
+    assertThat(cache.written).isSameAs(resolved);
+  }
+
+  @Test
+  void conflictingTargetedSourceFailsAndIsNotCached() {
+    var cache = new RecordingCache(Optional.empty());
+    var service = service(cache, command -> command.requestedKeys().isEmpty()
+        ? Mono.just(new FetchGeneralMetadataResult(
+            Optional.empty(), List.of()))
+        : Mono.just(new FetchGeneralMetadataResult(
+            Optional.of(GeneralMetadataResolutionSource.POLICY_SPECIFIC),
+            List.of(entry(GeneralMetadataName.FUND_PRICE, "6")))));
+    assertThatThrownBy(() -> service.resolve(query(GeneralMetadataName.FUND_PRICE)).block())
+        .hasRootCauseInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Conflicting general metadata resolution sources");
     assertThat(cache.written).isNull();
   }
 
@@ -90,6 +123,63 @@ class GeneralMetadataResolverServiceTest {
     };
     assertThatThrownBy(() -> service(failingCache, command -> Mono.error(new AssertionError()))
         .resolve(query(GeneralMetadataName.FUND_PRICE)).block()).hasRootCause(cacheFailure);
+  }
+
+  @Test
+  void missingAfterUnfilteredTriggersOneTargetedBatchCommand() {
+    var commands = new ArrayList<FetchGeneralMetadataCommand>();
+    var service = service(cache(Optional.empty()), command -> {
+      commands.add(command);
+      if (command.requestedKeys().isEmpty()) {
+        return Mono.just(new FetchGeneralMetadataResult(
+            Optional.empty(), List.of()));
+      }
+      return Mono.just(new FetchGeneralMetadataResult(
+          Optional.of(GeneralMetadataResolutionSource.DEFAULT_ALL),
+          List.of(entry(GeneralMetadataName.FUND_PRICE, "6"))));
+    });
+    assertThat(service.resolve(query(GeneralMetadataName.FUND_PRICE)).block()
+        .find(key(GeneralMetadataName.FUND_PRICE))).isPresent();
+    assertThat(commands).hasSize(2);
+    assertThat(commands.get(0).requestedKeys()).isEmpty();
+    assertThat(commands.get(1).requestedKeys()).containsExactly(key(GeneralMetadataName.FUND_PRICE));
+  }
+
+  @Test
+  void multipleMissingKeysUseOneResolverBatchCommand() {
+    var commands = new ArrayList<FetchGeneralMetadataCommand>();
+    var query = new ResolveGeneralMetadataQuery(scope(), Set.of(key(GeneralMetadataName.FUND_PRICE), key(GeneralMetadataName.FX_RATE)), ActorUserRole.ROLE_USER_MBR);
+    var service = service(cache(Optional.empty()), command -> {
+      commands.add(command);
+      return command.requestedKeys().isEmpty()
+          ? Mono.just(new FetchGeneralMetadataResult(Optional.empty(), List.of()))
+          : Mono.just(new FetchGeneralMetadataResult(Optional.of(GeneralMetadataResolutionSource.DEFAULT_ALL), List.of(entry(GeneralMetadataName.FUND_PRICE, "6"), entry(GeneralMetadataName.FX_RATE, "4"))));
+    });
+    assertThat(service.resolve(query).block().entries()).hasSize(2);
+    assertThat(commands).hasSize(2);
+    assertThat(commands.get(1).requestedKeys()).containsExactlyInAnyOrder(key(GeneralMetadataName.FUND_PRICE), key(GeneralMetadataName.FX_RATE));
+  }
+
+  @Test
+  void targetedDefaultAllResultIsPersisted() {
+    var cache = new RecordingCache(Optional.empty());
+    var service = service(cache, command -> command.requestedKeys().isEmpty()
+        ? Mono.just(new FetchGeneralMetadataResult(Optional.empty(), List.of()))
+        : Mono.just(new FetchGeneralMetadataResult(Optional.of(GeneralMetadataResolutionSource.DEFAULT_ALL), List.of(entry(GeneralMetadataName.FUND_PRICE, "6")))));
+    var resolved = service.resolve(query(GeneralMetadataName.FUND_PRICE)).block();
+    assertThat(resolved.resolutionSource()).isEqualTo(GeneralMetadataResolutionSource.DEFAULT_ALL);
+    assertThat(cache.written).isSameAs(resolved);
+  }
+
+  @Test
+  void conflictingTargetedValueFailsWithoutCacheWrite() {
+    var cache = new RecordingCache(Optional.empty());
+    var query = new ResolveGeneralMetadataQuery(scope(), Set.of(key(GeneralMetadataName.FUND_PRICE), key(GeneralMetadataName.FX_RATE)), ActorUserRole.ROLE_USER_MBR);
+    var service = service(cache, command -> command.requestedKeys().isEmpty()
+        ? Mono.just(new FetchGeneralMetadataResult(Optional.of(GeneralMetadataResolutionSource.DEFAULT_ALL), List.of(entry(GeneralMetadataName.FUND_PRICE, "6"))))
+        : Mono.just(new FetchGeneralMetadataResult(Optional.of(GeneralMetadataResolutionSource.DEFAULT_ALL), List.of(entry(GeneralMetadataName.FUND_PRICE, "7"), entry(GeneralMetadataName.FX_RATE, "4")))));
+    assertThatThrownBy(() -> service.resolve(query).block()).hasRootCauseInstanceOf(IllegalArgumentException.class).hasMessageContaining("Conflicting resolved general metadata entry");
+    assertThat(cache.written).isNull();
   }
 
   private GeneralMetadataResolverService service(GeneralMetadataCachePort cache, GeneralMetadataSourcePort source) {
