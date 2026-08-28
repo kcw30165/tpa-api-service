@@ -70,5 +70,4 @@ class GeneralMetadataConfigurationTest {
   @Configuration(proxyBeanMethods = false)
   @EnableConfigurationProperties(GeneralMetadataCacheProperties.class)
   static class CacheConfig {}
-
 }
