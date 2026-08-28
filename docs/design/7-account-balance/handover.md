@@ -112,3 +112,11 @@ Same-policy resolver misses now coalesce within one JVM through a policy-scoped 
 ## Phase II-007 resolver concurrency correctness repair
 
 In-flight coalescing now uses the immutable pair of policy scope and required-key set, preventing a broader query from receiving a result complete only for a narrower concurrent query. Targeted completion distinguishes initial cache absence from mutation of an existing document: an initially absent cache receives one final complete write and never CAS against an unpublished intermediate value; an existing partial document uses one expected-value replacement and the existing bounded reread on conflict or missing state. No incomplete intermediate document is written.
+
+## Phase II-008 targeted APIM cardinality ratification
+
+Decision authority: Nick Deng on 28 August 2026. `TRPGetGeneralMetaData` accepts exactly one explicit `metadata-name` and one explicit `metadata-type` pair per targeted request. It does not support wildcard filters or multiple explicit key pairs in one request. Supplying both fields as blank requests the full metadata set.
+
+The application boundary remains one `FetchGeneralMetadataCommand` containing the complete deduplicated missing-key set. The physical APIM adapter is explicitly ratified to expand that bounded set into one targeted exchange per distinct key, in deterministic key order, using sequential reactive `concatMap`. Fan-out is bounded by the immutable `query.requiredKeys()` set size. Exact duplicate keys are eliminated by the set contract. A failure, malformed response, conflicting source, or conflicting value in any exchange fails the combined operation; no partial metadata result is returned or cached. Each exchange retains the existing `SAFE_BUSINESS_CALL` executor policy and shared correlation and observability infrastructure.
+
+The earlier phrase “one-call required-key resolution” means one application-port invocation, not one physical APIM exchange. The earlier phrase “one targeted batch” means one bounded application command with deterministic per-key physical fan-out. This ratification resolves the Phase II architect-review cardinality finding without changing production behavior.
