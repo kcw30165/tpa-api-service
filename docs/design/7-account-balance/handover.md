@@ -74,3 +74,13 @@ All Java identifiers in the general metadata capability now use `accountEnv` for
 ## Phase II-003 implementation handover
 
 `TRPGetGeneralMetaData` now has an authenticated `ACCOUNT_ENV` outbound adapter backed exclusively by `ApimExchangeExecutor.postEnvelope(...)`. The adapter uses trusted `command.actorUserRole()`, `command.scope().accountEnv()`, `SAFE_BUSINESS_CALL`, the canonical generic envelope validator, and the Phase II-002 operation-content normalizer. Correlation propagation remains executor/transport infrastructure; no request DTO field or feature-owned propagator was added. The routing ledger and shared response-validation boundary include the new adapter.
+
+## Phase II-004 domain source correction handover
+
+- Decision authority: Nick selected Option B on 28 August 2026.
+- Canonical policy-specific resolution source is `POLICY_SPECIFIC`.
+- The former requested-policy enum name and all cumulative references were replaced deterministically.
+- `DEFAULT_ALL` remains unchanged.
+- This correction changes naming only. It does not add Redis persistence, resolver orchestration, targeted fallback, preload, stale fallback, or invalidation behavior.
+- Phase II-004 Redis adapter implementation must consume `DEFAULT_ALL` and `POLICY_SPECIFIC`.
+- Account Balance feature-level formatting remains deferred until stabilization.

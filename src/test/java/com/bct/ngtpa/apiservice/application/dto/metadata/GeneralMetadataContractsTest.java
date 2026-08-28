@@ -72,7 +72,7 @@ class GeneralMetadataContractsTest {
     assertThat(GeneralMetadataResolutionSource.values())
         .containsExactly(
             GeneralMetadataResolutionSource.DEFAULT_ALL,
-            GeneralMetadataResolutionSource.REQUESTED_POLICY);
+            GeneralMetadataResolutionSource.POLICY_SPECIFIC);
   }
 
   @Test
@@ -84,14 +84,14 @@ class GeneralMetadataContractsTest {
             () ->
                 ResolvedGeneralMetadataSet.normalize(
                     new GeneralMetadataScope("env", "trust", "policy"),
-                    GeneralMetadataResolutionSource.REQUESTED_POLICY,
+                    GeneralMetadataResolutionSource.POLICY_SPECIFIC,
                     List.of(first, conflicting)))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Conflicting duplicate general metadata key");
     assertThat(
             ResolvedGeneralMetadataSet.normalize(
                     new GeneralMetadataScope("env", "trust", "policy"),
-                    GeneralMetadataResolutionSource.REQUESTED_POLICY,
+                    GeneralMetadataResolutionSource.POLICY_SPECIFIC,
                     List.of(first, first))
                 .entries())
         .containsExactly(first);

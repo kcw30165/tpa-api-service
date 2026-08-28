@@ -23,7 +23,7 @@ class GeneralMetadataApimContentNormalizerTest {
             normalizer
                 .normalize("00000008802", List.of(row("00000008802", "nav", "precision", "2")))
                 .resolutionSource())
-        .isEqualTo(GeneralMetadataResolutionSource.REQUESTED_POLICY);
+        .isEqualTo(GeneralMetadataResolutionSource.POLICY_SPECIFIC);
   }
 
   @Test

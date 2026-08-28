@@ -35,7 +35,7 @@ public final class GeneralMetadataApimContentNormalizer {
 
   private GeneralMetadataResolutionSource source(String policy, String requested) {
     if ("all".equals(policy)) return GeneralMetadataResolutionSource.DEFAULT_ALL;
-    if (requested.equals(policy)) return GeneralMetadataResolutionSource.REQUESTED_POLICY;
+    if (requested.equals(policy)) return GeneralMetadataResolutionSource.POLICY_SPECIFIC;
     throw new IllegalArgumentException("Unexpected general metadata policy");
   }
 }
