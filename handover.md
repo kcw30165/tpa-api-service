@@ -525,3 +525,10 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - The first live attempt stopped before OTP delivery because the central dispatcher registered the Contributions scenario but did not source the shared `login_journey_start` helper for that scenario.
 - The dispatcher now loads the shared Login bootstrap for `contributions/list-authenticated` before sourcing the scenario.
 - The repair was validated without network requests or OTP delivery. The failed attempt is safe to retry once.
+
+
+### Contributions Gate D visible OTP prompt repair
+
+- The Contributions scenario writes `Login OTP: ` directly to `/dev/tty`, reads the OTP silently from `/dev/tty`, and emits only a terminal newline afterward.
+- An isolated controlling pseudo-terminal validation proves the prompt is visible, synthetic input is injected automatically, and the entered OTP is not echoed.
+- No network request or OTP delivery was performed during this repair.

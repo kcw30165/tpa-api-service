@@ -46,7 +46,10 @@ run_scenario() {
     [[ "${E2E_OFFLINE_TEST_MODE:-false}" == true ]] || { printf 'FAIL OTP file input is restricted to offline tests\n'; return 1; }
     otp_code="$(cat "$E2E_TEST_OTP_CODE_FILE")"
   else
-    read -r -s -p 'Login OTP: ' otp_code </dev/tty >/dev/tty
+  printf 'Login OTP: ' >/dev/tty
+  IFS= read -r -s otp_code </dev/tty
+  printf '
+' >/dev/tty
     printf '\n' >/dev/tty
   fi
   [[ -n "$otp_code" ]] || { printf 'FAIL OTP is required\n'; return 1; }
