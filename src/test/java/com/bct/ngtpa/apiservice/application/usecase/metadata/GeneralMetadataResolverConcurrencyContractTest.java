@@ -20,8 +20,9 @@ class GeneralMetadataResolverConcurrencyContractTest {
             "new InFlightKey(query.scope(), query.requiredKeys())",
             "computeIfAbsent(",
             ".cache()",
-            ".doFinally(")
-        .contains("inFlight.remove(key, created.get())")
+            ".doFinally(",
+            ".doOnCancel(")
+        .contains("inFlight.remove(key, created.get())", "inFlight.remove(key, shared)")
         .doesNotContain(".block(", ".subscribe(", "retryWhen", "repeatWhen");
   }
 
@@ -29,7 +30,7 @@ class GeneralMetadataResolverConcurrencyContractTest {
   void targetedMutationUsesOneCasAndOneBoundedReread() throws Exception {
     String source = Files.readString(SERVICE);
     assertThat(source)
-        .contains("cache.replaceIfUnchanged(query.scope(), expected, replacement)")
+        .contains(".replaceIfUnchanged(", "query.scope()", "cached.orElseThrow()", "replacement")
         .contains("outcome == GeneralMetadataCacheReplaceResult.APPLIED")
         .contains("recoverAfterConflict(query)")
         .contains("cache.read(query.scope())")

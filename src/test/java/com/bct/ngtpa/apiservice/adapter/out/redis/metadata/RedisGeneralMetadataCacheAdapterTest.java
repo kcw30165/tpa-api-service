@@ -56,7 +56,7 @@ class RedisGeneralMetadataCacheAdapterTest {
                 Mono.just(
                     com.bct.ngtpa.apiservice.application.dto.metadata
                         .GeneralMetadataCacheReplaceResult.APPLIED));
-    assertThatThrownBy(() -> adapter.read(scope()).block()).hasRootCause(failure);
+    assertThatThrownBy(() -> adapter.read(scope()).block()).isSameAs(failure);
     assertThatThrownBy(
             () ->
                 adapter
@@ -66,7 +66,7 @@ class RedisGeneralMetadataCacheAdapterTest {
                             GeneralMetadataResolutionSource.DEFAULT_ALL,
                             List.of(entry("6"))))
                     .block())
-        .hasRootCause(failure);
+        .isSameAs(failure);
   }
 
   private RedisGeneralMetadataCacheAdapter adapter(CachePort cache) {

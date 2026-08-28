@@ -93,7 +93,7 @@ class GeneralMetadataResolverServiceTest {
             cache,
             command -> Mono.just(new FetchGeneralMetadataResult(Optional.empty(), List.of())));
     assertThatThrownBy(() -> service.resolve(query(GeneralMetadataName.FUND_PRICE)).block())
-        .hasRootCauseInstanceOf(MissingRequiredGeneralMetadataException.class);
+        .isInstanceOf(MissingRequiredGeneralMetadataException.class);
     assertThat(cache.written).isNull();
   }
 
@@ -131,13 +131,16 @@ class GeneralMetadataResolverServiceTest {
             cache,
             command ->
                 command.requestedKeys().isEmpty()
-                    ? Mono.just(new FetchGeneralMetadataResult(Optional.empty(), List.of()))
+                    ? Mono.just(
+                        new FetchGeneralMetadataResult(
+                            Optional.of(GeneralMetadataResolutionSource.DEFAULT_ALL),
+                            List.of(entry(GeneralMetadataName.FX_RATE, "4"))))
                     : Mono.just(
                         new FetchGeneralMetadataResult(
                             Optional.of(GeneralMetadataResolutionSource.POLICY_SPECIFIC),
                             List.of(entry(GeneralMetadataName.FUND_PRICE, "6")))));
     assertThatThrownBy(() -> service.resolve(query(GeneralMetadataName.FUND_PRICE)).block())
-        .hasRootCauseInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Conflicting general metadata resolution sources");
     assertThat(cache.written).isNull();
   }
@@ -150,7 +153,7 @@ class GeneralMetadataResolverServiceTest {
                 service(cache(Optional.empty()), command -> Mono.error(sourceFailure))
                     .resolve(query(GeneralMetadataName.FUND_PRICE))
                     .block())
-        .hasRootCause(sourceFailure);
+        .isSameAs(sourceFailure);
 
     var cacheFailure = new IllegalStateException("cache failed");
     var failingCache =
@@ -180,7 +183,7 @@ class GeneralMetadataResolverServiceTest {
                 service(failingCache, command -> Mono.error(new AssertionError()))
                     .resolve(query(GeneralMetadataName.FUND_PRICE))
                     .block())
-        .hasRootCause(cacheFailure);
+        .isSameAs(cacheFailure);
   }
 
   @Test
@@ -282,7 +285,7 @@ class GeneralMetadataResolverServiceTest {
                                 entry(GeneralMetadataName.FUND_PRICE, "7"),
                                 entry(GeneralMetadataName.FX_RATE, "4")))));
     assertThatThrownBy(() -> service.resolve(query).block())
-        .hasRootCauseInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Conflicting resolved general metadata entry");
     assertThat(cache.written).isNull();
   }

@@ -104,7 +104,7 @@ class ApimGeneralMetadataSourceAdapterTest {
                                 key(GeneralMetadataName.FX_RATE),
                                 key(GeneralMetadataName.FUND_PRICE))))
                     .block())
-        .hasRootCauseInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Conflicting general metadata resolution sources");
     var failure = new IllegalStateException("technical");
     assertThatThrownBy(
@@ -112,7 +112,7 @@ class ApimGeneralMetadataSourceAdapterTest {
                 new ApimGeneralMetadataSourceAdapter(failing(failure))
                     .fetch(command(Set.of(key(GeneralMetadataName.FUND_PRICE))))
                     .block())
-        .hasRootCause(failure);
+        .isSameAs(failure);
   }
 
   @Test
@@ -122,7 +122,7 @@ class ApimGeneralMetadataSourceAdapterTest {
                 new ApimGeneralMetadataSourceAdapter(malformedContent())
                     .fetch(command(Set.of(key(GeneralMetadataName.FUND_PRICE))))
                     .block())
-        .hasRootCauseInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Unexpected general metadata policy");
   }
 
@@ -137,7 +137,7 @@ class ApimGeneralMetadataSourceAdapterTest {
                                 key(GeneralMetadataName.FUND_PRICE),
                                 key(GeneralMetadataName.FX_RATE))))
                     .block())
-        .hasRootCauseInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Conflicting resolved general metadata entry");
   }
 
@@ -163,7 +163,7 @@ class ApimGeneralMetadataSourceAdapterTest {
             "{\"response\":{\"err-message\":\"\",\"data\":[{\"policy-no\":\""
                 + policy
                 + "\",\"metadata-name\":\""
-                + request.metadataName()
+                + (request.metadataName().isBlank() ? "fund-pri" : request.metadataName())
                 + "\",\"metadata-type\":\"precision\",\"metadata-value\":\"6\"}]}}";
         try {
           JavaType type =

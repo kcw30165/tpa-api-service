@@ -66,7 +66,7 @@ public final class GeneralMetadataResolverService implements GeneralMetadataReso
               created.set(candidate);
               return candidate;
             });
-    return shared;
+    return shared.doOnCancel(() -> inFlight.remove(key, shared));
   }
 
   int inFlightCountForTesting() {

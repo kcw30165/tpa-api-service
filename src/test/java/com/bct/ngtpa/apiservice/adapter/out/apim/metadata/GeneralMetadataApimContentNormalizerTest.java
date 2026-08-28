@@ -18,12 +18,12 @@ class GeneralMetadataApimContentNormalizerTest {
             normalizer
                 .normalize("00000008802", List.of(row("all", "fund-pri", "precision", "6")))
                 .resolutionSource())
-        .isEqualTo(GeneralMetadataResolutionSource.DEFAULT_ALL);
+        .contains(GeneralMetadataResolutionSource.DEFAULT_ALL);
     assertThat(
             normalizer
                 .normalize("00000008802", List.of(row("00000008802", "nav", "precision", "2")))
                 .resolutionSource())
-        .isEqualTo(GeneralMetadataResolutionSource.POLICY_SPECIFIC);
+        .contains(GeneralMetadataResolutionSource.POLICY_SPECIFIC);
   }
 
   @Test
