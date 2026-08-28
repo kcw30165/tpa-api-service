@@ -116,8 +116,11 @@ class GeneralMetadataContractsTest {
         new GeneralMetadataKey(GeneralMetadataName.UNIT_BALANCE, GeneralMetadataType.PRECISION);
     var query =
         new ResolveGeneralMetadataQuery(
-            new GeneralMetadataScope("env", "trust", "policy"), Set.of(key));
+            new GeneralMetadataScope("env", "trust", "policy"),
+            Set.of(key),
+            ActorUserRole.ROLE_USER_MBR);
     assertThat(query.requiredKeys()).containsExactly(key);
+    assertThat(query.actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_MBR);
   }
 
   @Test

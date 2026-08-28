@@ -88,3 +88,7 @@ All Java identifiers in the general metadata capability now use `accountEnv` for
 ## Phase II-004 Redis cache adapter handover
 
 General metadata now has one lazy policy-scoped Redis document per account environment and opaque trust/policy digest. Keys use `RedisCacheKeyFactory` with capability `general-metadata`; raw trust codes and policy numbers are excluded. Values retain scope, entries, and `DEFAULT_ALL` or `POLICY_SPECIFIC` resolution. Writes use the externally bindable `account-balance.general-metadata.cache.ttl` property with `PT20M` default. Corrupt documents are evicted and treated as misses; Redis infrastructure failures remain failures. Resolver orchestration, targeted fallback, preload, stale fallback, and invalidation endpoints remain excluded.
+
+## Phase II-005 resolver-query actor-role correction
+
+`ResolveGeneralMetadataQuery` now carries the trusted `ActorUserRole` required by `FetchGeneralMetadataCommand`. The resolver must pass this value unchanged on an unfiltered cache miss. It must not hardcode a role, read ambient `PortalAccessContext`, or pass null. This correction changes only the resolver input contract and focused contract test; cache-hit and full-miss orchestration remain Phase II-005 implementation work.
