@@ -496,3 +496,11 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 
 - Routine Login suites package their exact parent evidence directory as ZIP-in-`.txt` under `/mnt/d/Projects/ORSO/ngtpa` on exit.
 - Invalid OTP derivation initializes `last_digit` and `replacement` at function scope before either assignment branch.
+
+### Login Gate D closure
+
+- Login Gate D is closed as PASS at implementation baseline   `863a8a4f733fb09c743b346ee3fecf780fd3e764`.
+- Confirmed live coverage includes Login start, OTP destination selection, initial OTP send, valid OTP verification, invalid OTP verification, immediate resend cooldown, cancellation, authenticated session establishment, and authenticated logout.
+- Successful OTP verification ends at `SELECT_ACCOUNT`; there is no separate Login account-selection mutation.
+- Routine evidence is redacted, private runtime state is cleaned, and suite evidence is packaged automatically as ZIP-in-`.txt` under `/mnt/d/Projects/ORSO/ngtpa`.
+- Offline regression is CI-suitable. Live suites remain explicit development or pre-release checks because real credentials and OTP delivery are involved.
