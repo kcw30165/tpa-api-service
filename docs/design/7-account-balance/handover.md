@@ -151,3 +151,7 @@ The configuration startup test now declares its nested `CacheConfig`, enabling `
 ## Phase II routing-ledger cardinality repair
 
 The governed APIM operation inventory contains `TRPGetGeneralMetaData` exactly once and now asserts the corresponding total cardinality of 16 rather than the pre-feature total of 15. This corrects the stale characterization expectation without changing runtime behavior. Phase III remains blocked pending cumulative validation and architect approval.
+
+## Phase III-001 FE contract and controller boundary
+
+Implemented `GET /api/v1/account-balance` with optional `currency`, shared `X-Request-Id` enforcement, optional `Accept-Language` with English fallback, and selected-account delegation through `CurrentPortalAccessContextResolver`. The success envelope uses `MutationResponse` with Account Balance data under `result.data`. Account Overview nullable fields remain stable, portfolio omission is property-scoped, and public terminology uses Display Account and Sub-Display-Account. APIM retrieval and final transformation remain excluded from this subphase.
