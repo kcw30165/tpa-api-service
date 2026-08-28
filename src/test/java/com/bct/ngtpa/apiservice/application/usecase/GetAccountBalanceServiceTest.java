@@ -2,8 +2,17 @@ package com.bct.ngtpa.apiservice.application.usecase;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.bct.ngtpa.apiservice.application.dto.*;
-import com.bct.ngtpa.apiservice.application.port.out.AccountBalanceDataPort;
+import com.bct.ngtpa.apiservice.application.dto.AccountBalanceResult;
+import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
+import com.bct.ngtpa.apiservice.application.dto.FetchAccountBalanceCommand;
+import com.bct.ngtpa.apiservice.application.dto.GetAccountBalanceCommand;
+import com.bct.ngtpa.apiservice.application.dto.accountbalance.raw.RawAccountBalanceData;
+import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataResolutionSource;
+import com.bct.ngtpa.apiservice.application.dto.metadata.ResolvedGeneralMetadata;
+import com.bct.ngtpa.apiservice.application.dto.metadata.ResolvedGeneralMetadataSet;
+import com.bct.ngtpa.apiservice.application.port.in.AccountBalanceAssembler;
+import com.bct.ngtpa.apiservice.application.port.in.GeneralMetadataResolver;
+import com.bct.ngtpa.apiservice.application.port.out.AccountBalanceSourcePort;
 import com.bct.ngtpa.apiservice.application.port.out.ReferenceDatePort;
 import java.time.LocalDate;
 import java.util.List;
@@ -15,69 +24,76 @@ import reactor.test.StepVerifier;
 
 class GetAccountBalanceServiceTest {
   @Test
-  void resolvesReferenceDateOnceThenMapsTrustedFieldsWithoutLosingLeadingZeros() {
-    AtomicInteger references = new AtomicInteger();
-    AtomicReference<String> resolvedEnv = new AtomicReference<>();
-    AtomicReference<FetchAccountBalanceCommand> fetched = new AtomicReference<>();
-    ReferenceDatePort referenceDatePort = env -> {
-      references.incrementAndGet();
-      resolvedEnv.set(env);
-      return Mono.just(LocalDate.of(2026, 8, 28));
+  void preservesTrustedFieldsLeadingZerosAndOptionalCurrencyAcrossNewBoundary() {
+    var references = new AtomicInteger();
+    var metadataCalls = new AtomicInteger();
+    var fetched = new AtomicReference<FetchAccountBalanceCommand>();
+    var assembled = new AtomicInteger();
+    ReferenceDatePort dates = env -> { references.incrementAndGet(); return Mono.just(LocalDate.of(2026, 8, 28)); };
+    GeneralMetadataResolver metadata = query -> {
+      metadataCalls.incrementAndGet();
+      return Mono.just(new ResolvedGeneralMetadataSet(query.scope(),
+          GeneralMetadataResolutionSource.POLICY_SPECIFIC,
+          query.requiredKeys().stream().map(key -> new ResolvedGeneralMetadata(key,
+              key.type().name().equals("PRECISION") ? "2" : "HALF_UP")).toList()));
     };
-    AccountBalanceResult expected = result();
-    AccountBalanceDataPort dataPort = command -> { fetched.set(command); return Mono.just(expected); };
-    GetAccountBalanceService service = new GetAccountBalanceService(referenceDatePort, dataPort);
+    RawAccountBalanceData raw = new RawAccountBalanceData(null, null, List.of(), List.of(), List.of());
+    AccountBalanceSourcePort source = command -> { fetched.set(command); return Mono.just(raw); };
+    AccountBalanceResult expected = new AccountBalanceResult("28/08/2026", null, null, List.of());
+    AccountBalanceAssembler assembler = (command, date, resolved, data) -> {
+      assembled.incrementAndGet();
+      assertThat(command.currency()).isNull();
+      assertThat(date).isEqualTo(LocalDate.of(2026, 8, 28));
+      assertThat(data).isSameAs(raw);
+      return Mono.just(expected);
+    };
 
-    StepVerifier.create(service.get(command("USD"))).expectNext(expected).verifyComplete();
+    var service = new GetAccountBalanceService(dates, metadata, source, assembler);
+    StepVerifier.create(service.get(command(null))).expectNext(expected).verifyComplete();
 
     assertThat(references).hasValue(1);
-    assertThat(resolvedEnv).hasValue("JP");
+    assertThat(metadataCalls).hasValue(1);
+    assertThat(assembled).hasValue(1);
     assertThat(fetched.get()).isEqualTo(new FetchAccountBalanceCommand(
-        "en", "USD", "JP", "00000008802", "0001", "TRUST", "SCHEME",
+        "en", null, "JP", "00000008802", "0001", "TRUST", "SCHEME",
         "user-1", ActorUserRole.ROLE_USER_MBR, LocalDate.of(2026, 8, 28)));
   }
 
   @Test
-  void preservesOptionalCurrencyAsNull() {
-    AtomicReference<FetchAccountBalanceCommand> fetched = new AtomicReference<>();
-    GetAccountBalanceService service = new GetAccountBalanceService(
-        env -> Mono.just(LocalDate.of(2026, 8, 28)),
-        command -> { fetched.set(command); return Mono.just(result()); });
-
-    StepVerifier.create(service.get(command(null))).expectNextCount(1).verifyComplete();
-    assertThat(fetched.get().currency()).isNull();
-  }
-
-  @Test
-  void referenceDateFailureShortCircuitsDownstreamCall() {
-    AtomicInteger downstreamCalls = new AtomicInteger();
-    RuntimeException failure = new RuntimeException("reference unavailable");
-    GetAccountBalanceService service = new GetAccountBalanceService(
-        env -> Mono.error(failure),
-        command -> { downstreamCalls.incrementAndGet(); return Mono.just(result()); });
-
-    StepVerifier.create(service.get(command(null))).expectErrorSatisfies(error -> assertThat(error).isSameAs(failure)).verify();
-    assertThat(downstreamCalls).hasValue(0);
-  }
-
-  @Test
-  void emptyReferenceDateShortCircuitsDownstreamCall() {
-    AtomicInteger downstreamCalls = new AtomicInteger();
-    GetAccountBalanceService service = new GetAccountBalanceService(
+  void emptyReferenceDateShortCircuitsEveryLaterStage() {
+    var metadataCalls = new AtomicInteger();
+    var sourceCalls = new AtomicInteger();
+    var assemblerCalls = new AtomicInteger();
+    var service = new GetAccountBalanceService(
         env -> Mono.empty(),
-        command -> { downstreamCalls.incrementAndGet(); return Mono.just(result()); });
+        query -> { metadataCalls.incrementAndGet(); return Mono.empty(); },
+        fetch -> { sourceCalls.incrementAndGet(); return Mono.empty(); },
+        (command, date, metadata, raw) -> { assemblerCalls.incrementAndGet(); return Mono.empty(); });
 
-    StepVerifier.create(service.get(command(null))).verifyComplete();
-    assertThat(downstreamCalls).hasValue(0);
+    StepVerifier.create(service.get(command("USD"))).verifyComplete();
+    assertThat(metadataCalls).hasValue(0);
+    assertThat(sourceCalls).hasValue(0);
+    assertThat(assemblerCalls).hasValue(0);
+  }
+
+  @Test
+  void referenceDateFailureShortCircuitsEveryLaterStage() {
+    var laterCalls = new AtomicInteger();
+    var failure = new RuntimeException("reference unavailable");
+    var service = new GetAccountBalanceService(
+        env -> Mono.error(failure),
+        query -> { laterCalls.incrementAndGet(); return Mono.empty(); },
+        fetch -> { laterCalls.incrementAndGet(); return Mono.empty(); },
+        (command, date, metadata, raw) -> { laterCalls.incrementAndGet(); return Mono.empty(); });
+
+    StepVerifier.create(service.get(command(null)))
+        .expectErrorSatisfies(error -> assertThat(error).isSameAs(failure))
+        .verify();
+    assertThat(laterCalls).hasValue(0);
   }
 
   private static GetAccountBalanceCommand command(String currency) {
     return new GetAccountBalanceCommand("en", currency, "JP", "00000008802", "0001",
         "TRUST", "SCHEME", "user-1", ActorUserRole.ROLE_USER_MBR);
-  }
-
-  private static AccountBalanceResult result() {
-    return new AccountBalanceResult("28/08/2026", new CurrencySelection("HKD", List.of("HKD")),
-        new AccountOverview("Display Account", null, null), List.of());
   }
 }

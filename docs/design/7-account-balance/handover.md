@@ -164,10 +164,6 @@ Implemented a framework-free `GetAccountBalanceService` that resolves `Reference
 
 Implemented exact adapter-only request and response DTOs for `TRPGetMemberAccBal`. The request preserves `policy-no` as a string, uses numeric `cert-no`, formats `ref-date` at the future adapter boundary, and always serializes `curr`, using an empty string for initial load. The response models `displayOptions`, `curr`, `dispSrc`, `fundDtl`, and `accBal`; financial values use `BigDecimal`, bilingual descriptions and factsheet strings remain raw, and exactly one non-null complete `response.data` item is required. Executor invocation, business-error classification, FE grouping, joining, localization, rendering, and factsheet validation remain deferred.
 
-## Phase III-003 TRPGetMemberAccBal APIM DTO contract
-
-Implemented exact adapter-only request and response DTOs for `TRPGetMemberAccBal`. The request preserves `policy-no` as a string, uses numeric `cert-no`, formats `ref-date` at the future adapter boundary, and always serializes `curr`, using an empty string for initial load. The response models `displayOptions`, `curr`, `dispSrc`, `fundDtl`, and `accBal`; financial values use `BigDecimal`, bilingual descriptions and factsheet strings remain raw, and exactly one non-null complete `response.data` item is required. Executor invocation, business-error classification, FE grouping, joining, localization, rendering, and factsheet validation remain deferred.
-
 ## Phase III-004B typed retrieval error boundary
 
 Added a feature-owned `AccountBalanceRetrievalException` with typed `ACCOUNT_NOT_FOUND`, `ACCOUNT_MISMATCH`, and `SYSTEM_FAILURE` reasons. The application exception is web-neutral and redacts raw TAS details. The inbound response policy maps the two approved business reasons to HTTP 422 `BUSINESS_REJECTED` with `err.ab.account.not.exist` and `err.ab.account.mismatch`, and maps system failure to HTTP 503 `SYSTEM_ERROR` with `err.system.unavailable`. The executor-backed APIM adapter remains deferred to Phase III-004C.
@@ -179,3 +175,7 @@ Introduced an application-owned `AccountBalanceSourcePort` returning transport-n
 ## Phase III-004C2 executor-backed Account Balance APIM adapter
 
 Implemented `ApimAccountBalanceSourceAdapter` against the application-owned raw source port through the canonical APIM executor. The adapter uses runtime-validated `apim.account-balance.path`, `ACCOUNT_ENV`, trusted actor role and account environment, and `SAFE_BUSINESS_CALL`; converts certificate and reference date at the boundary; classifies only the two approved TAS business errors; sanitizes every other failure; validates the canonical envelope and exactly-one data item; and preserves raw decimal, bilingual, nullable, sentinel, ordering, and factsheet values without frontend transformation. The routing ledger now registers `TRPGetMemberAccBal` as its seventeenth unique executor-owned operation.
+
+## Phase III-005 Account Balance boundary integration
+
+The application use case now composes one reference-date resolution, one policy-scoped shared general-metadata resolution using all eight Phase IV precision and rounding keys, one raw Account Balance source call, and one application-owned assembler call. Failures short-circuit subsequent stages. The assembler seam is intentionally provisional: its production bean returns the approved sanitized system failure until Phase IV supplies the real transformation, while tests may inject controlled fixture assemblers. No financial values, hierarchy, localization, rendering, or factsheet behavior is fabricated in Phase III. The duplicate Phase III-003 handover section was removed.
