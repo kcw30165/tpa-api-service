@@ -1,0 +1,1 @@
+package com.bct.ngtpa.apiservice.application.dto; import java.util.List; public record SubDisplayLevelDisplayAccount(String displayAccountName,String displayAccountId,Integer displaySequence,List<SubDisplayLevelSubDisplayAccount> subDisplayAccounts){public SubDisplayLevelDisplayAccount{subDisplayAccounts=subDisplayAccounts==null?List.of():List.copyOf(subDisplayAccounts);}}

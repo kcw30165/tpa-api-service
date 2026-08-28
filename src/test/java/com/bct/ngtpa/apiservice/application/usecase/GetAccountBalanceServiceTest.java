@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.application.dto.AccountBalanceResult;
 import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
 import com.bct.ngtpa.apiservice.application.dto.FetchAccountBalanceCommand;
 import com.bct.ngtpa.apiservice.application.dto.GetAccountBalanceCommand;
+import com.bct.ngtpa.apiservice.application.dto.InvestmentPortfolio;
 import com.bct.ngtpa.apiservice.application.dto.accountbalance.raw.RawAccountBalanceData;
 import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataResolutionSource;
 import com.bct.ngtpa.apiservice.application.dto.metadata.ResolvedGeneralMetadata;
@@ -55,7 +56,7 @@ class GetAccountBalanceServiceTest {
           fetched.set(command);
           return Mono.just(raw);
         };
-    AccountBalanceResult expected = new AccountBalanceResult("28/08/2026", null, null, List.of());
+    AccountBalanceResult expected = new AccountBalanceResult("28/08/2026", null, null, new InvestmentPortfolio(List.of(), List.of()));
     AccountBalanceAssembler assembler =
         (command, date, resolved, data) -> {
           assembled.incrementAndGet();

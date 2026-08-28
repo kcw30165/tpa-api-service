@@ -89,11 +89,11 @@ class AccountBalanceControllerTest {
         .expectBody()
         .jsonPath("$.result.data.currencySelection.selectedCurrency")
         .isEqualTo("HKD")
-        .jsonPath("$.result.data.accountOverview.displayAccountLabel")
+        .jsonPath("$.result.data.accountOverview.accountBalance")
+        .isEqualTo("100.00")
+        .jsonPath("$.result.data.investmentPortfolio.fundLevelView[0].displayAccountName")
         .isEqualTo("Display Account")
-        .jsonPath("$.result.data.investmentPortfolio[0].subDisplayAccountLabel")
-        .isEqualTo("Sub-Display-Account")
-        .jsonPath("$.result.data.investmentPortfolio[0].fxRate")
+        .jsonPath("$.result.data.investmentPortfolio.fundLevelView[0].funds[0].fxRate")
         .doesNotExist();
   }
 
@@ -123,10 +123,12 @@ class AccountBalanceControllerTest {
   }
 
   private static AccountBalanceResult result() {
-    return new AccountBalanceResult(
-        "28/08/2026",
-        new CurrencySelection("HKD", List.of("HKD", "USD")),
-        new AccountOverview("Display Account", null, null),
-        List.of(new InvestmentPortfolioItem("Sub-Display-Account", "Fund A", null, null)));
+    var leaf = new FundLevelSubDisplayAccount("Sub-Display-Account", "OE", "1.000", "100.00", "10.0000", null, null);
+    var fund = new FundLevelFund("F1", "Fund A", "10.0000", "1.000", "100.00", null, null, List.of(leaf));
+    var fundView = new FundLevelDisplayAccount("Display Account", "EE", 1, List.of(fund));
+    var subFund = new SubDisplayLevelFund("F1", "Fund A", "10.0000", "1.000", "100.00", null, null);
+    var sub = new SubDisplayLevelSubDisplayAccount("Sub-Display-Account", "OE", List.of(subFund));
+    var subView = new SubDisplayLevelDisplayAccount("Display Account", "EE", 1, List.of(sub));
+    return new AccountBalanceResult("28/08/2026", new CurrencySelection("HKD", List.of("HKD", "USD")), new AccountOverview("100.00", null, null), new InvestmentPortfolio(List.of(fundView), List.of(subView)));
   }
 }

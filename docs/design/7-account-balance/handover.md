@@ -211,3 +211,10 @@ Added a framework-free application presentation boundary for dynamic English/Tra
 ## Phase IV-006 currency, visibility, and factsheet presentation
 
 Added strict currency-selection mapping that preserves TAS order and rejects blank, duplicate, or inconsistent selected currencies. Added graceful factsheet resolution that retains valid absolute URLs, omits null or blank values, and reports malformed or relative values through a zero-argument event port so the full URL cannot enter logs. Existing Account Balance response DTOs retain property-scoped Jackson behavior: overview hidden values serialize as null, while null portfolio FX rate and factsheet URL are omitted. No global ObjectMapper change or fundFactsheetEnabled field is introduced. The provisional assembler remains unchanged because the current flattened public result cannot represent both approved portfolio hierarchies; final contract ratification and result composition remain required.
+
+## Phase IV-007 Full Assembler Integration
+
+- Ratified full response contract added.
+- The provisional assembler is replaced by complete normalization, aggregation, portfolio, localization, precision, currency, and factsheet composition.
+- Both portfolio views are generated independently from one normalized model.
+- Spotless and runtime tests remain deferred to Phase IV-008.
