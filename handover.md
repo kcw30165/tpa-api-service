@@ -512,3 +512,10 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - All OTP use cases are deterministic test-only sentinels and remain uninvoked.
 - No `src/main/**` file changed, no external network was used, and no OTP was delivered.
 - Spotless application remains intentionally deferred to the feature stabilization stage.
+
+### Contributions Gate D authenticated E2E
+
+- Added a scripted Login-to-Contributions journey using the authenticated `portal_sid`, rotated XSRF token, and an `Account-Ref` returned by OTP verification.
+- The Contributions request is issued once with configurable `fromDate`, `toDate`, language, and account index, followed by authenticated logout.
+- Credentials, OTP, cookies, XSRF tokens, and raw Account-Ref values remain private and are excluded from evidence.
+- No production code changed. Offline validation uses deterministic responses and performs no real network call or OTP delivery.
