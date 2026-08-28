@@ -519,3 +519,9 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - The Contributions request is issued once with configurable `fromDate`, `toDate`, language, and account index, followed by authenticated logout.
 - Credentials, OTP, cookies, XSRF tokens, and raw Account-Ref values remain private and are excluded from evidence.
 - No production code changed. Offline validation uses deterministic responses and performs no real network call or OTP delivery.
+
+### Contributions Gate D Login helper loading repair
+
+- The first live attempt stopped before OTP delivery because the central dispatcher registered the Contributions scenario but did not source the shared `login_journey_start` helper for that scenario.
+- The dispatcher now loads the shared Login bootstrap for `contributions/list-authenticated` before sourcing the scenario.
+- The repair was validated without network requests or OTP delivery. The failed attempt is safe to retry once.
