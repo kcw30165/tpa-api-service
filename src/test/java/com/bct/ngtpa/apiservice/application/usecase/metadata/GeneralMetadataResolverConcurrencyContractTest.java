@@ -7,14 +7,20 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 class GeneralMetadataResolverConcurrencyContractTest {
-  private static final Path SERVICE = Path.of(
-      "src/main/java/com/bct/ngtpa/apiservice/application/usecase/metadata/GeneralMetadataResolverService.java");
+  private static final Path SERVICE =
+      Path.of(
+          "src/main/java/com/bct/ngtpa/apiservice/application/usecase/metadata/GeneralMetadataResolverService.java");
 
   @Test
   void sameKeyWorkUsesRepositoryInFlightLifecyclePattern() throws Exception {
     String source = Files.readString(SERVICE);
     assertThat(source)
-        .contains("ConcurrentHashMap<>()", "new InFlightKey(query.scope(), query.requiredKeys())", "computeIfAbsent(", ".cache()", ".doFinally(")
+        .contains(
+            "ConcurrentHashMap<>()",
+            "new InFlightKey(query.scope(), query.requiredKeys())",
+            "computeIfAbsent(",
+            ".cache()",
+            ".doFinally(")
         .contains("inFlight.remove(key, created.get())")
         .doesNotContain(".block(", ".subscribe(", "retryWhen", "repeatWhen");
   }

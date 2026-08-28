@@ -1,14 +1,14 @@
 package com.bct.ngtpa.apiservice.application.usecase.metadata;
 
-import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataCacheReplaceResult;
-import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataScope;
 import com.bct.ngtpa.apiservice.application.dto.metadata.FetchGeneralMetadataCommand;
 import com.bct.ngtpa.apiservice.application.dto.metadata.FetchGeneralMetadataResult;
+import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataCacheReplaceResult;
 import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataKey;
 import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataResolutionSource;
+import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataScope;
+import com.bct.ngtpa.apiservice.application.dto.metadata.ResolveGeneralMetadataQuery;
 import com.bct.ngtpa.apiservice.application.dto.metadata.ResolvedGeneralMetadata;
 import com.bct.ngtpa.apiservice.application.dto.metadata.ResolvedGeneralMetadataSet;
-import com.bct.ngtpa.apiservice.application.dto.metadata.ResolveGeneralMetadataQuery;
 import com.bct.ngtpa.apiservice.application.exception.MissingRequiredGeneralMetadataException;
 import com.bct.ngtpa.apiservice.application.port.in.GeneralMetadataResolver;
 import com.bct.ngtpa.apiservice.application.port.out.GeneralMetadataCachePort;
@@ -18,11 +18,11 @@ import java.util.LinkedHashMap;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import org.springframework.stereotype.Service;
-import reactor.core.publisher.Mono;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
+import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
 
 @Service
 public final class GeneralMetadataResolverService implements GeneralMetadataResolver {
@@ -40,7 +40,8 @@ public final class GeneralMetadataResolverService implements GeneralMetadataReso
   @Override
   public Mono<ResolvedGeneralMetadataSet> resolve(ResolveGeneralMetadataQuery query) {
     Objects.requireNonNull(query, "query must not be null");
-    return cache.read(query.scope())
+    return cache
+        .read(query.scope())
         .flatMap(
             cached -> {
               if (cached.isPresent() && containsAll(cached.get(), query.requiredKeys())) {
@@ -51,8 +52,7 @@ public final class GeneralMetadataResolverService implements GeneralMetadataReso
   }
 
   private Mono<ResolvedGeneralMetadataSet> coalesce(
-      ResolveGeneralMetadataQuery query,
-      Optional<ResolvedGeneralMetadataSet> cached) {
+      ResolveGeneralMetadataQuery query, Optional<ResolvedGeneralMetadataSet> cached) {
     InFlightKey key = new InFlightKey(query.scope(), query.requiredKeys());
     AtomicReference<Mono<ResolvedGeneralMetadataSet>> created = new AtomicReference<>();
     Mono<ResolvedGeneralMetadataSet> shared =
@@ -74,9 +74,9 @@ public final class GeneralMetadataResolverService implements GeneralMetadataReso
   }
 
   private Mono<ResolvedGeneralMetadataSet> loadUnfiltered(
-      ResolveGeneralMetadataQuery query,
-      Optional<ResolvedGeneralMetadataSet> cached) {
-    return source.fetch(new FetchGeneralMetadataCommand(query.scope(), Set.of(), query.actorUserRole()))
+      ResolveGeneralMetadataQuery query, Optional<ResolvedGeneralMetadataSet> cached) {
+    return source
+        .fetch(new FetchGeneralMetadataCommand(query.scope(), Set.of(), query.actorUserRole()))
         .flatMap(result -> continueWithTargetedIfNeeded(query, cached, result));
   }
 
@@ -88,11 +88,9 @@ public final class GeneralMetadataResolverService implements GeneralMetadataReso
     if (missing.isEmpty()) {
       return persistComplete(query, unfiltered);
     }
-    return source.fetch(new FetchGeneralMetadataCommand(query.scope(), missing, query.actorUserRole()))
-        .flatMap(
-            targeted ->
-                persistTargeted(
-                    query, cached, merge(unfiltered, targeted)));
+    return source
+        .fetch(new FetchGeneralMetadataCommand(query.scope(), missing, query.actorUserRole()))
+        .flatMap(targeted -> persistTargeted(query, cached, merge(unfiltered, targeted)));
   }
 
   private Mono<ResolvedGeneralMetadataSet> persistTargeted(
@@ -103,7 +101,8 @@ public final class GeneralMetadataResolverService implements GeneralMetadataReso
     if (cached.isEmpty()) {
       return cache.write(replacement).thenReturn(replacement);
     }
-    return cache.replaceIfUnchanged(query.scope(), cached.orElseThrow(), replacement)
+    return cache
+        .replaceIfUnchanged(query.scope(), cached.orElseThrow(), replacement)
         .flatMap(
             outcome ->
                 outcome == GeneralMetadataCacheReplaceResult.APPLIED
@@ -111,12 +110,13 @@ public final class GeneralMetadataResolverService implements GeneralMetadataReso
                     : recoverAfterConflict(query));
   }
 
-  private Mono<ResolvedGeneralMetadataSet> recoverAfterConflict(
-      ResolveGeneralMetadataQuery query) {
-    return cache.read(query.scope())
+  private Mono<ResolvedGeneralMetadataSet> recoverAfterConflict(ResolveGeneralMetadataQuery query) {
+    return cache
+        .read(query.scope())
         .flatMap(
             reread ->
-                reread.filter(value -> containsAll(value, query.requiredKeys()))
+                reread
+                    .filter(value -> containsAll(value, query.requiredKeys()))
                     .map(Mono::just)
                     .orElseGet(() -> Mono.error(new GeneralMetadataConcurrencyException())));
   }
@@ -140,8 +140,9 @@ public final class GeneralMetadataResolverService implements GeneralMetadataReso
     if (result.resolutionSource().isEmpty()) {
       return Mono.error(new MissingRequiredGeneralMetadataException());
     }
-    var metadata = ResolvedGeneralMetadataSet.normalize(
-        query.scope(), result.resolutionSource().orElseThrow(), result.entries());
+    var metadata =
+        ResolvedGeneralMetadataSet.normalize(
+            query.scope(), result.resolutionSource().orElseThrow(), result.entries());
     if (!containsAll(metadata, query.requiredKeys())) {
       return Mono.error(new MissingRequiredGeneralMetadataException());
     }
@@ -157,8 +158,8 @@ public final class GeneralMetadataResolverService implements GeneralMetadataReso
         && existing.resolutionSource().orElseThrow() != targeted.resolutionSource().orElseThrow()) {
       throw new IllegalArgumentException("Conflicting general metadata resolution sources");
     }
-    GeneralMetadataResolutionSource sourceValue = existing.resolutionSource()
-        .orElseGet(targeted.resolutionSource()::orElseThrow);
+    GeneralMetadataResolutionSource sourceValue =
+        existing.resolutionSource().orElseGet(targeted.resolutionSource()::orElseThrow);
     var entries = new LinkedHashMap<GeneralMetadataKey, ResolvedGeneralMetadata>();
     for (var entry : existing.entries()) entries.put(entry.key(), entry);
     for (var entry : targeted.entries()) {
@@ -173,23 +174,24 @@ public final class GeneralMetadataResolverService implements GeneralMetadataReso
 
   private Set<GeneralMetadataKey> missingKeys(
       FetchGeneralMetadataResult result, Set<GeneralMetadataKey> required) {
-    var present = result.entries().stream().map(ResolvedGeneralMetadata::key)
-        .collect(java.util.stream.Collectors.toSet());
-    return required.stream().filter(key -> !present.contains(key))
+    var present =
+        result.entries().stream()
+            .map(ResolvedGeneralMetadata::key)
+            .collect(java.util.stream.Collectors.toSet());
+    return required.stream()
+        .filter(key -> !present.contains(key))
         .collect(java.util.stream.Collectors.toUnmodifiableSet());
   }
 
   private boolean containsAll(ResolvedGeneralMetadataSet metadata, Set<GeneralMetadataKey> keys) {
     return keys.stream().allMatch(key -> metadata.find(key).isPresent());
   }
-  private record InFlightKey(
-      GeneralMetadataScope scope,
-      Set<GeneralMetadataKey> requiredKeys) {
+
+  private record InFlightKey(GeneralMetadataScope scope, Set<GeneralMetadataKey> requiredKeys) {
     private InFlightKey {
       Objects.requireNonNull(scope, "scope must not be null");
-      requiredKeys = Set.copyOf(
-          Objects.requireNonNull(requiredKeys, "requiredKeys must not be null"));
+      requiredKeys =
+          Set.copyOf(Objects.requireNonNull(requiredKeys, "requiredKeys must not be null"));
     }
   }
-
 }

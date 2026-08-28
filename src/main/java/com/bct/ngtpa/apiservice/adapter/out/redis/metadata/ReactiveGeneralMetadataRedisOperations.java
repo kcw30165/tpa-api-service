@@ -31,14 +31,16 @@ final class ReactiveGeneralMetadataRedisOperations implements GeneralMetadataRed
     Objects.requireNonNull(key, "key must not be null");
     Objects.requireNonNull(expected, "expected must not be null");
     Objects.requireNonNull(replacement, "replacement must not be null");
-    return redis.execute(SCRIPT, List.of(key), List.of(expected, replacement))
+    return redis
+        .execute(SCRIPT, List.of(key), List.of(expected, replacement))
         .singleOrEmpty()
         .switchIfEmpty(Mono.error(new CacheException("Cache replace operation failed")))
         .map(this::mapResult)
         .onErrorMap(
-            error -> error instanceof CacheException
-                ? error
-                : new CacheException("Cache replace operation failed", error));
+            error ->
+                error instanceof CacheException
+                    ? error
+                    : new CacheException("Cache replace operation failed", error));
   }
 
   private GeneralMetadataCacheReplaceResult mapResult(Long result) {

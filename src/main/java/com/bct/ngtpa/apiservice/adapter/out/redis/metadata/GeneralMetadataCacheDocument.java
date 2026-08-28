@@ -10,10 +10,16 @@ record GeneralMetadataCacheDocument(
     GeneralMetadataResolutionSource resolutionSource,
     List<ResolvedGeneralMetadata> entries) {
   static GeneralMetadataCacheDocument from(ResolvedGeneralMetadataSet value) {
-    return new GeneralMetadataCacheDocument(value.scope().accountEnv(), value.scope().trustCode(),
-        value.scope().policyNo(), value.resolutionSource(), value.entries());
+    return new GeneralMetadataCacheDocument(
+        value.scope().accountEnv(),
+        value.scope().trustCode(),
+        value.scope().policyNo(),
+        value.resolutionSource(),
+        value.entries());
   }
+
   ResolvedGeneralMetadataSet toDomain() {
-    return new ResolvedGeneralMetadataSet(new GeneralMetadataScope(accountEnv, trustCode, policyNo), resolutionSource, entries);
+    return new ResolvedGeneralMetadataSet(
+        new GeneralMetadataScope(accountEnv, trustCode, policyNo), resolutionSource, entries);
   }
 }

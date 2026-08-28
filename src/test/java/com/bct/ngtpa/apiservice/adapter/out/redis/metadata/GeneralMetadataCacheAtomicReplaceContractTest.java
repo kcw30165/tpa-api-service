@@ -11,18 +11,21 @@ import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 
 class GeneralMetadataCacheAtomicReplaceContractTest {
-  private static final Path ADAPTER = Path.of(
-      "src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/metadata/RedisGeneralMetadataCacheAdapter.java");
-  private static final Path OPERATIONS = Path.of(
-      "src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/metadata/ReactiveGeneralMetadataRedisOperations.java");
+  private static final Path ADAPTER =
+      Path.of(
+          "src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/metadata/RedisGeneralMetadataCacheAdapter.java");
+  private static final Path OPERATIONS =
+      Path.of(
+          "src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/metadata/ReactiveGeneralMetadataRedisOperations.java");
 
   @Test
   void applicationPortExposesReactiveCapabilityScopedReplacement() throws Exception {
-    Method method = GeneralMetadataCachePort.class.getMethod(
-        "replaceIfUnchanged",
-        com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataScope.class,
-        com.bct.ngtpa.apiservice.application.dto.metadata.ResolvedGeneralMetadataSet.class,
-        com.bct.ngtpa.apiservice.application.dto.metadata.ResolvedGeneralMetadataSet.class);
+    Method method =
+        GeneralMetadataCachePort.class.getMethod(
+            "replaceIfUnchanged",
+            com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataScope.class,
+            com.bct.ngtpa.apiservice.application.dto.metadata.ResolvedGeneralMetadataSet.class,
+            com.bct.ngtpa.apiservice.application.dto.metadata.ResolvedGeneralMetadataSet.class);
     assertThat(method.getReturnType()).isEqualTo(Mono.class);
     assertThat(GeneralMetadataCacheReplaceResult.values())
         .containsExactly(

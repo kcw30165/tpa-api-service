@@ -19,8 +19,10 @@ import reactor.test.StepVerifier;
 @SuppressWarnings({"unchecked", "rawtypes"})
 class ReactiveGeneralMetadataRedisOperationsTest {
   private static final String KEY = "ngtpa:general-metadata:" + "a".repeat(64);
-  private static final String EXPECTED = "{\"source\":\"DEFAULT_ALL\",\"entries\":[{\"value\":\"6\"}]}";
-  private static final String REPLACEMENT = "{\"source\":\"DEFAULT_ALL\",\"entries\":[{\"value\":\"7\"}]}";
+  private static final String EXPECTED =
+      "{\"source\":\"DEFAULT_ALL\",\"entries\":[{\"value\":\"6\"}]}";
+  private static final String REPLACEMENT =
+      "{\"source\":\"DEFAULT_ALL\",\"entries\":[{\"value\":\"7\"}]}";
 
   private final ReactiveRedisTemplate<String, String> redis = mock(ReactiveRedisTemplate.class);
   private final ReactiveGeneralMetadataRedisOperations operations =

@@ -86,7 +86,8 @@ class GeneralMetadataResolverConcurrencyBehaviorTest {
     var cache = new ScriptedCache();
     GeneralMetadataSourcePort source = command -> Mono.just(result(NAV, "6"));
     var service = new GeneralMetadataResolverService(cache, source);
-    StepVerifier.create(Mono.zip(service.resolve(query(SCOPE, NAV)), service.resolve(query(OTHER_SCOPE, NAV))))
+    StepVerifier.create(
+            Mono.zip(service.resolve(query(SCOPE, NAV)), service.resolve(query(OTHER_SCOPE, NAV))))
         .expectNextCount(1)
         .verifyComplete();
     assertThat(cache.writes).hasSize(2);
@@ -95,18 +96,17 @@ class GeneralMetadataResolverConcurrencyBehaviorTest {
   @Test
   void sameScopeDifferentRequiredKeysDoNotShareAnIncompleteResult() {
     var cache = new ScriptedCache();
-    GeneralMetadataSourcePort source = command -> {
-      if (command.requestedKeys().isEmpty()) {
-        return Mono.just(result(NAV, "6"));
-      }
-      return Mono.just(result(UNIT, "2"));
-    };
+    GeneralMetadataSourcePort source =
+        command -> {
+          if (command.requestedKeys().isEmpty()) {
+            return Mono.just(result(NAV, "6"));
+          }
+          return Mono.just(result(UNIT, "2"));
+        };
     var service = new GeneralMetadataResolverService(cache, source);
 
     StepVerifier.create(
-            Mono.zip(
-                service.resolve(query(SCOPE, NAV)),
-                service.resolve(query(SCOPE, NAV, UNIT))))
+            Mono.zip(service.resolve(query(SCOPE, NAV)), service.resolve(query(SCOPE, NAV, UNIT))))
         .assertNext(
             pair -> {
               assertThat(pair.getT1().find(NAV)).isPresent();
@@ -130,11 +130,13 @@ class GeneralMetadataResolverConcurrencyBehaviorTest {
             })
         .verifyComplete();
 
-    assertThat(cache.writes).singleElement().satisfies(
-        value -> {
-          assertThat(value.find(NAV)).isPresent();
-          assertThat(value.find(UNIT)).isPresent();
-        });
+    assertThat(cache.writes)
+        .singleElement()
+        .satisfies(
+            value -> {
+              assertThat(value.find(NAV)).isPresent();
+              assertThat(value.find(UNIT)).isPresent();
+            });
     assertThat(cache.replaceCalls).hasValue(0);
   }
 
@@ -170,7 +172,9 @@ class GeneralMetadataResolverConcurrencyBehaviorTest {
   @Test
   void conflictAndMissingEachPerformOneBoundedRereadAndPreserveCompetingValue() {
     for (GeneralMetadataCacheReplaceResult outcome :
-        List.of(GeneralMetadataCacheReplaceResult.CONFLICT, GeneralMetadataCacheReplaceResult.MISSING)) {
+        List.of(
+            GeneralMetadataCacheReplaceResult.CONFLICT,
+            GeneralMetadataCacheReplaceResult.MISSING)) {
       var cache = ScriptedCache.incomplete(existing(NAV, "6"));
       cache.replaceResults.add(outcome);
       cache.readResults.add(Optional.of(existing(NAV, "6", UNIT, "9")));
@@ -234,21 +238,33 @@ class GeneralMetadataResolverConcurrencyBehaviorTest {
   private static final class GatedSource implements GeneralMetadataSourcePort {
     private final AtomicInteger calls = new AtomicInteger();
     private Sinks.One<FetchGeneralMetadataResult> gate = Sinks.one();
+
     public Mono<FetchGeneralMetadataResult> fetch(FetchGeneralMetadataCommand command) {
       calls.incrementAndGet();
       return gate.asMono();
     }
-    void complete(FetchGeneralMetadataResult result) { gate.tryEmitValue(result).orThrow(); }
-    void fail(Throwable failure) { gate.tryEmitError(failure).orThrow(); }
-    void reset() { gate = Sinks.one(); }
+
+    void complete(FetchGeneralMetadataResult result) {
+      gate.tryEmitValue(result).orThrow();
+    }
+
+    void fail(Throwable failure) {
+      gate.tryEmitError(failure).orThrow();
+    }
+
+    void reset() {
+      gate = Sinks.one();
+    }
   }
 
   private static final class SequenceSource implements GeneralMetadataSourcePort {
     private final AtomicInteger calls = new AtomicInteger();
     private final Queue<FetchGeneralMetadataResult> results;
+
     SequenceSource(FetchGeneralMetadataResult... results) {
       this.results = new ArrayDeque<>(List.of(results));
     }
+
     public Mono<FetchGeneralMetadataResult> fetch(FetchGeneralMetadataCommand command) {
       calls.incrementAndGet();
       return Mono.just(results.remove());
@@ -261,20 +277,27 @@ class GeneralMetadataResolverConcurrencyBehaviorTest {
     private final Queue<Optional<ResolvedGeneralMetadataSet>> readResults = new ArrayDeque<>();
     private final Queue<GeneralMetadataCacheReplaceResult> replaceResults = new ArrayDeque<>();
     private final List<ResolvedGeneralMetadataSet> writes = new ArrayList<>();
+
     static ScriptedCache incomplete(ResolvedGeneralMetadataSet value) {
       var cache = new ScriptedCache();
       cache.readResults.add(Optional.of(value));
       return cache;
     }
+
     public Mono<Optional<ResolvedGeneralMetadataSet>> read(GeneralMetadataScope scope) {
       readCalls.incrementAndGet();
       return Mono.just(readResults.isEmpty() ? Optional.empty() : readResults.remove());
     }
+
     public Mono<Void> write(ResolvedGeneralMetadataSet metadata) {
       writes.add(metadata);
       return Mono.empty();
     }
-    public Mono<Void> evict(GeneralMetadataScope scope) { return Mono.empty(); }
+
+    public Mono<Void> evict(GeneralMetadataScope scope) {
+      return Mono.empty();
+    }
+
     public Mono<GeneralMetadataCacheReplaceResult> replaceIfUnchanged(
         GeneralMetadataScope scope,
         ResolvedGeneralMetadataSet expected,

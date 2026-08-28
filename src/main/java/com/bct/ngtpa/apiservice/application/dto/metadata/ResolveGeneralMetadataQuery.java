@@ -5,9 +5,7 @@ import java.util.Objects;
 import java.util.Set;
 
 public record ResolveGeneralMetadataQuery(
-    GeneralMetadataScope scope,
-    Set<GeneralMetadataKey> requiredKeys,
-    ActorUserRole actorUserRole) {
+    GeneralMetadataScope scope, Set<GeneralMetadataKey> requiredKeys, ActorUserRole actorUserRole) {
   public ResolveGeneralMetadataQuery {
     Objects.requireNonNull(scope, "scope must not be null");
     requiredKeys =

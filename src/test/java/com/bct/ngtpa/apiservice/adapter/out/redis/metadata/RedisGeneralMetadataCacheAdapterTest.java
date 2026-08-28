@@ -13,7 +13,8 @@ import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 
 class RedisGeneralMetadataCacheAdapterTest {
-  @Test void missReturnsEmptyAndUsesOpaquePolicyScopedKey() {
+  @Test
+  void missReturnsEmptyAndUsesOpaquePolicyScopedKey() {
     var cache = new RecordingCache();
     var adapter = adapter(cache);
     assertThat(adapter.read(scope()).block()).isEmpty();
@@ -21,7 +22,8 @@ class RedisGeneralMetadataCacheAdapterTest {
     assertThat(cache.lastKey).doesNotContain("DBA", "00000008802");
   }
 
-  @Test void writesAndReadsDefaultAndPolicySpecificDocumentsWithPt20m() {
+  @Test
+  void writesAndReadsDefaultAndPolicySpecificDocumentsWithPt20m() {
     for (var source : GeneralMetadataResolutionSource.values()) {
       var cache = new RecordingCache();
       var adapter = adapter(cache);
@@ -32,7 +34,8 @@ class RedisGeneralMetadataCacheAdapterTest {
     }
   }
 
-  @Test void corruptEntryIsEvictedAndTreatedAsMiss() {
+  @Test
+  void corruptEntryIsEvictedAndTreatedAsMiss() {
     var cache = new RecordingCache();
     cache.value = "not-json";
     var adapter = adapter(cache);
@@ -40,35 +43,91 @@ class RedisGeneralMetadataCacheAdapterTest {
     assertThat(cache.evicted).isTrue();
   }
 
-  @Test void redisFailuresRemainFailures() {
+  @Test
+  void redisFailuresRemainFailures() {
     var failure = new IllegalStateException("redis failed");
-    var adapter = new RedisGeneralMetadataCacheAdapter(
-        new FailingCache(failure), new RedisCacheKeyFactory("ngtpa"), new ObjectMapper().findAndRegisterModules(),
-        new GeneralMetadataCacheProperties(Duration.parse("PT20M")),
-        (key, expected, replacement) -> Mono.just(
-            com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataCacheReplaceResult.APPLIED));
+    var adapter =
+        new RedisGeneralMetadataCacheAdapter(
+            new FailingCache(failure),
+            new RedisCacheKeyFactory("ngtpa"),
+            new ObjectMapper().findAndRegisterModules(),
+            new GeneralMetadataCacheProperties(Duration.parse("PT20M")),
+            (key, expected, replacement) ->
+                Mono.just(
+                    com.bct.ngtpa.apiservice.application.dto.metadata
+                        .GeneralMetadataCacheReplaceResult.APPLIED));
     assertThatThrownBy(() -> adapter.read(scope()).block()).hasRootCause(failure);
-    assertThatThrownBy(() -> adapter.write(new ResolvedGeneralMetadataSet(scope(), GeneralMetadataResolutionSource.DEFAULT_ALL, List.of(entry("6")))).block()).hasRootCause(failure);
+    assertThatThrownBy(
+            () ->
+                adapter
+                    .write(
+                        new ResolvedGeneralMetadataSet(
+                            scope(),
+                            GeneralMetadataResolutionSource.DEFAULT_ALL,
+                            List.of(entry("6"))))
+                    .block())
+        .hasRootCause(failure);
   }
 
   private RedisGeneralMetadataCacheAdapter adapter(CachePort cache) {
-    return new RedisGeneralMetadataCacheAdapter(cache, new RedisCacheKeyFactory("ngtpa"),
-        new ObjectMapper().findAndRegisterModules(), new GeneralMetadataCacheProperties(Duration.parse("PT20M")),
-        (key, expected, replacement) -> Mono.just(
-            com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataCacheReplaceResult.APPLIED));
+    return new RedisGeneralMetadataCacheAdapter(
+        cache,
+        new RedisCacheKeyFactory("ngtpa"),
+        new ObjectMapper().findAndRegisterModules(),
+        new GeneralMetadataCacheProperties(Duration.parse("PT20M")),
+        (key, expected, replacement) ->
+            Mono.just(
+                com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataCacheReplaceResult
+                    .APPLIED));
   }
-  private GeneralMetadataScope scope() { return new GeneralMetadataScope("DB", "DBA", "00000008802"); }
-  private ResolvedGeneralMetadata entry(String value) { return new ResolvedGeneralMetadata(new GeneralMetadataKey(GeneralMetadataName.FUND_PRICE, GeneralMetadataType.PRECISION), value); }
+
+  private GeneralMetadataScope scope() {
+    return new GeneralMetadataScope("DB", "DBA", "00000008802");
+  }
+
+  private ResolvedGeneralMetadata entry(String value) {
+    return new ResolvedGeneralMetadata(
+        new GeneralMetadataKey(GeneralMetadataName.FUND_PRICE, GeneralMetadataType.PRECISION),
+        value);
+  }
 
   private static final class RecordingCache implements CachePort {
-    String lastKey; String value; Duration ttl; boolean evicted;
-    public Mono<Optional<String>> get(String key) { lastKey=key; return Mono.just(Optional.ofNullable(value)); }
-    public Mono<Void> set(String key,String value,Duration ttl) { lastKey=key; this.value=value; this.ttl=ttl; return Mono.empty(); }
-    public Mono<Boolean> evict(String key) { lastKey=key; evicted=true; value=null; return Mono.just(true); }
+    String lastKey;
+    String value;
+    Duration ttl;
+    boolean evicted;
+
+    public Mono<Optional<String>> get(String key) {
+      lastKey = key;
+      return Mono.just(Optional.ofNullable(value));
+    }
+
+    public Mono<Void> set(String key, String value, Duration ttl) {
+      lastKey = key;
+      this.value = value;
+      this.ttl = ttl;
+      return Mono.empty();
+    }
+
+    public Mono<Boolean> evict(String key) {
+      lastKey = key;
+      evicted = true;
+      value = null;
+      return Mono.just(true);
+    }
   }
+
   private record FailingCache(RuntimeException failure) implements CachePort {
-    public Mono<Optional<String>> get(String key) { return Mono.error(failure); }
-    public Mono<Void> set(String key,String value,Duration ttl) { return Mono.error(failure); }
-    public Mono<Boolean> evict(String key) { return Mono.error(failure); }
+    public Mono<Optional<String>> get(String key) {
+      return Mono.error(failure);
+    }
+
+    public Mono<Void> set(String key, String value, Duration ttl) {
+      return Mono.error(failure);
+    }
+
+    public Mono<Boolean> evict(String key) {
+      return Mono.error(failure);
+    }
   }
 }

@@ -1,13 +1,13 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.metadata;
 
 import com.bct.ngtpa.apiservice.adapter.out.apim.ApimResponseValidator;
-import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
-import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
-import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
-import com.bct.ngtpa.apiservice.adapter.out.apim.metadata.dto.GeneralMetadataApimRequest;
-import com.bct.ngtpa.apiservice.adapter.out.apim.metadata.dto.GeneralMetadataApimRow;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolutionContext;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
+import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.metadata.dto.GeneralMetadataApimRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.metadata.dto.GeneralMetadataApimRow;
+import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
 import com.bct.ngtpa.apiservice.application.dto.metadata.FetchGeneralMetadataCommand;
 import com.bct.ngtpa.apiservice.application.dto.metadata.FetchGeneralMetadataResult;
 import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataKey;
@@ -45,12 +45,23 @@ public final class ApimGeneralMetadataSourceAdapter implements GeneralMetadataSo
     Objects.requireNonNull(command, "command must not be null");
     var keys = command.requestedKeys().stream().sorted(KEY_ORDER).toList();
     if (keys.isEmpty()) {
-      return execute(command, GeneralMetadataApimRequest.unfiltered(
-          command.scope().accountEnv(), command.scope().trustCode(), command.scope().policyNo()));
+      return execute(
+          command,
+          GeneralMetadataApimRequest.unfiltered(
+              command.scope().accountEnv(),
+              command.scope().trustCode(),
+              command.scope().policyNo()));
     }
     return Flux.fromIterable(keys)
-        .concatMap(key -> execute(command, GeneralMetadataApimRequest.targeted(
-            command.scope().accountEnv(), command.scope().trustCode(), command.scope().policyNo(), key)))
+        .concatMap(
+            key ->
+                execute(
+                    command,
+                    GeneralMetadataApimRequest.targeted(
+                        command.scope().accountEnv(),
+                        command.scope().trustCode(),
+                        command.scope().policyNo(),
+                        key)))
         .collectList()
         .map(this::combine);
   }
@@ -58,15 +69,17 @@ public final class ApimGeneralMetadataSourceAdapter implements GeneralMetadataSo
   private Mono<FetchGeneralMetadataResult> execute(
       FetchGeneralMetadataCommand command, GeneralMetadataApimRequest request) {
     var scope = command.scope();
-    var exchange = new ApimExchangeRequest<>(
-        API_PATH,
-        request,
-        GeneralMetadataApimRequest.class,
-        GeneralMetadataApimRow.class,
-        ApimDatabaseScope.ACCOUNT_ENV,
-        new ApimCredentialResolutionContext(command.actorUserRole(), scope.accountEnv()),
-        ApimRetryEligibility.SAFE_BUSINESS_CALL);
-    return executor.postEnvelope(exchange)
+    var exchange =
+        new ApimExchangeRequest<>(
+            API_PATH,
+            request,
+            GeneralMetadataApimRequest.class,
+            GeneralMetadataApimRow.class,
+            ApimDatabaseScope.ACCOUNT_ENV,
+            new ApimCredentialResolutionContext(command.actorUserRole(), scope.accountEnv()),
+            ApimRetryEligibility.SAFE_BUSINESS_CALL);
+    return executor
+        .postEnvelope(exchange)
         .map(response -> ApimResponseValidator.requireSuccessData(response))
         .map(rows -> normalizer.normalize(scope.policyNo(), rows));
   }
@@ -75,11 +88,13 @@ public final class ApimGeneralMetadataSourceAdapter implements GeneralMetadataSo
     Optional<GeneralMetadataResolutionSource> source = Optional.empty();
     var entries = new LinkedHashMap<GeneralMetadataKey, ResolvedGeneralMetadata>();
     for (var result : results) {
-      if (source.isPresent() && result.resolutionSource().isPresent()
+      if (source.isPresent()
+          && result.resolutionSource().isPresent()
           && source.get() != result.resolutionSource().get()) {
         throw new IllegalArgumentException("Conflicting general metadata resolution sources");
       }
-      if (source.isEmpty() && result.resolutionSource().isPresent()) source = result.resolutionSource();
+      if (source.isEmpty() && result.resolutionSource().isPresent())
+        source = result.resolutionSource();
       for (var entry : result.entries()) {
         var previous = entries.putIfAbsent(entry.key(), entry);
         if (previous != null && !previous.value().equals(entry.value()))

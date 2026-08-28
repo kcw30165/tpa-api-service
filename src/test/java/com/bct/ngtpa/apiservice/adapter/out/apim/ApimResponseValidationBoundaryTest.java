@@ -19,8 +19,7 @@ class ApimResponseValidationBoundaryTest {
           "ApimNotificationReadStatusAdapter.java",
           "ApimReferenceDataCountriesAdapter.java",
           "ApimUpdatePersonalInformationAdapter.java",
-          "metadata/ApimGeneralMetadataSourceAdapter.java"
-      );
+          "metadata/ApimGeneralMetadataSourceAdapter.java");
 
   @Test
   void apimAdaptersUseSharedEnvelopeValidatorInsteadOfLocalErrMessageAndDataValidation()
