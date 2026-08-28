@@ -218,3 +218,7 @@ Added strict currency-selection mapping that preserves TAS order and rejects bla
 - The provisional assembler is replaced by complete normalization, aggregation, portfolio, localization, precision, currency, and factsheet composition.
 - Both portfolio views are generated independently from one normalized model.
 - Spotless and runtime tests remain deferred to Phase IV-008.
+
+### Phase IV-008 stabilization and architect review
+
+Repaired the stale visibility architecture guard after the ratified dual-view response replaced the flattened portfolio DTO. The feature-level formatter is executed exactly once in this subphase, followed by production compilation, test compilation, cumulative static audits, and diff checking. The required twelve-file Phase IV architect-review package is generated from the immutable Phase IV base through the pre-review HEAD. Runtime Maven tests are not executed by the generated validation workflow. Phase V remains blocked pending the architect decision.
