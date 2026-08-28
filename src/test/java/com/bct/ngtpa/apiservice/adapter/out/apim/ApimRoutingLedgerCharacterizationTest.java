@@ -21,6 +21,7 @@ class ApimRoutingLedgerCharacterizationTest {
 
   private static final List<Entry> LEDGER =
       List.of(
+        e("TRPGetMemberAccBal", "accountbalance/ApimAccountBalanceSourceAdapter.java", "ACCOUNT_ENV", "command.actorUserRole()", "command.accountEnv()", "SAFE_BUSINESS_CALL", "EXECUTOR", "ACCOUNT_ENV"),
           e(
               "TRPGetContSumy",
               "ApimContributionSummaryAdapter.java",
@@ -171,7 +172,7 @@ class ApimRoutingLedgerCharacterizationTest {
     assertThat(LEDGER)
         .extracting(Entry::operation)
         .doesNotHaveDuplicates()
-        .hasSize(16)
+        .hasSize(17)
         .containsExactlyInAnyOrder(
             "TRPGetContSumy",
             "TRPGetMemberInfo",

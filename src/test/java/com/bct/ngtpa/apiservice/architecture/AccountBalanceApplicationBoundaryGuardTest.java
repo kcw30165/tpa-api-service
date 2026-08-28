@@ -23,9 +23,9 @@ class AccountBalanceApplicationBoundaryGuardTest {
     assertThat(command).contains("String policyNo", "String certNo", "ActorUserRole actorUserRole", "LocalDate referenceDate");
     assertThat(command).doesNotContain("accountRef", "Integer certNo", "Long certNo", "String loginUserRole");
   }
-
   @Test
-  void subphaseDoesNotIntroduceMemberBalanceApimAdapter() {
-    assertThat(Files.exists(Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/accountbalance"))).isFalse();
+  void accountBalanceAdapterUsesExecutorBoundary() throws Exception {
+    String adapter = Files.readString(Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/accountbalance/ApimAccountBalanceSourceAdapter.java"));
+    assertThat(adapter).contains("ApimExchangeExecutor", "ApimExchangeRequest", "ACCOUNT_ENV", "SAFE_BUSINESS_CALL").doesNotContain("ApimWebClientFacade", "ApimPayloadCryptoService", "ApimProperties");
   }
 }
