@@ -532,3 +532,11 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - The Contributions scenario writes `Login OTP: ` directly to `/dev/tty`, reads the OTP silently from `/dev/tty`, and emits only a terminal newline afterward.
 - An isolated controlling pseudo-terminal validation proves the prompt is visible, synthetic input is injected automatically, and the entered OTP is not echoed.
 - No network request or OTP delivery was performed during this repair.
+
+
+### Offline Contributions CI contract
+
+- The deterministic offline regression includes five Login scenarios plus `contributions/list-authenticated` with a fully mocked five-request journey.
+- The Contributions child validates authenticated cookie, XSRF, Account-Ref, date arguments, response contract, and logout with zero real network requests and zero human prompts.
+- `scripts/ci/validate-login-contributions.sh` defines compile, test-compile, targeted Login integration, offline regression, and Git preservation checks for Jenkins.
+- Live Login, OTP, Contributions, and logout modes remain excluded from automatic CI.

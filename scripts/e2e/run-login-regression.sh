@@ -105,6 +105,74 @@ run_offline_child() {
   return 0
 }
 
+write_contributions_mock() {
+  local dir="$1"
+  cat >"$dir/curl" <<'MOCK'
+#!/usr/bin/env bash
+set -euo pipefail
+count_file="${MOCK_COUNT_FILE:?}"
+count=0; [[ -f "$count_file" ]] && count="$(cat "$count_file")"
+count=$((count+1)); printf '%s' "$count" >"$count_file"
+out=''; headers=''; args_file="${MOCK_ARGS_FILE:?}"
+printf '%q ' "$@" >>"$args_file"; printf '\n' >>"$args_file"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -o) out="$2"; shift 2 ;;
+    -D) headers="$2"; shift 2 ;;
+    -w) shift 2 ;;
+    *) shift ;;
+  esac
+done
+case "$count" in
+  1)
+    printf 'HTTP/1.1 200 OK\r\nSet-Cookie: auth_flow_sid=SYNTHETIC_COOKIE; Path=/api/v1/auth; Secure; HttpOnly\r\n\r\n' >"$headers"
+    printf '{"success":true,"status":"SUCCESS","result":{"nextStep":"SELECT_OTP_DESTINATION","data":{"csrfToken":"SYNTHETIC_CSRF","destinations":[{"destinationId":"SYNTHETIC_DEST","channel":"email","maskedDestination":"SYNTHETIC_MASK"}]}}}' >"$out" ;;
+  2)
+    printf 'HTTP/1.1 200 OK\r\n\r\n' >"$headers"
+    printf '{"success":true,"status":"SUCCESS","result":{"nextStep":"VERIFY_OTP","data":{"resendCooldownSeconds":60}}}' >"$out" ;;
+  3)
+    printf 'HTTP/1.1 200 OK\r\nSet-Cookie: portal_sid=SYNTHETIC_PORTAL; Path=/; Secure; HttpOnly\r\nSet-Cookie: auth_flow_sid=; Max-Age=0; Path=/api/v1/auth\r\n\r\n' >"$headers"
+    printf '{"success":true,"status":"SUCCESS","result":{"nextStep":"SELECT_ACCOUNT","data":{"csrfToken":"SYNTHETIC_AUTH_CSRF","accounts":[{"accountRef":"SYNTHETIC_ACCOUNT","accountEnv":"SYNTHETIC_ENV"}]}}}' >"$out" ;;
+  4)
+    printf 'HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n' >"$headers"
+    printf '{"actions":{"export":{"enabled":true}},"items":[],"pagination":{"page":1,"pageSize":99999,"totalRecords":0,"hasNextPage":false}}' >"$out" ;;
+  5)
+    printf 'HTTP/1.1 200 OK\r\nSet-Cookie: portal_sid=; Max-Age=0; Path=/\r\n\r\n' >"$headers"
+    printf '{"success":true,"status":"SUCCESS","result":null,"messages":[],"errors":[]}' >"$out" ;;
+  *) exit 98 ;;
+esac
+printf '200 0.001000'
+MOCK
+  chmod 755 "$dir/curl"
+}
+
+run_offline_contributions_child() {
+  local tmp output rc
+  tmp="$(mktemp -d)"; mkdir -p "$tmp/bin" "$tmp/runtime"
+  write_contributions_mock "$tmp/bin"
+  printf '246810' >"$tmp/runtime/otp"; chmod 600 "$tmp/runtime/otp"
+  output="$PARENT/016-contributions-list-authenticated.txt"
+  set +e
+  MOCK_COUNT_FILE="$tmp/count" MOCK_ARGS_FILE="$tmp/requests" PATH="$tmp/bin:$PATH" \
+    BFF_BASE_URL=http://mock E2E_EVIDENCE_ROOT="$CHILD_ROOT" E2E_ENVIRONMENT=offline \
+    E2E_SCENARIO_PACK=contributions E2E_SCENARIO_ID=list-authenticated E2E_BOOTSTRAP_MODE=anonymous \
+    E2E_ALLOW_EXTERNAL_EFFECTS=true E2E_ALLOW_OTP_VERIFICATION=true E2E_ALLOW_AUTHENTICATED_LOGOUT=true \
+    E2E_ALLOW_ACCOUNT_SELECTION=false E2E_OFFLINE_TEST_MODE=true \
+    E2E_TEST_OTP_CODE_FILE="$tmp/runtime/otp" CONTRIBUTIONS_ACCOUNT_INDEX=0 \
+    CONTRIBUTIONS_FROM_DATE=20/03/2026 CONTRIBUTIONS_TO_DATE=29/06/2026 \
+    LOGIN_TEST_USERNAME=synthetic-user LOGIN_TEST_PASSWORD=synthetic-password LOGIN_OTP_DESTINATION_INDEX=0 \
+    bash scripts/e2e/run.sh >"$output" 2>&1
+  rc=$?
+  set -e
+  record_child contributions-list-authenticated "$rc" "$output"
+  [[ "$(cat "$tmp/count" 2>/dev/null || true)" == 5 ]] || { printf 'contributions request count mismatch\n' >>"$FAILURES"; OVERALL=1; }
+  for marker in '/api/v1/contributions' 'Account-Ref:' 'X-XSRF-TOKEN:' 'portal_sid=' 'fromDate=20/03/2026' 'toDate=29/06/2026'; do
+    grep -Fqi -- "$marker" "$tmp/requests" || { printf 'contributions transport marker missing: %s\n' "$marker" >>"$FAILURES"; OVERALL=1; }
+  done
+  rm -rf "$tmp"
+  return 0
+}
+
 collect_credentials_once() {
   if [[ -z "${LOGIN_TEST_USERNAME:-}" ]]; then read -r -p 'Login test username: ' LOGIN_TEST_USERNAME; fi
   if [[ -z "${LOGIN_TEST_PASSWORD:-}" ]]; then read -r -s -p 'Login test password: ' LOGIN_TEST_PASSWORD; printf '\n'; fi
@@ -115,8 +183,18 @@ collect_credentials_once() {
 
 run_offline_suite() {
   local scenarios=(start-and-cancel otp-send-and-verify otp-send-and-invalid-verify otp-send-and-resend otp-send-verify-and-logout) i=0
-  for scenario in "${scenarios[@]}"; do i=$((i+1)); run_offline_child "$scenario" "01${i}"; done
-  printf 'scenarios=5\nfailed=%s\nreal_requests=0\nhuman_prompts=0\n' "$(wc -l <"$FAILURES")" >"$PARENT/010-offline-summary.txt"
+  for scenario in "${scenarios[@]}"; do
+    i=$((i+1))
+    run_offline_child "$scenario" "01${i}"
+  done
+  run_offline_contributions_child
+  printf 'scenarios=6
+login_scenarios=5
+contributions_scenarios=1
+failed=%s
+real_requests=0
+human_prompts=0
+' "$(wc -l <"$FAILURES")" >"$PARENT/010-offline-summary.txt"
 }
 
 run_live_safe_suite() {
