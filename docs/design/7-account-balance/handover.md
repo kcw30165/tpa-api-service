@@ -159,3 +159,11 @@ Implemented `GET /api/v1/account-balance` with optional `currency`, shared `X-Re
 ## Phase III-002 application context and reference-date orchestration
 
 Implemented a framework-free `GetAccountBalanceService` that resolves `ReferenceDatePort.resolveReferenceDate(accountEnv)` exactly once before invoking the focused `AccountBalanceDataPort`. The explicit downstream command preserves actor role, actor user ID, policy number, certificate number, account environment, trust code, scheme type, optional currency, and `LocalDate` reference date. Policy and certificate values remain strings, `Account-Ref` and `PortalAccessContext` do not cross the application boundary, and empty or failed reference-date resolution short-circuits the downstream call. The TRPGetMemberAccBal adapter, wire-level role conversion, certificate conversion, date formatting, and metadata aggregation remain deferred.
+
+## Phase III-003 TRPGetMemberAccBal APIM DTO contract
+
+Implemented exact adapter-only request and response DTOs for `TRPGetMemberAccBal`. The request preserves `policy-no` as a string, uses numeric `cert-no`, formats `ref-date` at the future adapter boundary, and always serializes `curr`, using an empty string for initial load. The response models `displayOptions`, `curr`, `dispSrc`, `fundDtl`, and `accBal`; financial values use `BigDecimal`, bilingual descriptions and factsheet strings remain raw, and exactly one non-null complete `response.data` item is required. Executor invocation, business-error classification, FE grouping, joining, localization, rendering, and factsheet validation remain deferred.
+
+## Phase III-003 TRPGetMemberAccBal APIM DTO contract
+
+Implemented exact adapter-only request and response DTOs for `TRPGetMemberAccBal`. The request preserves `policy-no` as a string, uses numeric `cert-no`, formats `ref-date` at the future adapter boundary, and always serializes `curr`, using an empty string for initial load. The response models `displayOptions`, `curr`, `dispSrc`, `fundDtl`, and `accBal`; financial values use `BigDecimal`, bilingual descriptions and factsheet strings remain raw, and exactly one non-null complete `response.data` item is required. Executor invocation, business-error classification, FE grouping, joining, localization, rendering, and factsheet validation remain deferred.
