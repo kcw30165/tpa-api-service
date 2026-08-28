@@ -339,3 +339,204 @@ The successful refresh response now wraps the payload under `result.data`, yield
 ### Result data documentation alignment
 
 The implementation plan, Phase 1 design record, session architecture, frontend integration guide, operations/testing guide, and session/CSRF README now document the final `result.data.sessionType` and `result.data.csrfToken` response path. The Phase 1 record explicitly marks only its original envelope detail as superseded; all locked security and persistence decisions remain valid.
+
+## WSL Runtime and Validation Handover
+
+- Updated: 20260825-222602
+- Branch: `dev`
+- Validated HEAD: `4864b746a9cb1615d2ac757561753bf15d7298ac`
+- Maven production compile: PASS, reused from Phase 07-002 evidence
+- Maven test compile: PASS, reused from Phase 07-002 evidence
+- Full Maven test suite in Phase 07: NOT RUN
+- Repaired runtime PID/PGID isolation: PASS
+- Actuator health and safe missing `X-Request-Id` contract: PASS
+- Targeted graceful shutdown with validation-process survival: PASS
+- Build-once JAR SHA-256: `a0528d83328094253f0f7ea12e9be66571e375a34b56358f3b1d03bc76d736f0`
+- Runtime-only image ID: `sha256:d263eb2b6bb9455d3798b75e83eef3ba64b6d768ed048a901c3c7b577f2bf3da`
+- Optional local Docker end-to-end runtime: DEFERRED
+- Deferral reason: Docker Desktop cannot route to the WSL loopback-only Redis Sentinel forward.
+- Future option: install a container-reachable local Redis/Sentinel instance.
+- Authoritative local workflow: `ngtpa-runtime-start dev`, `ngtpa-runtime-status dev`, `ngtpa-runtime-stop dev`.
+
+## WSL Workstream Gate State
+
+- Canonical documents: `docs/wsl`.
+- WSL Phases 01 through 06: completed evidence exists; optional local Docker-to-Sentinel runtime remains deferred.
+- WSL Phase 07 Gate A: complete.
+- WSL Phase 07 Gate B: implementation prepared; commit required before completion declaration.
+- WSL Phase 07 Gate C: prior direct-runtime evidence exists.
+- WSL Phase 07 Gate D: prior safe curl evidence exists; external physical effects are not inferred.
+- WSL Phase 07 Gate E: outstanding for Jenkins in Phase 08.
+- WSL Phase 07 Gate F: outstanding for immutable deployment and Nick acceptance.
+- Account Balance investigation exists, but implementation remains deferred until the WSL workstream advances.
+
+## WSL Phase 08 API-service CI Contract
+
+- Application branch: `features/feature-impl-account-balance`, MR target `dev`.
+- Pipeline development branch: `features/feature-ngtpa-131-141-restructure-jenkins-repo`, MR target `dev`.
+- Jenkins consumes both repositories for deployment.
+- API-service deterministic validation entrypoint: `scripts/ci/validate.sh`.
+- Test report contract: Surefire XML plus JaCoCo XML.
+- Deployment verification contract: `.devsecops/healthcheck.sh` performs an HTTP Actuator readiness check only.
+- Account Balance implementation remains deferred.
+- Gate E and protected-merge enforcement remain outstanding.
+
+## BFF Phase 00 Scripted E2E Framework
+
+- The shared curl-based framework is under `scripts/e2e` and replaces Postman as authoritative local functional validation.
+- Initial bootstrap modes are `anonymous` and `provided-session`.
+- Authenticated transport uses the configured `portal_sid` cookie, `X-XSRF-TOKEN` when required, and selected `Account-Ref`; no `Session-Id` header is introduced.
+- Pre-auth transport uses `auth_flow_sid` and `X-XSRF-TOKEN` when required.
+- `Accept-Language` and `X-Request-Id` are applied consistently.
+- Evidence is timestamped and redacted. Destructive, OTP/SMS, CAPTCHA automation, and scripted-auth flows are deferred.
+- Account Balance is the first planned feature-pack consumer, but its provisional design pack remains untracked and uncommitted.
+
+### Guarded Login OTP journey
+
+- Login OTP send is implemented behind `E2E_ALLOW_EXTERNAL_EFFECTS=true` and is disabled by default.
+- A fresh Login start is required in the same process. Historic auth-flow state is never reused.
+- Cookie, CSRF, and destination IDs exist only in a mode-700 temporary directory with mode-600 files and are deleted at exit.
+- Destination selection remains explicit even when only one destination is returned.
+- OTP resend and verification remain deferred.
+
+### Guarded Login OTP verification
+
+- The integrated Login scenario supports one fresh Login start, one OTP send, hidden OTP input, and one verification attempt.
+- Successful verification expects `SELECT_ACCOUNT`, a non-empty account list, `portal_sid`, and rotated authenticated CSRF.
+- Retained evidence contains only account count and structural status. Account references and protected account data are redacted.
+- OTP resend and account selection remain disabled.
+
+### Confirmed post-login account selection model
+
+- Successful Login OTP verification creates the authenticated portal session and returns `SELECT_ACCOUNT` with accessible accounts.
+- There is no separate Login account-selection mutation endpoint in the confirmed `LoginController` contract.
+- The frontend selects an account locally and sends only the selected `Account-Ref` with `portal_sid` on subsequent business requests.
+- Unsafe subsequent requests also require authenticated `X-XSRF-TOKEN`.
+- The BFF loads the authenticated session and resolves the selected account per request. `Session-Id` is not accepted.
+- Login Gate D ends at authenticated `SELECT_ACCOUNT`; selected-account context is validated by each post-login feature pack.
+
+### Guarded invalid Login OTP scenario
+
+- The invalid-OTP scenario uses one fresh Login start, one OTP send, and one deliberately invalid verification attempt.
+- Expected behavior is `BUSINESS_REJECTED` with `VERIFY_OTP`, remaining verify attempts, no authenticated portal cookie, and no account list.
+- Real execution is fail-closed behind explicit external-effect, verification, and invalid-OTP intent guards.
+- OTP resend, account selection, cancel, and logout remain excluded.
+
+### Deterministic invalid Login OTP validation
+
+- Live invalid-OTP validation prompts for the received OTP using hidden `/dev/tty` input, derives a same-length numeric code that differs in the final digit, and submits only the derived code.
+- Neither the received nor derived OTP is displayed or retained.
+- Invalid-OTP summaries are derived from the actual response, including public status, next step, portal-cookie issuance, and account count. Intended outcomes are not hardcoded into evidence.
+
+### Confirmed live invalid Login OTP contract
+
+- A well-formed but incorrect Login OTP returns HTTP 422, `BUSINESS_REJECTED`, and `VERIFY_OTP`.
+- The response includes remaining verify attempts, does not issue `portal_sid`, and does not return accounts.
+- The deterministic live run on 2026-08-27 satisfied every functional assertion except the obsolete HTTP 400 expectation, so the run is reclassified as successful after aligning the scenario to HTTP 422.
+
+### Guarded Login OTP resend
+
+- The first resend scenario performs one initial OTP send followed by one immediate resend request.
+- Expected cooldown response is HTTP 429, `BUSINESS_REJECTED`, `VERIFY_OTP`, and consistent positive header/body retry timing.
+- The scenario never sleeps or retries automatically and does not infer message-delivery success.
+- OTP verification, additional resend attempts, cancel, and logout remain excluded.
+
+### Confirmed live Login OTP immediate resend cooldown
+
+- The live immediate-resend run performed one initial OTP send and one immediate resend request.
+- The inner scenario passed with HTTP 429, `BUSINESS_REJECTED`, `VERIFY_OTP`, matching positive header/body retry timing, and zero automatic retries.
+- The outer runner initially failed because attempt counts were written to the assertion stream instead of the retained resend summary. The summary writer now groups all fields under one file redirection.
+
+### Guarded Login cancellation
+
+- The cancellation scenario performs one fresh Login start followed by one cancellation request before OTP delivery.
+- Expected behavior is HTTP 200, `SUCCESS`, `RETURN_TO_LOGIN`, cleared `auth_flow_sid`, and no returned CSRF token.
+- The scenario performs no OTP send, resend, verification, account selection, repeated cancellation, or logout.
+
+### Guarded authenticated logout
+
+- The authenticated logout scenario extends the successful one-process Login journey with exactly one logout request.
+- Logout uses `portal_sid`, authenticated CSRF, and `X-Request-Id`, and returns `MutationResponse<Void>` with HTTP 200 and `SUCCESS`.
+- Expected transport cleanup is a cleared `portal_sid` and no CSRF token in the response.
+- OTP resend, account selection, repeated logout, and post-logout protected requests remain excluded.
+
+### Committed Login retest interface
+
+- Routine Login retesting uses `scripts/e2e/run-login-dev.sh <scenario>` rather than commit-pinned `/mnt/d` wrappers.
+- The dispatcher interactively collects runtime credentials, keeps the password hidden, sets the scenario-specific guards, and invokes the canonical runner.
+- Supported names are `cancel`, `valid-otp`, `invalid-otp`, `resend-cooldown`, and `logout`.
+
+### Login regression orchestrator
+
+- `scripts/e2e/run-login-regression.sh` is the canonical suite-level entrypoint.
+- Modes are `offline`, `live-safe`, `live-otp`, and `all`.
+- The parent evidence manifest records explicit child paths returned by each launch and never discovers the newest evidence directory.
+- Offline regression is fully automatic. Live credentials are collected once per suite. OTP operations are never retried automatically.
+
+### Login regression live-child initialization repair
+
+- `run_live_child` now declares local variables before assigning values that depend on `alias`, preventing `set -u` from reading an uninitialized variable.
+- Validation uses bounded, non-recursive checks. It does not replace the `bash` executable in `PATH` and cannot recurse into the orchestrator.
+- The interrupted validation made no Login, cancellation, or OTP request.
+
+### Login regression interactive child streaming
+
+- Live child output is streamed through `tee`, keeping progress and `/dev/tty` OTP prompts visible while retaining the parent child-output file.
+- The child exit status is preserved from `PIPESTATUS[0]`.
+- Each live flow is announced before launch, and the explicit child evidence path remains captured from that child output.
+- An interrupted OTP is abandoned; retrying the suite requires a fresh Login flow and fresh OTP.
+
+### Resumable Login OTP regression
+
+- `live-otp-remaining` runs only invalid-OTP and resend-cooldown after logout already passed.
+- Invalid OTP input is trimmed and allows three local corrections without a BFF verification call for rejected local input.
+- Continuation budget is two OTP deliveries, one OTP prompt, one resend request, and zero automatic retries.
+
+### Login suite packaging and OTP derivation stabilization
+
+- Routine Login suites package their exact parent evidence directory as ZIP-in-`.txt` under `/mnt/d/Projects/ORSO/ngtpa` on exit.
+- Invalid OTP derivation initializes `last_digit` and `replacement` at function scope before either assignment branch.
+
+### Login Gate D closure
+
+- Login Gate D is closed as PASS at implementation baseline   `863a8a4f733fb09c743b346ee3fecf780fd3e764`.
+- Confirmed live coverage includes Login start, OTP destination selection, initial OTP send, valid OTP verification, invalid OTP verification, immediate resend cooldown, cancellation, authenticated session establishment, and authenticated logout.
+- Successful OTP verification ends at `SELECT_ACCOUNT`; there is no separate Login account-selection mutation.
+- Routine evidence is redacted, private runtime state is cleaned, and suite evidence is packaged automatically as ZIP-in-`.txt` under `/mnt/d/Projects/ORSO/ngtpa`.
+- Offline regression is CI-suitable. Live suites remain explicit development or pre-release checks because real credentials and OTP delivery are involved.
+
+### Login start and cancellation in-process integration coverage
+
+- Added `LoginStartCancellationWebIntegrationTest` using Spring `WebTestClient` bound to the real production `LoginController`.
+- The journey validates Login start response mapping, `auth_flow_sid` issuance, CSRF publication, cancellation `RETURN_TO_LOGIN`, cookie clearing, and idempotent missing-session cancellation.
+- All OTP use cases are deterministic test-only sentinels and remain uninvoked.
+- No `src/main/**` file changed, no external network was used, and no OTP was delivered.
+- Spotless application remains intentionally deferred to the feature stabilization stage.
+
+### Contributions Gate D authenticated E2E
+
+- Added a scripted Login-to-Contributions journey using the authenticated `portal_sid`, rotated XSRF token, and an `Account-Ref` returned by OTP verification.
+- The Contributions request is issued once with configurable `fromDate`, `toDate`, language, and account index, followed by authenticated logout.
+- Credentials, OTP, cookies, XSRF tokens, and raw Account-Ref values remain private and are excluded from evidence.
+- No production code changed. Offline validation uses deterministic responses and performs no real network call or OTP delivery.
+
+### Contributions Gate D Login helper loading repair
+
+- The first live attempt stopped before OTP delivery because the central dispatcher registered the Contributions scenario but did not source the shared `login_journey_start` helper for that scenario.
+- The dispatcher now loads the shared Login bootstrap for `contributions/list-authenticated` before sourcing the scenario.
+- The repair was validated without network requests or OTP delivery. The failed attempt is safe to retry once.
+
+
+### Contributions Gate D visible OTP prompt repair
+
+- The Contributions scenario writes `Login OTP: ` directly to `/dev/tty`, reads the OTP silently from `/dev/tty`, and emits only a terminal newline afterward.
+- An isolated controlling pseudo-terminal validation proves the prompt is visible, synthetic input is injected automatically, and the entered OTP is not echoed.
+- No network request or OTP delivery was performed during this repair.
+
+
+### Offline Contributions CI contract
+
+- The deterministic offline regression includes five Login scenarios plus `contributions/list-authenticated` with a fully mocked five-request journey.
+- The Contributions child validates authenticated cookie, XSRF, Account-Ref, date arguments, response contract, and logout with zero real network requests and zero human prompts.
+- `scripts/ci/validate-login-contributions.sh` defines compile, test-compile, targeted Login integration, offline regression, and Git preservation checks for Jenkins.
+- Live Login, OTP, Contributions, and logout modes remain excluded from automatic CI.
