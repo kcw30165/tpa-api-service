@@ -179,3 +179,7 @@ Implemented `ApimAccountBalanceSourceAdapter` against the application-owned raw 
 ## Phase III-005 Account Balance boundary integration
 
 The application use case now composes one reference-date resolution, one policy-scoped shared general-metadata resolution using all eight Phase IV precision and rounding keys, one raw Account Balance source call, and one application-owned assembler call. Failures short-circuit subsequent stages. The assembler seam is intentionally provisional: its production bean returns the approved sanitized system failure until Phase IV supplies the real transformation, while tests may inject controlled fixture assemblers. No financial values, hierarchy, localization, rendering, or factsheet behavior is fabricated in Phase III. The duplicate Phase III-003 handover section was removed.
+
+## Phase III-006A phase review requirements contract
+
+Added the committed `account-balance-phase-review-requirements.md` governance contract. It fixes the timestamped `phase-review` directory, twelve required review files, formatter and compilation gates, cumulative Git boundaries, architecture and preservation audits, provisional-assembler blocker disclosure, machine-readable review status, and the architect decision gate. This subphase defines review evidence only and does not begin Phase IV transformation.
