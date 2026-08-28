@@ -32,10 +32,23 @@ class GeneralMetadataResolverConcurrencyContractTest {
     assertThat(source)
         .contains(".replaceIfUnchanged(", "query.scope()", "cached.orElseThrow()", "replacement")
         .contains("outcome == GeneralMetadataCacheReplaceResult.APPLIED")
-        .contains("recoverAfterConflict(query)")
-        .contains("recoverAfterConflict(query)", ".read(query.scope())")
-        .contains("new GeneralMetadataConcurrencyException()")
+        .contains("recoverAfterConflict(query)");
+    String recovery = methodSource(source, "recoverAfterConflict(");
+    assertThat(recovery)
+        .contains(".read(query.scope())", "new GeneralMetadataConcurrencyException()")
         .doesNotContain("while (", "for (", "retryWhen", "repeatWhen");
+  }
+
+  private static String methodSource(String source, String signature) {
+    int start = source.indexOf(signature);
+    assertThat(start).isGreaterThanOrEqualTo(0);
+    int brace = source.indexOf('{', start);
+    int depth = 0;
+    for (int index = brace; index < source.length(); index++) {
+      if (source.charAt(index) == '{') depth++;
+      if (source.charAt(index) == '}' && --depth == 0) return source.substring(start, index + 1);
+    }
+    throw new IllegalStateException("method boundary not found");
   }
 
   @Test

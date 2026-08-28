@@ -128,3 +128,7 @@ Focused runtime execution exposed stale test assertions and fixtures plus one pr
 ## Phase II final contract-guard repair
 
 The post-repair focused runtime gate passed 66 of 67 tests. The sole remaining failure was a formatting-sensitive source-text assertion requiring `cache.read(query.scope())` as one contiguous string, while Spotless correctly formats the bounded recovery read across lines. The guard now verifies `recoverAfterConflict(query)` and `.read(query.scope())` independently. Production code and runtime behavior are unchanged.
+
+## Phase II bounded-recovery guard repair
+
+The final focused gate passed 66 of 67 tests. The remaining source-level guard incorrectly scanned the entire resolver for `for (` and therefore rejected legitimate finite loops in deterministic metadata merge logic. The guard now extracts only `recoverAfterConflict(...)` and verifies that the bounded recovery method contains one cache read and the sanitized concurrency failure, with no `while`, `for`, `retryWhen`, or `repeatWhen`. Production code and runtime behavior are unchanged.
