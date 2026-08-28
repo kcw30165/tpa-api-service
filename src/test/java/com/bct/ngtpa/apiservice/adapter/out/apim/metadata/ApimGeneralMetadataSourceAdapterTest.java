@@ -25,13 +25,13 @@ class ApimGeneralMetadataSourceAdapterTest {
   @Test
   void oneKeyProducesOneTargetedAuthenticatedSafeExchange() throws Exception {
     var exchanges = new CopyOnWriteArrayList<ApimExchangeRequest<?, ?>>();
-    var adapter = new ApimGeneralMetadataSourceAdapter(capturing(exchanges, false));
+    var adapter = adapter(capturing(exchanges, false));
     var result = adapter.fetch(command(Set.of(key(GeneralMetadataName.FUND_PRICE)))).block();
     assertThat(exchanges)
         .singleElement()
         .satisfies(
             exchange -> {
-              assertThat(exchange.path()).isEqualTo("/ws/NGTPA/v1/TRPGetGeneralMetaData");
+              assertThat(exchange.path()).isEqualTo("/configured/general-metadata");
               assertThat(exchange.requestType()).isEqualTo(GeneralMetadataApimRequest.class);
               assertThat(exchange.responseDataType()).isEqualTo(GeneralMetadataApimRow.class);
               assertThat(exchange.databaseScope()).isEqualTo(ApimDatabaseScope.ACCOUNT_ENV);
@@ -51,7 +51,7 @@ class ApimGeneralMetadataSourceAdapterTest {
   @Test
   void multipleKeysAreTargetedInDeterministicOrderAndCombined() {
     var exchanges = new CopyOnWriteArrayList<ApimExchangeRequest<?, ?>>();
-    var adapter = new ApimGeneralMetadataSourceAdapter(capturing(exchanges, false));
+    var adapter = adapter(capturing(exchanges, false));
     var result =
         adapter
             .fetch(
@@ -62,7 +62,7 @@ class ApimGeneralMetadataSourceAdapterTest {
     assertThat(exchanges)
         .allSatisfy(
             exchange -> {
-              assertThat(exchange.path()).isEqualTo("/ws/NGTPA/v1/TRPGetGeneralMetaData");
+              assertThat(exchange.path()).isEqualTo("/configured/general-metadata");
               assertThat(exchange.requestType()).isEqualTo(GeneralMetadataApimRequest.class);
               assertThat(exchange.responseDataType()).isEqualTo(GeneralMetadataApimRow.class);
               assertThat(exchange.databaseScope()).isEqualTo(ApimDatabaseScope.ACCOUNT_ENV);
@@ -83,9 +83,7 @@ class ApimGeneralMetadataSourceAdapterTest {
   @Test
   void emptyKeysUseOneExplicitUnfilteredRequest() {
     var exchanges = new CopyOnWriteArrayList<ApimExchangeRequest<?, ?>>();
-    new ApimGeneralMetadataSourceAdapter(capturing(exchanges, false))
-        .fetch(command(Set.of()))
-        .block();
+    adapter(capturing(exchanges, false)).fetch(command(Set.of())).block();
     assertThat(exchanges)
         .singleElement()
         .extracting(ApimExchangeRequest::request)
@@ -97,7 +95,7 @@ class ApimGeneralMetadataSourceAdapterTest {
     var exchanges = new CopyOnWriteArrayList<ApimExchangeRequest<?, ?>>();
     assertThatThrownBy(
             () ->
-                new ApimGeneralMetadataSourceAdapter(capturing(exchanges, true))
+                adapter(capturing(exchanges, true))
                     .fetch(
                         command(
                             Set.of(
@@ -109,7 +107,7 @@ class ApimGeneralMetadataSourceAdapterTest {
     var failure = new IllegalStateException("technical");
     assertThatThrownBy(
             () ->
-                new ApimGeneralMetadataSourceAdapter(failing(failure))
+                adapter(failing(failure))
                     .fetch(command(Set.of(key(GeneralMetadataName.FUND_PRICE))))
                     .block())
         .isSameAs(failure);
@@ -119,7 +117,7 @@ class ApimGeneralMetadataSourceAdapterTest {
   void malformedOperationContentIsPreserved() {
     assertThatThrownBy(
             () ->
-                new ApimGeneralMetadataSourceAdapter(malformedContent())
+                adapter(malformedContent())
                     .fetch(command(Set.of(key(GeneralMetadataName.FUND_PRICE))))
                     .block())
         .isInstanceOf(IllegalArgumentException.class)
@@ -130,7 +128,7 @@ class ApimGeneralMetadataSourceAdapterTest {
   void conflictingValuesForTheSameResolvedKeyFail() {
     assertThatThrownBy(
             () ->
-                new ApimGeneralMetadataSourceAdapter(conflictingValues())
+                adapter(conflictingValues())
                     .fetch(
                         command(
                             Set.of(
@@ -139,6 +137,12 @@ class ApimGeneralMetadataSourceAdapterTest {
                     .block())
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Conflicting resolved general metadata entry");
+  }
+
+  private ApimGeneralMetadataSourceAdapter adapter(ApimExchangeExecutor executor) {
+    var properties = new GeneralMetadataApimProperties();
+    properties.setPath("/configured/general-metadata");
+    return new ApimGeneralMetadataSourceAdapter(executor, properties);
   }
 
   private FetchGeneralMetadataCommand command(Set<GeneralMetadataKey> keys) {

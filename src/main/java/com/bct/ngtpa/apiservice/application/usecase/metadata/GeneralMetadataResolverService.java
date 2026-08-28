@@ -21,10 +21,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
-import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
-@Service
 public final class GeneralMetadataResolverService implements GeneralMetadataResolver {
   private final GeneralMetadataCachePort cache;
   private final GeneralMetadataSourcePort source;

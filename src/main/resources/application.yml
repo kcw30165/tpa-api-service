@@ -297,6 +297,8 @@ auth-workflows:
       complete-ttl-seconds: 300
 
 apim:
+  general-metadata:
+    path: ${APIM_GENERAL_METADATA_PATH:/ws/NGTPA/v1/TRPGetGeneralMetaData}
   routing:
     non-account-profile-id: apim-non-account
 
@@ -454,6 +456,8 @@ error-message:
     "registration.start.verificationFailed": "我們未能核實您的資料，請檢查後再試。"
 
 redis-cache:
+  general-metadata:
+    ttl: PT20M
   enabled: ${REDIS_CACHE_ENABLED:true}
   key-prefix: ${REDIS_KEY_PREFIX:ngtpa}
   password: ${REDIS_PASSWORD:}

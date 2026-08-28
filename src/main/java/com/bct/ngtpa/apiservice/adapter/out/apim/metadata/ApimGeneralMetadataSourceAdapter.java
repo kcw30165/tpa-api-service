@@ -20,23 +20,28 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Component
+@EnableConfigurationProperties(GeneralMetadataApimProperties.class)
 public final class ApimGeneralMetadataSourceAdapter implements GeneralMetadataSourcePort {
-  static final String API_PATH = "/ws/NGTPA/v1/TRPGetGeneralMetaData";
 
   private static final Comparator<GeneralMetadataKey> KEY_ORDER =
       Comparator.comparing((GeneralMetadataKey key) -> key.name().name())
           .thenComparing(key -> key.type().name());
 
   private final ApimExchangeExecutor executor;
+  private final String operationPath;
   private final GeneralMetadataApimContentNormalizer normalizer;
 
-  public ApimGeneralMetadataSourceAdapter(ApimExchangeExecutor executor) {
+  public ApimGeneralMetadataSourceAdapter(
+      ApimExchangeExecutor executor, GeneralMetadataApimProperties properties) {
     this.executor = Objects.requireNonNull(executor, "executor must not be null");
+    Objects.requireNonNull(properties, "properties must not be null").validate();
+    this.operationPath = properties.getPath();
     this.normalizer = new GeneralMetadataApimContentNormalizer();
   }
 
@@ -71,7 +76,7 @@ public final class ApimGeneralMetadataSourceAdapter implements GeneralMetadataSo
     var scope = command.scope();
     var exchange =
         new ApimExchangeRequest<>(
-            API_PATH,
+            operationPath,
             request,
             GeneralMetadataApimRequest.class,
             GeneralMetadataApimRow.class,

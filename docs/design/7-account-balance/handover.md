@@ -1,8 +1,8 @@
 # Account Balance Design Handover
 
-**Feature:** 6.14 Account Balance  
-**Baseline:** 27/08/2026  
-**Status:** Consolidated design baseline, pending repository investigation  
+**Feature:** 6.14 Account Balance
+**Baseline:** 27/08/2026
+**Status:** Phase II implemented, pending architect approval
 
 ## Consolidation result
 
@@ -87,7 +87,7 @@ All Java identifiers in the general metadata capability now use `accountEnv` for
 
 ## Phase II-004 Redis cache adapter handover
 
-General metadata now has one lazy policy-scoped Redis document per account environment and opaque trust/policy digest. Keys use `RedisCacheKeyFactory` with capability `general-metadata`; raw trust codes and policy numbers are excluded. Values retain scope, entries, and `DEFAULT_ALL` or `POLICY_SPECIFIC` resolution. Writes use the externally bindable `account-balance.general-metadata.cache.ttl` property with `PT20M` default. Corrupt documents are evicted and treated as misses; Redis infrastructure failures remain failures. Resolver orchestration, targeted fallback, preload, stale fallback, and invalidation endpoints remain excluded.
+General metadata now has one lazy policy-scoped Redis document per account environment and opaque trust/policy digest. Keys use `RedisCacheKeyFactory` with capability `general-metadata`; raw trust codes and policy numbers are excluded. Values retain scope, entries, and `DEFAULT_ALL` or `POLICY_SPECIFIC` resolution. Writes use the externally bindable `redis-cache.general-metadata.ttl` property with `PT20M` default. Corrupt documents are evicted and treated as misses; Redis infrastructure failures remain failures. Resolver orchestration, targeted fallback, preload, stale fallback, and invalidation endpoints remain excluded.
 
 ## Phase II-005 resolver-query actor-role correction
 
@@ -132,3 +132,22 @@ The post-repair focused runtime gate passed 66 of 67 tests. The sole remaining f
 ## Phase II bounded-recovery guard repair
 
 The final focused gate passed 66 of 67 tests. The remaining source-level guard incorrectly scanned the entire resolver for `for (` and therefore rejected legitimate finite loops in deterministic metadata merge logic. The guard now extracts only `recoverAfterConflict(...)` and verifies that the bounded recovery method contains one cache read and the sanitized concurrency failure, with no `while`, `for`, `retryWhen`, or `repeatWhen`. Production code and runtime behavior are unchanged.
+
+## Phase II configuration correction
+
+The TRPGetGeneralMetaData operation path is now bound from the established APIM runtime configuration seam at `apim.general-metadata.path`, explicitly declared in application YAML with environment override support, validated as required and non-blank during adapter bean construction, and supplied to `ApimExchangeRequest`. The adapter no longer owns the URL literal.
+
+Shared metadata cache TTL is now owned by the feature-neutral Redis capability namespace `redis-cache.general-metadata.ttl`, explicitly configured as `PT20M` and runtime-overridable. Null retains the repository-approved defensive `PT20M` default; zero and negative durations fail validation. Redis `PTTL` plus `KEEPTTL`, targeted APIM cardinality, resolver concurrency, and all other accepted Phase II behavior are preserved. Phase III remains blocked pending refreshed architect approval.
+
+
+## Phase II architecture regression repair
+
+The governed APIM routing inventory now includes `TRPGetGeneralMetaData` as the sixteenth operation. `GeneralMetadataResolverService` remains framework-free in the application layer; Spring runtime composition is owned by outer configuration in `GeneralMetadataRuntimeConfig`. The configuration test import is restored without weakening missing/blank path startup validation. Phase III remains blocked pending refreshed validation and architect approval.
+
+## Phase II configuration-test wiring repair
+
+The configuration startup test now declares its nested `CacheConfig`, enabling `GeneralMetadataCacheProperties` alongside the production `GeneralMetadataApimValidationConfig`. This repairs test compilation without weakening missing/blank path or invalid-TTL startup checks. The routing-ledger and clean-architecture repairs remain preserved. Phase III remains blocked pending refreshed validation and architect approval.
+
+## Phase II routing-ledger cardinality repair
+
+The governed APIM operation inventory contains `TRPGetGeneralMetaData` exactly once and now asserts the corresponding total cardinality of 16 rather than the pre-feature total of 15. This corrects the stale characterization expectation without changing runtime behavior. Phase III remains blocked pending cumulative validation and architect approval.

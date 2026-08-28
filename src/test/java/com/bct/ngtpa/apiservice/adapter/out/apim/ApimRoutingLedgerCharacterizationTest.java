@@ -171,7 +171,7 @@ class ApimRoutingLedgerCharacterizationTest {
     assertThat(LEDGER)
         .extracting(Entry::operation)
         .doesNotHaveDuplicates()
-        .hasSize(15)
+        .hasSize(16)
         .containsExactlyInAnyOrder(
             "TRPGetContSumy",
             "TRPGetMemberInfo",
@@ -187,7 +187,8 @@ class ApimRoutingLedgerCharacterizationTest {
             "TRPRegMember",
             "TRPSearchUnregMember",
             "TRPChkCustId",
-            "TRPSearchMember");
+            "TRPSearchMember",
+            "TRPGetGeneralMetaData");
   }
 
   @Test
