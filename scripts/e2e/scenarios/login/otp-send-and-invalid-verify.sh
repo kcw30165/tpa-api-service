@@ -40,12 +40,23 @@ run_scenario() {
   if [[ "${E2E_OFFLINE_TEST_MODE:-false}" == true && -n "${E2E_TEST_INVALID_OTP_CODE_FILE:-}" ]]; then
     invalid_code="$(cat "$E2E_TEST_INVALID_OTP_CODE_FILE")"
   else
-    local received_code last_digit replacement
-    read -r -s -p 'Enter the received Login OTP to derive a different test code: ' received_code </dev/tty 2>/dev/tty
-    printf '\n' >/dev/tty
-    [[ "$received_code" =~ ^[0-9]+$ ]] || { received_code=''; printf 'FAIL received OTP must be numeric\n'; return 1; }
-    last_digit="${received_code: -1}"
-    if [[ "$last_digit" == 9 ]]; then replacement=0; else replacement=$((last_digit + 1)); fi
+    local input_attempt=0 normalized_code
+    received_code=""
+    while [[ "$input_attempt" -lt 3 ]]; do
+      input_attempt=$((input_attempt+1))
+      read -r -s -p 'Enter the received Login OTP to derive a different test code: ' received_code </dev/tty 2>/dev/tty
+      printf '\n' >/dev/tty
+      normalized_code="$(printf '%s' "$received_code" | tr -d '\r' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
+      if [[ "$normalized_code" =~ ^[0-9]+$ ]]; then
+        received_code="$normalized_code"
+        break
+      fi
+      received_code=""
+      if [[ "$input_attempt" -lt 3 ]]; then
+        printf 'Input must contain digits only. Please try again; no OTP verification request was sent.\n' >/dev/tty
+      fi
+    done
+    [[ -n "$received_code" ]] || { printf 'FAIL received OTP was not numeric after 3 local attempts\n'; return 1; }
     invalid_code="${received_code:0:${#received_code}-1}${replacement}"
     [[ "$invalid_code" != "$received_code" && "${#invalid_code}" -eq "${#received_code}" ]] || {
       received_code=''; invalid_code=''; printf 'FAIL invalid OTP derivation failed\n'; return 1;

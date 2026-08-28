@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 MODE="${1:-}"
-case "$MODE" in offline|live-safe|live-otp|all) ;; *) printf 'Usage: bash scripts/e2e/run-login-regression.sh {offline|live-safe|live-otp|all}\n' >&2; exit 2;; esac
+case "$MODE" in offline|live-safe|live-otp|live-otp-remaining|all) ;; *) printf 'Usage: bash scripts/e2e/run-login-regression.sh {offline|live-safe|live-otp|live-otp-remaining|all}\n' >&2; exit 2;; esac
 
 TS="$(date +%Y%m%d-%H%M%S)"
 PARENT="${E2E_EVIDENCE_ROOT:-$ROOT/target/evidence}/${TS}-bff-e2e-login-regression-${MODE}"
@@ -110,6 +110,18 @@ run_live_safe_suite() {
   printf 'scenarios=1\notp_deliveries=0\nfailed=%s\n' "$(wc -l <"$FAILURES")" >"$PARENT/020-live-safe-summary.txt"
 }
 
+run_live_otp_remaining_suite() {
+  collect_credentials_once
+  printf 'Remaining live OTP budget: 2 deliveries, 1 OTP prompt, 1 resend request, no automatic retries.\n'
+  if [[ "${E2E_SUITE_AUTHORIZED:-false}" != true ]]; then
+    read -r -p 'Type RUN to authorize the remaining suite: ' authorization
+    [[ "$authorization" == RUN ]] || { printf 'Remaining suite not authorized.\n' >&2; exit 3; }
+  fi
+  run_live_child invalid-otp 032 || return 1
+  run_live_child resend-cooldown 033 || return 1
+  printf 'flows=2\notp_delivery_budget=2\notp_prompt_budget=1\nautomatic_retries=0\nfailed=%s\n' "$(wc -l <"$FAILURES")" >"$PARENT/030-live-otp-remaining-summary.txt"
+}
+
 run_live_otp_suite() {
   collect_credentials_once
   printf 'Live OTP budget: 3 deliveries, 2 OTP prompts, 1 resend request, no automatic retries.\n'
@@ -130,6 +142,7 @@ case "$MODE" in
   offline) run_offline_suite;;
   live-safe) run_live_safe_suite;;
   live-otp) run_live_otp_suite || OVERALL=1;;
+  live-otp-remaining) run_live_otp_remaining_suite || OVERALL=1;;
   all) run_offline_suite; [[ "$OVERALL" -eq 0 ]] && run_live_safe_suite; [[ "$OVERALL" -eq 0 ]] && run_live_otp_suite || OVERALL=1;;
 esac
 

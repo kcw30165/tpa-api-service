@@ -89,3 +89,13 @@ bash scripts/e2e/run-login-regression.sh all
 ```
 
 `offline` is fully automatic and non-network. `live-safe` collects credentials once and sends no OTP. `live-otp` collects credentials once, announces a budget of three OTP deliveries and two OTP prompts, requires suite-level authorization, and stops before launching another OTP-producing flow after an unexpected failure.
+
+### Resume remaining live OTP flows
+
+After valid OTP plus logout has passed, resume only unfinished flows with:
+
+```bash
+bash scripts/e2e/run-login-regression.sh live-otp-remaining
+```
+
+The continuation runs invalid-OTP verification followed by immediate resend cooldown. It does not repeat logout. Invalid OTP input is trimmed and allows up to three local corrections; rejected local input does not send a verification request.
