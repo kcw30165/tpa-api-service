@@ -92,3 +92,7 @@ General metadata now has one lazy policy-scoped Redis document per account envir
 ## Phase II-005 resolver-query actor-role correction
 
 `ResolveGeneralMetadataQuery` now carries the trusted `ActorUserRole` required by `FetchGeneralMetadataCommand`. The resolver must pass this value unchanged on an unfiltered cache miss. It must not hardcode a role, read ambient `PortalAccessContext`, or pass null. This correction changes only the resolver input contract and focused contract test; cache-hit and full-miss orchestration remain Phase II-005 implementation work.
+
+## Phase II-005 resolver cache-flow handover
+
+`GeneralMetadataResolverService` now implements the reactive cache-hit and full unfiltered cache-miss path. A complete policy-scoped cache hit returns without APIM. A miss or incomplete entry performs exactly one unfiltered source request using the trusted query `ActorUserRole`, requires every requested key, writes only a complete `DEFAULT_ALL` or `POLICY_SPECIFIC` set, and returns it. Empty or incomplete unfiltered data raises `MissingRequiredGeneralMetadataException` without a cache write so Phase II-006 can add targeted fallback. Redis and APIM failures remain failures. No blocking call, startup loader, role hardcoding, targeted request, stale fallback, or Account Balance endpoint is included.
