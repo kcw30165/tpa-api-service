@@ -30,7 +30,9 @@ record_child() {
 }
 
 run_live_child() {
-  local alias="$1" output="$PARENT/${2}-${alias}.txt" rc
+  local alias output rc
+  alias="$1"
+  output="$PARENT/${2}-${alias}.txt"
   set +e
   E2E_EVIDENCE_ROOT="$CHILD_ROOT" bash scripts/e2e/run-login-dev.sh "$alias" >"$output" 2>&1
   rc=$?

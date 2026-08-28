@@ -472,3 +472,9 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - Modes are `offline`, `live-safe`, `live-otp`, and `all`.
 - The parent evidence manifest records explicit child paths returned by each launch and never discovers the newest evidence directory.
 - Offline regression is fully automatic. Live credentials are collected once per suite. OTP operations are never retried automatically.
+
+### Login regression live-child initialization repair
+
+- `run_live_child` now declares local variables before assigning values that depend on `alias`, preventing `set -u` from reading an uninitialized variable.
+- Validation uses bounded, non-recursive checks. It does not replace the `bash` executable in `PATH` and cannot recurse into the orchestrator.
+- The interrupted validation made no Login, cancellation, or OTP request.
