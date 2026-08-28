@@ -84,3 +84,7 @@ All Java identifiers in the general metadata capability now use `accountEnv` for
 - This correction changes naming only. It does not add Redis persistence, resolver orchestration, targeted fallback, preload, stale fallback, or invalidation behavior.
 - Phase II-004 Redis adapter implementation must consume `DEFAULT_ALL` and `POLICY_SPECIFIC`.
 - Account Balance feature-level formatting remains deferred until stabilization.
+
+## Phase II-004 Redis cache adapter handover
+
+General metadata now has one lazy policy-scoped Redis document per account environment and opaque trust/policy digest. Keys use `RedisCacheKeyFactory` with capability `general-metadata`; raw trust codes and policy numbers are excluded. Values retain scope, entries, and `DEFAULT_ALL` or `POLICY_SPECIFIC` resolution. Writes use the externally bindable `account-balance.general-metadata.cache.ttl` property with `PT20M` default. Corrupt documents are evicted and treated as misses; Redis infrastructure failures remain failures. Resolver orchestration, targeted fallback, preload, stale fallback, and invalidation endpoints remain excluded.
