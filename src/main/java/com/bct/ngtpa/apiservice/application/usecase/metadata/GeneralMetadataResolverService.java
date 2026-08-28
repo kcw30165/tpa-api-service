@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.application.usecase.metadata;
 
+import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataCacheReplaceResult;
+import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataScope;
 import com.bct.ngtpa.apiservice.application.dto.metadata.FetchGeneralMetadataCommand;
 import com.bct.ngtpa.apiservice.application.dto.metadata.FetchGeneralMetadataResult;
 import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataKey;
@@ -14,14 +16,20 @@ import com.bct.ngtpa.apiservice.application.port.out.GeneralMetadataSourcePort;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Service
 public final class GeneralMetadataResolverService implements GeneralMetadataResolver {
   private final GeneralMetadataCachePort cache;
   private final GeneralMetadataSourcePort source;
+  private final ConcurrentMap<InFlightKey, Mono<ResolvedGeneralMetadataSet>> inFlight =
+      new ConcurrentHashMap<>();
 
   public GeneralMetadataResolverService(
       GeneralMetadataCachePort cache, GeneralMetadataSourcePort source) {
@@ -32,26 +40,99 @@ public final class GeneralMetadataResolverService implements GeneralMetadataReso
   @Override
   public Mono<ResolvedGeneralMetadataSet> resolve(ResolveGeneralMetadataQuery query) {
     Objects.requireNonNull(query, "query must not be null");
-    return cache.read(query.scope()).flatMap(cached -> cached
-        .filter(metadata -> containsAll(metadata, query.requiredKeys()))
-        .map(Mono::just)
-        .orElseGet(() -> loadUnfiltered(query)));
+    return cache.read(query.scope())
+        .flatMap(
+            cached -> {
+              if (cached.isPresent() && containsAll(cached.get(), query.requiredKeys())) {
+                return Mono.just(cached.get());
+              }
+              return coalesce(query, cached);
+            });
   }
 
-  private Mono<ResolvedGeneralMetadataSet> loadUnfiltered(ResolveGeneralMetadataQuery query) {
+  private Mono<ResolvedGeneralMetadataSet> coalesce(
+      ResolveGeneralMetadataQuery query,
+      Optional<ResolvedGeneralMetadataSet> cached) {
+    InFlightKey key = new InFlightKey(query.scope(), query.requiredKeys());
+    AtomicReference<Mono<ResolvedGeneralMetadataSet>> created = new AtomicReference<>();
+    Mono<ResolvedGeneralMetadataSet> shared =
+        inFlight.computeIfAbsent(
+            key,
+            ignored -> {
+              Mono<ResolvedGeneralMetadataSet> candidate =
+                  Mono.defer(() -> loadUnfiltered(query, cached))
+                      .doFinally(signal -> inFlight.remove(key, created.get()))
+                      .cache();
+              created.set(candidate);
+              return candidate;
+            });
+    return shared;
+  }
+
+  int inFlightCountForTesting() {
+    return inFlight.size();
+  }
+
+  private Mono<ResolvedGeneralMetadataSet> loadUnfiltered(
+      ResolveGeneralMetadataQuery query,
+      Optional<ResolvedGeneralMetadataSet> cached) {
     return source.fetch(new FetchGeneralMetadataCommand(query.scope(), Set.of(), query.actorUserRole()))
-        .flatMap(result -> continueWithTargetedIfNeeded(query, result));
+        .flatMap(result -> continueWithTargetedIfNeeded(query, cached, result));
   }
 
   private Mono<ResolvedGeneralMetadataSet> continueWithTargetedIfNeeded(
-      ResolveGeneralMetadataQuery query, FetchGeneralMetadataResult unfiltered) {
+      ResolveGeneralMetadataQuery query,
+      Optional<ResolvedGeneralMetadataSet> cached,
+      FetchGeneralMetadataResult unfiltered) {
     var missing = missingKeys(unfiltered, query.requiredKeys());
     if (missing.isEmpty()) {
       return persistComplete(query, unfiltered);
     }
     return source.fetch(new FetchGeneralMetadataCommand(query.scope(), missing, query.actorUserRole()))
-        .map(targeted -> merge(unfiltered, targeted))
-        .flatMap(merged -> persistComplete(query, merged));
+        .flatMap(
+            targeted ->
+                persistTargeted(
+                    query, cached, merge(unfiltered, targeted)));
+  }
+
+  private Mono<ResolvedGeneralMetadataSet> persistTargeted(
+      ResolveGeneralMetadataQuery query,
+      Optional<ResolvedGeneralMetadataSet> cached,
+      FetchGeneralMetadataResult merged) {
+    ResolvedGeneralMetadataSet replacement = normalizeComplete(query, merged, true);
+    if (cached.isEmpty()) {
+      return cache.write(replacement).thenReturn(replacement);
+    }
+    return cache.replaceIfUnchanged(query.scope(), cached.orElseThrow(), replacement)
+        .flatMap(
+            outcome ->
+                outcome == GeneralMetadataCacheReplaceResult.APPLIED
+                    ? Mono.just(replacement)
+                    : recoverAfterConflict(query));
+  }
+
+  private Mono<ResolvedGeneralMetadataSet> recoverAfterConflict(
+      ResolveGeneralMetadataQuery query) {
+    return cache.read(query.scope())
+        .flatMap(
+            reread ->
+                reread.filter(value -> containsAll(value, query.requiredKeys()))
+                    .map(Mono::just)
+                    .orElseGet(() -> Mono.error(new GeneralMetadataConcurrencyException())));
+  }
+
+  private ResolvedGeneralMetadataSet normalizeComplete(
+      ResolveGeneralMetadataQuery query,
+      FetchGeneralMetadataResult result,
+      boolean requireAllKeys) {
+    GeneralMetadataResolutionSource resolutionSource =
+        result.resolutionSource().orElseThrow(MissingRequiredGeneralMetadataException::new);
+    ResolvedGeneralMetadataSet normalized =
+        ResolvedGeneralMetadataSet.normalize(query.scope(), resolutionSource, result.entries());
+    if (requireAllKeys && !containsAll(normalized, query.requiredKeys())) {
+      throw new MissingRequiredGeneralMetadataException();
+    }
+    return normalized;
   }
 
   private Mono<ResolvedGeneralMetadataSet> persistComplete(
@@ -101,4 +182,14 @@ public final class GeneralMetadataResolverService implements GeneralMetadataReso
   private boolean containsAll(ResolvedGeneralMetadataSet metadata, Set<GeneralMetadataKey> keys) {
     return keys.stream().allMatch(key -> metadata.find(key).isPresent());
   }
+  private record InFlightKey(
+      GeneralMetadataScope scope,
+      Set<GeneralMetadataKey> requiredKeys) {
+    private InFlightKey {
+      Objects.requireNonNull(scope, "scope must not be null");
+      requiredKeys = Set.copyOf(
+          Objects.requireNonNull(requiredKeys, "requiredKeys must not be null"));
+    }
+  }
+
 }

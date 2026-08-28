@@ -104,3 +104,11 @@ When cache data and the full unfiltered metadata response still omit required ke
 ## Phase II-007 atomic metadata cache replacement contract
 
 `GeneralMetadataCachePort` now exposes capability-scoped expected-value replacement with `APPLIED`, `CONFLICT`, and `MISSING` outcomes. The Redis implementation compares the exact existing serialized metadata document and replaces it atomically with `KEEPTTL`; it does not reset the 20-minute TTL. Unsupported or empty Lua results and Redis failures fail closed with sanitized cache errors. The shared `CachePort` remains unchanged. Resolver conflict recovery and optional in-process coalescing remain deferred to the final Phase II-007 hardening round.
+
+## Phase II-007 resolver concurrency hardening
+
+Same-policy resolver misses now coalesce within one JVM through a policy-scoped in-flight `Mono` using the repository `ConcurrentHashMap`, `computeIfAbsent`, `Mono.cache()`, and conditional `doFinally` removal pattern. Different policy scopes remain independent. Correctness does not depend on coalescing: complete unfiltered loads remain idempotent replacements, while targeted read-modify-write uses Redis expected-value replacement. `APPLIED` returns the replacement; `CONFLICT` or `MISSING` performs exactly one cache reread and returns only a complete competing value, otherwise a sanitized technical concurrency failure is raised. There is no polling, repeated targeted request, repeated CAS attempt, stale fallback, startup load, blocking call, or detached subscription.
+
+## Phase II-007 resolver concurrency correctness repair
+
+In-flight coalescing now uses the immutable pair of policy scope and required-key set, preventing a broader query from receiving a result complete only for a narrower concurrent query. Targeted completion distinguishes initial cache absence from mutation of an existing document: an initially absent cache receives one final complete write and never CAS against an unpublished intermediate value; an existing partial document uses one expected-value replacement and the existing bounded reread on conflict or missing state. No incomplete intermediate document is written.

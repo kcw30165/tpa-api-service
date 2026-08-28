@@ -1,0 +1,41 @@
+package com.bct.ngtpa.apiservice.application.usecase.metadata;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.nio.file.Files;
+import java.nio.file.Path;
+import org.junit.jupiter.api.Test;
+
+class GeneralMetadataResolverConcurrencyContractTest {
+  private static final Path SERVICE = Path.of(
+      "src/main/java/com/bct/ngtpa/apiservice/application/usecase/metadata/GeneralMetadataResolverService.java");
+
+  @Test
+  void sameKeyWorkUsesRepositoryInFlightLifecyclePattern() throws Exception {
+    String source = Files.readString(SERVICE);
+    assertThat(source)
+        .contains("ConcurrentHashMap<>()", "new InFlightKey(query.scope(), query.requiredKeys())", "computeIfAbsent(", ".cache()", ".doFinally(")
+        .contains("inFlight.remove(key, created.get())")
+        .doesNotContain(".block(", ".subscribe(", "retryWhen", "repeatWhen");
+  }
+
+  @Test
+  void targetedMutationUsesOneCasAndOneBoundedReread() throws Exception {
+    String source = Files.readString(SERVICE);
+    assertThat(source)
+        .contains("cache.replaceIfUnchanged(query.scope(), expected, replacement)")
+        .contains("outcome == GeneralMetadataCacheReplaceResult.APPLIED")
+        .contains("recoverAfterConflict(query)")
+        .contains("cache.read(query.scope())")
+        .contains("new GeneralMetadataConcurrencyException()")
+        .doesNotContain("while (", "for (", "retryWhen", "repeatWhen");
+  }
+
+  @Test
+  void technicalFailureAndDiagnosticsContainNoScopeIdentifiers() {
+    String message = new GeneralMetadataConcurrencyException().getMessage();
+    assertThat(message)
+        .isEqualTo("Concurrent general metadata update could not be resolved")
+        .doesNotContain("trust", "policy", "account", "redis", "key");
+  }
+}
