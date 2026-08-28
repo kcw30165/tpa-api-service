@@ -167,3 +167,7 @@ Implemented exact adapter-only request and response DTOs for `TRPGetMemberAccBal
 ## Phase III-003 TRPGetMemberAccBal APIM DTO contract
 
 Implemented exact adapter-only request and response DTOs for `TRPGetMemberAccBal`. The request preserves `policy-no` as a string, uses numeric `cert-no`, formats `ref-date` at the future adapter boundary, and always serializes `curr`, using an empty string for initial load. The response models `displayOptions`, `curr`, `dispSrc`, `fundDtl`, and `accBal`; financial values use `BigDecimal`, bilingual descriptions and factsheet strings remain raw, and exactly one non-null complete `response.data` item is required. Executor invocation, business-error classification, FE grouping, joining, localization, rendering, and factsheet validation remain deferred.
+
+## Phase III-004B typed retrieval error boundary
+
+Added a feature-owned `AccountBalanceRetrievalException` with typed `ACCOUNT_NOT_FOUND`, `ACCOUNT_MISMATCH`, and `SYSTEM_FAILURE` reasons. The application exception is web-neutral and redacts raw TAS details. The inbound response policy maps the two approved business reasons to HTTP 422 `BUSINESS_REJECTED` with `err.ab.account.not.exist` and `err.ab.account.mismatch`, and maps system failure to HTTP 503 `SYSTEM_ERROR` with `err.system.unavailable`. The executor-backed APIM adapter remains deferred to Phase III-004C.
