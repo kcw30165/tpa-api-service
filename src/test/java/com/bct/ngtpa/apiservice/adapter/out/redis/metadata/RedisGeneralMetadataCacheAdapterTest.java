@@ -44,14 +44,18 @@ class RedisGeneralMetadataCacheAdapterTest {
     var failure = new IllegalStateException("redis failed");
     var adapter = new RedisGeneralMetadataCacheAdapter(
         new FailingCache(failure), new RedisCacheKeyFactory("ngtpa"), new ObjectMapper().findAndRegisterModules(),
-        new GeneralMetadataCacheProperties(Duration.parse("PT20M")));
+        new GeneralMetadataCacheProperties(Duration.parse("PT20M")),
+        (key, expected, replacement) -> Mono.just(
+            com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataCacheReplaceResult.APPLIED));
     assertThatThrownBy(() -> adapter.read(scope()).block()).hasRootCause(failure);
     assertThatThrownBy(() -> adapter.write(new ResolvedGeneralMetadataSet(scope(), GeneralMetadataResolutionSource.DEFAULT_ALL, List.of(entry("6")))).block()).hasRootCause(failure);
   }
 
   private RedisGeneralMetadataCacheAdapter adapter(CachePort cache) {
     return new RedisGeneralMetadataCacheAdapter(cache, new RedisCacheKeyFactory("ngtpa"),
-        new ObjectMapper().findAndRegisterModules(), new GeneralMetadataCacheProperties(Duration.parse("PT20M")));
+        new ObjectMapper().findAndRegisterModules(), new GeneralMetadataCacheProperties(Duration.parse("PT20M")),
+        (key, expected, replacement) -> Mono.just(
+            com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataCacheReplaceResult.APPLIED));
   }
   private GeneralMetadataScope scope() { return new GeneralMetadataScope("DB", "DBA", "00000008802"); }
   private ResolvedGeneralMetadata entry(String value) { return new ResolvedGeneralMetadata(new GeneralMetadataKey(GeneralMetadataName.FUND_PRICE, GeneralMetadataType.PRECISION), value); }

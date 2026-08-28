@@ -120,7 +120,15 @@ class GeneralMetadataResolverServiceTest {
       public Mono<Optional<ResolvedGeneralMetadataSet>> read(GeneralMetadataScope scope) { return Mono.error(cacheFailure); }
       public Mono<Void> write(ResolvedGeneralMetadataSet metadata) { return Mono.error(cacheFailure); }
       public Mono<Void> evict(GeneralMetadataScope scope) { return Mono.error(cacheFailure); }
-    };
+
+    @Override
+    public Mono<GeneralMetadataCacheReplaceResult> replaceIfUnchanged(
+        GeneralMetadataScope scope,
+        ResolvedGeneralMetadataSet expected,
+        ResolvedGeneralMetadataSet replacement) {
+      return Mono.just(GeneralMetadataCacheReplaceResult.APPLIED);
+    }
+};
     assertThatThrownBy(() -> service(failingCache, command -> Mono.error(new AssertionError()))
         .resolve(query(GeneralMetadataName.FUND_PRICE)).block()).hasRootCause(cacheFailure);
   }
@@ -203,5 +211,13 @@ class GeneralMetadataResolverServiceTest {
     public Mono<Optional<ResolvedGeneralMetadataSet>> read(GeneralMetadataScope scope) { return Mono.just(value); }
     public Mono<Void> write(ResolvedGeneralMetadataSet metadata) { written = metadata; return Mono.empty(); }
     public Mono<Void> evict(GeneralMetadataScope scope) { return Mono.empty(); }
-  }
+
+    @Override
+    public Mono<GeneralMetadataCacheReplaceResult> replaceIfUnchanged(
+        GeneralMetadataScope scope,
+        ResolvedGeneralMetadataSet expected,
+        ResolvedGeneralMetadataSet replacement) {
+      return Mono.just(GeneralMetadataCacheReplaceResult.APPLIED);
+    }
+}
 }

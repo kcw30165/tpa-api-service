@@ -100,3 +100,7 @@ General metadata now has one lazy policy-scoped Redis document per account envir
 ## Phase II-006 targeted fallback handover
 
 When cache data and the full unfiltered metadata response still omit required keys, the resolver now submits one `FetchGeneralMetadataCommand` containing the complete missing-key set. The committed APIM adapter applies the ratified batching strategy by issuing one deterministic targeted request per distinct key. Validated targeted rows are merged with existing unfiltered rows, preserving established keys and requiring one consistent `DEFAULT_ALL` or `POLICY_SPECIFIC` source. Conflicting sources or values fail without a cache write. The cache TTL resets only after the merged result is complete and successfully written. One incomplete targeted attempt raises `MissingRequiredGeneralMetadataException`; there is no polling or unbounded retry.
+
+## Phase II-007 atomic metadata cache replacement contract
+
+`GeneralMetadataCachePort` now exposes capability-scoped expected-value replacement with `APPLIED`, `CONFLICT`, and `MISSING` outcomes. The Redis implementation compares the exact existing serialized metadata document and replaces it atomically with `KEEPTTL`; it does not reset the 20-minute TTL. Unsupported or empty Lua results and Redis failures fail closed with sanitized cache errors. The shared `CachePort` remains unchanged. Resolver conflict recovery and optional in-process coalescing remain deferred to the final Phase II-007 hardening round.
