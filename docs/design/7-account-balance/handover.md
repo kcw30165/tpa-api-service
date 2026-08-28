@@ -171,3 +171,7 @@ Implemented exact adapter-only request and response DTOs for `TRPGetMemberAccBal
 ## Phase III-004B typed retrieval error boundary
 
 Added a feature-owned `AccountBalanceRetrievalException` with typed `ACCOUNT_NOT_FOUND`, `ACCOUNT_MISMATCH`, and `SYSTEM_FAILURE` reasons. The application exception is web-neutral and redacts raw TAS details. The inbound response policy maps the two approved business reasons to HTTP 422 `BUSINESS_REJECTED` with `err.ab.account.not.exist` and `err.ab.account.mismatch`, and maps system failure to HTTP 503 `SYSTEM_ERROR` with `err.system.unavailable`. The executor-backed APIM adapter remains deferred to Phase III-004C.
+
+## Phase III-004C1 raw Account Balance source boundary
+
+Introduced an application-owned `AccountBalanceSourcePort` returning transport-neutral `RawAccountBalanceData`. The raw contract mirrors the validated TAS structures and preserves `BigDecimal` values, nullable balances, bilingual descriptions, and raw factsheet strings without Jackson or APIM dependencies. The existing `AccountBalanceDataPort` remains the later aggregation boundary returning `AccountBalanceResult`, so Phase III-002 orchestration and the public controller continue to compile unchanged. The executor-backed APIM adapter will implement `AccountBalanceSourcePort`; a later application transformation stage will consume it and implement `AccountBalanceDataPort`.
