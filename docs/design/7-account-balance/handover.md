@@ -155,3 +155,7 @@ The governed APIM operation inventory contains `TRPGetGeneralMetaData` exactly o
 ## Phase III-001 FE contract and controller boundary
 
 Implemented `GET /api/v1/account-balance` with optional `currency`, shared `X-Request-Id` enforcement, optional `Accept-Language` with English fallback, and selected-account delegation through `CurrentPortalAccessContextResolver`. The success envelope uses `MutationResponse` with Account Balance data under `result.data`. Account Overview nullable fields remain stable, portfolio omission is property-scoped, and public terminology uses Display Account and Sub-Display-Account. APIM retrieval and final transformation remain excluded from this subphase.
+
+## Phase III-002 application context and reference-date orchestration
+
+Implemented a framework-free `GetAccountBalanceService` that resolves `ReferenceDatePort.resolveReferenceDate(accountEnv)` exactly once before invoking the focused `AccountBalanceDataPort`. The explicit downstream command preserves actor role, actor user ID, policy number, certificate number, account environment, trust code, scheme type, optional currency, and `LocalDate` reference date. Policy and certificate values remain strings, `Account-Ref` and `PortalAccessContext` do not cross the application boundary, and empty or failed reference-date resolution short-circuits the downstream call. The TRPGetMemberAccBal adapter, wire-level role conversion, certificate conversion, date formatting, and metadata aggregation remain deferred.
