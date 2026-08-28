@@ -478,3 +478,10 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - `run_live_child` now declares local variables before assigning values that depend on `alias`, preventing `set -u` from reading an uninitialized variable.
 - Validation uses bounded, non-recursive checks. It does not replace the `bash` executable in `PATH` and cannot recurse into the orchestrator.
 - The interrupted validation made no Login, cancellation, or OTP request.
+
+### Login regression interactive child streaming
+
+- Live child output is streamed through `tee`, keeping progress and `/dev/tty` OTP prompts visible while retaining the parent child-output file.
+- The child exit status is preserved from `PIPESTATUS[0]`.
+- Each live flow is announced before launch, and the explicit child evidence path remains captured from that child output.
+- An interrupted OTP is abandoned; retrying the suite requires a fresh Login flow and fresh OTP.

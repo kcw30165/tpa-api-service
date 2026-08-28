@@ -33,11 +33,12 @@ run_live_child() {
   local alias output rc
   alias="$1"
   output="$PARENT/${2}-${alias}.txt"
+  printf '\nStarting live Login flow: %s\n' "$alias"
+  printf 'Child progress and interactive prompts will remain visible.\n'
   set +e
-  E2E_EVIDENCE_ROOT="$CHILD_ROOT" bash scripts/e2e/run-login-dev.sh "$alias" >"$output" 2>&1
-  rc=$?
+  E2E_EVIDENCE_ROOT="$CHILD_ROOT" bash scripts/e2e/run-login-dev.sh "$alias" 2>&1 | tee "$output"
+  rc=${PIPESTATUS[0]}
   set -e
-  cat "$output"
   record_child "$alias" "$rc" "$output"
   return "$rc"
 }
