@@ -56,7 +56,9 @@ class GetAccountBalanceServiceTest {
           fetched.set(command);
           return Mono.just(raw);
         };
-    AccountBalanceResult expected = new AccountBalanceResult("28/08/2026", null, null, new InvestmentPortfolio(List.of(), List.of()));
+    AccountBalanceResult expected =
+        new AccountBalanceResult(
+            "28/08/2026", null, null, new InvestmentPortfolio(List.of(), List.of()));
     AccountBalanceAssembler assembler =
         (command, date, resolved, data) -> {
           assembled.incrementAndGet();

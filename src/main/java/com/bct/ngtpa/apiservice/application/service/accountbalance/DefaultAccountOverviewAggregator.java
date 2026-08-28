@@ -25,22 +25,35 @@ public final class DefaultAccountOverviewAggregator implements AccountOverviewAg
       BigDecimal nav = participating(holding.netAssetValue());
       BigDecimal vested = vestedVisible ? participating(holding.vestedBalance()) : null;
       BigDecimal transit = pendingVisible ? participating(holding.transitAmount()) : null;
-      RawAccountBalanceDisplaySource source = data.displaySources().get(new DisplaySourceKey(key.displaySource(), key.subDisplaySource()));
+      RawAccountBalanceDisplaySource source =
+          data.displaySources()
+              .get(new DisplaySourceKey(key.displaySource(), key.subDisplaySource()));
       if (source == null || source.sequence() == null) throw systemFailure();
-      Accumulator accumulator = grouped.computeIfAbsent(key.displaySource(), ignored -> new Accumulator());
+      Accumulator accumulator =
+          grouped.computeIfAbsent(key.displaySource(), ignored -> new Accumulator());
       accumulator.sequence = Math.min(accumulator.sequence, source.sequence());
       accumulator.balance = accumulator.balance.add(nav);
       if (vestedVisible) accumulator.vested = accumulator.vested.add(vested);
       totalBalance = totalBalance.add(nav);
       if (pendingVisible) pendingSwitchIn = pendingSwitchIn.add(transit);
     }
-    List<RawDisplayAccountOverview> displayAccounts = grouped.entrySet().stream()
-        .map(entry -> new RawDisplayAccountOverview(entry.getKey(), entry.getValue().sequence,
-            entry.getValue().balance, vestedVisible ? entry.getValue().vested : null))
-        .sorted(Comparator.comparing(RawDisplayAccountOverview::displaySequence)
-            .thenComparing(RawDisplayAccountOverview::displayAccountId))
-        .toList();
-    return new RawAccountOverviewAggregation(vestedVisible, pendingVisible, displayAccounts,
+    List<RawDisplayAccountOverview> displayAccounts =
+        grouped.entrySet().stream()
+            .map(
+                entry ->
+                    new RawDisplayAccountOverview(
+                        entry.getKey(),
+                        entry.getValue().sequence,
+                        entry.getValue().balance,
+                        vestedVisible ? entry.getValue().vested : null))
+            .sorted(
+                Comparator.comparing(RawDisplayAccountOverview::displaySequence)
+                    .thenComparing(RawDisplayAccountOverview::displayAccountId))
+            .toList();
+    return new RawAccountOverviewAggregation(
+        vestedVisible,
+        pendingVisible,
+        displayAccounts,
         new RawAccountTotals(totalBalance, pendingSwitchIn));
   }
 
@@ -48,7 +61,11 @@ public final class DefaultAccountOverviewAggregator implements AccountOverviewAg
     if (value == null || value.compareTo(SENTINEL) == 0) throw systemFailure();
     return value;
   }
-  private static AccountBalanceRetrievalException systemFailure() { return AccountBalanceRetrievalException.systemFailure(); }
+
+  private static AccountBalanceRetrievalException systemFailure() {
+    return AccountBalanceRetrievalException.systemFailure();
+  }
+
   private static final class Accumulator {
     private int sequence = Integer.MAX_VALUE;
     private BigDecimal balance = BigDecimal.ZERO;

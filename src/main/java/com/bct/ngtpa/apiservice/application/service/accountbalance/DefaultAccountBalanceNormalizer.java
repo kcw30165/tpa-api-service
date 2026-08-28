@@ -16,7 +16,9 @@ public final class DefaultAccountBalanceNormalizer implements AccountBalanceNorm
     Map<DisplaySourceKey, RawAccountBalanceDisplaySource> displaySources = new LinkedHashMap<>();
     for (RawAccountBalanceDisplaySource source : rawData.displaySources()) {
       if (source == null) throw systemFailure();
-      var key = new DisplaySourceKey(required(source.displaySource()), required(source.subDisplaySource()));
+      var key =
+          new DisplaySourceKey(
+              required(source.displaySource()), required(source.subDisplaySource()));
       if (displaySources.putIfAbsent(key, source) != null) throw systemFailure();
     }
     Map<FundKey, RawAccountBalanceFundDetail> funds = new LinkedHashMap<>();
@@ -33,12 +35,13 @@ public final class DefaultAccountBalanceNormalizer implements AccountBalanceNorm
       String fundCode = required(holding.fundCode());
       var displayKey = new DisplaySourceKey(displaySource, subDisplaySource);
       var fundKey = new FundKey(fundCode);
-      if (!displaySources.containsKey(displayKey) || !funds.containsKey(fundKey)) throw systemFailure();
+      if (!displaySources.containsKey(displayKey) || !funds.containsKey(fundKey))
+        throw systemFailure();
       var holdingKey = new HoldingKey(displaySource, subDisplaySource, fundCode);
       if (holdings.putIfAbsent(holdingKey, holding) != null) throw systemFailure();
     }
-    return new NormalizedAccountBalanceData(rawData.displayOptions(), rawData.currency(),
-        displaySources, funds, holdings);
+    return new NormalizedAccountBalanceData(
+        rawData.displayOptions(), rawData.currency(), displaySources, funds, holdings);
   }
 
   private static String required(String value) {

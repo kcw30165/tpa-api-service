@@ -123,12 +123,19 @@ class AccountBalanceControllerTest {
   }
 
   private static AccountBalanceResult result() {
-    var leaf = new FundLevelSubDisplayAccount("Sub-Display-Account", "OE", "1.000", "100.00", "10.0000", null, null);
-    var fund = new FundLevelFund("F1", "Fund A", "10.0000", "1.000", "100.00", null, null, List.of(leaf));
+    var leaf =
+        new FundLevelSubDisplayAccount(
+            "Sub-Display-Account", "OE", "1.000", "100.00", "10.0000", null, null);
+    var fund =
+        new FundLevelFund("F1", "Fund A", "10.0000", "1.000", "100.00", null, null, List.of(leaf));
     var fundView = new FundLevelDisplayAccount("Display Account", "EE", 1, List.of(fund));
     var subFund = new SubDisplayLevelFund("F1", "Fund A", "10.0000", "1.000", "100.00", null, null);
     var sub = new SubDisplayLevelSubDisplayAccount("Sub-Display-Account", "OE", List.of(subFund));
     var subView = new SubDisplayLevelDisplayAccount("Display Account", "EE", 1, List.of(sub));
-    return new AccountBalanceResult("28/08/2026", new CurrencySelection("HKD", List.of("HKD", "USD")), new AccountOverview("100.00", null, null), new InvestmentPortfolio(List.of(fundView), List.of(subView)));
+    return new AccountBalanceResult(
+        "28/08/2026",
+        new CurrencySelection("HKD", List.of("HKD", "USD")),
+        new AccountOverview("100.00", null, null),
+        new InvestmentPortfolio(List.of(fundView), List.of(subView)));
   }
 }

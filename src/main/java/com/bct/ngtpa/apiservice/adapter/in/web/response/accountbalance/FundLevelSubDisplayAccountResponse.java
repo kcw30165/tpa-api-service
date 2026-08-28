@@ -1,1 +1,12 @@
-package com.bct.ngtpa.apiservice.adapter.in.web.response.accountbalance; import com.fasterxml.jackson.annotation.JsonInclude; public record FundLevelSubDisplayAccountResponse(String subDisplayAccountName,String subDisplayAccountId,String unitBalance,String accountBalance,String fundPrice,@JsonInclude(JsonInclude.Include.NON_NULL) String factsheetUrl,@JsonInclude(JsonInclude.Include.NON_NULL) String fxRate) {}
+package com.bct.ngtpa.apiservice.adapter.in.web.response.accountbalance;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+
+public record FundLevelSubDisplayAccountResponse(
+    String subDisplayAccountName,
+    String subDisplayAccountId,
+    String unitBalance,
+    String accountBalance,
+    String fundPrice,
+    @JsonInclude(JsonInclude.Include.NON_NULL) String factsheetUrl,
+    @JsonInclude(JsonInclude.Include.NON_NULL) String fxRate) {}

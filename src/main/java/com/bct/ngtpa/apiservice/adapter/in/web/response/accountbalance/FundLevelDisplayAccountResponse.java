@@ -1,1 +1,13 @@
-package com.bct.ngtpa.apiservice.adapter.in.web.response.accountbalance; import java.util.List; public record FundLevelDisplayAccountResponse(String displayAccountName,String displayAccountId,Integer displaySequence,List<FundLevelFundResponse> funds){public FundLevelDisplayAccountResponse{funds=funds==null?List.of():List.copyOf(funds);}}
+package com.bct.ngtpa.apiservice.adapter.in.web.response.accountbalance;
+
+import java.util.List;
+
+public record FundLevelDisplayAccountResponse(
+    String displayAccountName,
+    String displayAccountId,
+    Integer displaySequence,
+    List<FundLevelFundResponse> funds) {
+  public FundLevelDisplayAccountResponse {
+    funds = funds == null ? List.of() : List.copyOf(funds);
+  }
+}

@@ -1,1 +1,11 @@
-package com.bct.ngtpa.apiservice.application.dto.accountbalance.presentation; import java.util.*; public record PresentedAccountBalanceData(Map<String,String> localizedDescriptions,Map<String,PresentedValue> renderedValues){public PresentedAccountBalanceData{localizedDescriptions=Map.copyOf(localizedDescriptions);renderedValues=Map.copyOf(renderedValues);}}
+package com.bct.ngtpa.apiservice.application.dto.accountbalance.presentation;
+
+import java.util.*;
+
+public record PresentedAccountBalanceData(
+    Map<String, String> localizedDescriptions, Map<String, PresentedValue> renderedValues) {
+  public PresentedAccountBalanceData {
+    localizedDescriptions = Map.copyOf(localizedDescriptions);
+    renderedValues = Map.copyOf(renderedValues);
+  }
+}

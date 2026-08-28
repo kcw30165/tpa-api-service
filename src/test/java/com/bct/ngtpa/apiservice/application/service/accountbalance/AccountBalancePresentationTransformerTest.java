@@ -1,9 +1,62 @@
 package com.bct.ngtpa.apiservice.application.service.accountbalance;
+
 import static org.assertj.core.api.Assertions.*;
-import com.bct.ngtpa.apiservice.application.dto.metadata.*; import java.math.*; import org.junit.jupiter.api.Test;
+
+import com.bct.ngtpa.apiservice.application.dto.metadata.*;
+import java.math.*;
+import org.junit.jupiter.api.Test;
+
 class AccountBalancePresentationTransformerTest {
- @Test void localizesWithSymmetricFallback(){var r=new AccountBalanceDynamicDescriptionResolver();assertThat(r.resolve("en","English","中文")).isEqualTo("English");assertThat(r.resolve("zh_HK","English","中文")).isEqualTo("中文");assertThat(r.resolve("en"," ","中文")).isEqualTo("中文");assertThat(r.resolve("zh_HK","English"," ")).isEqualTo("English");assertThatThrownBy(()->r.resolve("en"," ",null)).isInstanceOf(com.bct.ngtpa.apiservice.application.exception.AccountBalanceRetrievalException.class);}
- @Test void rendersGroupingZerosNegativeAndRefusesRounding(){var r=new AccountBalancePrecisionRenderer();assertThat(r.render(new BigDecimal("1234.5"),BigInteger.valueOf(2))).isEqualTo("1,234.50");assertThat(r.render(BigDecimal.ZERO,BigInteger.valueOf(3))).isEqualTo("0.000");assertThat(r.render(new BigDecimal("-1234.50"),BigInteger.valueOf(2))).isEqualTo("-1,234.50");assertThatThrownBy(()->r.render(new BigDecimal("1.234"),BigInteger.valueOf(2))).isInstanceOf(com.bct.ngtpa.apiservice.application.exception.AccountBalanceRetrievalException.class);}
- @Test void obtainsEveryRequiredPrecision(){var m=MetadataFixtures.all();var t=new DefaultAccountBalancePresentationTransformer();assertThat(t.precisions(m)).containsEntry(GeneralMetadataName.FUND_PRICE,BigInteger.valueOf(4)).containsEntry(GeneralMetadataName.UNIT_BALANCE,BigInteger.valueOf(3)).containsEntry(GeneralMetadataName.NET_ASSET_VALUE,BigInteger.valueOf(2)).containsEntry(GeneralMetadataName.FX_RATE,BigInteger.ONE);}
- static final class MetadataFixtures { static ResolvedGeneralMetadataSet all(){var scope=new GeneralMetadataScope("DB","T","P");return ResolvedGeneralMetadataSet.normalize(scope,GeneralMetadataResolutionSource.DEFAULT_ALL,java.util.List.of(e(GeneralMetadataName.FUND_PRICE,"4"),e(GeneralMetadataName.UNIT_BALANCE,"3"),e(GeneralMetadataName.NET_ASSET_VALUE,"2"),e(GeneralMetadataName.FX_RATE,"1")));} static ResolvedGeneralMetadata e(GeneralMetadataName n,String v){return new ResolvedGeneralMetadata(new GeneralMetadataKey(n,GeneralMetadataType.PRECISION),v);} }
+  @Test
+  void localizesWithSymmetricFallback() {
+    var r = new AccountBalanceDynamicDescriptionResolver();
+    assertThat(r.resolve("en", "English", "中文")).isEqualTo("English");
+    assertThat(r.resolve("zh_HK", "English", "中文")).isEqualTo("中文");
+    assertThat(r.resolve("en", " ", "中文")).isEqualTo("中文");
+    assertThat(r.resolve("zh_HK", "English", " ")).isEqualTo("English");
+    assertThatThrownBy(() -> r.resolve("en", " ", null))
+        .isInstanceOf(
+            com.bct.ngtpa.apiservice.application.exception.AccountBalanceRetrievalException.class);
+  }
+
+  @Test
+  void rendersGroupingZerosNegativeAndRefusesRounding() {
+    var r = new AccountBalancePrecisionRenderer();
+    assertThat(r.render(new BigDecimal("1234.5"), BigInteger.valueOf(2))).isEqualTo("1,234.50");
+    assertThat(r.render(BigDecimal.ZERO, BigInteger.valueOf(3))).isEqualTo("0.000");
+    assertThat(r.render(new BigDecimal("-1234.50"), BigInteger.valueOf(2))).isEqualTo("-1,234.50");
+    assertThatThrownBy(() -> r.render(new BigDecimal("1.234"), BigInteger.valueOf(2)))
+        .isInstanceOf(
+            com.bct.ngtpa.apiservice.application.exception.AccountBalanceRetrievalException.class);
+  }
+
+  @Test
+  void obtainsEveryRequiredPrecision() {
+    var m = MetadataFixtures.all();
+    var t = new DefaultAccountBalancePresentationTransformer();
+    assertThat(t.precisions(m))
+        .containsEntry(GeneralMetadataName.FUND_PRICE, BigInteger.valueOf(4))
+        .containsEntry(GeneralMetadataName.UNIT_BALANCE, BigInteger.valueOf(3))
+        .containsEntry(GeneralMetadataName.NET_ASSET_VALUE, BigInteger.valueOf(2))
+        .containsEntry(GeneralMetadataName.FX_RATE, BigInteger.ONE);
+  }
+
+  static final class MetadataFixtures {
+    static ResolvedGeneralMetadataSet all() {
+      var scope = new GeneralMetadataScope("DB", "T", "P");
+      return ResolvedGeneralMetadataSet.normalize(
+          scope,
+          GeneralMetadataResolutionSource.DEFAULT_ALL,
+          java.util.List.of(
+              e(GeneralMetadataName.FUND_PRICE, "4"),
+              e(GeneralMetadataName.UNIT_BALANCE, "3"),
+              e(GeneralMetadataName.NET_ASSET_VALUE, "2"),
+              e(GeneralMetadataName.FX_RATE, "1")));
+    }
+
+    static ResolvedGeneralMetadata e(GeneralMetadataName n, String v) {
+      return new ResolvedGeneralMetadata(
+          new GeneralMetadataKey(n, GeneralMetadataType.PRECISION), v);
+    }
+  }
 }

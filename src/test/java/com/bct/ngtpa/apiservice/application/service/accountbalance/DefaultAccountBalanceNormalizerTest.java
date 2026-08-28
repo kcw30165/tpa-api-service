@@ -22,17 +22,23 @@ class DefaultAccountBalanceNormalizerTest {
     var holding = holding("EE", "OE", "DBLF", "10.123", "-1", null, "2.50");
     var normalized = normalizer.normalize(raw(List.of(source), List.of(fund), List.of(holding)));
 
-    assertThat(normalized.displaySources()).containsExactlyEntriesOf(
-        java.util.Map.of(new DisplaySourceKey("EE", "OE"), source));
-    assertThat(normalized.funds()).containsExactlyEntriesOf(java.util.Map.of(new FundKey("DBLF"), fund));
-    assertThat(normalized.holdings()).containsExactlyEntriesOf(
-        java.util.Map.of(new HoldingKey("EE", "OE", "DBLF"), holding));
-    assertThat(normalized.funds().get(new FundKey("DBLF")).fundPrice()).isEqualByComparingTo("535.9379");
-    assertThat(normalized.holdings().values().iterator().next().netAssetValue()).isEqualByComparingTo("-1");
+    assertThat(normalized.displaySources())
+        .containsExactlyEntriesOf(java.util.Map.of(new DisplaySourceKey("EE", "OE"), source));
+    assertThat(normalized.funds())
+        .containsExactlyEntriesOf(java.util.Map.of(new FundKey("DBLF"), fund));
+    assertThat(normalized.holdings())
+        .containsExactlyEntriesOf(java.util.Map.of(new HoldingKey("EE", "OE", "DBLF"), holding));
+    assertThat(normalized.funds().get(new FundKey("DBLF")).fundPrice())
+        .isEqualByComparingTo("535.9379");
+    assertThat(normalized.holdings().values().iterator().next().netAssetValue())
+        .isEqualByComparingTo("-1");
     assertThat(normalized.holdings().values().iterator().next().vestedBalance()).isNull();
-    assertThat(normalized.funds().values().iterator().next().fundFactsheet()).isEqualTo("not a url");
-    assertThat(normalized.displaySources().values().iterator().next().sourceChineseDescription()).isEqualTo("來源");
-    assertThatThrownBy(() -> normalized.funds().clear()).isInstanceOf(UnsupportedOperationException.class);
+    assertThat(normalized.funds().values().iterator().next().fundFactsheet())
+        .isEqualTo("not a url");
+    assertThat(normalized.displaySources().values().iterator().next().sourceChineseDescription())
+        .isEqualTo("來源");
+    assertThatThrownBy(() -> normalized.funds().clear())
+        .isInstanceOf(UnsupportedOperationException.class);
   }
 
   @Test
@@ -50,7 +56,9 @@ class DefaultAccountBalanceNormalizerTest {
     assertThat(empty.displaySources()).isEmpty();
     assertThat(empty.funds()).isEmpty();
     assertThat(empty.holdings()).isEmpty();
-    var parents = normalizer.normalize(raw(List.of(source("EE", "OE", 1)), List.of(fund("F", "1", "1", "x")), List.of()));
+    var parents =
+        normalizer.normalize(
+            raw(List.of(source("EE", "OE", 1)), List.of(fund("F", "1", "1", "x")), List.of()));
     assertThat(parents.displaySources()).hasSize(1);
     assertThat(parents.funds()).hasSize(1);
   }
@@ -70,7 +78,8 @@ class DefaultAccountBalanceNormalizerTest {
     assertSystemFailure(raw(List.of(source(" ", "OE", 1)), List.of(), List.of()));
     assertSystemFailure(raw(List.of(source("EE", null, 1)), List.of(), List.of()));
     assertSystemFailure(raw(List.of(), List.of(fund(" ", "1", "1", "x")), List.of()));
-    assertSystemFailure(raw(List.of(), List.of(), List.of(holding("EE", "OE", null, "1", "1", "1", "1"))));
+    assertSystemFailure(
+        raw(List.of(), List.of(), List.of(holding("EE", "OE", null, "1", "1", "1", "1"))));
   }
 
   @Test
@@ -87,26 +96,42 @@ class DefaultAccountBalanceNormalizerTest {
         .isEqualTo(AccountBalanceRetrievalException.Reason.SYSTEM_FAILURE);
   }
 
-  private static RawAccountBalanceData raw(List<RawAccountBalanceDisplaySource> sources,
-      List<RawAccountBalanceFundDetail> funds, List<RawAccountBalanceHolding> holdings) {
-    return new RawAccountBalanceData(new RawAccountBalanceDisplayOptions(true, false, true),
-        new RawAccountBalanceCurrency(List.of("HKD"), "HKD"), sources, funds, holdings);
+  private static RawAccountBalanceData raw(
+      List<RawAccountBalanceDisplaySource> sources,
+      List<RawAccountBalanceFundDetail> funds,
+      List<RawAccountBalanceHolding> holdings) {
+    return new RawAccountBalanceData(
+        new RawAccountBalanceDisplayOptions(true, false, true),
+        new RawAccountBalanceCurrency(List.of("HKD"), "HKD"),
+        sources,
+        funds,
+        holdings);
   }
 
-  private static RawAccountBalanceDisplaySource source(String display, String sub, Integer sequence) {
+  private static RawAccountBalanceDisplaySource source(
+      String display, String sub, Integer sequence) {
     return new RawAccountBalanceDisplaySource(display, "Source", "來源", sub, "Sub", "子來源", sequence);
   }
 
-  private static RawAccountBalanceFundDetail fund(String code, String price, String rate, String factsheet) {
-    return new RawAccountBalanceFundDetail(code, "Fund", "基金", 1, new BigDecimal(price), "HKD",
-        new BigDecimal(rate), factsheet);
+  private static RawAccountBalanceFundDetail fund(
+      String code, String price, String rate, String factsheet) {
+    return new RawAccountBalanceFundDetail(
+        code, "Fund", "基金", 1, new BigDecimal(price), "HKD", new BigDecimal(rate), factsheet);
   }
 
-  private static RawAccountBalanceHolding holding(String display, String sub, String fund,
-      String unit, String nav, String vested, String transit) {
-    return new RawAccountBalanceHolding(display, sub, fund, decimal(unit), decimal(nav),
-        decimal(vested), decimal(transit));
+  private static RawAccountBalanceHolding holding(
+      String display,
+      String sub,
+      String fund,
+      String unit,
+      String nav,
+      String vested,
+      String transit) {
+    return new RawAccountBalanceHolding(
+        display, sub, fund, decimal(unit), decimal(nav), decimal(vested), decimal(transit));
   }
 
-  private static BigDecimal decimal(String value) { return value == null ? null : new BigDecimal(value); }
+  private static BigDecimal decimal(String value) {
+    return value == null ? null : new BigDecimal(value);
+  }
 }
