@@ -504,3 +504,11 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - Successful OTP verification ends at `SELECT_ACCOUNT`; there is no separate Login account-selection mutation.
 - Routine evidence is redacted, private runtime state is cleaned, and suite evidence is packaged automatically as ZIP-in-`.txt` under `/mnt/d/Projects/ORSO/ngtpa`.
 - Offline regression is CI-suitable. Live suites remain explicit development or pre-release checks because real credentials and OTP delivery are involved.
+
+### Login start and cancellation in-process integration coverage
+
+- Added `LoginStartCancellationWebIntegrationTest` using Spring `WebTestClient` bound to the real production `LoginController`.
+- The journey validates Login start response mapping, `auth_flow_sid` issuance, CSRF publication, cancellation `RETURN_TO_LOGIN`, cookie clearing, and idempotent missing-session cancellation.
+- All OTP use cases are deterministic test-only sentinels and remain uninvoked.
+- No `src/main/**` file changed, no external network was used, and no OTP was delivered.
+- Spotless application remains intentionally deferred to the feature stabilization stage.
