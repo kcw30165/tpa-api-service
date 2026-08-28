@@ -1,0 +1,1 @@
+package com.bct.ngtpa.apiservice.application.dto.accountbalance.portfolio; import java.util.List; public record RawSubDisplayLevelSubDisplayAccount(String subDisplayAccountId,Integer displaySequence,List<RawSubDisplayLevelFund> funds){public RawSubDisplayLevelSubDisplayAccount{funds=funds==null?List.of():List.copyOf(funds);}}
