@@ -124,3 +124,7 @@ The earlier phrase “one-call required-key resolution” means one application-
 ## Phase II runtime-gate repair
 
 Focused runtime execution exposed stale test assertions and fixtures plus one production cancellation-lifecycle defect. Tests now assert direct reactive exceptions rather than artificial nested causes, compare Optional resolution sources correctly, return a valid full-set row for blank-filter APIM fixtures, create an actual DEFAULT_ALL versus POLICY_SPECIFIC conflict, and guard cumulative CAS structure without depending on a local variable name. Resolver coalescing now removes the exact in-flight mapping when a downstream subscriber cancels, while retaining terminal cleanup, immutable scope-plus-required-key identity, shared cached execution for active subscribers, and all existing cache/CAS behavior. The ratified blank-filter full-set request and deterministic sequential per-key targeted fan-out remain unchanged.
+
+## Phase II final contract-guard repair
+
+The post-repair focused runtime gate passed 66 of 67 tests. The sole remaining failure was a formatting-sensitive source-text assertion requiring `cache.read(query.scope())` as one contiguous string, while Spotless correctly formats the bounded recovery read across lines. The guard now verifies `recoverAfterConflict(query)` and `.read(query.scope())` independently. Production code and runtime behavior are unchanged.

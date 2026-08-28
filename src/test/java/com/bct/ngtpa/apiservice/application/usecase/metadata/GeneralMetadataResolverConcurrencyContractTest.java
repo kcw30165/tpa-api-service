@@ -33,7 +33,7 @@ class GeneralMetadataResolverConcurrencyContractTest {
         .contains(".replaceIfUnchanged(", "query.scope()", "cached.orElseThrow()", "replacement")
         .contains("outcome == GeneralMetadataCacheReplaceResult.APPLIED")
         .contains("recoverAfterConflict(query)")
-        .contains("cache.read(query.scope())")
+        .contains("recoverAfterConflict(query)", ".read(query.scope())")
         .contains("new GeneralMetadataConcurrencyException()")
         .doesNotContain("while (", "for (", "retryWhen", "repeatWhen");
   }
