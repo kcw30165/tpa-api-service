@@ -155,7 +155,9 @@ class ApimRoutingLedgerCharacterizationTest {
               "null",
               "SAFE_BUSINESS_CALL",
               "EXECUTOR",
-              "NON_ACCOUNT"));
+              "NON_ACCOUNT"),
+          e("TRPGetGeneralMetaData", "metadata/ApimGeneralMetadataSourceAdapter.java", "ACCOUNT_ENV", "command.actorUserRole()", "command.scope().accountEnv()", "SAFE_BUSINESS_CALL", "EXECUTOR", "ACCOUNT_ENV")
+      );
 
   @Test
   void ledgerCoversEveryPromptZeroOperationExactlyOnce() {

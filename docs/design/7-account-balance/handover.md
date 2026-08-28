@@ -70,3 +70,7 @@ Java-side metadata contracts use `accountEnv` consistently to distinguish the ac
 ### Phase II-002 v008 complete account environment naming repair
 
 All Java identifiers in the general metadata capability now use `accountEnv` for the account database environment, including record components, factory parameters, local references, and tests. The only retained standalone `env` text is the required APIM JSON wire property in `@JsonProperty("env")` and serialized fixtures. This prevents confusion with development and deployment environments.
+
+## Phase II-003 implementation handover
+
+`TRPGetGeneralMetaData` now has an authenticated `ACCOUNT_ENV` outbound adapter backed exclusively by `ApimExchangeExecutor.postEnvelope(...)`. The adapter uses trusted `command.actorUserRole()`, `command.scope().accountEnv()`, `SAFE_BUSINESS_CALL`, the canonical generic envelope validator, and the Phase II-002 operation-content normalizer. Correlation propagation remains executor/transport infrastructure; no request DTO field or feature-owned propagator was added. The routing ledger and shared response-validation boundary include the new adapter.
