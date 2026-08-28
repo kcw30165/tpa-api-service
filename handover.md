@@ -465,3 +465,10 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - Routine Login retesting uses `scripts/e2e/run-login-dev.sh <scenario>` rather than commit-pinned `/mnt/d` wrappers.
 - The dispatcher interactively collects runtime credentials, keeps the password hidden, sets the scenario-specific guards, and invokes the canonical runner.
 - Supported names are `cancel`, `valid-otp`, `invalid-otp`, `resend-cooldown`, and `logout`.
+
+### Login regression orchestrator
+
+- `scripts/e2e/run-login-regression.sh` is the canonical suite-level entrypoint.
+- Modes are `offline`, `live-safe`, `live-otp`, and `all`.
+- The parent evidence manifest records explicit child paths returned by each launch and never discovers the newest evidence directory.
+- Offline regression is fully automatic. Live credentials are collected once per suite. OTP operations are never retried automatically.

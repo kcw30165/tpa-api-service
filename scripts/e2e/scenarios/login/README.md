@@ -76,3 +76,16 @@ bash scripts/e2e/run-login-dev.sh logout
 ```
 
 The dispatcher prompts for runtime credentials, prompts for the destination index when needed, sets only the guards required by the selected scenario, and delegates to `scripts/e2e/run.sh`.
+
+## Login regression orchestration
+
+Use the committed suite runner for consolidated testing:
+
+```bash
+bash scripts/e2e/run-login-regression.sh offline
+bash scripts/e2e/run-login-regression.sh live-safe
+bash scripts/e2e/run-login-regression.sh live-otp
+bash scripts/e2e/run-login-regression.sh all
+```
+
+`offline` is fully automatic and non-network. `live-safe` collects credentials once and sends no OTP. `live-otp` collects credentials once, announces a budget of three OTP deliveries and two OTP prompts, requires suite-level authorization, and stops before launching another OTP-producing flow after an unexpected failure.
