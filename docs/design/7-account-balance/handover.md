@@ -242,3 +242,15 @@ Confirmed the complete Account Balance regression matrix through focused control
 #### Phase V-005 scripted local functional validation assets
 
 Added a curl-based local Account Balance validation package with environment-supplied authenticated context, safe scenario selection, strict public response assertions, sanitized business/system fixtures, and documented local APIM/Redis stub prerequisites. Direct scenarios cover initial load, explicit currency, request-ID validation, language fallback, and shared selected-account behavior. Hook-driven scenarios cover approved business mappings, metadata cache and resolution paths, malformed cardinality, and graceful factsheet omission without coupling the repository to a specific stub product. No real identifiers, credentials, financial values, or protected context are committed. The functional suite is not executed by the deterministic writer because the local BFF, authenticated session, Redis, and APIM stubs are external prerequisites. Formatting remains deferred to Phase V-006.
+
+### Phase V-006 final stabilization and architect review
+
+Spotless executed exactly once.
+
+Compile PASS.
+Test compile PASS.
+
+Architect review package generated.
+
+STATUS=READY_FOR_ARCHITECT_REVIEW
+NEXT_PHASE_BLOCKED_PENDING_ARCHITECT_DECISION=YES
