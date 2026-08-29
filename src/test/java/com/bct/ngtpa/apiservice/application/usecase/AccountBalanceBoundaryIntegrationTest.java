@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.bct.ngtpa.apiservice.application.dto.*;
 import com.bct.ngtpa.apiservice.application.dto.accountbalance.raw.RawAccountBalanceData;
 import com.bct.ngtpa.apiservice.application.dto.metadata.*;
+import com.bct.ngtpa.apiservice.application.exception.AccountBalanceRetrievalException;
 import com.bct.ngtpa.apiservice.application.port.in.AccountBalanceAssembler;
 import com.bct.ngtpa.apiservice.application.port.in.GeneralMetadataResolver;
 import com.bct.ngtpa.apiservice.application.port.out.*;
@@ -94,7 +95,14 @@ class AccountBalanceBoundaryIntegrationTest {
               return Mono.empty();
             });
     StepVerifier.create(service.get(command("USD")))
-        .expectErrorSatisfies(e -> assertThat(e).isSameAs(failure))
+        .expectErrorSatisfies(
+            error -> {
+              assertThat(error).isInstanceOf(AccountBalanceRetrievalException.class);
+              var mapped = (AccountBalanceRetrievalException) error;
+              assertThat(mapped.reason()).isEqualTo(AccountBalanceRetrievalException.Reason.SYSTEM_FAILURE);
+              assertThat(mapped.getCause()).isNull();
+              assertThat(mapped.getMessage()).doesNotContain("metadata unavailable");
+            })
         .verify();
     assertThat(sourceCalls).hasValue(0);
     assertThat(assemblerCalls).hasValue(0);
@@ -115,9 +123,39 @@ class AccountBalanceBoundaryIntegrationTest {
               return Mono.empty();
             });
     StepVerifier.create(service.get(command("USD")))
-        .expectErrorSatisfies(e -> assertThat(e).isSameAs(failure))
+        .expectErrorSatisfies(
+            error -> {
+              assertThat(error).isInstanceOf(AccountBalanceRetrievalException.class);
+              var mapped = (AccountBalanceRetrievalException) error;
+              assertThat(mapped.reason()).isEqualTo(AccountBalanceRetrievalException.Reason.SYSTEM_FAILURE);
+              assertThat(mapped.getCause()).isNull();
+              assertThat(mapped.getMessage()).doesNotContain("source unavailable");
+            })
         .verify();
     assertThat(assemblerCalls).hasValue(0);
+  }
+
+
+  @Test
+  void assemblerFailureIsSanitizedWithoutCauseLeakage() {
+    var service =
+        new GetAccountBalanceService(
+            env -> Mono.just(LocalDate.of(2026, 8, 28)),
+            q -> Mono.just(metadata(q)),
+            f -> Mono.just(new RawAccountBalanceData(null, null, List.of(), List.of(), List.of())),
+            (c, d, m, r) -> Mono.error(new RuntimeException("secret financial payload")));
+
+    StepVerifier.create(service.get(command("USD")))
+        .expectErrorSatisfies(
+            error -> {
+              assertThat(error).isInstanceOf(AccountBalanceRetrievalException.class);
+              var mapped = (AccountBalanceRetrievalException) error;
+              assertThat(mapped.reason()).isEqualTo(AccountBalanceRetrievalException.Reason.SYSTEM_FAILURE);
+              assertThat(mapped.getCause()).isNull();
+              assertThat(mapped.getMessage()).doesNotContain("secret financial payload");
+              assertThat(mapped.toString()).doesNotContain("secret financial payload");
+            })
+        .verify();
   }
 
   private static GetAccountBalanceCommand command(String currency) {

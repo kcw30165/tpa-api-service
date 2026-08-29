@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.application.usecase;
 
 import com.bct.ngtpa.apiservice.application.dto.*;
 import com.bct.ngtpa.apiservice.application.dto.metadata.*;
+import com.bct.ngtpa.apiservice.application.exception.AccountBalanceRetrievalException;
 import com.bct.ngtpa.apiservice.application.port.in.*;
 import com.bct.ngtpa.apiservice.application.port.out.*;
 import java.util.Set;
@@ -60,7 +61,10 @@ public class GetAccountBalanceService implements GetAccountBalanceUseCase {
                                     accountBalanceAssembler.assemble(
                                         command, referenceDate, metadata, raw));
                       });
-            });
+            })
+        .onErrorMap(
+            error -> !(error instanceof AccountBalanceRetrievalException),
+            error -> AccountBalanceRetrievalException.systemFailure());
   }
 
   private static GeneralMetadataKey key(GeneralMetadataName name, GeneralMetadataType type) {

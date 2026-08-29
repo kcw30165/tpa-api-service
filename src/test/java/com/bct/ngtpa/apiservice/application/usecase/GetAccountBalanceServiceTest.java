@@ -11,6 +11,7 @@ import com.bct.ngtpa.apiservice.application.dto.accountbalance.raw.RawAccountBal
 import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataResolutionSource;
 import com.bct.ngtpa.apiservice.application.dto.metadata.ResolvedGeneralMetadata;
 import com.bct.ngtpa.apiservice.application.dto.metadata.ResolvedGeneralMetadataSet;
+import com.bct.ngtpa.apiservice.application.exception.AccountBalanceRetrievalException;
 import com.bct.ngtpa.apiservice.application.port.in.AccountBalanceAssembler;
 import com.bct.ngtpa.apiservice.application.port.in.GeneralMetadataResolver;
 import com.bct.ngtpa.apiservice.application.port.out.AccountBalanceSourcePort;
@@ -137,9 +138,32 @@ class GetAccountBalanceServiceTest {
             });
 
     StepVerifier.create(service.get(command(null)))
-        .expectErrorSatisfies(error -> assertThat(error).isSameAs(failure))
+        .expectErrorSatisfies(
+            error -> {
+              assertThat(error).isInstanceOf(AccountBalanceRetrievalException.class);
+              var mapped = (AccountBalanceRetrievalException) error;
+              assertThat(mapped.reason()).isEqualTo(AccountBalanceRetrievalException.Reason.SYSTEM_FAILURE);
+              assertThat(mapped.getCause()).isNull();
+              assertThat(mapped.getMessage()).doesNotContain("reference unavailable");
+            })
         .verify();
     assertThat(laterCalls).hasValue(0);
+  }
+
+
+  @Test
+  void preservesExistingTypedAccountBalanceFailureByIdentity() {
+    var typed = AccountBalanceRetrievalException.accountNotFound();
+    var service =
+        new GetAccountBalanceService(
+            env -> Mono.error(typed),
+            query -> Mono.empty(),
+            fetch -> Mono.empty(),
+            (command, date, metadata, raw) -> Mono.empty());
+
+    StepVerifier.create(service.get(command(null)))
+        .expectErrorSatisfies(error -> assertThat(error).isSameAs(typed))
+        .verify();
   }
 
   private static GetAccountBalanceCommand command(String currency) {
