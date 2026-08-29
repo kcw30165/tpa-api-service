@@ -234,3 +234,7 @@ Introduced separate Account Balance and shared General Metadata observability po
 ### Phase V-003 architecture, configuration, and operation guards
 
 Added cumulative source-level guards for both runtime-configured APIM paths, the existing `PT20M` Duration-bound General Metadata TTL, absence of startup metadata loading, canonical `ApimExchangeExecutor` ownership, `ACCOUNT_ENV` and `SAFE_BUSINESS_CALL` classification, narrow request-correlation propagation, non-blocking Reactor usage, absence of global Jackson-inclusion mutation, absence of an Account Balance idempotency-key requirement, and shared General Metadata domain neutrality. Existing operation-ledger and architecture allowlist coverage is preserved and audited rather than duplicated. No production runtime behavior changed in this test-only subphase.
+
+### Phase V-004 contract and regression stabilization
+
+Confirmed the complete Account Balance regression matrix through focused controller, serialization, APIM, application-service, presentation, metadata resolver, Redis cache, and architecture tests. No approved runtime behavior or production contract required change. This feature-level stabilization executes the repository formatter exactly once, then production compilation and test compilation, cumulative static and preservation audits, diff checking, and the governed twelve-file Phase V architect-review package. Maven runtime tests are not executed by the generated workflow. The next phase remains blocked pending architect decision.

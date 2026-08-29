@@ -60,8 +60,7 @@ class AccountBalanceObservabilitySecurityGuardTest {
             "requestBody",
             "responseBody",
             "Throwable");
-    assertThat(apim)
-        .doesNotContain("request.body", "response.body", "requestBody", "responseBody");
+    assertThat(apim).doesNotContain("request.body", "response.body", "requestBody", "responseBody");
     assertThat(cache)
         .contains("SHA-256", "digest(scope.trustCode()", "scope.policyNo())")
         .doesNotContain("ngtpa:general-metadata:DB:DBA", "ngtpa:general-metadata:DB:00000008802");

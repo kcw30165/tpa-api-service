@@ -142,14 +142,14 @@ class GetAccountBalanceServiceTest {
             error -> {
               assertThat(error).isInstanceOf(AccountBalanceRetrievalException.class);
               var mapped = (AccountBalanceRetrievalException) error;
-              assertThat(mapped.reason()).isEqualTo(AccountBalanceRetrievalException.Reason.SYSTEM_FAILURE);
+              assertThat(mapped.reason())
+                  .isEqualTo(AccountBalanceRetrievalException.Reason.SYSTEM_FAILURE);
               assertThat(mapped.getCause()).isNull();
               assertThat(mapped.getMessage()).doesNotContain("reference unavailable");
             })
         .verify();
     assertThat(laterCalls).hasValue(0);
   }
-
 
   @Test
   void preservesExistingTypedAccountBalanceFailureByIdentity() {

@@ -11,7 +11,8 @@ class AccountBalancePublicErrorHardeningGuardTest {
 
   @Test
   void useCaseSanitizesEveryUnexpectedFailureButPreservesTypedBusinessFailures() throws Exception {
-    String source = Files.readString(MAIN.resolve("application/usecase/GetAccountBalanceService.java"));
+    String source =
+        Files.readString(MAIN.resolve("application/usecase/GetAccountBalanceService.java"));
     assertThat(source)
         .contains(".onErrorMap(")
         .contains("instanceof AccountBalanceRetrievalException")
@@ -21,8 +22,13 @@ class AccountBalancePublicErrorHardeningGuardTest {
 
   @Test
   void onlyApprovedTasCodesReachApprovedPublicBusinessCodes() throws Exception {
-    String adapter = Files.readString(MAIN.resolve("adapter/out/apim/accountbalance/ApimAccountBalanceSourceAdapter.java"));
-    String policy = Files.readString(MAIN.resolve("adapter/in/web/accountbalance/AccountBalanceRetrievalResponsePolicy.java"));
+    String adapter =
+        Files.readString(
+            MAIN.resolve("adapter/out/apim/accountbalance/ApimAccountBalanceSourceAdapter.java"));
+    String policy =
+        Files.readString(
+            MAIN.resolve(
+                "adapter/in/web/accountbalance/AccountBalanceRetrievalResponsePolicy.java"));
     assertThat(adapter).contains("err.tpa.account.invalid", "err.tpa.member.not.found");
     assertThat(policy)
         .contains("err.ab.account.not.exist", "err.ab.account.mismatch")
@@ -32,7 +38,9 @@ class AccountBalancePublicErrorHardeningGuardTest {
 
   @Test
   void rawTasDetailsAreNotEmbeddedInTheFeatureException() throws Exception {
-    String exception = Files.readString(MAIN.resolve("application/exception/AccountBalanceRetrievalException.java"));
+    String exception =
+        Files.readString(
+            MAIN.resolve("application/exception/AccountBalanceRetrievalException.java"));
     assertThat(exception).doesNotContain("err.tpa.", "responseMessage", "rawMessage");
   }
 }

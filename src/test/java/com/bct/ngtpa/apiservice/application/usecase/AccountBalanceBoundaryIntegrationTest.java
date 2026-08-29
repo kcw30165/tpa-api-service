@@ -99,7 +99,8 @@ class AccountBalanceBoundaryIntegrationTest {
             error -> {
               assertThat(error).isInstanceOf(AccountBalanceRetrievalException.class);
               var mapped = (AccountBalanceRetrievalException) error;
-              assertThat(mapped.reason()).isEqualTo(AccountBalanceRetrievalException.Reason.SYSTEM_FAILURE);
+              assertThat(mapped.reason())
+                  .isEqualTo(AccountBalanceRetrievalException.Reason.SYSTEM_FAILURE);
               assertThat(mapped.getCause()).isNull();
               assertThat(mapped.getMessage()).doesNotContain("metadata unavailable");
             })
@@ -127,14 +128,14 @@ class AccountBalanceBoundaryIntegrationTest {
             error -> {
               assertThat(error).isInstanceOf(AccountBalanceRetrievalException.class);
               var mapped = (AccountBalanceRetrievalException) error;
-              assertThat(mapped.reason()).isEqualTo(AccountBalanceRetrievalException.Reason.SYSTEM_FAILURE);
+              assertThat(mapped.reason())
+                  .isEqualTo(AccountBalanceRetrievalException.Reason.SYSTEM_FAILURE);
               assertThat(mapped.getCause()).isNull();
               assertThat(mapped.getMessage()).doesNotContain("source unavailable");
             })
         .verify();
     assertThat(assemblerCalls).hasValue(0);
   }
-
 
   @Test
   void assemblerFailureIsSanitizedWithoutCauseLeakage() {
@@ -150,7 +151,8 @@ class AccountBalanceBoundaryIntegrationTest {
             error -> {
               assertThat(error).isInstanceOf(AccountBalanceRetrievalException.class);
               var mapped = (AccountBalanceRetrievalException) error;
-              assertThat(mapped.reason()).isEqualTo(AccountBalanceRetrievalException.Reason.SYSTEM_FAILURE);
+              assertThat(mapped.reason())
+                  .isEqualTo(AccountBalanceRetrievalException.Reason.SYSTEM_FAILURE);
               assertThat(mapped.getCause()).isNull();
               assertThat(mapped.getMessage()).doesNotContain("secret financial payload");
               assertThat(mapped.toString()).doesNotContain("secret financial payload");

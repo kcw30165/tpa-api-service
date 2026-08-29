@@ -14,15 +14,21 @@ class AccountBalanceArchitectureConfigurationGuardTest {
   @Test
   void runtimeConfigurationOwnsBothApimPathsAndMetadataTtl() throws Exception {
     String resources = treeText(RESOURCES);
-    String properties = read("src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/metadata/GeneralMetadataCacheProperties.java");
+    String properties =
+        read(
+            "src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/metadata/GeneralMetadataCacheProperties.java");
     assertThat(resources).contains("account-balance", "general-metadata", "PT20M");
     assertThat(properties).contains("Duration", "PT20M");
   }
 
   @Test
   void adaptersUseCanonicalExecutorAndApprovedClassifications() throws Exception {
-    String account = read("src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/accountbalance/ApimAccountBalanceSourceAdapter.java");
-    String metadata = read("src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/metadata/ApimGeneralMetadataSourceAdapter.java");
+    String account =
+        read(
+            "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/accountbalance/ApimAccountBalanceSourceAdapter.java");
+    String metadata =
+        read(
+            "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/metadata/ApimGeneralMetadataSourceAdapter.java");
     assertThat(account + metadata)
         .contains("ApimExchangeExecutor", "ACCOUNT_ENV", "SAFE_BUSINESS_CALL")
         .doesNotContain("WebClient", ".block(", ".subscribe(");
@@ -31,7 +37,9 @@ class AccountBalanceArchitectureConfigurationGuardTest {
   @Test
   void sharedMetadataRemainsFeatureNeutralAndHasOneRuntimeResolver() throws Exception {
     String metadata = treeText(Path.of("src/main/java/com/bct/ngtpa/apiservice/application"));
-    String config = read("src/main/java/com/bct/ngtpa/apiservice/config/metadata/GeneralMetadataRuntimeConfig.java");
+    String config =
+        read(
+            "src/main/java/com/bct/ngtpa/apiservice/config/metadata/GeneralMetadataRuntimeConfig.java");
     assertThat(metadata).doesNotContain("application.usecase.metadata.accountbalance");
     assertThat(config).contains("new GeneralMetadataResolverService(");
     assertThat(config.split("new GeneralMetadataResolverService\\(", -1)).hasSize(2);
@@ -40,15 +48,23 @@ class AccountBalanceArchitectureConfigurationGuardTest {
   @Test
   void forbiddenRuntimeAndWebContractsRemainAbsent() throws Exception {
     String accountBalance = treeText(Path.of("src/main/java/com/bct/ngtpa/apiservice"));
-    String controller = read("src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AccountBalanceController.java");
-    assertThat(controller).doesNotContain("Idempotency-Key", "ObjectMapper.setDefaultPropertyInclusion");
-    assertThat(accountBalance).doesNotContain("AccountBalanceMetadataStartupLoader", "GeneralMetadataStartupLoader");
+    String controller =
+        read(
+            "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AccountBalanceController.java");
+    assertThat(controller)
+        .doesNotContain("Idempotency-Key", "ObjectMapper.setDefaultPropertyInclusion");
+    assertThat(accountBalance)
+        .doesNotContain("AccountBalanceMetadataStartupLoader", "GeneralMetadataStartupLoader");
   }
 
   @Test
   void correlationAndReactiveRulesRemainNarrow() throws Exception {
-    String account = read("src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/accountbalance/ApimAccountBalanceSourceAdapter.java");
-    String metadata = read("src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/metadata/ApimGeneralMetadataSourceAdapter.java");
+    String account =
+        read(
+            "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/accountbalance/ApimAccountBalanceSourceAdapter.java");
+    String metadata =
+        read(
+            "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/metadata/ApimGeneralMetadataSourceAdapter.java");
     assertThat(account + metadata).doesNotContain("Idempotency-Key", ".block(", ".subscribe(");
     assertThat(treeText(MAIN)).contains("X-Request-Id");
   }
@@ -61,7 +77,9 @@ class AccountBalanceArchitectureConfigurationGuardTest {
     StringBuilder text = new StringBuilder();
     try (Stream<Path> paths = Files.walk(root)) {
       for (Path path : paths.filter(Files::isRegularFile).sorted().toList()) {
-        if (path.toString().endsWith(".java") || path.toString().endsWith(".yml") || path.toString().endsWith(".yaml")) {
+        if (path.toString().endsWith(".java")
+            || path.toString().endsWith(".yml")
+            || path.toString().endsWith(".yaml")) {
           text.append(Files.readString(path)).append('\n');
         }
       }
