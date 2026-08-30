@@ -14,7 +14,7 @@ adapter/out/redis
   adapter + key factory + JSON mapper + Redis operations
         |
 RedisAdapterConfig
-  connection factory, templates, Sentinel, SSL, pool
+  connection factory, one ReactiveStringRedisTemplate, Sentinel, SSL, pool
 ```
 
 ## 2. Shared infrastructure
@@ -31,9 +31,21 @@ Externalizes concepts including:
 - Lettuce pool limits and wait time
 - Shutdown timeout
 
-### Reactive transport
+#### Reactive transport
 
-Adapters use `ReactiveRedisTemplate` or `ReactiveStringRedisTemplate` and Reactor `Mono`/`Flux`. Blocking Redis calls must not be introduced into reactive request paths.
+Adapters use the single application-owned `ReactiveStringRedisTemplate` and Reactor `Mono`/`Flux`. The project does not define or inject a separate `ReactiveRedisTemplate<String, String>` bean. Blocking Redis calls must not be introduced into reactive request paths.
+
+`RedisAdapterConfig` owns exactly one reactive Redis template bean:
+
+```java
+@Bean
+public ReactiveStringRedisTemplate reactiveStringRedisTemplate(
+    LettuceConnectionFactory lettuceConnectionFactory) {
+  return new ReactiveStringRedisTemplate(lettuceConnectionFactory);
+}
+```
+
+All string-key/string-value Redis adapters inject this canonical type. Do not add another reactive template bean, an alias named `reactiveRedisTemplate`, `@Primary`, or consumer-specific `@Qualifier` annotations. The bean uses the central `LettuceConnectionFactory`, preserving Sentinel, authentication, timeout, and TLS/mTLS behavior.
 
 ### Connection topology
 
@@ -206,9 +218,9 @@ Administrative listing/deletion is limited to approved capabilities. Controllers
 
 ## 13. Extension boundaries
 
-### Reuse directly
-
-- Shared Redis connection/templates
+#### Reuse directly
+- Central `LettuceConnectionFactory`
+- Single application-owned `ReactiveStringRedisTemplate`
 - Key factory conventions
 - Generic `CachePort`
 - Safe exception translation
