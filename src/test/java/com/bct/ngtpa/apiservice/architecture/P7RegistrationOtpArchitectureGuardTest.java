@@ -29,7 +29,7 @@ class P7RegistrationOtpArchitectureGuardTest {
                 "adapter.out.apim",
                 "adapter.out.sms",
                 "adapter.out.email",
-                "ReactiveRedisTemplate",
+                "ReactiveStringRedisTemplate",
                 "ServerWebExchange",
                 "ServerHttpRequest",
                 "ServerHttpResponse",
@@ -58,7 +58,7 @@ class P7RegistrationOtpArchitectureGuardTest {
               "adapter.out.sms",
               "adapter.out.email",
               "ApimWebClientFacade",
-              "ReactiveRedisTemplate",
+              "ReactiveStringRedisTemplate",
               "OtpChallengePort",
               "MessageDeliveryPort",
               "RegistrationLookupPort");

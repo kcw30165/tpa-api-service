@@ -11,8 +11,7 @@ class AccountBalanceApimContractBoundaryGuardTest {
   @Test
   void contractContainsNoExecutorAdapterOrPresentationLogic() throws Exception {
     Path root =
-        Path.of(
-            "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/accountbalance/dto");
+        Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/accountbalance/dto");
     String contentValidator =
         Files.readString(
             Path.of(
@@ -21,7 +20,8 @@ class AccountBalanceApimContractBoundaryGuardTest {
     String contracts;
     try (Stream<Path> paths = Files.walk(root)) {
       contracts =
-          paths.filter(Files::isRegularFile)
+          paths
+              .filter(Files::isRegularFile)
               .sorted()
               .map(AccountBalanceApimContractBoundaryGuardTest::read)
               .reduce(contentValidator, String::concat);

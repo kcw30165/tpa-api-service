@@ -7,7 +7,7 @@ import com.bct.ngtpa.apiservice.exception.CacheException;
 import java.time.Duration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.data.redis.core.ReactiveValueOperations;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -15,19 +15,19 @@ import reactor.test.StepVerifier;
 /**
  * Unit tests for {@link RedisStringCacheAdapter}.
  *
- * <p>All Redis interactions use a mocked {@link ReactiveRedisTemplate} — no real Redis connection
- * is made.
+ * <p>All Redis interactions use a mocked {@link ReactiveStringRedisTemplate} — no real Redis
+ * connection is made.
  */
 @SuppressWarnings("unchecked")
 class RedisStringCacheAdapterTest {
 
-  private ReactiveRedisTemplate<String, String> redisTemplate;
+  private ReactiveStringRedisTemplate redisTemplate;
   private ReactiveValueOperations<String, String> valueOps;
   private RedisStringCacheAdapter adapter;
 
   @BeforeEach
   void setUp() {
-    redisTemplate = mock(ReactiveRedisTemplate.class);
+    redisTemplate = mock(ReactiveStringRedisTemplate.class);
     valueOps = mock(ReactiveValueOperations.class);
     when(redisTemplate.opsForValue()).thenReturn(valueOps);
     adapter = new RedisStringCacheAdapter(redisTemplate);

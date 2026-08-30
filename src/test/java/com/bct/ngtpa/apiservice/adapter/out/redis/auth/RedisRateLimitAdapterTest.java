@@ -20,7 +20,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
@@ -31,12 +31,12 @@ class RedisRateLimitAdapterTest {
   private static final Clock FIXED_CLOCK =
       Clock.fixed(Instant.parse("2026-01-01T00:00:00Z"), ZoneOffset.UTC);
 
-  private ReactiveRedisTemplate<String, String> redisTemplate;
+  private ReactiveStringRedisTemplate redisTemplate;
   private RedisRateLimitAdapter adapter;
 
   @BeforeEach
   void setUp() {
-    redisTemplate = mock(ReactiveRedisTemplate.class);
+    redisTemplate = mock(ReactiveStringRedisTemplate.class);
     adapter =
         new RedisRateLimitAdapter(redisTemplate, new RedisCacheKeyFactory("ngtpa"), FIXED_CLOCK);
   }

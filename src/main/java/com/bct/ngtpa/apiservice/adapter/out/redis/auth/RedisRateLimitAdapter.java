@@ -9,7 +9,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
-import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
 import reactor.core.publisher.Mono;
 
@@ -27,19 +27,17 @@ public class RedisRateLimitAdapter implements RateLimitPort {
   private static final RedisScript<List> INCREMENT_AND_TTL_SCRIPT =
       RedisScript.of(INCREMENT_AND_TTL_SCRIPT_TEXT, List.class);
 
-  private final ReactiveRedisTemplate<String, String> redisTemplate;
+  private final ReactiveStringRedisTemplate redisTemplate;
   private final RedisCacheKeyFactory keyFactory;
   private final Clock clock;
 
   public RedisRateLimitAdapter(
-      ReactiveRedisTemplate<String, String> redisTemplate, RedisCacheKeyFactory keyFactory) {
+      ReactiveStringRedisTemplate redisTemplate, RedisCacheKeyFactory keyFactory) {
     this(redisTemplate, keyFactory, Clock.systemUTC());
   }
 
   public RedisRateLimitAdapter(
-      ReactiveRedisTemplate<String, String> redisTemplate,
-      RedisCacheKeyFactory keyFactory,
-      Clock clock) {
+      ReactiveStringRedisTemplate redisTemplate, RedisCacheKeyFactory keyFactory, Clock clock) {
     this.redisTemplate = Objects.requireNonNull(redisTemplate, "redisTemplate must not be null");
     this.keyFactory = Objects.requireNonNull(keyFactory, "keyFactory must not be null");
     this.clock = Objects.requireNonNull(clock, "clock must not be null");

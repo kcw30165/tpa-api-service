@@ -12,7 +12,7 @@ import com.bct.ngtpa.apiservice.exception.CacheException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.reactivestreams.Publisher;
-import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.data.redis.core.ReactiveValueOperations;
 import org.springframework.data.redis.core.ScanOptions;
 import reactor.core.publisher.Flux;
@@ -21,13 +21,13 @@ import reactor.test.StepVerifier;
 
 @SuppressWarnings("unchecked")
 class RedisCacheAdminAdapterTest {
-  private ReactiveRedisTemplate<String, String> redisTemplate;
+  private ReactiveStringRedisTemplate redisTemplate;
   private ReactiveValueOperations<String, String> valueOps;
   private RedisCacheAdminAdapter adapter;
 
   @BeforeEach
   void setUp() {
-    redisTemplate = mock(ReactiveRedisTemplate.class);
+    redisTemplate = mock(ReactiveStringRedisTemplate.class);
     valueOps = mock(ReactiveValueOperations.class);
     when(redisTemplate.opsForValue()).thenReturn(valueOps);
     adapter = new RedisCacheAdminAdapter(redisTemplate, new RedisCacheKeyFactory("ngtpa"));

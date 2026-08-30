@@ -52,18 +52,16 @@ import org.springframework.data.redis.connection.RedisPassword;
 import org.springframework.data.redis.connection.RedisSentinelConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
-import org.springframework.data.redis.core.ReactiveRedisTemplate;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
-import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.util.StringUtils;
 
 /**
  * Spring configuration for the Redis outbound adapter.
  *
  * <p>Provides a {@link LettuceConnectionFactory} wired to Redis Sentinel and an optional mTLS SSL
- * bundle, plus a {@link ReactiveRedisTemplate} with plain-string (UTF-8) serializers for both keys
- * and values. All connection details are externalized through {@link RedisCacheProperties} and its
- * environment-variable placeholders; no connection details are hardcoded here.
+ * bundle, plus a {@link ReactiveStringRedisTemplate} with plain-string (UTF-8) serializers for both
+ * keys and values. All connection details are externalized through {@link RedisCacheProperties} and
+ * its environment-variable placeholders; no connection details are hardcoded here.
  *
  * <p>This configuration is active by default ({@code redis-cache.enabled=true}). Set {@code
  * REDIS_CACHE_ENABLED=false} to disable it (e.g. in local-dev without a Sentinel instance, or in
@@ -122,10 +120,9 @@ public class RedisAdapterConfig {
   }
 
   @Bean
-  public ReactiveRedisTemplate<String, String> reactiveRedisTemplate(
+  public ReactiveStringRedisTemplate reactiveStringRedisTemplate(
       LettuceConnectionFactory lettuceConnectionFactory) {
-    RedisSerializationContext<String, String> context = RedisSerializationContext.string();
-    return new ReactiveRedisTemplate<>(lettuceConnectionFactory, context);
+    return new ReactiveStringRedisTemplate(lettuceConnectionFactory);
   }
 
   @Bean
@@ -134,21 +131,20 @@ public class RedisAdapterConfig {
   }
 
   @Bean
-  public CachePort redisStringCacheAdapter(
-      ReactiveRedisTemplate<String, String> reactiveRedisTemplate) {
+  public CachePort redisStringCacheAdapter(ReactiveStringRedisTemplate reactiveRedisTemplate) {
     return new RedisStringCacheAdapter(reactiveRedisTemplate);
   }
 
   @Bean
   public CacheAdminPort redisCacheAdminAdapter(
-      ReactiveRedisTemplate<String, String> reactiveRedisTemplate,
+      ReactiveStringRedisTemplate reactiveRedisTemplate,
       RedisCacheKeyFactory redisCacheKeyFactory) {
     return new RedisCacheAdminAdapter(reactiveRedisTemplate, redisCacheKeyFactory);
   }
 
   @Bean
   public RateLimitPort redisRateLimitAdapter(
-      ReactiveRedisTemplate<String, String> reactiveRedisTemplate,
+      ReactiveStringRedisTemplate reactiveRedisTemplate,
       RedisCacheKeyFactory redisCacheKeyFactory) {
     return new RedisRateLimitAdapter(reactiveRedisTemplate, redisCacheKeyFactory);
   }
@@ -318,7 +314,7 @@ public class RedisAdapterConfig {
   @Bean
   @ConditionalOnMissingBean(CaptchaChallengePort.class)
   public CaptchaChallengePort captchaChallengePort(
-      ReactiveRedisTemplate<String, String> reactiveRedisTemplate,
+      ReactiveStringRedisTemplate reactiveRedisTemplate,
       RedisCacheKeyFactory redisCacheKeyFactory,
       RedisCaptchaChallengeJsonMapper redisCaptchaChallengeJsonMapper) {
     return new RedisCaptchaChallengeAdapter(

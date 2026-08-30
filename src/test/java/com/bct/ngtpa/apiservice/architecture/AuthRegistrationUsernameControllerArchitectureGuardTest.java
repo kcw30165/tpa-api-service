@@ -25,7 +25,7 @@ class AuthRegistrationUsernameControllerArchitectureGuardTest {
             "AuthFlowSessionPort",
             "adapter.out.redis",
             "adapter.out.apim",
-            "ReactiveRedisTemplate",
+            "ReactiveStringRedisTemplate",
             "ApimWebClientFacade");
     assertThat(source)
         .contains("CheckRegistrationUsernameUseCase", "RegistrationUsernameCheckWebMapper");

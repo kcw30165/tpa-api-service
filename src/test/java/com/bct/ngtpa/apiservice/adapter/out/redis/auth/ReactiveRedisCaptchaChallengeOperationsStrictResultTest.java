@@ -7,13 +7,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
 class ReactiveRedisCaptchaChallengeOperationsStrictResultTest {
-  private final ReactiveRedisTemplate<String, String> redis = mock(ReactiveRedisTemplate.class);
+  private final ReactiveStringRedisTemplate redis = mock(ReactiveStringRedisTemplate.class);
   private final ReactiveRedisCaptchaChallengeOperations operations =
       new ReactiveRedisCaptchaChallengeOperations(redis);
 

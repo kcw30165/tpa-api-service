@@ -4,7 +4,7 @@ import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataCacheRep
 import com.bct.ngtpa.apiservice.exception.CacheException;
 import java.util.List;
 import java.util.Objects;
-import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
@@ -19,9 +19,9 @@ final class ReactiveGeneralMetadataRedisOperations implements GeneralMetadataRed
           + "if ttl<=0 then return -1 end; "
           + "redis.call('SET',KEYS[1],ARGV[2],'KEEPTTL'); return 1";
   private static final RedisScript<Long> SCRIPT = RedisScript.of(SCRIPT_TEXT, Long.class);
-  private final ReactiveRedisTemplate<String, String> redis;
+  private final ReactiveStringRedisTemplate redis;
 
-  ReactiveGeneralMetadataRedisOperations(ReactiveRedisTemplate<String, String> redis) {
+  ReactiveGeneralMetadataRedisOperations(ReactiveStringRedisTemplate redis) {
     this.redis = Objects.requireNonNull(redis, "redis must not be null");
   }
 

@@ -13,7 +13,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
-import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import reactor.core.publisher.Mono;
 
 public class RedisCaptchaChallengeAdapter implements CaptchaChallengePort {
@@ -26,7 +26,7 @@ public class RedisCaptchaChallengeAdapter implements CaptchaChallengePort {
   public RedisCaptchaChallengeAdapter(
       RedisCacheKeyFactory keyFactory,
       RedisCaptchaChallengeJsonMapper jsonMapper,
-      ReactiveRedisTemplate<String, String> redisTemplate) {
+      ReactiveStringRedisTemplate redisTemplate) {
     this(
         keyFactory,
         jsonMapper,

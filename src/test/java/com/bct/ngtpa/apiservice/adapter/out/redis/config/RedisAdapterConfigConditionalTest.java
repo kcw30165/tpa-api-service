@@ -7,7 +7,7 @@ import com.bct.ngtpa.apiservice.application.port.out.CachePort;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
-import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 
 /**
  * Verifies that the Redis adapter respects the {@code redis-cache.enabled} conditional.
@@ -28,7 +28,7 @@ class RedisAdapterConfigConditionalTest {
         .run(
             context -> {
               assertThat(context).doesNotHaveBean(LettuceConnectionFactory.class);
-              assertThat(context).doesNotHaveBean(ReactiveRedisTemplate.class);
+              assertThat(context).doesNotHaveBean(ReactiveStringRedisTemplate.class);
               assertThat(context).doesNotHaveBean(RedisCacheKeyFactory.class);
               assertThat(context).doesNotHaveBean(CachePort.class);
             });

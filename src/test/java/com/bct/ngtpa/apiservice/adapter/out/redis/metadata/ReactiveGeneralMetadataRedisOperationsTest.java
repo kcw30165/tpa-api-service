@@ -11,7 +11,7 @@ import com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataCacheRep
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
@@ -24,7 +24,7 @@ class ReactiveGeneralMetadataRedisOperationsTest {
   private static final String REPLACEMENT =
       "{\"source\":\"DEFAULT_ALL\",\"entries\":[{\"value\":\"7\"}]}";
 
-  private final ReactiveRedisTemplate<String, String> redis = mock(ReactiveRedisTemplate.class);
+  private final ReactiveStringRedisTemplate redis = mock(ReactiveStringRedisTemplate.class);
   private final ReactiveGeneralMetadataRedisOperations operations =
       new ReactiveGeneralMetadataRedisOperations(redis);
 

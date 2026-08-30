@@ -30,7 +30,7 @@ class ResendRegistrationOtpUseCaseArchitectureGuardTest {
                 "ServerWebExchange",
                 "ServerHttpRequest",
                 "ServerHttpResponse",
-                "ReactiveRedisTemplate",
+                "ReactiveStringRedisTemplate",
                 "Cookie");
       }
     }
