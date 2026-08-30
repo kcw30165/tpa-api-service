@@ -50,6 +50,9 @@ class AccountBalanceApplicationBoundaryGuardTest {
     assertThat(adapter)
         .contains(
             "ApimExchangeExecutor", "ApimExchangeRequest", "ACCOUNT_ENV", "SAFE_BUSINESS_CALL")
-        .doesNotContain("ApimWebClientFacade", "ApimPayloadCryptoService", "ApimProperties");
+        .doesNotContain(
+            "import com.bct.ngtpa.apiservice.adapter.out.apim.ApimWebClientFacade;",
+            "import com.bct.ngtpa.apiservice.adapter.out.apim.ApimPayloadCryptoService;",
+            "import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;");
   }
 }

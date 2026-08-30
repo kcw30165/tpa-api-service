@@ -297,6 +297,8 @@ auth-workflows:
       complete-ttl-seconds: 300
 
 apim:
+  account-balance:
+    path: ${APIM_ACCOUNT_BALANCE_PATH:/ws/NGTPA/v1/TRPGetMemberAccBal}
   general-metadata:
     path: ${APIM_GENERAL_METADATA_PATH:/ws/NGTPA/v1/TRPGetGeneralMetaData}
   routing:

@@ -182,6 +182,7 @@ class ApimRoutingLedgerCharacterizationTest {
         .doesNotHaveDuplicates()
         .hasSize(17)
         .containsExactlyInAnyOrder(
+            "TRPGetMemberAccBal",
             "TRPGetContSumy",
             "TRPGetMemberInfo",
             "TRPGetMsgBoard",

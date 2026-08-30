@@ -50,7 +50,7 @@ class AccountBalanceArchitectureConfigurationGuardTest {
     String accountBalance = treeText(Path.of("src/main/java/com/bct/ngtpa/apiservice"));
     String controller =
         read(
-            "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/controller/AccountBalanceController.java");
+            "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/accountbalance/AccountBalanceController.java");
     assertThat(controller)
         .doesNotContain("Idempotency-Key", "ObjectMapper.setDefaultPropertyInclusion");
     assertThat(accountBalance)

@@ -12,7 +12,7 @@ class CountryListAuthenticatedExecutorBoundaryTest {
 
   @Test
   void controllerCopiesTrustedSelectedAccountContextIntoExplicitCommand() throws Exception {
-    String controller = read("adapter/in/web/referenceData/ReferenceDataController.java");
+    String controller = read("adapter/in/web/referencedata/ReferenceDataController.java");
     String command = read("application/dto/GetReferenceDataCountriesCommand.java");
 
     assertThat(controller)
@@ -99,7 +99,7 @@ class CountryListAuthenticatedExecutorBoundaryTest {
   void countryListMappingAndLanguageOwnershipRemainFeatureSpecific() throws Exception {
     String adapter = read("adapter/out/apim/ApimReferenceDataCountriesAdapter.java");
     String service = read("application/usecase/GetReferenceDataCountriesService.java");
-    String controller = read("adapter/in/web/referenceData/ReferenceDataController.java");
+    String controller = read("adapter/in/web/referencedata/ReferenceDataController.java");
 
     assertThat(adapter)
         .containsIgnoringWhitespaces(

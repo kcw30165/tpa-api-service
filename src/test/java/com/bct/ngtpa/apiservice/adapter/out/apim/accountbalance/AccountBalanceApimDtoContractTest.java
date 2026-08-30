@@ -68,8 +68,9 @@ class AccountBalanceApimDtoContractTest {
                 AccountBalanceApimContentValidator.requireSingleData(
                     java.util.Arrays.asList((TrpGetMemberAccBalApimDataItem) null)))
         .isInstanceOf(IllegalArgumentException.class);
-    assertThat(AccountBalanceApimContentValidator.requireSingleData(List.of(item())))
-        .isSameAs(item());
+    var completeItem = item();
+    assertThat(AccountBalanceApimContentValidator.requireSingleData(List.of(completeItem)))
+        .isSameAs(completeItem);
   }
 
   private static TrpGetMemberAccBalApimDataItem item() {

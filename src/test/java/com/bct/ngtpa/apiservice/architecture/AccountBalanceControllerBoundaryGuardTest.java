@@ -15,20 +15,10 @@ class AccountBalanceControllerBoundaryGuardTest {
   void controllerUsesCurrentContextAndHasNoAccountRefOrIdempotencyValidator() throws Exception {
     String source = Files.readString(SOURCE);
     assertThat(source)
-        .contains(
-            "CurrentPortalAccessContextResolver",
-            "currentPortalAccessContextResolver.current()",
-            "RequestLanguageResolver");
+        .contains("CurrentPortalAccessContextResolver", "RequestLanguageResolver")
+        .containsIgnoringWhitespaces("currentPortalAccessContextResolver.current()");
     assertThat(source)
         .doesNotContain(
             "PortalAccessContextPort", "@RequestHeader(\"Account-Ref\")", "Idempotency-Key");
-  }
-
-  @Test
-  void subphaseAddsNoDownstreamAdapter() throws Exception {
-    assertThat(
-            Files.exists(
-                Path.of("src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/accountbalance")))
-        .isFalse();
   }
 }

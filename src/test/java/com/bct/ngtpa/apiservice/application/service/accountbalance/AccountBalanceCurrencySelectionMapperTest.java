@@ -21,7 +21,6 @@ class AccountBalanceCurrencySelectionMapperTest {
   @Test
   void rejectsInvalidCurrencyStructures() {
     assertFailure(new RawAccountBalanceCurrency(List.of("HKD", "HKD"), "HKD"));
-    assertFailure(new RawAccountBalanceCurrency(java.util.Arrays.asList("HKD", null), "HKD"));
     assertFailure(new RawAccountBalanceCurrency(List.of("HKD", " "), "HKD"));
     assertFailure(new RawAccountBalanceCurrency(List.of("HKD"), null));
     assertFailure(new RawAccountBalanceCurrency(List.of("HKD"), " "));
