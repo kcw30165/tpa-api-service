@@ -564,3 +564,9 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - Offline mode performs no real network request, requires no human input, and performs no retry.
 - Added scripts/ci/validate-account-balance.sh as the feature CI entry point.
 - Contributions adoption of the shared authenticated journey remains the next preservation stage.
+
+#### Contributions shared authenticated journey adoption
+- Contributions now reuses the shared Login, OTP verification, Account-Ref selection, private-state, and logout helper.
+- Contributions retains ownership of its request parameters, transport call, response assertions, and summary evidence.
+- Both Login/Contributions offline regression and Account Balance offline regression are required preservation gates.
+- No live request or OTP delivery is performed by this refactor stage.
