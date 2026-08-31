@@ -28,18 +28,12 @@ public final class ApimAccountBalanceSourceAdapter implements AccountBalanceSour
   }
 
   public Mono<RawAccountBalanceData> fetchRawAccountBalance(FetchAccountBalanceCommand command) {
-    final Integer cert;
-    try {
-      cert = Integer.valueOf(command.certNo());
-    } catch (RuntimeException e) {
-      return Mono.error(AccountBalanceRetrievalException.systemFailure());
-    }
     var request =
         new TrpGetMemberAccBalApimRequest(
             command.loginUserId(),
             command.actorUserRole().toApimValue(),
             command.policyNo(),
-            cert,
+            command.certNo(),
             command.referenceDate().format(DATE),
             command.currency());
     var exchange =

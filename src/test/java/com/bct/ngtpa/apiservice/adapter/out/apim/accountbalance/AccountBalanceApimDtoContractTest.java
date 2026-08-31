@@ -15,15 +15,27 @@ class AccountBalanceApimDtoContractTest {
   void serializesExactInitialLoadAndCurrencyChangeRequests() throws Exception {
     var initial =
         new TrpGetMemberAccBalApimRequest(
-            "db230", "role_user_mbr", "00000008802", 230, "31/08/2026", null);
+            "db230", "role_user_mbr", "00000008802", "0230", "31/08/2026", null);
     assertThat(json.writeValueAsString(initial))
         .isEqualTo(
-            "{\"login-user-id\":\"db230\",\"login-user-role\":\"role_user_mbr\",\"policy-no\":\"00000008802\",\"cert-no\":230,\"ref-date\":\"31/08/2026\",\"curr\":\"\"}");
+            "{\"login-user-id\":\"db230\",\"login-user-role\":\"role_user_mbr\",\"policy-no\":\"00000008802\",\"cert-no\":\"0230\",\"ref-date\":\"31/08/2026\",\"curr\":\"\"}");
     var changed =
         new TrpGetMemberAccBalApimRequest(
-            "db230", "role_user_mbr", "00000008802", 230, "31/08/2026", "USD");
+            "db230", "role_user_mbr", "00000008802", "0230", "31/08/2026", "USD");
     assertThat(json.readTree(json.writeValueAsString(changed)).path("curr").asText())
         .isEqualTo("USD");
+  }
+
+  @Test
+  void keepsCertificateNumberTextualSoConfiguredEncryptionCanTransformIt() throws Exception {
+    var request =
+        new TrpGetMemberAccBalApimRequest(
+            "db12", "role_user_mbr", "policy", "0055", "31/08/2026", "");
+
+    var node = json.valueToTree(request);
+
+    assertThat(node.path("cert-no").isTextual()).isTrue();
+    assertThat(node.path("cert-no").asText()).isEqualTo("0055");
   }
 
   @Test

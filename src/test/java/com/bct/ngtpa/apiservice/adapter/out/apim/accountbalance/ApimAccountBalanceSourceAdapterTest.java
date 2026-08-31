@@ -61,7 +61,7 @@ class ApimAccountBalanceSourceAdapterTest {
     assertThat(exchange.retryEligibility().name()).isEqualTo("SAFE_BUSINESS_CALL");
     var request = (TrpGetMemberAccBalApimRequest) exchange.request();
     assertThat(request.policyNo()).isEqualTo("00000008802");
-    assertThat(request.certNo()).isEqualTo(230);
+    assertThat(request.certNo()).isEqualTo("0230");
     assertThat(request.referenceDate()).isEqualTo("31/08/2026");
     assertThat(request.currency()).isEmpty();
   }

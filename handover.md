@@ -570,3 +570,9 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - Contributions retains ownership of its request parameters, transport call, response assertions, and summary evidence.
 - Both Login/Contributions offline regression and Account Balance offline regression are required preservation gates.
 - No live request or OTP delivery is performed by this refactor stage.
+
+#### Account Balance production crypto defect
+- Root cause: Account Balance modeled APIM `cert-no` as an Integer although `cert-no` is a configured encrypted request field.
+- The numeric node bypassed textual field encryption, producing encrypted `policy-no` with plaintext numeric `cert-no`; APIM rejected the mixed request as `invalid_encrypted_data_format`.
+- Fix: preserve `cert-no` as an opaque String from authenticated account context through the Account Balance APIM DTO.
+- Encryption format, credential-profile resolution, certificate lookup, and request field names remain unchanged.
