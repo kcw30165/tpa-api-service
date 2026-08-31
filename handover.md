@@ -551,3 +551,10 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - `authenticated-live` fails closed pending a shared authenticated Login helper.
 - Remaining work: shared Login helper, private raw-response handling, automatic stub counters,
   strict skip policy, offline regression, and CI gate integration.
+
+#### Account Balance authenticated E2E shared journey
+- Added shared authenticated Login and logout journey helpers under scripts/e2e/lib.
+- Added account-balance/list-authenticated using the returned portal session and selected Account-Ref.
+- Raw Account Balance response remains only in private runtime state; retained evidence is structural summary.
+- Live mode requires explicit authorization and permits one OTP delivery, one prompt, one Account Balance request, one logout, and no retries.
+- Contributions extraction and offline Account Balance regression remain for the next cumulative stage.
