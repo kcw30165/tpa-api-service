@@ -60,7 +60,7 @@ class AccountBalanceBoundaryIntegrationTest {
     assertThat(assemblerCalls).hasValue(1);
     assertThat(seenQuery.get().scope())
         .isEqualTo(new GeneralMetadataScope("JP", "TRUST", "00000008802"));
-    assertThat(seenQuery.get().requiredKeys()).hasSize(8);
+    assertThat(seenQuery.get().requiredKeys()).hasSize(4);
     assertThat(seenQuery.get().actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_MBR);
     assertThat(seenFetch.get())
         .isEqualTo(

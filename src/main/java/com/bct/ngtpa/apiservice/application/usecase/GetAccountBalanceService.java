@@ -14,13 +14,9 @@ public class GetAccountBalanceService implements GetAccountBalanceUseCase {
   private static final Set<GeneralMetadataKey> REQUIRED_METADATA =
       Set.of(
           key(GeneralMetadataName.FUND_PRICE, GeneralMetadataType.PRECISION),
-          key(GeneralMetadataName.FUND_PRICE, GeneralMetadataType.ROUNDING_METHOD),
           key(GeneralMetadataName.NET_ASSET_VALUE, GeneralMetadataType.PRECISION),
-          key(GeneralMetadataName.NET_ASSET_VALUE, GeneralMetadataType.ROUNDING_METHOD),
           key(GeneralMetadataName.UNIT_BALANCE, GeneralMetadataType.PRECISION),
-          key(GeneralMetadataName.UNIT_BALANCE, GeneralMetadataType.ROUNDING_METHOD),
-          key(GeneralMetadataName.FX_RATE, GeneralMetadataType.PRECISION),
-          key(GeneralMetadataName.FX_RATE, GeneralMetadataType.ROUNDING_METHOD));
+          key(GeneralMetadataName.FX_RATE, GeneralMetadataType.PRECISION));
   private final ReferenceDatePort referenceDatePort;
   private final GeneralMetadataResolver generalMetadataResolver;
   private final AccountBalanceSourcePort accountBalanceSourcePort;
