@@ -558,3 +558,9 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - Raw Account Balance response remains only in private runtime state; retained evidence is structural summary.
 - Live mode requires explicit authorization and permits one OTP delivery, one prompt, one Account Balance request, one logout, and no retries.
 - Contributions extraction and offline Account Balance regression remain for the next cumulative stage.
+
+#### Account Balance offline E2E regression
+- Added a deterministic five-request Login-to-Account-Balance-to-logout regression.
+- Offline mode performs no real network request, requires no human input, and performs no retry.
+- Added scripts/ci/validate-account-balance.sh as the feature CI entry point.
+- Contributions adoption of the shared authenticated journey remains the next preservation stage.

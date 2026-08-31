@@ -26,3 +26,13 @@ Login implementation in this pack.
 Successful payloads can contain financial data. Keep runtime values uncommitted and remove local
 response evidence after review. The next completion stage must keep raw success bodies only in
 private runtime state and retain redacted summaries.
+
+#### Offline regression
+
+The deterministic no-network journey validates Login start, OTP send and verification, local
+Account-Ref selection, one Account Balance request, and authenticated logout with five mocked
+requests, zero human prompts, and zero automatic retries.
+
+```bash
+bash scripts/e2e/run-account-balance-regression.sh offline
+```
