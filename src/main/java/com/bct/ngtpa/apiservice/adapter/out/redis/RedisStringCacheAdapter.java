@@ -4,11 +4,11 @@ import com.bct.ngtpa.apiservice.application.port.out.CachePort;
 import com.bct.ngtpa.apiservice.exception.CacheException;
 import java.time.Duration;
 import java.util.Optional;
-import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import reactor.core.publisher.Mono;
 
 /**
- * Redis-backed implementation of {@link CachePort} using {@link ReactiveRedisTemplate}{@code
+ * Redis-backed implementation of {@link CachePort} using {@link ReactiveStringRedisTemplate}{@code
  * <String, String>} with plain UTF-8 string serialization for both keys and values.
  *
  * <h3>Key contract</h3>
@@ -26,9 +26,9 @@ import reactor.core.publisher.Mono;
  */
 public class RedisStringCacheAdapter implements CachePort {
 
-  private final ReactiveRedisTemplate<String, String> redisTemplate;
+  private final ReactiveStringRedisTemplate redisTemplate;
 
-  public RedisStringCacheAdapter(ReactiveRedisTemplate<String, String> redisTemplate) {
+  public RedisStringCacheAdapter(ReactiveStringRedisTemplate redisTemplate) {
     this.redisTemplate = redisTemplate;
   }
 

@@ -1,0 +1,58 @@
+[
+  {
+    "file": "0-account-balance-design-pack-index.md",
+    "bytes": 1301
+  },
+  {
+    "file": "account-balance-api-contract.md",
+    "bytes": 2337
+  },
+  {
+    "file": "account-balance-apim-contract.md",
+    "bytes": 1606
+  },
+  {
+    "file": "account-balance-configuration-observability.md",
+    "bytes": 1050
+  },
+  {
+    "file": "account-balance-decisions-open-questions.md",
+    "bytes": 1911
+  },
+  {
+    "file": "account-balance-implementation-plan.md",
+    "bytes": 6301
+  },
+  {
+    "file": "account-balance-master-design.md",
+    "bytes": 1585
+  },
+  {
+    "file": "account-balance-sequence-diagrams.md",
+    "bytes": 1299
+  },
+  {
+    "file": "account-balance-source-and-requirements.md",
+    "bytes": 1868
+  },
+  {
+    "file": "account-balance-test-traceability-design.md",
+    "bytes": 2207
+  },
+  {
+    "file": "account-balance-transformation-contract.md",
+    "bytes": 1934
+  },
+  {
+    "file": "account-balance-validation-error-contract.md",
+    "bytes": 1656
+  },
+  {
+    "file": "general-metadata-cache-resolver-design.md",
+    "bytes": 3378
+  },
+  {
+    "file": "handover.md",
+    "bytes": 1370
+  }
+]

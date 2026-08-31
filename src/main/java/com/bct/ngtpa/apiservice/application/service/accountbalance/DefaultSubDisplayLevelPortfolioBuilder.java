@@ -1,0 +1,101 @@
+package com.bct.ngtpa.apiservice.application.service.accountbalance;
+
+import com.bct.ngtpa.apiservice.application.dto.accountbalance.normalized.*;
+import com.bct.ngtpa.apiservice.application.dto.accountbalance.portfolio.*;
+import com.bct.ngtpa.apiservice.application.dto.accountbalance.raw.*;
+import com.bct.ngtpa.apiservice.application.exception.AccountBalanceRetrievalException;
+import com.bct.ngtpa.apiservice.application.port.in.SubDisplayLevelPortfolioBuilder;
+import java.math.BigDecimal;
+import java.util.*;
+
+public final class DefaultSubDisplayLevelPortfolioBuilder
+    implements SubDisplayLevelPortfolioBuilder {
+  private static final BigDecimal SENTINEL = BigDecimal.valueOf(-1);
+
+  @Override
+  public RawSubDisplayLevelView build(NormalizedAccountBalanceData data) {
+    try {
+      if (data == null) fail();
+      Map<String, DisplayAcc> displays = new LinkedHashMap<>();
+      for (var e : data.holdings().entrySet()) {
+        HoldingKey k = e.getKey();
+        RawAccountBalanceHolding h = e.getValue();
+        var src =
+            data.displaySources()
+                .get(new DisplaySourceKey(k.displaySource(), k.subDisplaySource()));
+        var fund = data.funds().get(new FundKey(k.fundCode()));
+        if (src == null || fund == null || src.sequence() == null || fund.fundSequence() == null)
+          fail();
+        BigDecimal unit = participating(h.unit()), nav = participating(h.netAssetValue());
+        var d = displays.computeIfAbsent(k.displaySource(), DisplayAcc::new);
+        d.sequence = Math.min(d.sequence, src.sequence());
+        var sub = d.subs.computeIfAbsent(k.subDisplaySource(), x -> new SubAcc(x, src.sequence()));
+        sub.funds.add(new RawSubDisplayLevelFund(k.fundCode(), fund.fundSequence(), unit, nav));
+      }
+      return new RawSubDisplayLevelView(
+          displays.values().stream()
+              .map(DisplayAcc::toRecord)
+              .sorted(
+                  Comparator.comparing(RawSubDisplayLevelDisplayAccount::displaySequence)
+                      .thenComparing(RawSubDisplayLevelDisplayAccount::displayAccountId))
+              .toList());
+    } catch (AccountBalanceRetrievalException x) {
+      throw x;
+    } catch (RuntimeException x) {
+      throw AccountBalanceRetrievalException.systemFailure();
+    }
+  }
+
+  private static BigDecimal participating(BigDecimal v) {
+    if (v == null || v.compareTo(SENTINEL) == 0) fail();
+    return v;
+  }
+
+  private static void fail() {
+    throw AccountBalanceRetrievalException.systemFailure();
+  }
+
+  private static final class DisplayAcc {
+    final String id;
+    int sequence = Integer.MAX_VALUE;
+    final Map<String, SubAcc> subs = new LinkedHashMap<>();
+
+    DisplayAcc(String id) {
+      this.id = id;
+    }
+
+    RawSubDisplayLevelDisplayAccount toRecord() {
+      return new RawSubDisplayLevelDisplayAccount(
+          id,
+          sequence,
+          subs.values().stream()
+              .map(SubAcc::toRecord)
+              .sorted(
+                  Comparator.comparing(RawSubDisplayLevelSubDisplayAccount::displaySequence)
+                      .thenComparing(RawSubDisplayLevelSubDisplayAccount::subDisplayAccountId))
+              .toList());
+    }
+  }
+
+  private static final class SubAcc {
+    final String id;
+    final Integer sequence;
+    final List<RawSubDisplayLevelFund> funds = new ArrayList<>();
+
+    SubAcc(String id, Integer sequence) {
+      this.id = id;
+      this.sequence = sequence;
+    }
+
+    RawSubDisplayLevelSubDisplayAccount toRecord() {
+      return new RawSubDisplayLevelSubDisplayAccount(
+          id,
+          sequence,
+          funds.stream()
+              .sorted(
+                  Comparator.comparing(RawSubDisplayLevelFund::fundSequence)
+                      .thenComparing(RawSubDisplayLevelFund::fundCode))
+              .toList());
+    }
+  }
+}

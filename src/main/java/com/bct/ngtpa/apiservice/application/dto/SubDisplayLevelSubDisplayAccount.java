@@ -1,0 +1,10 @@
+package com.bct.ngtpa.apiservice.application.dto;
+
+import java.util.List;
+
+public record SubDisplayLevelSubDisplayAccount(
+    String subDisplayAccountName, String subDisplayAccountId, List<SubDisplayLevelFund> funds) {
+  public SubDisplayLevelSubDisplayAccount {
+    funds = funds == null ? List.of() : List.copyOf(funds);
+  }
+}

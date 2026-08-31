@@ -5,14 +5,14 @@ import com.bct.ngtpa.apiservice.application.dto.CacheEntry;
 import com.bct.ngtpa.apiservice.application.port.out.CacheAdminPort;
 import com.bct.ngtpa.apiservice.exception.CacheException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.data.redis.core.ScanOptions;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @RequiredArgsConstructor
 public class RedisCacheAdminAdapter implements CacheAdminPort {
-  private final ReactiveRedisTemplate<String, String> redisTemplate;
+  private final ReactiveStringRedisTemplate redisTemplate;
   private final RedisCacheKeyFactory redisCacheKeyFactory;
 
   @Override

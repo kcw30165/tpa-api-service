@@ -540,3 +540,46 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - The Contributions child validates authenticated cookie, XSRF, Account-Ref, date arguments, response contract, and logout with zero real network requests and zero human prompts.
 - `scripts/ci/validate-login-contributions.sh` defines compile, test-compile, targeted Login integration, offline regression, and Git preservation checks for Jenkins.
 - Live Login, OTP, Contributions, and logout modes remain excluded from automatic CI.
+
+## Account Balance E2E migration
+
+- Migration timestamp: `20260831-120826`.
+- Canonical path: `scripts/e2e/scenarios/account-balance`.
+- Canonical command: `bash scripts/e2e/run-account-balance-dev.sh provided-session`.
+- Existing local functional behavior is preserved as the local-stubbed E2E suite.
+- The legacy functional runner is a temporary compatibility wrapper.
+- `authenticated-live` fails closed pending a shared authenticated Login helper.
+- Remaining work: shared Login helper, private raw-response handling, automatic stub counters,
+  strict skip policy, offline regression, and CI gate integration.
+
+#### Account Balance authenticated E2E shared journey
+- Added shared authenticated Login and logout journey helpers under scripts/e2e/lib.
+- Added account-balance/list-authenticated using the returned portal session and selected Account-Ref.
+- Raw Account Balance response remains only in private runtime state; retained evidence is structural summary.
+- Live mode requires explicit authorization and permits one OTP delivery, one prompt, one Account Balance request, one logout, and no retries.
+- Contributions extraction and offline Account Balance regression remain for the next cumulative stage.
+
+#### Account Balance offline E2E regression
+- Added a deterministic five-request Login-to-Account-Balance-to-logout regression.
+- Offline mode performs no real network request, requires no human input, and performs no retry.
+- Added scripts/ci/validate-account-balance.sh as the feature CI entry point.
+- Contributions adoption of the shared authenticated journey remains the next preservation stage.
+
+#### Contributions shared authenticated journey adoption
+- Contributions now reuses the shared Login, OTP verification, Account-Ref selection, private-state, and logout helper.
+- Contributions retains ownership of its request parameters, transport call, response assertions, and summary evidence.
+- Both Login/Contributions offline regression and Account Balance offline regression are required preservation gates.
+- No live request or OTP delivery is performed by this refactor stage.
+
+#### Account Balance production crypto defect
+- Root cause: Account Balance modeled APIM `cert-no` as an Integer although `cert-no` is a configured encrypted request field.
+- The numeric node bypassed textual field encryption, producing encrypted `policy-no` with plaintext numeric `cert-no`; APIM rejected the mixed request as `invalid_encrypted_data_format`.
+- Fix: preserve `cert-no` as an opaque String from authenticated account context through the Account Balance APIM DTO.
+- Encryption format, credential-profile resolution, certificate lookup, and request field names remain unchanged.
+
+#### Account Balance APIM response array-shape defect
+- Downstream confirmed all five properties inside each response data item are arrays.
+- `displayOptions` and `curr` are singleton arrays and must each contain exactly one non-null item.
+- `dispSrc`, `fundDtl`, and `accBal` remain variable-length arrays and must be non-null.
+- The fund factsheet wire property is exactly `fund-fact-sheet`.
+- The committed `cert-no` String encryption fix remains unchanged.

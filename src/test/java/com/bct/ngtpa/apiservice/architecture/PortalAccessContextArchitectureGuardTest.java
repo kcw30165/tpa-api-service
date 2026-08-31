@@ -18,7 +18,7 @@ class PortalAccessContextArchitectureGuardTest {
       MAIN_JAVA.resolve("com/bct/ngtpa/apiservice/adapter/in/web/advice/ApiExceptionHandler.java");
   private static final Path PERSONAL_INFORMATION_CONTROLLER =
       MAIN_JAVA.resolve(
-          "com/bct/ngtpa/apiservice/adapter/in/web/personalInformation/PersonalInformationController.java");
+          "com/bct/ngtpa/apiservice/adapter/in/web/personalinformation/PersonalInformationController.java");
   private static final Path REQUEST_LOGGING_FILTER =
       MAIN_JAVA.resolve(
           "com/bct/ngtpa/apiservice/adapter/in/web/filter/RequestLoggingWebFilter.java");

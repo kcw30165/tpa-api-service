@@ -3,7 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.out.redis.auth;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
-import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.data.redis.core.script.RedisScript;
 import reactor.core.publisher.Mono;
 
@@ -17,9 +17,9 @@ class ReactiveRedisCaptchaChallengeOperations implements RedisCaptchaChallengeOp
               + "redis.call('SET',KEYS[1],ARGV[2],'KEEPTTL'); return 1",
           Long.class);
 
-  private final ReactiveRedisTemplate<String, String> redisTemplate;
+  private final ReactiveStringRedisTemplate redisTemplate;
 
-  ReactiveRedisCaptchaChallengeOperations(ReactiveRedisTemplate<String, String> redisTemplate) {
+  ReactiveRedisCaptchaChallengeOperations(ReactiveStringRedisTemplate redisTemplate) {
     this.redisTemplate = redisTemplate;
   }
 

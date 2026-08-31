@@ -48,7 +48,7 @@ class P8CaptchaArchitectureGuardTest {
         .doesNotContain(
             "RedisCaptchaChallengeAdapter",
             "CaptchaChallengePort",
-            "ReactiveRedisTemplate",
+            "ReactiveStringRedisTemplate",
             "CaptchaAnswerHasherPort",
             "CaptchaImageGeneratorPort");
   }

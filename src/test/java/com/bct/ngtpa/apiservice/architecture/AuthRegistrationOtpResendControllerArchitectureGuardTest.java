@@ -24,7 +24,7 @@ class AuthRegistrationOtpResendControllerArchitectureGuardTest {
             "adapter.out.sms",
             "adapter.out.email",
             "ApimWebClientFacade",
-            "ReactiveRedisTemplate",
+            "ReactiveStringRedisTemplate",
             "OtpChallengePort",
             "MessageDeliveryPort",
             "RegistrationLookupPort");

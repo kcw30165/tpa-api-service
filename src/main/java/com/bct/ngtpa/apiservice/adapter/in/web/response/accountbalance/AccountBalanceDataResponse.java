@@ -1,0 +1,7 @@
+package com.bct.ngtpa.apiservice.adapter.in.web.response.accountbalance;
+
+public record AccountBalanceDataResponse(
+    String asOfDate,
+    CurrencySelectionResponse currencySelection,
+    AccountOverviewResponse accountOverview,
+    InvestmentPortfolioResponse investmentPortfolio) {}

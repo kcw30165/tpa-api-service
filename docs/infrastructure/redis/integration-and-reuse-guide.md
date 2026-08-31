@@ -125,9 +125,16 @@ Define behavior for:
 
 Security controls usually fail closed. Cache-oriented data may use an approved fallback.
 
-### Step 9 — Wire configuration
+#### Step 9 — Wire configuration
 
-Reuse `RedisAdapterConfig`, `RedisCacheProperties`, central templates, SSL bundle, and conditional bean patterns. Do not create a separate unmanaged Lettuce connection factory inside a capability adapter.
+Reuse `RedisAdapterConfig`, `RedisCacheProperties`, the central `LettuceConnectionFactory`, the single application-owned `ReactiveStringRedisTemplate`, the SSL bundle, and conditional bean patterns.
+
+- Inject `ReactiveStringRedisTemplate` only in outbound adapter or Redis operations code.
+- Reuse the bean named `reactiveStringRedisTemplate`.
+- Do not create a capability-local template bean.
+- Do not inject `ReactiveRedisTemplate<String, String>`.
+- Do not add aliases, `@Primary`, or `@Qualifier` to mask duplicate templates.
+- Keep Spring Data Redis types out of application ports and use cases.
 
 ### Step 10 — Add observability without sensitive data
 
@@ -230,6 +237,7 @@ Add only scenario-specific records/key factories when shared models cannot repre
 - [ ] Sentinel/mTLS impact reviewed
 - [ ] Fail-first TDD evidence included
 - [ ] Operations document updated
+-  One canonical `ReactiveStringRedisTemplate` reused; no generic or duplicate template bean introduced
 - [ ] Commit message included
 
 Suggested commit message:

@@ -29,7 +29,7 @@ class VerifyRegistrationOtpUseCaseArchitectureGuardTest {
                 "ServerHttpRequest",
                 "ServerHttpResponse",
                 "Cookie",
-                "ReactiveRedisTemplate");
+                "ReactiveStringRedisTemplate");
       }
     }
   }

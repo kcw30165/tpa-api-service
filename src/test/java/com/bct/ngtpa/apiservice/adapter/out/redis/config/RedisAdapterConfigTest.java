@@ -18,17 +18,17 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.ssl.SslBundles;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
-import org.springframework.data.redis.core.ReactiveRedisTemplate;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 
 class RedisAdapterConfigTest {
 
   // ── Template serialization ─────────────────────────────────────────────────
 
   @Test
-  void reactiveRedisTemplateKeySerializerIsPlainUtf8String() {
+  void reactiveStringRedisTemplateKeySerializerIsPlainUtf8String() {
     var config = configWithSslDisabled();
     LettuceConnectionFactory factory = config.lettuceConnectionFactory();
-    ReactiveRedisTemplate<String, String> template = config.reactiveRedisTemplate(factory);
+    ReactiveStringRedisTemplate template = config.reactiveStringRedisTemplate(factory);
 
     var ctx = template.getSerializationContext();
     ByteBuffer keyBuf = ctx.getKeySerializationPair().getWriter().write("my-cache-key");
@@ -37,10 +37,10 @@ class RedisAdapterConfigTest {
   }
 
   @Test
-  void reactiveRedisTemplateValueSerializerIsPlainUtf8String() {
+  void reactiveStringRedisTemplateValueSerializerIsPlainUtf8String() {
     var config = configWithSslDisabled();
     LettuceConnectionFactory factory = config.lettuceConnectionFactory();
-    ReactiveRedisTemplate<String, String> template = config.reactiveRedisTemplate(factory);
+    ReactiveStringRedisTemplate template = config.reactiveStringRedisTemplate(factory);
 
     var ctx = template.getSerializationContext();
     ByteBuffer valueBuf = ctx.getValueSerializationPair().getWriter().write("{\"k\":\"v\"}");
@@ -49,11 +49,11 @@ class RedisAdapterConfigTest {
   }
 
   @Test
-  void reactiveRedisTemplateIsNotNull() {
+  void reactiveStringRedisTemplateIsNotNull() {
     var config = configWithSslDisabled();
     LettuceConnectionFactory factory = config.lettuceConnectionFactory();
 
-    assertNotNull(config.reactiveRedisTemplate(factory));
+    assertNotNull(config.reactiveStringRedisTemplate(factory));
   }
 
   // ── Connection factory ─────────────────────────────────────────────────────
@@ -123,8 +123,8 @@ class RedisAdapterConfigTest {
   @Test
   void hashKeySerializerIsPlainUtf8String() {
     var config = configWithSslDisabled();
-    ReactiveRedisTemplate<String, String> template =
-        config.reactiveRedisTemplate(config.lettuceConnectionFactory());
+    ReactiveStringRedisTemplate template =
+        config.reactiveStringRedisTemplate(config.lettuceConnectionFactory());
 
     ByteBuffer buf =
         template
@@ -139,8 +139,8 @@ class RedisAdapterConfigTest {
   @Test
   void hashValueSerializerIsPlainUtf8String() {
     var config = configWithSslDisabled();
-    ReactiveRedisTemplate<String, String> template =
-        config.reactiveRedisTemplate(config.lettuceConnectionFactory());
+    ReactiveStringRedisTemplate template =
+        config.reactiveStringRedisTemplate(config.lettuceConnectionFactory());
 
     ByteBuffer buf =
         template
@@ -172,7 +172,7 @@ class RedisAdapterConfigTest {
   void redisStringCacheAdapterBeanImplementsCachePort() {
     var config = configWithSslDisabled();
     LettuceConnectionFactory factory = config.lettuceConnectionFactory();
-    ReactiveRedisTemplate<String, String> template = config.reactiveRedisTemplate(factory);
+    ReactiveStringRedisTemplate template = config.reactiveStringRedisTemplate(factory);
 
     CachePort adapter = config.redisStringCacheAdapter(template);
 
@@ -191,7 +191,7 @@ class RedisAdapterConfigTest {
   @SuppressWarnings("unchecked")
   void captchaChallengePortBeanIsNotNull() {
     var config = configWithSslDisabled();
-    ReactiveRedisTemplate<String, String> template = mock(ReactiveRedisTemplate.class);
+    ReactiveStringRedisTemplate template = mock(ReactiveStringRedisTemplate.class);
     RedisCacheKeyFactory keyFactory = new RedisCacheKeyFactory("ngtpa");
 
     CaptchaChallengePort port =
@@ -213,7 +213,7 @@ class RedisAdapterConfigTest {
   @SuppressWarnings("unchecked")
   void redisRateLimitAdapterBeanIsNotNull() {
     var config = configWithSslDisabled();
-    ReactiveRedisTemplate<String, String> template = mock(ReactiveRedisTemplate.class);
+    ReactiveStringRedisTemplate template = mock(ReactiveStringRedisTemplate.class);
     RedisCacheKeyFactory keyFactory = new RedisCacheKeyFactory("ngtpa");
 
     RateLimitPort port = config.redisRateLimitAdapter(template, keyFactory);

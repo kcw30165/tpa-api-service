@@ -22,6 +22,15 @@ class ApimRoutingLedgerCharacterizationTest {
   private static final List<Entry> LEDGER =
       List.of(
           e(
+              "TRPGetMemberAccBal",
+              "accountbalance/ApimAccountBalanceSourceAdapter.java",
+              "ACCOUNT_ENV",
+              "command.actorUserRole()",
+              "command.accountEnv()",
+              "SAFE_BUSINESS_CALL",
+              "EXECUTOR",
+              "ACCOUNT_ENV"),
+          e(
               "TRPGetContSumy",
               "ApimContributionSummaryAdapter.java",
               "ACCOUNT_ENV",
@@ -155,15 +164,25 @@ class ApimRoutingLedgerCharacterizationTest {
               "null",
               "SAFE_BUSINESS_CALL",
               "EXECUTOR",
-              "NON_ACCOUNT"));
+              "NON_ACCOUNT"),
+          e(
+              "TRPGetGeneralMetaData",
+              "metadata/ApimGeneralMetadataSourceAdapter.java",
+              "ACCOUNT_ENV",
+              "command.actorUserRole()",
+              "command.scope().accountEnv()",
+              "SAFE_BUSINESS_CALL",
+              "EXECUTOR",
+              "ACCOUNT_ENV"));
 
   @Test
   void ledgerCoversEveryPromptZeroOperationExactlyOnce() {
     assertThat(LEDGER)
         .extracting(Entry::operation)
         .doesNotHaveDuplicates()
-        .hasSize(15)
+        .hasSize(17)
         .containsExactlyInAnyOrder(
+            "TRPGetMemberAccBal",
             "TRPGetContSumy",
             "TRPGetMemberInfo",
             "TRPGetMsgBoard",
@@ -178,7 +197,8 @@ class ApimRoutingLedgerCharacterizationTest {
             "TRPRegMember",
             "TRPSearchUnregMember",
             "TRPChkCustId",
-            "TRPSearchMember");
+            "TRPSearchMember",
+            "TRPGetGeneralMetaData");
   }
 
   @Test

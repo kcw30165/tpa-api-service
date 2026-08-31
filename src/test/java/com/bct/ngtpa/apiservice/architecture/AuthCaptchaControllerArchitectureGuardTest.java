@@ -77,7 +77,7 @@ class AuthCaptchaControllerArchitectureGuardTest {
         .doesNotContain("AuthWorkflowProperties")
         .doesNotContain("adapter.out.redis")
         .doesNotContain("RedisCaptchaChallengeAdapter")
-        .doesNotContain("ReactiveRedisTemplate");
+        .doesNotContain("ReactiveStringRedisTemplate");
   }
 
   @Test

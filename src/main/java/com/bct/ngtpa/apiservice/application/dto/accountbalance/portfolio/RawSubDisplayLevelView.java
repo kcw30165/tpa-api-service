@@ -1,0 +1,9 @@
+package com.bct.ngtpa.apiservice.application.dto.accountbalance.portfolio;
+
+import java.util.List;
+
+public record RawSubDisplayLevelView(List<RawSubDisplayLevelDisplayAccount> displayAccounts) {
+  public RawSubDisplayLevelView {
+    displayAccounts = displayAccounts == null ? List.of() : List.copyOf(displayAccounts);
+  }
+}

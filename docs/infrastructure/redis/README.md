@@ -38,6 +38,12 @@ Application service
 
 Application code must not depend on Redis types or construct Redis keys directly.
 
+### Canonical Redis client bean
+
+The codebase standardizes on one application-owned `ReactiveStringRedisTemplate` bean named `reactiveStringRedisTemplate`. `RedisAdapterConfig` creates it from the central `LettuceConnectionFactory`, and all string-key/string-value Redis adapters reuse it.
+
+Do not introduce `ReactiveRedisTemplate<String, String>`, duplicate templates, aliases, `@Primary`, or `@Qualifier`. Application ports and use cases remain independent of Spring Data Redis types.
+
 ## Two persistence patterns
 
 ### Generic cache
@@ -60,6 +66,7 @@ Dedicated ports and adapters own richer lifecycle behavior for sessions, OTP, CA
 8. Broad wildcard deletion is forbidden; administration is capability-scoped.
 9. Sentinel and mTLS are part of the production design, not optional afterthoughts.
 10. No workflow may silently bypass Redis when doing so would weaken security or deduplication.
+- All string Redis adapters reuse the single application-owned `ReactiveStringRedisTemplate`.
 
 ## Current key convention
 

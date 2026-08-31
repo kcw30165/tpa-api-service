@@ -55,6 +55,20 @@ Owner
 
 At minimum include sessions, OTP, CAPTCHA, idempotency, replay, rate limit, locks, and reference date.
 
+### 2A. Reactive template wiring invariant
+
+The application context contains one application-owned bean named `reactiveStringRedisTemplate`, backed by the central `LettuceConnectionFactory`. Active source must not define or inject `ReactiveRedisTemplate<String, String>`.
+
+If startup reports both template names, remove the duplicate rather than using `@Primary` or `@Qualifier`, then run compile, test-compile, and bounded local-profile startup validation.
+
+```bash
+git grep -n -F 'ReactiveRedisTemplate' HEAD -- \
+  'src/main/java/**/*.java' \
+  'src/test/java/**/*.java'
+```
+
+Audit committed source, not another worktree or preserved evidence. The canonical design produces no matches.
+
 ## 3. Troubleshooting runbook
 
 ### Connection timeout
@@ -276,4 +290,7 @@ Every Redis record change should include:
 - [ ] Reference-date fallback tested separately
 - [ ] Dashboards and alerts available
 - [ ] Recovery/failover runbook exercised
+-  Exactly one application-owned `ReactiveStringRedisTemplate` is present
+-  No direct `ReactiveRedisTemplate` references exist in active source
+-  Local-profile startup has no template ambiguity
 - [ ] Fail-first TDD evidence attached to the change

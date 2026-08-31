@@ -80,4 +80,14 @@ class ApimPayloadCryptoServiceFieldSelectionTest {
     assertEquals(request, out);
     assertNull(transformer.lastTargetFields);
   }
+
+  @Test
+  void accountBalanceCertificateNumberRemainsEligibleForEncryption() {
+    org.assertj.core.api.Assertions.assertThat(
+            new com.bct.ngtpa.apiservice.adapter.out.apim.accountbalance.dto
+                    .TrpGetMemberAccBalApimRequest(
+                    "user", "role_user_mbr", "policy", "0055", "31/08/2026", "")
+                .certNo())
+        .isEqualTo("0055");
+  }
 }

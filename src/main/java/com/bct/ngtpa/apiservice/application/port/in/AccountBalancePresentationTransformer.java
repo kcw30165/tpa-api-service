@@ -1,0 +1,9 @@
+package com.bct.ngtpa.apiservice.application.port.in;
+
+import com.bct.ngtpa.apiservice.application.dto.accountbalance.presentation.PresentedAccountBalanceData;
+import com.bct.ngtpa.apiservice.application.dto.metadata.ResolvedGeneralMetadataSet;
+
+@FunctionalInterface
+public interface AccountBalancePresentationTransformer {
+  PresentedAccountBalanceData transform(String language, ResolvedGeneralMetadataSet metadata);
+}
