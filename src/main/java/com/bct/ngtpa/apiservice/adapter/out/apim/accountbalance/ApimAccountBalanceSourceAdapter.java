@@ -74,12 +74,14 @@ public final class ApimAccountBalanceSourceAdapter implements AccountBalanceSour
   }
 
   private static RawAccountBalanceData map(TrpGetMemberAccBalApimDataItem x) {
+    var displayOptions = AccountBalanceApimContentValidator.requireDisplayOptions(x);
+    var currency = AccountBalanceApimContentValidator.requireCurrency(x);
     return new RawAccountBalanceData(
         new RawAccountBalanceDisplayOptions(
-            x.displayOptions().vestedBalanceVisible(),
-            x.displayOptions().pendingSwitchInVisible(),
-            x.displayOptions().fxRateVisible()),
-        new RawAccountBalanceCurrency(x.currency().available(), x.currency().selected()),
+            displayOptions.vestedBalanceVisible(),
+            displayOptions.pendingSwitchInVisible(),
+            displayOptions.fxRateVisible()),
+        new RawAccountBalanceCurrency(currency.available(), currency.selected()),
         x.displaySources().stream()
             .map(
                 v ->

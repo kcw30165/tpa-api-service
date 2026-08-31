@@ -20,8 +20,8 @@ class ApimAccountBalanceSourceAdapterTest {
     AtomicReference<ApimExchangeRequest<?, ?>> seen = new AtomicReference<>();
     var item =
         new TrpGetMemberAccBalApimDataItem(
-            new AccountBalanceDisplayOptions(true, false, true),
-            new AccountBalanceCurrency(List.of("HKD"), "HKD"),
+            List.of(new AccountBalanceDisplayOptions(true, false, true)),
+            List.of(new AccountBalanceCurrency(List.of("HKD"), "HKD")),
             List.of(),
             List.of(),
             List.of());

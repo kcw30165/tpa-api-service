@@ -576,3 +576,10 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - The numeric node bypassed textual field encryption, producing encrypted `policy-no` with plaintext numeric `cert-no`; APIM rejected the mixed request as `invalid_encrypted_data_format`.
 - Fix: preserve `cert-no` as an opaque String from authenticated account context through the Account Balance APIM DTO.
 - Encryption format, credential-profile resolution, certificate lookup, and request field names remain unchanged.
+
+#### Account Balance APIM response array-shape defect
+- Downstream confirmed all five properties inside each response data item are arrays.
+- `displayOptions` and `curr` are singleton arrays and must each contain exactly one non-null item.
+- `dispSrc`, `fundDtl`, and `accBal` remain variable-length arrays and must be non-null.
+- The fund factsheet wire property is exactly `fund-fact-sheet`.
+- The committed `cert-no` String encryption fix remains unchanged.
