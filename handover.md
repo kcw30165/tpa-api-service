@@ -540,3 +540,14 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - The Contributions child validates authenticated cookie, XSRF, Account-Ref, date arguments, response contract, and logout with zero real network requests and zero human prompts.
 - `scripts/ci/validate-login-contributions.sh` defines compile, test-compile, targeted Login integration, offline regression, and Git preservation checks for Jenkins.
 - Live Login, OTP, Contributions, and logout modes remain excluded from automatic CI.
+
+## Account Balance E2E migration
+
+- Migration timestamp: `20260831-120826`.
+- Canonical path: `scripts/e2e/scenarios/account-balance`.
+- Canonical command: `bash scripts/e2e/run-account-balance-dev.sh provided-session`.
+- Existing local functional behavior is preserved as the local-stubbed E2E suite.
+- The legacy functional runner is a temporary compatibility wrapper.
+- `authenticated-live` fails closed pending a shared authenticated Login helper.
+- Remaining work: shared Login helper, private raw-response handling, automatic stub counters,
+  strict skip policy, offline regression, and CI gate integration.
