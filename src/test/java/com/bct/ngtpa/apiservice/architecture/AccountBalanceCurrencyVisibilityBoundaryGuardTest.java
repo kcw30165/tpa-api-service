@@ -18,11 +18,14 @@ class AccountBalanceCurrencyVisibilityBoundaryGuardTest {
         Files.readString(RESPONSE_ROOT.resolve("FundLevelSubDisplayAccountResponse.java"));
     String subDisplayFund =
         Files.readString(RESPONSE_ROOT.resolve("SubDisplayLevelFundResponse.java"));
-    String overview = Files.readString(RESPONSE_ROOT.resolve("AccountOverviewResponse.java"));
+    String overview =
+        Files.readString(RESPONSE_ROOT.resolve("AccountOverviewDisplayAccountResponse.java"))
+            + Files.readString(RESPONSE_ROOT.resolve("AccountOverviewTotalsResponse.java"));
     String combined = fund + fundLeaf + subDisplayFund + overview;
 
     assertThat(combined).doesNotContain("fundFactsheetEnabled");
-    assertThat(count(combined, "Include.NON_NULL")).isEqualTo(6);
+    assertThat(fundLeaf).doesNotContain("factsheetUrl");
+    assertThat(count(combined, "Include.NON_NULL")).isEqualTo(5);
     assertThat(count(combined, "Include.ALWAYS")).isEqualTo(2);
     assertThat(combined).doesNotContain("setSerializationInclusion");
   }

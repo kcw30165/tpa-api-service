@@ -61,9 +61,22 @@ public class AccountBalanceController {
             r.currencySelection().selectedCurrency(), r.currencySelection().availableCurrencies());
     var o =
         new AccountOverviewResponse(
-            r.accountOverview().accountBalance(),
-            r.accountOverview().vestedBalance(),
-            r.accountOverview().pendingSwitchIn());
+            new AccountOverviewDisplayOptionsResponse(
+                r.accountOverview().displayOptions().vestedBalanceVisible(),
+                r.accountOverview().displayOptions().pendingSwitchInVisible()),
+            r.accountOverview().displayAccounts().stream()
+                .map(
+                    a ->
+                        new AccountOverviewDisplayAccountResponse(
+                            a.displayAccountId(),
+                            a.displayAccountLabel(),
+                            a.displaySequence(),
+                            a.accountBalance(),
+                            a.vestedBalance()))
+                .toList(),
+            new AccountOverviewTotalsResponse(
+                r.accountOverview().accountTotals().totalBalance(),
+                r.accountOverview().accountTotals().pendingSwitchIn()));
     var p =
         new InvestmentPortfolioResponse(
             r.investmentPortfolio().fundLevelView().stream().map(this::fundDisplay).toList(),
@@ -101,7 +114,6 @@ public class AccountBalanceController {
                                         s.unitBalance(),
                                         s.accountBalance(),
                                         s.fundPrice(),
-                                        s.factsheetUrl(),
                                         s.fxRate()))
                             .toList()))
             .toList());

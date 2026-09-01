@@ -11,7 +11,13 @@ class AccountBalanceVisibilitySerializationTest {
 
   @Test
   void overviewNullsRemainWhilePortfolioNullsAreOmitted() throws Exception {
-    String o = mapper.writeValueAsString(new AccountOverviewResponse("1.00", null, null));
+    String o =
+        mapper.writeValueAsString(
+            new AccountOverviewResponse(
+                new AccountOverviewDisplayOptionsResponse(false, false),
+                java.util.List.of(
+                    new AccountOverviewDisplayAccountResponse("EE", "Member", 1, "1.00", null)),
+                new AccountOverviewTotalsResponse("1.00", null)));
     String f =
         mapper.writeValueAsString(
             new SubDisplayLevelFundResponse("F", "Fund", "1.00", "1.00", "1.00", null, null));

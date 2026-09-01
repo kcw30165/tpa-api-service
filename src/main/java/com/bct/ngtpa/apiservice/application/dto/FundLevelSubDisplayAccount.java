@@ -6,5 +6,4 @@ public record FundLevelSubDisplayAccount(
     String unitBalance,
     String accountBalance,
     String fundPrice,
-    String factsheetUrl,
     String fxRate) {}

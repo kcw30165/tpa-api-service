@@ -8,5 +8,4 @@ public record FundLevelSubDisplayAccountResponse(
     String unitBalance,
     String accountBalance,
     String fundPrice,
-    @JsonInclude(JsonInclude.Include.NON_NULL) String factsheetUrl,
     @JsonInclude(JsonInclude.Include.NON_NULL) String fxRate) {}

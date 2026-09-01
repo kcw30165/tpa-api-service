@@ -1,8 +1,12 @@
 package com.bct.ngtpa.apiservice.adapter.in.web.response.accountbalance;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
+import java.util.List;
 
 public record AccountOverviewResponse(
-    String accountBalance,
-    @JsonInclude(JsonInclude.Include.ALWAYS) String vestedBalance,
-    @JsonInclude(JsonInclude.Include.ALWAYS) String pendingSwitchIn) {}
+    AccountOverviewDisplayOptionsResponse displayOptions,
+    List<AccountOverviewDisplayAccountResponse> displayAccounts,
+    AccountOverviewTotalsResponse accountTotals) {
+  public AccountOverviewResponse {
+    displayAccounts = displayAccounts == null ? List.of() : List.copyOf(displayAccounts);
+  }
+}

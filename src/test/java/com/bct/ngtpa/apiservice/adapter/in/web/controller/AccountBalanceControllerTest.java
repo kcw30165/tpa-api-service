@@ -49,7 +49,7 @@ class AccountBalanceControllerTest {
         .expectBody()
         .jsonPath("$.result.data.asOfDate")
         .isEqualTo("28/08/2026")
-        .jsonPath("$.result.data.accountOverview.vestedBalance")
+        .jsonPath("$.result.data.accountOverview.displayAccounts[0].vestedBalance")
         .value(value -> assertThat(value).isNull());
     assertThat(captured.get().language()).isEqualTo("en");
     assertThat(captured.get().currency()).isNull();
@@ -89,11 +89,29 @@ class AccountBalanceControllerTest {
         .expectBody()
         .jsonPath("$.result.data.currencySelection.selectedCurrency")
         .isEqualTo("HKD")
-        .jsonPath("$.result.data.accountOverview.accountBalance")
+        .jsonPath("$.result.data.accountOverview.displayAccounts[0].accountBalance")
         .isEqualTo("100.00")
+        .jsonPath("$.result.data.accountOverview.displayOptions.vestedBalanceVisible")
+        .isEqualTo(false)
+        .jsonPath("$.result.data.accountOverview.displayOptions.pendingSwitchInVisible")
+        .isEqualTo(false)
+        .jsonPath("$.result.data.accountOverview.displayAccounts.length()")
+        .isEqualTo(1)
+        .jsonPath("$.result.data.accountOverview.displayAccounts[0].displayAccountId")
+        .isEqualTo("EE")
+        .jsonPath("$.result.data.accountOverview.displayAccounts[0].displayAccountLabel")
+        .isEqualTo("Member Account")
+        .jsonPath("$.result.data.accountOverview.displayAccounts[0].displaySequence")
+        .isEqualTo(50)
+        .jsonPath("$.result.data.accountOverview.accountTotals.totalBalance")
+        .isEqualTo("100.00")
+        .jsonPath("$.result.data.accountOverview.accountTotals.pendingSwitchIn")
+        .value(value -> assertThat(value).isNull())
         .jsonPath("$.result.data.investmentPortfolio.fundLevelView[0].displayAccountName")
         .isEqualTo("Display Account")
         .jsonPath("$.result.data.investmentPortfolio.fundLevelView[0].funds[0].fxRate")
+        .doesNotExist()
+        .jsonPath("$.result.data.investmentPortfolio.fundLevelView[0].funds[0].subDisplayAccounts[0].factsheetUrl")
         .doesNotExist();
   }
 
@@ -125,7 +143,7 @@ class AccountBalanceControllerTest {
   private static AccountBalanceResult result() {
     var leaf =
         new FundLevelSubDisplayAccount(
-            "Sub-Display-Account", "OE", "1.000", "100.00", "10.0000", null, null);
+            "Sub-Display-Account", "OE", "1.000", "100.00", "10.0000", null);
     var fund =
         new FundLevelFund("F1", "Fund A", "10.0000", "1.000", "100.00", null, null, List.of(leaf));
     var fundView = new FundLevelDisplayAccount("Display Account", "EE", 1, List.of(fund));
@@ -135,7 +153,10 @@ class AccountBalanceControllerTest {
     return new AccountBalanceResult(
         "28/08/2026",
         new CurrencySelection("HKD", List.of("HKD", "USD")),
-        new AccountOverview("100.00", null, null),
+        new AccountOverview(
+            new AccountOverviewDisplayOptions(false, false),
+            List.of(new AccountOverviewDisplayAccount("EE", "Member Account", 50, "100.00", null)),
+            new AccountOverviewTotals("100.00", null)),
         new InvestmentPortfolio(List.of(fundView), List.of(subView)));
   }
 }

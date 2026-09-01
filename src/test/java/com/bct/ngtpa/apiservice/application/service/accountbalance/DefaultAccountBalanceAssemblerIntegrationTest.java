@@ -51,7 +51,19 @@ class DefaultAccountBalanceAssemblerIntegrationTest {
             r -> {
               assertThat(r.investmentPortfolio().fundLevelView()).hasSize(1);
               assertThat(r.investmentPortfolio().subDisplayAccountLevelView()).hasSize(1);
-              assertThat(r.accountOverview().accountBalance()).isEqualTo("21.00");
+              assertThat(r.accountOverview().displayOptions().vestedBalanceVisible()).isTrue();
+              assertThat(r.accountOverview().displayOptions().pendingSwitchInVisible()).isTrue();
+              assertThat(r.accountOverview().displayAccounts()).hasSize(1);
+              assertThat(r.accountOverview().displayAccounts().getFirst().displayAccountId())
+                  .isEqualTo("EE");
+              assertThat(r.accountOverview().displayAccounts().getFirst().displayAccountLabel())
+                  .isEqualTo("Employee");
+              assertThat(r.accountOverview().displayAccounts().getFirst().accountBalance())
+                  .isEqualTo("21.00");
+              assertThat(r.accountOverview().displayAccounts().getFirst().vestedBalance())
+                  .isEqualTo("20.00");
+              assertThat(r.accountOverview().accountTotals().totalBalance()).isEqualTo("21.00");
+              assertThat(r.accountOverview().accountTotals().pendingSwitchIn()).isEqualTo("1.00");
             })
         .verifyComplete();
   }
