@@ -56,9 +56,9 @@ class ForgotPasswordDetailsExecutorFailFirstTest {
         .contains("ApimExchangeExecutor")
         .contains("ApimExchangeRequest")
         .contains("postEnvelope(")
-        .contains("/ws/NGTPA/v1/TRPSearchRegedMember")
-        .contains("TrpSearchRegedMemberRequest.class")
-        .contains("TrpSearchRegedMemberDataItem.class")
+        .contains("/ws/NGTPA/v1/TRPSearchMember")
+        .contains("ForgotPasswordTrpSearchMemberRequest.class")
+        .contains("ForgotPasswordTrpSearchMemberDataItem.class")
         .contains("ApimDatabaseScope.NON_ACCOUNT")
         .contains("newApimCredentialResolutionContext(command.actorUserRole(),null)")
         .contains("ApimRetryEligibility.SAFE_BUSINESS_CALL")
@@ -88,7 +88,7 @@ class ForgotPasswordDetailsExecutorFailFirstTest {
   @Test
   void routingMetadataIsNotSerializedAndResponseEnvironmentCannotRouteRequest() throws Exception {
     String request =
-        source("adapter/out/apim/forgotpassword/details/dto/TrpSearchRegedMemberRequest.java");
+        source("adapter/out/apim/forgotpassword/details/dto/ForgotPasswordTrpSearchMemberRequest.java");
     String adapter =
         source(
             "adapter/out/apim/forgotpassword/details/ApimForgotPasswordDetailsLookupAdapter.java");

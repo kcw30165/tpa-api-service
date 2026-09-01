@@ -14,7 +14,7 @@ Accept `identityType` and `identityValue`. Map public `STAFF_NO` to Java `STAFFN
 
 ## WF-003 Details and OTP issue
 
-Validate DOB and exactly one contact. Call `TRPSearchRegedMember`. On match, immediately create/send OTP. Accepted delivery binds the challenge and returns `VERIFY_OTP`. Confirmed failure creates no usable challenge and does not increment successful resend count. Indeterminate delivery uses existing unknown-outcome behavior.
+Validate DOB and exactly one contact. Call `TRPSearchMember`. On match, immediately create/send OTP. Accepted delivery binds the challenge and returns `VERIFY_OTP`. Confirmed failure creates no usable challenge and does not increment successful resend count. Indeterminate delivery uses existing unknown-outcome behavior.
 
 ## WF-004 OTP verify/resend
 

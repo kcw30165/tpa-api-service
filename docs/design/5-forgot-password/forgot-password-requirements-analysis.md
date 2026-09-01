@@ -18,7 +18,7 @@ ENTER_USERNAME -> ENTER_ID -> ENTER_DETAILS -> VERIFY_OTP
 1. Validate username through `TRPChkCustId`.
 2. Create `AuthFlowSession`, issue `auth_flow_sid`, and return the raw CSRF token in the response body.
 3. FE submits `identityType` and `identityValue`; BFF checks both against protected TAS `id-type` and `user-id`.
-4. FE submits DOB and exactly one email/HK mobile; TAS matches through `TRPSearchRegedMember`.
+4. FE submits DOB and exactly one email/HK mobile; TAS matches through `TRPSearchMember`.
 5. On match, OTP is sent immediately to the submitted contact.
 6. OTP success creates one-time reset authorization.
 7. Password equality is validated by FE/Java; TAS applies policy and reset.

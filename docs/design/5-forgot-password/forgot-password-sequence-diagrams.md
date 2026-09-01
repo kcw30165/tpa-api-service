@@ -25,7 +25,7 @@ sequenceDiagram
   BFF-->>FE: ENTER_DETAILS
   M->>FE: DOB + one contact
   FE->>BFF: Verify details
-  BFF->>APIM: TRPSearchRegedMember
+  BFF->>APIM: TRPSearchMember
   BFF-->>FE: VERIFY_OTP after accepted delivery
 ```
 

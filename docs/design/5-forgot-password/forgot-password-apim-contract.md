@@ -11,7 +11,7 @@ POST through existing APIM facade; reuse OAuth/certificates/encryption/envelope/
 ## Paths
 
 - `/ws/NGTPA/v1/TRPChkCustId`
-- `/ws/NGTPA/v1/TRPSearchRegedMember`
+- `/ws/NGTPA/v1/TRPSearchMember`
 - `/ws/NGTPA/v1/TRPResetPassword`
 
 ## TRPChkCustId success
