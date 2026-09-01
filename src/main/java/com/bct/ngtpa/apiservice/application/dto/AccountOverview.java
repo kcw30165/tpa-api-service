@@ -1,4 +1,12 @@
 package com.bct.ngtpa.apiservice.application.dto;
 
+import java.util.List;
+
 public record AccountOverview(
-    String accountBalance, String vestedBalance, String pendingSwitchIn) {}
+    AccountOverviewDisplayOptions displayOptions,
+    List<AccountOverviewDisplayAccount> displayAccounts,
+    AccountOverviewTotals accountTotals) {
+  public AccountOverview {
+    displayAccounts = displayAccounts == null ? List.of() : List.copyOf(displayAccounts);
+  }
+}

@@ -86,19 +86,35 @@ public final class DefaultAccountBalanceAssembler implements AccountBalanceAssem
         ((DefaultAccountBalancePresentationTransformer) presentation).precisions(m);
     var ao =
         new AccountOverview(
-            render(o.accountTotals().totalBalance(), p, GeneralMetadataName.NET_ASSET_VALUE),
-            o.vestedBalanceVisible()
-                ? render(
-                    o.displayAccounts().stream()
-                        .map(x -> x.vestedBalance())
-                        .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add),
+            new AccountOverviewDisplayOptions(
+                o.vestedBalanceVisible(), o.pendingSwitchInVisible()),
+            o.displayAccounts().stream()
+                .map(
+                    x ->
+                        new AccountOverviewDisplayAccount(
+                            x.displayAccountId(),
+                            displayName(n, x.displayAccountId(), c.language()),
+                            x.displaySequence(),
+                            render(
+                                x.accountBalance(), p, GeneralMetadataName.NET_ASSET_VALUE),
+                            o.vestedBalanceVisible()
+                                ? render(
+                                    x.vestedBalance(),
+                                    p,
+                                    GeneralMetadataName.NET_ASSET_VALUE)
+                                : null))
+                .toList(),
+            new AccountOverviewTotals(
+                render(
+                    o.accountTotals().totalBalance(),
                     p,
-                    GeneralMetadataName.NET_ASSET_VALUE)
-                : null,
-            o.pendingSwitchInVisible()
-                ? render(
-                    o.accountTotals().pendingSwitchIn(), p, GeneralMetadataName.NET_ASSET_VALUE)
-                : null);
+                    GeneralMetadataName.NET_ASSET_VALUE),
+                o.pendingSwitchInVisible()
+                    ? render(
+                        o.accountTotals().pendingSwitchIn(),
+                        p,
+                        GeneralMetadataName.NET_ASSET_VALUE)
+                    : null));
     return new AccountBalanceResult(
         d.format(DATE),
         currencies.map(n.currency()),
@@ -159,7 +175,6 @@ public final class DefaultAccountBalanceAssembler implements AccountBalanceAssem
                                                       raw.fundPrice(),
                                                       p,
                                                       GeneralMetadataName.FUND_PRICE),
-                                                  fs,
                                                   fx))
                                       .toList());
                             })

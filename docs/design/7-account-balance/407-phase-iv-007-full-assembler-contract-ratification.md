@@ -93,31 +93,25 @@ No additional currency hierarchy is permitted.
 
 ```text
 accountOverview
- ├─ accountBalance
- ├─ vestedBalance
- └─ pendingSwitchIn
+ ├─ displayOptions
+ │    ├─ vestedBalanceVisible
+ │    └─ pendingSwitchInVisible
+ ├─ displayAccounts[]
+ │    ├─ displayAccountId
+ │    ├─ displayAccountLabel
+ │    ├─ displaySequence
+ │    ├─ accountBalance
+ │    └─ vestedBalance
+ └─ accountTotals
+      ├─ totalBalance
+      └─ pendingSwitchIn
 ```
 
 ## Visibility behavior
 
-These fields remain present and null when hidden:
+`displayOptions` is authoritative. Hidden `vestedBalance` values remain present as null on each Display Account. Hidden `pendingSwitchIn` remains present as null under `accountTotals`.
 
-```text
-vestedBalance
-pendingSwitchIn
-```
-
-Example:
-
-```json
-{
-  "accountBalance": "12345.67",
-  "vestedBalance": null,
-  "pendingSwitchIn": null
-}
-```
-
-No additional overview hierarchy is approved.
+Display Accounts are ordered by `displaySequence` and the stable technical ID tie-breaker. Labels use the approved request-language description resolution and fallback rules.
 
 ---
 
@@ -169,7 +163,6 @@ fundLevelView[]
                     ├─ unitBalance
                     ├─ accountBalance
                     ├─ fundPrice
-                    ├─ factsheetUrl
                     └─ fxRate
 ```
 
@@ -187,7 +180,7 @@ fxRate
 
 because that node represents fund-level aggregation.
 
-The same values also exist on the Sub-Display-Account leaf because each leaf corresponds to a single holding row.
+The Sub-Display-Account leaf retains holding balances, fundPrice, and fxRate, but does not repeat factsheetUrl because factsheet ownership remains exclusively on a Fund node.
 
 No separate totals object is allowed.
 
@@ -260,7 +253,6 @@ Sub-Display Account leaf
     -> raw holding balances
     -> fundPrice
     -> fxRate
-    -> factsheetUrl
 ```
 
 ## Sub-Display-Account Level View
@@ -289,7 +281,7 @@ Therefore it appears in:
 
 ```text
 Fund Level View
-    Fund node
+    Fund node only, not its nested Sub-Display-Account leaves
 
 Sub-Display-Account View
     Fund leaf node

@@ -254,3 +254,7 @@ Architect review package generated.
 
 STATUS=READY_FOR_ARCHITECT_REVIEW
 NEXT_PHASE_BLOCKED_PENDING_ARCHITECT_DECISION=YES
+
+## Production response contract correction
+
+Corrected the public Account Balance response to preserve the approved structured `accountOverview` object containing `displayOptions`, `displayAccounts[]`, and `accountTotals`. The existing raw overview aggregation, visibility flags, deterministic Display Account ordering, localized labels, and totals are now carried through the application and web response boundaries instead of being flattened. `factsheetUrl` was also removed from Fund Level View nested Sub-Display-Account leaves while remaining on both legitimate Fund node shapes. Controller, serialization, assembler integration, architecture guards, the FE-BFF API example, and the Phase IV-007 ratification now lock the same contract. No APIM transport, currency, authentication, selected-account, or error behavior changed.
