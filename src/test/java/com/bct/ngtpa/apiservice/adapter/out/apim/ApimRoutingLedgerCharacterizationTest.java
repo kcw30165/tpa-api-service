@@ -103,7 +103,7 @@ class ApimRoutingLedgerCharacterizationTest {
               "EXECUTOR",
               "NON_ACCOUNT"),
           e(
-              "TRPSearchRegedMember",
+              "TRPSearchMemberForgotPassword",
               "forgotpassword/details/ApimForgotPasswordDetailsLookupAdapter.java",
               "NON_ACCOUNT",
               "command.actorUserRole()",
@@ -191,7 +191,7 @@ class ApimRoutingLedgerCharacterizationTest {
             "TRPGetWebSysDate",
             "TRPUpdMemberInfo",
             "TRPResetPassword",
-            "TRPSearchRegedMember",
+            "TRPSearchMemberForgotPassword",
             "TRPMemberLogin",
             "TRPGetAccountList",
             "TRPRegMember",

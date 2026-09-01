@@ -583,3 +583,11 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - `dispSrc`, `fundDtl`, and `accBal` remain variable-length arrays and must be non-null.
 - The fund factsheet wire property is exactly `fund-fact-sheet`.
 - The committed `cert-no` String encryption fix remains unchanged.
+
+### Forgot Password TRPSearchMember details verification
+- Active repository: `/home/nd2887/projects/orso/ngtpa/api-service`.
+- Forgot Password `details-check` now calls `TRPSearchMember`, not `TRPSearchRegedMember`.
+- The request uses protected-session identity type/value plus submitted DOB and exactly one submitted email/mobile destination. It does not send `cust-id`.
+- The flow continues only when a structurally valid response contains at least one record with `isRegistered=true` and `cust-id` equal to the protected session customer ID.
+- Valid responses without a qualifying record are treated as business not-found and do not create or send an OTP.
+- Existing endpoint, destination, idempotency, CSRF, session revision, OTP, replay, delivery, public error, and password-reset behavior remain unchanged.

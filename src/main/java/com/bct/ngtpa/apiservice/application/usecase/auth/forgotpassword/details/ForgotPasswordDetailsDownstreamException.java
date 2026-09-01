@@ -12,7 +12,7 @@ public final class ForgotPasswordDetailsDownstreamException extends RuntimeExcep
   private final Reason reason;
 
   public ForgotPasswordDetailsDownstreamException(Reason reason) {
-    super("TRPSearchRegedMember contract failure: " + reason);
+    super("TRPSearchMember contract failure: " + reason);
     this.reason = reason;
   }
 

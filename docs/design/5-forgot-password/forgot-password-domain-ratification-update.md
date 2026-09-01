@@ -35,10 +35,10 @@ TAS approved the following without stated conditions:
 2. Username and trust have a one-to-one relationship for this flow.
 3. The BFF uses POST for:
    - `/ws/NGTPA/v1/TRPChkCustId`
-   - `/ws/NGTPA/v1/TRPSearchRegedMember`
+   - `/ws/NGTPA/v1/TRPSearchMember`
    - `/ws/NGTPA/v1/TRPResetPassword`
 4. Request/response envelopes and recognized errors are those in `0-description.md` and the Gate 3 APIM contract.
-5. `TRPChkCustId` and `TRPSearchRegedMember` are read-like POST operations governed by the existing `ApimRetryEligibility` policy.
+5. `TRPChkCustId` and `TRPSearchMember` are read-like POST operations governed by the existing `ApimRetryEligibility` policy.
 6. `TRPResetPassword` has no TAS idempotency or duplicate-request protection.
 7. TAS does not know the authoritative outcome when a timeout occurs after the reset request may have reached TAS.
 8. Password is not included in APIM field-level encryption/decryption configuration.

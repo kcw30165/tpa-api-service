@@ -4,12 +4,14 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialResolu
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
-import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.details.dto.TrpSearchRegedMemberDataItem;
-import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.details.dto.TrpSearchRegedMemberRequest;
-import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.details.mapper.TrpSearchRegedMemberMapper;
+import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.details.dto.ForgotPasswordTrpSearchMemberDataItem;
+import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.details.dto.ForgotPasswordTrpSearchMemberRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.details.mapper.ForgotPasswordTrpSearchMemberMapper;
 import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordDetailsLookupPort;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.*;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsDownstreamException;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsLookupCommand;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsLookupResult;
 import java.util.List;
 import java.util.Objects;
 import org.springframework.stereotype.Component;
@@ -18,9 +20,10 @@ import reactor.core.publisher.Mono;
 @Component
 public final class ApimForgotPasswordDetailsLookupAdapter
     implements ForgotPasswordDetailsLookupPort {
-  public static final String API_NAME = "/ws/NGTPA/v1/TRPSearchRegedMember";
+  public static final String API_NAME = "/ws/NGTPA/v1/TRPSearchMember";
   private final ApimExchangeExecutor executor;
-  private final TrpSearchRegedMemberMapper mapper = new TrpSearchRegedMemberMapper();
+  private final ForgotPasswordTrpSearchMemberMapper mapper =
+      new ForgotPasswordTrpSearchMemberMapper();
 
   public ApimForgotPasswordDetailsLookupAdapter(ApimExchangeExecutor executor) {
     this.executor = Objects.requireNonNull(executor, "executor must not be null");
@@ -30,25 +33,13 @@ public final class ApimForgotPasswordDetailsLookupAdapter
   public Mono<ForgotPasswordDetailsLookupResult> verify(
       ForgotPasswordDetailsLookupCommand command) {
     Objects.requireNonNull(command, "command must not be null");
-    var details =
-        new ForgotPasswordDetailsCommand(
-            null,
-            null,
-            null,
-            null,
-            command.requestId(),
-            command.dateOfBirth(),
-            command.email(),
-            command.mobile(),
-            null);
-    TrpSearchRegedMemberRequest body =
-        mapper.toRequest(details, command.searchBy(), command.searchValue(), command.customerId());
+    ForgotPasswordTrpSearchMemberRequest body = mapper.toRequest(command);
     var request =
         new ApimExchangeRequest<>(
             API_NAME,
             body,
-            TrpSearchRegedMemberRequest.class,
-            TrpSearchRegedMemberDataItem.class,
+            ForgotPasswordTrpSearchMemberRequest.class,
+            ForgotPasswordTrpSearchMemberDataItem.class,
             ApimDatabaseScope.NON_ACCOUNT,
             new ApimCredentialResolutionContext(command.actorUserRole(), null),
             ApimRetryEligibility.SAFE_BUSINESS_CALL);
@@ -56,13 +47,14 @@ public final class ApimForgotPasswordDetailsLookupAdapter
         .postEnvelope(request)
         .map(
             envelope -> {
-              if (envelope == null || envelope.getResponse() == null)
+              if (envelope == null || envelope.getResponse() == null) {
                 throw new ForgotPasswordDetailsDownstreamException(
                     ForgotPasswordDetailsDownstreamException.Reason.UNEXPECTED_ERROR);
+              }
               var response = envelope.getResponse();
-              List<TrpSearchRegedMemberDataItem> data =
+              List<ForgotPasswordTrpSearchMemberDataItem> data =
                   response.getData() == null ? List.of() : List.copyOf(response.getData());
-              return mapper.toResult(response.getErrMessage(), data, details);
+              return mapper.toResult(response.getErrMessage(), data, command.customerId());
             });
   }
 }
