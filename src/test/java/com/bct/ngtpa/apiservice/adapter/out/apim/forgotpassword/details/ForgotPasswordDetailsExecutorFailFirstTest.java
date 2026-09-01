@@ -63,7 +63,7 @@ class ForgotPasswordDetailsExecutorFailFirstTest {
         .contains("newApimCredentialResolutionContext(command.actorUserRole(),null)")
         .contains("ApimRetryEligibility.SAFE_BUSINESS_CALL")
         .doesNotContain("ActorUserRole.ROLE_USER_MBR")
-        .doesNotContain("TrpSearchRegedMemberTransport");
+        .doesNotContain("LegacyForgotPasswordTransport");
   }
 
   @Test
@@ -73,7 +73,7 @@ class ForgotPasswordDetailsExecutorFailFirstTest {
             "adapter/out/apim/forgotpassword/details/ApimForgotPasswordDetailsLookupAdapter.java");
     Path legacyTransport =
         Path.of(
-            "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/forgotpassword/details/SharedApimTrpSearchRegedMemberTransport.java");
+            "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/forgotpassword/details/LegacyForgotPasswordTransport.java");
     assertThat(Files.exists(legacyTransport)).isFalse();
     assertThat(adapter)
         .doesNotContain("ApimWebClientFacade")
