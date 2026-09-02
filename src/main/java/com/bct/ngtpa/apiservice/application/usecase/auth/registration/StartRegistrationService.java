@@ -323,8 +323,13 @@ public class StartRegistrationService implements StartRegistrationUseCase {
               "identityValue",
               RegistrationIdempotencyStartOutcome.STARTED,
               null);
-      // Deterministic business rejection: preserve the normalized result for replay.
-      return markCompleted(command, hash, verificationFailure).thenReturn(verificationFailure);
+      return markFailed(
+              command,
+              hash,
+              com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey
+                  .START_VERIFICATION_FAILED
+                  .value())
+          .thenReturn(verificationFailure);
     }
     RegistrationAuthFlowContext registrationContext =
         new RegistrationAuthFlowContext(
@@ -480,7 +485,17 @@ public class StartRegistrationService implements StartRegistrationUseCase {
       StartRegistrationCommand command,
       RegistrationRequestHash hash,
       StartRegistrationResult result) {
-    var snapshot = snapshotFor(result);
+    var snapshot =
+        new RegistrationIdempotencyResponseSnapshot(
+            "200",
+            "{\"status\":\""
+                + result.status().name()
+                + "\",\"nextStep\":\""
+                + result.nextStep().name()
+                + "\",\"maskedDestination\":\""
+                + result.maskedDestination()
+                + "\"}",
+            Map.of());
     return idempotencyPort
         .markCompleted(
             new RegistrationIdempotencyCompleteCommand(
@@ -552,16 +567,6 @@ public class StartRegistrationService implements StartRegistrationUseCase {
       return emptyCompletedReplay(idempotencyResult, snapshot);
     }
     String body = snapshot.serializedBody();
-    StartRegistrationResultStatus persistedStatus = parsePersistedStatus(body);
-    if (persistedStatus == StartRegistrationResultStatus.VERIFICATION_FAILED) {
-      return result(
-          StartRegistrationResultStatus.VERIFICATION_FAILED,
-          parseNextStep(body),
-          RegistrationErrorKey.START_VERIFICATION_FAILED,
-          defaultIfBlank(jsonString(body, "errorTarget"), "identityValue"),
-          RegistrationIdempotencyStartOutcome.COMPLETED_REPLAY,
-          jsonString(body, "errorMessage"));
-    }
     return new StartRegistrationResult(
         StartRegistrationResultStatus.COMPLETED_REPLAY,
         parseNextStep(body),
@@ -604,11 +609,7 @@ public class StartRegistrationService implements StartRegistrationUseCase {
   }
 
   private String replayBody(StartRegistrationResult result) {
-    StartRegistrationError firstError =
-        result.errors() == null || result.errors().isEmpty() ? null : result.errors().getFirst();
     return "{"
-        + jsonField("status", result.status() == null ? null : result.status().name())
-        + ","
         + jsonField(
             "nextStep",
             result.nextStep() == null ? WorkflowNextStep.NONE.name() : result.nextStep().name())
@@ -622,12 +623,6 @@ public class StartRegistrationService implements StartRegistrationUseCase {
         + jsonNumberField("remainingResendAttempts", result.remainingResendAttempts())
         + ","
         + jsonField("csrfToken", result.csrfToken())
-        + ","
-        + jsonField("errorCode", firstError == null ? null : firstError.errorKey().value())
-        + ","
-        + jsonField("errorTarget", firstError == null ? null : firstError.target())
-        + ","
-        + jsonField("errorMessage", firstError == null ? null : firstError.message())
         + "}";
   }
 
@@ -645,20 +640,6 @@ public class StartRegistrationService implements StartRegistrationUseCase {
         .replace("\"", "\\\"")
         .replace("\r", "\\r")
         .replace("\n", "\\n");
-  }
-
-  private StartRegistrationResultStatus parsePersistedStatus(String body) {
-    String raw = jsonString(body, "status");
-    if (!hasText(raw)) return StartRegistrationResultStatus.COMPLETED_REPLAY;
-    try {
-      return StartRegistrationResultStatus.valueOf(raw);
-    } catch (IllegalArgumentException ignored) {
-      return StartRegistrationResultStatus.COMPLETED_REPLAY;
-    }
-  }
-
-  private String defaultIfBlank(String value, String fallback) {
-    return hasText(value) ? value : fallback;
   }
 
   private WorkflowNextStep parseNextStep(String body) {
