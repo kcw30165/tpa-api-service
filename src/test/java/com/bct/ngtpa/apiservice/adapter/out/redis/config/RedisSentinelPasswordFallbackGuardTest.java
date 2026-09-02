@@ -15,7 +15,8 @@ class RedisSentinelPasswordFallbackGuardTest {
         new ClassPathResource("application.yml").getContentAsString(StandardCharsets.UTF_8);
 
     assertThat(yaml)
-        .contains("${REDIS_SENTINEL_PASSWORD:}")
+        .containsPattern("(?m)^\\s*password:\\s*\\$\\{REDIS_SENTINEL_PASSWORD:}$")
+        .doesNotContain("${REDIS_SENTINEL_PASSWORD:}}")
         .doesNotContainPattern("\\$\\{REDIS_SENTINEL_PASSWORD:[^}]+}")
         .contains("${REDIS_PASSWORD:}")
         .contains("${REDIS_SENTINEL_MASTER:")

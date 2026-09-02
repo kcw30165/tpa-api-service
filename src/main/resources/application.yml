@@ -459,7 +459,7 @@ redis-cache:
   sentinel:
     master: ${REDIS_SENTINEL_MASTER:ngtpaMaster}
     nodes: ${REDIS_SENTINEL_NODES:}
-    password: ${REDIS_SENTINEL_PASSWORD:}}
+    password: ${REDIS_SENTINEL_PASSWORD:}
   ssl:
     enabled: ${REDIS_SSL_ENABLED:true}
     bundle: ${REDIS_SSL_BUNDLE:redis-mtls}
