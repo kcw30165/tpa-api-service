@@ -267,7 +267,14 @@ public class CompleteRegistrationService implements CompleteRegistrationUseCase 
             RegistrationCompletionPreDispatchException.class,
             e ->
                 idempotency
-                    .markFailed(new RegistrationIdempotencyFailCommand(ACTION, c.idempotencyKey(), hash, SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value(), clock.instant(), c.idempotencyTtl()))
+                    .markFailed(
+                        new RegistrationIdempotencyFailCommand(
+                            ACTION,
+                            c.idempotencyKey(),
+                            hash,
+                            SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value(),
+                            clock.instant(),
+                            c.idempotencyTtl()))
                     .thenReturn(
                         failure(
                             CompleteRegistrationResultStatus.SYSTEM_FAILED,

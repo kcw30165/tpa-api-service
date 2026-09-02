@@ -12,8 +12,8 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationCompletionPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationCompletionCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationCompletionPreDispatchException;
-import com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.RegistrationCompletionResult;
+import com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException;
 import com.bct.ngtpa.apiservice.shared.logging.LogExecution;
 import java.util.Objects;
 import org.springframework.stereotype.Component;
@@ -52,7 +52,6 @@ public class ApimRegistrationCompletionAdapter implements RegistrationCompletion
                     envelope.getResponse().getErrMessage(), envelope.getResponse().getData()))
         .map(resultMapper::toResult)
         .onErrorMap(
-            ApimProfileResolutionException.class,
-            RegistrationCompletionPreDispatchException::new);
+            ApimProfileResolutionException.class, RegistrationCompletionPreDispatchException::new);
   }
 }

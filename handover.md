@@ -614,3 +614,11 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - Other unclassified completion exceptions retain the existing unknown-outcome idempotency transition because downstream commitment may be ambiguous.
 - No automatic retry behavior is added for `TRPRegMember`.
 - Spotless formatting remains deferred to feature-level stabilization; implementation validation runs compile and test compilation only.
+
+## Registration Completion Classification Stabilization
+
+- Baseline Git HEAD: `48333f70933cd573ed535e83f4c4a3b554a6b679`.
+- Executable adapter coverage proves APIM profile-resolution failure is translated to the application-owned pre-dispatch exception without exposing resolver details.
+- Executable service coverage proves the pre-dispatch path returns `SYSTEM_FAILED` with `err.workflow.system.unavailable`, marks idempotency failed, and never marks an unknown outcome.
+- Existing ambiguous downstream coverage continues to prove one completion call and one unknown-outcome transition.
+- Feature-level Spotless formatting is applied in this stabilization round, followed by production compile and test compilation.

@@ -7,5 +7,6 @@ import java.util.List;
 import reactor.core.publisher.Mono;
 
 public interface RegistrationEligibleTrustPersistencePort {
-  Mono<Void> store(AuthFlowSessionId sessionId, List<RegistrationLookupAccount> accounts, Instant now);
+  Mono<Void> store(
+      AuthFlowSessionId sessionId, List<RegistrationLookupAccount> accounts, Instant now);
 }

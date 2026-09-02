@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.out.apim.registration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -64,5 +65,43 @@ class ApimRegistrationCompletionAdapterTest {
         "",
         "req-1",
         ActorUserRole.ROLE_USER_MBR);
+  }
+
+  @Test
+  void translatesProfileResolutionFailureAsPreDispatchFailure() {
+    ApimExchangeExecutor executor = mock(ApimExchangeExecutor.class);
+    when(executor.postEnvelope(any()))
+        .thenReturn(
+            Mono.error(
+                new com.bct.ngtpa.apiservice.exception.ApimProfileResolutionException(
+                    "no mapping for accountEnv")));
+
+    var adapter = new ApimRegistrationCompletionAdapter(executor);
+
+    StepVerifier.create(
+            adapter.complete(
+                new RegistrationCompletionCommand(
+                    "JP",
+                    "JPM",
+                    "member-user",
+                    "A1234567",
+                    "Password1!",
+                    "01/01/1980",
+                    "91234567",
+                    "member@example.com",
+                    "req-pre-dispatch",
+                    ActorUserRole.ROLE_USER_MBR)))
+        .expectErrorSatisfies(
+            failure -> {
+              assertThat(failure)
+                  .isInstanceOf(
+                      com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete
+                          .RegistrationCompletionPreDispatchException.class);
+              assertThat(failure.getMessage())
+                  .doesNotContain("accountEnv", "no mapping", "profile");
+            })
+        .verify();
+
+    verify(executor, times(1)).postEnvelope(any());
   }
 }

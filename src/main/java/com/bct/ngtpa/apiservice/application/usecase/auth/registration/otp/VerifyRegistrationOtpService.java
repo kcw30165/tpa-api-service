@@ -41,8 +41,15 @@ public class VerifyRegistrationOtpService implements VerifyRegistrationOtpUseCas
       RegistrationSessionPort sessionGateway,
       RegistrationLookupPort registrationLookupPort,
       Clock clock) {
-    this(protectedContextLoader, requestHashGenerator, idempotencyPort, otpGateway, sessionGateway,
-        registrationLookupPort, (sessionId, accounts, now) -> Mono.empty(), clock);
+    this(
+        protectedContextLoader,
+        requestHashGenerator,
+        idempotencyPort,
+        otpGateway,
+        sessionGateway,
+        registrationLookupPort,
+        (sessionId, accounts, now) -> Mono.empty(),
+        clock);
   }
 
   public VerifyRegistrationOtpService(

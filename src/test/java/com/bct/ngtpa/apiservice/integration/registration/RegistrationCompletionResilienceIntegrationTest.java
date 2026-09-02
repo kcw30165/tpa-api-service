@@ -208,6 +208,28 @@ class RegistrationCompletionResilienceIntegrationTest {
   }
 
   @Test
+  void preDispatchFailureMarksFailedAndDoesNotMarkUnknownOutcome() {
+    when(completion.complete(any()))
+        .thenReturn(
+            Mono.error(
+                new RegistrationCompletionPreDispatchException(
+                    new IllegalStateException("internal profile resolution detail"))));
+    when(idempotency.markFailed(any())).thenReturn(Mono.just(record()));
+
+    var r = service.complete(command("idem-pre-dispatch")).block();
+
+    assertThat(r.status()).isEqualTo(CompleteRegistrationResultStatus.SYSTEM_FAILED);
+    assertThat(r.nextStep().name()).isEqualTo("RETURN_TO_LOGIN");
+    assertThat(r.errors())
+        .singleElement()
+        .satisfies(error -> assertThat(error.code()).isEqualTo("err.workflow.system.unavailable"));
+    assertThat(r.toString()).doesNotContain("internal profile resolution detail");
+    verify(completion, times(1)).complete(any());
+    verify(idempotency, times(1)).markFailed(any());
+    verify(idempotency, never()).markUnknownOutcome(any());
+  }
+
+  @Test
   @RegistrationTestCase("TC-068")
   void downstreamBusinessRejectionIsCanonicalAndDoesNotExposePasswordOrRawCode() {
     when(completion.complete(any()))

@@ -42,7 +42,8 @@ class RegistrationEligibleTrustSetTest {
     String encoded = RegistrationEligibleTrustSet.encode(ELIGIBLE);
 
     assertThat(RegistrationEligibleTrustSet.contains(encoded, selected("UNKNOWN", "JP"))).isFalse();
-    assertThat(RegistrationEligibleTrustSet.contains(encoded, selected("JPM", "UNKNOWN"))).isFalse();
+    assertThat(RegistrationEligibleTrustSet.contains(encoded, selected("JPM", "UNKNOWN")))
+        .isFalse();
     assertThat(RegistrationEligibleTrustSet.contains(null, selected("JPM", "JP"))).isFalse();
     assertThat(RegistrationEligibleTrustSet.contains("", selected("JPM", "JP"))).isFalse();
     assertThat(RegistrationEligibleTrustSet.contains(encoded, null)).isFalse();

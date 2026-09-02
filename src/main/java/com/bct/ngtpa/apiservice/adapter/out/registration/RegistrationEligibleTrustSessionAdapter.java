@@ -23,21 +23,38 @@ public final class RegistrationEligibleTrustSessionAdapter
   }
 
   @Override
-  public Mono<Void> store(AuthFlowSessionId sessionId, List<RegistrationLookupAccount> accounts, Instant now) {
+  public Mono<Void> store(
+      AuthFlowSessionId sessionId, List<RegistrationLookupAccount> accounts, Instant now) {
     Objects.requireNonNull(sessionId, "sessionId must not be null");
     Objects.requireNonNull(now, "now must not be null");
     String encoded = RegistrationEligibleTrustSet.encode(accounts);
-    return sessions.load(sessionId).flatMap(optional -> {
-      AuthFlowSession current = optional.orElseThrow(
-          () -> new IllegalStateException("Registration auth-flow session not found"));
-      AuthFlowSessionData data = current.data() == null ? AuthFlowSessionData.empty() : current.data();
-      var attributes = new LinkedHashMap<>(data.attributes());
-      attributes.put(RegistrationEligibleTrustSet.ATTRIBUTE_NAME, encoded);
-      var updatedData = new AuthFlowSessionData(data.contactType(), data.maskedDestination(), attributes);
-      var updated = new AuthFlowSession(
-          current.authFlowSessionId(), current.scenario(), current.status(), current.csrfTokenHash(),
-          current.activeOtpChallengeId(), updatedData, current.createdAt(), now, current.expiresAt());
-      return new RevisionAwareAuthFlowSessionWriter(sessions).updateExpected(current, updated).then();
-    });
+    return sessions
+        .load(sessionId)
+        .flatMap(
+            optional -> {
+              AuthFlowSession current =
+                  optional.orElseThrow(
+                      () -> new IllegalStateException("Registration auth-flow session not found"));
+              AuthFlowSessionData data =
+                  current.data() == null ? AuthFlowSessionData.empty() : current.data();
+              var attributes = new LinkedHashMap<>(data.attributes());
+              attributes.put(RegistrationEligibleTrustSet.ATTRIBUTE_NAME, encoded);
+              var updatedData =
+                  new AuthFlowSessionData(data.contactType(), data.maskedDestination(), attributes);
+              var updated =
+                  new AuthFlowSession(
+                      current.authFlowSessionId(),
+                      current.scenario(),
+                      current.status(),
+                      current.csrfTokenHash(),
+                      current.activeOtpChallengeId(),
+                      updatedData,
+                      current.createdAt(),
+                      now,
+                      current.expiresAt());
+              return new RevisionAwareAuthFlowSessionWriter(sessions)
+                  .updateExpected(current, updated)
+                  .then();
+            });
   }
 }
