@@ -308,3 +308,38 @@ Executor evidence must prove no execution on duplicate or replay, one execution 
 The runtime variable SHARED_IDEMPOTENCY_PERSISTENCE_HMAC_SECRET is mandatory only when shared idempotency is enabled. It must be Base64 and decode to at least 32 bytes. Missing, malformed, short, or placeholder values fail bean construction without value disclosure.
 
 `SHARED_IDEMPOTENCY_ENABLED` defaults to `false`. In disabled mode the application must start without the shared HMAC secret and expose no shared idempotency beans. In enabled mode the secret is mandatory and invalid configuration fails startup without disclosure.
+
+<!-- P3-REGISTRATION-MIGRATION-BASELINE -->
+## P3 Registration evidence and test gates
+
+Every P3 implementation round records exact Git pre-state, formatting status, production compile, test compile, architecture audits, `git diff --check`, diff stat, name status, final Git status, command exit codes, and preserved failure diagnostics in one timestamped evidence directory.
+
+### Required behavioral evidence
+
+For every Registration action, focused tests must eventually prove:
+
+- exactly one caller receives `ACQUIRED` under concurrency;
+- only the owner invokes the protected action;
+- duplicate and replay callers never receive the ownership token;
+- same key plus different fingerprint is rejected;
+- first-call and replay HTTP status, public status, result, messages, errors, next step, retry metadata, and safe headers are equivalent;
+- deterministic business and validation failures replay without re-execution;
+- APIM, OTP, message, session, trust, lock, and cancellation side effects run at most once;
+- wrong-owner and terminal overwrite attempts fail closed;
+- replay hydration failure never falls through to fresh execution;
+- pre-dispatch failures become `FAILED` only when no side effect is proven;
+- ambiguous or post-dispatch failures become `UNKNOWN_OUTCOME`;
+- no secret or protected context is present in Redis JSON, Redis keys, logs, exception messages, or `toString()` output.
+
+Implementation writers run only `mvn -DskipTests compile` and `mvn -DskipTests test-compile`. Focused test execution belongs to the later P3 stabilization and evidence round. `mvn spotless:apply` is deferred until P3-G and must be followed by restoration of unrelated formatter changes if any occur.
+
+### Runtime activation gate
+
+Before enabling migrated Registration code, deployment must provide:
+
+```text
+SHARED_IDEMPOTENCY_ENABLED=true
+SHARED_IDEMPOTENCY_PERSISTENCE_HMAC_SECRET=<Base64 value decoding to at least 32 bytes>
+```
+
+Disabled environments create no shared idempotency beans and require no secret. Enabled environments fail startup on missing, malformed, short, or placeholder-like secrets without disclosing the value.

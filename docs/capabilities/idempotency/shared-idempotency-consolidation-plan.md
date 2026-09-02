@@ -281,3 +281,45 @@ P2-B2B implements shared executor orchestration and conservative failure classif
 P2-B2C completes P2 runtime composition without migrating endpoints or changing legacy adapters. P2 is ready for cumulative stabilization and focused review before its single commit.
 
 P2 runtime composition is disabled by default to preserve behavior before migration. P3 enables the shared capability when the first Registration action family is migrated and the dedicated runtime secret is available.
+
+<!-- P3-REGISTRATION-MIGRATION-BASELINE -->
+## P3 detailed delivery plan: Registration
+
+P3 uses one cumulative feature branch and one final commit. Intermediate stages are reviewed through timestamped evidence archives and are not committed separately unless a repair baseline is explicitly approved.
+
+### P3-A: Shared Registration bridge
+
+Add Registration-owned operation identity, fingerprint, response capture, replay hydration, and failure-classification components. Preserve all four existing use cases and the legacy port during this stage. Add architecture tests preventing feature leakage into the shared package.
+
+### P3-B: Registration Start
+
+Move Start orchestration to `IdempotencyExecutor`. Preserve captcha ordering, lookup behavior, auth-flow continuity, OTP creation, message delivery, cookie behavior, and every deterministic terminal response. Prove replay does not repeat lookup, OTP, session, or message effects.
+
+### P3-C: OTP Resend
+
+Move OTP Resend to the shared executor. Preserve cooldown, retry-after, send-rate-limit, maximum-attempt, invalid-flow, CSRF, delivery-failure, and system-failure semantics. Prove replay does not create or send another OTP or repeat session mutation.
+
+### P3-D: OTP Verify
+
+Move OTP Verify to the shared executor. Preserve invalid, expired, locked, no-eligible-trust, trust-lookup-failure, and system-failure responses. Prove OTP verification, verified-state mutation, trust lookup, and eligible-trust persistence execute once.
+
+### P3-E: Registration Complete
+
+Move Complete to the shared executor. Retain completion lock ordering and the existing pre-dispatch versus possible-side-effect distinction. Preserve additional-trust continuation and return-to-login behavior. Prove replay does not reacquire the lock, call APIM, refresh trusts, or repeat cancellation or completion effects.
+
+### P3-F: Compatibility and legacy removal
+
+The legacy key format is `{prefix}:auth:idempotency:{action}:{client-key}` and the shared format is HMAC-derived. There is no implicit cross-schema read. Before removal, choose and document one bounded policy:
+
+1. wait for the maximum legacy TTL plus deployment safety margin before enabling the shared writer, or
+2. provide a read-only, time-bounded legacy compatibility reader that never writes or renews legacy state.
+
+Do not dual-write. Do not copy legacy `PROCESSING` ownership into the shared store. Treat ambiguous active legacy state as non-executable. Delete `RegistrationIdempotencyPort`, Registration-specific idempotency DTOs, Redis classes, configuration, and obsolete tests only after all four consumers have migrated and the bounded policy has expired.
+
+### P3-G: Stabilization and commit
+
+Run formatting once, restore unrelated formatter changes, compile, test-compile, execute the focused P3 behavioral suite, validate runtime composition and architecture, and package the complete evidence directory. The planned final commit subject is:
+
+```text
+refactor(registration): migrate idempotency to shared capability
+```

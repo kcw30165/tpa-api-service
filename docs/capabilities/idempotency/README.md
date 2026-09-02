@@ -128,3 +128,21 @@ P2-B2B adds the shared executor and an action-supplied failure classifier. Only 
 P2-B2C completes runtime composition for the shared Redis port and executor. Deployment must provide SHARED_IDEMPOTENCY_PERSISTENCE_HMAC_SECRET as a dedicated Base64 value decoding to at least 32 bytes.
 
 The shared runtime composition is disabled by default through `SHARED_IDEMPOTENCY_ENABLED=false`. Before endpoint migration it creates no shared beans and requires no HMAC secret. Enabling it requires both `SHARED_IDEMPOTENCY_ENABLED=true` and a valid `SHARED_IDEMPOTENCY_PERSISTENCE_HMAC_SECRET`.
+
+<!-- P3-REGISTRATION-MIGRATION-BASELINE -->
+## P3 Registration migration baseline
+
+P3 starts from commit `cf2aab8b5561f790691d554aec4493f86aebbaa9`, which contains the committed shared Redis lifecycle adapter and executor foundation. The working tree must remain clean before the first P3 implementation writer is applied.
+
+P3 migrates the complete Registration idempotency family:
+
+- `REGISTRATION_START`
+- `OTP_RESEND`
+- `OTP_VERIFY`
+- `REGISTRATION_COMPLETE`
+
+The migration is action-family complete. It must not fix only selected replay error codes or move only successful responses. Every deterministic terminal response must preserve equivalent first-call and replay HTTP status, public status, payload, errors, messages, safe headers, next step, and retry metadata.
+
+The approved sequence is P3-A shared Registration bridge, P3-B Start, P3-C OTP Resend, P3-D OTP Verify, P3-E Complete, P3-F compatibility and legacy removal, and P3-G stabilization. Each stage updates these capability documents before the next stage starts.
+
+The shared runtime remains disabled by default until the first migrated Registration action is deployable with both `SHARED_IDEMPOTENCY_ENABLED=true` and a valid dedicated `SHARED_IDEMPOTENCY_PERSISTENCE_HMAC_SECRET`.

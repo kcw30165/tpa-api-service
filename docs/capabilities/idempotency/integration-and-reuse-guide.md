@@ -283,3 +283,26 @@ Every action integration must provide a conservative failure classifier. It may 
 Consumers inject IdempotencyExecutor. They do not instantiate Redis components, access the HMAC secret, or inject feature-specific idempotency ports into the shared executor.
 
 The first migrated consumer must be deployed with shared idempotency enabled and a valid dedicated HMAC secret. Environments with no migrated consumer keep the capability disabled and do not need the secret.
+
+<!-- P3-REGISTRATION-MIGRATION-BASELINE -->
+## P3 Registration integration rules
+
+Each Registration action integration must provide the following action-owned components around the shared executor:
+
+1. A canonical `IdempotencyOperationId` factory.
+2. A versioned `IdempotencyFingerprint` factory based only on normalized request equivalence inputs.
+3. An `IdempotentResponseCapture` that stores every deterministic terminal action result, not only success.
+4. A `ProtectedReplayResolver` that reconstructs the action result without re-running side effects.
+5. An `IdempotencyFailureClassifier` aligned to the action's actual dispatch boundary.
+6. A mapping from shared lifecycle outcomes to the existing Registration result and error contracts.
+
+### Action-specific boundaries
+
+- Start protects registration lookup, auth-flow creation or mutation, OTP creation, challenge persistence, and message delivery.
+- OTP Resend protects resend policy acceptance, OTP generation, challenge update, session mutation, and message delivery.
+- OTP Verify protects OTP verification, verified-state persistence, trust lookup, and eligible-trust persistence.
+- Complete protects completion locking, APIM completion, completion-state persistence, continuation trust lookup, and cancellation or finalization effects.
+
+Existing controllers continue validating required headers and request bodies. Existing web mappers continue owning public `MutationResponse`, `ApiStatus`, and HTTP mapping. Shared infrastructure must not emit Registration-specific public responses.
+
+P3-A introduces bridge contracts without changing action orchestration. Subsequent stages migrate one action at a time in the order Start, OTP Resend, OTP Verify, Complete. No Registration-specific Redis class is deleted until all four actions and the legacy-record policy are complete.

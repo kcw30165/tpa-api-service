@@ -313,3 +313,33 @@ Protected-operation failures are classified as PROVEN_NO_SIDE_EFFECT or POSSIBLE
 Spring composition remains outside the application package. It validates the dedicated shared-idempotency secret during bean construction and wires the reactive Redis operations, HMAC key factory, lifecycle adapter, secure reservation-token generator, and executor.
 
 Runtime composition is guarded by `shared-idempotency.enabled`. Disabled mode is behavior-neutral and creates no shared Redis port or executor. Enabled mode validates the dedicated HMAC secret before composing the shared capability.
+
+<!-- P3-REGISTRATION-MIGRATION-BASELINE -->
+## P3 Registration target architecture
+
+Registration action code will depend on `IdempotencyExecutor`, not `RegistrationIdempotencyPort`. Registration-specific bridge components may translate action results to and from the shared context-neutral contracts, but the shared application package must not import Registration DTOs, session types, Spring, Redis, APIM, or web response classes.
+
+### Canonical operation identity
+
+All Registration operations use capability `registration` and one stable action value:
+
+- `start`
+- `otp-resend`
+- `otp-verify`
+- `complete`
+
+The operation scope is an opaque, non-secret correlation boundary appropriate to the action. It must prevent cross-session collision without placing raw session IDs, identity values, trust codes, usernames, OTP values, passwords, CSRF values, or contact values in Redis keys or logs. The shared HMAC persistence locator remains the only Redis key derivation mechanism.
+
+### Execution and replay rule
+
+Only `ACQUIRED` may invoke the protected action. `COMPLETED_REPLAY` must hydrate the stored Registration action result without invoking APIM, OTP generation or verification, message delivery, session mutation, eligible-trust persistence, completion locking, or cancellation again. Duplicate, reused-key, failed-existing, and unknown-existing outcomes must not execute the protected action.
+
+`COMPLETED_REPLAY` is lifecycle metadata, not a public business result. The bridge must reconstruct the original Registration terminal result before the existing web mapper determines the public response.
+
+### Failure classification
+
+A Registration failure classifier may classify `PROVEN_NO_SIDE_EFFECT` only when dispatch and externally visible acceptance are disproved. Possible APIM acceptance, OTP delivery, OTP verification state change, session mutation, eligible-trust persistence, or uncertain completion persistence must classify as `POSSIBLE_SIDE_EFFECT`. Classifier failure or ambiguity fails closed to `UNKNOWN_OUTCOME`.
+
+### Protected replay material
+
+Safe snapshots contain only deterministic public response material and allow-listed headers. Cookies, session identifiers, CSRF values, OTP values, passwords, authorization material, protected auth-flow context, and other secrets are never serialized into the shared Redis record. If replay requires protected continuity, the terminal snapshot carries only an opaque `ProtectedReplayReference`, and the resolver loads the protected state from its owning store.
