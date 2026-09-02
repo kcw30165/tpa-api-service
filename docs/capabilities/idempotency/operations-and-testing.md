@@ -3,13 +3,13 @@
 ## Consolidation release gates
 
 - P0 documents and approves the target before production code changes.
-- P1 adds shared contracts without endpoint behavior changes.
+- P1 adds session-context-neutral shared contracts without endpoint behavior changes and proves the model has no feature or session-type dependency.
 - P2 adds the single shared Redis implementation.
 - P3 through P6 migrate complete action families.
 - P7 removes stale feature-specific infrastructure and proves its absence.
 - P8 performs formatting, compilation, focused behavior, concurrency, crash-boundary, compatibility, and release validation.
 
-For every deterministic terminal outcome, first-call and replay HTTP status and body must be equal, while protected operations and external side effects execute exactly once. Corrupt or unsupported snapshots fail closed.
+For every deterministic terminal outcome in anonymous, pre-authentication, authenticated, and service-context integrations, first-call and replay HTTP status and body must be equal, while protected operations and external side effects execute exactly once. Corrupt or unsupported snapshots fail closed.
 
 See [Shared Idempotency Consolidation Implementation Plan](shared-idempotency-consolidation-plan.md).
 

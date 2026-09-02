@@ -4,7 +4,7 @@
 
 ## Target consolidation
 
-The approved target is one shared idempotency lifecycle, terminal-response snapshot contract, and Redis persistence implementation. `COMPLETED_REPLAY` is internal lifecycle metadata and must never replace the original public outcome.
+The approved target is one session-context-neutral and workflow-neutral idempotency lifecycle, terminal-response snapshot contract, and Redis persistence implementation. Current auth workflows are initial migration consumers, not the capability boundary. `COMPLETED_REPLAY` is internal lifecycle metadata and must never replace the original public outcome.
 
 Read [Shared Idempotency Consolidation Implementation Plan](shared-idempotency-consolidation-plan.md) before implementation. The final migration gate requires deletion of stale feature-specific ports, records, adapters, coordinators, serializers, key factories, lifecycle enums, configuration, and obsolete tests.
 

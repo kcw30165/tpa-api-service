@@ -2,11 +2,13 @@
 
 ## Approved target and migration boundary
 
-The target architecture is one shared application capability behind one shared port and one shared Redis implementation. It owns action/key/fingerprint identity, atomic reservation, lifecycle transitions, schema-versioned terminal public-response snapshots, safe-header policy, replay, expiry, corruption handling, and common observability.
+The target architecture is one session-context-neutral and workflow-neutral application capability behind one shared port and one shared Redis implementation. It owns action/key/fingerprint identity, atomic reservation, lifecycle transitions, schema-versioned terminal public-response snapshots, safe-header policy, replay, expiry, corruption handling, and common observability.
 
 A deterministic terminal response, successful or unsuccessful, is stored as `COMPLETED`. Replay restores its original HTTP classification, success flag, public status, result, messages, errors, and allowlisted headers. `COMPLETED_REPLAY` is never a public business status.
 
 The detailed feature-specific architecture below is retained as the legacy migration inventory. After migration and expiry of the compatibility window, stale feature-specific idempotency infrastructure must be deleted.
+
+The shared model has no dependency on auth-flow sessions, authenticated sessions, feature DTOs, actor/account context, controllers, Spring, or Redis. Action integrations provide opaque scope identity and separately authorize or bind the current session context.
 
 See [Shared Idempotency Consolidation Implementation Plan](shared-idempotency-consolidation-plan.md).
 

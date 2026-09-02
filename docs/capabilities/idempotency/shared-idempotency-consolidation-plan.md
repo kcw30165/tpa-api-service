@@ -33,35 +33,21 @@ The persisted terminal response includes:
 
 ## 3. Scope
 
-### Registration
+The shared capability is session-context neutral and workflow neutral. It is infrastructure for any mutation or externally visible operation that requires client-key idempotency.
 
-- registration start
-- OTP resend
-- OTP verify
-- registration complete
+It supports operations executed in:
 
-### Login
+- no-session and anonymous contexts;
+- pre-authentication or auth-flow sessions;
+- authenticated member sessions;
+- authenticated non-member or delegated sessions;
+- internal or service-to-service contexts where the caller supplies an approved idempotency identity.
 
-- credential/start
-- OTP send
-- OTP resend
-- OTP verify
+Current migration consumers include Registration, Login, Forgot Password, and Username Recovery, but these are the first adopters rather than the capability boundary. Future consumers can include authenticated profile mutations, account or instruction updates, document or message submissions, payment-like operations, and other protected commands.
 
-### Forgot Password
+The shared record must not depend on an auth-flow session type, authenticated-session type, workflow enum, feature package, controller DTO, or transport framework. Session binding, authorization, actor context, account context, and protected replay continuity are supplied by action adapters and remain outside the shared persistence model.
 
-- start
-- details and OTP
-- OTP resend
-- OTP verify
-- complete
-
-### Username Recovery
-
-- start
-- request
-- cancel
-
-Transport failures that happen before a valid key and canonical request can be formed are outside the completed-operation replay boundary. Duplicate-in-progress, key-reuse conflict, and unknown-outcome responses remain protocol outcomes and are not persisted as completed business responses.
+Transport failures that happen before a valid action, key, and canonical request can be formed are outside the completed-operation replay boundary. Duplicate-in-progress, key-reuse conflict, and unknown-outcome responses remain protocol outcomes and are not persisted as completed business responses.
 
 ## 4. Target architecture
 
@@ -90,15 +76,18 @@ The shared capability owns:
 - mismatch, in-progress, failed, unknown, expiry, and corrupt-snapshot behavior;
 - observability vocabulary.
 
-Each action supplies only:
+Each action integration supplies only:
 
-- stable action identity;
+- stable capability and action identity;
 - canonical request material;
 - TTL policy;
 - protected operation callback;
 - terminal classification when the outcome cannot be inferred from the normalized public response;
-- optional protected replay-state reference;
-- approved post-response cookie instruction.
+- optional opaque protected replay-state reference;
+- optional session-context binding or authorization callback;
+- optional approved post-response transport instructions such as cookie rotation.
+
+The shared contract does not know whether the caller is pre-authenticated or authenticated. It accepts opaque scope and operation identities and stores no clear session identifier, actor identity, account reference, or authorization context.
 
 ## 5. Shared model
 
@@ -171,13 +160,14 @@ Gate: documentation agrees on lifecycle, snapshot safety, compatibility, and del
 
 ### P1: Shared contract foundation
 
-- add shared action, key, fingerprint, lifecycle, reservation outcome, record, and terminal-response snapshot models;
+- add shared capability/action identity, key, fingerprint, lifecycle, reservation outcome, record, and terminal-response snapshot models;
+- add explicit opaque operation scope without coupling to pre-authentication or authenticated session models;
 - add canonical serializer and safe-header policy;
 - add shared port and executor contracts;
 - add schema compatibility tests and architecture guards;
 - make no endpoint behavior changes.
 
-Gate: shared foundation compiles, test-compiles, and has no dependency on a feature package.
+Gate: shared foundation compiles and test-compiles; has no dependency on a feature, auth-flow session, authenticated-session, controller, Spring, or Redis package; and can represent anonymous, pre-authentication, authenticated, and service contexts through opaque identities.
 
 ### P2: Shared Redis implementation
 
