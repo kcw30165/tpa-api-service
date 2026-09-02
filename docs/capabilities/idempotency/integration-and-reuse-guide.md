@@ -1,5 +1,14 @@
 # Idempotency Integration and Reuse Guide
 
+## Mandatory shared-capability rule
+
+New and migrated actions must use the shared capability. Creating another feature-specific idempotency port, Redis adapter, key factory, persistence record, serializer, lifecycle coordinator, or replay-status model is prohibited.
+
+Each action defines only its stable identity, versioned canonical fingerprint, TTL, protected side-effect boundary, terminal classification, and optional opaque protected-state reference. Every deterministic terminal response is persisted through the shared snapshot and replayed without re-execution.
+
+The detailed guidance below remains applicable where it does not conflict with the shared target. See [Shared Idempotency Consolidation Implementation Plan](shared-idempotency-consolidation-plan.md).
+
+
 ## 1. Decide whether the operation needs idempotency
 
 Use idempotency when a client retry, browser double-submit, network retry, concurrent request, or server response loss could repeat a mutation or external side effect.

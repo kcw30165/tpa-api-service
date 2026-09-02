@@ -1,5 +1,16 @@
 # Idempotency Architecture and Lifecycle
 
+## Approved target and migration boundary
+
+The target architecture is one shared application capability behind one shared port and one shared Redis implementation. It owns action/key/fingerprint identity, atomic reservation, lifecycle transitions, schema-versioned terminal public-response snapshots, safe-header policy, replay, expiry, corruption handling, and common observability.
+
+A deterministic terminal response, successful or unsuccessful, is stored as `COMPLETED`. Replay restores its original HTTP classification, success flag, public status, result, messages, errors, and allowlisted headers. `COMPLETED_REPLAY` is never a public business status.
+
+The detailed feature-specific architecture below is retained as the legacy migration inventory. After migration and expiry of the compatibility window, stale feature-specific idempotency infrastructure must be deleted.
+
+See [Shared Idempotency Consolidation Implementation Plan](shared-idempotency-consolidation-plan.md).
+
+
 ## 1. Architectural intent
 
 Idempotency is implemented as an application capability behind ports and Redis adapters. Workflow services or coordinators reserve an action before side effects, then complete, fail, or mark the record uncertain.
