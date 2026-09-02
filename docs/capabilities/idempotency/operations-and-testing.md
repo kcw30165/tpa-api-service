@@ -9,6 +9,8 @@
 - P7 removes stale feature-specific infrastructure and proves its absence.
 - P8 performs formatting, compilation, focused behavior, concurrency, crash-boundary, compatibility, and release validation.
 
+Concurrency evidence must prove exactly one caller receives reservation ownership, duplicate callers receive no token, wrong-token transitions fail closed, and a terminal record cannot be overwritten.
+
 For every deterministic terminal outcome in anonymous, pre-authentication, authenticated, and service-context integrations, first-call and replay HTTP status and body must be equal, while protected operations and external side effects execute exactly once. Corrupt or unsupported snapshots fail closed.
 
 See [Shared Idempotency Consolidation Implementation Plan](shared-idempotency-consolidation-plan.md).
@@ -296,3 +298,13 @@ Each idempotency change should include:
 - [ ] Metrics/alerts cover stuck and unknown records
 - [ ] Reconciliation runbook exercised
 - [ ] Fail-first TDD evidence attached to the change
+
+P2 persistence evidence must prove deterministic HMAC-derived keys, different-secret separation, runtime-secret validation, redacted wire-record rendering, strict schema rejection, sanitized malformed-record failures, atomic absence reservation, whole-value ownership transitions, and no TTL extension during duplicate reads or terminal transitions.
+
+P2-B2A evidence covers duplicate token non-disclosure, fingerprint mismatch, wrong-owner rejection, terminal immutability, whole-value CAS, and remaining-TTL preservation.
+
+Executor evidence must prove no execution on duplicate or replay, one execution for ACQUIRED, FAILED only for proven pre-side-effect failure, and UNKNOWN_OUTCOME for possible effects, classifier failure, capture failure, or completion persistence failure.
+
+The runtime variable SHARED_IDEMPOTENCY_PERSISTENCE_HMAC_SECRET is mandatory only when shared idempotency is enabled. It must be Base64 and decode to at least 32 bytes. Missing, malformed, short, or placeholder values fail bean construction without value disclosure.
+
+`SHARED_IDEMPOTENCY_ENABLED` defaults to `false`. In disabled mode the application must start without the shared HMAC secret and expose no shared idempotency beans. In enabled mode the secret is mandatory and invalid configuration fails startup without disclosure.

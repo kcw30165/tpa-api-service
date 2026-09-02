@@ -4,7 +4,7 @@
 
 New and migrated actions in anonymous, pre-authentication, authenticated, or approved service contexts must use the shared capability. Creating another feature-specific idempotency port, Redis adapter, key factory, persistence record, serializer, lifecycle coordinator, or replay-status model is prohibited.
 
-Each action defines only its stable capability/action identity, opaque operation scope, versioned canonical fingerprint, TTL, protected side-effect boundary, terminal classification, optional context authorization callback, and optional opaque protected-state reference. Every deterministic terminal response is persisted through the shared snapshot and replayed without re-execution.
+Each action defines only its stable capability/action identity, opaque operation scope, versioned canonical fingerprint, TTL, protected side-effect boundary, terminal classification, optional context authorization callback, and optional opaque protected-state reference. The shared executor generates reservation ownership; action integrations must never derive, reuse, log, persist outside the shared record, or return that token publicly. Every deterministic terminal response is persisted through the shared snapshot and replayed without re-execution.
 
 The detailed guidance below remains applicable where it does not conflict with the shared target. See [Shared Idempotency Consolidation Implementation Plan](shared-idempotency-consolidation-plan.md).
 
@@ -273,3 +273,13 @@ Suggested commit message:
 ```text
 docs(idempotency): document lifecycle, reuse, operations, and testing
 ```
+
+Action integrations provide validated logical identities only. They do not construct Redis keys. The shared adapter derives the complete locator with HMAC-SHA-256 and owns schema-versioned persistence. Action integrations never receive the HMAC secret or construct persistence identities.
+
+Action code must retain the ACQUIRED reservation token only in memory and supply it to the terminal transition. Duplicate callers never receive ownership and cannot transition the record.
+
+Every action integration must provide a conservative failure classifier. It may choose PROVEN_NO_SIDE_EFFECT only when dispatch and externally visible acceptance are disproved; otherwise it must choose POSSIBLE_SIDE_EFFECT.
+
+Consumers inject IdempotencyExecutor. They do not instantiate Redis components, access the HMAC secret, or inject feature-specific idempotency ports into the shared executor.
+
+The first migrated consumer must be deployed with shared idempotency enabled and a valid dedicated HMAC secret. Environments with no migrated consumer keep the capability disabled and do not need the secret.

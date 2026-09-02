@@ -12,9 +12,15 @@ class SharedIdempotencyArchitectureTest {
       Path.of("src/main/java/com/bct/ngtpa/apiservice/application/idempotency");
   private static final List<String> FORBIDDEN =
       List.of(
-          ".auth.registration.", ".auth.login.", ".auth.forgotpassword.",
-          ".auth.usernamerecovery.", ".dto.session.", ".adapter.in.", ".adapter.out.",
-          "org.springframework.", ".redis.");
+          ".auth.registration.",
+          ".auth.login.",
+          ".auth.forgotpassword.",
+          ".auth.usernamerecovery.",
+          ".dto.session.",
+          ".adapter.in.",
+          ".adapter.out.",
+          "org.springframework.",
+          ".redis.");
 
   @Test
   void sharedContractsHaveNoFeatureSessionFrameworkOrPersistenceDependency() throws Exception {

@@ -162,12 +162,18 @@ Gate: documentation agrees on lifecycle, snapshot safety, compatibility, and del
 
 - add shared capability/action identity, key, fingerprint, lifecycle, reservation outcome, record, and terminal-response snapshot models;
 - add explicit opaque operation scope without coupling to pre-authentication or authenticated session models;
+- add an unpredictable reservation ownership token generated before reservation and required for every terminal transition;
+- ensure duplicate outcomes never expose the stored ownership token or full persistence record;
 - add canonical serializer and safe-header policy;
 - add shared port and executor contracts;
 - add schema compatibility tests and architecture guards;
 - make no endpoint behavior changes.
 
 Gate: shared foundation compiles and test-compiles; has no dependency on a feature, auth-flow session, authenticated-session, controller, Spring, or Redis package; and can represent anonymous, pre-authentication, authenticated, and service contexts through opaque identities.
+
+### P2 ownership amendment
+
+Atomic fingerprint checks alone do not prove which executor acquired `PROCESSING`. The shared record therefore stores a cryptographically unpredictable reservation token. `ACQUIRED` returns that token only to the owner; duplicate, replay, conflict, failed, and unknown outcomes return no token and no full persistence record. `complete`, `fail`, and `markUnknown` must atomically match identity, fingerprint, token, and source status.
 
 ### P2: Shared Redis implementation
 
@@ -265,3 +271,13 @@ refactor(username-recovery): migrate idempotency to shared capability
 refactor(idempotency): remove legacy feature implementations
 test(idempotency): stabilize shared replay contract
 ```
+
+P2-B is delivered cumulatively: the persistence foundation adds HMAC-derived keys, enforced wire-record redaction, strict schema mapping, reactive SET-NX/get/CAS primitives, and tests before the lifecycle adapter and executor are connected.
+
+P2-B2A connects the shared persistence foundation to an ownership-checked Redis lifecycle adapter. Executor orchestration and Spring composition follow cumulatively in P2-B2B.
+
+P2-B2B implements shared executor orchestration and conservative failure classification. Runtime Spring composition remains the final cumulative P2-B2C step.
+
+P2-B2C completes P2 runtime composition without migrating endpoints or changing legacy adapters. P2 is ready for cumulative stabilization and focused review before its single commit.
+
+P2 runtime composition is disabled by default to preserve behavior before migration. P3 enables the shared capability when the first Registration action family is migrated and the dedicated runtime secret is available.

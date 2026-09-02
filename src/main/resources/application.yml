@@ -486,3 +486,7 @@ email:
     port: ${SMTP_PORT:25}
     from: ${SMTP_FROM:}
     timeout-millis: ${SMTP_TIMEOUT_MILLIS:5000}
+shared-idempotency:
+  enabled: ${SHARED_IDEMPOTENCY_ENABLED:false}
+  # Required only when enabled; Base64 and at least 32 decoded bytes.
+  persistence-hmac-secret: ${SHARED_IDEMPOTENCY_PERSISTENCE_HMAC_SECRET:}

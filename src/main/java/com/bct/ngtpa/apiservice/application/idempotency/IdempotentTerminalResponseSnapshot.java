@@ -5,10 +5,10 @@ import java.util.Objects;
 
 /**
  * Schema-versioned persisted terminal-response snapshot containing safe public response material
- * only. Clear cookies, tokens, session identifiers, credentials, OTPs, identity/contact values,
- * and other protected values are forbidden. Sensitive continuity is represented only by an opaque
- * reference to separately protected replay material. The shared model deliberately does not
- * parse feature JSON; safe-body production is restricted to IdempotentResponseCapture.
+ * only. Clear cookies, tokens, session identifiers, credentials, OTPs, identity/contact values, and
+ * other protected values are forbidden. Sensitive continuity is represented only by an opaque
+ * reference to separately protected replay material. The shared model deliberately does not parse
+ * feature JSON; safe-body production is restricted to IdempotentResponseCapture.
  */
 public record IdempotentTerminalResponseSnapshot(
     int schemaVersion,

@@ -11,6 +11,7 @@ public record IdempotentExecutionCommand(
     IdempotencyFingerprint fingerprint,
     Duration ttl,
     Supplier<Mono<HydratedIdempotentResponse>> protectedOperation,
+    IdempotencyFailureClassifier failureClassifier,
     IdempotentResponseCapture responseCapture,
     ProtectedReplayResolver replayResolver) {
   public IdempotentExecutionCommand {
@@ -18,6 +19,7 @@ public record IdempotentExecutionCommand(
     Objects.requireNonNull(fingerprint, "fingerprint must not be null");
     Objects.requireNonNull(ttl, "ttl must not be null");
     Objects.requireNonNull(protectedOperation, "protected operation must not be null");
+    Objects.requireNonNull(failureClassifier, "failure classifier must not be null");
     Objects.requireNonNull(responseCapture, "response capture must not be null");
     Objects.requireNonNull(replayResolver, "replay resolver must not be null");
     if (ttl.isZero() || ttl.isNegative()) {

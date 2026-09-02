@@ -3,7 +3,9 @@ package com.bct.ngtpa.apiservice.application.idempotency;
 import java.util.Optional;
 import reactor.core.publisher.Mono;
 
-/** Shared persistence boundary. Implemented in P2; no feature or session dependency is permitted. */
+/**
+ * Shared persistence boundary. Implemented in P2; no feature or session dependency is permitted.
+ */
 public interface IdempotencyPort {
   Mono<IdempotencyReservation> reserve(IdempotencyCommands.Reserve command);
 

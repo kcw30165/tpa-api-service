@@ -15,7 +15,13 @@ class SharedIdempotencyContractTest {
     var snapshot = snapshot(422, "{\"success\":false,\"status\":\"BUSINESS_REJECTED\"}", null);
     var record =
         new IdempotencyRecord(
-            operation(), fingerprint(), IdempotencyStatus.COMPLETED, snapshot, NOW, NOW,
+            operation(),
+            fingerprint(),
+            token(),
+            IdempotencyStatus.COMPLETED,
+            snapshot,
+            NOW,
+            NOW,
             NOW.plusSeconds(300));
 
     assertThat(record.terminalResponse()).isEqualTo(snapshot);
@@ -44,7 +50,8 @@ class SharedIdempotencyContractTest {
   @Test
   void operationIdentityIsContextNeutralAndRedacted() {
     assertThat(operation().toString())
-        .contains("capability=profile", "action=update-details", "scope=<redacted>", "key=<redacted>")
+        .contains(
+            "capability=profile", "action=update-details", "scope=<redacted>", "key=<redacted>")
         .doesNotContain("opaqueScope01", "requestKey01");
   }
 
@@ -75,21 +82,60 @@ class SharedIdempotencyContractTest {
   @Test
   void nonCompletedRecordCannotCarryTerminalResponse() {
     assertThatThrownBy(
-            () -> new IdempotencyRecord(
-                operation(), fingerprint(), IdempotencyStatus.PROCESSING,
-                snapshot(200, "{}", null), NOW, NOW, NOW.plusSeconds(300)))
+            () ->
+                new IdempotencyRecord(
+                    operation(),
+                    fingerprint(),
+                    token(),
+                    IdempotencyStatus.PROCESSING,
+                    snapshot(200, "{}", null),
+                    NOW,
+                    NOW,
+                    NOW.plusSeconds(300)))
         .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void reservationOwnershipIsExposedOnlyToAcquirerAndIsRedacted() {
+    var acquired =
+        new IdempotencyReservation(
+            IdempotencyReservationOutcome.ACQUIRED, IdempotencyStatus.PROCESSING, null, token());
+    assertThat(acquired.reservationToken()).isEqualTo(token());
+    assertThat(acquired.reservationToken().toString()).doesNotContain(token().value());
+    assertThatThrownBy(
+            () ->
+                new IdempotencyReservation(
+                    IdempotencyReservationOutcome.DUPLICATE_IN_PROGRESS,
+                    IdempotencyStatus.PROCESSING,
+                    null,
+                    token()))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void generatedReservationTokensAreNonBlankDistinctAndRedacted() {
+    var generator = new SecureIdempotencyReservationTokenGenerator();
+    var first = generator.generate();
+    var second = generator.generate();
+    assertThat(first.value()).hasSizeGreaterThanOrEqualTo(32);
+    assertThat(second).isNotEqualTo(first);
+    assertThat(first.toString()).doesNotContain(first.value());
   }
 
   private static IdempotentTerminalResponseSnapshot snapshot(
       int status, String body, Map<String, String> headers) {
-    return new IdempotentTerminalResponseSnapshot(1, status, "application/json", body, headers, null);
+    return new IdempotentTerminalResponseSnapshot(
+        1, status, "application/json", body, headers, null);
   }
 
   private static IdempotencyOperationId operation() {
     return new IdempotencyOperationId(
         new IdempotencyCapability("profile"), new IdempotencyAction("update-details"),
         new IdempotencyOperationScope("opaqueScope01"), new IdempotencyKey("requestKey01"));
+  }
+
+  private static IdempotencyReservationToken token() {
+    return new IdempotencyReservationToken("reservationToken0123456789abcdefgh");
   }
 
   private static IdempotencyFingerprint fingerprint() {

@@ -4,7 +4,7 @@
 
 ## Target consolidation
 
-The approved target is one session-context-neutral and workflow-neutral idempotency lifecycle, terminal-response snapshot contract, and Redis persistence implementation. Current auth workflows are initial migration consumers, not the capability boundary. `COMPLETED_REPLAY` is internal lifecycle metadata and must never replace the original public outcome.
+The approved target is one session-context-neutral and workflow-neutral idempotency lifecycle, terminal-response snapshot contract, and Redis persistence implementation. Reservation ownership is enforced with an opaque per-attempt token that is returned only to the executor that acquires `PROCESSING`. Current auth workflows are initial migration consumers, not the capability boundary. `COMPLETED_REPLAY` is internal lifecycle metadata and must never replace the original public outcome.
 
 Read [Shared Idempotency Consolidation Implementation Plan](shared-idempotency-consolidation-plan.md) before implementation. The final migration gate requires deletion of stale feature-specific ports, records, adapters, coordinators, serializers, key factories, lifecycle enums, configuration, and obsolete tests.
 
@@ -118,3 +118,13 @@ Exact enum names vary by flow, but the semantics must remain consistent.
 ## Current configuration concepts
 
 The reviewed codebase uses strict key validation, SHA-256 request hash generators, Redis-backed records, action-specific key factories, and operation-specific TTLs. Several observed idempotency TTLs are 300 seconds, but these are deployable policy values rather than universal constants. citeturn8search34turn8search35
+
+P2 uses a versioned HMAC-SHA-256 operation locator for the Redis key, so capability, action, opaque scope, and client key are not visible in Redis key scans or recoverable by unkeyed offline guessing. The dedicated Base64 runtime secret must decode to at least 32 bytes.
+
+P2-B2A adds the shared Redis lifecycle adapter. Reservation is SET-NX, duplicate classification is read-only, and terminal transitions require the original ownership token.
+
+P2-B2B adds the shared executor and an action-supplied failure classifier. Only ACQUIRED executes; COMPLETED_REPLAY hydrates without execution.
+
+P2-B2C completes runtime composition for the shared Redis port and executor. Deployment must provide SHARED_IDEMPOTENCY_PERSISTENCE_HMAC_SECRET as a dedicated Base64 value decoding to at least 32 bytes.
+
+The shared runtime composition is disabled by default through `SHARED_IDEMPOTENCY_ENABLED=false`. Before endpoint migration it creates no shared beans and requires no HMAC secret. Enabling it requires both `SHARED_IDEMPOTENCY_ENABLED=true` and a valid `SHARED_IDEMPOTENCY_PERSISTENCE_HMAC_SECRET`.

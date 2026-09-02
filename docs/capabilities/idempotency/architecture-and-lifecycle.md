@@ -4,6 +4,8 @@
 
 The target architecture is one session-context-neutral and workflow-neutral application capability behind one shared port and one shared Redis implementation. It owns action/key/fingerprint identity, atomic reservation, lifecycle transitions, schema-versioned terminal public-response snapshots, safe-header policy, replay, expiry, corruption handling, and common observability.
 
+Reservation ownership is separate from request equivalence. Before attempting atomic reservation, the executor generates a 256-bit opaque token. Redis stores it with `PROCESSING`; only `ACQUIRED` exposes it, and every terminal transition must match it atomically. Duplicate callers never receive the token or full persistence record.
+
 A deterministic terminal response, successful or unsuccessful, is stored as `COMPLETED`. Replay restores its original HTTP classification, success flag, public status, result, messages, errors, and allowlisted headers. `COMPLETED_REPLAY` is never a public business status.
 
 The detailed feature-specific architecture below is retained as the legacy migration inventory. After migration and expiry of the compatibility window, stale feature-specific idempotency infrastructure must be deleted.
@@ -301,3 +303,13 @@ The codebase maps idempotency conflicts into structured workflow errors and HTTP
 - Reconciliation behavior
 - Whether failed records are retryable
 - Whether downstream mutation is truly idempotent
+
+The shared Redis namespace is `{prefix}:idempotency:v1:{hmac-sha256(secret, locator)}`. The dedicated runtime HMAC secret is separate from Login configuration, Base64 encoded, at least 32 decoded bytes, never logged, and never persisted. The persisted record retains the validated logical identity for collision defense. Initial reservation uses atomic `SET NX` with TTL; later transitions use whole-value compare-and-set while preserving the remaining TTL.
+
+The lifecycle adapter permits only PROCESSING to COMPLETED, FAILED, or UNKNOWN_OUTCOME. It validates identity, fingerprint, ownership token, expiry, and source status before whole-value atomic compare-and-set.
+
+Protected-operation failures are classified as PROVEN_NO_SIDE_EFFECT or POSSIBLE_SIDE_EFFECT. Null, thrown, or uncertain classification fails closed to UNKNOWN_OUTCOME. Completion or response-capture failure after a returned operation response also becomes UNKNOWN_OUTCOME.
+
+Spring composition remains outside the application package. It validates the dedicated shared-idempotency secret during bean construction and wires the reactive Redis operations, HMAC key factory, lifecycle adapter, secure reservation-token generator, and executor.
+
+Runtime composition is guarded by `shared-idempotency.enabled`. Disabled mode is behavior-neutral and creates no shared Redis port or executor. Enabled mode validates the dedicated HMAC secret before composing the shared capability.
