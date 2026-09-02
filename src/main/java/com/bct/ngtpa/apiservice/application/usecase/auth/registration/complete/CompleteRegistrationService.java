@@ -264,6 +264,16 @@ public class CompleteRegistrationService implements CompleteRegistrationUseCase 
                               : reject(c, completing, r.downstreamErrorCode(), hash));
             })
         .onErrorResume(
+            RegistrationCompletionPreDispatchException.class,
+            e ->
+                idempotency
+                    .markFailed(new RegistrationIdempotencyFailCommand(ACTION, c.idempotencyKey(), hash, SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value(), clock.instant(), c.idempotencyTtl()))
+                    .thenReturn(
+                        failure(
+                            CompleteRegistrationResultStatus.SYSTEM_FAILED,
+                            WorkflowNextStep.RETURN_TO_LOGIN,
+                            SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE.value())))
+        .onErrorResume(
             e ->
                 idempotency
                     .markUnknownOutcome(

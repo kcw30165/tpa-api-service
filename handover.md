@@ -604,3 +604,13 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - Spotless formatting remains intentionally deferred until the feature-level stabilization stage.
 - Runtime Maven tests remain outside implementation scripts and may be run manually when required.
 - Deferred adjacent items: username-check mutation locking and idempotency redesign, username-check AES-GCM session binding, duplicate username-check error-code consolidation, and completion pre-dispatch outcome classification.
+
+## Registration Completion Pre-Dispatch Classification Repair
+
+- Baseline Git HEAD: `2bd9bcfc66f994fe900145e5f1972c89da776e1d`.
+- Proven APIM credential-profile resolution failures occur before `TRPRegMember` dispatch and no longer map to `err.registration.complete.outcomeUnknown`.
+- The APIM registration completion adapter translates only `ApimProfileResolutionException` into an application-owned pre-dispatch exception.
+- `CompleteRegistrationService` marks that known attempt failed and returns `SYSTEM_FAILED`, `RETURN_TO_LOGIN`, and `err.workflow.system.unavailable`.
+- Other unclassified completion exceptions retain the existing unknown-outcome idempotency transition because downstream commitment may be ambiguous.
+- No automatic retry behavior is added for `TRPRegMember`.
+- Spotless formatting remains deferred to feature-level stabilization; implementation validation runs compile and test compilation only.
