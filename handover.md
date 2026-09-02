@@ -591,3 +591,34 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - The flow continues only when a structurally valid response contains at least one record with `isRegistered=true` and `cust-id` equal to the protected session customer ID.
 - Valid responses without a qualifying record are treated as business not-found and do not create or send an OTP.
 - Existing endpoint, destination, idempotency, CSRF, session revision, OTP, replay, delivery, public error, and password-reset behavior remain unchanged.
+
+## Registration Selected-Trust Authorization Repair
+
+- Baseline Git HEAD: `a3de3c9180969ebda3e16a4d1dd770457dd52f73`.
+- Confirmed defect: username check accepted nonblank client-supplied `accountEnv` and `trustCode` without authorizing the exact pair against the eligible trusts established after OTP verification.
+- OTP verification now persists a server-owned encoded set of exact eligible `(accountEnv, trustCode)` pairs in the auth-flow session before completing the successful idempotency result.
+- Eligible-trust persistence uses revision-aware compare-and-swap session mutation and preserves the existing absolute session expiry.
+- Username check rejects missing, blank, reversed, cross-paired, and unknown trust selections before `TRPChkCustId` and before username-check state mutation.
+- Spring production wiring supplies the eligible-trust persistence port and injects the shared application `Clock` into username check.
+- Production compile and test compilation passed in v007 after cumulative duplicate declarations were normalized.
+- Spotless formatting remains intentionally deferred until the feature-level stabilization stage.
+- Runtime Maven tests remain outside implementation scripts and may be run manually when required.
+- Deferred adjacent items: username-check mutation locking and idempotency redesign, username-check AES-GCM session binding, duplicate username-check error-code consolidation, and completion pre-dispatch outcome classification.
+
+## Registration Completion Pre-Dispatch Classification Repair
+
+- Baseline Git HEAD: `2bd9bcfc66f994fe900145e5f1972c89da776e1d`.
+- Proven APIM credential-profile resolution failures occur before `TRPRegMember` dispatch and no longer map to `err.registration.complete.outcomeUnknown`.
+- The APIM registration completion adapter translates only `ApimProfileResolutionException` into an application-owned pre-dispatch exception.
+- `CompleteRegistrationService` marks that known attempt failed and returns `SYSTEM_FAILED`, `RETURN_TO_LOGIN`, and `err.workflow.system.unavailable`.
+- Other unclassified completion exceptions retain the existing unknown-outcome idempotency transition because downstream commitment may be ambiguous.
+- No automatic retry behavior is added for `TRPRegMember`.
+- Spotless formatting remains deferred to feature-level stabilization; implementation validation runs compile and test compilation only.
+
+## Registration Completion Classification Stabilization
+
+- Baseline Git HEAD: `48333f70933cd573ed535e83f4c4a3b554a6b679`.
+- Executable adapter coverage proves APIM profile-resolution failure is translated to the application-owned pre-dispatch exception without exposing resolver details.
+- Executable service coverage proves the pre-dispatch path returns `SYSTEM_FAILED` with `err.workflow.system.unavailable`, marks idempotency failed, and never marks an unknown outcome.
+- Existing ambiguous downstream coverage continues to prove one completion call and one unknown-outcome transition.
+- Feature-level Spotless formatting is applied in this stabilization round, followed by production compile and test compilation.

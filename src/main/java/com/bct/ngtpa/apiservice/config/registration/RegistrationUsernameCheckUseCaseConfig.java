@@ -23,7 +23,8 @@ public class RegistrationUsernameCheckUseCaseConfig {
       RegistrationUsernameAvailabilityPort registrationUsernameAvailabilityPort,
       AuthWorkflowPolicyPort authWorkflowPolicyPort,
       DownstreamErrorClassificationPort downstreamErrorClassificationPort,
-      RegistrationUsernameCheckProtectorPort registrationUsernameCheckProtectorPort) {
+      RegistrationUsernameCheckProtectorPort registrationUsernameCheckProtectorPort,
+      Clock clock) {
     return new CheckRegistrationUsernameService(
         authFlowSessionPort,
         expiryRefreshPort,
@@ -31,6 +32,6 @@ public class RegistrationUsernameCheckUseCaseConfig {
         authWorkflowPolicyPort,
         downstreamErrorClassificationPort,
         registrationUsernameCheckProtectorPort,
-        Clock.systemUTC());
+        clock);
   }
 }
