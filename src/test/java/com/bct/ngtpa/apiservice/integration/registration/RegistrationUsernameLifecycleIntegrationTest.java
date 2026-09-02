@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.RegistrationAuthWorkflowPolicy;
 import com.bct.ngtpa.apiservice.application.dto.auth.UsernamePolicy;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationEligibleTrustSet;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupAccount;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationSelectedTrust;
 import com.bct.ngtpa.apiservice.application.dto.downstream.DownstreamErrorClassification;
 import com.bct.ngtpa.apiservice.application.dto.downstream.DownstreamErrorClassificationRequest;
@@ -438,15 +440,26 @@ class RegistrationUsernameLifecycleIntegrationTest {
   }
 
   private java.util.Map<String, String> usernameCheckAttributes(UsernameCheckState usernameCheck) {
-    if (usernameCheck == null) {
-      return java.util.Map.of();
+    var attributes = new java.util.LinkedHashMap<String, String>();
+    attributes.put(
+        RegistrationEligibleTrustSet.ATTRIBUTE_NAME,
+        RegistrationEligibleTrustSet.encode(
+            java.util.List.of(
+                new RegistrationLookupAccount("member@example.com", "", "ENV1", "TL"))));
+    if (usernameCheck != null) {
+      RegistrationUsernameCheckEncryptedState encrypted =
+          new FakeUsernameCheckProtector().protect(usernameCheck);
+      attributes.put(
+          RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_CIPHERTEXT,
+          encrypted.ciphertext());
+      attributes.put(
+          RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_KEY_VERSION,
+          encrypted.keyVersion());
+      attributes.put(
+          RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_ALGORITHM,
+          encrypted.algorithm());
     }
-    RegistrationUsernameCheckEncryptedState encrypted =
-        new FakeUsernameCheckProtector().protect(usernameCheck);
-    return java.util.Map.of(
-        RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_CIPHERTEXT, encrypted.ciphertext(),
-        RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_KEY_VERSION, encrypted.keyVersion(),
-        RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_ALGORITHM, encrypted.algorithm());
+    return java.util.Map.copyOf(attributes);
   }
 
   private static String sha256(String value) {
