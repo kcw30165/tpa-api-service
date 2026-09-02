@@ -12,8 +12,7 @@ class StaleSingleProfileApimConfigurationGuardTest {
   @Test
   void sharedConfigurationKeepsOnlyProfileScopedApimCredentials() throws IOException {
     String yaml =
-        new ClassPathResource("application.yml")
-            .getContentAsString(StandardCharsets.UTF_8);
+        new ClassPathResource("application.yml").getContentAsString(StandardCharsets.UTF_8);
 
     assertThat(yaml)
         .contains("credential-profiles:")

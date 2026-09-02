@@ -12,8 +12,7 @@ class RedisSentinelPasswordFallbackGuardTest {
   @Test
   void sharedConfigurationDoesNotEmbedSentinelPasswordFallback() throws IOException {
     String yaml =
-        new ClassPathResource("application.yml")
-            .getContentAsString(StandardCharsets.UTF_8);
+        new ClassPathResource("application.yml").getContentAsString(StandardCharsets.UTF_8);
 
     assertThat(yaml)
         .contains("${REDIS_SENTINEL_PASSWORD:}")
