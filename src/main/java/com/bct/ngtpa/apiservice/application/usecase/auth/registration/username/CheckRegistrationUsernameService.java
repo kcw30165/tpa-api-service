@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.registration.username;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.UsernamePolicy;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationEligibleTrustSet;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationSelectedTrust;
 import com.bct.ngtpa.apiservice.application.dto.downstream.DownstreamErrorClassification;
 import com.bct.ngtpa.apiservice.application.dto.downstream.DownstreamErrorClassificationRequest;
@@ -171,6 +172,13 @@ public class CheckRegistrationUsernameService implements CheckRegistrationUserna
       return Mono.just(validationFailure(ERROR_SELECTED_TRUST_REQUIRED));
     }
     if (normalized.selectedTrustInvalid()) {
+      return Mono.just(validationFailure(ERROR_SELECTED_TRUST_INVALID));
+    }
+    if (!RegistrationEligibleTrustSet.contains(
+        session.data() == null || session.data().attributes() == null
+            ? null
+            : session.data().attributes().get(RegistrationEligibleTrustSet.ATTRIBUTE_NAME),
+        new RegistrationSelectedTrust(normalized.trustCode(), normalized.accountEnv()))) {
       return Mono.just(validationFailure(ERROR_SELECTED_TRUST_INVALID));
     }
     if (!validUsername(normalized.username())) {

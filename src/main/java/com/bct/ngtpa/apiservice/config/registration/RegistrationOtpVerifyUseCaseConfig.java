@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.config.registration;
 
 import com.bct.ngtpa.apiservice.application.port.in.VerifyRegistrationOtpUseCase;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationEligibleTrustPersistencePort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationLookupPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationOtpPort;
@@ -25,6 +26,7 @@ public class RegistrationOtpVerifyUseCaseConfig {
       RegistrationOtpPort registrationOtpPort,
       RegistrationSessionPort registrationSessionPort,
       RegistrationLookupPort registrationLookupPort,
+      RegistrationEligibleTrustPersistencePort eligibleTrustPersistencePort,
       Clock clock) {
     return new VerifyRegistrationOtpService(
         protectedContextLoader,
@@ -33,6 +35,7 @@ public class RegistrationOtpVerifyUseCaseConfig {
         registrationOtpPort,
         registrationSessionPort,
         registrationLookupPort,
+        eligibleTrustPersistencePort,
         clock);
   }
 }

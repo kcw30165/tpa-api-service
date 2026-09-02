@@ -5,6 +5,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.registration.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.workflow.*;
 import com.bct.ngtpa.apiservice.application.port.in.VerifyRegistrationOtpUseCase;
+import com.bct.ngtpa.apiservice.application.port.out.RegistrationEligibleTrustPersistencePort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationLookupPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationOtpPort;
@@ -29,7 +30,20 @@ public class VerifyRegistrationOtpService implements VerifyRegistrationOtpUseCas
   private final RegistrationOtpPort otpGateway;
   private final RegistrationSessionPort sessionGateway;
   private final RegistrationLookupPort registrationLookupPort;
+  private final RegistrationEligibleTrustPersistencePort eligibleTrustPersistencePort;
   private final Clock clock;
+
+  public VerifyRegistrationOtpService(
+      RegistrationProtectedAuthFlowContextLoader protectedContextLoader,
+      RegistrationRequestHashGenerator requestHashGenerator,
+      RegistrationIdempotencyPort idempotencyPort,
+      RegistrationOtpPort otpGateway,
+      RegistrationSessionPort sessionGateway,
+      RegistrationLookupPort registrationLookupPort,
+      Clock clock) {
+    this(protectedContextLoader, requestHashGenerator, idempotencyPort, otpGateway, sessionGateway,
+        registrationLookupPort, (sessionId, accounts, now) -> Mono.empty(), clock);
+  }
 
   public VerifyRegistrationOtpService(
       RegistrationProtectedAuthFlowContextLoader protectedContextService,
@@ -38,6 +52,7 @@ public class VerifyRegistrationOtpService implements VerifyRegistrationOtpUseCas
       RegistrationOtpPort otpGateway,
       RegistrationSessionPort sessionGateway,
       RegistrationLookupPort registrationLookupPort,
+      RegistrationEligibleTrustPersistencePort eligibleTrustPersistencePort,
       Clock clock) {
     this.protectedContextService = Objects.requireNonNull(protectedContextService);
     this.requestHashGenerator = Objects.requireNonNull(requestHashGenerator);
@@ -45,6 +60,7 @@ public class VerifyRegistrationOtpService implements VerifyRegistrationOtpUseCas
     this.otpGateway = Objects.requireNonNull(otpGateway);
     this.sessionGateway = Objects.requireNonNull(sessionGateway);
     this.registrationLookupPort = Objects.requireNonNull(registrationLookupPort);
+    this.eligibleTrustPersistencePort = Objects.requireNonNull(eligibleTrustPersistencePort);
     this.clock = Objects.requireNonNull(clock);
   }
 
@@ -277,7 +293,10 @@ public class VerifyRegistrationOtpService implements VerifyRegistrationOtpUseCas
                       List.of(),
                       RegistrationIdempotencyStartOutcome.STARTED,
                       null);
-              return markCompleted(command, hash, verifyResult).then(Mono.just(verifyResult));
+              return eligibleTrustPersistencePort
+                  .store(command.authFlowSessionId(), result.accounts(), clock.instant())
+                  .then(markCompleted(command, hash, verifyResult))
+                  .thenReturn(verifyResult);
             });
   }
 

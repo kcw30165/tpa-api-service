@@ -591,3 +591,16 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - The flow continues only when a structurally valid response contains at least one record with `isRegistered=true` and `cust-id` equal to the protected session customer ID.
 - Valid responses without a qualifying record are treated as business not-found and do not create or send an OTP.
 - Existing endpoint, destination, idempotency, CSRF, session revision, OTP, replay, delivery, public error, and password-reset behavior remain unchanged.
+
+## Registration Selected-Trust Authorization Repair
+
+- Baseline Git HEAD: `a3de3c9180969ebda3e16a4d1dd770457dd52f73`.
+- Confirmed defect: username check accepted nonblank client-supplied `accountEnv` and `trustCode` without authorizing the exact pair against the eligible trusts established after OTP verification.
+- OTP verification now persists a server-owned encoded set of exact eligible `(accountEnv, trustCode)` pairs in the auth-flow session before completing the successful idempotency result.
+- Eligible-trust persistence uses revision-aware compare-and-swap session mutation and preserves the existing absolute session expiry.
+- Username check rejects missing, blank, reversed, cross-paired, and unknown trust selections before `TRPChkCustId` and before username-check state mutation.
+- Spring production wiring supplies the eligible-trust persistence port and injects the shared application `Clock` into username check.
+- Production compile and test compilation passed in v007 after cumulative duplicate declarations were normalized.
+- Spotless formatting remains intentionally deferred until the feature-level stabilization stage.
+- Runtime Maven tests remain outside implementation scripts and may be run manually when required.
+- Deferred adjacent items: username-check mutation locking and idempotency redesign, username-check AES-GCM session binding, duplicate username-check error-code consolidation, and completion pre-dispatch outcome classification.
