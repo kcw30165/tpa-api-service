@@ -365,15 +365,7 @@ apim:
     business-call:
       max-attempts: ${APIM_BUSINESS_RETRY_MAX_ATTEMPTS:3}
       backoff-milliseconds: ${APIM_BUSINESS_RETRY_BACKOFF_MILLISECONDS:100}
-  base-url: ${APIM_BASE_URL:${APIM_BASEURL:}}
   timeout-milliseconds: ${APIM_TIMEOUT_MILLISECONDS:${APIM_TIMEOUTMILLISECONDS:10000}}
-  oauth:
-    registration-id: ${APIM_CLIENT_REGISTRATION_ID:apim-client}
-    client-id: ${APIM_CLIENT_ID:local-dev}
-    client-secret: ${APIM_CLIENT_SECRET:local-dev}
-    client-authentication-method: ${APIM_CLIENT_AUTH_METHOD:client_secret_basic}
-    token-uri: ${APIM_TOKEN_URI:http://localhost/token}
-    scope: ${APIM_CLIENT_SCOPE:}
   encryption:
     enabled: ${APIM_ENCRYPTION_ENABLED:true}
     certificate-path: ${APIM_CERTIFICATE_PATH:/api/wssupport/v1/encryption/certificate}
@@ -467,7 +459,7 @@ redis-cache:
   sentinel:
     master: ${REDIS_SENTINEL_MASTER:ngtpaMaster}
     nodes: ${REDIS_SENTINEL_NODES:}
-    password: ${REDIS_SENTINEL_PASSWORD:${REDIS_PASSWORD:}}
+    password: ${REDIS_SENTINEL_PASSWORD:}
   ssl:
     enabled: ${REDIS_SSL_ENABLED:true}
     bundle: ${REDIS_SSL_BUNDLE:redis-mtls}
