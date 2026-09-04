@@ -17,3 +17,6 @@ Add the reactive use case, metadata orchestration, TRPGetInvestGL adapter/config
 
 ## Foundation repair
 The application period enum is downstream-independent. Future adapter code owns `ssi` and `ytd`. Exact number formatting is extracted to the feature-neutral `ExactPrecisionRenderer`; Account Balance and Account Gain/Loss translate failures into their own typed exceptions. Focused tests lock raw/public type separation, immutable collections, exact rendering, no rounding, and Account Balance preservation.
+
+## APIM and application boundary stage
+Added trusted get/fetch commands, the reactive use-case and source-port contracts, exact TRPGetInvestGL request/response DTOs, adapter-owned `ssi`/`ytd` mapping, strict one-item and fund validation, and startup-validated APIM path properties. Empty `InvestGL` is explicitly valid and will produce zero at the assembler stage. Executor invocation, metadata orchestration, aggregation, controller integration, response policy, routing ledger, and YAML binding remain for the next stage.
