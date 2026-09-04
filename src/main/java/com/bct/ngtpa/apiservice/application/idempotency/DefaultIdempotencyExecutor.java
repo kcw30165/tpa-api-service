@@ -61,13 +61,17 @@ public final class DefaultIdempotencyExecutor implements IdempotencyExecutor {
 
   private Mono<IdempotentExecutionResult> executeOwned(
       IdempotentExecutionCommand command, IdempotencyReservationToken owner) {
+    return executeProtected(command, owner).flatMap(response -> complete(command, owner, response));
+  }
+
+  private Mono<HydratedIdempotentResponse> executeProtected(
+      IdempotentExecutionCommand command, IdempotencyReservationToken owner) {
     return Mono.defer(command.protectedOperation())
         .switchIfEmpty(
             Mono.error(
                 new IdempotencyExecutionException(
                     "Protected idempotent operation returned no response")))
-        .flatMap(response -> complete(command, owner, response))
-        .onErrorResume(error -> classifyAndPersistFailure(command, owner, error));
+        .onErrorResume(failure -> classifyProtectedFailureThenError(command, owner, failure));
   }
 
   private Mono<IdempotentExecutionResult> complete(
@@ -97,7 +101,7 @@ public final class DefaultIdempotencyExecutor implements IdempotencyExecutor {
         .onErrorResume(failure -> markUnknownThenError(command, owner, failure));
   }
 
-  private Mono<IdempotentExecutionResult> classifyAndPersistFailure(
+  private Mono<HydratedIdempotentResponse> classifyProtectedFailureThenError(
       IdempotentExecutionCommand command, IdempotencyReservationToken owner, Throwable failure) {
     IdempotencyFailureClassification classification;
     try {
@@ -117,10 +121,10 @@ public final class DefaultIdempotencyExecutor implements IdempotencyExecutor {
                 owner,
                 clock.instant(),
                 command.ttl()))
-        .then(Mono.error(failure));
+        .then(Mono.<HydratedIdempotentResponse>error(failure));
   }
 
-  private Mono<IdempotentExecutionResult> markUnknownThenError(
+  private <T> Mono<T> markUnknownThenError(
       IdempotentExecutionCommand command, IdempotencyReservationToken owner, Throwable original) {
     return persistence
         .markUnknown(
@@ -130,7 +134,7 @@ public final class DefaultIdempotencyExecutor implements IdempotencyExecutor {
                 owner,
                 clock.instant(),
                 command.ttl()))
-        .then(Mono.<IdempotentExecutionResult>error(original))
+        .then(Mono.<T>error(original))
         .onErrorMap(
             markFailure ->
                 markFailure == original

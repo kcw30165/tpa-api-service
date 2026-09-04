@@ -206,4 +206,19 @@ class LoginStartReplayCoordinatorTest {
       return Mono.empty();
     }
   }
+
+  @Test
+  void legacyCoordinatorDelegatesProtectedPersistenceBeforeLegacyCompletion() throws Exception {
+    String source =
+        java.nio.file.Files.readString(
+            java.nio.file.Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/replay/LoginStartReplayCoordinator.java"));
+    assertThat(source)
+        .contains(
+            "LoginStartProtectedReplayCommitter",
+            ".commit(result, idempotency.ttl())",
+            "idempotency.complete",
+            "idempotency.markUnknown")
+        .doesNotContain("private Duration boundedTtl(", "replayPort.save(ref");
+  }
 }

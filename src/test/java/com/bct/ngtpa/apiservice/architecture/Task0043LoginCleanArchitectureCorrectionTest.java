@@ -52,12 +52,42 @@ class Task0043LoginCleanArchitectureCorrectionTest {
   }
 
   @Test
-  void privateHelperIsNotNamedExecute() throws Exception {
-    String source =
+  void loginStartKeepsProtectedWorkInTheExtractedOperationAndSelectsSharedProductionRoute()
+      throws Exception {
+    String legacy =
         Files.readString(
             Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/start/StartLoginService.java"));
-    assertThat(source).doesNotContain("private Mono<StartLoginResult> execute(");
-    assertThat(source).contains("authenticateAndEstablish(");
+    String operation =
+        Files.readString(
+            Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/start/LoginStartProtectedOperation.java"));
+    String shared =
+        Files.readString(
+            Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/start/SharedStartLoginService.java"));
+    String config =
+        Files.readString(
+            Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/config/auth/login/LoginApplicationConfig.java"));
+
+    assertThat(legacy)
+        .containsIgnoringWhitespaces("protectedOperation.execute(normalized)")
+        .doesNotContain("private Mono<StartLoginResult> execute(");
+    assertThat(operation)
+        .contains(
+            "CredentialAuthenticationPort",
+            "LoginPreAuthContextFactory",
+            "CreateAuthFlowSessionCsrfUseCase")
+        .doesNotContain("org.springframework", "@Configuration", "@Bean", "Redis", "WebClient");
+    assertThat(shared)
+        .contains(
+            "IdempotencyExecutor",
+            "LoginStartProtectedOperation",
+            "LoginStartProtectedReplayCommitter")
+        .doesNotContain("org.springframework", "@Configuration", "@Bean", "Redis", "WebClient");
+    assertThat(config)
+        .contains("return new SharedStartLoginService(")
+        .doesNotContain("return new StartLoginService(");
   }
 }

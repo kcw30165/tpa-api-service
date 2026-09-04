@@ -33,15 +33,27 @@ class Task0043LoginStartReplayIntegrationArchitectureTest {
   }
 
   @Test
-  void coordinatorCompletesOnlyAfterProtectedReplaySave() throws Exception {
-    String source =
+  void activeSharedPathBoundsAndPersistsProtectedReplayBeforeResponseCapture() throws Exception {
+    String committer =
+        Files.readString(
+            Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/replay/LoginStartProtectedReplayCommitter.java"));
+    String shared =
+        Files.readString(
+            Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/start/SharedStartLoginService.java"));
+    String legacyCoordinator =
         Files.readString(
             Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/replay/LoginStartReplayCoordinator.java"));
-    assertThat(indexOfIgnoringWhitespace(source, "replayPort.save"))
-        .isLessThan(indexOfIgnoringWhitespace(source, "idempotency.complete"));
-    assertThat(source)
-        .containsIgnoringWhitespaces(
-            "boundedTtl", "idempotency.markFailed", "idempotency.markUnknown");
+
+    assertThat(committer)
+        .contains("boundedTtl", "replayPort.save")
+        .doesNotContain("IdempotencyExecutor", "org.springframework", "Redis");
+    assertThat(indexOfIgnoringWhitespace(shared, "committer.commit"))
+        .isLessThan(indexOfIgnoringWhitespace(shared, "responses.toTransientResponse"));
+    assertThat(legacyCoordinator)
+        .containsIgnoringWhitespaces("protectedReplayCommitter.commit", "idempotency.complete")
+        .doesNotContain("replayPort.save", "IdempotencyExecutor", "SharedStartLoginService");
   }
 }

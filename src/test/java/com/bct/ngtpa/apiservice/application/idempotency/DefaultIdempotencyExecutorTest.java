@@ -103,9 +103,14 @@ class DefaultIdempotencyExecutorTest {
                 .execute(
                     command(
                         () -> Mono.just(response()),
-                        failure -> IdempotencyFailureClassification.PROVEN_NO_SIDE_EFFECT))
+                        failure -> {
+                          completion.classifierInvocations++;
+                          return IdempotencyFailureClassification.PROVEN_NO_SIDE_EFFECT;
+                        }))
                 .block());
+    assertThat(completion.classifierInvocations).isZero();
     assertThat(completion.unknown).isEqualTo(1);
+    assertThat(completion.failed).isZero();
   }
 
   @Test
@@ -117,12 +122,17 @@ class DefaultIdempotencyExecutorTest {
             fingerprint(),
             Duration.ofMinutes(5),
             () -> Mono.just(response()),
-            failure -> IdempotencyFailureClassification.PROVEN_NO_SIDE_EFFECT,
+            failure -> {
+              failed.classifierInvocations++;
+              return IdempotencyFailureClassification.PROVEN_NO_SIDE_EFFECT;
+            },
             response -> Mono.error(new IllegalStateException("async capture")),
             snapshot -> Mono.just(response()));
     assertThatThrownBy(() -> executor(failed).execute(failedCommand).block())
         .isInstanceOf(IllegalStateException.class);
+    assertThat(failed.classifierInvocations).isZero();
     assertThat(failed.unknown).isEqualTo(1);
+    assertThat(failed.failed).isZero();
 
     FakePort empty = new FakePort(IdempotencyReservationOutcome.ACQUIRED);
     var emptyCommand =
@@ -131,12 +141,61 @@ class DefaultIdempotencyExecutorTest {
             fingerprint(),
             Duration.ofMinutes(5),
             () -> Mono.just(response()),
-            failure -> IdempotencyFailureClassification.PROVEN_NO_SIDE_EFFECT,
+            failure -> {
+              empty.classifierInvocations++;
+              return IdempotencyFailureClassification.PROVEN_NO_SIDE_EFFECT;
+            },
             response -> Mono.empty(),
             snapshot -> Mono.just(response()));
     assertThatThrownBy(() -> executor(empty).execute(emptyCommand).block())
         .isInstanceOf(IdempotencyExecutionException.class);
+    assertThat(empty.classifierInvocations).isZero();
     assertThat(empty.unknown).isEqualTo(1);
+    assertThat(empty.failed).isZero();
+  }
+
+  @Test
+  void failedUnknownPersistenceNeverFallsThroughToFailedTransition() {
+    FakePort port = new FakePort(IdempotencyReservationOutcome.ACQUIRED);
+    port.failMarkUnknown = true;
+    var command =
+        new IdempotentExecutionCommand(
+            operation(),
+            fingerprint(),
+            Duration.ofMinutes(5),
+            () -> Mono.just(response()),
+            failure -> {
+              port.classifierInvocations++;
+              return IdempotencyFailureClassification.PROVEN_NO_SIDE_EFFECT;
+            },
+            response -> Mono.error(new IllegalStateException("capture failure")),
+            snapshot -> Mono.just(response()));
+
+    assertThatThrownBy(() -> executor(port).execute(command).block())
+        .isInstanceOf(IdempotencyExecutionException.class)
+        .hasMessage("Shared idempotency unknown-outcome persistence failed");
+    assertThat(port.unknown).isEqualTo(1);
+    assertThat(port.failed).isZero();
+    assertThat(port.classifierInvocations).isZero();
+  }
+
+  @Test
+  void protectedOperationFailureUsesClassifierExactlyOnce() {
+    FakePort port = new FakePort(IdempotencyReservationOutcome.ACQUIRED);
+    var command =
+        command(
+            () -> Mono.error(new IllegalStateException("protected failure")),
+            failure -> {
+              port.classifierInvocations++;
+              return IdempotencyFailureClassification.PROVEN_NO_SIDE_EFFECT;
+            });
+
+    assertThatThrownBy(() -> executor(port).execute(command).block())
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("protected failure");
+    assertThat(port.classifierInvocations).isEqualTo(1);
+    assertThat(port.failed).isEqualTo(1);
+    assertThat(port.unknown).isZero();
   }
 
   private static DefaultIdempotencyExecutor executor(FakePort p) {
@@ -184,7 +243,9 @@ class DefaultIdempotencyExecutorTest {
     int completed;
     int failed;
     int unknown;
+    int classifierInvocations;
     boolean failComplete;
+    boolean failMarkUnknown;
 
     FakePort(IdempotencyReservationOutcome outcome) {
       this.outcome = outcome;
@@ -223,6 +284,9 @@ class DefaultIdempotencyExecutorTest {
 
     public Mono<IdempotencyRecord> markUnknown(IdempotencyCommands.MarkUnknown c) {
       unknown++;
+      if (failMarkUnknown) {
+        return Mono.error(new IllegalStateException("unknown persistence"));
+      }
       return Mono.just(record(IdempotencyStatus.UNKNOWN_OUTCOME, null, c.reservationToken()));
     }
 

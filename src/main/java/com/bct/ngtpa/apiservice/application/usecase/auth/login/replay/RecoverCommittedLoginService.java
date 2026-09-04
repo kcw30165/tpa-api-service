@@ -10,7 +10,8 @@ import java.time.*;
 import java.util.*;
 import reactor.core.publisher.Mono;
 
-public final class RecoverCommittedLoginService implements RecoverCommittedLoginUseCase {
+public final class RecoverCommittedLoginService
+    implements RecoverCommittedLoginUseCase, RecoverCommittedLoginByHandoffUseCase {
   private final AuthenticatedLoginHandoffPort handoffs;
   private final AuthenticatedLoginReplaySessionPort replaySessions;
   private final AuthenticatedSessionProtectorPort protector;
@@ -33,27 +34,45 @@ public final class RecoverCommittedLoginService implements RecoverCommittedLogin
     this.clock = Objects.requireNonNull(clock);
   }
 
+  @Override
   public Mono<RecoverCommittedLoginResult> recover(RecoverCommittedLoginCommand command) {
     var proof = command.proof();
     return handoffs
         .loadByHandoff(proof.handoffReference())
-        .filter(h -> h.status() == AuthenticatedLoginHandoffStatus.AUTH_FLOW_DELETED)
-        .filter(h -> h.operationReference().equals(proof.operationReference()))
-        .filter(h -> h.reservationHash().equals(proof.reservationHash()))
-        .filter(h -> h.authenticatedSessionId() != null && clock.instant().isBefore(h.expiresAt()))
-        .flatMap(
-            h ->
-                replaySessions
-                    .loadForReplay(
-                        new LoadAuthenticatedSessionForReplayCommand(
-                            h.authenticatedSessionId(), command.correlationId()))
-                    .flatMap(
-                        optional ->
-                            optional
-                                .map(envelope -> rotate(envelope, h, command.correlationId()))
-                                .orElseGet(() -> Mono.just(RecoverCommittedLoginResult.failed()))))
+        .filter(handoff -> handoff.operationReference().equals(proof.operationReference()))
+        .filter(handoff -> handoff.reservationHash().equals(proof.reservationHash()))
+        .flatMap(handoff -> recover(handoff, command.correlationId()))
         .switchIfEmpty(Mono.just(RecoverCommittedLoginResult.failed()))
         .onErrorReturn(RecoverCommittedLoginResult.failed());
+  }
+
+  @Override
+  public Mono<RecoverCommittedLoginResult> recover(RecoverCommittedLoginByHandoffCommand command) {
+    return handoffs
+        .loadByHandoff(command.handoffReference())
+        .flatMap(handoff -> recover(handoff, command.correlationId()))
+        .switchIfEmpty(Mono.just(RecoverCommittedLoginResult.failed()))
+        .onErrorReturn(RecoverCommittedLoginResult.failed());
+  }
+
+  private Mono<RecoverCommittedLoginResult> recover(
+      AuthenticatedLoginHandoff handoff, String correlationId) {
+    if (handoff.status() != AuthenticatedLoginHandoffStatus.AUTH_FLOW_DELETED
+        || handoff.authenticatedSessionId() == null
+        || handoff.cleanupProof() == null
+        || handoff.cleanupProof().isBlank()
+        || !clock.instant().isBefore(handoff.expiresAt())) {
+      return Mono.just(RecoverCommittedLoginResult.failed());
+    }
+    return replaySessions
+        .loadForReplay(
+            new LoadAuthenticatedSessionForReplayCommand(
+                handoff.authenticatedSessionId(), correlationId))
+        .flatMap(
+            optional ->
+                optional
+                    .map(envelope -> rotate(envelope, handoff, correlationId))
+                    .orElseGet(() -> Mono.just(RecoverCommittedLoginResult.failed())));
   }
 
   private Mono<RecoverCommittedLoginResult> rotate(

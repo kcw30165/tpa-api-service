@@ -1,0 +1,87 @@
+package com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import org.junit.jupiter.api.Test;
+
+class LoginSharedResponseEnvelopeTest {
+  private final LoginSharedResponseEnvelope envelope = new LoginSharedResponseEnvelope();
+
+  @Test
+  void roundTripsEachStableActionWithTypedPayload() {
+    for (LoginSharedIdempotencyAction action : LoginSharedIdempotencyAction.values()) {
+      String json = envelope.encode(action, new TestPayload("ORIGINAL_STATUS", 25));
+
+      assertThat(envelope.decodeAction(json)).isEqualTo(action);
+      assertThat(envelope.decodePayload(action, json, TestPayload.class))
+          .isEqualTo(new TestPayload("ORIGINAL_STATUS", 25));
+    }
+  }
+
+  @Test
+  void rejectsMalformedBlankAndMissingPayloadBodies() {
+    assertInvalid(null);
+    assertInvalid(" ");
+    assertInvalid("not-json");
+    assertInvalid("{\"idempotencyAction\":\"credentials\"}");
+    assertInvalid("{\"idempotencyAction\":\"credentials\",\"payload\":null}");
+  }
+
+  @Test
+  void rejectsUnsupportedActionAndNestedFalseMarker() {
+    assertInvalid("{\"idempotencyAction\":\"unknown\",\"payload\":{}}");
+    assertThatThrownBy(
+            () ->
+                envelope.decodePayload(
+                    LoginSharedIdempotencyAction.CREDENTIALS,
+                    "{\"idempotencyAction\":\"otp-send\",\"payload\":{\"status\":\"credentials\",\"retryAfterSeconds\":null}}",
+                    TestPayload.class))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Login replay action mismatch");
+  }
+
+  @Test
+  void rejectsUnknownTopLevelAndTypedPayloadFields() {
+    assertInvalid("{\"idempotencyAction\":\"credentials\",\"payload\":{},\"unexpected\":true}");
+    assertThatThrownBy(
+            () ->
+                envelope.decodePayload(
+                    LoginSharedIdempotencyAction.CREDENTIALS,
+                    "{\"idempotencyAction\":\"credentials\",\"payload\":{\"status\":\"ORIGINAL_STATUS\",\"retryAfterSeconds\":25,\"secret\":\"forbidden\"}}",
+                    TestPayload.class))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Login replay response decoding failed");
+  }
+
+  @Test
+  void rejectsWrongExpectedActionWithoutInferringFromPayload() {
+    String json =
+        envelope.encode(
+            LoginSharedIdempotencyAction.OTP_RESEND, new TestPayload("credentials", null));
+
+    assertThatThrownBy(
+            () ->
+                envelope.decodePayload(
+                    LoginSharedIdempotencyAction.CREDENTIALS, json, TestPayload.class))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Login replay action mismatch");
+  }
+
+  @Test
+  void diagnosticsDoNotExposeSerializedBody() {
+    String protectedValue = "csrf-session-password-otp";
+
+    assertThatThrownBy(() -> envelope.decodeAction(protectedValue))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Login replay response decoding failed")
+        .hasMessageNotContaining(protectedValue);
+  }
+
+  private void assertInvalid(String value) {
+    assertThatThrownBy(() -> envelope.decodeAction(value))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  private record TestPayload(String status, Integer retryAfterSeconds) {}
+}

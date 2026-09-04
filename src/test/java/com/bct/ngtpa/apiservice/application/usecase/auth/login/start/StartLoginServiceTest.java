@@ -193,21 +193,20 @@ class StartLoginServiceTest {
             () -> new LoginStartReplayCommitRef("rpl_opaque_commit_reference"),
             idempotency,
             Clock.fixed(NOW, ZoneOffset.UTC));
+    var protectedOperation =
+        new LoginStartProtectedOperation(
+            credentials,
+            factory,
+            protector,
+            lifecycle,
+            csrf,
+            Clock.fixed(NOW, ZoneOffset.UTC),
+            900,
+            true,
+            "afs",
+            16);
     return new StartLoginService(
-        policy,
-        new LoginCredentialRequestHasher(),
-        idempotency,
-        credentials,
-        factory,
-        protector,
-        lifecycle,
-        csrf,
-        replay,
-        Clock.fixed(NOW, ZoneOffset.UTC),
-        900,
-        true,
-        "afs",
-        16);
+        policy, new LoginCredentialRequestHasher(), idempotency, protectedOperation, replay);
   }
 
   private static final class InMemorySessionPort implements AuthFlowSessionPort {
