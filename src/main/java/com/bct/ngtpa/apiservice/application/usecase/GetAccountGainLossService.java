@@ -28,15 +28,36 @@ public final class GetAccountGainLossService implements GetAccountGainLossUseCas
 
   @Override
   public Mono<AccountGainLossResult> get(GetAccountGainLossCommand command) {
-    return referenceDatePort.resolveReferenceDate(command.accountEnv())
-        .flatMap(date -> metadataResolver.resolve(new ResolveGeneralMetadataQuery(
-            new GeneralMetadataScope(command.accountEnv(), command.trustCode(), command.policyNo()),
-            Set.of(NAV_PRECISION), command.actorUserRole()))
-            .flatMap(metadata -> source.fetch(new FetchAccountGainLossCommand(
-                command.period(), command.accountEnv(), command.policyNo(), command.certNo(),
-                command.actorUserId(), command.actorUserRole(), date))
-                .map(raw -> assembler.assemble(command, metadata, raw))))
-        .onErrorMap(ex -> !(ex instanceof AccountGainLossRetrievalException),
+    return Mono.defer(
+            () ->
+                referenceDatePort
+                    .resolveReferenceDate(command.accountEnv())
+                    .flatMap(
+                        date ->
+                            metadataResolver
+                                .resolve(
+                                    new ResolveGeneralMetadataQuery(
+                                        new GeneralMetadataScope(
+                                            command.accountEnv(),
+                                            command.trustCode(),
+                                            command.policyNo()),
+                                        Set.of(NAV_PRECISION),
+                                        command.actorUserRole()))
+                                .flatMap(
+                                    metadata ->
+                                        source
+                                            .fetch(
+                                                new FetchAccountGainLossCommand(
+                                                    command.period(),
+                                                    command.accountEnv(),
+                                                    command.policyNo(),
+                                                    command.certNo(),
+                                                    command.actorUserId(),
+                                                    command.actorUserRole(),
+                                                    date))
+                                            .map(raw -> assembler.assemble(command, metadata, raw)))))
+        .onErrorMap(
+            ex -> !(ex instanceof AccountGainLossRetrievalException),
             ex -> AccountGainLossRetrievalException.systemFailure());
   }
 }

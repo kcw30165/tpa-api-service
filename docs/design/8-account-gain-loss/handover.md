@@ -23,3 +23,9 @@ Added trusted get/fetch commands, the reactive use-case and source-port contract
 
 ## Runtime core implementation
 Implemented the executor-backed TRPGetInvestGL adapter, checked certificate conversion, safe downstream rejection logging, exact raw mapping, ReferenceDate and NAV-precision orchestration, exact BigDecimal overview aggregation, shared description selection, string rendering, runtime beans, and both active path configuration seams. Controller, web response policy, routing-ledger update, runtime tests, and final stabilization remain outstanding.
+
+## Runtime hardening repair
+The shared description resolver now preserves selected and fallback text exactly, including whitespace, so Account Balance behavior remains unchanged. Gain/Loss service orchestration is enclosed in `Mono.defer`. Downstream `err-message` values are logged only when they match a bounded error-key form of at most 128 characters; unsafe or free-text values are represented by `UNRECOGNIZED_APIM_ERROR`. Added focused shared-description, Account Balance preservation, Gain/Loss runtime-boundary, metadata-scope, aggregation-order, and executor-routing tests. Controller and public response integration remain blocked until this repair is reviewed.
+
+## Runtime hardening compile repair
+Replaced the complete Gain/Loss APIM adapter after the failed hardening writer placed `safeErrorCode` inside `fetch`. The sanitizer is now a class-level private static method. All prior localization-preservation, `Mono.defer`, safe logging, and focused test changes were preserved cumulatively.

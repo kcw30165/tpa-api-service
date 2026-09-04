@@ -5,13 +5,19 @@ public final class DynamicDescriptionResolver {
     boolean zh = isZh(language);
     String selected = zh ? traditionalChinese : english;
     String fallback = zh ? english : traditionalChinese;
-    if (hasText(selected)) return selected.trim();
-    if (hasText(fallback)) return fallback.trim();
+    if (hasText(selected)) {
+      return selected;
+    }
+    if (hasText(fallback)) {
+      return fallback;
+    }
     throw new IllegalArgumentException("at least one description is required");
   }
 
   private static boolean isZh(String value) {
-    if (value == null) return false;
+    if (value == null) {
+      return false;
+    }
     String tag = value.trim().replace('_', '-');
     return tag.equalsIgnoreCase("zh") || tag.equalsIgnoreCase("zh-HK");
   }
