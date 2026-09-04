@@ -378,6 +378,7 @@ apim:
       - policy-no
       - cert-no
       - user-id
+      - login-user-id
       - search-value
       - cust-id
       - email
