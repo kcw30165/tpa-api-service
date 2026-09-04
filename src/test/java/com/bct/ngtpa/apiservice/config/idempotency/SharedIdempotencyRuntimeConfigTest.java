@@ -24,7 +24,9 @@ class SharedIdempotencyRuntimeConfigTest {
 
   @Test
   void missingSecretFailsClosedBecauseSharedRuntimeIsMandatory() {
-    context.run(
+    context
+        .withPropertyValues("shared-idempotency.persistence-hmac-secret=")
+        .run(
         result -> {
           assertThat(result).hasFailed();
           assertThat(result.getStartupFailure())
