@@ -17,17 +17,12 @@ import com.bct.ngtpa.apiservice.application.idempotency.SecureIdempotencyReserva
 import java.time.Clock;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 
 /** Runtime-only composition for the shared idempotency capability. */
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(
-    prefix = "shared-idempotency",
-    name = "enabled",
-    havingValue = "true")
 public class SharedIdempotencyRuntimeConfig {
   @Bean
   @ConditionalOnMissingBean(IdempotencyPersistenceIdDeriver.class)
