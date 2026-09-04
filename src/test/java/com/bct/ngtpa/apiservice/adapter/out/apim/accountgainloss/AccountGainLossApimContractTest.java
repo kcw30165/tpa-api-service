@@ -18,8 +18,8 @@ class AccountGainLossApimContractTest {
 
   @Test
   void mapsBusinessPeriodsOnlyAtAdapterBoundary() {
-    assertThat(AccountGainLossApimModeMapper.toWireValue(
-            AccountGainLossPeriod.SINCE_SCHEME_INCEPTION))
+    assertThat(
+            AccountGainLossApimModeMapper.toWireValue(AccountGainLossPeriod.SINCE_SCHEME_INCEPTION))
         .isEqualTo("ssi");
     assertThat(AccountGainLossApimModeMapper.toWireValue(AccountGainLossPeriod.YEAR_TO_DATE))
         .isEqualTo("ytd");
@@ -27,16 +27,19 @@ class AccountGainLossApimContractTest {
 
   @Test
   void serializesExactHyphenatedRequestContract() throws Exception {
-    var request = new TrpGetInvestGlApimRequest(
-        "db230", "role_user_mbr", "00000008802", 230, "01/09/2026", "ssi");
+    var request =
+        new TrpGetInvestGlApimRequest(
+            "db230", "role_user_mbr", "00000008802", 230, "01/09/2026", "ssi");
     assertThat(mapper.writeValueAsString(request))
-        .isEqualTo("{\"login-user-id\":\"db230\",\"login-user-role\":\"role_user_mbr\",\"policy-no\":\"00000008802\",\"cert-no\":230,\"ref-date\":\"01/09/2026\",\"mode\":\"ssi\"}");
+        .isEqualTo(
+            "{\"login-user-id\":\"db230\",\"login-user-role\":\"role_user_mbr\",\"policy-no\":\"00000008802\",\"cert-no\":230,\"ref-date\":\"01/09/2026\",\"mode\":\"ssi\"}");
   }
 
   @Test
   void validatesOneCompleteDataItemAndAllowsEmptyFundList() {
     var empty = new TrpGetInvestGlApimDataItem(LocalDate.of(2026, 5, 27), List.of());
-    assertThat(AccountGainLossApimContentValidator.requireSingleData(List.of(empty))).isSameAs(empty);
+    assertThat(AccountGainLossApimContentValidator.requireSingleData(List.of(empty)))
+        .isSameAs(empty);
     assertThatThrownBy(() -> AccountGainLossApimContentValidator.requireSingleData(List.of()))
         .isInstanceOf(IllegalArgumentException.class);
   }
@@ -44,9 +47,9 @@ class AccountGainLossApimContractTest {
   @Test
   void rejectsDuplicateOrIncompleteFunds() {
     var fund = new TrpGetInvestGlFund("DGLE", "Fund", "基金", 80, new BigDecimal("1.00"));
-    var duplicate = new TrpGetInvestGlApimDataItem(
-        LocalDate.of(2026, 5, 27), List.of(fund, fund));
-    assertThatThrownBy(() -> AccountGainLossApimContentValidator.requireSingleData(List.of(duplicate)))
+    var duplicate = new TrpGetInvestGlApimDataItem(LocalDate.of(2026, 5, 27), List.of(fund, fund));
+    assertThatThrownBy(
+            () -> AccountGainLossApimContentValidator.requireSingleData(List.of(duplicate)))
         .isInstanceOf(IllegalArgumentException.class);
   }
 }

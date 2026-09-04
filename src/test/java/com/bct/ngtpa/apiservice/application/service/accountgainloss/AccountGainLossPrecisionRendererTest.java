@@ -22,7 +22,8 @@ class AccountGainLossPrecisionRendererTest {
             () -> renderer.render(new BigDecimal("10.125"), BigInteger.valueOf(2)))
         .isInstanceOfSatisfying(
             AccountGainLossRetrievalException.class,
-            ex -> assertThat(ex.reason())
-                .isEqualTo(AccountGainLossRetrievalException.Reason.SYSTEM_FAILURE));
+            ex ->
+                assertThat(ex.reason())
+                    .isEqualTo(AccountGainLossRetrievalException.Reason.SYSTEM_FAILURE));
   }
 }

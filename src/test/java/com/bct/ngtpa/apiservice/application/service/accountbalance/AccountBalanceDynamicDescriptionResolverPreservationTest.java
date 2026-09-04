@@ -12,10 +12,8 @@ class AccountBalanceDynamicDescriptionResolverPreservationTest {
 
   @Test
   void preservesWhitespaceAndLanguageSelection() {
-    assertThat(resolver.resolve("en", "  English  ", "  中文  "))
-        .isEqualTo("  English  ");
-    assertThat(resolver.resolve("zh-HK", "  English  ", "  中文  "))
-        .isEqualTo("  中文  ");
+    assertThat(resolver.resolve("en", "  English  ", "  中文  ")).isEqualTo("  English  ");
+    assertThat(resolver.resolve("zh-HK", "  English  ", "  中文  ")).isEqualTo("  中文  ");
   }
 
   @Test

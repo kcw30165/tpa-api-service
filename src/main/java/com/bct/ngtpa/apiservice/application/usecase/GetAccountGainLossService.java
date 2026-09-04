@@ -17,8 +17,10 @@ public final class GetAccountGainLossService implements GetAccountGainLossUseCas
   private final AccountGainLossSourcePort source;
   private final AccountGainLossAssembler assembler;
 
-  public GetAccountGainLossService(ReferenceDatePort referenceDatePort,
-      GeneralMetadataResolver metadataResolver, AccountGainLossSourcePort source,
+  public GetAccountGainLossService(
+      ReferenceDatePort referenceDatePort,
+      GeneralMetadataResolver metadataResolver,
+      AccountGainLossSourcePort source,
       AccountGainLossAssembler assembler) {
     this.referenceDatePort = referenceDatePort;
     this.metadataResolver = metadataResolver;
@@ -55,7 +57,9 @@ public final class GetAccountGainLossService implements GetAccountGainLossUseCas
                                                     command.actorUserId(),
                                                     command.actorUserRole(),
                                                     date))
-                                            .map(raw -> assembler.assemble(command, metadata, raw)))))
+                                            .map(
+                                                raw ->
+                                                    assembler.assemble(command, metadata, raw)))))
         .onErrorMap(
             ex -> !(ex instanceof AccountGainLossRetrievalException),
             ex -> AccountGainLossRetrievalException.systemFailure());

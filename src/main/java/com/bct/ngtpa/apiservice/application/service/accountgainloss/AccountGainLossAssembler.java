@@ -20,23 +20,33 @@ public final class AccountGainLossAssembler {
       ResolvedGeneralMetadataSet metadata,
       RawAccountGainLossData raw) {
     try {
-      if (command == null || metadata == null || raw == null || raw.priceDate() == null || raw.funds() == null)
-        throw new IllegalArgumentException();
-      var precision = GeneralMetadataPrecision.parse(metadata.find(NAV_PRECISION).orElseThrow().value()).value();
-      var ordered = raw.funds().stream()
-          .sorted(Comparator.comparing(RawFundGainLoss::fundSequence)
-              .thenComparing(f -> f.fundCode().trim()))
-          .toList();
-      BigDecimal total = ordered.stream()
-          .map(RawFundGainLoss::gainLoss)
-          .reduce(BigDecimal.ZERO, BigDecimal::add);
-      var funds = ordered.stream()
-          .map(f -> new AccountGainLossFund(
-              f.fundCode().trim(),
-              descriptions.resolve(command.language(), f.fundName(), f.chineseFundName()),
-              f.fundSequence(),
-              renderer.render(f.gainLoss(), precision)))
-          .toList();
+      if (command == null
+          || metadata == null
+          || raw == null
+          || raw.priceDate() == null
+          || raw.funds() == null) throw new IllegalArgumentException();
+      var precision =
+          GeneralMetadataPrecision.parse(metadata.find(NAV_PRECISION).orElseThrow().value())
+              .value();
+      var ordered =
+          raw.funds().stream()
+              .sorted(
+                  Comparator.comparing(RawFundGainLoss::fundSequence)
+                      .thenComparing(f -> f.fundCode().trim()))
+              .toList();
+      BigDecimal total =
+          ordered.stream().map(RawFundGainLoss::gainLoss).reduce(BigDecimal.ZERO, BigDecimal::add);
+      var funds =
+          ordered.stream()
+              .map(
+                  f ->
+                      new AccountGainLossFund(
+                          f.fundCode().trim(),
+                          descriptions.resolve(
+                              command.language(), f.fundName(), f.chineseFundName()),
+                          f.fundSequence(),
+                          renderer.render(f.gainLoss(), precision)))
+              .toList();
       return new AccountGainLossResult(
           command.period(), raw.priceDate().format(DATE), renderer.render(total, precision), funds);
     } catch (AccountGainLossRetrievalException ex) {

@@ -8,10 +8,17 @@ import org.springframework.context.annotation.*;
 
 @Configuration(proxyBeanMethods = false)
 public class AccountGainLossApplicationConfig {
-  @Bean AccountGainLossAssembler accountGainLossAssembler() { return new AccountGainLossAssembler(); }
-  @Bean GetAccountGainLossUseCase getAccountGainLossUseCase(
-      ReferenceDatePort date, GeneralMetadataResolver metadata,
-      AccountGainLossSourcePort source, AccountGainLossAssembler assembler) {
+  @Bean
+  AccountGainLossAssembler accountGainLossAssembler() {
+    return new AccountGainLossAssembler();
+  }
+
+  @Bean
+  GetAccountGainLossUseCase getAccountGainLossUseCase(
+      ReferenceDatePort date,
+      GeneralMetadataResolver metadata,
+      AccountGainLossSourcePort source,
+      AccountGainLossAssembler assembler) {
     return new GetAccountGainLossService(date, metadata, source, assembler);
   }
 }

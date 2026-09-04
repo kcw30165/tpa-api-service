@@ -9,8 +9,10 @@ import org.junit.jupiter.api.Test;
 class AccountGainLossAssemblerArchitectureTest {
   @Test
   void sumsRawValuesBeforeRenderingAndUsesNavPrecision() throws Exception {
-    String source = Files.readString(Path.of(
-        "src/main/java/com/bct/ngtpa/apiservice/application/service/accountgainloss/AccountGainLossAssembler.java"));
+    String source =
+        Files.readString(
+            Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/application/service/accountgainloss/AccountGainLossAssembler.java"));
     int reduce = source.indexOf("reduce(BigDecimal.ZERO, BigDecimal::add)");
     int renderFunds = source.indexOf("renderer.render(f.gainLoss(), precision)");
     int renderTotal = source.indexOf("renderer.render(total, precision)");

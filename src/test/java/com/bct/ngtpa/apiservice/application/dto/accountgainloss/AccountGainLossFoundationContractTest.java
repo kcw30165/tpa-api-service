@@ -8,7 +8,6 @@ import java.lang.reflect.RecordComponent;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class AccountGainLossFoundationContractTest {
@@ -16,8 +15,7 @@ class AccountGainLossFoundationContractTest {
   void periodIsBusinessOnly() {
     assertThat(AccountGainLossPeriod.values())
         .containsExactly(
-            AccountGainLossPeriod.SINCE_SCHEME_INCEPTION,
-            AccountGainLossPeriod.YEAR_TO_DATE);
+            AccountGainLossPeriod.SINCE_SCHEME_INCEPTION, AccountGainLossPeriod.YEAR_TO_DATE);
     assertThat(AccountGainLossPeriod.class.getDeclaredMethods())
         .noneMatch(method -> method.getName().equals("toApimValue"));
   }
@@ -36,7 +34,8 @@ class AccountGainLossFoundationContractTest {
     var raw = new RawAccountGainLossData(LocalDate.of(2026, 9, 1), rawSource);
     rawSource.clear();
     assertThat(raw.funds()).hasSize(1);
-    assertThatThrownBy(() -> raw.funds().add(null)).isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(() -> raw.funds().add(null))
+        .isInstanceOf(UnsupportedOperationException.class);
 
     var publicSource = new ArrayList<AccountGainLossFund>();
     publicSource.add(new AccountGainLossFund("A", "A", 1, "1.00"));

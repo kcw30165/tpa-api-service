@@ -51,8 +51,7 @@ public final class ApimAccountGainLossSourceAdapter implements AccountGainLossSo
               TrpGetInvestGlApimRequest.class,
               TrpGetInvestGlApimDataItem.class,
               ApimDatabaseScope.ACCOUNT_ENV,
-              new ApimCredentialResolutionContext(
-                  command.actorUserRole(), command.accountEnv()),
+              new ApimCredentialResolutionContext(command.actorUserRole(), command.accountEnv()),
               ApimRetryEligibility.SAFE_BUSINESS_CALL);
       return executor
           .postEnvelope(exchange)
@@ -61,8 +60,7 @@ public final class ApimAccountGainLossSourceAdapter implements AccountGainLossSo
                 var response = envelope == null ? null : envelope.getResponse();
                 String error = response == null ? null : response.getErrMessage();
                 if (SWITCHING.equals(error)) {
-                  return Mono.error(
-                      AccountGainLossRetrievalException.fundSwitchingInProgress());
+                  return Mono.error(AccountGainLossRetrievalException.fundSwitchingInProgress());
                 }
                 if (error != null && !error.isEmpty()) {
                   LOG.warn(
@@ -103,9 +101,7 @@ public final class ApimAccountGainLossSourceAdapter implements AccountGainLossSo
   }
 
   private static String safeErrorCode(String value) {
-    if (value != null
-        && value.length() <= 128
-        && value.matches("[A-Za-z0-9._-]+")) {
+    if (value != null && value.length() <= 128 && value.matches("[A-Za-z0-9._-]+")) {
       return value;
     }
     return "UNRECOGNIZED_APIM_ERROR";

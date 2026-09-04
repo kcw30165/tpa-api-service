@@ -9,8 +9,10 @@ import org.junit.jupiter.api.Test;
 class AccountGainLossRuntimeHardeningArchitectureTest {
   @Test
   void adapterSanitizesDownstreamErrorBeforeLogging() throws Exception {
-    String source = Files.readString(Path.of(
-        "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/accountgainloss/ApimAccountGainLossSourceAdapter.java"));
+    String source =
+        Files.readString(
+            Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/accountgainloss/ApimAccountGainLossSourceAdapter.java"));
     assertThat(source)
         .contains("safeErrorCode(error)", "[A-Za-z0-9._-]+", "UNRECOGNIZED_APIM_ERROR")
         .doesNotContain("errorCode={}, error)");
@@ -18,8 +20,10 @@ class AccountGainLossRuntimeHardeningArchitectureTest {
 
   @Test
   void applicationOrchestrationIsDeferredAndRequestsOnlyNavPrecision() throws Exception {
-    String source = Files.readString(Path.of(
-        "src/main/java/com/bct/ngtpa/apiservice/application/usecase/GetAccountGainLossService.java"));
+    String source =
+        Files.readString(
+            Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/GetAccountGainLossService.java"));
     assertThat(source)
         .contains(
             "Mono.defer",
@@ -31,8 +35,10 @@ class AccountGainLossRuntimeHardeningArchitectureTest {
 
   @Test
   void adapterPreservesAuthenticatedExecutorRouting() throws Exception {
-    String source = Files.readString(Path.of(
-        "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/accountgainloss/ApimAccountGainLossSourceAdapter.java"));
+    String source =
+        Files.readString(
+            Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/accountgainloss/ApimAccountGainLossSourceAdapter.java"));
     assertThat(source)
         .contains(
             "ApimExchangeExecutor",

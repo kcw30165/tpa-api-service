@@ -12,18 +12,14 @@ class DynamicDescriptionResolverPreservationTest {
   void preservesEnglishAndTraditionalChineseTextExactly() {
     assertThat(resolver.resolve("en", "  English name  ", "  中文名稱  "))
         .isEqualTo("  English name  ");
-    assertThat(resolver.resolve("zh-HK", "  English name  ", "  中文名稱  "))
-        .isEqualTo("  中文名稱  ");
-    assertThat(resolver.resolve("zh_HK", "English", "中文"))
-        .isEqualTo("中文");
+    assertThat(resolver.resolve("zh-HK", "  English name  ", "  中文名稱  ")).isEqualTo("  中文名稱  ");
+    assertThat(resolver.resolve("zh_HK", "English", "中文")).isEqualTo("中文");
   }
 
   @Test
   void preservesFallbackAndDefaultsUnsupportedLanguageToEnglish() {
-    assertThat(resolver.resolve("zh-HK", "  fallback  ", " "))
-        .isEqualTo("  fallback  ");
-    assertThat(resolver.resolve("fr", "  English  ", "中文"))
-        .isEqualTo("  English  ");
+    assertThat(resolver.resolve("zh-HK", "  fallback  ", " ")).isEqualTo("  fallback  ");
+    assertThat(resolver.resolve("fr", "  English  ", "中文")).isEqualTo("  English  ");
   }
 
   @Test
