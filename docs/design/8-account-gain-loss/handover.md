@@ -29,3 +29,9 @@ The shared description resolver now preserves selected and fallback text exactly
 
 ## Runtime hardening compile repair
 Replaced the complete Gain/Loss APIM adapter after the failed hardening writer placed `safeErrorCode` inside `fetch`. The sanitizer is now a class-level private static method. All prior localization-preservation, `Mono.defer`, safe logging, and focused test changes were preserved cumulatively.
+
+## Public endpoint stage
+Added `GET /api/v1/account-gain-loss` with optional `period`, defaulting to `SINCE_SCHEME_INCEPTION`. The controller reuses selected-account and request-language resolution and returns the approved nested response with string monetary fields. The global exception handler delegates typed Gain/Loss failures to the response policy: switching is HTTP 422/business rejection and system failure is HTTP 503. `TRPGetInvestGL` is recorded in the routing ledger as ACCOUNT_ENV, SAFE_BUSINESS_CALL, executor-owned; ledger cardinality is 18.
+
+## Public endpoint compile repair
+Corrected the routing ledger after the initial endpoint writer inserted `TRPGetInvestGL` into the existing Account Balance entry. The recovery normalizes the Account Balance entry to eight arguments and preserves one standalone Gain/Loss entry plus one expected-operation entry.

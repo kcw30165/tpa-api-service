@@ -31,6 +31,15 @@ class ApimRoutingLedgerCharacterizationTest {
               "EXECUTOR",
               "ACCOUNT_ENV"),
           e(
+              "TRPGetInvestGL",
+              "accountgainloss/ApimAccountGainLossSourceAdapter.java",
+              "ACCOUNT_ENV",
+              "command.actorUserRole()",
+              "command.accountEnv()",
+              "SAFE_BUSINESS_CALL",
+              "EXECUTOR",
+              "ACCOUNT_ENV"),
+          e(
               "TRPGetContSumy",
               "ApimContributionSummaryAdapter.java",
               "ACCOUNT_ENV",
@@ -180,8 +189,9 @@ class ApimRoutingLedgerCharacterizationTest {
     assertThat(LEDGER)
         .extracting(Entry::operation)
         .doesNotHaveDuplicates()
-        .hasSize(17)
+        .hasSize(18)
         .containsExactlyInAnyOrder(
+            "TRPGetInvestGL",
             "TRPGetMemberAccBal",
             "TRPGetContSumy",
             "TRPGetMemberInfo",

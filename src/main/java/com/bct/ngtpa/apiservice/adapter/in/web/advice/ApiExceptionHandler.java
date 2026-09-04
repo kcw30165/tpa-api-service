@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupDownstreamException;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
+import com.bct.ngtpa.apiservice.application.exception.AccountGainLossRetrievalException;
 import com.bct.ngtpa.apiservice.application.exception.ApplicationException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidContributionRequestException;
 import com.bct.ngtpa.apiservice.application.exception.InvalidNotificationRequestException;
@@ -88,6 +89,13 @@ public class ApiExceptionHandler {
         "APIM profile resolution failed",
         true,
         false);
+  }
+
+  @ExceptionHandler(AccountGainLossRetrievalException.class)
+  public ResponseEntity<MutationResponse<Void>> handleAccountGainLossRetrievalException(
+      AccountGainLossRetrievalException exception) {
+    return com.bct.ngtpa.apiservice.adapter.in.web.accountgainloss
+        .AccountGainLossRetrievalResponsePolicy.map(exception);
   }
 
   @ExceptionHandler(ApimException.class)
