@@ -146,3 +146,69 @@ The migration is action-family complete. It must not fix only selected replay er
 The approved sequence is P3-A shared Registration bridge, P3-B Start, P3-C OTP Resend, P3-D OTP Verify, P3-E Complete, P3-F compatibility and legacy removal, and P3-G stabilization. Each stage updates these capability documents before the next stage starts.
 
 The shared runtime remains disabled by default until the first migrated Registration action is deployable with both `SHARED_IDEMPOTENCY_ENABLED=true` and a valid dedicated `SHARED_IDEMPOTENCY_PERSISTENCE_HMAC_SECRET`.
+
+P3-A1 adds the Registration-owned shared identity and fingerprint bridge for all four action names. No Registration use case has switched executor yet, and the legacy port remains the active runtime path.
+
+P3-A2 adds the Registration-owned terminal response envelope, capture, and replay hydration bridge. It supports all four actions and still leaves every Registration use case on the legacy runtime path.
+
+P3-A2 strict-envelope repair replaces substring action detection with typed JSON decoding. Malformed envelopes, nested marker text, unknown actions, missing payloads, and unknown top-level fields now fail closed.
+
+P3-B1 adds the typed Registration Start safe-result codec and a separately protected replay-state port. The safe snapshot excludes CSRF and auth-flow session identifiers, and hydration restores the original Start result status rather than exposing COMPLETED_REPLAY publicly.
+
+P3-B1A adds a dedicated AES-GCM protected Registration Start replay store. A 256-bit opaque reference points to separately encrypted CSRF and auth-flow session continuity; the shared snapshot retains only the reference.
+
+P3-B2A corrects the shared response-capture boundary to be reactive. Registration Start can now persist encrypted protected replay state before the shared terminal snapshot is completed.
+
+P3-B2B adds a RegistrationStartProtectedOperation that owns validation, captcha, lookup, session, CSRF, OTP, challenge, and delivery behavior without any legacy or shared idempotency persistence dependency. Production routing remains unchanged until P3-B2C.
+
+P3-B2C1 adds the Start shared execution bridge. Protected values exist only in the in-memory transient executor response, while reactive capture converts that result into a safe snapshot plus opaque protected replay reference.
+
+P3-B2C2A switches production Registration Start composition to SharedStartRegistrationService when shared-idempotency.enabled=true. The production bean no longer injects RegistrationIdempotencyPort or RegistrationRequestHashGenerator.
+
+P3-B2C2B3 migrates the Registration Start HTTP integration harness to the shared executor and removes the legacy StartRegistrationService. Registration Start now has no production or test dependency on RegistrationIdempotencyPort.
+
+P3-B2C2B4 remaps all five source-text guards from the removed StartRegistrationService to RegistrationStartProtectedOperation, preserving active coverage of captcha, lookup-role, protected-context, policy, and sensitive-value boundaries.
+
+P3-C1 begins OTP Resend migration by extracting RegistrationOtpResendProtectedOperation. Production routing remains on the legacy ResendRegistrationOtpService until shared capture and coordinator stages are complete.
+
+P3-C2 adds the strict typed OTP Resend replay codec and transient execution bridge. Safe snapshots preserve original public result fields and require no protected replay store.
+
+P3-C3 adds SharedResendRegistrationOtpService without changing production routing. It authorizes auth-flow and CSRF context before shared reservation and executes the protected Resend operation only for ACQUIRED.
+
+P3-C4A switches the active OTP Resend Spring bean to SharedResendRegistrationOtpService. The legacy source remains temporarily for test-harness migration and will be removed only after those harnesses and source guards are aligned.
+
+P3-C4B migrates the OTP Resend unit and integration harnesses to SharedResendRegistrationOtpService and shared executor semantics. The legacy coordinator remains only for source-guard remapping in P3-C4C.
+
+P3-C4C remaps the remaining OTP Resend source guards to the shared protected operation and removes ResendRegistrationOtpService. OTP Resend no longer has a legacy production or test coordinator.
+
+P3-D1A adds RegistrationOtpVerifyProtectedOperation without changing production routing. It isolates OTP verification, session verification mutation, eligible-trust lookup, eligible-trust persistence, and deterministic result mapping from idempotency persistence.
+
+P3-D2 adds RegistrationOtpVerifyReplayCodec. OTP Verify replay is fully reconstructable from the safe shared snapshot because the complete public trust shape is limited to accountEnv and trustCode; no protected replay store is required.
+
+P3-D3 adds SharedVerifyRegistrationOtpService and RegistrationOtpVerifySharedExecutionBridge without changing production routing. The coordinator validates and authorizes before shared reservation, fingerprints session scope plus a one-way OTP digest, and uses conservative possible-side-effect classification.
+
+P3-D4A switches the active OTP Verify production bean to SharedVerifyRegistrationOtpService. Production composition now uses the shared IdempotencyExecutor, protected operation, typed replay codec and bridge, and shared identity and fingerprint factories.
+
+P3-D4B migrates the OTP Verify unit and lifecycle integration harnesses to SharedVerifyRegistrationOtpService. The harnesses exercise the protected-operation, capture, and replay callbacks instead of legacy Registration idempotency doubles.
+
+P3-D4C removes VerifyRegistrationOtpService after production composition and both primary harnesses moved to shared execution. OTP Verify now has no legacy coordinator source.
+
+P3-E2A introduces RegistrationCompleteProtectedOperationInput as the transient, redacted handoff from the future shared coordinator to acquired Registration Complete execution. Production remains on CompleteRegistrationService.
+
+P3-E2B introduces RegistrationCompleteProtectedOperation as an idempotency-neutral parallel extraction. It owns completion locking, authoritative reload, downstream completion, continuation lookup, session transitions, cancellation, and canonical rejection mapping; production still uses CompleteRegistrationService.
+
+P3-E2C adds direct behavioral coverage for RegistrationCompleteProtectedOperation, including final and continuing registrations, lock conflicts, authoritative reload guards, selected-trust routing, canonical rejections, cancellation, continuation failure, and propagated failures.
+
+P3-E3 adds RegistrationCompleteReplayCodec. The strict safe snapshot preserves the original public status, next step, registered and cookie-clearing flags, ordered accountEnv/trustCode pairs, and complete public error descriptors without protected replay storage.
+
+P3-E4 adds SharedCompleteRegistrationService and its typed execution bridge in parallel. All protected prerequisites still occur before shared reservation, and production remains on CompleteRegistrationService until P3-E5.
+
+P3-E5A switches the Registration Complete production bean to SharedCompleteRegistrationService. All four Registration actions now use the shared idempotency executor in production, while the legacy CompleteRegistrationService remains temporarily for harness migration and P3-E6 removal.
+
+P3-E5B migrates Registration Complete harness ownership from CompleteRegistrationService to SharedCompleteRegistrationService and RegistrationCompleteProtectedOperation. Duplicate legacy success and resilience harnesses are removed after TC-061, TC-062, TC-065, and TC-068 traceability is retained on direct protected-operation tests.
+
+P3-E6 removes CompleteRegistrationService and the obsolete Registration-specific idempotency lifecycle stack. All four Registration actions now rely exclusively on the shared executor and shared persistence architecture.
+
+P3-E6 repair retains RegistrationIdempotencyKey, RegistrationIdempotencyStartOutcome, and RegistrationIdempotencyResponseSnapshot as active shared/public compatibility vocabulary. The removed legacy scope is limited to the action-specific persistence lifecycle, coordinator, port, record/status/request-hash types, Redis lifecycle adapter, commands, and dedicated stale tests.
+
+P3-E6 final guard cleanup remaps the Registration Complete unknown-outcome architecture assertion from the removed RegistrationIdempotencyUnknownOutcomeCommand to the shared UNKNOWN_OUTCOME_EXISTING lifecycle route. Exact audits ignore historical comments and approved negative guards while rejecting active legacy imports, declarations, mocks, constructors, and source-path dependencies. P3-E6 is complete when compile and test-compile pass.

@@ -11,9 +11,6 @@ import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisCaptchaChallengeJson
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisOtpChallengeJsonMapper;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisOtpChallengeStateAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRateLimitAdapter;
-import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRegistrationIdempotencyAdapter;
-import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRegistrationIdempotencyJsonMapper;
-import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRegistrationIdempotencyKeyFactory;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.RedisForgotPasswordIdempotencyAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.RedisForgotPasswordIdempotencyJsonMapper;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.RedisForgotPasswordIdempotencyKeyFactory;
@@ -28,7 +25,6 @@ import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordIdempotencyPo
 import com.bct.ngtpa.apiservice.application.port.out.LoginCredentialIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
 import com.bct.ngtpa.apiservice.application.port.out.RateLimitPort;
-import com.bct.ngtpa.apiservice.application.port.out.RegistrationIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.service.auth.login.idempotency.*;
 import com.bct.ngtpa.apiservice.infrastructure.security.idempotency.HmacLoginIdempotencyPersistenceIdDeriver;
 import io.lettuce.core.ClientOptions;
@@ -180,26 +176,6 @@ public class RedisAdapterConfig {
       LoginIdempotencyPersistenceIdDeriver derivation,
       ReactiveStringRedisTemplate redisTemplate) {
     return new RedisLoginCredentialIdempotencyAdapter(keyFactory, derivation, redisTemplate);
-  }
-
-  @Bean
-  public RedisRegistrationIdempotencyKeyFactory redisRegistrationIdempotencyKeyFactory(
-      @Value("${redis-cache.key-prefix:ngtpa}") String keyPrefix) {
-    return new RedisRegistrationIdempotencyKeyFactory(keyPrefix);
-  }
-
-  @Bean
-  public RedisRegistrationIdempotencyJsonMapper redisRegistrationIdempotencyJsonMapper() {
-    return new RedisRegistrationIdempotencyJsonMapper();
-  }
-
-  @Bean
-  public RegistrationIdempotencyPort registrationIdempotencyPort(
-      RedisRegistrationIdempotencyKeyFactory keyFactory,
-      RedisRegistrationIdempotencyJsonMapper jsonMapper,
-      ReactiveStringRedisTemplate reactiveStringRedisTemplate) {
-    return new RedisRegistrationIdempotencyAdapter(
-        keyFactory, jsonMapper, reactiveStringRedisTemplate);
   }
 
   @Bean

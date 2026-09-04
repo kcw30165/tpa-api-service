@@ -343,3 +343,69 @@ A Registration failure classifier may classify `PROVEN_NO_SIDE_EFFECT` only when
 ### Protected replay material
 
 Safe snapshots contain only deterministic public response material and allow-listed headers. Cookies, session identifiers, CSRF values, OTP values, passwords, authorization material, protected auth-flow context, and other secrets are never serialized into the shared Redis record. If replay requires protected continuity, the terminal snapshot carries only an opaque `ProtectedReplayReference`, and the resolver loads the protected state from its owning store.
+
+P3-A1 derives an opaque 64-character operation scope before entering the shared identity and uses a length-delimited, version-1 SHA-256 request-equivalence fingerprint. The Redis locator remains independently protected by the shared runtime HMAC.
+
+P3-A2 uses a strict action-tagged schema-version-1 public-body envelope. Hydration verifies the expected Registration action before reconstructing the shared hydrated response and performs no protected operation or feature side effect.
+
+The P3-A2 action envelope is validated by strict JSON deserialization rather than text search. The decoded top-level action must exactly equal the expected action, and the payload node must be present.
+
+P3-B1 separates Start replay into a safe public envelope and protected continuity. STARTED snapshots carry only an opaque ProtectedReplayReference; CSRF and auth-flow session values are loaded through RegistrationStartProtectedReplayPort and fail closed when unavailable.
+
+P3-B1A uses AES-GCM with associated data bound to registration, start, schema version, key version, and the opaque reference. Reference substitution therefore fails authentication. Protected persistence uses SET NX and the exact Start idempotency TTL.
+
+IdempotentResponseCapture returns Mono<IdempotentCapturedResponse>. The executor awaits capture persistence before completing the shared record. Failed or empty capture after the protected operation becomes UNKNOWN_OUTCOME and never falls through to re-execution.
+
+P3-B2B separates the Start business workflow from lifecycle persistence. The protected operation returns deterministic public results normally and propagates transport or infrastructure exceptions for the outer shared coordinator to classify.
+
+P3-B2C1 explicitly separates the transient hydrated execution response from the persisted terminal snapshot. The transient representation is never stored; RegistrationStartReplayCodec removes CSRF and session values before shared completion.
+
+Production Start now reserves through IdempotencyExecutor, executes RegistrationStartProtectedOperation only for ACQUIRED, hydrates completed replay through the protected bridge, and maps all non-executable lifecycle outcomes explicitly.
+
+Registration Start migration is complete: production, unit, captcha, and HTTP integration paths use the shared coordinator or persistence-free protected operation. Completed replay hydrates the original authorized cookie state without repeating business side effects.
+
+After the Start coordinator split, source-text architecture guards follow responsibility ownership: RegistrationStartProtectedOperation owns captcha, lookup, session context, and business workflow; SharedStartRegistrationService owns shared lifecycle orchestration.
+
+The OTP Resend protected boundary begins after authorized auth-flow and CSRF context loading plus shared acquisition. It owns OTP resend policy acceptance, challenge replacement, session mutation, and message delivery.
+
+OTP Resend replay persists the original terminal status, nextStep, masked destination, timing, retry-after, messages, and complete error descriptors under the strict otp-resend action envelope. Hydration never invokes the protected operation.
+
+The shared OTP Resend coordinator derives both opaque scope and version-1 request equivalence from the authorized auth-flow session. CSRF, origin, referer, language, request ID, destination, OTP, and challenge values are excluded.
+
+OTP Resend production composition now uses the shared IdempotencyExecutor, protected operation, typed replay codec, and shared execution bridge. The Resend bean no longer depends on RegistrationIdempotencyPort, RegistrationRequestHashGenerator, or Clock.
+
+OTP Resend harnesses now exercise protected execution, safe response capture, persisted replay hydration, opaque scope, and session-only fingerprint semantics through IdempotencyExecutor.
+
+OTP Resend is now fully composed through SharedResendRegistrationOtpService. RegistrationOtpResendProtectedOperation owns resend policy mapping and delivery ordering, while IdempotencyExecutor owns lifecycle persistence and replay.
+
+OTP Verify now has a persistence-free protected operation. Deterministic OTP invalid, expired, locked, and no-eligible-trust outcomes are returned normally so the future shared coordinator can capture them as completed terminal responses.
+
+OTP Verify typed replay preserves original status, nextStep, remaining attempts, ordered trust list, messages, and errors under the otp-verify action envelope. COMPLETED_REPLAY remains lifecycle metadata and is never captured as a public result.
+
+OTP Verify shared coordination now explicitly routes every reservation outcome. Acquired and replay responses preserve the original public result; deterministic OTP and trust outcomes are captured as completed terminal responses.
+
+OTP Verify production routing now enters the shared coordinator. Validation and protected-context authorization remain before reservation; acquired execution remains isolated in RegistrationOtpVerifyProtectedOperation.
+
+OTP Verify tests now model shared lifecycle behavior: deterministic unsuccessful results are completed, replay restores the original public result, and replay performs no OTP, session, lookup, or eligible-trust persistence work.
+
+OTP Verify orchestration is fully shared. RegistrationOtpVerifyProtectedOperation owns OTP verification, session verification mutation, trust lookup, and eligible-trust persistence; the shared coordinator owns reservation and replay routing.
+
+The Registration Complete split begins with an authorized input containing the inbound command, protected Registration context, protected username-check state, and refreshed session. It validates session identity consistency and persists none of those values.
+
+RegistrationCompleteProtectedOperation executes only after future shared ownership is acquired. Its reactive lock scope encloses the authoritative session reload, transition to COMPLETING, downstream registration mutation, continuation handling, and cleanup.
+
+Direct P3-E2C coverage proves that the extracted acquired workflow releases its lock on success and failure, preserves ordered remaining trusts, and propagates pre-dispatch and ambiguous exceptions for later shared classification.
+
+Registration Complete replay uses the shared action-tagged envelope with action complete. COMPLETED_REPLAY and UNKNOWN_OUTCOME remain lifecycle-only states and are never captured as public terminal results.
+
+The Complete shared coordinator classifies RegistrationCompletionPreDispatchException as PROVEN_NO_SIDE_EFFECT and every other unexpected protected-operation failure as POSSIBLE_SIDE_EFFECT. Replays return the original typed result.
+
+After P3-E5A, production Registration Start, OTP Resend, OTP Verify, and Registration Complete all compose through the shared executor. Complete composes its protected operation, strict replay codec, and typed execution bridge in RegistrationCompleteUseCaseConfig.
+
+P3-E5B assigns prerequisite ordering and lifecycle classification to shared-coordinator guards, while lock, dispatch, selected-trust, continuation, cancellation, and downstream behavior remain direct protected-operation tests.
+
+After P3-E6, Registration has no action-specific idempotency port, record/status model, request hash generator, or legacy Redis lifecycle adapter. Complete classification, acquired workflow, and replay remain separated across the shared coordinator, protected operation, and codec.
+
+P3-E6 repair retains RegistrationIdempotencyKey, RegistrationIdempotencyStartOutcome, and RegistrationIdempotencyResponseSnapshot as active shared/public compatibility vocabulary. The removed legacy scope is limited to the action-specific persistence lifecycle, coordinator, port, record/status/request-hash types, Redis lifecycle adapter, commands, and dedicated stale tests.
+
+P3-E6 final guard cleanup remaps the Registration Complete unknown-outcome architecture assertion from the removed RegistrationIdempotencyUnknownOutcomeCommand to the shared UNKNOWN_OUTCOME_EXISTING lifecycle route. Exact audits ignore historical comments and approved negative guards while rejecting active legacy imports, declarations, mocks, constructors, and source-path dependencies. P3-E6 is complete when compile and test-compile pass.

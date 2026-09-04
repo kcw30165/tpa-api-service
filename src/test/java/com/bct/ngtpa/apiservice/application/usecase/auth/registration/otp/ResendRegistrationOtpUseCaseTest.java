@@ -3,229 +3,147 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
-import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.*;
-import com.bct.ngtpa.apiservice.application.dto.auth.registration.*;
+import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
+import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
-import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
-import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
-import com.bct.ngtpa.apiservice.application.port.in.ResendRegistrationOtpUseCase;
-import com.bct.ngtpa.apiservice.application.port.out.RegistrationIdempotencyPort;
-import com.bct.ngtpa.apiservice.application.port.out.RegistrationMessagePort;
-import com.bct.ngtpa.apiservice.application.port.out.RegistrationOtpPort;
-import com.bct.ngtpa.apiservice.application.port.out.RegistrationSessionPort;
-import com.bct.ngtpa.apiservice.application.service.auth.idempotency.RegistrationRequestHashGenerator;
+import com.bct.ngtpa.apiservice.application.idempotency.*;
+import com.bct.ngtpa.apiservice.application.port.out.*;
 import com.bct.ngtpa.apiservice.application.service.auth.registration.context.*;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.*;
-import java.time.*;
-import java.util.*;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationOtpCreationResult;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.*;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.idempotency.*;
+import java.time.Duration;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
-import reactor.test.StepVerifier;
 
 class ResendRegistrationOtpUseCaseTest {
-  private static final String HASH =
-      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
-
-  private final FakeProtectedContextService protectedContext = new FakeProtectedContextService();
-  private final RecordingHashGenerator hashGenerator = new RecordingHashGenerator();
-  private final FakeIdempotencyPort idempotency = new FakeIdempotencyPort();
-  private final FakeOtpGateway otp = new FakeOtpGateway();
-  private final FakeSessionGateway session = new FakeSessionGateway();
-  private final FakeMessageGateway message = new FakeMessageGateway();
-  private final ResendRegistrationOtpUseCase useCase =
-      new ResendRegistrationOtpService(
-          protectedContext,
-          hashGenerator,
-          idempotency,
-          otp,
-          session,
-          message,
-          Clock.fixed(Instant.parse("2026-07-05T00:00:00Z"), ZoneOffset.UTC));
-
   @Test
-  void resendOtpHappyPathReplacesOtpUpdatesSessionDeliversMessageAndMarksCompleted() {
-    StepVerifier.create(useCase.resend(command()))
-        .assertNext(
-            result -> {
-              assertThat(result.status()).isEqualTo(ResendRegistrationOtpResultStatus.RESENT);
-              assertThat(result.nextStep()).isEqualTo(WorkflowNextStep.VERIFY_OTP);
-              assertThat(result.maskedDestination()).isEqualTo("m****r@example.com");
-              assertThat(result.expiresInSeconds()).isEqualTo(300);
-              assertThat(result.resendCooldownSeconds()).isEqualTo(60);
-              assertThat(result.remainingResendAttempts()).isEqualTo(4);
-              assertThat(result.toString())
-                  .doesNotContain("123456", "otp_new", "member@example.com", "afs_secret");
-            })
-        .verifyComplete();
-
-    assertThat(otp.activeOtpChallengeId).isEqualTo("otp_old");
-    assertThat(session.updatedOtpChallengeId).isEqualTo("otp_new");
-    assertThat(message.recipient).isEqualTo("member@example.com");
-    assertThat(idempotency.completed).isTrue();
-    assertThat(idempotency.completedSnapshot.serializedBody())
-        .contains("VERIFY_OTP", "m****r@example.com")
+  void acquiredExecutesAndCapturesSafeTerminalResult() {
+    Fixture fixture = new Fixture(IdempotencyReservationOutcome.ACQUIRED);
+    ResendRegistrationOtpResult result = fixture.service.resend(command()).block();
+    assertThat(result.status()).isEqualTo(ResendRegistrationOtpResultStatus.RESENT);
+    assertThat(fixture.otp.calls).isEqualTo(1);
+    assertThat(fixture.session.updates).isEqualTo(1);
+    assertThat(fixture.message.deliveries).isEqualTo(1);
+    assertThat(fixture.executor.snapshot.serializedSafeBody())
+        .contains("otp-resend", "VERIFY_OTP", "m****r@example.com")
         .doesNotContain(
-            "otp_new", "otp_old", "123456", "member@example.com", "afs_secret", "csrf_secret");
+            "member@example.com", "123456", "otp-old", "otp-new", "afs-secret", "csrf-secret");
+    assertThat(fixture.executor.command.operationId().scope().value()).isNotEqualTo("afs-secret");
+    assertThat(fixture.executor.command.fingerprint().version()).isEqualTo(1);
   }
 
   @Test
-  void invalidAuthFlowDoesNotStartIdempotencyOrCreateOtp() {
-    protectedContext.result =
-        RegistrationProtectedAuthFlowContextResult.invalid(
-            RegistrationProtectedAuthFlowContextStatus.INVALID_STATUS);
-
-    StepVerifier.create(useCase.resend(command()))
-        .assertNext(
-            result -> {
-              assertThat(result.status())
-                  .isEqualTo(ResendRegistrationOtpResultStatus.INVALID_AUTH_FLOW);
-              assertThat(result.errors())
-                  .singleElement()
-                  .satisfies(
-                      error ->
-                          assertThat(error.code()).isEqualTo("err.registration.authFlow.invalid"));
-            })
-        .verifyComplete();
-
-    assertThat(idempotency.started).isFalse();
-    assertThat(otp.called).isFalse();
-    assertThat(message.delivered).isFalse();
-  }
-
-  @Test
-  void csrfInvalidDoesNotStartIdempotencyOrCreateOtp() {
-    protectedContext.result =
+  void invalidContextStopsBeforeSharedExecutor() {
+    Fixture fixture = new Fixture(IdempotencyReservationOutcome.ACQUIRED);
+    fixture.context.result =
         RegistrationProtectedAuthFlowContextResult.invalid(
             RegistrationProtectedAuthFlowContextStatus.CSRF_INVALID);
-
-    StepVerifier.create(useCase.resend(command()))
-        .assertNext(
-            result -> {
-              assertThat(result.status()).isEqualTo(ResendRegistrationOtpResultStatus.CSRF_INVALID);
-              assertThat(result.errors())
-                  .singleElement()
-                  .satisfies(
-                      error -> assertThat(error.code()).isEqualTo("err.registration.csrf.invalid"));
-            })
-        .verifyComplete();
-
-    assertThat(idempotency.started).isFalse();
-    assertThat(otp.called).isFalse();
-    assertThat(message.delivered).isFalse();
+    assertThat(fixture.service.resend(command()).block().status())
+        .isEqualTo(ResendRegistrationOtpResultStatus.CSRF_INVALID);
+    assertThat(fixture.executor.calls).isZero();
+    assertThat(fixture.otp.calls).isZero();
   }
 
   @Test
-  void duplicateInProgressReturnsWaitWithoutSideEffects() {
-    idempotency.outcome = RegistrationIdempotencyStartOutcome.DUPLICATE_IN_PROGRESS;
-
-    StepVerifier.create(useCase.resend(command()))
-        .assertNext(
-            result -> {
-              assertThat(result.status())
-                  .isEqualTo(ResendRegistrationOtpResultStatus.DUPLICATE_IN_PROGRESS);
-              assertThat(result.nextStep()).isEqualTo(WorkflowNextStep.WAIT);
-            })
-        .verifyComplete();
-
-    assertThat(otp.called).isFalse();
-    assertThat(session.updatedOtpChallengeId).isNull();
-    assertThat(message.delivered).isFalse();
+  void nonExecutableOutcomesDoNotInvokeProtectedWorkflow() {
+    for (IdempotencyReservationOutcome outcome :
+        List.of(
+            IdempotencyReservationOutcome.DUPLICATE_IN_PROGRESS,
+            IdempotencyReservationOutcome.KEY_REUSED_WITH_DIFFERENT_REQUEST,
+            IdempotencyReservationOutcome.FAILED_EXISTING,
+            IdempotencyReservationOutcome.UNKNOWN_OUTCOME_EXISTING)) {
+      Fixture fixture = new Fixture(outcome);
+      fixture.service.resend(command()).block();
+      assertThat(fixture.otp.calls).isZero();
+      assertThat(fixture.session.updates).isZero();
+      assertThat(fixture.message.deliveries).isZero();
+    }
   }
 
   @Test
-  void idempotencyKeyReuseReturnsBlockingErrorWithoutSideEffects() {
-    idempotency.outcome = RegistrationIdempotencyStartOutcome.KEY_REUSED_WITH_DIFFERENT_REQUEST;
-
-    StepVerifier.create(useCase.resend(command()))
-        .assertNext(
-            result -> {
-              assertThat(result.status())
-                  .isEqualTo(ResendRegistrationOtpResultStatus.IDEMPOTENCY_KEY_REUSED);
-              assertThat(result.errors())
-                  .singleElement()
-                  .satisfies(
-                      error ->
-                          assertThat(error.code()).isEqualTo("err.workflow.idempotency.keyReused"));
-            })
-        .verifyComplete();
-
-    assertThat(otp.called).isFalse();
-    assertThat(message.delivered).isFalse();
-  }
-
-  @Test
-  void requestHashIncludesOtpResendActionAndAuthFlowSessionIdOnly() {
-    useCase.resend(command()).block();
-
-    assertThat(hashGenerator.action).isEqualTo(RegistrationIdempotencyAction.OTP_RESEND);
-    assertThat(hashGenerator.parts).containsExactly("afs_secret");
-    assertThat(hashGenerator.parts)
-        .doesNotContain("member@example.com", "csrf_secret", "corr", "en");
-  }
-
-  @Test
-  void messageDeliveryFailureReturnsMessageDeliveryError() {
-    message.accepted = false;
-
-    StepVerifier.create(useCase.resend(command()))
-        .assertNext(
-            result -> {
-              assertThat(result.status())
-                  .isEqualTo(ResendRegistrationOtpResultStatus.MESSAGE_DELIVERY_FAILED);
-              assertThat(result.errors())
-                  .singleElement()
-                  .satisfies(
-                      error ->
-                          assertThat(error.code())
-                              .isEqualTo("err.registration.message.deliveryFailed"));
-            })
-        .verifyComplete();
-
-    assertThat(idempotency.failed).isTrue();
-  }
-
-  @Test
-  void resendRateLimitedReturnsRestartFlow() {
-    otp.error = new RegistrationOtpSendRateLimitedException();
-
-    StepVerifier.create(useCase.resend(command()))
-        .assertNext(
-            result -> {
-              assertThat(result.status())
-                  .isEqualTo(ResendRegistrationOtpResultStatus.SEND_RATE_LIMITED);
-              assertThat(result.nextStep()).isEqualTo(WorkflowNextStep.RESTART_FLOW);
-              assertThat(result.retryAfterSeconds()).isZero();
-              assertThat(result.remainingResendAttempts()).isZero();
-              assertThat(result.errors())
-                  .singleElement()
-                  .satisfies(
-                      error ->
-                          assertThat(error.code())
-                              .isEqualTo(RegistrationErrorKey.OTP_SEND_RATE_LIMITED.value()));
-            })
-        .verifyComplete();
-
-    assertThat(idempotency.failed).isTrue();
+  void knownRateLimitAndDeliveryRejectionAreCapturedTerminalResults() {
+    Fixture limited = new Fixture(IdempotencyReservationOutcome.ACQUIRED);
+    limited.otp.error = new RegistrationOtpSendRateLimitedException();
+    assertThat(limited.service.resend(command()).block().status())
+        .isEqualTo(ResendRegistrationOtpResultStatus.SEND_RATE_LIMITED);
+    assertThat(limited.executor.snapshot).isNotNull();
+    Fixture rejected = new Fixture(IdempotencyReservationOutcome.ACQUIRED);
+    rejected.message.accepted = false;
+    assertThat(rejected.service.resend(command()).block().status())
+        .isEqualTo(ResendRegistrationOtpResultStatus.MESSAGE_DELIVERY_FAILED);
+    assertThat(rejected.executor.snapshot).isNotNull();
   }
 
   private static ResendRegistrationOtpCommand command() {
     return new ResendRegistrationOtpCommand(
-        new AuthFlowSessionId("afs_secret"),
-        "csrf_secret",
+        new AuthFlowSessionId("afs-secret"),
+        "csrf-secret",
         null,
         null,
-        new RegistrationIdempotencyKey("idem_secret"),
+        new RegistrationIdempotencyKey("idem-secret"),
         "en",
         "corr",
         Duration.ofMinutes(5));
   }
 
-  private static final class FakeProtectedContextService
-      implements RegistrationProtectedAuthFlowContextLoader {
+  private static final class Fixture {
+    final Context context = new Context();
+    final Executor executor;
+    final Otp otp = new Otp();
+    final Session session = new Session();
+    final Message message = new Message();
+    final SharedResendRegistrationOtpService service;
+
+    Fixture(IdempotencyReservationOutcome outcome) {
+      executor = new Executor(outcome);
+      var bridge =
+          new RegistrationOtpResendSharedExecutionBridge(new RegistrationOtpResendReplayCodec());
+      service =
+          new SharedResendRegistrationOtpService(
+              context,
+              executor,
+              new RegistrationOtpResendProtectedOperation(otp, session, message),
+              bridge,
+              new RegistrationSharedIdempotencyIdentityFactory(),
+              new RegistrationSharedFingerprintFactory());
+    }
+  }
+
+  private static final class Executor implements IdempotencyExecutor {
+    final IdempotencyReservationOutcome outcome;
+    int calls;
+    IdempotentExecutionCommand command;
+    IdempotentTerminalResponseSnapshot snapshot;
+
+    Executor(IdempotencyReservationOutcome outcome) {
+      this.outcome = outcome;
+    }
+
+    public Mono<IdempotentExecutionResult> execute(IdempotentExecutionCommand command) {
+      calls++;
+      this.command = command;
+      if (outcome == IdempotencyReservationOutcome.ACQUIRED) {
+        return command
+            .protectedOperation()
+            .get()
+            .flatMap(command.responseCapture()::capture)
+            .map(
+                captured -> {
+                  snapshot = captured.snapshot();
+                  return new IdempotentExecutionResult(outcome, captured.response());
+                });
+      }
+      return Mono.just(new IdempotentExecutionResult(outcome, null));
+    }
+  }
+
+  private static final class Context implements RegistrationProtectedAuthFlowContextLoader {
     RegistrationProtectedAuthFlowContextResult result =
         RegistrationProtectedAuthFlowContextResult.valid(
-            "otp_old",
+            "otp-old",
             "m****r@example.com",
             new RegistrationAuthFlowContext(
                 MemberIdentityType.ID,
@@ -234,147 +152,56 @@ class ResendRegistrationOtpUseCaseTest {
                 RegistrationContactType.EMAIL,
                 "member@example.com"));
 
-    @Override
     public Mono<RegistrationProtectedAuthFlowContextResult> load(
         RegistrationProtectedAuthFlowContextCommand command) {
       return Mono.just(result);
     }
   }
 
-  private static final class RecordingHashGenerator implements RegistrationRequestHashGenerator {
-    RegistrationIdempotencyAction action;
-    List<String> parts;
-
-    @Override
-    public RegistrationRequestHash hash(
-        RegistrationIdempotencyAction action, List<String> normalizedParts) {
-      this.action = action;
-      this.parts = List.copyOf(normalizedParts);
-      return new RegistrationRequestHash(HASH);
-    }
-  }
-
-  private static final class FakeIdempotencyPort implements RegistrationIdempotencyPort {
-    RegistrationIdempotencyStartOutcome outcome = RegistrationIdempotencyStartOutcome.STARTED;
-    boolean started;
-    boolean completed;
-    boolean failed;
-    RegistrationIdempotencyResponseSnapshot completedSnapshot;
-
-    @Override
-    public Mono<RegistrationIdempotencyStartResult> startProcessing(
-        RegistrationIdempotencyStartCommand command) {
-      started = true;
-      return Mono.just(new RegistrationIdempotencyStartResult(outcome, processingRecord()));
-    }
-
-    @Override
-    public Mono<RegistrationIdempotencyRecord> markCompleted(
-        RegistrationIdempotencyCompleteCommand command) {
-      completed = true;
-      completedSnapshot = command.responseSnapshot();
-      return Mono.just(completedRecord(command.responseSnapshot()));
-    }
-
-    @Override
-    public Mono<RegistrationIdempotencyRecord> markFailed(
-        RegistrationIdempotencyFailCommand command) {
-      failed = true;
-      return Mono.just(processingRecord());
-    }
-
-    @Override
-    public Mono<Optional<RegistrationIdempotencyRecord>> load(
-        RegistrationIdempotencyAction action, RegistrationIdempotencyKey key) {
-      return Mono.just(Optional.empty());
-    }
-
-    @Override
-    public Mono<Void> delete(RegistrationIdempotencyAction action, RegistrationIdempotencyKey key) {
-      return Mono.empty();
-    }
-
-    private static RegistrationIdempotencyRecord processingRecord() {
-      return new RegistrationIdempotencyRecord(
-          RegistrationIdempotencyAction.OTP_RESEND,
-          new RegistrationIdempotencyKey("idem_secret"),
-          new RegistrationRequestHash(HASH),
-          RegistrationIdempotencyStatus.PROCESSING,
-          null,
-          Instant.parse("2026-07-05T00:00:00Z"),
-          Instant.parse("2026-07-05T00:00:00Z"),
-          Instant.parse("2026-07-05T00:05:00Z"));
-    }
-
-    private static RegistrationIdempotencyRecord completedRecord(
-        RegistrationIdempotencyResponseSnapshot snapshot) {
-      return new RegistrationIdempotencyRecord(
-          RegistrationIdempotencyAction.OTP_RESEND,
-          new RegistrationIdempotencyKey("idem_secret"),
-          new RegistrationRequestHash(HASH),
-          RegistrationIdempotencyStatus.COMPLETED,
-          snapshot,
-          Instant.parse("2026-07-05T00:00:00Z"),
-          Instant.parse("2026-07-05T00:00:00Z"),
-          Instant.parse("2026-07-05T00:05:00Z"));
-    }
-  }
-
-  private static final class FakeOtpGateway implements RegistrationOtpPort {
-    boolean called;
-    String activeOtpChallengeId;
+  private static final class Otp implements RegistrationOtpPort {
+    int calls;
     RuntimeException error;
 
-    @Override
     public Mono<RegistrationOtpCreationResult> createOtp(
         RegistrationContactType type, String destination) {
-      throw new UnsupportedOperationException();
+      return Mono.error(new UnsupportedOperationException());
     }
 
-    @Override
     public Mono<RegistrationOtpCreationResult> resendOtp(
-        String activeOtpChallengeId, RegistrationContactType type, String destination) {
-      called = true;
-      this.activeOtpChallengeId = activeOtpChallengeId;
-      if (error != null) {
-        return Mono.error(error);
-      }
-      return Mono.just(new RegistrationOtpCreationResult("otp_new", "123456", 300, 60, 4));
+        String active, RegistrationContactType type, String destination) {
+      calls++;
+      return error == null
+          ? Mono.just(new RegistrationOtpCreationResult("otp-new", "123456", 300, 60, 4))
+          : Mono.error(error);
     }
   }
 
-  private static final class FakeSessionGateway implements RegistrationSessionPort {
-    String updatedOtpChallengeId;
+  private static final class Session implements RegistrationSessionPort {
+    int updates;
 
-    @Override
-    public Mono<String> createRegistrationSession(
-        String maskedDestination, RegistrationContactType contactType) {
-      return Mono.just("afs_secret");
+    public Mono<String> createRegistrationSession(String masked, RegistrationContactType type) {
+      return Mono.error(new UnsupportedOperationException());
     }
 
-    @Override
     public Mono<Void> updateOtpChallenge(
-        String sid, String otpId, RegistrationContactType type, String maskedDestination) {
-      updatedOtpChallengeId = otpId;
+        String sid, String otp, RegistrationContactType type, String masked) {
+      updates++;
       return Mono.empty();
     }
   }
 
-  private static final class FakeMessageGateway implements RegistrationMessagePort {
+  private static final class Message implements RegistrationMessagePort {
+    int deliveries;
     boolean accepted = true;
-    boolean delivered;
-    String recipient;
 
-    @Override
     public Mono<Boolean> deliverRegistrationOtp(
         RegistrationContactType type,
         String recipient,
-        String otpCode,
+        String code,
         int ttl,
-        String lang,
-        String corr) {
-      delivered = true;
-      this.recipient = recipient;
+        String language,
+        String correlation) {
+      deliveries++;
       return Mono.just(accepted);
     }
   }

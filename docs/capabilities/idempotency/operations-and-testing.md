@@ -343,3 +343,75 @@ SHARED_IDEMPOTENCY_PERSISTENCE_HMAC_SECRET=<Base64 value decoding to at least 32
 ```
 
 Disabled environments create no shared idempotency beans and require no secret. Enabled environments fail startup on missing, malformed, short, or placeholder-like secrets without disclosing the value.
+
+P3-A1 evidence checks all four stable action names, raw-scope non-disclosure, deterministic and order-sensitive fingerprinting, action separation, explicit failure-classifier choices, application-layer isolation, compile, and test-compile.
+
+P3-A2 evidence covers capture-to-hydration equality for all four actions, business-response replay, action mismatch, unknown schema, unsafe-header rejection, protected-reference opacity, redacted diagnostics, and zero protected-operation calls during hydration.
+
+P3-A2 strict-envelope evidence includes malformed JSON, nested false action markers, unsupported action values, missing payloads, and unknown top-level field rejection.
+
+P3-B1 evidence verifies that Start safe JSON excludes CSRF and session identifiers, deterministic failures replay without protected storage, STARTED hydration restores protected continuity, missing protected state fails closed, and diagnostic rendering is redacted.
+
+P3-B1A evidence covers secret validation, 256-bit reference generation, SET-NX persistence, TTL propagation, ciphertext redaction, AAD substitution rejection, missing-state failure, strict schema handling, and disabled-by-default conditional composition.
+
+P3-B1A2 adds compile-checked security contract tests for AES-GCM round-trip behavior, ciphertext and diagnostic redaction, reference-substitution authentication failure, invalid-secret handling, strict protected-record JSON, unsupported schema rejection, and opaque 256-bit reference generation. Test execution remains reserved for the feature validation stage.
+
+P3-B2A contract tests cover successful reactive capture, asynchronous capture failure, empty capture, unknown-outcome persistence, and no fallback execution.
+
+P3-B2B architecture evidence verifies the protected Start workflow cannot import or call legacy idempotency, shared executor, Redis, or Spring persistence concerns. Behavioral execution remains scheduled for P3-G.
+
+P3-B2C1 contract tests cover typed transient round trip, safe-snapshot exclusion, protected-reference creation, completed replay hydration, and malformed transient response rejection.
+
+P3-B2C2A evidence checks shared-only production composition, exact Start fingerprint field order, explicit lifecycle mapping, protected-operation isolation, and preservation of legacy OTP Resend, OTP Verify, and Complete consumers.
+
+P3-B2C2B1 migrates StartRegistrationUseCaseTest to SharedStartRegistrationService. The compile-checked contracts cover ACQUIRED execution, COMPLETED_REPLAY with zero protected-operation calls, all non-executable lifecycle outcomes, deterministic validation and lookup failures, and shared identity/fingerprint construction.
+
+P3-B2C2B2 migrates StartRegistrationCaptchaGateTest to the persistence-free RegistrationStartProtectedOperation. Captcha policy, one-time consumption, ordering, and downstream short-circuit contracts are retained without legacy idempotency fixtures.
+
+P3-B2C2B3 compile-checked HTTP contracts retain successful Start, captcha one-time use, same-key replay without duplicate effects, key-reuse conflict, protected CSRF restoration, cookie reissue, and deterministic delivery-failure completion.
+
+P3-B2C2B4 verifies that all five stale Start source-path guards target existing sources and retain their original semantic assertions. Compile and test-compile remain the intermediate validation gates; focused execution is deferred to P3-G.
+
+P3-C1 architecture evidence requires the extracted OTP Resend protected operation to contain no RegistrationIdempotencyPort, IdempotencyExecutor, Redis, Spring, reserve, complete, fail, or replay dependency.
+
+P3-C2 compile-checked contracts cover typed safe capture, original-status hydration, retry and descriptor preservation, strict action validation, malformed replay rejection, and protected-value exclusion.
+
+P3-C3 compile-checked coordinator contracts cover authorization before reservation, explicit lifecycle routing, duplicate non-execution, original-status replay hydration, session-only fingerprinting, and conservative failure classification.
+
+P3-C4A validates the production bean switch with compile, test-compile, composition audits, legacy-bean exclusion, and preservation checks. Focused tests remain deferred to P3-G.
+
+P3-C4B compile-checks migrated unit and integration harnesses. Deterministic delivery rejection and rate limiting are captured as completed replayable results rather than failed records.
+
+P3-C4C compile-checks legacy removal, remapped source guards, zero remaining ResendRegistrationOtpService references, shared production composition, and preservation of Verify and Complete on RegistrationIdempotencyPort.
+
+P3-D1A compile-checks the extracted OTP Verify protected operation and adds a source architecture guard excluding legacy/shared idempotency persistence, adapters, Redis, web, and Spring dependencies.
+
+P3-D2 compile-checks the strict OTP Verify codec and adds an architecture guard excluding OTP, challenge, session, CSRF, identity, contact, account-detail, language, correlation, and protected-replay-store fields.
+
+P3-D3 compile-checks the shared OTP Verify bridge and coordinator with source guards for shared-executor ownership, conservative failure classification, and absence of legacy persistence or adapter dependencies.
+
+P3-D4A validates the production bean switch with compile, test-compile, structural composition audits, legacy-wiring absence, preserved harnesses, and diff integrity. Harness migration remains P3-D4B.
+
+P3-D4B preserves TC-044 through TC-052 while changing TC-051 to assert original-result hydration and zero replay effects. Compile and test-compile remain the intermediate validation gates.
+
+P3-D4C validates legacy removal with compile, test-compile, exact-reference audits, source-guard remapping, package architecture coverage, and git diff integrity.
+
+P3-E2A validates the protected-operation input with null checks, auth-flow session consistency, protected-value redaction, dependency-neutral architecture checks, compile, test-compile, and diff integrity.
+
+P3-E2B adds architecture coverage for lock lifecycle, selected-trust ordering, ROLE_USER_MBR routing, completion dispatch, continuation, cancellation, forbidden idempotency dependencies, and absence of detached reactive terminals.
+
+P3-E2C compiles direct tests covering final success, additional trusts, lock contention, authoritative session guards, downstream command routing, rejection branches, continuation failure, and exception propagation.
+
+P3-E3 guards strict unknown-field rejection, wrong-action rejection through the shared bridge, ordered trust hydration, lifecycle-only status exclusion, sensitive-field absence, and zero workflow effects in capture or hydration.
+
+P3-E4 architecture coverage verifies prerequisite ordering, shared-only dependencies, Complete action identity, digest fingerprinting, classification, original-result replay, and canonical lifecycle routing.
+
+P3-E5A validates that the Complete production bean constructs SharedCompleteRegistrationService and that no legacy Registration idempotency dependency remains in the production configuration path.
+
+P3-E5B remaps lock, role routing, lookup, public error, and pre-dispatch guards to the shared Complete components. Legacy Complete success and resilience fixtures are removed as duplicate coverage.
+
+P3-E6 removes stale tests for startProcessing, markCompleted, markFailed, and markUnknownOutcome while retaining negative guards, shared classifier checks, protected-operation lock coverage, and Registration traceability.
+
+P3-E6 repair retains RegistrationIdempotencyKey, RegistrationIdempotencyStartOutcome, and RegistrationIdempotencyResponseSnapshot as active shared/public compatibility vocabulary. The removed legacy scope is limited to the action-specific persistence lifecycle, coordinator, port, record/status/request-hash types, Redis lifecycle adapter, commands, and dedicated stale tests.
+
+P3-E6 final guard cleanup remaps the Registration Complete unknown-outcome architecture assertion from the removed RegistrationIdempotencyUnknownOutcomeCommand to the shared UNKNOWN_OUTCOME_EXISTING lifecycle route. Exact audits ignore historical comments and approved negative guards while rejecting active legacy imports, declarations, mocks, constructors, and source-path dependencies. P3-E6 is complete when compile and test-compile pass.

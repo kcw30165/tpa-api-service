@@ -108,6 +108,37 @@ class DefaultIdempotencyExecutorTest {
     assertThat(completion.unknown).isEqualTo(1);
   }
 
+  @Test
+  void asynchronousCaptureFailureAndEmptyCaptureBecomeUnknownOutcome() {
+    FakePort failed = new FakePort(IdempotencyReservationOutcome.ACQUIRED);
+    var failedCommand =
+        new IdempotentExecutionCommand(
+            operation(),
+            fingerprint(),
+            Duration.ofMinutes(5),
+            () -> Mono.just(response()),
+            failure -> IdempotencyFailureClassification.PROVEN_NO_SIDE_EFFECT,
+            response -> Mono.error(new IllegalStateException("async capture")),
+            snapshot -> Mono.just(response()));
+    assertThatThrownBy(() -> executor(failed).execute(failedCommand).block())
+        .isInstanceOf(IllegalStateException.class);
+    assertThat(failed.unknown).isEqualTo(1);
+
+    FakePort empty = new FakePort(IdempotencyReservationOutcome.ACQUIRED);
+    var emptyCommand =
+        new IdempotentExecutionCommand(
+            operation(),
+            fingerprint(),
+            Duration.ofMinutes(5),
+            () -> Mono.just(response()),
+            failure -> IdempotencyFailureClassification.PROVEN_NO_SIDE_EFFECT,
+            response -> Mono.empty(),
+            snapshot -> Mono.just(response()));
+    assertThatThrownBy(() -> executor(empty).execute(emptyCommand).block())
+        .isInstanceOf(IdempotencyExecutionException.class);
+    assertThat(empty.unknown).isEqualTo(1);
+  }
+
   private static DefaultIdempotencyExecutor executor(FakePort p) {
     return new DefaultIdempotencyExecutor(
         p,
@@ -124,7 +155,7 @@ class DefaultIdempotencyExecutorTest {
         Duration.ofMinutes(5),
         op,
         classifier,
-        r -> new IdempotentCapturedResponse(r, snapshot()),
+        r -> Mono.just(new IdempotentCapturedResponse(r, snapshot())),
         s -> Mono.just(response()));
   }
 

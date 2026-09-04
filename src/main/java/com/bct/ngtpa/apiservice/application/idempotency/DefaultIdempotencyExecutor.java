@@ -74,25 +74,26 @@ public final class DefaultIdempotencyExecutor implements IdempotencyExecutor {
       IdempotentExecutionCommand command,
       IdempotencyReservationToken owner,
       HydratedIdempotentResponse response) {
-    IdempotentCapturedResponse captured;
-    try {
-      captured = command.responseCapture().capture(response);
-    } catch (RuntimeException failure) {
-      return markUnknownThenError(command, owner, failure);
-    }
-    return persistence
-        .complete(
-            new IdempotencyCommands.Complete(
-                command.operationId(),
-                command.fingerprint(),
-                owner,
-                captured.snapshot(),
-                clock.instant(),
-                command.ttl()))
-        .map(
-            ignored ->
-                new IdempotentExecutionResult(
-                    IdempotencyReservationOutcome.ACQUIRED, captured.response()))
+    return Mono.defer(() -> command.responseCapture().capture(response))
+        .switchIfEmpty(
+            Mono.error(
+                new IdempotencyExecutionException(
+                    "Protected idempotent response capture returned no result")))
+        .flatMap(
+            captured ->
+                persistence
+                    .complete(
+                        new IdempotencyCommands.Complete(
+                            command.operationId(),
+                            command.fingerprint(),
+                            owner,
+                            captured.snapshot(),
+                            clock.instant(),
+                            command.ttl()))
+                    .map(
+                        ignored ->
+                            new IdempotentExecutionResult(
+                                IdempotencyReservationOutcome.ACQUIRED, captured.response())))
         .onErrorResume(failure -> markUnknownThenError(command, owner, failure));
   }
 

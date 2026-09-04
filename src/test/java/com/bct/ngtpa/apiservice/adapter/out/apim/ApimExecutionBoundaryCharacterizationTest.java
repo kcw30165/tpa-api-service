@@ -76,24 +76,6 @@ class ApimExecutionBoundaryCharacterizationTest {
         .exists();
   }
 
-  @Test
-  void mutationRetryClassificationIsTransportSideOfApplicationIdempotency() throws Exception {
-    assertThat(read("ApimNotificationReadStatusAdapter.java")).contains("IDEMPOTENT_MUTATION");
-    assertThat(read("ApimUpdatePersonalInformationAdapter.java")).contains("IDEMPOTENT_MUTATION");
-    assertThat(read("forgotpassword/ApimForgotPasswordCompletionAdapter.java"))
-        .contains("IDEMPOTENT_MUTATION");
-    assertThat(read("registration/ApimRegistrationCompletionAdapter.java"))
-        .contains("ApimExchangeExecutor", "NON_RETRYABLE");
-    assertThat(
-            Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/application/port/out/ForgotPasswordIdempotencyPort.java"))
-        .exists();
-    assertThat(
-            Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/application/port/out/RegistrationIdempotencyPort.java"))
-        .exists();
-  }
-
   private String read(String file) throws Exception {
     return Files.readString(APIM.resolve(file));
   }

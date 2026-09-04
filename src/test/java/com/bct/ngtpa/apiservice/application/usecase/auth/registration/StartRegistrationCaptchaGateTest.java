@@ -10,49 +10,29 @@ import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaAnswerHash;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaChallenge;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaChallengeId;
 import com.bct.ngtpa.apiservice.application.dto.auth.captcha.CaptchaStatus;
-import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyAction;
-import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyCompleteCommand;
-import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyFailCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
-import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyRecord;
-import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyResponseSnapshot;
-import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartCommand;
-import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
-import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartResult;
-import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStatus;
-import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationRequestHash;
-import com.bct.ngtpa.apiservice.application.dto.auth.otp.OtpChallenge;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupAccount;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupCommand;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupResult;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupStatus;
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession;
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionCreateCommand;
-import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
-import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
-import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
-import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import com.bct.ngtpa.apiservice.application.port.out.CaptchaChallengePort;
-import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationCsrPort;
-import com.bct.ngtpa.apiservice.application.port.out.RegistrationIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationLookupPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationMessagePort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationOtpPort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationSessionPort;
 import com.bct.ngtpa.apiservice.application.service.auth.captcha.RegistrationCaptchaGateService;
-import com.bct.ngtpa.apiservice.application.service.auth.idempotency.RegistrationRequestHashGenerator;
 import com.bct.ngtpa.apiservice.application.service.auth.registration.RegistrationStartValidator;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.RegistrationStartProtectedOperation;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -69,42 +49,33 @@ class StartRegistrationCaptchaGateTest {
   private static final String ANSWER_HASH =
       "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
-  private final FakeIdempotencyPort idempotency = new FakeIdempotencyPort();
-  private final RecordingHashGenerator hashGenerator = new RecordingHashGenerator();
   private final FakeLookupPort lookup = new FakeLookupPort();
   private final FakeSessionGateway session = new FakeSessionGateway();
   private final FakeCsrfGateway csrf = new FakeCsrfGateway();
   private final FakeOtpGateway otp = new FakeOtpGateway();
   private final FakeMessageGateway message = new FakeMessageGateway();
-  private final AuthFlowSessionPort authFlowSessionPort = new NoOpAuthFlowSessionPort();
-  private final OtpChallengeStatePort otpChallengeStatePort = new NoOpOtpChallengeStatePort();
   private final FakeCaptchaChallengePort captchaPort = new FakeCaptchaChallengePort();
   private final FakeAuthWorkflowPolicyPort policyPort = new FakeAuthWorkflowPolicyPort();
   private final RegistrationCaptchaGateService gateService =
       new RegistrationCaptchaGateService(captchaPort, Clock.fixed(NOW, ZoneOffset.UTC));
 
-  private StartRegistrationService useCase;
+  private RegistrationStartProtectedOperation useCase;
 
   @BeforeEach
   void setUp() {
-    idempotency.reset();
     lookup.reset();
     session.reset();
     otp.reset();
     message.reset();
     captchaPort.reset();
     useCase =
-        new StartRegistrationService(
+        new RegistrationStartProtectedOperation(
             new RegistrationStartValidator(),
-            hashGenerator,
-            idempotency,
             lookup,
             session,
             csrf,
             otp,
             message,
-            authFlowSessionPort,
-            otpChallengeStatePort,
             policyPort,
             gateService,
             Clock.fixed(NOW, ZoneOffset.UTC));
@@ -114,7 +85,7 @@ class StartRegistrationCaptchaGateTest {
   void registrationStartDoesNotRequireCaptchaWhenPreStartChallengeDisabled() {
     policyPort.policy = policy(false);
 
-    StepVerifier.create(useCase.start(command(null)))
+    StepVerifier.create(useCase.execute(command(null)))
         .assertNext(
             result -> assertThat(result.status()).isEqualTo(StartRegistrationResultStatus.STARTED))
         .verifyComplete();
@@ -127,7 +98,7 @@ class StartRegistrationCaptchaGateTest {
   void registrationStartRequiresCaptchaWhenPreStartChallengeEnabled() {
     policyPort.policy = policy(true);
 
-    StepVerifier.create(useCase.start(command("   ")))
+    StepVerifier.create(useCase.execute(command("   ")))
         .assertNext(
             result -> {
               assertThat(result.status())
@@ -147,7 +118,6 @@ class StartRegistrationCaptchaGateTest {
     assertThat(session.createdAfterLookup).isFalse();
     assertThat(otp.created).isFalse();
     assertThat(message.delivered).isFalse();
-    assertThat(idempotency.failed).isTrue();
   }
 
   @Test
@@ -155,7 +125,7 @@ class StartRegistrationCaptchaGateTest {
     policyPort.policy = policy(true);
     captchaPort.challenge = captcha(CaptchaStatus.VERIFIED, NOW.plusSeconds(300));
 
-    StepVerifier.create(useCase.start(command(CHALLENGE_ID.value())))
+    StepVerifier.create(useCase.execute(command(CHALLENGE_ID.value())))
         .assertNext(
             result -> assertThat(result.status()).isEqualTo(StartRegistrationResultStatus.STARTED))
         .verifyComplete();
@@ -210,7 +180,7 @@ class StartRegistrationCaptchaGateTest {
     policyPort.policy = policy(true);
     captchaPort.challenge = null;
 
-    StepVerifier.create(useCase.start(command(CHALLENGE_ID.value())))
+    StepVerifier.create(useCase.execute(command(CHALLENGE_ID.value())))
         .assertNext(
             result ->
                 assertThat(result.errors())
@@ -229,18 +199,17 @@ class StartRegistrationCaptchaGateTest {
     policyPort.policy = policy(true);
     captchaPort.challenge = captcha(CaptchaStatus.VERIFIED, NOW.plusSeconds(300));
 
-    StepVerifier.create(useCase.start(command(CHALLENGE_ID.value())))
+    StepVerifier.create(useCase.execute(command(CHALLENGE_ID.value())))
         .assertNext(
             result -> assertThat(result.status()).isEqualTo(StartRegistrationResultStatus.STARTED))
         .verifyComplete();
 
-    idempotency.outcome = RegistrationIdempotencyStartOutcome.STARTED;
     lookup.called = false;
     session.createdAfterLookup = false;
     otp.created = false;
     message.delivered = false;
 
-    StepVerifier.create(useCase.start(command(CHALLENGE_ID.value())))
+    StepVerifier.create(useCase.execute(command(CHALLENGE_ID.value())))
         .assertNext(
             result ->
                 assertThat(result.errors())
@@ -252,56 +221,6 @@ class StartRegistrationCaptchaGateTest {
         .verifyComplete();
 
     assertNoDownstreamSideEffects();
-  }
-
-  @Test
-  void idempotencyDuplicateDoesNotConsumeCaptchaAgain() {
-    policyPort.policy = policy(true);
-    captchaPort.challenge = captcha(CaptchaStatus.VERIFIED, NOW.plusSeconds(300));
-    idempotency.outcome = RegistrationIdempotencyStartOutcome.DUPLICATE_IN_PROGRESS;
-
-    StepVerifier.create(useCase.start(command(CHALLENGE_ID.value())))
-        .assertNext(result -> assertThat(result.nextStep()).isEqualTo(WorkflowNextStep.WAIT))
-        .verifyComplete();
-
-    assertThat(captchaPort.loadCalls).isZero();
-  }
-
-  @Test
-  void idempotencyCompletedReplayDoesNotConsumeCaptchaAgain() {
-    policyPort.policy = policy(true);
-    captchaPort.challenge = captcha(CaptchaStatus.VERIFIED, NOW.plusSeconds(300));
-    idempotency.outcome = RegistrationIdempotencyStartOutcome.COMPLETED_REPLAY;
-    idempotency.record = idempotency.completedRecord();
-
-    StepVerifier.create(useCase.start(command(CHALLENGE_ID.value())))
-        .assertNext(
-            result ->
-                assertThat(result.status())
-                    .isEqualTo(StartRegistrationResultStatus.COMPLETED_REPLAY))
-        .verifyComplete();
-
-    assertThat(captchaPort.loadCalls).isZero();
-  }
-
-  @Test
-  void idempotencyKeyReuseDoesNotConsumeCaptcha() {
-    policyPort.policy = policy(true);
-    captchaPort.challenge = captcha(CaptchaStatus.VERIFIED, NOW.plusSeconds(300));
-    idempotency.outcome = RegistrationIdempotencyStartOutcome.KEY_REUSED_WITH_DIFFERENT_REQUEST;
-
-    StepVerifier.create(useCase.start(command(CHALLENGE_ID.value())))
-        .assertNext(
-            result ->
-                assertThat(result.errors())
-                    .singleElement()
-                    .satisfies(
-                        error ->
-                            assertThat(error.errorKey())
-                                .isEqualTo(SharedWorkflowErrorKey.IDEMPOTENCY_KEY_REUSED)))
-        .verifyComplete();
-
-    assertThat(captchaPort.loadCalls).isZero();
   }
 
   @Test
@@ -322,7 +241,7 @@ class StartRegistrationCaptchaGateTest {
             "corr",
             Duration.ofMinutes(5));
 
-    StepVerifier.create(useCase.start(invalid))
+    StepVerifier.create(useCase.execute(invalid))
         .assertNext(
             result ->
                 assertThat(result.status())
@@ -333,48 +252,11 @@ class StartRegistrationCaptchaGateTest {
     assertThat(lookup.called).isFalse();
   }
 
-  @Test
-  void captchaGateFailureMarksIdempotencyAccordingToStrategy() {
-    policyPort.policy = policy(true);
-    captchaPort.challenge = captcha(CaptchaStatus.CREATED, NOW.plusSeconds(300));
-
-    StepVerifier.create(useCase.start(command(CHALLENGE_ID.value())))
-        .assertNext(
-            result ->
-                assertThat(result.status())
-                    .isEqualTo(StartRegistrationResultStatus.VALIDATION_FAILED))
-        .verifyComplete();
-
-    assertThat(idempotency.failed).isTrue();
-    assertThat(idempotency.failedReason)
-        .isEqualTo(RegistrationErrorKey.REGISTRATION_CAPTCHA_INVALID.value());
-  }
-
-  @Test
-  void requestHashIncludesCaptchaChallengeIdWhenPresent() {
-    policyPort.policy = policy(false);
-
-    StepVerifier.create(useCase.start(command("  " + CHALLENGE_ID.value() + "  ")))
-        .assertNext(
-            result -> assertThat(result.status()).isEqualTo(StartRegistrationResultStatus.STARTED))
-        .verifyComplete();
-
-    assertThat(hashGenerator.action).isEqualTo(RegistrationIdempotencyAction.REGISTRATION_START);
-    assertThat(hashGenerator.parts)
-        .containsExactly(
-            "GPFS",
-            "1234567890",
-            "31/01/1980",
-            "email",
-            "member@example.com",
-            CHALLENGE_ID.value());
-  }
-
   private void assertCaptchaFailure(CaptchaStatus status, Instant expiresAt, Object expectedKey) {
     policyPort.policy = policy(true);
     captchaPort.challenge = captcha(status, expiresAt);
 
-    StepVerifier.create(useCase.start(command(CHALLENGE_ID.value())))
+    StepVerifier.create(useCase.execute(command(CHALLENGE_ID.value())))
         .assertNext(
             result ->
                 assertThat(result.errors())
@@ -387,7 +269,6 @@ class StartRegistrationCaptchaGateTest {
         .verifyComplete();
 
     assertNoDownstreamSideEffects();
-    assertThat(idempotency.failed).isTrue();
   }
 
   private void assertNoDownstreamSideEffects() {
@@ -437,19 +318,6 @@ class StartRegistrationCaptchaGateTest {
         status == CaptchaStatus.CONSUMED ? NOW.minusSeconds(2) : null,
         status == CaptchaStatus.REFRESHED ? NOW.minusSeconds(2) : null,
         status == CaptchaStatus.LOCKED ? NOW.minusSeconds(2) : null);
-  }
-
-  private static final class RecordingHashGenerator implements RegistrationRequestHashGenerator {
-    private RegistrationIdempotencyAction action;
-    private List<String> parts = List.of();
-
-    @Override
-    public RegistrationRequestHash hash(
-        RegistrationIdempotencyAction action, List<String> normalizedParts) {
-      this.action = action;
-      this.parts = List.copyOf(normalizedParts);
-      return new RegistrationRequestHash(HASH);
-    }
   }
 
   private static final class FakeAuthWorkflowPolicyPort implements AuthWorkflowPolicyPort {
@@ -538,136 +406,6 @@ class StartRegistrationCaptchaGateTest {
       callOrder.clear();
       challenge = null;
       loadCalls = 0;
-    }
-  }
-
-  private static final class NoOpAuthFlowSessionPort implements AuthFlowSessionPort {
-    @Override
-    public Mono<AuthFlowSession> create(AuthFlowSessionCreateCommand command) {
-      return Mono.empty();
-    }
-
-    @Override
-    public Mono<Optional<AuthFlowSession>> load(AuthFlowSessionId authFlowSessionId) {
-      return Mono.just(Optional.empty());
-    }
-
-    @Override
-    public Mono<AuthFlowSession> update(AuthFlowSession session) {
-      return Mono.empty();
-    }
-
-    @Override
-    public Mono<AuthFlowSession> touch(AuthFlowSessionId authFlowSessionId, Instant now) {
-      return Mono.empty();
-    }
-
-    @Override
-    public Mono<AuthFlowSession> complete(AuthFlowSessionId authFlowSessionId, Instant now) {
-      return Mono.empty();
-    }
-
-    @Override
-    public Mono<AuthFlowSession> cancel(AuthFlowSessionId authFlowSessionId, Instant now) {
-      return Mono.empty();
-    }
-
-    @Override
-    public Mono<Void> delete(AuthFlowSessionId authFlowSessionId) {
-      return Mono.empty();
-    }
-  }
-
-  private static final class NoOpOtpChallengeStatePort implements OtpChallengeStatePort {
-    @Override
-    public Mono<Void> save(OtpChallenge challenge) {
-      return Mono.empty();
-    }
-
-    @Override
-    public Mono<Optional<OtpChallenge>> findById(String otpChallengeId) {
-      return Mono.just(Optional.empty());
-    }
-
-    @Override
-    public Mono<Void> update(OtpChallenge challenge) {
-      return Mono.empty();
-    }
-
-    @Override
-    public Mono<Void> delete(String otpChallengeId) {
-      return Mono.empty();
-    }
-  }
-
-  private static final class FakeIdempotencyPort implements RegistrationIdempotencyPort {
-    private RegistrationIdempotencyStartOutcome outcome =
-        RegistrationIdempotencyStartOutcome.STARTED;
-    private RegistrationIdempotencyRecord record = processingRecord();
-    private boolean failed;
-    private String failedReason;
-
-    @Override
-    public Mono<RegistrationIdempotencyStartResult> startProcessing(
-        RegistrationIdempotencyStartCommand command) {
-      return Mono.just(new RegistrationIdempotencyStartResult(outcome, record));
-    }
-
-    @Override
-    public Mono<RegistrationIdempotencyRecord> markCompleted(
-        RegistrationIdempotencyCompleteCommand command) {
-      return Mono.just(completedRecord());
-    }
-
-    @Override
-    public Mono<RegistrationIdempotencyRecord> markFailed(
-        RegistrationIdempotencyFailCommand command) {
-      failed = true;
-      failedReason = command.reasonCode();
-      return Mono.just(processingRecord());
-    }
-
-    @Override
-    public Mono<Optional<RegistrationIdempotencyRecord>> load(
-        RegistrationIdempotencyAction action, RegistrationIdempotencyKey key) {
-      return Mono.just(Optional.empty());
-    }
-
-    @Override
-    public Mono<Void> delete(RegistrationIdempotencyAction action, RegistrationIdempotencyKey key) {
-      return Mono.empty();
-    }
-
-    private static RegistrationIdempotencyRecord processingRecord() {
-      return new RegistrationIdempotencyRecord(
-          RegistrationIdempotencyAction.REGISTRATION_START,
-          new RegistrationIdempotencyKey("idem_abc123"),
-          new RegistrationRequestHash(HASH),
-          RegistrationIdempotencyStatus.PROCESSING,
-          null,
-          NOW,
-          NOW,
-          NOW.plusSeconds(300));
-    }
-
-    private RegistrationIdempotencyRecord completedRecord() {
-      return new RegistrationIdempotencyRecord(
-          RegistrationIdempotencyAction.REGISTRATION_START,
-          new RegistrationIdempotencyKey("idem_abc123"),
-          new RegistrationRequestHash(HASH),
-          RegistrationIdempotencyStatus.COMPLETED,
-          new RegistrationIdempotencyResponseSnapshot(
-              "200", "{\"nextStep\":\"VERIFY_OTP\"}", Map.of()),
-          NOW,
-          NOW,
-          NOW.plusSeconds(300));
-    }
-
-    private void reset() {
-      outcome = RegistrationIdempotencyStartOutcome.STARTED;
-      record = processingRecord();
-      failed = false;
-      failedReason = null;
     }
   }
 

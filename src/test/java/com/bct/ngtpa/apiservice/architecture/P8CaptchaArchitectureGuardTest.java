@@ -58,7 +58,7 @@ class P8CaptchaArchitectureGuardTest {
     String source =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/StartRegistrationService.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/idempotency/RegistrationStartProtectedOperation.java"));
     String config =
         Files.readString(
             Path.of(
@@ -83,7 +83,7 @@ class P8CaptchaArchitectureGuardTest {
     String start =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/StartRegistrationService.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/idempotency/RegistrationStartProtectedOperation.java"));
 
     assertThat(gate + start)
         .doesNotContain("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")

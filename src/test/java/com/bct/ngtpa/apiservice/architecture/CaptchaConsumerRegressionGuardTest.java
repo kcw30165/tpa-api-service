@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 class CaptchaConsumerRegressionGuardTest {
   private static final Path REGISTRATION =
       Path.of(
-          "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/StartRegistrationService.java");
+          "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/idempotency/RegistrationStartProtectedOperation.java");
   private static final Path USERNAME_RECOVERY =
       Path.of(
           "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/usernamerecovery/StartUsernameRecoveryService.java");
@@ -23,9 +23,7 @@ class CaptchaConsumerRegressionGuardTest {
     String source = Files.readString(REGISTRATION);
     assertThat(source)
         .containsIgnoringWhitespaces(
-            "RegistrationCaptchaGateService",
-            "registrationCaptchaGateService.consume",
-            "lookupPort.searchMember");
+            "RegistrationCaptchaGateService", "captcha.consume", "lookup.searchMember");
     assertThat(source).doesNotContain("markConsumed(", "applyConsumptionAttempt(");
   }
 

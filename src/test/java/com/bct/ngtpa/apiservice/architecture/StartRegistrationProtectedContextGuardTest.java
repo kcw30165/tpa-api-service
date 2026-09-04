@@ -12,7 +12,7 @@ class StartRegistrationProtectedContextGuardTest {
   void startRegistrationPassesRegistrationContextToSessionGateway() throws Exception {
     Path sourcePath =
         Path.of(
-            "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/StartRegistrationService.java");
+            "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/idempotency/RegistrationStartProtectedOperation.java");
     assertThat(Files.exists(sourcePath)).isTrue();
     String source = Files.readString(sourcePath);
     assertThat(source)
@@ -23,9 +23,9 @@ class StartRegistrationProtectedContextGuardTest {
             "validated.dateOfBirth()",
             "validated.contactType()",
             "validated.contactValue()",
-            "createRegistrationSession(validated.maskedDestination(), validated.contactType(), registrationContext)");
+            "createRegistrationSession(validated.maskedDestination(), validated.contactType(), context)");
     assertThat(source)
         .doesNotContain(
-            "return sessionGateway.createRegistrationSession(validated.maskedDestination(), validated.contactType())");
+            "return sessions.createRegistrationSession(validated.maskedDestination(), validated.contactType())");
   }
 }

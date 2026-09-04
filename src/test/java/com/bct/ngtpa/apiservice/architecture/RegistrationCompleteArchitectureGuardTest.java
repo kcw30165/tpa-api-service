@@ -15,7 +15,7 @@ class RegistrationCompleteArchitectureGuardTest {
   private static final Path APPLICATION_SERVICE =
       Path.of(
           "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/complete/"
-              + "CompleteRegistrationService.java");
+              + "idempotency/SharedCompleteRegistrationService.java");
   private static final Path REGISTRATION_CONTROLLER =
       Path.of(
           "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/"
@@ -72,7 +72,7 @@ class RegistrationCompleteArchitectureGuardTest {
         .containsIgnoringWhitespaces("AuthFlowSessionCompletionLockPort")
         .containsIgnoringWhitespaces("AuthFlowSessionExpiryRefreshPort")
         .containsIgnoringWhitespaces("AuthFlowSessionCancellationPort")
-        .containsIgnoringWhitespaces("RegistrationIdempotencyUnknownOutcomeCommand")
+        .containsIgnoringWhitespaces("case UNKNOWN_OUTCOME_EXISTING")
         .containsIgnoringWhitespaces("AuthFlowStatus.COMPLETING")
         .doesNotContain("AuthFlowSessionProperties")
         .doesNotContain("adapter.in.web")
