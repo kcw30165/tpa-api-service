@@ -1,29 +1,16 @@
 package com.bct.ngtpa.apiservice.application.service.accountbalance;
 
 import com.bct.ngtpa.apiservice.application.exception.AccountBalanceRetrievalException;
-import java.math.*;
+import com.bct.ngtpa.apiservice.application.service.presentation.ExactPrecisionRenderer;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 
 public final class AccountBalancePrecisionRenderer {
+  private final ExactPrecisionRenderer delegate = new ExactPrecisionRenderer();
+
   public String render(BigDecimal amount, BigInteger precision) {
     try {
-      if (amount == null
-          || precision == null
-          || precision.signum() < 0
-          || precision.bitLength() > 31) throw new ArithmeticException();
-      int scale = precision.intValueExact();
-      BigDecimal exact = amount.setScale(scale, RoundingMode.UNNECESSARY);
-      String plain = exact.toPlainString();
-      int dot = plain.indexOf('.');
-      String integer = dot < 0 ? plain : plain.substring(0, dot),
-          fraction = dot < 0 ? "" : plain.substring(dot);
-      boolean negative = integer.startsWith("-");
-      String digits = negative ? integer.substring(1) : integer;
-      StringBuilder grouped = new StringBuilder();
-      for (int i = 0; i < digits.length(); i++) {
-        if (i > 0 && (digits.length() - i) % 3 == 0) grouped.append(',');
-        grouped.append(digits.charAt(i));
-      }
-      return (negative ? "-" : "") + grouped + fraction;
+      return delegate.render(amount, precision);
     } catch (RuntimeException ex) {
       throw AccountBalanceRetrievalException.systemFailure();
     }
