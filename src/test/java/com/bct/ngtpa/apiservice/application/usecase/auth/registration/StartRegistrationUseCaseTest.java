@@ -228,7 +228,7 @@ class StartRegistrationUseCaseTest {
                         .map(
                             captured -> {
                               protectedReplay.snapshot = captured.snapshot();
-                              return new IdempotentExecutionResult(outcome, captured.response());
+                              return new IdempotentExecutionResult(outcome, response);
                             }));
       }
       if (outcome == IdempotencyReservationOutcome.COMPLETED_REPLAY) {

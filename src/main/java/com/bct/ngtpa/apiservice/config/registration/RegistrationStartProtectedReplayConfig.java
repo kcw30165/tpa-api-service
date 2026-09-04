@@ -11,13 +11,11 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotenc
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.SecureRegistrationStartProtectedReplayReferenceGenerator;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "shared-idempotency", name = "enabled", havingValue = "true")
 public class RegistrationStartProtectedReplayConfig {
   @Bean
   @ConditionalOnMissingBean

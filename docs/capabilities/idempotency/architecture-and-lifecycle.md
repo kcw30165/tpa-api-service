@@ -619,3 +619,6 @@ A single override-safe application UTC `Clock` bean now supplies production time
 ## P4-H7B mandatory shared runtime composition
 
 The production Login Start route unconditionally depends on the shared `IdempotencyExecutor`; therefore `SharedIdempotencyRuntimeConfig` is now an unconditional outer-layer composition. It creates one shared `DefaultIdempotencyExecutor` for Login, Registration, and future capabilities. Runtime startup remains fail-closed unless `shared-idempotency.persistence-hmac-secret` contains a valid externally supplied Base64 secret. Secret values must never be committed, logged, or included in evidence. Redis Sentinel, mTLS, shared key namespaces, and the retained Login rollback implementation remain unchanged.
+## P4-H11 mandatory Registration Start composition
+
+Registration Start composition is mandatory now that the shared idempotency runtime and shared Registration route are production requirements. The obsolete `shared-idempotency.enabled` condition was removed from both Registration Start use-case and protected-replay configuration. Runtime secrets remain external and fail closed.
