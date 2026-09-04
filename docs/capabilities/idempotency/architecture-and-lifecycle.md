@@ -611,3 +611,7 @@ This evidence validates deterministic key derivation only. Live Redis writes, Se
 ## P4-B2D1L production-composed Login controller boundary validation
 
 A focused deterministic controller-boundary test now obtains the production `StartLoginUseCase` from `LoginApplicationConfig`, exercises successful shared `STARTED` reconstruction and missing-key short-circuiting, and verifies the 300-second TTL, request ID, client key, auth-flow cookie, and public-response redaction. The test uses local collaborators only. Deployed HTTP, live Redis, rollback rehearsal, legacy TTL drainage, and legacy deletion remain deferred.
+
+## P4-H4 application Clock composition repair
+
+A single override-safe application UTC `Clock` bean now supplies production time to Captcha, Login, session, idempotency, registration, and other runtime compositions. Test contexts may continue to supply deterministic `Clock.fixed(...)` beans. This closes the missing-Clock startup blocker, subject to focused composition validation and a subsequent deployed startup retry. It does not authorize legacy Login idempotency removal, Redis cleanup, or rollback execution.
