@@ -618,25 +618,10 @@ This evidence validates deterministic key derivation only. Live Redis writes, Se
 
 A focused deterministic controller-boundary test now obtains the production `StartLoginUseCase` from `LoginApplicationConfig`, exercises successful shared `STARTED` reconstruction and missing-key short-circuiting, and verifies the 300-second TTL, request ID, client key, auth-flow cookie, and public-response redaction. The test uses local collaborators only. Deployed HTTP, live Redis, rollback rehearsal, legacy TTL drainage, and legacy deletion remain deferred.
 
-## P4-H4 application Clock composition repair
+## Shared Login and Registration runtime composition: authoritative state
 
-A single override-safe application UTC `Clock` bean now supplies production time to Captcha, Login, session, idempotency, registration, and other runtime compositions. Test contexts may continue to supply deterministic `Clock.fixed(...)` beans. This closes the missing-Clock startup blocker, subject to focused composition validation and a subsequent deployed startup retry. It does not authorize legacy Login idempotency removal, Redis cleanup, or rollback execution.
+The shared idempotency runtime is active for the migrated Login Start and Registration workflows. Production composition provides one UTC application `Clock`, one shared `IdempotencyExecutor`, mandatory Registration Start composition, shared Registration identity and fingerprint factories, and externalized Registration Start replay key-version and secret placeholders. The active Login Start route remains `SharedStartLoginService`, while retained legacy Login components remain available only for controlled rollback until a separately approved removal stage.
 
-## P4-H7B mandatory shared runtime composition
+The full-context startup defect was caused by the automatic execution-logging pointcut matching a private `execute(...)` orchestration helper on final `SharedCompleteRegistrationService`. With class-based Spring AOP proxies enabled, the broad match made the final class proxy-eligible and caused CGLIB startup failure. The root correction restricts convention-based logging to public `*Service.execute(..)` entry points. The ineffective Complete Registration scoped-proxy workaround and its synthetic test are removed. Registration Start replay configuration remains externalized through `SHARED_IDEMPOTENCY_REGISTRATION_START_REPLAY_KEY_VERSION` and `SHARED_IDEMPOTENCY_REGISTRATION_START_REPLAY_SECRET`; secret values are never committed or included in evidence.
 
-The production Login Start route unconditionally depends on the shared `IdempotencyExecutor`; therefore `SharedIdempotencyRuntimeConfig` is now an unconditional outer-layer composition. It creates one shared `DefaultIdempotencyExecutor` for Login, Registration, and future capabilities. Runtime startup remains fail-closed unless `shared-idempotency.persistence-hmac-secret` contains a valid externally supplied Base64 secret. Secret values must never be committed, logged, or included in evidence. Redis Sentinel, mTLS, shared key namespaces, and the retained Login rollback implementation remain unchanged.
-## P4-H11 mandatory Registration Start composition
-
-Registration Start composition is mandatory now that the shared idempotency runtime and shared Registration route are production requirements. The obsolete `shared-idempotency.enabled` condition was removed from both Registration Start use-case and protected-replay configuration. Runtime secrets remain external and fail closed.
-
-## P4-H13 Registration shared identity composition repair
-
-The outer Registration configuration now provides one override-safe `RegistrationSharedIdempotencyIdentityFactory` bean and one override-safe `RegistrationSharedFingerprintFactory` bean. Application-layer factories remain framework-neutral. Registration Complete can inject the shared factories, while Start and OTP composition remain compatible. This closes the local startup blocker without changing shared identity, fingerprint, Redis, secret, or public API contracts.
-
-## P4-H15 Complete Registration interface proxy boundary
-
-`SharedCompleteRegistrationService` remains a final, framework-neutral application service implementing `CompleteRegistrationUseCase`. The outer `RegistrationCompleteUseCaseConfig` now forces interface-based proxy exposure for the Complete use-case bean, preventing Spring AOP from attempting to subclass the final implementation. No transaction, retry, validation, security, logging, idempotency, or global proxy-mode behavior is removed. A production-shaped composition test enables class-proxy-preferring AOP infrastructure and proves that the exposed bean remains a JDK interface proxy assignable to `CompleteRegistrationUseCase`. Local runtime startup must be retried only after this repair is committed.
-
-## P4-H15 Complete Registration proxy and replay configuration boundary
-
-`SharedCompleteRegistrationService` remains a final, framework-neutral implementation of `CompleteRegistrationUseCase`. The outer Complete Registration bean uses an interface scoped proxy so Spring AOP does not subclass the final service. The base application configuration also declares `shared-idempotency.registration-start-replay.key-version` and `shared-idempotency.registration-start-replay.secret`, sourced from `SHARED_IDEMPOTENCY_REGISTRATION_START_REPLAY_KEY_VERSION` and `SHARED_IDEMPOTENCY_REGISTRATION_START_REPLAY_SECRET`. These runtime values remain external, are never committed, and fail closed when missing or invalid.
+Validation requires compile, test-compile, the focused pointcut contract, shared Login and Registration composition regressions, and production-shaped local Spring startup with the `local` profile, LF-normalized ignored `.env`, and Redis Sentinel mTLS inputs. Deployed HTTP validation, rollback rehearsal, legacy TTL drainage, and legacy component deletion remain separate approval gates.

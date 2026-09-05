@@ -25,8 +25,6 @@ import java.time.Duration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Scope;
-import org.springframework.context.annotation.ScopedProxyMode;
 
 @Configuration
 public class RegistrationCompleteUseCaseConfig {
@@ -44,7 +42,6 @@ public class RegistrationCompleteUseCaseConfig {
   }
 
   @Bean
-  @Scope(proxyMode = ScopedProxyMode.INTERFACES)
   @ConditionalOnMissingBean(CompleteRegistrationUseCase.class)
   CompleteRegistrationUseCase completeRegistrationUseCase(
       RegistrationProtectedAuthFlowContextLoader contextLoader,
