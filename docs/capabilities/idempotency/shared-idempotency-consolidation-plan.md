@@ -602,3 +602,7 @@ The production Login Start route unconditionally depends on the shared `Idempote
 ## P4-H11 mandatory Registration Start composition
 
 Registration Start composition is mandatory now that the shared idempotency runtime and shared Registration route are production requirements. The obsolete `shared-idempotency.enabled` condition was removed from both Registration Start use-case and protected-replay configuration. Runtime secrets remain external and fail closed.
+
+## P4-H13 Registration shared identity composition repair
+
+The outer Registration configuration now provides one override-safe `RegistrationSharedIdempotencyIdentityFactory` bean and one override-safe `RegistrationSharedFingerprintFactory` bean. Application-layer factories remain framework-neutral. Registration Complete can inject the shared factories, while Start and OTP composition remain compatible. This closes the local startup blocker without changing shared identity, fingerprint, Redis, secret, or public API contracts.
