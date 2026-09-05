@@ -589,3 +589,11 @@ Registration Start composition is mandatory now that the shared idempotency runt
 ## P4-H13 Registration shared identity composition repair
 
 The outer Registration configuration now provides one override-safe `RegistrationSharedIdempotencyIdentityFactory` bean and one override-safe `RegistrationSharedFingerprintFactory` bean. Application-layer factories remain framework-neutral. Registration Complete can inject the shared factories, while Start and OTP composition remain compatible. This closes the local startup blocker without changing shared identity, fingerprint, Redis, secret, or public API contracts.
+
+## P4-H15 Complete Registration interface proxy boundary
+
+`SharedCompleteRegistrationService` remains a final, framework-neutral application service implementing `CompleteRegistrationUseCase`. The outer `RegistrationCompleteUseCaseConfig` now forces interface-based proxy exposure for the Complete use-case bean, preventing Spring AOP from attempting to subclass the final implementation. No transaction, retry, validation, security, logging, idempotency, or global proxy-mode behavior is removed. A production-shaped composition test enables class-proxy-preferring AOP infrastructure and proves that the exposed bean remains a JDK interface proxy assignable to `CompleteRegistrationUseCase`. Local runtime startup must be retried only after this repair is committed.
+
+## P4-H15 Complete Registration proxy and replay configuration boundary
+
+`SharedCompleteRegistrationService` remains a final, framework-neutral implementation of `CompleteRegistrationUseCase`. The outer Complete Registration bean uses an interface scoped proxy so Spring AOP does not subclass the final service. The base application configuration also declares `shared-idempotency.registration-start-replay.key-version` and `shared-idempotency.registration-start-replay.secret`, sourced from `SHARED_IDEMPOTENCY_REGISTRATION_START_REPLAY_KEY_VERSION` and `SHARED_IDEMPOTENCY_REGISTRATION_START_REPLAY_SECRET`. These runtime values remain external, are never committed, and fail closed when missing or invalid.
