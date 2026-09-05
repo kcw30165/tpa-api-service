@@ -56,32 +56,6 @@ class ProductionComposedLoginControllerBoundaryTest {
   }
 
   @Test
-  void legacyRollbackBeansRemainAvailableWithoutSecondUseCase() {
-    runner()
-        .run(
-            context -> {
-              assertThat(context).hasSingleBean(StartLoginUseCase.class);
-              assertThat(context)
-                  .hasSingleBean(
-                      com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency
-                          .LoginCredentialRequestHasher.class);
-              assertThat(context)
-                  .hasSingleBean(
-                      com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency
-                          .LoginCredentialIdempotencyCoordinator.class);
-              assertThat(context)
-                  .hasSingleBean(
-                      com.bct.ngtpa.apiservice.application.usecase.auth.login.replay
-                          .LoginStartReplayCoordinator.class);
-              assertThat(
-                      java.nio.file.Files.exists(
-                          java.nio.file.Path.of(
-                              "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/start/StartLoginService.java")))
-                  .isTrue();
-            });
-  }
-
-  @Test
   void productionComposedControllerReturnsStartedCookieHeadersAndRedactedBody() {
     runner()
         .run(
@@ -212,8 +186,6 @@ class ProductionComposedLoginControllerBoundaryTest {
         .withBean(AuthFlowSessionProperties.class, AuthFlowSessionProperties::new)
         .withBean(LoginCredentialPolicyService.class, () -> policy())
         .withBean(LoginPreAuthContextFactory.class, () -> mock(LoginPreAuthContextFactory.class))
-        .withBean(
-            LoginCredentialIdempotencyPort.class, () -> mock(LoginCredentialIdempotencyPort.class))
         .withBean(
             CredentialAuthenticationPort.class, () -> mock(CredentialAuthenticationPort.class))
         .withBean(

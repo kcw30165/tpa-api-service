@@ -35,7 +35,7 @@ class Task0043LoginCleanArchitectureCorrectionTest {
     assertThat(source)
         .contains(
             "@Configuration",
-            "LoginCredentialIdempotencyCoordinator",
+            "SharedStartLoginService",
             "StartLoginUseCase",
             "AuthWorkflowProperties",
             "AuthFlowSessionProperties");
@@ -54,10 +54,6 @@ class Task0043LoginCleanArchitectureCorrectionTest {
   @Test
   void loginStartKeepsProtectedWorkInTheExtractedOperationAndSelectsSharedProductionRoute()
       throws Exception {
-    String legacy =
-        Files.readString(
-            Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/start/StartLoginService.java"));
     String operation =
         Files.readString(
             Path.of(
@@ -71,9 +67,6 @@ class Task0043LoginCleanArchitectureCorrectionTest {
             Path.of(
                 "src/main/java/com/bct/ngtpa/apiservice/config/auth/login/LoginApplicationConfig.java"));
 
-    assertThat(legacy)
-        .containsIgnoringWhitespaces("protectedOperation.execute(normalized)")
-        .doesNotContain("private Mono<StartLoginResult> execute(");
     assertThat(operation)
         .contains(
             "CredentialAuthenticationPort",

@@ -11,7 +11,7 @@ class Task0043LoginStartOrchestrationArchitectureTest {
     String service =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/start/StartLoginService.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/start/SharedStartLoginService.java"));
     String operation =
         Files.readString(
             Path.of(
@@ -19,10 +19,10 @@ class Task0043LoginStartOrchestrationArchitectureTest {
     assertThat(service)
         .containsIgnoringWhitespaces(
             "LoginCredentialPolicyService",
-            "LoginCredentialIdempotencyCoordinator",
+            "IdempotencyExecutor",
             "LoginStartProtectedOperation",
-            "LoginStartReplayCoordinator",
-            "protectedOperation.execute(normalized)");
+            "LoginStartProtectedReplayCommitter",
+            "operation.execute(command)");
     assertThat(operation)
         .contains(
             "CredentialAuthenticationPort",

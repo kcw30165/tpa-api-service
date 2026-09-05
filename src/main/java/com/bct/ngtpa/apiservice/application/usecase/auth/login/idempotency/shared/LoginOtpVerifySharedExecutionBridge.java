@@ -57,9 +57,14 @@ public final class LoginOtpVerifySharedExecutionBridge {
     }
   }
 
+  public Mono<IdempotentCapturedResponse> capture(HydratedIdempotentResponse response) {
+    return replayCodec.capture(
+        fromTransientResponse(response), response, response.protectedReplayReference());
+  }
+
   public Mono<IdempotentCapturedResponse> capture(
       HydratedIdempotentResponse response, ProtectedReplayReference protectedReplayReference) {
-    return replayCodec.capture(fromTransientResponse(response), response, protectedReplayReference);
+    return capture(response.withProtectedReplayReference(protectedReplayReference));
   }
 
   public Mono<HydratedIdempotentResponse> hydrate(

@@ -13,7 +13,9 @@ public record IdempotentCapturedResponse(
     Objects.requireNonNull(snapshot, "terminal snapshot must not be null");
     if (response.httpStatus() != snapshot.httpStatus()
         || !response.mediaType().equalsIgnoreCase(snapshot.mediaType())
-        || !response.safeHeaders().equals(snapshot.safeHeaders())) {
+        || !response.safeHeaders().equals(snapshot.safeHeaders())
+        || !Objects.equals(
+            response.protectedReplayReference(), snapshot.protectedReplayReference())) {
       throw new IllegalArgumentException("hydrated response and terminal snapshot do not match");
     }
   }

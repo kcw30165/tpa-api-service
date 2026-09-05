@@ -69,12 +69,23 @@ class LoginOtpResendReplayCodecTest {
                     result(ResendLoginOtpStatus.COOLDOWN_ACTIVE, "****4567", null, 60, 25)))
             .block()
             .snapshot();
-    reject(
-        new IdempotentTerminalResponseSnapshot(
-            2, 429, valid.mediaType(), valid.serializedSafeBody(), valid.safeHeaders(), null));
-    reject(
-        new IdempotentTerminalResponseSnapshot(
-            1, 429, "text/plain", valid.serializedSafeBody(), valid.safeHeaders(), null));
+    assertThatThrownBy(
+            () ->
+                new IdempotentTerminalResponseSnapshot(
+                    2,
+                    429,
+                    valid.mediaType(),
+                    valid.serializedSafeBody(),
+                    valid.safeHeaders(),
+                    null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("unsupported idempotent response snapshot schema");
+    assertThatThrownBy(
+            () ->
+                new IdempotentTerminalResponseSnapshot(
+                    1, 429, "text/plain", valid.serializedSafeBody(), valid.safeHeaders(), null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("idempotent response media type is unsupported");
     reject(
         new IdempotentTerminalResponseSnapshot(
             1, 200, valid.mediaType(), valid.serializedSafeBody(), valid.safeHeaders(), null));
@@ -111,9 +122,13 @@ class LoginOtpResendReplayCodecTest {
                 LoginSharedIdempotencyAction.OTP_SEND,
                 new LoginOtpResendReplayCodec.SafePayload(
                     "COOLDOWN_ACTIVE", "****4567", null, 60, 25));
-    reject(
-        new IdempotentTerminalResponseSnapshot(
-            1, 429, valid.mediaType(), wrong, valid.safeHeaders(), null));
+    assertThatThrownBy(
+            () ->
+                codec.hydrate(
+                    new IdempotentTerminalResponseSnapshot(
+                        1, 429, valid.mediaType(), wrong, valid.safeHeaders(), null)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Login replay action mismatch");
   }
 
   @Test

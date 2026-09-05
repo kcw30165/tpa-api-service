@@ -28,6 +28,8 @@ class LoginStartReplayCodecTest {
             captured -> {
               assertThat(captured.snapshot().protectedReplayReference().value())
                   .isEqualTo("rpl_opaque_commit_reference");
+              assertThat(captured.response().protectedReplayReference())
+                  .isEqualTo(captured.snapshot().protectedReplayReference());
               assertThat(captured.snapshot().serializedSafeBody())
                   .contains("STARTED")
                   .doesNotContain("afs_secret", "csrf_secret", "dst_opaque", "m*****@example.com");

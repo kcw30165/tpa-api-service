@@ -2,6 +2,8 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shar
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.login.account.LoginAccountRef;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.account.LoginSessionAccount;
@@ -39,7 +41,8 @@ class LoginOtpVerifyReplayCodecTest {
     StepVerifier.create(codec.capture(original, transientResponse, HANDOFF))
         .assertNext(
             captured -> {
-              assertThat(captured.response()).isEqualTo(transientResponse);
+              assertThat(captured.response())
+                  .isEqualTo(transientResponse.withProtectedReplayReference(HANDOFF));
               assertThat(captured.snapshot().protectedReplayReference()).isEqualTo(HANDOFF);
               assertThat(captured.snapshot().safeHeaders()).isEmpty();
               assertThat(captured.snapshot().serializedSafeBody())
@@ -112,12 +115,18 @@ class LoginOtpVerifyReplayCodecTest {
             .capture(success("csrf"), transientResponse(success("csrf")), HANDOFF)
             .block()
             .snapshot();
-    reject(
-        new IdempotentTerminalResponseSnapshot(
-            2, 200, valid.mediaType(), valid.serializedSafeBody(), Map.of(), HANDOFF));
-    reject(
-        new IdempotentTerminalResponseSnapshot(
-            1, 200, "text/plain", valid.serializedSafeBody(), Map.of(), HANDOFF));
+    assertThatThrownBy(
+            () ->
+                new IdempotentTerminalResponseSnapshot(
+                    2, 200, valid.mediaType(), valid.serializedSafeBody(), Map.of(), HANDOFF))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("unsupported idempotent response snapshot schema");
+    assertThatThrownBy(
+            () ->
+                new IdempotentTerminalResponseSnapshot(
+                    1, 200, "text/plain", valid.serializedSafeBody(), Map.of(), HANDOFF))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("idempotent response media type is unsupported");
     reject(
         new IdempotentTerminalResponseSnapshot(
             1,
@@ -173,50 +182,63 @@ class LoginOtpVerifyReplayCodecTest {
   }
 
   @Test
-  void failsClosedForEmptyInvalidAndFailedProtectedRecoveryResults() {
-    var successSnapshot =
-        codec
-            .capture(success("csrf"), transientResponse(success("csrf")), HANDOFF)
-            .block()
-            .snapshot();
+  void failsClosedWhenRequiredProtectedRecoveryIsMissing() {
+    var successSnapshot = successSnapshot();
+
+    StepVerifier.create(
+            new LoginOtpVerifyReplayCodec((reference, correlationId) -> Mono.empty())
+                .hydrate(successSnapshot, "req-1"))
+        .expectErrorSatisfies(
+            error ->
+                assertThat(error)
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("Login OTP Verify protected replay recovery is unavailable"))
+        .verify();
+  }
+
+  @Test
+  void failsClosedForInvalidAndFailedProtectedRecoveryResults() {
+    var successSnapshot = successSnapshot();
+
     for (LoginOtpVerifyProtectedReplayResolver resolver :
         List.<LoginOtpVerifyProtectedReplayResolver>of(
-            (reference, correlationId) -> Mono.empty(),
             (reference, correlationId) ->
                 Mono.just(rejection(VerifyLoginOtpStatus.EXPIRED, null, false)),
             (reference, correlationId) ->
-                Mono.just(
-                    new VerifyLoginOtpResult(
-                        VerifyLoginOtpStatus.ACCOUNTS_READY,
-                        null,
-                        true,
-                        List.of(),
-                        new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx"),
-                        "csrf")),
+                Mono.just(invalidRecoveredSuccess(List.of(), authenticatedSessionId(), "csrf")),
+            (reference, correlationId) ->
+                Mono.just(invalidRecoveredSuccess(List.of(account()), null, "csrf")),
             (reference, correlationId) ->
                 Mono.just(
-                    new VerifyLoginOtpResult(
-                        VerifyLoginOtpStatus.ACCOUNTS_READY,
-                        null,
-                        true,
-                        List.of(account()),
-                        null,
-                        "csrf")),
-            (reference, correlationId) ->
-                Mono.just(
-                    new VerifyLoginOtpResult(
-                        VerifyLoginOtpStatus.ACCOUNTS_READY,
-                        null,
-                        true,
-                        List.of(account()),
-                        new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx"),
-                        " ")),
+                    invalidRecoveredSuccess(List.of(account()), authenticatedSessionId(), " ")),
             (reference, correlationId) ->
                 Mono.error(new IllegalStateException("protected detail must not escape")))) {
       StepVerifier.create(new LoginOtpVerifyReplayCodec(resolver).hydrate(successSnapshot, "req-1"))
-          .expectError(IllegalArgumentException.class)
-          .verify();
+          .verifyError();
     }
+  }
+
+  private IdempotentTerminalResponseSnapshot successSnapshot() {
+    return codec
+        .capture(success("csrf"), transientResponse(success("csrf")), HANDOFF)
+        .block()
+        .snapshot();
+  }
+
+  private static VerifyLoginOtpResult invalidRecoveredSuccess(
+      List<LoginSessionAccount> accounts,
+      AuthenticatedSessionId authenticatedSessionId,
+      String authenticatedCsrfToken) {
+    VerifyLoginOtpResult result = mock(VerifyLoginOtpResult.class);
+    when(result.status()).thenReturn(VerifyLoginOtpStatus.ACCOUNTS_READY);
+    when(result.accounts()).thenReturn(accounts);
+    when(result.authenticatedSessionId()).thenReturn(authenticatedSessionId);
+    when(result.authenticatedCsrfToken()).thenReturn(authenticatedCsrfToken);
+    return result;
+  }
+
+  private static AuthenticatedSessionId authenticatedSessionId() {
+    return new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx");
   }
 
   private void assertCaptureRejected(VerifyLoginOtpResult result) {
@@ -246,9 +268,8 @@ class LoginOtpVerifyReplayCodecTest {
   }
 
   private void reject(IdempotentTerminalResponseSnapshot snapshot) {
-    StepVerifier.create(codec.hydrate(snapshot, "req-1"))
-        .expectError(IllegalArgumentException.class)
-        .verify();
+    assertThatThrownBy(() -> codec.hydrate(snapshot, "req-1").block())
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   private HydratedIdempotentResponse transientResponse(VerifyLoginOtpResult result) {

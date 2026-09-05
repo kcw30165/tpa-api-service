@@ -44,7 +44,12 @@ class LoginStartSharedExecutionBridgeTest {
     StepVerifier.create(bridge.capture(transientResponse))
         .assertNext(
             captured -> {
-              assertThat(captured.response()).isEqualTo(transientResponse);
+              assertThat(captured.response())
+                  .isEqualTo(
+                      transientResponse.withProtectedReplayReference(
+                          captured.snapshot().protectedReplayReference()));
+              assertThat(captured.response().protectedReplayReference())
+                  .isEqualTo(captured.snapshot().protectedReplayReference());
               assertThat(captured.snapshot().serializedSafeBody())
                   .doesNotContain("afs_secret", "csrf_secret", "dst_opaque", "***1234");
 

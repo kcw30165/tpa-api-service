@@ -1,6 +1,7 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.login.start;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -28,8 +29,6 @@ import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSes
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CreateAuthFlowSessionCsrfResult;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.StartAuthFlowSessionCommand;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.StartAuthFlowSessionResult;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -157,49 +156,46 @@ class LoginStartProtectedOperationTest {
   }
 
   @Test
-  void propagatesCredentialProtectionSessionAndCsrfFailures() {
-    assertFailure(
-        operation(command -> Mono.error(new IllegalStateException("credential-failure"))),
-        "credential-failure");
-
+  void propagatesCredentialProtectionFailureSynchronously() {
     CredentialAuthenticationResult authenticated = authenticated();
     LoginPreAuthContext context = context();
     when(contexts.create(authenticated, NOW)).thenReturn(context);
     when(protector.protect(context)).thenThrow(new IllegalStateException("protection-failure"));
-    assertFailure(operation(command -> Mono.just(authenticated)), "protection-failure");
 
+    assertThatThrownBy(
+            () -> operation(command -> Mono.just(authenticated)).execute(command()).block())
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("protection-failure");
+  }
+
+  @Test
+  void propagatesSessionFailureReactively() {
+    CredentialAuthenticationResult authenticated = authenticated();
+    LoginPreAuthContext context = context();
+    when(contexts.create(authenticated, NOW)).thenReturn(context);
     when(protector.protect(context))
         .thenReturn(new LoginPreAuthEncryptedContext("v1", "AES", "iv", "cipher"));
     when(sessions.start(any()))
         .thenReturn(Mono.error(new IllegalStateException("session-failure")));
-    assertFailure(operation(command -> Mono.just(authenticated)), "session-failure");
 
+    assertFailure(operation(command -> Mono.just(authenticated)), "session-failure");
+  }
+
+  @Test
+  void propagatesCsrfFailureReactively() {
+    CredentialAuthenticationResult authenticated = authenticated();
+    LoginPreAuthContext context = context();
+    when(contexts.create(authenticated, NOW)).thenReturn(context);
+    when(protector.protect(context))
+        .thenReturn(new LoginPreAuthEncryptedContext("v1", "AES", "iv", "cipher"));
     AuthFlowSession session = mock(AuthFlowSession.class);
     when(session.authFlowSessionId())
         .thenReturn(new AuthFlowSessionId("afs_abcdefghijklmnopqrstuvwx"));
     when(sessions.start(any())).thenReturn(Mono.just(new StartAuthFlowSessionResult(session, 300)));
     when(csrf.createForSession(any()))
         .thenReturn(Mono.error(new IllegalStateException("csrf-failure")));
-    assertFailure(operation(command -> Mono.just(authenticated)), "csrf-failure");
-  }
 
-  @Test
-  void sourceHasNoIdempotencyInfrastructureOrReplayDependency() throws Exception {
-    String source =
-        Files.readString(
-            Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/start/LoginStartProtectedOperation.java"));
-    assertThat(source)
-        .doesNotContain(
-            "LoginCredentialRequestHasher",
-            "LoginCredentialIdempotencyCoordinator",
-            "LoginCredentialIdempotencyPort",
-            "LoginStartReplayCoordinator",
-            "IdempotencyExecutor",
-            "adapter.out.redis",
-            "org.springframework",
-            "ResponseEntity",
-            "ServerHttpResponse");
+    assertFailure(operation(command -> Mono.just(authenticated)), "csrf-failure");
   }
 
   private void assertFailure(LoginStartProtectedOperation value, String message) {

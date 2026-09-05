@@ -2,8 +2,10 @@ package com.bct.ngtpa.apiservice.config.auth.login;
 
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.mapper.LoginOtpResendWebMapper;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyExecutor;
 import com.bct.ngtpa.apiservice.application.port.in.ResendLoginOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.*;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.resend.*;
 import java.time.*;
@@ -22,7 +24,7 @@ public class LoginOtpResendApplicationConfig {
       OtpChallengePort otp,
       MessageDeliveryPort messages,
       LoginOtpSessionBindingPort binding,
-      LoginOtpSendIdempotencyPort idempotency,
+      IdempotencyExecutor idempotencyExecutor,
       Clock clock,
       AuthWorkflowProperties properties) {
     properties.validateLoginPolicy();
@@ -39,11 +41,12 @@ public class LoginOtpResendApplicationConfig {
             p.getSmsTemplate(),
             p.getEmailTemplate().getSubject());
     var core = new LoginOtpResendService(loader, otp, messages, binding, clock, policy);
-    return new IdempotentLoginOtpResendService(
+    return new SharedLoginOtpResendService(
+        idempotencyExecutor,
         core,
-        idempotency,
-        new LoginOtpResendRequestHashGenerator(),
-        clock,
+        new LoginOtpResendSharedExecutionBridge(new LoginOtpResendReplayCodec()),
+        new LoginSharedIdempotencyIdentityFactory(),
+        new LoginSharedFingerprintFactory(),
         Duration.ofSeconds(properties.getLogin().getIdempotency().getOtpResendTtlSeconds()));
   }
 }

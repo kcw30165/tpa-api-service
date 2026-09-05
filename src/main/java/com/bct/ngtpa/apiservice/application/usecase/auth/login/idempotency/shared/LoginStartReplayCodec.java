@@ -44,6 +44,7 @@ public final class LoginStartReplayCodec {
         envelope.encode(
             LoginSharedIdempotencyAction.CREDENTIALS,
             new SafePayload(result.status().name(), result.failCount()));
+    ProtectedReplayReference protectedReplayReference = referenceFor(result);
     var snapshot =
         new IdempotentTerminalResponseSnapshot(
             SCHEMA_VERSION,
@@ -51,8 +52,13 @@ public final class LoginStartReplayCodec {
             MEDIA_TYPE,
             safeBody,
             transientResponse.safeHeaders(),
-            referenceFor(result));
-    return Mono.just(new IdempotentCapturedResponse(transientResponse, snapshot));
+            protectedReplayReference);
+    return Mono.just(
+        new IdempotentCapturedResponse(
+            protectedReplayReference == null
+                ? transientResponse
+                : transientResponse.withProtectedReplayReference(protectedReplayReference),
+            snapshot));
   }
 
   public Mono<StartLoginResult> hydrate(IdempotentTerminalResponseSnapshot snapshot) {

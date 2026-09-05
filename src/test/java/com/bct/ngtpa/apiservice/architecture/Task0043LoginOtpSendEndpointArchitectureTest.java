@@ -33,7 +33,7 @@ class Task0043LoginOtpSendEndpointArchitectureTest {
                 "src/main/java/com/bct/ngtpa/apiservice/config/auth/login/LoginOtpSendApplicationConfig.java"));
     assertThat(s)
         .contains(
-            "new LoginOtpSendService", "new IdempotentLoginOtpSendService", "getOtpSendTtlSeconds");
+            "new LoginOtpSendService", "new SharedLoginOtpSendService", "getOtpSendTtlSeconds");
   }
 
   @Test

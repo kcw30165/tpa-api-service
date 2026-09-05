@@ -53,7 +53,12 @@ public final class LoginOtpVerifyReplayCodec {
             safeBody,
             Map.of(),
             protectedReplayReference);
-    return Mono.just(new IdempotentCapturedResponse(transientResponse, snapshot));
+    return Mono.just(
+        new IdempotentCapturedResponse(
+            protectedReplayReference == null
+                ? transientResponse
+                : transientResponse.withProtectedReplayReference(protectedReplayReference),
+            snapshot));
   }
 
   public Mono<VerifyLoginOtpResult> hydrate(
@@ -91,6 +96,10 @@ public final class LoginOtpVerifyReplayCodec {
       }
       return protectedReplayResolver
           .resolve(snapshot.protectedReplayReference(), correlationId)
+          .switchIfEmpty(
+              Mono.error(
+                  new IllegalArgumentException(
+                      "Login OTP Verify protected replay recovery is unavailable")))
           .flatMap(
               recovered -> {
                 try {

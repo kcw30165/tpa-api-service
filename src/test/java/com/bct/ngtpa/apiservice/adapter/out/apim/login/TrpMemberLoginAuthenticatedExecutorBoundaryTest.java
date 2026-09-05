@@ -18,7 +18,7 @@ class TrpMemberLoginAuthenticatedExecutorBoundaryTest {
             "src/main/java/com/bct/ngtpa/apiservice/application/dto/auth/login/CredentialAuthenticationCommand.java");
     String start =
         source(
-            "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/start/StartLoginService.java");
+            "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/start/SharedStartLoginService.java");
     assertThat(command).contains("ActorUserRole actorUserRole");
     assertThat(start).contains("ActorUserRole.ROLE_USER_MBR");
   }

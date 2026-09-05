@@ -72,12 +72,18 @@ class LoginOtpSendReplayCodecTest {
                     new SendLoginOtpResult(SendLoginOtpStatus.SENT, "****4567", 300, 60, null)))
             .block()
             .snapshot();
-    reject(
-        new IdempotentTerminalResponseSnapshot(
-            2, 200, valid.mediaType(), valid.serializedSafeBody(), Map.of(), null));
-    reject(
-        new IdempotentTerminalResponseSnapshot(
-            1, 200, "text/plain", valid.serializedSafeBody(), Map.of(), null));
+    assertThatThrownBy(
+            () ->
+                new IdempotentTerminalResponseSnapshot(
+                    2, 200, valid.mediaType(), valid.serializedSafeBody(), Map.of(), null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("unsupported idempotent response snapshot schema");
+    assertThatThrownBy(
+            () ->
+                new IdempotentTerminalResponseSnapshot(
+                    1, 200, "text/plain", valid.serializedSafeBody(), Map.of(), null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("idempotent response media type is unsupported");
     reject(
         new IdempotentTerminalResponseSnapshot(
             1,

@@ -33,7 +33,8 @@ class LoginOtpVerifySharedExecutionBridgeTest {
     StepVerifier.create(bridge.capture(transientResponse, HANDOFF))
         .assertNext(
             captured -> {
-              assertThat(captured.response()).isEqualTo(transientResponse);
+              assertThat(captured.response())
+                  .isEqualTo(transientResponse.withProtectedReplayReference(HANDOFF));
               StepVerifier.create(bridge.hydrate(captured.snapshot(), "req-1"))
                   .assertNext(
                       hydrated -> {

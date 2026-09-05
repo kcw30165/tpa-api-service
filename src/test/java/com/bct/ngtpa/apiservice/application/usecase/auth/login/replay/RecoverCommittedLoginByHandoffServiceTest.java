@@ -14,7 +14,9 @@ import com.bct.ngtpa.apiservice.application.dto.auth.login.handoff.Authenticated
 import com.bct.ngtpa.apiservice.application.dto.auth.login.otp.verify.AuthenticatedLoginHandoffReference;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.otp.verify.LoginOtpConsumptionProof;
 import com.bct.ngtpa.apiservice.application.dto.auth.login.otp.verify.LoginOtpVerificationOperationReference;
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedAccountRef;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSession;
+import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionAccount;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionCsrfRotationResult;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionCsrfRotationStatus;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
@@ -54,7 +56,7 @@ class RecoverCommittedLoginByHandoffServiceTest {
               assertThat(result.recovered()).isTrue();
               assertThat(result.authenticatedSessionId()).isEqualTo(SESSION_ID);
               assertThat(result.authenticatedCsrfToken()).isEqualTo("fresh-csrf");
-              assertThat(result.accounts()).isEmpty();
+              assertThat(result.accounts()).hasSize(1);
             })
         .verifyComplete();
 
@@ -74,9 +76,17 @@ class RecoverCommittedLoginByHandoffServiceTest {
 
   @Test
   void directHandoffRecoveryRejectsSessionIdentityMismatch() {
-    AuthenticatedSession mismatched = usableSession();
-    when(mismatched.authenticatedSessionId())
-        .thenReturn(new AuthenticatedSessionId("sid_differentabcdefghijklmnop"));
+    AuthenticatedSession mismatched =
+        new AuthenticatedSession(
+            new AuthenticatedSessionId("sid_differentabcdefghijklmnop"),
+            new ActorContext("member", ActorUserRole.ROLE_USER_MBR),
+            List.of(account()),
+            AuthenticatedSessionStatus.ACTIVE,
+            "old-csrf-hash",
+            NOW.minusSeconds(60),
+            NOW.minusSeconds(30),
+            NOW.plusSeconds(300),
+            NOW.plusSeconds(600));
 
     assertFailed(cleaned(NOW.plusSeconds(300)), mismatched);
   }
@@ -155,26 +165,42 @@ class RecoverCommittedLoginByHandoffServiceTest {
         expiresAt);
   }
 
+  private static AuthenticatedSessionAccount account() {
+    return new AuthenticatedSessionAccount(
+        new AuthenticatedAccountRef("acc_abcdefghijklmnopqrstuvwx"),
+        "DB",
+        "00000008802",
+        "0001",
+        "DBA",
+        "OE",
+        null,
+        null);
+  }
+
   private static AuthenticatedSession usableSession() {
-    AuthenticatedSession session = mock(AuthenticatedSession.class);
-    when(session.authenticatedSessionId()).thenReturn(SESSION_ID);
-    when(session.actorContext())
-        .thenReturn(new ActorContext("member", ActorUserRole.ROLE_USER_MBR));
-    when(session.accounts()).thenReturn(List.of());
-    when(session.status()).thenReturn(AuthenticatedSessionStatus.ACTIVE);
-    when(session.csrfTokenHash()).thenReturn("old-csrf-hash");
-    when(session.createdAt()).thenReturn(NOW.minusSeconds(60));
-    when(session.lastAccessedAt()).thenReturn(NOW.minusSeconds(30));
-    when(session.idleExpiresAt()).thenReturn(NOW.plusSeconds(300));
-    when(session.absoluteExpiresAt()).thenReturn(NOW.plusSeconds(600));
-    when(session.isUsable(NOW)).thenReturn(true);
-    return session;
+    return new AuthenticatedSession(
+        SESSION_ID,
+        new ActorContext("member", ActorUserRole.ROLE_USER_MBR),
+        List.of(account()),
+        AuthenticatedSessionStatus.ACTIVE,
+        "old-csrf-hash",
+        NOW.minusSeconds(60),
+        NOW.minusSeconds(30),
+        NOW.plusSeconds(300),
+        NOW.plusSeconds(600));
   }
 
   private static AuthenticatedSession unusableSession() {
-    AuthenticatedSession session = usableSession();
-    when(session.isUsable(NOW)).thenReturn(false);
-    return session;
+    return new AuthenticatedSession(
+        SESSION_ID,
+        new ActorContext("member", ActorUserRole.ROLE_USER_MBR),
+        List.of(account()),
+        AuthenticatedSessionStatus.ACTIVE,
+        "old-csrf-hash",
+        NOW.minusSeconds(600),
+        NOW.minusSeconds(600),
+        NOW.minusSeconds(1),
+        NOW.plusSeconds(600));
   }
 
   private static final class Fixture {
