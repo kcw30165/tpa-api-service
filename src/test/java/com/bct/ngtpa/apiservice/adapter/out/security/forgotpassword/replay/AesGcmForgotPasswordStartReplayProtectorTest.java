@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayReference;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.shared.ForgotPasswordStartProtectedReplayState;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartProtectedReplayState;
 import java.time.Instant;
 import java.util.Base64;
 import org.junit.jupiter.api.Test;

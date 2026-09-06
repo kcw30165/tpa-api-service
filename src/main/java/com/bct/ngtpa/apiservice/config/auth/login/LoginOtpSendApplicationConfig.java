@@ -6,11 +6,11 @@ import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyExecutor;
 import com.bct.ngtpa.apiservice.application.port.in.SendLoginOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.*;
 import com.bct.ngtpa.apiservice.application.service.security.ratelimit.*;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginOtpSendReplayCodec;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginOtpSendSharedExecutionBridge;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedFingerprintFactory;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedIdempotencyIdentityFactory;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedResponseEnvelope;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginOtpSendReplayCodec;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginOtpSendExecutionBridge;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginFingerprintFactory;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginIdempotencyIdentityFactory;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginResponseEnvelope;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.LoginOtpSendPolicy;
 import java.time.*;
@@ -65,10 +65,10 @@ public class LoginOtpSendApplicationConfig {
     return new SharedLoginOtpSendService(
         idempotencyExecutor,
         core,
-        new LoginOtpSendSharedExecutionBridge(
-            json, new LoginOtpSendReplayCodec(new LoginSharedResponseEnvelope(json))),
-        new LoginSharedIdempotencyIdentityFactory(),
-        new LoginSharedFingerprintFactory(),
+        new LoginOtpSendExecutionBridge(
+            json, new LoginOtpSendReplayCodec(new LoginResponseEnvelope(json))),
+        new LoginIdempotencyIdentityFactory(),
+        new LoginFingerprintFactory(),
         Duration.ofSeconds(properties.getLogin().getIdempotency().getOtpSendTtlSeconds()));
   }
 }

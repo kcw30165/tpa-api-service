@@ -1,6 +1,6 @@
 package com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.replay;
 
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.shared.ProtectedForgotPasswordStartReplay;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ProtectedForgotPasswordStartReplay;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 

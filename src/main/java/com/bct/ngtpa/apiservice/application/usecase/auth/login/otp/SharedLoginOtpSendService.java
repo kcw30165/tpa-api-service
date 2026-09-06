@@ -5,11 +5,11 @@ import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyExecutor;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyReservationOutcome;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionCommand;
 import com.bct.ngtpa.apiservice.application.port.in.SendLoginOtpUseCase;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginOtpSendSharedExecutionBridge;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedFailureClassifiers;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedFingerprintFactory;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedIdempotencyAction;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedIdempotencyIdentityFactory;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginOtpSendExecutionBridge;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginFailureClassifiers;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginFingerprintFactory;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginIdempotencyAction;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginIdempotencyIdentityFactory;
 import java.time.Duration;
 import java.util.Objects;
 import reactor.core.publisher.Mono;
@@ -18,17 +18,17 @@ import reactor.core.publisher.Mono;
 public final class SharedLoginOtpSendService implements SendLoginOtpUseCase {
   private final IdempotencyExecutor executor;
   private final SendLoginOtpUseCase operation;
-  private final LoginOtpSendSharedExecutionBridge responses;
-  private final LoginSharedIdempotencyIdentityFactory identities;
-  private final LoginSharedFingerprintFactory fingerprints;
+  private final LoginOtpSendExecutionBridge responses;
+  private final LoginIdempotencyIdentityFactory identities;
+  private final LoginFingerprintFactory fingerprints;
   private final Duration ttl;
 
   public SharedLoginOtpSendService(
       IdempotencyExecutor executor,
       SendLoginOtpUseCase operation,
-      LoginOtpSendSharedExecutionBridge responses,
-      LoginSharedIdempotencyIdentityFactory identities,
-      LoginSharedFingerprintFactory fingerprints,
+      LoginOtpSendExecutionBridge responses,
+      LoginIdempotencyIdentityFactory identities,
+      LoginFingerprintFactory fingerprints,
       Duration ttl) {
     this.executor = Objects.requireNonNull(executor);
     this.operation = Objects.requireNonNull(operation);
@@ -47,13 +47,13 @@ public final class SharedLoginOtpSendService implements SendLoginOtpUseCase {
     var execution =
         new IdempotentExecutionCommand(
             identities.create(
-                LoginSharedIdempotencyAction.OTP_SEND,
+                LoginIdempotencyAction.OTP_SEND,
                 command.authFlowSessionId(),
                 command.idempotencyKey()),
             fingerprints.otpSend(command.authFlowSessionId(), command.destinationId()),
             ttl,
             () -> operation.send(command).map(responses::toTransientResponse),
-            LoginSharedFailureClassifiers.possibleSideEffect(),
+            LoginFailureClassifiers.possibleSideEffect(),
             responses::capture,
             responses::hydrate);
     return executor

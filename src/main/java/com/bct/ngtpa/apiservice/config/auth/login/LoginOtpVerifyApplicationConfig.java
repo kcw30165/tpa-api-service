@@ -17,9 +17,9 @@ import com.bct.ngtpa.apiservice.application.service.auth.login.idempotency.Login
 import com.bct.ngtpa.apiservice.application.service.auth.login.otp.verify.*;
 import com.bct.ngtpa.apiservice.application.service.auth.otp.OtpCodeHasher;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.account.*;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginOtpVerifySharedExecutionBridge;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedFingerprintFactory;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedIdempotencyIdentityFactory;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginOtpVerifyExecutionBridge;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginFingerprintFactory;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginIdempotencyIdentityFactory;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.verify.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.replay.RecoverCommittedLoginUseCase;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionLifecycleService;
@@ -79,9 +79,9 @@ public class LoginOtpVerifyApplicationConfig {
       Clock clock,
       RecoverCommittedLoginUseCase committedReplay,
       IdempotencyExecutor executor,
-      LoginOtpVerifySharedExecutionBridge responses,
-      LoginSharedIdempotencyIdentityFactory identities,
-      LoginSharedFingerprintFactory fingerprints,
+      LoginOtpVerifyExecutionBridge responses,
+      LoginIdempotencyIdentityFactory identities,
+      LoginFingerprintFactory fingerprints,
       AuthWorkflowProperties workflows) {
     workflows.validateLoginPolicy();
     var protectedOperation =

@@ -5,10 +5,10 @@ import com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.replay.Red
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.replay.RedisForgotPasswordStartProtectedReplayJsonMapper;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.replay.RedisForgotPasswordStartProtectedReplayKeyFactory;
 import com.bct.ngtpa.apiservice.adapter.out.security.forgotpassword.replay.AesGcmForgotPasswordStartReplayProtector;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.shared.ForgotPasswordStartProtectedReplayPort;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.shared.ForgotPasswordStartProtectedReplayProtectorPort;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.shared.ForgotPasswordStartProtectedReplayReferenceGenerator;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.shared.SecureForgotPasswordStartProtectedReplayReferenceGenerator;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartProtectedReplayPort;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartProtectedReplayProtectorPort;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartProtectedReplayReferenceGenerator;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.SecureForgotPasswordStartProtectedReplayReferenceGenerator;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;

@@ -3,7 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.replay;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.shared.ProtectedForgotPasswordStartReplay;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ProtectedForgotPasswordStartReplay;
 import org.junit.jupiter.api.Test;
 
 class RedisForgotPasswordStartProtectedReplayJsonMapperTest {

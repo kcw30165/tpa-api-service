@@ -5,7 +5,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.mapper.LoginOtpResendW
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyExecutor;
 import com.bct.ngtpa.apiservice.application.port.in.ResendLoginOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.*;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.*;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.resend.*;
 import java.time.*;
@@ -45,10 +45,10 @@ public class LoginOtpResendApplicationConfig {
     return new SharedLoginOtpResendService(
         idempotencyExecutor,
         core,
-        new LoginOtpResendSharedExecutionBridge(
-            json, new LoginOtpResendReplayCodec(new LoginSharedResponseEnvelope(json))),
-        new LoginSharedIdempotencyIdentityFactory(),
-        new LoginSharedFingerprintFactory(),
+        new LoginOtpResendExecutionBridge(
+            json, new LoginOtpResendReplayCodec(new LoginResponseEnvelope(json))),
+        new LoginIdempotencyIdentityFactory(),
+        new LoginFingerprintFactory(),
         Duration.ofSeconds(properties.getLogin().getIdempotency().getOtpResendTtlSeconds()));
   }
 }

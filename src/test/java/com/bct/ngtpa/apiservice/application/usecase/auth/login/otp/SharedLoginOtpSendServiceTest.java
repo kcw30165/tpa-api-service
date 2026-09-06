@@ -16,10 +16,10 @@ import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyReservationOu
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionCommand;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionResult;
 import com.bct.ngtpa.apiservice.application.port.in.SendLoginOtpUseCase;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginOtpSendSharedExecutionBridge;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedFingerprintFactory;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedIdempotencyAction;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedIdempotencyIdentityFactory;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginOtpSendExecutionBridge;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginFingerprintFactory;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginIdempotencyAction;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginIdempotencyIdentityFactory;
 import java.time.Duration;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -37,7 +37,7 @@ class SharedLoginOtpSendServiceTest {
     StepVerifier.create(f.service.send(COMMAND))
         .assertNext(r -> assertThat(r.status()).isEqualTo(SendLoginOtpStatus.DUPLICATE_IN_PROGRESS))
         .verifyComplete();
-    verify(f.identities).create(LoginSharedIdempotencyAction.OTP_SEND, "afs", "idem");
+    verify(f.identities).create(LoginIdempotencyAction.OTP_SEND, "afs", "idem");
     verify(f.fingerprints).otpSend("afs", "dst");
     assertThat(f.executor.command.ttl()).isEqualTo(TTL);
     assertThat(f.executor.command.failureClassifier().classify(new RuntimeException("x")))
@@ -135,12 +135,12 @@ class SharedLoginOtpSendServiceTest {
   private static final class Fixture {
     private final CapturingExecutor executor = new CapturingExecutor();
     private final SendLoginOtpUseCase operation = mock(SendLoginOtpUseCase.class);
-    private final LoginOtpSendSharedExecutionBridge responses =
-        mock(LoginOtpSendSharedExecutionBridge.class);
-    private final LoginSharedIdempotencyIdentityFactory identities =
-        mock(LoginSharedIdempotencyIdentityFactory.class);
-    private final LoginSharedFingerprintFactory fingerprints =
-        mock(LoginSharedFingerprintFactory.class);
+    private final LoginOtpSendExecutionBridge responses =
+        mock(LoginOtpSendExecutionBridge.class);
+    private final LoginIdempotencyIdentityFactory identities =
+        mock(LoginIdempotencyIdentityFactory.class);
+    private final LoginFingerprintFactory fingerprints =
+        mock(LoginFingerprintFactory.class);
     private final SharedLoginOtpSendService service;
 
     private Fixture() {

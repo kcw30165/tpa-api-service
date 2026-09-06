@@ -16,10 +16,10 @@ import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyReservationOu
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionCommand;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionResult;
 import com.bct.ngtpa.apiservice.application.port.in.ResendLoginOtpUseCase;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginOtpResendSharedExecutionBridge;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedFingerprintFactory;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedIdempotencyAction;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedIdempotencyIdentityFactory;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginOtpResendExecutionBridge;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginFingerprintFactory;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginIdempotencyAction;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginIdempotencyIdentityFactory;
 import java.time.Duration;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -40,7 +40,7 @@ class SharedLoginOtpResendServiceTest {
             r -> assertThat(r.status()).isEqualTo(ResendLoginOtpStatus.DUPLICATE_IN_PROGRESS))
         .verifyComplete();
     verify(f.identities)
-        .create(LoginSharedIdempotencyAction.OTP_RESEND, "afs-secret", "idem-key-0001");
+        .create(LoginIdempotencyAction.OTP_RESEND, "afs-secret", "idem-key-0001");
     verify(f.fingerprints).otpResend("afs-secret");
     assertThat(f.executor.command.ttl()).isEqualTo(TTL);
     assertThat(f.executor.command.failureClassifier().classify(new RuntimeException("x")))
@@ -139,12 +139,12 @@ class SharedLoginOtpResendServiceTest {
   private static final class Fixture {
     private final CapturingExecutor executor = new CapturingExecutor();
     private final ResendLoginOtpUseCase operation = mock(ResendLoginOtpUseCase.class);
-    private final LoginOtpResendSharedExecutionBridge responses =
-        mock(LoginOtpResendSharedExecutionBridge.class);
-    private final LoginSharedIdempotencyIdentityFactory identities =
-        mock(LoginSharedIdempotencyIdentityFactory.class);
-    private final LoginSharedFingerprintFactory fingerprints =
-        mock(LoginSharedFingerprintFactory.class);
+    private final LoginOtpResendExecutionBridge responses =
+        mock(LoginOtpResendExecutionBridge.class);
+    private final LoginIdempotencyIdentityFactory identities =
+        mock(LoginIdempotencyIdentityFactory.class);
+    private final LoginFingerprintFactory fingerprints =
+        mock(LoginFingerprintFactory.class);
     private final SharedLoginOtpResendService service;
 
     private Fixture() {

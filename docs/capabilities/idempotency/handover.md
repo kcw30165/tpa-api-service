@@ -281,7 +281,7 @@ P4-B2B1B extracts `LoginStartProtectedReplayCommitter` as the lifecycle-neutral 
 
 `LoginStartReplayCoordinator` keeps its existing public construction and production role. Its legacy commit path delegates protected persistence to the committer, then completes the legacy credential idempotency record. Protected-save or legacy-completion failure retains the existing legacy unknown-outcome behavior. No replay namespace, protector, reference generator, Redis adapter, replay loader, or production Login route changes.
 
-The approved future shared Login Start operation scope is the versioned anonymous constant `login-start-anonymous-v1`. The operation identity hashes that constant through `LoginSharedIdempotencyIdentityFactory`; request equivalence remains the version-1 fingerprint of normalized username plus the one-way digest of the exact password. This ensures same-key requests with a changed username or password map to key reuse without treating an unverified username as an authorized scope. P4-B2B1B does not yet add or switch to the shared Login Start coordinator.
+The approved future shared Login Start operation scope is the versioned anonymous constant `login-start-anonymous-v1`. The operation identity hashes that constant through `LoginIdempotencyIdentityFactory`; request equivalence remains the version-1 fingerprint of normalized username plus the one-way digest of the exact password. This ensures same-key requests with a changed username or password map to key reuse without treating an unverified username as an authorized scope. P4-B2B1B does not yet add or switch to the shared Login Start coordinator.
 
 #### P4-B2B1B reactive committer closure
 
@@ -291,7 +291,7 @@ The protected replay committer now defers validation, reference generation, prot
 
 P4-B2B adds `SharedStartLoginService` in parallel with the active legacy `StartLoginService`. It reproduces credential policy validation and normalization before shared executor invocation, uses the exact anonymous scope `login-start-anonymous-v1`, and fingerprints the normalized username with the one-way digest of the exact password.
 
-Only the shared executor acquired path invokes `LoginStartProtectedOperation`. A `STARTED` result is persisted through `LoginStartProtectedReplayCommitter` before safe response capture; deterministic credential rejections skip protected replay persistence; `UNAVAILABLE` enters the possible-side-effect failure path. Completed replay hydrates through `LoginStartSharedExecutionBridge`, while duplicate, key reuse, failed-existing, and unknown-existing outcomes map to the existing public Login Start statuses.
+Only the shared executor acquired path invokes `LoginStartProtectedOperation`. A `STARTED` result is persisted through `LoginStartProtectedReplayCommitter` before safe response capture; deterministic credential rejections skip protected replay persistence; `UNAVAILABLE` enters the possible-side-effect failure path. Completed replay hydrates through `LoginStartExecutionBridge`, while duplicate, key reuse, failed-existing, and unknown-existing outcomes map to the existing public Login Start statuses.
 
 The class is not selected by Spring in this stage. Production remains on `StartLoginService`; legacy Login idempotency and replay types remain intact until the later approved switch.
 
@@ -514,3 +514,31 @@ Final committed-state validation completed successfully at Git HEAD `4afbc2726a6
 - Retained the legacy `StartForgotPasswordService` and current production composition unchanged during this extraction stage.
 - The next stage adds the thin shared-executor coordinator and tests it before the atomic production composition switch.
 - P5-A/B/C/D/E remains authoritative.
+
+### P5-C Forgot Password START idempotent coordinator
+
+- Added `IdempotentStartForgotPasswordService` as the thin START integration over the repository-wide `IdempotencyExecutor`.
+- The coordinator alone supplies the START operation identity, normalized-username fingerprint, TTL, conservative possible-side-effect classifier, protected operation, response capture, replay hydration, and lifecycle result mapping.
+- `SYSTEM_FAILED` from the protected operation is raised as an execution failure rather than persisted as a terminal public snapshot.
+- The coordinator has no legacy `ForgotPasswordIdempotencyPort`, Redis, or web dependency.
+- Legacy `StartForgotPasswordService` and production composition remain unchanged pending a separate atomic switch and validation stage.
+- P5-A/B/C/D/E remains authoritative.
+
+### P5-C flow-local idempotency package simplification
+
+- Removed the ambiguous `shared` package segment from Login and Forgot Password flow-specific idempotency code.
+- Login integration types now live directly under `login.idempotency` because they are Login policy and adapters, not a second shared foundation.
+- Forgot Password capability policy now lives under `forgotpassword.idempotency`; START-specific replay, protection, and execution bridge types live under `forgotpassword.idempotency.start`.
+- Removed flow-local `Shared` type prefixes where they only meant “uses the repository-wide shared executor.”
+- Renamed the pending START coordinator to `IdempotentStartForgotPasswordService`.
+- The only cross-flow shared foundation remains `application.idempotency`.
+- Production Forgot Password START composition remains unchanged.
+- P5-A/B/C/D/E remains authoritative.
+
+### P5-C flow package correction follow-up
+
+- Moved `ForgotPasswordIdempotencyAction` to `forgotpassword.idempotency` because it defines all capability actions, not only START.
+- Kept START replay and protection types under `forgotpassword.idempotency.start`.
+- Removed remaining Login idempotency `SharedExecutionBridge` names in favor of direct `ExecutionBridge` names.
+- Renamed ambiguous integration tests to responsibility-based names.
+- The only cross-flow shared package remains `application.idempotency`.

@@ -11,11 +11,11 @@ import com.bct.ngtpa.apiservice.application.port.out.LoginStartReplayCommitRefGe
 import com.bct.ngtpa.apiservice.application.port.out.LoginStartReplayPort;
 import com.bct.ngtpa.apiservice.application.port.out.LoginStartReplayProtectorPort;
 import com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedFingerprintFactory;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedIdempotencyIdentityFactory;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedResponseEnvelope;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginStartReplayCodec;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginStartSharedExecutionBridge;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginFingerprintFactory;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginIdempotencyIdentityFactory;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginResponseEnvelope;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginStartReplayCodec;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginStartExecutionBridge;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.preauth.LoginCredentialPolicyService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.preauth.LoginPreAuthContextFactory;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.replay.LoginStartProtectedReplayCommitter;
@@ -64,15 +64,15 @@ public class LoginApplicationConfig {
   }
 
   @Bean
-  LoginStartSharedExecutionBridge loginStartSharedExecutionBridge(
+  LoginStartExecutionBridge loginStartSharedExecutionBridge(
       LoginStartReplayPort replayPort,
       LoginStartReplayProtectorPort protector,
       Clock clock,
       TransientJsonPort json) {
-    return new LoginStartSharedExecutionBridge(
+    return new LoginStartExecutionBridge(
         json,
         new LoginStartReplayCodec(
-            new LoginSharedResponseEnvelope(json), replayPort, protector, clock));
+            new LoginResponseEnvelope(json), replayPort, protector, clock));
   }
 
   @Bean
@@ -81,7 +81,7 @@ public class LoginApplicationConfig {
       IdempotencyExecutor executor,
       LoginStartProtectedOperation protectedOperation,
       LoginStartProtectedReplayCommitter committer,
-      LoginStartSharedExecutionBridge responses,
+      LoginStartExecutionBridge responses,
       AuthWorkflowProperties workflows) {
     workflows.validateLoginPolicy();
     return new SharedStartLoginService(
@@ -90,8 +90,8 @@ public class LoginApplicationConfig {
         protectedOperation,
         committer,
         responses,
-        new LoginSharedIdempotencyIdentityFactory(),
-        new LoginSharedFingerprintFactory(),
+        new LoginIdempotencyIdentityFactory(),
+        new LoginFingerprintFactory(),
         Duration.ofSeconds(workflows.getLogin().getIdempotency().getStartTtlSeconds()));
   }
 }

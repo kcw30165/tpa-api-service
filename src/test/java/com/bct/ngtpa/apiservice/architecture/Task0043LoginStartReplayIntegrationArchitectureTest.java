@@ -19,7 +19,7 @@ class Task0043LoginStartReplayIntegrationArchitectureTest {
         .contains(
             "LoginStartProtectedOperation",
             "LoginStartProtectedReplayCommitter",
-            "LoginStartSharedExecutionBridge",
+            "LoginStartExecutionBridge",
             "IdempotencyExecutor")
         .doesNotContain(
             "import com.bct.ngtpa.apiservice.application.usecase.auth.login.start.StartLoginService;",

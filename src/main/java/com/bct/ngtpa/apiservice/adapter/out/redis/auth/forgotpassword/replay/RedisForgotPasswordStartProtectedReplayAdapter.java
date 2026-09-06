@@ -1,10 +1,10 @@
 package com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.replay;
 
 import com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayReference;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.shared.ForgotPasswordStartProtectedReplayPort;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.shared.ForgotPasswordStartProtectedReplayProtectorPort;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.shared.ForgotPasswordStartProtectedReplayReferenceGenerator;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.shared.ForgotPasswordStartProtectedReplayState;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartProtectedReplayPort;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartProtectedReplayProtectorPort;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartProtectedReplayReferenceGenerator;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartProtectedReplayState;
 import java.time.Duration;
 import java.util.Objects;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;

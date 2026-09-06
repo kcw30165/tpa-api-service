@@ -7,11 +7,11 @@ import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyExecutor;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyReservationOutcome;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionCommand;
 import com.bct.ngtpa.apiservice.application.port.in.StartLoginUseCase;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedFailureClassifiers;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedFingerprintFactory;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedIdempotencyAction;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedIdempotencyIdentityFactory;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginStartSharedExecutionBridge;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginFailureClassifiers;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginFingerprintFactory;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginIdempotencyAction;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginIdempotencyIdentityFactory;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginStartExecutionBridge;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.preauth.LoginCredentialPolicyService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.replay.LoginStartProtectedReplayCommitter;
 import java.time.Duration;
@@ -28,9 +28,9 @@ public final class SharedStartLoginService implements StartLoginUseCase {
   private final IdempotencyExecutor executor;
   private final LoginStartProtectedOperation operation;
   private final LoginStartProtectedReplayCommitter committer;
-  private final LoginStartSharedExecutionBridge responses;
-  private final LoginSharedIdempotencyIdentityFactory identities;
-  private final LoginSharedFingerprintFactory fingerprints;
+  private final LoginStartExecutionBridge responses;
+  private final LoginIdempotencyIdentityFactory identities;
+  private final LoginFingerprintFactory fingerprints;
   private final Duration ttl;
 
   public SharedStartLoginService(
@@ -38,9 +38,9 @@ public final class SharedStartLoginService implements StartLoginUseCase {
       IdempotencyExecutor executor,
       LoginStartProtectedOperation operation,
       LoginStartProtectedReplayCommitter committer,
-      LoginStartSharedExecutionBridge responses,
-      LoginSharedIdempotencyIdentityFactory identities,
-      LoginSharedFingerprintFactory fingerprints,
+      LoginStartExecutionBridge responses,
+      LoginIdempotencyIdentityFactory identities,
+      LoginFingerprintFactory fingerprints,
       Duration ttl) {
     this.policy = Objects.requireNonNull(policy);
     this.executor = Objects.requireNonNull(executor);
@@ -68,13 +68,13 @@ public final class SharedStartLoginService implements StartLoginUseCase {
     var execution =
         new IdempotentExecutionCommand(
             identities.create(
-                LoginSharedIdempotencyAction.CREDENTIALS,
+                LoginIdempotencyAction.CREDENTIALS,
                 ANONYMOUS_SCOPE,
                 command.idempotencyKey()),
             fingerprints.credentials(normalized.username(), normalized.password()),
             ttl,
             () -> executeAcquired(normalized),
-            LoginSharedFailureClassifiers.possibleSideEffect(),
+            LoginFailureClassifiers.possibleSideEffect(),
             responses::capture,
             responses::hydrate);
     return executor.execute(execution).map(r -> route(r.lifecycleOutcome(), r.terminalResponse()));

@@ -4,13 +4,13 @@ import com.bct.ngtpa.apiservice.adapter.out.json.JacksonTransientJsonAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.login.RedisLoginIdempotencyKeyFactory;
 import com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort;
 import com.bct.ngtpa.apiservice.application.service.auth.login.idempotency.LoginIdempotencyPersistenceIdDeriver;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.DefaultLoginOtpVerifyProtectedReplayResolver;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginOtpVerifyProtectedReplayResolver;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginOtpVerifyReplayCodec;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginOtpVerifySharedExecutionBridge;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedFingerprintFactory;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedIdempotencyIdentityFactory;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedResponseEnvelope;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.DefaultLoginOtpVerifyProtectedReplayResolver;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginOtpVerifyProtectedReplayResolver;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginOtpVerifyReplayCodec;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginOtpVerifyExecutionBridge;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginFingerprintFactory;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginIdempotencyIdentityFactory;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginResponseEnvelope;
 import com.bct.ngtpa.apiservice.infrastructure.security.idempotency.HmacLoginIdempotencyPersistenceIdDeriver;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Base64;
@@ -27,13 +27,13 @@ public class LoginSharedIdempotencyConfig {
   }
 
   @Bean
-  LoginSharedIdempotencyIdentityFactory loginSharedIdempotencyIdentityFactory() {
-    return new LoginSharedIdempotencyIdentityFactory();
+  LoginIdempotencyIdentityFactory loginSharedIdempotencyIdentityFactory() {
+    return new LoginIdempotencyIdentityFactory();
   }
 
   @Bean
-  LoginSharedFingerprintFactory loginSharedFingerprintFactory() {
-    return new LoginSharedFingerprintFactory();
+  LoginFingerprintFactory loginSharedFingerprintFactory() {
+    return new LoginFingerprintFactory();
   }
 
   @Bean
@@ -66,12 +66,12 @@ public class LoginSharedIdempotencyConfig {
   LoginOtpVerifyReplayCodec loginOtpVerifyReplayCodec(
       TransientJsonPort json, LoginOtpVerifyProtectedReplayResolver protectedReplayResolver) {
     return new LoginOtpVerifyReplayCodec(
-        new LoginSharedResponseEnvelope(json), protectedReplayResolver);
+        new LoginResponseEnvelope(json), protectedReplayResolver);
   }
 
   @Bean
-  LoginOtpVerifySharedExecutionBridge loginOtpVerifySharedExecutionBridge(
+  LoginOtpVerifyExecutionBridge loginOtpVerifySharedExecutionBridge(
       TransientJsonPort json, LoginOtpVerifyReplayCodec replayCodec) {
-    return new LoginOtpVerifySharedExecutionBridge(json, replayCodec);
+    return new LoginOtpVerifyExecutionBridge(json, replayCodec);
   }
 }

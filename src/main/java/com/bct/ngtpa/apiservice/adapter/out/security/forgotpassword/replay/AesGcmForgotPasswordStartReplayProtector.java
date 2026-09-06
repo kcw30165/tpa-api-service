@@ -1,9 +1,9 @@
 package com.bct.ngtpa.apiservice.adapter.out.security.forgotpassword.replay;
 
 import com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayReference;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.shared.ForgotPasswordStartProtectedReplayProtectorPort;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.shared.ForgotPasswordStartProtectedReplayState;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.shared.ProtectedForgotPasswordStartReplay;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartProtectedReplayProtectorPort;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartProtectedReplayState;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ProtectedForgotPasswordStartReplay;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
