@@ -550,3 +550,11 @@ Final committed-state validation completed successfully at Git HEAD `4afbc2726a6
 - Non-START Forgot Password actions retain their current lifecycle until separately migrated.
 - The legacy START service remains non-composed source for parity and rollback analysis.
 - P5-A/B/C/D/E remains authoritative.
+
+### P5-C Forgot Password START replacement parity tests
+
+- Added protected-operation behavioral parity coverage for normalized username and actor-role propagation, protected context, STARTED session construction, existing-session replacement input, deterministic lookup outcomes, technical lookup failure, and revision-conflict restart behavior.
+- Added idempotent coordinator coverage for stable anonymous scope, normalized fingerprint input, TTL, conservative possible-side-effect classification, acquired execution, completed replay, all existing lifecycle outcomes, and protected-operation system failure propagation.
+- Existing replay-codec, controller, and composition tests remain the authoritative coverage for safe snapshots, protected continuity, fresh CSRF, cookies, public mappings, and single production composition.
+- Legacy START source remains present pending a separate cleanup stage.
+- P5-A/B/C/D/E remains authoritative.
