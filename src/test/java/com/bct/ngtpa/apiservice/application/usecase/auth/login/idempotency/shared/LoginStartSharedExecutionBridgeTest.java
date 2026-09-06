@@ -28,7 +28,12 @@ class LoginStartSharedExecutionBridgeTest {
   @Test
   void acquiredResponseStaysTransientAndCompletedReplayRestoresEquivalentTypedResult() {
     var replay = new ReplayPortWithProtectedValue();
-    var codec = new LoginStartReplayCodec(new LoginSharedResponseEnvelope(testJson()), replay, protector(), Clock.fixed(NOW, ZoneOffset.UTC));
+    var codec =
+        new LoginStartReplayCodec(
+            new LoginSharedResponseEnvelope(testJson()),
+            replay,
+            protector(),
+            Clock.fixed(NOW, ZoneOffset.UTC));
     var bridge = new LoginStartSharedExecutionBridge(testJson(), codec);
     var original =
         new StartLoginResult(
@@ -75,9 +80,13 @@ class LoginStartSharedExecutionBridgeTest {
   @Test
   void rejectsLegacyCompletedReplayAndMalformedTransientBody() {
     var bridge =
-        new LoginStartSharedExecutionBridge(testJson(),
-            new LoginStartReplayCodec(new LoginSharedResponseEnvelope(testJson()),
-                new ReplayPortWithProtectedValue(), protector(), Clock.systemUTC()));
+        new LoginStartSharedExecutionBridge(
+            testJson(),
+            new LoginStartReplayCodec(
+                new LoginSharedResponseEnvelope(testJson()),
+                new ReplayPortWithProtectedValue(),
+                protector(),
+                Clock.systemUTC()));
     assertThatThrownBy(
             () ->
                 bridge.toTransientResponse(

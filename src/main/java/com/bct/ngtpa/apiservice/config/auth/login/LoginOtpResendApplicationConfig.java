@@ -26,7 +26,8 @@ public class LoginOtpResendApplicationConfig {
       LoginOtpSessionBindingPort binding,
       IdempotencyExecutor idempotencyExecutor,
       Clock clock,
-      AuthWorkflowProperties properties, TransientJsonPort json) {
+      AuthWorkflowProperties properties,
+      TransientJsonPort json) {
     properties.validateLoginPolicy();
     var p = properties.getLogin().getOtp();
     var policy =
@@ -44,7 +45,8 @@ public class LoginOtpResendApplicationConfig {
     return new SharedLoginOtpResendService(
         idempotencyExecutor,
         core,
-        new LoginOtpResendSharedExecutionBridge(json, new LoginOtpResendReplayCodec(new LoginSharedResponseEnvelope(json))),
+        new LoginOtpResendSharedExecutionBridge(
+            json, new LoginOtpResendReplayCodec(new LoginSharedResponseEnvelope(json))),
         new LoginSharedIdempotencyIdentityFactory(),
         new LoginSharedFingerprintFactory(),
         Duration.ofSeconds(properties.getLogin().getIdempotency().getOtpResendTtlSeconds()));

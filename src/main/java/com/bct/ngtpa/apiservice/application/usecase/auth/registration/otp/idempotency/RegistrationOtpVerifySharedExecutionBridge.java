@@ -1,21 +1,21 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.idempotency;
 
-import com.bct.ngtpa.apiservice.application.idempotency.HydratedIdempotentResponse;
-import com.bct.ngtpa.apiservice.application.idempotency.IdempotentCapturedResponse;
-import com.bct.ngtpa.apiservice.application.idempotency.IdempotentTerminalResponseSnapshot;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyResponseSnapshot;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyStartOutcome;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowMessageDescriptor;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
+import com.bct.ngtpa.apiservice.application.idempotency.HydratedIdempotentResponse;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotentCapturedResponse;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotentTerminalResponseSnapshot;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.RegistrationUnregisteredTrust;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.VerifyRegistrationOtpResultStatus;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.VerifyRegistrationOtpResult;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.VerifyRegistrationOtpResultStatus;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -58,7 +58,8 @@ public final class RegistrationOtpVerifySharedExecutionBridge {
       return new HydratedIdempotentResponse(
           transientStatus(result), MEDIA_TYPE, mapper.writeValueAsString(wire), Map.of());
     } catch (JsonProcessingException exception) {
-      throw new IllegalArgumentException("Registration OTP Verify transient encoding failed", exception);
+      throw new IllegalArgumentException(
+          "Registration OTP Verify transient encoding failed", exception);
     }
   }
 
@@ -112,7 +113,8 @@ public final class RegistrationOtpVerifySharedExecutionBridge {
   private String requiredText(JsonNode wire, String field) {
     JsonNode value = wire.get(field);
     if (value == null || !value.isTextual() || value.asText().isBlank()) {
-      throw new IllegalArgumentException("Registration OTP Verify transient field is invalid: " + field);
+      throw new IllegalArgumentException(
+          "Registration OTP Verify transient field is invalid: " + field);
     }
     return value.asText();
   }
@@ -123,7 +125,8 @@ public final class RegistrationOtpVerifySharedExecutionBridge {
       return null;
     }
     if (!value.isInt()) {
-      throw new IllegalArgumentException("Registration OTP Verify transient field is invalid: " + field);
+      throw new IllegalArgumentException(
+          "Registration OTP Verify transient field is invalid: " + field);
     }
     return value.intValue();
   }
@@ -146,7 +149,8 @@ public final class RegistrationOtpVerifySharedExecutionBridge {
       return List.of();
     }
     if (!value.isArray()) {
-      throw new IllegalArgumentException("Registration OTP Verify transient field is invalid: " + field);
+      throw new IllegalArgumentException(
+          "Registration OTP Verify transient field is invalid: " + field);
     }
     return List.copyOf(Arrays.asList(mapper.treeToValue(value, arrayType)));
   }

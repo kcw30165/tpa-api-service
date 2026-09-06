@@ -19,6 +19,7 @@ public final class LoginOtpResendReplayCodec {
   public LoginOtpResendReplayCodec(LoginSharedResponseEnvelope envelope) {
     this.envelope = Objects.requireNonNull(envelope);
   }
+
   public Mono<IdempotentCapturedResponse> capture(
       ResendLoginOtpResult result, HydratedIdempotentResponse transientResponse) {
     Objects.requireNonNull(result, "Login OTP Resend result must not be null");

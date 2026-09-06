@@ -25,7 +25,8 @@ class LoginOtpVerifyReplayCodecTest {
       new ProtectedReplayReference("0123456789abcdef0123456789abcdef");
   private final AtomicInteger recoveries = new AtomicInteger();
   private final LoginOtpVerifyReplayCodec codec =
-      new LoginOtpVerifyReplayCodec(new LoginSharedResponseEnvelope(testJson()),
+      new LoginOtpVerifyReplayCodec(
+          new LoginSharedResponseEnvelope(testJson()),
           (reference, correlationId) -> {
             recoveries.incrementAndGet();
             assertThat(reference).isEqualTo(HANDOFF);
@@ -186,7 +187,9 @@ class LoginOtpVerifyReplayCodecTest {
     var successSnapshot = successSnapshot();
 
     StepVerifier.create(
-            new LoginOtpVerifyReplayCodec(new LoginSharedResponseEnvelope(testJson()), (reference, correlationId) -> Mono.empty())
+            new LoginOtpVerifyReplayCodec(
+                    new LoginSharedResponseEnvelope(testJson()),
+                    (reference, correlationId) -> Mono.empty())
                 .hydrate(successSnapshot, "req-1"))
         .expectErrorSatisfies(
             error ->
@@ -213,7 +216,9 @@ class LoginOtpVerifyReplayCodecTest {
                     invalidRecoveredSuccess(List.of(account()), authenticatedSessionId(), " ")),
             (reference, correlationId) ->
                 Mono.error(new IllegalStateException("protected detail must not escape")))) {
-      StepVerifier.create(new LoginOtpVerifyReplayCodec(new LoginSharedResponseEnvelope(testJson()), resolver).hydrate(successSnapshot, "req-1"))
+      StepVerifier.create(
+              new LoginOtpVerifyReplayCodec(new LoginSharedResponseEnvelope(testJson()), resolver)
+                  .hydrate(successSnapshot, "req-1"))
           .verifyError();
     }
   }

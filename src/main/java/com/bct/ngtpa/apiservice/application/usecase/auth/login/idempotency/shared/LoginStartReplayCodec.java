@@ -24,7 +24,11 @@ public final class LoginStartReplayCodec {
   private final LoginStartReplayProtectorPort protector;
   private final Clock clock;
 
-  public LoginStartReplayCodec(LoginSharedResponseEnvelope envelope, LoginStartReplayPort replayPort, LoginStartReplayProtectorPort protector, Clock clock) {
+  public LoginStartReplayCodec(
+      LoginSharedResponseEnvelope envelope,
+      LoginStartReplayPort replayPort,
+      LoginStartReplayProtectorPort protector,
+      Clock clock) {
     this.envelope = Objects.requireNonNull(envelope);
     this.replayPort = Objects.requireNonNull(replayPort);
     this.protector = Objects.requireNonNull(protector);

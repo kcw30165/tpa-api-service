@@ -21,7 +21,8 @@ public final class ForgotPasswordTrpSearchMemberMapper {
   private static final DateTimeFormatter TERM_COMPLETE_DATE =
       DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(ResolverStyle.STRICT);
 
-  public ForgotPasswordTrpSearchMemberRequest toRequest(ForgotPasswordDetailsLookupCommand command) {
+  public ForgotPasswordTrpSearchMemberRequest toRequest(
+      ForgotPasswordDetailsLookupCommand command) {
     String searchBy =
         "STAFF_NO".equalsIgnoreCase(command.searchBy())
             ? "STAFFNO"
@@ -35,9 +36,7 @@ public final class ForgotPasswordTrpSearchMemberMapper {
   }
 
   public ForgotPasswordDetailsLookupResult toResult(
-      String error,
-      List<ForgotPasswordTrpSearchMemberDataItem> data,
-      String expectedCustomerId) {
+      String error, List<ForgotPasswordTrpSearchMemberDataItem> data, String expectedCustomerId) {
     String safeError = text(error);
     if (MEMBER_NOT_FOUND.equals(safeError)) {
       return notFound();

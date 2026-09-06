@@ -1,9 +1,9 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared;
-import com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort;
 
 import com.bct.ngtpa.apiservice.application.idempotency.HydratedIdempotentResponse;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentCapturedResponse;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentTerminalResponseSnapshot;
+import com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.SendLoginOtpResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.SendLoginOtpStatus;
 import java.util.Map;
@@ -16,7 +16,8 @@ public final class LoginOtpSendSharedExecutionBridge {
   private final TransientJsonPort json;
   private final LoginOtpSendReplayCodec replayCodec;
 
-  public LoginOtpSendSharedExecutionBridge(TransientJsonPort json, LoginOtpSendReplayCodec replayCodec) {
+  public LoginOtpSendSharedExecutionBridge(
+      TransientJsonPort json, LoginOtpSendReplayCodec replayCodec) {
     this.json = Objects.requireNonNull(json);
     this.replayCodec = Objects.requireNonNull(replayCodec);
   }

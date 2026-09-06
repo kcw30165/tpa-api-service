@@ -19,7 +19,9 @@ public final class LoginOtpVerifyReplayCodec {
   private final LoginSharedResponseEnvelope envelope;
   private final LoginOtpVerifyProtectedReplayResolver protectedReplayResolver;
 
-  public LoginOtpVerifyReplayCodec(LoginSharedResponseEnvelope envelope, LoginOtpVerifyProtectedReplayResolver protectedReplayResolver) {
+  public LoginOtpVerifyReplayCodec(
+      LoginSharedResponseEnvelope envelope,
+      LoginOtpVerifyProtectedReplayResolver protectedReplayResolver) {
     this.envelope = Objects.requireNonNull(envelope);
     this.protectedReplayResolver = Objects.requireNonNull(protectedReplayResolver);
   }

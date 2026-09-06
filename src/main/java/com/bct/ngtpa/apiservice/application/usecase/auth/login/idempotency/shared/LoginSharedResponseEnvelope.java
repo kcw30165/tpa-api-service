@@ -7,6 +7,7 @@ import java.util.Objects;
 /** Strict action-tagged JSON envelope for Login safe and transient response bodies. */
 public final class LoginSharedResponseEnvelope {
   private final TransientJsonPort json;
+
   public LoginSharedResponseEnvelope(TransientJsonPort json) {
     this.json = Objects.requireNonNull(json, "json must not be null");
   }
@@ -46,7 +47,9 @@ public final class LoginSharedResponseEnvelope {
     }
     try {
       ReadWire wire = json.read(serializedBody, ReadWire.class);
-      if (wire.idempotencyAction() == null || wire.idempotencyAction().isBlank() || wire.payload() == null) {
+      if (wire.idempotencyAction() == null
+          || wire.idempotencyAction().isBlank()
+          || wire.payload() == null) {
         throw invalid();
       }
       return wire;

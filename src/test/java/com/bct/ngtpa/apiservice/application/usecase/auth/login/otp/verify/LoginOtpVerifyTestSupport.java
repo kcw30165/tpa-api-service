@@ -93,7 +93,8 @@ final class LoginOtpVerifyTestSupport {
 
           @Override
           public reactor.core.publisher.Mono<LoginOtpConsumptionProof> loadConsumptionProof(
-              com.bct.ngtpa.apiservice.application.dto.auth.login.idempotency.LoginIdempotencyKey key,
+              com.bct.ngtpa.apiservice.application.dto.auth.login.idempotency.LoginIdempotencyKey
+                  key,
               String requestHash) {
             return reactor.core.publisher.Mono.justOrEmpty(committedProof.get())
                 .filter(proof -> proof.reservationHash().equals(requestHash));

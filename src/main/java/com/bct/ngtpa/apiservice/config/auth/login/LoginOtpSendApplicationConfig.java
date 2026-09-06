@@ -1,7 +1,5 @@
 package com.bct.ngtpa.apiservice.config.auth.login;
 
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedResponseEnvelope;
-
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.mapper.LoginOtpSendWebMapper;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyExecutor;
@@ -12,6 +10,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.share
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginOtpSendSharedExecutionBridge;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedFingerprintFactory;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedIdempotencyIdentityFactory;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedResponseEnvelope;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.LoginOtpSendPolicy;
 import java.time.*;
@@ -38,7 +37,8 @@ public class LoginOtpSendApplicationConfig {
       DestinationBucketIdGenerator buckets,
       IdempotencyExecutor idempotencyExecutor,
       Clock clock,
-      AuthWorkflowProperties properties, TransientJsonPort json) {
+      AuthWorkflowProperties properties,
+      TransientJsonPort json) {
     properties.validateLoginPolicy();
     var p = properties.getLogin().getOtp();
     var policy =
@@ -65,7 +65,8 @@ public class LoginOtpSendApplicationConfig {
     return new SharedLoginOtpSendService(
         idempotencyExecutor,
         core,
-        new LoginOtpSendSharedExecutionBridge(json, new LoginOtpSendReplayCodec(new LoginSharedResponseEnvelope(json))),
+        new LoginOtpSendSharedExecutionBridge(
+            json, new LoginOtpSendReplayCodec(new LoginSharedResponseEnvelope(json))),
         new LoginSharedIdempotencyIdentityFactory(),
         new LoginSharedFingerprintFactory(),
         Duration.ofSeconds(properties.getLogin().getIdempotency().getOtpSendTtlSeconds()));

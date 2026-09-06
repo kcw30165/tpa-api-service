@@ -9,7 +9,8 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 class RegistrationSharedIdempotencyConfigTest {
   private final ApplicationContextRunner context =
-      new ApplicationContextRunner().withUserConfiguration(RegistrationSharedIdempotencyConfig.class);
+      new ApplicationContextRunner()
+          .withUserConfiguration(RegistrationSharedIdempotencyConfig.class);
 
   @Test
   void composesOneRegistrationSharedIdentityAndFingerprintFactory() {

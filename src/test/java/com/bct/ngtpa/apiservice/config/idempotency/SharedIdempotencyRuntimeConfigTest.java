@@ -27,19 +27,18 @@ class SharedIdempotencyRuntimeConfigTest {
     context
         .withPropertyValues("shared-idempotency.persistence-hmac-secret=")
         .run(
-        result -> {
-          assertThat(result).hasFailed();
-          assertThat(result.getStartupFailure())
-              .hasMessageNotContaining("SHARED_IDEMPOTENCY_PERSISTENCE_HMAC_SECRET");
-        });
+            result -> {
+              assertThat(result).hasFailed();
+              assertThat(result.getStartupFailure())
+                  .hasMessageNotContaining("SHARED_IDEMPOTENCY_PERSISTENCE_HMAC_SECRET");
+            });
   }
 
   @Test
   void validSecretComposesSingleSharedPortAndDefaultExecutor() {
     String secret =
         Base64.getEncoder()
-            .encodeToString(
-                "0123456789abcdef0123456789abcdef".getBytes(StandardCharsets.UTF_8));
+            .encodeToString("0123456789abcdef0123456789abcdef".getBytes(StandardCharsets.UTF_8));
     context
         .withPropertyValues("shared-idempotency.persistence-hmac-secret=" + secret)
         .run(
@@ -49,8 +48,8 @@ class SharedIdempotencyRuntimeConfigTest {
               assertThat(result).hasSingleBean(IdempotencyExecutor.class);
               assertThat(result.getBean(IdempotencyExecutor.class))
                   .isInstanceOf(
-                      com.bct.ngtpa.apiservice.application.idempotency.DefaultIdempotencyExecutor.class);
+                      com.bct.ngtpa.apiservice.application.idempotency.DefaultIdempotencyExecutor
+                          .class);
             });
   }
-
 }

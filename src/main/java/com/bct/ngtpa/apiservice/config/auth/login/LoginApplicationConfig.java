@@ -1,9 +1,5 @@
 package com.bct.ngtpa.apiservice.config.auth.login;
 
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedResponseEnvelope;
-
-import com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort;
-
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.session.config.AuthFlowSessionProperties;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyExecutor;
@@ -14,8 +10,10 @@ import com.bct.ngtpa.apiservice.application.port.out.LoginPreAuthContextProtecto
 import com.bct.ngtpa.apiservice.application.port.out.LoginStartReplayCommitRefGenerator;
 import com.bct.ngtpa.apiservice.application.port.out.LoginStartReplayPort;
 import com.bct.ngtpa.apiservice.application.port.out.LoginStartReplayProtectorPort;
+import com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedFingerprintFactory;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedIdempotencyIdentityFactory;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedResponseEnvelope;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginStartReplayCodec;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginStartSharedExecutionBridge;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.preauth.LoginCredentialPolicyService;
@@ -67,9 +65,14 @@ public class LoginApplicationConfig {
 
   @Bean
   LoginStartSharedExecutionBridge loginStartSharedExecutionBridge(
-      LoginStartReplayPort replayPort, LoginStartReplayProtectorPort protector, Clock clock, TransientJsonPort json) {
-    return new LoginStartSharedExecutionBridge(json,
-        new LoginStartReplayCodec(new LoginSharedResponseEnvelope(json), replayPort, protector, clock));
+      LoginStartReplayPort replayPort,
+      LoginStartReplayProtectorPort protector,
+      Clock clock,
+      TransientJsonPort json) {
+    return new LoginStartSharedExecutionBridge(
+        json,
+        new LoginStartReplayCodec(
+            new LoginSharedResponseEnvelope(json), replayPort, protector, clock));
   }
 
   @Bean

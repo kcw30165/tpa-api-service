@@ -42,12 +42,17 @@ public record IdempotentTerminalResponseSnapshot(
   @Override
   public String toString() {
     return "IdempotentTerminalResponseSnapshot["
-        + "schemaVersion=" + schemaVersion
-        + ", httpStatus=" + httpStatus
-        + ", mediaType=" + mediaType
+        + "schemaVersion="
+        + schemaVersion
+        + ", httpStatus="
+        + httpStatus
+        + ", mediaType="
+        + mediaType
         + ", serializedSafeBody=<redacted>"
-        + ", safeHeaders=" + safeHeaders.keySet()
-        + ", protectedReplayReference=" + protectedReplayReference
+        + ", safeHeaders="
+        + safeHeaders.keySet()
+        + ", protectedReplayReference="
+        + protectedReplayReference
         + "]";
   }
 }

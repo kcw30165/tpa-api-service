@@ -1,9 +1,9 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared;
-import com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort;
 
 import com.bct.ngtpa.apiservice.application.idempotency.HydratedIdempotentResponse;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentCapturedResponse;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentTerminalResponseSnapshot;
+import com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.start.LoginDestinationChoice;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.start.StartLoginResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.start.StartLoginStatus;
@@ -18,7 +18,8 @@ public final class LoginStartSharedExecutionBridge {
   private final TransientJsonPort json;
   private final LoginStartReplayCodec replayCodec;
 
-  public LoginStartSharedExecutionBridge(TransientJsonPort json, LoginStartReplayCodec replayCodec) {
+  public LoginStartSharedExecutionBridge(
+      TransientJsonPort json, LoginStartReplayCodec replayCodec) {
     this.json = Objects.requireNonNull(json);
     this.replayCodec = Objects.requireNonNull(replayCodec);
   }
@@ -30,10 +31,7 @@ public final class LoginStartSharedExecutionBridge {
     }
     try {
       return new HydratedIdempotentResponse(
-          transientHttpStatus(result.status()),
-          MEDIA_TYPE,
-          json.write(toWire(result)),
-          Map.of());
+          transientHttpStatus(result.status()), MEDIA_TYPE, json.write(toWire(result)), Map.of());
     } catch (RuntimeException exception) {
       throw new IllegalArgumentException("Login Start transient response encoding failed");
     }

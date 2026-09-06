@@ -12,7 +12,8 @@ import reactor.test.StepVerifier;
 
 class LoginOtpSendSharedExecutionBridgeTest {
   private final LoginOtpSendSharedExecutionBridge bridge =
-      new LoginOtpSendSharedExecutionBridge(testJson(), new LoginOtpSendReplayCodec(new LoginSharedResponseEnvelope(testJson())));
+      new LoginOtpSendSharedExecutionBridge(
+          testJson(), new LoginOtpSendReplayCodec(new LoginSharedResponseEnvelope(testJson())));
 
   @Test
   void transientCaptureAndReplayRestoreOriginalSentResult() {

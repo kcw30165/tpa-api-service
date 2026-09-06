@@ -18,7 +18,11 @@ class LoginStartReplayCodecTest {
   private final RecordingReplayPort replay = new RecordingReplayPort();
   private Instant replayExpiresAt = NOW.plusSeconds(300);
   private final LoginStartReplayCodec codec =
-      new LoginStartReplayCodec(new LoginSharedResponseEnvelope(testJson()), replay, protector(), Clock.fixed(NOW, ZoneOffset.UTC));
+      new LoginStartReplayCodec(
+          new LoginSharedResponseEnvelope(testJson()),
+          replay,
+          protector(),
+          Clock.fixed(NOW, ZoneOffset.UTC));
 
   @Test
   void capturesStartedWithoutProtectedValuesAndHydratesOriginalStatus() {

@@ -13,7 +13,8 @@ import org.junit.jupiter.api.Test;
 import reactor.test.StepVerifier;
 
 class LoginOtpSendReplayCodecTest {
-  private final LoginOtpSendReplayCodec codec = new LoginOtpSendReplayCodec(new LoginSharedResponseEnvelope(testJson()));
+  private final LoginOtpSendReplayCodec codec =
+      new LoginOtpSendReplayCodec(new LoginSharedResponseEnvelope(testJson()));
 
   @Test
   void capturesAndHydratesSentWithEmptyHeadersAndNoProtectedReference() {

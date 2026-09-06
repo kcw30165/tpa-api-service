@@ -21,15 +21,30 @@ class RegistrationStartMandatoryCompositionTest {
   private final ApplicationContextRunner context =
       new ApplicationContextRunner()
           .withUserConfiguration(RegistrationStartUseCaseConfig.class)
-          .withBean(IdempotencyExecutor.class, () -> org.mockito.Mockito.mock(IdempotencyExecutor.class))
-          .withBean(RegistrationLookupPort.class, () -> org.mockito.Mockito.mock(RegistrationLookupPort.class))
-          .withBean(RegistrationSessionPort.class, () -> org.mockito.Mockito.mock(RegistrationSessionPort.class))
-          .withBean(RegistrationCsrPort.class, () -> org.mockito.Mockito.mock(RegistrationCsrPort.class))
-          .withBean(RegistrationOtpPort.class, () -> org.mockito.Mockito.mock(RegistrationOtpPort.class))
-          .withBean(RegistrationMessagePort.class, () -> org.mockito.Mockito.mock(RegistrationMessagePort.class))
-          .withBean(AuthWorkflowPolicyPort.class, () -> org.mockito.Mockito.mock(AuthWorkflowPolicyPort.class))
-          .withBean(CaptchaChallengePort.class, () -> org.mockito.Mockito.mock(CaptchaChallengePort.class))
-          .withBean(RegistrationStartProtectedReplayPort.class, () -> org.mockito.Mockito.mock(RegistrationStartProtectedReplayPort.class))
+          .withBean(
+              IdempotencyExecutor.class, () -> org.mockito.Mockito.mock(IdempotencyExecutor.class))
+          .withBean(
+              RegistrationLookupPort.class,
+              () -> org.mockito.Mockito.mock(RegistrationLookupPort.class))
+          .withBean(
+              RegistrationSessionPort.class,
+              () -> org.mockito.Mockito.mock(RegistrationSessionPort.class))
+          .withBean(
+              RegistrationCsrPort.class, () -> org.mockito.Mockito.mock(RegistrationCsrPort.class))
+          .withBean(
+              RegistrationOtpPort.class, () -> org.mockito.Mockito.mock(RegistrationOtpPort.class))
+          .withBean(
+              RegistrationMessagePort.class,
+              () -> org.mockito.Mockito.mock(RegistrationMessagePort.class))
+          .withBean(
+              AuthWorkflowPolicyPort.class,
+              () -> org.mockito.Mockito.mock(AuthWorkflowPolicyPort.class))
+          .withBean(
+              CaptchaChallengePort.class,
+              () -> org.mockito.Mockito.mock(CaptchaChallengePort.class))
+          .withBean(
+              RegistrationStartProtectedReplayPort.class,
+              () -> org.mockito.Mockito.mock(RegistrationStartProtectedReplayPort.class))
           .withBean(Clock.class, Clock::systemUTC);
 
   @Test

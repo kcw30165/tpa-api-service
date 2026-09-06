@@ -28,5 +28,4 @@ class ExecutionLoggingPointcutContractTest {
     assertThat(Modifier.isPrivate(privateExecute.getModifiers())).isTrue();
     assertThat(pointcut.matches(privateExecute, SharedCompleteRegistrationService.class)).isFalse();
   }
-
 }

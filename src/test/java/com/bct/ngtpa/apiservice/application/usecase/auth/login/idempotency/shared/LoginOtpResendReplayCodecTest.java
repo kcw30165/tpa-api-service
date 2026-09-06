@@ -13,7 +13,8 @@ import org.junit.jupiter.api.Test;
 import reactor.test.StepVerifier;
 
 class LoginOtpResendReplayCodecTest {
-  private final LoginOtpResendReplayCodec codec = new LoginOtpResendReplayCodec(new LoginSharedResponseEnvelope(testJson()));
+  private final LoginOtpResendReplayCodec codec =
+      new LoginOtpResendReplayCodec(new LoginSharedResponseEnvelope(testJson()));
 
   @Test
   void roundTripsEveryDeterministicStatusWithAuthoritativeHttpMapping() {

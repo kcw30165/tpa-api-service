@@ -25,8 +25,11 @@ class LoginOtpVerifySharedExecutionBridgeTest {
     var original = success("original-csrf");
     var replayed = success("fresh-csrf");
     var bridge =
-        new LoginOtpVerifySharedExecutionBridge(testJson(),
-            new LoginOtpVerifyReplayCodec(new LoginSharedResponseEnvelope(testJson()), (reference, correlationId) -> Mono.just(replayed)));
+        new LoginOtpVerifySharedExecutionBridge(
+            testJson(),
+            new LoginOtpVerifyReplayCodec(
+                new LoginSharedResponseEnvelope(testJson()),
+                (reference, correlationId) -> Mono.just(replayed)));
     var transientResponse = bridge.toTransientResponse(original);
     assertThat(bridge.fromTransientResponse(transientResponse)).isEqualTo(original);
 
@@ -51,8 +54,10 @@ class LoginOtpVerifySharedExecutionBridgeTest {
   @Test
   void rejectsMalformedUnknownFieldHeadersAndHttpMismatch() {
     var bridge =
-        new LoginOtpVerifySharedExecutionBridge(testJson(),
-            new LoginOtpVerifyReplayCodec(new LoginSharedResponseEnvelope(testJson()),
+        new LoginOtpVerifySharedExecutionBridge(
+            testJson(),
+            new LoginOtpVerifyReplayCodec(
+                new LoginSharedResponseEnvelope(testJson()),
                 (reference, correlationId) -> Mono.error(new AssertionError())));
     assertThatThrownBy(
             () ->
@@ -78,8 +83,10 @@ class LoginOtpVerifySharedExecutionBridgeTest {
     java.util.concurrent.atomic.AtomicInteger recoveries =
         new java.util.concurrent.atomic.AtomicInteger();
     var bridge =
-        new LoginOtpVerifySharedExecutionBridge(testJson(),
-            new LoginOtpVerifyReplayCodec(new LoginSharedResponseEnvelope(testJson()),
+        new LoginOtpVerifySharedExecutionBridge(
+            testJson(),
+            new LoginOtpVerifyReplayCodec(
+                new LoginSharedResponseEnvelope(testJson()),
                 (reference, correlationId) -> {
                   recoveries.incrementAndGet();
                   return Mono.just(success("fresh"));
