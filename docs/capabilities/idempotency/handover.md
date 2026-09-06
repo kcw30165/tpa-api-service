@@ -542,3 +542,11 @@ Final committed-state validation completed successfully at Git HEAD `4afbc2726a6
 - Removed remaining Login idempotency `SharedExecutionBridge` names in favor of direct `ExecutionBridge` names.
 - Renamed ambiguous integration tests to responsibility-based names.
 - The only cross-flow shared package remains `application.idempotency`.
+
+### P5-C Forgot Password START production composition switch
+
+- The sole production START bean now constructs `IdempotentStartForgotPasswordService` over the repository-wide `IdempotencyExecutor`.
+- START production composition no longer receives `ForgotPasswordIdempotencyPort` or constructs the legacy START service.
+- Non-START Forgot Password actions retain their current lifecycle until separately migrated.
+- The legacy START service remains non-composed source for parity and rollback analysis.
+- P5-A/B/C/D/E remains authoritative.

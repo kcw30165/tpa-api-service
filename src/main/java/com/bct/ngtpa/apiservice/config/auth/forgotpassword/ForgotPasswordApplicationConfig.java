@@ -4,6 +4,18 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowPropertie
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordCancelWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordIdentityWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.session.config.AuthFlowSessionProperties;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.IdempotentStartForgotPasswordService;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.ForgotPasswordStartProtectedOperation;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartReplayCodec;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartProtectedReplayPort;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartExecutionBridge;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyIntegrationPolicy;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyOperationIdentityFactory;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyExecutor;
+import com.bct.ngtpa.apiservice.application.idempotency.CanonicalIdempotencyFingerprintFactory;
+import com.bct.ngtpa.apiservice.application.idempotency.ActionTaggedIdempotencyResponseEnvelope;
+import com.bct.ngtpa.apiservice.adapter.out.json.JacksonTransientJsonAdapter;
 import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionConcurrencyMode;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionConcurrencyPolicy;
@@ -49,7 +61,6 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.rese
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendRequestHashGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ResendForgotPasswordOtpService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.verify.VerifyForgotPasswordOtpService;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionConcurrencyService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionCsrfService;
 import com.bct.ngtpa.apiservice.infrastructure.security.CorsProperties;
@@ -80,36 +91,40 @@ public class ForgotPasswordApplicationConfig {
 
   @Bean
   public StartForgotPasswordUseCase startForgotPasswordUseCase(
-      ForgotPasswordIdempotencyPort idempotencyPort,
+      IdempotencyExecutor idempotencyExecutor,
+      ForgotPasswordStartProtectedReplayPort protectedReplay,
       ForgotPasswordUsernameLookupPort lookupPort,
       ForgotPasswordAuthFlowContextProtectorPort contextProtector,
       AuthFlowSessionConcurrencyService concurrencyService,
       CreateAuthFlowSessionCsrfUseCase csrfUseCase,
       Clock clock,
+      ObjectMapper objectMapper,
       AuthWorkflowProperties workflows,
       AuthFlowSessionProperties sessionProperties,
       Map<String, MemberIdentityType> forgotPasswordTasIdentityTypeMapping) {
     workflows.validateForgotPasswordPolicy();
     var scenario = sessionProperties.getScenarios().getForgotPassword();
     var forgotPassword = workflows.getForgotPassword();
-    return new StartForgotPasswordService(
-        idempotencyPort,
-        lookupPort,
-        contextProtector,
-        concurrencyService,
-        csrfUseCase,
-        clock,
-        new SessionTtlPolicy(scenario.isEnabled(), scenario.isRequired(), scenario.getTtlSeconds()),
-        new SessionConcurrencyPolicy(
-            SessionConcurrencyMode.valueOf(sessionProperties.getConcurrency().getMode().name()),
-            SessionOnNewFlowPolicy.valueOf(
-                sessionProperties.getConcurrency().getOnNewFlow().name())),
-        sessionProperties.getSessionId().getPrefix(),
-        sessionProperties.getSessionId().getEntropyBytes(),
-        forgotPassword.getUsername().isTrim(),
-        forgotPassword.getUsername().isCaseInsensitive(),
-        "ASCII_LOWERCASE".equalsIgnoreCase(forgotPassword.getUsername().getNormalization()),
-        forgotPasswordTasIdentityTypeMapping);
+    var operation =
+        new ForgotPasswordStartProtectedOperation(
+            lookupPort, contextProtector, concurrencyService, csrfUseCase, clock,
+            new SessionTtlPolicy(scenario.isEnabled(), scenario.isRequired(), scenario.getTtlSeconds()),
+            new SessionConcurrencyPolicy(
+                SessionConcurrencyMode.valueOf(sessionProperties.getConcurrency().getMode().name()),
+                SessionOnNewFlowPolicy.valueOf(sessionProperties.getConcurrency().getOnNewFlow().name())),
+            sessionProperties.getSessionId().getPrefix(),
+            sessionProperties.getSessionId().getEntropyBytes(),
+            forgotPassword.getUsername().isTrim(),
+            forgotPassword.getUsername().isCaseInsensitive(),
+            "ASCII_LOWERCASE".equalsIgnoreCase(forgotPassword.getUsername().getNormalization()),
+            forgotPasswordTasIdentityTypeMapping);
+    var json = new JacksonTransientJsonAdapter(objectMapper);
+    var codec = new ForgotPasswordStartReplayCodec(
+        new ActionTaggedIdempotencyResponseEnvelope(json), protectedReplay, csrfUseCase, clock);
+    var responses = new ForgotPasswordStartExecutionBridge(json, codec, scenario.getTtlSeconds());
+    var policy = new ForgotPasswordIdempotencyIntegrationPolicy(
+        new IdempotencyOperationIdentityFactory(), new CanonicalIdempotencyFingerprintFactory());
+    return new IdempotentStartForgotPasswordService(idempotencyExecutor, operation, responses, policy);
   }
 
   @Bean
