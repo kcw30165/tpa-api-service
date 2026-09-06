@@ -38,4 +38,16 @@ public record IdempotentTerminalResponseSnapshot(
     }
     safeHeaders = IdempotencySafeHeaders.copyOf(safeHeaders);
   }
+
+  @Override
+  public String toString() {
+    return "IdempotentTerminalResponseSnapshot["
+        + "schemaVersion=" + schemaVersion
+        + ", httpStatus=" + httpStatus
+        + ", mediaType=" + mediaType
+        + ", serializedSafeBody=<redacted>"
+        + ", safeHeaders=" + safeHeaders.keySet()
+        + ", protectedReplayReference=" + protectedReplayReference
+        + "]";
+  }
 }

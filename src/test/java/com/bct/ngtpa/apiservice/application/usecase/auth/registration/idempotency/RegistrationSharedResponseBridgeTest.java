@@ -66,10 +66,12 @@ class RegistrationSharedResponseBridgeTest {
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageNotContaining("secret");
 
-    var unknown =
-        new IdempotentTerminalResponseSnapshot(2, 200, "application/json", start, Map.of(), null);
-    assertThatThrownBy(() -> bridge.hydrate(RegistrationSharedIdempotencyAction.START, unknown))
-        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(
+            () ->
+                new IdempotentTerminalResponseSnapshot(
+                    2, 200, "application/json", start, Map.of(), null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("unsupported idempotent response snapshot schema");
 
     var correctVersion =
         new IdempotentTerminalResponseSnapshot(1, 200, "application/json", start, Map.of(), null);

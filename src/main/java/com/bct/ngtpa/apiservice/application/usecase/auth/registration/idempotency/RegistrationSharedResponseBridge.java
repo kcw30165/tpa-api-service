@@ -23,7 +23,10 @@ public final class RegistrationSharedResponseBridge {
             terminal.httpStatus(),
             terminal.mediaType(),
             terminal.serializedSafeBody(),
-            terminal.safeHeaders());
+            terminal.safeHeaders(),
+            terminal.protectedReplayReference() == null
+                ? null
+                : new ProtectedReplayReference(terminal.protectedReplayReference()));
     IdempotentTerminalResponseSnapshot snapshot =
         new IdempotentTerminalResponseSnapshot(
             SCHEMA_VERSION,

@@ -107,7 +107,8 @@ class RedisIdempotencyAdapterTest {
   }
 
   private static IdempotencyReservationToken token(String s) {
-    return new IdempotencyReservationToken(s);
+    String validToken = s.length() >= 32 ? s : s + "x".repeat(32 - s.length());
+    return new IdempotencyReservationToken(validToken);
   }
 
   private static IdempotentTerminalResponseSnapshot snapshot() {

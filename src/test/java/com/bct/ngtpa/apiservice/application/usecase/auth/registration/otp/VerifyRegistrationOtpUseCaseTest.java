@@ -108,7 +108,7 @@ class VerifyRegistrationOtpUseCaseTest {
         code,
         null,
         null,
-        new RegistrationIdempotencyKey(key),
+        new RegistrationIdempotencyKey("test-key-" + key),
         "en",
         "corr",
         Duration.ofMinutes(5));

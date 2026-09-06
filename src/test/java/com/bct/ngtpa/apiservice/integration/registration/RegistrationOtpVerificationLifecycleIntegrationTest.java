@@ -224,7 +224,7 @@ class RegistrationOtpVerificationLifecycleIntegrationTest {
         code,
         origin,
         "https://portal.test/registration",
-        new RegistrationIdempotencyKey(key),
+        new RegistrationIdempotencyKey("test-key-" + key),
         "en",
         "req",
         Duration.ofMinutes(5));
