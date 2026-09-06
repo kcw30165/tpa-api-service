@@ -488,3 +488,12 @@ Final committed-state validation completed successfully at Git HEAD `4afbc2726a6
 - Login and Registration production behavior is unchanged in this increment; their equivalent duplicate helpers are recorded for later compatibility-preserving consolidation.
 - Production Forgot Password START composition remains unchanged.
 - P5-A/B/C/D/E remains authoritative.
+
+### P5-C Login and Registration central primitive adoption phase 1
+
+- Converted the existing Login and Registration identity, fingerprint, and constant-classifier APIs into compatibility delegates over the central shared primitives.
+- Preserved existing operation IDs and fingerprint byte sequences, including Registration's established action-first fingerprint format and Login's capability/action-prefixed format.
+- Existing constructors, Spring bean types, production selection, Redis records, and public behavior remain unchanged.
+- Envelope migration is intentionally deferred to a separate compatibility stage because Registration codecs have direct strict-ObjectMapper contracts.
+- Forgot Password production START composition remains unchanged.
+- P5-A/B/C/D/E remains authoritative.

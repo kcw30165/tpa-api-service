@@ -18,17 +18,33 @@ public final class CanonicalIdempotencyFingerprintFactory {
     if (version <= 0) throw new IllegalArgumentException("fingerprint version must be positive");
     Objects.requireNonNull(capability, "capability must not be null");
     Objects.requireNonNull(action, "action must not be null");
+    return createFromCanonicalParts(
+        version,
+        combine(capability.value(), action.value(), canonicalFields));
+  }
+
+  /** Compatibility-preserving central hashing for integrations with an established canonical wire. */
+  public IdempotencyFingerprint createFromCanonicalParts(
+      int version, List<String> canonicalParts) {
+    if (version <= 0) throw new IllegalArgumentException("fingerprint version must be positive");
     try {
       MessageDigest digest = MessageDigest.getInstance("SHA-256");
-      update(digest, capability.value());
-      update(digest, action.value());
-      for (String field : canonicalFields == null ? List.<String>of() : canonicalFields) {
-        update(digest, field == null ? "" : field);
+      for (String part : canonicalParts == null ? List.<String>of() : canonicalParts) {
+        update(digest, part == null ? "" : part);
       }
       return new IdempotencyFingerprint(version, HexFormat.of().formatHex(digest.digest()));
     } catch (NoSuchAlgorithmException exception) {
       throw new IllegalStateException("SHA-256 is unavailable", exception);
     }
+  }
+
+  private static List<String> combine(
+      String capability, String action, List<String> canonicalFields) {
+    var parts = new java.util.ArrayList<String>();
+    parts.add(capability);
+    parts.add(action);
+    if (canonicalFields != null) parts.addAll(canonicalFields);
+    return List.copyOf(parts);
   }
 
   public String oneWayDigest(String protectedValue) {

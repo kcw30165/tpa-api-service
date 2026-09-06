@@ -165,7 +165,7 @@ Shared Redis keys use the shared key factory and persistence ID derivation. Lega
 - The legacy `CANCEL` enum value disappears only when the complete feature-local idempotency contract is removed.
 
 ## P5-C cumulative implementation status
-The repository has one shared idempotency foundation. Forgot Password contributes only action-specific integration policy and adapters; it does not define a second foundation.
+The repository has one shared idempotency foundation. Forgot Password contributes only action-specific integration policy and adapters; it does not define a second foundation. Login and Registration retain compatibility APIs that delegate identity, fingerprint, and constant-classifier mechanics to the same central foundation; their established persisted values remain unchanged.
 
 
 - Integration foundation increment: retained Forgot Password action and policy inputs while centralizing opaque identity, canonical fingerprint, constant classifier, and action-tagged envelope mechanics in the single repository-wide shared foundation.
