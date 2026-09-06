@@ -394,3 +394,7 @@ Registration Start capture now returns the original in-memory hydrated response 
 ### P4 full-suite stabilization: Start immediate replay-reference alignment
 
 Registration Start capture preserves the protected immediate response body and attaches the same opaque protected replay reference carried by the safe terminal snapshot. The shared captured-response invariant therefore remains enforced, while the first response retains the CSRF token and the persisted snapshot remains free of protected values. Global formatting remains deferred to P4-G.
+
+### P4 full-suite stabilization: Login OTP Verify committed handoff proof
+
+Login OTP Verify keeps public idempotency-key construction at the reservation boundary and preserves the authoritative committed consumption proof in legacy fixture persistence. Successful first-request continuation can therefore reload the same opaque handoff reference required by the shared captured response, while production persistence remains the authority for committed replay. Global formatting remains deferred to P4-G.

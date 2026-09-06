@@ -144,10 +144,11 @@ public final class LoginOtpVerifyService
 
   private Mono<VerifyLoginOtpResult> verifyResult(
       VerifyLoginOtpCommand c, String reservationHash, LoginIdempotencyKey publicKey) {
+    LoginIdempotencyKey reservationKey = new LoginIdempotencyKey(c.idempotencyKey());
     Instant now = clock.instant();
     var reserve =
         new ReserveLoginOtpVerifyCommand(
-            publicKey,
+            reservationKey,
             reservationHash,
             references.handoff(),
             references.operation(),
@@ -175,7 +176,7 @@ public final class LoginOtpVerifyService
                   .flatMap(
                       x ->
                           x.isValid()
-                              ? verifyActive(c, x, publicKey, reservationHash, reservation)
+                              ? verifyActive(c, x, reservationKey, reservationHash, reservation)
                               : Mono.just(
                                   result(
                                       x.status() == LoginProtectedAuthFlowContextStatus.CSRF_INVALID

@@ -25,6 +25,8 @@ final class LoginOtpVerifyTestSupport {
       LoginAccountReferenceAssignmentService assignment,
       EstablishAuthenticatedLoginSessionUseCase transition,
       Clock clock) {
+    java.util.concurrent.atomic.AtomicReference<LoginOtpConsumptionProof> committedProof =
+        new java.util.concurrent.atomic.AtomicReference<>();
     LoginOtpVerifyPersistencePort persistence =
         new LoginOtpVerifyPersistencePort() {
           @Override
@@ -72,6 +74,7 @@ final class LoginOtpVerifyTestSupport {
                   com.bct.ngtpa.apiservice.application.dto.auth.login.otp.verify
                       .LoginOtpVerifyReservation>
               recordVerificationCommitted(RecordLoginOtpVerifyCommittedCommand command) {
+            committedProof.set(command.proof());
             var reservation =
                 new com.bct.ngtpa.apiservice.application.dto.auth.login.otp.verify
                     .LoginOtpVerifyReservation(
@@ -86,6 +89,14 @@ final class LoginOtpVerifyTestSupport {
                     command.proof().committedAt(),
                     command.proof().committedAt().plusSeconds(600));
             return reactor.core.publisher.Mono.just(reservation);
+          }
+
+          @Override
+          public reactor.core.publisher.Mono<LoginOtpConsumptionProof> loadConsumptionProof(
+              com.bct.ngtpa.apiservice.application.dto.auth.login.idempotency.LoginIdempotencyKey key,
+              String requestHash) {
+            return reactor.core.publisher.Mono.justOrEmpty(committedProof.get())
+                .filter(proof -> proof.reservationHash().equals(requestHash));
           }
 
           @Override
