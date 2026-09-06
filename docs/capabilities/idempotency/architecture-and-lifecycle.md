@@ -723,3 +723,11 @@ The shared Login composition now exposes the retained HMAC-based `LoginIdempoten
 ### P4-G startup closure: Login OTP Verify shared bridge composition
 
 The shared Login configuration now composes the OTP Verify protected replay resolver, safe replay codec, and typed shared execution bridge. The resolver is created by Spring's constructor autowiring so its exact retained recovery dependencies remain authoritative and are not duplicated in configuration. This completes the production bean path required by `VerifyLoginOtpUseCase` without restoring the removed legacy Login response-idempotency lifecycle.
+
+### P4-G validation closure: Login persistence secret in runtime slices
+
+The isolated Login runtime composition tests now provide a deterministic Base64 test-only persistence HMAC secret when loading `LoginSharedIdempotencyConfig`. Production remains fail-closed when the required runtime secret is absent or invalid. This keeps narrow Start, OTP Send, OTP Resend, and controller slices aligned with the complete OTP Verify production composition.
+
+### P4-G validation closure: Login recovery dependency in runtime slices
+
+The narrow Login Start, OTP Send, OTP Resend, and controller composition tests now supply a mocked `RecoverCommittedLoginByHandoffUseCase` required by the production OTP Verify protected replay resolver. The mock is confined to the test slices; production continues to use the real committed-login recovery composition.

@@ -69,6 +69,15 @@ class LoginOtpSendSharedRuntimeCompositionTest {
                   IdempotencyReservationOutcome.DUPLICATE_IN_PROGRESS, null));
         };
     return new ApplicationContextRunner()
+        .withPropertyValues(
+            "auth-workflows.login.idempotency.persistence-hmac-secret=dGVzdC1sb2dpbi1wZXJzaXN0ZW5jZS1obWFjLXNlY3JldC0zMi1ieXRlcw==")
+        .withBean(
+            com.bct.ngtpa.apiservice.application.usecase.auth.login.replay
+                .RecoverCommittedLoginByHandoffUseCase.class,
+            () ->
+                org.mockito.Mockito.mock(
+                    com.bct.ngtpa.apiservice.application.usecase.auth.login.replay
+                        .RecoverCommittedLoginByHandoffUseCase.class))
         .withUserConfiguration(LoginSharedIdempotencyConfig.class)
         .withBean(
             com.fasterxml.jackson.databind.ObjectMapper.class,
