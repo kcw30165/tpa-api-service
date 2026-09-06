@@ -459,3 +459,12 @@ Final committed-state validation completed successfully at Git HEAD `4afbc2726a6
 - No Redis adapter, protected-state encryption adapter, shared coordinator, or production composition switch is included yet.
 - The next stage implements protected persistence and the START response codec/bridge before switching composition.
 - P5-A/B/C/D/E remains authoritative.
+
+### P5-C Forgot Password START protected persistence
+
+- Added capability-scoped Redis persistence under `forgot-password:start-protected-replay`.
+- Added strict protected-wire JSON mapping and AES-GCM protection bound to the opaque replay reference through AAD.
+- Added conditional runtime beans and dedicated environment-backed key-version and secret properties.
+- Production `StartForgotPasswordUseCase` composition remains unchanged.
+- The next stage adds the strict START replay codec and shared execution bridge.
+- P5-A/B/C/D/E remains authoritative.

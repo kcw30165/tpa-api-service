@@ -168,6 +168,7 @@ Shared Redis keys use the shared key factory and persistence ID derivation. Lega
 
 - Foundation increment: implemented shared action, opaque identity, versioned fingerprint, explicit failure-classifier, and action-tagged response-envelope foundations.
 - START protected-replay foundation: added the protected state, storage boundary, and secure opaque-reference generator; no adapter or production composition switch yet.
+- START protected persistence: added AES-GCM protected Redis persistence, reference-bound authentication, strict JSON mapping, and conditional runtime configuration; production composition remains unchanged.
 - Production composition: unchanged. All five actions continue to use the legacy runtime path until their individual migration stages.
 - CANCEL: remains outside shared execution.
 - Protected references: remain outside the shared foundation and record.
