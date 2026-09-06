@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.application.idempotency.IdempotentTerminalRespon
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.otp.ResendRegistrationOtpResult;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 import java.util.Objects;
@@ -15,7 +16,9 @@ import reactor.core.publisher.Mono;
 public final class RegistrationOtpResendSharedExecutionBridge {
   private static final String MEDIA_TYPE = "application/json";
   private final ObjectMapper mapper =
-      new ObjectMapper().enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+      new ObjectMapper()
+          .findAndRegisterModules()
+          .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
   private final RegistrationOtpResendReplayCodec codec;
 
   public RegistrationOtpResendSharedExecutionBridge(RegistrationOtpResendReplayCodec codec) {
@@ -37,10 +40,30 @@ public final class RegistrationOtpResendSharedExecutionBridge {
       throw new IllegalArgumentException("Registration OTP Resend transient media type is invalid");
     }
     try {
-      return mapper.readValue(response.serializedBody(), ResendRegistrationOtpResult.class);
+      JsonNode wire = unwrapTerminalEnvelope(mapper.readTree(response.serializedBody()));
+      return mapper.treeToValue(wire, ResendRegistrationOtpResult.class);
     } catch (JsonProcessingException exception) {
       throw new IllegalArgumentException("Registration OTP Resend transient decoding failed");
     }
+  }
+
+  private JsonNode unwrapTerminalEnvelope(JsonNode wire) {
+    if (wire == null || !wire.isObject()) {
+      throw new IllegalArgumentException("Registration OTP Resend transient body is invalid");
+    }
+    JsonNode action = wire.get("idempotencyAction");
+    JsonNode payload = wire.get("payload");
+    if (action == null && payload == null) {
+      return wire;
+    }
+    if (action == null
+        || !action.isTextual()
+        || !"otp-resend".equals(action.asText())
+        || payload == null
+        || !payload.isObject()) {
+      throw new IllegalArgumentException("Registration OTP Resend terminal envelope is invalid");
+    }
+    return payload;
   }
 
   public Mono<IdempotentCapturedResponse> capture(HydratedIdempotentResponse response) {

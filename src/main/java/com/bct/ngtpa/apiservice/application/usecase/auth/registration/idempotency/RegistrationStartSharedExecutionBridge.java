@@ -13,6 +13,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegis
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationResultStatus;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.List;
@@ -28,7 +29,9 @@ import reactor.core.publisher.Mono;
 public final class RegistrationStartSharedExecutionBridge {
   private static final String MEDIA_TYPE = "application/json";
   private final ObjectMapper mapper =
-      new ObjectMapper().enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+      new ObjectMapper()
+          .findAndRegisterModules()
+          .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
   private final RegistrationStartReplayCodec replayCodec;
   private final RegistrationStartProtectedReplayPort protectedReplay;
 
@@ -60,15 +63,48 @@ public final class RegistrationStartSharedExecutionBridge {
           "Registration Start transient response media type is invalid");
     }
     try {
-      return fromWire(mapper.readValue(response.serializedBody(), TransientWire.class));
+      JsonNode wire = unwrapTerminalEnvelope(mapper.readTree(response.serializedBody()), "start");
+      return fromWire(mapper.treeToValue(wire, TransientWire.class));
     } catch (JsonProcessingException exception) {
       throw new IllegalArgumentException("Registration Start transient response decoding failed");
     }
   }
 
+  private JsonNode unwrapTerminalEnvelope(JsonNode wire, String action) {
+    if (wire == null || !wire.isObject()) {
+      throw new IllegalArgumentException("Registration transient response body is invalid");
+    }
+    JsonNode envelopeAction = wire.get("idempotencyAction");
+    JsonNode payload = wire.get("payload");
+    if (envelopeAction == null && payload == null) {
+      return wire;
+    }
+    if (envelopeAction == null
+        || !envelopeAction.isTextual()
+        || !action.equals(envelopeAction.asText())
+        || payload == null
+        || !payload.isObject()) {
+      throw new IllegalArgumentException("Registration transient response envelope is invalid");
+    }
+    return payload;
+  }
+
   public Mono<IdempotentCapturedResponse> capture(
       HydratedIdempotentResponse response, Duration ttl) {
-    return replayCodec.capture(fromTransientResponse(response), protectedReplay, ttl);
+    return replayCodec
+        .capture(fromTransientResponse(response), protectedReplay, ttl)
+        .map(
+            captured -> {
+              var snapshot = captured.snapshot();
+              var alignedResponse =
+                  new HydratedIdempotentResponse(
+                      response.httpStatus(),
+                      response.mediaType(),
+                      response.serializedBody(),
+                      response.safeHeaders(),
+                      snapshot.protectedReplayReference());
+              return new IdempotentCapturedResponse(alignedResponse, snapshot);
+            });
   }
 
   public Mono<HydratedIdempotentResponse> hydrate(IdempotentTerminalResponseSnapshot snapshot) {
