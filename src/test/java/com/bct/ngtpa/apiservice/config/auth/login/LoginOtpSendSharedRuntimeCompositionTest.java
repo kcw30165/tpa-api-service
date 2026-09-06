@@ -69,6 +69,8 @@ class LoginOtpSendSharedRuntimeCompositionTest {
                   IdempotencyReservationOutcome.DUPLICATE_IN_PROGRESS, null));
         };
     return new ApplicationContextRunner()
+          .withUserConfiguration(LoginSharedIdempotencyConfig.class)
+          .withBean(com.fasterxml.jackson.databind.ObjectMapper.class, com.fasterxml.jackson.databind.ObjectMapper::new)
         .withUserConfiguration(LoginOtpSendApplicationConfig.class)
         .withBean(
             AuthWorkflowProperties.class, LoginOtpSendSharedRuntimeCompositionTest::properties)

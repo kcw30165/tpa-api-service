@@ -703,3 +703,7 @@ The clean-architecture execute-method guard now accepts typed `Result` contracts
 ### P4 full-suite stabilization: Login transient JSON boundary
 
 Login shared-execution bridges and replay envelopes now depend only on the framework-neutral `TransientJsonPort`. Jackson remains in `adapter/out/json` and is supplied by Spring composition. Strict unknown-field rejection, action-tag validation, safe snapshot behavior, and protected replay handling remain unchanged. Global formatting remains deferred to P4-G.
+
+### P4 full-suite stabilization: Login runtime JSON slice composition
+
+The isolated Login Start, OTP Send, and OTP Resend runtime composition tests now include the shared Login idempotency configuration and its `ObjectMapper` prerequisite. This keeps the production `TransientJsonPort` adapter wiring under test while allowing narrow `ApplicationContextRunner` slices to construct the same dependency graph as the application. Global formatting remains deferred to P4-G.
