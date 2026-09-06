@@ -164,6 +164,13 @@ Shared Redis keys use the shared key factory and persistence ID derivation. Lega
 - Cancellation continues to invalidate active OTP state and clear workflow state as currently defined.
 - The legacy `CANCEL` enum value disappears only when the complete feature-local idempotency contract is removed.
 
+## P5-C cumulative implementation status
+
+- Foundation increment: implemented shared action, opaque identity, versioned fingerprint, explicit failure-classifier, and action-tagged response-envelope foundations.
+- Production composition: unchanged. All five actions continue to use the legacy runtime path until their individual migration stages.
+- CANCEL: remains outside shared execution.
+- Protected references: remain outside the shared foundation and record.
+
 ## P5-C implementation sequence
 
 1. Add Forgot Password shared identity, action, fingerprint, failure-classification, and response-bridge foundations with fail-first tests.

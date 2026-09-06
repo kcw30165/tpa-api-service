@@ -442,3 +442,12 @@ The narrow Login Start, OTP Send, OTP Resend, and controller composition tests n
 ### P4-G final validated repository outcome
 
 Final committed-state validation completed successfully at Git HEAD `4afbc2726a6140cf41d7168e8ef301451bbe76f1`. Spotless check, production compilation, test compilation, the Maven full suite, and Git diff hygiene all passed. Surefire reported 956 suites, 4,077 tests, zero failures, zero errors, and 10 skipped tests. Repository-level P4-G validation is complete. No deployment, environment-coverage, rollback-window, or TTL-drainage claim is made because the shared Login migration has not been deployed.
+
+## P5-C Forgot Password foundation
+
+- Baseline: `ff1b7269cc5f1287efa520d11e3164b415c510ba`.
+- Added shared foundations for the five scoped Forgot Password actions.
+- Production composition remains unchanged.
+- The next stage is the START protected-operation and shared-coordinator migration.
+- P5-A/B/C/D/E remains authoritative.
+- Deployment timestamps, environment coverage, rollback-window closure, and TTL-drainage remain not applicable.
