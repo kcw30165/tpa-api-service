@@ -1,58 +1,54 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared;
 
+import com.bct.ngtpa.apiservice.application.idempotency.ActionTaggedIdempotencyResponseEnvelope;
 import com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort;
-import java.util.Map;
 import java.util.Objects;
 
-/** Strict action-tagged JSON envelope for Login safe and transient response bodies. */
+/** Login action-mapping compatibility API over the central envelope protocol. */
 public final class LoginSharedResponseEnvelope {
-  private final TransientJsonPort json;
+  private final ActionTaggedIdempotencyResponseEnvelope delegate;
 
   public LoginSharedResponseEnvelope(TransientJsonPort json) {
-    this.json = Objects.requireNonNull(json, "json must not be null");
+    this.delegate = new ActionTaggedIdempotencyResponseEnvelope(Objects.requireNonNull(json));
   }
 
   public String encode(LoginSharedIdempotencyAction action, Object payload) {
     Objects.requireNonNull(action, "Login idempotency action must not be null");
     Objects.requireNonNull(payload, "Login response payload must not be null");
     try {
-      return json.write(new WriteWire(action.action().value(), payload));
+      return delegate.encode(action.action(), payload);
     } catch (RuntimeException exception) {
       throw invalid();
     }
   }
 
   public LoginSharedIdempotencyAction decodeAction(String serializedBody) {
-    return action(read(serializedBody).idempotencyAction());
-  }
-
-  public <T> T decodePayload(
-      LoginSharedIdempotencyAction expectedAction, String serializedBody, Class<T> payloadType) {
-    Objects.requireNonNull(expectedAction, "Expected Login idempotency action must not be null");
-    Objects.requireNonNull(payloadType, "Login response payload type must not be null");
-    ReadWire wire = read(serializedBody);
-    if (action(wire.idempotencyAction()) != expectedAction) {
-      throw new IllegalArgumentException("Login replay action mismatch");
-    }
     try {
-      return json.read(json.write(wire.payload()), payloadType);
+      return action(delegate.decodeAction(serializedBody));
+    } catch (UnsupportedActionException exception) {
+      throw new IllegalArgumentException("Login replay action is unsupported");
     } catch (RuntimeException exception) {
       throw invalid();
     }
   }
 
-  private ReadWire read(String serializedBody) {
-    if (serializedBody == null || serializedBody.isBlank()) {
-      throw invalid();
-    }
+  public <T> T decodePayload(
+      LoginSharedIdempotencyAction expectedAction,
+      String serializedBody,
+      Class<T> payloadType) {
+    Objects.requireNonNull(expectedAction, "Expected Login idempotency action must not be null");
+    Objects.requireNonNull(payloadType, "Login response payload type must not be null");
     try {
-      ReadWire wire = json.read(serializedBody, ReadWire.class);
-      if (wire.idempotencyAction() == null
-          || wire.idempotencyAction().isBlank()
-          || wire.payload() == null) {
-        throw invalid();
+      String actualAction = delegate.decodeAction(serializedBody);
+      LoginSharedIdempotencyAction actual = action(actualAction);
+      if (actual != expectedAction) {
+        throw new ActionMismatchException();
       }
-      return wire;
+      return delegate.decodePayload(expectedAction.action(), serializedBody, payloadType);
+    } catch (ActionMismatchException exception) {
+      throw new IllegalArgumentException("Login replay action mismatch");
+    } catch (UnsupportedActionException exception) {
+      throw new IllegalArgumentException("Login replay action is unsupported");
     } catch (RuntimeException exception) {
       throw invalid();
     }
@@ -60,18 +56,16 @@ public final class LoginSharedResponseEnvelope {
 
   private LoginSharedIdempotencyAction action(String value) {
     for (LoginSharedIdempotencyAction action : LoginSharedIdempotencyAction.values()) {
-      if (action.action().value().equals(value)) {
-        return action;
-      }
+      if (action.action().value().equals(value)) return action;
     }
-    throw new IllegalArgumentException("Login replay action is unsupported");
+    throw new UnsupportedActionException();
   }
 
-  private IllegalArgumentException invalid() {
+  private static IllegalArgumentException invalid() {
     return new IllegalArgumentException("Login replay response decoding failed");
   }
 
-  private record WriteWire(String idempotencyAction, Object payload) {}
+  private static final class ActionMismatchException extends RuntimeException {}
 
-  private record ReadWire(String idempotencyAction, Map<String, Object> payload) {}
+  private static final class UnsupportedActionException extends RuntimeException {}
 }

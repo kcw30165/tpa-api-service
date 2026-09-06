@@ -497,3 +497,12 @@ Final committed-state validation completed successfully at Git HEAD `4afbc2726a6
 - Envelope migration is intentionally deferred to a separate compatibility stage because Registration codecs have direct strict-ObjectMapper contracts.
 - Forgot Password production START composition remains unchanged.
 - P5-A/B/C/D/E remains authoritative.
+
+### P5-C central response-envelope adoption
+
+- Converted Login and Registration response-envelope compatibility APIs into thin delegates over `ActionTaggedIdempotencyResponseEnvelope`.
+- Preserved exact `idempotencyAction` and `payload` wire names, stable action values, strict unknown-field rejection, flow-specific diagnostics, and existing constructor signatures.
+- Registration action-specific codecs retain their strict direct payload parsing and validation.
+- Persisted terminal snapshot schema, Redis records, public responses, and production bean selection remain unchanged.
+- Forgot Password production START composition remains unchanged.
+- P5-A/B/C/D/E remains authoritative.

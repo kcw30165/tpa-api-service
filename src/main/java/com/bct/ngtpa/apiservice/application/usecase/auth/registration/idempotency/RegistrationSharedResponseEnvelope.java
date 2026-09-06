@@ -1,53 +1,45 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonNode;
+import com.bct.ngtpa.apiservice.adapter.out.json.JacksonTransientJsonAdapter;
+import com.bct.ngtpa.apiservice.application.idempotency.ActionTaggedIdempotencyResponseEnvelope;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyAction;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Objects;
 
-/** Strict action-tagged JSON envelope for Registration replay bodies. */
+/** Registration action-mapping compatibility API over the central envelope protocol. */
 public final class RegistrationSharedResponseEnvelope {
-  private final ObjectMapper mapper;
+  private final ActionTaggedIdempotencyResponseEnvelope delegate;
 
   public RegistrationSharedResponseEnvelope() {
-    this.mapper = new ObjectMapper().enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+    this(
+        new ActionTaggedIdempotencyResponseEnvelope(
+            new JacksonTransientJsonAdapter(new ObjectMapper())));
+  }
+
+  RegistrationSharedResponseEnvelope(ActionTaggedIdempotencyResponseEnvelope delegate) {
+    this.delegate = Objects.requireNonNull(delegate);
   }
 
   public String encode(RegistrationSharedIdempotencyAction action, Object publicPayload) {
     Objects.requireNonNull(action, "registration idempotency action must not be null");
     Objects.requireNonNull(publicPayload, "registration public payload must not be null");
     try {
-      return mapper.writeValueAsString(new WriteWire(action.value(), publicPayload));
-    } catch (JsonProcessingException exception) {
+      return delegate.encode(new IdempotencyAction(action.value()), publicPayload);
+    } catch (RuntimeException exception) {
       throw new IllegalArgumentException("Registration replay response encoding failed");
     }
   }
 
   public RegistrationSharedIdempotencyAction decodeAction(String serializedSafeBody) {
-    if (serializedSafeBody == null || serializedSafeBody.isBlank()) {
-      throw new IllegalArgumentException("Registration replay response decoding failed");
-    }
+    String value;
     try {
-      ReadWire wire = mapper.readValue(serializedSafeBody, ReadWire.class);
-      if (wire.idempotencyAction() == null
-          || wire.idempotencyAction().isBlank()
-          || wire.payload() == null) {
-        throw new IllegalArgumentException("Registration replay response decoding failed");
-      }
-      for (RegistrationSharedIdempotencyAction action :
-          RegistrationSharedIdempotencyAction.values()) {
-        if (action.value().equals(wire.idempotencyAction())) {
-          return action;
-        }
-      }
-      throw new IllegalArgumentException("Registration replay action is unsupported");
-    } catch (JsonProcessingException exception) {
+      value = delegate.decodeAction(serializedSafeBody);
+    } catch (RuntimeException exception) {
       throw new IllegalArgumentException("Registration replay response decoding failed");
     }
+    for (RegistrationSharedIdempotencyAction action : RegistrationSharedIdempotencyAction.values()) {
+      if (action.value().equals(value)) return action;
+    }
+    throw new IllegalArgumentException("Registration replay action is unsupported");
   }
-
-  private record WriteWire(String idempotencyAction, Object payload) {}
-
-  private record ReadWire(String idempotencyAction, JsonNode payload) {}
 }
