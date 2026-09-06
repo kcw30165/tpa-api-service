@@ -317,18 +317,21 @@ class CleanArchitectureDependencyTest {
       @Override
       public void check(JavaMethod method, ConditionEvents events) {
         String returnTypeName = method.getReturnType().getName();
-
-        boolean allowed =
-            returnTypeName.contains(".application.dto.") && returnTypeName.contains("Result");
-
-        if (!allowed) {
+        boolean applicationResult =
+            returnTypeName.contains(".application.") && returnTypeName.contains("Result");
+        boolean presentationResult =
+            returnTypeName.contains(".adapter.")
+                || returnTypeName.contains("org.springframework.http.")
+                || returnTypeName.contains("org.springframework.web.")
+                || returnTypeName.contains("com.fasterxml.jackson.");
+        if (!applicationResult || presentationResult) {
           events.add(
               SimpleConditionEvent.violated(
                   method,
                   method.getFullName()
                       + " returns "
                       + returnTypeName
-                      + ". Expected a typed application result DTO, normally Mono<...Result>."));
+                      + ". Expected a typed application Result contract, normally Mono<...Result>."));
         }
       }
     };
