@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.bct.ngtpa.apiservice.adapter.out.json.JacksonTransientJsonAdapter;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
+import com.bct.ngtpa.apiservice.application.idempotency.ActionTaggedIdempotencyResponseEnvelope;
 import com.bct.ngtpa.apiservice.application.idempotency.HydratedIdempotentResponse;
 import com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayReference;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordError;
@@ -27,7 +28,7 @@ class ForgotPasswordStartReplayCodecTest {
   private final ReplayPort replay = new ReplayPort();
   private final ForgotPasswordStartReplayCodec codec =
       new ForgotPasswordStartReplayCodec(
-          new ForgotPasswordSharedResponseEnvelope(
+          new ActionTaggedIdempotencyResponseEnvelope(
               new JacksonTransientJsonAdapter(new ObjectMapper())),
           replay,
           command ->

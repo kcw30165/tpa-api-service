@@ -3,18 +3,19 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempot
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyFailureClassification;
+import com.bct.ngtpa.apiservice.application.idempotency.CanonicalIdempotencyFingerprintFactory;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyOperationIdentityFactory;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class ForgotPasswordSharedFoundationTest {
-  private final ForgotPasswordSharedIdempotencyIdentityFactory identities =
-      new ForgotPasswordSharedIdempotencyIdentityFactory();
-  private final ForgotPasswordSharedFingerprintFactory fingerprints =
-      new ForgotPasswordSharedFingerprintFactory();
+  private final ForgotPasswordIdempotencyIntegrationPolicy policy =
+      new ForgotPasswordIdempotencyIntegrationPolicy(
+          new IdempotencyOperationIdentityFactory(),
+          new CanonicalIdempotencyFingerprintFactory());
 
   @Test
-  void exposesOnlyFiveMigratedActions() {
+  void exposesOnlyFiveIntegrationActions() {
     assertThat(ForgotPasswordSharedIdempotencyAction.values())
         .containsExactly(
             ForgotPasswordSharedIdempotencyAction.START,
@@ -25,40 +26,23 @@ class ForgotPasswordSharedFoundationTest {
   }
 
   @Test
-  void hashesAuthorizedScopeAndPreservesActionIsolation() {
-    var first = identities.create(ForgotPasswordSharedIdempotencyAction.START, "scope-a", "abcdefgh");
-    var second =
-        identities.create(ForgotPasswordSharedIdempotencyAction.OTP_VERIFY, "scope-a", "abcdefgh");
+  void suppliesPolicyInputsToCentralIdentityAndFingerprintPrimitives() {
+    var first = policy.operationId(ForgotPasswordSharedIdempotencyAction.START, "scope-a", "abcdefgh");
+    var second = policy.operationId(ForgotPasswordSharedIdempotencyAction.OTP_VERIFY, "scope-a", "abcdefgh");
     assertThat(first.capability().value()).isEqualTo("forgot-password");
     assertThat(first.scope().value()).hasSize(64).doesNotContain("scope-a");
     assertThat(first.action()).isNotEqualTo(second.action());
-    assertThat(first.toString()).doesNotContain("scope-a", "abcdefgh");
+    assertThat(policy.start("member").version()).isEqualTo(1);
+    assertThat(policy.detailsAndOtp(List.of("1990-01-01", "a@example.test")))
+        .isNotEqualTo(policy.start("member"));
+    assertThat(policy.otpResend()).isNotEqualTo(policy.otpVerify());
+    assertThat(policy.otpVerify()).isNotEqualTo(policy.complete());
   }
 
   @Test
-  void createsVersionedActionSeparatedFingerprintsWithoutOtpOrPasswordInputs() {
-    assertThat(fingerprints.start("member").version()).isEqualTo(1);
-    assertThat(fingerprints.detailsAndOtp(List.of("1990-01-01", "a@example.test")))
-        .isNotEqualTo(fingerprints.start("member"));
-    assertThat(fingerprints.otpResend()).isNotEqualTo(fingerprints.otpVerify());
-    assertThat(fingerprints.otpVerify()).isNotEqualTo(fingerprints.complete());
-  }
-
-  @Test
-  void rejectsBlankIdentityInputs() {
+  void rejectsBlankPolicyInputs() {
     assertThatThrownBy(
-            () ->
-                identities.create(
-                    ForgotPasswordSharedIdempotencyAction.START, " ", "abcdefgh"))
+            () -> policy.operationId(ForgotPasswordSharedIdempotencyAction.START, " ", "abcdefgh"))
         .isInstanceOf(IllegalArgumentException.class);
-  }
-
-  @Test
-  void classifiersRemainExplicitAndConservative() {
-    RuntimeException failure = new RuntimeException("safe");
-    assertThat(ForgotPasswordSharedFailureClassifiers.provenPreDispatch().classify(failure))
-        .isEqualTo(IdempotencyFailureClassification.PROVEN_NO_SIDE_EFFECT);
-    assertThat(ForgotPasswordSharedFailureClassifiers.possibleSideEffect().classify(failure))
-        .isEqualTo(IdempotencyFailureClassification.POSSIBLE_SIDE_EFFECT);
   }
 }

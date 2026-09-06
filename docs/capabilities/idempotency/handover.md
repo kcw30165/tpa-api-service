@@ -443,10 +443,10 @@ The narrow Login Start, OTP Send, OTP Resend, and controller composition tests n
 
 Final committed-state validation completed successfully at Git HEAD `4afbc2726a6140cf41d7168e8ef301451bbe76f1`. Spotless check, production compilation, test compilation, the Maven full suite, and Git diff hygiene all passed. Surefire reported 956 suites, 4,077 tests, zero failures, zero errors, and 10 skipped tests. Repository-level P4-G validation is complete. No deployment, environment-coverage, rollback-window, or TTL-drainage claim is made because the shared Login migration has not been deployed.
 
-## P5-C Forgot Password foundation
+## P5-C Forgot Password shared-idempotency integration
 
 - Baseline: `ff1b7269cc5f1287efa520d11e3164b415c510ba`.
-- Added shared foundations for the five scoped Forgot Password actions.
+- Added action-specific integration policy for the five scoped Forgot Password actions over the single repository-wide shared foundation.
 - Production composition remains unchanged.
 - The next stage is the START protected-operation and shared-coordinator migration.
 - P5-A/B/C/D/E remains authoritative.
@@ -477,4 +477,14 @@ Final committed-state validation completed successfully at Git HEAD `4afbc2726a6
 - Added transient response conversion and fail-closed unit coverage.
 - Production `StartForgotPasswordUseCase` composition remains unchanged.
 - The next stage splits the protected START operation and introduces the shared coordinator before the composition switch.
+- P5-A/B/C/D/E remains authoritative.
+
+### P5-C shared-boundary consolidation
+
+- Confirmed that the repository has one shared idempotency foundation.
+- Centralized opaque operation identity construction, canonical fingerprint hashing, constant failure classifiers, and strict action-tagged response envelopes.
+- Replaced the duplicate Forgot Password generic helpers with `ForgotPasswordIdempotencyIntegrationPolicy`, which supplies only capability, action, authorized scope, and action-specific canonical fields.
+- Retained START protected persistence, typed response capture, replay hydration, and fresh-CSRF behavior as action-specific integration responsibilities.
+- Login and Registration production behavior is unchanged in this increment; their equivalent duplicate helpers are recorded for later compatibility-preserving consolidation.
+- Production Forgot Password START composition remains unchanged.
 - P5-A/B/C/D/E remains authoritative.

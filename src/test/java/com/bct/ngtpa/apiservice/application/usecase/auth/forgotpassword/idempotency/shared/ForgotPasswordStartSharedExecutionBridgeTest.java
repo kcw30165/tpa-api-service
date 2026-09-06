@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.bct.ngtpa.apiservice.adapter.out.json.JacksonTransientJsonAdapter;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
+import com.bct.ngtpa.apiservice.application.idempotency.ActionTaggedIdempotencyResponseEnvelope;
 import com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayReference;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordResultStatus;
@@ -26,7 +27,7 @@ class ForgotPasswordStartSharedExecutionBridgeTest {
     var port = new ReplayPort();
     var json = new JacksonTransientJsonAdapter(new ObjectMapper());
     var codec = new ForgotPasswordStartReplayCodec(
-        new ForgotPasswordSharedResponseEnvelope(json),
+        new ActionTaggedIdempotencyResponseEnvelope(json),
         port,
         command -> Mono.just(new CreateAuthFlowSessionCsrfResult("fresh-csrf", NOW.plusSeconds(300), 300)),
         Clock.fixed(NOW, ZoneOffset.UTC));
@@ -53,7 +54,7 @@ class ForgotPasswordStartSharedExecutionBridgeTest {
     var json = new JacksonTransientJsonAdapter(new ObjectMapper());
     var port = new ReplayPort();
     var codec = new ForgotPasswordStartReplayCodec(
-        new ForgotPasswordSharedResponseEnvelope(json), port,
+        new ActionTaggedIdempotencyResponseEnvelope(json), port,
         command -> Mono.error(new AssertionError("must not create CSRF")), Clock.systemUTC());
     var bridge = new ForgotPasswordStartSharedExecutionBridge(json, codec, 1800);
     assertThatThrownBy(() -> bridge.fromTransientResponse(

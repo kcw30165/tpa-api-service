@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempot
 
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
+import com.bct.ngtpa.apiservice.application.idempotency.ActionTaggedIdempotencyResponseEnvelope;
 import com.bct.ngtpa.apiservice.application.idempotency.HydratedIdempotentResponse;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentCapturedResponse;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentTerminalResponseSnapshot;
@@ -22,13 +23,13 @@ public final class ForgotPasswordStartReplayCodec {
   private static final String MEDIA_TYPE = "application/json";
   private static final int SCHEMA_VERSION = 1;
 
-  private final ForgotPasswordSharedResponseEnvelope envelope;
+  private final ActionTaggedIdempotencyResponseEnvelope envelope;
   private final ForgotPasswordStartProtectedReplayPort protectedReplay;
   private final CreateAuthFlowSessionCsrfUseCase csrf;
   private final Clock clock;
 
   public ForgotPasswordStartReplayCodec(
-      ForgotPasswordSharedResponseEnvelope envelope,
+      ActionTaggedIdempotencyResponseEnvelope envelope,
       ForgotPasswordStartProtectedReplayPort protectedReplay,
       CreateAuthFlowSessionCsrfUseCase csrf,
       Clock clock) {
@@ -50,7 +51,7 @@ public final class ForgotPasswordStartReplayCodec {
         || !MEDIA_TYPE.equalsIgnoreCase(transientResponse.mediaType())) {
       throw new IllegalArgumentException("Forgot Password Start transient transport mismatch");
     }
-    String body = envelope.encode(ForgotPasswordSharedIdempotencyAction.START, safePayload(result));
+    String body = envelope.encode(ForgotPasswordSharedIdempotencyAction.START.action(), safePayload(result));
     if (result.status() != StartForgotPasswordResultStatus.STARTED) {
       return Mono.just(captured(transientResponse, body, null));
     }
@@ -77,7 +78,7 @@ public final class ForgotPasswordStartReplayCodec {
     }
     SafePayload payload =
         envelope.decodePayload(
-            ForgotPasswordSharedIdempotencyAction.START,
+            ForgotPasswordSharedIdempotencyAction.START.action(),
             snapshot.serializedSafeBody(),
             SafePayload.class);
     StartForgotPasswordResultStatus status = status(payload.status());

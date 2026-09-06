@@ -165,18 +165,20 @@ Shared Redis keys use the shared key factory and persistence ID derivation. Lega
 - The legacy `CANCEL` enum value disappears only when the complete feature-local idempotency contract is removed.
 
 ## P5-C cumulative implementation status
+The repository has one shared idempotency foundation. Forgot Password contributes only action-specific integration policy and adapters; it does not define a second foundation.
 
-- Foundation increment: implemented shared action, opaque identity, versioned fingerprint, explicit failure-classifier, and action-tagged response-envelope foundations.
+
+- Integration foundation increment: retained Forgot Password action and policy inputs while centralizing opaque identity, canonical fingerprint, constant classifier, and action-tagged envelope mechanics in the single repository-wide shared foundation.
 - START protected-replay foundation: added the protected state, storage boundary, and secure opaque-reference generator; no adapter or production composition switch yet.
 - START protected persistence: added AES-GCM protected Redis persistence, reference-bound authentication, strict JSON mapping, and conditional runtime configuration; production composition remains unchanged.
 - START codec and bridge: added strict safe-snapshot capture, separately protected continuity hydration, fresh-CSRF recreation, transient conversion, and fail-closed unit coverage; production composition remains unchanged.
 - Production composition: unchanged. All five actions continue to use the legacy runtime path until their individual migration stages.
 - CANCEL: remains outside shared execution.
-- Protected references: remain outside the shared foundation and record.
+- Protected references: remain outside the shared lifecycle record and are handled by action-specific protected replay integrations.
 
 ## P5-C implementation sequence
 
-1. Add Forgot Password shared identity, action, fingerprint, failure-classification, and response-bridge foundations with fail-first tests.
+1. Add Forgot Password action-specific integration policy, protected replay, response capture, and replay hydration over the repository-wide shared idempotency foundation with fail-first tests.
 2. Migrate `START` using parallel composition and contract tests.
 3. Migrate `DETAILS_AND_OTP`, including protected opaque commit-state separation.
 4. Migrate `OTP_RESEND`, preserving no-blind-resend and committed replay behavior.
