@@ -190,6 +190,8 @@ class RegistrationCompleteProtectedOperationTest {
     assertThat(missing.clearAuthFlowCookie()).isTrue();
     verify(cancellation).cancel(eq(SID), any(), eq(NOW));
 
+    reset(sessions, locks, completion, lookup, cancellation);
+    setup();
     reset(completion, cancellation);
     when(completion.complete(any()))
         .thenReturn(Mono.just(RegistrationCompletionResult.rejected("err.tpa.cust.id.duplicated")));
@@ -220,6 +222,8 @@ class RegistrationCompleteProtectedOperationTest {
         .verify();
     verify(locks).release(any());
 
+    reset(sessions, locks, completion, lookup, cancellation);
+    setup();
     reset(completion, locks);
     when(locks.acquire(eq(SID), any()))
         .thenReturn(Mono.just(new SessionLockHandle(true, "lock", "owner")));

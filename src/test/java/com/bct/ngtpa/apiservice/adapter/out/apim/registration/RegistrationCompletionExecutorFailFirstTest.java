@@ -36,7 +36,7 @@ class RegistrationCompletionExecutorFailFirstTest {
             read(
                 "application/usecase/auth/registration/complete/idempotency/RegistrationCompleteProtectedOperation.java"));
     assertThat(source)
-        .contains("SelectedTrusttrust=uc.selectedTrust()")
+        .contains("SelectedTrusttrust=username.selectedTrust()")
         .contains("trust.accountEnv()")
         .contains("trust.trustCode()")
         .contains("ActorUserRole.ROLE_USER_MBR")

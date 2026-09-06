@@ -14,12 +14,12 @@ class SharedCompleteRegistrationPrerequisiteTest {
 
   @Test
   void protectedContextAndExpiryPrecedeUsernamePasswordAndReservation() throws Exception {
-    String source = Files.readString(SOURCE);
+    String source = Files.readString(SOURCE).replaceAll("\\s+", "");
     int context = source.indexOf("contexts.load(");
     int expiry = source.indexOf("expiry.refresh(");
     int username = source.indexOf("usernames.load(session)");
     int password = source.indexOf("passwords.validate(");
-    int execution = source.indexOf("return execute(command,");
+    int execution = source.indexOf("returnexecute(command,");
     int executor = source.indexOf("executor.execute(execution)");
     assertThat(context).isGreaterThanOrEqualTo(0);
     assertThat(expiry).isGreaterThan(context);
@@ -31,21 +31,21 @@ class SharedCompleteRegistrationPrerequisiteTest {
 
   @Test
   void invalidPrerequisitesReturnBeforeSharedExecution() throws Exception {
-    String source = Files.readString(SOURCE);
+    String source = Files.readString(SOURCE).replaceAll("\\s+", "");
     String authorize =
         source.substring(
-            source.indexOf("private Mono<CompleteRegistrationResult> authorize"),
-            source.indexOf("private Mono<CompleteRegistrationResult> prepare"));
+            source.indexOf("privateMono<CompleteRegistrationResult>authorize"),
+            source.indexOf("privateMono<CompleteRegistrationResult>prepare"));
     String prepare =
         source.substring(
-            source.indexOf("private Mono<CompleteRegistrationResult> prepare"),
-            source.indexOf("private Mono<CompleteRegistrationResult> execute"));
-    assertThat(authorize).contains("if (!context.isValid())", "return Mono.just(failure(");
+            source.indexOf("privateMono<CompleteRegistrationResult>prepare"),
+            source.indexOf("privateMono<CompleteRegistrationResult>execute"));
+    assertThat(authorize).contains("if(!context.isValid())", "failure(");
     assertThat(prepare)
         .contains(
-            "session.status() != AuthFlowStatus.USERNAME_VERIFIED",
-            "if (!validation.valid())",
-            "return Mono.just(");
+            "session.status()!=AuthFlowStatus.USERNAME_VERIFIED",
+            "if(!validation.valid())",
+            "returnMono.just(");
     assertThat(authorize).doesNotContain("executor.execute(");
     assertThat(prepare).doesNotContain("executor.execute(");
   }

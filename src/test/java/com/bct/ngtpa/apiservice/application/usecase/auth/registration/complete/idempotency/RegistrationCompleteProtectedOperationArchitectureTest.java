@@ -15,12 +15,13 @@ class RegistrationCompleteProtectedOperationArchitectureTest {
   @Test
   void operationOwnsAcquiredWorkflowAndReactiveLockLifecycle() throws Exception {
     String source = Files.readString(SOURCE);
-    assertThat(source)
-        .contains("locks.acquire(command.authFlowSessionId(), completionLockLease)")
+    String compact = source.replaceAll("\\s+", "");
+    assertThat(compact)
+        .contains("locks.acquire(command.authFlowSessionId(),completionLockLease)")
         .contains("Mono.usingWhen(")
         .contains("sessions.load(input.command().authFlowSessionId())")
         .contains("AuthFlowStatus.COMPLETING")
-        .contains("SelectedTrust trust = username.selectedTrust()")
+        .contains("SelectedTrusttrust=username.selectedTrust()")
         .contains("ActorUserRole.ROLE_USER_MBR")
         .contains("completion.complete(downstream)")
         .contains("searchUnregisteredMember(command)")
@@ -56,7 +57,7 @@ class RegistrationCompleteProtectedOperationArchitectureTest {
     String source = Files.readString(SOURCE);
     String dispatch =
         source.substring(source.indexOf("private Mono<CompleteRegistrationResult> dispatch"));
-    assertThat(dispatch)
+    assertThat(dispatch.replaceAll("\\s+", ""))
         .contains("completion.complete(downstream)")
         .doesNotContain(
             "RegistrationCompletionPreDispatchException.class",

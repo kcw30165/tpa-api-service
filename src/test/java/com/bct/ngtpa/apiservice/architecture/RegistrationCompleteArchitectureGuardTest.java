@@ -65,8 +65,14 @@ class RegistrationCompleteArchitectureGuardTest {
   @Test
   void applicationOrchestrationUsesProtectedContextAndTypedCapabilities() throws Exception {
     String source = Files.readString(APPLICATION_SERVICE);
+    String protectedOperation =
+        Files.readString(
+            Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/complete/"
+                    + "idempotency/RegistrationCompleteProtectedOperation.java"));
+    String orchestration = source + protectedOperation;
 
-    assertThat(source)
+    assertThat(orchestration)
         .containsIgnoringWhitespaces("RegistrationProtectedAuthFlowContextLoader")
         .containsIgnoringWhitespaces("RegistrationUsernameCheckContextLoader")
         .containsIgnoringWhitespaces("AuthFlowSessionCompletionLockPort")
@@ -103,7 +109,7 @@ class RegistrationCompleteArchitectureGuardTest {
         .containsIgnoringWhitespaces("csrfToken=<redacted>")
         .containsIgnoringWhitespaces("idempotencyKey=<redacted>");
     assertThat(service)
-        .containsIgnoringWhitespaces("sha256(c.password())")
+        .containsIgnoringWhitespaces("sha256(command.password())")
         .doesNotContain("responseSnapshot(), c.password()")
         .doesNotContain("log.info")
         .doesNotContain("log.debug")
