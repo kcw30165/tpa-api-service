@@ -468,3 +468,13 @@ Final committed-state validation completed successfully at Git HEAD `4afbc2726a6
 - Production `StartForgotPasswordUseCase` composition remains unchanged.
 - The next stage adds the strict START replay codec and shared execution bridge.
 - P5-A/B/C/D/E remains authoritative.
+
+### P5-C Forgot Password START codec and bridge
+
+- Added strict safe-snapshot capture for STARTED, USERNAME_NOT_FOUND, and AUTH_FLOW_INVALID terminal results.
+- STARTED capture stores protected continuity separately and persists only the opaque replay reference in the shared snapshot.
+- Replay hydration checks protected-state expiry and recreates a fresh CSRF token through the authorized application boundary.
+- Added transient response conversion and fail-closed unit coverage.
+- Production `StartForgotPasswordUseCase` composition remains unchanged.
+- The next stage splits the protected START operation and introduces the shared coordinator before the composition switch.
+- P5-A/B/C/D/E remains authoritative.
