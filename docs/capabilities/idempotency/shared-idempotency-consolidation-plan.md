@@ -196,6 +196,8 @@ Migrate credential/start, OTP send, OTP resend, and OTP verify. Preserve separat
 
 ### P5: Forgot Password migration
 
+
+Design and acceptance matrix: [Forgot Password P5 shared idempotency migration design](forgot-password-p5-migration-design.md).
 Migrate start, details and OTP, OTP resend, OTP verify, and complete. Preserve opaque commit references only as protected workflow state. Delete Forgot Password-specific idempotency infrastructure after all actions migrate.
 
 ### P6: Username Recovery migration

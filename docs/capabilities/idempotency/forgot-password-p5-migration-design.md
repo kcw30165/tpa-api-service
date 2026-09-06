@@ -1,0 +1,187 @@
+# Forgot Password P5 Shared Idempotency Migration Design
+
+## Status and baseline
+
+This document records the P5-B design derived from the completed P5-A investigation. The approved repository baseline is branch `fix/relay-same-error-code-for-the-idempotent-request` at exact Git HEAD `7b06f5b7d94a6ebad0d04b1f22ed40552c48238a`.
+
+P4 repository validation completed with 4,077 tests, 0 failures, 0 errors, and 10 skipped. The shared Login migration has not been deployed. Deployment timestamps, environment coverage, rollback-window closure, and TTL-drainage gates are therefore not applicable.
+
+The controlling checklist remains P5-A/B/C/D/E.
+
+## P5-A investigation outcome
+
+The shared-executor migration scope is:
+
+1. `START`
+2. `DETAILS_AND_OTP`
+3. `OTP_RESEND`
+4. `OTP_VERIFY`
+5. `COMPLETE`
+
+`CANCEL` is not a separate idempotent execution. It remains revision-aware workflow cancellation and cleanup. Its tests and architecture guard must confirm that cancellation does not introduce feature-local idempotency lifecycle behavior.
+
+The legacy Forgot Password record currently combines generic idempotency lifecycle data with feature-specific opaque commit references. P5 must separate those concerns. Shared idempotency persistence may carry only the context-neutral operation identity, fingerprint, reservation ownership, lifecycle status, and terminal response snapshot. Opaque commit references remain in protected Forgot Password workflow or commit state.
+
+## P5-B target design
+
+### Shared operation identity
+
+All migrated actions use:
+
+- capability: `forgot-password`
+- action: stable action-specific value
+- scope: SHA-256 of the authorized raw workflow scope
+- key: trimmed client `Idempotency-Key`
+
+The raw auth-flow session identifier, username, destination, authorization identifier, and opaque commit reference must never be persisted as the shared operation scope.
+
+Action values are:
+
+- `start`
+- `details-and-otp`
+- `otp-resend`
+- `otp-verify`
+- `complete`
+
+For `START`, the authorized raw workflow scope must preserve the current pre-session semantics. The identity factory must use a stable protected scope derived from the request context without exposing the normalized username in Redis keys or logs. This mapping must be proven by fail-first tests before production wiring.
+
+For all post-start actions, the authorized raw workflow scope is the current Forgot Password auth-flow session identifier, hashed by the feature-owned identity factory before reaching shared persistence.
+
+### Fingerprints
+
+Fingerprints remain action-specific and versioned. The migration must preserve current key-reuse decisions:
+
+- `START`: action discriminator plus normalized username, versioned without storing the username.
+- `DETAILS_AND_OTP`: the current normalized details payload and action discriminator.
+- `OTP_RESEND`: the current constant operation fingerprint where request semantics contain no varying business payload.
+- `OTP_VERIFY`: the current constant operation fingerprint. The OTP value must not be included or persisted.
+- `COMPLETE`: the current constant operation fingerprint. Password material must never be included or persisted.
+
+All fingerprints are SHA-256 values produced by a Forgot Password-owned factory. Raw personal data, OTP values, password values, CSRF tokens, cookies, authorization data, and opaque references are excluded from shared snapshots and logs.
+
+### Execution structure
+
+Each migrated action uses a thin shared-idempotency coordinator implementing the existing input port. The existing service becomes the protected operation or is split behind an action-specific protected-operation boundary where required to prevent nested legacy reservation.
+
+The coordinator supplies:
+
+- shared operation identity;
+- versioned fingerprint;
+- existing configured TTL;
+- protected operation;
+- conservative failure classifier;
+- action-specific response capture;
+- action-specific replay hydration.
+
+Production composition switches one action at a time. No action may use both the legacy Forgot Password port and the shared executor in the same runtime path.
+
+### Failure classification
+
+Classification is evidence-based and conservative:
+
+- a failure proven to occur before any downstream dispatch or state mutation may become `FAILED`;
+- a failure after a possible OTP delivery, APIM request, session mutation, password reset dispatch, or uncertain commit becomes `UNKNOWN_OUTCOME`;
+- a completed business result that is intentionally replayable is captured as `COMPLETED` with an approved terminal snapshot;
+- persistence or hydration uncertainty must fail closed and must not trigger blind resend or repeat password-reset dispatch.
+
+Action implementations must not reuse a generic classifier merely because another capability uses it. Tests must prove each pre-dispatch and possible-side-effect boundary.
+
+### Replay and protected references
+
+`COMPLETED_REPLAY` remains an internal lifecycle outcome. Existing public mapper behavior is preserved:
+
+- Start replay follows the existing successful start response and cookie behavior.
+- Details and OTP replay resolves the protected commit reference and reconstructs the existing successful response without sending another OTP.
+- OTP resend replay resolves protected commit state and does not resend.
+- OTP verify replay resolves protected authorization or workflow state and does not consume the OTP again.
+- Complete replay reconstructs the existing terminal business result and never invokes reset-password dispatch again.
+
+Opaque references are represented only by the shared snapshot protected-replay-reference facility or by protected workflow state, according to the action bridge. They must not be added as feature-specific fields to the shared record.
+
+Blocked headers and values remain excluded from snapshots, including cookies, authorization headers, CSRF material, bearer values, and auth-flow cookie values.
+
+### Public contract preservation
+
+HTTP routes, required headers, cookies, response envelopes, error targets, `Accept-Language`, and request-correlation behavior remain unchanged.
+
+The migration must preserve current public mapping for duplicate-in-progress, key reuse, prior failure, unknown outcome, business rejection, and system failure. Recognized business rejections retain the approved public business status. Technical and uncertain failures map to `SYSTEM_ERROR`. `ApiStatus.DOWNSTREAM_REJECTED` must never be exposed to the frontend.
+
+### Configuration and persistence
+
+Existing action TTL configuration remains authoritative during migration. P5 does not introduce new hardcoded TTLs.
+
+Shared Redis keys use the shared key factory and persistence ID derivation. Legacy Forgot Password keys are not read by the new shared executor. Because no shared Login deployment exists, deployment coexistence, TTL drainage, and rollback windows remain not applicable at this stage. Repository cleanup occurs only after every P5 action is migrated and validated.
+
+## P5-B acceptance matrix
+
+### Global acceptance
+
+- Shared identity is opaque and action-isolated.
+- Fingerprints preserve existing key-reuse semantics without secret or personal-data persistence.
+- Reservation ownership is enforced by the shared executor.
+- Completed replay does not repeat side effects.
+- Unknown outcomes fail closed.
+- Public HTTP and mapper contracts remain unchanged.
+- Every implementation stage updates documents under `docs/capabilities/idempotency`.
+- Compile and test-compile pass after each deterministic implementation stage.
+
+### START
+
+- Shared coordinator handles all reservation outcomes.
+- Existing username normalization and anti-enumeration behavior are preserved.
+- Completed replay restores the expected workflow response and cookie behavior.
+- No raw username or session identifier appears in shared keys, snapshots, or logs.
+
+### DETAILS_AND_OTP
+
+- The details fingerprint retains current normalized-request semantics.
+- OTP delivery is protected from duplicate dispatch.
+- Pending and committed opaque references live only in protected commit/workflow state.
+- Replay returns the existing successful details-and-OTP response without another send.
+
+### OTP_RESEND
+
+- Cooldown, resend limits, committed replay, and unknown-outcome blocking are preserved.
+- Duplicate execution cannot send another OTP.
+- Protected commit-state hydration remains revision-aware.
+
+### OTP_VERIFY
+
+- OTP material is excluded from fingerprint and persistence.
+- Successful replay does not consume or verify the OTP again.
+- Authorization replay uses protected state and preserves current public routing.
+
+### COMPLETE
+
+- Password material is excluded from fingerprint and persistence.
+- Pre-dispatch business validation and post-dispatch uncertainty are classified separately.
+- Completed success and approved business-result replay never repeat downstream password-reset dispatch.
+- Session `UNKNOWN_OUTCOME_BLOCKED` behavior remains aligned with idempotency unknown outcome.
+
+### CANCEL and cleanup
+
+- Cancel remains outside shared execution.
+- Cancellation continues to invalidate active OTP state and clear workflow state as currently defined.
+- The legacy `CANCEL` enum value disappears only when the complete feature-local idempotency contract is removed.
+
+## P5-C implementation sequence
+
+1. Add Forgot Password shared identity, action, fingerprint, failure-classification, and response-bridge foundations with fail-first tests.
+2. Migrate `START` using parallel composition and contract tests.
+3. Migrate `DETAILS_AND_OTP`, including protected opaque commit-state separation.
+4. Migrate `OTP_RESEND`, preserving no-blind-resend and committed replay behavior.
+5. Migrate `OTP_VERIFY`, preserving protected authorization replay.
+6. Migrate `COMPLETE`, preserving pre-dispatch classification and downstream uncertainty handling.
+7. Switch production composition cumulatively and add cross-action namespace and replay architecture guards.
+8. Remove Forgot Password-specific idempotency port, DTOs, Redis adapter, serializer, key factory, lifecycle enums, wiring, and obsolete tests only after replacement coverage is proven.
+9. Run feature stabilization, compile, test-compile, targeted tests as separately authorized, and repository validation.
+
+## P5-D validation evidence
+
+Each implementation stage must create a timestamped directory under `target/evidence`, capture pre-state, intentionally deferred formatting where applicable, compile, test-compile, audits, diff checks, exit codes, final status, diff stat, and name-status. Full Maven output is not duplicated into evidence files. Failure diagnostics are retained only when needed.
+
+## P5-E closure
+
+P5 closes only when all five scoped actions use shared idempotency in production composition, protected references are absent from shared persistence, the feature-local idempotency infrastructure is removed, documentation is current, repository validation passes, and the working tree is clean.
+
+Until an actual deployment occurs, deployment timestamps, environment coverage, rollback-window closure, and TTL-drainage gates remain not applicable.
