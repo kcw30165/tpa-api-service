@@ -451,3 +451,11 @@ Final committed-state validation completed successfully at Git HEAD `4afbc2726a6
 - The next stage is the START protected-operation and shared-coordinator migration.
 - P5-A/B/C/D/E remains authoritative.
 - Deployment timestamps, environment coverage, rollback-window closure, and TTL-drainage remain not applicable.
+
+### P5-C Forgot Password START protected replay foundation
+
+- Added the START protected replay state and storage boundary outside shared idempotency persistence.
+- Added a secure opaque-reference generator with 256 bits of entropy.
+- No Redis adapter, protected-state encryption adapter, shared coordinator, or production composition switch is included yet.
+- The next stage implements protected persistence and the START response codec/bridge before switching composition.
+- P5-A/B/C/D/E remains authoritative.
