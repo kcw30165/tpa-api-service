@@ -506,3 +506,11 @@ Final committed-state validation completed successfully at Git HEAD `4afbc2726a6
 - Persisted terminal snapshot schema, Redis records, public responses, and production bean selection remain unchanged.
 - Forgot Password production START composition remains unchanged.
 - P5-A/B/C/D/E remains authoritative.
+
+### P5-C Forgot Password START protected operation extraction
+
+- Added `ForgotPasswordStartProtectedOperation` containing the existing username lookup, protected context, session concurrency, session creation, and CSRF workflow without idempotency reservation or persistence dependencies.
+- Preserved username normalization, actor-role propagation, identity-type mapping, session-replacement conflict handling, and public START result mappings.
+- Retained the legacy `StartForgotPasswordService` and current production composition unchanged during this extraction stage.
+- The next stage adds the thin shared-executor coordinator and tests it before the atomic production composition switch.
+- P5-A/B/C/D/E remains authoritative.
