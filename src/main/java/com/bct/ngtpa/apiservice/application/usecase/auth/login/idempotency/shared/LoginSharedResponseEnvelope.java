@@ -1,22 +1,22 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort;
+import java.util.Map;
 import java.util.Objects;
 
 /** Strict action-tagged JSON envelope for Login safe and transient response bodies. */
 public final class LoginSharedResponseEnvelope {
-  private final ObjectMapper mapper =
-      new ObjectMapper().enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+  private final TransientJsonPort json;
+  public LoginSharedResponseEnvelope(TransientJsonPort json) {
+    this.json = Objects.requireNonNull(json, "json must not be null");
+  }
 
   public String encode(LoginSharedIdempotencyAction action, Object payload) {
     Objects.requireNonNull(action, "Login idempotency action must not be null");
     Objects.requireNonNull(payload, "Login response payload must not be null");
     try {
-      return mapper.writeValueAsString(new WriteWire(action.action().value(), payload));
-    } catch (JsonProcessingException exception) {
+      return json.write(new WriteWire(action.action().value(), payload));
+    } catch (RuntimeException exception) {
       throw invalid();
     }
   }
@@ -34,8 +34,8 @@ public final class LoginSharedResponseEnvelope {
       throw new IllegalArgumentException("Login replay action mismatch");
     }
     try {
-      return mapper.treeToValue(wire.payload(), payloadType);
-    } catch (JsonProcessingException | IllegalArgumentException exception) {
+      return json.read(json.write(wire.payload()), payloadType);
+    } catch (RuntimeException exception) {
       throw invalid();
     }
   }
@@ -45,15 +45,12 @@ public final class LoginSharedResponseEnvelope {
       throw invalid();
     }
     try {
-      ReadWire wire = mapper.readValue(serializedBody, ReadWire.class);
-      if (wire.idempotencyAction() == null
-          || wire.idempotencyAction().isBlank()
-          || wire.payload() == null
-          || wire.payload().isNull()) {
+      ReadWire wire = json.read(serializedBody, ReadWire.class);
+      if (wire.idempotencyAction() == null || wire.idempotencyAction().isBlank() || wire.payload() == null) {
         throw invalid();
       }
       return wire;
-    } catch (JsonProcessingException exception) {
+    } catch (RuntimeException exception) {
       throw invalid();
     }
   }
@@ -73,5 +70,5 @@ public final class LoginSharedResponseEnvelope {
 
   private record WriteWire(String idempotencyAction, Object payload) {}
 
-  private record ReadWire(String idempotencyAction, JsonNode payload) {}
+  private record ReadWire(String idempotencyAction, Map<String, Object> payload) {}
 }

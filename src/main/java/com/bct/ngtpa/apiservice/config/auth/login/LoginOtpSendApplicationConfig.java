@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.config.auth.login;
 
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedResponseEnvelope;
+
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.login.mapper.LoginOtpSendWebMapper;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyExecutor;
@@ -36,7 +38,7 @@ public class LoginOtpSendApplicationConfig {
       DestinationBucketIdGenerator buckets,
       IdempotencyExecutor idempotencyExecutor,
       Clock clock,
-      AuthWorkflowProperties properties) {
+      AuthWorkflowProperties properties, TransientJsonPort json) {
     properties.validateLoginPolicy();
     var p = properties.getLogin().getOtp();
     var policy =
@@ -63,7 +65,7 @@ public class LoginOtpSendApplicationConfig {
     return new SharedLoginOtpSendService(
         idempotencyExecutor,
         core,
-        new LoginOtpSendSharedExecutionBridge(new LoginOtpSendReplayCodec()),
+        new LoginOtpSendSharedExecutionBridge(json, new LoginOtpSendReplayCodec(new LoginSharedResponseEnvelope(json))),
         new LoginSharedIdempotencyIdentityFactory(),
         new LoginSharedFingerprintFactory(),
         Duration.ofSeconds(properties.getLogin().getIdempotency().getOtpSendTtlSeconds()));

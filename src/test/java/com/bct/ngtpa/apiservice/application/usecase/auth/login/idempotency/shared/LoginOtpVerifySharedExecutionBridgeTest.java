@@ -25,8 +25,8 @@ class LoginOtpVerifySharedExecutionBridgeTest {
     var original = success("original-csrf");
     var replayed = success("fresh-csrf");
     var bridge =
-        new LoginOtpVerifySharedExecutionBridge(
-            new LoginOtpVerifyReplayCodec((reference, correlationId) -> Mono.just(replayed)));
+        new LoginOtpVerifySharedExecutionBridge(testJson(),
+            new LoginOtpVerifyReplayCodec(new LoginSharedResponseEnvelope(testJson()), (reference, correlationId) -> Mono.just(replayed)));
     var transientResponse = bridge.toTransientResponse(original);
     assertThat(bridge.fromTransientResponse(transientResponse)).isEqualTo(original);
 
@@ -51,8 +51,8 @@ class LoginOtpVerifySharedExecutionBridgeTest {
   @Test
   void rejectsMalformedUnknownFieldHeadersAndHttpMismatch() {
     var bridge =
-        new LoginOtpVerifySharedExecutionBridge(
-            new LoginOtpVerifyReplayCodec(
+        new LoginOtpVerifySharedExecutionBridge(testJson(),
+            new LoginOtpVerifyReplayCodec(new LoginSharedResponseEnvelope(testJson()),
                 (reference, correlationId) -> Mono.error(new AssertionError())));
     assertThatThrownBy(
             () ->
@@ -78,8 +78,8 @@ class LoginOtpVerifySharedExecutionBridgeTest {
     java.util.concurrent.atomic.AtomicInteger recoveries =
         new java.util.concurrent.atomic.AtomicInteger();
     var bridge =
-        new LoginOtpVerifySharedExecutionBridge(
-            new LoginOtpVerifyReplayCodec(
+        new LoginOtpVerifySharedExecutionBridge(testJson(),
+            new LoginOtpVerifyReplayCodec(new LoginSharedResponseEnvelope(testJson()),
                 (reference, correlationId) -> {
                   recoveries.incrementAndGet();
                   return Mono.just(success("fresh"));
@@ -113,5 +113,10 @@ class LoginOtpVerifySharedExecutionBridgeTest {
                 null)),
         new AuthenticatedSessionId("sid_abcdefghijklmnopqrstuvwx"),
         csrf);
+  }
+
+  private static com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort testJson() {
+    return new com.bct.ngtpa.apiservice.adapter.out.json.JacksonTransientJsonAdapter(
+        new com.fasterxml.jackson.databind.ObjectMapper());
   }
 }

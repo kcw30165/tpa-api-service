@@ -1,4 +1,5 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared;
+import com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort;
 
 import com.bct.ngtpa.apiservice.application.dto.auth.login.account.LoginSessionAccount;
 import com.bct.ngtpa.apiservice.application.dto.session.authenticated.AuthenticatedSessionId;
@@ -8,9 +9,6 @@ import com.bct.ngtpa.apiservice.application.idempotency.IdempotentTerminalRespon
 import com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayReference;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.verify.VerifyLoginOtpResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.verify.VerifyLoginOtpStatus;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -19,11 +17,11 @@ import reactor.core.publisher.Mono;
 /** Typed transient execution bridge for Login OTP Verify. */
 public final class LoginOtpVerifySharedExecutionBridge {
   private static final String MEDIA_TYPE = "application/json";
-  private final ObjectMapper mapper =
-      new ObjectMapper().enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+  private final TransientJsonPort json;
   private final LoginOtpVerifyReplayCodec replayCodec;
 
-  public LoginOtpVerifySharedExecutionBridge(LoginOtpVerifyReplayCodec replayCodec) {
+  public LoginOtpVerifySharedExecutionBridge(TransientJsonPort json, LoginOtpVerifyReplayCodec replayCodec) {
+    this.json = Objects.requireNonNull(json);
     this.replayCodec = Objects.requireNonNull(replayCodec);
   }
 
@@ -33,9 +31,9 @@ public final class LoginOtpVerifySharedExecutionBridge {
       return new HydratedIdempotentResponse(
           LoginOtpVerifyReplayCodec.httpStatus(result.status()),
           MEDIA_TYPE,
-          mapper.writeValueAsString(TransientWire.from(result)),
+          json.write(TransientWire.from(result)),
           Map.of());
-    } catch (JsonProcessingException exception) {
+    } catch (RuntimeException exception) {
       throw new IllegalArgumentException("Login OTP Verify transient encoding failed");
     }
   }
@@ -46,13 +44,13 @@ public final class LoginOtpVerifySharedExecutionBridge {
       throw new IllegalArgumentException("Login OTP Verify transient transport is invalid");
     }
     try {
-      TransientWire wire = mapper.readValue(response.serializedBody(), TransientWire.class);
+      TransientWire wire = json.read(response.serializedBody(), TransientWire.class);
       VerifyLoginOtpStatus status = VerifyLoginOtpStatus.valueOf(wire.status());
       if (response.httpStatus() != LoginOtpVerifyReplayCodec.httpStatus(status)) {
         throw new IllegalArgumentException("Login OTP Verify transient HTTP status mismatch");
       }
       return wire.toResult(status);
-    } catch (RuntimeException | JsonProcessingException exception) {
+    } catch (RuntimeException exception) {
       throw new IllegalArgumentException("Login OTP Verify transient decoding failed");
     }
   }

@@ -12,7 +12,7 @@ import reactor.test.StepVerifier;
 
 class LoginOtpSendSharedExecutionBridgeTest {
   private final LoginOtpSendSharedExecutionBridge bridge =
-      new LoginOtpSendSharedExecutionBridge(new LoginOtpSendReplayCodec());
+      new LoginOtpSendSharedExecutionBridge(testJson(), new LoginOtpSendReplayCodec(new LoginSharedResponseEnvelope(testJson())));
 
   @Test
   void transientCaptureAndReplayRestoreOriginalSentResult() {
@@ -62,5 +62,10 @@ class LoginOtpSendSharedExecutionBridgeTest {
                             .serializedBody(),
                         Map.of())))
         .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  private static com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort testJson() {
+    return new com.bct.ngtpa.apiservice.adapter.out.json.JacksonTransientJsonAdapter(
+        new com.fasterxml.jackson.databind.ObjectMapper());
   }
 }

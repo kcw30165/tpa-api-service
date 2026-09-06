@@ -13,8 +13,11 @@ import reactor.core.publisher.Mono;
 public final class LoginOtpSendReplayCodec {
   private static final int SCHEMA_VERSION = 1;
   private static final String MEDIA_TYPE = "application/json";
-  private final LoginSharedResponseEnvelope envelope = new LoginSharedResponseEnvelope();
+  private final LoginSharedResponseEnvelope envelope;
 
+  public LoginOtpSendReplayCodec(LoginSharedResponseEnvelope envelope) {
+    this.envelope = Objects.requireNonNull(envelope);
+  }
   public Mono<IdempotentCapturedResponse> capture(
       SendLoginOtpResult result, HydratedIdempotentResponse transientResponse) {
     Objects.requireNonNull(result, "Login OTP Send result must not be null");

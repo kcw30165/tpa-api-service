@@ -1,5 +1,9 @@
 package com.bct.ngtpa.apiservice.config.auth.login;
 
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared.LoginSharedResponseEnvelope;
+
+import com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort;
+
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowProperties;
 import com.bct.ngtpa.apiservice.adapter.in.web.session.config.AuthFlowSessionProperties;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyExecutor;
@@ -63,9 +67,9 @@ public class LoginApplicationConfig {
 
   @Bean
   LoginStartSharedExecutionBridge loginStartSharedExecutionBridge(
-      LoginStartReplayPort replayPort, LoginStartReplayProtectorPort protector, Clock clock) {
-    return new LoginStartSharedExecutionBridge(
-        new LoginStartReplayCodec(replayPort, protector, clock));
+      LoginStartReplayPort replayPort, LoginStartReplayProtectorPort protector, Clock clock, TransientJsonPort json) {
+    return new LoginStartSharedExecutionBridge(json,
+        new LoginStartReplayCodec(new LoginSharedResponseEnvelope(json), replayPort, protector, clock));
   }
 
   @Bean

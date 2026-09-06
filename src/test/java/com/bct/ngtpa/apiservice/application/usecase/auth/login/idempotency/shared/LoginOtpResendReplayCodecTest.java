@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 import reactor.test.StepVerifier;
 
 class LoginOtpResendReplayCodecTest {
-  private final LoginOtpResendReplayCodec codec = new LoginOtpResendReplayCodec();
+  private final LoginOtpResendReplayCodec codec = new LoginOtpResendReplayCodec(new LoginSharedResponseEnvelope(testJson()));
 
   @Test
   void roundTripsEveryDeterministicStatusWithAuthoritativeHttpMapping() {
@@ -117,7 +117,7 @@ class LoginOtpResendReplayCodecTest {
             valid.safeHeaders(),
             new ProtectedReplayReference("opaque-ref-12345678")));
     String wrong =
-        new LoginSharedResponseEnvelope()
+        new LoginSharedResponseEnvelope(testJson())
             .encode(
                 LoginSharedIdempotencyAction.OTP_SEND,
                 new LoginOtpResendReplayCodec.SafePayload(
@@ -181,5 +181,10 @@ class LoginOtpResendReplayCodecTest {
     StepVerifier.create(codec.hydrate(snapshot))
         .expectError(IllegalArgumentException.class)
         .verify();
+  }
+
+  private static com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort testJson() {
+    return new com.bct.ngtpa.apiservice.adapter.out.json.JacksonTransientJsonAdapter(
+        new com.fasterxml.jackson.databind.ObjectMapper());
   }
 }

@@ -16,10 +16,11 @@ public final class LoginOtpVerifyReplayCodec {
   private static final int SCHEMA_VERSION = 1;
   private static final String MEDIA_TYPE = "application/json";
 
-  private final LoginSharedResponseEnvelope envelope = new LoginSharedResponseEnvelope();
+  private final LoginSharedResponseEnvelope envelope;
   private final LoginOtpVerifyProtectedReplayResolver protectedReplayResolver;
 
-  public LoginOtpVerifyReplayCodec(LoginOtpVerifyProtectedReplayResolver protectedReplayResolver) {
+  public LoginOtpVerifyReplayCodec(LoginSharedResponseEnvelope envelope, LoginOtpVerifyProtectedReplayResolver protectedReplayResolver) {
+    this.envelope = Objects.requireNonNull(envelope);
     this.protectedReplayResolver = Objects.requireNonNull(protectedReplayResolver);
   }
 

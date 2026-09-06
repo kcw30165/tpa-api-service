@@ -18,7 +18,7 @@ class LoginStartReplayCodecTest {
   private final RecordingReplayPort replay = new RecordingReplayPort();
   private Instant replayExpiresAt = NOW.plusSeconds(300);
   private final LoginStartReplayCodec codec =
-      new LoginStartReplayCodec(replay, protector(), Clock.fixed(NOW, ZoneOffset.UTC));
+      new LoginStartReplayCodec(new LoginSharedResponseEnvelope(testJson()), replay, protector(), Clock.fixed(NOW, ZoneOffset.UTC));
 
   @Test
   void capturesStartedWithoutProtectedValuesAndHydratesOriginalStatus() {
@@ -117,7 +117,7 @@ class LoginStartReplayCodecTest {
   @Test
   void failsClosedForWrongActionMissingOrExpiredProtectedReplay() {
     var body =
-        new LoginSharedResponseEnvelope()
+        new LoginSharedResponseEnvelope(testJson())
             .encode(
                 LoginSharedIdempotencyAction.OTP_SEND,
                 new LoginStartReplayCodec.SafePayload("STARTED", 0));
@@ -249,5 +249,10 @@ class LoginStartReplayCodecTest {
     public Mono<Boolean> delete(LoginStartReplayCommitRef ref) {
       throw new AssertionError("hydrate must not delete");
     }
+  }
+
+  private static com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort testJson() {
+    return new com.bct.ngtpa.apiservice.adapter.out.json.JacksonTransientJsonAdapter(
+        new com.fasterxml.jackson.databind.ObjectMapper());
   }
 }

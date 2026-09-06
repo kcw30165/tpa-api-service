@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.jupiter.api.Test;
 
 class LoginSharedResponseEnvelopeTest {
-  private final LoginSharedResponseEnvelope envelope = new LoginSharedResponseEnvelope();
+  private final LoginSharedResponseEnvelope envelope = new LoginSharedResponseEnvelope(testJson());
 
   @Test
   void roundTripsEachStableActionWithTypedPayload() {
@@ -84,4 +84,9 @@ class LoginSharedResponseEnvelopeTest {
   }
 
   private record TestPayload(String status, Integer retryAfterSeconds) {}
+
+  private static com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort testJson() {
+    return new com.bct.ngtpa.apiservice.adapter.out.json.JacksonTransientJsonAdapter(
+        new com.fasterxml.jackson.databind.ObjectMapper());
+  }
 }

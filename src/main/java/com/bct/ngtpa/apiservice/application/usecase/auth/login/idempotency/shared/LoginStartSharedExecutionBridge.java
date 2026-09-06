@@ -1,4 +1,5 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared;
+import com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort;
 
 import com.bct.ngtpa.apiservice.application.idempotency.HydratedIdempotentResponse;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentCapturedResponse;
@@ -6,9 +7,6 @@ import com.bct.ngtpa.apiservice.application.idempotency.IdempotentTerminalRespon
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.start.LoginDestinationChoice;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.start.StartLoginResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.start.StartLoginStatus;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -17,11 +15,11 @@ import reactor.core.publisher.Mono;
 /** Converts typed Login Start results to transient executor responses and safe replay snapshots. */
 public final class LoginStartSharedExecutionBridge {
   private static final String MEDIA_TYPE = "application/json";
-  private final ObjectMapper mapper =
-      new ObjectMapper().enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+  private final TransientJsonPort json;
   private final LoginStartReplayCodec replayCodec;
 
-  public LoginStartSharedExecutionBridge(LoginStartReplayCodec replayCodec) {
+  public LoginStartSharedExecutionBridge(TransientJsonPort json, LoginStartReplayCodec replayCodec) {
+    this.json = Objects.requireNonNull(json);
     this.replayCodec = Objects.requireNonNull(replayCodec);
   }
 
@@ -34,9 +32,9 @@ public final class LoginStartSharedExecutionBridge {
       return new HydratedIdempotentResponse(
           transientHttpStatus(result.status()),
           MEDIA_TYPE,
-          mapper.writeValueAsString(toWire(result)),
+          json.write(toWire(result)),
           Map.of());
-    } catch (JsonProcessingException exception) {
+    } catch (RuntimeException exception) {
       throw new IllegalArgumentException("Login Start transient response encoding failed");
     }
   }
@@ -47,7 +45,7 @@ public final class LoginStartSharedExecutionBridge {
       throw new IllegalArgumentException("Login Start transient media type is invalid");
     }
     try {
-      TransientWire wire = mapper.readValue(response.serializedBody(), TransientWire.class);
+      TransientWire wire = json.read(response.serializedBody(), TransientWire.class);
       StartLoginStatus status = StartLoginStatus.valueOf(wire.status());
       return new StartLoginResult(
           status,
@@ -57,7 +55,7 @@ public final class LoginStartSharedExecutionBridge {
           wire.destinations() == null ? List.of() : wire.destinations(),
           wire.failCount(),
           wire.replayCommitRef());
-    } catch (RuntimeException | JsonProcessingException exception) {
+    } catch (RuntimeException exception) {
       throw new IllegalArgumentException("Login Start transient response decoding failed");
     }
   }

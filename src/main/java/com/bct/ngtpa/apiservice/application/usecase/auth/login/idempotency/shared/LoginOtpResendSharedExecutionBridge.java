@@ -1,24 +1,22 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.shared;
+import com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort;
 
 import com.bct.ngtpa.apiservice.application.idempotency.HydratedIdempotentResponse;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentCapturedResponse;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentTerminalResponseSnapshot;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.resend.ResendLoginOtpResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.otp.resend.ResendLoginOtpStatus;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Objects;
 import reactor.core.publisher.Mono;
 
 /** Typed transient execution bridge for Login OTP Resend. */
 public final class LoginOtpResendSharedExecutionBridge {
   private static final String MEDIA_TYPE = "application/json";
-  private final ObjectMapper mapper =
-      new ObjectMapper().enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+  private final TransientJsonPort json;
   private final LoginOtpResendReplayCodec replayCodec;
 
-  public LoginOtpResendSharedExecutionBridge(LoginOtpResendReplayCodec replayCodec) {
+  public LoginOtpResendSharedExecutionBridge(TransientJsonPort json, LoginOtpResendReplayCodec replayCodec) {
+    this.json = Objects.requireNonNull(json);
     this.replayCodec = Objects.requireNonNull(replayCodec);
   }
 
@@ -28,9 +26,9 @@ public final class LoginOtpResendSharedExecutionBridge {
       return new HydratedIdempotentResponse(
           LoginOtpResendReplayCodec.httpStatus(result.status()),
           MEDIA_TYPE,
-          mapper.writeValueAsString(TransientWire.from(result)),
+          json.write(TransientWire.from(result)),
           LoginOtpResendReplayCodec.safeHeaders(result.retryAfterSeconds()));
-    } catch (JsonProcessingException exception) {
+    } catch (RuntimeException exception) {
       throw new IllegalArgumentException("Login OTP Resend transient encoding failed");
     }
   }
@@ -41,7 +39,7 @@ public final class LoginOtpResendSharedExecutionBridge {
       throw new IllegalArgumentException("Login OTP Resend transient media type is invalid");
     }
     try {
-      TransientWire wire = mapper.readValue(response.serializedBody(), TransientWire.class);
+      TransientWire wire = json.read(response.serializedBody(), TransientWire.class);
       ResendLoginOtpStatus status = ResendLoginOtpStatus.valueOf(wire.status());
       var result = wire.toResult(status);
       if (response.httpStatus() != LoginOtpResendReplayCodec.httpStatus(status)
@@ -51,7 +49,7 @@ public final class LoginOtpResendSharedExecutionBridge {
         throw new IllegalArgumentException("Login OTP Resend transient transport mismatch");
       }
       return result;
-    } catch (RuntimeException | JsonProcessingException exception) {
+    } catch (RuntimeException exception) {
       throw new IllegalArgumentException("Login OTP Resend transient decoding failed");
     }
   }

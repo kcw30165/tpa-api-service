@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 import reactor.test.StepVerifier;
 
 class LoginOtpSendReplayCodecTest {
-  private final LoginOtpSendReplayCodec codec = new LoginOtpSendReplayCodec();
+  private final LoginOtpSendReplayCodec codec = new LoginOtpSendReplayCodec(new LoginSharedResponseEnvelope(testJson()));
 
   @Test
   void capturesAndHydratesSentWithEmptyHeadersAndNoProtectedReference() {
@@ -127,5 +127,10 @@ class LoginOtpSendReplayCodecTest {
     StepVerifier.create(codec.hydrate(snapshot))
         .expectError(IllegalArgumentException.class)
         .verify();
+  }
+
+  private static com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort testJson() {
+    return new com.bct.ngtpa.apiservice.adapter.out.json.JacksonTransientJsonAdapter(
+        new com.fasterxml.jackson.databind.ObjectMapper());
   }
 }

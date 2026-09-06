@@ -19,13 +19,13 @@ import reactor.core.publisher.Mono;
 public final class LoginStartReplayCodec {
   private static final String MEDIA_TYPE = "application/json";
   private static final int SCHEMA_VERSION = 1;
-  private final LoginSharedResponseEnvelope envelope = new LoginSharedResponseEnvelope();
+  private final LoginSharedResponseEnvelope envelope;
   private final LoginStartReplayPort replayPort;
   private final LoginStartReplayProtectorPort protector;
   private final Clock clock;
 
-  public LoginStartReplayCodec(
-      LoginStartReplayPort replayPort, LoginStartReplayProtectorPort protector, Clock clock) {
+  public LoginStartReplayCodec(LoginSharedResponseEnvelope envelope, LoginStartReplayPort replayPort, LoginStartReplayProtectorPort protector, Clock clock) {
+    this.envelope = Objects.requireNonNull(envelope);
     this.replayPort = Objects.requireNonNull(replayPort);
     this.protector = Objects.requireNonNull(protector);
     this.clock = Objects.requireNonNull(clock);

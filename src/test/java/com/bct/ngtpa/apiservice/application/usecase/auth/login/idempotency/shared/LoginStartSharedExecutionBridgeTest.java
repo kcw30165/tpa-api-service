@@ -28,8 +28,8 @@ class LoginStartSharedExecutionBridgeTest {
   @Test
   void acquiredResponseStaysTransientAndCompletedReplayRestoresEquivalentTypedResult() {
     var replay = new ReplayPortWithProtectedValue();
-    var codec = new LoginStartReplayCodec(replay, protector(), Clock.fixed(NOW, ZoneOffset.UTC));
-    var bridge = new LoginStartSharedExecutionBridge(codec);
+    var codec = new LoginStartReplayCodec(new LoginSharedResponseEnvelope(testJson()), replay, protector(), Clock.fixed(NOW, ZoneOffset.UTC));
+    var bridge = new LoginStartSharedExecutionBridge(testJson(), codec);
     var original =
         new StartLoginResult(
             StartLoginStatus.STARTED,
@@ -75,8 +75,8 @@ class LoginStartSharedExecutionBridgeTest {
   @Test
   void rejectsLegacyCompletedReplayAndMalformedTransientBody() {
     var bridge =
-        new LoginStartSharedExecutionBridge(
-            new LoginStartReplayCodec(
+        new LoginStartSharedExecutionBridge(testJson(),
+            new LoginStartReplayCodec(new LoginSharedResponseEnvelope(testJson()),
                 new ReplayPortWithProtectedValue(), protector(), Clock.systemUTC()));
     assertThatThrownBy(
             () ->
@@ -137,5 +137,10 @@ class LoginStartSharedExecutionBridgeTest {
     public Mono<Boolean> delete(LoginStartReplayCommitRef ref) {
       throw new AssertionError("hydration must not delete protected replay");
     }
+  }
+
+  private static com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort testJson() {
+    return new com.bct.ngtpa.apiservice.adapter.out.json.JacksonTransientJsonAdapter(
+        new com.fasterxml.jackson.databind.ObjectMapper());
   }
 }

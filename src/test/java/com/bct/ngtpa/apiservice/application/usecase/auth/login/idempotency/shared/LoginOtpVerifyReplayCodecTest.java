@@ -25,7 +25,7 @@ class LoginOtpVerifyReplayCodecTest {
       new ProtectedReplayReference("0123456789abcdef0123456789abcdef");
   private final AtomicInteger recoveries = new AtomicInteger();
   private final LoginOtpVerifyReplayCodec codec =
-      new LoginOtpVerifyReplayCodec(
+      new LoginOtpVerifyReplayCodec(new LoginSharedResponseEnvelope(testJson()),
           (reference, correlationId) -> {
             recoveries.incrementAndGet();
             assertThat(reference).isEqualTo(HANDOFF);
@@ -139,7 +139,7 @@ class LoginOtpVerifyReplayCodecTest {
         new IdempotentTerminalResponseSnapshot(
             1, 422, valid.mediaType(), valid.serializedSafeBody(), Map.of(), HANDOFF));
     String wrong =
-        new LoginSharedResponseEnvelope()
+        new LoginSharedResponseEnvelope(testJson())
             .encode(
                 LoginSharedIdempotencyAction.OTP_SEND,
                 new LoginOtpVerifyReplayCodec.SafePayload("ACCOUNTS_READY", null, true));
@@ -186,7 +186,7 @@ class LoginOtpVerifyReplayCodecTest {
     var successSnapshot = successSnapshot();
 
     StepVerifier.create(
-            new LoginOtpVerifyReplayCodec((reference, correlationId) -> Mono.empty())
+            new LoginOtpVerifyReplayCodec(new LoginSharedResponseEnvelope(testJson()), (reference, correlationId) -> Mono.empty())
                 .hydrate(successSnapshot, "req-1"))
         .expectErrorSatisfies(
             error ->
@@ -213,7 +213,7 @@ class LoginOtpVerifyReplayCodecTest {
                     invalidRecoveredSuccess(List.of(account()), authenticatedSessionId(), " ")),
             (reference, correlationId) ->
                 Mono.error(new IllegalStateException("protected detail must not escape")))) {
-      StepVerifier.create(new LoginOtpVerifyReplayCodec(resolver).hydrate(successSnapshot, "req-1"))
+      StepVerifier.create(new LoginOtpVerifyReplayCodec(new LoginSharedResponseEnvelope(testJson()), resolver).hydrate(successSnapshot, "req-1"))
           .verifyError();
     }
   }
@@ -311,5 +311,10 @@ class LoginOtpVerifyReplayCodecTest {
         "OE",
         null,
         null);
+  }
+
+  private static com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort testJson() {
+    return new com.bct.ngtpa.apiservice.adapter.out.json.JacksonTransientJsonAdapter(
+        new com.fasterxml.jackson.databind.ObjectMapper());
   }
 }

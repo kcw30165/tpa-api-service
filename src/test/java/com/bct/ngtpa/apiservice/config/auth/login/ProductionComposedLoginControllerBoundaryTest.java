@@ -163,7 +163,7 @@ class ProductionComposedLoginControllerBoundaryTest {
         command -> {
           captured.set(command);
           var hydrated =
-              new LoginStartSharedExecutionBridge(mock(LoginStartReplayCodec.class))
+              new LoginStartSharedExecutionBridge(testJson(), mock(LoginStartReplayCodec.class))
                   .toTransientResponse(
                       new StartLoginResult(
                           StartLoginStatus.STARTED,
@@ -179,6 +179,8 @@ class ProductionComposedLoginControllerBoundaryTest {
               new IdempotentExecutionResult(IdempotencyReservationOutcome.ACQUIRED, hydrated));
         };
     return new ApplicationContextRunner()
+          .withUserConfiguration(LoginSharedIdempotencyConfig.class)
+          .withBean(com.fasterxml.jackson.databind.ObjectMapper.class, com.fasterxml.jackson.databind.ObjectMapper::new)
         .withUserConfiguration(LoginApplicationConfig.class)
         .withBean(
             AuthWorkflowProperties.class,
@@ -248,5 +250,10 @@ class ProductionComposedLoginControllerBoundaryTest {
     login.getAccount().setIdentifierWidth(12);
     all.setLogin(login);
     return all;
+  }
+
+  private static com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort testJson() {
+    return new com.bct.ngtpa.apiservice.adapter.out.json.JacksonTransientJsonAdapter(
+        new com.fasterxml.jackson.databind.ObjectMapper());
   }
 }

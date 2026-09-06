@@ -12,7 +12,7 @@ import reactor.test.StepVerifier;
 
 class LoginOtpResendSharedExecutionBridgeTest {
   private final LoginOtpResendSharedExecutionBridge bridge =
-      new LoginOtpResendSharedExecutionBridge(new LoginOtpResendReplayCodec());
+      new LoginOtpResendSharedExecutionBridge(testJson(), new LoginOtpResendReplayCodec(new LoginSharedResponseEnvelope(testJson())));
 
   @Test
   void acquiredAndReplayResponsesRestoreOriginalCooldownResult() {
@@ -63,5 +63,10 @@ class LoginOtpResendSharedExecutionBridgeTest {
                         cooldown.serializedBody(),
                         Map.of("Retry-After", "24"))))
         .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  private static com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort testJson() {
+    return new com.bct.ngtpa.apiservice.adapter.out.json.JacksonTransientJsonAdapter(
+        new com.fasterxml.jackson.databind.ObjectMapper());
   }
 }

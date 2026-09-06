@@ -14,8 +14,11 @@ public final class LoginOtpResendReplayCodec {
   private static final int SCHEMA_VERSION = 1;
   private static final String MEDIA_TYPE = "application/json";
   private static final String RETRY_AFTER = "Retry-After";
-  private final LoginSharedResponseEnvelope envelope = new LoginSharedResponseEnvelope();
+  private final LoginSharedResponseEnvelope envelope;
 
+  public LoginOtpResendReplayCodec(LoginSharedResponseEnvelope envelope) {
+    this.envelope = Objects.requireNonNull(envelope);
+  }
   public Mono<IdempotentCapturedResponse> capture(
       ResendLoginOtpResult result, HydratedIdempotentResponse transientResponse) {
     Objects.requireNonNull(result, "Login OTP Resend result must not be null");
