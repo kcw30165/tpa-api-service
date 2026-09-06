@@ -418,3 +418,15 @@ The isolated Login Start, OTP Send, and OTP Resend runtime composition tests now
 ### P4 repository stabilization closure
 
 P4 stabilization is complete at the repository level. The cumulative Login shared-idempotency runtime composition is covered for Start, OTP Send, OTP Resend, OTP Verify, and the production controller boundary. The post-composition Maven full suite completed with 4,087 tests, zero failures, zero errors, and 10 skipped tests. No deployment or TTL-drainage claims are made because the shared Login migration has not been deployed. P4-G applies the deferred repository formatting and reruns compile, test compilation, focused shared-idempotency validation, architecture validation, and diff hygiene checks.
+
+### P4-G startup closure: Login OTP Verify Redis key factory
+
+The shared Login composition now exposes one `RedisLoginIdempotencyKeyFactory` bean using the configured `redis-cache.key-prefix`. This satisfies the retained OTP Verify protected persistence and authenticated-login handoff stores without restoring the removed legacy Login response-idempotency lifecycle. Local startup is validated with Redis TLS disabled while preserving Redis-backed ports.
+
+### P4-G startup closure: Login OTP Verify persistence identity
+
+The shared Login composition now exposes the retained HMAC-based `LoginIdempotencyPersistenceIdDeriver` from the existing runtime Base64 secret property. This identity remains limited to protected OTP Verify recovery evidence and authenticated-login handoff persistence. It does not restore the removed legacy Login response-idempotency lifecycle.
+
+### P4-G startup closure: Login OTP Verify shared bridge composition
+
+The shared Login configuration now composes the OTP Verify protected replay resolver, safe replay codec, and typed shared execution bridge. The resolver is created by Spring's constructor autowiring so its exact retained recovery dependencies remain authoritative and are not duplicated in configuration. This completes the production bean path required by `VerifyLoginOtpUseCase` without restoring the removed legacy Login response-idempotency lifecycle.
