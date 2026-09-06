@@ -737,3 +737,7 @@ The isolated Login runtime composition tests now provide a deterministic Base64 
 ### P4-G validation closure: Login recovery dependency in runtime slices
 
 The narrow Login Start, OTP Send, OTP Resend, and controller composition tests now supply a mocked `RecoverCommittedLoginByHandoffUseCase` required by the production OTP Verify protected replay resolver. The mock is confined to the test slices; production continues to use the real committed-login recovery composition.
+
+### P4-G final validated repository outcome
+
+Final committed-state validation completed successfully at Git HEAD `4afbc2726a6140cf41d7168e8ef301451bbe76f1`. Spotless check, production compilation, test compilation, the Maven full suite, and Git diff hygiene all passed. Surefire reported 956 suites, 4,077 tests, zero failures, zero errors, and 10 skipped tests. Repository-level P4-G validation is complete. No deployment, environment-coverage, rollback-window, or TTL-drainage claim is made because the shared Login migration has not been deployed.
