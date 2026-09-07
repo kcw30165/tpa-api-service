@@ -57,10 +57,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.Forg
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.SecureForgotPasswordOtpCommitRefGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendEligibilityValidator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendFoundationService;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendIdempotencyClassifier;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendPolicy;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendRequestHashGenerator;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ResendForgotPasswordOtpService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.verify.VerifyForgotPasswordOtpService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.ForgotPasswordStartProtectedOperation;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.IdempotentStartForgotPasswordService;
@@ -426,11 +423,6 @@ public class ForgotPasswordApplicationConfig {
   }
 
   @Bean
-  public ForgotPasswordOtpResendRequestHashGenerator forgotPasswordOtpResendRequestHashGenerator() {
-    return new ForgotPasswordOtpResendRequestHashGenerator();
-  }
-
-  @Bean
   public ForgotPasswordCancelWebMapper forgotPasswordCancelWebMapper() {
     return new ForgotPasswordCancelWebMapper();
   }
@@ -454,7 +446,7 @@ public class ForgotPasswordApplicationConfig {
 
   @Bean
   public ResendForgotPasswordOtpUseCase resendForgotPasswordOtpUseCase(
-      ForgotPasswordIdempotencyPort idempotency,
+      IdempotencyExecutor idempotencyExecutor,
       SecureForgotPasswordOtpCommitRefGenerator refs,
       AuthFlowSessionMutationLockPort locks,
       AuthFlowSessionPort sessions,
@@ -464,37 +456,57 @@ public class ForgotPasswordApplicationConfig {
       OtpChallengeStatePort challengeState,
       MessageDeliveryPort delivery,
       ForgotPasswordDestinationMasker masker,
-      ForgotPasswordOtpCommitCoordinator commits,
+      com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpCommitStatePort commitStates,
+      ForgotPasswordOtpCommitRetentionPolicy retention,
       ForgotPasswordOtpReplayResolver replay,
       ForgotPasswordOtpTemplates templates,
       ForgotPasswordInitialOtpPolicy otpPolicy,
-      ForgotPasswordOtpResendRequestHashGenerator hashes,
       Clock clock,
+      ObjectMapper objectMapper,
       AuthWorkflowProperties properties,
       CorsProperties corsProperties) {
     properties.validateForgotPasswordPolicy();
-    return new ResendForgotPasswordOtpService(
-        idempotency,
-        refs,
-        locks,
-        sessions,
-        protector,
-        foundation,
-        new ForgotPasswordOtpResendIdempotencyClassifier(),
-        otp,
-        challengeState,
-        delivery,
-        masker,
-        commits,
-        replay,
-        templates,
-        otpPolicy,
-        hashes,
-        clock,
+    Duration ttl =
         Duration.ofSeconds(
-            properties.getForgotPassword().getIdempotency().getOtpResendTtlSeconds()),
-        Duration.ofSeconds(10),
-        corsProperties == null ? List.of() : corsProperties.getAllowedOrigins());
+            properties.getForgotPassword().getIdempotency().getOtpResendTtlSeconds());
+    var protectedOperation =
+        new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend
+            .ForgotPasswordOtpResendProtectedOperation(
+            refs,
+            locks,
+            sessions,
+            protector,
+            foundation,
+            otp,
+            challengeState,
+            delivery,
+            masker,
+            commitStates,
+            retention,
+            templates,
+            otpPolicy,
+            clock,
+            ttl,
+            Duration.ofSeconds(10),
+            corsProperties == null ? List.of() : corsProperties.getAllowedOrigins());
+    var json = new JacksonTransientJsonAdapter(objectMapper);
+    var protectedReplay =
+        new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.otpresend
+            .DefaultForgotPasswordOtpResendProtectedReplayResolver(replay);
+    var codec =
+        new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.otpresend
+            .ForgotPasswordOtpResendReplayCodec(
+            new ActionTaggedIdempotencyResponseEnvelope(json), protectedReplay);
+    var responses =
+        new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.otpresend
+            .ForgotPasswordOtpResendExecutionBridge(json, codec);
+    var policy =
+        new ForgotPasswordIdempotencyIntegrationPolicy(
+            new IdempotencyOperationIdentityFactory(),
+            new CanonicalIdempotencyFingerprintFactory());
+    return new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend
+        .IdempotentResendForgotPasswordOtpService(
+        idempotencyExecutor, protectedOperation, responses, policy, ttl);
   }
 
   @Bean

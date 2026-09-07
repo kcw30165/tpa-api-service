@@ -214,3 +214,83 @@ Until an actual deployment occurs, deployment timestamps, environment coverage, 
 - Production compile, test compilation, focused shared-boundary tests, replay parity tests, composition guards, and clean-architecture validation passed.
 - Static audits confirm START and DETAILS_AND_OTP use the shared executor, DETAILS_AND_OTP legacy orchestration is absent, and resend, verify, complete, and cancel remain composed without accidental cleanup.
 - The P5-C transition evidence already records a passing 4,123-test full Maven suite and a passing Spring startup smoke.
+
+### P5-C OTP_RESEND fail-first boundary
+
+- Selected `OTP_RESEND` as the next incomplete action after the P5-E closure-readiness review.
+- Added a fail-first source boundary for the shared coordinator, protected operation, typed response bridge, replay codec, and protected replay resolver.
+- The boundary requires repository-wide `IdempotencyExecutor` ownership while preserving no-blind-resend, separately protected commit-state replay, and the existing production composition until replacement parity is proven.
+- START, DETAILS_AND_OTP, OTP_VERIFY, COMPLETE, and CANCEL remain unchanged.
+
+### P5-C OTP_RESEND replay bridge foundation
+
+- Added the typed transient response bridge, strict action-tagged safe snapshot codec, protected replay port, and adapter over the existing protected OTP commit-state resolver.
+- Safe shared persistence contains only the OTP_RESEND action and public status. Masked destination and timing continuity are hydrated through the opaque protected replay reference.
+- Production composition, the legacy resend service, and all other action composition remain unchanged.
+
+### P5-C OTP_RESEND protected-operation parity boundary
+
+- Added fail-first source-level parity coverage for lock-scoped mutation ownership, accepted-delivery protected commit persistence, deterministic delivery failure, post-dispatch unknown-outcome signaling, and the protected execution Result invariant.
+- The test forbids delegation to the legacy service and forbids legacy idempotency lifecycle types inside the extracted operation.
+- Production composition remains unchanged.
+
+### P5-C OTP_RESEND protected Result contract
+
+- Added `ForgotPasswordOtpResendProtectedExecutionResult` as the typed boundary between the acquired protected mutation and the shared coordinator.
+- The contract requires an opaque protected replay reference exactly when the protected result is `RESENT`; every other result must omit it.
+- The protected operation and shared coordinator remain intentionally absent, and production composition is unchanged.
+
+### P5-C OTP_RESEND protected-operation extraction
+
+- Extracted direct lock-scoped OTP_RESEND mutation ownership into `ForgotPasswordOtpResendProtectedOperation`.
+- The extracted operation excludes the feature-local lifecycle port and persists accepted protected commit state directly before returning its opaque replay reference.
+- Production composition remains unchanged pending shared-coordinator and behavioral parity completion.
+
+### P5-C OTP_RESEND protected-operation compile repair
+
+- Corrected the extracted operation error fallback to return `ForgotPasswordOtpResendProtectedExecutionResult` rather than mixing the raw resend result into the reactive branch.
+- This preserves the typed protected-operation boundary and keeps production composition unchanged.
+
+### P5-C OTP_RESEND protected-operation branch type repair
+
+- Wrapped the non-eligible `mapEligibility` branch in `ForgotPasswordOtpResendProtectedExecutionResult`, eliminating the remaining mixed reactive branch type while preserving the typed error fallback.
+- Production composition remains unchanged.
+
+### P5-C OTP_RESEND shared-coordinator fail-first boundary
+
+- Added fail-first coordinator coverage for shared executor ownership, session-scoped operation identity, constant OTP_RESEND fingerprinting, conservative failure classification, protected-reference propagation, replay hydration, and all shared lifecycle routes.
+- The production bean remains on the legacy service until the coordinator implementation and focused parity validation are green.
+
+### P5-C OTP_RESEND shared coordinator implementation
+
+- Added `IdempotentResendForgotPasswordOtpService` as the thin shared-executor coordinator.
+- It uses session-scoped OTP_RESEND identity, the constant action fingerprint, conservative failure classification, typed protected execution, protected-reference capture, replay hydration, and explicit lifecycle routing.
+- Production composition remains on the legacy service until configuration-switch parity is validated.
+
+### P5-C OTP_RESEND production composition switch
+
+- Replaced only the production `ResendForgotPasswordOtpUseCase` bean graph with `IdempotentResendForgotPasswordOtpService`, the extracted protected operation, typed response bridge, strict replay codec, and protected replay resolver.
+- START, DETAILS_AND_OTP, OTP_VERIFY, COMPLETE, CANCEL, web contracts, and public status mapping remain unchanged.
+- The legacy resend service and feature-local collaborators remain available until post-switch reference and parity evidence authorizes cleanup.
+
+### P5-C OTP_RESEND production-switch assertion repair
+
+- Repaired the shared composition architecture assertion to verify the selected coordinator independently of Java continuation indentation.
+- Production composition and runtime behavior are unchanged.
+
+### P5-C OTP_RESEND authorized legacy cleanup
+
+- Removed the retired `ResendForgotPasswordOtpService`, its feature-local lifecycle classifier, request-hash generator, obsolete configuration bean, and two legacy-owned tests after exact-symbol analysis found no live production references.
+- Retargeted the reactive architecture guard to the extracted protected operation and updated the DETAILS_AND_OTP composition guard to require the shared OTP_RESEND coordinator.
+- Preserved the shared coordinator graph and all cross-action idempotency, protected replay, commit-state, OTP_VERIFY, COMPLETE, CANCEL, START, and DETAILS_AND_OTP collaborators.
+
+### P5-C OTP_RESEND feature stabilization
+
+- Applied repository formatting after the shared production switch and authorized legacy cleanup were complete.
+- Revalidated production compilation, test compilation, the complete focused OTP_RESEND regression set, retained cross-action guards, and clean architecture.
+- Full Maven tests and application startup smoke remain explicit stage-transition gates and are not replaced by this stabilization evidence.
+
+### P5-C OTP_RESEND stabilization assertion repair
+
+- Repaired the coordinator source assertion to tolerate Spotless line wrapping while continuing to require the exact protected-operation invocation.
+- Production code, shared composition, protected replay handling, and legacy cleanup remain unchanged.

@@ -12,7 +12,7 @@ class ForgotPasswordOtpReactiveArchitectureGuardTest {
   void resendAndVerifyRemainReactiveAndAvoidCompletionLock() throws Exception {
     String resend =
         source(
-            "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/forgotpassword/otp/resend/ResendForgotPasswordOtpService.java");
+            "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/forgotpassword/otp/resend/ForgotPasswordOtpResendProtectedOperation.java");
     String verify =
         source(
             "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/forgotpassword/otp/verify/VerifyForgotPasswordOtpService.java");
@@ -39,7 +39,7 @@ class ForgotPasswordOtpReactiveArchitectureGuardTest {
   void resendAndVerifyReloadRevisionedSnapshotsAndAcquireOneMutationLock() throws Exception {
     String resend =
         source(
-            "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/forgotpassword/otp/resend/ResendForgotPasswordOtpService.java");
+            "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/forgotpassword/otp/resend/ForgotPasswordOtpResendProtectedOperation.java");
     String verify =
         source(
             "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/forgotpassword/otp/verify/VerifyForgotPasswordOtpService.java");

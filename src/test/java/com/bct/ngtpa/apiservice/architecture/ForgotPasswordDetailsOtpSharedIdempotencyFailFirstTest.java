@@ -60,7 +60,7 @@ class ForgotPasswordDetailsOtpSharedIdempotencyFailFirstTest {
   void remainingLegacyActionsMustStayComposed() throws Exception {
     String config = Files.readString(CONFIG);
     assertThat(config)
-        .contains("ResendForgotPasswordOtpService")
+        .contains("IdempotentResendForgotPasswordOtpService")
         .contains("VerifyForgotPasswordOtpService")
         .contains("CompleteForgotPasswordService")
         .contains("CancelForgotPasswordService");

@@ -2,16 +2,13 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.res
 
 import static com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContextAttributeNames.*;
 
-import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContext;
-import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowEncryptedContext;
-import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordProtectedPhase;
-import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.*;
+import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.*;
 import com.bct.ngtpa.apiservice.application.dto.message.*;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.*;
+import com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayReference;
 import com.bct.ngtpa.apiservice.application.port.in.EvaluateForgotPasswordOtpResendUseCase;
-import com.bct.ngtpa.apiservice.application.port.in.ResendForgotPasswordOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.*;
 import com.bct.ngtpa.apiservice.application.service.security.csrf.OriginRefererValidator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.*;
@@ -22,339 +19,123 @@ import java.time.*;
 import java.util.*;
 import reactor.core.publisher.Mono;
 
-public final class ResendForgotPasswordOtpService implements ResendForgotPasswordOtpUseCase {
-  private static final org.slf4j.Logger LOGGER =
-      org.slf4j.LoggerFactory.getLogger(ResendForgotPasswordOtpService.class);
+/** Executes OTP_RESEND after shared idempotency ownership has been acquired. */
+public final class ForgotPasswordOtpResendProtectedOperation {
   private static final String EXPIRES_AT = "forgotPasswordOtpExpiresAt";
   private static final String RESEND_AT = "forgotPasswordOtpResendAvailableAt";
   private static final String RESEND_COUNT = "forgotPasswordOtpSuccessfulResendCount";
   private static final String PENDING_REF = "forgotPasswordOtpPendingResendRef";
   private static final String PENDING_CANDIDATE = "forgotPasswordOtpPendingCandidateId";
   private static final String PENDING_PREVIOUS = "forgotPasswordOtpPendingPreviousChallengeId";
-
-  private final ForgotPasswordIdempotencyPort idempotency;
   private final SecureForgotPasswordOtpCommitRefGenerator refs;
   private final AuthFlowSessionMutationLockPort locks;
   private final AuthFlowSessionPort sessions;
   private final ForgotPasswordAuthFlowContextProtectorPort protector;
   private final EvaluateForgotPasswordOtpResendUseCase foundation;
-  private final ForgotPasswordOtpResendIdempotencyClassifier classifier;
   private final OtpChallengePort otp;
   private final OtpChallengeStatePort challengeState;
   private final MessageDeliveryPort delivery;
   private final ForgotPasswordDestinationMasker masker;
-  private final ForgotPasswordOtpCommitCoordinator commits;
-  private final ForgotPasswordOtpReplayResolver replay;
+  private final ForgotPasswordOtpCommitStatePort commitStates;
+  private final ForgotPasswordOtpCommitRetentionPolicy retention;
   private final ForgotPasswordOtpTemplates templates;
   private final ForgotPasswordInitialOtpPolicy otpPolicy;
-  private final ForgotPasswordOtpResendRequestHashGenerator hashes;
-  private final CsrfTokenValidationService csrfTokens;
-  private final OriginRefererValidator origins;
+  private final CsrfTokenValidationService csrfTokens =
+      new CsrfTokenValidationService(new Sha256CsrfTokenHasher());
+  private final OriginRefererValidator origins = new OriginRefererValidator();
   private final List<String> allowedOrigins;
   private final Clock clock;
   private final Duration idempotencyTtl;
   private final Duration lockLease;
 
-  public ResendForgotPasswordOtpService(
-      ForgotPasswordIdempotencyPort idempotency,
+  public ForgotPasswordOtpResendProtectedOperation(
       SecureForgotPasswordOtpCommitRefGenerator refs,
       AuthFlowSessionMutationLockPort locks,
       AuthFlowSessionPort sessions,
       ForgotPasswordAuthFlowContextProtectorPort protector,
       EvaluateForgotPasswordOtpResendUseCase foundation,
-      ForgotPasswordOtpResendIdempotencyClassifier classifier,
       OtpChallengePort otp,
       OtpChallengeStatePort challengeState,
       MessageDeliveryPort delivery,
       ForgotPasswordDestinationMasker masker,
-      ForgotPasswordOtpCommitCoordinator commits,
-      ForgotPasswordOtpReplayResolver replay,
+      ForgotPasswordOtpCommitStatePort commitStates,
+      ForgotPasswordOtpCommitRetentionPolicy retention,
       ForgotPasswordOtpTemplates templates,
       ForgotPasswordInitialOtpPolicy otpPolicy,
-      ForgotPasswordOtpResendRequestHashGenerator hashes,
       Clock clock,
       Duration idempotencyTtl,
       Duration lockLease,
       List<String> allowedOrigins) {
-    this.idempotency = Objects.requireNonNull(idempotency);
     this.refs = Objects.requireNonNull(refs);
     this.locks = Objects.requireNonNull(locks);
     this.sessions = Objects.requireNonNull(sessions);
     this.protector = Objects.requireNonNull(protector);
     this.foundation = Objects.requireNonNull(foundation);
-    this.classifier = Objects.requireNonNull(classifier);
     this.otp = Objects.requireNonNull(otp);
     this.challengeState = Objects.requireNonNull(challengeState);
     this.delivery = Objects.requireNonNull(delivery);
     this.masker = Objects.requireNonNull(masker);
-    this.commits = Objects.requireNonNull(commits);
-    this.replay = Objects.requireNonNull(replay);
+    this.commitStates = Objects.requireNonNull(commitStates);
+    this.retention = Objects.requireNonNull(retention);
     this.templates = Objects.requireNonNull(templates);
     this.otpPolicy = Objects.requireNonNull(otpPolicy);
-    this.hashes = Objects.requireNonNull(hashes);
-    this.csrfTokens = new CsrfTokenValidationService(new Sha256CsrfTokenHasher());
-    this.origins = new OriginRefererValidator();
     this.clock = Objects.requireNonNull(clock);
     this.idempotencyTtl = Objects.requireNonNull(idempotencyTtl);
     this.lockLease = Objects.requireNonNull(lockLease);
     this.allowedOrigins = allowedOrigins == null ? List.of() : List.copyOf(allowedOrigins);
   }
 
-  @Override
-  public Mono<ResendForgotPasswordOtpResult> resend(ResendForgotPasswordOtpCommand command) {
-    Instant now = Instant.now(clock);
-    ForgotPasswordIdempotencyKey key =
-        new ForgotPasswordIdempotencyKey(command.idempotencyKey().trim());
-    ForgotPasswordRequestHash hash = hashes.generate();
-    return idempotency
-        .startProcessing(
-            new ForgotPasswordIdempotencyStartCommand(
-                ForgotPasswordIdempotencyAction.OTP_RESEND,
-                key,
-                hash,
-                now,
-                now.plus(idempotencyTtl),
-                idempotencyTtl))
-        .flatMap(
-            start ->
-                switch (classifier.classify(start.outcome())) {
-                  case ELIGIBLE -> startNew(command, start.record(), hash, now);
-                  case IDEMPOTENCY_COMPLETED_REPLAY -> resolveCommittedReplay(start.record());
-                  case IDEMPOTENCY_IN_PROGRESS ->
-                      resolveInProgress(command.sessionId(), start.record());
-                  case IDEMPOTENCY_KEY_REUSED ->
-                      Mono.just(
-                          new ResendForgotPasswordOtpResult(
-                              ResendForgotPasswordOtpStatus.IDEMPOTENCY_KEY_REUSED,
-                              null,
-                              null,
-                              null,
-                              null,
-                              null));
-                  case PREVIOUS_FAILED ->
-                      Mono.just(
-                          new ResendForgotPasswordOtpResult(
-                              ResendForgotPasswordOtpStatus.PREVIOUS_FAILED,
-                              null,
-                              null,
-                              null,
-                              null,
-                              null));
-                  case UNKNOWN_OUTCOME_BLOCKED ->
-                      Mono.just(
-                          new ResendForgotPasswordOtpResult(
-                              ResendForgotPasswordOtpStatus.UNKNOWN_OUTCOME,
-                              null,
-                              null,
-                              null,
-                              null,
-                              null));
-                  default ->
-                      Mono.just(
-                          new ResendForgotPasswordOtpResult(
-                              ResendForgotPasswordOtpStatus.SYSTEM_FAILED,
-                              null,
-                              null,
-                              null,
-                              null,
-                              null));
-                })
-        .onErrorResume(
-            error -> {
-              LOGGER.error("Resend forgot password OTP failed with system error", error);
-              return Mono.just(
-                  new ResendForgotPasswordOtpResult(
-                      ResendForgotPasswordOtpStatus.SYSTEM_FAILED, null, null, null, null, null));
-            });
-  }
-
-  private Mono<ResendForgotPasswordOtpResult> resolveCommittedReplay(
-      ForgotPasswordIdempotencyRecord record) {
-    if (record == null || record.replaySnapshot() == null) {
-      return Mono.just(
-          new ResendForgotPasswordOtpResult(
-              ResendForgotPasswordOtpStatus.SYSTEM_FAILED, null, null, null, null, null));
-    }
-    return replay
-        .resolve(record.replaySnapshot().opaqueCommitRef())
-        .map(this::fromReplay)
-        .onErrorReturn(
-            new ResendForgotPasswordOtpResult(
-                ResendForgotPasswordOtpStatus.SYSTEM_FAILED, null, null, null, null, null));
-  }
-
-  private Mono<ResendForgotPasswordOtpResult> resolveInProgress(
-      AuthFlowSessionId sessionId, ForgotPasswordIdempotencyRecord record) {
-    if (record == null
-        || record.pendingOpaqueCommitRef() == null
-        || record.pendingOpaqueCommitRef().isBlank()) {
-      return resolveCurrentSessionReplay(sessionId);
-    }
-    return replay
-        .resolve(record.pendingOpaqueCommitRef())
-        .flatMap(
-            resolved -> {
-              ResendForgotPasswordOtpResult replayResult = fromReplay(resolved);
-              if (replayResult.status() != ResendForgotPasswordOtpStatus.SYSTEM_FAILED) {
-                return Mono.just(replayResult);
-              }
-              return resolvePendingSessionReplay(sessionId, record.pendingOpaqueCommitRef());
-            })
-        .onErrorReturn(
-            new ResendForgotPasswordOtpResult(
-                ResendForgotPasswordOtpStatus.SYSTEM_FAILED, null, null, null, null, null));
-  }
-
-  private Mono<ResendForgotPasswordOtpResult> resolvePendingSessionReplay(
-      AuthFlowSessionId sessionId, String pendingRef) {
-    return sessions
-        .loadSnapshot(sessionId)
-        .flatMap(
-            optional ->
-                optional
-                    .map(Mono::just)
-                    .orElseGet(
-                        () ->
-                            Mono.just(
-                                new AuthFlowSessionSnapshot(
-                                    invalidSession(sessionId),
-                                    new SessionRevision("00000000000000000000000000000000"))))
-                    .flatMap(
-                        snapshot -> resolveCurrentSessionReplay(snapshot.session(), pendingRef)))
-        .onErrorReturn(
-            new ResendForgotPasswordOtpResult(
-                ResendForgotPasswordOtpStatus.SYSTEM_FAILED, null, null, null, null, null));
-  }
-
-  private Mono<ResendForgotPasswordOtpResult> resolveCurrentSessionReplay(
-      AuthFlowSessionId sessionId) {
-    return sessions
-        .loadSnapshot(sessionId)
-        .flatMap(
-            optional ->
-                optional
-                    .map(snapshot -> resolveCurrentSessionReplay(snapshot.session(), null))
-                    .orElseGet(
-                        () ->
-                            Mono.just(
-                                new ResendForgotPasswordOtpResult(
-                                    ResendForgotPasswordOtpStatus.AUTH_FLOW_INVALID,
-                                    null,
-                                    null,
-                                    null,
-                                    null,
-                                    null))))
-        .onErrorReturn(
-            new ResendForgotPasswordOtpResult(
-                ResendForgotPasswordOtpStatus.SYSTEM_FAILED, null, null, null, null, null));
-  }
-
-  private Mono<ResendForgotPasswordOtpResult> resolveCurrentSessionReplay(
-      AuthFlowSession session, String pendingRef) {
-    if (session.scenario() != AuthFlowScenario.FORGOT_PASSWORD
-        || session.status() != AuthFlowStatus.OTP_SENT
-        || session.isTerminal()
-        || session.isExpired(Instant.now(clock))) {
-      return Mono.just(
-          new ResendForgotPasswordOtpResult(
-              ResendForgotPasswordOtpStatus.AUTH_FLOW_INVALID, null, null, null, null, null));
-    }
-    ForgotPasswordAuthFlowContext context = decrypt(session);
-    if (context.phase() == ForgotPasswordProtectedPhase.OTP_DELIVERY_UNKNOWN) {
-      return Mono.just(
-          new ResendForgotPasswordOtpResult(
-              ResendForgotPasswordOtpStatus.UNKNOWN_OUTCOME, null, null, null, null, null));
-    }
-    String activeChallengeId = session.activeOtpChallengeId();
-    if (blank(activeChallengeId)) {
-      return Mono.just(
-          new ResendForgotPasswordOtpResult(
-              ResendForgotPasswordOtpStatus.AUTH_FLOW_INVALID, null, null, null, null, null));
-    }
-    String sessionPendingRef = session.data().attributes().get(PENDING_REF);
-    String candidateId = session.data().attributes().get(PENDING_CANDIDATE);
-    String replayChallengeId =
-        Objects.equals(pendingRef, sessionPendingRef)
-                && candidateId != null
-                && candidateId.equals(activeChallengeId)
-            ? candidateId
-            : activeChallengeId;
-    return challengeState
-        .findById(replayChallengeId)
-        .map(
-            optionalChallenge ->
-                optionalChallenge
-                    .map(
-                        challenge ->
-                            liveResult(
-                                session,
-                                challenge,
-                                context.maskedDestination(),
-                                Instant.now(clock)))
-                    .orElseGet(
-                        () ->
-                            new ResendForgotPasswordOtpResult(
-                                ResendForgotPasswordOtpStatus.AUTH_FLOW_INVALID,
-                                null,
-                                null,
-                                null,
-                                null,
-                                null)));
-  }
-
-  private Mono<ResendForgotPasswordOtpResult> startNew(
-      ResendForgotPasswordOtpCommand command,
-      ForgotPasswordIdempotencyRecord record,
-      ForgotPasswordRequestHash hash,
-      Instant now) {
+  public Mono<ForgotPasswordOtpResendProtectedExecutionResult> execute(
+      ResendForgotPasswordOtpCommand command) {
     String pendingRef = refs.generate();
-    return idempotency
-        .attachPendingCommitRef(
-            new ForgotPasswordPendingCommitRefCommand(
-                ForgotPasswordIdempotencyAction.OTP_RESEND,
-                record.idempotencyKey(),
-                hash,
-                pendingRef,
-                idempotencyTtl))
+    return locks
+        .acquire(command.sessionId(), lockLease)
         .flatMap(
-            attached -> {
-              String effectiveRef = attached.opaqueCommitRef();
-              return locks
-                  .acquire(command.sessionId(), lockLease)
-                  .flatMap(
-                      handle ->
-                          handle.acquired()
-                              ? locked(command, record, hash, effectiveRef, handle)
-                              : Mono.just(
-                                  new ResendForgotPasswordOtpResult(
-                                      ResendForgotPasswordOtpStatus.SYSTEM_FAILED,
-                                      null,
-                                      null,
-                                      null,
-                                      null,
-                                      null)));
-            });
+            handle ->
+                handle.acquired()
+                    ? locked(command, pendingRef, handle)
+                    : Mono.just(
+                        new ForgotPasswordOtpResendProtectedExecutionResult(
+                            new ResendForgotPasswordOtpResult(
+                                ResendForgotPasswordOtpStatus.SYSTEM_FAILED,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null),
+                            null)));
   }
 
-  private Mono<ResendForgotPasswordOtpResult> locked(
-      ResendForgotPasswordOtpCommand command,
-      ForgotPasswordIdempotencyRecord record,
-      ForgotPasswordRequestHash hash,
-      String pendingRef,
-      SessionLockHandle handle) {
-    Mono<ResendForgotPasswordOtpResult> work =
+  private Mono<Void> saveCommitState(
+      String reference, ForgotPasswordOtpCommitState state, Instant now, Instant challengeExpiry) {
+    Duration ttl = retention.ttl(now, challengeExpiry, now.plus(idempotencyTtl));
+    return commitStates
+        .saveIfAbsent(reference, state, ttl)
+        .flatMap(saved -> commitStates.load(reference))
+        .flatMap(
+            found ->
+                found.isPresent() && found.get().equals(state)
+                    ? Mono.empty()
+                    : Mono.error(new IllegalStateException("OTP_RESEND commit state conflict")));
+  }
+
+  private Mono<ForgotPasswordOtpResendProtectedExecutionResult> locked(
+      ResendForgotPasswordOtpCommand command, String pendingRef, SessionLockHandle handle) {
+    Mono<ForgotPasswordOtpResendProtectedExecutionResult> work =
         sessions
             .loadSnapshot(command.sessionId())
             .flatMap(
                 optional -> {
                   if (optional.isEmpty()) {
                     return Mono.just(
-                        new ResendForgotPasswordOtpResult(
-                            ResendForgotPasswordOtpStatus.AUTH_FLOW_INVALID,
-                            null,
-                            null,
-                            null,
-                            null,
+                        new ForgotPasswordOtpResendProtectedExecutionResult(
+                            new ResendForgotPasswordOtpResult(
+                                ResendForgotPasswordOtpStatus.AUTH_FLOW_INVALID,
+                                null,
+                                null,
+                                null,
+                                null,
+                                null),
                             null));
                   }
                   AuthFlowSessionSnapshot snapshot = optional.get();
@@ -364,18 +145,22 @@ public final class ResendForgotPasswordOtpService implements ResendForgotPasswor
                             if (validated.status()
                                 != ForgotPasswordOtpResendEligibilityStatus.ELIGIBLE) {
                               return Mono.just(
-                                  mapEligibility(
-                                      validated,
-                                      validated.maskedDestination(),
-                                      validated.expiresInSeconds()));
+                                  new ForgotPasswordOtpResendProtectedExecutionResult(
+                                      mapEligibility(
+                                          validated,
+                                          validated.maskedDestination(),
+                                          validated.expiresInSeconds()),
+                                      null));
                             }
                             return createCandidateAndDeliver(
-                                command, record, hash, pendingRef, snapshot, validated);
+                                command, pendingRef, snapshot, validated);
                           });
                 })
             .onErrorReturn(
-                new ResendForgotPasswordOtpResult(
-                    ResendForgotPasswordOtpStatus.SYSTEM_FAILED, null, null, null, null, null));
+                new ForgotPasswordOtpResendProtectedExecutionResult(
+                    new ResendForgotPasswordOtpResult(
+                        ResendForgotPasswordOtpStatus.SYSTEM_FAILED, null, null, null, null, null),
+                    null));
     return Mono.usingWhen(
         Mono.just(handle),
         ignored -> work,
@@ -493,10 +278,8 @@ public final class ResendForgotPasswordOtpService implements ResendForgotPasswor
             ValidatedState.invalid(ForgotPasswordOtpResendEligibilityStatus.SYSTEM_FAILED));
   }
 
-  private Mono<ResendForgotPasswordOtpResult> createCandidateAndDeliver(
+  private Mono<ForgotPasswordOtpResendProtectedExecutionResult> createCandidateAndDeliver(
       ResendForgotPasswordOtpCommand command,
-      ForgotPasswordIdempotencyRecord record,
-      ForgotPasswordRequestHash hash,
       String pendingRef,
       AuthFlowSessionSnapshot snapshot,
       ValidatedState validated) {
@@ -534,8 +317,6 @@ public final class ResendForgotPasswordOtpService implements ResendForgotPasswor
                                     deliveryResult ->
                                         transition(
                                             command,
-                                            record,
-                                            hash,
                                             stagedSnapshot,
                                             validated,
                                             candidate,
@@ -558,10 +339,8 @@ public final class ResendForgotPasswordOtpService implements ResendForgotPasswor
     return mutateSession(snapshot, snapshot.session().activeOtpChallengeId(), context, attrs, now);
   }
 
-  private Mono<ResendForgotPasswordOtpResult> transition(
+  private Mono<ForgotPasswordOtpResendProtectedExecutionResult> transition(
       ResendForgotPasswordOtpCommand command,
-      ForgotPasswordIdempotencyRecord record,
-      ForgotPasswordRequestHash hash,
       AuthFlowSessionSnapshot stagedSnapshot,
       ValidatedState validated,
       CreateOtpChallengeResult candidate,
@@ -570,18 +349,15 @@ public final class ResendForgotPasswordOtpService implements ResendForgotPasswor
       Instant now) {
     MessageDeliveryStatus status = deliveryResult.status();
     if (status == MessageDeliveryStatus.ACCEPTED) {
-      return accepted(record, stagedSnapshot, validated, candidate, pendingRef, now);
+      return accepted(stagedSnapshot, validated, candidate, pendingRef, now);
     }
     if (status == MessageDeliveryStatus.FAILED) {
-      return failed(
-          record, hash, stagedSnapshot, validated.context, candidate.otpChallengeId(), now);
+      return failed(stagedSnapshot, validated.context, candidate.otpChallengeId(), now);
     }
-    return unknown(
-        record, hash, stagedSnapshot, validated.context, candidate.otpChallengeId(), now);
+    return unknown(stagedSnapshot, validated.context, candidate.otpChallengeId(), now);
   }
 
-  private Mono<ResendForgotPasswordOtpResult> accepted(
-      ForgotPasswordIdempotencyRecord record,
+  private Mono<ForgotPasswordOtpResendProtectedExecutionResult> accepted(
       AuthFlowSessionSnapshot stagedSnapshot,
       ValidatedState validated,
       CreateOtpChallengeResult candidate,
@@ -598,50 +374,47 @@ public final class ResendForgotPasswordOtpService implements ResendForgotPasswor
             updatedSnapshot ->
                 invalidateChallenge(validated.authoritativeChallenge, now)
                     .then(
-                        commits.complete(
-                            withPending(record, pendingRef),
+                        saveCommitState(
+                            pendingRef,
                             new ForgotPasswordOtpCommitState(
                                 updatedSnapshot.session().authFlowSessionId().value(),
                                 candidate.otpChallengeId(),
                                 now,
                                 candidate.expiresAt()),
-                            now))
+                            now,
+                            candidate.expiresAt()))
                     .thenReturn(
-                        new ResendForgotPasswordOtpResult(
-                            ResendForgotPasswordOtpStatus.RESENT,
-                            validated.context.maskedDestination(),
-                            candidate.expiresInSeconds(),
-                            otpPolicy.resendCooldownSeconds(),
-                            remainingResendAttempts(validated.successfulResendCount + 1),
-                            null)));
+                        new ForgotPasswordOtpResendProtectedExecutionResult(
+                            new ResendForgotPasswordOtpResult(
+                                ResendForgotPasswordOtpStatus.RESENT,
+                                validated.context.maskedDestination(),
+                                candidate.expiresInSeconds(),
+                                otpPolicy.resendCooldownSeconds(),
+                                remainingResendAttempts(validated.successfulResendCount + 1),
+                                null),
+                            new ProtectedReplayReference(pendingRef))));
   }
 
-  private Mono<ResendForgotPasswordOtpResult> failed(
-      ForgotPasswordIdempotencyRecord record,
-      ForgotPasswordRequestHash hash,
+  private Mono<ForgotPasswordOtpResendProtectedExecutionResult> failed(
       AuthFlowSessionSnapshot stagedSnapshot,
       ForgotPasswordAuthFlowContext context,
       String candidateId,
       Instant now) {
     return invalidateChallenge(candidateId, now)
         .then(clearPending(stagedSnapshot, context, now))
-        .then(
-            idempotency.markFailed(
-                new ForgotPasswordIdempotencyFailCommand(
-                    record.action(), record.idempotencyKey(), hash, now, idempotencyTtl)))
         .thenReturn(
-            new ResendForgotPasswordOtpResult(
-                ResendForgotPasswordOtpStatus.DELIVERY_FAILED,
-                context.maskedDestination(),
-                null,
-                null,
-                null,
+            new ForgotPasswordOtpResendProtectedExecutionResult(
+                new ResendForgotPasswordOtpResult(
+                    ResendForgotPasswordOtpStatus.DELIVERY_FAILED,
+                    context.maskedDestination(),
+                    null,
+                    null,
+                    null,
+                    null),
                 null));
   }
 
-  private Mono<ResendForgotPasswordOtpResult> unknown(
-      ForgotPasswordIdempotencyRecord record,
-      ForgotPasswordRequestHash hash,
+  private Mono<ForgotPasswordOtpResendProtectedExecutionResult> unknown(
       AuthFlowSessionSnapshot stagedSnapshot,
       ForgotPasswordAuthFlowContext context,
       String candidateId,
@@ -653,17 +426,9 @@ public final class ResendForgotPasswordOtpService implements ResendForgotPasswor
                 context.withPhase(ForgotPasswordProtectedPhase.OTP_DELIVERY_UNKNOWN),
                 now))
         .then(
-            idempotency.markUnknownOutcome(
-                new ForgotPasswordIdempotencyUnknownOutcomeCommand(
-                    record.action(), record.idempotencyKey(), hash, now, idempotencyTtl)))
-        .thenReturn(
-            new ResendForgotPasswordOtpResult(
-                ResendForgotPasswordOtpStatus.UNKNOWN_OUTCOME,
-                context.maskedDestination(),
-                null,
-                null,
-                null,
-                null));
+            Mono.error(
+                new IllegalStateException(
+                    "OTP_RESEND delivery outcome is unknown after dispatch")));
   }
 
   private Mono<AuthFlowSessionSnapshot> clearPending(
@@ -819,72 +584,6 @@ public final class ResendForgotPasswordOtpService implements ResendForgotPasswor
     };
   }
 
-  private ResendForgotPasswordOtpResult fromReplay(ForgotPasswordOtpReplayResult replayResult) {
-    return switch (replayResult.status()) {
-      case ACTIVE ->
-          new ResendForgotPasswordOtpResult(
-              ResendForgotPasswordOtpStatus.COMPLETED_REPLAY,
-              replayResult.maskedDestination(),
-              replayResult.expiresInSeconds(),
-              null,
-              replayResult.remainingResendAttempts(),
-              replayResult.retryAfterSeconds());
-      case EXPIRED ->
-          new ResendForgotPasswordOtpResult(
-              ResendForgotPasswordOtpStatus.EXPIRED,
-              replayResult.maskedDestination(),
-              replayResult.expiresInSeconds(),
-              null,
-              replayResult.remainingResendAttempts(),
-              replayResult.retryAfterSeconds());
-      case SYSTEM_ERROR ->
-          new ResendForgotPasswordOtpResult(
-              ResendForgotPasswordOtpStatus.SYSTEM_FAILED, null, null, null, null, null);
-    };
-  }
-
-  private ResendForgotPasswordOtpResult liveResult(
-      AuthFlowSession session, OtpChallenge challenge, String maskedDestination, Instant now) {
-    if (challenge.scenario() != OtpScenario.FORGOT_PASSWORD
-        || !Objects.equals(challenge.workflowRef(), session.authFlowSessionId().value())) {
-      return new ResendForgotPasswordOtpResult(
-          ResendForgotPasswordOtpStatus.SYSTEM_FAILED, null, null, null, null, null);
-    }
-    if (!challenge.expiresAt().isAfter(now)) {
-      return new ResendForgotPasswordOtpResult(
-          ResendForgotPasswordOtpStatus.EXPIRED,
-          maskedDestination,
-          0,
-          null,
-          remainingResendAttempts(readCount(session.data().attributes())),
-          0);
-    }
-    try {
-      Instant resendAvailableAt = resendAvailableAt(session, challenge);
-      return new ResendForgotPasswordOtpResult(
-          ResendForgotPasswordOtpStatus.COMPLETED_REPLAY,
-          maskedDestination,
-          secondsUntil(now, challenge.expiresAt()),
-          null,
-          remainingResendAttempts(readCount(session.data().attributes())),
-          secondsUntil(now, resendAvailableAt));
-    } catch (RuntimeException malformed) {
-      return new ResendForgotPasswordOtpResult(
-          ResendForgotPasswordOtpStatus.SYSTEM_FAILED, null, null, null, null, null);
-    }
-  }
-
-  private Instant resendAvailableAt(AuthFlowSession session, OtpChallenge challenge) {
-    String resendValue = session.data().attributes().get(RESEND_AT);
-    if (resendValue != null && !resendValue.isBlank()) {
-      return Instant.parse(resendValue);
-    }
-    if (challenge.lastSentAt() == null) {
-      throw new IllegalStateException("Forgot password resend timing unavailable");
-    }
-    return challenge.lastSentAt().plusSeconds(otpPolicy.resendCooldownSeconds());
-  }
-
   private Integer remainingResendAttempts(int successfulResendCount) {
     return Math.max(0, otpPolicy.maxResendAttempts() - Math.max(0, successfulResendCount));
   }
@@ -938,34 +637,6 @@ public final class ResendForgotPasswordOtpService implements ResendForgotPasswor
 
   private boolean blank(String value) {
     return value == null || value.isBlank();
-  }
-
-  private ForgotPasswordIdempotencyRecord withPending(
-      ForgotPasswordIdempotencyRecord record, String ref) {
-    return new ForgotPasswordIdempotencyRecord(
-        record.action(),
-        record.idempotencyKey(),
-        record.requestHash(),
-        record.status(),
-        record.replaySnapshot(),
-        record.createdAt(),
-        record.updatedAt(),
-        record.expiresAt(),
-        ref);
-  }
-
-  private AuthFlowSession invalidSession(AuthFlowSessionId sessionId) {
-    Instant now = Instant.EPOCH;
-    return new AuthFlowSession(
-        sessionId,
-        AuthFlowScenario.FORGOT_PASSWORD,
-        AuthFlowStatus.CANCELLED,
-        null,
-        null,
-        new AuthFlowSessionData(null, null, Map.of()),
-        now,
-        now,
-        now);
   }
 
   private record ValidatedState(
