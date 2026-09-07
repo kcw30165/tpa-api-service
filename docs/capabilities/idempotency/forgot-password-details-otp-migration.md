@@ -45,3 +45,9 @@ Intermediate implementation scripts must run `mvn -DskipTests compile` and `mvn 
 - Added an architecture-level fail-first contract for the future shared coordinator, protected operation, execution bridge, replay codec, protected replay port, and atomic Spring composition switch.
 - The contract forbids legacy DETAILS_AND_OTP lifecycle calls after migration while explicitly preserving OTP resend, OTP verify, complete, and cancel composition.
 - Production code and production composition remain unchanged in this round, so the new contract is intentionally red until implementation.
+
+### Replay bridge foundation implemented
+
+- Added the action-specific protected replay resolution port, strict safe replay codec, and typed execution bridge.
+- Successful results require an opaque protected replay reference. Shared snapshots exclude destination, session, challenge, and timing continuity.
+- Production composition remains unchanged while the protected operation and shared coordinator are implemented.

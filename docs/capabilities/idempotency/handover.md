@@ -594,3 +594,10 @@ Final committed-state validation completed successfully at Git HEAD `4afbc2726a6
 - The contract requires the shared coordinator, protected operation, response bridge, replay codec, protected replay boundary, and atomic composition switch.
 - It also requires removal of action-local legacy lifecycle calls while preserving OTP resend, OTP verify, complete, and cancel.
 - Production behavior remains unchanged. The next round implements the deterministic target required by this contract.
+
+#### P5-C DETAILS_AND_OTP replay bridge foundation
+
+- Added the DETAILS_AND_OTP protected replay resolution boundary, strict action-tagged replay codec, and typed transient execution bridge.
+- The shared snapshot persists only safe status/targets plus an opaque protected reference for successful OTP continuity.
+- Production composition and remaining legacy actions are unchanged.
+- Next step: implement the protected replay resolver over authoritative commit/session/challenge state, then extract the protected operation and coordinator.
