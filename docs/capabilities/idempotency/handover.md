@@ -577,3 +577,13 @@ Final committed-state validation completed successfully at Git HEAD `4afbc2726a6
 - Narrowed the composition guard to reject the exact legacy constructor instead of the replacement service name containing the legacy suffix.
 - Architecture rules remain unchanged and authoritative.
 - P5-A/B/C/D/E remains authoritative.
+
+### P5-C Forgot Password DETAILS_AND_OTP migration baseline
+
+- Baseline: `aaca1b95d07a8da6d8172341bdef0e6c4f9b3c33` on `fix/relay-same-error-code-for-the-idempotent-request`.
+- The next bounded P5-C action is `DETAILS_AND_OTP`.
+- START migration, cleanup, full-test repair, and normal local startup evidence remain preserved.
+- OTP resend, OTP verify, complete, cancel, and their legacy idempotency dependencies remain intentionally preserved.
+- The detailed migration sequence is defined in `forgot-password-details-otp-migration.md`.
+- Next step: add fail-first characterization and architecture tests before implementing the shared-executor path.
+- Before P5-C to P5-D, rerun the full Maven suite and normal local Spring startup on the final P5-C state.
