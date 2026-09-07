@@ -622,3 +622,10 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - Executable service coverage proves the pre-dispatch path returns `SYSTEM_FAILED` with `err.workflow.system.unavailable`, marks idempotency failed, and never marks an unknown outcome.
 - Existing ambiguous downstream coverage continues to prove one completion call and one unknown-outcome transition.
 - Feature-level Spotless formatting is applied in this stabilization round, followed by production compile and test compilation.
+
+## Registration TRPSearchMember eligibility gates
+
+- OTP verification exposes and persists only `TRPSearchMember` accounts where `isRegistered` is explicitly `false`.
+- Username check authorizes the submitted `accountEnv + trustCode` only against that server-owned unregistered trust set. A pair originating from an `isRegistered=true` account is rejected as `err.registration.trust.selectionInvalid` before `TRPChkCustId` is called.
+- Registration completion exposes only accounts where `isRegistered` is explicitly `false` as remaining trusts.
+- `null` registration flags are not treated as unregistered.

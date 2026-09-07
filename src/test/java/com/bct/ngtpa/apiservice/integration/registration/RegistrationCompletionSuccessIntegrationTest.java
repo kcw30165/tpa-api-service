@@ -133,7 +133,7 @@ class RegistrationCompletionSuccessIntegrationTest {
   @Test
   @RegistrationTestCase("TC-061")
   void finalTrustCompletesAndReturnsToLogin() {
-    when(lookup.searchUnregisteredMember(any()))
+    when(lookup.searchMember(any()))
         .thenReturn(
             Mono.just(
                 new RegistrationLookupResult(
@@ -150,7 +150,7 @@ class RegistrationCompletionSuccessIntegrationTest {
   @Test
   @RegistrationTestCase("TC-062")
   void remainingTrustsKeepFlowReadyForAnotherSelection() {
-    when(lookup.searchUnregisteredMember(any()))
+    when(lookup.searchMember(any()))
         .thenReturn(
             Mono.just(
                 new RegistrationLookupResult(

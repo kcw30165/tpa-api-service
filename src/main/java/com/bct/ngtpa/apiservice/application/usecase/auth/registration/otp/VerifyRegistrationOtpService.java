@@ -256,7 +256,7 @@ public class VerifyRegistrationOtpService implements VerifyRegistrationOtpUseCas
             context.contactValue(),
             com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
     return registrationLookupPort
-        .searchUnregisteredMember(lookupCommand)
+        .searchMember(lookupCommand)
         .flatMap(
             result -> {
               String statusName = result.status() == null ? "" : result.status().name();
@@ -271,8 +271,12 @@ public class VerifyRegistrationOtpService implements VerifyRegistrationOtpUseCas
                                 null,
                                 RegistrationIdempotencyStartOutcome.STARTED)));
               }
-              List<RegistrationUnregisteredTrust> trusts =
+              List<RegistrationLookupAccount> unregisteredAccounts =
                   result.accounts().stream()
+                      .filter(account -> Boolean.FALSE.equals(account.registered()))
+                      .toList();
+              List<RegistrationUnregisteredTrust> trusts =
+                  unregisteredAccounts.stream()
                       .map(a -> new RegistrationUnregisteredTrust(a.accountEnv(), a.trustCode()))
                       .toList();
               if (trusts.isEmpty()) {
@@ -301,7 +305,7 @@ public class VerifyRegistrationOtpService implements VerifyRegistrationOtpUseCas
                       RegistrationIdempotencyStartOutcome.STARTED,
                       null);
               return eligibleTrustPersistencePort
-                  .store(command.authFlowSessionId(), result.accounts(), clock.instant())
+                  .store(command.authFlowSessionId(), unregisteredAccounts, clock.instant())
                   .then(markCompleted(command, hash, verifyResult))
                   .thenReturn(verifyResult);
             });

@@ -25,17 +25,17 @@ class RegistrationLookupProductionPathIntegrationTest {
     var executor =
         capturing(seen, calls, envelope("", List.of(item("member@example.com", "", "OI", "JPM"))));
     var adapter = new ApimRegistrationLookupAdapter(executor, mock(FailureEventPort.class));
-    var result = adapter.searchUnregisteredMember(command(MemberIdentityType.STAFFNO)).block();
+    var result = adapter.searchMember(command(MemberIdentityType.STAFFNO)).block();
     assertThat(result.status()).isEqualTo(RegistrationLookupStatus.ELIGIBLE);
     assertThat(calls).hasValue(1);
     var exchange = seen.get();
-    assertThat(exchange.path()).isEqualTo("/ws/NGTPA/v1/TRPSearchUnregMember");
+    assertThat(exchange.path()).isEqualTo("/ws/NGTPA/v1/TRPSearchMember");
     assertThat(exchange.databaseScope().name()).isEqualTo("NON_ACCOUNT");
     assertThat(exchange.credentialContext().actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_MBR);
     assertThat(exchange.credentialContext().accountEnv()).isNull();
     assertThat(exchange.retryEligibility().name()).isEqualTo("SAFE_BUSINESS_CALL");
-    assertThat(exchange.request()).isInstanceOf(TrpSearchUnregMemberApimRequest.class);
-    var body = (TrpSearchUnregMemberApimRequest) exchange.request();
+    assertThat(exchange.request()).isInstanceOf(TrpSearchMemberApimRequest.class);
+    var body = (TrpSearchMemberApimRequest) exchange.request();
     assertThat(body.searchBy()).isEqualTo("STAFFNO");
     assertThat(body.email()).isEqualTo("member@example.com");
   }
@@ -45,7 +45,7 @@ class RegistrationLookupProductionPathIntegrationTest {
     var executor =
         capturing(new AtomicReference<>(), new AtomicInteger(), new ApimResponseEnvelope<>(null));
     var adapter = new ApimRegistrationLookupAdapter(executor, mock(FailureEventPort.class));
-    StepVerifier.create(adapter.searchUnregisteredMember(command(MemberIdentityType.GPFS)))
+    StepVerifier.create(adapter.searchMember(command(MemberIdentityType.GPFS)))
         .expectErrorSatisfies(
             e -> assertThat(e).isInstanceOf(RegistrationLookupDownstreamException.class))
         .verify();
@@ -61,20 +61,19 @@ class RegistrationLookupProductionPathIntegrationTest {
         ActorUserRole.ROLE_USER_MBR);
   }
 
-  private static TrpSearchUnregMemberApimDataItem item(
-      String e, String m, String env, String trust) {
-    return new TrpSearchUnregMemberApimDataItem(e, m, env, trust);
+  private static TrpSearchMemberApimDataItem item(String e, String m, String env, String trust) {
+    return new TrpSearchMemberApimDataItem(e, m, env, trust);
   }
 
-  private static ApimResponseEnvelope<TrpSearchUnregMemberApimDataItem> envelope(
-      String err, List<TrpSearchUnregMemberApimDataItem> data) {
+  private static ApimResponseEnvelope<TrpSearchMemberApimDataItem> envelope(
+      String err, List<TrpSearchMemberApimDataItem> data) {
     return new ApimResponseEnvelope<>(new ApimResponseBody<>(err, data));
   }
 
   private static ApimExchangeExecutor capturing(
       AtomicReference<ApimExchangeRequest<?, ?>> seen,
       AtomicInteger calls,
-      ApimResponseEnvelope<TrpSearchUnregMemberApimDataItem> envelope) {
+      ApimResponseEnvelope<TrpSearchMemberApimDataItem> envelope) {
     return new ApimExchangeExecutor() {
       public <R, D> Mono<ApimResponseEnvelope<D>> postEnvelope(ApimExchangeRequest<R, D> request) {
         seen.set(request);

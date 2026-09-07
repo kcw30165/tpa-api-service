@@ -25,7 +25,7 @@ class CaptchaConsumerRegressionGuardTest {
         .containsIgnoringWhitespaces(
             "RegistrationCaptchaGateService",
             "registrationCaptchaGateService.consume",
-            "lookupPort.searchUnregisteredMember");
+            "lookupPort.searchMember");
     assertThat(source).doesNotContain("markConsumed(", "applyConsumptionAttempt(");
   }
 

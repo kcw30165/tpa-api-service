@@ -14,7 +14,7 @@ class RegistrationStructuredFailureLoggingContractTest {
         .contains("FailureEventPort")
         .contains("registration.lookup.downstream_contract_failure")
         .contains("FailureOrigin.DOWNSTREAM_CONTRACT")
-        .contains("TRPSearchUnregMember")
+        .contains("TRPSearchMember")
         .contains("SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE")
         .contains("503");
   }

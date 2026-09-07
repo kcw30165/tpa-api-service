@@ -216,7 +216,7 @@ Availability of `env` in a response does not make the current call account-speci
 
 ```text
 TRPChkCustId
-TRPSearchUnregMember
+TRPSearchMember
 TRPMemberLogin
 TRPGetAccountList
 ```

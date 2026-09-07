@@ -698,8 +698,7 @@ class RegistrationStartWorkflowIntegrationTest {
       reset();
     }
 
-    public Mono<RegistrationLookupResult> searchUnregisteredMember(
-        RegistrationLookupCommand command) {
+    public Mono<RegistrationLookupResult> searchMember(RegistrationLookupCommand command) {
       calls++;
       return Mono.just(result);
     }

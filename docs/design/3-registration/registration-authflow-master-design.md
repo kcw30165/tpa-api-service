@@ -127,7 +127,7 @@ Rules:
 - FE submits identity, DOB, and exactly one contact field.
 - Captcha is required if policy enables it.
 - Java validates request shape.
-- Java calls APIM/TAS `TRPSearchUnregisteredMember`.
+- Java calls APIM/TAS `TRPSearchMember`.
 - On APIM/TAS success, Java creates AuthFlowSession, stores protected registration context, creates OTP, sends OTP, sets cookie, and returns CSRF token.
 - Java does not return APIM/TAS `data[]` to FE from start.
 

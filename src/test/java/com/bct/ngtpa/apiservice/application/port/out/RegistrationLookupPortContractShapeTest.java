@@ -13,8 +13,7 @@ class RegistrationLookupPortContractShapeTest {
   @Test
   void registrationLookupPortExposesSearchOperation() throws Exception {
     Method method =
-        RegistrationLookupPort.class.getMethod(
-            "searchUnregisteredMember", RegistrationLookupCommand.class);
+        RegistrationLookupPort.class.getMethod("searchMember", RegistrationLookupCommand.class);
 
     assertThat(method.getReturnType()).isEqualTo(Mono.class);
     assertThat(method.getGenericReturnType().getTypeName())

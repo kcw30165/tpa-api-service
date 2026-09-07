@@ -392,8 +392,7 @@ class StartRegistrationUseCaseTest {
             null);
 
     @Override
-    public Mono<RegistrationLookupResult> searchUnregisteredMember(
-        RegistrationLookupCommand command) {
+    public Mono<RegistrationLookupResult> searchMember(RegistrationLookupCommand command) {
       called = true;
       return Mono.just(result);
     }

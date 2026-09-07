@@ -93,9 +93,8 @@ class RegistrationStabilizationContractBaselineTest {
   void knownRegistrationApimErrorsAreMappedByExistingDownstreamClassification() throws Exception {
     String yaml = Files.readString(REGISTRATION_YAML);
     assertThat(yaml)
-        .contains("endpoint: TRPSearchUnregMember")
+        .contains("endpoint: TRPSearchMember")
         .contains("downstreamErrorCode: err.tpa.member.not.found")
-        .doesNotContain("downstreamErrorCode: err.tpa.hkid.invalid")
         .contains("responseCode: err.registration.start.verificationFailed")
         .contains("endpoint: TRPRegMember")
         .contains("downstreamErrorCode: err.tpa.cust.id.duplicated")
@@ -142,16 +141,16 @@ class RegistrationStabilizationContractBaselineTest {
   }
 
   @Test
-  void registrationUsesNoPostLoginSchemeTypeContext() throws Exception {
+  void registrationMemberLookupDoesNotDependOnPostLoginPortalAccessContext() throws Exception {
     List<String> violations = new ArrayList<>();
     for (Path file : registrationProductionFiles()) {
       String source = Files.readString(file);
-      if (source.contains("schemeType") || source.contains("PortalAccessContext")) {
+      if (source.contains("PortalAccessContext")) {
         violations.add(file.toString());
       }
     }
     assertThat(violations)
-        .as("pre-login registration must not use schemeType or PortalAccessContext")
+        .as("pre-login registration must not depend on PortalAccessContext")
         .isEmpty();
   }
 

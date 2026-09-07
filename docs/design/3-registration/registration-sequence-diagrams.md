@@ -142,7 +142,7 @@ sequenceDiagram
         Captcha-->>BFF: Captcha consumed
     end
 
-    BFF->>APIM: POST TRPSearchUnregisteredMember<br/>search-by + search-value + dob + email/mobile-number
+    BFF->>APIM: POST TRPSearchMember<br/>search-by + search-value + dob + email/mobile-number
     APIM->>TAS: Verify member and unregistered registration eligibility
     TAS-->>APIM: Verification success with unregistered trust data
     APIM-->>BFF: err-message empty + non-empty data[]

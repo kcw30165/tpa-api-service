@@ -676,8 +676,7 @@ class StartRegistrationCaptchaGateTest {
     private boolean called;
 
     @Override
-    public Mono<RegistrationLookupResult> searchUnregisteredMember(
-        RegistrationLookupCommand command) {
+    public Mono<RegistrationLookupResult> searchMember(RegistrationLookupCommand command) {
       called = true;
       callOrder.add("lookup");
       return Mono.just(

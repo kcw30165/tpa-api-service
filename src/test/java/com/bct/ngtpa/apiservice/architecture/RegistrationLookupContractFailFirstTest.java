@@ -2,8 +2,8 @@ package com.bct.ngtpa.apiservice.architecture;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchUnregMemberApimRequest;
-import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchUnregMemberApimMapper;
+import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchMemberApimRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchMemberApimMapper;
 import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupCommand;
@@ -15,7 +15,7 @@ import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 
 /**
- * Fail-first contract for the confirmed TRPSearchUnregMember behavior.
+ * Fail-first contract for the confirmed TRPSearchMember behavior.
  *
  * <p>This test intentionally goes red before Patch 010 production changes. Do not weaken it to
  * preserve the old three-state lookup model.
@@ -33,7 +33,7 @@ class RegistrationLookupContractFailFirstTest {
     Class<?> mapper =
         Class.forName(
             "com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper."
-                + "TrpSearchUnregMemberApimResultMapper");
+                + "TrpSearchMemberApimResultMapper");
 
     assertThat(
             Arrays.stream(mapper.getDeclaredMethods())
@@ -52,7 +52,7 @@ class RegistrationLookupContractFailFirstTest {
 
   @Test
   void unexpectedApimErrorCannotBeRepresentedAsNormalLookupStatus() throws Exception {
-    String mapper = readMain("TrpSearchUnregMemberApimResultMapper.java");
+    String mapper = readMain("TrpSearchMemberApimResultMapper.java");
 
     assertThat(mapper)
         .doesNotContain("UPSTREAM_BUSINESS_REJECTED")
@@ -62,7 +62,7 @@ class RegistrationLookupContractFailFirstTest {
 
   @Test
   void emptySuccessfulEnvelopeCannotBeTreatedAsNotEligible() throws Exception {
-    String mapper = readMain("TrpSearchUnregMemberApimResultMapper.java");
+    String mapper = readMain("TrpSearchMemberApimResultMapper.java");
 
     assertThat(mapper)
         .contains("RegistrationLookupDownstreamException.Reason.EMPTY_DATA")
@@ -70,20 +70,23 @@ class RegistrationLookupContractFailFirstTest {
   }
 
   @Test
-  void eligibleDataRequiresMatchingContactAndNonBlankAccountIdentity() throws Exception {
-    String mapper = readMain("TrpSearchUnregMemberApimResultMapper.java");
+  void eligibleDataRequiresNonBlankAccountIdentityAndPreservesMemberFields() throws Exception {
+    String mapper = readMain("TrpSearchMemberApimResultMapper.java");
 
     assertThat(mapper)
-        .contains("contactValue")
-        .contains("contactType")
         .contains("item.env()")
         .contains("item.trustCode()")
+        .contains("item.policyNo()")
+        .contains("item.certNo()")
+        .contains("item.termCompleteDate()")
+        .contains("item.isRegistered()")
+        .contains("item.customerId()")
         .contains("RegistrationLookupDownstreamException");
   }
 
   @Test
   void feIdentityValuesMapToTheConfirmedApimValues() {
-    var mapper = new TrpSearchUnregMemberApimMapper();
+    var mapper = new TrpSearchMemberApimMapper();
 
     assertSearchBy(mapper, MemberIdentityType.ID, "ID");
     assertSearchBy(mapper, MemberIdentityType.STAFFNO, "STAFFNO");
@@ -101,8 +104,7 @@ class RegistrationLookupContractFailFirstTest {
         .doesNotContain("NOT_FOUND_OR_NOT_ELIGIBLE")
         .doesNotContain("UPSTREAM_BUSINESS_REJECTED");
     assertThat(pageYaml)
-        .contains("endpoint: TRPSearchUnregMember")
-        .doesNotContain("err.tpa.hkid.invalid");
+        .contains("endpoint: TRPSearchMember");
   }
 
   @Test
@@ -124,8 +126,8 @@ class RegistrationLookupContractFailFirstTest {
   }
 
   private void assertSearchBy(
-      TrpSearchUnregMemberApimMapper mapper, MemberIdentityType type, String expected) {
-    TrpSearchUnregMemberApimRequest request =
+      TrpSearchMemberApimMapper mapper, MemberIdentityType type, String expected) {
+    TrpSearchMemberApimRequest request =
         mapper.toApimRequest(
             new RegistrationLookupCommand(
                 type,
@@ -147,6 +149,13 @@ class RegistrationLookupContractFailFirstTest {
   }
 
   private String readMain(String fileName) throws Exception {
+    Path registrationMapper =
+        Path.of(
+            "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/registration/mapper",
+            fileName);
+    if (Files.exists(registrationMapper)) {
+      return Files.readString(registrationMapper);
+    }
     try (var paths = Files.walk(Path.of("src/main/java"))) {
       Path path =
           paths

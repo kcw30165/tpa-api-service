@@ -211,12 +211,12 @@ The codebase contains protected auth-flow contexts for registration, login, and 
 The current codebase appears to include:
 
 ```text
-TRPSearchUnregMember
+TRPSearchMember
 TRPChkCustId
 TRPRegMember
 ```
 
-`TRPSearchUnregMember` response items include environment and trust information. `TRPRegMember` serializes an APIM request property named `env`.
+`TRPSearchMember` response items include environment and trust information. `TRPRegMember` serializes an APIM request property named `env`.
 
 The discovery stage must prove where the selected registration `accountEnv` is persisted and how it reaches registration completion.
 

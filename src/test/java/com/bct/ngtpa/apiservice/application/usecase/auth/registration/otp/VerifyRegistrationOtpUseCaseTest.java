@@ -391,8 +391,7 @@ class VerifyRegistrationOtpUseCaseTest {
         List.of(new RegistrationLookupAccount("DB", "DBA", null, null));
 
     @Override
-    public Mono<RegistrationLookupResult> searchUnregisteredMember(
-        RegistrationLookupCommand command) {
+    public Mono<RegistrationLookupResult> searchMember(RegistrationLookupCommand command) {
       called = true;
       this.command = command;
       return Mono.just(new RegistrationLookupResult(status, accounts, null));
