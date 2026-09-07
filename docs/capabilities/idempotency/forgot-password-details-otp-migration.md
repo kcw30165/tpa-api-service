@@ -82,3 +82,8 @@ Intermediate implementation scripts must run `mvn -DskipTests compile` and `mvn 
 - The full Maven suite passed against the cumulative formatted Result-contract repair state.
 - Spring startup smoke reached the application started marker using runtime-only local overrides that disabled Redis, enabled lazy initialization, and excluded SSL metrics auto-configuration because deployment-only Redis mTLS files are unavailable in WSL.
 - Production configuration was unchanged. P5-C is ready for its stabilization commit.
+
+### P5-D validation evidence
+
+- Revalidated the committed DETAILS_AND_OTP shared-executor composition with compile, test compilation, focused parity and architecture tests, and static boundary audits.
+- Confirmed the legacy DETAILS_AND_OTP orchestration remains absent and non-selected resend, verify, complete, and cancel composition remains intact.

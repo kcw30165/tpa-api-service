@@ -207,3 +207,10 @@ Until an actual deployment occurs, deployment timestamps, environment coverage, 
 - The START replay protector registers Java time support before serializing protected continuity state.
 - Expired protected replay remains fail-closed, and reference substitution remains authenticated through AES-GCM additional data.
 - Production composition continues to reject the exact legacy START constructor while allowing the shared replacement service.
+
+### P5-D committed-baseline validation evidence
+
+- Validated exact committed baseline `b88e2e5d534fd39895db07e73e4a73145a67dd69`.
+- Production compile, test compilation, focused shared-boundary tests, replay parity tests, composition guards, and clean-architecture validation passed.
+- Static audits confirm START and DETAILS_AND_OTP use the shared executor, DETAILS_AND_OTP legacy orchestration is absent, and resend, verify, complete, and cancel remain composed without accidental cleanup.
+- The P5-C transition evidence already records a passing 4,123-test full Maven suite and a passing Spring startup smoke.

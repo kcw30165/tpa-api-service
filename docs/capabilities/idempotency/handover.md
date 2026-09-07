@@ -638,3 +638,10 @@ Final committed-state validation completed successfully at Git HEAD `4afbc2726a6
 - Runtime-only local overrides disabled Redis, enabled lazy initialization, and excluded SSL metrics auto-configuration so deployment-only Redis mTLS files were not loaded.
 - No production configuration was changed. The full Maven suite had already passed against the same cumulative code state.
 - Next action is the P5-C stabilization commit. P5-D remains blocked until commit evidence is reviewed.
+
+#### P5-D committed-baseline validation
+
+- Exact baseline `b88e2e5d534fd39895db07e73e4a73145a67dd69` passed compile, test compilation, focused replay and architecture tests, and static migration-boundary audits.
+- START and DETAILS_AND_OTP remain on the shared executor. Remaining Forgot Password actions remain intentionally composed through their existing services.
+- The prior full Maven and startup-smoke gates remain the transition evidence for this committed state.
+- Next action is to commit the P5-D documentation evidence, then perform P5-E closure review.
