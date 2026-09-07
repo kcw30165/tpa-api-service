@@ -18,7 +18,8 @@ class TrpSearchMemberApimResultMapperTest {
 
   @Test
   void validEmailDataIsEligible() {
-    var result = mapper.toResult("", List.of(memberItem("OI", "JPM")), emailCommand());
+    var result =
+        mapper.toResult("", List.of(memberItem("OI", "JPM")), emailCommand());
 
     assertThat(result.status()).isEqualTo(RegistrationLookupStatus.ELIGIBLE);
     assertThat(result.accounts()).hasSize(1);
@@ -55,10 +56,16 @@ class TrpSearchMemberApimResultMapperTest {
 
   @Test
   void missingEnvOrTrustCodeIsContractFailure() {
-    assertThatThrownBy(() -> mapper.toResult("", List.of(memberItem("", "JPM")), emailCommand()))
+    assertThatThrownBy(
+            () ->
+                mapper.toResult(
+                    "", List.of(memberItem("", "JPM")), emailCommand()))
         .isInstanceOf(RegistrationLookupDownstreamException.class);
 
-    assertThatThrownBy(() -> mapper.toResult("", List.of(memberItem("OI", "")), emailCommand()))
+    assertThatThrownBy(
+            () ->
+                mapper.toResult(
+                    "", List.of(memberItem("OI", "")), emailCommand()))
         .isInstanceOf(RegistrationLookupDownstreamException.class);
   }
 

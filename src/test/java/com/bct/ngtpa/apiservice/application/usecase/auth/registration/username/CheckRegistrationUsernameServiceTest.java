@@ -425,7 +425,8 @@ class CheckRegistrationUsernameServiceTest {
           RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_KEY_VERSION,
           encrypted.keyVersion());
       attributes.put(
-          RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_ALGORITHM, encrypted.algorithm());
+          RegistrationUsernameCheckAttributeNames.USERNAME_CHECK_ALGORITHM,
+          encrypted.algorithm());
     }
     return java.util.Map.copyOf(attributes);
   }
