@@ -587,3 +587,10 @@ Final committed-state validation completed successfully at Git HEAD `4afbc2726a6
 - The detailed migration sequence is defined in `forgot-password-details-otp-migration.md`.
 - Next step: add fail-first characterization and architecture tests before implementing the shared-executor path.
 - Before P5-C to P5-D, rerun the full Maven suite and normal local Spring startup on the final P5-C state.
+
+#### P5-C DETAILS_AND_OTP fail-first boundary
+
+- Added a compile-safe, intentionally red architecture contract for the DETAILS_AND_OTP shared-executor migration.
+- The contract requires the shared coordinator, protected operation, response bridge, replay codec, protected replay boundary, and atomic composition switch.
+- It also requires removal of action-local legacy lifecycle calls while preserving OTP resend, OTP verify, complete, and cancel.
+- Production behavior remains unchanged. The next round implements the deterministic target required by this contract.

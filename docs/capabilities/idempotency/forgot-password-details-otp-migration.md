@@ -39,3 +39,9 @@ Migrate only the combined details verification and initial OTP issuance action. 
 ## Gates
 
 Intermediate implementation scripts must run `mvn -DskipTests compile` and `mvn -DskipTests test-compile`; full Maven tests are reserved for the P5-C completion gate. Before transition from P5-C to P5-D, the full Maven suite and normal local Spring startup smoke test must both pass on the final P5-C state.
+
+### Fail-first coverage added
+
+- Added an architecture-level fail-first contract for the future shared coordinator, protected operation, execution bridge, replay codec, protected replay port, and atomic Spring composition switch.
+- The contract forbids legacy DETAILS_AND_OTP lifecycle calls after migration while explicitly preserving OTP resend, OTP verify, complete, and cancel composition.
+- Production code and production composition remain unchanged in this round, so the new contract is intentionally red until implementation.
