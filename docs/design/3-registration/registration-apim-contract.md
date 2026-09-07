@@ -624,3 +624,7 @@ Whether TRPRegMember returns remaining unregistered trusts directly
 Whether TRPRegMember needs TRPSearchMember follow-up to refresh remaining trusts
 Whether trust identity requires trustCode + accountEnv only
 ```
+
+### Registration eligibility projection
+
+The registration flow retains the complete `TRPSearchMember` response at the APIM boundary, but FE trust-selection projections are restricted to records whose `isRegistered` value is explicitly `false`. OTP verification persists the same unregistered-only set as server-owned authorization state. Username check rejects any submitted `accountEnv + trustCode` pair outside that set, including pairs returned by TAS with `isRegistered=true`. After completion, only explicitly unregistered records are returned as remaining trusts. A null registration flag is not considered unregistered.

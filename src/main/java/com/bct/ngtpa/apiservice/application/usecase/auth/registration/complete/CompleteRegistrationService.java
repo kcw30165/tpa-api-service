@@ -312,7 +312,12 @@ public class CompleteRegistrationService implements CompleteRegistrationUseCase 
         .searchMember(command)
         .flatMap(
             r -> {
-              if (r.status() == RegistrationLookupStatus.ELIGIBLE && !r.accounts().isEmpty())
+              List<RegistrationLookupAccount> remainingUnregisteredTrusts =
+                  r.accounts().stream()
+                      .filter(account -> Boolean.FALSE.equals(account.registered()))
+                      .toList();
+              if (r.status() == RegistrationLookupStatus.ELIGIBLE
+                  && !remainingUnregisteredTrusts.isEmpty())
                 return sessionTransitions
                     .transition(
                         session, AuthFlowStatus.TRUST_SELECTION_READY, clock.instant(), true)
@@ -322,7 +327,7 @@ public class CompleteRegistrationService implements CompleteRegistrationUseCase 
                             WorkflowNextStep.REGISTRATION_SUCCESS,
                             true,
                             false,
-                            r.accounts()));
+                            remainingUnregisteredTrusts));
               return sessionTransitions
                   .transition(session, AuthFlowStatus.COMPLETED, clock.instant(), true)
                   .thenReturn(
