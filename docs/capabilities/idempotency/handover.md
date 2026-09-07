@@ -608,3 +608,9 @@ Final committed-state validation completed successfully at Git HEAD `4afbc2726a6
 - The new path preserves lock, session, lease, verification, OTP, delivery, binding, and commit-state behavior without calling the legacy idempotency lifecycle.
 - Production composition and OTP resend, OTP verify, complete, and cancel remain unchanged.
 - Next step: add the shared coordinator and atomically switch DETAILS_AND_OTP composition.
+
+#### P5-C DETAILS_AND_OTP shared coordinator
+
+- Added and focused-tested the shared DETAILS_AND_OTP coordinator.
+- Validation occurs before reservation; only ACQUIRED executes the protected operation; replay and non-terminal outcomes do not.
+- Production composition remains unchanged. Next step is the atomic composition switch and removal of the legacy DETAILS_AND_OTP orchestration only.

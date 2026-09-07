@@ -57,3 +57,8 @@ Intermediate implementation scripts must run `mvn -DskipTests compile` and `mvn 
 - Extracted the DETAILS_AND_OTP protected operation with lock, session reload, lease budget, details verification, OTP creation/delivery, binding, and authoritative commit-state persistence.
 - Added an action-specific replay resolver over the existing authoritative OTP commit/session/challenge resolver.
 - The protected operation has no legacy idempotency port or legacy commit coordinator dependency. Production composition remains unchanged pending the shared coordinator round.
+
+### Shared coordinator implemented
+
+- Added the DETAILS_AND_OTP coordinator over the repository-wide shared executor with pre-reservation validation, session-scoped operation identity, canonical detail fingerprinting, conservative failure classification, protected replay capture, and lifecycle-result mapping.
+- Added focused coordinator coverage. Production composition remains on the legacy orchestration until the atomic switch round.
