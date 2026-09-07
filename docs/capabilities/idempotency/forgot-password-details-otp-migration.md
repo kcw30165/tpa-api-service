@@ -51,3 +51,9 @@ Intermediate implementation scripts must run `mvn -DskipTests compile` and `mvn 
 - Added the action-specific protected replay resolution port, strict safe replay codec, and typed execution bridge.
 - Successful results require an opaque protected replay reference. Shared snapshots exclude destination, session, challenge, and timing continuity.
 - Production composition remains unchanged while the protected operation and shared coordinator are implemented.
+
+### Protected operation implemented
+
+- Extracted the DETAILS_AND_OTP protected operation with lock, session reload, lease budget, details verification, OTP creation/delivery, binding, and authoritative commit-state persistence.
+- Added an action-specific replay resolver over the existing authoritative OTP commit/session/challenge resolver.
+- The protected operation has no legacy idempotency port or legacy commit coordinator dependency. Production composition remains unchanged pending the shared coordinator round.

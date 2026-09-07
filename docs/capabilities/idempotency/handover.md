@@ -601,3 +601,10 @@ Final committed-state validation completed successfully at Git HEAD `4afbc2726a6
 - The shared snapshot persists only safe status/targets plus an opaque protected reference for successful OTP continuity.
 - Production composition and remaining legacy actions are unchanged.
 - Next step: implement the protected replay resolver over authoritative commit/session/challenge state, then extract the protected operation and coordinator.
+
+#### P5-C DETAILS_AND_OTP protected operation
+
+- Added the extracted protected operation and authoritative protected replay resolver.
+- The new path preserves lock, session, lease, verification, OTP, delivery, binding, and commit-state behavior without calling the legacy idempotency lifecycle.
+- Production composition and OTP resend, OTP verify, complete, and cancel remain unchanged.
+- Next step: add the shared coordinator and atomically switch DETAILS_AND_OTP composition.
