@@ -23,7 +23,7 @@ import reactor.core.publisher.Mono;
 public final class ApimAccountGainLossSourceAdapter implements AccountGainLossSourcePort {
   private static final Logger LOG = LoggerFactory.getLogger(ApimAccountGainLossSourceAdapter.class);
   private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-  private static final String SWITCHING = "err.tpa.fund.swithing.in.progress";
+  private static final String SWITCHING = "err.tpa.fund.switching.in.progress";
   private final ApimExchangeExecutor executor;
   private final String path;
 

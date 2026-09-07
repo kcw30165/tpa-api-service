@@ -19,7 +19,7 @@ public final class AccountGainLossRetrievalResponsePolicy {
                   ApiStatus.BUSINESS_REJECTED,
                   List.of(
                       ApiError.business(
-                          "err.fund.swithing.in.progress", null, List.of(), SOURCE_SERVER))),
+                          "err.fund.switching.in.progress", null, List.of(), SOURCE_SERVER))),
               HttpStatus.UNPROCESSABLE_ENTITY);
       case SYSTEM_FAILURE ->
           new ResponseEntity<>(

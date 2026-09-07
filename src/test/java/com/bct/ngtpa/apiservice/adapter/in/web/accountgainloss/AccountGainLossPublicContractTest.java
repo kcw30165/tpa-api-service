@@ -18,7 +18,7 @@ class AccountGainLossPublicContractTest {
     assertThat(switching.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
     assertThat(switching.getBody().status()).isEqualTo(ApiStatus.BUSINESS_REJECTED);
     assertThat(switching.getBody().errors().getFirst().code())
-        .isEqualTo("err.fund.swithing.in.progress");
+        .isEqualTo("err.fund.switching.in.progress");
     var system =
         AccountGainLossRetrievalResponsePolicy.map(
             AccountGainLossRetrievalException.systemFailure());
