@@ -78,8 +78,8 @@ class ForgotPasswordStartReplayCodecTest {
 
   @Test
   void failsClosedForExpiredProtectedReplayAndLifecycleStatus() {
-    replay.state = new ForgotPasswordStartProtectedReplayState("afs-secret", "STAFF_NO", NOW.minusSeconds(1));
     var captured = codec.capture(started(), new HydratedIdempotentResponse(200, "application/json", "{\"transient\":true}", Map.of()), Duration.ofMinutes(5)).block();
+    replay.state = new ForgotPasswordStartProtectedReplayState("afs-secret", "STAFF_NO", NOW.minusSeconds(1));
     assertThatThrownBy(() -> codec.hydrate(captured.snapshot(), 1800).block())
         .hasMessageContaining("expired");
     var lifecycle = new StartForgotPasswordResult(

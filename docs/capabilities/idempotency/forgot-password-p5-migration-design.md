@@ -201,3 +201,9 @@ Until an actual deployment occurs, deployment timestamps, environment coverage, 
 ### P5-C Forgot Password START cleanup status
 
 - START production composition uses `IdempotentStartForgotPasswordService` over the repository-wide shared executor. Replacement parity is committed, and the non-composed legacy `StartForgotPasswordService` and its dedicated test are removed.
+
+### P5-C full-test checkpoint repair status
+
+- The START replay protector registers Java time support before serializing protected continuity state.
+- Expired protected replay remains fail-closed, and reference substitution remains authenticated through AES-GCM additional data.
+- Production composition continues to reject the exact legacy START constructor while allowing the shared replacement service.

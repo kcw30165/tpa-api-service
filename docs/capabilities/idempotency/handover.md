@@ -568,3 +568,12 @@ Final committed-state validation completed successfully at Git HEAD `4afbc2726a6
 - Replacement protected-operation, coordinator, replay, controller, and composition tests remain the authoritative START coverage.
 - Deployment timestamps, environment coverage, rollback-window closure, and TTL-drainage gates remain not applicable before repository cleanup completes.
 - P5-A/B/C/D/E remains authoritative.
+
+### P5-C full-test checkpoint repair
+
+- Removed the Registration application package dependency on the outbound JSON adapter by using an application-owned transient idempotency JSON codec.
+- Enabled registered Java time modules for Forgot Password START protected replay serialization while retaining reference-bound AES-GCM authentication and fail-closed behavior.
+- Corrected the START replay expiry test so the stored protected state is made expired after capture rather than overwritten by capture.
+- Narrowed the composition guard to reject the exact legacy constructor instead of the replacement service name containing the legacy suffix.
+- Architecture rules remain unchanged and authoritative.
+- P5-A/B/C/D/E remains authoritative.

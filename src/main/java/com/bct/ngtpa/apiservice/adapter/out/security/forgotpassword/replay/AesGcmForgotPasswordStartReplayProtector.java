@@ -40,7 +40,11 @@ public final class AesGcmForgotPasswordStartReplayProtector
       throw new IllegalArgumentException("Forgot Password Start replay secret has invalid key length");
     }
     this.key = new SecretKeySpec(decoded, "AES");
-    this.mapper = Objects.requireNonNull(mapper).enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
+    this.mapper =
+        Objects.requireNonNull(mapper)
+            .copy()
+            .findAndRegisterModules()
+            .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     this.random = Objects.requireNonNull(random);
   }
 

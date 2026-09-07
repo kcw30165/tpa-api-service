@@ -1,9 +1,8 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency;
 
-import com.bct.ngtpa.apiservice.adapter.out.json.JacksonTransientJsonAdapter;
+import com.bct.ngtpa.apiservice.application.idempotency.JacksonTransientJsonCodec;
 import com.bct.ngtpa.apiservice.application.idempotency.ActionTaggedIdempotencyResponseEnvelope;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyAction;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Objects;
 
 /** Registration action-mapping compatibility API over the central envelope protocol. */
@@ -13,7 +12,7 @@ public final class RegistrationSharedResponseEnvelope {
   public RegistrationSharedResponseEnvelope() {
     this(
         new ActionTaggedIdempotencyResponseEnvelope(
-            new JacksonTransientJsonAdapter(new ObjectMapper())));
+            new JacksonTransientJsonCodec()));
   }
 
   RegistrationSharedResponseEnvelope(ActionTaggedIdempotencyResponseEnvelope delegate) {
