@@ -66,7 +66,7 @@ public class ApiExceptionHandler {
         List.of(error),
         exchange,
         exception,
-        "TRPSearchUnregMember contract failure: " + exception.reason(),
+        "TRPSearchMember contract failure: " + exception.reason(),
         true,
         false);
   }

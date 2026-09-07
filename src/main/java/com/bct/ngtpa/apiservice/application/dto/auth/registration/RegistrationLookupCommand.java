@@ -5,8 +5,8 @@ import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import java.util.Objects;
 
 /**
- * Focused TRPSearchUnregMember input. actorUserRole is pre-authentication credential-routing
- * metadata and is never serialized into the APIM body.
+ * Focused TRPSearchMember input. actorUserRole is pre-authentication credential-routing metadata
+ * and is never serialized into the APIM body.
  */
 public record RegistrationLookupCommand(
     MemberIdentityType identityType,

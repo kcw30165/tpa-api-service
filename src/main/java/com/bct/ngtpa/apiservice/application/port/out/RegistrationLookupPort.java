@@ -5,5 +5,5 @@ import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLo
 import reactor.core.publisher.Mono;
 
 public interface RegistrationLookupPort {
-  Mono<RegistrationLookupResult> searchUnregisteredMember(RegistrationLookupCommand command);
+  Mono<RegistrationLookupResult> searchMember(RegistrationLookupCommand command);
 }

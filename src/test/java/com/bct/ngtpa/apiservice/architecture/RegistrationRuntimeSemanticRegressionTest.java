@@ -10,7 +10,7 @@ class RegistrationRuntimeSemanticRegressionTest {
   @Test
   void unexpectedLookupErrorsLeaveTheBusinessResultPath() throws Exception {
     String status = read("RegistrationLookupStatus.java");
-    String mapper = read("TrpSearchUnregMemberApimResultMapper.java");
+    String mapper = read("TrpSearchMemberApimResultMapper.java");
     String handler = read("ApiExceptionHandler.java");
     assertThat(status)
         .containsIgnoringWhitespaces("ELIGIBLE", "NOT_ELIGIBLE")
@@ -36,6 +36,13 @@ class RegistrationRuntimeSemanticRegressionTest {
   }
 
   private String read(String name) throws Exception {
+    Path registrationMapper =
+        Path.of(
+            "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/registration/mapper",
+            name);
+    if (Files.exists(registrationMapper)) {
+      return Files.readString(registrationMapper);
+    }
     try (var paths = Files.walk(Path.of("src/main/java"))) {
       Path path =
           paths.filter(p -> p.getFileName().toString().equals(name)).findFirst().orElseThrow();

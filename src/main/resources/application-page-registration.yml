@@ -3,7 +3,7 @@ bff-pages:
     registration-start:
       downstreamErrorClassification:
         source: APIM_TAS
-        endpoint: TRPSearchUnregMember
+        endpoint: TRPSearchMember
         explicitMappings:
           - downstreamErrorCode: err.tpa.member.not.found
             eventType: DOWNSTREAM_REJECTION
@@ -77,7 +77,7 @@ bff-pages:
     registration-otp-verification:
       downstreamErrorClassification:
         source: APIM_TAS
-        endpoint: TRPSearchUnregMember
+        endpoint: TRPSearchMember
         fallback:
           eventType: DOWNSTREAM_REJECTION
           logLevel: ERROR

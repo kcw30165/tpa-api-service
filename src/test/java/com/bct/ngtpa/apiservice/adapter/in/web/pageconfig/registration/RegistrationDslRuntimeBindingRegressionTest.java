@@ -147,7 +147,7 @@ class RegistrationDslRuntimeBindingRegressionTest {
           var pages = context.getBean(BffPagesProperties.class).getPages();
           assertThat(
                   pages.get("registration-start").getDownstreamErrorClassification().getEndpoint())
-              .isEqualTo("TRPSearchUnregMember");
+              .isEqualTo("TRPSearchMember");
           assertThat(
                   pages
                       .get("registration-username-check")

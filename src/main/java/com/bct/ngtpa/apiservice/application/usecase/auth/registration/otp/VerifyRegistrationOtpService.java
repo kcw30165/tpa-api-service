@@ -256,7 +256,7 @@ public class VerifyRegistrationOtpService implements VerifyRegistrationOtpUseCas
             context.contactValue(),
             com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
     return registrationLookupPort
-        .searchUnregisteredMember(lookupCommand)
+        .searchMember(lookupCommand)
         .flatMap(
             result -> {
               String statusName = result.status() == null ? "" : result.status().name();

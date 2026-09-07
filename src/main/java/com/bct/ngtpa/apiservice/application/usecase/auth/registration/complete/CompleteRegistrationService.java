@@ -309,7 +309,7 @@ public class CompleteRegistrationService implements CompleteRegistrationUseCase 
             rc.contactValue(),
             com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
     return lookup
-        .searchUnregisteredMember(command)
+        .searchMember(command)
         .flatMap(
             r -> {
               if (r.status() == RegistrationLookupStatus.ELIGIBLE && !r.accounts().isEmpty())

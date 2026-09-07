@@ -148,7 +148,7 @@ class ApimRoutingLedgerCharacterizationTest {
               "EXECUTOR",
               "ACCOUNT_ENV"),
           e(
-              "TRPSearchUnregMember",
+              "TRPSearchMemberRegistration",
               "registration/ApimRegistrationLookupAdapter.java",
               "NON_ACCOUNT",
               "command.actorUserRole()",
@@ -205,7 +205,7 @@ class ApimRoutingLedgerCharacterizationTest {
             "TRPMemberLogin",
             "TRPGetAccountList",
             "TRPRegMember",
-            "TRPSearchUnregMember",
+            "TRPSearchMemberRegistration",
             "TRPChkCustId",
             "TRPSearchMember",
             "TRPGetGeneralMetaData");

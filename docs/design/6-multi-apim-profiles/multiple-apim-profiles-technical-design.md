@@ -479,7 +479,7 @@ The current worktree contains 13 outbound APIM operations.
 
 ```text
 TRPChkCustId
-TRPSearchUnregMember
+TRPSearchMember
 TRPMemberLogin
 TRPGetAccountList
 TRPGetCountryList
@@ -536,7 +536,7 @@ The current member path requires `ROLE_USER`. Other roles fail until later polic
 The existing lineage is complete:
 
 ```text
-TRPSearchUnregMember.env
+TRPSearchMember.env
 -> RegistrationLookupAccount.accountEnv
 -> selected RegistrationSelectedTrust
 -> validated UsernameCheckState.selectedTrust.accountEnv
@@ -551,7 +551,7 @@ Do not add a duplicate `accountEnv` field to another registration context unless
 
 ### 11.2 Routing changes
 
-- `TRPSearchUnregMember`: `NON_ACCOUNT`, `ROLE_USER`, no environment.
+- `TRPSearchMember`: `NON_ACCOUNT`, `ROLE_USER`, no environment.
 - `TRPChkCustId`: `NON_ACCOUNT`, `ROLE_USER`, no environment.
 - `TRPRegMember`: `ACCOUNT_ENV`, `ROLE_USER`, environment from unprotected `UsernameCheckState.selectedTrust.accountEnv`.
 

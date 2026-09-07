@@ -2,7 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.out.apim.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchUnregMemberApimDataItem;
+import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchMemberApimDataItem;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -18,8 +18,8 @@ class ApimRegistrationLookupAdapterEnvelopeTest {
 
   @Test
   void envelopeDefensivelyCopiesDataAndRedactsToString() {
-    var data = new java.util.ArrayList<TrpSearchUnregMemberApimDataItem>();
-    data.add(new TrpSearchUnregMemberApimDataItem("member@example.com", "91234567", "OI", "JPM"));
+    var data = new java.util.ArrayList<TrpSearchMemberApimDataItem>();
+    data.add(new TrpSearchMemberApimDataItem("member@example.com", "91234567", "OI", "JPM"));
 
     var envelope = new ApimRegistrationLookupEnvelope("", data);
     data.clear();

@@ -395,8 +395,7 @@ class RegistrationOtpVerificationLifecycleIntegrationTest {
       calls = 0;
     }
 
-    public Mono<RegistrationLookupResult> searchUnregisteredMember(
-        RegistrationLookupCommand command) {
+    public Mono<RegistrationLookupResult> searchMember(RegistrationLookupCommand command) {
       calls++;
       return Mono.just(new RegistrationLookupResult(status, accounts, null));
     }

@@ -5,10 +5,10 @@ import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimDatabaseScope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.dto.ApimResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeExecutor;
 import com.bct.ngtpa.apiservice.adapter.out.apim.execution.ApimExchangeRequest;
-import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchUnregMemberApimDataItem;
-import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchUnregMemberApimRequest;
-import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchUnregMemberApimMapper;
-import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchUnregMemberApimResultMapper;
+import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchMemberApimDataItem;
+import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchMemberApimRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchMemberApimMapper;
+import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchMemberApimResultMapper;
 import com.bct.ngtpa.apiservice.adapter.out.apim.retry.ApimRetryEligibility;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.*;
 import com.bct.ngtpa.apiservice.application.dto.observability.FailureEvent;
@@ -26,10 +26,10 @@ import reactor.core.publisher.Mono;
 
 @Component
 public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
-  private static final String API_NAME = "/ws/NGTPA/v1/TRPSearchUnregMember";
+  private static final String API_NAME = "/ws/NGTPA/v1/TRPSearchMember";
   private final ApimExchangeExecutor executor;
-  private final TrpSearchUnregMemberApimMapper requestMapper;
-  private final TrpSearchUnregMemberApimResultMapper resultMapper;
+  private final TrpSearchMemberApimMapper requestMapper;
+  private final TrpSearchMemberApimResultMapper resultMapper;
   private final FailureEventPort failureEventPort;
 
   @Autowired
@@ -37,15 +37,15 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
       ApimExchangeExecutor executor, FailureEventPort failureEventPort) {
     this(
         executor,
-        new TrpSearchUnregMemberApimMapper(),
-        new TrpSearchUnregMemberApimResultMapper(),
+        new TrpSearchMemberApimMapper(),
+        new TrpSearchMemberApimResultMapper(),
         failureEventPort);
   }
 
   ApimRegistrationLookupAdapter(
       ApimExchangeExecutor executor,
-      TrpSearchUnregMemberApimMapper requestMapper,
-      TrpSearchUnregMemberApimResultMapper resultMapper,
+      TrpSearchMemberApimMapper requestMapper,
+      TrpSearchMemberApimResultMapper resultMapper,
       FailureEventPort failureEventPort) {
     this.executor = Objects.requireNonNull(executor, "executor must not be null");
     this.requestMapper = Objects.requireNonNull(requestMapper, "requestMapper must not be null");
@@ -55,17 +55,16 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
   }
 
   @Override
-  @LogExecution(value = "apim.searchUnregisteredMember", logArgs = false)
-  public Mono<RegistrationLookupResult> searchUnregisteredMember(
-      RegistrationLookupCommand command) {
+  @LogExecution(value = "apim.searchMember", logArgs = false)
+  public Mono<RegistrationLookupResult> searchMember(RegistrationLookupCommand command) {
     Objects.requireNonNull(command, "command must not be null");
-    TrpSearchUnregMemberApimRequest body = requestMapper.toApimRequest(command);
+    TrpSearchMemberApimRequest body = requestMapper.toApimRequest(command);
     var request =
         new ApimExchangeRequest<>(
             API_NAME,
             body,
-            TrpSearchUnregMemberApimRequest.class,
-            TrpSearchUnregMemberApimDataItem.class,
+            TrpSearchMemberApimRequest.class,
+            TrpSearchMemberApimDataItem.class,
             ApimDatabaseScope.NON_ACCOUNT,
             new ApimCredentialResolutionContext(command.actorUserRole(), null),
             ApimRetryEligibility.SAFE_BUSINESS_CALL);
@@ -74,13 +73,13 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
   }
 
   private RegistrationLookupResult toResult(
-      ApimResponseEnvelope<TrpSearchUnregMemberApimDataItem> envelope,
+      ApimResponseEnvelope<TrpSearchMemberApimDataItem> envelope,
       RegistrationLookupCommand command) {
     if (envelope == null || envelope.getResponse() == null)
       throw new RegistrationLookupDownstreamException(
           RegistrationLookupDownstreamException.Reason.EMPTY_DATA, null);
     var response = envelope.getResponse();
-    List<TrpSearchUnregMemberApimDataItem> data =
+    List<TrpSearchMemberApimDataItem> data =
         response.getData() == null ? List.of() : List.copyOf(response.getData());
     return resultMapper.toResult(response.getErrMessage(), data, command);
   }
@@ -111,7 +110,7 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
                   "registration.lookup.downstream_contract_failure",
                   requestId,
                   "REGISTRATION",
-                  "TRPSearchUnregMember",
+                  "TRPSearchMember",
                   FailureOrigin.DOWNSTREAM_CONTRACT,
                   exception.downstreamErrorCode(),
                   SharedWorkflowErrorKey.DOWNSTREAM_UNAVAILABLE.value(),
@@ -141,7 +140,7 @@ public class ApimRegistrationLookupAdapter implements RegistrationLookupPort {
             "event.registration.lookup.downstream_rejection",
             requestId,
             "REGISTRATION",
-            "TRPSearchUnregMember",
+            "TRPSearchMember",
             FailureOrigin.DOWNSTREAM_CONTRACT,
             "err.tpa.member.not.found",
             RegistrationErrorKey.START_VERIFICATION_FAILED.value(),

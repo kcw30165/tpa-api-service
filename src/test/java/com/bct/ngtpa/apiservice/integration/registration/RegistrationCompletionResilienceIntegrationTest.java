@@ -133,7 +133,7 @@ class RegistrationCompletionResilienceIntegrationTest {
   @Disabled("covered by success-path integration")
   @Test
   void finalTrustCompletesAndReturnsToLogin() {
-    when(lookup.searchUnregisteredMember(any()))
+    when(lookup.searchMember(any()))
         .thenReturn(
             Mono.just(
                 new RegistrationLookupResult(
@@ -150,7 +150,7 @@ class RegistrationCompletionResilienceIntegrationTest {
   @Disabled("covered by success-path integration")
   @Test
   void remainingTrustsKeepFlowReadyForAnotherSelection() {
-    when(lookup.searchUnregisteredMember(any()))
+    when(lookup.searchMember(any()))
         .thenReturn(
             Mono.just(
                 new RegistrationLookupResult(

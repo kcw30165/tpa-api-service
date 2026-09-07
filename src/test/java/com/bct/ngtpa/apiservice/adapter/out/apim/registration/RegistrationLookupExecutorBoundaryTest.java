@@ -34,8 +34,8 @@ class RegistrationLookupExecutorBoundaryTest {
             "command.actorUserRole()",
             "new ApimCredentialResolutionContext(command.actorUserRole(), null)",
             "ApimRetryEligibility.SAFE_BUSINESS_CALL",
-            "TrpSearchUnregMemberApimRequest.class",
-            "TrpSearchUnregMemberApimDataItem.class");
+            "TrpSearchMemberApimRequest.class",
+            "TrpSearchMemberApimDataItem.class");
     assertThat(adapter)
         .doesNotContain(
             "ROLE_USER_MBR",

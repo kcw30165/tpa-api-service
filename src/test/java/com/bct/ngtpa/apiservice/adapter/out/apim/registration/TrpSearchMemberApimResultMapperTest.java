@@ -3,8 +3,8 @@ package com.bct.ngtpa.apiservice.adapter.out.apim.registration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchUnregMemberApimDataItem;
-import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchUnregMemberApimResultMapper;
+import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchMemberApimDataItem;
+import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchMemberApimResultMapper;
 import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupCommand;
@@ -13,14 +13,13 @@ import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLo
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-class TrpSearchUnregMemberApimResultMapperTest {
-  private final TrpSearchUnregMemberApimResultMapper mapper =
-      new TrpSearchUnregMemberApimResultMapper();
+class TrpSearchMemberApimResultMapperTest {
+  private final TrpSearchMemberApimResultMapper mapper = new TrpSearchMemberApimResultMapper();
 
   @Test
   void validEmailDataIsEligible() {
     var result =
-        mapper.toResult("", List.of(item("member@example.com", "", "OI", "JPM")), emailCommand());
+        mapper.toResult("", List.of(memberItem("OI", "JPM")), emailCommand());
 
     assertThat(result.status()).isEqualTo(RegistrationLookupStatus.ELIGIBLE);
     assertThat(result.accounts()).hasSize(1);
@@ -28,7 +27,7 @@ class TrpSearchUnregMemberApimResultMapperTest {
 
   @Test
   void validMobileDataIsEligible() {
-    var result = mapper.toResult("", List.of(item("", "91234567", "OI", "JPM")), mobileCommand());
+    var result = mapper.toResult("", List.of(memberItem("OI", "JPM")), mobileCommand());
 
     assertThat(result.status()).isEqualTo(RegistrationLookupStatus.ELIGIBLE);
   }
@@ -56,26 +55,17 @@ class TrpSearchUnregMemberApimResultMapperTest {
   }
 
   @Test
-  void contactMismatchIsContractFailure() {
-    assertThatThrownBy(
-            () ->
-                mapper.toResult(
-                    "", List.of(item("other@example.com", "", "OI", "JPM")), emailCommand()))
-        .isInstanceOf(RegistrationLookupDownstreamException.class);
-  }
-
-  @Test
   void missingEnvOrTrustCodeIsContractFailure() {
     assertThatThrownBy(
             () ->
                 mapper.toResult(
-                    "", List.of(item("member@example.com", "", "", "JPM")), emailCommand()))
+                    "", List.of(memberItem("", "JPM")), emailCommand()))
         .isInstanceOf(RegistrationLookupDownstreamException.class);
 
     assertThatThrownBy(
             () ->
                 mapper.toResult(
-                    "", List.of(item("member@example.com", "", "OI", "")), emailCommand()))
+                    "", List.of(memberItem("OI", "")), emailCommand()))
         .isInstanceOf(RegistrationLookupDownstreamException.class);
   }
 
@@ -99,8 +89,8 @@ class TrpSearchUnregMemberApimResultMapperTest {
         com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
   }
 
-  private static TrpSearchUnregMemberApimDataItem item(
-      String email, String mobile, String env, String trustCode) {
-    return new TrpSearchUnregMemberApimDataItem(email, mobile, env, trustCode);
+  private static TrpSearchMemberApimDataItem memberItem(String env, String trustCode) {
+    return new TrpSearchMemberApimDataItem(
+        env, trustCode, "OE", "00000008802", "5", "", "30/06/2022", false, "");
   }
 }

@@ -2,16 +2,16 @@ package com.bct.ngtpa.apiservice.adapter.out.apim.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchUnregMemberApimRequest;
-import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchUnregMemberApimMapper;
+import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchMemberApimRequest;
+import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchMemberApimMapper;
 import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationContactType;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupCommand;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
-class TrpSearchUnregMemberApimMapperTest {
-  private final TrpSearchUnregMemberApimMapper mapper = new TrpSearchUnregMemberApimMapper();
+class TrpSearchMemberApimMapperTest {
+  private final TrpSearchMemberApimMapper mapper = new TrpSearchMemberApimMapper();
 
   @Test
   void apimRequestMapsEmailContact() {
@@ -72,7 +72,7 @@ class TrpSearchUnregMemberApimMapperTest {
     var json =
         new ObjectMapper()
             .writeValueAsString(
-                new TrpSearchUnregMemberApimRequest(
+                new TrpSearchMemberApimRequest(
                     "GPFS", "1234567890", "31/01/1980", "member@example.com", ""));
 
     assertThat(json).contains("search-by", "search-value", "dob", "email", "mobile-number");
@@ -89,7 +89,7 @@ class TrpSearchUnregMemberApimMapperTest {
   @Test
   void apimDtosToStringDoNotExposePii() {
     var request =
-        new TrpSearchUnregMemberApimRequest(
+        new TrpSearchMemberApimRequest(
             "GPFS", "1234567890", "31/01/1980", "member@example.com", "91234567");
 
     assertThat(request.toString())

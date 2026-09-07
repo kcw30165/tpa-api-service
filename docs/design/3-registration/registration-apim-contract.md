@@ -42,7 +42,7 @@ Registration use cases own only orchestration, request/response mapping, and FE 
 The registration flow currently uses these APIM/TAS endpoints:
 
 ```text
-POST /ws/NGTPA/v1/TRPSearchUnregisteredMember
+POST /ws/NGTPA/v1/TRPSearchMember
 POST /ws/NGTPA/v1/TRPChkCustId
 POST /ws/NGTPA/v1/TRPRegMember
 ```
@@ -50,7 +50,7 @@ POST /ws/NGTPA/v1/TRPRegMember
 Usage summary:
 
 ```text
-TRPSearchUnregisteredMember
+TRPSearchMember
 - Used by registration/start for initial member/account verification.
 - Used after otp/verify to retrieve the latest not-yet-registered trust/account list.
 
@@ -113,7 +113,7 @@ bff-pages:
   registration-start:
     downstreamErrorClassification:
       source: APIM_TAS
-      endpoint: TRPSearchUnregisteredMember
+      endpoint: TRPSearchMember
       mappings:
         err.tpa.member.not.found:
           eventType: DOWNSTREAM_REJECTION
@@ -131,7 +131,7 @@ bff-pages:
   registration-otp-verification:
     downstreamErrorClassification:
       source: APIM_TAS
-      endpoint: TRPSearchUnregisteredMember
+      endpoint: TRPSearchMember
       fallback:
         eventType: DOWNSTREAM_REJECTION
         logLevel: ERROR
@@ -189,11 +189,11 @@ Rules:
 
 ---
 
-## 6. TRPSearchUnregisteredMember
+## 6. TRPSearchMember
 
 ### 6.1 Usage
 
-`TRPSearchUnregisteredMember` is used in two places:
+`TRPSearchMember` is used in two places:
 
 ```text
 1. registration/start
@@ -210,7 +210,7 @@ Rules:
 ### 6.2 Endpoint
 
 ```http
-POST /ws/NGTPA/v1/TRPSearchUnregisteredMember
+POST /ws/NGTPA/v1/TRPSearchMember
 Content-Type: application/json
 Accept: application/json
 Authorization: Bearer <token>
@@ -567,7 +567,7 @@ Required Java outcome on success:
 - include remaining unregisteredTrusts in response for immediate FE rendering when available
 ```
 
-Whether remaining unregistered trusts are returned directly by `TRPRegMember` or require another `TRPSearchUnregisteredMember` call must be confirmed by APIM/TAS contract.
+Whether remaining unregistered trusts are returned directly by `TRPRegMember` or require another `TRPSearchMember` call must be confirmed by APIM/TAS contract.
 
 ### 8.5 Rejection Interpretation
 
@@ -621,6 +621,6 @@ TRPRegMember request DTO
 TRPRegMember success response DTO
 TRPRegMember business error-message table
 Whether TRPRegMember returns remaining unregistered trusts directly
-Whether TRPRegMember needs TRPSearchUnregisteredMember follow-up to refresh remaining trusts
+Whether TRPRegMember needs TRPSearchMember follow-up to refresh remaining trusts
 Whether trust identity requires trustCode + accountEnv only
 ```

@@ -996,7 +996,7 @@ refactor(login): use generic APIM exchange for account list
 
 ### Goal
 
-Migrate `TRPSearchUnregMember` as an independently bounded registration lookup.
+Migrate `TRPSearchMember` as an independently bounded registration lookup.
 
 ### Work
 

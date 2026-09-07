@@ -1,7 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.config;
 
-import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchUnregMemberApimMapper;
-import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchUnregMemberApimResultMapper;
+import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchMemberApimMapper;
+import com.bct.ngtpa.apiservice.adapter.out.apim.registration.mapper.TrpSearchMemberApimResultMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -9,12 +9,12 @@ import org.springframework.context.annotation.Configuration;
 public class RegistrationLookupApimAdapterConfig {
 
   @Bean
-  public TrpSearchUnregMemberApimMapper trpSearchUnregMemberApimMapper() {
-    return new TrpSearchUnregMemberApimMapper();
+  public TrpSearchMemberApimMapper trpSearchUnregMemberApimMapper() {
+    return new TrpSearchMemberApimMapper();
   }
 
   @Bean
-  public TrpSearchUnregMemberApimResultMapper trpSearchUnregMemberApimResultMapper() {
-    return new TrpSearchUnregMemberApimResultMapper();
+  public TrpSearchMemberApimResultMapper trpSearchUnregMemberApimResultMapper() {
+    return new TrpSearchMemberApimResultMapper();
   }
 }

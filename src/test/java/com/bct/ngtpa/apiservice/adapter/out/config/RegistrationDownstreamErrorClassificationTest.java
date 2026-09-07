@@ -66,8 +66,7 @@ class RegistrationDownstreamErrorClassificationTest {
         context -> {
           var adapter = adapter(context);
           for (String code : java.util.List.of("err.tpa.member.not.found")) {
-            var result =
-                adapter.classify(request("registration-start", "TRPSearchUnregMember", code));
+            var result = adapter.classify(request("registration-start", "TRPSearchMember", code));
             assertThat(result.responseCode())
                 .isEqualTo("err.registration.start.verificationFailed");
             assertThat(result.httpStatus()).isEqualTo(422);
@@ -83,7 +82,7 @@ class RegistrationDownstreamErrorClassificationTest {
           var result =
               adapter(context)
                   .classify(
-                      request("registration-start", "TRPSearchUnregMember", "err.tpa.bad.request"));
+                      request("registration-start", "TRPSearchMember", "err.tpa.bad.request"));
           assertThat(result.responseCode()).isEqualTo("err.workflow.downstream.unavailable");
           assertThat(result.httpStatus()).isEqualTo(503);
           assertThat(result.fallbackUsed()).isTrue();

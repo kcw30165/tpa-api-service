@@ -215,7 +215,7 @@ public class StartRegistrationService implements StartRegistrationUseCase {
             validated.contactValue(),
             com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
     return lookupPort
-        .searchUnregisteredMember(lookupCommand)
+        .searchMember(lookupCommand)
         .flatMap(lookup -> handleLookup(command, hash, validated, lookup))
         .onErrorResume(
             error ->

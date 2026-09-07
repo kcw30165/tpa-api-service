@@ -953,7 +953,7 @@ The table below records the finalized Task 0043 operation set.
 | `TRPResetPassword` | Forgot Password completion; protected pre-authentication | `NON_ACCOUNT` | Intentional `null` | Explicit Forgot Password command role | `IDEMPOTENT_MUTATION` | `ApimForgotPasswordCompletionAdapter` |
 | `TRPSearchMember` | Username Recovery member search; pre-authentication | `NON_ACCOUNT` | Intentional `null` | Explicit Username Recovery command role | `SAFE_BUSINESS_CALL` | `TrpSearchMemberAdapter` |
 | `TRPSearchRegedMember` | Forgot Password details lookup; protected pre-authentication | `NON_ACCOUNT` | Intentional `null`; returned environment is business data only | Explicit Forgot Password command role | `SAFE_BUSINESS_CALL` | `ApimForgotPasswordDetailsLookupAdapter` |
-| `TRPSearchUnregMember` | Registration member lookup; pre-authentication | `NON_ACCOUNT` | Intentional `null` | Explicit registration command role | `SAFE_BUSINESS_CALL` | `ApimRegistrationLookupAdapter` |
+| `TRPSearchMember` | Registration member lookup; pre-authentication | `NON_ACCOUNT` | Intentional `null` | Explicit registration command role | `SAFE_BUSINESS_CALL` | `ApimRegistrationLookupAdapter` |
 | `TRPUpdMemberInfo` | Personal Information update; authenticated mutation | `ACCOUNT_ENV` | Authenticated selected-account command context | Caller command | `IDEMPOTENT_MUTATION` | `ApimUpdatePersonalInformationAdapter` |
 | `TRPUpdMsgRead` | Notification read-status update; authenticated mutation | `ACCOUNT_ENV` | Authenticated selected-account command context | Caller command member type | `IDEMPOTENT_MUTATION` | `ApimNotificationReadStatusAdapter` |
 

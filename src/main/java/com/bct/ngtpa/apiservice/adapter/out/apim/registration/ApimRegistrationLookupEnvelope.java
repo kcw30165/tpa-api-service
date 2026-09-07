@@ -1,17 +1,16 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim.registration;
 
-import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchUnregMemberApimDataItem;
+import com.bct.ngtpa.apiservice.adapter.out.apim.registration.dto.TrpSearchMemberApimDataItem;
 import java.util.List;
 
 public record ApimRegistrationLookupEnvelope(
-    String errMessage, List<TrpSearchUnregMemberApimDataItem> data) {
+    String errMessage, List<TrpSearchMemberApimDataItem> data) {
   public ApimRegistrationLookupEnvelope {
     errMessage = errMessage == null ? "" : errMessage.trim();
     data = data == null ? List.of() : List.copyOf(data);
   }
 
-  public static ApimRegistrationLookupEnvelope success(
-      List<TrpSearchUnregMemberApimDataItem> data) {
+  public static ApimRegistrationLookupEnvelope success(List<TrpSearchMemberApimDataItem> data) {
     return new ApimRegistrationLookupEnvelope("", data);
   }
 
