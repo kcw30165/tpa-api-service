@@ -62,3 +62,9 @@ Intermediate implementation scripts must run `mvn -DskipTests compile` and `mvn 
 
 - Added the DETAILS_AND_OTP coordinator over the repository-wide shared executor with pre-reservation validation, session-scoped operation identity, canonical detail fingerprinting, conservative failure classification, protected replay capture, and lifecycle-result mapping.
 - Added focused coordinator coverage. Production composition remains on the legacy orchestration until the atomic switch round.
+
+### Atomic composition switch implemented
+
+- Production DETAILS_AND_OTP composition now uses the shared coordinator, protected operation, execution bridge, safe replay codec, and authoritative protected replay resolver.
+- Removed the legacy DETAILS_AND_OTP orchestration class and migrated its parity and revision-aware tests.
+- OTP resend, OTP verify, complete, cancel, the legacy port, and the legacy commit coordinator remain unchanged for their current owners.

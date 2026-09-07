@@ -13,7 +13,7 @@ class ForgotPasswordRevisionAwareSessionReloadContractSubtask009FailFirstTest {
     assertRevisionAware(
         "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/forgotpassword/identity/VerifyForgotPasswordIdentityService.java");
     assertRevisionAware(
-        "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/forgotpassword/detailsotp/ForgotPasswordDetailsOtpOrchestrationService.java");
+        "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/forgotpassword/detailsotp/ForgotPasswordDetailsOtpProtectedOperation.java");
     assertRevisionAware(
         "src/main/java/com/bct/ngtpa/apiservice/adapter/out/session/forgotpassword/ForgotPasswordOtpSessionBindingAdapter.java");
   }

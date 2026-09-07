@@ -52,7 +52,7 @@ class AuthForgotPasswordOtpResendEndpointArchitectureFailFirstTest {
 
     String text = Files.readString(config);
     assertThat(text).contains("ProcessForgotPasswordDetailsOtpUseCase");
-    assertThat(text).contains("ForgotPasswordDetailsOtpOrchestrationService");
+    assertThat(text).contains("IdempotentForgotPasswordDetailsOtpService");
     assertThat(text).contains("ForgotPasswordOtpCommitCoordinator");
     assertThat(text).contains("ForgotPasswordOtpReplayResolver");
     assertThat(text).contains("ForgotPasswordOtpCommitRetentionPolicy");

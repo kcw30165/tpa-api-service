@@ -614,3 +614,10 @@ Final committed-state validation completed successfully at Git HEAD `4afbc2726a6
 - Added and focused-tested the shared DETAILS_AND_OTP coordinator.
 - Validation occurs before reservation; only ACQUIRED executes the protected operation; replay and non-terminal outcomes do not.
 - Production composition remains unchanged. Next step is the atomic composition switch and removal of the legacy DETAILS_AND_OTP orchestration only.
+
+#### P5-C DETAILS_AND_OTP atomic composition switch
+
+- Switched production DETAILS_AND_OTP composition to the shared executor path and removed its legacy orchestration.
+- Migrated direct parity, endpoint architecture, and revision-aware assertions to the shared target.
+- Preserved OTP resend, OTP verify, complete, cancel, and their legacy lifecycle collaborators.
+- Next step: commit the switch, then run feature-level stabilization, formatting, full Maven tests, and startup smoke before P5-D.

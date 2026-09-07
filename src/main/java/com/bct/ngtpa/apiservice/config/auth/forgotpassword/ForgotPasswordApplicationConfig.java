@@ -45,7 +45,11 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.cancel.C
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.CompleteForgotPasswordService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordPasswordValidator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordDetailsOtpLeasePolicy;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordDetailsOtpOrchestrationService;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordDetailsOtpProtectedOperation;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.IdempotentForgotPasswordDetailsOtpService;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.detailsotp.DefaultForgotPasswordDetailsOtpProtectedReplayResolver;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.detailsotp.ForgotPasswordDetailsOtpExecutionBridge;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.detailsotp.ForgotPasswordDetailsOtpReplayCodec;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordUnderLockDetailsVerifier;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordDestinationMasker;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordInitialOtpPolicy;
@@ -297,7 +301,7 @@ public class ForgotPasswordApplicationConfig {
 
   @Bean
   public ProcessForgotPasswordDetailsOtpUseCase processForgotPasswordDetailsOtpUseCase(
-      ForgotPasswordIdempotencyPort idempotency,
+      IdempotencyExecutor idempotencyExecutor,
       SecureForgotPasswordOtpCommitRefGenerator refs,
       AuthFlowSessionMutationLockPort locks,
       AuthFlowSessionPort sessions,
@@ -307,29 +311,28 @@ public class ForgotPasswordApplicationConfig {
       MessageDeliveryPort delivery,
       ForgotPasswordDestinationMasker masker,
       ForgotPasswordOtpSessionBindingPort binding,
-      ForgotPasswordOtpCommitCoordinator commits,
+      com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpCommitStatePort commitStates,
+      ForgotPasswordOtpCommitRetentionPolicy retention,
       ForgotPasswordOtpReplayResolver replay,
-      ForgotPasswordDetailsOtpLeasePolicy policy,
+      ForgotPasswordDetailsOtpLeasePolicy leasePolicy,
       Clock clock,
+      ObjectMapper objectMapper,
       AuthWorkflowProperties properties) {
     properties.validateForgotPasswordPolicy();
-    return new ForgotPasswordDetailsOtpOrchestrationService(
-        idempotency,
-        refs,
-        locks,
-        sessions,
-        protector,
-        details,
-        otp,
-        delivery,
-        masker,
-        binding,
-        commits,
-        replay,
-        policy,
-        clock,
-        Duration.ofSeconds(
-            properties.getForgotPassword().getIdempotency().getDetailsAndOtpTtlSeconds()));
+    Duration ttl = Duration.ofSeconds(
+        properties.getForgotPassword().getIdempotency().getDetailsAndOtpTtlSeconds());
+    var protectedOperation = new ForgotPasswordDetailsOtpProtectedOperation(
+        refs, locks, sessions, protector, details, otp, delivery, masker, binding,
+        commitStates, retention, leasePolicy, clock, ttl);
+    var json = new JacksonTransientJsonAdapter(objectMapper);
+    var protectedReplay = new DefaultForgotPasswordDetailsOtpProtectedReplayResolver(replay);
+    var codec = new ForgotPasswordDetailsOtpReplayCodec(
+        new ActionTaggedIdempotencyResponseEnvelope(json), protectedReplay);
+    var responses = new ForgotPasswordDetailsOtpExecutionBridge(json, codec);
+    var policy = new ForgotPasswordIdempotencyIntegrationPolicy(
+        new IdempotencyOperationIdentityFactory(), new CanonicalIdempotencyFingerprintFactory());
+    return new IdempotentForgotPasswordDetailsOtpService(
+        idempotencyExecutor, protectedOperation, responses, policy, ttl);
   }
 
   @Bean
