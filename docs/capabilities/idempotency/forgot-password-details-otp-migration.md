@@ -68,3 +68,17 @@ Intermediate implementation scripts must run `mvn -DskipTests compile` and `mvn 
 - Production DETAILS_AND_OTP composition now uses the shared coordinator, protected operation, execution bridge, safe replay codec, and authoritative protected replay resolver.
 - Removed the legacy DETAILS_AND_OTP orchestration class and migrated its parity and revision-aware tests.
 - OTP resend, OTP verify, complete, cancel, the legacy port, and the legacy commit coordinator remain unchanged for their current owners.
+
+### Protected execution result contract aligned
+
+- Renamed the protected execution carrier to `ForgotPasswordDetailsOtpProtectedExecutionResult` so the application execute method conforms to the repository-wide typed Result contract.
+
+### Protected execution Result declaration repaired
+
+- Corrected the accidental duplicate `ResultResult` suffix while preserving the clean-architecture-compatible `ForgotPasswordDetailsOtpProtectedExecutionResult` contract.
+
+### P5-C startup smoke completed
+
+- The full Maven suite passed against the cumulative formatted Result-contract repair state.
+- Spring startup smoke reached the application started marker using runtime-only local overrides that disabled Redis, enabled lazy initialization, and excluded SSL metrics auto-configuration because deployment-only Redis mTLS files are unavailable in WSL.
+- Production configuration was unchanged. P5-C is ready for its stabilization commit.

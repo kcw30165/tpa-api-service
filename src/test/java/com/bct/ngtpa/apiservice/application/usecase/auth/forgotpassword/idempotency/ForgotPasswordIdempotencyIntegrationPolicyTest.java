@@ -11,8 +11,7 @@ import org.junit.jupiter.api.Test;
 class ForgotPasswordIdempotencyIntegrationPolicyTest {
   private final ForgotPasswordIdempotencyIntegrationPolicy policy =
       new ForgotPasswordIdempotencyIntegrationPolicy(
-          new IdempotencyOperationIdentityFactory(),
-          new CanonicalIdempotencyFingerprintFactory());
+          new IdempotencyOperationIdentityFactory(), new CanonicalIdempotencyFingerprintFactory());
 
   @Test
   void exposesOnlyFiveIntegrationActions() {
@@ -28,7 +27,8 @@ class ForgotPasswordIdempotencyIntegrationPolicyTest {
   @Test
   void suppliesPolicyInputsToCentralIdentityAndFingerprintPrimitives() {
     var first = policy.operationId(ForgotPasswordIdempotencyAction.START, "scope-a", "abcdefgh");
-    var second = policy.operationId(ForgotPasswordIdempotencyAction.OTP_VERIFY, "scope-a", "abcdefgh");
+    var second =
+        policy.operationId(ForgotPasswordIdempotencyAction.OTP_VERIFY, "scope-a", "abcdefgh");
     assertThat(first.capability().value()).isEqualTo("forgot-password");
     assertThat(first.scope().value()).hasSize(64).doesNotContain("scope-a");
     assertThat(first.action()).isNotEqualTo(second.action());

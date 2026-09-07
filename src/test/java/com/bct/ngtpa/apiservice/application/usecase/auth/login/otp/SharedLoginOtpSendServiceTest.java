@@ -16,10 +16,10 @@ import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyReservationOu
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionCommand;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionResult;
 import com.bct.ngtpa.apiservice.application.port.in.SendLoginOtpUseCase;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginOtpSendExecutionBridge;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginFingerprintFactory;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginIdempotencyAction;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginIdempotencyIdentityFactory;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginOtpSendExecutionBridge;
 import java.time.Duration;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -135,12 +135,10 @@ class SharedLoginOtpSendServiceTest {
   private static final class Fixture {
     private final CapturingExecutor executor = new CapturingExecutor();
     private final SendLoginOtpUseCase operation = mock(SendLoginOtpUseCase.class);
-    private final LoginOtpSendExecutionBridge responses =
-        mock(LoginOtpSendExecutionBridge.class);
+    private final LoginOtpSendExecutionBridge responses = mock(LoginOtpSendExecutionBridge.class);
     private final LoginIdempotencyIdentityFactory identities =
         mock(LoginIdempotencyIdentityFactory.class);
-    private final LoginFingerprintFactory fingerprints =
-        mock(LoginFingerprintFactory.class);
+    private final LoginFingerprintFactory fingerprints = mock(LoginFingerprintFactory.class);
     private final SharedLoginOtpSendService service;
 
     private Fixture() {

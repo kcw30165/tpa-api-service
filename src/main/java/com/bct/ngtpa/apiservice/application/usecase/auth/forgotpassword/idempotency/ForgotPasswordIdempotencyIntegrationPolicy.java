@@ -5,7 +5,6 @@ import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyCapability;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyFingerprint;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyOperationId;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyOperationIdentityFactory;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyAction;
 import java.util.List;
 import java.util.Objects;
 
@@ -34,7 +33,8 @@ public final class ForgotPasswordIdempotencyIntegrationPolicy {
   }
 
   public IdempotencyFingerprint start(String normalizedUsername) {
-    return fingerprint(ForgotPasswordIdempotencyAction.START, List.of(required(normalizedUsername)));
+    return fingerprint(
+        ForgotPasswordIdempotencyAction.START, List.of(required(normalizedUsername)));
   }
 
   public IdempotencyFingerprint detailsAndOtp(List<String> normalizedDetails) {

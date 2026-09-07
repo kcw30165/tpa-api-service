@@ -96,111 +96,205 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
     this.idempotencyTtl = Objects.requireNonNull(idempotencyTtl);
   }
 
-  public Mono<ForgotPasswordDetailsOtpProtectedExecution> execute(ForgotPasswordDetailsOtpCommand command) {
+  public Mono<ForgotPasswordDetailsOtpProtectedExecutionResult> execute(
+      ForgotPasswordDetailsOtpCommand command) {
     String reference = references.generate();
-    return locks.acquire(command.sessionId(), policy.lease())
+    return locks
+        .acquire(command.sessionId(), policy.lease())
         .flatMap(handle -> handle.acquired() ? locked(command, reference, handle) : failure())
         .onErrorResume(ignored -> failure());
   }
 
-  private Mono<ForgotPasswordDetailsOtpProtectedExecution> locked(
+  private Mono<ForgotPasswordDetailsOtpProtectedExecutionResult> locked(
       ForgotPasswordDetailsOtpCommand command, String reference, SessionLockHandle handle) {
     var budget = new ForgotPasswordMutationLeaseBudget(policy.lease(), System::nanoTime);
-    Mono<ForgotPasswordDetailsOtpProtectedExecution> work = sessions.loadSnapshot(command.sessionId())
-        .flatMap(optional -> {
-          if (optional.isEmpty()) return failure();
-          AuthFlowSession session = optional.get().session();
-          if (session.scenario() != AuthFlowScenario.FORGOT_PASSWORD
-              || session.status() != AuthFlowStatus.IDENTITY_VERIFIED
-              || session.isExpired(clock.instant())) return failure();
-          ForgotPasswordAuthFlowContext context = decrypt(session);
-          if (context.phase() != ForgotPasswordProtectedPhase.IDENTITY_VERIFIED) return failure();
-          return details.verify(handle, session, context, command.dateOfBirth(), command.email(),
-                  command.mobile(), command.requestId())
-              .flatMap(result -> result.status() == ForgotPasswordDetailsStatus.DETAILS_VERIFIED
-                  ? issue(command, reference, handle, budget)
-                  : Mono.just(new ForgotPasswordDetailsOtpProtectedExecution(
-                      new ForgotPasswordDetailsOtpResult(
-                          ForgotPasswordDetailsOtpResult.Status.BUSINESS_REJECTED,
-                          null, 0, 0, List.of("PAGE")), null)));
-        });
-    return Mono.usingWhen(Mono.just(handle), ignored -> work,
+    Mono<ForgotPasswordDetailsOtpProtectedExecutionResult> work =
+        sessions
+            .loadSnapshot(command.sessionId())
+            .flatMap(
+                optional -> {
+                  if (optional.isEmpty()) return failure();
+                  AuthFlowSession session = optional.get().session();
+                  if (session.scenario() != AuthFlowScenario.FORGOT_PASSWORD
+                      || session.status() != AuthFlowStatus.IDENTITY_VERIFIED
+                      || session.isExpired(clock.instant())) return failure();
+                  ForgotPasswordAuthFlowContext context = decrypt(session);
+                  if (context.phase() != ForgotPasswordProtectedPhase.IDENTITY_VERIFIED)
+                    return failure();
+                  return details
+                      .verify(
+                          handle,
+                          session,
+                          context,
+                          command.dateOfBirth(),
+                          command.email(),
+                          command.mobile(),
+                          command.requestId())
+                      .flatMap(
+                          result ->
+                              result.status() == ForgotPasswordDetailsStatus.DETAILS_VERIFIED
+                                  ? issue(command, reference, handle, budget)
+                                  : Mono.just(
+                                      new ForgotPasswordDetailsOtpProtectedExecutionResult(
+                                          new ForgotPasswordDetailsOtpResult(
+                                              ForgotPasswordDetailsOtpResult.Status
+                                                  .BUSINESS_REJECTED,
+                                              null,
+                                              0,
+                                              0,
+                                              List.of("PAGE")),
+                                          null)));
+                });
+    return Mono.usingWhen(
+        Mono.just(handle),
+        ignored -> work,
         ignored -> locks.release(handle).onErrorReturn(false).then(),
         (ignored, error) -> locks.release(handle).onErrorReturn(false).then(),
         ignored -> locks.release(handle).onErrorReturn(false).then());
   }
 
-  private Mono<ForgotPasswordDetailsOtpProtectedExecution> issue(
-      ForgotPasswordDetailsOtpCommand command, String reference, SessionLockHandle handle,
+  private Mono<ForgotPasswordDetailsOtpProtectedExecutionResult> issue(
+      ForgotPasswordDetailsOtpCommand command,
+      String reference,
+      SessionLockHandle handle,
       ForgotPasswordMutationLeaseBudget budget) {
     String channel = command.email() != null && !command.email().isBlank() ? "email" : "mobile";
     String destination = "email".equals(channel) ? command.email() : command.mobile();
     OtpChannel otpChannel = "email".equals(channel) ? OtpChannel.EMAIL : OtpChannel.SMS;
-    return otp.createChallenge(new CreateOtpChallengeCommand(
-            OtpScenario.FORGOT_PASSWORD, command.sessionId().value(), otpChannel, hex(destination),
-            6, true, 300, 5, 5, clock.instant()))
-        .flatMap(challenge -> {
-          if (!budget.active()) return failure();
-          return delivery.deliver(message(command, channel, destination, challenge))
-              .flatMap(result -> bindAndCommit(command, reference, handle, channel, destination,
-                  challenge, result, budget));
-        });
+    return otp.createChallenge(
+            new CreateOtpChallengeCommand(
+                OtpScenario.FORGOT_PASSWORD,
+                command.sessionId().value(),
+                otpChannel,
+                hex(destination),
+                6,
+                true,
+                300,
+                5,
+                5,
+                clock.instant()))
+        .flatMap(
+            challenge -> {
+              if (!budget.active()) return failure();
+              return delivery
+                  .deliver(message(command, channel, destination, challenge))
+                  .flatMap(
+                      result ->
+                          bindAndCommit(
+                              command,
+                              reference,
+                              handle,
+                              channel,
+                              destination,
+                              challenge,
+                              result,
+                              budget));
+            });
   }
 
-  private Mono<ForgotPasswordDetailsOtpProtectedExecution> bindAndCommit(
-      ForgotPasswordDetailsOtpCommand command, String reference, SessionLockHandle handle,
-      String channel, String destination, CreateOtpChallengeResult challenge,
-      MessageDeliveryResult deliveryResult, ForgotPasswordMutationLeaseBudget budget) {
+  private Mono<ForgotPasswordDetailsOtpProtectedExecutionResult> bindAndCommit(
+      ForgotPasswordDetailsOtpCommand command,
+      String reference,
+      SessionLockHandle handle,
+      String channel,
+      String destination,
+      CreateOtpChallengeResult challenge,
+      MessageDeliveryResult deliveryResult,
+      ForgotPasswordMutationLeaseBudget budget) {
     if (!budget.hasPersistenceBudget(policy.persistenceAllowance())) return failure();
     Instant now = clock.instant();
-    var bind = new ForgotPasswordOtpBindingCommand(command.sessionId(), handle,
-        deliveryResult.status(), challenge.otpChallengeId(), channel, destination,
-        masker.mask(channel, destination), challenge.expiresAt(), now.plusSeconds(60), now);
-    return binding.apply(bind).flatMap(bound -> {
-      if (deliveryResult.status() != MessageDeliveryStatus.ACCEPTED || !bound.bound()) {
-        return Mono.error(new IllegalStateException("DETAILS_AND_OTP delivery outcome is not safely completed"));
-      }
-      if (!budget.hasPersistenceBudget(policy.persistenceAllowance())) return failure();
-      var state = new ForgotPasswordOtpCommitState(
-          command.sessionId().value(), challenge.otpChallengeId(), now, challenge.expiresAt());
-      Duration ttl = retention.ttl(now, challenge.expiresAt(), now.plus(idempotencyTtl));
-      return commitStates.saveIfAbsent(reference, state, ttl)
-          .flatMap(saved -> commitStates.load(reference))
-          .flatMap(found -> found.isPresent() && found.get().equals(state)
-              ? Mono.just(new ForgotPasswordDetailsOtpProtectedExecution(
-                  new ForgotPasswordDetailsOtpResult(ForgotPasswordDetailsOtpResult.Status.SUCCESS,
-                      masker.mask(channel, destination), challenge.expiresInSeconds(), 60, List.of()),
-                  new ProtectedReplayReference(reference)))
-              : Mono.error(new IllegalStateException("DETAILS_AND_OTP commit state conflict")));
-    });
+    var bind =
+        new ForgotPasswordOtpBindingCommand(
+            command.sessionId(),
+            handle,
+            deliveryResult.status(),
+            challenge.otpChallengeId(),
+            channel,
+            destination,
+            masker.mask(channel, destination),
+            challenge.expiresAt(),
+            now.plusSeconds(60),
+            now);
+    return binding
+        .apply(bind)
+        .flatMap(
+            bound -> {
+              if (deliveryResult.status() != MessageDeliveryStatus.ACCEPTED || !bound.bound()) {
+                return Mono.error(
+                    new IllegalStateException(
+                        "DETAILS_AND_OTP delivery outcome is not safely completed"));
+              }
+              if (!budget.hasPersistenceBudget(policy.persistenceAllowance())) return failure();
+              var state =
+                  new ForgotPasswordOtpCommitState(
+                      command.sessionId().value(),
+                      challenge.otpChallengeId(),
+                      now,
+                      challenge.expiresAt());
+              Duration ttl = retention.ttl(now, challenge.expiresAt(), now.plus(idempotencyTtl));
+              return commitStates
+                  .saveIfAbsent(reference, state, ttl)
+                  .flatMap(saved -> commitStates.load(reference))
+                  .flatMap(
+                      found ->
+                          found.isPresent() && found.get().equals(state)
+                              ? Mono.just(
+                                  new ForgotPasswordDetailsOtpProtectedExecutionResult(
+                                      new ForgotPasswordDetailsOtpResult(
+                                          ForgotPasswordDetailsOtpResult.Status.SUCCESS,
+                                          masker.mask(channel, destination),
+                                          challenge.expiresInSeconds(),
+                                          60,
+                                          List.of()),
+                                      new ProtectedReplayReference(reference)))
+                              : Mono.error(
+                                  new IllegalStateException(
+                                      "DETAILS_AND_OTP commit state conflict")));
+            });
   }
 
-  private MessageDeliveryCommand message(ForgotPasswordDetailsOtpCommand command, String channel,
-      String destination, CreateOtpChallengeResult challenge) {
-    return new MessageDeliveryCommand(MessageDeliveryType.FORGOT_PASSWORD_OTP,
+  private MessageDeliveryCommand message(
+      ForgotPasswordDetailsOtpCommand command,
+      String channel,
+      String destination,
+      CreateOtpChallengeResult challenge) {
+    return new MessageDeliveryCommand(
+        MessageDeliveryType.FORGOT_PASSWORD_OTP,
         MessageDeliveryScenario.FORGOT_PASSWORD,
         "email".equals(channel) ? MessageDeliveryChannel.EMAIL : MessageDeliveryChannel.SMS,
-        destination, "email".equals(channel) ? TEMPLATES.emailSubject(command.language()) : null,
-        "email".equals(channel) ? TEMPLATES.emailBody(command.language()) : TEMPLATES.sms(command.language()),
-        null, Map.of("code", challenge.rawCode(), "ttlValue", "5", "ttlUnit", ttlUnit(command.language())),
-        command.language(), command.requestId());
+        destination,
+        "email".equals(channel) ? TEMPLATES.emailSubject(command.language()) : null,
+        "email".equals(channel)
+            ? TEMPLATES.emailBody(command.language())
+            : TEMPLATES.sms(command.language()),
+        null,
+        Map.of(
+            "code", challenge.rawCode(), "ttlValue", "5", "ttlUnit", ttlUnit(command.language())),
+        command.language(),
+        command.requestId());
   }
 
   private ForgotPasswordAuthFlowContext decrypt(AuthFlowSession session) {
     Map<String, String> attributes = session.data().attributes();
-    return protector.unprotect(new ForgotPasswordAuthFlowEncryptedContext(
-        attributes.get(CONTEXT_CIPHERTEXT), attributes.get(CONTEXT_KEY_VERSION),
-        attributes.getOrDefault(CONTEXT_ALGORITHM, ForgotPasswordAuthFlowEncryptedContext.DEFAULT_ALGORITHM)));
+    return protector.unprotect(
+        new ForgotPasswordAuthFlowEncryptedContext(
+            attributes.get(CONTEXT_CIPHERTEXT),
+            attributes.get(CONTEXT_KEY_VERSION),
+            attributes.getOrDefault(
+                CONTEXT_ALGORITHM, ForgotPasswordAuthFlowEncryptedContext.DEFAULT_ALGORITHM)));
   }
 
-  private Mono<ForgotPasswordDetailsOtpProtectedExecution> failure() {
-    return Mono.just(new ForgotPasswordDetailsOtpProtectedExecution(ForgotPasswordDetailsOtpResult.system(), null));
+  private Mono<ForgotPasswordDetailsOtpProtectedExecutionResult> failure() {
+    return Mono.just(
+        new ForgotPasswordDetailsOtpProtectedExecutionResult(
+            ForgotPasswordDetailsOtpResult.system(), null));
   }
 
   private String hex(String value) {
     try {
-      return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
-          .digest(value.getBytes(StandardCharsets.UTF_8)));
+      return HexFormat.of()
+          .formatHex(
+              MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8)));
     } catch (Exception exception) {
       throw new IllegalStateException("hash unavailable");
     }
@@ -208,6 +302,7 @@ public final class ForgotPasswordDetailsOtpProtectedOperation {
 
   private String ttlUnit(String language) {
     return language != null && language.trim().replace('-', '_').equalsIgnoreCase("zh_HK")
-        ? "分鐘" : "minutes";
+        ? "分鐘"
+        : "minutes";
   }
 }

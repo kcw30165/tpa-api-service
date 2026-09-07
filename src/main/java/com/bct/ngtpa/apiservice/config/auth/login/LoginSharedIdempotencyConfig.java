@@ -5,11 +5,11 @@ import com.bct.ngtpa.apiservice.adapter.out.redis.auth.login.RedisLoginIdempoten
 import com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort;
 import com.bct.ngtpa.apiservice.application.service.auth.login.idempotency.LoginIdempotencyPersistenceIdDeriver;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.DefaultLoginOtpVerifyProtectedReplayResolver;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginOtpVerifyProtectedReplayResolver;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginOtpVerifyReplayCodec;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginOtpVerifyExecutionBridge;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginFingerprintFactory;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginIdempotencyIdentityFactory;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginOtpVerifyExecutionBridge;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginOtpVerifyProtectedReplayResolver;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginOtpVerifyReplayCodec;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginResponseEnvelope;
 import com.bct.ngtpa.apiservice.infrastructure.security.idempotency.HmacLoginIdempotencyPersistenceIdDeriver;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -65,8 +65,7 @@ public class LoginSharedIdempotencyConfig {
   @Bean
   LoginOtpVerifyReplayCodec loginOtpVerifyReplayCodec(
       TransientJsonPort json, LoginOtpVerifyProtectedReplayResolver protectedReplayResolver) {
-    return new LoginOtpVerifyReplayCodec(
-        new LoginResponseEnvelope(json), protectedReplayResolver);
+    return new LoginOtpVerifyReplayCodec(new LoginResponseEnvelope(json), protectedReplayResolver);
   }
 
   @Bean

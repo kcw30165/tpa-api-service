@@ -1,7 +1,5 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start;
 
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyAction;
-
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.idempotency.ActionTaggedIdempotencyResponseEnvelope;
@@ -9,6 +7,7 @@ import com.bct.ngtpa.apiservice.application.idempotency.HydratedIdempotentRespon
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentCapturedResponse;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentTerminalResponseSnapshot;
 import com.bct.ngtpa.apiservice.application.port.in.CreateAuthFlowSessionCsrfUseCase;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyAction;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordError;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.StartForgotPasswordResultStatus;
@@ -16,7 +15,6 @@ import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CreateAuthF
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import reactor.core.publisher.Mono;
 
@@ -46,19 +44,24 @@ public final class ForgotPasswordStartReplayCodec {
       HydratedIdempotentResponse transientResponse,
       Duration ttl) {
     Objects.requireNonNull(result, "Forgot Password Start result must not be null");
-    Objects.requireNonNull(transientResponse, "Forgot Password Start transient response must not be null");
+    Objects.requireNonNull(
+        transientResponse, "Forgot Password Start transient response must not be null");
     positive(ttl);
     validateCapturable(result.status());
     if (transientResponse.httpStatus() != httpStatus(result.status())
         || !MEDIA_TYPE.equalsIgnoreCase(transientResponse.mediaType())) {
       throw new IllegalArgumentException("Forgot Password Start transient transport mismatch");
     }
-    String body = envelope.encode(ForgotPasswordIdempotencyAction.START.action(), safePayload(result));
+    String body =
+        envelope.encode(ForgotPasswordIdempotencyAction.START.action(), safePayload(result));
     if (result.status() != StartForgotPasswordResultStatus.STARTED) {
       return Mono.just(captured(transientResponse, body, null));
     }
-    if (blank(result.authFlowSessionId()) || blank(result.identityType()) || blank(result.csrfToken())) {
-      return Mono.error(new IllegalArgumentException("Forgot Password Start success is incomplete"));
+    if (blank(result.authFlowSessionId())
+        || blank(result.identityType())
+        || blank(result.csrfToken())) {
+      return Mono.error(
+          new IllegalArgumentException("Forgot Password Start success is incomplete"));
     }
     return protectedReplay
         .store(
@@ -76,7 +79,8 @@ public final class ForgotPasswordStartReplayCodec {
     }
     if (snapshot.schemaVersion() != SCHEMA_VERSION
         || !MEDIA_TYPE.equalsIgnoreCase(snapshot.mediaType())) {
-      return Mono.error(new IllegalArgumentException("Forgot Password Start replay transport is invalid"));
+      return Mono.error(
+          new IllegalArgumentException("Forgot Password Start replay transport is invalid"));
     }
     SafePayload payload =
         envelope.decodePayload(
@@ -86,35 +90,43 @@ public final class ForgotPasswordStartReplayCodec {
     StartForgotPasswordResultStatus status = status(payload.status());
     validateCapturable(status);
     if (snapshot.httpStatus() != httpStatus(status)) {
-      return Mono.error(new IllegalArgumentException("Forgot Password Start replay HTTP status mismatch"));
+      return Mono.error(
+          new IllegalArgumentException("Forgot Password Start replay HTTP status mismatch"));
     }
     if (status != StartForgotPasswordResultStatus.STARTED) {
       if (snapshot.protectedReplayReference() != null) {
-        return Mono.error(new IllegalArgumentException("Forgot Password Start rejection cannot carry protected replay"));
+        return Mono.error(
+            new IllegalArgumentException(
+                "Forgot Password Start rejection cannot carry protected replay"));
       }
       return Mono.just(rejection(status, payload));
     }
     if (snapshot.protectedReplayReference() == null) {
-      return Mono.error(new IllegalArgumentException("Forgot Password Start protected replay is required"));
+      return Mono.error(
+          new IllegalArgumentException("Forgot Password Start protected replay is required"));
     }
     return protectedReplay
         .load(snapshot.protectedReplayReference())
-        .switchIfEmpty(Mono.error(new IllegalArgumentException("Forgot Password Start protected replay is unavailable")))
+        .switchIfEmpty(
+            Mono.error(
+                new IllegalArgumentException(
+                    "Forgot Password Start protected replay is unavailable")))
         .flatMap(state -> hydrateStarted(state, sessionTtlSeconds));
   }
 
   private Mono<StartForgotPasswordResult> hydrateStarted(
       ForgotPasswordStartProtectedReplayState state, int sessionTtlSeconds) {
     if (!state.expiresAt().isAfter(clock.instant())) {
-      return Mono.error(new IllegalArgumentException("Forgot Password Start protected replay is expired"));
+      return Mono.error(
+          new IllegalArgumentException("Forgot Password Start protected replay is expired"));
     }
     long remaining = Duration.between(clock.instant(), state.expiresAt()).toSeconds();
     int ttl = Math.toIntExact(Math.min(remaining, sessionTtlSeconds));
     if (ttl <= 0) {
-      return Mono.error(new IllegalArgumentException("Forgot Password Start protected replay is expired"));
+      return Mono.error(
+          new IllegalArgumentException("Forgot Password Start protected replay is expired"));
     }
-    return csrf
-        .createForSession(
+    return csrf.createForSession(
             new CreateAuthFlowSessionCsrfCommand(
                 new AuthFlowSessionId(state.authFlowSessionId()), clock.instant(), ttl, null))
         .map(
@@ -142,7 +154,9 @@ public final class ForgotPasswordStartReplayCodec {
             transientResponse.safeHeaders(),
             reference);
     var hydrated =
-        reference == null ? transientResponse : transientResponse.withProtectedReplayReference(reference);
+        reference == null
+            ? transientResponse
+            : transientResponse.withProtectedReplayReference(reference);
     return new IdempotentCapturedResponse(hydrated, snapshot);
   }
 
@@ -151,7 +165,9 @@ public final class ForgotPasswordStartReplayCodec {
         result.status().name(),
         result.nextStep().name(),
         result.identityType(),
-        result.errors().stream().map(error -> new ErrorWire(error.code(), error.target())).toList());
+        result.errors().stream()
+            .map(error -> new ErrorWire(error.code(), error.target()))
+            .toList());
   }
 
   private StartForgotPasswordResult rejection(
@@ -168,7 +184,8 @@ public final class ForgotPasswordStartReplayCodec {
             : payload.errors().stream()
                 .map(error -> new StartForgotPasswordError(error.code(), error.target(), null))
                 .toList();
-    return new StartForgotPasswordResult(status, nextStep, null, payload.identityType(), null, errors, null);
+    return new StartForgotPasswordResult(
+        status, nextStep, null, payload.identityType(), null, errors, null);
   }
 
   private StartForgotPasswordResultStatus status(String value) {
@@ -192,7 +209,8 @@ public final class ForgotPasswordStartReplayCodec {
       case STARTED, COMPLETED_REPLAY -> 200;
       case USERNAME_NOT_FOUND -> 422;
       case AUTH_FLOW_INVALID -> 400;
-      default -> throw new IllegalArgumentException("Forgot Password Start result is not capturable");
+      default ->
+          throw new IllegalArgumentException("Forgot Password Start result is not capturable");
     };
   }
 

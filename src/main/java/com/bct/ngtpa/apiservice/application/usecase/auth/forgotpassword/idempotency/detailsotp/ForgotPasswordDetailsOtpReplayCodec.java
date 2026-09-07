@@ -34,45 +34,67 @@ public final class ForgotPasswordDetailsOtpReplayCodec {
     validateCapturable(result);
     boolean success = result.status() == ForgotPasswordDetailsOtpResult.Status.SUCCESS;
     if (success != (reference != null)) {
-      return Mono.error(new IllegalArgumentException("DETAILS_AND_OTP protected replay reference mismatch"));
+      return Mono.error(
+          new IllegalArgumentException("DETAILS_AND_OTP protected replay reference mismatch"));
     }
     if (response.httpStatus() != httpStatus(result.status())
         || !MEDIA_TYPE.equalsIgnoreCase(response.mediaType())
         || !response.safeHeaders().isEmpty()) {
-      return Mono.error(new IllegalArgumentException("DETAILS_AND_OTP transient transport mismatch"));
+      return Mono.error(
+          new IllegalArgumentException("DETAILS_AND_OTP transient transport mismatch"));
     }
     SafePayload payload = new SafePayload(result.status().name(), List.copyOf(result.targets()));
-    String safeBody = envelope.encode(ForgotPasswordIdempotencyAction.DETAILS_AND_OTP.action(), payload);
-    var snapshot = new IdempotentTerminalResponseSnapshot(1, response.httpStatus(), MEDIA_TYPE, safeBody, Map.of(), reference);
+    String safeBody =
+        envelope.encode(ForgotPasswordIdempotencyAction.DETAILS_AND_OTP.action(), payload);
+    var snapshot =
+        new IdempotentTerminalResponseSnapshot(
+            1, response.httpStatus(), MEDIA_TYPE, safeBody, Map.of(), reference);
     var hydrated = reference == null ? response : response.withProtectedReplayReference(reference);
     return Mono.just(new IdempotentCapturedResponse(hydrated, snapshot));
   }
 
   public Mono<ForgotPasswordDetailsOtpResult> hydrate(IdempotentTerminalResponseSnapshot snapshot) {
     Objects.requireNonNull(snapshot);
-    if (snapshot.schemaVersion() != 1 || !MEDIA_TYPE.equalsIgnoreCase(snapshot.mediaType())
+    if (snapshot.schemaVersion() != 1
+        || !MEDIA_TYPE.equalsIgnoreCase(snapshot.mediaType())
         || !snapshot.safeHeaders().isEmpty()) {
-      return Mono.error(new IllegalArgumentException("DETAILS_AND_OTP replay transport is invalid"));
+      return Mono.error(
+          new IllegalArgumentException("DETAILS_AND_OTP replay transport is invalid"));
     }
-    SafePayload payload = envelope.decodePayload(
-        ForgotPasswordIdempotencyAction.DETAILS_AND_OTP.action(), snapshot.serializedSafeBody(), SafePayload.class);
+    SafePayload payload =
+        envelope.decodePayload(
+            ForgotPasswordIdempotencyAction.DETAILS_AND_OTP.action(),
+            snapshot.serializedSafeBody(),
+            SafePayload.class);
     ForgotPasswordDetailsOtpResult.Status status;
-    try { status = ForgotPasswordDetailsOtpResult.Status.valueOf(payload.status()); }
-    catch (RuntimeException e) { return Mono.error(new IllegalArgumentException("DETAILS_AND_OTP replay status is unsupported")); }
+    try {
+      status = ForgotPasswordDetailsOtpResult.Status.valueOf(payload.status());
+    } catch (RuntimeException e) {
+      return Mono.error(
+          new IllegalArgumentException("DETAILS_AND_OTP replay status is unsupported"));
+    }
     if (snapshot.httpStatus() != httpStatus(status)) {
-      return Mono.error(new IllegalArgumentException("DETAILS_AND_OTP replay HTTP status mismatch"));
+      return Mono.error(
+          new IllegalArgumentException("DETAILS_AND_OTP replay HTTP status mismatch"));
     }
     if (status == ForgotPasswordDetailsOtpResult.Status.SUCCESS) {
       if (snapshot.protectedReplayReference() == null) {
-        return Mono.error(new IllegalArgumentException("DETAILS_AND_OTP success requires protected replay"));
+        return Mono.error(
+            new IllegalArgumentException("DETAILS_AND_OTP success requires protected replay"));
       }
       return protectedReplay.resolve(snapshot.protectedReplayReference());
     }
     if (snapshot.protectedReplayReference() != null) {
-      return Mono.error(new IllegalArgumentException("DETAILS_AND_OTP rejection cannot carry protected replay"));
+      return Mono.error(
+          new IllegalArgumentException("DETAILS_AND_OTP rejection cannot carry protected replay"));
     }
-    var result = new ForgotPasswordDetailsOtpResult(status, null, 0, 0,
-        payload.targets() == null ? List.of() : List.copyOf(payload.targets()));
+    var result =
+        new ForgotPasswordDetailsOtpResult(
+            status,
+            null,
+            0,
+            0,
+            payload.targets() == null ? List.of() : List.copyOf(payload.targets()));
     validateCapturable(result);
     return Mono.just(result);
   }
@@ -89,12 +111,15 @@ public final class ForgotPasswordDetailsOtpReplayCodec {
   private void validateCapturable(ForgotPasswordDetailsOtpResult result) {
     httpStatus(result.status());
     if (result.status() == ForgotPasswordDetailsOtpResult.Status.SUCCESS
-        && (result.maskedDestination() == null || result.maskedDestination().isBlank()
-            || result.expiresInSeconds() <= 0 || result.resendAvailableInSeconds() < 0)) {
+        && (result.maskedDestination() == null
+            || result.maskedDestination().isBlank()
+            || result.expiresInSeconds() <= 0
+            || result.resendAvailableInSeconds() < 0)) {
       throw new IllegalArgumentException("DETAILS_AND_OTP success result is invalid");
     }
     if (result.status() != ForgotPasswordDetailsOtpResult.Status.SUCCESS
-        && (result.maskedDestination() != null || result.expiresInSeconds() != 0
+        && (result.maskedDestination() != null
+            || result.expiresInSeconds() != 0
             || result.resendAvailableInSeconds() != 0)) {
       throw new IllegalArgumentException("DETAILS_AND_OTP rejection contains protected data");
     }

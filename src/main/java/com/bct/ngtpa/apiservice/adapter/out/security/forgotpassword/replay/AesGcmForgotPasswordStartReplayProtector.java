@@ -37,7 +37,8 @@ public final class AesGcmForgotPasswordStartReplayProtector
       throw new IllegalArgumentException("Forgot Password Start replay secret is invalid");
     }
     if (decoded.length != 16 && decoded.length != 24 && decoded.length != 32) {
-      throw new IllegalArgumentException("Forgot Password Start replay secret has invalid key length");
+      throw new IllegalArgumentException(
+          "Forgot Password Start replay secret has invalid key length");
     }
     this.key = new SecretKeySpec(decoded, "AES");
     this.mapper =
@@ -59,7 +60,9 @@ public final class AesGcmForgotPasswordStartReplayProtector
       cipher.updateAAD(aad(reference));
       byte[] encrypted = cipher.doFinal(mapper.writeValueAsBytes(state));
       return new ProtectedForgotPasswordStartReplay(
-          SCHEMA, keyVersion, ALGORITHM,
+          SCHEMA,
+          keyVersion,
+          ALGORITHM,
           Base64.getUrlEncoder().withoutPadding().encodeToString(iv),
           Base64.getUrlEncoder().withoutPadding().encodeToString(encrypted));
     } catch (Exception exception) {
@@ -71,11 +74,14 @@ public final class AesGcmForgotPasswordStartReplayProtector
   public ForgotPasswordStartProtectedReplayState unprotect(
       ProtectedReplayReference reference, ProtectedForgotPasswordStartReplay value) {
     if (!keyVersion.equals(value.keyVersion()) || !ALGORITHM.equals(value.algorithm())) {
-      throw new IllegalArgumentException("Forgot Password Start protected replay metadata is invalid");
+      throw new IllegalArgumentException(
+          "Forgot Password Start protected replay metadata is invalid");
     }
     try {
       Cipher cipher = Cipher.getInstance(ALGORITHM);
-      cipher.init(Cipher.DECRYPT_MODE, key,
+      cipher.init(
+          Cipher.DECRYPT_MODE,
+          key,
           new GCMParameterSpec(128, Base64.getUrlDecoder().decode(value.iv())));
       cipher.updateAAD(aad(reference));
       byte[] clear = cipher.doFinal(Base64.getUrlDecoder().decode(value.ciphertext()));
@@ -91,7 +97,8 @@ public final class AesGcmForgotPasswordStartReplayProtector
   }
 
   private static String require(String value, String label) {
-    if (value == null || value.isBlank()) throw new IllegalArgumentException(label + " must not be blank");
+    if (value == null || value.isBlank())
+      throw new IllegalArgumentException(label + " must not be blank");
     return value.trim();
   }
 }

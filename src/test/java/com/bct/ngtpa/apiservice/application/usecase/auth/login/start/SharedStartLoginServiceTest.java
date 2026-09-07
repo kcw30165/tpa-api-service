@@ -237,12 +237,10 @@ class SharedStartLoginServiceTest {
     private final LoginStartProtectedOperation operation = mock(LoginStartProtectedOperation.class);
     private final LoginStartProtectedReplayCommitter committer =
         mock(LoginStartProtectedReplayCommitter.class);
-    private final LoginStartExecutionBridge responses =
-        mock(LoginStartExecutionBridge.class);
+    private final LoginStartExecutionBridge responses = mock(LoginStartExecutionBridge.class);
     private final LoginIdempotencyIdentityFactory identities =
         mock(LoginIdempotencyIdentityFactory.class);
-    private final LoginFingerprintFactory fingerprints =
-        mock(LoginFingerprintFactory.class);
+    private final LoginFingerprintFactory fingerprints = mock(LoginFingerprintFactory.class);
     private final CredentialAuthenticationCommand normalized =
         new CredentialAuthenticationCommand(
             "member.abc", " Exact Password ", "en", "corr-1", ActorUserRole.ROLE_USER_MBR);

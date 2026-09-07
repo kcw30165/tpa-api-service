@@ -20,8 +20,11 @@ public final class RegistrationSharedIdempotencyIdentityFactory {
   }
 
   public IdempotencyOperationId create(
-      RegistrationSharedIdempotencyAction action, String clientIdempotencyKey, String rawOperationScope) {
+      RegistrationSharedIdempotencyAction action,
+      String clientIdempotencyKey,
+      String rawOperationScope) {
     Objects.requireNonNull(action, "registration idempotency action must not be null");
-    return delegate.create(CAPABILITY, new IdempotencyAction(action.value()), rawOperationScope, clientIdempotencyKey);
+    return delegate.create(
+        CAPABILITY, new IdempotencyAction(action.value()), rawOperationScope, clientIdempotencyKey);
   }
 }

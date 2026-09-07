@@ -19,10 +19,10 @@ import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyReservationOu
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionCommand;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionResult;
 import com.bct.ngtpa.apiservice.application.idempotency.ProtectedReplayReference;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginOtpVerifyExecutionBridge;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginFingerprintFactory;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginIdempotencyAction;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginIdempotencyIdentityFactory;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginOtpVerifyExecutionBridge;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -45,8 +45,7 @@ class SharedLoginOtpVerifyServiceTest {
         .assertNext(
             result -> assertThat(result.status()).isEqualTo(VerifyLoginOtpStatus.SYSTEM_FAILED))
         .verifyComplete();
-    verify(f.identities)
-        .create(LoginIdempotencyAction.OTP_VERIFY, "afs-secret", "idem-verify");
+    verify(f.identities).create(LoginIdempotencyAction.OTP_VERIFY, "afs-secret", "idem-verify");
     verify(f.fingerprints).otpVerify();
     assertThat(f.executor.command.ttl()).isEqualTo(TTL);
     assertThat(f.executor.command.failureClassifier().classify(new RuntimeException("x")))
@@ -186,8 +185,7 @@ class SharedLoginOtpVerifyServiceTest {
         mock(LoginOtpVerifyExecutionBridge.class);
     private final LoginIdempotencyIdentityFactory identities =
         mock(LoginIdempotencyIdentityFactory.class);
-    private final LoginFingerprintFactory fingerprints =
-        mock(LoginFingerprintFactory.class);
+    private final LoginFingerprintFactory fingerprints = mock(LoginFingerprintFactory.class);
     private final SharedLoginOtpVerifyService service;
 
     private Fixture() {

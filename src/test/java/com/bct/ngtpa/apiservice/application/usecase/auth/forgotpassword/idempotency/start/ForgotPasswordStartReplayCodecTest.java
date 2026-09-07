@@ -33,42 +33,50 @@ class ForgotPasswordStartReplayCodecTest {
           replay,
           command ->
               Mono.just(
-                  new CreateAuthFlowSessionCsrfResult(
-                      "fresh-csrf", NOW.plusSeconds(300), 300)),
+                  new CreateAuthFlowSessionCsrfResult("fresh-csrf", NOW.plusSeconds(300), 300)),
           Clock.fixed(NOW, ZoneOffset.UTC));
 
   @Test
   void startedSnapshotExcludesProtectedValuesAndHydratesFreshCsrf() {
     var first = started();
-    var transientResponse = new HydratedIdempotentResponse(200, "application/json", "{\"transient\":true}", Map.of());
+    var transientResponse =
+        new HydratedIdempotentResponse(200, "application/json", "{\"transient\":true}", Map.of());
     StepVerifier.create(codec.capture(first, transientResponse, Duration.ofMinutes(5)))
-        .assertNext(captured -> {
-          assertThat(captured.snapshot().serializedSafeBody())
-              .doesNotContain("afs-secret", "csrf-secret", "member01");
-          assertThat(captured.snapshot().protectedReplayReference()).isEqualTo(replay.reference);
-          StepVerifier.create(codec.hydrate(captured.snapshot(), 1800))
-              .assertNext(value -> {
-                assertThat(value.status()).isEqualTo(StartForgotPasswordResultStatus.COMPLETED_REPLAY);
-                assertThat(value.authFlowSessionId()).isEqualTo("afs-secret");
-                assertThat(value.csrfToken()).isEqualTo("fresh-csrf");
-                assertThat(value.identityType()).isEqualTo("STAFF_NO");
-              })
-              .verifyComplete();
-        })
+        .assertNext(
+            captured -> {
+              assertThat(captured.snapshot().serializedSafeBody())
+                  .doesNotContain("afs-secret", "csrf-secret", "member01");
+              assertThat(captured.snapshot().protectedReplayReference())
+                  .isEqualTo(replay.reference);
+              StepVerifier.create(codec.hydrate(captured.snapshot(), 1800))
+                  .assertNext(
+                      value -> {
+                        assertThat(value.status())
+                            .isEqualTo(StartForgotPasswordResultStatus.COMPLETED_REPLAY);
+                        assertThat(value.authFlowSessionId()).isEqualTo("afs-secret");
+                        assertThat(value.csrfToken()).isEqualTo("fresh-csrf");
+                        assertThat(value.identityType()).isEqualTo("STAFF_NO");
+                      })
+                  .verifyComplete();
+            })
         .verifyComplete();
   }
 
   @Test
   void deterministicRejectionNeedsNoProtectedReference() {
-    var result = new StartForgotPasswordResult(
-        StartForgotPasswordResultStatus.USERNAME_NOT_FOUND,
-        WorkflowNextStep.ENTER_USERNAME,
-        null,
-        null,
-        null,
-        List.of(new StartForgotPasswordError("err.forgotpassword.username.notFound", "username", null)),
-        null);
-    var response = new HydratedIdempotentResponse(422, "application/json", "{\"transient\":true}", Map.of());
+    var result =
+        new StartForgotPasswordResult(
+            StartForgotPasswordResultStatus.USERNAME_NOT_FOUND,
+            WorkflowNextStep.ENTER_USERNAME,
+            null,
+            null,
+            null,
+            List.of(
+                new StartForgotPasswordError(
+                    "err.forgotpassword.username.notFound", "username", null)),
+            null);
+    var response =
+        new HydratedIdempotentResponse(422, "application/json", "{\"transient\":true}", Map.of());
     var captured = codec.capture(result, response, Duration.ofMinutes(5)).block();
     assertThat(captured.snapshot().protectedReplayReference()).isNull();
     assertThat(codec.hydrate(captured.snapshot(), 1800).block().status())
@@ -78,19 +86,33 @@ class ForgotPasswordStartReplayCodecTest {
 
   @Test
   void failsClosedForExpiredProtectedReplayAndLifecycleStatus() {
-    var captured = codec.capture(started(), new HydratedIdempotentResponse(200, "application/json", "{\"transient\":true}", Map.of()), Duration.ofMinutes(5)).block();
-    replay.state = new ForgotPasswordStartProtectedReplayState("afs-secret", "STAFF_NO", NOW.minusSeconds(1));
+    var captured =
+        codec
+            .capture(
+                started(),
+                new HydratedIdempotentResponse(
+                    200, "application/json", "{\"transient\":true}", Map.of()),
+                Duration.ofMinutes(5))
+            .block();
+    replay.state =
+        new ForgotPasswordStartProtectedReplayState("afs-secret", "STAFF_NO", NOW.minusSeconds(1));
     assertThatThrownBy(() -> codec.hydrate(captured.snapshot(), 1800).block())
         .hasMessageContaining("expired");
-    var lifecycle = new StartForgotPasswordResult(
-        StartForgotPasswordResultStatus.UNKNOWN_OUTCOME,
-        WorkflowNextStep.NONE,
-        null,
-        null,
-        null,
-        List.of(),
-        null);
-    assertThatThrownBy(() -> codec.capture(lifecycle, new HydratedIdempotentResponse(500, "application/json", "{}", Map.of()), Duration.ofMinutes(5)))
+    var lifecycle =
+        new StartForgotPasswordResult(
+            StartForgotPasswordResultStatus.UNKNOWN_OUTCOME,
+            WorkflowNextStep.NONE,
+            null,
+            null,
+            null,
+            List.of(),
+            null);
+    assertThatThrownBy(
+            () ->
+                codec.capture(
+                    lifecycle,
+                    new HydratedIdempotentResponse(500, "application/json", "{}", Map.of()),
+                    Duration.ofMinutes(5)))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
@@ -106,12 +128,14 @@ class ForgotPasswordStartReplayCodecTest {
   }
 
   private static final class ReplayPort implements ForgotPasswordStartProtectedReplayPort {
-    private final ProtectedReplayReference reference = new ProtectedReplayReference("forgotPasswordStartReplay01");
+    private final ProtectedReplayReference reference =
+        new ProtectedReplayReference("forgotPasswordStartReplay01");
     private ForgotPasswordStartProtectedReplayState state;
     private int loads;
 
     @Override
-    public Mono<ProtectedReplayReference> store(ForgotPasswordStartProtectedReplayState state, Duration ttl) {
+    public Mono<ProtectedReplayReference> store(
+        ForgotPasswordStartProtectedReplayState state, Duration ttl) {
       this.state = state;
       return Mono.just(reference);
     }

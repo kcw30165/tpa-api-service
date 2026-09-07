@@ -84,10 +84,11 @@ class ForgotPasswordStartProtectedOperationTest {
     assertThat(session.getValue().existingAuthFlowSessionId())
         .isEqualTo(new AuthFlowSessionId("afs-existing"));
     assertThat(session.getValue().data().maskedDestination()).isNull();
-    assertThat(session.getValue().data().attributes()).containsOnlyKeys(
-        "forgotPasswordContextCiphertext",
-        "forgotPasswordContextKeyVersion",
-        "forgotPasswordContextAlgorithm");
+    assertThat(session.getValue().data().attributes())
+        .containsOnlyKeys(
+            "forgotPasswordContextCiphertext",
+            "forgotPasswordContextKeyVersion",
+            "forgotPasswordContextAlgorithm");
   }
 
   @Test
@@ -105,7 +106,8 @@ class ForgotPasswordStartProtectedOperationTest {
         .isEqualTo(StartForgotPasswordResultStatus.SYSTEM_FAILED);
 
     Fixture exception = new Fixture();
-    when(exception.lookup.lookup(any())).thenReturn(Mono.error(new IllegalStateException("lookup")));
+    when(exception.lookup.lookup(any()))
+        .thenReturn(Mono.error(new IllegalStateException("lookup")));
     assertThat(exception.operation.execute(command(null)).block().status())
         .isEqualTo(StartForgotPasswordResultStatus.SYSTEM_FAILED);
   }
@@ -140,9 +142,12 @@ class ForgotPasswordStartProtectedOperationTest {
   }
 
   private static final class Fixture {
-    private final ForgotPasswordUsernameLookupPort lookup = mock(ForgotPasswordUsernameLookupPort.class);
-    private final AuthFlowSessionConcurrencyService concurrency = mock(AuthFlowSessionConcurrencyService.class);
-    private final CreateAuthFlowSessionCsrfUseCase csrf = mock(CreateAuthFlowSessionCsrfUseCase.class);
+    private final ForgotPasswordUsernameLookupPort lookup =
+        mock(ForgotPasswordUsernameLookupPort.class);
+    private final AuthFlowSessionConcurrencyService concurrency =
+        mock(AuthFlowSessionConcurrencyService.class);
+    private final CreateAuthFlowSessionCsrfUseCase csrf =
+        mock(CreateAuthFlowSessionCsrfUseCase.class);
     private ForgotPasswordAuthFlowContext protectedContext;
     private final ForgotPasswordAuthFlowContextProtectorPort protector =
         new ForgotPasswordAuthFlowContextProtectorPort() {
@@ -151,9 +156,7 @@ class ForgotPasswordStartProtectedOperationTest {
               ForgotPasswordAuthFlowContext context) {
             protectedContext = context;
             return new ForgotPasswordAuthFlowEncryptedContext(
-                "ciphertext-1",
-                "v1",
-                ForgotPasswordAuthFlowEncryptedContext.DEFAULT_ALGORITHM);
+                "ciphertext-1", "v1", ForgotPasswordAuthFlowEncryptedContext.DEFAULT_ALGORITHM);
           }
 
           @Override

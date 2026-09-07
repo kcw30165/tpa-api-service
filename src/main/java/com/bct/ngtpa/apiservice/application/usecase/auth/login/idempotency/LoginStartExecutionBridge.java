@@ -18,8 +18,7 @@ public final class LoginStartExecutionBridge {
   private final TransientJsonPort json;
   private final LoginStartReplayCodec replayCodec;
 
-  public LoginStartExecutionBridge(
-      TransientJsonPort json, LoginStartReplayCodec replayCodec) {
+  public LoginStartExecutionBridge(TransientJsonPort json, LoginStartReplayCodec replayCodec) {
     this.json = Objects.requireNonNull(json);
     this.replayCodec = Objects.requireNonNull(replayCodec);
   }

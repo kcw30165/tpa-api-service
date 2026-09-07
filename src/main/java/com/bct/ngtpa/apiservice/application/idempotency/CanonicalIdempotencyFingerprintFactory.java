@@ -19,13 +19,13 @@ public final class CanonicalIdempotencyFingerprintFactory {
     Objects.requireNonNull(capability, "capability must not be null");
     Objects.requireNonNull(action, "action must not be null");
     return createFromCanonicalParts(
-        version,
-        combine(capability.value(), action.value(), canonicalFields));
+        version, combine(capability.value(), action.value(), canonicalFields));
   }
 
-  /** Compatibility-preserving central hashing for integrations with an established canonical wire. */
-  public IdempotencyFingerprint createFromCanonicalParts(
-      int version, List<String> canonicalParts) {
+  /**
+   * Compatibility-preserving central hashing for integrations with an established canonical wire.
+   */
+  public IdempotencyFingerprint createFromCanonicalParts(int version, List<String> canonicalParts) {
     if (version <= 0) throw new IllegalArgumentException("fingerprint version must be positive");
     try {
       MessageDigest digest = MessageDigest.getInstance("SHA-256");

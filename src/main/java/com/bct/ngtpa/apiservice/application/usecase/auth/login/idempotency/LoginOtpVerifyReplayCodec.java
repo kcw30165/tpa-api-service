@@ -82,9 +82,7 @@ public final class LoginOtpVerifyReplayCodec {
 
     SafePayload payload =
         envelope.decodePayload(
-            LoginIdempotencyAction.OTP_VERIFY,
-            snapshot.serializedSafeBody(),
-            SafePayload.class);
+            LoginIdempotencyAction.OTP_VERIFY, snapshot.serializedSafeBody(), SafePayload.class);
     VerifyLoginOtpStatus status = status(payload.status());
     if (snapshot.httpStatus() != httpStatus(status)) {
       return Mono.error(

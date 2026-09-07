@@ -22,9 +22,7 @@ public final class ForgotPasswordStartExecutionBridge {
   private final int sessionTtlSeconds;
 
   public ForgotPasswordStartExecutionBridge(
-      TransientJsonPort json,
-      ForgotPasswordStartReplayCodec replayCodec,
-      int sessionTtlSeconds) {
+      TransientJsonPort json, ForgotPasswordStartReplayCodec replayCodec, int sessionTtlSeconds) {
     this.json = Objects.requireNonNull(json);
     this.replayCodec = Objects.requireNonNull(replayCodec);
     if (sessionTtlSeconds <= 0) throw new IllegalArgumentException("session TTL must be positive");
@@ -40,7 +38,8 @@ public final class ForgotPasswordStartExecutionBridge {
           json.write(toWire(result)),
           Map.of());
     } catch (RuntimeException exception) {
-      throw new IllegalArgumentException("Forgot Password Start transient response encoding failed");
+      throw new IllegalArgumentException(
+          "Forgot Password Start transient response encoding failed");
     }
   }
 
@@ -51,13 +50,17 @@ public final class ForgotPasswordStartExecutionBridge {
     }
     try {
       TransientWire wire = json.read(response.serializedBody(), TransientWire.class);
-      StartForgotPasswordResultStatus status = StartForgotPasswordResultStatus.valueOf(wire.status());
+      StartForgotPasswordResultStatus status =
+          StartForgotPasswordResultStatus.valueOf(wire.status());
       WorkflowNextStep nextStep = WorkflowNextStep.valueOf(wire.nextStep());
       List<StartForgotPasswordError> errors =
           wire.errors() == null
               ? List.of()
               : wire.errors().stream()
-                  .map(error -> new StartForgotPasswordError(error.code(), error.target(), error.message()))
+                  .map(
+                      error ->
+                          new StartForgotPasswordError(
+                              error.code(), error.target(), error.message()))
                   .toList();
       return new StartForgotPasswordResult(
           status,
@@ -68,7 +71,8 @@ public final class ForgotPasswordStartExecutionBridge {
           errors,
           null);
     } catch (RuntimeException exception) {
-      throw new IllegalArgumentException("Forgot Password Start transient response decoding failed");
+      throw new IllegalArgumentException(
+          "Forgot Password Start transient response decoding failed");
     }
   }
 

@@ -32,8 +32,7 @@ public final class ForgotPasswordStartProtectedOperation {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(ForgotPasswordStartProtectedOperation.class);
   private static final String WORKFLOW_VERSION = "v1";
-  private static final String ERROR_USERNAME_NOT_FOUND =
-      "err.forgotpassword.username.notFound";
+  private static final String ERROR_USERNAME_NOT_FOUND = "err.forgotpassword.username.notFound";
   private static final String ERROR_SYSTEM_UNAVAILABLE = "err.forgotpassword.system.unavailable";
 
   private final ForgotPasswordUsernameLookupPort lookupPort;
@@ -65,13 +64,18 @@ public final class ForgotPasswordStartProtectedOperation {
       boolean asciiLowercase,
       Map<String, MemberIdentityType> tasIdentityTypeMapping) {
     this.lookupPort = Objects.requireNonNull(lookupPort, "lookupPort must not be null");
-    this.contextProtector = Objects.requireNonNull(contextProtector, "contextProtector must not be null");
-    this.concurrencyService = Objects.requireNonNull(concurrencyService, "concurrencyService must not be null");
+    this.contextProtector =
+        Objects.requireNonNull(contextProtector, "contextProtector must not be null");
+    this.concurrencyService =
+        Objects.requireNonNull(concurrencyService, "concurrencyService must not be null");
     this.csrfUseCase = Objects.requireNonNull(csrfUseCase, "csrfUseCase must not be null");
     this.clock = Objects.requireNonNull(clock, "clock must not be null");
-    this.sessionTtlPolicy = Objects.requireNonNull(sessionTtlPolicy, "sessionTtlPolicy must not be null");
-    this.concurrencyPolicy = Objects.requireNonNull(concurrencyPolicy, "concurrencyPolicy must not be null");
-    this.sessionIdPrefix = Objects.requireNonNull(sessionIdPrefix, "sessionIdPrefix must not be null");
+    this.sessionTtlPolicy =
+        Objects.requireNonNull(sessionTtlPolicy, "sessionTtlPolicy must not be null");
+    this.concurrencyPolicy =
+        Objects.requireNonNull(concurrencyPolicy, "concurrencyPolicy must not be null");
+    this.sessionIdPrefix =
+        Objects.requireNonNull(sessionIdPrefix, "sessionIdPrefix must not be null");
     this.sessionIdEntropyBytes = sessionIdEntropyBytes;
     this.trimUsername = trimUsername;
     this.caseInsensitiveUsername = caseInsensitiveUsername;
@@ -181,7 +185,8 @@ public final class ForgotPasswordStartProtectedOperation {
                   command.correlationId(),
                   error.getClass().getName(),
                   error);
-              return Mono.just(isSessionReplacementConflict(error) ? authFlowInvalid() : systemFailed());
+              return Mono.just(
+                  isSessionReplacementConflict(error) ? authFlowInvalid() : systemFailed());
             });
   }
 

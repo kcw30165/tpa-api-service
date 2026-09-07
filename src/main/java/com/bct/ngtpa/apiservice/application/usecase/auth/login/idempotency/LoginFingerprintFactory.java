@@ -20,11 +20,15 @@ public final class LoginFingerprintFactory {
   }
 
   public IdempotencyFingerprint credentials(String normalizedUsername, String password) {
-    return create(LoginIdempotencyAction.CREDENTIALS, List.of(required(normalizedUsername), oneWayDigest(password)));
+    return create(
+        LoginIdempotencyAction.CREDENTIALS,
+        List.of(required(normalizedUsername), oneWayDigest(password)));
   }
 
   public IdempotencyFingerprint otpSend(String authFlowSessionId, String destinationId) {
-    return create(LoginIdempotencyAction.OTP_SEND, List.of(required(authFlowSessionId), required(destinationId)));
+    return create(
+        LoginIdempotencyAction.OTP_SEND,
+        List.of(required(authFlowSessionId), required(destinationId)));
   }
 
   public IdempotencyFingerprint otpResend(String authFlowSessionId) {
@@ -49,7 +53,8 @@ public final class LoginFingerprintFactory {
 
   private static String required(String value) {
     Objects.requireNonNull(value, "Login fingerprint input must not be null");
-    if (value.isBlank()) throw new IllegalArgumentException("Login fingerprint input must not be blank");
+    if (value.isBlank())
+      throw new IllegalArgumentException("Login fingerprint input must not be blank");
     return value;
   }
 }

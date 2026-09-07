@@ -4,23 +4,16 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.config.AuthWorkflowPropertie
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordCancelWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.forgotpassword.mapper.ForgotPasswordIdentityWebMapper;
 import com.bct.ngtpa.apiservice.adapter.in.web.session.config.AuthFlowSessionProperties;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.IdempotentStartForgotPasswordService;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.ForgotPasswordStartProtectedOperation;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartReplayCodec;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartProtectedReplayPort;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartExecutionBridge;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyIntegrationPolicy;
-import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyOperationIdentityFactory;
-import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyExecutor;
-import com.bct.ngtpa.apiservice.application.idempotency.CanonicalIdempotencyFingerprintFactory;
-import com.bct.ngtpa.apiservice.application.idempotency.ActionTaggedIdempotencyResponseEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.json.JacksonTransientJsonAdapter;
 import com.bct.ngtpa.apiservice.application.dto.auth.MemberIdentityType;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionConcurrencyMode;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionConcurrencyPolicy;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionOnNewFlowPolicy;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionTtlPolicy;
+import com.bct.ngtpa.apiservice.application.idempotency.ActionTaggedIdempotencyResponseEnvelope;
+import com.bct.ngtpa.apiservice.application.idempotency.CanonicalIdempotencyFingerprintFactory;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyExecutor;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyOperationIdentityFactory;
 import com.bct.ngtpa.apiservice.application.port.in.CancelForgotPasswordUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.CompleteForgotPasswordUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.CreateAuthFlowSessionCsrfUseCase;
@@ -46,11 +39,15 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordPasswordValidator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordDetailsOtpLeasePolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordDetailsOtpProtectedOperation;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordUnderLockDetailsVerifier;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.IdempotentForgotPasswordDetailsOtpService;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyIntegrationPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.detailsotp.DefaultForgotPasswordDetailsOtpProtectedReplayResolver;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.detailsotp.ForgotPasswordDetailsOtpExecutionBridge;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.detailsotp.ForgotPasswordDetailsOtpReplayCodec;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordUnderLockDetailsVerifier;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartExecutionBridge;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartProtectedReplayPort;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartReplayCodec;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordDestinationMasker;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordInitialOtpPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitCoordinator;
@@ -65,9 +62,12 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.rese
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendRequestHashGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ResendForgotPasswordOtpService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.verify.VerifyForgotPasswordOtpService;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.ForgotPasswordStartProtectedOperation;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.IdempotentStartForgotPasswordService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionConcurrencyService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionCsrfService;
 import com.bct.ngtpa.apiservice.infrastructure.security.CorsProperties;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.LinkedHashMap;
@@ -111,11 +111,17 @@ public class ForgotPasswordApplicationConfig {
     var forgotPassword = workflows.getForgotPassword();
     var operation =
         new ForgotPasswordStartProtectedOperation(
-            lookupPort, contextProtector, concurrencyService, csrfUseCase, clock,
-            new SessionTtlPolicy(scenario.isEnabled(), scenario.isRequired(), scenario.getTtlSeconds()),
+            lookupPort,
+            contextProtector,
+            concurrencyService,
+            csrfUseCase,
+            clock,
+            new SessionTtlPolicy(
+                scenario.isEnabled(), scenario.isRequired(), scenario.getTtlSeconds()),
             new SessionConcurrencyPolicy(
                 SessionConcurrencyMode.valueOf(sessionProperties.getConcurrency().getMode().name()),
-                SessionOnNewFlowPolicy.valueOf(sessionProperties.getConcurrency().getOnNewFlow().name())),
+                SessionOnNewFlowPolicy.valueOf(
+                    sessionProperties.getConcurrency().getOnNewFlow().name())),
             sessionProperties.getSessionId().getPrefix(),
             sessionProperties.getSessionId().getEntropyBytes(),
             forgotPassword.getUsername().isTrim(),
@@ -123,12 +129,16 @@ public class ForgotPasswordApplicationConfig {
             "ASCII_LOWERCASE".equalsIgnoreCase(forgotPassword.getUsername().getNormalization()),
             forgotPasswordTasIdentityTypeMapping);
     var json = new JacksonTransientJsonAdapter(objectMapper);
-    var codec = new ForgotPasswordStartReplayCodec(
-        new ActionTaggedIdempotencyResponseEnvelope(json), protectedReplay, csrfUseCase, clock);
+    var codec =
+        new ForgotPasswordStartReplayCodec(
+            new ActionTaggedIdempotencyResponseEnvelope(json), protectedReplay, csrfUseCase, clock);
     var responses = new ForgotPasswordStartExecutionBridge(json, codec, scenario.getTtlSeconds());
-    var policy = new ForgotPasswordIdempotencyIntegrationPolicy(
-        new IdempotencyOperationIdentityFactory(), new CanonicalIdempotencyFingerprintFactory());
-    return new IdempotentStartForgotPasswordService(idempotencyExecutor, operation, responses, policy);
+    var policy =
+        new ForgotPasswordIdempotencyIntegrationPolicy(
+            new IdempotencyOperationIdentityFactory(),
+            new CanonicalIdempotencyFingerprintFactory());
+    return new IdempotentStartForgotPasswordService(
+        idempotencyExecutor, operation, responses, policy);
   }
 
   @Bean
@@ -319,18 +329,35 @@ public class ForgotPasswordApplicationConfig {
       ObjectMapper objectMapper,
       AuthWorkflowProperties properties) {
     properties.validateForgotPasswordPolicy();
-    Duration ttl = Duration.ofSeconds(
-        properties.getForgotPassword().getIdempotency().getDetailsAndOtpTtlSeconds());
-    var protectedOperation = new ForgotPasswordDetailsOtpProtectedOperation(
-        refs, locks, sessions, protector, details, otp, delivery, masker, binding,
-        commitStates, retention, leasePolicy, clock, ttl);
+    Duration ttl =
+        Duration.ofSeconds(
+            properties.getForgotPassword().getIdempotency().getDetailsAndOtpTtlSeconds());
+    var protectedOperation =
+        new ForgotPasswordDetailsOtpProtectedOperation(
+            refs,
+            locks,
+            sessions,
+            protector,
+            details,
+            otp,
+            delivery,
+            masker,
+            binding,
+            commitStates,
+            retention,
+            leasePolicy,
+            clock,
+            ttl);
     var json = new JacksonTransientJsonAdapter(objectMapper);
     var protectedReplay = new DefaultForgotPasswordDetailsOtpProtectedReplayResolver(replay);
-    var codec = new ForgotPasswordDetailsOtpReplayCodec(
-        new ActionTaggedIdempotencyResponseEnvelope(json), protectedReplay);
+    var codec =
+        new ForgotPasswordDetailsOtpReplayCodec(
+            new ActionTaggedIdempotencyResponseEnvelope(json), protectedReplay);
     var responses = new ForgotPasswordDetailsOtpExecutionBridge(json, codec);
-    var policy = new ForgotPasswordIdempotencyIntegrationPolicy(
-        new IdempotencyOperationIdentityFactory(), new CanonicalIdempotencyFingerprintFactory());
+    var policy =
+        new ForgotPasswordIdempotencyIntegrationPolicy(
+            new IdempotencyOperationIdentityFactory(),
+            new CanonicalIdempotencyFingerprintFactory());
     return new IdempotentForgotPasswordDetailsOtpService(
         idempotencyExecutor, protectedOperation, responses, policy, ttl);
   }

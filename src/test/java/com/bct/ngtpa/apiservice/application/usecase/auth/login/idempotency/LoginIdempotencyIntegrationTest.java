@@ -7,8 +7,7 @@ import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyFailureClassi
 import org.junit.jupiter.api.Test;
 
 class LoginIdempotencyIntegrationTest {
-  private final LoginIdempotencyIdentityFactory identities =
-      new LoginIdempotencyIdentityFactory();
+  private final LoginIdempotencyIdentityFactory identities = new LoginIdempotencyIdentityFactory();
   private final LoginFingerprintFactory fingerprints = new LoginFingerprintFactory();
 
   @Test
@@ -22,8 +21,7 @@ class LoginIdempotencyIntegrationTest {
   @Test
   void hashesRawAuthorizedScopeBeforeBuildingIdentity() {
     String rawScope = "auth-flow-session-secret";
-    var id =
-        identities.create(LoginIdempotencyAction.OTP_SEND, rawScope, "idem_key_12345678");
+    var id = identities.create(LoginIdempotencyAction.OTP_SEND, rawScope, "idem_key_12345678");
 
     assertThat(id.capability().value()).isEqualTo("login");
     assertThat(id.scope().value()).hasSize(64).doesNotContain(rawScope);
@@ -68,9 +66,7 @@ class LoginIdempotencyIntegrationTest {
   @Test
   void rejectsBlankIdentityAndFingerprintInputs() {
     assertThatThrownBy(
-            () ->
-                identities.create(
-                    LoginIdempotencyAction.CREDENTIALS, " ", "idem_key_12345678"))
+            () -> identities.create(LoginIdempotencyAction.CREDENTIALS, " ", "idem_key_12345678"))
         .isInstanceOf(IllegalArgumentException.class);
   }
 

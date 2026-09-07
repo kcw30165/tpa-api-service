@@ -68,9 +68,7 @@ public final class SharedStartLoginService implements StartLoginUseCase {
     var execution =
         new IdempotentExecutionCommand(
             identities.create(
-                LoginIdempotencyAction.CREDENTIALS,
-                ANONYMOUS_SCOPE,
-                command.idempotencyKey()),
+                LoginIdempotencyAction.CREDENTIALS, ANONYMOUS_SCOPE, command.idempotencyKey()),
             fingerprints.credentials(normalized.username(), normalized.password()),
             ttl,
             () -> executeAcquired(normalized),

@@ -25,11 +25,14 @@ public final class ForgotPasswordDetailsOtpExecutionBridge {
   public HydratedIdempotentResponse toTransientResponse(ForgotPasswordDetailsOtpResult result) {
     return new HydratedIdempotentResponse(
         ForgotPasswordDetailsOtpReplayCodec.httpStatus(result.status()),
-        "application/json", json.write(Wire.from(result)), Map.of());
+        "application/json",
+        json.write(Wire.from(result)),
+        Map.of());
   }
 
   public ForgotPasswordDetailsOtpResult fromTransientResponse(HydratedIdempotentResponse response) {
-    if (!"application/json".equalsIgnoreCase(response.mediaType()) || !response.safeHeaders().isEmpty()) {
+    if (!"application/json".equalsIgnoreCase(response.mediaType())
+        || !response.safeHeaders().isEmpty()) {
       throw new IllegalArgumentException("DETAILS_AND_OTP transient transport is invalid");
     }
     Wire wire = json.read(response.serializedBody(), Wire.class);
@@ -49,15 +52,27 @@ public final class ForgotPasswordDetailsOtpExecutionBridge {
     return codec.hydrate(snapshot).map(this::toTransientResponse);
   }
 
-  private record Wire(String status, String maskedDestination, int expiresInSeconds,
-      int resendAvailableInSeconds, List<String> targets) {
+  private record Wire(
+      String status,
+      String maskedDestination,
+      int expiresInSeconds,
+      int resendAvailableInSeconds,
+      List<String> targets) {
     static Wire from(ForgotPasswordDetailsOtpResult result) {
-      return new Wire(result.status().name(), result.maskedDestination(), result.expiresInSeconds(),
-          result.resendAvailableInSeconds(), List.copyOf(result.targets()));
+      return new Wire(
+          result.status().name(),
+          result.maskedDestination(),
+          result.expiresInSeconds(),
+          result.resendAvailableInSeconds(),
+          List.copyOf(result.targets()));
     }
+
     ForgotPasswordDetailsOtpResult toResult() {
-      return new ForgotPasswordDetailsOtpResult(ForgotPasswordDetailsOtpResult.Status.valueOf(status),
-          maskedDestination, expiresInSeconds, resendAvailableInSeconds,
+      return new ForgotPasswordDetailsOtpResult(
+          ForgotPasswordDetailsOtpResult.Status.valueOf(status),
+          maskedDestination,
+          expiresInSeconds,
+          resendAvailableInSeconds,
           targets == null ? List.of() : List.copyOf(targets));
     }
   }

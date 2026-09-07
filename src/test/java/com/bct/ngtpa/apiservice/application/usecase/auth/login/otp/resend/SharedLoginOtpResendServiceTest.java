@@ -16,10 +16,10 @@ import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyReservationOu
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionCommand;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotentExecutionResult;
 import com.bct.ngtpa.apiservice.application.port.in.ResendLoginOtpUseCase;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginOtpResendExecutionBridge;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginFingerprintFactory;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginIdempotencyAction;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginIdempotencyIdentityFactory;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginOtpResendExecutionBridge;
 import java.time.Duration;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -39,8 +39,7 @@ class SharedLoginOtpResendServiceTest {
         .assertNext(
             r -> assertThat(r.status()).isEqualTo(ResendLoginOtpStatus.DUPLICATE_IN_PROGRESS))
         .verifyComplete();
-    verify(f.identities)
-        .create(LoginIdempotencyAction.OTP_RESEND, "afs-secret", "idem-key-0001");
+    verify(f.identities).create(LoginIdempotencyAction.OTP_RESEND, "afs-secret", "idem-key-0001");
     verify(f.fingerprints).otpResend("afs-secret");
     assertThat(f.executor.command.ttl()).isEqualTo(TTL);
     assertThat(f.executor.command.failureClassifier().classify(new RuntimeException("x")))
@@ -143,8 +142,7 @@ class SharedLoginOtpResendServiceTest {
         mock(LoginOtpResendExecutionBridge.class);
     private final LoginIdempotencyIdentityFactory identities =
         mock(LoginIdempotencyIdentityFactory.class);
-    private final LoginFingerprintFactory fingerprints =
-        mock(LoginFingerprintFactory.class);
+    private final LoginFingerprintFactory fingerprints = mock(LoginFingerprintFactory.class);
     private final SharedLoginOtpResendService service;
 
     private Fixture() {

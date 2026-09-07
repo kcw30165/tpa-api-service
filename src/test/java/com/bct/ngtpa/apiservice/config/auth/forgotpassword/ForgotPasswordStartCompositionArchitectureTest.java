@@ -30,7 +30,10 @@ class ForgotPasswordStartCompositionArchitectureTest {
   void startBeanNoLongerReceivesLegacyForgotPasswordIdempotencyPort() throws Exception {
     String source = Files.readString(CONFIG);
     int start = source.indexOf("public StartForgotPasswordUseCase startForgotPasswordUseCase(");
-    int end = source.indexOf("public com.bct.ngtpa.apiservice.application.port.in.VerifyForgotPasswordIdentityUseCase", start);
+    int end =
+        source.indexOf(
+            "public com.bct.ngtpa.apiservice.application.port.in.VerifyForgotPasswordIdentityUseCase",
+            start);
     assertThat(start).isGreaterThanOrEqualTo(0);
     assertThat(end).isGreaterThan(start);
     assertThat(source.substring(start, end))

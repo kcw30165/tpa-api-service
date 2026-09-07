@@ -76,9 +76,7 @@ public final class LoginStartReplayCodec {
     }
     SafePayload payload =
         envelope.decodePayload(
-            LoginIdempotencyAction.CREDENTIALS,
-            snapshot.serializedSafeBody(),
-            SafePayload.class);
+            LoginIdempotencyAction.CREDENTIALS, snapshot.serializedSafeBody(), SafePayload.class);
     StartLoginStatus status = status(payload.status());
     validateCapturable(status);
     if (snapshot.httpStatus() != httpStatus(status)) {

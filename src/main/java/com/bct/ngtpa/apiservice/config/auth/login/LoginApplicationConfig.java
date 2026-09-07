@@ -14,8 +14,8 @@ import com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginFingerprintFactory;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginIdempotencyIdentityFactory;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginResponseEnvelope;
-import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginStartReplayCodec;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginStartExecutionBridge;
+import com.bct.ngtpa.apiservice.application.usecase.auth.login.idempotency.LoginStartReplayCodec;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.preauth.LoginCredentialPolicyService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.preauth.LoginPreAuthContextFactory;
 import com.bct.ngtpa.apiservice.application.usecase.auth.login.replay.LoginStartProtectedReplayCommitter;
@@ -71,8 +71,7 @@ public class LoginApplicationConfig {
       TransientJsonPort json) {
     return new LoginStartExecutionBridge(
         json,
-        new LoginStartReplayCodec(
-            new LoginResponseEnvelope(json), replayPort, protector, clock));
+        new LoginStartReplayCodec(new LoginResponseEnvelope(json), replayPort, protector, clock));
   }
 
   @Bean

@@ -33,9 +33,7 @@ public final class LoginResponseEnvelope {
   }
 
   public <T> T decodePayload(
-      LoginIdempotencyAction expectedAction,
-      String serializedBody,
-      Class<T> payloadType) {
+      LoginIdempotencyAction expectedAction, String serializedBody, Class<T> payloadType) {
     Objects.requireNonNull(expectedAction, "Expected Login idempotency action must not be null");
     Objects.requireNonNull(payloadType, "Login response payload type must not be null");
     try {

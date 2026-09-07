@@ -57,13 +57,11 @@ class LoginResponseEnvelopeTest {
   @Test
   void rejectsWrongExpectedActionWithoutInferringFromPayload() {
     String json =
-        envelope.encode(
-            LoginIdempotencyAction.OTP_RESEND, new TestPayload("credentials", null));
+        envelope.encode(LoginIdempotencyAction.OTP_RESEND, new TestPayload("credentials", null));
 
     assertThatThrownBy(
             () ->
-                envelope.decodePayload(
-                    LoginIdempotencyAction.CREDENTIALS, json, TestPayload.class))
+                envelope.decodePayload(LoginIdempotencyAction.CREDENTIALS, json, TestPayload.class))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Login replay action mismatch");
   }

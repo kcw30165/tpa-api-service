@@ -6,8 +6,7 @@ import reactor.core.publisher.Mono;
 
 /** Separately protected storage for Forgot Password Start replay continuity. */
 public interface ForgotPasswordStartProtectedReplayPort {
-  Mono<ProtectedReplayReference> store(
-      ForgotPasswordStartProtectedReplayState state, Duration ttl);
+  Mono<ProtectedReplayReference> store(ForgotPasswordStartProtectedReplayState state, Duration ttl);
 
   Mono<ForgotPasswordStartProtectedReplayState> load(ProtectedReplayReference reference);
 }

@@ -33,7 +33,8 @@ public final class RedisForgotPasswordStartProtectedReplayAdapter
   }
 
   @Override
-  public Mono<ProtectedReplayReference> store(ForgotPasswordStartProtectedReplayState state, Duration ttl) {
+  public Mono<ProtectedReplayReference> store(
+      ForgotPasswordStartProtectedReplayState state, Duration ttl) {
     Objects.requireNonNull(state, "state must not be null");
     if (ttl == null || ttl.isZero() || ttl.isNegative()) {
       return Mono.error(new IllegalArgumentException("positive TTL required"));
@@ -45,19 +46,30 @@ public final class RedisForgotPasswordStartProtectedReplayAdapter
       ForgotPasswordStartProtectedReplayState state, Duration ttl, int attempt) {
     ProtectedReplayReference reference = references.generate();
     String encoded = json.toJson(protector.protect(reference, state));
-    return redis.opsForValue().setIfAbsent(keys.keyFor(reference), encoded, ttl)
-        .flatMap(saved -> Boolean.TRUE.equals(saved)
-            ? Mono.just(reference)
-            : attempt >= MAX_COLLISION_ATTEMPTS
-                ? Mono.error(new IllegalStateException("Forgot Password Start replay reference allocation failed"))
-                : storeAttempt(state, ttl, attempt + 1));
+    return redis
+        .opsForValue()
+        .setIfAbsent(keys.keyFor(reference), encoded, ttl)
+        .flatMap(
+            saved ->
+                Boolean.TRUE.equals(saved)
+                    ? Mono.just(reference)
+                    : attempt >= MAX_COLLISION_ATTEMPTS
+                        ? Mono.error(
+                            new IllegalStateException(
+                                "Forgot Password Start replay reference allocation failed"))
+                        : storeAttempt(state, ttl, attempt + 1));
   }
 
   @Override
   public Mono<ForgotPasswordStartProtectedReplayState> load(ProtectedReplayReference reference) {
     Objects.requireNonNull(reference, "reference must not be null");
-    return redis.opsForValue().get(keys.keyFor(reference))
-        .switchIfEmpty(Mono.error(new IllegalArgumentException("Forgot Password Start protected replay is unavailable")))
+    return redis
+        .opsForValue()
+        .get(keys.keyFor(reference))
+        .switchIfEmpty(
+            Mono.error(
+                new IllegalArgumentException(
+                    "Forgot Password Start protected replay is unavailable")))
         .map(json::fromJson)
         .map(value -> protector.unprotect(reference, value));
   }

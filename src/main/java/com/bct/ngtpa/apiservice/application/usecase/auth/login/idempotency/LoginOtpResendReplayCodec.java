@@ -32,8 +32,7 @@ public final class LoginOtpResendReplayCodec {
         || !transientResponse.safeHeaders().equals(expectedHeaders)) {
       throw new IllegalArgumentException("Login OTP Resend transient transport mismatch");
     }
-    String safeBody =
-        envelope.encode(LoginIdempotencyAction.OTP_RESEND, SafePayload.from(result));
+    String safeBody = envelope.encode(LoginIdempotencyAction.OTP_RESEND, SafePayload.from(result));
     var snapshot =
         new IdempotentTerminalResponseSnapshot(
             SCHEMA_VERSION,
@@ -61,9 +60,7 @@ public final class LoginOtpResendReplayCodec {
     }
     SafePayload payload =
         envelope.decodePayload(
-            LoginIdempotencyAction.OTP_RESEND,
-            snapshot.serializedSafeBody(),
-            SafePayload.class);
+            LoginIdempotencyAction.OTP_RESEND, snapshot.serializedSafeBody(), SafePayload.class);
     ResendLoginOtpStatus status = status(payload.status());
     var result = payload.toResult(status);
     try {

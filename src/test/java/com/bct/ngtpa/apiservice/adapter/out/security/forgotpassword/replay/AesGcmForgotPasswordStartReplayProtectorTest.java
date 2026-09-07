@@ -16,12 +16,19 @@ class AesGcmForgotPasswordStartReplayProtectorTest {
   void roundTripUsesCiphertextAndReferenceBoundAuthentication() {
     var protector = new AesGcmForgotPasswordStartReplayProtector("v1", SECRET);
     var reference = new ProtectedReplayReference("forgotPasswordStartReplayReference001");
-    var state = new ForgotPasswordStartProtectedReplayState("afs-secret", "STAFF_NO", Instant.parse("2026-09-06T14:00:00Z"));
+    var state =
+        new ForgotPasswordStartProtectedReplayState(
+            "afs-secret", "STAFF_NO", Instant.parse("2026-09-06T14:00:00Z"));
     var protectedReplay = protector.protect(reference, state);
     assertThat(protectedReplay.ciphertext()).doesNotContain("afs-secret", "STAFF_NO");
-    assertThat(protectedReplay.toString()).doesNotContain(protectedReplay.iv(), protectedReplay.ciphertext());
+    assertThat(protectedReplay.toString())
+        .doesNotContain(protectedReplay.iv(), protectedReplay.ciphertext());
     assertThat(protector.unprotect(reference, protectedReplay)).isEqualTo(state);
-    assertThatThrownBy(() -> protector.unprotect(new ProtectedReplayReference("forgotPasswordStartReplayReference002"), protectedReplay))
+    assertThatThrownBy(
+            () ->
+                protector.unprotect(
+                    new ProtectedReplayReference("forgotPasswordStartReplayReference002"),
+                    protectedReplay))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Forgot Password Start protected replay is invalid");
   }

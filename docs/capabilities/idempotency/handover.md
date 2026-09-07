@@ -621,3 +621,20 @@ Final committed-state validation completed successfully at Git HEAD `4afbc2726a6
 - Migrated direct parity, endpoint architecture, and revision-aware assertions to the shared target.
 - Preserved OTP resend, OTP verify, complete, cancel, and their legacy lifecycle collaborators.
 - Next step: commit the switch, then run feature-level stabilization, formatting, full Maven tests, and startup smoke before P5-D.
+
+#### P5-C protected execution Result alignment
+
+- Renamed the DETAILS_AND_OTP protected execution carrier with a `Result` suffix to satisfy the clean-architecture execute-method contract.
+- The cumulative Spotless changes from the stabilization attempt are preserved.
+
+#### P5-C protected execution Result compile repair
+
+- Corrected the protected execution record declaration to match its filename and all cumulative references.
+- Preserved the cumulative formatting and migration changes.
+
+#### P5-C startup smoke completed
+
+- Spring startup reached the application started marker and remained running during the post-start stability window.
+- Runtime-only local overrides disabled Redis, enabled lazy initialization, and excluded SSL metrics auto-configuration so deployment-only Redis mTLS files were not loaded.
+- No production configuration was changed. The full Maven suite had already passed against the same cumulative code state.
+- Next action is the P5-C stabilization commit. P5-D remains blocked until commit evidence is reviewed.

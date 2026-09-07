@@ -1,8 +1,8 @@
 package com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency;
 
-import com.bct.ngtpa.apiservice.application.idempotency.JacksonTransientJsonCodec;
 import com.bct.ngtpa.apiservice.application.idempotency.ActionTaggedIdempotencyResponseEnvelope;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyAction;
+import com.bct.ngtpa.apiservice.application.idempotency.JacksonTransientJsonCodec;
 import java.util.Objects;
 
 /** Registration action-mapping compatibility API over the central envelope protocol. */
@@ -10,9 +10,7 @@ public final class RegistrationSharedResponseEnvelope {
   private final ActionTaggedIdempotencyResponseEnvelope delegate;
 
   public RegistrationSharedResponseEnvelope() {
-    this(
-        new ActionTaggedIdempotencyResponseEnvelope(
-            new JacksonTransientJsonCodec()));
+    this(new ActionTaggedIdempotencyResponseEnvelope(new JacksonTransientJsonCodec()));
   }
 
   RegistrationSharedResponseEnvelope(ActionTaggedIdempotencyResponseEnvelope delegate) {
@@ -36,7 +34,8 @@ public final class RegistrationSharedResponseEnvelope {
     } catch (RuntimeException exception) {
       throw new IllegalArgumentException("Registration replay response decoding failed");
     }
-    for (RegistrationSharedIdempotencyAction action : RegistrationSharedIdempotencyAction.values()) {
+    for (RegistrationSharedIdempotencyAction action :
+        RegistrationSharedIdempotencyAction.values()) {
       if (action.value().equals(value)) return action;
     }
     throw new IllegalArgumentException("Registration replay action is unsupported");

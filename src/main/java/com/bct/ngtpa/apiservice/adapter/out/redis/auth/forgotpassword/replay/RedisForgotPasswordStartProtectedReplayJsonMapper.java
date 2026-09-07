@@ -12,16 +12,19 @@ public final class RedisForgotPasswordStartProtectedReplayJsonMapper {
     try {
       return mapper.writeValueAsString(value);
     } catch (Exception exception) {
-      throw new IllegalStateException("Forgot Password Start protected replay serialization failed");
+      throw new IllegalStateException(
+          "Forgot Password Start protected replay serialization failed");
     }
   }
 
   public ProtectedForgotPasswordStartReplay fromJson(String json) {
-    if (json == null || json.isBlank()) throw new IllegalArgumentException("protected replay JSON must not be blank");
+    if (json == null || json.isBlank())
+      throw new IllegalArgumentException("protected replay JSON must not be blank");
     try {
       return mapper.readValue(json, ProtectedForgotPasswordStartReplay.class);
     } catch (Exception exception) {
-      throw new IllegalArgumentException("Forgot Password Start protected replay deserialization failed");
+      throw new IllegalArgumentException(
+          "Forgot Password Start protected replay deserialization failed");
     }
   }
 }

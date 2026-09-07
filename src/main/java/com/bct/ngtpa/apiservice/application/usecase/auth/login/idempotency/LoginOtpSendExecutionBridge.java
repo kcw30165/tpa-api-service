@@ -16,8 +16,7 @@ public final class LoginOtpSendExecutionBridge {
   private final TransientJsonPort json;
   private final LoginOtpSendReplayCodec replayCodec;
 
-  public LoginOtpSendExecutionBridge(
-      TransientJsonPort json, LoginOtpSendReplayCodec replayCodec) {
+  public LoginOtpSendExecutionBridge(TransientJsonPort json, LoginOtpSendReplayCodec replayCodec) {
     this.json = Objects.requireNonNull(json);
     this.replayCodec = Objects.requireNonNull(replayCodec);
   }

@@ -182,7 +182,8 @@ class ForgotPasswordDetailsOtpOrchestrationSubtask005004FailFirstTest {
             new ForgotPasswordDestinationMasker(),
             binding,
             commitStates,
-            new ForgotPasswordOtpCommitRetentionPolicy(Duration.ofSeconds(60), Duration.ofMinutes(10)),
+            new ForgotPasswordOtpCommitRetentionPolicy(
+                Duration.ofSeconds(60), Duration.ofMinutes(10)),
             new ForgotPasswordDetailsOtpLeasePolicy(60, 10, 10, 3, 10000, 100, 5000, 1000),
             clock,
             Duration.ofMinutes(5));
