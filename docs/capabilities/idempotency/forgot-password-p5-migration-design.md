@@ -294,3 +294,69 @@ Until an actual deployment occurs, deployment timestamps, environment coverage, 
 
 - Repaired the coordinator source assertion to tolerate Spotless line wrapping while continuing to require the exact protected-operation invocation.
 - Production code, shared composition, protected replay handling, and legacy cleanup remain unchanged.
+
+### P5-C OTP_VERIFY fail-first shared boundary
+
+- Added fail-first architecture evidence requiring a shared OTP_VERIFY coordinator, extracted protected operation/result, typed response bridge, and strict replay codec.
+- The boundary requires the repository-wide executor, canonical constant OTP_VERIFY fingerprint, conservative possible-side-effect classification, and removal of feature-local lifecycle calls from the future coordinator.
+- Replay persistence is limited to the public result fields and must exclude OTP, CSRF, transport, challenge, reset-subject, authorization, and destination data.
+- At that checkpoint, production composition remained on the legacy OTP verification service until implementation and parity evidence passed.
+
+### P5-C OTP_VERIFY replay foundation
+
+- Added the typed OTP_VERIFY execution bridge and strict action-tagged replay codec.
+- Safe replay contains only status, nextStep, and remainingVerifyAttempts. OTP, CSRF, transport identifiers, challenge state, reset-subject data, authorization identifiers, and protected destination data are excluded.
+- Reset authorization remains exclusively in protected server-side session state. Production composition and feature-local lifecycle ownership remain unchanged.
+
+### P5-C OTP_VERIFY exact sensitive-token guard
+
+- Corrected the replay safety architecture assertion to match forbidden Java identifiers exactly. This prevents the forbidden identifier `code` from falsely matching safe framework terms such as `codec`, `decodePayload`, and `encode`.
+- The safe replay contract remains unchanged and still excludes the exact OTP field identifier and all other protected or transport identifiers.
+
+### P5-C OTP_VERIFY protected operation
+
+- Extracted the lock-scoped OTP verification and reset-authorization mutation into a lifecycle-free protected operation and result wrapper.
+- Preserved all public outcomes, remaining-attempt semantics, revision-aware updates, reset-subject backfill, and server-side-only authorization. Production composition remains unchanged.
+
+### P5-C OTP_VERIFY protected-operation compile repair
+
+- Removed the stale feature-local replay snapshot helper left behind during protected-operation extraction.
+- The protected operation now contains only lock-scoped OTP verification and reset-authorization mutation logic. Production composition remains on the legacy service.
+
+### P5-C OTP_VERIFY authorization-reference compile repair
+
+- Restored the local opaque reset-authorization reference generator required by the extracted protected operation.
+- The generator creates only the server-side authorization identifier and does not restore any feature-local replay or idempotency lifecycle ownership. Production composition remains unchanged.
+
+### P5-C OTP_VERIFY shared coordinator
+
+- Added the thin OTP_VERIFY coordinator over the repository-wide shared idempotency executor.
+- It uses the OTP_VERIFY action, session-scoped operation identity, canonical constant fingerprint, command TTL, conservative possible-side-effect classifier, typed execution bridge, and no protected replay reference.
+- Existing reservation outcomes map to the established public OTP_VERIFY statuses. Production composition remains on the legacy service until the separate switch increment.
+
+### P5-C OTP_VERIFY production switch
+
+- Switched the OTP_VERIFY production bean to `IdempotentVerifyForgotPasswordOtpService`.
+- Composition now constructs the lifecycle-free protected operation, strict replay codec, typed execution bridge, canonical integration policy, and shared coordinator.
+- Removed the feature-local idempotency port from the OTP_VERIFY bean boundary. The legacy service source remains temporarily for the exact-symbol cleanup audit.
+
+### P5-C OTP_VERIFY composition-test compile repair
+
+- Replaced the malformed composition architecture test with complete compilable source.
+- The production switch, shared coordinator wiring, lifecycle-port removal, and temporary legacy-source retention remain unchanged.
+
+### P5-C OTP_VERIFY canonical-fingerprint guard repair
+
+- Replaced the stale legacy SHA-256 source assertion with checks against the shared coordinator and canonical integration policy.
+- The guard now verifies that OTP_VERIFY uses `policy.otpVerify()` with the constant `v1` field and excludes OTP, CSRF, request, and session identity from fingerprint inputs.
+
+### P5-C OTP_VERIFY hash-guard compile correction
+
+- Corrected malformed nested Java string quoting in the canonical-fingerprint architecture guard.
+- The replacement retains structural assertions for the OTP_VERIFY action, `policy.otpVerify()`, canonical field construction, and exclusion of sensitive command inputs.
+
+### P5-C OTP_VERIFY legacy cleanup
+
+- Removed the retired feature-local OTP verification lifecycle service and its obsolete unit test after the shared coordinator production switch.
+- Replaced stale negative class-name assertions with positive shared-composition assertions.
+- The shared executor, protected operation, replay codec, response bridge, public mapping, and cross-action behavior remain unchanged.

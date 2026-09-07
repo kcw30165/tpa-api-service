@@ -58,7 +58,6 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.Secu
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendEligibilityValidator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendFoundationService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.resend.ForgotPasswordOtpResendPolicy;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.verify.VerifyForgotPasswordOtpService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.ForgotPasswordStartProtectedOperation;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.start.IdempotentStartForgotPasswordService;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.AuthFlowSessionConcurrencyService;
@@ -511,6 +510,7 @@ public class ForgotPasswordApplicationConfig {
 
   @Bean
   public VerifyForgotPasswordOtpUseCase verifyForgotPasswordOtpUseCase(
+      IdempotencyExecutor idempotencyExecutor,
       com.bct.ngtpa.apiservice.application.service.auth.forgotpassword.context
               .ForgotPasswordProtectedAuthFlowContextLoader
           loader,
@@ -519,20 +519,36 @@ public class ForgotPasswordApplicationConfig {
       com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionMutationLockPort locks,
       com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionExpiryRefreshPort expiry,
       OtpChallengePort otp,
-      ForgotPasswordIdempotencyPort idempotency,
       Clock clock,
+      ObjectMapper objectMapper,
       AuthWorkflowProperties properties) {
     properties.validateForgotPasswordPolicy();
-    return new VerifyForgotPasswordOtpService(
-        loader,
-        protector,
-        sessions,
-        locks,
-        expiry,
-        otp,
-        idempotency,
-        clock,
-        Duration.ofSeconds(10),
-        Duration.ofSeconds(properties.getForgotPassword().getResetAuthorization().getTtlSeconds()));
+    var protectedOperation =
+        new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.verify
+            .ForgotPasswordOtpVerifyProtectedOperation(
+            loader,
+            protector,
+            sessions,
+            locks,
+            expiry,
+            otp,
+            clock,
+            Duration.ofSeconds(10),
+            Duration.ofSeconds(
+                properties.getForgotPassword().getResetAuthorization().getTtlSeconds()));
+    var json = new JacksonTransientJsonAdapter(objectMapper);
+    var codec =
+        new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.otpverify
+            .ForgotPasswordOtpVerifyReplayCodec(new ActionTaggedIdempotencyResponseEnvelope(json));
+    var responses =
+        new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.otpverify
+            .ForgotPasswordOtpVerifyExecutionBridge(json, codec);
+    var policy =
+        new ForgotPasswordIdempotencyIntegrationPolicy(
+            new IdempotencyOperationIdentityFactory(),
+            new CanonicalIdempotencyFingerprintFactory());
+    return new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.verify
+        .IdempotentVerifyForgotPasswordOtpService(
+        idempotencyExecutor, protectedOperation, responses, policy);
   }
 }

@@ -8,12 +8,6 @@ import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.ForgotPasswo
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowEncryptedContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordProtectedPhase;
-import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyAction;
-import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyCompleteCommand;
-import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyKey;
-import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyReplaySnapshot;
-import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyStartCommand;
-import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordRequestHash;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.VerifyOtpChallengeCommand;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowScenario;
@@ -21,20 +15,15 @@ import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSession
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionData;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowStatus;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
-import com.bct.ngtpa.apiservice.application.port.in.VerifyForgotPasswordOtpUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionExpiryRefreshPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionMutationLockPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort;
-import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
 import com.bct.ngtpa.apiservice.application.service.auth.forgotpassword.context.ForgotPasswordProtectedAuthFlowContextCommand;
 import com.bct.ngtpa.apiservice.application.service.auth.forgotpassword.context.ForgotPasswordProtectedAuthFlowContextLoader;
 import com.bct.ngtpa.apiservice.application.service.auth.forgotpassword.context.ForgotPasswordProtectedAuthFlowContextStatus;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.RevisionAwareAuthFlowSessionWriter;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -45,11 +34,7 @@ import java.util.Set;
 import java.util.UUID;
 import reactor.core.publisher.Mono;
 
-public final class VerifyForgotPasswordOtpService implements VerifyForgotPasswordOtpUseCase {
-  private static final String OUTCOME_VERIFIED = "VERIFIED";
-  private static final String OUTCOME_INVALID = "OTP_INVALID";
-  private static final String OUTCOME_EXPIRED = "OTP_EXPIRED";
-  private static final String OUTCOME_LOCKED = "OTP_LOCKED";
+public final class ForgotPasswordOtpVerifyProtectedOperation {
 
   private final ForgotPasswordProtectedAuthFlowContextLoader loader;
   private final ForgotPasswordAuthFlowContextProtectorPort protector;
@@ -57,19 +42,17 @@ public final class VerifyForgotPasswordOtpService implements VerifyForgotPasswor
   private final AuthFlowSessionMutationLockPort locks;
   private final AuthFlowSessionExpiryRefreshPort expiry;
   private final OtpChallengePort otp;
-  private final ForgotPasswordIdempotencyPort idempotency;
   private final Clock clock;
   private final Duration lease;
   private final Duration resetAuthorizationTtl;
 
-  public VerifyForgotPasswordOtpService(
+  public ForgotPasswordOtpVerifyProtectedOperation(
       ForgotPasswordProtectedAuthFlowContextLoader loader,
       ForgotPasswordAuthFlowContextProtectorPort protector,
       AuthFlowSessionPort sessions,
       AuthFlowSessionMutationLockPort locks,
       AuthFlowSessionExpiryRefreshPort expiry,
       OtpChallengePort otp,
-      ForgotPasswordIdempotencyPort idempotency,
       Clock clock,
       Duration lease,
       Duration resetAuthorizationTtl) {
@@ -79,14 +62,13 @@ public final class VerifyForgotPasswordOtpService implements VerifyForgotPasswor
     this.locks = Objects.requireNonNull(locks);
     this.expiry = Objects.requireNonNull(expiry);
     this.otp = Objects.requireNonNull(otp);
-    this.idempotency = Objects.requireNonNull(idempotency);
     this.clock = Objects.requireNonNull(clock);
     this.lease = Objects.requireNonNull(lease);
     this.resetAuthorizationTtl = Objects.requireNonNull(resetAuthorizationTtl);
   }
 
-  @Override
-  public Mono<VerifyForgotPasswordOtpResult> verify(VerifyForgotPasswordOtpCommand command) {
+  public Mono<ForgotPasswordOtpVerifyProtectedExecutionResult> execute(
+      VerifyForgotPasswordOtpCommand command) {
     if (command == null || command.sessionId() == null) {
       return Mono.just(
           result(VerifyForgotPasswordOtpStatus.AUTH_FLOW_INVALID, WorkflowNextStep.NONE));
@@ -108,9 +90,9 @@ public final class VerifyForgotPasswordOtpService implements VerifyForgotPasswor
         .onErrorReturn(result(VerifyForgotPasswordOtpStatus.SYSTEM_FAILED, WorkflowNextStep.NONE));
   }
 
-  private Mono<VerifyForgotPasswordOtpResult> locked(
+  private Mono<ForgotPasswordOtpVerifyProtectedExecutionResult> locked(
       VerifyForgotPasswordOtpCommand command, SessionLockHandle handle) {
-    Mono<VerifyForgotPasswordOtpResult> work =
+    Mono<ForgotPasswordOtpVerifyProtectedExecutionResult> work =
         sessions
             .loadSnapshot(command.sessionId())
             .flatMap(
@@ -179,7 +161,7 @@ public final class VerifyForgotPasswordOtpService implements VerifyForgotPasswor
                                                 VerifyForgotPasswordOtpStatus.AUTH_FLOW_INVALID,
                                                 WorkflowNextStep.NONE));
                                       }
-                                      return processIdempotent(
+                                      return verifyActiveChallenge(
                                           command,
                                           current,
                                           current.activeOtpChallengeId(),
@@ -199,107 +181,43 @@ public final class VerifyForgotPasswordOtpService implements VerifyForgotPasswor
         ignored -> locks.release(handle).onErrorReturn(false).then());
   }
 
-  private Mono<VerifyForgotPasswordOtpResult> processIdempotent(
+  private Mono<ForgotPasswordOtpVerifyProtectedExecutionResult> verifyActiveChallenge(
       VerifyForgotPasswordOtpCommand command,
       AuthFlowSession session,
       String activeOtpChallengeId,
       ForgotPasswordAuthFlowContext context,
-      Instant now) {
-    ForgotPasswordIdempotencyKey key =
-        new ForgotPasswordIdempotencyKey(command.idempotencyKey().trim());
-    ForgotPasswordRequestHash requestHash =
-        new ForgotPasswordRequestHash(sha256("FORGOT_PASSWORD\u0000OTP_VERIFY\u0000v1"));
-
-    return idempotency
-        .startProcessing(
-            new ForgotPasswordIdempotencyStartCommand(
-                ForgotPasswordIdempotencyAction.OTP_VERIFY,
-                key,
-                requestHash,
-                now,
-                now.plus(command.idempotencyTtl()),
-                command.idempotencyTtl()))
-        .flatMap(
-            start ->
-                switch (start.outcome()) {
-                  case STARTED ->
-                      verifyActiveChallenge(
-                          command, session, activeOtpChallengeId, context, key, requestHash, now);
-                  case COMPLETED_REPLAY ->
-                      Mono.just(
-                          fromReplay(
-                              start.record() == null ? null : start.record().replaySnapshot()));
-                  case DUPLICATE_IN_PROGRESS ->
-                      Mono.just(
-                          result(
-                              VerifyForgotPasswordOtpStatus.DUPLICATE_IN_PROGRESS,
-                              WorkflowNextStep.WAIT));
-                  case KEY_REUSED_WITH_DIFFERENT_REQUEST ->
-                      Mono.just(
-                          result(
-                              VerifyForgotPasswordOtpStatus.IDEMPOTENCY_KEY_REUSED,
-                              WorkflowNextStep.NONE));
-                  case FAILED_EXISTING, UNKNOWN_OUTCOME_EXISTING ->
-                      Mono.just(
-                          result(
-                              VerifyForgotPasswordOtpStatus.SYSTEM_FAILED, WorkflowNextStep.NONE));
-                })
-        .onErrorReturn(result(VerifyForgotPasswordOtpStatus.SYSTEM_FAILED, WorkflowNextStep.NONE));
-  }
-
-  private Mono<VerifyForgotPasswordOtpResult> verifyActiveChallenge(
-      VerifyForgotPasswordOtpCommand command,
-      AuthFlowSession session,
-      String activeOtpChallengeId,
-      ForgotPasswordAuthFlowContext context,
-      ForgotPasswordIdempotencyKey key,
-      ForgotPasswordRequestHash requestHash,
       Instant now) {
     return otp.verifyChallenge(
             new VerifyOtpChallengeCommand(activeOtpChallengeId, command.code(), now))
         .flatMap(
             result ->
                 switch (result.outcome()) {
-                  case VALID -> authorize(command, session, context, key, requestHash, now);
+                  case VALID -> authorize(command, session, context, now);
                   case EXPIRED ->
-                      completeReplay(
-                          key,
-                          requestHash,
-                          now,
-                          command.idempotencyTtl(),
-                          OUTCOME_EXPIRED,
-                          VerifyForgotPasswordOtpStatus.OTP_EXPIRED,
-                          WorkflowNextStep.RESEND_OTP,
-                          result.remainingAttempts());
+                      Mono.just(
+                          result(
+                              VerifyForgotPasswordOtpStatus.OTP_EXPIRED,
+                              WorkflowNextStep.RESEND_OTP,
+                              result.remainingAttempts()));
                   case LOCKED ->
-                      completeReplay(
-                          key,
-                          requestHash,
-                          now,
-                          command.idempotencyTtl(),
-                          OUTCOME_LOCKED,
-                          VerifyForgotPasswordOtpStatus.OTP_LOCKED,
-                          WorkflowNextStep.RESTART_FLOW,
-                          0);
+                      Mono.just(
+                          result(
+                              VerifyForgotPasswordOtpStatus.OTP_LOCKED,
+                              WorkflowNextStep.RESTART_FLOW,
+                              0));
                   case INVALID, INVALIDATED, ALREADY_VERIFIED, NOT_FOUND ->
-                      completeReplay(
-                          key,
-                          requestHash,
-                          now,
-                          command.idempotencyTtl(),
-                          OUTCOME_INVALID,
-                          VerifyForgotPasswordOtpStatus.OTP_INVALID,
-                          WorkflowNextStep.VERIFY_OTP,
-                          result.remainingAttempts());
+                      Mono.just(
+                          result(
+                              VerifyForgotPasswordOtpStatus.OTP_INVALID,
+                              WorkflowNextStep.VERIFY_OTP,
+                              result.remainingAttempts()));
                 });
   }
 
-  private Mono<VerifyForgotPasswordOtpResult> authorize(
+  private Mono<ForgotPasswordOtpVerifyProtectedExecutionResult> authorize(
       VerifyForgotPasswordOtpCommand command,
       AuthFlowSession reloaded,
       ForgotPasswordAuthFlowContext context,
-      ForgotPasswordIdempotencyKey key,
-      ForgotPasswordRequestHash requestHash,
       Instant now) {
     String resetSubjectId = effectiveResetSubjectId(context);
     ForgotPasswordResetAuthorization authorization =
@@ -336,59 +254,11 @@ public final class VerifyForgotPasswordOtpService implements VerifyForgotPasswor
     return new RevisionAwareAuthFlowSessionWriter(sessions)
         .updateExpected(reloaded, updated)
         .then(expiry.refresh(command.sessionId(), now))
-        .then(
-            idempotency.markCompleted(
-                new ForgotPasswordIdempotencyCompleteCommand(
-                    ForgotPasswordIdempotencyAction.OTP_VERIFY,
-                    key,
-                    requestHash,
-                    replaySnapshot(OUTCOME_VERIFIED, authorization.authorizationId()),
-                    now,
-                    command.idempotencyTtl())))
         .thenReturn(result(VerifyForgotPasswordOtpStatus.VERIFIED, WorkflowNextStep.PASSWORD_SETUP))
         .onErrorReturn(result(VerifyForgotPasswordOtpStatus.SYSTEM_FAILED, WorkflowNextStep.NONE));
   }
 
-  private Mono<VerifyForgotPasswordOtpResult> completeReplay(
-      ForgotPasswordIdempotencyKey key,
-      ForgotPasswordRequestHash requestHash,
-      Instant now,
-      Duration ttl,
-      String outcomeCode,
-      VerifyForgotPasswordOtpStatus status,
-      WorkflowNextStep nextStep,
-      Integer remainingVerifyAttempts) {
-    return idempotency
-        .markCompleted(
-            new ForgotPasswordIdempotencyCompleteCommand(
-                ForgotPasswordIdempotencyAction.OTP_VERIFY,
-                key,
-                requestHash,
-                replaySnapshot(outcomeCode, opaqueRef("fpvr")),
-                now,
-                ttl))
-        .thenReturn(result(status, nextStep, remainingVerifyAttempts));
-  }
-
-  private VerifyForgotPasswordOtpResult fromReplay(
-      ForgotPasswordIdempotencyReplaySnapshot snapshot) {
-    if (snapshot == null || snapshot.outcomeCode() == null) {
-      return result(VerifyForgotPasswordOtpStatus.SYSTEM_FAILED, WorkflowNextStep.NONE);
-    }
-    return switch (snapshot.outcomeCode()) {
-      case OUTCOME_VERIFIED ->
-          result(VerifyForgotPasswordOtpStatus.COMPLETED_REPLAY, WorkflowNextStep.PASSWORD_SETUP);
-      case OUTCOME_INVALID ->
-          result(VerifyForgotPasswordOtpStatus.OTP_INVALID, WorkflowNextStep.VERIFY_OTP);
-      case OUTCOME_EXPIRED ->
-          result(VerifyForgotPasswordOtpStatus.OTP_EXPIRED, WorkflowNextStep.RESEND_OTP);
-      case OUTCOME_LOCKED ->
-          result(VerifyForgotPasswordOtpStatus.OTP_LOCKED, WorkflowNextStep.RESTART_FLOW);
-      default -> result(VerifyForgotPasswordOtpStatus.SYSTEM_FAILED, WorkflowNextStep.NONE);
-    };
-  }
-
-  private VerifyForgotPasswordOtpResult mapLoaderFailure(
+  private ForgotPasswordOtpVerifyProtectedExecutionResult mapLoaderFailure(
       ForgotPasswordProtectedAuthFlowContextStatus status) {
     if (status == ForgotPasswordProtectedAuthFlowContextStatus.CSRF_INVALID
         || status == ForgotPasswordProtectedAuthFlowContextStatus.ORIGIN_REFERER_INVALID) {
@@ -397,21 +267,17 @@ public final class VerifyForgotPasswordOtpService implements VerifyForgotPasswor
     return result(VerifyForgotPasswordOtpStatus.AUTH_FLOW_INVALID, WorkflowNextStep.NONE);
   }
 
-  private ForgotPasswordIdempotencyReplaySnapshot replaySnapshot(
-      String outcomeCode, String opaqueCommitRef) {
-    return new ForgotPasswordIdempotencyReplaySnapshot(outcomeCode, opaqueCommitRef, Map.of());
-  }
-
-  private VerifyForgotPasswordOtpResult result(
+  private ForgotPasswordOtpVerifyProtectedExecutionResult result(
       VerifyForgotPasswordOtpStatus status, WorkflowNextStep nextStep) {
     return result(status, nextStep, null);
   }
 
-  private VerifyForgotPasswordOtpResult result(
+  private ForgotPasswordOtpVerifyProtectedExecutionResult result(
       VerifyForgotPasswordOtpStatus status,
       WorkflowNextStep nextStep,
       Integer remainingVerifyAttempts) {
-    return new VerifyForgotPasswordOtpResult(status, nextStep, remainingVerifyAttempts);
+    return new ForgotPasswordOtpVerifyProtectedExecutionResult(
+        new VerifyForgotPasswordOtpResult(status, nextStep, remainingVerifyAttempts));
   }
 
   private boolean validOtp(String code) {
@@ -420,6 +286,10 @@ public final class VerifyForgotPasswordOtpService implements VerifyForgotPasswor
 
   private boolean blank(String value) {
     return value == null || value.isBlank();
+  }
+
+  private String opaqueRef(String prefix) {
+    return prefix + "_" + UUID.randomUUID().toString().replace("-", "");
   }
 
   private String effectiveResetSubjectId(ForgotPasswordAuthFlowContext context) {
@@ -452,19 +322,5 @@ public final class VerifyForgotPasswordOtpService implements VerifyForgotPasswor
         context.resetAuthorization(),
         context.workflowVersion(),
         context.phase());
-  }
-
-  private String opaqueRef(String prefix) {
-    return prefix + "_" + UUID.randomUUID().toString().replace("-", "");
-  }
-
-  private String sha256(String value) {
-    try {
-      return java.util.HexFormat.of()
-          .formatHex(
-              MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8)));
-    } catch (NoSuchAlgorithmException exception) {
-      throw new IllegalStateException("OTP verify hash unavailable", exception);
-    }
   }
 }

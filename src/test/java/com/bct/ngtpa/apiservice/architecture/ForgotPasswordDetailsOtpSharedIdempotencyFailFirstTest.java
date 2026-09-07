@@ -61,7 +61,7 @@ class ForgotPasswordDetailsOtpSharedIdempotencyFailFirstTest {
     String config = Files.readString(CONFIG);
     assertThat(config)
         .contains("IdempotentResendForgotPasswordOtpService")
-        .contains("VerifyForgotPasswordOtpService")
+        .contains("IdempotentVerifyForgotPasswordOtpService")
         .contains("CompleteForgotPasswordService")
         .contains("CancelForgotPasswordService");
   }

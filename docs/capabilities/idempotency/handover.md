@@ -730,3 +730,69 @@ Final committed-state validation completed successfully at Git HEAD `4afbc2726a6
 - Updated only the formatting-sensitive coordinator test after Spotless wrapped `operation.execute(command)`.
 - The assertion still verifies the exact invocation after whitespace normalization. Production behavior is unchanged.
 - Next action remains the full Maven suite and application startup smoke gate after focused stabilization validation passes.
+
+#### P5-C OTP_VERIFY fail-first shared boundary
+
+- Added the first fail-first OTP_VERIFY migration boundary without changing production composition.
+- Required future assets are `IdempotentVerifyForgotPasswordOtpService`, `ForgotPasswordOtpVerifyProtectedOperation`, `ForgotPasswordOtpVerifyProtectedExecutionResult`, `ForgotPasswordOtpVerifyExecutionBridge`, and `ForgotPasswordOtpVerifyReplayCodec`.
+- Keep the legacy verify service active until coordinator, replay, protected-operation, and behavioral parity tests pass. Preserve all previously migrated actions and COMPLETE/CANCEL.
+
+#### P5-C OTP_VERIFY replay foundation
+
+- Added and tested the OTP_VERIFY replay codec and typed transient bridge only.
+- Production still composes the legacy verify service. The coordinator and protected operation/result remain intentionally absent for the next increment.
+
+#### P5-C OTP_VERIFY exact sensitive-token guard
+
+- Repaired only the fail-first guard false positive caused by substring matching of `code` inside codec method and class names.
+- The replay foundation is unchanged. The boundary must now remain red only for the absent shared coordinator and protected operation/result.
+
+#### P5-C OTP_VERIFY protected operation
+
+- Added the protected OTP_VERIFY operation/result and parity guard while retaining the legacy production service.
+- Next action is the shared coordinator. Do not switch production composition yet.
+
+#### P5-C OTP_VERIFY protected-operation compile repair
+
+- Removed the stale `ForgotPasswordIdempotencyReplaySnapshot` helper from the extracted protected operation.
+- The cumulative replay foundation, protected operation/result, parity guard, and legacy production composition remain preserved.
+- Next action remains the shared OTP_VERIFY coordinator after this cumulative increment validates.
+
+#### P5-C OTP_VERIFY authorization-reference compile repair
+
+- Restored `opaqueRef` only for protected reset-authorization creation after the earlier broad helper removal.
+- The stale replay helper remains removed, and the protected operation remains free of feature-local idempotency lifecycle calls.
+- Next action remains the shared OTP_VERIFY coordinator after cumulative validation passes.
+
+#### P5-C OTP_VERIFY shared coordinator
+
+- Added and focused-tested `IdempotentVerifyForgotPasswordOtpService` without changing production composition.
+- The coordinator delegates protected OTP verification to the extracted operation and lifecycle ownership to the shared executor.
+- Next action: audit readiness for the production composition switch. Keep the legacy service until that dedicated switch increment.
+
+#### P5-C OTP_VERIFY production switch
+
+- Production now composes the shared OTP_VERIFY coordinator and no longer injects `ForgotPasswordIdempotencyPort` into the OTP_VERIFY bean.
+- Updated composition, reactive, hash, parity, shared-boundary, and cross-action preservation assertions.
+- Retain the legacy service and tests until the next exact-symbol cleanup audit authorizes deletion. Spotless remains deferred until feature stabilization.
+
+#### P5-C OTP_VERIFY composition-test compile repair
+
+- Corrected only the Java string escaping in the OTP_VERIFY composition architecture test.
+- The shared production composition remains active, and legacy source cleanup remains deferred to the exact-symbol audit.
+
+#### P5-C OTP_VERIFY canonical-fingerprint guard repair
+
+- Updated the fingerprint architecture guard to validate the migrated shared coordinator and policy rather than the retained legacy service implementation.
+- The production switch remains active, and legacy cleanup remains deferred to the exact-symbol audit.
+
+#### P5-C OTP_VERIFY hash-guard compile correction
+
+- Replaced the malformed fingerprint-guard source with compile-safe structural assertions while preserving all cumulative production-switch changes.
+- Legacy OTP_VERIFY cleanup remains deferred to the exact-symbol audit.
+
+#### P5-C OTP_VERIFY legacy cleanup
+
+- Deleted the retired OTP_VERIFY feature-local lifecycle implementation and its obsolete tests.
+- Production remains composed exclusively through `IdempotentVerifyForgotPasswordOtpService` and the repository-wide shared executor.
+- Exact-identifier and compilation gates prevent the deleted lifecycle from remaining referenced.
