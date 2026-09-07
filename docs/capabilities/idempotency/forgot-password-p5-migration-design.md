@@ -197,3 +197,7 @@ Each implementation stage must create a timestamped directory under `target/evid
 P5 closes only when all five scoped actions use shared idempotency in production composition, protected references are absent from shared persistence, the feature-local idempotency infrastructure is removed, documentation is current, repository validation passes, and the working tree is clean.
 
 Until an actual deployment occurs, deployment timestamps, environment coverage, rollback-window closure, and TTL-drainage gates remain not applicable.
+
+### P5-C Forgot Password START cleanup status
+
+- START production composition uses `IdempotentStartForgotPasswordService` over the repository-wide shared executor. Replacement parity is committed, and the non-composed legacy `StartForgotPasswordService` and its dedicated test are removed.

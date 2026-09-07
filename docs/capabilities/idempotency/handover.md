@@ -558,3 +558,13 @@ Final committed-state validation completed successfully at Git HEAD `4afbc2726a6
 - Existing replay-codec, controller, and composition tests remain the authoritative coverage for safe snapshots, protected continuity, fresh CSRF, cookies, public mappings, and single production composition.
 - Legacy START source remains present pending a separate cleanup stage.
 - P5-A/B/C/D/E remains authoritative.
+
+### P5-C Forgot Password START legacy cleanup
+
+- Removed the non-composed legacy `StartForgotPasswordService` and its dedicated legacy lifecycle test after replacement parity coverage was committed.
+- Production START remains exclusively composed through `IdempotentStartForgotPasswordService` and the repository-wide shared executor.
+- Preserved the negative composition guard that asserts the legacy constructor is absent from production configuration.
+- Preserved the legacy Forgot Password idempotency port, DTOs, Redis adapter, and action values because non-START Forgot Password operations still depend on them.
+- Replacement protected-operation, coordinator, replay, controller, and composition tests remain the authoritative START coverage.
+- Deployment timestamps, environment coverage, rollback-window closure, and TTL-drainage gates remain not applicable before repository cleanup completes.
+- P5-A/B/C/D/E remains authoritative.
