@@ -10,7 +10,7 @@ Foundation contracts implemented on baseline `9cb1e1f65dcea6383ed54d5c9ef034a97e
 - Raw arithmetic uses `BigDecimal`.
 - Required metadata is exactly NET_ASSET_VALUE plus PRECISION, corresponding to `nav` plus `precision`.
 - Java sums before rendering and must not round.
-- `err.tpa.fund.swithing.in.progress` maps to `err.fund.swithing.in.progress`.
+- `err.tpa.fund.switching.in.progress` maps to `err.fund.switching.in.progress`.
 
 ## Next stage
 Add the reactive use case, metadata orchestration, TRPGetInvestGL adapter/configuration, controller, response policy, routing ledger, and focused tests.
