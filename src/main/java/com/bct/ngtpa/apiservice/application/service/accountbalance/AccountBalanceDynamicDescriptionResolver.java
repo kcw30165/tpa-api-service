@@ -1,23 +1,16 @@
 package com.bct.ngtpa.apiservice.application.service.accountbalance;
 
 import com.bct.ngtpa.apiservice.application.exception.AccountBalanceRetrievalException;
+import com.bct.ngtpa.apiservice.application.service.presentation.DynamicDescriptionResolver;
 
 public final class AccountBalanceDynamicDescriptionResolver {
+  private final DynamicDescriptionResolver delegate = new DynamicDescriptionResolver();
+
   public String resolve(String language, String english, String traditionalChinese) {
-    boolean zh = isZh(language);
-    String selected = zh ? traditionalChinese : english, other = zh ? english : traditionalChinese;
-    if (hasText(selected)) return selected;
-    if (hasText(other)) return other;
-    throw AccountBalanceRetrievalException.systemFailure();
-  }
-
-  private static boolean isZh(String value) {
-    if (value == null) return false;
-    String tag = value.trim().replace('_', '-');
-    return tag.equalsIgnoreCase("zh") || tag.equalsIgnoreCase("zh-HK");
-  }
-
-  private static boolean hasText(String value) {
-    return value != null && !value.isBlank();
+    try {
+      return delegate.resolve(language, english, traditionalChinese);
+    } catch (RuntimeException ex) {
+      throw AccountBalanceRetrievalException.systemFailure();
+    }
   }
 }

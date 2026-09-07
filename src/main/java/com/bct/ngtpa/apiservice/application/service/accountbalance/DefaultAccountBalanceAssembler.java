@@ -86,8 +86,7 @@ public final class DefaultAccountBalanceAssembler implements AccountBalanceAssem
         ((DefaultAccountBalancePresentationTransformer) presentation).precisions(m);
     var ao =
         new AccountOverview(
-            new AccountOverviewDisplayOptions(
-                o.vestedBalanceVisible(), o.pendingSwitchInVisible()),
+            new AccountOverviewDisplayOptions(o.vestedBalanceVisible(), o.pendingSwitchInVisible()),
             o.displayAccounts().stream()
                 .map(
                     x ->
@@ -95,25 +94,16 @@ public final class DefaultAccountBalanceAssembler implements AccountBalanceAssem
                             x.displayAccountId(),
                             displayName(n, x.displayAccountId(), c.language()),
                             x.displaySequence(),
-                            render(
-                                x.accountBalance(), p, GeneralMetadataName.NET_ASSET_VALUE),
+                            render(x.accountBalance(), p, GeneralMetadataName.NET_ASSET_VALUE),
                             o.vestedBalanceVisible()
-                                ? render(
-                                    x.vestedBalance(),
-                                    p,
-                                    GeneralMetadataName.NET_ASSET_VALUE)
+                                ? render(x.vestedBalance(), p, GeneralMetadataName.NET_ASSET_VALUE)
                                 : null))
                 .toList(),
             new AccountOverviewTotals(
-                render(
-                    o.accountTotals().totalBalance(),
-                    p,
-                    GeneralMetadataName.NET_ASSET_VALUE),
+                render(o.accountTotals().totalBalance(), p, GeneralMetadataName.NET_ASSET_VALUE),
                 o.pendingSwitchInVisible()
                     ? render(
-                        o.accountTotals().pendingSwitchIn(),
-                        p,
-                        GeneralMetadataName.NET_ASSET_VALUE)
+                        o.accountTotals().pendingSwitchIn(), p, GeneralMetadataName.NET_ASSET_VALUE)
                     : null));
     return new AccountBalanceResult(
         d.format(DATE),
