@@ -11,15 +11,11 @@ import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisCaptchaChallengeJson
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisOtpChallengeJsonMapper;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisOtpChallengeStateAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRateLimitAdapter;
-import com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.RedisForgotPasswordIdempotencyAdapter;
-import com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.RedisForgotPasswordIdempotencyJsonMapper;
-import com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.RedisForgotPasswordIdempotencyKeyFactory;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionCompletionLockPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.CacheAdminPort;
 import com.bct.ngtpa.apiservice.application.port.out.CachePort;
 import com.bct.ngtpa.apiservice.application.port.out.CaptchaChallengePort;
-import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
 import com.bct.ngtpa.apiservice.application.port.out.RateLimitPort;
 import io.lettuce.core.ClientOptions;
@@ -141,12 +137,6 @@ public class RedisAdapterConfig {
   }
 
   @Bean
-  public RedisForgotPasswordIdempotencyKeyFactory redisForgotPasswordIdempotencyKeyFactory(
-      @Value("${redis-cache.key-prefix:ngtpa}") String keyPrefix) {
-    return new RedisForgotPasswordIdempotencyKeyFactory(keyPrefix);
-  }
-
-  @Bean
   public com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword
           .RedisForgotPasswordOtpCommitStateKeyFactory
       redisForgotPasswordOtpCommitStateKeyFactory(
@@ -175,20 +165,6 @@ public class RedisAdapterConfig {
           ReactiveStringRedisTemplate r) {
     return new com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword
         .RedisForgotPasswordOtpCommitStateAdapter(k, m, r);
-  }
-
-  @Bean
-  public RedisForgotPasswordIdempotencyJsonMapper redisForgotPasswordIdempotencyJsonMapper() {
-    return new RedisForgotPasswordIdempotencyJsonMapper();
-  }
-
-  @Bean
-  public ForgotPasswordIdempotencyPort forgotPasswordIdempotencyPort(
-      RedisForgotPasswordIdempotencyKeyFactory keyFactory,
-      RedisForgotPasswordIdempotencyJsonMapper jsonMapper,
-      ReactiveStringRedisTemplate reactiveStringRedisTemplate) {
-    return new RedisForgotPasswordIdempotencyAdapter(
-        keyFactory, jsonMapper, reactiveStringRedisTemplate);
   }
 
   @Bean

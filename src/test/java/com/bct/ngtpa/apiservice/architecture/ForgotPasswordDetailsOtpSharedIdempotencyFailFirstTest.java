@@ -62,7 +62,7 @@ class ForgotPasswordDetailsOtpSharedIdempotencyFailFirstTest {
     assertThat(config)
         .contains("IdempotentResendForgotPasswordOtpService")
         .contains("IdempotentVerifyForgotPasswordOtpService")
-        .contains("CompleteForgotPasswordService")
+        .contains("IdempotentCompleteForgotPasswordService")
         .contains("CancelForgotPasswordService");
   }
 

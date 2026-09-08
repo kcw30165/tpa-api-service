@@ -29,7 +29,6 @@ class ForgotPasswordOtpResendProtectedOperationParityFailFirstTest {
         .doesNotContain(
             "ResendForgotPasswordOtpService",
             "ForgotPasswordIdempotencyPort",
-            "ForgotPasswordIdempotencyRecord",
             "ForgotPasswordOtpCommitCoordinator");
   }
 

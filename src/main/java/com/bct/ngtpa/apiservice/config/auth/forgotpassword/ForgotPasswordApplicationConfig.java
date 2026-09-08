@@ -28,7 +28,6 @@ import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordCompletionPort;
-import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpSessionBindingPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordUsernameLookupPort;
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
@@ -53,7 +52,6 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempote
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.start.ForgotPasswordStartReplayCodec;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordDestinationMasker;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordInitialOtpPolicy;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitCoordinator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitRetentionPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpReplayResolver;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpTemplates;
@@ -295,14 +293,6 @@ public class ForgotPasswordApplicationConfig {
           int maximumRetentionSeconds) {
     return new ForgotPasswordOtpCommitRetentionPolicy(
         Duration.ofSeconds(expiredReplayGraceSeconds), Duration.ofSeconds(maximumRetentionSeconds));
-  }
-
-  @Bean
-  public ForgotPasswordOtpCommitCoordinator forgotPasswordOtpCommitCoordinator(
-      ForgotPasswordIdempotencyPort idempotency,
-      com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpCommitStatePort commitStates,
-      ForgotPasswordOtpCommitRetentionPolicy retentionPolicy) {
-    return new ForgotPasswordOtpCommitCoordinator(idempotency, commitStates, retentionPolicy);
   }
 
   @Bean

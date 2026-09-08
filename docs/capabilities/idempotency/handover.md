@@ -896,3 +896,38 @@ Final committed-state validation completed successfully at Git HEAD `4afbc2726a6
 - Full Maven suite: 4,169 tests, zero failures, zero errors, 10 skipped.
 - Spring context and Netty startup completed successfully. The later local runner failure was limited to unavailable deployment Redis Sentinel connectivity after startup.
 - P5-C is complete. Next stage: P5-D.
+
+#### P5-D feature-local lifecycle cleanup
+
+- Removed the exact retired feature-local lifecycle assets authorized by scripts 684 and 685.
+- Protected OTP commit state and all shared production routes remain intact.
+- Next action is an exact unused DTO and residual-reference audit before further cleanup.
+
+#### P5-D unused lifecycle DTO cleanup
+
+- Removed the seven zero-external-reference lifecycle DTOs identified by script 687.
+- No public command boundary, shared coordinator, protected replay, or protected commit-state type was removed.
+- Next action is a fresh residual-closure audit before further deletion.
+
+#### P5-D residual lifecycle DTO cluster cleanup
+
+- Removed the isolated legacy lifecycle DTO cluster and its obsolete tests based on script 689 evidence.
+- Active public command contracts, replay continuity, protected commit state, and shared production composition remain intact.
+- Next action is P5-D stabilization and focused regression before transition gates.
+
+#### P5-D cleanup stabilization
+
+- Deferred formatting and cumulative focused cleanup regression are complete.
+- Shared START, DETAILS_AND_OTP, OTP_RESEND, OTP_VERIFY, and COMPLETE routes remain intact; CANCEL remains outside shared execution.
+- Next action is the dedicated full-suite and startup transition gate, followed by commit if green.
+
+#### P5-D transition-gate architecture guard correction
+
+- Repaired only the stale lifecycle coordinator test expectation. Production behavior remains unchanged.
+
+#### P5-D transition-gate closure
+
+- Full Maven suite: 4,148 tests, zero failures, zero errors, 10 skipped.
+- Spring context, Netty, and application startup marker: passed.
+- Retired feature-local lifecycle infrastructure and isolated DTOs are removed; shared execution and protected OTP commit state remain intact.
+- P5-D is complete. Next stage: P5-E.

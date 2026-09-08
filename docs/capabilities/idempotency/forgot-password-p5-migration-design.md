@@ -467,3 +467,39 @@ Until an actual deployment occurs, deployment timestamps, environment coverage, 
 - The Spring application completed context initialization, started Netty on port 8888, and emitted the successful application-start marker.
 - The subsequent local shutdown was caused only by the post-start auth-flow persistence compatibility runner being unable to reach the deployment Redis Sentinel; it was not a bean, wiring, or configuration startup failure.
 - P5-C is complete and may transition to P5-D.
+
+### P5-D feature-local lifecycle cleanup
+
+- Removed the retired Forgot Password lifecycle port, COMPLETE legacy coordinator, lifecycle Redis adapter and records, lifecycle-coupled OTP commit coordinator, and their owned tests.
+- Retained the separately protected OTP commit-state port, Redis adapter, replay resolver, session binding, and all shared-executor coordinators.
+- Retargeted the stale DETAILS_AND_OTP cross-action composition guard to the shared COMPLETE coordinator.
+
+### P5-D unused lifecycle DTO cleanup
+
+- Removed only the seven lifecycle command/result DTOs proven by the exact-symbol audit to have no external references after feature-local lifecycle removal.
+- Retained the public idempotency key and replay snapshot contracts, shared action integration policy, protected OTP commit state, and all shared production routes.
+- Further DTO cleanup remains gated by a fresh exact-symbol audit because removal of these leaves may expose additional candidates.
+
+### P5-D residual lifecycle DTO cluster cleanup
+
+- Removed the isolated legacy lifecycle action, record, start-outcome, status, and request-hash DTO cluster after the fresh exact-symbol closure audit proved that only obsolete lifecycle tests referenced it.
+- Removed those obsolete tests and retargeted the remaining protected-operation guard.
+- Retained the active public idempotency key and replay snapshot, the capability-owned shared action policy, protected OTP commit state, and all shared production routes.
+
+### P5-D cleanup stabilization
+
+- Applied deferred Spotless formatting after lifecycle infrastructure, isolated lifecycle DTOs, and obsolete owned tests were removed.
+- Revalidated compile, test compilation, shared coordinator and replay coverage, protected-operation guards, CANCEL separation, Redis protected commit-state retention, and clean architecture.
+- Full Maven and Spring startup gates remain required before the P5-D cleanup commit.
+
+### P5-D transition-gate architecture guard correction
+
+- Retargeted the stale positive assertion for the removed lifecycle commit coordinator to the shared details-and-OTP coordinator and retained protected OTP commit-state port. Production code remains unchanged.
+
+### P5-D transition-gate closure
+
+- The cumulative cleanup passed the full Maven suite with 4,148 tests, zero failures, zero errors, and 10 skipped.
+- Spring context initialization and Netty startup completed successfully with the application-start marker. The later local compatibility-runner failure was limited to unavailable deployment Redis Sentinel connectivity after startup.
+- P5-D removed the retired feature-local lifecycle port, Redis lifecycle adapter and records, legacy COMPLETE service, lifecycle-coupled OTP commit coordinator, isolated legacy lifecycle DTO cluster, and obsolete owned tests.
+- Active public idempotency-key and protected replay contracts, shared START, DETAILS_AND_OTP, OTP_RESEND, OTP_VERIFY, and COMPLETE execution, CANCEL separation, and protected OTP commit-state persistence remain intact.
+- P5-D is complete and may transition to P5-E.
