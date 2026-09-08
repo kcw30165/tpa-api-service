@@ -8,6 +8,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.registration.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationMessageKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
@@ -454,7 +455,7 @@ public class StartRegistrationService implements StartRegistrationUseCase {
                                             0,
                                             null,
                                             sessionId,
-                                            List.of("registration.completion"),
+                                            List.of(RegistrationMessageKey.COMPLETION.value()),
                                             List.of(),
                                             RegistrationIdempotencyStartOutcome.STARTED,
                                             null);

@@ -32,7 +32,7 @@ class RegistrationTerminalWorkflowTransitionGuardTest {
     assertThat(source)
         .contains("StartRegistrationResultStatus.REGISTRATION_COMPLETED")
         .contains("WorkflowNextStep.RETURN_TO_LOGIN")
-        .contains("ApiMessage.info(\"registration.completion\", null, TARGET_PAGE)");
+        .contains("ApiMessage.info(RegistrationMessageKey.COMPLETION.value(), null, TARGET_PAGE)");
   }
 
   @Test

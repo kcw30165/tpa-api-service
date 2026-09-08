@@ -636,3 +636,4 @@ The implementation plan, Phase 1 design record, session architecture, frontend i
 - If no unregistered trust remains, start creates the protected auth-flow session, transitions it to `COMPLETED`, performs no OTP creation or delivery, and returns `SUCCESS` with `RETURN_TO_LOGIN` plus the page-level `registration.completion` info message.
 - Registration completion returns `RETURN_TO_LOGIN` when no remaining unregistered trust exists and leaves the session `COMPLETED`.
 - Registration completion returns `SELECT_TRUST` when remaining unregistered trusts exist and leaves the session `TRUST_SELECTION_READY`.
+- The public completion notification is referenced through the typed `RegistrationMessageKey.COMPLETION` key, while its serialized FE code remains `registration.completion`.

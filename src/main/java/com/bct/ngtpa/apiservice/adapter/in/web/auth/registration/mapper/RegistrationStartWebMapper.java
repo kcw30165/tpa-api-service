@@ -9,6 +9,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper;
 import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.RegistrationIdempotencyKey;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationMessageKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorDescriptor;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorSeverity;
@@ -116,7 +117,7 @@ public class RegistrationStartWebMapper {
       return MutationResponse.success(
           ApiStatus.SUCCESS,
           new RegistrationWorkflowResultResponse<>(WorkflowNextStep.RETURN_TO_LOGIN, null),
-          List.of(ApiMessage.info("registration.completion", null, TARGET_PAGE)));
+          List.of(ApiMessage.info(RegistrationMessageKey.COMPLETION.value(), null, TARGET_PAGE)));
     }
     var response =
         workflowMutationResponseMapper.toMutationResponse(toWorkflowResult(result, acceptLanguage));
