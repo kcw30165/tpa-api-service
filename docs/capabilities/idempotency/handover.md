@@ -931,3 +931,10 @@ Final committed-state validation completed successfully at Git HEAD `4afbc2726a6
 - Spring context, Netty, and application startup marker: passed.
 - Retired feature-local lifecycle infrastructure and isolated DTOs are removed; shared execution and protected OTP commit state remain intact.
 - P5-D is complete. Next stage: P5-E.
+
+#### P5-E closure documentation alignment
+
+- Updated all six capability documents to describe the committed post-P5 Forgot Password architecture.
+- All five idempotent actions use shared execution; CANCEL remains outside it.
+- Protected START replay and OTP commit state remain; the retired feature-local response lifecycle remains absent.
+- Next action is the final P5-E full Maven, Spring startup, documentation-diff, and commit gate.

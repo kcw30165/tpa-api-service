@@ -538,3 +538,11 @@ The narrow Login Start, OTP Send, OTP Resend, and controller composition tests n
 ### P4-G final validated repository outcome
 
 Final committed-state validation completed successfully at Git HEAD `4afbc2726a6140cf41d7168e8ef301451bbe76f1`. Spotless check, production compilation, test compilation, the Maven full suite, and Git diff hygiene all passed. Surefire reported 956 suites, 4,077 tests, zero failures, zero errors, and 10 skipped tests. Repository-level P4-G validation is complete. No deployment, environment-coverage, rollback-window, or TTL-drainage claim is made because the shared Login migration has not been deployed.
+
+## P5-E Forgot Password repository closure
+
+Forgot Password repository migration is complete. START, DETAILS_AND_OTP, OTP_RESEND, OTP_VERIFY, and COMPLETE use the repository-wide shared idempotency executor in production. CANCEL remains revision-aware workflow cancellation outside shared execution. The retired feature-local lifecycle port, Redis lifecycle adapter and records, lifecycle coordinators, lifecycle DTO cluster, obsolete wiring, and owned stale tests are removed.
+
+Protected START replay continuity and protected OTP commit state remain capability-owned because they carry workflow continuity rather than shared lifecycle state. Shared terminal persistence contains only context-neutral operation identity, fingerprint, lifecycle ownership and status, safe response data, and approved opaque protected references.
+
+The P5-D transition gate passed 4,148 tests with zero failures and zero errors and observed successful Spring context, Netty, and application startup. P5-E documentation closure requires a final full-suite and startup gate before its commit. No deployment, environment-coverage, rollback-window, or TTL-drainage claim applies because the migration has not been deployed.

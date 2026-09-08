@@ -741,3 +741,9 @@ The narrow Login Start, OTP Send, OTP Resend, and controller composition tests n
 ### P4-G final validated repository outcome
 
 Final committed-state validation completed successfully at Git HEAD `4afbc2726a6140cf41d7168e8ef301451bbe76f1`. Spotless check, production compilation, test compilation, the Maven full suite, and Git diff hygiene all passed. Surefire reported 956 suites, 4,077 tests, zero failures, zero errors, and 10 skipped tests. Repository-level P4-G validation is complete. No deployment, environment-coverage, rollback-window, or TTL-drainage claim is made because the shared Login migration has not been deployed.
+
+## Forgot Password P5-E validation contract
+
+Closure validation must prove all five production action beans select shared coordinators, CANCEL remains outside shared execution, removed lifecycle sources remain absent, protected START replay and OTP commit-state assets remain present, and strict replay and clean-architecture regressions pass. Negative source guards for removed symbols are permitted and must not be classified as runtime dependencies.
+
+The P5-D transition evidence recorded 4,148 tests, zero failures, zero errors, 10 skipped, and successful Spring context, Netty, and application startup. P5-E reruns the full Maven suite and startup smoke after this six-document alignment before committing closure.

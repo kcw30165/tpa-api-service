@@ -735,3 +735,9 @@ The narrow Login Start, OTP Send, OTP Resend, and controller composition tests n
 ### P4-G final validated repository outcome
 
 Final committed-state validation completed successfully at Git HEAD `4afbc2726a6140cf41d7168e8ef301451bbe76f1`. Spotless check, production compilation, test compilation, the Maven full suite, and Git diff hygiene all passed. Surefire reported 956 suites, 4,077 tests, zero failures, zero errors, and 10 skipped tests. Repository-level P4-G validation is complete. No deployment, environment-coverage, rollback-window, or TTL-drainage claim is made because the shared Login migration has not been deployed.
+
+## Forgot Password post-P5 architecture
+
+The five idempotent Forgot Password actions now use thin capability-owned coordinators over the one repository-wide shared executor. Protected operations own business mutation only. Strict action codecs capture and hydrate safe terminal results, while START replay continuity and OTP commit continuity remain in separately protected capability state. CANCEL is not an idempotent action and remains outside the shared executor.
+
+No feature-local Forgot Password response-idempotency lifecycle port, record/status model, request-hash model, Redis lifecycle adapter, serializer, key factory, or lifecycle coordinator remains. Negative architecture assertions mentioning removed symbols are guards, not active dependencies. Historical migration sections remain an implementation record and do not describe current production routing.

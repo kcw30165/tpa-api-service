@@ -503,3 +503,11 @@ Until an actual deployment occurs, deployment timestamps, environment coverage, 
 - P5-D removed the retired feature-local lifecycle port, Redis lifecycle adapter and records, legacy COMPLETE service, lifecycle-coupled OTP commit coordinator, isolated legacy lifecycle DTO cluster, and obsolete owned tests.
 - Active public idempotency-key and protected replay contracts, shared START, DETAILS_AND_OTP, OTP_RESEND, OTP_VERIFY, and COMPLETE execution, CANCEL separation, and protected OTP commit-state persistence remain intact.
 - P5-D is complete and may transition to P5-E.
+
+### P5-E closure documentation alignment
+
+- Aligned all six shared-idempotency capability documents with the committed P5-D repository state.
+- Current production composition uses shared execution for START, DETAILS_AND_OTP, OTP_RESEND, OTP_VERIFY, and COMPLETE; CANCEL remains outside shared execution.
+- Retired feature-local response-idempotency lifecycle infrastructure is absent. Protected START replay and protected OTP commit state remain intentionally retained as workflow continuity.
+- Historical descriptions of intermediate legacy routing remain historical evidence rather than current-state claims.
+- Final P5-E full-suite and startup validation is required before the closure commit.
