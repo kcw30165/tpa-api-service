@@ -796,3 +796,103 @@ Final committed-state validation completed successfully at Git HEAD `4afbc2726a6
 - Deleted the retired OTP_VERIFY feature-local lifecycle implementation and its obsolete tests.
 - Production remains composed exclusively through `IdempotentVerifyForgotPasswordOtpService` and the repository-wide shared executor.
 - Exact-identifier and compilation gates prevent the deleted lifecycle from remaining referenced.
+
+#### P5-C COMPLETE fail-first shared boundary
+
+- Added the initial fail-first boundary for migrating Forgot Password COMPLETE to the repository-wide shared executor.
+- Required future assets are the thin coordinator, protected operation/result, execution bridge, and strict replay codec.
+- Password and confirmation values must never enter the operation fingerprint or persisted replay snapshot.
+- Production composition is intentionally unchanged. Next step is replay-contract and protected-operation readiness before implementation.
+
+#### P5-C COMPLETE fail-first compile correction
+
+- Replaced the malformed COMPLETE fail-first test source with compile-safe structural assertions.
+- The boundary remains intentionally red because the shared COMPLETE implementation assets do not exist yet.
+
+#### P5-C COMPLETE replay bridge foundation
+
+- Added the COMPLETE replay codec and typed execution bridge against the captured repository contracts.
+- Production remains on the legacy COMPLETE service pending protected-operation and coordinator work.
+
+#### P5-C COMPLETE replay bridge focused coverage
+
+- Added executable replay codec and execution bridge tests for the cumulative script 657 foundation.
+- Success and deterministic business rejection round-trip without protected data; unsafe and lifecycle-only forms fail closed.
+- Production remains on `CompleteForgotPasswordService`. Next action is protected-operation extraction readiness.
+
+#### P5-C COMPLETE protected-operation foundation
+
+- Added the transient protected-operation input and classified execution-result foundation.
+- The input redacts command, protected context, and session snapshot from logs.
+- The result type keeps terminal replay, technical failure, and unknown outcome distinct before the shared coordinator is introduced.
+- Next step is the idempotency-neutral protected operation implementation.
+
+#### P5-C COMPLETE protected-operation fail-first parity boundary
+
+- Added the intentionally red protected-operation implementation, parity, and architectural-neutrality boundary.
+- The existing replay bridge and protected-operation foundation remain preserved. Production remains on the legacy COMPLETE service.
+- Next action is deterministic protected-operation implementation against the captured contracts.
+
+#### P5-C COMPLETE protected-operation implementation
+
+- Added and validated the idempotency-neutral COMPLETE protected operation while preserving the cumulative replay bridge and fail-first foundations.
+- Production remains composed with the legacy COMPLETE service. Next action is focused behavioral parity and coordinator readiness.
+
+#### P5-C COMPLETE protected-operation parity correction
+
+- Corrected the protected-operation parity boundary by making RESET handling explicit rather than relying on the residual branch.
+- Existing REJECTED, TECHNICAL_FAILURE, UNKNOWN_OUTCOME, replay-safety, and production-composition behavior remains preserved.
+
+#### P5-C COMPLETE protected-operation behavior guards
+
+- Added executable guards for the audited COMPLETE protected-operation behavior matrix.
+- Existing replay, foundation, parity, and neutrality coverage remains preserved. Production remains on the legacy COMPLETE service.
+- Next action is shared-coordinator contract readiness.
+
+#### P5-C COMPLETE behavior-guard assertion correction
+
+- Replaced the invalid `authorization.consumedAt()` source-text expectation with assertions for immutable consumed-authorization construction and application.
+- The protected operation itself remains unchanged.
+
+#### P5-C COMPLETE shared-coordinator fail-first boundary
+
+- Added the intentionally red shared-coordinator boundary using the exact contracts captured by script 669.
+- Protected operation, replay bridge, behavior guards, and documentation remain preserved. Production remains on the legacy COMPLETE service.
+- Next action is deterministic shared-coordinator implementation.
+
+#### P5-C COMPLETE shared-coordinator implementation
+
+- Added the shared COMPLETE coordinator and preserved all cumulative protected-operation, replay, behavior-guard, and fail-first work.
+- Production remains on the legacy COMPLETE service pending focused coordinator tests and the composition switch.
+
+#### P5-C COMPLETE shared-coordinator guard correction
+
+- Repaired only the whitespace-sensitive operation-invocation assertion.
+- The shared coordinator implementation remains unchanged. Next action is focused lifecycle and protected-execution tests.
+
+#### P5-C COMPLETE shared-coordinator lifecycle coverage
+
+- Added executable shared-coordinator lifecycle and protected-execution routing tests.
+- Cumulative replay, protected-operation, architecture, and documentation work remains preserved.
+- Production remains on the legacy COMPLETE service. Next action is the production composition switch.
+
+#### P5-C COMPLETE production composition switch
+
+- Spring production composition now uses the validated shared COMPLETE coordinator.
+- The legacy COMPLETE service remains in source temporarily for stabilization comparison but is no longer instantiated.
+- Next action is feature-level formatting, cumulative stabilization, and P5-C completion evidence.
+
+#### P5-C COMPLETE stabilization
+
+- Feature-level formatting, production compile, test compilation, composition audits, replay-safety audits, and documentation alignment are complete.
+- P5-C must not transition until a separate gate records the full Maven suite and Spring startup smoke test.
+
+#### P5-C transition-gate guard correction
+
+- Repaired only the formatted lock-acquisition assertion. Production behavior and composition remain unchanged.
+
+#### P5-C COMPLETE transition-gate closure
+
+- Full Maven suite: 4,169 tests, zero failures, zero errors, 10 skipped.
+- Spring context and Netty startup completed successfully. The later local runner failure was limited to unavailable deployment Redis Sentinel connectivity after startup.
+- P5-C is complete. Next stage: P5-D.

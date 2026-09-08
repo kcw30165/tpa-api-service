@@ -35,13 +35,16 @@ import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.cancel.CancelForgotPasswordService;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.CompleteForgotPasswordService;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompleteProtectedOperation;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordPasswordValidator;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.IdempotentCompleteForgotPasswordService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordDetailsOtpLeasePolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordDetailsOtpProtectedOperation;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.ForgotPasswordUnderLockDetailsVerifier;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.detailsotp.IdempotentForgotPasswordDetailsOtpService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyIntegrationPolicy;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.complete.ForgotPasswordCompleteExecutionBridge;
+import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.complete.ForgotPasswordCompleteReplayCodec;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.detailsotp.DefaultForgotPasswordDetailsOtpProtectedReplayResolver;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.detailsotp.ForgotPasswordDetailsOtpExecutionBridge;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.idempotency.detailsotp.ForgotPasswordDetailsOtpReplayCodec;
@@ -155,29 +158,37 @@ public class ForgotPasswordApplicationConfig {
 
   @Bean
   public CompleteForgotPasswordUseCase completeForgotPasswordUseCase(
+      IdempotencyExecutor idempotencyExecutor,
       AuthFlowSessionPort sessions,
       AuthFlowSessionMutationLockPort locks,
       ForgotPasswordAuthFlowContextProtectorPort protector,
       ForgotPasswordCompletionPort completion,
-      ForgotPasswordIdempotencyPort idempotency,
       AuthWorkflowPolicyPort policies,
       Clock clock,
-      AuthWorkflowProperties properties,
-      CorsProperties corsProperties) {
+      ObjectMapper objectMapper,
+      AuthWorkflowProperties properties) {
     properties.validateForgotPasswordPolicy();
-    return new CompleteForgotPasswordService(
-        sessions,
-        locks,
-        protector,
-        completion,
-        idempotency,
-        new com.bct.ngtpa.apiservice.application.service.auth.forgotpassword
-            .ForgotPasswordResetAuthorizationValidator(),
-        new ForgotPasswordPasswordValidator(policies),
-        clock,
-        Duration.ofSeconds(properties.getForgotPassword().getIdempotency().getCompleteTtlSeconds()),
-        Duration.ofSeconds(10),
-        corsProperties == null ? List.of() : corsProperties.getAllowedOrigins());
+    var operation =
+        new ForgotPasswordCompleteProtectedOperation(
+            sessions,
+            locks,
+            protector,
+            completion,
+            new com.bct.ngtpa.apiservice.application.service.auth.forgotpassword
+                .ForgotPasswordResetAuthorizationValidator(),
+            new ForgotPasswordPasswordValidator(policies),
+            clock,
+            Duration.ofSeconds(10));
+    var json = new JacksonTransientJsonAdapter(objectMapper);
+    var codec =
+        new ForgotPasswordCompleteReplayCodec(new ActionTaggedIdempotencyResponseEnvelope(json));
+    var responses = new ForgotPasswordCompleteExecutionBridge(json, codec);
+    var policy =
+        new ForgotPasswordIdempotencyIntegrationPolicy(
+            new IdempotencyOperationIdentityFactory(),
+            new CanonicalIdempotencyFingerprintFactory());
+    return new IdempotentCompleteForgotPasswordService(
+        idempotencyExecutor, sessions, protector, operation, responses, policy);
   }
 
   @Bean

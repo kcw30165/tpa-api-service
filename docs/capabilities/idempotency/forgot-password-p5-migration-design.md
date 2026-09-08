@@ -360,3 +360,110 @@ Until an actual deployment occurs, deployment timestamps, environment coverage, 
 - Removed the retired feature-local OTP verification lifecycle service and its obsolete unit test after the shared coordinator production switch.
 - Replaced stale negative class-name assertions with positive shared-composition assertions.
 - The shared executor, protected operation, replay codec, response bridge, public mapping, and cross-action behavior remain unchanged.
+
+### P5-C COMPLETE fail-first shared boundary
+
+- Added fail-first architecture evidence requiring `IdempotentCompleteForgotPasswordService`, an idempotency-neutral protected operation/result, and strict typed replay bridge/codec assets.
+- The future coordinator must use the repository-wide `IdempotencyExecutor`, action `COMPLETE`, and `policy.complete()` constant `v1` fingerprint without password, confirmation, CSRF, request, or session material.
+- The protected operation owns validation, authorization, APIM password-reset dispatch, and revision-aware terminal session mutation, but it must not own reservation, completion, failure, or unknown-outcome persistence.
+- Deterministic success and recognized business rejection results are replayable. Any possible APIM dispatch or terminal session-mutation uncertainty remains unknown outcome and fails closed.
+- Production composition remains on the legacy COMPLETE service until protected-operation parity, replay safety, coordinator behavior, and composition-switch evidence pass.
+
+### P5-C COMPLETE fail-first compile correction
+
+- Corrected malformed nested Java string quoting in the COMPLETE fail-first architecture boundary.
+- The replacement preserves the same required coordinator, protected operation/result, strict replay boundary, constant fingerprint, sensitive-input exclusions, and unchanged production composition.
+
+### P5-C COMPLETE replay bridge foundation
+
+- Added the strict COMPLETE replay codec and typed transient execution bridge using the actual shared response APIs.
+- Snapshots preserve the existing public result fields and reject unknown outcome, action mismatch, malformed payloads, unsafe headers, and protected references.
+- Production composition remains unchanged.
+
+### P5-C COMPLETE replay bridge focused coverage
+
+- Added focused coverage for successful COMPLETE replay, recognized business-rejection replay, both cookie-cleanup flags, action mismatch, unknown fields, unknown-outcome exclusion, and protected-reference rejection.
+- Replay payload assertions prohibit password, confirmation, CSRF, session identity, authorization identifiers, and reset subject identifiers. Production composition remains unchanged.
+
+### P5-C COMPLETE protected-operation foundation
+
+- Added a redacted transient input binding the command, authorized protected context, and revisioned session snapshot.
+- Added an idempotency-neutral execution result with explicit terminal, technical-failure, and unknown-outcome classifications.
+- Terminal classification rejects `SYSTEM_FAILED` and `UNKNOWN_OUTCOME`, preventing lifecycle uncertainty from being persisted as replayable success.
+- Production composition and the legacy COMPLETE behavior remain unchanged.
+
+### P5-C COMPLETE protected-operation fail-first parity boundary
+
+- Added an intentionally red extraction boundary requiring the COMPLETE protected operation to own session locking, request and authorization validation, password validation, APIM dispatch classification, and revision-aware terminal session mutation.
+- The operation must return explicit terminal, technical-failure, or unknown-outcome execution classification and must contain no idempotency lifecycle, blocking, subscription, or protected-data logging.
+- Production composition remains unchanged until the boundary is implemented and focused parity tests pass.
+
+### P5-C COMPLETE protected-operation implementation
+
+- Added the idempotency-neutral COMPLETE protected operation from the exact audited legacy method bodies and contracts.
+- The operation owns lock handling, authorization and password validation, APIM dispatch classification, authorization consumption, revision-aware terminal session mutation, and unknown-outcome blocking.
+- It owns no reservation, completion, failure, replay, fingerprint, or shared-executor lifecycle. Production composition remains unchanged.
+
+### P5-C COMPLETE protected-operation parity correction
+
+- Made `ForgotPasswordCompletionResult.Status.RESET` and `REJECTED` explicit protected-operation dispatch classifications.
+- Unknown outcome and technical failure remain conservatively separated, while only RESET enters authorization consumption and successful terminal session mutation.
+- Production composition remains on the legacy COMPLETE service.
+
+### P5-C COMPLETE protected-operation behavior guards
+
+- Added executable preservation guards for successful authorization consumption and completion, recognized password and member-not-found rejections, unknown-outcome session blocking, lock lifecycle, and trusted actor-role propagation.
+- The guards also prohibit idempotency lifecycle ownership, blocking, subscription, and sensitive diagnostic logging inside the protected operation.
+- Production composition remains unchanged.
+
+### P5-C COMPLETE behavior-guard assertion correction
+
+- Corrected the success behavior guard to match the actual immutable authorization-consumption implementation: a new `ForgotPasswordResetAuthorization` is constructed with the current completion time and applied through `withResetAuthorization(consumed)`.
+- No production behavior or production composition changed.
+
+### P5-C COMPLETE shared-coordinator fail-first boundary
+
+- Added an intentionally red boundary for the thin COMPLETE coordinator over the repository-wide shared executor.
+- The coordinator must use session-scoped operation identity, the constant COMPLETE fingerprint, command TTL, conservative possible-side-effect classification, the typed replay bridge, and classified protected execution.
+- Existing lifecycle outcomes must preserve public statuses without invoking the protected operation. Password, confirmation, CSRF, and legacy idempotency persistence are prohibited from the coordinator.
+- Production composition remains unchanged.
+
+### P5-C COMPLETE shared-coordinator implementation
+
+- Added the thin COMPLETE coordinator over the repository-wide shared executor using session-scoped identity, the constant COMPLETE fingerprint, command TTL, conservative possible-side-effect classification, typed response capture/hydration, and classified protected execution.
+- Legacy idempotency persistence and sensitive command fields remain outside the coordinator. Production composition remains unchanged.
+
+### P5-C COMPLETE shared-coordinator guard correction
+
+- Corrected the structural guard to recognize the fluent `return operation` followed by `.execute(...)` invocation used by the coordinator.
+- Coordinator implementation, protected execution routing, and production composition remain unchanged.
+
+### P5-C COMPLETE shared-coordinator lifecycle coverage
+
+- Added executable coordinator coverage for session-scoped identity, constant password-free fingerprinting, command TTL, conservative failure classification, revisioned session loading, protected execution routing, terminal replay hydration, and every existing lifecycle outcome.
+- The coordinator is guarded from legacy persistence, direct downstream side effects, blocking, subscription, and sensitive fingerprint inputs. Production composition remains unchanged.
+
+### P5-C COMPLETE production composition switch
+
+- Switched the Spring COMPLETE bean from `CompleteForgotPasswordService` to `IdempotentCompleteForgotPasswordService`.
+- Production composition now constructs the idempotency-neutral protected operation, strict replay codec, typed execution bridge, and shared integration policy over the repository-wide executor.
+- The legacy COMPLETE service is no longer instantiated by production configuration.
+
+### P5-C COMPLETE stabilization
+
+- Applied feature-level Spotless formatting after the COMPLETE implementation and production composition switch.
+- Production compile and test compilation pass after formatting.
+- Spring production composition uses the shared COMPLETE coordinator, protected operation, strict replay codec, typed bridge, constant fingerprint policy, and repository-wide executor.
+- Full Maven tests and Spring startup smoke remain mandatory transition gates before P5-C may hand over to P5-D.
+
+### P5-C transition-gate guard correction
+
+- Corrected the Spotless-sensitive lock-acquisition guard without changing production code.
+- The full Maven suite and Spring startup smoke are rerun by this repair.
+
+### P5-C COMPLETE transition-gate closure
+
+- The full Maven suite passed with 4,169 tests, zero failures, zero errors, and 10 skipped.
+- The Spring application completed context initialization, started Netty on port 8888, and emitted the successful application-start marker.
+- The subsequent local shutdown was caused only by the post-start auth-flow persistence compatibility runner being unable to reach the deployment Redis Sentinel; it was not a bean, wiring, or configuration startup failure.
+- P5-C is complete and may transition to P5-D.
