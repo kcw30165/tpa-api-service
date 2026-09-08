@@ -38,7 +38,8 @@ class RegistrationRuntimeSemanticRegressionTest {
   private String read(String name) throws Exception {
     Path registrationMapper =
         Path.of(
-            "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/registration/mapper", name);
+            "src/main/java/com/bct/ngtpa/apiservice/adapter/out/apim/registration/mapper",
+            name);
     if (Files.exists(registrationMapper)) {
       return Files.readString(registrationMapper);
     }

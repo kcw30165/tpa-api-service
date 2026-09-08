@@ -88,8 +88,7 @@ class ForgotPasswordDetailsExecutorFailFirstTest {
   @Test
   void routingMetadataIsNotSerializedAndResponseEnvironmentCannotRouteRequest() throws Exception {
     String request =
-        source(
-            "adapter/out/apim/forgotpassword/details/dto/ForgotPasswordTrpSearchMemberRequest.java");
+        source("adapter/out/apim/forgotpassword/details/dto/ForgotPasswordTrpSearchMemberRequest.java");
     String adapter =
         source(
             "adapter/out/apim/forgotpassword/details/ApimForgotPasswordDetailsLookupAdapter.java");

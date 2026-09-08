@@ -111,8 +111,7 @@ class AccountBalanceControllerTest {
         .isEqualTo("Display Account")
         .jsonPath("$.result.data.investmentPortfolio.fundLevelView[0].funds[0].fxRate")
         .doesNotExist()
-        .jsonPath(
-            "$.result.data.investmentPortfolio.fundLevelView[0].funds[0].subDisplayAccounts[0].factsheetUrl")
+        .jsonPath("$.result.data.investmentPortfolio.fundLevelView[0].funds[0].subDisplayAccounts[0].factsheetUrl")
         .doesNotExist();
   }
 
