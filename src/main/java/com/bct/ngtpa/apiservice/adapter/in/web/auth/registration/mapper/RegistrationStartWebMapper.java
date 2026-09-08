@@ -4,6 +4,7 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.Registratio
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationStartWorkflowDataResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.registration.dto.RegistrationWorkflowResultResponse;
+import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiMessage;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.ApiStatus;
 import com.bct.ngtpa.apiservice.adapter.in.web.response.MutationResponse;
 import com.bct.ngtpa.apiservice.adapter.in.web.workflow.WorkflowMutationResponseMapper;
@@ -111,6 +112,12 @@ public class RegistrationStartWebMapper {
   public MutationResponse<RegistrationWorkflowResultResponse<RegistrationStartWorkflowDataResponse>>
       toMutationResponse(StartRegistrationResult result, String acceptLanguage) {
     logFatalIfNeeded(result);
+    if (result != null && result.status() == StartRegistrationResultStatus.REGISTRATION_COMPLETED) {
+      return MutationResponse.success(
+          ApiStatus.SUCCESS,
+          new RegistrationWorkflowResultResponse<>(WorkflowNextStep.RETURN_TO_LOGIN, null),
+          List.of(ApiMessage.info("registration.completion", null, TARGET_PAGE)));
+    }
     var response =
         workflowMutationResponseMapper.toMutationResponse(toWorkflowResult(result, acceptLanguage));
     if (result != null
@@ -213,7 +220,7 @@ public class RegistrationStartWebMapper {
 
   private WorkflowResultStatus toWorkflowStatus(StartRegistrationResultStatus status) {
     return switch (status) {
-      case STARTED, COMPLETED_REPLAY -> WorkflowResultStatus.SUCCESS;
+      case STARTED, REGISTRATION_COMPLETED, COMPLETED_REPLAY -> WorkflowResultStatus.SUCCESS;
       case DUPLICATE_IN_PROGRESS -> WorkflowResultStatus.WAITING;
       case VALIDATION_FAILED -> WorkflowResultStatus.VALIDATION_FAILED;
       case VERIFICATION_FAILED, DOWNSTREAM_REJECTED, IDEMPOTENCY_KEY_REUSED ->
@@ -224,6 +231,7 @@ public class RegistrationStartWebMapper {
 
   private boolean isSuccess(StartRegistrationResultStatus status) {
     return status == StartRegistrationResultStatus.STARTED
+        || status == StartRegistrationResultStatus.REGISTRATION_COMPLETED
         || status == StartRegistrationResultStatus.DUPLICATE_IN_PROGRESS
         || status == StartRegistrationResultStatus.COMPLETED_REPLAY;
   }

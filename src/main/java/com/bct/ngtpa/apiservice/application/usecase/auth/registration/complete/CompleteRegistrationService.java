@@ -324,7 +324,7 @@ public class CompleteRegistrationService implements CompleteRegistrationUseCase 
                     .thenReturn(
                         result(
                             CompleteRegistrationResultStatus.REGISTERED_WITH_REMAINING_TRUSTS,
-                            WorkflowNextStep.REGISTRATION_SUCCESS,
+                            WorkflowNextStep.SELECT_TRUST,
                             true,
                             false,
                             remainingUnregisteredTrusts));

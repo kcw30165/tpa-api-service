@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.application.usecase.auth.registration;
 
 public enum StartRegistrationResultStatus {
   STARTED,
+  REGISTRATION_COMPLETED,
   VALIDATION_FAILED,
   VERIFICATION_FAILED,
   DOWNSTREAM_REJECTED,
