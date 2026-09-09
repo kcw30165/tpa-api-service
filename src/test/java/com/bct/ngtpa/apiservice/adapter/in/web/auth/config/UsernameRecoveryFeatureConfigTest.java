@@ -29,6 +29,7 @@ import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotency
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryLookupPort;
 import com.bct.ngtpa.apiservice.application.service.auth.captcha.RegistrationCaptchaGateService;
 import com.bct.ngtpa.apiservice.application.service.auth.usernamerecovery.context.UsernameRecoveryAuthFlowContextBinding;
+import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.IdempotentRequestUsernameRecoveryService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.IdempotentStartUsernameRecoveryService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.idempotency.start.UsernameRecoveryStartProtectedReplayPort;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenGenerator;
@@ -110,7 +111,8 @@ class UsernameRecoveryFeatureConfigTest {
               assertThat(context.getBean(StartUsernameRecoveryUseCase.class))
                   .isInstanceOf(IdempotentStartUsernameRecoveryService.class);
               assertThat(context.getBeansOfType(StartUsernameRecoveryUseCase.class)).hasSize(1);
-              assertThat(context.getBean(RequestUsernameRecoveryUseCase.class)).isNotNull();
+              assertThat(context.getBean(RequestUsernameRecoveryUseCase.class))
+                  .isInstanceOf(IdempotentRequestUsernameRecoveryService.class);
               assertThat(context.getBean(CancelUsernameRecoveryUseCase.class)).isNotNull();
               assertThat(context.getBean(UsernameRecoveryIdempotencyPort.class)).isNotNull();
               assertThat(context.getBean(UsernameRecoveryAuthFlowContextBinding.class)).isNotNull();
@@ -119,7 +121,7 @@ class UsernameRecoveryFeatureConfigTest {
               assertThat(
                       context.getBeansOfType(
                           com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery
-                              .RequestUsernameRecoveryService.class))
+                              .IdempotentRequestUsernameRecoveryService.class))
                   .hasSize(1);
               assertThat(context.getBean(CsrfTokenValidationService.class)).isNotNull();
               assertThat(context.getBean(UsernameRecoveryStartWebMapper.class)).isNotNull();

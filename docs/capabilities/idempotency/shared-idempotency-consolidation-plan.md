@@ -848,3 +848,144 @@ Added stable shared actions, opaque operation identity, exact legacy-byte-compat
 - START is exclusively composed through `IdempotentStartUsernameRecoveryService`; the retired legacy START coordinator and isolated START fingerprint generator are absent.
 - REQUEST and CANCEL remain on their retained feature-local lifecycle pending their dedicated P6 stages.
 - P6-C is complete. The next permitted stage is P6-D only from the exact committed baseline produced by this closure.
+
+###### P6-D Username Recovery REQUEST fail-first boundary
+- Added a compile-safe fail-first contract for `IdempotentRequestUsernameRecoveryService`, `UsernameRecoveryRequestProtectedOperation`, its typed protected result, and strict REQUEST response bridge/codec.
+- The future protected operation must preserve candidate reservation, one message dispatch, and authoritative post-delivery session transition while owning no legacy or shared idempotency lifecycle.
+- Any dispatched or uncertain delivery failure remains conservatively classified as possible side effect and must never permit a blind resend.
+- The shared safe snapshot must contain only approved public REQUEST result fields and must not contain a direct auth-flow session ID, raw username, destination, CSRF material, delivery payload, or ownership token.
+- Production REQUEST remains on `RequestUsernameRecoveryService`; shared START and legacy CANCEL remain unchanged.
+
+###### P6-D Username Recovery REQUEST protected result contract
+- Added `UsernameRecoveryRequestProtectedExecutionResult` as the transient boundary between the future protected operation and shared coordinator.
+- Deterministic terminal outcomes carry the existing public `UsernameRecoveryRequestResult` and no failure.
+- Failures carry no terminal result and are classified explicitly as proven pre-dispatch or possible side effect. Dispatched, accepted, empty, cancelled, timed-out, or otherwise uncertain delivery paths must use possible side effect.
+- The contract contains no auth-flow session identity, username, destination, CSRF material, message payload, idempotency ownership token, or replay state, and its diagnostics expose only the failure type.
+- Production REQUEST remains on `RequestUsernameRecoveryService`; shared START and legacy CANCEL remain unchanged. The fail-first migration boundary remains red for the absent protected operation, replay bridge/codec, coordinator, and production switch.
+
+###### P6-D Username Recovery REQUEST protected-operation fail-first boundary
+- Added an intentionally red contract for `UsernameRecoveryRequestProtectedOperation` after establishing its typed execution-result boundary.
+- The operation must preserve origin and CSRF authorization, protected-context loading, candidate reservation before one delivery dispatch, effective-destination resolution, and authoritative requested, failed, or unknown session transitions.
+- Pre-dispatch and possible-side-effect failures remain explicit; delivery or post-dispatch ambiguity must never permit blind resend.
+- Production REQUEST remains on `RequestUsernameRecoveryService`; shared START and legacy CANCEL remain unchanged.
+
+###### P6-D Username Recovery REQUEST protected operation
+- Added `UsernameRecoveryRequestProtectedOperation` in parallel with the active legacy coordinator.
+- It preserves origin and CSRF authorization, revision-aware candidate reservation, effective destination resolution, one message dispatch, and authoritative requested, failed, or unknown session transitions.
+- The operation owns no feature-local or shared idempotency lifecycle, fingerprint, replay, Redis, Spring, controller, or HTTP responsibility.
+- Delivery and post-dispatch ambiguity are returned as possible-side-effect failures; deterministic pre-dispatch failure remains separately classified.
+- Production REQUEST remains on `RequestUsernameRecoveryService`; shared START and legacy CANCEL remain unchanged. Direct behavioral parity remains the next gate before replay and shared coordination.
+
+###### P6-D REQUEST protected-operation guard repair closure
+- Replaced the compact source guard with a formatting-tolerant equivalent that normalizes fluent calls before checking effective-destination resolution, single message dispatch, and revisioned session mutation.
+- The protected operation, typed result, failure classification, single-dispatch ordering, lifecycle neutrality, and legacy REQUEST production composition remain unchanged.
+
+###### P6-D REQUEST protected-operation parity boundary
+- Added an intentionally red direct-parity contract derived from the complete legacy REQUEST behavior matrix and exact constructor capture.
+- The future direct harness must cover prerequisite authorization, candidate outcomes, revision conflicts, one dispatch, accepted, failed, unknown, empty, reactive-failure, and post-dispatch ambiguity paths.
+- The boundary also requires empty delivery publishers to fail closed as possible side effect and prevents an outer fallback from reclassifying dispatch uncertainty as deterministic failure.
+- Production REQUEST remains on `RequestUsernameRecoveryService`; shared START and legacy CANCEL remain unchanged.
+
+###### P6-D REQUEST dispatch-boundary repair
+- Scoped effective-destination resolution failure to the proven pre-dispatch path.
+- Empty delivery publishers now persist the blocked unknown session state and return possible-side-effect classification.
+- Dispatch and post-dispatch failures can no longer fall through to the deterministic failed-candidate path.
+- Production REQUEST remains on `RequestUsernameRecoveryService`; direct protected-operation parity, replay, shared coordination, and composition switch remain deferred.
+
+###### P6-D REQUEST dispatch-boundary compile repair
+- Repaired the reactive type mismatch by materializing effective-destination resolution before branching into the protected execution result type.
+- Destination-resolution failure remains pre-dispatch and persists the deterministic failed candidate state.
+- Empty, failed, or otherwise uncertain delivery remains post-dispatch possible side effect, persists the blocked unknown state, and cannot fall through to deterministic failure.
+- Production REQUEST remains on `RequestUsernameRecoveryService`; direct parity remains intentionally red until its executable harness is added.
+
+###### P6-D REQUEST protected-operation direct parity
+- Added direct executable coverage for prerequisite guards, deterministic candidate outcomes, revision conflict, reservation-before-dispatch, accepted and completed projections, deterministic delivery failure, unknown and empty delivery, reactive dispatch failure, accepted-persistence conflict, and diagnostic redaction.
+- The harness invokes `UsernameRecoveryRequestProtectedOperation` directly and never delegates to the legacy coordinator.
+- Production REQUEST remains on `RequestUsernameRecoveryService`; strict replay and shared coordination remain the next gates.
+
+###### P6-D REQUEST direct-parity fixture repair
+- Aligned prerequisite and reservation-conflict tests with the typed protected-result contract, which returns `PROVEN_PRE_DISPATCH` instead of emitting those expected failures.
+- Corrected the unregistered-candidate fixture so its account environment and trust code are unique and accepted by the domain invariant.
+- Aligned parity source-token guards with the executable test method names. Production code and composition remain unchanged.
+
+###### P6-D REQUEST direct-parity closure
+- Preserved the established emitted security exception for disallowed origin while retaining typed `PROVEN_PRE_DISPATCH` results for CSRF, session, revision, and unavailable-candidate failures handled inside protected execution.
+- Aligned the remaining case-sensitive source guards with the executable parity method names.
+- Production REQUEST remains on `RequestUsernameRecoveryService`; production code and composition are unchanged.
+
+###### P6-D REQUEST direct-parity guard closure
+- Aligned the final `AlreadyRequested` and `CandidateNotAvailable` case-sensitive source guards with the passing executable parity method.
+- Direct protected-operation behavioral tests, production code, shared START, legacy REQUEST and CANCEL composition, controllers, cookies, and persistence remain unchanged.
+
+###### P6-D REQUEST strict replay bridge foundation
+- Added the strict action-tagged REQUEST safe replay codec and transient execution bridge in parallel.
+- Deterministic terminal public outcomes round-trip with approved public projection fields only; `UNKNOWN_OUTCOME`, malformed payloads, wrong actions, invalid transport, headers, and protected references fail closed.
+- REQUEST uses no protected replay store. The acquired response is preserved, while completed replay restores the original public result without loading a session or invoking delivery.
+- Production REQUEST remains on `RequestUsernameRecoveryService`; shared coordination and composition switch remain deferred.
+
+###### P6-D REQUEST shared-coordinator fail-first boundary
+- Added an intentionally red contract for `IdempotentRequestUsernameRecoveryService` after the protected operation and strict replay bridge passed focused validation.
+- The future coordinator must use the repository-wide shared executor, established REQUEST identity and fingerprint policy, typed protected failure classification, and strict REQUEST capture and hydration bridge.
+- Only `ACQUIRED` may invoke the protected operation. Completed replay must restore the original public result without delivery, while non-terminal lifecycle outcomes remain internal and map through the established REQUEST contract.
+- Production REQUEST remains on `RequestUsernameRecoveryService`; shared START and legacy CANCEL remain unchanged until the dedicated atomic switch.
+
+###### P6-D REQUEST parallel shared coordinator
+- Added `IdempotentRequestUsernameRecoveryService` in parallel with the active legacy REQUEST route.
+- The coordinator preserves the established session-scoped operation identity and REQUEST fingerprint fields, invokes protected execution only through shared acquisition, and uses the strict REQUEST bridge for capture and hydration.
+- A sanitized internal failure carrier retains only the typed pre-dispatch or possible-side-effect boundary so the shared executor applies the correct lifecycle transition without exposing protected values.
+- Completed replay restores the original public result without delivery. Production REQUEST remains on `RequestUsernameRecoveryService` pending the dedicated atomic switch.
+
+###### P6-D REQUEST shared-coordinator guard repair
+- Aligned the shared-coordinator source guard with the actual `bridge::capture` and `bridge::hydrate` method references supplied to `IdempotentExecutionCommand`.
+- The parallel coordinator, typed failure classification, strict replay bridge, protected operation, production legacy REQUEST selection, shared START, and legacy CANCEL remain unchanged.
+
+###### P6-D REQUEST shared-coordinator guard closure
+- Replaced the stale explicit `FailureBoundary.POSSIBLE_SIDE_EFFECT` source assertion with the implemented conservative `policy.possibleSideEffect().classify(error)` fallback.
+- The parallel coordinator, typed pre-dispatch branch, strict replay bridge, protected operation, production legacy REQUEST selection, shared START, and legacy CANCEL remain unchanged.
+
+###### P6-D REQUEST atomic production composition switch
+- Production `RequestUsernameRecoveryUseCase` now selects `IdempotentRequestUsernameRecoveryService` with the repository-wide shared executor, REQUEST integration policy, protected operation, strict replay codec and execution bridge, UTC clock, and authoritative Username Recovery session TTL.
+- The active REQUEST bean no longer receives the feature-local idempotency port or legacy fingerprint generator. Those shared legacy assets remain because CANCEL still depends on the feature-local lifecycle and because REQUEST source cleanup requires a separate exact-reference review.
+- Shared START and legacy CANCEL composition, controllers, public mappings, cookies, protected context, message delivery, and Redis namespaces remain unchanged. Formatting remains deferred until the P6-D stabilization boundary.
+
+###### P6-D REQUEST production-switch guard repair
+- Aligned the shared migration source guard with the formatted protected-operation delivery call, the coordinator's `protectedOperation` field name, and the replay codec's generic strict `SafePayload` round-trip.
+- Production REQUEST remains selected through `IdempotentRequestUsernameRecoveryService`; shared START, legacy CANCEL, controllers, public mappings, cookies, delivery ordering, and persistence remain unchanged.
+
+###### P6-D REQUEST production-switch guard closure
+- Normalized source before checking protected-operation and coordinator ownership, narrowed lifecycle exclusions to feature-local idempotency calls, narrowed protected-field exclusions to actual field declarations, and aligned callback assertions with `bridge::capture` and `bridge::hydrate`.
+- Production REQUEST remains on the shared coordinator. Shared START, legacy CANCEL, public contracts, cookies, delivery ordering, and persistence remain unchanged.
+
+###### P6-D REQUEST authorized legacy cleanup
+- Removed the non-composed `RequestUsernameRecoveryService`, its dedicated legacy lifecycle harness, the isolated legacy REQUEST fingerprint generator and test, and the old direct-session REQUEST replay codec and test after exact-reference review.
+- Removed the obsolete REQUEST fingerprint bean and stale legacy coordinator architecture tokens.
+- Production REQUEST remains exclusively on `IdempotentRequestUsernameRecoveryService` with the strict action-tagged replay codec. Shared START remains unchanged. Legacy CANCEL, `UsernameRecoveryIdempotencyPort`, Redis lifecycle persistence, records, key factory, CANCEL fingerprint, and CANCEL replay codec remain because CANCEL still consumes them.
+- Formatting remains deferred until the P6-D stabilization boundary.
+
+###### P6-D REQUEST feature stabilization
+- Applied the single deferred Spotless pass after the shared REQUEST production switch, direct replacement coverage, and authorized legacy REQUEST cleanup.
+- Production START and REQUEST remain exclusively on the repository-wide shared executor. CANCEL remains on the preserved feature-local lifecycle and Redis assets pending P6-E.
+- Production compilation, test compilation, focused REQUEST/CANCEL regressions, architecture checks, and diff hygiene are required in this stabilization round.
+- This stabilization does not satisfy the P6-D transition gate. The complete Maven suite and Spring application startup smoke test must pass before P6-E begins.
+
+###### P6-D REQUEST transition-gate closure
+- The complete Maven suite and local-profile Spring application startup smoke test passed on the cumulative P6-D state.
+- Production START and REQUEST remain exclusively on the repository-wide shared executor. The retired legacy REQUEST coordinator, fingerprint generator, and direct-session replay codec remain absent.
+- CANCEL remains on the preserved feature-local lifecycle and Redis assets for its dedicated P6-E migration.
+- P6-D is complete after this cumulative change set is committed. P6-E must start only from that exact committed baseline.
+
+###### P6-D eager-startup TransientJsonPort composition repair
+- Added a conditional `TransientJsonPort` bean backed by `JacksonTransientJsonAdapter` in Username Recovery configuration so the START and REQUEST execution bridges resolve under an eager application context.
+- This corrects the transition gate's earlier false-positive startup validation, which used lazy initialization and therefore did not instantiate the failing bean path.
+- Shared START and REQUEST, strict replay behavior, legacy CANCEL, controllers, cookies, and persistence remain unchanged. The complete full-suite and eager-startup transition gate must be rerun before commit.
+
+###### P6-D shared operation-identity runtime composition repair
+- Added one conditional repository-wide `IdempotencyOperationIdentityFactory` bean to `SharedIdempotencyRuntimeConfig` so Username Recovery can consume the existing canonical opaque identity algorithm during eager startup.
+- No flow-local factory, identity algorithm, operation ID, fingerprint byte sequence, persistence schema, START/REQUEST behavior, or legacy CANCEL behavior changed.
+- Commit remains blocked until eager startup reaches the application-started marker and the final full-suite transition gate passes.
+
+###### P6-D final transition-gate closure
+- The complete Maven suite passed on the final cumulative P6-D tree after the `TransientJsonPort` and canonical `IdempotencyOperationIdentityFactory` runtime-composition repairs.
+- Eager local-profile Spring startup passed with lazy initialization disabled and runtime-only redacted key material. Netty reached port 8888 and the application remained alive through the stability window.
+- Production START and REQUEST remain on shared idempotency. CANCEL and its feature-local Redis lifecycle remain preserved for P6-E.
+- P6-D may now be committed. P6-E must begin only from the resulting exact committed baseline.

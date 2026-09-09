@@ -109,7 +109,6 @@ class UsernameRecoveryControllerCompositionIntegrationTest {
             "ReactiveStringRedisTemplate",
             "RedisTemplate",
             "IdempotentStartUsernameRecoveryService",
-            "RequestUsernameRecoveryService",
             "CancelUsernameRecoveryService",
             "ResponseCookie.from",
             "Set-Cookie")
@@ -121,8 +120,8 @@ class UsernameRecoveryControllerCompositionIntegrationTest {
     assertThat(config)
         .containsIgnoringWhitespaces(
             "RedisUsernameRecoveryIdempotencyAdapter",
-            "StartUsernameRecoveryService",
-            "RequestUsernameRecoveryService",
+            "IdempotentStartUsernameRecoveryService",
+            "IdempotentRequestUsernameRecoveryService",
             "CancelUsernameRecoveryService")
         .doesNotContain("@RestController", "@RequestMapping", "@PostMapping");
   }

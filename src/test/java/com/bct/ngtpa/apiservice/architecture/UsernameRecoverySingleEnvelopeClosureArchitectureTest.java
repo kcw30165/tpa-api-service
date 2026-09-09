@@ -15,7 +15,7 @@ class UsernameRecoverySingleEnvelopeClosureArchitectureTest {
           Path.of(
               "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/usernamerecovery/UsernameRecoveryStartProtectedOperation.java"),
           Path.of(
-              "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/usernamerecovery/RequestUsernameRecoveryService.java"),
+              "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/usernamerecovery/UsernameRecoveryRequestProtectedOperation.java"),
           Path.of(
               "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/usernamerecovery/CancelUsernameRecoveryService.java"));
 

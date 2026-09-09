@@ -64,7 +64,6 @@ class UsernameRecoveryControllerArchitectureGuardTest {
             "infrastructure",
             "UsernameRecoveryFeatureConfig",
             "StartUsernameRecoveryService",
-            "RequestUsernameRecoveryService",
             "CancelUsernameRecoveryService",
             "AuthLogin",
             "AuthRegistration",

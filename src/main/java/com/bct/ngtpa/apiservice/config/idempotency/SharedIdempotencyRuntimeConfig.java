@@ -11,6 +11,7 @@ import com.bct.ngtpa.apiservice.adapter.out.redis.idempotency.RedisIdempotencyKe
 import com.bct.ngtpa.apiservice.adapter.out.redis.idempotency.RedisIdempotencyOperations;
 import com.bct.ngtpa.apiservice.application.idempotency.DefaultIdempotencyExecutor;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyExecutor;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyOperationIdentityFactory;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyPort;
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyReservationTokenGenerator;
 import com.bct.ngtpa.apiservice.application.idempotency.SecureIdempotencyReservationTokenGenerator;
@@ -24,6 +25,12 @@ import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 /** Runtime-only composition for the shared idempotency capability. */
 @Configuration(proxyBeanMethods = false)
 public class SharedIdempotencyRuntimeConfig {
+  @Bean
+  @ConditionalOnMissingBean
+  public IdempotencyOperationIdentityFactory idempotencyOperationIdentityFactory() {
+    return new IdempotencyOperationIdentityFactory();
+  }
+
   @Bean
   @ConditionalOnMissingBean(IdempotencyPersistenceIdDeriver.class)
   public IdempotencyPersistenceIdDeriver idempotencyPersistenceIdDeriver(

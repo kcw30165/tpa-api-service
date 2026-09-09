@@ -15,8 +15,8 @@ import org.junit.jupiter.api.Test;
  * <p>Locks the bounded application boundary of the new request orchestration:
  *
  * <ul>
- *   <li>{@code RequestUsernameRecoveryService} is the canonical application-layer implementation of
- *       {@link RequestUsernameRecoveryUseCase};
+ *   <li>{@code IdempotentRequestUsernameRecoveryService} is the canonical application-layer
+ *       implementation of {@link RequestUsernameRecoveryUseCase};
  *   <li>the whole request application package stays framework-free, adapter-free,
  *       infrastructure-free, and never references web DTOs or the {@code ApiStatus} response enum;
  *   <li>the replay codec persists only a session-id descriptor: it must never depend on the
@@ -37,10 +37,11 @@ class UsernameRecoveryRequestUseCaseArchitectureGuardTest {
     ArchRule rule =
         classes()
             .that()
-            .haveSimpleName("RequestUsernameRecoveryService")
+            .haveSimpleName("IdempotentRequestUsernameRecoveryService")
             .should()
             .implement(RequestUsernameRecoveryUseCase.class)
-            .as("RequestUsernameRecoveryService must implement RequestUsernameRecoveryUseCase");
+            .as(
+                "IdempotentRequestUsernameRecoveryService must implement RequestUsernameRecoveryUseCase");
     rule.check(classes);
   }
 
