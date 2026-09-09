@@ -16,6 +16,11 @@ public enum UsernameRecoveryIdempotencyAction {
     this.legacyCanonicalAction = legacyCanonicalAction;
   }
 
-  public IdempotencyAction action() { return action; }
-  String legacyCanonicalAction() { return legacyCanonicalAction; }
+  public IdempotencyAction action() {
+    return action;
+  }
+
+  String legacyCanonicalAction() {
+    return legacyCanonicalAction;
+  }
 }

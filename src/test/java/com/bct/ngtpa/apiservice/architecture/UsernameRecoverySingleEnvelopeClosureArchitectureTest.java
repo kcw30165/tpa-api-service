@@ -13,7 +13,7 @@ class UsernameRecoverySingleEnvelopeClosureArchitectureTest {
   private static final List<Path> SERVICES =
       List.of(
           Path.of(
-              "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/usernamerecovery/StartUsernameRecoveryService.java"),
+              "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/usernamerecovery/UsernameRecoveryStartProtectedOperation.java"),
           Path.of(
               "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/usernamerecovery/RequestUsernameRecoveryService.java"),
           Path.of(

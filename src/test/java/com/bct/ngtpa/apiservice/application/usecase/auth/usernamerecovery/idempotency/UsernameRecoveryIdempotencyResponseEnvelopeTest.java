@@ -19,9 +19,7 @@ class UsernameRecoveryIdempotencyResponseEnvelopeTest {
     assertThat(envelope.decode(UsernameRecoveryIdempotencyAction.START, body, Payload.class))
         .isEqualTo(new Payload("OK"));
     assertThatThrownBy(
-            () ->
-                envelope.decode(
-                    UsernameRecoveryIdempotencyAction.REQUEST, body, Payload.class))
+            () -> envelope.decode(UsernameRecoveryIdempotencyAction.REQUEST, body, Payload.class))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
@@ -34,9 +32,7 @@ class UsernameRecoveryIdempotencyResponseEnvelopeTest {
     String unknown =
         "{\"idempotencyAction\":\"start\",\"payload\":{\"status\":\"OK\",\"username\":\"secret\"}}";
     assertThatThrownBy(
-            () ->
-                envelope.decode(
-                    UsernameRecoveryIdempotencyAction.START, unknown, Payload.class))
+            () -> envelope.decode(UsernameRecoveryIdempotencyAction.START, unknown, Payload.class))
         .isInstanceOf(IllegalArgumentException.class);
   }
 

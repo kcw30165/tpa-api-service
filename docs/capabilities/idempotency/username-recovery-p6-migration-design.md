@@ -118,3 +118,114 @@ A full Maven suite and successful Spring startup are mandatory before every majo
 ## P6-B shared integration contracts
 
 P6-B now provides Username Recovery-owned action, operation-identity, compatibility fingerprint, constant classifier, and strict response-envelope contracts over the repository-wide shared foundation. The fingerprint compatibility layer deliberately preserves the established decimal-length-plus-NUL byte sequence for START, REQUEST, and CANCEL while exposing version 1 shared fingerprints. No coordinator, replay codec, protected replay persistence, Spring bean, or production route changes in this increment.
+
+
+### P6-C Username Recovery START replay foundation
+
+- Added a strict START safe snapshot codec and transient execution bridge without changing production routing.
+- SESSION_CREATED persists only an opaque ProtectedReplayReference; auth-flow session identity, CSRF, Scheme-Refs, and protected continuity remain outside the shared safe body.
+- MEMBER_NOT_FOUND and ZERO_REGISTERED preserve deterministic replay-safe public fields without protected storage.
+- Protected persistence adapters, shared coordinator, Spring composition, and production switching remain deferred.
+
+##### P6-C Username Recovery START protected persistence
+- Added a 256-bit opaque protected replay reference generator and an isolated `username-recovery:start-protected-replay` Redis namespace.
+- Storage uses SET-NX with bounded collision retries and the exact caller-supplied TTL.
+- Protected continuity uses AES-GCM with reference-bound AAD, strict schema, key-version, algorithm and JSON validation, and redacted diagnostics.
+- Resolution authorizes the retained Username Recovery auth-flow session and encrypted context, validates expiry and consistency, and rotates CSRF through the existing application boundary.
+- Replay performs no captcha validation, APIM lookup, session creation, delivery, or START production operation.
+- Conditional Spring composition uses external key-version and secret properties. Production START routing remains on the feature-local lifecycle.
+
+###### P6-C Username Recovery START protected-operation fail-first boundary
+- Added a compile-safe fail-first contract for a parallel, idempotency-neutral `UsernameRecoveryStartProtectedOperation`.
+- The future operation must preserve captcha consumption before APIM lookup, then protected auth-flow session creation, while owning no reserve, replay, completion, failed, or unknown lifecycle transition.
+- Production START remains on `StartUsernameRecoveryService`. REQUEST, CANCEL, controllers, cookies, public mappings, and all cumulative replay/persistence work remain unchanged.
+
+###### P6-C START protected-operation fail-first boundary repair
+- Removed the stale assertion for a literal `idempotencyPort.reserve(` call because the current coordinator owns the lifecycle through different method names.
+- The boundary remains intentionally red only because `UsernameRecoveryStartProtectedOperation` is absent.
+- Production composition, cumulative replay and protected persistence, REQUEST, CANCEL, and public behavior remain unchanged.
+
+###### P6-C Username Recovery START protected operation
+- Added `UsernameRecoveryStartProtectedOperation` as a parallel idempotency-neutral acquired-execution boundary.
+- It preserves captcha consumption before APIM lookup, deterministic member outcomes, protected context binding, revisioned auth-flow session creation, CSRF generation and hashing, opaque Scheme-Refs, and the established result contract.
+- It owns no legacy or shared idempotency reservation, replay, completion, failure, or unknown-outcome transition.
+- Production START remains composed through `StartUsernameRecoveryService`; REQUEST, CANCEL, controllers, cookies, mappings, and cumulative replay and persistence work remain unchanged.
+- Next: direct protected-operation behavioral parity before introducing a shared START coordinator.
+
+###### P6-C Username Recovery START protected-operation parity
+- Added direct executable coverage for captcha rejection and consumption ordering, member-not-found, zero-registered, registered protected-session creation, CSRF hashing, exact TTL, opaque Scheme-Refs, lookup failures, persistence failure, transient result continuity, and diagnostic redaction.
+- The test invokes `UsernameRecoveryStartProtectedOperation` directly and does not delegate to the legacy coordinator.
+- Production START remains on `StartUsernameRecoveryService`; REQUEST, CANCEL, public mappings, cookies, and cumulative replay and protected persistence remain unchanged.
+- Next: shared START coordinator contract and implementation in parallel before any production switch.
+
+###### P6-C START protected-operation architecture-guard alignment
+- Updated the START architecture guard so the extracted `UsernameRecoveryStartProtectedOperation` may own the established CSRF generator and hasher abstractions alongside the still-active legacy coordinator.
+- All other Username Recovery START helper classes remain prohibited from depending on the auth-flow CSRF package.
+- Direct protected-operation parity coverage, production routing, REQUEST, CANCEL, controllers, cookies, replay continuity, and protected persistence remain unchanged.
+
+###### P6-C START architecture-guard repair closure
+- Corrected the previously unapplied guard edit using an exact single-method replacement.
+- The extracted protected operation and active legacy coordinator are the only START execution owners permitted to use the established CSRF generator and hasher abstractions.
+- Every other Username Recovery START helper remains prohibited from depending on the auth-flow CSRF package. Production composition remains unchanged.
+
+###### P6-C Username Recovery START shared-coordinator fail-first boundary
+- Added a compile-safe, intentionally red contract for `IdempotentStartUsernameRecoveryService`.
+- The future coordinator must validate before shared reservation, use the established START identity and fingerprint policy, classify unexpected acquired failures conservatively, invoke the protected operation only through ACQUIRED execution, and use the protected replay bridge for capture and hydration.
+- Existing lifecycle outcomes remain mapped through the established typed START exceptions. Production remains on `StartUsernameRecoveryService`; REQUEST, CANCEL, public mappings, cookies, and cumulative replay and persistence remain unchanged.
+
+###### P6-C Username Recovery START parallel shared coordinator
+- Added `IdempotentStartUsernameRecoveryService` in parallel with the active legacy START coordinator.
+- Validation and idempotency-key validation occur before shared reservation. The coordinator uses the versioned anonymous START scope, the established seven canonical fingerprint fields, the configured 600-second START/session TTL supplied by composition, and conservative possible-side-effect classification.
+- Only the shared executor ACQUIRED callback invokes `UsernameRecoveryStartProtectedOperation`. Safe capture and completed replay use `UsernameRecoveryStartExecutionBridge`, including separately protected SESSION_CREATED continuity.
+- Duplicate, key-reuse, failed-existing, and unknown-existing outcomes retain the established typed START exception behavior. Production composition remains on `StartUsernameRecoveryService`; REQUEST and CANCEL remain unchanged.
+
+###### P6-C Username Recovery START shared-coordinator executable coverage
+- Added direct executable coverage for validation short-circuiting, exact anonymous operation scope, client key, established seven-field START fingerprint input, configured TTL, conservative classifier, acquired-only protected execution, completed replay, all non-terminal lifecycle mappings, and protected-operation failure propagation.
+- Production remains composed through `StartUsernameRecoveryService`. The shared coordinator remains parallel pending the dedicated composition switch.
+- REQUEST, CANCEL, controllers, cookies, public mappings, replay continuity, and protected persistence remain unchanged.
+
+###### P6-C START shared-coordinator test-fixture repair
+- Corrected the direct coordinator tests so the invalid business command passes record construction and is rejected by `UsernameRecoveryStartValidator` before shared reservation.
+- Supplied the mandatory possible-side-effect classifier in every executor-reaching test fixture.
+- Production code, production composition, fingerprint semantics, replay continuity, REQUEST, and CANCEL remain unchanged.
+
+###### P6-C Username Recovery START atomic production composition switch
+- Production now selects `IdempotentStartUsernameRecoveryService` as the sole `StartUsernameRecoveryUseCase` and supplies the authoritative Username Recovery session TTL to both shared lifecycle capture and protected session creation.
+- The active START bean composes the repository-wide shared executor, Username Recovery integration policy, protected operation, strict replay codec, transient bridge, and separately protected replay port.
+- The feature-local idempotency port and fingerprint beans remain because REQUEST and CANCEL still use them. The legacy START source remains temporarily for post-switch parity and cleanup review.
+- Controller paths, public mapping, cookie behavior, REQUEST, CANCEL, legacy namespaces, and protected replay persistence remain unchanged. Spotless and the full Maven suite remain deferred to P6-C stabilization.
+
+###### P6-C START post-switch guard repair closure
+- Completed the partially applied post-switch guard alignment using distinct invariants for the coordinator and protected-operation tests.
+- Both guards require the shared START coordinator. The protected-operation guard additionally requires its production composition, while retained legacy-source characterization remains independent of production selection.
+- Production code and all cumulative P6-C behavior remain unchanged.
+
+###### P6-C Username Recovery START authorized legacy cleanup
+- Removed the non-composed `StartUsernameRecoveryService`, its dedicated legacy lifecycle harness, and the isolated `UsernameRecoveryStartFingerprintGenerator` with its dedicated test after exact-symbol review.
+- Remapped affected ownership guards to `IdempotentStartUsernameRecoveryService` or `UsernameRecoveryStartProtectedOperation` according to current responsibility.
+- Retained the feature-local idempotency port, Redis adapter and mapper, records, reservation vocabulary, REQUEST/CANCEL fingerprint generators, and REQUEST/CANCEL replay codecs because REQUEST and CANCEL still depend on them.
+- The production START route remains exclusively on the repository-wide shared executor. Legacy START replay codec and snapshot cleanup remains deferred to a separate exact-reference review.
+
+###### P6-C START legacy-cleanup guard repair
+- Removed the stale fail-first read of the deleted legacy START coordinator while preserving assertions for shared production composition and the composed protected operation.
+- Updated the captcha regression guard to verify consume-before-lookup ordering inside the protected operation and to reject lifecycle ownership there.
+- Production code, shared START composition, protected replay, REQUEST, CANCEL, controllers, and cookies remain unchanged.
+
+###### P6-C Username Recovery START feature stabilization
+- Applied the single deferred Spotless pass after the production switch, replacement coverage, authorized legacy cleanup, and guard repair.
+- START remains exclusively composed through `IdempotentStartUsernameRecoveryService`; the protected operation, strict safe replay codec, separately protected replay store, controller contract, and cookie behavior remain intact.
+- REQUEST and CANCEL remain on the retained feature-local lifecycle and Redis persistence pending their dedicated migration stages.
+- This stabilization does not satisfy the P6-C transition gate. A separate full Maven suite and Spring application startup smoke test must pass before P6-D begins.
+
+###### P6-C Username Recovery START feature stabilization
+- Applied the single deferred Spotless pass after the production switch, replacement coverage, authorized legacy cleanup, and guard repair.
+- START remains exclusively composed through `IdempotentStartUsernameRecoveryService`; the protected operation, strict safe replay codec, separately protected replay store, controller contract, and cookie behavior remain intact.
+- REQUEST and CANCEL remain on the retained feature-local lifecycle and Redis persistence pending their dedicated migration stages.
+- This stabilization does not satisfy the P6-C transition gate. A separate full Maven suite and Spring application startup smoke test must pass before P6-D begins.
+
+###### P6-C Username Recovery START transition-gate closure
+- The complete Maven suite passed with 4,099 tests, zero failures, zero errors, and 12 skipped tests.
+- The local-profile Spring application started successfully on Netty port 8888 and remained running through the post-start stability window without bean or configuration errors.
+- START is exclusively composed through `IdempotentStartUsernameRecoveryService`; the retired legacy START coordinator and isolated START fingerprint generator are absent.
+- REQUEST and CANCEL remain on their retained feature-local lifecycle pending their dedicated P6 stages.
+- P6-C is complete. The next permitted stage is P6-D only from the exact committed baseline produced by this closure.

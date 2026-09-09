@@ -136,6 +136,59 @@ public class RedisAdapterConfig {
     return new RedisRateLimitAdapter(reactiveRedisTemplate, redisCacheKeyFactory);
   }
 
+  // @Bean
+  // public RedisLoginIdempotencyKeyFactory redisLoginIdempotencyKeyFactory(
+  //     @Value("${redis-cache.key-prefix:ngtpa}") String keyPrefix) {
+  //   return new RedisLoginIdempotencyKeyFactory(keyPrefix);
+  // }
+
+  // @Bean
+  // public LoginIdempotencyPersistenceIdDeriver loginIdempotencyPersistenceIdDeriver(
+  //     @Value("${auth-workflows.login.idempotency.persistence-hmac-secret:}")
+  //         String configuredSecret) {
+  //   if (configuredSecret == null
+  //       || configuredSecret.isBlank()
+  //       || configuredSecret.contains("change-me"))
+  //     throw new IllegalStateException(
+  //         "auth-workflows.login.idempotency.persistence-hmac-secret is missing or invalid");
+  //   byte[] secret;
+  //   try {
+  //     secret = java.util.Base64.getDecoder().decode(configuredSecret);
+  //   } catch (IllegalArgumentException e) {
+  //     throw new IllegalStateException(
+  //         "auth-workflows.login.idempotency.persistence-hmac-secret is malformed");
+  //   }
+  //   return new HmacLoginIdempotencyPersistenceIdDeriver(secret);
+  // }
+
+  // @Bean
+  // public LoginCredentialIdempotencyPort loginCredentialIdempotencyPort(
+  //     RedisLoginIdempotencyKeyFactory keyFactory,
+  //     LoginIdempotencyPersistenceIdDeriver derivation,
+  //     ReactiveStringRedisTemplate redisTemplate) {
+  //   return new RedisLoginCredentialIdempotencyAdapter(keyFactory, derivation, redisTemplate);
+  // }
+
+  // @Bean
+  // public RedisRegistrationIdempotencyKeyFactory redisRegistrationIdempotencyKeyFactory(
+  //     @Value("${redis-cache.key-prefix:ngtpa}") String keyPrefix) {
+  //   return new RedisRegistrationIdempotencyKeyFactory(keyPrefix);
+  // }
+
+  // @Bean
+  // public RedisRegistrationIdempotencyJsonMapper redisRegistrationIdempotencyJsonMapper() {
+  //   return new RedisRegistrationIdempotencyJsonMapper();
+  // }
+
+  // @Bean
+  // public RegistrationIdempotencyPort registrationIdempotencyPort(
+  //     RedisRegistrationIdempotencyKeyFactory keyFactory,
+  //     RedisRegistrationIdempotencyJsonMapper jsonMapper,
+  //     ReactiveStringRedisTemplate reactiveStringRedisTemplate) {
+  //   return new RedisRegistrationIdempotencyAdapter(
+  //       keyFactory, jsonMapper, reactiveStringRedisTemplate);
+  // }
+
   @Bean
   public com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword
           .RedisForgotPasswordOtpCommitStateKeyFactory

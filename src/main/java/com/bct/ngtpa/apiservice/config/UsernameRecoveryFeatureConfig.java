@@ -15,11 +15,14 @@ import com.bct.ngtpa.apiservice.adapter.out.security.usernamerecovery.AesGcmUser
 import com.bct.ngtpa.apiservice.adapter.out.security.usernamerecovery.UsernameRecoveryAuthFlowContextProtectionProperties;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionCookiePolicy;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionCookieSameSite;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyExecutor;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyOperationIdentityFactory;
 import com.bct.ngtpa.apiservice.application.port.in.CancelUsernameRecoveryUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.RequestUsernameRecoveryUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.StartUsernameRecoveryUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
+import com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryAuthFlowContextProtectorPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryEffectiveDestinationPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyPort;
@@ -27,17 +30,23 @@ import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryLookupPort;
 import com.bct.ngtpa.apiservice.application.service.auth.captcha.RegistrationCaptchaGateService;
 import com.bct.ngtpa.apiservice.application.service.auth.usernamerecovery.context.UsernameRecoveryAuthFlowContextBinding;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.CancelUsernameRecoveryService;
+import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.IdempotentStartUsernameRecoveryService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.RequestUsernameRecoveryService;
-import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.StartUsernameRecoveryService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryCancelFingerprintGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryRequestFingerprintGenerator;
-import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryStartFingerprintGenerator;
+import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryStartProtectedOperation;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryStartValidator;
+import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.idempotency.UsernameRecoveryIdempotencyIntegrationPolicy;
+import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.idempotency.UsernameRecoveryIdempotencyResponseEnvelope;
+import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.idempotency.start.UsernameRecoveryStartExecutionBridge;
+import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.idempotency.start.UsernameRecoveryStartProtectedReplayPort;
+import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.idempotency.start.UsernameRecoveryStartReplayCodec;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenHasher;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenValidationService;
 import com.bct.ngtpa.apiservice.infrastructure.security.CorsProperties;
 import java.time.Clock;
+import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
@@ -124,12 +133,6 @@ public class UsernameRecoveryFeatureConfig {
 
   @Bean
   @ConditionalOnMissingBean
-  public UsernameRecoveryStartFingerprintGenerator usernameRecoveryStartFingerprintGenerator() {
-    return new UsernameRecoveryStartFingerprintGenerator();
-  }
-
-  @Bean
-  @ConditionalOnMissingBean
   public UsernameRecoveryRequestFingerprintGenerator usernameRecoveryRequestFingerprintGenerator() {
     return new UsernameRecoveryRequestFingerprintGenerator();
   }
@@ -141,11 +144,38 @@ public class UsernameRecoveryFeatureConfig {
   }
 
   @Bean
-  @ConditionalOnMissingBean(StartUsernameRecoveryUseCase.class)
-  public StartUsernameRecoveryUseCase startUsernameRecoveryUseCase(
-      UsernameRecoveryStartValidator validator,
-      UsernameRecoveryStartFingerprintGenerator fingerprintGenerator,
-      UsernameRecoveryIdempotencyPort idempotencyPort,
+  @ConditionalOnMissingBean
+  public UsernameRecoveryIdempotencyIntegrationPolicy usernameRecoveryIdempotencyIntegrationPolicy(
+      IdempotencyOperationIdentityFactory identities) {
+    return new UsernameRecoveryIdempotencyIntegrationPolicy(identities);
+  }
+
+  @Bean
+  @ConditionalOnMissingBean
+  public UsernameRecoveryIdempotencyResponseEnvelope usernameRecoveryIdempotencyResponseEnvelope(
+      TransientJsonPort json) {
+    return new UsernameRecoveryIdempotencyResponseEnvelope(json);
+  }
+
+  @Bean
+  @ConditionalOnMissingBean
+  public UsernameRecoveryStartReplayCodec usernameRecoveryStartReplayCodec(
+      UsernameRecoveryIdempotencyResponseEnvelope envelope,
+      UsernameRecoveryStartProtectedReplayPort protectedReplay,
+      Clock clock) {
+    return new UsernameRecoveryStartReplayCodec(envelope, protectedReplay, clock);
+  }
+
+  @Bean
+  @ConditionalOnMissingBean
+  public UsernameRecoveryStartExecutionBridge usernameRecoveryStartExecutionBridge(
+      TransientJsonPort json, UsernameRecoveryStartReplayCodec codec) {
+    return new UsernameRecoveryStartExecutionBridge(json, codec);
+  }
+
+  @Bean
+  @ConditionalOnMissingBean
+  public UsernameRecoveryStartProtectedOperation usernameRecoveryStartProtectedOperation(
       RegistrationCaptchaGateService captchaGateService,
       UsernameRecoveryLookupPort lookupPort,
       AuthFlowSessionPort authFlowSessionPort,
@@ -154,10 +184,7 @@ public class UsernameRecoveryFeatureConfig {
       CsrfTokenHasher csrfTokenHasher,
       Clock clock,
       AuthWorkflowProperties properties) {
-    return new StartUsernameRecoveryService(
-        validator,
-        fingerprintGenerator,
-        idempotencyPort,
+    return new UsernameRecoveryStartProtectedOperation(
         captchaGateService,
         lookupPort,
         authFlowSessionPort,
@@ -166,6 +193,24 @@ public class UsernameRecoveryFeatureConfig {
         csrfTokenHasher,
         clock,
         usernameRecoverySessionTtlSeconds(properties));
+  }
+
+  @Bean
+  @ConditionalOnMissingBean(StartUsernameRecoveryUseCase.class)
+  public StartUsernameRecoveryUseCase startUsernameRecoveryUseCase(
+      IdempotencyExecutor executor,
+      UsernameRecoveryStartProtectedOperation operation,
+      UsernameRecoveryStartExecutionBridge responses,
+      UsernameRecoveryIdempotencyIntegrationPolicy policy,
+      UsernameRecoveryStartValidator validator,
+      AuthWorkflowProperties properties) {
+    return new IdempotentStartUsernameRecoveryService(
+        executor,
+        operation,
+        responses,
+        policy,
+        validator,
+        Duration.ofSeconds(usernameRecoverySessionTtlSeconds(properties)));
   }
 
   @Bean

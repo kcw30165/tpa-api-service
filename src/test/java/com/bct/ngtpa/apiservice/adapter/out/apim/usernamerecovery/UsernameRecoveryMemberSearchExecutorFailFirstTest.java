@@ -30,7 +30,8 @@ class UsernameRecoveryMemberSearchExecutorFailFirstTest {
   void startServiceSuppliesCompatibilityRoleOnlyAfterCaptchaGate() throws Exception {
     String service =
         compact(
-            source("application/usecase/auth/usernamerecovery/StartUsernameRecoveryService.java"));
+            source(
+                "application/usecase/auth/usernamerecovery/UsernameRecoveryStartProtectedOperation.java"));
     assertThat(service)
         .contains("ActorUserRole.ROLE_USER_MBR")
         .contains("newUsernameRecoveryLookupCommand(")

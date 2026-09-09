@@ -103,8 +103,7 @@ class RegistrationLookupContractFailFirstTest {
     assertThat(status)
         .doesNotContain("NOT_FOUND_OR_NOT_ELIGIBLE")
         .doesNotContain("UPSTREAM_BUSINESS_REJECTED");
-    assertThat(pageYaml)
-        .contains("endpoint: TRPSearchMember");
+    assertThat(pageYaml).contains("endpoint: TRPSearchMember");
   }
 
   @Test

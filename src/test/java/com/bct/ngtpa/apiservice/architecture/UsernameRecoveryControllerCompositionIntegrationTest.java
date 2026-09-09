@@ -108,7 +108,7 @@ class UsernameRecoveryControllerCompositionIntegrationTest {
             "adapter.out",
             "ReactiveStringRedisTemplate",
             "RedisTemplate",
-            "StartUsernameRecoveryService",
+            "IdempotentStartUsernameRecoveryService",
             "RequestUsernameRecoveryService",
             "CancelUsernameRecoveryService",
             "ResponseCookie.from",

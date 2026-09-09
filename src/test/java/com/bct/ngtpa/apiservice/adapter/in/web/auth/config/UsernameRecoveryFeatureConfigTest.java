@@ -14,18 +14,23 @@ import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionCookieOperation;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionCookieSameSite;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyExecutor;
+import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyOperationIdentityFactory;
 import com.bct.ngtpa.apiservice.application.port.in.CancelUsernameRecoveryUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.RequestUsernameRecoveryUseCase;
 import com.bct.ngtpa.apiservice.application.port.in.StartUsernameRecoveryUseCase;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.CaptchaChallengePort;
 import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
+import com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryAuthFlowContextProtectorPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryEffectiveDestinationPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryLookupPort;
 import com.bct.ngtpa.apiservice.application.service.auth.captcha.RegistrationCaptchaGateService;
 import com.bct.ngtpa.apiservice.application.service.auth.usernamerecovery.context.UsernameRecoveryAuthFlowContextBinding;
+import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.IdempotentStartUsernameRecoveryService;
+import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.idempotency.start.UsernameRecoveryStartProtectedReplayPort;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenGenerator;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenHasher;
 import com.bct.ngtpa.apiservice.application.usecase.session.authflow.CsrfTokenValidationService;
@@ -71,6 +76,14 @@ class UsernameRecoveryFeatureConfigTest {
             "auth-workflows.username-recovery.context-protection.secret=0123456789abcdef0123456789abcdef")
         .withBean(ReactiveStringRedisTemplate.class, () -> mock(ReactiveStringRedisTemplate.class))
         .withBean(RedisCacheKeyFactory.class, () -> new RedisCacheKeyFactory("ngtpa"))
+        .withBean(IdempotencyExecutor.class, () -> mock(IdempotencyExecutor.class))
+        .withBean(
+            IdempotencyOperationIdentityFactory.class,
+            () -> mock(IdempotencyOperationIdentityFactory.class))
+        .withBean(TransientJsonPort.class, () -> mock(TransientJsonPort.class))
+        .withBean(
+            UsernameRecoveryStartProtectedReplayPort.class,
+            () -> mock(UsernameRecoveryStartProtectedReplayPort.class))
         .withBean(CsrfTokenGenerator.class, SecureRandomCsrfTokenGenerator::new)
         .withBean(CsrfTokenHasher.class, Sha256CsrfTokenHasher::new)
         .withBean(Clock.class, () -> clock)
@@ -94,7 +107,9 @@ class UsernameRecoveryFeatureConfigTest {
         .run(
             context -> {
               assertThat(context.getStartupFailure()).isNull();
-              assertThat(context.getBean(StartUsernameRecoveryUseCase.class)).isNotNull();
+              assertThat(context.getBean(StartUsernameRecoveryUseCase.class))
+                  .isInstanceOf(IdempotentStartUsernameRecoveryService.class);
+              assertThat(context.getBeansOfType(StartUsernameRecoveryUseCase.class)).hasSize(1);
               assertThat(context.getBean(RequestUsernameRecoveryUseCase.class)).isNotNull();
               assertThat(context.getBean(CancelUsernameRecoveryUseCase.class)).isNotNull();
               assertThat(context.getBean(UsernameRecoveryIdempotencyPort.class)).isNotNull();
