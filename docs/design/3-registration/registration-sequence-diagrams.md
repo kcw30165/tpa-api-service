@@ -361,7 +361,7 @@ sequenceDiagram
         Pages-->>BFF: Localized success page<br/>Return to Login only
         BFF->>Idem: Mark completed with response snapshot
         Idem-->>BFF: Idempotency updated
-        BFF-->>FE: success=true<br/>nextStep=REGISTRATION_SUCCESS<br/>unregisteredTrusts=[]<br/>successPage noRemainingTrusts
+        BFF-->>FE: success=true<br/>nextStep=RETURN_TO_LOGIN<br/>unregisteredTrusts=[]<br/>successPage noRemainingTrusts
         FE-->>User: Show success page<br/>Return to Login
     else Remaining unregistered trusts exist
         BFF->>Session: Mark status=TRUST_SELECTION_READY<br/>clear previous usernameCheck / selectedTrust
@@ -370,7 +370,7 @@ sequenceDiagram
         Pages-->>BFF: Localized success page<br/>Continue Registration + Return to Login
         BFF->>Idem: Mark completed with response snapshot
         Idem-->>BFF: Idempotency updated
-        BFF-->>FE: success=true<br/>nextStep=REGISTRATION_SUCCESS<br/>unregisteredTrusts[]<br/>successPage hasRemainingTrusts
+        BFF-->>FE: success=true<br/>nextStep=SELECT_TRUST<br/>unregisteredTrusts[]<br/>successPage hasRemainingTrusts
         FE-->>User: Show success page<br/>Continue Registration / Return to Login
     end
 ```

@@ -8,6 +8,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.registration.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.RegistrationAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.AuthFlowSessionId;
 import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationErrorKey;
+import com.bct.ngtpa.apiservice.application.dto.workflow.RegistrationMessageKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.SharedWorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowErrorKey;
 import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
@@ -337,6 +338,13 @@ public class StartRegistrationService implements StartRegistrationUseCase {
             validated.dateOfBirth(),
             validated.contactType(),
             validated.contactValue());
+    List<RegistrationLookupAccount> unregisteredAccounts =
+        lookup.accounts().stream()
+            .filter(account -> Boolean.FALSE.equals(account.registered()))
+            .toList();
+    if (unregisteredAccounts.isEmpty()) {
+      return completeAlreadyRegisteredStart(command, hash, validated, registrationContext);
+    }
     return sessionGateway
         .createRegistrationSession(
             validated.maskedDestination(), validated.contactType(), registrationContext)
@@ -405,6 +413,56 @@ public class StartRegistrationService implements StartRegistrationUseCase {
                                                   return markCompleted(command, hash, started)
                                                       .thenReturn(started);
                                                 }))));
+  }
+
+  private Mono<StartRegistrationResult> completeAlreadyRegisteredStart(
+      StartRegistrationCommand command,
+      RegistrationRequestHash hash,
+      RegistrationStartCommand validated,
+      RegistrationAuthFlowContext registrationContext) {
+    return sessionGateway
+        .createRegistrationSession(
+            validated.maskedDestination(), validated.contactType(), registrationContext)
+        .flatMap(
+            sessionId ->
+                authFlowSessionPort
+                    .loadSnapshot(new AuthFlowSessionId(sessionId))
+                    .flatMap(
+                        optional -> {
+                          if (optional.isEmpty()) {
+                            return Mono.error(
+                                new IllegalStateException(
+                                    "Registration auth-flow session was not available for completion"));
+                          }
+                          return authFlowSessionPort
+                              .completeRevisioned(optional.orElseThrow(), clock.instant())
+                              .flatMap(
+                                  mutation -> {
+                                    if (mutation.outcome()
+                                        != com.bct.ngtpa.apiservice.application.dto.session.authflow
+                                            .AuthFlowSessionMutationOutcome.APPLIED) {
+                                      return Mono.error(
+                                          new IllegalStateException(
+                                              "Registration auth-flow session completion failed"));
+                                    }
+                                    var completed =
+                                        new StartRegistrationResult(
+                                            StartRegistrationResultStatus.REGISTRATION_COMPLETED,
+                                            WorkflowNextStep.RETURN_TO_LOGIN,
+                                            null,
+                                            0,
+                                            0,
+                                            0,
+                                            null,
+                                            sessionId,
+                                            List.of(RegistrationMessageKey.COMPLETION.value()),
+                                            List.of(),
+                                            RegistrationIdempotencyStartOutcome.STARTED,
+                                            null);
+                                    return markCompleted(command, hash, completed)
+                                        .thenReturn(completed);
+                                  });
+                        }));
   }
 
   private RegistrationRequestHash requestHash(StartRegistrationCommand command) {

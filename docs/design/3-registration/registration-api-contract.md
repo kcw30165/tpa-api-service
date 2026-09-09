@@ -536,7 +536,7 @@ Rules:
   "status": "UPDATED",
   "result": {
     "registered": true,
-    "nextStep": "REGISTRATION_SUCCESS",
+    "nextStep": "RETURN_TO_LOGIN",
     "unregisteredTrusts": [],
     "successPage": {
       "pageId": "registration-success",
@@ -573,7 +573,7 @@ Rules:
   "status": "UPDATED",
   "result": {
     "registered": true,
-    "nextStep": "REGISTRATION_SUCCESS",
+    "nextStep": "SELECT_TRUST",
     "unregisteredTrusts": [
       {
         "trustCode": "UB",
@@ -667,3 +667,7 @@ If FE has lost CSRF, FE must not call cancel. Old session will expire or be repl
 ## Canonical captcha contract
 
 The standalone captcha lifecycle, HTTP 422 lifecycle-ineligible response, public error ownership, state concealment, and migration rules are defined by [`../captcha/captcha-verification-lifecycle-contract.md`](../captcha/captcha-verification-lifecycle-contract.md). Registration submits only `captchaChallengeId`, consumes through the shared application gate, retains `err.registration.captcha.*` workflow errors, and performs no downstream side effect after consumption rejection.
+
+#### 5.5 Already Fully Registered
+
+When `TRPSearchMember` returns records but none has `isRegistered=false`, Java creates the protected registration AuthFlowSession and immediately transitions it to `COMPLETED`. Java does not create or deliver an OTP. The response is successful with `result.nextStep=RETURN_TO_LOGIN`, a page-level INFO message whose code is `registration.completion`, and an empty errors array.
