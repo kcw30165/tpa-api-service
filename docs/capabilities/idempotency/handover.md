@@ -1,20 +1,21 @@
-## Shared Idempotency Handover
+### Shared Idempotency Handover
 
-### Authoritative current state
+#### Authoritative current state
+- Branch: fix/relay-same-error-code-for-the-idempotent-request
+- Exact validated P5 and P6 starting Git HEAD: 49fb6adc3cab82b753b9bbd7e20c05b42fc7820f
+- Exact origin/dev ancestor: 83728f39d186dbd614d134e2c41825811232ddc7
+- P5 status: complete and closed
+- Current phase: P6-A Username Recovery migration documentation baseline
+- Proven in-scope actions: START, REQUEST, and CANCEL
+- Current production routes: all three actions remain on the Username Recovery feature-local response-idempotency lifecycle
+- Current uncommitted scope: P6 migration design, consolidation-plan alignment, and handover alignment only
+- Next gate: commit the P6-A documentation baseline, then run the required full Maven and Spring startup transition gate before P6-B implementation
+- Next permitted implementation after that gate: P6-B shared Username Recovery integration contracts without production routing changes
+- Planned final implementation commit: refactor(username-recovery): migrate idempotency to shared capability
 
-- Branch: `fix/relay-same-error-code-for-the-idempotent-request`
-- Exact cumulative Git pre-state: `f719d5f29f729f6176163d891c75fb40ce6b8d8c`
-- Latest approved committed documentation baseline: `a998997c800bb5ddc7649cd58bb4006152e311d7`, `docs(idempotency): define registration migration baseline`
-- Cumulative uncommitted Login stages: P4-A1 through P4-A2E3, P4-B1A through P4-B1C, P4-B2A1, and P4-B2B1B
-- Current Login Start production route: `SharedStartLoginService` through the shared idempotency executor; retained `StartLoginService` is the composition-only rollback path
-- Current completed implementation: P4-B2D1D deterministic shared-versus-legacy Login Start namespace isolation validation
-- Current blocker: Production-composed Login controller-boundary validation remains pending
-- Next permitted stage: P4-B2D1E production-composed Login controller-boundary validation
-- Deferred implementation commit: `refactor(login): migrate idempotency to shared capability`
+#### Current production constraint
 
-### Current production constraint
-
-No Login action is switched to a new shared coordinator by P4-B2A1. Login Start, OTP Send, OTP Resend, OTP Verify, controllers, mappers, cookies, and public HTTP mappings remain on their current production routes. Legacy Login idempotency lifecycle code remains until the approved action migrations and compatibility window are complete.
+P6-A changes documentation only. START, REQUEST, CANCEL, controllers, public mappings, cookies, protected auth-flow context, Redis writers, and Spring production composition remain unchanged. No feature-local Username Recovery idempotency component may be deleted until all consumers migrate and the compatibility and stale-component deletion gates pass.
 
 ### Historical migration record
 
@@ -938,3 +939,20 @@ Final committed-state validation completed successfully at Git HEAD `4afbc2726a6
 - All five idempotent actions use shared execution; CANCEL remains outside it.
 - Protected START replay and OTP commit state remain; the retired feature-local response lifecycle remains absent.
 - Next action is the final P5-E full Maven, Spring startup, documentation-diff, and commit gate.
+
+<!-- P6-A-USERNAME-RECOVERY-HANDOVER:START -->
+### P6-A Username Recovery migration documentation baseline
+
+- Exact P6 starting baseline: `49fb6adc3cab82b753b9bbd7e20c05b42fc7820f` on `fix/relay-same-error-code-for-the-idempotent-request`.
+- P5 remains closed. No P5 work is reopened.
+- The read-only audit proved three existing idempotent endpoints and production consumers: START, REQUEST, and CANCEL.
+- CANCEL remains in P6 because the current API contract, command, controller, service, fingerprint, replay codec, Redis lifecycle, and tests already require idempotency.
+- START consumes one-time captcha before APIM lookup and auth-flow session creation. Successful replay requires protected session/CSRF continuity outside the shared safe snapshot.
+- REQUEST is distinct. It reserves session candidate state before one message dispatch containing the username, then commits post-delivery state. Any accepted or uncertain dispatch must remain unknown outcome with no blind resend.
+- CANCEL is revision-aware and preserves encrypted workflow context until original expiry. It needs shared response idempotency but no new protected replay store for its public success body.
+- The current direct session-ID START/REQUEST replay descriptors are not acceptable shared snapshot content. Migration must use opaque protected replay references.
+- The legacy Redis namespace is isolated from the shared HMAC namespace. Use one writer per action, no dual-write, and fail closed on ambiguous legacy state. Confirm exact maximum idempotency TTL before P6-F deletion.
+- P6-A design: `docs/capabilities/idempotency/username-recovery-p6-migration-design.md`.
+- Next permitted stage: P6-B shared Username Recovery integration contracts without production routing changes.
+- Planned final implementation commit: `refactor(username-recovery): migrate idempotency to shared capability`.
+<!-- P6-A-USERNAME-RECOVERY-HANDOVER:END -->

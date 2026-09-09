@@ -723,3 +723,13 @@ Final committed-state validation completed successfully at Git HEAD `4afbc2726a6
 P5-E closes the Forgot Password migration after all five idempotent actions moved to shared execution and P5-D removed the obsolete feature-local response-idempotency lifecycle. The retained START replay and OTP commit-state stores are protected workflow-continuity facilities, not duplicate shared lifecycle persistence. CANCEL remains ordinary revision-aware cancellation.
 
 Repository cleanup occurred before deployment, so deployment timestamps, environment coverage, rollback-window closure, legacy TTL drainage, and Redis-key deletion are not applicable. Final closure is a documentation-alignment, full Maven, Spring startup, diff-hygiene, and clean-working-tree gate.
+
+<!-- P6-USERNAME-RECOVERY-BASELINE:START -->
+### P6 Username Recovery migration baseline
+
+P6 migrates the existing START, REQUEST, and CANCEL feature-local response-idempotency lifecycle to the repository-wide shared capability. Repository evidence proves REQUEST is a distinct action and CANCEL already has an approved idempotency contract, so all three remain in scope.
+
+The detailed design and acceptance matrix are in [Username Recovery P6 shared idempotency migration design](username-recovery-p6-migration-design.md). START and REQUEST require protected workflow continuity outside the safe shared snapshot; REQUEST must replace its direct session-ID replay descriptor with an opaque protected reference. CANCEL retains revision-aware auth-flow cancellation and encrypted context until original TTL expiry but requires no duplicate response lifecycle.
+
+The approved sequence is P6-A documentation, P6-B shared integration contracts, P6-C START, P6-D REQUEST, P6-E CANCEL, P6-F compatibility closure and mandatory stale lifecycle deletion, and P6-G stabilization. This is not the P7 repository-wide consolidation phase.
+<!-- P6-USERNAME-RECOVERY-BASELINE:END -->
