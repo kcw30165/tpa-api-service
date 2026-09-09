@@ -9,9 +9,6 @@ import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.policy.User
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.policy.UsernameRecoveryRequestResponsePolicy;
 import com.bct.ngtpa.apiservice.adapter.in.web.auth.usernamerecovery.policy.UsernameRecoveryStartResponsePolicy;
 import com.bct.ngtpa.apiservice.adapter.out.json.JacksonTransientJsonAdapter;
-import com.bct.ngtpa.apiservice.adapter.out.redis.RedisCacheKeyFactory;
-import com.bct.ngtpa.apiservice.adapter.out.redis.usernamerecovery.RedisUsernameRecoveryIdempotencyAdapter;
-import com.bct.ngtpa.apiservice.adapter.out.redis.usernamerecovery.RedisUsernameRecoveryIdempotencyJsonMapper;
 import com.bct.ngtpa.apiservice.adapter.out.security.usernamerecovery.AesGcmUsernameRecoveryAuthFlowContextProtectorAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.security.usernamerecovery.UsernameRecoveryAuthFlowContextProtectionProperties;
 import com.bct.ngtpa.apiservice.application.dto.session.SessionCookiePolicy;
@@ -26,19 +23,20 @@ import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
 import com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryAuthFlowContextProtectorPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryEffectiveDestinationPort;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryLookupPort;
 import com.bct.ngtpa.apiservice.application.service.auth.captcha.RegistrationCaptchaGateService;
 import com.bct.ngtpa.apiservice.application.service.auth.usernamerecovery.context.UsernameRecoveryAuthFlowContextBinding;
-import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.CancelUsernameRecoveryService;
+import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.IdempotentCancelUsernameRecoveryService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.IdempotentRequestUsernameRecoveryService;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.IdempotentStartUsernameRecoveryService;
-import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryCancelFingerprintGenerator;
+import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryCancelProtectedOperation;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryRequestProtectedOperation;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryStartProtectedOperation;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.UsernameRecoveryStartValidator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.idempotency.UsernameRecoveryIdempotencyIntegrationPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.idempotency.UsernameRecoveryIdempotencyResponseEnvelope;
+import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.idempotency.cancel.UsernameRecoveryCancelExecutionBridge;
+import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.idempotency.cancel.UsernameRecoveryCancelReplayCodec;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.idempotency.request.UsernameRecoveryRequestExecutionBridge;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.idempotency.request.UsernameRecoveryRequestReplayCodec;
 import com.bct.ngtpa.apiservice.application.usecase.auth.usernamerecovery.idempotency.start.UsernameRecoveryStartExecutionBridge;
@@ -55,7 +53,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 
 /**
  * Repair 024A Spring composition for the Username Recovery controller prerequisites.
@@ -77,21 +74,6 @@ import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 public class UsernameRecoveryFeatureConfig {
 
   private static final String USERNAME_RECOVERY_COOKIE_PATH = "/api/v1/auth/username-recovery";
-
-  @Bean
-  @ConditionalOnMissingBean
-  public RedisUsernameRecoveryIdempotencyJsonMapper redisUsernameRecoveryIdempotencyJsonMapper() {
-    return new RedisUsernameRecoveryIdempotencyJsonMapper();
-  }
-
-  @Bean
-  @ConditionalOnMissingBean(UsernameRecoveryIdempotencyPort.class)
-  public UsernameRecoveryIdempotencyPort usernameRecoveryIdempotencyPort(
-      ReactiveStringRedisTemplate redis,
-      RedisCacheKeyFactory keyFactory,
-      RedisUsernameRecoveryIdempotencyJsonMapper jsonMapper) {
-    return new RedisUsernameRecoveryIdempotencyAdapter(redis, keyFactory, jsonMapper);
-  }
 
   @Bean
   @ConditionalOnMissingBean
@@ -133,12 +115,6 @@ public class UsernameRecoveryFeatureConfig {
   @ConditionalOnMissingBean
   public UsernameRecoveryStartValidator usernameRecoveryStartValidator() {
     return new UsernameRecoveryStartValidator();
-  }
-
-  @Bean
-  @ConditionalOnMissingBean
-  public UsernameRecoveryCancelFingerprintGenerator usernameRecoveryCancelFingerprintGenerator() {
-    return new UsernameRecoveryCancelFingerprintGenerator();
   }
 
   @Bean
@@ -272,25 +248,49 @@ public class UsernameRecoveryFeatureConfig {
   }
 
   @Bean
-  @ConditionalOnMissingBean(CancelUsernameRecoveryUseCase.class)
-  public CancelUsernameRecoveryUseCase cancelUsernameRecoveryUseCase(
-      UsernameRecoveryCancelFingerprintGenerator fingerprintGenerator,
-      UsernameRecoveryIdempotencyPort idempotencyPort,
+  @ConditionalOnMissingBean
+  public UsernameRecoveryCancelReplayCodec usernameRecoveryCancelReplayCodec(
+      UsernameRecoveryIdempotencyResponseEnvelope envelope) {
+    return new UsernameRecoveryCancelReplayCodec(envelope);
+  }
+
+  @Bean
+  @ConditionalOnMissingBean
+  public UsernameRecoveryCancelExecutionBridge usernameRecoveryCancelExecutionBridge(
+      TransientJsonPort json, UsernameRecoveryCancelReplayCodec codec) {
+    return new UsernameRecoveryCancelExecutionBridge(json, codec);
+  }
+
+  @Bean
+  @ConditionalOnMissingBean
+  public UsernameRecoveryCancelProtectedOperation usernameRecoveryCancelProtectedOperation(
       AuthFlowSessionPort authFlowSessionPort,
       UsernameRecoveryAuthFlowContextBinding contextBinding,
       CsrfTokenValidationService csrfTokenValidationService,
-      CorsProperties corsProperties,
-      Clock clock,
-      AuthWorkflowProperties properties) {
-    return new CancelUsernameRecoveryService(
-        fingerprintGenerator,
-        idempotencyPort,
+      CorsProperties corsProperties) {
+    return new UsernameRecoveryCancelProtectedOperation(
         authFlowSessionPort,
         contextBinding,
         csrfTokenValidationService,
-        corsProperties.getAllowedOrigins(),
+        corsProperties.getAllowedOrigins());
+  }
+
+  @Bean
+  @ConditionalOnMissingBean(CancelUsernameRecoveryUseCase.class)
+  public CancelUsernameRecoveryUseCase cancelUsernameRecoveryUseCase(
+      IdempotencyExecutor executor,
+      UsernameRecoveryCancelProtectedOperation operation,
+      UsernameRecoveryCancelExecutionBridge responses,
+      UsernameRecoveryIdempotencyIntegrationPolicy policy,
+      Clock clock,
+      AuthWorkflowProperties properties) {
+    return new IdempotentCancelUsernameRecoveryService(
+        executor,
+        operation,
+        responses,
+        policy,
         clock,
-        usernameRecoverySessionTtlSeconds(properties));
+        Duration.ofSeconds(usernameRecoverySessionTtlSeconds(properties)));
   }
 
   @Bean

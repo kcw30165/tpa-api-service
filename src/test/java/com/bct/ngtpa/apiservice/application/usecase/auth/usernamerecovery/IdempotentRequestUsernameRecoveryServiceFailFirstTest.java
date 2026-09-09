@@ -31,7 +31,6 @@ class IdempotentRequestUsernameRecoveryServiceFailFirstTest {
             "UsernameRecoveryRequestExecutionBridge",
             "IdempotentExecutionCommand")
         .doesNotContain(
-            "UsernameRecoveryIdempotencyPort",
             "UsernameRecoveryIdempotencyRecord",
             "UsernameRecoveryRequestFingerprintGenerator",
             "UsernameRecoveryRequestReplayCodec.encode(",
@@ -72,7 +71,7 @@ class IdempotentRequestUsernameRecoveryServiceFailFirstTest {
     assertThat(source)
         .contains("return new IdempotentStartUsernameRecoveryService(")
         .contains("return new IdempotentRequestUsernameRecoveryService(")
-        .contains("return new CancelUsernameRecoveryService(")
+        .contains("return new IdempotentCancelUsernameRecoveryService(")
         .doesNotContain("return new RequestUsernameRecoveryService(");
   }
 }

@@ -45,7 +45,6 @@ class UsernameRecoveryRequestSharedMigrationFailFirstTest {
         .contains("markRequested(", "markFailed(", "markUnknownOutcome(")
         .doesNotContain(
             "IdempotencyExecutor",
-            "UsernameRecoveryIdempotencyPort",
             "IdempotencyPort",
             "idempotencyPort.reserve(",
             "idempotencyPort.complete(",
@@ -90,6 +89,6 @@ class UsernameRecoveryRequestSharedMigrationFailFirstTest {
         .contains("return new IdempotentStartUsernameRecoveryService(")
         .contains("return new IdempotentRequestUsernameRecoveryService(")
         .doesNotContain("return new RequestUsernameRecoveryService(")
-        .contains("return new CancelUsernameRecoveryService(");
+        .contains("return new IdempotentCancelUsernameRecoveryService(");
   }
 }

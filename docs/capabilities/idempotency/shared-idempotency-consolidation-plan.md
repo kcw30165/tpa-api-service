@@ -989,3 +989,57 @@ Added stable shared actions, opaque operation identity, exact legacy-byte-compat
 - Eager local-profile Spring startup passed with lazy initialization disabled and runtime-only redacted key material. Netty reached port 8888 and the application remained alive through the stability window.
 - Production START and REQUEST remain on shared idempotency. CANCEL and its feature-local Redis lifecycle remain preserved for P6-E.
 - P6-D may now be committed. P6-E must begin only from the resulting exact committed baseline.
+
+###### P6-E CANCEL fail-first shared boundary
+- Added a compile-safe, intentionally red contract for `IdempotentCancelUsernameRecoveryService`, `UsernameRecoveryCancelProtectedOperation`, its typed protected result, and strict CANCEL replay codec/execution bridge.
+- The future protected operation must preserve origin and CSRF authorization, protected-context authorization, revision-aware cancellation, and original-expiry retention while owning no feature-local or shared idempotency lifecycle.
+- CANCEL requires a strict safe action-tagged snapshot and no new protected replay store because its established public result contains no protected continuity.
+- Production remains on `CancelUsernameRecoveryService`. Shared START and REQUEST, runtime composition, controllers, cookies, and Redis namespaces remain unchanged until the dedicated atomic switch.
+
+####### P6-E CANCEL protected operation and replay foundation
+- Added the parallel lifecycle-neutral CANCEL protected operation and typed execution result.
+- Added strict action-tagged safe replay capture and hydration with no protected replay store, headers, session identity, CSRF value, or protected context in persistence.
+- The protected operation preserves absent and terminal idempotent success, retained-context validation, origin and CSRF authorization, one revision-aware cancellation, original createdAt/expiresAt/data continuity, and conservative post-mutation uncertainty classification.
+- Production remains on `CancelUsernameRecoveryService`; shared START and REQUEST and every legacy CANCEL lifecycle asset remain unchanged.
+
+####### P6-E CANCEL parallel shared coordinator
+- Added `IdempotentCancelUsernameRecoveryService` in parallel over the repository-wide shared executor.
+- The coordinator preserves the established session-scoped operation identity and CANCEL fingerprint, invokes the protected operation only through acquisition, routes strict capture and hydration through the CANCEL bridge, and maps protected failure boundaries conservatively.
+- The lifecycle-neutral protected operation now states its revision-aware responsibility explicitly. Production remains on `CancelUsernameRecoveryService`; no legacy CANCEL lifecycle asset is removed.
+
+####### P6-E CANCEL atomic production composition switch
+- Production `CancelUsernameRecoveryUseCase` now selects `IdempotentCancelUsernameRecoveryService` with the repository-wide shared executor, existing CANCEL identity/fingerprint policy, strict safe replay bridge, lifecycle-neutral protected operation, UTC clock, and authoritative Username Recovery session TTL.
+- The active CANCEL bean no longer receives `UsernameRecoveryCancelFingerprintGenerator` or `UsernameRecoveryIdempotencyPort`.
+- Legacy CANCEL coordinator, fingerprint generator, replay codec, feature-local port, records, Redis adapter, and tests remain intact pending a separate exact-reference cleanup audit.
+- Shared START and REQUEST composition, controllers, cookies, public mappings, protected context, and Redis namespaces remain unchanged. Formatting and full-suite validation remain deferred.
+
+####### P6-E retired feature-local lifecycle cleanup
+- Removed the non-composed legacy CANCEL coordinator, isolated legacy CANCEL fingerprint and replay codecs, obsolete direct-session START replay descriptors, feature-local idempotency port/models, Redis lifecycle adapter/mapper/record/key factory, and their dedicated tests.
+- Removed the obsolete feature-local lifecycle and CANCEL fingerprint Spring beans and remapped architecture/configuration guards to current shared owners.
+- Preserved shared START, REQUEST, and CANCEL production routes, START protected replay persistence, strict action-tagged replay bridges, controllers, cookies, protected auth-flow context, and unrelated Redis infrastructure.
+- Formatting, full Maven validation, normal local startup, and commit remain deferred to the P6-E stabilization and transition gates.
+
+####### P6-E cleanup architecture-guard repair
+- Retargeted protected session, protected-context, revision-aware cancellation, and retained-context assertions from the thin shared coordinator to `UsernameRecoveryCancelProtectedOperation`, which owns those responsibilities.
+- Replaced the deleted feature-local `UsernameRecoveryIdempotencyPort` configuration expectation with the repository-wide `IdempotencyExecutor` boundary.
+- Production code, the retired lifecycle deletion set, all three shared Username Recovery routes, START protected replay, controllers, cookies, and persistence behavior remain unchanged.
+
+####### P6-E feature stabilization
+- Applied the single deferred Spotless pass after the CANCEL production switch, retired feature-local lifecycle cleanup, and architecture-guard repair.
+- Production START, REQUEST, and CANCEL remain exclusively composed through the repository-wide shared executor.
+- The obsolete Username Recovery response-idempotency port, models, Redis lifecycle adapter, legacy CANCEL coordinator, and direct-session replay descriptors remain absent.
+- START protected replay persistence, strict action-specific replay bridges, protected operations, controllers, cookies, protected context, and unrelated Redis assets remain preserved.
+- This stabilization does not close P6-E. The complete Maven suite and eager local Spring startup smoke test must pass before commit or transition.
+
+####### P6-E full-suite stale REQUEST guard repair
+- Updated the retained REQUEST protected-operation preservation assertion to require the active shared CANCEL coordinator rather than the deleted legacy CANCEL coordinator.
+- The full-suite failure was confined to this stale source-text expectation. Production code, shared START/REQUEST/CANCEL composition, lifecycle cleanup, formatting, controllers, cookies, protected replay, and persistence remain unchanged.
+- The complete Maven suite and eager local startup gate must be rerun before commit or transition.
+
+####### P6-E final transition-gate closure
+- The complete Maven suite passed with 3,963 tests, zero failures, zero errors, and 12 skipped tests on the final cumulative P6-E tree.
+- Eager local-profile Spring startup passed with lazy initialization unchanged. Netty started on port 8888, the application reached its started marker, and it remained alive through the stability window.
+- Production START, REQUEST, and CANCEL are exclusively composed through the repository-wide shared idempotency executor.
+- The retired Username Recovery feature-local response-idempotency lifecycle, Redis adapter, port, records, legacy CANCEL coordinator, action-local fingerprint generator, and obsolete direct-session replay descriptors remain absent.
+- START protected replay persistence, strict action-specific replay bridges, lifecycle-neutral protected operations, controllers, cookies, protected auth-flow context, and unrelated Redis infrastructure remain preserved.
+- P6-E is complete and may be committed with `refactor(username-recovery): migrate cancel to shared idempotency`. No deployment, environment-coverage, rollback-window, or TTL-drainage claim is made.

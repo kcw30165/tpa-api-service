@@ -64,7 +64,7 @@ class UsernameRecoveryControllerArchitectureGuardTest {
             "infrastructure",
             "UsernameRecoveryFeatureConfig",
             "StartUsernameRecoveryService",
-            "CancelUsernameRecoveryService",
+            "IdempotentCancelUsernameRecoveryService",
             "AuthLogin",
             "AuthRegistration",
             "AuthCaptcha",

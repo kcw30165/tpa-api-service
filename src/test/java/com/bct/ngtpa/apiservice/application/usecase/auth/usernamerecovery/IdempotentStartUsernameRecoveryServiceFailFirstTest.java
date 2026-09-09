@@ -37,7 +37,6 @@ class IdempotentStartUsernameRecoveryServiceFailFirstTest {
             "policy.possibleSideEffect()",
             "responses::hydrate")
         .doesNotContain(
-            "UsernameRecoveryIdempotencyPort",
             "UsernameRecoveryRequestHashGenerator",
             "adapter.out.redis",
             "adapter.in.web",

@@ -78,7 +78,7 @@ class UsernameRecoveryRequestProtectedOperationParityBoundaryTest {
     assertThat(source)
         .contains("return new IdempotentStartUsernameRecoveryService(")
         .contains("return new IdempotentRequestUsernameRecoveryService(")
-        .contains("return new CancelUsernameRecoveryService(")
+        .contains("return new IdempotentCancelUsernameRecoveryService(")
         .doesNotContain("return new RequestUsernameRecoveryService(");
   }
 }

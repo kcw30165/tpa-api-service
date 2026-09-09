@@ -25,7 +25,6 @@ import com.bct.ngtpa.apiservice.application.port.out.MessageDeliveryPort;
 import com.bct.ngtpa.apiservice.application.port.out.TransientJsonPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryAuthFlowContextProtectorPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryEffectiveDestinationPort;
-import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.UsernameRecoveryLookupPort;
 import com.bct.ngtpa.apiservice.application.service.auth.captcha.RegistrationCaptchaGateService;
 import com.bct.ngtpa.apiservice.application.service.auth.usernamerecovery.context.UsernameRecoveryAuthFlowContextBinding;
@@ -114,7 +113,6 @@ class UsernameRecoveryFeatureConfigTest {
               assertThat(context.getBean(RequestUsernameRecoveryUseCase.class))
                   .isInstanceOf(IdempotentRequestUsernameRecoveryService.class);
               assertThat(context.getBean(CancelUsernameRecoveryUseCase.class)).isNotNull();
-              assertThat(context.getBean(UsernameRecoveryIdempotencyPort.class)).isNotNull();
               assertThat(context.getBean(UsernameRecoveryAuthFlowContextBinding.class)).isNotNull();
               assertThat(context.getBean(UsernameRecoveryAuthFlowContextProtectorPort.class))
                   .isNotNull();

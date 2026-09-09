@@ -54,7 +54,6 @@ class UsernameRecoveryRequestProtectedOperationFailFirstTest {
             "MessageDeliveryStatus.FAILED",
             "MessageDeliveryStatus.UNKNOWN_OUTCOME")
         .doesNotContain(
-            "UsernameRecoveryIdempotencyPort",
             "IdempotencyExecutor",
             "UsernameRecoveryRequestReplayCodec",
             "recordUnknownOutcome(",
@@ -73,7 +72,7 @@ class UsernameRecoveryRequestProtectedOperationFailFirstTest {
         .contains(
             "return new IdempotentStartUsernameRecoveryService(",
             "return new IdempotentRequestUsernameRecoveryService(",
-            "return new CancelUsernameRecoveryService(")
+            "return new IdempotentCancelUsernameRecoveryService(")
         .doesNotContain("return new RequestUsernameRecoveryService(");
   }
 

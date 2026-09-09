@@ -15,8 +15,8 @@ import org.junit.jupiter.api.Test;
  * <p>Locks the bounded application boundary of the new cancel orchestration:
  *
  * <ul>
- *   <li>{@code CancelUsernameRecoveryService} is the canonical application-layer implementation of
- *       {@link CancelUsernameRecoveryUseCase};
+ *   <li>{@code IdempotentCancelUsernameRecoveryService} is the canonical application-layer
+ *       implementation of {@link CancelUsernameRecoveryUseCase};
  *   <li>the whole cancel application package stays framework-free, adapter-free,
  *       infrastructure-free, and never references web DTOs or the {@code ApiStatus} response enum;
  *   <li>the cancel replay codec persists only a constant descriptor: it must never depend on the
@@ -38,10 +38,11 @@ class UsernameRecoveryCancelArchitectureGuardTest {
     ArchRule rule =
         classes()
             .that()
-            .haveSimpleName("CancelUsernameRecoveryService")
+            .haveSimpleName("IdempotentCancelUsernameRecoveryService")
             .should()
             .implement(CancelUsernameRecoveryUseCase.class)
-            .as("CancelUsernameRecoveryService must implement CancelUsernameRecoveryUseCase");
+            .as(
+                "IdempotentCancelUsernameRecoveryService must implement CancelUsernameRecoveryUseCase");
     rule.check(classes);
   }
 
@@ -50,7 +51,7 @@ class UsernameRecoveryCancelArchitectureGuardTest {
     String source =
         java.nio.file.Files.readString(
             java.nio.file.Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/usernamerecovery/CancelUsernameRecoveryService.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/usernamerecovery/UsernameRecoveryCancelProtectedOperation.java"));
     org.assertj.core.api.Assertions.assertThat(source)
         .doesNotContain(
             "UsernameRecoverySessionPort",
@@ -63,7 +64,7 @@ class UsernameRecoveryCancelArchitectureGuardTest {
             "AuthFlowSessionPort",
             "UsernameRecoveryAuthFlowContextBinding",
             "cancelRevisioned",
-            "validateRetainedContext");
+            "validateContext");
   }
 
   @Test

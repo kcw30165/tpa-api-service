@@ -30,7 +30,6 @@ class UsernameRecoveryStartProtectedOperationFailFirstTest {
             "CsrfTokenGenerator",
             "CsrfTokenHasher")
         .doesNotContain(
-            "UsernameRecoveryIdempotencyPort",
             "IdempotencyExecutor",
             "IdempotentExecutionCommand",
             "ReplaySnapshot",

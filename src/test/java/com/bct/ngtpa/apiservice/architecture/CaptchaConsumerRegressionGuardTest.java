@@ -37,7 +37,6 @@ class CaptchaConsumerRegressionGuardTest {
     assertThat(consume).isGreaterThanOrEqualTo(0).isLessThan(lookup);
     assertThat(source)
         .doesNotContain(
-            "UsernameRecoveryIdempotencyPort",
             "IdempotencyExecutor",
             "idempotencyPort.reserve",
             "recordUnknownOutcome(",
