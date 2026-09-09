@@ -114,3 +114,7 @@ Cumulative required scenarios:
 - P6-G: one Spotless pass, compile, test-compile, focused behavioral/concurrency/corruption/compatibility/architecture validation, full Maven suite gate, normal Spring startup gate, documentation closure, and final commit.
 
 A full Maven suite and successful Spring startup are mandatory before every major implementation-stage transition. Intermediate rounds run only `mvn -DskipTests compile` and `mvn -DskipTests test-compile` and defer `spotless:apply` until P6-G.
+
+## P6-B shared integration contracts
+
+P6-B now provides Username Recovery-owned action, operation-identity, compatibility fingerprint, constant classifier, and strict response-envelope contracts over the repository-wide shared foundation. The fingerprint compatibility layer deliberately preserves the established decimal-length-plus-NUL byte sequence for START, REQUEST, and CANCEL while exposing version 1 shared fingerprints. No coordinator, replay codec, protected replay persistence, Spring bean, or production route changes in this increment.

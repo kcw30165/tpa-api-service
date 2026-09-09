@@ -5,12 +5,12 @@
 - Exact validated P5 and P6 starting Git HEAD: 49fb6adc3cab82b753b9bbd7e20c05b42fc7820f
 - Exact origin/dev ancestor: 83728f39d186dbd614d134e2c41825811232ddc7
 - P5 status: complete and closed
-- Current phase: P6-A Username Recovery migration documentation baseline
+- Current phase: P6-B Username Recovery shared integration contracts
 - Proven in-scope actions: START, REQUEST, and CANCEL
 - Current production routes: all three actions remain on the Username Recovery feature-local response-idempotency lifecycle
-- Current uncommitted scope: P6 migration design, consolidation-plan alignment, and handover alignment only
-- Next gate: commit the P6-A documentation baseline, then run the required full Maven and Spring startup transition gate before P6-B implementation
-- Next permitted implementation after that gate: P6-B shared Username Recovery integration contracts without production routing changes
+- Current uncommitted scope: P6-B shared action, identity, fingerprint, classifier, strict envelope, focused tests, and aligned documentation
+- Next gate: commit P6-B and pass the full Maven and local-profile Spring startup transition gate before P6-C
+- Next permitted implementation after that gate: P6-C Username Recovery START migration foundation
 - Planned final implementation commit: refactor(username-recovery): migrate idempotency to shared capability
 
 #### Current production constraint
@@ -956,3 +956,11 @@ Final committed-state validation completed successfully at Git HEAD `4afbc2726a6
 - Next permitted stage: P6-B shared Username Recovery integration contracts without production routing changes.
 - Planned final implementation commit: `refactor(username-recovery): migrate idempotency to shared capability`.
 <!-- P6-A-USERNAME-RECOVERY-HANDOVER:END -->
+
+#### P6-B Username Recovery shared integration contracts
+- Added START, REQUEST, and CANCEL shared action identities under capability username-recovery.
+- Added opaque shared operation identity and exact established-byte-compatible version-1 fingerprints.
+- Added explicit proven-pre-dispatch and possible-side-effect classifier accessors.
+- Added a strict action-tagged response envelope through TransientJsonPort.
+- Production composition, legacy lifecycle persistence, replay codecs, protected workflow continuity, controllers, and side-effect ordering remain unchanged.
+- Next: action-specific safe snapshot and protected replay-reference contracts before any production switch.

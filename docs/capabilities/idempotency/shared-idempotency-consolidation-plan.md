@@ -733,3 +733,7 @@ The detailed design and acceptance matrix are in [Username Recovery P6 shared id
 
 The approved sequence is P6-A documentation, P6-B shared integration contracts, P6-C START, P6-D REQUEST, P6-E CANCEL, P6-F compatibility closure and mandatory stale lifecycle deletion, and P6-G stabilization. This is not the P7 repository-wide consolidation phase.
 <!-- P6-USERNAME-RECOVERY-BASELINE:END -->
+
+### P6-B Username Recovery shared integration contracts
+
+Added stable shared actions, opaque operation identity, exact legacy-byte-compatible version-1 fingerprints, explicit constant failure classifiers, and a strict action-tagged envelope. Production Username Recovery routing and feature-local lifecycle persistence remain unchanged. Next is the action-specific safe replay and protected-continuity foundation.
