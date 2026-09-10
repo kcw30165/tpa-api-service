@@ -1,13 +1,13 @@
-#### P6-F Authoritative Current State
+##### P6-G Authoritative Current State
 - Branch: `fix/relay-same-error-code-for-the-idempotent-request`.
-- Exact committed P6-E baseline: `5f2c0681c2f98c1235aa28ff37ccc0c231720ae3`.
-- P5 is closed; P6-C, P6-D, and P6-E are complete and committed.
+- Exact committed P6 closure baseline: `1f5a97f6e32986290555ee94ddcd7a94d9517aa1` with subject `docs(idempotency): close username recovery compatibility`.
+- P5 and P6 are complete and closed at repository level.
 - Username Recovery START, REQUEST, and CANCEL use the repository-wide shared idempotency executor in production.
-- The feature-local response-idempotency lifecycle is absent. START protected replay remains required encrypted workflow continuity.
-- Repository compatibility closure is complete because cleanup occurred before deployment. Deployment timestamps, environment coverage, rollback-window closure, legacy TTL drainage, and Redis-key deletion are not applicable and are not claimed.
-- Current phase: P6-F repository compatibility closure. Next gate: P6-G stabilization, full Maven, eager startup, and final closure commit.
+- The feature-local Username Recovery response-idempotency lifecycle is absent. START protected replay remains required encrypted workflow continuity.
+- Spotless, production compilation, test compilation, the full Maven suite with 3,963 tests, focused architecture tests, eager local-profile Spring startup, exact commit identity, and clean-worktree validation passed.
+- Cleanup occurred before deployment. Deployment timestamps, environment coverage, rollback-window closure, legacy TTL drainage, and Redis-key deletion are not applicable and are not claimed.
+- No further P6 implementation stage is pending. Future work must start from a separately approved scope and exact committed baseline.
 
-<!-- P6-C-AUTHORITATIVE-STATE-BEGIN -->
 #### P6-C Authoritative Current State
 - Branch: `fix/relay-same-error-code-for-the-idempotent-request`.
 - P5 is complete and closed.
