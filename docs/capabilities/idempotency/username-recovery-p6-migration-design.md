@@ -424,3 +424,11 @@ P6-B now provides Username Recovery-owned action, operation-identity, compatibil
 - The retired Username Recovery feature-local response-idempotency lifecycle, Redis adapter, port, records, legacy CANCEL coordinator, action-local fingerprint generator, and obsolete direct-session replay descriptors remain absent.
 - START protected replay persistence, strict action-specific replay bridges, lifecycle-neutral protected operations, controllers, cookies, protected auth-flow context, and unrelated Redis infrastructure remain preserved.
 - P6-E is complete and may be committed with `refactor(username-recovery): migrate cancel to shared idempotency`. No deployment, environment-coverage, rollback-window, or TTL-drainage claim is made.
+
+####### P6-F repository compatibility closure
+- Confirmed on exact committed P6-E baseline `5f2c0681c2f98c1235aa28ff37ccc0c231720ae3` that START, REQUEST, and CANCEL are exclusively composed through the repository-wide shared executor.
+- Confirmed the feature-local response-idempotency coordinators, port, lifecycle models, Redis adapter, key factory, fingerprint generators, and direct-session replay descriptors are absent.
+- Retained START protected replay because it is encrypted workflow continuity, not duplicate response-idempotency infrastructure.
+- Updated stale command Javadocs to describe repository-wide shared operation identity.
+- Cleanup occurred before deployment, so deployment timestamps, environment coverage, rollback-window closure, legacy TTL drainage, and Redis-key deletion are not applicable and are not claimed.
+- Production behavior is unchanged. P6-G stabilization remains required before final closure.
