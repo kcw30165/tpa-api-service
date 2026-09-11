@@ -155,21 +155,25 @@ public final class RegistrationCompleteProtectedOperation {
             context.contactValue(),
             ActorUserRole.ROLE_USER_MBR);
     return lookup
-        .searchUnregisteredMember(command)
+        .searchMember(command)
         .flatMap(
             result -> {
+              List<RegistrationLookupAccount> remainingUnregisteredTrusts =
+                  result.accounts().stream()
+                      .filter(account -> Boolean.FALSE.equals(account.registered()))
+                      .toList();
               if (result.status() == RegistrationLookupStatus.ELIGIBLE
-                  && !result.accounts().isEmpty()) {
+                  && !remainingUnregisteredTrusts.isEmpty()) {
                 return sessionTransitions
                     .transition(
                         session, AuthFlowStatus.TRUST_SELECTION_READY, clock.instant(), true)
                     .thenReturn(
                         result(
                             CompleteRegistrationResultStatus.REGISTERED_WITH_REMAINING_TRUSTS,
-                            WorkflowNextStep.REGISTRATION_SUCCESS,
+                            WorkflowNextStep.SELECT_TRUST,
                             true,
                             false,
-                            result.accounts()));
+                            remainingUnregisteredTrusts));
               }
               return sessionTransitions
                   .transition(session, AuthFlowStatus.COMPLETED, clock.instant(), true)

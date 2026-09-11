@@ -21,7 +21,16 @@ class RegistrationCompleteReplayCodecArchitectureTest {
         .contains("result.nextStep().name()")
         .contains("result.registered()")
         .contains("result.clearAuthFlowCookie()")
-        .contains("new TrustWire(trust.accountEnv(), trust.trustCode())")
+        .contains("new TrustWire(")
+        .contains("trust.accountEnv()")
+        .contains("trust.trustCode()")
+        .contains("trust.schemeType()")
+        .contains("trust.policyNo()")
+        .contains("trust.certNo()")
+        .contains("trust.termStatus()")
+        .contains("trust.termCompleteDate()")
+        .contains("trust.registered()")
+        .contains("trust.customerId()")
         .contains("new ErrorWire(")
         .doesNotContain(
             "result.password",
@@ -46,7 +55,8 @@ class RegistrationCompleteReplayCodecArchitectureTest {
         .contains("bridge.hydrate(RegistrationSharedIdempotencyAction.COMPLETE, snapshot)")
         .contains("payload.remainingTrusts().stream()")
         .contains("new RegistrationLookupAccount(")
-        .contains("\"\", \"\", trust.accountEnv().trim(), trust.trustCode().trim()")
+        .contains("trust.accountEnv().trim()")
+        .contains("trust.customerId()")
         .contains("Registration Complete replay trust is invalid")
         .contains("Registration Complete replay decoding failed");
   }
@@ -71,7 +81,7 @@ class RegistrationCompleteReplayCodecArchitectureTest {
             "AuthFlowSessionCancellationPort",
             "AuthFlowSessionCompletionLockPort",
             "completion.complete(",
-            "searchUnregisteredMember(",
+            "searchMember(",
             "sessions.",
             "locks.",
             "cancellation.",

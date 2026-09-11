@@ -74,7 +74,15 @@ public final class RegistrationCompleteSharedExecutionBridge {
             .map(
                 trust ->
                     new TrustWire(
-                        trust.email(), trust.mobileNumber(), trust.accountEnv(), trust.trustCode()))
+                        trust.accountEnv(),
+                        trust.trustCode(),
+                        trust.schemeType(),
+                        trust.policyNo(),
+                        trust.certNo(),
+                        trust.termStatus(),
+                        trust.termCompleteDate(),
+                        trust.registered(),
+                        trust.customerId()))
             .toList(),
         result.errors().stream()
             .map(
@@ -106,7 +114,15 @@ public final class RegistrationCompleteSharedExecutionBridge {
             .map(
                 trust ->
                     new RegistrationLookupAccount(
-                        trust.email(), trust.mobileNumber(), trust.accountEnv(), trust.trustCode()))
+                        trust.accountEnv(),
+                        trust.trustCode(),
+                        trust.schemeType(),
+                        trust.policyNo(),
+                        trust.certNo(),
+                        trust.termStatus(),
+                        trust.termCompleteDate(),
+                        trust.registered(),
+                        trust.customerId()))
             .toList(),
         wire.errors().stream()
             .map(
@@ -143,7 +159,15 @@ public final class RegistrationCompleteSharedExecutionBridge {
       List<ErrorWire> errors) {}
 
   private record TrustWire(
-      String email, String mobileNumber, String accountEnv, String trustCode) {}
+      String accountEnv,
+      String trustCode,
+      String schemeType,
+      String policyNo,
+      String certNo,
+      String termStatus,
+      String termCompleteDate,
+      Boolean registered,
+      String customerId) {}
 
   private record ErrorWire(
       String type,

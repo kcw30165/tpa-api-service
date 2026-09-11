@@ -100,14 +100,21 @@ public final class RegistrationOtpVerifyProtectedOperation {
             context.contactValue(),
             ActorUserRole.ROLE_USER_MBR);
     return lookup
-        .searchUnregisteredMember(lookupCommand)
+        .searchMember(lookupCommand)
         .flatMap(
             result -> {
               if (result.status() != RegistrationLookupStatus.ELIGIBLE) {
                 return Mono.just(noEligibleTrusts());
               }
+              List<
+                      com.bct.ngtpa.apiservice.application.dto.auth.registration
+                          .RegistrationLookupAccount>
+                  unregisteredAccounts =
+                      result.accounts().stream()
+                          .filter(account -> Boolean.FALSE.equals(account.registered()))
+                          .toList();
               List<RegistrationUnregisteredTrust> trusts =
-                  result.accounts().stream()
+                  unregisteredAccounts.stream()
                       .map(
                           account ->
                               new RegistrationUnregisteredTrust(
@@ -131,7 +138,7 @@ public final class RegistrationOtpVerifyProtectedOperation {
                       RegistrationIdempotencyStartOutcome.STARTED,
                       null);
               return eligibleTrusts
-                  .store(command.authFlowSessionId(), result.accounts(), clock.instant())
+                  .store(command.authFlowSessionId(), unregisteredAccounts, clock.instant())
                   .thenReturn(verified);
             });
   }

@@ -64,7 +64,18 @@ public final class RegistrationCompleteReplayCodec {
         result.registered(),
         result.clearAuthFlowCookie(),
         result.remainingTrusts().stream()
-            .map(trust -> new TrustWire(trust.accountEnv(), trust.trustCode()))
+            .map(
+                trust ->
+                    new TrustWire(
+                        trust.accountEnv(),
+                        trust.trustCode(),
+                        trust.schemeType(),
+                        trust.policyNo(),
+                        trust.certNo(),
+                        trust.termStatus(),
+                        trust.termCompleteDate(),
+                        trust.registered(),
+                        trust.customerId()))
             .toList(),
         result.errors().stream()
             .map(
@@ -121,7 +132,15 @@ public final class RegistrationCompleteReplayCodec {
       throw new IllegalArgumentException("Registration Complete replay trust is invalid");
     }
     return new RegistrationLookupAccount(
-        "", "", trust.accountEnv().trim(), trust.trustCode().trim());
+        trust.accountEnv().trim(),
+        trust.trustCode().trim(),
+        trust.schemeType(),
+        trust.policyNo(),
+        trust.certNo(),
+        trust.termStatus(),
+        trust.termCompleteDate(),
+        trust.registered(),
+        trust.customerId());
   }
 
   private void rejectLifecycleOnlyStatus(CompleteRegistrationResultStatus status) {
@@ -156,7 +175,16 @@ public final class RegistrationCompleteReplayCodec {
       List<TrustWire> remainingTrusts,
       List<ErrorWire> errors) {}
 
-  private record TrustWire(String accountEnv, String trustCode) {}
+  private record TrustWire(
+      String accountEnv,
+      String trustCode,
+      String schemeType,
+      String policyNo,
+      String certNo,
+      String termStatus,
+      String termCompleteDate,
+      Boolean registered,
+      String customerId) {}
 
   private record ErrorWire(
       String type,

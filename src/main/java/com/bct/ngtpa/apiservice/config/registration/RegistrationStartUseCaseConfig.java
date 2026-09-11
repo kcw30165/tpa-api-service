@@ -2,6 +2,7 @@ package com.bct.ngtpa.apiservice.config.registration;
 
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyExecutor;
 import com.bct.ngtpa.apiservice.application.port.in.StartRegistrationUseCase;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import com.bct.ngtpa.apiservice.application.port.out.CaptchaChallengePort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationCsrPort;
@@ -44,6 +45,7 @@ public class RegistrationStartUseCaseConfig {
       RegistrationStartValidator validator,
       RegistrationLookupPort lookup,
       RegistrationSessionPort sessions,
+      AuthFlowSessionPort authFlowSessions,
       RegistrationCsrPort csrf,
       RegistrationOtpPort otp,
       RegistrationMessagePort messages,
@@ -51,7 +53,7 @@ public class RegistrationStartUseCaseConfig {
       RegistrationCaptchaGateService captcha,
       Clock clock) {
     return new RegistrationStartProtectedOperation(
-        validator, lookup, sessions, csrf, otp, messages, policy, captcha, clock);
+        validator, lookup, sessions, authFlowSessions, csrf, otp, messages, policy, captcha, clock);
   }
 
   @Bean

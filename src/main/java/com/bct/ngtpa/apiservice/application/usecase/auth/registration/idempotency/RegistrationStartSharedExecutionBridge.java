@@ -167,6 +167,7 @@ public final class RegistrationStartSharedExecutionBridge {
   private int httpStatus(StartRegistrationResultStatus status) {
     return switch (status) {
       case STARTED -> 200;
+      case REGISTRATION_COMPLETED -> 200;
       case VALIDATION_FAILED -> 400;
       case VERIFICATION_FAILED, DOWNSTREAM_REJECTED -> 422;
       case DUPLICATE_IN_PROGRESS, IDEMPOTENCY_KEY_REUSED -> 409;

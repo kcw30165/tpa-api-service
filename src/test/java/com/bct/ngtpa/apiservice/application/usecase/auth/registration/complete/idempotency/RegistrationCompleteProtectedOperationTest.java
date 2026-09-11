@@ -11,6 +11,7 @@ import com.bct.ngtpa.apiservice.application.dto.auth.registration.context.Regist
 import com.bct.ngtpa.apiservice.application.dto.session.SessionLockHandle;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.SessionRevision;
+import com.bct.ngtpa.apiservice.application.dto.workflow.WorkflowNextStep;
 import com.bct.ngtpa.apiservice.application.port.out.*;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.*;
 import com.bct.ngtpa.apiservice.integration.registration.support.RegistrationTestCase;
@@ -86,7 +87,7 @@ class RegistrationCompleteProtectedOperationTest {
   @Test
   @RegistrationTestCase("TC-061")
   void finalTrustCompletesReturnsToLoginAndReleasesLock() {
-    when(lookup.searchUnregisteredMember(any()))
+    when(lookup.searchMember(any()))
         .thenReturn(
             Mono.just(
                 new RegistrationLookupResult(
@@ -106,16 +107,19 @@ class RegistrationCompleteProtectedOperationTest {
   void remainingTrustsPreserveOrderAndFlowForAnotherRegistration() {
     List<RegistrationLookupAccount> accounts =
         List.of(
-            new RegistrationLookupAccount("member@example.com", "91234567", "OI", "JPM"),
-            new RegistrationLookupAccount("member@example.com", "91234567", "DB", "DBA"));
-    when(lookup.searchUnregisteredMember(any()))
+            new RegistrationLookupAccount(
+                "OI", "JPM", "MPF", "P1", "C1", "A", null, Boolean.TRUE, "CU1"),
+            new RegistrationLookupAccount(
+                "DB", "DBA", "MPF", "P2", "C2", "A", null, Boolean.FALSE, "CU1"));
+    when(lookup.searchMember(any()))
         .thenReturn(
             Mono.just(
                 new RegistrationLookupResult(RegistrationLookupStatus.ELIGIBLE, accounts, null)));
     CompleteRegistrationResult result = operation.execute(input()).block();
     assertThat(result.status())
         .isEqualTo(CompleteRegistrationResultStatus.REGISTERED_WITH_REMAINING_TRUSTS);
-    assertThat(result.remainingTrusts()).containsExactlyElementsOf(accounts);
+    assertThat(result.remainingTrusts()).containsExactly(accounts.get(1));
+    assertThat(result.nextStep()).isEqualTo(WorkflowNextStep.SELECT_TRUST);
     assertThat(state.status()).isEqualTo(AuthFlowStatus.TRUST_SELECTION_READY);
     assertThat(result.clearAuthFlowCookie()).isFalse();
   }
@@ -148,7 +152,7 @@ class RegistrationCompleteProtectedOperationTest {
 
   @Test
   void selectedTrustAndProtectedRoleReachDownstreamInApprovedOrder() {
-    when(lookup.searchUnregisteredMember(any()))
+    when(lookup.searchMember(any()))
         .thenReturn(
             Mono.just(
                 new RegistrationLookupResult(
@@ -202,7 +206,7 @@ class RegistrationCompleteProtectedOperationTest {
 
   @Test
   void continuationLookupFailureIsDeterministicAfterConfirmedRegistration() {
-    when(lookup.searchUnregisteredMember(any()))
+    when(lookup.searchMember(any()))
         .thenReturn(Mono.error(new IllegalStateException("lookup detail")));
     CompleteRegistrationResult result = operation.execute(input()).block();
     assertThat(result.status())

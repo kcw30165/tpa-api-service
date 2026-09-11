@@ -24,7 +24,7 @@ class RegistrationCompleteProtectedOperationArchitectureTest {
         .contains("SelectedTrusttrust=username.selectedTrust()")
         .contains("ActorUserRole.ROLE_USER_MBR")
         .contains("completion.complete(downstream)")
-        .contains("searchUnregisteredMember(command)")
+        .contains("searchMember(command)")
         .contains("AuthFlowStatus.TRUST_SELECTION_READY")
         .contains("AuthFlowStatus.COMPLETED")
         .contains("cancellation.cancel(")

@@ -36,6 +36,7 @@ public final class RegistrationStartProtectedOperation {
   private final RegistrationStartValidator validator;
   private final RegistrationLookupPort lookup;
   private final RegistrationSessionPort sessions;
+  private final com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort authFlowSessions;
   private final RegistrationCsrPort csrf;
   private final RegistrationOtpPort otp;
   private final RegistrationMessagePort messages;
@@ -53,9 +54,24 @@ public final class RegistrationStartProtectedOperation {
       AuthWorkflowPolicyPort policy,
       RegistrationCaptchaGateService captcha,
       Clock clock) {
+    this(validator, lookup, sessions, null, csrf, otp, messages, policy, captcha, clock);
+  }
+
+  public RegistrationStartProtectedOperation(
+      RegistrationStartValidator validator,
+      RegistrationLookupPort lookup,
+      RegistrationSessionPort sessions,
+      com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort authFlowSessions,
+      RegistrationCsrPort csrf,
+      RegistrationOtpPort otp,
+      RegistrationMessagePort messages,
+      AuthWorkflowPolicyPort policy,
+      RegistrationCaptchaGateService captcha,
+      Clock clock) {
     this.validator = Objects.requireNonNull(validator);
     this.lookup = Objects.requireNonNull(lookup);
     this.sessions = Objects.requireNonNull(sessions);
+    this.authFlowSessions = authFlowSessions;
     this.csrf = Objects.requireNonNull(csrf);
     this.otp = Objects.requireNonNull(otp);
     this.messages = Objects.requireNonNull(messages);
@@ -152,7 +168,7 @@ public final class RegistrationStartProtectedOperation {
             validated.contactValue(),
             com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR);
     return lookup
-        .searchUnregisteredMember(lookupCommand)
+        .searchMember(lookupCommand)
         .flatMap(result -> handleLookup(command, validated, result));
   }
 
@@ -174,6 +190,14 @@ public final class RegistrationStartProtectedOperation {
             validated.dateOfBirth(),
             validated.contactType(),
             validated.contactValue());
+    List<com.bct.ngtpa.apiservice.application.dto.auth.registration.RegistrationLookupAccount>
+        unregisteredAccounts =
+            found.accounts().stream()
+                .filter(account -> Boolean.FALSE.equals(account.registered()))
+                .toList();
+    if (unregisteredAccounts.isEmpty()) {
+      return completeAlreadyRegisteredStart(validated, context);
+    }
     return sessions
         .createRegistrationSession(validated.maskedDestination(), validated.contactType(), context)
         .flatMap(
@@ -221,6 +245,58 @@ public final class RegistrationStartProtectedOperation {
                                                             RegistrationErrorKey
                                                                 .MESSAGE_DELIVERY_FAILED,
                                                             "email")))));
+  }
+
+  private Mono<StartRegistrationResult> completeAlreadyRegisteredStart(
+      RegistrationStartCommand validated, RegistrationAuthFlowContext context) {
+    if (authFlowSessions == null) {
+      return Mono.error(new IllegalStateException("Auth-flow session port is required"));
+    }
+    return sessions
+        .createRegistrationSession(validated.maskedDestination(), validated.contactType(), context)
+        .flatMap(
+            sessionId ->
+                authFlowSessions
+                    .loadSnapshot(
+                        new com.bct.ngtpa.apiservice.application.dto.session.authflow
+                            .AuthFlowSessionId(sessionId))
+                    .flatMap(
+                        optional -> {
+                          if (optional.isEmpty()) {
+                            return Mono.error(
+                                new IllegalStateException(
+                                    "Registration auth-flow session was not available for completion"));
+                          }
+                          return authFlowSessions
+                              .completeRevisioned(optional.orElseThrow(), clock.instant())
+                              .flatMap(
+                                  mutation -> {
+                                    if (mutation.outcome()
+                                        != com.bct.ngtpa.apiservice.application.dto.session.authflow
+                                            .AuthFlowSessionMutationOutcome.APPLIED) {
+                                      return Mono.error(
+                                          new IllegalStateException(
+                                              "Registration auth-flow session completion failed"));
+                                    }
+                                    return Mono.just(
+                                        new StartRegistrationResult(
+                                            StartRegistrationResultStatus.REGISTRATION_COMPLETED,
+                                            WorkflowNextStep.RETURN_TO_LOGIN,
+                                            null,
+                                            0,
+                                            0,
+                                            0,
+                                            null,
+                                            sessionId,
+                                            List.of(
+                                                com.bct.ngtpa.apiservice.application.dto.workflow
+                                                    .RegistrationMessageKey.COMPLETION
+                                                    .value()),
+                                            List.of(),
+                                            RegistrationIdempotencyStartOutcome.STARTED,
+                                            null));
+                                  });
+                        }));
   }
 
   private StartRegistrationResult failure(
