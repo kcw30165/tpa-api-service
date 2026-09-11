@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.application.idempotency.IdempotencyExecutor;
 import com.bct.ngtpa.apiservice.application.port.in.StartRegistrationUseCase;
+import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthWorkflowPolicyPort;
 import com.bct.ngtpa.apiservice.application.port.out.CaptchaChallengePort;
 import com.bct.ngtpa.apiservice.application.port.out.RegistrationCsrPort;
@@ -29,6 +30,8 @@ class RegistrationStartMandatoryCompositionTest {
           .withBean(
               RegistrationSessionPort.class,
               () -> org.mockito.Mockito.mock(RegistrationSessionPort.class))
+          .withBean(
+              AuthFlowSessionPort.class, () -> org.mockito.Mockito.mock(AuthFlowSessionPort.class))
           .withBean(
               RegistrationCsrPort.class, () -> org.mockito.Mockito.mock(RegistrationCsrPort.class))
           .withBean(

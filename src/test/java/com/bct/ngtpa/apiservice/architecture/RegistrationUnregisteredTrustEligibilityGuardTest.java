@@ -10,7 +10,8 @@ class RegistrationUnregisteredTrustEligibilityGuardTest {
   @Test
   void otpVerifyReturnsAndPersistsOnlyExplicitlyUnregisteredTrusts() throws Exception {
     String source =
-        read("application/usecase/auth/registration/otp/VerifyRegistrationOtpService.java");
+        read(
+            "application/usecase/auth/registration/otp/idempotency/RegistrationOtpVerifyProtectedOperation.java");
     assertThat(source)
         .contains("Boolean.FALSE.equals(account.registered())")
         .contains("store(command.authFlowSessionId(), unregisteredAccounts, clock.instant())");
@@ -29,7 +30,8 @@ class RegistrationUnregisteredTrustEligibilityGuardTest {
   @Test
   void completionReturnsOnlyExplicitlyUnregisteredRemainingTrusts() throws Exception {
     String source =
-        read("application/usecase/auth/registration/complete/CompleteRegistrationService.java");
+        read(
+            "application/usecase/auth/registration/complete/idempotency/RegistrationCompleteProtectedOperation.java");
     assertThat(source)
         .contains("remainingUnregisteredTrusts")
         .contains("Boolean.FALSE.equals(account.registered())")

@@ -9,7 +9,9 @@ import org.junit.jupiter.api.Test;
 class RegistrationTerminalWorkflowTransitionGuardTest {
   @Test
   void startCompletesWithoutOtpWhenNoUnregisteredTrustRemains() throws Exception {
-    String source = read("application/usecase/auth/registration/StartRegistrationService.java");
+    String source =
+        read(
+            "application/usecase/auth/registration/idempotency/RegistrationStartProtectedOperation.java");
     assertThat(source)
         .contains("Boolean.FALSE.equals(account.registered())")
         .contains("if (unregisteredAccounts.isEmpty())")
@@ -20,7 +22,7 @@ class RegistrationTerminalWorkflowTransitionGuardTest {
     String terminalMethod =
         source.substring(
             source.indexOf("private Mono<StartRegistrationResult> completeAlreadyRegisteredStart"),
-            source.indexOf("private RegistrationRequestHash requestHash"));
+            source.indexOf("private StartRegistrationResult failure"));
     assertThat(terminalMethod)
         .doesNotContain("createOtp(")
         .doesNotContain("deliverRegistrationOtp(");
@@ -38,7 +40,8 @@ class RegistrationTerminalWorkflowTransitionGuardTest {
   @Test
   void completionUsesDistinctNavigationForRemainingAndFinalTrusts() throws Exception {
     String source =
-        read("application/usecase/auth/registration/complete/CompleteRegistrationService.java");
+        read(
+            "application/usecase/auth/registration/complete/idempotency/RegistrationCompleteProtectedOperation.java");
     assertThat(source)
         .contains("CompleteRegistrationResultStatus.REGISTERED_WITH_REMAINING_TRUSTS")
         .contains("WorkflowNextStep.SELECT_TRUST")
