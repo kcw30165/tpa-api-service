@@ -125,3 +125,11 @@ does not falsify the P3–P6 runtime migration; it is a cleanup item for P7.
 No genuine migration defect in P3–P6. Proceed to **P7** to delete the orphaned, unwired
 `RedisRegistrationIdempotency*` files and add a repository-wide guard forbidding feature-local
 idempotency lifecycle, then run full-suite + startup stabilization.
+
+## P7 cleanup alignment
+Post-verdict repository consolidation completed the physical removal of the orphaned/dead
+feature-local idempotency lifecycle noted above:
+- P7-B deleted the unwired Registration Redis cluster (`d28b2679dcfdef307bad37cc0430ace7fa6c0e77`).
+- P7-C deleted the dead Login idempotency DTO cluster (`6b787bb7a1c75db46815e39bd3ebd1be03f17ee4`).
+- P7-E added `SharedIdempotencyNoFeatureLocalLifecycleArchitectureTest` (`730530fd5f02a54d80c430f726d605bbbe4a8a86`).
+See `p7-legacy-cleanup-record.md` for the full record.
