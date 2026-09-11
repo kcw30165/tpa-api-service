@@ -74,7 +74,7 @@ public final class ForgotPasswordTrpSearchMemberMapper {
       if (!registered && customerId != null) {
         throw malformed(ForgotPasswordDetailsDownstreamException.Reason.MALFORMED_DATA);
       }
-      if (registered && expected.equals(customerId) && matched == null) {
+      if (registered && expected.equalsIgnoreCase(customerId) && matched == null) {
         matched = item;
       }
     }

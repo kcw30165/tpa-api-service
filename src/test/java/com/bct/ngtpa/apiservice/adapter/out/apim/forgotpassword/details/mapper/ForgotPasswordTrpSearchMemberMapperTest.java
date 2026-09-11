@@ -38,6 +38,21 @@ class ForgotPasswordTrpSearchMemberMapperTest {
   }
 
   @Test
+  void registeredUsernameMatchUsesConfiguredCaseInsensitiveSemantics() {
+    var result =
+        mapper.toResult(
+            "",
+            List.of(
+                item("JP", "JPM", true, "JPJPM01"),
+                item("TB", "HKBU", true, "TBHKBU01"),
+                item("TB", "CITI", true, "TBCITI01")),
+            "tbciti01");
+
+    assertThat(result.status()).isEqualTo(ForgotPasswordDetailsLookupStatus.MATCHED);
+    assertThat(result.accountEnv()).isEqualTo("TB");
+  }
+
+  @Test
   void matchingCustomerIdOnUnregisteredRecordDoesNotContinue() {
     var result = mapper.toResult("", List.of(item("TB", "MSIG", false, null)), "nick");
     assertThat(result.status()).isEqualTo(ForgotPasswordDetailsLookupStatus.NOT_FOUND);
