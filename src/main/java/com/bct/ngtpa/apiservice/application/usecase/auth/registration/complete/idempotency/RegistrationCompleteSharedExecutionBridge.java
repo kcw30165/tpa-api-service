@@ -12,6 +12,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.C
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.complete.CompleteRegistrationResultStatus;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.Map;
@@ -49,11 +50,35 @@ public final class RegistrationCompleteSharedExecutionBridge {
       throw new IllegalArgumentException("Registration Complete transient media type is invalid");
     }
     try {
-      return fromWire(mapper.readValue(response.serializedBody(), TransientWire.class));
+      JsonNode wire = unwrapTerminalEnvelope(mapper.readTree(response.serializedBody()));
+      CompleteRegistrationResult result = fromWire(mapper.treeToValue(wire, TransientWire.class));
+      if (response.httpStatus() != httpStatus(result.status())) {
+        throw new IllegalArgumentException("Registration Complete transient HTTP status mismatch");
+      }
+      return result;
     } catch (JsonProcessingException | IllegalArgumentException exception) {
       throw new IllegalArgumentException(
           "Registration Complete transient response decoding failed");
     }
+  }
+
+  private JsonNode unwrapTerminalEnvelope(JsonNode wire) {
+    if (wire == null || !wire.isObject()) {
+      throw new IllegalArgumentException("Registration Complete transient body is invalid");
+    }
+    JsonNode action = wire.get("idempotencyAction");
+    JsonNode payload = wire.get("payload");
+    if (action == null && payload == null) {
+      return wire;
+    }
+    if (action == null
+        || !action.isTextual()
+        || !"complete".equals(action.asText())
+        || payload == null
+        || !payload.isObject()) {
+      throw new IllegalArgumentException("Registration Complete terminal envelope is invalid");
+    }
+    return payload;
   }
 
   public Mono<IdempotentCapturedResponse> capture(HydratedIdempotentResponse response) {
