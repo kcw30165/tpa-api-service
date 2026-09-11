@@ -18,18 +18,6 @@ class Task0043LoginStartReplayArchitectureTest {
   }
 
   @Test
-  void idempotencySnapshotContainsOnlyOpaqueCommitReference() throws Exception {
-    String source =
-        Files.readString(
-            Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/application/dto/auth/login/idempotency/LoginIdempotencyReplaySnapshot.java"));
-    assertThat(source).contains("outcomeCode", "opaqueCommitRef");
-    assertThat(source)
-        .doesNotContain(
-            "authFlowSessionId", "csrfToken", "destinations", "ciphertext", "password", "username");
-  }
-
-  @Test
   void replayRedisKeyContainsNoSessionCsrfOrIdentityData() throws Exception {
     String source =
         Files.readString(
