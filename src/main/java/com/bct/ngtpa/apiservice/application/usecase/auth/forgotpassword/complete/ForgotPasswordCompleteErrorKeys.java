@@ -13,7 +13,8 @@ final class ForgotPasswordCompleteErrorKeys {
   static final String PASSWORD_SAME_AS_USERNAME = "err.forgot-password.password.sameAsUsername";
   static final String PASSWORD_CATEGORIES = "err.forgot-password.password.categories";
   static final String PASSWORD_INVALID = "err.tpa.password.invalid";
-  static final String PASSWORD_REUSED = "err.tpa.password.used.in.last.5.changes.";
+  static final String DOWNSTREAM_PASSWORD_REUSED = "err.tpa.password.used.in.last.5.changes.";
+  static final String PASSWORD_REUSED = "err.forgot-password.password.reused";
   static final String MEMBER_NOT_FOUND = "err.tpa.member.not.found";
   static final String SYSTEM_UNAVAILABLE = "err.system.unavailable";
 

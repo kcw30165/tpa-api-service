@@ -150,7 +150,8 @@ public final class ForgotPasswordCompleteProtectedOperation {
         return Mono.just(
             ForgotPasswordCompleteProtectedExecutionResult.terminal(passwordInvalid()));
       }
-      if (ForgotPasswordCompleteErrorKeys.PASSWORD_REUSED.equals(result.downstreamErrorCode())) {
+      if (ForgotPasswordCompleteErrorKeys.DOWNSTREAM_PASSWORD_REUSED.equals(
+          result.downstreamErrorCode())) {
         return Mono.just(
             ForgotPasswordCompleteProtectedExecutionResult.terminal(passwordReused()));
       }
@@ -265,7 +266,7 @@ public final class ForgotPasswordCompleteProtectedOperation {
         false,
         List.of(
             error(
-                WorkflowErrorType.DOWNSTREAM_BUSINESS,
+                WorkflowErrorType.BUSINESS,
                 ForgotPasswordCompleteErrorKeys.PASSWORD_REUSED,
                 "password")));
   }
