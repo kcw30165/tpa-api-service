@@ -16,15 +16,15 @@ import org.junit.jupiter.api.Test;
  *
  * <p>After migration, no feature (Registration / Login / Forgot Password / Username Recovery) may
  * own its own idempotency lifecycle: the response-idempotency lifecycle is provided exclusively by
- * the shared {@code application.idempotency} capability ({@code IdempotencyExecutor} +
- * {@code IdempotencyPort}). This guard fails if any feature re-introduces the lifecycle clusters
- * removed in P7-B/P7-C.
+ * the shared {@code application.idempotency} capability ({@code IdempotencyExecutor} + {@code
+ * IdempotencyPort}). This guard fails if any feature re-introduces the lifecycle clusters removed
+ * in P7-B/P7-C.
  *
- * <p>The predicate keys on FEATURE-QUALIFIED lifecycle TYPE NAMES, not on the
- * {@code PROCESSING/COMPLETED/FAILED} enum shape, because that shape is also used by legitimate,
- * retained components (OTP-verify commit-state and message-delivery task status). Legitimate shared
- * public vocabulary (keys, actions, outcomes, reservation snapshots, persistence ids) and protected
- * replay / OTP reservation / handoff components are intentionally NOT matched.
+ * <p>The predicate keys on FEATURE-QUALIFIED lifecycle TYPE NAMES, not on the {@code
+ * PROCESSING/COMPLETED/FAILED} enum shape, because that shape is also used by legitimate, retained
+ * components (OTP-verify commit-state and message-delivery task status). Legitimate shared public
+ * vocabulary (keys, actions, outcomes, reservation snapshots, persistence ids) and protected replay
+ * / OTP reservation / handoff components are intentionally NOT matched.
  */
 class SharedIdempotencyNoFeatureLocalLifecycleArchitectureTest {
 
@@ -40,7 +40,8 @@ class SharedIdempotencyNoFeatureLocalLifecycleArchitectureTest {
           "^(Registration|Login|ForgotPassword|UsernameRecovery)Idempotency"
               + "(Status|Record|StartCommand|CompleteCommand|FailCommand|UnknownOutcomeCommand|StartResult)$");
 
-  // Feature-local Redis idempotency lifecycle adapters/records (Registration cluster removed in P7-B).
+  // Feature-local Redis idempotency lifecycle adapters/records (Registration cluster removed in
+  // P7-B).
   private static final Pattern FORBIDDEN_REDIS_LIFECYCLE =
       Pattern.compile(
           "^Redis(Registration|Login|ForgotPassword|UsernameRecovery)Idempotency"
