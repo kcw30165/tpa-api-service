@@ -35,6 +35,10 @@ import reactor.core.publisher.Mono;
 /** Idempotency-neutral protected business operation for Forgot Password COMPLETE. */
 public final class ForgotPasswordCompleteProtectedOperation {
   private static final String SOURCE_SERVER = "SERVER";
+  private static final String DOWNSTREAM_PASSWORD_INVALID = "err.tpa.password.invalid";
+  private static final String DOWNSTREAM_PASSWORD_REUSED =
+      "err.tpa.password.used.in.last.5.changes.";
+  private static final String DOWNSTREAM_MEMBER_NOT_FOUND = "err.tpa.member.not.found";
   private final AuthFlowSessionPort sessions;
   private final AuthFlowSessionMutationLockPort locks;
   private final ForgotPasswordAuthFlowContextProtectorPort protector;
@@ -146,16 +150,15 @@ public final class ForgotPasswordCompleteProtectedOperation {
       return blockUnknown(session, now);
     }
     if (result.status() == ForgotPasswordCompletionResult.Status.REJECTED) {
-      if (ForgotPasswordCompleteErrorKeys.PASSWORD_INVALID.equals(result.downstreamErrorCode())) {
+      if (DOWNSTREAM_PASSWORD_INVALID.equals(result.downstreamErrorCode())) {
         return Mono.just(
             ForgotPasswordCompleteProtectedExecutionResult.terminal(passwordInvalid()));
       }
-      if (ForgotPasswordCompleteErrorKeys.DOWNSTREAM_PASSWORD_REUSED.equals(
-          result.downstreamErrorCode())) {
+      if (DOWNSTREAM_PASSWORD_REUSED.equals(result.downstreamErrorCode())) {
         return Mono.just(
             ForgotPasswordCompleteProtectedExecutionResult.terminal(passwordReused()));
       }
-      if (ForgotPasswordCompleteErrorKeys.MEMBER_NOT_FOUND.equals(result.downstreamErrorCode())) {
+      if (DOWNSTREAM_MEMBER_NOT_FOUND.equals(result.downstreamErrorCode())) {
         return updateSession(session, AuthFlowStatus.COMPLETED, context, now)
             .thenReturn(ForgotPasswordCompleteProtectedExecutionResult.terminal(memberNotFound()))
             .onErrorResume(ignored -> blockUnknown(session, now));
@@ -253,7 +256,7 @@ public final class ForgotPasswordCompleteProtectedOperation {
         false,
         List.of(
             error(
-                WorkflowErrorType.DOWNSTREAM_BUSINESS,
+                WorkflowErrorType.BUSINESS,
                 ForgotPasswordCompleteErrorKeys.PASSWORD_INVALID,
                 "password")));
   }
@@ -279,7 +282,7 @@ public final class ForgotPasswordCompleteProtectedOperation {
         true,
         List.of(
             error(
-                WorkflowErrorType.DOWNSTREAM_BUSINESS,
+                WorkflowErrorType.BUSINESS,
                 ForgotPasswordCompleteErrorKeys.MEMBER_NOT_FOUND,
                 "PAGE")));
   }

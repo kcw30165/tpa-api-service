@@ -7,9 +7,9 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 /**
- * Guards that the Forgot Password password-reuse rejection never exposes downstream vocabulary to
- * the frontend. The raw {@code err.tpa.*} downstream message must stay internal; the public error
- * must be a BFF-owned business code with a non-downstream error type.
+ * Guards that Forgot Password COMPLETE never exposes downstream vocabulary to the frontend. Raw
+ * {@code err.tpa.*} downstream messages stay internal (matching only); the public error codes are
+ * BFF-owned with a non-downstream {@code BUSINESS} error type.
  */
 class ForgotPasswordPasswordReuseExposureGuardTest {
   private static final Path OPERATION =
@@ -20,26 +20,41 @@ class ForgotPasswordPasswordReuseExposureGuardTest {
           "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/forgotpassword/complete/ForgotPasswordCompleteErrorKeys.java");
 
   @Test
-  void passwordReuseEmitsBffOwnedBusinessCodeNotDownstreamVocabulary() throws Exception {
+  void feKeyClassHoldsOnlyBffOwnedCodes() throws Exception {
     String keys = Files.readString(KEYS);
     assertThat(keys)
+        .contains("PASSWORD_INVALID = \"err.forgot-password.password.invalid\"")
         .contains("PASSWORD_REUSED = \"err.forgot-password.password.reused\"")
-        .contains("DOWNSTREAM_PASSWORD_REUSED = \"err.tpa.password.used.in.last.5.changes.\"");
+        .contains("MEMBER_NOT_FOUND = \"err.forgot-password.member.notFound\"");
+    assertThat(keys).doesNotContain("err.tpa.");
+  }
 
+  @Test
+  void operationMatchesRawDownstreamCodesInternallyOnly() throws Exception {
     String op = Files.readString(OPERATION);
     assertThat(op)
-        .contains(
-            "ForgotPasswordCompleteErrorKeys.DOWNSTREAM_PASSWORD_REUSED.equals(");
+        .contains("DOWNSTREAM_PASSWORD_INVALID = \"err.tpa.password.invalid\"")
+        .contains("\"err.tpa.password.used.in.last.5.changes.\"")
+        .contains("DOWNSTREAM_MEMBER_NOT_FOUND = \"err.tpa.member.not.found\"")
+        .contains("DOWNSTREAM_PASSWORD_INVALID.equals(result.downstreamErrorCode())")
+        .contains("DOWNSTREAM_PASSWORD_REUSED.equals(result.downstreamErrorCode())")
+        .contains("DOWNSTREAM_MEMBER_NOT_FOUND.equals(result.downstreamErrorCode())");
+  }
 
-    int reuseIdx = op.indexOf("private CompleteForgotPasswordResult passwordReused()");
-    assertThat(reuseIdx).isGreaterThan(0);
-    int memberIdx = op.indexOf("private CompleteForgotPasswordResult memberNotFound()", reuseIdx);
-    assertThat(memberIdx).isGreaterThan(reuseIdx);
-    String reuseBlock = op.substring(reuseIdx, memberIdx);
-    assertThat(reuseBlock)
-        .contains("WorkflowErrorType.BUSINESS")
-        .contains("ForgotPasswordCompleteErrorKeys.PASSWORD_REUSED")
-        .contains("\"password\"")
-        .doesNotContain("DOWNSTREAM_BUSINESS");
+  @Test
+  void publicEmittersUseBusinessTypeNotDownstreamBusiness() throws Exception {
+    String op = Files.readString(OPERATION);
+    for (String emitter :
+        new String[] {"passwordInvalid()", "passwordReused()", "memberNotFound()"}) {
+      int start = op.indexOf("private CompleteForgotPasswordResult " + emitter);
+      assertThat(start).as(emitter + " must exist").isGreaterThan(0);
+      int end = op.indexOf("  private CompleteForgotPasswordResult ", start + 1);
+      if (end < 0) {
+        end = op.length();
+      }
+      String block = op.substring(start, end);
+      assertThat(block).as(emitter + " must not emit downstream type").doesNotContain("DOWNSTREAM_BUSINESS");
+      assertThat(block).as(emitter + " must emit BUSINESS type").contains("WorkflowErrorType.BUSINESS");
+    }
   }
 }

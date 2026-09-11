@@ -147,14 +147,14 @@ class ForgotPasswordPublicResponseContractSubtask008FailFirstTest {
                 List.of(
                     new WorkflowErrorDescriptor(
                         WorkflowErrorType.FIELD,
-                        "err.tpa.password.invalid",
+                        "err.forgot-password.password.invalid",
                         "localized password text must not leak",
                         List.of("password"),
                         WorkflowErrorSeverity.ERROR,
                         "BFF")))),
         ApiStatus.VALIDATION_FAILED,
         WorkflowNextStep.PASSWORD_SETUP,
-        "err.tpa.password.invalid",
+        "err.forgot-password.password.invalid",
         List.of("password"));
 
     assertMachineReadable(
