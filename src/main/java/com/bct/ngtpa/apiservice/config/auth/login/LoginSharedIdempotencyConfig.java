@@ -15,6 +15,7 @@ import com.bct.ngtpa.apiservice.infrastructure.security.idempotency.HmacLoginIde
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Base64;
 import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -22,6 +23,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration(proxyBeanMethods = false)
 public class LoginSharedIdempotencyConfig {
   @Bean
+  @ConditionalOnMissingBean(TransientJsonPort.class)
   TransientJsonPort loginTransientJsonPort(ObjectMapper mapper) {
     return new JacksonTransientJsonAdapter(mapper);
   }
