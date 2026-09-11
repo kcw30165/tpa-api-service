@@ -69,6 +69,18 @@ class ApimForgotPasswordCompletionExecutorBehaviorTest {
   }
 
   @Test
+  void recognizedPasswordReuseRejectionRemainsRejected() {
+    stubEnvelope("err.tpa.password.used.in.last.5.changes.", List.of());
+    StepVerifier.create(adapter.complete(command()))
+        .assertNext(
+            r -> {
+              assertThat(r.status()).isEqualTo(ForgotPasswordCompletionResult.Status.REJECTED);
+              assertThat(r.downstreamErrorCode()).isEqualTo("err.tpa.password.used.in.last.5.changes.");
+            })
+        .verifyComplete();
+  }
+
+  @Test
   void recognizedMemberNotFoundRemainsRejected() {
     stubEnvelope("err.tpa.member.not.found", List.of());
     StepVerifier.create(adapter.complete(command()))

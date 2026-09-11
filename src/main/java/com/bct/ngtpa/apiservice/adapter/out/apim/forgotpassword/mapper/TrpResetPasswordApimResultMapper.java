@@ -12,6 +12,7 @@ import java.util.Objects;
 
 public final class TrpResetPasswordApimResultMapper {
   private static final String PASSWORD_INVALID = "err.tpa.password.invalid";
+  private static final String PASSWORD_REUSED = "err.tpa.password.used.in.last.5.changes.";
   private static final String MEMBER_NOT_FOUND = "err.tpa.member.not.found";
   private static final DateTimeFormatter DATE_FORMATTER =
       DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(ResolverStyle.STRICT);
@@ -26,6 +27,7 @@ public final class TrpResetPasswordApimResultMapper {
     }
     if (!envelope.errMessage().isEmpty()) {
       if (PASSWORD_INVALID.equals(envelope.errMessage())
+          || PASSWORD_REUSED.equals(envelope.errMessage())
           || MEMBER_NOT_FOUND.equals(envelope.errMessage())) {
         return ForgotPasswordCompletionResult.rejected(envelope.errMessage());
       }
