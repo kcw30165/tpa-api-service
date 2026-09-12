@@ -127,7 +127,6 @@ public final class ForgotPasswordStartProtectedOperation {
     var protectedContext =
         contextProtector.protect(
             new ForgotPasswordAuthFlowContext(
-                normalizedUsername,
                 lookupResult.customerId(),
                 lookupResult.userId(),
                 publicIdentityType,

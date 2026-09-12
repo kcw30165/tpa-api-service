@@ -33,7 +33,7 @@ public final class ForgotPasswordUnderLockDetailsVerifier {
                 dob,
                 email,
                 mobile,
-                context.customerId(),
+                context.username(),
                 requestId,
                 com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR))
         .map(

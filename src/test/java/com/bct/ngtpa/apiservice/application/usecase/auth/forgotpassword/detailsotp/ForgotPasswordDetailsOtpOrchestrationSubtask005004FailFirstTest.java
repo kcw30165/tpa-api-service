@@ -83,7 +83,6 @@ class ForgotPasswordDetailsOtpOrchestrationSubtask005004FailFirstTest {
     ForgotPasswordAuthFlowContext context =
         new ForgotPasswordAuthFlowContext(
             "member-user",
-            "customer-id",
             "tas-user-id",
             "HKID",
             true,

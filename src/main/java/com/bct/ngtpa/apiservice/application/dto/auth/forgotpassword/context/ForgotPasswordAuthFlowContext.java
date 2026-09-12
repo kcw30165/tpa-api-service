@@ -3,8 +3,7 @@ package com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.ForgotPasswordResetAuthorization;
 
 public record ForgotPasswordAuthFlowContext(
-    String normalizedUsername,
-    String customerId,
+    String username,
     String identityValue,
     String identityType,
     boolean identityVerified,
@@ -16,28 +15,23 @@ public record ForgotPasswordAuthFlowContext(
     String accountEnv,
     String workflowVersion,
     ForgotPasswordProtectedPhase phase) {
-
   public ForgotPasswordAuthFlowContext {
-    normalizedUsername = requireText(normalizedUsername, "normalizedUsername");
-    customerId = requireText(customerId, "customerId");
+    username = requireText(username, "username");
     identityValue = requireText(identityValue, "identityValue");
     identityType = requireText(identityType, "identityType");
     workflowVersion = requireText(workflowVersion, "workflowVersion");
     phase =
-        phase == null
-                && completeStartContext(
-                    normalizedUsername, customerId, identityValue, identityType)
+        phase == null && completeStartContext(username, identityValue, identityType)
             ? ForgotPasswordProtectedPhase.USERNAME_VERIFIED
             : phase;
   }
 
   /**
-   * Backward-compatible constructor matching the previous 12-arg signature. Preserves old call
+   * Backward-compatible constructor matching the previous 11-arg signature. Preserves old call
    * sites by inserting a null accountEnv.
    */
   public ForgotPasswordAuthFlowContext(
-      String normalizedUsername,
-      String customerId,
+      String username,
       String identityValue,
       String identityType,
       boolean identityVerified,
@@ -49,8 +43,7 @@ public record ForgotPasswordAuthFlowContext(
       String workflowVersion,
       ForgotPasswordProtectedPhase phase) {
     this(
-        normalizedUsername,
-        customerId,
+        username,
         identityValue,
         identityType,
         identityVerified,
@@ -65,8 +58,7 @@ public record ForgotPasswordAuthFlowContext(
   }
 
   public ForgotPasswordAuthFlowContext(
-      String normalizedUsername,
-      String customerId,
+      String username,
       String identityValue,
       String identityType,
       boolean identityVerified,
@@ -77,8 +69,7 @@ public record ForgotPasswordAuthFlowContext(
       ForgotPasswordResetAuthorization resetAuthorization,
       String workflowVersion) {
     this(
-        normalizedUsername,
-        customerId,
+        username,
         identityValue,
         identityType,
         identityVerified,
@@ -93,8 +84,8 @@ public record ForgotPasswordAuthFlowContext(
   }
 
   private static boolean completeStartContext(
-      String username, String customerId, String userId, String identityType) {
-    return hasText(username) && hasText(customerId) && hasText(userId) && hasText(identityType);
+      String username, String userId, String identityType) {
+    return hasText(username) && hasText(userId) && hasText(identityType);
   }
 
   private static boolean hasText(String value) {
@@ -103,8 +94,7 @@ public record ForgotPasswordAuthFlowContext(
 
   public ForgotPasswordAuthFlowContext withPhase(ForgotPasswordProtectedPhase next) {
     return new ForgotPasswordAuthFlowContext(
-        normalizedUsername,
-        customerId,
+        username,
         identityValue,
         identityType,
         identityVerified || next == ForgotPasswordProtectedPhase.IDENTITY_VERIFIED,
@@ -121,8 +111,7 @@ public record ForgotPasswordAuthFlowContext(
   public ForgotPasswordAuthFlowContext withResetAuthorization(
       ForgotPasswordResetAuthorization authorization) {
     return new ForgotPasswordAuthFlowContext(
-        normalizedUsername,
-        customerId,
+        username,
         identityValue,
         identityType,
         identityVerified,
@@ -145,7 +134,7 @@ public record ForgotPasswordAuthFlowContext(
 
   @Override
   public String toString() {
-    return "ForgotPasswordAuthFlowContext[normalizedUsername=<redacted>, customerId=<redacted>, identityValue=<redacted>, identityType="
+    return "ForgotPasswordAuthFlowContext[username=<redacted>, identityValue=<redacted>, identityType="
         + identityType
         + ", identityVerified="
         + identityVerified

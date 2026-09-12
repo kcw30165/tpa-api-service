@@ -113,7 +113,7 @@ public final class ForgotPasswordCompleteProtectedOperation {
     }
     ForgotPasswordPasswordValidationResult passwordValidation =
         passwordValidator.validate(
-            command.password(), command.confirmPassword(), context.normalizedUsername());
+            command.password(), command.confirmPassword(), context.username());
     if (!passwordValidation.valid()) {
       return Mono.just(
           ForgotPasswordCompleteProtectedExecutionResult.terminal(
@@ -127,7 +127,7 @@ public final class ForgotPasswordCompleteProtectedOperation {
     return completion
         .complete(
             new ForgotPasswordCompletionCommand(
-                context.customerId(),
+                context.username(),
                 command.password(),
                 command.correlationId(),
                 context.accountEnv(),

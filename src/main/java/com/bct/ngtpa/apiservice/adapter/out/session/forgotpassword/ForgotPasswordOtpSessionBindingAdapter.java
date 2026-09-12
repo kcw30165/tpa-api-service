@@ -92,8 +92,7 @@ public final class ForgotPasswordOtpSessionBindingAdapter
                   || !q.expiresAt().equals(c.challengeExpiresAt())) return rejected();
               var bound =
                   new ForgotPasswordAuthFlowContext(
-                      context.normalizedUsername(),
-                      context.customerId(),
+                      context.username(),
                       context.identityValue(),
                       context.identityType(),
                       true,

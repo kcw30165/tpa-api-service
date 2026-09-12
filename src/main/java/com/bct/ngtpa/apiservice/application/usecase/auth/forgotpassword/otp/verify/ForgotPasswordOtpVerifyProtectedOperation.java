@@ -310,8 +310,7 @@ public final class ForgotPasswordOtpVerifyProtectedOperation {
       return context;
     }
     return new ForgotPasswordAuthFlowContext(
-        context.normalizedUsername(),
-        context.customerId(),
+        context.username(),
         context.identityValue(),
         context.identityType(),
         context.identityVerified(),

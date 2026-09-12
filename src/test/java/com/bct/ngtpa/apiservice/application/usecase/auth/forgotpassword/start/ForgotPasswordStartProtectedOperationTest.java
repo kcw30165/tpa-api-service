@@ -72,8 +72,8 @@ class ForgotPasswordStartProtectedOperationTest {
     verify(f.lookup).lookup(lookup.capture());
     assertThat(lookup.getValue().normalizedUsername()).isEqualTo("member01");
     assertThat(lookup.getValue().actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_MBR);
-    assertThat(f.protectedContext.normalizedUsername()).isEqualTo("member01");
-    assertThat(f.protectedContext.customerId()).isEqualTo("cust-db01");
+    assertThat(f.protectedContext.username()).isEqualTo("cust-db01");
+    assertThat(f.protectedContext.username()).isEqualTo("cust-db01");
     assertThat(f.protectedContext.identityValue()).isEqualTo("tas-user-01");
     assertThat(f.protectedContext.identityType()).isEqualTo("STAFF_NO");
     assertThat(f.protectedContext.identityVerified()).isFalse();
