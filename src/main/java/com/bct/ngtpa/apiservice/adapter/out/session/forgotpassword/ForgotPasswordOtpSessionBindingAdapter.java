@@ -94,8 +94,8 @@ public final class ForgotPasswordOtpSessionBindingAdapter
                   new ForgotPasswordAuthFlowContext(
                       context.normalizedUsername(),
                       context.customerId(),
-                      context.tasUserId(),
-                      context.publicIdentityType(),
+                      context.identityValue(),
+                      context.identityType(),
                       true,
                       context.resetSubjectId(),
                       c.contactChannel(),

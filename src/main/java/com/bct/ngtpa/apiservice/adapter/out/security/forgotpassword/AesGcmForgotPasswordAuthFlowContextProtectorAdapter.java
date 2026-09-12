@@ -131,8 +131,8 @@ public class AesGcmForgotPasswordAuthFlowContextProtectorAdapter
   private record Payload(
       String normalizedUsername,
       String customerId,
-      String tasUserId,
-      String publicIdentityType,
+      String identityValue,
+      String identityType,
       boolean identityVerified,
       String resetSubjectId,
       String contactChannel,
@@ -147,8 +147,8 @@ public class AesGcmForgotPasswordAuthFlowContextProtectorAdapter
       return new Payload(
           context.normalizedUsername(),
           context.customerId(),
-          context.tasUserId(),
-          context.publicIdentityType(),
+          context.identityValue(),
+          context.identityType(),
           context.identityVerified(),
           context.resetSubjectId(),
           context.contactChannel(),
@@ -163,8 +163,8 @@ public class AesGcmForgotPasswordAuthFlowContextProtectorAdapter
       return new ForgotPasswordAuthFlowContext(
           normalizedUsername,
           customerId,
-          tasUserId,
-          publicIdentityType,
+          identityValue,
+          identityType,
           identityVerified,
           resetSubjectId,
           contactChannel,

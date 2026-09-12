@@ -28,8 +28,8 @@ public final class ForgotPasswordUnderLockDetailsVerifier {
     return lookup
         .verify(
             new ForgotPasswordDetailsLookupCommand(
-                context.publicIdentityType(),
-                context.tasUserId(),
+                context.identityType(),
+                context.identityValue(),
                 dob,
                 email,
                 mobile,

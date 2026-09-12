@@ -74,8 +74,8 @@ class ForgotPasswordStartProtectedOperationTest {
     assertThat(lookup.getValue().actorUserRole()).isEqualTo(ActorUserRole.ROLE_USER_MBR);
     assertThat(f.protectedContext.normalizedUsername()).isEqualTo("member01");
     assertThat(f.protectedContext.customerId()).isEqualTo("cust-db01");
-    assertThat(f.protectedContext.tasUserId()).isEqualTo("tas-user-01");
-    assertThat(f.protectedContext.publicIdentityType()).isEqualTo("STAFF_NO");
+    assertThat(f.protectedContext.identityValue()).isEqualTo("tas-user-01");
+    assertThat(f.protectedContext.identityType()).isEqualTo("STAFF_NO");
     assertThat(f.protectedContext.identityVerified()).isFalse();
 
     var session = ArgumentCaptor.forClass(StartAuthFlowSessionWithConcurrencyCommand.class);

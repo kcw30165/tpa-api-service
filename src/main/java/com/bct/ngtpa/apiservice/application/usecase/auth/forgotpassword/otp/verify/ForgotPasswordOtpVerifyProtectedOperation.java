@@ -299,7 +299,7 @@ public final class ForgotPasswordOtpVerifyProtectedOperation {
     if (!blank(context.resetSubjectId())) {
       return context.resetSubjectId().trim();
     }
-    return blank(context.tasUserId()) ? null : context.tasUserId().trim();
+    return blank(context.identityValue()) ? null : context.identityValue().trim();
   }
 
   private ForgotPasswordAuthFlowContext normalizeResetSubjectId(
@@ -312,8 +312,8 @@ public final class ForgotPasswordOtpVerifyProtectedOperation {
     return new ForgotPasswordAuthFlowContext(
         context.normalizedUsername(),
         context.customerId(),
-        context.tasUserId(),
-        context.publicIdentityType(),
+        context.identityValue(),
+        context.identityType(),
         context.identityVerified(),
         resetSubjectId,
         context.contactChannel(),

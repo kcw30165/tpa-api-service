@@ -116,8 +116,8 @@ public final class VerifyForgotPasswordIdentityService
                             if (!verifier.matches(
                                 c.identityType(),
                                 c.identityValue(),
-                                context.publicIdentityType(),
-                                context.tasUserId()))
+                                context.identityType(),
+                                context.identityValue()))
                               return Mono.just(
                                   VerifyForgotPasswordIdentityResult.of(
                                       VerifyForgotPasswordIdentityStatus.INCORRECT_ID));

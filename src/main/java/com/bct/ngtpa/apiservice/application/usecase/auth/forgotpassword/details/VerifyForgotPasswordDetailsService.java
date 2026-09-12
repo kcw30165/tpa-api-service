@@ -117,8 +117,8 @@ public final class VerifyForgotPasswordDetailsService
                             return lookup
                                 .verify(
                                     new ForgotPasswordDetailsLookupCommand(
-                                        context.publicIdentityType(),
-                                        context.tasUserId(),
+                                        context.identityType(),
+                                        context.identityValue(),
                                         c.dateOfBirth(),
                                         c.email(),
                                         c.mobile(),
@@ -141,8 +141,8 @@ public final class VerifyForgotPasswordDetailsService
                                               new ForgotPasswordAuthFlowContext(
                                                   context.normalizedUsername(),
                                                   context.customerId(),
-                                                  context.tasUserId(),
-                                                  context.publicIdentityType(),
+                                                  context.identityValue(),
+                                                  context.identityType(),
                                                   context.identityVerified(),
                                                   context.resetSubjectId(),
                                                   context.contactChannel(),

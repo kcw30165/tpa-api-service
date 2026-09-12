@@ -5,8 +5,8 @@ import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.ForgotPasswo
 public record ForgotPasswordAuthFlowContext(
     String normalizedUsername,
     String customerId,
-    String tasUserId,
-    String publicIdentityType,
+    String identityValue,
+    String identityType,
     boolean identityVerified,
     String resetSubjectId,
     String contactChannel,
@@ -20,13 +20,13 @@ public record ForgotPasswordAuthFlowContext(
   public ForgotPasswordAuthFlowContext {
     normalizedUsername = requireText(normalizedUsername, "normalizedUsername");
     customerId = requireText(customerId, "customerId");
-    tasUserId = requireText(tasUserId, "tasUserId");
-    publicIdentityType = requireText(publicIdentityType, "publicIdentityType");
+    identityValue = requireText(identityValue, "identityValue");
+    identityType = requireText(identityType, "identityType");
     workflowVersion = requireText(workflowVersion, "workflowVersion");
     phase =
         phase == null
                 && completeStartContext(
-                    normalizedUsername, customerId, tasUserId, publicIdentityType)
+                    normalizedUsername, customerId, identityValue, identityType)
             ? ForgotPasswordProtectedPhase.USERNAME_VERIFIED
             : phase;
   }
@@ -38,8 +38,8 @@ public record ForgotPasswordAuthFlowContext(
   public ForgotPasswordAuthFlowContext(
       String normalizedUsername,
       String customerId,
-      String tasUserId,
-      String publicIdentityType,
+      String identityValue,
+      String identityType,
       boolean identityVerified,
       String resetSubjectId,
       String contactChannel,
@@ -51,8 +51,8 @@ public record ForgotPasswordAuthFlowContext(
     this(
         normalizedUsername,
         customerId,
-        tasUserId,
-        publicIdentityType,
+        identityValue,
+        identityType,
         identityVerified,
         resetSubjectId,
         contactChannel,
@@ -67,8 +67,8 @@ public record ForgotPasswordAuthFlowContext(
   public ForgotPasswordAuthFlowContext(
       String normalizedUsername,
       String customerId,
-      String tasUserId,
-      String publicIdentityType,
+      String identityValue,
+      String identityType,
       boolean identityVerified,
       String resetSubjectId,
       String contactChannel,
@@ -79,8 +79,8 @@ public record ForgotPasswordAuthFlowContext(
     this(
         normalizedUsername,
         customerId,
-        tasUserId,
-        publicIdentityType,
+        identityValue,
+        identityType,
         identityVerified,
         resetSubjectId,
         contactChannel,
@@ -105,8 +105,8 @@ public record ForgotPasswordAuthFlowContext(
     return new ForgotPasswordAuthFlowContext(
         normalizedUsername,
         customerId,
-        tasUserId,
-        publicIdentityType,
+        identityValue,
+        identityType,
         identityVerified || next == ForgotPasswordProtectedPhase.IDENTITY_VERIFIED,
         resetSubjectId,
         contactChannel,
@@ -123,8 +123,8 @@ public record ForgotPasswordAuthFlowContext(
     return new ForgotPasswordAuthFlowContext(
         normalizedUsername,
         customerId,
-        tasUserId,
-        publicIdentityType,
+        identityValue,
+        identityType,
         identityVerified,
         resetSubjectId,
         contactChannel,
@@ -145,8 +145,8 @@ public record ForgotPasswordAuthFlowContext(
 
   @Override
   public String toString() {
-    return "ForgotPasswordAuthFlowContext[normalizedUsername=<redacted>, customerId=<redacted>, tasUserId=<redacted>, publicIdentityType="
-        + publicIdentityType
+    return "ForgotPasswordAuthFlowContext[normalizedUsername=<redacted>, customerId=<redacted>, identityValue=<redacted>, identityType="
+        + identityType
         + ", identityVerified="
         + identityVerified
         + ", resetSubjectId=<redacted>, contactChannel="
