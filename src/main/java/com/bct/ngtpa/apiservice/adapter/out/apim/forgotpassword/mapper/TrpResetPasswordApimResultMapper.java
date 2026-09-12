@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.mapper;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.TrpResetPasswordApimEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.dto.TrpResetPasswordApimDataItem;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompletionResult;
+import com.bct.ngtpa.apiservice.shared.identity.IdentifierNormalizer;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -41,7 +42,7 @@ public final class TrpResetPasswordApimResultMapper {
     if (!Boolean.TRUE.equals(item.success())) {
       return ForgotPasswordCompletionResult.technicalFailure();
     }
-    if (!expectedCustomerId.equals(item.customerId())) {
+    if (!IdentifierNormalizer.equalsNormalized(expectedCustomerId, item.customerId())) {
       return ForgotPasswordCompletionResult.technicalFailure();
     }
     if (!isValidDate(item.updateDate()) || !isValidTime(item.updateTime())) {

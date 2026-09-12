@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsLookupCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsLookupResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsLookupStatus;
+import com.bct.ngtpa.apiservice.shared.identity.IdentifierNormalizer;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -74,7 +75,7 @@ public final class ForgotPasswordTrpSearchMemberMapper {
       if (!registered && customerId != null) {
         throw malformed(ForgotPasswordDetailsDownstreamException.Reason.MALFORMED_DATA);
       }
-      if (registered && expected.equalsIgnoreCase(customerId) && matched == null) {
+      if (registered && IdentifierNormalizer.equalsNormalized(expected, customerId) && matched == null) {
         matched = item;
       }
     }
