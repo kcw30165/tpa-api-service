@@ -50,6 +50,6 @@ class LoginStartWebMapperTest {
     assertThat(response.errors())
         .singleElement()
         .extracting(error -> error.code())
-        .isEqualTo("err.login.incorrect.password");
+        .isEqualTo("err.login.credentials.invalid");
   }
 }

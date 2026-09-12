@@ -38,10 +38,8 @@ public final class LoginStartWebMapper {
                       List.of(),
                       result.failCount())),
               List.of());
-      case INCORRECT_PASSWORD ->
-          failure(ApiStatus.BUSINESS_REJECTED, LoginErrorKey.INCORRECT_PASSWORD.value(), "BFF");
-      case INCORRECT_USERNAME ->
-          failure(ApiStatus.BUSINESS_REJECTED, LoginErrorKey.INCORRECT_USERNAME.value(), "BFF");
+      case INCORRECT_PASSWORD, INCORRECT_USERNAME ->
+          failure(ApiStatus.BUSINESS_REJECTED, LoginErrorKey.CREDENTIALS_INVALID.value(), "BFF");
       case INVALID_ACCOUNT ->
           failure(ApiStatus.BUSINESS_REJECTED, LoginErrorKey.INVALID_ACCOUNT.value(), "BFF");
       case ACCOUNT_LOCKED ->

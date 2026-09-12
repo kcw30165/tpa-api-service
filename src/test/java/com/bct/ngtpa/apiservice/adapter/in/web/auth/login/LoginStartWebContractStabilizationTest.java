@@ -17,12 +17,12 @@ class LoginStartWebContractStabilizationTest {
     assertMapping(
         StartLoginStatus.INCORRECT_PASSWORD,
         ApiStatus.BUSINESS_REJECTED,
-        "err.login.incorrect.password",
+        "err.login.credentials.invalid",
         HttpStatus.UNAUTHORIZED);
     assertMapping(
         StartLoginStatus.INCORRECT_USERNAME,
         ApiStatus.BUSINESS_REJECTED,
-        "err.login.incorrect.username",
+        "err.login.credentials.invalid",
         HttpStatus.UNAUTHORIZED);
     assertMapping(
         StartLoginStatus.INVALID_ACCOUNT,

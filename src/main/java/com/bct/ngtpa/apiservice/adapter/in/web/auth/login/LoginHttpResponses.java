@@ -25,9 +25,7 @@ public final class LoginHttpResponses {
         || code.equals(LoginErrorKey.OTP_COOLDOWN_ACTIVE.value()))
       return HttpStatus.TOO_MANY_REQUESTS;
     if (code.equals(LoginErrorKey.ACCOUNT_LOCKED.value())) return HttpStatus.LOCKED;
-    if (code.equals(LoginErrorKey.INCORRECT_PASSWORD.value())
-        || code.equals(LoginErrorKey.INCORRECT_USERNAME.value())
-        || code.equals(LoginErrorKey.INVALID_ACCOUNT.value())
+    if (code.equals(LoginErrorKey.INVALID_ACCOUNT.value())
         || code.equals(LoginErrorKey.CREDENTIALS_INVALID.value())) return HttpStatus.UNAUTHORIZED;
     if (code.equals(LoginErrorKey.CREDENTIALS_UNAVAILABLE.value())) return HttpStatus.BAD_GATEWAY;
     if (code.equals(LoginErrorKey.SESSION_CREATION_FAILED.value()))
