@@ -53,8 +53,12 @@ class ForgotPasswordPasswordReuseExposureGuardTest {
         end = op.length();
       }
       String block = op.substring(start, end);
-      assertThat(block).as(emitter + " must not emit downstream type").doesNotContain("DOWNSTREAM_BUSINESS");
-      assertThat(block).as(emitter + " must emit BUSINESS type").contains("WorkflowErrorType.BUSINESS");
+      assertThat(block)
+          .as(emitter + " must not emit downstream type")
+          .doesNotContain("DOWNSTREAM_BUSINESS");
+      assertThat(block)
+          .as(emitter + " must emit BUSINESS type")
+          .contains("WorkflowErrorType.BUSINESS");
     }
   }
 }

@@ -7,9 +7,9 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 /**
- * Guards that the Forgot Password DETAILS-OTP web mapper never places downstream vocabulary
- * ({@code err.tpa.*}) on the wire. The business-rejected (member-not-found) response must use a
- * BFF-owned code.
+ * Guards that the Forgot Password DETAILS-OTP web mapper never places downstream vocabulary ({@code
+ * err.tpa.*}) on the wire. The business-rejected (member-not-found) response must use a BFF-owned
+ * code.
  */
 class ForgotPasswordDetailsOtpMemberNotFoundExposureGuardTest {
   private static final Path MAPPER =

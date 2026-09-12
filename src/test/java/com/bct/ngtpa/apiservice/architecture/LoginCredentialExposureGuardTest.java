@@ -13,8 +13,7 @@ import org.junit.jupiter.api.Test;
  */
 class LoginCredentialExposureGuardTest {
   private static final Path LOGIN_ERROR_KEY =
-      Path.of(
-          "src/main/java/com/bct/ngtpa/apiservice/application/dto/workflow/LoginErrorKey.java");
+      Path.of("src/main/java/com/bct/ngtpa/apiservice/application/dto/workflow/LoginErrorKey.java");
   private static final Path START_WEB_MAPPER =
       Path.of(
           "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/login/mapper/LoginStartWebMapper.java");

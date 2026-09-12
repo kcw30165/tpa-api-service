@@ -75,7 +75,8 @@ class ApimForgotPasswordCompletionExecutorBehaviorTest {
         .assertNext(
             r -> {
               assertThat(r.status()).isEqualTo(ForgotPasswordCompletionResult.Status.REJECTED);
-              assertThat(r.downstreamErrorCode()).isEqualTo("err.tpa.password.used.in.last.5.changes.");
+              assertThat(r.downstreamErrorCode())
+                  .isEqualTo("err.tpa.password.used.in.last.5.changes.");
             })
         .verifyComplete();
   }

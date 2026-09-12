@@ -155,8 +155,7 @@ public final class ForgotPasswordCompleteProtectedOperation {
             ForgotPasswordCompleteProtectedExecutionResult.terminal(passwordInvalid()));
       }
       if (DOWNSTREAM_PASSWORD_REUSED.equals(result.downstreamErrorCode())) {
-        return Mono.just(
-            ForgotPasswordCompleteProtectedExecutionResult.terminal(passwordReused()));
+        return Mono.just(ForgotPasswordCompleteProtectedExecutionResult.terminal(passwordReused()));
       }
       if (DOWNSTREAM_MEMBER_NOT_FOUND.equals(result.downstreamErrorCode())) {
         return updateSession(session, AuthFlowStatus.COMPLETED, context, now)
