@@ -10,7 +10,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class AccountBalanceApimDtoContractTest {
-  private final ObjectMapper json = new ObjectMapper();
+  private final ObjectMapper json = new ObjectMapper().findAndRegisterModules();
 
   @Test
   void serializesExactInitialLoadAndCurrencyChangeRequests() throws Exception {
