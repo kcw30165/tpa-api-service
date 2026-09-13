@@ -78,7 +78,11 @@ class AccountBalanceApimDtoContractTest {
                     List.of(
                         new TrpGetMemberAccBalApimDataItem(
                             LocalDate.of(2026, 8, 31),
-                            List.of(), List.of(currency), List.of(), List.of(), List.of()))))
+                            List.of(),
+                            List.of(currency),
+                            List.of(),
+                            List.of(),
+                            List.of()))))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("displayOptions");
     assertThatThrownBy(
@@ -100,7 +104,11 @@ class AccountBalanceApimDtoContractTest {
                     List.of(
                         new TrpGetMemberAccBalApimDataItem(
                             LocalDate.of(2026, 8, 31),
-                            List.of(options), List.of(), List.of(), List.of(), List.of()))))
+                            List.of(options),
+                            List.of(),
+                            List.of(),
+                            List.of(),
+                            List.of()))))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("curr");
     assertThatThrownBy(
@@ -109,7 +117,11 @@ class AccountBalanceApimDtoContractTest {
                     List.of(
                         new TrpGetMemberAccBalApimDataItem(
                             LocalDate.of(2026, 8, 31),
-                            List.of(options), List.of(currency), null, List.of(), List.of()))))
+                            List.of(options),
+                            List.of(currency),
+                            null,
+                            List.of(),
+                            List.of()))))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("arrays");
   }

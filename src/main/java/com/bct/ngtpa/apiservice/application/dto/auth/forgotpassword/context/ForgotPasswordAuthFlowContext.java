@@ -83,8 +83,7 @@ public record ForgotPasswordAuthFlowContext(
         null);
   }
 
-  private static boolean completeStartContext(
-      String username, String userId, String identityType) {
+  private static boolean completeStartContext(String username, String userId, String identityType) {
     return hasText(username) && hasText(userId) && hasText(identityType);
   }
 
