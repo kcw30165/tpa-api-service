@@ -1,8 +1,10 @@
 package com.bct.ngtpa.apiservice.application.dto.accountbalance.raw;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public record RawAccountBalanceData(
+    LocalDate asOfDate,
     RawAccountBalanceDisplayOptions displayOptions,
     RawAccountBalanceCurrency currency,
     List<RawAccountBalanceDisplaySource> displaySources,

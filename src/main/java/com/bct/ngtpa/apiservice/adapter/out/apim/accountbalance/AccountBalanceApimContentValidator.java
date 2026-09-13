@@ -15,6 +15,10 @@ public final class AccountBalanceApimContentValidator {
           "TRPGetMemberAccBal response.data must contain exactly one non-null item");
     }
     var item = data.getFirst();
+    if (item.asOfDate() == null) {
+      throw new IllegalArgumentException(
+          "TRPGetMemberAccBal response.data[0].as-of-date must not be null");
+    }
     requireSingleNonNull(item.displayOptions(), "displayOptions");
     requireSingleNonNull(item.currencies(), "curr");
     if (item.displaySources() == null

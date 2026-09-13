@@ -51,7 +51,7 @@ class GetAccountBalanceServiceTest {
                       .toList()));
         };
     RawAccountBalanceData raw =
-        new RawAccountBalanceData(null, null, List.of(), List.of(), List.of());
+        new RawAccountBalanceData(null, null, null, List.of(), List.of(), List.of());
     AccountBalanceSourcePort source =
         command -> {
           fetched.set(command);

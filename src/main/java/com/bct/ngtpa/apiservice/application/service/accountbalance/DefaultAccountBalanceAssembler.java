@@ -106,7 +106,7 @@ public final class DefaultAccountBalanceAssembler implements AccountBalanceAssem
                         o.accountTotals().pendingSwitchIn(), p, GeneralMetadataName.NET_ASSET_VALUE)
                     : null));
     return new AccountBalanceResult(
-        d.format(DATE),
+        r.asOfDate().format(DATE),
         currencies.map(n.currency()),
         ao,
         new InvestmentPortfolio(mapFund(fv, n, c.language(), p), mapSub(sv, n, c.language(), p)));

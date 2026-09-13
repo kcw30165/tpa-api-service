@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.*;
 import com.bct.ngtpa.apiservice.adapter.out.apim.accountbalance.dto.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -41,6 +42,7 @@ class AccountBalanceApimDtoContractTest {
   @Test
   void deserializesCompleteRawResponseWithoutTransformation() throws Exception {
     var item = json.readValue(sample(), TrpGetMemberAccBalApimDataItem.class);
+    assertThat(item.asOfDate()).isEqualTo(LocalDate.of(2026, 8, 31));
     assertThat(item.displayOptions().getFirst().vestedBalanceVisible()).isTrue();
     assertThat(item.currencies().getFirst().available()).containsExactly("HKD");
     assertThat(item.displaySources().getFirst().displaySource()).isEqualTo("EE");
@@ -75,6 +77,7 @@ class AccountBalanceApimDtoContractTest {
                 AccountBalanceApimContentValidator.requireSingleData(
                     List.of(
                         new TrpGetMemberAccBalApimDataItem(
+                            LocalDate.of(2026, 8, 31),
                             List.of(), List.of(currency), List.of(), List.of(), List.of()))))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("displayOptions");
@@ -83,6 +86,7 @@ class AccountBalanceApimDtoContractTest {
                 AccountBalanceApimContentValidator.requireSingleData(
                     List.of(
                         new TrpGetMemberAccBalApimDataItem(
+                            LocalDate.of(2026, 8, 31),
                             List.of(options, options),
                             List.of(currency),
                             List.of(),
@@ -95,6 +99,7 @@ class AccountBalanceApimDtoContractTest {
                 AccountBalanceApimContentValidator.requireSingleData(
                     List.of(
                         new TrpGetMemberAccBalApimDataItem(
+                            LocalDate.of(2026, 8, 31),
                             List.of(options), List.of(), List.of(), List.of(), List.of()))))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("curr");
@@ -103,9 +108,29 @@ class AccountBalanceApimDtoContractTest {
                 AccountBalanceApimContentValidator.requireSingleData(
                     List.of(
                         new TrpGetMemberAccBalApimDataItem(
+                            LocalDate.of(2026, 8, 31),
                             List.of(options), List.of(currency), null, List.of(), List.of()))))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("arrays");
+  }
+
+  @Test
+  void rejectsMissingAsOfDate() {
+    var options = new AccountBalanceDisplayOptions(true, false, true);
+    var currency = new AccountBalanceCurrency(List.of("HKD"), "HKD");
+    assertThatThrownBy(
+            () ->
+                AccountBalanceApimContentValidator.requireSingleData(
+                    List.of(
+                        new TrpGetMemberAccBalApimDataItem(
+                            null,
+                            List.of(options),
+                            List.of(currency),
+                            List.of(),
+                            List.of(),
+                            List.of()))))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("as-of-date");
   }
 
   @Test
@@ -129,6 +154,7 @@ class AccountBalanceApimDtoContractTest {
 
   private static TrpGetMemberAccBalApimDataItem item() {
     return new TrpGetMemberAccBalApimDataItem(
+        LocalDate.of(2026, 8, 31),
         List.of(new AccountBalanceDisplayOptions(true, false, true)),
         List.of(new AccountBalanceCurrency(List.of("HKD"), "HKD")),
         List.of(),
@@ -137,6 +163,6 @@ class AccountBalanceApimDtoContractTest {
   }
 
   private static String sample() {
-    return "{\"displayOptions\":[{\"vestedBalanceVisible\":true,\"pendingSwitchInVisible\":false,\"fxRateVisible\":true}],\"curr\":[{\"avai\":[\"HKD\"],\"selected\":\"HKD\"}],\"dispSrc\":[{\"disp-src\":\"EE\",\"src-desc\":\"Member Account\",\"src-chin-desc\":\"Member Account\",\"sub-disp-src\":\"OE\",\"sub-src-desc\":\"Member Account\",\"sub-src-chin-desc\":\"Member Account\",\"seq\":50}],\"fundDtl\":[{\"fund-code\":\"DBLF\",\"fund-name\":\"Fidelity Balanced Fund\",\"chin-fund-name\":\"Fidelity Balanced Fund\",\"fund-seq\":60,\"fund-price\":535.9379,\"fund-curr\":\"HKD\",\"exchange-rate\":1.0,\"fund-fact-sheet\":\"\"}],\"accBal\":[{\"disp-src\":\"EE\",\"sub-disp-src\":\"OE\",\"fund-code\":\"DGLE\",\"unit\":9096.201,\"nav\":3415434.27,\"vested-bal\":1467156.68,\"transit-amt\":0.0}]}";
+    return "{\"as-of-date\":\"2026-08-31\",\"displayOptions\":[{\"vestedBalanceVisible\":true,\"pendingSwitchInVisible\":false,\"fxRateVisible\":true}],\"curr\":[{\"avai\":[\"HKD\"],\"selected\":\"HKD\"}],\"dispSrc\":[{\"disp-src\":\"EE\",\"src-desc\":\"Member Account\",\"src-chin-desc\":\"Member Account\",\"sub-disp-src\":\"OE\",\"sub-src-desc\":\"Member Account\",\"sub-src-chin-desc\":\"Member Account\",\"seq\":50}],\"fundDtl\":[{\"fund-code\":\"DBLF\",\"fund-name\":\"Fidelity Balanced Fund\",\"chin-fund-name\":\"Fidelity Balanced Fund\",\"fund-seq\":60,\"fund-price\":535.9379,\"fund-curr\":\"HKD\",\"exchange-rate\":1.0,\"fund-fact-sheet\":\"\"}],\"accBal\":[{\"disp-src\":\"EE\",\"sub-disp-src\":\"OE\",\"fund-code\":\"DGLE\",\"unit\":9096.201,\"nav\":3415434.27,\"vested-bal\":1467156.68,\"transit-amt\":0.0}]}";
   }
 }
