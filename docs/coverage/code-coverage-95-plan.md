@@ -300,3 +300,22 @@ local diagnostic surfaced the real, previously-swallowed exception. This
 traces back to the operation's `.onErrorReturn(SYSTEM_FAILED)` silently
 absorbing the real cause — a pattern worth keeping in mind for future
 debugging of this class.
+
+## 9c. Dead-Code Finding — `ForgotPasswordOtpVerifyProtectedOperation`
+
+**Location:** the `blank(resetSubjectId)` sub-condition inside the combined
+guard `context.phase() != OTP_SENT || blank(loaded.activeOtpChallengeId()) ||
+blank(resetSubjectId)`.
+
+**Finding:** this sub-condition is unreachable via any validly-constructed
+`ForgotPasswordAuthFlowContext`. `identityValue` is a required, always-non-
+blank field (enforced by the record's compact constructor via `requireText`),
+and `effectiveResetSubjectId(...)` falls back to `identityValue` whenever
+`resetSubjectId` is blank — so the effective value can never actually be
+blank. A dedicated test for this branch was attempted (round 25) and failed
+for exactly this reason (fell through to an unstubbed `otp.verifyChallenge`
+call instead, surfacing as `SYSTEM_FAILED`); the test was removed rather than
+forcing an impossible precondition. This is the same category of finding as
+the unreachable `result == null` branch documented for the COMPLETE operation
+in round 11. No action needed — this is a defensive-programming artifact, not
+a missed test.
