@@ -181,7 +181,18 @@
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
 				<version>0.8.12</version>
-				<executions>
+				          <!-- D1-EXCLUDES-START (docs/coverage/code-coverage-95-plan.md sec 5) -->
+          <configuration>
+            <excludes>
+                <exclude>**/*Config.class</exclude>
+                <exclude>**/*Config$*.class</exclude>
+                <exclude>**/*Properties.class</exclude>
+                <exclude>**/*Properties$*.class</exclude>
+                <exclude>**/package-info.class</exclude>
+            </excludes>
+          </configuration>
+          <!-- D1-EXCLUDES-END -->
+<executions>
 					<execution>
 						<goals>
 							<goal>prepare-agent</goal>

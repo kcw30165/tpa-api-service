@@ -68,7 +68,7 @@ round 01.
 
 | # | Decision | Options | Status | Notes |
 |---|---|---|---|---|
-| D1 | JaCoCo exclude set for structural classes | (a) exclude Spring `*Config`/`*Properties`, pure DTO records, `package-info`; (b) test them all | **OPEN** | ~3,778 missed instr sit in these. See §5. |
+| D1 | JaCoCo exclude set for structural classes | (a) exclude Spring `*Config`/`*Properties`, `package-info`; keep DTO records (many carry real validation logic) | **RESOLVED** | Ratified and applied to `pom.xml`. See §9d. |
 | D2 | Target metric | (a) 95% instruction only; (b) instruction **and** branch | **OPEN** | Branch is at 60.74% — (b) is materially more work. |
 | D3 | When to enforce the JaCoCo `check` threshold | raise to 95% now vs. after tests land | **Recommended: after** | Enforcing now makes the build red until tests catch up. |
 | D4 | First wave target | `ForgotPasswordPasswordValidator` | **RESOLVED** | Landed — 100% instr / 97.92% branch. |
@@ -319,3 +319,34 @@ forcing an impossible precondition. This is the same category of finding as
 the unreachable `result == null` branch documented for the COMPLETE operation
 in round 11. No action needed — this is a defensive-programming artifact, not
 a missed test.
+
+## 9d. D1 Ratification — JaCoCo Excludes Applied
+
+**Decision:** D1 is RESOLVED. Applied to `pom.xml` (jacoco-maven-plugin
+configuration), NOT to production application code.
+
+**Excluded (structural, no branching logic, verified by class-name pattern):**
+- `**/*Config.class` / `**/*Config$*.class` — Spring `@Configuration` /
+  `@Bean`-wiring classes.
+- `**/*Properties.class` / `**/*Properties$*.class` — `@ConfigurationProperties`
+  binding holders.
+- `**/package-info.class` — non-executable.
+
+**Deliberately NOT excluded:** pure DTO/response/request records. Several
+carry real compact-constructor validation (e.g. `ForgotPasswordOtpCommitState`,
+`LoginIdempotencyKey`, `AuthenticatedLoginHandoffReference`, all confirmed
+during WAVE C) — excluding them would hide real logic from the coverage
+signal, contradicting the goal of an honest 95% target.
+
+**Effect (measured, full `mvn test` re-run):**
+
+| Metric | Before D1 (round 34) | After D1 (this round) |
+|---|---:|---:|
+| Instruction | 79.97% | **81.42%** |
+| Branch | 63.31% | **64.16%** |
+
+The single largest 0% class, `ForgotPasswordApplicationConfig` (599 missed
+instructions), is now excluded from the denominator rather than requiring
+tests, along with its `*Config`/`*Properties` siblings (~9,333 structural
+instructions total).
+
