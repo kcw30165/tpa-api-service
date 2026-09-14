@@ -19,7 +19,8 @@ import java.util.Objects;
  * Idempotency-Key} enter through this typed command. {@code language} matches the committed {@code
  * UsernameRecoverySession} {@code java.util.Locale} field; it is required and never defaults.
  * {@code idempotencyKey} is the opaque client key, distinct from the semantic fingerprint; later
- * use cases may convert it into {@code UsernameRecoveryIdempotencyKey}. No raw CSRF is carried.
+ * use cases may convert it into {@code the repository-wide shared idempotency operation identity}.
+ * No raw CSRF is carried.
  *
  * <p>Invariants: {@code identityType}, {@code identityValue}, {@code dateOfBirth}, {@code
  * captchaChallengeId}, {@code language}, and {@code idempotencyKey} are required; the string fields

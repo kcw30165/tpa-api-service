@@ -11,26 +11,13 @@ import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisCaptchaChallengeJson
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisOtpChallengeJsonMapper;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisOtpChallengeStateAdapter;
 import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRateLimitAdapter;
-import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRegistrationIdempotencyAdapter;
-import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRegistrationIdempotencyJsonMapper;
-import com.bct.ngtpa.apiservice.adapter.out.redis.auth.RedisRegistrationIdempotencyKeyFactory;
-import com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.RedisForgotPasswordIdempotencyAdapter;
-import com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.RedisForgotPasswordIdempotencyJsonMapper;
-import com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword.RedisForgotPasswordIdempotencyKeyFactory;
-import com.bct.ngtpa.apiservice.adapter.out.redis.auth.login.RedisLoginCredentialIdempotencyAdapter;
-import com.bct.ngtpa.apiservice.adapter.out.redis.auth.login.RedisLoginIdempotencyKeyFactory;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionCompletionLockPort;
 import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.CacheAdminPort;
 import com.bct.ngtpa.apiservice.application.port.out.CachePort;
 import com.bct.ngtpa.apiservice.application.port.out.CaptchaChallengePort;
-import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordIdempotencyPort;
-import com.bct.ngtpa.apiservice.application.port.out.LoginCredentialIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengeStatePort;
 import com.bct.ngtpa.apiservice.application.port.out.RateLimitPort;
-import com.bct.ngtpa.apiservice.application.port.out.RegistrationIdempotencyPort;
-import com.bct.ngtpa.apiservice.application.service.auth.login.idempotency.*;
-import com.bct.ngtpa.apiservice.infrastructure.security.idempotency.HmacLoginIdempotencyPersistenceIdDeriver;
 import io.lettuce.core.ClientOptions;
 import io.lettuce.core.SslOptions;
 import io.lettuce.core.TimeoutOptions;
@@ -149,64 +136,58 @@ public class RedisAdapterConfig {
     return new RedisRateLimitAdapter(reactiveRedisTemplate, redisCacheKeyFactory);
   }
 
-  @Bean
-  public RedisLoginIdempotencyKeyFactory redisLoginIdempotencyKeyFactory(
-      @Value("${redis-cache.key-prefix:ngtpa}") String keyPrefix) {
-    return new RedisLoginIdempotencyKeyFactory(keyPrefix);
-  }
+  // @Bean
+  // public RedisLoginIdempotencyKeyFactory redisLoginIdempotencyKeyFactory(
+  //     @Value("${redis-cache.key-prefix:ngtpa}") String keyPrefix) {
+  //   return new RedisLoginIdempotencyKeyFactory(keyPrefix);
+  // }
 
-  @Bean
-  public LoginIdempotencyPersistenceIdDeriver loginIdempotencyPersistenceIdDeriver(
-      @Value("${auth-workflows.login.idempotency.persistence-hmac-secret:}")
-          String configuredSecret) {
-    if (configuredSecret == null
-        || configuredSecret.isBlank()
-        || configuredSecret.contains("change-me"))
-      throw new IllegalStateException(
-          "auth-workflows.login.idempotency.persistence-hmac-secret is missing or invalid");
-    byte[] secret;
-    try {
-      secret = java.util.Base64.getDecoder().decode(configuredSecret);
-    } catch (IllegalArgumentException e) {
-      throw new IllegalStateException(
-          "auth-workflows.login.idempotency.persistence-hmac-secret is malformed");
-    }
-    return new HmacLoginIdempotencyPersistenceIdDeriver(secret);
-  }
+  // @Bean
+  // public LoginIdempotencyPersistenceIdDeriver loginIdempotencyPersistenceIdDeriver(
+  //     @Value("${auth-workflows.login.idempotency.persistence-hmac-secret:}")
+  //         String configuredSecret) {
+  //   if (configuredSecret == null
+  //       || configuredSecret.isBlank()
+  //       || configuredSecret.contains("change-me"))
+  //     throw new IllegalStateException(
+  //         "auth-workflows.login.idempotency.persistence-hmac-secret is missing or invalid");
+  //   byte[] secret;
+  //   try {
+  //     secret = java.util.Base64.getDecoder().decode(configuredSecret);
+  //   } catch (IllegalArgumentException e) {
+  //     throw new IllegalStateException(
+  //         "auth-workflows.login.idempotency.persistence-hmac-secret is malformed");
+  //   }
+  //   return new HmacLoginIdempotencyPersistenceIdDeriver(secret);
+  // }
 
-  @Bean
-  public LoginCredentialIdempotencyPort loginCredentialIdempotencyPort(
-      RedisLoginIdempotencyKeyFactory keyFactory,
-      LoginIdempotencyPersistenceIdDeriver derivation,
-      ReactiveStringRedisTemplate redisTemplate) {
-    return new RedisLoginCredentialIdempotencyAdapter(keyFactory, derivation, redisTemplate);
-  }
+  // @Bean
+  // public LoginCredentialIdempotencyPort loginCredentialIdempotencyPort(
+  //     RedisLoginIdempotencyKeyFactory keyFactory,
+  //     LoginIdempotencyPersistenceIdDeriver derivation,
+  //     ReactiveStringRedisTemplate redisTemplate) {
+  //   return new RedisLoginCredentialIdempotencyAdapter(keyFactory, derivation, redisTemplate);
+  // }
 
-  @Bean
-  public RedisRegistrationIdempotencyKeyFactory redisRegistrationIdempotencyKeyFactory(
-      @Value("${redis-cache.key-prefix:ngtpa}") String keyPrefix) {
-    return new RedisRegistrationIdempotencyKeyFactory(keyPrefix);
-  }
+  // @Bean
+  // public RedisRegistrationIdempotencyKeyFactory redisRegistrationIdempotencyKeyFactory(
+  //     @Value("${redis-cache.key-prefix:ngtpa}") String keyPrefix) {
+  //   return new RedisRegistrationIdempotencyKeyFactory(keyPrefix);
+  // }
 
-  @Bean
-  public RedisRegistrationIdempotencyJsonMapper redisRegistrationIdempotencyJsonMapper() {
-    return new RedisRegistrationIdempotencyJsonMapper();
-  }
+  // @Bean
+  // public RedisRegistrationIdempotencyJsonMapper redisRegistrationIdempotencyJsonMapper() {
+  //   return new RedisRegistrationIdempotencyJsonMapper();
+  // }
 
-  @Bean
-  public RegistrationIdempotencyPort registrationIdempotencyPort(
-      RedisRegistrationIdempotencyKeyFactory keyFactory,
-      RedisRegistrationIdempotencyJsonMapper jsonMapper,
-      ReactiveStringRedisTemplate reactiveStringRedisTemplate) {
-    return new RedisRegistrationIdempotencyAdapter(
-        keyFactory, jsonMapper, reactiveStringRedisTemplate);
-  }
-
-  @Bean
-  public RedisForgotPasswordIdempotencyKeyFactory redisForgotPasswordIdempotencyKeyFactory(
-      @Value("${redis-cache.key-prefix:ngtpa}") String keyPrefix) {
-    return new RedisForgotPasswordIdempotencyKeyFactory(keyPrefix);
-  }
+  // @Bean
+  // public RegistrationIdempotencyPort registrationIdempotencyPort(
+  //     RedisRegistrationIdempotencyKeyFactory keyFactory,
+  //     RedisRegistrationIdempotencyJsonMapper jsonMapper,
+  //     ReactiveStringRedisTemplate reactiveStringRedisTemplate) {
+  //   return new RedisRegistrationIdempotencyAdapter(
+  //       keyFactory, jsonMapper, reactiveStringRedisTemplate);
+  // }
 
   @Bean
   public com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword
@@ -237,20 +218,6 @@ public class RedisAdapterConfig {
           ReactiveStringRedisTemplate r) {
     return new com.bct.ngtpa.apiservice.adapter.out.redis.auth.forgotpassword
         .RedisForgotPasswordOtpCommitStateAdapter(k, m, r);
-  }
-
-  @Bean
-  public RedisForgotPasswordIdempotencyJsonMapper redisForgotPasswordIdempotencyJsonMapper() {
-    return new RedisForgotPasswordIdempotencyJsonMapper();
-  }
-
-  @Bean
-  public ForgotPasswordIdempotencyPort forgotPasswordIdempotencyPort(
-      RedisForgotPasswordIdempotencyKeyFactory keyFactory,
-      RedisForgotPasswordIdempotencyJsonMapper jsonMapper,
-      ReactiveStringRedisTemplate reactiveStringRedisTemplate) {
-    return new RedisForgotPasswordIdempotencyAdapter(
-        keyFactory, jsonMapper, reactiveStringRedisTemplate);
   }
 
   @Bean

@@ -8,20 +8,29 @@ import org.junit.jupiter.api.Test;
 class Task0043LoginStartOrchestrationArchitectureTest {
   @Test
   void orchestrationUsesApprovedFoundationsAndStoresOnlyEncryptedContext() throws Exception {
-    String s =
+    String service =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/start/StartLoginService.java"));
-    assertThat(s)
-        .contains(
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/start/SharedStartLoginService.java"));
+    String operation =
+        Files.readString(
+            Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/start/LoginStartProtectedOperation.java"));
+    assertThat(service)
+        .containsIgnoringWhitespaces(
             "LoginCredentialPolicyService",
-            "LoginCredentialIdempotencyCoordinator",
+            "IdempotencyExecutor",
+            "LoginStartProtectedOperation",
+            "LoginStartProtectedReplayCommitter",
+            "operation.execute(command)");
+    assertThat(operation)
+        .contains(
             "CredentialAuthenticationPort",
             "LoginPreAuthContextProtectorPort",
             "AuthFlowSessionLifecycleService",
             "CreateAuthFlowSessionCsrfUseCase",
             "AuthFlowScenario.LOGIN");
-    assertThat(s)
+    assertThat(service + operation)
         .doesNotContain(
             "AuthFlowSessionCsrfService",
             "WebClient",

@@ -46,7 +46,7 @@ public class ExecutionLoggingAspect {
    * service implementations without requiring {@link LogExecution} annotations. This keeps the
    * application layer free of Spring/infrastructure dependencies.
    */
-  @Around("execution(* com.bct.ngtpa.apiservice.application.usecase..*Service.execute(..))")
+  @Around("execution(public * com.bct.ngtpa.apiservice.application.usecase..*Service.execute(..))")
   public Object logUseCaseExecution(ProceedingJoinPoint joinPoint) throws Throwable {
     InvocationContext context = InvocationContext.fromJoinPoint(joinPoint);
     return executeWithLogging(joinPoint, context);

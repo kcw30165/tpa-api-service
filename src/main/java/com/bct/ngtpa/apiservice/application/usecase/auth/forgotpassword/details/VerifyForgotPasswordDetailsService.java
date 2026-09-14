@@ -117,12 +117,12 @@ public final class VerifyForgotPasswordDetailsService
                             return lookup
                                 .verify(
                                     new ForgotPasswordDetailsLookupCommand(
-                                        context.publicIdentityType(),
-                                        context.tasUserId(),
+                                        context.identityType(),
+                                        context.identityValue(),
                                         c.dateOfBirth(),
                                         c.email(),
                                         c.mobile(),
-                                        context.customerId(),
+                                        context.username(),
                                         c.requestId(),
                                         com.bct.ngtpa.apiservice.application.dto.ActorUserRole
                                             .ROLE_USER_MBR))
@@ -139,10 +139,9 @@ public final class VerifyForgotPasswordDetailsService
                                         try {
                                           var newContext =
                                               new ForgotPasswordAuthFlowContext(
-                                                  context.normalizedUsername(),
-                                                  context.customerId(),
-                                                  context.tasUserId(),
-                                                  context.publicIdentityType(),
+                                                  context.username(),
+                                                  context.identityValue(),
+                                                  context.identityType(),
                                                   context.identityVerified(),
                                                   context.resetSubjectId(),
                                                   context.contactChannel(),

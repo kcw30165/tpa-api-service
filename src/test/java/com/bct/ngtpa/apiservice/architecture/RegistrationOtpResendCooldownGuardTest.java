@@ -25,10 +25,10 @@ class RegistrationOtpResendCooldownGuardTest {
   }
 
   @Test
-  void resendServiceMapsExpectedCooldownRejectionInsteadOfSystemFailure() throws Exception {
+  void protectedOperationMapsExpectedCooldownRejectionInsteadOfSystemFailure() throws Exception {
     Path sourcePath =
         Path.of(
-            "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/otp/ResendRegistrationOtpService.java");
+            "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/otp/idempotency/RegistrationOtpResendProtectedOperation.java");
     assertThat(Files.exists(sourcePath)).isTrue();
     String source = Files.readString(sourcePath);
     assertThat(source)

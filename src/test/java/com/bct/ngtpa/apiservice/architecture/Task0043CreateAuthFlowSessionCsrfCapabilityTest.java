@@ -35,7 +35,7 @@ class Task0043CreateAuthFlowSessionCsrfCapabilityTest {
     String service =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/start/StartLoginService.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/login/start/LoginStartProtectedOperation.java"));
     String composition =
         Files.readString(
             Path.of(

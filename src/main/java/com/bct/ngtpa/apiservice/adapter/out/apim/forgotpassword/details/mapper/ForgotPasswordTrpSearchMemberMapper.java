@@ -6,6 +6,7 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsLookupCommand;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsLookupResult;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsLookupStatus;
+import com.bct.ngtpa.apiservice.shared.identity.IdentifierNormalizer;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -21,7 +22,8 @@ public final class ForgotPasswordTrpSearchMemberMapper {
   private static final DateTimeFormatter TERM_COMPLETE_DATE =
       DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(ResolverStyle.STRICT);
 
-  public ForgotPasswordTrpSearchMemberRequest toRequest(ForgotPasswordDetailsLookupCommand command) {
+  public ForgotPasswordTrpSearchMemberRequest toRequest(
+      ForgotPasswordDetailsLookupCommand command) {
     String searchBy =
         "STAFF_NO".equalsIgnoreCase(command.searchBy())
             ? "STAFFNO"
@@ -35,9 +37,7 @@ public final class ForgotPasswordTrpSearchMemberMapper {
   }
 
   public ForgotPasswordDetailsLookupResult toResult(
-      String error,
-      List<ForgotPasswordTrpSearchMemberDataItem> data,
-      String expectedCustomerId) {
+      String error, List<ForgotPasswordTrpSearchMemberDataItem> data, String expectedCustomerId) {
     String safeError = text(error);
     if (MEMBER_NOT_FOUND.equals(safeError)) {
       return notFound();
@@ -75,7 +75,7 @@ public final class ForgotPasswordTrpSearchMemberMapper {
       if (!registered && customerId != null) {
         throw malformed(ForgotPasswordDetailsDownstreamException.Reason.MALFORMED_DATA);
       }
-      if (registered && expected.equals(customerId) && matched == null) {
+      if (registered && IdentifierNormalizer.equalsNormalized(expected, customerId) && matched == null) {
         matched = item;
       }
     }

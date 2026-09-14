@@ -22,7 +22,7 @@ class Task0043LoginOtpResendEndpointArchitectureTest {
     assertThat(s)
         .contains(
             "new LoginOtpResendService",
-            "new IdempotentLoginOtpResendService",
+            "new SharedLoginOtpResendService",
             "getOtpResendTtlSeconds");
   }
 

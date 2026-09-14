@@ -55,9 +55,9 @@ class RegistrationLookupExecutorBoundaryTest {
   void allThreeRegistrationCallersIntroduceTheEstablishedCompatibilityRole() throws Exception {
     for (String file :
         new String[] {
-          "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/StartRegistrationService.java",
-          "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/otp/VerifyRegistrationOtpService.java",
-          "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/complete/CompleteRegistrationService.java"
+          "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/idempotency/RegistrationStartProtectedOperation.java",
+          "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/otp/idempotency/RegistrationOtpVerifyProtectedOperation.java",
+          "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/complete/idempotency/RegistrationCompleteProtectedOperation.java"
         }) {
       assertThat(source(file)).as(file).contains("ActorUserRole.ROLE_USER_MBR");
     }

@@ -12,10 +12,10 @@ class ForgotPasswordOtpReactiveArchitectureGuardTest {
   void resendAndVerifyRemainReactiveAndAvoidCompletionLock() throws Exception {
     String resend =
         source(
-            "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/forgotpassword/otp/resend/ResendForgotPasswordOtpService.java");
+            "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/forgotpassword/otp/resend/ForgotPasswordOtpResendProtectedOperation.java");
     String verify =
         source(
-            "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/forgotpassword/otp/verify/VerifyForgotPasswordOtpService.java");
+            "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/forgotpassword/otp/verify/ForgotPasswordOtpVerifyProtectedOperation.java");
 
     assertThat(resend).contains("Mono.usingWhen(");
     assertThat(verify).contains("Mono.usingWhen(");
@@ -39,10 +39,10 @@ class ForgotPasswordOtpReactiveArchitectureGuardTest {
   void resendAndVerifyReloadRevisionedSnapshotsAndAcquireOneMutationLock() throws Exception {
     String resend =
         source(
-            "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/forgotpassword/otp/resend/ResendForgotPasswordOtpService.java");
+            "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/forgotpassword/otp/resend/ForgotPasswordOtpResendProtectedOperation.java");
     String verify =
         source(
-            "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/forgotpassword/otp/verify/VerifyForgotPasswordOtpService.java");
+            "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/forgotpassword/otp/verify/ForgotPasswordOtpVerifyProtectedOperation.java");
 
     assertThat(resend).contains("loadSnapshot(");
     assertThat(verify).contains("loadSnapshot(");

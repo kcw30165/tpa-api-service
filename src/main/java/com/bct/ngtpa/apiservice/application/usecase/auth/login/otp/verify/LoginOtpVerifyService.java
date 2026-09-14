@@ -21,7 +21,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
-public final class LoginOtpVerifyService implements VerifyLoginOtpUseCase {
+public final class LoginOtpVerifyService
+    implements VerifyLoginOtpUseCase, LoginOtpVerifyProtectedOperation {
   private static final Logger LOG = LoggerFactory.getLogger(LoginOtpVerifyService.class);
   private final LoginProtectedAuthFlowContextLoader loader;
   private final LoginOtpVerifyPersistencePort otpVerifyPersistence;
@@ -110,13 +111,44 @@ public final class LoginOtpVerifyService implements VerifyLoginOtpUseCase {
         command -> Mono.just(RecoverCommittedLoginResult.failed()));
   }
 
-  public Mono<VerifyLoginOtpResult> verify(VerifyLoginOtpCommand c) {
+  @Override
+  public Mono<VerifyLoginOtpResult> verify(VerifyLoginOtpCommand command) {
+    return verifyProtected(command).map(LoginOtpVerifyProtectedOperationResult::result);
+  }
+
+  @Override
+  public Mono<LoginOtpVerifyProtectedOperationResult> verifyProtected(
+      VerifyLoginOtpCommand command) {
     String reservationHash = requestHasher.hash();
-    LoginIdempotencyKey publicKey = new LoginIdempotencyKey(c.idempotencyKey());
+    LoginIdempotencyKey publicKey = new LoginIdempotencyKey(command.idempotencyKey());
+    return verifyResult(command, reservationHash, publicKey)
+        .flatMap(
+            result -> {
+              if (result.status() != VerifyLoginOtpStatus.ACCOUNTS_READY) {
+                return Mono.just(new LoginOtpVerifyProtectedOperationResult(result, null));
+              }
+              return otpVerifyPersistence
+                  .loadConsumptionProof(publicKey, reservationHash)
+                  .map(
+                      proof ->
+                          new LoginOtpVerifyProtectedOperationResult(
+                              result,
+                              new com.bct.ngtpa.apiservice.application.idempotency
+                                  .ProtectedReplayReference(proof.handoffReference().value())))
+                  .switchIfEmpty(
+                      Mono.error(
+                          new IllegalStateException(
+                              "OTP Verify committed handoff reference is unavailable")));
+            });
+  }
+
+  private Mono<VerifyLoginOtpResult> verifyResult(
+      VerifyLoginOtpCommand c, String reservationHash, LoginIdempotencyKey publicKey) {
+    LoginIdempotencyKey reservationKey = new LoginIdempotencyKey(c.idempotencyKey());
     Instant now = clock.instant();
     var reserve =
         new ReserveLoginOtpVerifyCommand(
-            publicKey,
+            reservationKey,
             reservationHash,
             references.handoff(),
             references.operation(),
@@ -144,7 +176,7 @@ public final class LoginOtpVerifyService implements VerifyLoginOtpUseCase {
                   .flatMap(
                       x ->
                           x.isValid()
-                              ? verifyActive(c, x, publicKey, reservationHash, reservation)
+                              ? verifyActive(c, x, reservationKey, reservationHash, reservation)
                               : Mono.just(
                                   result(
                                       x.status() == LoginProtectedAuthFlowContextStatus.CSRF_INVALID

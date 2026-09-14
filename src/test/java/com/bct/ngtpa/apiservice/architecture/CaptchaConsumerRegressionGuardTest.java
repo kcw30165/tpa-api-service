@@ -10,10 +10,10 @@ import org.junit.jupiter.api.Test;
 class CaptchaConsumerRegressionGuardTest {
   private static final Path REGISTRATION =
       Path.of(
-          "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/StartRegistrationService.java");
+          "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/idempotency/RegistrationStartProtectedOperation.java");
   private static final Path USERNAME_RECOVERY =
       Path.of(
-          "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/usernamerecovery/StartUsernameRecoveryService.java");
+          "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/usernamerecovery/UsernameRecoveryStartProtectedOperation.java");
   private static final Path GATE =
       Path.of(
           "src/main/java/com/bct/ngtpa/apiservice/application/service/auth/captcha/RegistrationCaptchaGateService.java");
@@ -23,22 +23,25 @@ class CaptchaConsumerRegressionGuardTest {
     String source = Files.readString(REGISTRATION);
     assertThat(source)
         .containsIgnoringWhitespaces(
-            "RegistrationCaptchaGateService",
-            "registrationCaptchaGateService.consume",
-            "lookupPort.searchMember");
+            "RegistrationCaptchaGateService", "captcha.consume", "lookup.searchMember");
     assertThat(source).doesNotContain("markConsumed(", "applyConsumptionAttempt(");
   }
 
   @Test
-  void usernameRecoveryConsumesThroughSharedGateAfterReservationAndBeforeLookup() throws Exception {
+  void usernameRecoveryProtectedOperationConsumesBeforeLookupWithoutLifecycleOwnership()
+      throws Exception {
     String source = Files.readString(USERNAME_RECOVERY);
-    int reserve = indexOfIgnoringWhitespace(source, "idempotencyPort.reserve");
     int consume = indexOfIgnoringWhitespace(source, "captchaGateService.consume");
     int lookup = indexOfIgnoringWhitespace(source, "lookupPort.search");
     assertThat(source).containsIgnoringWhitespaces("RegistrationCaptchaGateService");
-    assertThat(reserve).isGreaterThanOrEqualTo(0).isLessThan(consume);
-    assertThat(consume).isGreaterThan(reserve).isLessThan(lookup);
-    assertThat(source).doesNotContain("markConsumed(", "applyConsumptionAttempt(");
+    assertThat(consume).isGreaterThanOrEqualTo(0).isLessThan(lookup);
+    assertThat(source)
+        .doesNotContain(
+            "IdempotencyExecutor",
+            "idempotencyPort.reserve",
+            "recordUnknownOutcome(",
+            "markConsumed(",
+            "applyConsumptionAttempt(");
   }
 
   @Test

@@ -486,3 +486,16 @@ email:
     port: ${SMTP_PORT:25}
     from: ${SMTP_FROM:}
     timeout-millis: ${SMTP_TIMEOUT_MILLIS:5000}
+shared-idempotency:
+  username-recovery-start-replay:
+    key-version: ${SHARED_IDEMPOTENCY_USERNAME_RECOVERY_START_REPLAY_KEY_VERSION:v1}
+    secret: ${SHARED_IDEMPOTENCY_USERNAME_RECOVERY_START_REPLAY_SECRET:}
+  enabled: ${SHARED_IDEMPOTENCY_ENABLED:false}
+  # Required only when enabled; Base64 and at least 32 decoded bytes.
+  persistence-hmac-secret: ${SHARED_IDEMPOTENCY_PERSISTENCE_HMAC_SECRET:}
+  registration-start-replay:
+    key-version: ${SHARED_IDEMPOTENCY_REGISTRATION_START_REPLAY_KEY_VERSION:}
+    secret: ${SHARED_IDEMPOTENCY_REGISTRATION_START_REPLAY_SECRET:}
+  forgot-password-start-replay:
+    key-version: ${SHARED_IDEMPOTENCY_FORGOT_PASSWORD_START_REPLAY_KEY_VERSION:}
+    secret: ${SHARED_IDEMPOTENCY_FORGOT_PASSWORD_START_REPLAY_SECRET:}

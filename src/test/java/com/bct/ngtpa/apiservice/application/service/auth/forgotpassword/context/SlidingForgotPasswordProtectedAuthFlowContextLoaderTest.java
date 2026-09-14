@@ -33,7 +33,6 @@ class SlidingForgotPasswordProtectedAuthFlowContextLoaderTest {
                     "otp-fp",
                     new ForgotPasswordAuthFlowContext(
                         "member01",
-                        "cust-db01",
                         "tas-user-01",
                         "ID",
                         true,

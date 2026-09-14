@@ -17,7 +17,7 @@ class RegistrationPublicErrorOriginHidingTest {
     String complete =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/complete/CompleteRegistrationService.java"));
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/complete/idempotency/RegistrationCompleteProtectedOperation.java"));
     String yaml = Files.readString(Path.of("src/main/resources/application-page-registration.yml"));
 
     assertThat(username)

@@ -24,8 +24,8 @@ import java.util.Objects;
  * <p>The {@code authFlowSessionId} component (Repair 024A) is server/transport-only: it never
  * enters the public projection or the replay snapshots, and the four-argument convenience
  * constructor keeps it null. The SESSION_CREATED non-null session-id invariant is enforced at the
- * service construction site ({@code StartUsernameRecoveryService.sessionCreatedResult}), not in
- * this record constructor.
+ * service construction site ({@code UsernameRecoveryStartProtectedOperation.sessionCreated}), not
+ * in this record constructor.
  */
 public record UsernameRecoveryStartResult(
     Outcome outcome,

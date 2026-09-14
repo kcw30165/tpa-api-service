@@ -72,7 +72,7 @@ class P8CaptchaSecurityBoundaryGuardTest {
     String combined =
         Files.readString(
                 Path.of(
-                    "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/StartRegistrationService.java"))
+                    "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/idempotency/RegistrationStartProtectedOperation.java"))
             + Files.readString(
                 Path.of(
                     "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/mapper/RegistrationStartWebMapper.java"));

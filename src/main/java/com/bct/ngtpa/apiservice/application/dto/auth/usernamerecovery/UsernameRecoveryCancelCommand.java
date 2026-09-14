@@ -15,8 +15,8 @@ import java.util.Objects;
  *
  * <p>Repair 018A: the raw client-provided {@code Idempotency-Key} enters through this typed
  * command. {@code idempotencyKey} is the opaque client key, distinct from the semantic fingerprint;
- * later use cases may convert it into {@code UsernameRecoveryIdempotencyKey}. No raw CSRF is
- * carried.
+ * later use cases may convert it into {@code the repository-wide shared idempotency operation
+ * identity}. No raw CSRF is carried.
  *
  * <p>Invariants: {@code authFlowSessionId} and {@code idempotencyKey} are required; the idempotency
  * key is trimmed and nonblank (its case is preserved). {@link #toString()} never discloses the

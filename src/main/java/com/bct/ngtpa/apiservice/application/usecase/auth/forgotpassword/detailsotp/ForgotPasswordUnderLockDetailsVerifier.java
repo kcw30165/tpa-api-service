@@ -28,12 +28,12 @@ public final class ForgotPasswordUnderLockDetailsVerifier {
     return lookup
         .verify(
             new ForgotPasswordDetailsLookupCommand(
-                context.publicIdentityType(),
-                context.tasUserId(),
+                context.identityType(),
+                context.identityValue(),
                 dob,
                 email,
                 mobile,
-                context.customerId(),
+                context.username(),
                 requestId,
                 com.bct.ngtpa.apiservice.application.dto.ActorUserRole.ROLE_USER_MBR))
         .map(

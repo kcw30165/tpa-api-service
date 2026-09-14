@@ -9,14 +9,6 @@ import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.ForgotPasswo
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordAuthFlowEncryptedContext;
 import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.context.ForgotPasswordProtectedPhase;
-import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyAction;
-import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyKey;
-import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyRecord;
-import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyStartOutcome;
-import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyStartResult;
-import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordIdempotencyStatus;
-import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordPendingCommitRefResult;
-import com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency.ForgotPasswordRequestHash;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.CreateOtpChallengeResult;
 import com.bct.ngtpa.apiservice.application.dto.message.SenderResult;
 import com.bct.ngtpa.apiservice.application.dto.message.SenderStatus;
@@ -33,7 +25,6 @@ import com.bct.ngtpa.apiservice.application.port.out.AuthFlowSessionPort;
 import com.bct.ngtpa.apiservice.application.port.out.EmailSenderPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordAuthFlowContextProtectorPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordDetailsLookupPort;
-import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordIdempotencyPort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpCommitStatePort;
 import com.bct.ngtpa.apiservice.application.port.out.ForgotPasswordOtpSessionBindingPort;
 import com.bct.ngtpa.apiservice.application.port.out.OtpChallengePort;
@@ -42,10 +33,8 @@ import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.details.ForgotPasswordDetailsLookupStatus;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordDestinationMasker;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpBindingResult;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitCoordinator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitRetentionPolicy;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpCommitState;
-import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp.ForgotPasswordOtpReplayResolver;
 import com.bct.ngtpa.apiservice.application.usecase.message.MessageDeliveryAdapter;
 import java.time.*;
 import java.util.Map;
@@ -91,21 +80,9 @@ class ForgotPasswordDetailsOtpOrchestrationSubtask005004FailFirstTest {
     Clock clock = Clock.fixed(now, ZoneOffset.UTC);
     AuthFlowSessionId sessionId = new AuthFlowSessionId("afs_test_123");
     SessionLockHandle lock = new SessionLockHandle(true, "lock-key", "owner-token");
-    ForgotPasswordIdempotencyRecord processing =
-        new ForgotPasswordIdempotencyRecord(
-            ForgotPasswordIdempotencyAction.DETAILS_AND_OTP,
-            new ForgotPasswordIdempotencyKey("ac2e9b54-836d-4729-8957-d89b1d8ae015"),
-            new ForgotPasswordRequestHash(
-                "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
-            ForgotPasswordIdempotencyStatus.PROCESSING,
-            null,
-            now,
-            now,
-            now.plusSeconds(300));
     ForgotPasswordAuthFlowContext context =
         new ForgotPasswordAuthFlowContext(
             "member-user",
-            "customer-id",
             "tas-user-id",
             "HKID",
             true,
@@ -122,40 +99,6 @@ class ForgotPasswordDetailsOtpOrchestrationSubtask005004FailFirstTest {
                 null),
             "v1",
             ForgotPasswordProtectedPhase.IDENTITY_VERIFIED);
-
-    ForgotPasswordIdempotencyPort idempotency = mock(ForgotPasswordIdempotencyPort.class);
-    when(idempotency.startProcessing(any()))
-        .thenReturn(
-            Mono.just(
-                new ForgotPasswordIdempotencyStartResult(
-                    ForgotPasswordIdempotencyStartOutcome.STARTED, processing)));
-    when(idempotency.attachPendingCommitRef(any()))
-        .thenReturn(
-            Mono.just(
-                new ForgotPasswordPendingCommitRefResult(
-                    ForgotPasswordPendingCommitRefResult.Status.ATTACHED, "opaque-ref-1")));
-    when(idempotency.markCompleted(any()))
-        .thenAnswer(
-            invocation -> {
-              var command =
-                  invocation.getArgument(
-                      0,
-                      com.bct.ngtpa.apiservice.application.dto.auth.forgotpassword.idempotency
-                          .ForgotPasswordIdempotencyCompleteCommand.class);
-              return Mono.just(
-                  new ForgotPasswordIdempotencyRecord(
-                      processing.action(),
-                      processing.idempotencyKey(),
-                      processing.requestHash(),
-                      ForgotPasswordIdempotencyStatus.COMPLETED,
-                      command.replaySnapshot(),
-                      processing.createdAt(),
-                      command.completedAt(),
-                      processing.expiresAt(),
-                      processing.pendingOpaqueCommitRef()));
-            });
-    when(idempotency.markFailed(any())).thenReturn(Mono.just(processing));
-    when(idempotency.markUnknownOutcome(any())).thenReturn(Mono.just(processing));
 
     AuthFlowSessionMutationLockPort locks = mock(AuthFlowSessionMutationLockPort.class);
     when(locks.acquire(any(), any())).thenReturn(Mono.just(lock));
@@ -225,16 +168,8 @@ class ForgotPasswordDetailsOtpOrchestrationSubtask005004FailFirstTest {
             });
 
     ForgotPasswordOtpCommitStatePort commitStates = new InMemoryCommitStates();
-    ForgotPasswordOtpCommitCoordinator commits =
-        new ForgotPasswordOtpCommitCoordinator(
-            idempotency,
-            commitStates,
-            new ForgotPasswordOtpCommitRetentionPolicy(
-                Duration.ofSeconds(60), Duration.ofMinutes(10)));
-
-    ForgotPasswordDetailsOtpOrchestrationService service =
-        new ForgotPasswordDetailsOtpOrchestrationService(
-            idempotency,
+    ForgotPasswordDetailsOtpProtectedOperation service =
+        new ForgotPasswordDetailsOtpProtectedOperation(
             new com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.otp
                 .SecureForgotPasswordOtpCommitRefGenerator(),
             locks,
@@ -245,14 +180,15 @@ class ForgotPasswordDetailsOtpOrchestrationSubtask005004FailFirstTest {
             new MessageDeliveryAdapter(mock(SmsSenderPort.class), emailSender),
             new ForgotPasswordDestinationMasker(),
             binding,
-            commits,
-            mock(ForgotPasswordOtpReplayResolver.class),
+            commitStates,
+            new ForgotPasswordOtpCommitRetentionPolicy(
+                Duration.ofSeconds(60), Duration.ofMinutes(10)),
             new ForgotPasswordDetailsOtpLeasePolicy(60, 10, 10, 3, 10000, 100, 5000, 1000),
             clock,
             Duration.ofMinutes(5));
 
     StepVerifier.create(
-            service.process(
+            service.execute(
                 new ForgotPasswordDetailsOtpCommand(
                     sessionId,
                     "csrf",
@@ -265,11 +201,13 @@ class ForgotPasswordDetailsOtpOrchestrationSubtask005004FailFirstTest {
                     "HULLCS.QGLYBCY@UC.KJI",
                     null)))
         .assertNext(
-            result -> {
+            execution -> {
+              var result = execution.result();
               assertThat(result.status()).isEqualTo(ForgotPasswordDetailsOtpResult.Status.SUCCESS);
               assertThat(result.maskedDestination()).isEqualTo("H*************@UC.KJI");
               assertThat(result.expiresInSeconds()).isEqualTo(300);
               assertThat(result.resendAvailableInSeconds()).isEqualTo(60);
+              assertThat(execution.replayReference()).isNotNull();
             })
         .verifyComplete();
   }

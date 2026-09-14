@@ -45,7 +45,13 @@ public final class ForgotPasswordDetailsOtpWebMapper {
       return MutationResponse.failure(
           ApiStatus.BUSINESS_REJECTED,
           List.of(
-              new ApiError("FORM", "err.tpa.member.not.found", null, List.of(), "ERROR", "BFF")));
+              new ApiError(
+                  "BUSINESS",
+                  "err.forgot-password.member.notFound",
+                  null,
+                  List.of(),
+                  "ERROR",
+                  "BFF")));
     return MutationResponse.failure(
         ApiStatus.SYSTEM_ERROR,
         List.of(new ApiError("SYSTEM", "err.system.unavailable", null, List.of(), "ERROR", "BFF")));

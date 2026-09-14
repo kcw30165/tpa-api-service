@@ -15,7 +15,7 @@ class RegistrationCompleteArchitectureGuardTest {
   private static final Path APPLICATION_SERVICE =
       Path.of(
           "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/complete/"
-              + "CompleteRegistrationService.java");
+              + "idempotency/SharedCompleteRegistrationService.java");
   private static final Path REGISTRATION_CONTROLLER =
       Path.of(
           "src/main/java/com/bct/ngtpa/apiservice/adapter/in/web/auth/registration/"
@@ -65,14 +65,20 @@ class RegistrationCompleteArchitectureGuardTest {
   @Test
   void applicationOrchestrationUsesProtectedContextAndTypedCapabilities() throws Exception {
     String source = Files.readString(APPLICATION_SERVICE);
+    String protectedOperation =
+        Files.readString(
+            Path.of(
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/complete/"
+                    + "idempotency/RegistrationCompleteProtectedOperation.java"));
+    String orchestration = source + protectedOperation;
 
-    assertThat(source)
+    assertThat(orchestration)
         .containsIgnoringWhitespaces("RegistrationProtectedAuthFlowContextLoader")
         .containsIgnoringWhitespaces("RegistrationUsernameCheckContextLoader")
         .containsIgnoringWhitespaces("AuthFlowSessionCompletionLockPort")
         .containsIgnoringWhitespaces("AuthFlowSessionExpiryRefreshPort")
         .containsIgnoringWhitespaces("AuthFlowSessionCancellationPort")
-        .containsIgnoringWhitespaces("RegistrationIdempotencyUnknownOutcomeCommand")
+        .containsIgnoringWhitespaces("case UNKNOWN_OUTCOME_EXISTING")
         .containsIgnoringWhitespaces("AuthFlowStatus.COMPLETING")
         .doesNotContain("AuthFlowSessionProperties")
         .doesNotContain("adapter.in.web")
@@ -103,7 +109,7 @@ class RegistrationCompleteArchitectureGuardTest {
         .containsIgnoringWhitespaces("csrfToken=<redacted>")
         .containsIgnoringWhitespaces("idempotencyKey=<redacted>");
     assertThat(service)
-        .containsIgnoringWhitespaces("sha256(c.password())")
+        .containsIgnoringWhitespaces("sha256(command.password())")
         .doesNotContain("responseSnapshot(), c.password()")
         .doesNotContain("log.info")
         .doesNotContain("log.debug")

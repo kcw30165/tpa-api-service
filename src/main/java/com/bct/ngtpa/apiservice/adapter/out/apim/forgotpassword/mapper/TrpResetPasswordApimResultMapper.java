@@ -3,6 +3,7 @@ package com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.mapper;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.TrpResetPasswordApimEnvelope;
 import com.bct.ngtpa.apiservice.adapter.out.apim.forgotpassword.dto.TrpResetPasswordApimDataItem;
 import com.bct.ngtpa.apiservice.application.usecase.auth.forgotpassword.complete.ForgotPasswordCompletionResult;
+import com.bct.ngtpa.apiservice.shared.identity.IdentifierNormalizer;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -12,6 +13,7 @@ import java.util.Objects;
 
 public final class TrpResetPasswordApimResultMapper {
   private static final String PASSWORD_INVALID = "err.tpa.password.invalid";
+  private static final String PASSWORD_REUSED = "err.tpa.password.used.in.last.5.changes.";
   private static final String MEMBER_NOT_FOUND = "err.tpa.member.not.found";
   private static final DateTimeFormatter DATE_FORMATTER =
       DateTimeFormatter.ofPattern("dd/MM/uuuu").withResolverStyle(ResolverStyle.STRICT);
@@ -26,6 +28,7 @@ public final class TrpResetPasswordApimResultMapper {
     }
     if (!envelope.errMessage().isEmpty()) {
       if (PASSWORD_INVALID.equals(envelope.errMessage())
+          || PASSWORD_REUSED.equals(envelope.errMessage())
           || MEMBER_NOT_FOUND.equals(envelope.errMessage())) {
         return ForgotPasswordCompletionResult.rejected(envelope.errMessage());
       }
@@ -39,7 +42,7 @@ public final class TrpResetPasswordApimResultMapper {
     if (!Boolean.TRUE.equals(item.success())) {
       return ForgotPasswordCompletionResult.technicalFailure();
     }
-    if (!expectedCustomerId.equals(item.customerId())) {
+    if (!IdentifierNormalizer.equalsNormalized(expectedCustomerId, item.customerId())) {
       return ForgotPasswordCompletionResult.technicalFailure();
     }
     if (!isValidDate(item.updateDate()) || !isValidTime(item.updateTime())) {

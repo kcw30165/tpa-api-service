@@ -13,11 +13,11 @@ class UsernameRecoverySingleEnvelopeClosureArchitectureTest {
   private static final List<Path> SERVICES =
       List.of(
           Path.of(
-              "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/usernamerecovery/StartUsernameRecoveryService.java"),
+              "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/usernamerecovery/UsernameRecoveryStartProtectedOperation.java"),
           Path.of(
-              "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/usernamerecovery/RequestUsernameRecoveryService.java"),
+              "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/usernamerecovery/UsernameRecoveryRequestProtectedOperation.java"),
           Path.of(
-              "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/usernamerecovery/CancelUsernameRecoveryService.java"));
+              "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/usernamerecovery/UsernameRecoveryCancelProtectedOperation.java"));
 
   @Test
   void productionContainsNoWorkflowStateSidecarTypeKeyOrResource() throws Exception {
@@ -66,7 +66,7 @@ class UsernameRecoverySingleEnvelopeClosureArchitectureTest {
             "UsernameRecoveryAuthFlowContextProtectionProperties",
             "UsernameRecoveryAuthFlowContextProtectorPort",
             "UsernameRecoveryAuthFlowContextBinding",
-            "UsernameRecoveryIdempotencyPort")
+            "IdempotencyExecutor")
         .doesNotContain(
             "UsernameRecoveryWorkflowStatePort",
             "RedisUsernameRecoveryWorkflowState",

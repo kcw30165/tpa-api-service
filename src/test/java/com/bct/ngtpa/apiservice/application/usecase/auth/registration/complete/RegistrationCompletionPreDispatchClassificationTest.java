@@ -12,24 +12,22 @@ class RegistrationCompletionPreDispatchClassificationTest {
     var failure =
         new RegistrationCompletionPreDispatchException(new IllegalStateException("internal"));
     assertThat(failure.getMessage())
-        .isEqualTo("Registration completion failed before downstream dispatch");
-    assertThat(failure.getMessage()).doesNotContain("APIM", "profile", "accountEnv", "URL");
+        .isEqualTo("Registration completion failed before downstream dispatch")
+        .doesNotContain("APIM", "profile", "accountEnv", "URL");
   }
 
   @Test
-  void knownPreDispatchBranchPrecedesUnknownOutcomeBranch() throws Exception {
+  void sharedCoordinatorClassifiesKnownPreDispatchSeparatelyFromAmbiguousFailure()
+      throws Exception {
     String source =
         Files.readString(
             Path.of(
-                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/complete/CompleteRegistrationService.java"));
-    int known = source.indexOf("RegistrationCompletionPreDispatchException.class");
-    int unknown = source.indexOf(".markUnknownOutcome(", known);
-    assertThat(known).isGreaterThanOrEqualTo(0);
-    assertThat(unknown).isGreaterThan(known);
-    assertThat(source.substring(known, unknown))
-        .contains(
-            ".markFailed(",
-            "CompleteRegistrationResultStatus.SYSTEM_FAILED",
-            "SharedWorkflowErrorKey.SYSTEM_UNAVAILABLE");
+                "src/main/java/com/bct/ngtpa/apiservice/application/usecase/auth/registration/complete/"
+                    + "idempotency/SharedCompleteRegistrationService.java"));
+    assertThat(source)
+        .contains("failure instanceof RegistrationCompletionPreDispatchException")
+        .contains("IdempotencyFailureClassification.PROVEN_NO_SIDE_EFFECT")
+        .contains("IdempotencyFailureClassification.POSSIBLE_SIDE_EFFECT")
+        .doesNotContain(".markFailed(", ".markUnknownOutcome(");
   }
 }

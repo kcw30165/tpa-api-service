@@ -15,13 +15,13 @@ import com.bct.ngtpa.apiservice.application.dto.auth.idempotency.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.otp.*;
 import com.bct.ngtpa.apiservice.application.dto.auth.registration.*;
 import com.bct.ngtpa.apiservice.application.dto.session.authflow.*;
+import com.bct.ngtpa.apiservice.application.idempotency.*;
 import com.bct.ngtpa.apiservice.application.port.in.*;
 import com.bct.ngtpa.apiservice.application.port.out.*;
 import com.bct.ngtpa.apiservice.application.service.auth.captcha.RegistrationCaptchaGateService;
-import com.bct.ngtpa.apiservice.application.service.auth.idempotency.Sha256RegistrationRequestHashGenerator;
 import com.bct.ngtpa.apiservice.application.service.auth.registration.RegistrationStartValidator;
 import com.bct.ngtpa.apiservice.application.usecase.auth.registration.RegistrationOtpCreationResult;
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationService;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.*;
 import com.bct.ngtpa.apiservice.infrastructure.security.CorsProperties;
 import com.bct.ngtpa.apiservice.infrastructure.security.SecurityConfig;
 import com.bct.ngtpa.apiservice.integration.registration.support.RegistrationTestCase;
@@ -63,7 +63,7 @@ class RegistrationStartWorkflowIntegrationTest {
 
   @Autowired WebTestClient client;
   @Autowired InMemoryCaptchaPort captcha;
-  @Autowired StatefulIdempotencyPort idempotency;
+  @Autowired StatefulSharedExecutor idempotency;
   @Autowired RecordingLookupPort lookup;
   @Autowired RecordingSessionPort sessions;
   @Autowired RecordingOtpPort otp;
@@ -326,7 +326,7 @@ class RegistrationStartWorkflowIntegrationTest {
 
   @Test
   @RegistrationTestCase("TC-032")
-  void messageDeliveryFailureIsSafeAndRecordedFailed() {
+  void messageDeliveryFailureIsSafeAndRecordedCompleted() {
     messages.accepted = false;
     start(
             "delivery-failure",
@@ -339,7 +339,7 @@ class RegistrationStartWorkflowIntegrationTest {
                 assertThat(value)
                     .contains("err.registration.message.deliveryFailed")
                     .doesNotContain("member@example.com", "123456"));
-    assertThat(idempotency.failed).isEqualTo(1);
+    assertThat(idempotency.completed).isEqualTo(1);
   }
 
   private WebTestClient.ResponseSpec start(String suffix, Map<String, Object> body) {
@@ -433,8 +433,13 @@ class RegistrationStartWorkflowIntegrationTest {
     }
 
     @Bean
-    StatefulIdempotencyPort idempotency() {
-      return new StatefulIdempotencyPort();
+    StatefulSharedExecutor idempotency() {
+      return new StatefulSharedExecutor();
+    }
+
+    @Bean
+    InMemoryProtectedReplay protectedReplay() {
+      return new InMemoryProtectedReplay();
     }
 
     @Bean
@@ -469,7 +474,7 @@ class RegistrationStartWorkflowIntegrationTest {
 
     @Bean
     StartRegistrationUseCase startUseCase(
-        StatefulIdempotencyPort idem,
+        StatefulSharedExecutor executor,
         RecordingLookupPort lookup,
         RecordingSessionPort sessions,
         RegistrationCsrPort csrf,
@@ -477,22 +482,28 @@ class RegistrationStartWorkflowIntegrationTest {
         RecordingMessagePort message,
         AuthWorkflowPolicyPort policy,
         RegistrationCaptchaGateService gate,
-        ReplayState replayState,
+        InMemoryProtectedReplay protectedReplay,
         Clock clock) {
-      return new StartRegistrationService(
-          new RegistrationStartValidator(),
-          new Sha256RegistrationRequestHashGenerator(),
-          idem,
-          lookup,
-          sessions,
-          csrf,
-          otp,
-          message,
-          replayState,
-          replayState,
-          policy,
-          gate,
-          clock);
+      var responses =
+          new RegistrationStartSharedExecutionBridge(
+              new RegistrationStartReplayCodec(), protectedReplay);
+      var operation =
+          new RegistrationStartProtectedOperation(
+              new RegistrationStartValidator(),
+              lookup,
+              sessions,
+              csrf,
+              otp,
+              message,
+              policy,
+              gate,
+              clock);
+      return new SharedStartRegistrationService(
+          executor,
+          operation,
+          responses,
+          new RegistrationSharedIdempotencyIdentityFactory(),
+          new RegistrationSharedFingerprintFactory());
     }
 
     @Bean
@@ -621,72 +632,70 @@ class RegistrationStartWorkflowIntegrationTest {
     }
   }
 
-  static final class StatefulIdempotencyPort implements RegistrationIdempotencyPort {
-    private final Map<String, RegistrationIdempotencyRecord> records = new ConcurrentHashMap<>();
-    int failed;
+  static final class StatefulSharedExecutor implements IdempotencyExecutor {
+    private final Map<IdempotencyOperationId, StoredExecution> records = new ConcurrentHashMap<>();
+    int completed;
 
-    public Mono<RegistrationIdempotencyStartResult> startProcessing(
-        RegistrationIdempotencyStartCommand c) {
-      String key = c.idempotencyKey().value();
-      RegistrationIdempotencyRecord existing = records.get(key);
+    @Override
+    public Mono<IdempotentExecutionResult> execute(IdempotentExecutionCommand command) {
+      StoredExecution existing = records.get(command.operationId());
       if (existing != null) {
-        RegistrationIdempotencyStartOutcome outcome =
-            existing.requestHash().equals(c.requestHash())
-                ? RegistrationIdempotencyStartOutcome.COMPLETED_REPLAY
-                : RegistrationIdempotencyStartOutcome.KEY_REUSED_WITH_DIFFERENT_REQUEST;
-        return Mono.just(new RegistrationIdempotencyStartResult(outcome, existing));
+        if (!existing.fingerprint().equals(command.fingerprint())) {
+          return Mono.just(
+              new IdempotentExecutionResult(
+                  IdempotencyReservationOutcome.KEY_REUSED_WITH_DIFFERENT_REQUEST, null));
+        }
+        return command
+            .replayResolver()
+            .hydrate(existing.snapshot())
+            .map(
+                response ->
+                    new IdempotentExecutionResult(
+                        IdempotencyReservationOutcome.COMPLETED_REPLAY, response));
       }
-      RegistrationIdempotencyRecord created =
-          new RegistrationIdempotencyRecord(
-              c.action(),
-              c.idempotencyKey(),
-              c.requestHash(),
-              RegistrationIdempotencyStatus.PROCESSING,
-              null,
-              c.now(),
-              c.now(),
-              c.expiresAt());
-      records.put(key, created);
-      return Mono.just(
-          new RegistrationIdempotencyStartResult(
-              RegistrationIdempotencyStartOutcome.STARTED, created));
-    }
-
-    public Mono<RegistrationIdempotencyRecord> markCompleted(
-        RegistrationIdempotencyCompleteCommand c) {
-      RegistrationIdempotencyRecord r =
-          new RegistrationIdempotencyRecord(
-              c.action(),
-              c.idempotencyKey(),
-              c.requestHash(),
-              RegistrationIdempotencyStatus.COMPLETED,
-              c.responseSnapshot(),
-              c.completedAt(),
-              c.completedAt(),
-              c.completedAt().plus(c.ttl()));
-      records.put(c.idempotencyKey().value(), r);
-      return Mono.just(r);
-    }
-
-    public Mono<RegistrationIdempotencyRecord> markFailed(RegistrationIdempotencyFailCommand c) {
-      failed++;
-      RegistrationIdempotencyRecord r = records.get(c.idempotencyKey().value());
-      return Mono.just(r);
-    }
-
-    public Mono<Optional<RegistrationIdempotencyRecord>> load(
-        RegistrationIdempotencyAction a, RegistrationIdempotencyKey k) {
-      return Mono.just(Optional.ofNullable(records.get(k.value())));
-    }
-
-    public Mono<Void> delete(RegistrationIdempotencyAction a, RegistrationIdempotencyKey k) {
-      records.remove(k.value());
-      return Mono.empty();
+      return command
+          .protectedOperation()
+          .get()
+          .flatMap(response -> command.responseCapture().capture(response))
+          .map(
+              captured -> {
+                records.put(
+                    command.operationId(),
+                    new StoredExecution(command.fingerprint(), captured.snapshot()));
+                completed++;
+                return new IdempotentExecutionResult(
+                    IdempotencyReservationOutcome.ACQUIRED, captured.response());
+              });
     }
 
     void clear() {
       records.clear();
-      failed = 0;
+      completed = 0;
+    }
+  }
+
+  record StoredExecution(
+      IdempotencyFingerprint fingerprint, IdempotentTerminalResponseSnapshot snapshot) {}
+
+  static final class InMemoryProtectedReplay implements RegistrationStartProtectedReplayPort {
+    private final Map<ProtectedReplayReference, RegistrationStartProtectedReplayState> values =
+        new ConcurrentHashMap<>();
+    private final AtomicInteger sequence = new AtomicInteger();
+
+    @Override
+    public Mono<ProtectedReplayReference> store(
+        RegistrationStartProtectedReplayState state, Duration ttl) {
+      ProtectedReplayReference reference =
+          new ProtectedReplayReference(
+              "integrationStartReplayReference"
+                  + String.format("%04d", sequence.incrementAndGet()));
+      values.put(reference, state);
+      return Mono.just(reference);
+    }
+
+    @Override
+    public Mono<RegistrationStartProtectedReplayState> load(ProtectedReplayReference reference) {
+      return Mono.justOrEmpty(values.get(reference));
     }
   }
 

@@ -2,7 +2,7 @@ package com.bct.ngtpa.apiservice.architecture;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.bct.ngtpa.apiservice.application.usecase.auth.registration.StartRegistrationService;
+import com.bct.ngtpa.apiservice.application.usecase.auth.registration.idempotency.SharedStartRegistrationService;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition;
 import java.io.IOException;
@@ -32,7 +32,7 @@ class StartRegistrationUseCaseArchitectureGuardTest {
             "io.lettuce..",
             "org.springframework.data.redis..")
         .check(classes);
-    assertThat(StartRegistrationService.class).isNotNull();
+    assertThat(SharedStartRegistrationService.class).isNotNull();
   }
 
   @Test

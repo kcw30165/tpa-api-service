@@ -32,11 +32,24 @@ class ForgotPasswordTrpSearchMemberMapperTest {
   void anyRegisteredRecordWithMatchingCustomerIdContinues() {
     var result =
         mapper.toResult(
-            "",
-            List.of(item("TB", "MSIG", false, null), item("JP", "JPM", true, "nick")),
-            "nick");
+            "", List.of(item("TB", "MSIG", false, null), item("JP", "JPM", true, "nick")), "nick");
     assertThat(result.status()).isEqualTo(ForgotPasswordDetailsLookupStatus.MATCHED);
     assertThat(result.accountEnv()).isEqualTo("JP");
+  }
+
+  @Test
+  void registeredUsernameMatchUsesConfiguredCaseInsensitiveSemantics() {
+    var result =
+        mapper.toResult(
+            "",
+            List.of(
+                item("JP", "JPM", true, "JPJPM01"),
+                item("TB", "HKBU", true, "TBHKBU01"),
+                item("TB", "CITI", true, "TBCITI01")),
+            "tbciti01");
+
+    assertThat(result.status()).isEqualTo(ForgotPasswordDetailsLookupStatus.MATCHED);
+    assertThat(result.accountEnv()).isEqualTo("TB");
   }
 
   @Test
@@ -53,8 +66,7 @@ class ForgotPasswordTrpSearchMemberMapperTest {
 
   @Test
   void malformedRegisteredRecordFailsClosed() {
-    assertThatThrownBy(
-            () -> mapper.toResult("", List.of(item("TB", "MSIG", true, null)), "nick"))
+    assertThatThrownBy(() -> mapper.toResult("", List.of(item("TB", "MSIG", true, null)), "nick"))
         .isInstanceOf(ForgotPasswordDetailsDownstreamException.class);
   }
 

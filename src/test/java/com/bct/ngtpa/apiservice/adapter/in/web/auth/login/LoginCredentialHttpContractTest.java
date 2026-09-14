@@ -24,7 +24,7 @@ class LoginCredentialHttpContractTest {
     assertThat(mapped.status().name()).isEqualTo("BUSINESS_REJECTED");
     assertThat(mapped.status().name()).doesNotContain("DOWNSTREAM_ERROR");
     assertThat(mapped.errors()).hasSize(1);
-    assertThat(mapped.errors().getFirst().code()).isEqualTo("err.login.incorrect.password");
+    assertThat(mapped.errors().getFirst().code()).isEqualTo("err.login.credentials.invalid");
     assertThat(mapped.errors().getFirst().source()).isEqualTo("BFF");
   }
 }

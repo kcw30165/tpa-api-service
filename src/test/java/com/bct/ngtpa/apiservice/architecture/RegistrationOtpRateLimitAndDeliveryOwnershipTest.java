@@ -32,7 +32,7 @@ class RegistrationOtpRateLimitAndDeliveryOwnershipTest {
 
   @Test
   void resendDistinguishesCooldownFromDestinationSendLimit() throws Exception {
-    String source = Files.readString(find("ResendRegistrationOtpService.java"));
+    String source = Files.readString(find("RegistrationOtpResendProtectedOperation.java"));
     assertThat(source)
         .containsIgnoringWhitespaces("COOLDOWN_ACTIVE")
         .containsIgnoringWhitespaces("SEND_RATE_LIMITED")
@@ -41,7 +41,7 @@ class RegistrationOtpRateLimitAndDeliveryOwnershipTest {
 
   @Test
   void publicResendFailedCodeIsNotEmitted() throws Exception {
-    String source = Files.readString(find("ResendRegistrationOtpService.java"));
+    String source = Files.readString(find("RegistrationOtpResendProtectedOperation.java"));
     assertThat(source).doesNotContain("err.registration.otp.resendFailed");
   }
 

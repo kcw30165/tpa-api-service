@@ -15,8 +15,8 @@ import org.junit.jupiter.api.Test;
  * <p>Locks the bounded application boundary of the new start orchestration:
  *
  * <ul>
- *   <li>{@code StartUsernameRecoveryService} is the canonical application-layer implementation of
- *       {@link StartUsernameRecoveryUseCase};
+ *   <li>{@code IdempotentStartUsernameRecoveryService} is the canonical application-layer
+ *       implementation of {@link StartUsernameRecoveryUseCase};
  *   <li>the whole start application package stays framework-free, adapter-free,
  *       infrastructure-free, and never references web DTOs or the {@code ApiStatus} response enum
  *       (so downstream/system outcomes never become public through the application);
@@ -39,10 +39,11 @@ class UsernameRecoveryStartUseCaseArchitectureGuardTest {
     ArchRule rule =
         classes()
             .that()
-            .haveSimpleName("StartUsernameRecoveryService")
+            .haveSimpleName("IdempotentStartUsernameRecoveryService")
             .should()
             .implement(StartUsernameRecoveryUseCase.class)
-            .as("StartUsernameRecoveryService must implement StartUsernameRecoveryUseCase");
+            .as(
+                "IdempotentStartUsernameRecoveryService must implement StartUsernameRecoveryUseCase");
     rule.check(classes);
   }
 
@@ -109,7 +110,7 @@ class UsernameRecoveryStartUseCaseArchitectureGuardTest {
   }
 
   @Test
-  void startHelperClassesNeverDependOnTheAuthFlowCsrfPackage() {
+  void onlyStartExecutionOwnersDependOnTheAuthFlowCsrfPackage() {
     var classes =
         new ClassFileImporter()
             .withImportOption(new ImportOption.DoNotIncludeTests())
@@ -121,12 +122,15 @@ class UsernameRecoveryStartUseCaseArchitectureGuardTest {
             .resideInAnyPackage(START_PACKAGE)
             .and()
             .haveSimpleNameStartingWith("UsernameRecoveryStart")
+            .and()
+            .doNotHaveSimpleName("UsernameRecoveryStartProtectedOperation")
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage("..usecase.session.authflow..")
             .as(
-                "Username Recovery start helper classes must not depend on the auth-flow CSRF package;"
-                    + " only StartUsernameRecoveryService consumes the committed CsrfTokenGenerator/CsrfTokenHasher");
+                "Username Recovery START helper classes must not own CSRF generation or hashing;"
+                    + " the legacy coordinator and extracted protected operation are explicit execution owners");
+
     rule.check(classes);
   }
 }

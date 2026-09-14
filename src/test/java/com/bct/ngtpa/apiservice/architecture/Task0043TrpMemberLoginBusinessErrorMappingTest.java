@@ -36,8 +36,8 @@ class Task0043TrpMemberLoginBusinessErrorMappingTest {
     assertThat(c)
         .contains(
             "LoginErrorKey.ACCOUNT_LOCKED.value()))returnHttpStatus.LOCKED;",
-            "LoginErrorKey.INCORRECT_PASSWORD.value()",
-            "LoginErrorKey.INCORRECT_USERNAME.value()",
+            "LoginErrorKey.INVALID_ACCOUNT.value()",
+            "LoginErrorKey.CREDENTIALS_INVALID.value()",
             "returnHttpStatus.UNAUTHORIZED;");
   }
 
