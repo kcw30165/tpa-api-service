@@ -262,3 +262,41 @@ name-status · updated handover — then packages the directory to
 - [ ] `spotless:apply` clean; compile + test-compile + full test suite green.
 - [ ] Recorded refactor candidates (§9) triaged into follow-up MRs.
 - [ ] MR raised from `feature/increase-code-coverage-95` → `dev` with evidence pack.
+
+## 9b. Resolved — Root Cause Confirmed (Test Bug, NOT a Production Defect)
+
+**Class:** `ForgotPasswordOtpResendProtectedOperation`
+**Test:** `eligibleWithDeliveryAcceptedYieldsResent` (RE-ENABLED, was `@Disabled`)
+
+**Real exception captured** (via a local, non-committed diagnostic — a
+temporary `.doOnError(Throwable::printStackTrace)` added before the
+`onErrorReturn(SYSTEM_FAILED)` in `locked(...)`, per the user's own
+investigation):
+
+```
+java.lang.IllegalArgumentException: protected replay reference is invalid
+    at ProtectedReplayReference.<init>(ProtectedReplayReference.java:13)
+    at ForgotPasswordOtpResendProtectedOperation.lambda$accepted$14(...:394)
+```
+
+**Root cause:** `ProtectedReplayReference`'s compact constructor validates
+`value.matches("[A-Za-z0-9_-]{16,256}")`. The test's `refs.generate()` stub
+returned `"pending-ref-1"` — only 13 characters, 3 short of the 16-character
+minimum. This is a **test-authoring bug**, not a production defect:
+`SecureForgotPasswordOtpCommitRefGenerator` would never emit a value that
+short in real use, so the constructor's validation was working exactly as
+designed and correctly rejected an unrealistic test fixture.
+
+**Fix:** the stub value was corrected to a valid-length string
+(`"pending-ref-1234567890"`, 24 chars). The test was re-enabled (removed
+`@Disabled`) and now passes as part of the full 21/21 green suite.
+
+**Investigation trail (for reference):** 4 rounds of static analysis (fixing
+2 real test bugs along the way — missing session attribute population for
+`decrypt()`, and a missing `protector.protect(...)` stub), a full compiled
+reproduction of the domain types (zero exceptions — the bug was downstream of
+where the repro stopped), and a defensive-mocking attempt, before the user's
+local diagnostic surfaced the real, previously-swallowed exception. This
+traces back to the operation's `.onErrorReturn(SYSTEM_FAILED)` silently
+absorbing the real cause — a pattern worth keeping in mind for future
+debugging of this class.
