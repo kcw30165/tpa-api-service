@@ -101,6 +101,7 @@ class DefaultAccountBalanceNormalizerTest {
       List<RawAccountBalanceFundDetail> funds,
       List<RawAccountBalanceHolding> holdings) {
     return new RawAccountBalanceData(
+        null,
         new RawAccountBalanceDisplayOptions(true, false, true),
         new RawAccountBalanceCurrency(List.of("HKD"), "HKD"),
         sources,

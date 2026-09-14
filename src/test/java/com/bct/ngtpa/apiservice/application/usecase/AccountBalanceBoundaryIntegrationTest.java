@@ -37,7 +37,7 @@ class AccountBalanceBoundaryIntegrationTest {
           return Mono.just(metadata(query));
         };
     RawAccountBalanceData raw =
-        new RawAccountBalanceData(null, null, List.of(), List.of(), List.of());
+        new RawAccountBalanceData(null, null, null, List.of(), List.of(), List.of());
     AccountBalanceSourcePort source =
         fetch -> {
           sourceCalls.incrementAndGet();
@@ -143,7 +143,9 @@ class AccountBalanceBoundaryIntegrationTest {
         new GetAccountBalanceService(
             env -> Mono.just(LocalDate.of(2026, 8, 28)),
             q -> Mono.just(metadata(q)),
-            f -> Mono.just(new RawAccountBalanceData(null, null, List.of(), List.of(), List.of())),
+            f ->
+                Mono.just(
+                    new RawAccountBalanceData(null, null, null, List.of(), List.of(), List.of())),
             (c, d, m, r) -> Mono.error(new RuntimeException("secret financial payload")));
 
     StepVerifier.create(service.get(command("USD")))

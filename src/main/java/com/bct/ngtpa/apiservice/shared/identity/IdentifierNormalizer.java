@@ -5,8 +5,8 @@ import java.util.Locale;
 /**
  * Canonical normalization + equality for user-facing identifiers (username, TAS cust-id) that may
  * differ only by surrounding whitespace or letter case between systems. Both sides of any identity
- * comparison must be normalized through this helper so downstream case/whitespace variance can never
- * cause a false mismatch.
+ * comparison must be normalized through this helper so downstream case/whitespace variance can
+ * never cause a false mismatch.
  */
 public final class IdentifierNormalizer {
   private IdentifierNormalizer() {}

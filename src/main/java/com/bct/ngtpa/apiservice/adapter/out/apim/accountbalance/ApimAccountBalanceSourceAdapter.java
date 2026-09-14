@@ -77,6 +77,7 @@ public final class ApimAccountBalanceSourceAdapter implements AccountBalanceSour
     var displayOptions = AccountBalanceApimContentValidator.requireDisplayOptions(x);
     var currency = AccountBalanceApimContentValidator.requireCurrency(x);
     return new RawAccountBalanceData(
+        x.asOfDate(),
         new RawAccountBalanceDisplayOptions(
             displayOptions.vestedBalanceVisible(),
             displayOptions.pendingSwitchInVisible(),

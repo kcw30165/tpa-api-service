@@ -7,5 +7,5 @@ import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record TrpGetInvestGlApimDataItem(
-    @JsonProperty("pri-date") LocalDate priceDate,
+    @JsonProperty("as-of-date") LocalDate priceDate,
     @JsonProperty("InvestGL") List<TrpGetInvestGlFund> funds) {}

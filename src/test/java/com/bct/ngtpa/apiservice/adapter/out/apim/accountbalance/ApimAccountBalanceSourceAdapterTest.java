@@ -20,6 +20,7 @@ class ApimAccountBalanceSourceAdapterTest {
     AtomicReference<ApimExchangeRequest<?, ?>> seen = new AtomicReference<>();
     var item =
         new TrpGetMemberAccBalApimDataItem(
+            LocalDate.of(2026, 8, 31),
             List.of(new AccountBalanceDisplayOptions(true, false, true)),
             List.of(new AccountBalanceCurrency(List.of("HKD"), "HKD")),
             List.of(),
@@ -53,7 +54,11 @@ class ApimAccountBalanceSourceAdapterTest {
             ActorUserRole.ROLE_USER_MBR,
             LocalDate.of(2026, 8, 31));
     StepVerifier.create(adapter.fetchRawAccountBalance(command))
-        .assertNext(raw -> assertThat(raw.currency().selected()).isEqualTo("HKD"))
+        .assertNext(
+            raw -> {
+              assertThat(raw.currency().selected()).isEqualTo("HKD");
+              assertThat(raw.asOfDate()).isEqualTo(LocalDate.of(2026, 8, 31));
+            })
         .verifyComplete();
     var exchange = seen.get();
     assertThat(exchange.path()).isEqualTo("/configured/member-balance");

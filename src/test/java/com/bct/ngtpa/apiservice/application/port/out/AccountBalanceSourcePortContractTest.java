@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.bct.ngtpa.apiservice.application.dto.accountbalance.raw.*;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
@@ -14,6 +15,7 @@ class AccountBalanceSourcePortContractTest {
   void carriesRawValidatedAccountBalanceDataWithoutPresentationTransformation() {
     var raw =
         new RawAccountBalanceData(
+            LocalDate.of(2026, 8, 31),
             new RawAccountBalanceDisplayOptions(true, false, true),
             new RawAccountBalanceCurrency(List.of("HKD"), "HKD"),
             List.of(

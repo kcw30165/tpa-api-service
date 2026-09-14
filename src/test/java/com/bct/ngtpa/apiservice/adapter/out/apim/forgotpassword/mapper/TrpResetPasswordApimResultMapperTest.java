@@ -55,14 +55,16 @@ class TrpResetPasswordApimResultMapperTest {
   void technicalFailureForUnrecognizedErrorNullEnvelopeAndBadTimestamp() {
     assertThat(
             mapper
-                .toResult(new TrpResetPasswordApimEnvelope("err.tpa.some.other", List.of()), "JPJPM02")
+                .toResult(
+                    new TrpResetPasswordApimEnvelope("err.tpa.some.other", List.of()), "JPJPM02")
                 .status())
         .isEqualTo(ForgotPasswordCompletionResult.Status.TECHNICAL_FAILURE);
     assertThat(mapper.toResult(null, "JPJPM02").status())
         .isEqualTo(ForgotPasswordCompletionResult.Status.TECHNICAL_FAILURE);
     var badTime =
         new TrpResetPasswordApimEnvelope(
-            "", List.of(new TrpResetPasswordApimDataItem(true, "JPJPM02", "01/01/2026", "99:99:99")));
+            "",
+            List.of(new TrpResetPasswordApimDataItem(true, "JPJPM02", "01/01/2026", "99:99:99")));
     assertThat(mapper.toResult(badTime, "JPJPM02").status())
         .isEqualTo(ForgotPasswordCompletionResult.Status.TECHNICAL_FAILURE);
   }

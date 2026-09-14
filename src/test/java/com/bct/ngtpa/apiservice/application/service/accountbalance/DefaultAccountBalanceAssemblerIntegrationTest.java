@@ -16,6 +16,7 @@ class DefaultAccountBalanceAssemblerIntegrationTest {
   void assemblesBothRatifiedViewsFromOneNormalizedModel() {
     var raw =
         new RawAccountBalanceData(
+            LocalDate.of(2026, 8, 27),
             new RawAccountBalanceDisplayOptions(true, true, true),
             new RawAccountBalanceCurrency(List.of("HKD", "USD"), "HKD"),
             List.of(
@@ -64,6 +65,7 @@ class DefaultAccountBalanceAssemblerIntegrationTest {
                   .isEqualTo("20.00");
               assertThat(r.accountOverview().accountTotals().totalBalance()).isEqualTo("21.00");
               assertThat(r.accountOverview().accountTotals().pendingSwitchIn()).isEqualTo("1.00");
+              assertThat(r.asOfDate()).isEqualTo("27/08/2026");
             })
         .verifyComplete();
   }
