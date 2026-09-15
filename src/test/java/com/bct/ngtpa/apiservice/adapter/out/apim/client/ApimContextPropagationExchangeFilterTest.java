@@ -20,7 +20,8 @@ import reactor.core.publisher.Mono;
 
 class ApimContextPropagationExchangeFilterTest {
 
-  private final ApimContextPropagationExchangeFilter filter = new ApimContextPropagationExchangeFilter();
+  private final ApimContextPropagationExchangeFilter filter =
+      new ApimContextPropagationExchangeFilter();
 
   @Test
   void addsRequestIdHeaderWhenContextContainsRequestId() {
