@@ -391,3 +391,36 @@ class to reach the (now deferred) 95% figure.
 | 35 (D1 ratified) | 81.42% | 64.16% |
 | 61 (14 targets, current) | **83.82%** | **65.95%** |
 
+
+## 2026-09-15 - Discovered Production Defect (NOT fixed, coverage-only phase)
+
+**Class:** `RegistrationIdempotencyResponseSnapshot`
+**Method:** `copyAndValidateHeaders(Map<String, String> headers)`
+**File:** `src/main/java/com/bct/ngtpa/apiservice/application/dto/auth/idempotency/RegistrationIdempotencyResponseSnapshot.java`
+
+**Defect:** The method's own `unsafeHeaderValue(String value)` helper
+explicitly treats a `null` header value as *safe* (`if (value == null) return
+false;`), implying null values are an intentionally-supported case. However,
+the method unconditionally finishes with `return Map.copyOf(copy);`, and
+`java.util.Map.copyOf` throws `NullPointerException` for any entry with a
+null value. The null-permitting design intent and the immutable-copy
+implementation directly contradict each other, so constructing a
+`RegistrationIdempotencyResponseSnapshot` with any header that has a null
+value currently throws an uncaught `NullPointerException` at construction
+time, not the graceful/safe handling the code appears to intend.
+
+**Confirmed via:** a real compiled JUnit test
+(`RegistrationIdempotencyResponseSnapshotTest.nullHeaderValueIsSafe`,
+authored round 83, root-caused round 86) reproducing the exact
+`Map.copyOf(copy)` -> `NullPointerException` stack trace during the coverage-
+increase initiative. The test has been REMOVED (not fixed) per explicit user
+decision, since this phase of work is test-only and does not modify
+production code.
+
+**Suggested fix (for a future, separate change):** replace the final
+`return Map.copyOf(copy);` with `return Collections.unmodifiableMap(copy);`
+(or equivalent), which preserves immutability without rejecting null values,
+restoring consistency with `unsafeHeaderValue`'s stated null-tolerant intent.
+
+**Status:** OPEN. Tracked here for the separate refactor/bugfix backlog
+referenced in this plan's Phase 2 (post-coverage) work.
