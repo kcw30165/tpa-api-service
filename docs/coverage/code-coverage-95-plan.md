@@ -69,7 +69,7 @@ round 01.
 | # | Decision | Options | Status | Notes |
 |---|---|---|---|---|
 | D1 | JaCoCo exclude set for structural classes | (a) exclude Spring `*Config`/`*Properties`, `package-info`; keep DTO records (many carry real validation logic) | **RESOLVED** | Ratified and applied to `pom.xml`. See §9d. |
-| D2 | Target metric | (a) 95% instruction only; (b) instruction **and** branch | **OPEN** | Branch is at 60.74% — (b) is materially more work. |
+| D2 | Target metric | (a) 95% instruction only; (b) instruction **and** branch | **RESOLVED** | Interim target ratified: **~90% instruction** (branch tracked, not gated). See §9e. |
 | D3 | When to enforce the JaCoCo `check` threshold | raise to 95% now vs. after tests land | **Recommended: after** | Enforcing now makes the build red until tests catch up. |
 | D4 | First wave target | `ForgotPasswordPasswordValidator` | **RESOLVED** | Landed — 100% instr / 97.92% branch. |
 
@@ -349,4 +349,45 @@ The single largest 0% class, `ForgotPasswordApplicationConfig` (599 missed
 instructions), is now excluded from the denominator rather than requiring
 tests, along with its `*Config`/`*Properties` siblings (~9,333 structural
 instructions total).
+
+## 9e. D2 Ratification — 90% Instruction Interim Target
+
+**Decision:** D2 is RESOLVED. The near-term practical target for this
+initiative is **~90% instruction coverage**, tracked against the D1-adjusted
+denominator (excludes `*Config`/`*Properties`/`package-info`). **Branch
+coverage continues to be measured and reported per class**, but is not gated
+against a fixed aggregate threshold at this stage. The original 95%
+instruction aspiration (plan §1) remains the longer-term goal but is no
+longer the immediate milestone driving each round's target selection.
+
+**Rationale (measured, round 61 full-suite re-measure):**
+
+| Target | Instructions still needed |
+|---|---:|
+| 95% instruction | 12,898 |
+| **90% instruction (ratified interim target)** | **7,130** |
+
+The prior 8 targets (rounds 36-60, post-D1) delivered roughly 2,982 newly
+covered instructions across ~25 rounds — a materially slower rate than the
+first 6 WAVE-C targets, because remaining gaps are now spread thin across
+many mid-size packages (usernamerecovery, redis adapters, idempotency replay
+codecs, CSRF, registration) rather than concentrated in a few large 300+
+instruction classes. 90% is judged achievable in a bounded number of further
+rounds; 95% is not ruled out but is deferred as a stretch goal for a later,
+separately-scoped effort (or WAVE D/E work) once 90% is reached and stable.
+
+**Effect on WAVE C target selection going forward:** continue picking the
+highest-ROI remaining 0%/low-coverage classes (per the round-61 ranked list),
+prioritizing classes that make concrete progress toward the 7,130-instruction
+gap, without a strict requirement to exhaustively cover every remaining
+class to reach the (now deferred) 95% figure.
+
+**Checkpoint history for reference:**
+
+| Round | Instruction | Branch |
+|---|---:|---:|
+| 01 (baseline) | 76.80% | 60.74% |
+| 34 (6 targets, pre-D1) | 79.97% | 63.31% |
+| 35 (D1 ratified) | 81.42% | 64.16% |
+| 61 (14 targets, current) | **83.82%** | **65.95%** |
 
