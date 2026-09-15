@@ -13,7 +13,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 @RequiredArgsConstructor
 public class ApimWebClientConfig {
 
-  private final ApimRequestIdExchangeFilter requestIdExchangeFilter;
+  private final ApimContextPropagationExchangeFilter contextPropagationExchangeFilter;
   private final ApimRequestLoggingExchangeFilter requestLoggingExchangeFilter;
 
   @Bean
@@ -32,7 +32,7 @@ public class ApimWebClientConfig {
             .baseUrl(apimProperties.getBaseUrl())
             .defaultHeader("Accept", "application/json")
             .filter(oauth2Filter)
-            .filter(requestIdExchangeFilter.filter())
+            .filter(contextPropagationExchangeFilter.filter())
             .filter(requestLoggingExchangeFilter.filter());
 
     String certHeader = certificateHeaderProvider.getCertificateHeaderValue();

@@ -23,7 +23,7 @@ class ApimWebClientConfigTest {
   private final LoggingSanitizer loggingSanitizer =
       new LoggingSanitizer(objectMapper, new LoggingSanitizerProperties());
 
-  private final ApimRequestIdExchangeFilter requestIdFilter = new ApimRequestIdExchangeFilter();
+  private final ApimContextPropagationExchangeFilter requestIdFilter = new ApimContextPropagationExchangeFilter();
   private final ApimRequestLoggingExchangeFilter requestLoggingFilter =
       new ApimRequestLoggingExchangeFilter(loggingSanitizer, objectMapper);
   private final ApimWebClientConfig config =
