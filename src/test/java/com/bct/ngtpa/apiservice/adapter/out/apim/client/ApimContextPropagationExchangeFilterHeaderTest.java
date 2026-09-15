@@ -2,11 +2,7 @@ package com.bct.ngtpa.apiservice.adapter.out.apim.client;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import com.bct.ngtpa.apiservice.application.dto.AccountContext;
-import com.bct.ngtpa.apiservice.application.dto.ActorContext;
-import com.bct.ngtpa.apiservice.application.dto.ActorUserRole;
-import com.bct.ngtpa.apiservice.application.dto.PortalAccessContext;
-import com.bct.ngtpa.apiservice.shared.web.PortalAccessContextKeys;
+import com.bct.ngtpa.apiservice.shared.web.PortalIdentityCorrelation;
 import com.bct.ngtpa.apiservice.shared.web.RequestCorrelation;
 import java.net.URI;
 import java.util.concurrent.atomic.AtomicReference;
@@ -26,27 +22,26 @@ class ApimContextPropagationExchangeFilterHeaderTest {
       new ApimContextPropagationExchangeFilter();
 
   @Test
-  void emitsEmptyTrustAndRoleWhenNoPortalAccessContext() {
+  void emitsEmptyTrustAndRoleWhenContextIsAbsent() {
     ClientRequest captured = run(Context.empty());
     assertEquals("", captured.headers().getFirst("X-Trust"));
     assertEquals("", captured.headers().getFirst("X-User-Role"));
   }
 
   @Test
-  void emitsTrustAndRoleFromPortalAccessContext() {
-    PortalAccessContext context =
-        new PortalAccessContext(
-            new ActorContext("actor-1", ActorUserRole.ROLE_USER_MBR),
-            new AccountContext("acc-ref", "DEV", "policy", "cert", "TR-CODE", "scheme", null, null));
-    ClientRequest captured = run(Context.of(PortalAccessContextKeys.CONTEXT_KEY, context));
+  void emitsTrustAndRoleFromContextStrings() {
+    ClientRequest captured =
+        run(
+            Context.of(
+                PortalIdentityCorrelation.TRUST_CODE_CONTEXT_KEY, "TR-CODE",
+                PortalIdentityCorrelation.USER_ROLE_CONTEXT_KEY, "ROLE_USER_MBR"));
     assertEquals("TR-CODE", captured.headers().getFirst("X-Trust"));
     assertEquals("ROLE_USER_MBR", captured.headers().getFirst("X-User-Role"));
   }
 
   @Test
   void propagatesRequestIdFromContext() {
-    ClientRequest captured =
-        run(Context.of(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, "req-123"));
+    ClientRequest captured = run(Context.of(RequestCorrelation.REQUEST_ID_CONTEXT_KEY, "req-123"));
     assertEquals("req-123", captured.headers().getFirst(RequestCorrelation.REQUEST_ID_HEADER));
   }
 

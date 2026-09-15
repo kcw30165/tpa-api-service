@@ -52,7 +52,11 @@ public final class PortalAccessContextWebFilter implements WebFilter {
     exchange.getAttributes().put(PortalAccessContextKeys.ATTRIBUTE_KEY, context);
     return chain
         .filter(exchange)
-        .contextWrite(c -> c.put(PortalAccessContextKeys.CONTEXT_KEY, context));
+        .contextWrite(
+            c ->
+                c.put(PortalAccessContextKeys.CONTEXT_KEY, context)
+                    .put(PortalIdentityCorrelation.TRUST_CODE_CONTEXT_KEY, trustCode(context))
+                    .put(PortalIdentityCorrelation.USER_ROLE_CONTEXT_KEY, userRole(context)));
   }
 
   private String accountRef(ServerWebExchange exchange) {
@@ -60,6 +64,20 @@ public final class PortalAccessContextWebFilter implements WebFilter {
         (RequestHeaderContext) exchange.getAttributes().get(RequestHeaderContextKeys.ATTRIBUTE_KEY);
     if (context != null && StringUtils.hasText(context.accountRef())) return context.accountRef();
     return exchange.getRequest().getHeaders().getFirst(RequestHeaderContextKeys.ACCOUNT_REF_HEADER);
+  }
+
+  private static String trustCode(PortalAccessContext context) {
+    if (context == null || context.account() == null || context.account().trustCode() == null) {
+      return "";
+    }
+    return context.account().trustCode();
+  }
+
+  private static String userRole(PortalAccessContext context) {
+    if (context == null || context.actor() == null || context.actor().actorUserRole() == null) {
+      return "";
+    }
+    return context.actor().actorUserRole().toString();
   }
 
   private String cookie(ServerWebExchange exchange, String name) {
