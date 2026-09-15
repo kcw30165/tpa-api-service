@@ -18,9 +18,10 @@ import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import reactor.core.publisher.Mono;
 
-class ApimRequestIdExchangeFilterTest {
+class ApimContextPropagationExchangeFilterTest {
 
-  private final ApimRequestIdExchangeFilter filter = new ApimRequestIdExchangeFilter();
+  private final ApimContextPropagationExchangeFilter filter =
+      new ApimContextPropagationExchangeFilter();
 
   @Test
   void addsRequestIdHeaderWhenContextContainsRequestId() {

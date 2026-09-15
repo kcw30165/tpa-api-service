@@ -1,5 +1,7 @@
 package com.bct.ngtpa.apiservice.adapter.out.apim;
 
+import com.bct.ngtpa.apiservice.adapter.out.apim.client.ApimContextPropagationExchangeFilter;
+import com.bct.ngtpa.apiservice.adapter.out.apim.client.ApimRequestLoggingExchangeFilter;
 import com.bct.ngtpa.apiservice.adapter.out.apim.config.ApimProperties;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfile;
 import com.bct.ngtpa.apiservice.adapter.out.apim.credential.ApimCredentialProfileResolver;
@@ -46,6 +48,8 @@ public class ApimWebClientFacade {
   private final ApimProperties apimProperties;
   private final ApimAppCertificateService apimAppCertificateService;
   private final LoggingSanitizer loggingSanitizer;
+  private final ApimContextPropagationExchangeFilter contextPropagationExchangeFilter;
+  private final ApimRequestLoggingExchangeFilter requestLoggingExchangeFilter;
 
   @Autowired
   public ApimWebClientFacade(
@@ -57,7 +61,9 @@ public class ApimWebClientFacade {
       ApimCertificateService apimCertificateService,
       ApimProperties apimProperties,
       ApimAppCertificateService apimAppCertificateService,
-      LoggingSanitizer loggingSanitizer) {
+      LoggingSanitizer loggingSanitizer,
+      ApimContextPropagationExchangeFilter contextPropagationExchangeFilter,
+      ApimRequestLoggingExchangeFilter requestLoggingExchangeFilter) {
     this.apimWebClient = apimWebClient;
     this.webClientBuilder = webClientBuilder;
     this.objectMapper = objectMapper;
@@ -67,6 +73,8 @@ public class ApimWebClientFacade {
     this.apimProperties = apimProperties;
     this.apimAppCertificateService = apimAppCertificateService;
     this.loggingSanitizer = loggingSanitizer;
+    this.contextPropagationExchangeFilter = contextPropagationExchangeFilter;
+    this.requestLoggingExchangeFilter = requestLoggingExchangeFilter;
   }
 
   public ApimWebClientFacade(
@@ -86,7 +94,10 @@ public class ApimWebClientFacade {
         apimCertificateService,
         apimProperties,
         null,
-        new LoggingSanitizer(objectMapper, new LoggingSanitizerProperties()));
+        new LoggingSanitizer(objectMapper, new LoggingSanitizerProperties()),
+        new ApimContextPropagationExchangeFilter(),
+        new ApimRequestLoggingExchangeFilter(
+            new LoggingSanitizer(objectMapper, new LoggingSanitizerProperties()), objectMapper));
   }
 
   public Mono<String> post(
@@ -309,7 +320,13 @@ public class ApimWebClientFacade {
         .flatMap(
             token -> {
               String baseUrl = profile.baseUrl();
-              WebClient client = webClientBuilder.clone().baseUrl(baseUrl).build();
+              WebClient client =
+                  webClientBuilder
+                      .clone()
+                      .baseUrl(baseUrl)
+                      .filter(contextPropagationExchangeFilter.filter())
+                      .filter(requestLoggingExchangeFilter.filter())
+                      .build();
 
               WebClient.RequestBodySpec request =
                   client
