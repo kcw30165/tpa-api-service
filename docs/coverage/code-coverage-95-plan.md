@@ -424,3 +424,36 @@ restoring consistency with `unsafeHeaderValue`'s stated null-tolerant intent.
 
 **Status:** OPEN. Tracked here for the separate refactor/bugfix backlog
 referenced in this plan's Phase 2 (post-coverage) work.
+
+## 2026-09-16 - Dead-Code Finding: RegistrationAuthFlowCsrfAdapter.extractTokenValue
+
+**Class:** `RegistrationAuthFlowCsrfAdapter`
+**Method:** `extractTokenValue(Object result)` / `firstValue(Object target, String... accessors)`
+
+**Finding:** `extractTokenValue`'s reflective fallback logic tries 4 accessor
+names in order (`rawToken`, `token`, `csrfToken`, `value`) and throws
+`IllegalStateException` if none match. However, this method is only ever
+invoked from `bindCsrfToken(...)`'s `.map(...)` call, whose upstream source
+(`csrfService.createForSession(...)`) is declared to return
+`Mono<CreateAuthFlowSessionCsrfResult>` - a CONCRETE type, not a generic
+`Mono<Object>`. Java's generic erasure inserts an implicit checked cast to
+`CreateAuthFlowSessionCsrfResult` at this exact call site, meaning no caller
+(test or production) can ever cause `extractTokenValue` to receive any
+object other than a real `CreateAuthFlowSessionCsrfResult` instance - which
+always has a `rawToken()` accessor that always matches on the first
+reflective attempt. The 3 fallback accessor names and the "no matching
+accessor" `IllegalStateException` branch are therefore DEAD CODE, unreachable
+via the real type system.
+
+**Confirmed via:** direct extraction of both the adapter's real source and
+its upstream `AuthFlowSessionCsrfService.createForSession(...)` declared
+return type (round 115), after 3 consecutive failed attempts (rounds
+111-114) to construct a test around a mistaken theory that this was a
+Reactor `ScalarCallable`/fusion issue rather than ordinary Java generic
+erasure.
+
+**Status:** OPEN (informational). No production code was modified in this
+coverage-only phase. The reflective `firstValue(...)` helper appears to be
+defensive/future-proofing code (e.g. anticipating a future looser return
+type) rather than a bug - tracked here for awareness in the separate Phase 2
+refactor backlog, should the method's real necessity ever be revisited.
