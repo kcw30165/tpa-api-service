@@ -130,4 +130,70 @@ class RedisGeneralMetadataCacheAdapterTest {
       return Mono.error(failure);
     }
   }
+
+  // ----- replaceIfUnchanged() (added round 138 - not covered by the
+  // original file's tests, which predate this method) ------------------------
+
+  @Test
+  void replaceIfUnchangedMismatchedExpectedScopeErrors() {
+    var cache = new RecordingCache();
+    var adapter = adapter(cache);
+    var wrongScope = new GeneralMetadataScope("OTHER", "DBA", "00000008802");
+    var expected =
+        new ResolvedGeneralMetadataSet(wrongScope, GeneralMetadataResolutionSource.DEFAULT_ALL, List.of(entry("1")));
+    var replacement =
+        new ResolvedGeneralMetadataSet(scope(), GeneralMetadataResolutionSource.DEFAULT_ALL, List.of(entry("2")));
+    assertThatThrownBy(() -> adapter.replaceIfUnchanged(scope(), expected, replacement).block())
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void replaceIfUnchangedMismatchedReplacementScopeErrors() {
+    var cache = new RecordingCache();
+    var adapter = adapter(cache);
+    var wrongScope = new GeneralMetadataScope("OTHER", "DBA", "00000008802");
+    var expected =
+        new ResolvedGeneralMetadataSet(scope(), GeneralMetadataResolutionSource.DEFAULT_ALL, List.of(entry("1")));
+    var replacement =
+        new ResolvedGeneralMetadataSet(wrongScope, GeneralMetadataResolutionSource.DEFAULT_ALL, List.of(entry("2")));
+    assertThatThrownBy(() -> adapter.replaceIfUnchanged(scope(), expected, replacement).block())
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void replaceIfUnchangedSucceedsWhenApplied() {
+    var cache = new RecordingCache();
+    var adapter = adapter(cache);
+    var expected =
+        new ResolvedGeneralMetadataSet(scope(), GeneralMetadataResolutionSource.DEFAULT_ALL, List.of(entry("1")));
+    var replacement =
+        new ResolvedGeneralMetadataSet(scope(), GeneralMetadataResolutionSource.DEFAULT_ALL, List.of(entry("2")));
+    var result = adapter.replaceIfUnchanged(scope(), expected, replacement).block();
+    assertThat(result)
+        .isEqualTo(
+            com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataCacheReplaceResult.APPLIED);
+  }
+
+  @Test
+  void replaceIfUnchangedDelegatesConflictFromOperations() {
+    var cache = new RecordingCache();
+    var adapter =
+        new RedisGeneralMetadataCacheAdapter(
+            cache,
+            new RedisCacheKeyFactory("ngtpa"),
+            new ObjectMapper().findAndRegisterModules(),
+            new GeneralMetadataCacheProperties(Duration.parse("PT20M")),
+            (key, expectedJson, replacementJson) ->
+                Mono.just(
+                    com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataCacheReplaceResult
+                        .CONFLICT));
+    var expected =
+        new ResolvedGeneralMetadataSet(scope(), GeneralMetadataResolutionSource.DEFAULT_ALL, List.of(entry("1")));
+    var replacement =
+        new ResolvedGeneralMetadataSet(scope(), GeneralMetadataResolutionSource.DEFAULT_ALL, List.of(entry("2")));
+    var result = adapter.replaceIfUnchanged(scope(), expected, replacement).block();
+    assertThat(result)
+        .isEqualTo(
+            com.bct.ngtpa.apiservice.application.dto.metadata.GeneralMetadataCacheReplaceResult.CONFLICT);
+  }
 }
