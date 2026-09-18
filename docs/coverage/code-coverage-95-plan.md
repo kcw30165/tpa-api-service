@@ -457,3 +457,49 @@ coverage-only phase. The reflective `firstValue(...)` helper appears to be
 defensive/future-proofing code (e.g. anticipating a future looser return
 type) rather than a bug - tracked here for awareness in the separate Phase 2
 refactor backlog, should the method's real necessity ever be revisited.
+
+## 2026-09-18 - Discovered Production Defect: ReactiveRedisCaptchaChallengeOperations.ttl(String)
+
+**Class:** `ReactiveRedisCaptchaChallengeOperations`
+**Method:** `ttl(String key)`
+**File:** `src/main/java/com/bct/ngtpa/apiservice/adapter/out/redis/auth/ReactiveRedisCaptchaChallengeOperations.java`
+
+**Defect:** The method chains two `.map(...)` calls intending to convert a
+zero/negative/null `Duration` from `redisTemplate.getExpire(key)` into
+`Optional.empty()`:
+
+```java
+return redisTemplate
+    .getExpire(key)
+    .map(seconds -> seconds == null || seconds.isNegative() || seconds.isZero() ? null : seconds)
+    .map(Optional::ofNullable)
+    .defaultIfEmpty(Optional.empty());
+```
+
+The FIRST `.map(...)` lambda returns Java `null` for the zero/negative
+case, apparently intending the SECOND `.map(Optional::ofNullable)` to catch
+it and wrap it as `Optional.empty()`. However, Reactor's `Mono.map(...)`
+operator explicitly forbids a mapper returning `null` and throws
+`NullPointerException` immediately when it does - the `null` signal never
+reaches the second `.map(...)` at all. Calling `ttl(key)` when the key's
+remaining TTL is genuinely zero or negative therefore throws an uncaught
+`NullPointerException` at runtime, rather than gracefully returning
+`Optional.empty()` as the code's own structure clearly intends.
+
+**Confirmed via:** a real, compiled JUnit test
+(`ReactiveRedisCaptchaChallengeOperationsStrictResultTest.
+ttlZeroOrNegativeThrowsNullPointerException`) reproducing the exact
+`NullPointerException` ("The mapper ... returned a null value") during the
+coverage-increase initiative. The test has been adjusted to assert the
+REAL (defective) behavior rather than the originally-intended one, per this
+phase's test-only scope (matches the `Map.copyOf` precedent logged
+2026-09-15).
+
+**Suggested fix (for a future, separate change):** replace the two chained
+`.map(...)` calls with a single `.flatMap(seconds -> ...)` returning
+`Mono.justOrEmpty(...)`, or simply combine both conditions into one
+`.map(seconds -> Optional.ofNullable(seconds == null || seconds.isNegative()
+|| seconds.isZero() ? null : seconds))` - a single `.map(...)` call that
+never itself returns a bare `null`.
+
+**Status:** OPEN. Tracked here for the separate refactor/bugfix backlog.
